@@ -279,6 +279,8 @@ public interface Database {
   public boolean updateJobDefinition(JobDefinition jobDef);
   public boolean deleteJobDefinition(JobDefinition jobDef);
   public DBRecord getTaskTransRecord(int taskID);
+  public String [] getHomePackages();
+  public String [] getImplementations(String homePackage);
   
   public class DBRecord {
     public String [] fields = null;

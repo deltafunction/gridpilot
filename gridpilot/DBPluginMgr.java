@@ -1044,5 +1044,53 @@ public class DBPluginMgr implements Database{
     else
       return -1;
   }
-    
+
+  public synchronized String [] getHomePackages(){
+    MyThread t = new MyThread(){
+      String [] res = null;
+      public void run(){
+        try{
+          res = db.getHomePackages();
+        }catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName , t);
+        }
+      }
+      public String [] getString2Res(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getHomePackages"))
+      return t.getString2Res();
+    else
+      return new String [] {};
+   }
+
+  public synchronized String [] getImplementations(final String homePackage){
+    MyThread t = new MyThread(){
+      String [] res = null;
+      public void run(){
+        try{
+          res = db.getImplementations(homePackage);
+        }catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName , t);
+        }
+      }
+      public String [] getString2Res(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getImplementations"))
+      return t.getString2Res();
+    else
+      return new String [] {};
+   }
+
 }
