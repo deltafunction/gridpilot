@@ -531,14 +531,14 @@ public class JobDefCreationPanel extends CreateEditPanel {
     if(oldTcCstAttributes != null){
       tcCstAttributes = oldTcCstAttributes;
       // when creating, zap loaded jobDefinitionID
-      if(!editing){
+      /*if(!editing){
         for(int i =0; i<tcCstAttributes.length; ++i){
           if(cstAttributesNames[i].equalsIgnoreCase("jobDefinitionID")){
             setJText((JComponent) tcCstAttributes[i],"");
             ((JComponent) tcCstAttributes[i]).setEnabled(false);
           }
         }
-      }
+      }*/
     }
 
     if(!editing && oldJobTransFK!=null && Integer.parseInt(oldJobTransFK)>-1){
@@ -687,6 +687,13 @@ public class JobDefCreationPanel extends CreateEditPanel {
       cl.gridy=i;
       if(!cstAttributesNames[i].equalsIgnoreCase("jobXML")){
         pAttributes.add(tcCstAttributes[i], cl);
+      }
+      if(cstAttributesNames[i].equalsIgnoreCase("jobDefinitionID")){
+        // when creating, zap loaded jobDefinitionID
+        if(!editing){
+          setJText((JComponent) tcCstAttributes[i],"");
+        }
+        ((JTextComponent) tcCstAttributes[i]).setEnabled(false);
       }
     }
   }
