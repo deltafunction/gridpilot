@@ -441,7 +441,13 @@ public class DBPanel extends JPanel {
           debug = "";
         }
         jobDefinitionPanel.makeMenu(); // add some items to the popup menu in the table. These items are from the (parent) job definition panel
-        tableResults.hideLastColumns(3); // hide db name, step name and task identifier column
+        if(/*selectRequest.indexOf(tableResults.getColumnName(tableResults.getColumnCount()-3))==-1 &&*/
+            selectRequest.indexOf("*")>-1){
+          tableResults.hideLastColumns(2); // hide db name, step name column
+        }
+        else{
+          tableResults.hideLastColumns(3); // hide db name, step name and task identifier column
+        }
 
         jobDefIdentifiers = new int[tableResults.getRowCount()];
         // 'col' is the column with the jobDefinition identifier
