@@ -77,6 +77,7 @@ public class CreateEditDialog extends JDialog {
     //
     Dimension  scrnSize = Toolkit.getDefaultToolkit().getScreenSize();
     setLocation((scrnSize.width / 2) - 150, (scrnSize.height / 2) - 50);
+    this.setSize(new Dimension(400, 0));
 
     // Initialize CreateEditPanel
     createEditPanel.initGUI();

@@ -390,9 +390,12 @@ public class JobDefCreator {
     }
 
     JScrollPane sp = new JScrollPane(pResult);
-    sp.setPreferredSize(new Dimension(500,
-                                      (int)pResult.getPreferredSize().getHeight() +
-                                      (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5));
+    int size1 = (int)pResult.getPreferredSize().getHeight() +
+    	(int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5;
+    Dimension screenSize = new Dimension(Toolkit.getDefaultToolkit().getScreenSize());
+    if (size1 > screenSize.height) size1 = 500;
+    System.out.println(size1);
+    sp.setPreferredSize(new Dimension(500,size1));
 
     JOptionPane op = new JOptionPane(sp,
                                      JOptionPane.QUESTION_MESSAGE,
