@@ -6,7 +6,6 @@ import java.util.StringTokenizer;
 
 import javax.swing.*;
 
-
 /**
  * Main class.
  * Instantiates all global objects and calls GlobalFrame.
@@ -52,9 +51,9 @@ public class GridPilot {
 
      gridpilotCommon();
 
-      initGUI();
+     initGUI();
 
-      classMgr.getLogFile().addInfo("gridpilot loaded");
+     classMgr.getLogFile().addInfo("gridpilot loaded");
 
     }catch(Throwable e){
       if(e instanceof Error)
@@ -67,11 +66,14 @@ public class GridPilot {
   }
 
   public static void gridpilotCommon () {
+     String user = null;
+     String [] up = null;
   	 dbs = getClassMgr().getConfigFile().getValues("Databases", "Systems");
      for(int i = 0; i < dbs.length; ++i){
        GridPilot.userName = getClassMgr().getConfigFile().getValue(dbs[i], "user");
        passwd = getClassMgr().getConfigFile().getValue(dbs[i], "passwd");
        steps.put(dbs[i], getClassMgr().getConfigFile().getValues(dbs[i], "steps"));
+
        for(int j = 0; j < ((String []) steps.get(dbs[i])).length; ++j){
          step = ((String []) steps.get(dbs[i]))[j];
          Debug.debug("Initializing step "+step+". For db "+dbs[i],3);
@@ -149,24 +151,17 @@ public class GridPilot {
     frame.setVisible(true);
   }
 
-  public static String [] userPwd(String user, String step){
+  public static String [] userPwd(String user){
     // asking for user and password for DBPluginMgr
 
     JPanel pUserPwd = new JPanel(new GridBagLayout());
     JTextField tfUser = new JTextField(user);
-    JTextField tfStep = new JTextField(step);
 
     JPasswordField pfPwd = new JPasswordField();
     pUserPwd.add(new JLabel("User : "), new GridBagConstraints(0,0, 1, 1, 0.0, 0.0,
         GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
 
     pUserPwd.add(tfUser, new GridBagConstraints(1, 0, 1, 1, 1.0, 0.0,
-        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
-
-    pUserPwd.add(new JLabel("Step : "), new GridBagConstraints(0,1, 1, 1, 0.0, 0.0,
-        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
-
-    pUserPwd.add(tfStep, new GridBagConstraints(1, 1, 1, 1, 1.0, 0.0,
         GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
 
     pUserPwd.add(new JLabel("Password : "), new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
@@ -176,14 +171,13 @@ public class GridPilot {
         GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
 
 
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),pUserPwd, "AMI user & password", JOptionPane.OK_CANCEL_OPTION);
+    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),pUserPwd, "DB user & password", JOptionPane.OK_CANCEL_OPTION);
 
     String [] results;
     if(choice == JOptionPane.OK_OPTION){
       results = new String [3];
       results[0] = tfUser.getText();
-      results[1] = tfStep.getText();
-      results[2] = new String(pfPwd.getPassword());
+      results[1] = new String(pfPwd.getPassword());
 
     }
     else
