@@ -106,7 +106,9 @@ public class CreateEditDialog extends JDialog {
             createEditPanel.create(cbShowResults.isSelected(), editing);
           }
           }.start();
-        this.hide();
+        //if(editing){
+          //this.hide();
+        //}
         break;
 
       case BCLEAR :
