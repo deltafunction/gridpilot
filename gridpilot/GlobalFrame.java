@@ -2,6 +2,7 @@ package gridpilot;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.net.URL;
 
 import javax.swing.*;
 import javax.swing.event.*;
@@ -273,11 +274,15 @@ public void removeMonitoringPanel(JobPanel panel) {
   //Help | About action performed
   public void menuHelpAbout_actionPerformed() {
     String path = configFile.getValue("gridpilot", "resources");
-    if(!path.endsWith("/"))
-      path +="/";
-
-    path+="about.htm";
-
+    URL aboutURL = null;
+    try{
+      //aboutURL = AtCom.class.getResource(AtCom.resources + "about.htm");
+      aboutURL = GridPilot.class.getResource(path + "about.htm");
+    }catch(Exception e){
+      Debug.debug("Could not find file "+ path + "about.htm", 3);
+      return;
+    } 
+    WebBox dlg = new WebBox(this, "About", aboutURL);
   }
 
 
@@ -322,8 +327,8 @@ public void removeMonitoringPanel(JobPanel panel) {
       }
     });
     menuAtCom.add(miExit);
-    menuAtCom.addSeparator();
-    menuAtCom.addSeparator();
+    //menuAtCom.addSeparator();
+    //menuAtCom.addSeparator();
 
 
     //Help
