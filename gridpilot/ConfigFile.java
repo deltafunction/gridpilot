@@ -1,5 +1,6 @@
 package gridpilot;
 import java.io.*;
+import java.net.URL;
 import java.util.*;
 
  /**
@@ -29,7 +30,7 @@ public class ConfigFile {
    * public methods
    */
 
-	/*tells if this is a real config or do we just use fake values. Retuns true based on the file name*/
+	/*tells if this is a real config or do we just use fake values. Returns true based on the file name*/
 	public boolean isFake() {
 		return ("".equals(configFileName));
 	}
@@ -111,10 +112,30 @@ public class ConfigFile {
    */
   private synchronized boolean openFile(){
 
-   try{
-      file = new RandomAccessFile(configFileName, "r");
-    }catch(FileNotFoundException fnfe){
-      System.err.println("cannot found file "+ configFileName);
+    try{
+      // To be able to open with random access when running from a jar
+      // we first extract the config file to a tmp file and then open
+      // the tmp file.
+      URL fileURL = getClass().getClassLoader().getResource(configFileName);
+      Debug.debug("fileURL: "+configFileName, 3);
+      BufferedReader in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
+
+      File tmpFile = File.createTempFile("gridpilot","conf");
+      PrintWriter out = new PrintWriter(new FileWriter(tmpFile));
+      
+      String line;
+      while((line = in.readLine())!=null){
+        out.println(line);
+      }
+      in.close();
+      out.close();
+      
+      file = new RandomAccessFile(/*configFileName*/tmpFile, "r");
+    }catch(FileNotFoundException e){
+      System.err.println("cannot find file "+ configFileName+". "+e.getMessage());
+      return false;
+    }catch(IOException e){
+      System.err.println("cannot find file "+ configFileName+". "+e.getMessage());
       return false;
     }
     return true;
