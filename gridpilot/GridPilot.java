@@ -24,9 +24,9 @@ public class GridPilot {
   // TODO: reread on reloading values
   public static String [] dbs;
   public static HashMap steps = new HashMap();
-  private String step;
-  private String userName;
-  private String passwd;
+  private static String step;
+  private static String userName;
+  private static String passwd;
 
   
   
@@ -50,18 +50,7 @@ public class GridPilot {
           resourcesPath = resourcesPath + "/";
       }
 
-      dbs = getClassMgr().getConfigFile().getValues("Databases", "Systems");
-      for(int i = 0; i < dbs.length; ++i){
-        userName = getClassMgr().getConfigFile().getValue(dbs[i], "user");
-        passwd = getClassMgr().getConfigFile().getValue(dbs[i], "passwd");
-        steps.put(dbs[i], getClassMgr().getConfigFile().getValues(dbs[i], "steps"));
-        for(int j = 0; j < ((String []) steps.get(dbs[i])).length; ++j){
-          step = ((String []) steps.get(dbs[i]))[j];
-          Debug.debug("Initializing step "+step+". For db "+dbs[i],3);
-          GridPilot.getClassMgr().setDBPluginMgr(dbs[i], step, new DBPluginMgr(dbs[i], step, userName, passwd));
-        }
-      }
-
+     gridpilotCommon();
 
       initGUI();
 
@@ -77,6 +66,19 @@ public class GridPilot {
     }
   }
 
+  public static void gridpilotCommon () {
+  	 dbs = getClassMgr().getConfigFile().getValues("Databases", "Systems");
+     for(int i = 0; i < dbs.length; ++i){
+       GridPilot.userName = getClassMgr().getConfigFile().getValue(dbs[i], "user");
+       passwd = getClassMgr().getConfigFile().getValue(dbs[i], "passwd");
+       steps.put(dbs[i], getClassMgr().getConfigFile().getValues(dbs[i], "steps"));
+       for(int j = 0; j < ((String []) steps.get(dbs[i])).length; ++j){
+         step = ((String []) steps.get(dbs[i]))[j];
+         Debug.debug("Initializing step "+step+". For db "+dbs[i],3);
+         GridPilot.getClassMgr().setDBPluginMgr(dbs[i], step, new DBPluginMgr(dbs[i], step, userName, passwd));
+       }
+     }
+  }
   /**
    * "Class distributor"
    */

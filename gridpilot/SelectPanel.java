@@ -381,6 +381,8 @@ import java.util.HashMap;
       }
       //++nr;
     }
+    if (thisSPanel != null)
+    	if (thisSPanel.spDisplayList != null)
     for(int j=thisSPanel.spDisplayList.getComponentCount()-1; j+1>values.length; --j){
       // remove excess display panels
       Debug.debug("removing panel "+j, 3);
