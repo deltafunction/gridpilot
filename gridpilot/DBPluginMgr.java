@@ -848,6 +848,30 @@ public class DBPluginMgr implements Database{
         return null;
     }
 
+  public synchronized DBRecord getTask (final int taskID) {
+  
+    MyThread t = new MyThread(){
+      DBRecord res = null;
+      public void run(){
+        try{
+          res = db.getTask(taskID);
+        }catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             taskID, t);
+        }
+      }
+      public DBRecord getDBRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getTask"))
+      return t.getDBRes();
+    else
+      return null;
+  }
+
   public synchronized DBResult getAllJobDefinitions (final int taskID, final String [] fieldNames) {
   
     MyThread t = new MyThread(){
@@ -1093,12 +1117,12 @@ public class DBPluginMgr implements Database{
       return new String [] {};
    }
 
-  public synchronized String [] getImplementations(final String homePackage){
+  public synchronized String [] getVersions(final String homePackage){
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getImplementations(homePackage);
+          res = db.getVersions(homePackage);
         }catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName , t);
@@ -1111,7 +1135,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getImplementations"))
+    if(waitForThread(t, dbName, dbTimeOut, "getVersions"))
       return t.getString2Res();
     else
       return new String [] {};
