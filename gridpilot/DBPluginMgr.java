@@ -79,7 +79,7 @@ public class DBPluginMgr implements Database{
      * @throws Throwable if an exception or an error occurs during plug-in loading
      */
     public void loadClass() throws Throwable{//Exception{
-        Debug.debug2("Loading plugin: "+dbName);
+        Debug.debug("Loading plugin: "+dbName, 2);
         // Arguments and class name for <DatabaseName>Database
         //  AMI ****
         String driver = configFile.getValue(dbName, "driver");
@@ -848,13 +848,13 @@ public class DBPluginMgr implements Database{
         return null;
     }
 
-  public synchronized DBResult getAllJobDefinitions (final int taskID) {
+  public synchronized DBResult getAllJobDefinitions (final int taskID, final String [] fieldNames) {
   
     MyThread t = new MyThread(){
       DBResult res = null;
       public void run(){
         try{
-          res = db.getAllJobDefinitions(taskID);
+          res = db.getAllJobDefinitions(taskID, fieldNames);
         }catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
@@ -868,6 +868,30 @@ public class DBPluginMgr implements Database{
   
     if(waitForThread(t, dbName, dbTimeOut, "getAllJobDefinitions"))
       return t.getDB2Res();
+    else
+      return null;
+  }
+
+  public synchronized DBRecord getJobDefinition (final int jobDefinitionID) {
+  
+    MyThread t = new MyThread(){
+      DBRecord res = null;
+      public void run(){
+        try{
+          res = db.getJobDefinition(jobDefinitionID);
+        }catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             jobDefinitionID, t);
+        }
+      }
+      public DBRecord getDBRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getJobDefinition"))
+      return t.getDBRes();
     else
       return null;
   }

@@ -274,7 +274,8 @@ public interface Database {
   public int getTaskTransId(int taskID);
   //public JobTrans [] getJobTrans(int taskID);
   public DBResult getAllJobTransRecords(int taskID);
-  public DBResult getAllJobDefinitions(int taskID);
+  public DBRecord getJobDefinition(int jobDefinitionID);
+  public DBResult getAllJobDefinitions(int taskID, String [] fieldNames);
   public boolean createJobDefinition(JobDefinition jobDef);
   public boolean updateJobDefinition(JobDefinition jobDef);
   public boolean deleteJobDefinition(JobDefinition jobDef);
