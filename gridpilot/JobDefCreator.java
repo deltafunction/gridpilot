@@ -146,7 +146,7 @@ public class JobDefCreator {
             resCstAttr[i] = "";
           }
           else{
-            if(!editing){
+            if(!editing && resCstAttr[i].indexOf("</jobDef>")<0 && resCstAttr[i].indexOf("<jobDef>")<0){
               resCstAttr[i] = "<jobDef>"+resCstAttr[i]+"</jobDef>";
             }
           }
