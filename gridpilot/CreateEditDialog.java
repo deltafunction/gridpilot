@@ -17,7 +17,7 @@ public class CreateEditDialog extends JDialog {
   private boolean editing;
 
   private JButton bPrev = new JButton("Cancel");
-  private JButton bCreate = new JButton("Commit");
+  private JButton bCreate = null;
   private JButton bClear = new JButton("Clear");
   private JCheckBox cbShowResults = new JCheckBox("Show before writing to DB", true);
 
@@ -27,6 +27,13 @@ public class CreateEditDialog extends JDialog {
     
     createEditPanel = _panel;
     editing = _editing;
+    
+    if(editing){
+      bCreate = new JButton("Update");
+    }
+    else{
+      bCreate = new JButton("Create");
+    }
 
     try {
       setContentPane(pCreateEdit);
