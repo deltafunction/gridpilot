@@ -164,7 +164,7 @@ public class GridPilot extends JApplet{
           
    }
 
-  public void exit(int exitCode){
+  public static void exit(int exitCode){
     GridPilot.getClassMgr().getGlobalFrame().dispose();
     Debug.debug("NAME: "+GridPilot.getClassMgr().getGridPilot(), 2);
     //System.exit(exitCode);
@@ -203,7 +203,7 @@ public class GridPilot extends JApplet{
       results = null;
 
     if(choice == JOptionPane.CANCEL_OPTION){
-      GridPilot.getClassMgr().getGridPilot().exit(0);
+      return null;
     }
 
     return results;
