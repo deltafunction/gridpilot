@@ -32,6 +32,7 @@ public class CreateEditDialog extends JDialog {
       setContentPane(pCreateEdit);
       initGUI();
       pack();
+      requestFocusInWindow();
     }
     catch (Exception e) {
       e.printStackTrace();

@@ -414,6 +414,8 @@ public class JobDefCreator {
 
     JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "JobDef # "+currentJobDef);
     
+    dialog.requestFocusInWindow();
+    
     if(!moreThanOne){
       ((JComponent) op.getComponent(1)).getComponent(1).setEnabled(false);
       ((JComponent) op.getComponent(1)).getComponent(3).setEnabled(false);
