@@ -45,7 +45,8 @@ public class DBPanel extends JPanel {
   private String [] stepIdentifiers;
 
   private AllTasksPanel jobDefinitionPanel;
-  private String taskTableName = null;
+  private String taskTableName = "task";
+  private String taskIdentifier = "TASKID";
   private String [] defaultFields = null;
   
   public GridBagConstraints ct = new GridBagConstraints();
@@ -70,6 +71,7 @@ public class DBPanel extends JPanel {
      String dbName = null;
      String [] stepList = null;
      String taskTableName1 = null;
+     String taskIdentifier1 = null;
      String [] defaultFields1 = null;
      boolean firstIterationDone = false;
      
@@ -80,17 +82,22 @@ public class DBPanel extends JPanel {
        dbName = GridPilot.getDBs()[i];
        stepList = GridPilot.getSteps(dbName);
        for(int j = 0; j < stepList.length; ++j){
+         // TODO: get from db
          taskTableName = "task";
+         taskIdentifier = "TASKID";
          defaultFields = GridPilot.getClassMgr().getDBPluginMgr(dbName, stepList[j]).getDBDefFields(GridPilot.getDBs()[i], taskTableName) ;
          if((firstIterationDone || j > 0) &&
              // TODO: check all fields...
-             (!taskTableName1.equals(taskTableName) || !defaultFields1[0].equals(defaultFields[0]))){
+             (!taskTableName1.equals(taskTableName) ||
+                 !taskIdentifier1.equals(taskIdentifier) ||
+                 !defaultFields1[0].equals(defaultFields[0]))){
             Debug.debug("ERROR: incompatible databases",1); 
             System.exit(-1); 
          }
        }
        firstIterationDone = true;
        taskTableName1 = taskTableName;
+       taskIdentifier1 = taskIdentifier;
        defaultFields1 = defaultFields;
      }
     
@@ -374,7 +381,7 @@ public class DBPanel extends JPanel {
           steps = GridPilot.getSteps(dbs[h]);
           Debug.debug("Number of steps: "+steps.length, 3);         
           for (int i=0; i<steps.length; i++) {
-            stepRes[h][i] = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[h], ((String []) GridPilot.steps.get(GridPilot.dbs[h]))[i]).select(selectRequest);
+            stepRes[h][i] = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[h], ((String []) GridPilot.steps.get(GridPilot.dbs[h]))[i]).select(selectRequest,taskIdentifier);
             nrValues += stepRes[h][i].values.length;
             
             /*

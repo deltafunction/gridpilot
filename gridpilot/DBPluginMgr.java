@@ -747,13 +747,13 @@ public class DBPluginMgr implements Database{
       return null;
   }
 
-  public synchronized DBResult select(final String selectQuery) {
+  public synchronized DBResult select(final String selectQuery, final String identifier) {
   
     MyThread t = new MyThread(){
       DBResult res = null;
       public void run(){
         try{
-          res = db.select(selectQuery);
+          res = db.select(selectQuery, identifier);
         }catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +

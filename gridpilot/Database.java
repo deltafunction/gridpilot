@@ -228,7 +228,7 @@ public interface Database {
   public boolean reservePart(int partID, String user /*user name recorded*/);
   public boolean saveDefVals(int datasetId, String[] defvals);
   public String [] getFieldNames(String table);
-  public DBResult select(String selectRequest);
+  public DBResult select(String selectRequest, String identifier);
   public String getDatasetTableName();
   public String getPartitionTableName();
   public DBResult getAllPartJobInfo(int datasetID);
