@@ -68,7 +68,8 @@ public class JobDefCreationPanel extends CreateEditPanel {
   private static simplexmlnode xmlParsNode;
   
   private DBResult transformations;
-  private int TEXTFIELDWIDTH = 8;
+  private int TEXTFIELDWIDTH = 16;
+  private int CFIELDWIDTH = 8;
   
   
   /**
@@ -80,11 +81,14 @@ public class JobDefCreationPanel extends CreateEditPanel {
     editing = false;
     
     taskMgr=_taskMgr;
-
+    
     cstAttributesNames = taskMgr.getVectorTableModel().columnNames;
     cstAttr = new String[cstAttributesNames.length];
     
     transformations = taskMgr.getDBPluginMgr().getAllJobTransRecords(taskMgr.getTaskIdentifier());
+    
+    Debug.debug("Creating new job record for task "+taskMgr.getTaskName()+
+        " with "+transformations.values.length+" transformations.", 3);
     
     // Fill cstAttr with ""
     for(int i=0; i < cstAttributesNames.length; ++i){
@@ -117,6 +121,10 @@ public class JobDefCreationPanel extends CreateEditPanel {
     
     taskMgr=_taskMgr;
     table = _table;
+
+    Debug.debug("Editing job record for task "+taskMgr.getTaskName()+". Rows: "+
+        table.getRowCount()+
+        ". Number of transformations: "+transformations.values.length, 3);
 
     cstAttributesNames = taskMgr.getVectorTableModel().columnNames;
     cstAttr = new String[cstAttributesNames.length];
@@ -167,8 +175,8 @@ public class JobDefCreationPanel extends CreateEditPanel {
     
     GridBagConstraints ct = new GridBagConstraints();
     ct.fill = GridBagConstraints.VERTICAL;
-    ct.anchor = GridBagConstraints.CENTER;
-    ct.insets = new Insets(5,5,5,5);
+    //ct.anchor = GridBagConstraints.CENTER;
+    ct.insets = new Insets(2,2,2,2);
     
     ct.gridx = 0;
     ct.gridy = 0;   
@@ -240,13 +248,20 @@ public class JobDefCreationPanel extends CreateEditPanel {
         homePackage = transformations.getValue(0,"homePackage");
       }
       if(transformations.getValue(0,"homePackage")!=null){
+        Debug.debug("Adding homePackage "+
+            transformations.getValue(0,"homePackage"), 3);
         vec.add(transformations.getValue(0,"homePackage"));
+      }
+      else{
+        Debug.debug("WARNING: homePackage null for transformation 0", 2);
       }
      }
     // When editing, find homePackage of original jobTransFK
     if(transformations.values.length > 1){
       for(int i=1; i<transformations.values.length; ++i){
-        if(transformations.getValue(i,"jobTransID").equals(jobTransFK)){
+        ok = true;
+        if(transformations.getValue(i,"jobTransID").equals(jobTransFK) &&
+            transformations.getValue(i,"homePackage")!=null){
           jtHomePack = transformations.getValue(i,"homePackage");
         }
         // Avoid duplicates
@@ -259,15 +274,27 @@ public class JobDefCreationPanel extends CreateEditPanel {
           }
         }
         if(ok && transformations.getValue(i,"homePackage") != null){
+          Debug.debug("Adding homePackage "+
+              transformations.getValue(i,"homePackage"), 3);
           vec.add(transformations.getValue(i,"homePackage"));
+        }
+        else{
+          Debug.debug("WARNING: homePackage null for transformation "+i, 2);
         }
       }
     }
           
-    homePackages = new String [vec.size()];
-    for(int i = 0; i < vec.size(); ++i){
-      homePackages[i] = vec.get(i).toString();
-    }    
+    if(vec.size()>0){
+      homePackages = new String [vec.size()];
+      for(int i = 0; i < vec.size(); ++i){
+        homePackages[i] = vec.get(i).toString();
+      }    
+    }
+    else{
+      Debug.debug("WARNING: No homePackages found for transformations belonging to task"+
+          taskMgr.getTaskName()+". Displaying all homePackages...", 2);
+      homePackages = taskMgr.getDBPluginMgr().getHomePackages();
+    }
 
     if(cbHomePackageSelection == null){
       cbHomePackageSelection = new JComboBox(); 
@@ -329,6 +356,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
         if(transformations.getValue(i,"jobTransID").equals(jobTransFK)){
           imp = transformations.getValue(i,"implementation");
         }
+        // Avoid duplicates
         for(int j=0; j<vec.size(); ++j){
           if(transformations.getValue(i,"implementation").equals(
               vec.get(j))){
@@ -347,6 +375,21 @@ public class JobDefCreationPanel extends CreateEditPanel {
     for(int i = 0; i < vec.size(); ++i){
       implementations[i] = (vec.toArray())[i].toString();
     }    
+
+    if(vec.size()>0){
+      implementations = new String [vec.size()];
+      for(int i = 0; i < vec.size(); ++i){
+        implementations[i] = vec.get(i).toString();
+      }    
+    }
+    else{
+      Debug.debug("WARNING: No implementations found for transformations belonging to task"+
+          taskMgr.getTaskName()+" with homePackage "+homePackage+
+          ". Displaying all implementations of homePackage...", 2);
+      implementations = taskMgr.getDBPluginMgr().getImplementations(homePackage);
+    }
+    
+    Debug.debug("Number of implementations: "+implementations.length, 3);
 
     if(cbImplementationSelection == null){
       cbImplementationSelection = new JComboBox();
@@ -574,6 +617,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
     int jobXmlIndex;
     
     if(jobTransFK.equals("-1")){
+      jobTransFK = "";
       // When creating new records the signature is obtained from the taskTransFK 
       DBRecord taskTransRecord = taskMgr.getDBPluginMgr().getTaskTransRecord(taskMgr.taskID);
       if (taskTransRecord == null ) { Debug.debug2("createJobXmlPanel: taskTransRecord is null!"); }
@@ -656,8 +700,10 @@ public class JobDefCreationPanel extends CreateEditPanel {
       Debug.debug("Checking jobTransFK "+transformations.getValue(i,"jobTransID"), 3);
       Debug.debug("  "+transformations.getValue(i,"homePackage"), 3);
       Debug.debug("  "+transformations.getValue(i,"implementation"), 3);
-      if(transformations.getValue(i,"homePackage").equals(homePackage) &&
-          transformations.getValue(i,"implementation").equals(implementation)){
+      if(transformations.getValue(i,"homePackage")!=null &&
+         transformations.getValue(i,"implementation")!=null &&
+         transformations.getValue(i,"homePackage").equals(homePackage) &&
+         transformations.getValue(i,"implementation").equals(implementation)){
         Debug.debug("Setting jobTransFK to "+transformations.getValue(i,"jobTransID"), 3);
         jobTransFK = transformations.getValue(i,"jobTransID");
         break;
@@ -719,7 +765,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
     if(tcConstant.size() == 26)
       return;
     
-    JTextField tf = new JTextField(TEXTFIELDWIDTH);
+    JTextField tf = new JTextField(CFIELDWIDTH);
     char name = (char) ('A' + (char)tcConstant.size());
     int cstByRow = 4;
 
