@@ -23,9 +23,6 @@ public class GridPilot extends JApplet{
   // TODO: reread on reloading values
   public static String [] dbs;
   public static HashMap steps = new HashMap();
-  private static String step;
-  private static String userName;
-  private static String passwd;
   public static boolean applet = true;
 
   /**
@@ -64,18 +61,22 @@ public class GridPilot extends JApplet{
   }
 
   public static void gridpilotCommon () {
-     String user = null;
-     String [] up = null;
+    String user;
+    String passwd;
+    String database;
+    String step;
+
+    String [] up = null;
   	 dbs = getClassMgr().getConfigFile().getValues("Databases", "Systems");
      for(int i = 0; i < dbs.length; ++i){
-       userName = getClassMgr().getConfigFile().getValue(dbs[i], "user");
+       user = getClassMgr().getConfigFile().getValue(dbs[i], "user");
        passwd = getClassMgr().getConfigFile().getValue(dbs[i], "passwd");
        steps.put(dbs[i], getClassMgr().getConfigFile().getValues(dbs[i], "steps"));
 
        for(int j = 0; j < ((String []) steps.get(dbs[i])).length; ++j){
          step = ((String []) steps.get(dbs[i]))[j];
          Debug.debug("Initializing step "+step+". For db "+dbs[i],3);
-         GridPilot.getClassMgr().setDBPluginMgr(dbs[i], step, new DBPluginMgr(dbs[i], step, userName, passwd));
+         GridPilot.getClassMgr().setDBPluginMgr(dbs[i], step, new DBPluginMgr(dbs[i], step, user, passwd));
        }
      }
   }
@@ -179,13 +180,13 @@ public class GridPilot extends JApplet{
     }
   }
   
-  public static String [] userPwd(String user, String passwd, String database){
+  public static String [] userPwd(String _user, String _passwd, String _database){
     // asking for user and password for DBPluginMgr
-
+    
     JPanel pUserPwd = new JPanel(new GridBagLayout());
-    JTextField tfUser = new JTextField(user);
-    JPasswordField pfPwd = new JPasswordField(passwd);
-    JTextField tfDatabase = new JTextField(database);
+    JTextField tfUser = new JTextField(_user);
+    JPasswordField pfPwd = new JPasswordField(_passwd);
+    JTextField tfDatabase = new JTextField(_database);
     
     pUserPwd.add(new JLabel("User : "), new GridBagConstraints(0,0, 1, 1, 0.0, 0.0,
         GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));

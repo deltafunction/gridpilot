@@ -58,8 +58,6 @@ public class ClassMgr {
   public ConfigFile getConfigFile(){
     if(configFile == null){
       Debug.debug("configFile null", 3);
-      //create a fake config file
-      return new FakeConfigFile();
     }
     return configFile;
   }
