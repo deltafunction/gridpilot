@@ -95,16 +95,27 @@ public class DBPluginMgr implements Database{
   
         Class [] dbArgsType = {String.class, String.class, String.class, String.class,
                  String.class, String.class, String.class, String.class, String.class};
- 
+        Object [] dbArgs = {project, stepName, level, site, userName, passwd,
+                transDB, driverName, database};
+        boolean loadfailed = false;
+        try {
+        	Class dbclass = this.getClass().getClassLoader().loadClass(dbClass);
+            db = (Database)(dbclass.getConstructor(dbArgsType).newInstance(dbArgs));
+        } catch (Exception e) {
+        	loadfailed = true;
+        	//do nothing, will try with MyClassLoader.
+        }
+        if (loadfailed == false) return;
         try{
-          Object [] dbArgs = {project, stepName, level, site, userName, passwd,
-              transDB, driverName, database};
-  
-          // loading of this plug-in
+           // loading of this plug-in
           MyClassLoader mcl = new MyClassLoader();
   
-          db = (Database)(mcl.findClass(dbClass).getConstructor(dbArgsType).
-                                    newInstance(dbArgs));
+          //uncomment the following lines for applet
+          //Class dbclass = this.getClass().getClassLoader().loadClass(dbClass);
+          //if (dbclass == null) System.out.println("bah"); else System.out.println("DBCLASS LOADED");
+          //db = (Database)(dbclass.getConstructor(dbArgsType).newInstance(dbArgs));
+          //comment the following for applet
+          db = (Database)(mcl.findClass(dbClass).getConstructor(dbArgsType).newInstance(dbArgs));
   
           Debug.debug("plugin " + dbName + "(" + dbClass + ") loaded", 2);
   
@@ -114,7 +125,7 @@ public class DBPluginMgr implements Database{
           throw iae;
         }catch (Exception e){
           logFile.addMessage("Cannot load class for " + dbName, e);
-          throw e;
+          //throw e;
         }
     }
 
