@@ -569,7 +569,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
     if(jobTransFK.equals("-1")){
       // When creating new records the signature is obtained from the taskTransFK 
       DBRecord taskTransRecord = taskMgr.getDBPluginMgr().getTaskTransRecord(taskMgr.taskID);
-      signature = taskTransRecord.getValue("formalPars");
+      if (taskTransRecord == null ) { System.out.println("createJobXmlPanel: taskTransRecord is null!"); }
+      else signature = taskTransRecord.getValue("formalPars");
+      if (signature == null) Debug.debug("got signature: null",3); else
       Debug.debug("got signature: "+signature,3);      
     }
     else{

@@ -213,7 +213,16 @@ public interface Database {
       fields = Fields;
       values = _values;
     }
+
+    //returns the values of fields in the order of fields
+    public String[] getValues() {
+      	return new String[] {jobDefinitionID, jobTransFK, taskFK, currentState, maxAttempt, jobName, cpuCount, cpuUnit, 
+      			ramCount, ramUnit, diskCount, diskUnit, ipConnectivity, priority, inputHint, events, jobXML};
+      }
   }
+  
+
+  
 
   public String connect();
   public void disconnect();
