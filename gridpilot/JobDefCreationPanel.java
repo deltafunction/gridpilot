@@ -4,7 +4,7 @@ import gridpilot.Debug;
 import gridpilot.TaskMgr;
 import gridpilot.Database.DBResult;
 import gridpilot.Database.JobDefinition;
-import gridpilot.simplexmlnode;
+import gridpilot.XmlNode;
 import gridpilot.Database.DBRecord;
 
 import javax.swing.*;
@@ -30,108 +30,61 @@ public class JobDefCreationPanel extends CreateEditPanel {
    DBPluginMgr to be used is stored here by initGUI(..). Still, not all functions use this global
    variable (just to make sure no conflicts happen).
    */
-  //DBPluginMgr dbPluginMgr;
+
   TaskMgr taskMgr;
 
   private String homePackage;
-  private String implementation;
-
+  private String version;
   private JPanel pCounter = new JPanel();
   private JPanel pConstants = new JPanel();
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
-  private static JPanel jobXmlPanel;
   private JPanel pButtons = new JPanel();
-  
   private JComboBox cbHomePackageSelection = null;
-  private JComboBox cbImplementationSelection = null;
+  private JComboBox cbVersionSelection = null;
   private String [] homePackages;
-  private String [] implementations;
-
+  private String [] versions;
   private String jobTransFK = "-1";
   private String jobDefinitionID = "-1";
-  
   private DBVectorTable table;
-  
-
   private JSpinner sFrom = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
   private JSpinner sTo = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
-
-
   private String [] cstAttributesNames;
   private JComponent [] tcCstAttributes;
   private JComponent [] tcCstJobDefAttributes;
   private boolean reuseTextFields = true;
   private Vector tcConstant = new Vector(); // contains all text components
   private String [] cstAttr = null;
-  
   private boolean editing = false;
-  
-  private static simplexmlnode xmlParsNode;
-  
   private JPanel jobXmlContainer = new JPanel(new GridBagLayout());
-  
   private DBResult transformations;
   private boolean loaded = false;
-  private boolean implementationInit = false;
-  private int TEXTFIELDWIDTH = 16;
-  private int CFIELDWIDTH = 8;
+  private boolean versionInit = false;
+  
+  // these two variables must either both be static or not.
+  private static JPanel jobXmlPanel;
+  private static XmlNode xmlParsNode;
+  private static JComponent [] oldTcCstAttributes;
+  private static String oldJobTransFK = "-1";
+  private static int TEXTFIELDWIDTH = 16;
+  private static int CFIELDWIDTH = 8;
   
   
   /**
-   * Constructor for creating new records
-   */
-
- /*public JobDefCreationPanel(TaskMgr _taskMgr){
-    
-    editing = false;
-    
-    taskMgr=_taskMgr;
-    
-    cstAttributesNames = taskMgr.getVectorTableModel().columnNames;
-    cstAttr = new String[cstAttributesNames.length];
-    
-    transformations = taskMgr.getDBPluginMgr().getAllJobTransRecords(taskMgr.getTaskIdentifier());
-    
-    Debug.debug("Creating new job record for task "+taskMgr.getTaskName()+
-        " with "+transformations.values.length+" transformations.", 3);
-    
-    // Fill cstAttr with ""
-    for(int i=0; i < cstAttributesNames.length; ++i){
-      cstAttr[i] = "";
-    }
-
-    sFrom.addChangeListener(new ChangeListener(){
-      public void stateChanged(ChangeEvent e){
-        if(((Integer)sTo.getValue()).intValue() < ((Integer)sFrom.getValue()).intValue())
-          sTo.setValue(sFrom.getValue());
-      }
-    });
-
-    sTo.addChangeListener(new ChangeListener(){
-
-      public void stateChanged(ChangeEvent e){
-        if(((Integer)sTo.getValue()).intValue() < ((Integer)sFrom.getValue()).intValue())
-          sFrom.setValue(sTo.getValue());
-      }
-    });
-  }*/
-
-  /**
-   * Constructor for editing record
+   * Constructor
    */
 
   public JobDefCreationPanel(TaskMgr _taskMgr, DBVectorTable _table,
       boolean _editing){
     
-    //editing = true;
-    
     editing = _editing;
-    
     taskMgr=_taskMgr;
     table = _table;
+    
+    if(!editing){
+      jobTransFK = oldJobTransFK;
+    }
 
-    //cstAttributesNames = taskMgr.getVectorTableModel().columnNames;
     cstAttributesNames = JobDefinition.Fields;
     cstAttr = new String[cstAttributesNames.length];
     
@@ -149,9 +102,6 @@ public class JobDefCreationPanel extends CreateEditPanel {
         if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase("jobDefinitionID")){
           jobDefinitionID = fieldVal.toString();
         }
-        if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase("jobTransFK")){
-          jobTransFK = fieldVal.toString();
-        }
       }
       if(jobDefinitionID==null || jobDefinitionID.equals("-1")||
           jobDefinitionID.equals("")){
@@ -160,7 +110,15 @@ public class JobDefCreationPanel extends CreateEditPanel {
       // Fill cstAttr from db
       DBRecord jobDef = taskMgr.getDBPluginMgr().getJobDefinition(Integer.parseInt(jobDefinitionID));
       for(int i=0; i < JobDefinition.Fields.length; ++i){
-        cstAttr[i] = jobDef.getValue(JobDefinition.Fields[i]);
+        if(editing){
+          if(JobDefinition.Fields[i]!=null && JobDefinition.Fields[i].equalsIgnoreCase("jobTransFK")){
+            jobTransFK = jobDef.getValue(JobDefinition.Fields[i]);
+            Debug.debug("Set jobTransFK from db: "+jobTransFK, 1);
+          }
+          Debug.debug("filling " + cstAttributesNames[i],  3);
+          cstAttr[i] = jobDef.getValue(JobDefinition.Fields[i]);
+          Debug.debug("to " + cstAttr[i],  3);
+        }
       }
     }
 
@@ -194,13 +152,12 @@ public class JobDefCreationPanel extends CreateEditPanel {
     setLayout(new GridBagLayout());
     removeAll();
 
-    initAttributePanel();
     initHomePackagePanel();
-    initImplementationPanel();
+    initVersionPanel();
+    initAttributePanel();
     
     GridBagConstraints ct = new GridBagConstraints();
     ct.fill = GridBagConstraints.VERTICAL;
-    //ct.anchor = GridBagConstraints.CENTER;
     ct.insets = new Insets(2,2,2,2);
     
     ct.gridx = 0;
@@ -216,7 +173,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
       
       ct.gridx = 1;
       ct.gridy = 0;         
-      add(cbImplementationSelection,ct);
+      add(cbVersionSelection,ct);
       
       ct.gridx = 2;
       ct.gridy = 0;
@@ -248,7 +205,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
       add(cbHomePackageSelection,ct);
       ct.gridx = 1;
       ct.gridy = 0;         
-      add(cbImplementationSelection,ct);
+      add(cbVersionSelection,ct);
       ct.gridx = 0;
       ct.gridy = 1;
       ct.gridwidth=2;
@@ -274,7 +231,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
     if(transformations.values.length > 0){
       if(transformations.getValue(0,"jobTransID").equals(jobTransFK) &&
           transformations.getValue(0,"homePackage")!=null){
-        homePackage = transformations.getValue(0,"homePackage");
+        jtHomePack = transformations.getValue(0,"homePackage");
       }
       if(transformations.getValue(0,"homePackage")!=null){
         Debug.debug("Adding homePackage "+
@@ -285,10 +242,26 @@ public class JobDefCreationPanel extends CreateEditPanel {
         Debug.debug("WARNING: homePackage null for transformation 0", 2);
       }
      }
-    // When editing, find homePackage of original jobTransFK
+
+    if(vec.size()>0){
+      homePackages = new String [vec.size()];
+      for(int i = 0; i < vec.size(); ++i){
+        homePackages[i] = vec.get(i).toString();
+      }    
+    }
+    else{
+      Debug.debug("WARNING: No homePackages found for transformations belonging to task "+
+          taskMgr.getTaskName()+". Displaying all homePackages...", 2);
+      homePackages = taskMgr.getDBPluginMgr().getHomePackages();
+      transformations = taskMgr.getDBPluginMgr().getAllJobTransRecords(-1);
+    }
+
+    // Find homePackage of jobTransFK
     if(transformations.values.length > 1){
       for(int i=1; i<transformations.values.length; ++i){
         ok = true;
+        Debug.debug("Checking homePackage with jobTransID "+
+            transformations.getValue(i,"jobTransID"), 3);
         if(transformations.getValue(i,"jobTransID").equals(jobTransFK) &&
             transformations.getValue(i,"homePackage")!=null){
           jtHomePack = transformations.getValue(i,"homePackage");
@@ -313,19 +286,6 @@ public class JobDefCreationPanel extends CreateEditPanel {
       }
     }
           
-    if(vec.size()>0){
-      homePackages = new String [vec.size()];
-      for(int i = 0; i < vec.size(); ++i){
-        homePackages[i] = vec.get(i).toString();
-      }    
-    }
-    else{
-      Debug.debug("WARNING: No homePackages found for transformations belonging to task"+
-          taskMgr.getTaskName()+". Displaying all homePackages...", 2);
-      homePackages = taskMgr.getDBPluginMgr().getHomePackages();
-      transformations = taskMgr.getDBPluginMgr().getAllJobTransRecords(-1);
-    }
-
     if(cbHomePackageSelection == null){
       cbHomePackageSelection = new JComboBox(); 
       cbHomePackageSelection.addActionListener(new java.awt.event.ActionListener(){
@@ -346,7 +306,6 @@ public class JobDefCreationPanel extends CreateEditPanel {
       cbHomePackageSelection.setEnabled(false);
     }
     if(homePackages.length > 0){
-      //cbTransformationSelection = new JComboBox();  
       for(int i=0; i<homePackages.length; ++i){
         cbHomePackageSelection.addItem(homePackages[i]);
       }
@@ -356,6 +315,8 @@ public class JobDefCreationPanel extends CreateEditPanel {
     // Set the selection
     if(homePackages.length > 1 && cbHomePackageSelection.getClass().isInstance(new JComboBox())){
       for(int i=0; i<homePackages.length; ++i){
+        Debug.debug("Trying to set homePackage, "+homePackages[i]+" : "+
+            jtHomePack, 3);
         if(homePackages[i].equals(jtHomePack)){
           homePackage = jtHomePack;
           ((JComboBox) cbHomePackageSelection).setSelectedIndex(i);
@@ -367,33 +328,32 @@ public class JobDefCreationPanel extends CreateEditPanel {
   /**
    * Initialises a panel with combobox which with user can select transformation
    */
-  private void initImplementationPanel(){
-    implementationInit = true;
-    Debug.debug("initImplementationPanel with jobTransFK "+jobTransFK, 3);
+  private void initVersionPanel(){
+    versionInit = true;
+    Debug.debug("initVersionPanel with jobTransFK "+jobTransFK, 3);
     String imp = "";
-    String jtImplementation = "-1";
+    String jtVersion = "-1";
     Vector vec = new Vector();
     boolean ok = true;
     if(transformations.values.length > 0){
-      //if(transformations.getValue(0,"jobTransID").equals(jobTransFK)){
-        imp = transformations.getValue(0,"implementation");
-      //}
+      imp = transformations.getValue(0,"version");
       if(transformations.getValue(0,"homePackage")!=null &&
           transformations.getValue(0,"homePackage").equals(homePackage)){
         vec.add(imp);
       }
     }
     if(transformations.values.length > 1){
-      // When editing, find implementation of original jobTransFK
+      // When editing, find version of original jobTransFK
       for(int i=1; i<transformations.values.length; ++i){
         ok= true;
-        imp = transformations.getValue(i,"implementation");
+        imp = transformations.getValue(i,"version");
         if(transformations.getValue(i,"jobTransID").equals(jobTransFK)){
-          jtImplementation = transformations.getValue(i,"implementation");
+          jtVersion = transformations.getValue(i,"version");
         }
         // Avoid duplicates
         for(int j=0; j<vec.size(); ++j){
-          if(transformations.getValue(i,"implementation").equals(
+          if(transformations.getValue(i,"version")!=null &&
+              transformations.getValue(i,"version").equals(
               vec.get(j))){
             ok = false;
             break;
@@ -406,66 +366,71 @@ public class JobDefCreationPanel extends CreateEditPanel {
       }
     }
     
-    implementations = new String [vec.size()];
+    versions = new String [vec.size()];
     for(int i = 0; i < vec.size(); ++i){
-      implementations[i] = (vec.toArray())[i].toString();
+      
+      if((vec.toArray())[i]!=null){
+        versions[i] = (vec.toArray())[i].toString();
+      }
     }    
 
     if(vec.size()>0){
-      implementations = new String [vec.size()];
+      versions = new String [vec.size()];
       for(int i = 0; i < vec.size(); ++i){
-        implementations[i] = vec.get(i).toString();
+        if((vec.toArray())[i]!=null){
+          versions[i] = vec.get(i).toString();
+        }
       }    
     }
     else{
-      Debug.debug("WARNING: No implementations found for transformations belonging to task"+
+      Debug.debug("WARNING: No versions found for transformations belonging to task"+
           taskMgr.getTaskName()+" with homePackage "+homePackage+
-          ". Displaying all implementations of homePackage...", 2);
-      implementations = taskMgr.getDBPluginMgr().getImplementations(homePackage);
+          ". Displaying all versions of homePackage...", 2);
+      versions = taskMgr.getDBPluginMgr().getVersions(homePackage);
     }
     
-    Debug.debug("Number of implementations: "+implementations.length, 3);
+    Debug.debug("Number of versions: "+versions.length, 3);
 
-    if(cbImplementationSelection == null){
-      cbImplementationSelection = new JComboBox();
-      cbImplementationSelection.addActionListener(new java.awt.event.ActionListener(){
+    if(cbVersionSelection == null){
+      cbVersionSelection = new JComboBox();
+      cbVersionSelection.addActionListener(new java.awt.event.ActionListener(){
         public void actionPerformed(java.awt.event.ActionEvent e){
-          cbImplementationSelection_actionPerformed();
+          cbVersionSelection_actionPerformed();
       }});
     }
     else{
-      cbImplementationSelection.removeAllItems();
+      cbVersionSelection.removeAllItems();
     }
 
-    if(implementations.length == 0){
-      implementation = null;
-      cbImplementationSelection.setEnabled(false);
+    if(versions.length == 0){
+      version = null;
+      cbVersionSelection.setEnabled(false);
     }
-    if(implementations.length == 1){
-      implementation = implementations[0];
-      cbImplementationSelection.setEnabled(false);
+    if(versions.length == 1){
+      version = versions[0];
+      cbVersionSelection.setEnabled(false);
     }
     
-    if(implementations.length > 0){
-      for(int i=0; i<implementations.length; ++i){
-        cbImplementationSelection.addItem(implementations[i]);
+    if(versions.length > 0){
+      for(int i=0; i<versions.length; ++i){
+        cbVersionSelection.addItem(versions[i]);
       }
-      cbImplementationSelection.setEnabled(true);
+      cbVersionSelection.setEnabled(true);
     }
     
     // Set the selection
-    if(implementations.length > 1 && cbImplementationSelection.getClass().isInstance(new JComboBox())){
-      for(int i=0; i<implementations.length; ++i){
-        Debug.debug("Trying to set implementation, "+implementations[i]+" : "+
-            jtImplementation, 3);
-        if(implementations[i].equals(jtImplementation)){
-          implementation = jtImplementation;
-          ((JComboBox) cbImplementationSelection).setSelectedIndex(i);
+    if(versions.length > 1 && cbVersionSelection.getClass().isInstance(new JComboBox())){
+      for(int i=0; i<versions.length; ++i){
+        Debug.debug("Trying to set version, "+versions[i]+" : "+
+            jtVersion, 3);
+        if(versions[i].equals(jtVersion)){
+          version = jtVersion;
+          ((JComboBox) cbVersionSelection).setSelectedIndex(i);
           break;
         }
       }
     }
-    implementationInit = false;
+    versionInit = false;
   }
 
     private void initArithmeticPanel(){
@@ -561,9 +526,22 @@ public class JobDefCreationPanel extends CreateEditPanel {
     pAttributes.removeAll();
 
     spAttributes.getViewport().add(pAttributes, null);
+    
+    if(oldTcCstAttributes != null){
+      tcCstAttributes = oldTcCstAttributes;
+    }
 
-    if(!reuseTextFields || tcCstAttributes == null || tcCstAttributes.length != cstAttributesNames.length)
+    if(!editing && oldJobTransFK!=null && Integer.parseInt(oldJobTransFK)>-1){
+      jobTransFK = oldJobTransFK;
+    }
+
+    if(!reuseTextFields || tcCstAttributes == null ||
+        tcCstAttributes.length != cstAttributesNames.length){
+      Debug.debug("Creating new tcCstAttributes, "+
+          tcCstAttributes+", "+(tcCstAttributes==null ? "":Integer.toString(tcCstAttributes.length)),
+              3);
       tcCstAttributes = new JComponent[cstAttributesNames.length];
+    }
     
     for(int i =0; i<cstAttributesNames.length; ++i){
       
@@ -580,8 +558,6 @@ public class JobDefCreationPanel extends CreateEditPanel {
         Debug.debug("Setting jobXML panel", 3);
         cl.gridx=0;
         cl.gridy=i;
-        //pAttributes.add(new JLabel("jobXML" + " : "),cl);
-        //JPanel jobXmlContainer = new JPanel(new GridBagLayout());
         GridBagConstraints cv = new GridBagConstraints();
         cv.fill = GridBagConstraints.VERTICAL;
         cv.weightx = 0.5;
@@ -642,8 +618,10 @@ public class JobDefCreationPanel extends CreateEditPanel {
         if(!reuseTextFields || tcCstAttributes[i] == null)
           tcCstAttributes[i] = createTextComponent(TEXTFIELDWIDTH);
         
-        Debug.debug("Setting cstAttr["+i+"]: "+cstAttr[i], 3);
-        setJText(tcCstAttributes[i], cstAttr[i]);
+        if(cstAttr[i]!=null && !cstAttr[i].equals("")){
+          Debug.debug("Setting cstAttr["+i+"]: "+cstAttr[i], 3);
+          setJText(tcCstAttributes[i], cstAttr[i]);
+        }
       }      
       cl.gridx=1;
       cl.gridy=i;
@@ -684,13 +662,23 @@ public class JobDefCreationPanel extends CreateEditPanel {
   }
 
   private void createJobXmlPanel(){
+    Debug.debug("createJobXmlPanel, "+
+        jobTransFK+", "+oldJobTransFK +" "+jobXmlPanel, 3);
+    // reuse panel values if possible
+    if(!editing && jobXmlPanel!=null &&
+        (jobTransFK==null || jobTransFK.equals("-1") ||
+        jobTransFK.equals(oldJobTransFK))){
+      return;
+    }
+    else{
+      Debug.debug("making new jobXmlPanel", 3);
+      makeJobXmlPanel(false);
+    }
+  }
+  
+  private String getSignature(){
     String signature = "";
-    int jobXmlIndex;
     
-    simplexmlnode.jpanelJobParsAdded = false;
-    simplexmlnode.jpanelInputAdded = false;
-    simplexmlnode.jpanelOutputAdded = false;
-
     if(!jobTransFK.equals("-1") &&
         transformations.values.length!=0){
       if(table==null || table.getSelectedRow()<0 || !editing){
@@ -733,18 +721,40 @@ public class JobDefCreationPanel extends CreateEditPanel {
       else
         Debug.debug("got signature from taskTrans: "+signature, 3);
     }
+    return signature;
+  }
+  
+  private void makeJobXmlPanel(boolean clearFields){
+    
+    Debug.debug("jobTransFK: "+jobTransFK, 3);
+    Debug.debug("oldJobTransFK: "+oldJobTransFK, 3);
+    
+    String signature = getSignature();
+    int jobXmlIndex;
     
     if(signature!=null && !signature.equals("")){
-      xmlParsNode = simplexmlnode.parseString(signature, 0);
-      xmlParsNode.fillJPanel();
-      Debug.debug("Setting new jobXmlPanel", 3);
-      jobXmlPanel = xmlParsNode.jpanel;
-      jobXmlPanel.setName("jobPars");
+      xmlParsNode = XmlNode.parseString(signature, 0);
+      if(xmlParsNode!=null){
+        Debug.debug("Setting new jobXmlPanel", 3);
+        xmlParsNode.fillJPanel(clearFields, editing);
+        if(!editing){
+          XmlNode leafNode = ((XmlNode)xmlParsNode.nodes.elementAt(xmlParsNode.nodes.size()-1));
+          leafNode.addLogJFields();
+        }
+        jobXmlPanel = xmlParsNode.jpanel;
+      }
+      else{
+        Debug.debug(
+            "The signature could not be parsed. Adding field with raw XML",
+            3);
+        jobXmlPanel = new JPanel();
+        jobXmlPanel.add(new JTextField(signature,TEXTFIELDWIDTH));
+      }
     }
     else{
       jobXmlPanel = new JPanel();
     }
-    simplexmlnode.jpanelLogAdded = false;
+    jobXmlPanel.setName("jobPars");
   }
 
    /**
@@ -769,54 +779,57 @@ public class JobDefCreationPanel extends CreateEditPanel {
     /*
      Using DBPluginMgr object which was passed when function initGUI(..) was called
      */
-    Debug.debug("Initializing implemenation panel for homePackage "+homePackage, 3);
-    initImplementationPanel();
+    Debug.debug("Initializing version panel for homePackage "+homePackage, 3);
+    initVersionPanel();
     pAttributes.updateUI();
   }
 
-  private void cbImplementationSelection_actionPerformed(){
+  private void cbVersionSelection_actionPerformed(){
     // TODO: these two variables are there to prevent
     // this method from being called when the main panel
-    // is initialized or the implementationPanel is initialized.
+    // is initialized or the versionPanel is initialized.
     // There must be another way!
-   if(!loaded && !implementationInit) return;
+    if(!loaded && versionInit) return;
    
-   if(cbImplementationSelection == null ||
-        cbImplementationSelection.getSelectedItem() == null){
-      if(cbImplementationSelection.getItemCount()>0){
-        implementation = cbImplementationSelection.getItemAt(0).toString();
-      }
-      else{
-        Debug.debug("No implementation selected...", 3);
-        return;
+    if(cbVersionSelection == null){
+      return;
+    }
+
+    if(cbVersionSelection!=null && cbVersionSelection.getSelectedItem()!=null){
+      if(!versionInit){
+        version = cbVersionSelection.getSelectedItem().toString();
+        Debug.debug("Set version from selection "+version, 3);
       }
     }
-    implementation = cbImplementationSelection.getSelectedItem().toString();
+    else{
+      if(cbVersionSelection!=null && cbVersionSelection.getItemCount()==1){
+        version = cbVersionSelection.getItemAt(0).toString();
+      }
+      else{
+        Debug.debug("No version selected...", 3);
+        //return;
+      }
+    }
     /*
      Using DBPluginMgr object which was passed when function initGUI(..) was called
      */
     // Set jobTransFK
-    Debug.debug("homePackage, implementation: "+homePackage+","+implementation, 3);
+    Debug.debug("homePackage, version: "+homePackage+","+version, 3);
     for(int i=0; i<transformations.values.length; ++i){
       Debug.debug("Checking jobTransFK "+transformations.getValue(i,"jobTransID"), 3);
       Debug.debug("  "+transformations.getValue(i,"homePackage"), 3);
-      Debug.debug("  "+transformations.getValue(i,"implementation"), 3);
+      Debug.debug("  "+transformations.getValue(i,"version"), 3);
       if(transformations.getValue(i,"homePackage")!=null &&
-         transformations.getValue(i,"implementation")!=null &&
+         transformations.getValue(i,"version")!=null &&
          transformations.getValue(i,"homePackage").equals(homePackage) &&
-         transformations.getValue(i,"implementation").equals(implementation)){
+         transformations.getValue(i,"version").equals(version)){
         Debug.debug("Setting jobTransFK to "+transformations.getValue(i,"jobTransID"), 3);
         jobTransFK = transformations.getValue(i,"jobTransID");
         break;
       }
      }
-    //initAttributePanel();
     pAttributes.updateUI();
-    //jobXmlContainer.remove(jobXmlPanel);
-    //createJobXmlPanel();
-    //add(jobXmlPanel);
     setValuesInAttributePanel();
-    //updateUI();
   }
 
 
@@ -833,6 +846,23 @@ public class JobDefCreationPanel extends CreateEditPanel {
 
     for(int i =0; i<textFields.size(); ++i)
       setJText((JComponent) textFields.get(i),"");
+    
+    GridBagConstraints cv = new GridBagConstraints();
+    cv.fill = GridBagConstraints.VERTICAL;
+    cv.weightx = 0.5;
+    cv.gridx = 0;
+    cv.gridy = 0;         
+    cv.ipady = 10;
+    cv.weighty = 0.5;
+    cv.anchor = GridBagConstraints.NORTHWEST;
+    makeJobXmlPanel(true);
+    jobXmlContainer.removeAll();
+    if(jobXmlPanel!=null){
+      jobXmlContainer.add(jobXmlPanel,cv);
+    }
+    cv.gridx = 0;
+    cv.gridy = 1;
+    updateUI();
   }
 
 
@@ -843,14 +873,22 @@ public class JobDefCreationPanel extends CreateEditPanel {
 
     Debug.debug("create",  1);
     
-    simplexmlnode.jpanelLogAdded = false;
-
+    String signature = getSignature();
+    if(signature!=null && !signature.equals("")){
+      xmlParsNode.fillXML(editing);
+      Debug.debug("xmlParsNode: "+xmlParsNode.xmlstring, 3);
+    }
+    
     for(int i=0; i< cstAttr.length; ++i){
       Debug.debug("setting " + cstAttributesNames[i],  3);
-      cstAttr[i] = getJTextOrEmptyString(tcCstAttributes[i]);
+      cstAttr[i] = getJTextOrEmptyString(tcCstAttributes[i], xmlParsNode, editing);
       Debug.debug("to " + cstAttr[i],  3);
     }
 
+      oldTcCstAttributes = tcCstAttributes;
+      oldJobTransFK = jobTransFK;
+
+  
     Debug.debug("creating new JobDefCreator",  3);
     
     new JobDefCreator(taskMgr,
@@ -985,7 +1023,8 @@ public class JobDefCreationPanel extends CreateEditPanel {
     return ta;
   }
   
-  private static String getJTextOrEmptyString(JComponent comp){
+  private static String getJTextOrEmptyString(JComponent comp,
+      XmlNode node, boolean editing){
     String name = "";
     String label = "";
     String text = "";
@@ -1009,24 +1048,17 @@ public class JobDefCreationPanel extends CreateEditPanel {
         if(((JPanel) comp.getComponent(i)).getName() != null &&
             ((JPanel) comp.getComponent(i)).getName().equals("jobPars")){
           Debug.debug("Filling XML", 3);
-          
-          simplexmlnode.parsedText = "";
-          simplexmlnode.inputsXmlstring = "";
-          simplexmlnode.outputsXmlstring = "";
-          simplexmlnode.logsXmlstring = "";
-
-          xmlParsNode.fillXML();
-          text += xmlParsNode.xmlstring;
+          node.fillXML(editing);
+          text = node.xmlstring;
+          break;
         }
       }
-      if(xmlParsNode!=null){
-        //text += xmlParsNode.inputsXmlstring;
-        //text += xmlParsNode.outputsXmlstring;
-        //text += xmlParsNode.logsXmlstring;
-        text += simplexmlnode.inputsXmlstring;
-        text += simplexmlnode.outputsXmlstring;
-        text += simplexmlnode.logsXmlstring;
-      }
+      // merge in the input, ouput and stdout/stderr
+      text = text.replaceFirst("</jobDef>\n","");
+      text += node.inputsXmlstring;
+      text += node.outputsXmlstring;
+      text += node.logsXmlstring;
+      text += "</jobDef>\n";
     }
     else{
       Debug.debug("WARNING: unsupported component type "+comp.getClass().toString(), 1);
