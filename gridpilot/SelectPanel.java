@@ -370,12 +370,12 @@ import java.util.HashMap;
       		if (firstcomp != null){
             comps = ((SelectPanel.SPanel.DisplayPanel) firstcomp).getComponents();
           }
-      		if (comps != null && comps.length > 0){
+      		if (comps != null && comps.length > -1){
             secondcomp = ((SelectPanel.SPanel.DisplayPanel) firstcomp).getComponent(0);
           }
       		if ((val != null) && (secondcomp != null)){
             Debug.debug("Setting selected "+val, 3);
-            ((JComboBox) ((SelectPanel.SPanel.DisplayPanel) spanel.spDisplayList.getComponent(/*nr*/h)).getComponent(0)).setSelectedItem(val);
+            ((JComboBox) ((SelectPanel.SPanel.DisplayPanel) spanel.spDisplayList.getComponent(/*nr*/h)).getComponent(0)).setSelectedItem(val.toUpperCase());
           }
         }
       }
