@@ -109,7 +109,7 @@ import java.util.HashMap;
         if(i>0){
           ret += " AND ";
         }
-       ret += cb.cbConstraintAttribute.getSelectedItem() + " ";
+        ret += cb.cbConstraintAttribute.getSelectedItem() + " ";
         ret += cb.cbConstraintRelation.getSelectedItem() + " ";
         ret += cb.tfConstraintValue.getText();
       }
@@ -353,8 +353,8 @@ import java.util.HashMap;
     //int nr = 0;
     for(int h=0; h < values.length; ++h){
       spanel = (SPanel) pTable.get(values[h][0]);
-      Debug.debug("Value: "+h+" "+values[h][0], 3);
-      Debug.debug("Name: "+spanel.name, 3);
+      Debug.debug("Table: "+h+" "+values[h][0], 3);
+      Debug.debug("Table: "+spanel.name, 3);
       if(spanel.name.equals(values[h][0])){
         thisSPanel = spanel;
          // make sure we have enough display panels
@@ -362,16 +362,22 @@ import java.util.HashMap;
           spanel.spDisplayList.add(spanel.new DisplayPanel());
           spanel.bRemoveDisplayRow.setEnabled(true);
         }
-	if ((values[h].length > 0) && (spanel.spDisplayList != null)) {
-		String val = values[h][1];
-		Component firstcomp = spanel.spDisplayList.getComponent(h);
-		Component secondcomp = null;
-		Component comps[] = null;
-		if (firstcomp != null)  comps = ((SelectPanel.SPanel.DisplayPanel) firstcomp).getComponents();
-		if (comps != null && comps.length < 0) secondcomp = ((SelectPanel.SPanel.DisplayPanel) firstcomp).getComponent(0);
-		if ((val != null) && (secondcomp != null))
-        ((JComboBox) ((SelectPanel.SPanel.DisplayPanel) spanel.spDisplayList.getComponent(/*nr*/h)).getComponent(0)).setSelectedItem(val);
-	}
+      	if ((values[h].length > 0) && (spanel.spDisplayList != null)) {
+      		String val = values[h][1];
+      		Component firstcomp = spanel.spDisplayList.getComponent(h);
+      		Component secondcomp = null;
+      		Component comps[] = null;
+      		if (firstcomp != null){
+            comps = ((SelectPanel.SPanel.DisplayPanel) firstcomp).getComponents();
+          }
+      		if (comps != null && comps.length > 0){
+            secondcomp = ((SelectPanel.SPanel.DisplayPanel) firstcomp).getComponent(0);
+          }
+      		if ((val != null) && (secondcomp != null)){
+            Debug.debug("Setting selected "+val, 3);
+            ((JComboBox) ((SelectPanel.SPanel.DisplayPanel) spanel.spDisplayList.getComponent(/*nr*/h)).getComponent(0)).setSelectedItem(val);
+          }
+        }
       }
       //++nr;
     }
