@@ -110,11 +110,6 @@ public class DBPluginMgr implements Database{
            // loading of this plug-in
           MyClassLoader mcl = new MyClassLoader();
   
-          //uncomment the following lines for applet
-          //Class dbclass = this.getClass().getClassLoader().loadClass(dbClass);
-          //if (dbclass == null) System.out.println("bah"); else System.out.println("DBCLASS LOADED");
-          //db = (Database)(dbclass.getConstructor(dbArgsType).newInstance(dbArgs));
-          //comment the following for applet
           db = (Database)(mcl.findClass(dbClass).getConstructor(dbArgsType).newInstance(dbArgs));
   
           Debug.debug("plugin " + dbName + "(" + dbClass + ") loaded", 2);
