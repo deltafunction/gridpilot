@@ -165,18 +165,28 @@ public class GridPilot extends JApplet{
    }
 
   public static void exit(int exitCode){
-    GridPilot.getClassMgr().getGlobalFrame().dispose();
-    Debug.debug("NAME: "+GridPilot.getClassMgr().getGridPilot(), 2);
-    //System.exit(exitCode);
+    if(!applet){
+      System.exit(exitCode);
+    }
+    else{
+      try{
+        Debug.debug("NAME: "+GridPilot.getClassMgr().getGridPilot(), 2);
+        GridPilot.getClassMgr().getGlobalFrame().dispose();
+      }
+      catch(Exception e){
+        Debug.debug(e.getMessage(), 1);
+      }
+    }
   }
   
-  public static String [] userPwd(String user){
+  public static String [] userPwd(String user, String passwd, String database){
     // asking for user and password for DBPluginMgr
 
     JPanel pUserPwd = new JPanel(new GridBagLayout());
     JTextField tfUser = new JTextField(user);
-
-    JPasswordField pfPwd = new JPasswordField();
+    JPasswordField pfPwd = new JPasswordField(passwd);
+    JTextField tfDatabase = new JTextField(database);
+    
     pUserPwd.add(new JLabel("User : "), new GridBagConstraints(0,0, 1, 1, 0.0, 0.0,
         GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
 
@@ -189,21 +199,24 @@ public class GridPilot extends JApplet{
     pUserPwd.add(pfPwd, new GridBagConstraints(1, 2, 1, 1, 1.0, 0.0,
         GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
 
+    pUserPwd.add(new JLabel("Database : "), new GridBagConstraints(0, 3, 1, 1, 0.0, 0.0,
+        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
 
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),pUserPwd, "DB user & password", JOptionPane.OK_CANCEL_OPTION);
+    pUserPwd.add(tfDatabase, new GridBagConstraints(1, 3, 1, 1, 1.0, 0.0,
+        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
+
+
+    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),pUserPwd, "DB login", JOptionPane.OK_CANCEL_OPTION);
 
     String [] results;
     if(choice == JOptionPane.OK_OPTION){
       results = new String [3];
       results[0] = tfUser.getText();
       results[1] = new String(pfPwd.getPassword());
-
+      results[2] = tfDatabase.getText();
     }
-    else
+    else{
       results = null;
-
-    if(choice == JOptionPane.CANCEL_OPTION){
-      return null;
     }
 
     return results;
