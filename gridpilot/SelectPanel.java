@@ -85,7 +85,7 @@ import java.util.HashMap;
       
     }  
   }
-  //TODO: implement
+
   public String getRequest(String tableName){
     String ret = "SELECT ";
     for(int i = 0; i <
