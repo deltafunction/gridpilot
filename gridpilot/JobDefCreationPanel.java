@@ -235,10 +235,13 @@ public class JobDefCreationPanel extends CreateEditPanel {
     Vector vec = new Vector();
     
     if(transformations.values.length > 0){
-      if(transformations.getValue(0,"jobTransID").equals(jobTransFK)){
+      if(transformations.getValue(0,"jobTransID").equals(jobTransFK) &&
+          transformations.getValue(0,"homePackage")!=null){
         homePackage = transformations.getValue(0,"homePackage");
       }
-      vec.add(transformations.getValue(0,"homePackage"));
+      if(transformations.getValue(0,"homePackage")!=null){
+        vec.add(transformations.getValue(0,"homePackage"));
+      }
      }
     // When editing, find homePackage of original jobTransFK
     if(transformations.values.length > 1){
@@ -246,14 +249,16 @@ public class JobDefCreationPanel extends CreateEditPanel {
         if(transformations.getValue(i,"jobTransID").equals(jobTransFK)){
           jtHomePack = transformations.getValue(i,"homePackage");
         }
+        // Avoid duplicates
         for(int j=0; j<vec.size(); ++j){
-          if(transformations.getValue(i,"homePackage").equals(
+          if(transformations.getValue(i,"homePackage") != null &&
+              transformations.getValue(i,"homePackage").equals(
               vec.get(j))){
             ok = false;
             break;
           }
         }
-        if(ok){
+        if(ok && transformations.getValue(i,"homePackage") != null){
           vec.add(transformations.getValue(i,"homePackage"));
         }
       }
@@ -261,7 +266,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
           
     homePackages = new String [vec.size()];
     for(int i = 0; i < vec.size(); ++i){
-      homePackages[i] = (vec.toArray())[i].toString();
+      homePackages[i] = vec.get(i).toString();
     }    
 
     if(cbHomePackageSelection == null){
@@ -314,8 +319,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
       if(transformations.getValue(0,"jobTransID").equals(jobTransFK)){
         imp = transformations.getValue(0,"implementation");
       }
-      if(transformations.getValue(0,"homePackage").equals(homePackage)){
-        vec.add(transformations.getValue(0,"implementation"));
+      if(transformations.getValue(0,"homePackage")!=null &&
+          transformations.getValue(0,"homePackage").equals(homePackage)){
+        vec.add(imp);
       }
     }
     if(transformations.values.length > 1){
@@ -330,8 +336,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
             break;
           }
         }
-        if(ok && transformations.getValue(i,"homePackage").equals(homePackage)){
-          vec.add(transformations.getValue(i,"implementation"));
+        if(ok && transformations.getValue(i,"homePackage")!=null &&
+            transformations.getValue(i,"homePackage").equals(homePackage)){
+          vec.add(imp);
         }
       }
     }

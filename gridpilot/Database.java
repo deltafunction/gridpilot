@@ -47,6 +47,8 @@ public interface Database {
   public class JobTrans extends DBRecord{
   
     public String jobTransID ;
+    public String taskTransFK ;
+    public String version ;
     public String uses ;
     public String implementation ;
     public String formalPars ; // XML
@@ -55,13 +57,16 @@ public interface Database {
     
     private static String _identifier = "jobTransID";
 
-    public static String [] Fields =  new String [] {"jobTransID", "uses", "implementation", "formalPars",
-    "homePackage"};
+    public static String [] Fields =  new String [] {"jobTransID", "taskTransFK", "version",
+       "uses", "implementation", "formalPars", "homePackage"};
 
-    public JobTrans(String _jobTransID, String _uses, String _implementation,
+    public JobTrans(String _jobTransID, String _taskTransFK, String _version,
+        String _uses, String _implementation,
         String _formalPars, String _homePackage) {
       
       jobTransID = _jobTransID ;
+      taskTransFK = _taskTransFK ;
+      version = _version ;
       uses = _uses ;
       implementation = _implementation ;
       formalPars = _formalPars ;
@@ -69,8 +74,8 @@ public interface Database {
       
       identifier = _identifier;
       fields = Fields;
-      values = new String [] {jobTransID, uses, implementation, formalPars,
-          homePackage};
+      values = new String [] {jobTransID, taskTransFK, version, uses, implementation,
+          formalPars,  homePackage};
       
     }
     
@@ -78,9 +83,11 @@ public interface Database {
       
       jobTransID = _values[0] ;
       uses = _values[1] ;
-      implementation = _values[2] ;
-      formalPars = _values[3] ;
-      homePackage = _values[4] ;
+      taskTransFK = _values[2] ;
+      version = _values[3] ;
+      implementation = _values[4] ;
+      formalPars = _values[5] ;
+      homePackage = _values[6] ;
       
       identifier = _identifier;
       fields = Fields;
@@ -295,7 +302,7 @@ public interface Database {
     }
     public void setValue(String col, String val) throws Exception{
        for (int i = 0 ; i < fields.length ; i++) {
-        if (col.equals(fields[i])){
+        if (col.equalsIgnoreCase(fields[i])){
           values[i] = val;
           //Debug.debug("Set field "+fields[i]+" to value "+values[i],3);
           // TODO: Should set field to value. Seems not to work
@@ -339,7 +346,7 @@ public interface Database {
    public String getValue(int row, String col) {
       if (row > values.length-1) return "no such row";
       for (int i = 0 ; i < fields.length ; i++) {
-        if (col.equals(fields[i])) return values[row][i] ;
+        if (col.equalsIgnoreCase(fields[i])) return values[row][i] ;
       }
       return "no such field" ;
     }
