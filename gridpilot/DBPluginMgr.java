@@ -27,6 +27,7 @@ public class DBPluginMgr implements Database{
   private String database ;
   private String user;
   private String passwd;
+  private String dbprefix; //prepend to tables
 // TODO: cache here??
   private HashMap partInfoCacheId = null ;
 
@@ -90,6 +91,7 @@ public class DBPluginMgr implements Database{
         database = configFile.getValue(dbName, "database");
         user = configFile.getValue(dbName, "user");
         passwd = configFile.getValue(dbName, "passwd");
+        dbprefix = configFile.getValue(dbName, "dbprefix");
         String dbClass = configFile.getValue(dbName, "Database class");
         if(dbClass == null){
           throw new Exception("Cannot load class for system " + dbName + " : \n"+
@@ -97,9 +99,9 @@ public class DBPluginMgr implements Database{
         }
   
         Class [] dbArgsType = {String.class, String.class, String.class,
-            String.class, String.class, String.class, String.class, String.class};
+            String.class, String.class, String.class, String.class, String.class, String.class};
         Object [] dbArgs = {/*AMI*/project, level, site, transDB,/**/
-            driver, database, user, passwd};
+            driver, database, user, passwd, dbprefix};
         boolean loadfailed = false;
         try {
         	Class dbclass = this.getClass().getClassLoader().loadClass(dbClass);
