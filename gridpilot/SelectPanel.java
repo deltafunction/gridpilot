@@ -64,7 +64,7 @@ import java.util.HashMap;
     SPanel sPanel;
   
     for(int i=0; i<numberOfTables; ++i){
-      
+      System.out.println("creating sPanel");
      sPanel = new SPanel(tableNames[i],
           (String []) fieldNames.get(tableNames[i]));
      
@@ -169,8 +169,7 @@ import java.util.HashMap;
       public SPanel (String _name, String [] _fieldList){
        name = _name;
        fieldList = _fieldList;
-       Debug.debug("Initializing SPanel for " + name + " with " + fieldList.length +
-           " fields",3);
+       //Debug.debug("Initializing SPanel for " + name + " with " + fieldList.length + " fields",3);
        bAddConstraintRow = new JButton();
        bRemoveConstraintRow = new JButton();
        spConstraints = new JPanel();
@@ -247,6 +246,15 @@ import java.util.HashMap;
        private JTextField tfConstraintValue;
        ConstraintPanel(){
          // Combobox attribute
+	   if (fieldList == null) {
+	       System.out.println("fieldlist null");
+	       return;
+	   
+	   }
+	   if (relationNames == null) {
+	       System.out.println("relationNames null");
+	       return;
+	   }
          cbConstraintAttribute = new JComboBox();
          for(int i=0;i<fieldList.length; ++i)
            cbConstraintAttribute.insertItemAt(fieldList[i], i);
@@ -275,6 +283,11 @@ import java.util.HashMap;
          // Combobox attribute
          cbDisplayAttribute = new JComboBox();
          cbDisplayAttribute.insertItemAt("*", 0);
+	   if (fieldList == null) {
+	       System.out.println("fieldlist null");
+	       return;
+	   
+	   }
          for(int i=0;i<fieldList.length; ++i)
            cbDisplayAttribute.insertItemAt(fieldList[i], i+1) ;
          
@@ -325,8 +338,12 @@ import java.util.HashMap;
     }
     SPanel.ConstraintPanel spcp =
       ((SPanel.ConstraintPanel)((SPanel) pTable.get(tableName)).spConstraintList.getComponent(0));
-    spcp.cbConstraintAttribute.setSelectedIndex(0);
-    spcp.cbConstraintRelation.setSelectedIndex(0);
+    if (spcp.cbConstraintAttribute == null) return;
+    if (spcp.cbConstraintRelation == null) return;
+    Component[] parts = spcp.cbConstraintAttribute.getComponents();
+    if ((parts != null) && (parts.length > 0)) spcp.cbConstraintAttribute.setSelectedIndex(0);
+    parts = spcp.cbConstraintRelation.getComponents();
+    if ((parts != null) && (parts.length > 0)) spcp.cbConstraintRelation.setSelectedIndex(0);
     spcp.tfConstraintValue.setText("");
   }
  
@@ -345,7 +362,16 @@ import java.util.HashMap;
           spanel.spDisplayList.add(spanel.new DisplayPanel());
           spanel.bRemoveDisplayRow.setEnabled(true);
         }
-        ((JComboBox) ((SelectPanel.SPanel.DisplayPanel) spanel.spDisplayList.getComponent(/*nr*/h)).getComponent(0)).setSelectedItem(values[/*nr*/h][1]);
+	if ((values[h].length > 0) && (spanel.spDisplayList != null)) {
+		String val = values[h][1];
+		Component firstcomp = spanel.spDisplayList.getComponent(h);
+		Component secondcomp = null;
+		Component comps[] = null;
+		if (firstcomp != null)  comps = ((SelectPanel.SPanel.DisplayPanel) firstcomp).getComponents();
+		if (comps != null && comps.length < 0) secondcomp = ((SelectPanel.SPanel.DisplayPanel) firstcomp).getComponent(0);
+		if ((val != null) && (secondcomp != null))
+        ((JComboBox) ((SelectPanel.SPanel.DisplayPanel) spanel.spDisplayList.getComponent(/*nr*/h)).getComponent(0)).setSelectedItem(val);
+	}
       }
       //++nr;
     }

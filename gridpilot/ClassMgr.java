@@ -33,7 +33,7 @@ public class ClassMgr {
       dbPluginMgr.init();
     } catch (Throwable e) {
       e.printStackTrace();
-      System.exit(-1);
+      return false;
     }
     return true;
   }

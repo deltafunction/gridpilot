@@ -44,7 +44,7 @@ public class ConfigFile {
   public synchronized String getValue(String section, String attribute){
 
     String result;
-    if(!openFile())
+    if(!openFile()) 
       return null;
 
     if(searchSection(section)){
