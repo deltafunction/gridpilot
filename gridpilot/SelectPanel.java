@@ -151,7 +151,7 @@ import java.util.HashMap;
   }
 
   /**
-     * Initialises the panel n° 'panel'.
+     * Initialises the panel n0 'panel'.
      * Called by : this.initGUI()
      */
     private class SPanel extends JPanel{

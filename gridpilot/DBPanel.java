@@ -81,6 +81,7 @@ public class DBPanel extends JPanel {
      for(int i = 0; i < GridPilot.getDBs().length; ++i){
        dbName = GridPilot.getDBs()[i];
        stepList = GridPilot.getSteps(dbName);
+       if (stepList == null) return;
        for(int j = 0; j < stepList.length; ++j){
          // TODO: get from db
          taskTableName = "task";

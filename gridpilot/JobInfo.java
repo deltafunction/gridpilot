@@ -205,7 +205,7 @@ public class JobInfo extends DBRecord{
   }
 
   public String toString(){
-    return "\nJob n° " + getPartId()+ "\n" +
+    return "\nJob n0 " + getPartId()+ "\n" +
         "  Name \t: " + getName() + "\n" +
         "  cs \t: " + getCSName() + "\n" +
         "  JobId \t: " + getJobId() + "\n" +

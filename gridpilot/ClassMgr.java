@@ -53,7 +53,8 @@ public class ClassMgr {
   public ConfigFile getConfigFile(){
     if(configFile == null){
       Debug.debug("configFile null", 3);
-      new Exception().printStackTrace();
+      //create a fake config file
+      return new ConfigFile("");
     }
     return configFile;
   }
@@ -87,7 +88,7 @@ public class ClassMgr {
   public LogFile getLogFile(){
     if(logFile == null){
       Debug.debug("logFile null", 3);
-      new Exception().printStackTrace();
+      return new LogFile("");
     }
 
     return logFile;

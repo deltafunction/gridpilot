@@ -44,6 +44,11 @@ public class LogFile {
     this.fileName = fileName;
   }
 
+	/*tells if this is a fake log file*/
+	public boolean isFake() {
+		return ("".equals(fileName));
+	}
+
   /**
    * Gets the first message in this logs file.
    * 
@@ -51,6 +56,7 @@ public class LogFile {
    * if file cannot be open, or is empty
    */
   public String getFirstMessage(){
+  	if (this.isFake()) return null;
     if(!openFile(false))
       return null;
 
@@ -63,6 +69,7 @@ public class LogFile {
    * @return a String which contains the next message, or null if there is no more message
    */
   public String getNextMessage(){
+	if (this.isFake()) return null;
     try{
       String line = file.readLine();
       if(line == null)
@@ -89,6 +96,7 @@ public class LogFile {
    * msg is appended to the log file, as well as e stack trace
    */
   public void addMessage(String msg, Throwable t){
+	if (this.isFake()) return;
     StringWriter sw = new StringWriter();
     t.printStackTrace( new PrintWriter(sw));
     addMessage(msg + "\n" + (t instanceof Exception ? "Exception" : "Error") + " : \n" + sw, EXCEPTION_MESSAGE);
@@ -109,6 +117,7 @@ public class LogFile {
    */
 
   public void addMessage(String msg, JobInfo job, Throwable t){
+	if (this.isFake()) return;
     StringWriter sw = new StringWriter();
     t.printStackTrace( new PrintWriter(sw));
 
@@ -136,7 +145,7 @@ public class LogFile {
    */
   private synchronized void addMessage(String s, int type){
 
-
+	if (this.isFake()) return;
     String message;
     String header = "";
 
@@ -232,6 +241,7 @@ public class LogFile {
    * Clears this file.
    */
   public void clear(){
+	if (this.isFake()) return;
     try{
       file.setLength(0);
     }catch(IOException ioe){
@@ -240,6 +250,7 @@ public class LogFile {
   }
 
   public void addActionOnMessage(ActionOnMessage aom){
+	if (this.isFake()) return;
     actionsOnMessages.add(aom);
   }
 }

@@ -395,6 +395,7 @@ public void removeMonitoringPanel(JobPanel panel) {
    * Reads in configuration file the debug level.
    */
   private void initDebug(){
+  	if ((configFile == null ) || configFile.isFake()) return;
     String debugList = configFile.getValue("gridpilot", "debugList");
     if(debugList == null){
       GridPilot.getClassMgr().getLogFile().addMessage(configFile.getMissingMessage("gridpilot", "debugList"));

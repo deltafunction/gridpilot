@@ -29,6 +29,10 @@ public class ConfigFile {
    * public methods
    */
 
+	/*tells if this is a real config or do we just use fake values. Retuns true based on the file name*/
+	public boolean isFake() {
+		return ("".equals(configFileName));
+	}
   /**
    * Returns the first value of attribute "attribute" in the first section "section".
    * If section "[section]" contains
@@ -43,6 +47,8 @@ public class ConfigFile {
    */
   public synchronized String getValue(String section, String attribute){
 
+	if (this.isFake()) return null; //makes sense
+	
     String result;
     if(!openFile()) 
       return null;

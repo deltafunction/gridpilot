@@ -324,7 +324,7 @@ public class Table extends JTable {
     // agora eh questao de guardar akela "linha" em qq lado e depois apagar. Agora para repor eh igual... Com a chamada
     // equivalmente ao 4o system.out, podemos obter o verda... nao podemos nada pq a linha foi apagada... Talvez fazer
     // do lado do tableModel uma funcao getUndeletedValueAt (??)?? Ou entao "alguem" guarda o 'row' que tinha quando
-    // foi apagado (alem dos restantes valores a incluir).. parece-me que funcionará..... (tipo 'hash' em que 'row' eh
+    // foi apagado (alem dos restantes valores a incluir).. parece-me que funcionara..... (tipo 'hash' em que 'row' eh
     // indicador para o resto dos valores...
     // A questao eh saber se o 'row' q tinha nao dara stress... O MELHOR eh mesmo hideRow nao receber 'row' mas algo
     // melhorzinho, especifico independentemente dos dados actuais da tabela....

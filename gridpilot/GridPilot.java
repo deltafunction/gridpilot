@@ -100,10 +100,18 @@ public class GridPilot {
   + Return database steps specified in the configuration file
   */
  public static String [] getSteps(String dbName){
-   if(steps == null)
-     Debug.debug("steps == null", 3);
+   if(steps == null) {
+	Debug.debug("steps == null", 3);
+	return new String[] { "test" };
+	}
+     
    Debug.debug("db -> "+dbName, 3);
-   Debug.debug("step 1 -> "+((String []) steps.get(dbName))[0], 3);
+   //   Debug.debug("step 1 -> "+((String []) steps.get(dbName))[0], 3);
+   try {
+   		String[] st = (String []) steps.get(dbName);
+   } catch (Exception e) {
+   		return new String[] { "test" };
+   }
    return ((String []) steps.get(dbName));
  }
 
