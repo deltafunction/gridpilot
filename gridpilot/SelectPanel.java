@@ -236,7 +236,7 @@ import java.util.HashMap;
       gbcVC.gridx = 0;
       gbcVC.gridy = 1;
       this.add(spDisplays, gbcVC);
-      spDisplayList.add(new DisplayPanel());
+      spDisplayList.add(new DisplayPanel(true));
       gbcVC.gridx = 1;
       gbcVC.gridy = 1;
       this.add(spDisplayList, gbcVC);
@@ -280,17 +280,25 @@ import java.util.HashMap;
      
      protected class DisplayPanel extends JPanel{
        private JComboBox cbDisplayAttribute;
-       DisplayPanel(){
+       DisplayPanel(boolean withStar){
          // Combobox attribute
          cbDisplayAttribute = new JComboBox();
-         //cbDisplayAttribute.insertItemAt("*", 0);
+         if(withStar){
+           cbDisplayAttribute.insertItemAt("*", 0);
+         }
 	   if (fieldList == null) {
 	       System.out.println("fieldlist null");
 	       return;
 	   
 	   }
-         for(int i=0;i<fieldList.length; ++i)
-           cbDisplayAttribute.insertItemAt(fieldList[i], i/*+1*/) ;
+         for(int i=0;i<fieldList.length; ++i){
+           if(withStar){
+             cbDisplayAttribute.insertItemAt(fieldList[i], i+1);
+           }
+           else{
+             cbDisplayAttribute.insertItemAt(fieldList[i], i);
+           }
+         }
          
          cbDisplayAttribute.setSelectedIndex(0);
      
@@ -315,7 +323,7 @@ import java.util.HashMap;
        spConstraintList.updateUI();
      }
      private void bAddDisplayRow_actionPerformed(){
-       spDisplayList.add(new DisplayPanel());
+       spDisplayList.add(new DisplayPanel(false));
        bRemoveDisplayRow.setEnabled(true);
        spDisplayList.updateUI();
      }
@@ -360,7 +368,7 @@ import java.util.HashMap;
         thisSPanel = spanel;
          // make sure we have enough display panels
         if(spanel.spDisplayList.getComponentCount() < /*nr*/h+1){
-          spanel.spDisplayList.add(spanel.new DisplayPanel());
+          spanel.spDisplayList.add(spanel.new DisplayPanel(false));
           spanel.bRemoveDisplayRow.setEnabled(true);
         }
       	if ((values[h].length > 0) && (spanel.spDisplayList != null)) {
