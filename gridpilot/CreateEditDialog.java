@@ -23,7 +23,7 @@ public class CreateEditDialog extends JDialog {
 
 
   public CreateEditDialog(JFrame frame, CreateEditPanel _panel, boolean _editing) {
-    super(frame, "jobDefinition Editing", true);
+    super(frame, "jobDefinition", true);
     
     createEditPanel = _panel;
     editing = _editing;
