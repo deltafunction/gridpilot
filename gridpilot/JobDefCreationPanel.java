@@ -544,7 +544,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
         ((JTextComponent) tcCstAttributes[i]).setEnabled(false);
         setJText(tcCstAttributes[i], jobTransFK);
       }
-      else if(false && cstAttributesNames[i].equals("jobXML")){
+      else if(cstAttributesNames[i].equals("jobXML") && editing){
           tcCstAttributes[i].removeAll();
           GridBagConstraints cv = new GridBagConstraints();
           cv.ipady = 10;
@@ -554,6 +554,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
           cv.weightx = 0.5;
           cv.gridx = 0;
           cv.gridy = 0;
+          createJobXmlPanel();
           tcCstAttributes[i].add(jobXmlPanel,cv);
       }
       else{
