@@ -282,14 +282,14 @@ import java.util.HashMap;
        DisplayPanel(){
          // Combobox attribute
          cbDisplayAttribute = new JComboBox();
-         cbDisplayAttribute.insertItemAt("*", 0);
+         //cbDisplayAttribute.insertItemAt("*", 0);
 	   if (fieldList == null) {
 	       System.out.println("fieldlist null");
 	       return;
 	   
 	   }
          for(int i=0;i<fieldList.length; ++i)
-           cbDisplayAttribute.insertItemAt(fieldList[i], i+1) ;
+           cbDisplayAttribute.insertItemAt(fieldList[i], i/*+1*/) ;
          
          cbDisplayAttribute.setSelectedIndex(0);
      
