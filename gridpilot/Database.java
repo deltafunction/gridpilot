@@ -12,7 +12,7 @@ public interface Database {
     public String taskTransFK ;
     public String actualPars ; // XML
     
-    private String [] _fields = new String [] {"taskID", "taskName", "status", "taskTransFK",
+    public static String [] Fields = new String [] {"taskID", "taskName", "status", "taskTransFK",
     "actualPars"};
     private String _identifier = "taskID";
     
@@ -24,7 +24,7 @@ public interface Database {
       actualPars = _actualPars;
       
       identifier = _identifier;
-      fields = _fields;
+      fields = Fields;
       values = new String [] {taskID, taskName, status, taskTransFK,
           actualPars};
 
@@ -39,7 +39,7 @@ public interface Database {
       actualPars = _values[4] ;
       
       identifier = _identifier;
-      fields = _fields;
+      fields = Fields;
       values = _values;
     }  
   }
@@ -280,8 +280,9 @@ public interface Database {
   public boolean updateJobDefinition(JobDefinition jobDef);
   public boolean deleteJobDefinition(JobDefinition jobDef);
   public DBRecord getTaskTransRecord(int taskID);
+  public DBRecord getTask(int taskID);
   public String [] getHomePackages();
-  public String [] getImplementations(String homePackage);
+  public String [] getVersions(String homePackage);
   
   public class DBRecord {
     public String [] fields = null;
