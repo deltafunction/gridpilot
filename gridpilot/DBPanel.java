@@ -93,7 +93,7 @@ public class DBPanel extends JPanel {
                  !taskIdentifier1.equals(taskIdentifier) ||
                  !defaultFields1[0].equals(defaultFields[0]))){
             Debug.debug("ERROR: incompatible databases",1); 
-            GridPilot.getClassMgr().getGridPilot().exit(-1);
+            GridPilot.exit(-1);
          }
        }
        firstIterationDone = true;
@@ -291,10 +291,10 @@ public class DBPanel extends JPanel {
    * Returns the name of the first selected row, "-1" if no row is selected.
    */
 
-  public String getSelectedName(){
+  /*public String getSelectedName(){
     int selRow = tableResults.getSelectedRow();
     return (selRow==-1) ? "-1" : tableResults.getUnsortedValueAt(selRow, 0).toString();
-  }
+  }*/
 
   /**
    * public operation

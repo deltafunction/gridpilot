@@ -194,7 +194,7 @@ public void removeMonitoringPanel(JobPanel panel) {
   /***/Debug.debug2("leaving removeMonitoringPanel");
 }
 
-  public void addTaskPanel(DBPluginMgr dbPluginMgr, int selectedTask, String selectedName) {
+  public void addTaskPanel(DBPluginMgr dbPluginMgr, int selectedTask/*, String selectedName*/) {
   /*
    Check if selected task is already opened. If it is, don't let user create another one.
    Otherwise, create a TaskMgr for the selected task
@@ -208,7 +208,7 @@ public void removeMonitoringPanel(JobPanel panel) {
       }
     }
     if (!exists) {
-      TaskMgr newTask = new TaskMgr(dbPluginMgr, selectedTask, selectedName);
+      TaskMgr newTask = new TaskMgr(dbPluginMgr, selectedTask/*, selectedName*/);
       try{
         /**/Debug.debug2("creating panel");
         TaskPanel panel = new TaskPanel(newTask,this) ;
@@ -217,7 +217,7 @@ public void removeMonitoringPanel(JobPanel panel) {
         taskMgrs.addElement(newTask);
         /**/Debug.debug2("added panel");
       } catch (Exception e) {
-        Debug.debug2("Couldn't create monitoring panel for task " + selectedName + "\n" +
+        Debug.debug2("Couldn't create monitoring panel for task " + "\n" +
                            "\tException\t : " + e.getMessage());
         e.printStackTrace();
       }
@@ -240,7 +240,7 @@ public void removeMonitoringPanel(JobPanel panel) {
       }
     }
     if (!exists) {
-      TaskTransMgr newTT = new TaskTransMgr(dbPluginMgr, taskTransID, taskTransName);
+      TaskTransMgr newTT = new TaskTransMgr(dbPluginMgr, taskTransID/*, taskTransName*/);
       try{
         /**/Debug.debug2("creating panel");
         TaskTransPanel taskTransPanel = new TaskTransPanel(newTT,this) ;
@@ -263,7 +263,7 @@ public void removeMonitoringPanel(JobPanel panel) {
     Debug.debug("Exiting ...", 2);
     //gridpilot.getClassMgr().getJobControl().exit();
     Debug.debug("Exit", 2);
-    GridPilot.getClassMgr().getGridPilot().exit(0);
+    GridPilot.exit(0);
   }
   //Help | About action performed
   public void menuHelpAbout_actionPerformed() {
@@ -460,7 +460,7 @@ public void removeMonitoringPanel(JobPanel panel) {
           // TODO: reload panels?
         } catch (Throwable e) {
           Debug.debug("Could not load step/project " + step + " " + e.getMessage(), 3);
-          GridPilot.getClassMgr().getGridPilot().exit(-1);
+          GridPilot.exit(-1);
         }
       }
     }
