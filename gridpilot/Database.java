@@ -219,6 +219,12 @@ public interface Database {
       	return new String[] {jobDefinitionID, jobTransFK, taskFK, currentState, maxAttempt, jobName, cpuCount, cpuUnit, 
       			ramCount, ramUnit, diskCount, diskUnit, ipConnectivity, priority, inputHint, events, jobXML};
       }
+    
+    public static boolean isNumericField(String s) {
+    	if (s.endsWith("FK") || s.endsWith("ID") || s.equalsIgnoreCase("events")) return true;
+    	if (s.equalsIgnoreCase("priority") || s.endsWith("Count") || s.startsWith("max") || s.startsWith("last")) return true;
+    	return false;
+    }
   }
   
 
