@@ -78,7 +78,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
    * Constructor for creating new records
    */
 
-  public JobDefCreationPanel(TaskMgr _taskMgr){
+ /*public JobDefCreationPanel(TaskMgr _taskMgr){
     
     editing = false;
     
@@ -111,7 +111,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
           sFrom.setValue(sTo.getValue());
       }
     });
-  }
+  }*/
 
   /**
    * Constructor for editing record
