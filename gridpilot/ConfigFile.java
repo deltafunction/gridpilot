@@ -32,7 +32,7 @@ public class ConfigFile {
 
 	/*tells if this is a real config or do we just use fake values. Returns true based on the file name*/
 	public boolean isFake() {
-		return ("".equals(configFileName));
+		return (configFileName.equals(""));
 	}
   /**
    * Returns the first value of attribute "attribute" in the first section "section".
