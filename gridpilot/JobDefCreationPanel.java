@@ -545,7 +545,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
     
     for(int i =0; i<cstAttributesNames.length; ++i){
       
-      if(cstAttributesNames[i].equals("jobTransFK")){
+      if(cstAttributesNames[i].equalsIgnoreCase("jobTransFK")){
         cl.gridx=0;
         cl.gridy=i;
         pAttributes.add(new JLabel("jobTransFK" + " : "), cl);
@@ -554,7 +554,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
         
         ((JTextComponent) tcCstAttributes[i]).setEnabled(false);
       }
-      else if(cstAttributesNames[i].equals("jobXML")){
+      else if(cstAttributesNames[i].equalsIgnoreCase("jobXML")){
         Debug.debug("Setting jobXML panel", 3);
         cl.gridx=0;
         cl.gridy=i;
@@ -582,16 +582,66 @@ public class JobDefCreationPanel extends CreateEditPanel {
         pAttributes.add(jobXmlContainer,cl);
         cl.gridwidth=1;
       }
-      else if(cstAttributesNames[i].equals("ipConnectivity")){
+      else if(cstAttributesNames[i].equalsIgnoreCase("ipConnectivity")){
         cl.gridx=0;
         cl.gridy=i;
         pAttributes.add(new JLabel("ipConnectivity" + " : "), cl);
         tcCstAttributes[i] = new JComboBox();
         ((JComboBox) tcCstAttributes[i]).addItem("yes");
         ((JComboBox) tcCstAttributes[i]).addItem("no");
-        setJText(tcCstAttributes[i], cstAttr[i]);
-       }
-      else if(cstAttributesNames[i].equals("jobDefinitionID")){
+        if(!editing){
+          ((JComboBox) tcCstAttributes[i]).setSelectedItem("no");
+        }
+        if(editing || cstAttr[i]!=null){
+          setJText(tcCstAttributes[i], cstAttr[i]);
+        }
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("ramUnit")){
+        cl.gridx=0;
+        cl.gridy=i;
+        pAttributes.add(new JLabel("ramUnit" + " : "), cl);
+        tcCstAttributes[i] = new JComboBox();
+        ((JComboBox) tcCstAttributes[i]).addItem("MB");
+        ((JComboBox) tcCstAttributes[i]).addItem("GB");
+        if(!editing){
+          ((JComboBox) tcCstAttributes[i]).setSelectedItem("MB");
+        }
+        if(editing || cstAttr[i]!=null){
+          setJText(tcCstAttributes[i], cstAttr[i]);
+        }
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("diskUnit")){
+        cl.gridx=0;
+        cl.gridy=i;
+        pAttributes.add(new JLabel("diskUnit" + " : "), cl);
+        tcCstAttributes[i] = new JComboBox();
+        ((JComboBox) tcCstAttributes[i]).addItem("MB");
+        ((JComboBox) tcCstAttributes[i]).addItem("GB");
+        if(!editing){
+          ((JComboBox) tcCstAttributes[i]).setSelectedItem("GB");
+        }
+        if(editing || cstAttr[i]!=null){
+          setJText(tcCstAttributes[i], cstAttr[i]);
+        }
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("currentState")){
+        cl.gridx=0;
+        cl.gridy=i;
+        pAttributes.add(new JLabel("currentState" + " : "), cl);
+        tcCstAttributes[i] = new JComboBox();
+        ((JComboBox) tcCstAttributes[i]).addItem("DEFINED");
+        ((JComboBox) tcCstAttributes[i]).addItem("RUNNING");
+        ((JComboBox) tcCstAttributes[i]).addItem("TOBEDONE");
+        ((JComboBox) tcCstAttributes[i]).addItem("ABORTED");
+        ((JComboBox) tcCstAttributes[i]).addItem("FAILED");
+        if(!editing){
+          ((JComboBox) tcCstAttributes[i]).setSelectedItem("DEFINED");
+        }
+        if(editing || cstAttr[i]!=null){
+          setJText(tcCstAttributes[i], cstAttr[i]);
+        }
+      }
+      /*else if(cstAttributesNames[i].equalsIgnoreCase("currentState")){
         cl.gridx=0;
         cl.gridy=i;
         pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
@@ -600,8 +650,8 @@ public class JobDefCreationPanel extends CreateEditPanel {
         
         setJText(tcCstAttributes[i], cstAttr[i]);
         tcCstAttributes[i].setEnabled(false);
-      }
-      else if(cstAttributesNames[i].equals("taskFK")){
+      }*/
+      else if(cstAttributesNames[i].equalsIgnoreCase("taskFK")){
         cl.gridx=0;
         cl.gridy=i;
         pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
@@ -625,7 +675,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
       }      
       cl.gridx=1;
       cl.gridy=i;
-      if(!cstAttributesNames[i].equals("jobXML")){
+      if(!cstAttributesNames[i].equalsIgnoreCase("jobXML")){
         pAttributes.add(tcCstAttributes[i], cl);
       }
     }
@@ -637,11 +687,11 @@ public class JobDefCreationPanel extends CreateEditPanel {
     Debug.debug("Setting values...", 3);
 
     for(int i =0; i<cstAttributesNames.length; ++i){     
-      if(cstAttributesNames[i].equals("jobTransFK")){
+      if(cstAttributesNames[i].equalsIgnoreCase("jobTransFK")){
         ((JTextComponent) tcCstAttributes[i]).setEnabled(false);
         setJText(tcCstAttributes[i], jobTransFK);
       }
-      else if(cstAttributesNames[i].equals("jobXML") /*&& editing*/){
+      else if(cstAttributesNames[i].equalsIgnoreCase("jobXML") /*&& editing*/){
           tcCstAttributes[i].removeAll();
           GridBagConstraints cv = new GridBagConstraints();
           cv.ipady = 10;
@@ -1046,7 +1096,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
     else if(comp.getClass().isInstance(new JPanel())){
       for(int i=0; i<comp.getComponentCount(); ++i){
         if(((JPanel) comp.getComponent(i)).getName() != null &&
-            ((JPanel) comp.getComponent(i)).getName().equals("jobPars")){
+            ((JPanel) comp.getComponent(i)).getName().equalsIgnoreCase("jobPars")){
           Debug.debug("Filling XML", 3);
           node.fillXML(editing);
           text = node.xmlstring;
@@ -1073,7 +1123,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
         comp.getClass().isInstance(new JTextField())){
       ((JTextComponent) comp).setText(text);
     }
-    else if(comp.getClass().isInstance(new JComboBox())){
+    else if(/*text!=null && !text.equals("") && */comp.getClass().isInstance(new JComboBox())){
       ((JComboBox) comp).setSelectedItem(text);
     }
     return text;
