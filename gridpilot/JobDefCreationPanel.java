@@ -634,7 +634,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
           setJText(tcCstAttributes[i], cstAttr[i]);
         }
       }
-      else if(cstAttributesNames[i].equalsIgnoreCase("currentState")){
+      /*else if(cstAttributesNames[i].equalsIgnoreCase("currentState")){
         cl.gridx=0;
         cl.gridy=i;
         pAttributes.add(new JLabel("currentState" + " : "), cl);
@@ -650,8 +650,8 @@ public class JobDefCreationPanel extends CreateEditPanel {
         if(editing || cstAttr[i]!=null){
           setJText(tcCstAttributes[i], cstAttr[i]);
         }
-      }
-      /*else if(cstAttributesNames[i].equalsIgnoreCase("currentState")){
+      }*/
+      else if(cstAttributesNames[i].equalsIgnoreCase("currentState")){
         cl.gridx=0;
         cl.gridy=i;
         pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
@@ -659,8 +659,8 @@ public class JobDefCreationPanel extends CreateEditPanel {
           tcCstAttributes[i] = createTextComponent(TEXTFIELDWIDTH);
         
         setJText(tcCstAttributes[i], cstAttr[i]);
-        tcCstAttributes[i].setEnabled(false);
-      }*/
+        //tcCstAttributes[i].setEnabled(false);
+      }
       else if(cstAttributesNames[i].equalsIgnoreCase("taskFK")){
         cl.gridx=0;
         cl.gridy=i;
