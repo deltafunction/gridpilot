@@ -68,8 +68,7 @@ public class JobDefCreator {
 
   private void createJobDefs(){
     Debug.debug("createJobDefs", 1);
-
-
+    
     try{
       removeConstants();
     }catch(SyntaxException se){
@@ -367,6 +366,7 @@ public class JobDefCreator {
 
     JPanel pResult = new JPanel(new GridBagLayout());
     int row = 0;
+    XmlNode xmlNode = null;
 
     for(int i =0; i<cstAttr.length; ++i, ++row){
       pResult.add(new JLabel(cstAttrNames[i] + " : "), new GridBagConstraints(0, row, 1, 1, 0.0, 0.0
@@ -377,13 +377,16 @@ public class JobDefCreator {
           resCstAttr[i] = "";
         }
         else{
-          resCstAttr[i] = "<jobDef>"+resCstAttr[i]+"</jobDef>";
-          simplexmlnode.parseString(resCstAttr[i], 0).fillText();
+          if(!editing){
+            resCstAttr[i] = "<jobDef>"+resCstAttr[i]+"</jobDef>";
+          }
+          xmlNode = XmlNode.parseString(resCstAttr[i], 0);
+          xmlNode.fillText();
         }
         /*This shows XML*/
         /*JTextArea textArea = new JTextArea(resCstAttr[i]);*/
 
-        JTextArea textArea = new JTextArea(simplexmlnode.parsedText);
+        JTextArea textArea = new JTextArea(xmlNode.parsedText);
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
         textArea.setEditable(false);
