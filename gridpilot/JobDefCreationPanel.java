@@ -3,6 +3,7 @@ package gridpilot;
 import gridpilot.Debug;
 import gridpilot.TaskMgr;
 import gridpilot.Database.DBResult;
+import gridpilot.Database.JobDefinition;
 import gridpilot.simplexmlnode;
 import gridpilot.Database.DBRecord;
 
@@ -48,6 +49,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
   private String [] implementations;
 
   private String jobTransFK = "-1";
+  private String jobDefinitionID = "-1";
   
   private DBVectorTable table;
   
@@ -129,24 +131,36 @@ public class JobDefCreationPanel extends CreateEditPanel {
     taskMgr=_taskMgr;
     table = _table;
 
-    cstAttributesNames = taskMgr.getVectorTableModel().columnNames;
+    //cstAttributesNames = taskMgr.getVectorTableModel().columnNames;
+    cstAttributesNames = JobDefinition.Fields;
     cstAttr = new String[cstAttributesNames.length];
     
     transformations = taskMgr.getDBPluginMgr().getAllJobTransRecords(taskMgr.getTaskIdentifier());
-
+    
     Debug.debug("Editing job record for task "+taskMgr.getTaskName()+". Rows: "+
         table.getRowCount()+
         ". Number of transformations: "+
        (transformations!=null ? transformations.values.length : 0), 3);
 
-    // Fill cstAttr from table
+    // Find jobdDefinitionID from table
     if(table.getSelectedRow()>-1 && editing){
-      for(int i=0; i < table.getColumnCount(); ++i){
-        cstAttr[i] = table.getValueAt(table.getSelectedRow(),i).toString();
-        Debug.debug("Filling in "+cstAttr[i], 3);
-        if(cstAttributesNames[i].equals("jobTransFK")){
-          jobTransFK = cstAttr[i];
+      for(int i=0; i<table.getColumnNames().length; ++i){
+        Object fieldVal = table.getValueAt(table.getSelectedRow(),i);
+        if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase("jobDefinitionID")){
+          jobDefinitionID = fieldVal.toString();
         }
+        if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase("jobTransFK")){
+          jobTransFK = fieldVal.toString();
+        }
+      }
+      if(jobDefinitionID==null || jobDefinitionID.equals("-1")||
+          jobDefinitionID.equals("")){
+        Debug.debug("ERROR: could not find jobDefinitionID in table!", 1);
+      }
+      // Fill cstAttr from db
+      DBRecord jobDef = taskMgr.getDBPluginMgr().getJobDefinition(Integer.parseInt(jobDefinitionID));
+      for(int i=0; i < JobDefinition.Fields.length; ++i){
+        cstAttr[i] = jobDef.getValue(JobDefinition.Fields[i]);
       }
     }
 
@@ -524,9 +538,11 @@ public class JobDefCreationPanel extends CreateEditPanel {
     cb.gridx = 0;
     cb.gridy = 0;         
     pButtons.add(bLoad, cb);
+    bLoad.setEnabled(false);
     cb.gridx = 0;
     cb.gridy = 1;         
     pButtons.add(bSave, cb);
+    bSave.setEnabled(false);
     cb.gridx = 0;
     cb.gridy = 2;         
     pButtons.add(bAddConstant, cb);
@@ -609,6 +625,16 @@ public class JobDefCreationPanel extends CreateEditPanel {
         setJText(tcCstAttributes[i], cstAttr[i]);
         tcCstAttributes[i].setEnabled(false);
       }
+      else if(cstAttributesNames[i].equals("taskFK")){
+        cl.gridx=0;
+        cl.gridy=i;
+        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
+        if(!reuseTextFields || tcCstAttributes[i] == null)
+          tcCstAttributes[i] = createTextComponent(TEXTFIELDWIDTH);
+        
+        setJText(tcCstAttributes[i], Integer.toString(taskMgr.taskID));
+        tcCstAttributes[i].setEnabled(false);
+      }
       else{
         cl.gridx=0;
         cl.gridy=i;
@@ -661,7 +687,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
     String signature = "";
     int jobXmlIndex;
     
-    if(!jobTransFK.equals("-1") && table!=null &&
+    if(!jobTransFK.equals("-1") &&
         transformations.values.length!=0){
       if(table==null || table.getSelectedRow()<0 || !editing){
         for(int i=0; i<transformations.values.length; ++i){
@@ -674,10 +700,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
         }      
       }
       else{
-        DBResult allJobDefinitions = taskMgr.getDBPluginMgr().getAllJobDefinitions(taskMgr.taskID);
-        for(int i=0; i<table.getColumnNames().length; ++i){
-          if(table.getColumnNames()[i].equals("jobXML")){
-            signature = table.getValueAt(table.getSelectedRow(),i).toString();
+        for(int i=0; i<JobDefinition.Fields.length; ++i){
+          if(JobDefinition.Fields[i].equalsIgnoreCase("jobXML")){
+            signature = cstAttr[i];
             Debug.debug("got signature from jobDefinition: "+signature, 3);
           }
         }
@@ -980,11 +1005,14 @@ public class JobDefCreationPanel extends CreateEditPanel {
         if(((JPanel) comp.getComponent(i)).getName() != null &&
             ((JPanel) comp.getComponent(i)).getName().equals("jobPars")){
           Debug.debug("Filling XML", 3);
+          simplexmlnode.parsedText = "";
           xmlParsNode.fillXML();
           text += xmlParsNode.xmlstring;
         }
       }
-      text += xmlParsNode.filesXmlstring;
+      if(xmlParsNode!=null){
+        text += xmlParsNode.filesXmlstring;
+      }
     }
     else{
       Debug.debug("WARNING: unsupported component type "+comp.getClass().toString(), 1);
