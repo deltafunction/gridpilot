@@ -155,7 +155,7 @@ public class JobDefCreator {
         }
       }
       if(!skip){
-        Debug.debug("creating jobDefinition n0 " + currentJobDef, 2);
+        Debug.debug("creating jobDefinition # " + currentJobDef, 2);
         vJobDef.add(new Integer(currentJobDef));
         vCstAttr.add(resCstAttr.clone());
  
@@ -183,7 +183,7 @@ public class JobDefCreator {
         int part = ((Integer) vJobDef.remove(0)).intValue();
         resCstAttr = (String [] ) vCstAttr.remove(0);
 
-        Debug.debug2("Creating jobDefinition n0 " + part + " ...");
+        Debug.debug2("Creating jobDefinition # " + part + " ...");
         pb.setValue(pb.getValue()+1);
         Debug.debug2(this.getClass().getName() + " is calling DB");
 
@@ -405,7 +405,7 @@ public class JobDefCreator {
                                      showResultsOptions[0]);
     
 
-    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "JobDef n0 "+currentJobDef);
+    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "JobDef # "+currentJobDef);
     
     if(!moreThanOne){
       ((JComponent) op.getComponent(1)).getComponent(1).setEnabled(false);
@@ -431,7 +431,7 @@ public class JobDefCreator {
     /*
 
     int choice = JOptionPane.showOptionDialog(JOptionPane.getRootFrame(),
-        sp, "JobDef n0 " +
+        sp, "JobDef # " +
         currentJobDef, JOptionPane.YES_NO_CANCEL_OPTION,JOptionPane.QUESTION_MESSAGE,
         null, showResultsOptions, showResultsOptions[0]);
 
