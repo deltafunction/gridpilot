@@ -124,22 +124,24 @@ public class JobDefCreationPanel extends CreateEditPanel {
     taskMgr=_taskMgr;
     table = _table;
 
-    Debug.debug("Editing job record for task "+taskMgr.getTaskName()+". Rows: "+
-        table.getRowCount()+
-        ". Number of transformations: "+
-       (transformations!=null ? transformations.values.length : 0), 3);
-
     cstAttributesNames = taskMgr.getVectorTableModel().columnNames;
     cstAttr = new String[cstAttributesNames.length];
     
     transformations = taskMgr.getDBPluginMgr().getAllJobTransRecords(taskMgr.getTaskIdentifier());
 
+    Debug.debug("Editing job record for task "+taskMgr.getTaskName()+". Rows: "+
+        table.getRowCount()+
+        ". Number of transformations: "+
+       (transformations!=null ? transformations.values.length : 0), 3);
+
     // Fill cstAttr from table
     if(table.getSelectedRow()>0){
       for(int i=0; i < table.getColumnCount(); ++i){
         cstAttr[i] = table.getValueAt(table.getSelectedRow(),i).toString();
+        Debug.debug("Looking for jobTransFK, "+cstAttr[i], 3);
         if(cstAttributesNames[i].equals("jobTransFK")){
           jobTransFK = cstAttr[i];
+          break;
         }
       }
     }
@@ -661,6 +663,8 @@ public class JobDefCreationPanel extends CreateEditPanel {
     }
 
     else{
+      Debug.debug("Ended here because "+jobTransFK+ " : "+table +" : "+
+          transformations, 3);
       jobTransFK = "";
       // When jobTransFK is not set the signature is obtained from the taskTransFK.
       // This should not happen...
