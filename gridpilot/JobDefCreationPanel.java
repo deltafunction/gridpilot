@@ -1058,7 +1058,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
       text += node.inputsXmlstring;
       text += node.outputsXmlstring;
       text += node.logsXmlstring;
-      text += "</jobDef>\n";
+      if(text.indexOf("</jobDef>")<0 && text.indexOf("<jobDef>")>-1){
+        text += "</jobDef>\n";
+      }
     }
     else{
       Debug.debug("WARNING: unsupported component type "+comp.getClass().toString(), 1);

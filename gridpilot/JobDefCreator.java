@@ -140,6 +140,20 @@ public class JobDefCreator {
         }
       }
 
+      for(int i =0; i<cstAttr.length; ++i){
+        if(cstAttrNames[i].equals("jobXML")){
+          if(resCstAttr[i]==null || resCstAttr[i].equals("null") || resCstAttr[i].equals("")){
+            resCstAttr[i] = "";
+          }
+          else{
+            if(!editing){
+              resCstAttr[i] = "<jobDef>"+resCstAttr[i]+"</jobDef>";
+            }
+          }
+        }
+      }
+
+      
       if(showThis){
         //int choice = 1;
         int choice = showResult(currentJobDef, resCstAttr,
@@ -373,13 +387,8 @@ public class JobDefCreator {
       ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
       JComponent jval;
       if(cstAttrNames[i].equals("jobXML")){
-        if(resCstAttr[i]==null || resCstAttr[i].equals("null") || resCstAttr[i].equals("")){
-          resCstAttr[i] = "";
-        }
-        else{
-          if(!editing){
-            resCstAttr[i] = "<jobDef>"+resCstAttr[i]+"</jobDef>";
-          }
+        if(resCstAttr[i]!=null && !resCstAttr[i].equals("null") &&
+            !resCstAttr[i].equals("")){
           xmlNode = XmlNode.parseString(resCstAttr[i], 0);
           xmlNode.fillText();
         }
