@@ -687,6 +687,10 @@ public class JobDefCreationPanel extends CreateEditPanel {
     String signature = "";
     int jobXmlIndex;
     
+    simplexmlnode.jpanelJobParsAdded = false;
+    simplexmlnode.jpanelInputAdded = false;
+    simplexmlnode.jpanelOutputAdded = false;
+
     if(!jobTransFK.equals("-1") &&
         transformations.values.length!=0){
       if(table==null || table.getSelectedRow()<0 || !editing){
@@ -1005,13 +1009,23 @@ public class JobDefCreationPanel extends CreateEditPanel {
         if(((JPanel) comp.getComponent(i)).getName() != null &&
             ((JPanel) comp.getComponent(i)).getName().equals("jobPars")){
           Debug.debug("Filling XML", 3);
+          
           simplexmlnode.parsedText = "";
+          simplexmlnode.inputsXmlstring = "";
+          simplexmlnode.outputsXmlstring = "";
+          simplexmlnode.logsXmlstring = "";
+
           xmlParsNode.fillXML();
           text += xmlParsNode.xmlstring;
         }
       }
       if(xmlParsNode!=null){
-        text += xmlParsNode.filesXmlstring;
+        //text += xmlParsNode.inputsXmlstring;
+        //text += xmlParsNode.outputsXmlstring;
+        //text += xmlParsNode.logsXmlstring;
+        text += simplexmlnode.inputsXmlstring;
+        text += simplexmlnode.outputsXmlstring;
+        text += simplexmlnode.logsXmlstring;
       }
     }
     else{
