@@ -64,6 +64,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
   // these two variables must either both be static or not.
   private static JPanel jobXmlPanel;
   private static XmlNode xmlParsNode;
+  
   private static JComponent [] oldTcCstAttributes;
   private static String oldJobTransFK = "-1";
   private static int TEXTFIELDWIDTH = 16;
@@ -529,6 +530,15 @@ public class JobDefCreationPanel extends CreateEditPanel {
     
     if(oldTcCstAttributes != null){
       tcCstAttributes = oldTcCstAttributes;
+      // when creating, zap loaded jobDefinitionID
+      if(!editing){
+        for(int i =0; i<tcCstAttributes.length; ++i){
+          if(cstAttributesNames[i].equalsIgnoreCase("jobDefinitionID")){
+            setJText((JComponent) tcCstAttributes[i],"");
+            ((JComponent) tcCstAttributes[i]).setEnabled(false);
+          }
+        }
+      }
     }
 
     if(!editing && oldJobTransFK!=null && Integer.parseInt(oldJobTransFK)>-1){
@@ -892,7 +902,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
      * Called by : JobDefinition.button_ActionPerformed()
      */
 
-    Vector textFields = getTextFields();
+    Vector textFields = getNonIdTextFields();
 
     for(int i =0; i<textFields.size(); ++i)
       setJText((JComponent) textFields.get(i),"");
@@ -1045,6 +1055,22 @@ public class JobDefCreationPanel extends CreateEditPanel {
     return v;
   }
 
+  private Vector getNonIdTextFields(){
+    Vector v = new Vector();
+
+    v.addAll(tcConstant);
+
+    for(int i=0; i<tcCstAttributes.length; ++i){
+      if(!cstAttributesNames[i].equalsIgnoreCase("jobDefinitionID") &&
+          !cstAttributesNames[i].equalsIgnoreCase("jobTransFK") &&
+          !cstAttributesNames[i].equalsIgnoreCase("taskFK")){
+        v.add(tcCstAttributes[i]);
+      }
+    }
+
+    return v;
+  }
+
   private JTextComponent createTextComponent(){
     JTextArea ta = new JTextArea();
     ta.setBorder(new JTextField().getBorder());
@@ -1105,6 +1131,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
       }
       // merge in the input, ouput and stdout/stderr
       text = text.replaceFirst("</jobDef>\n","");
+      node.inputsXmlstring = node.inputsXmlstring.replaceAll("</jobInputs>\n<jobInputs>\n","");
+      node.outputsXmlstring = node.outputsXmlstring.replaceAll("</jobOutputs>\n<jobOutputs>\n","");
+      node.logsXmlstring = node.logsXmlstring.replaceAll("</jobLogs>\n<jobLogs>\n","");
       text += node.inputsXmlstring;
       text += node.outputsXmlstring;
       text += node.logsXmlstring;
