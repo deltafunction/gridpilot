@@ -509,10 +509,10 @@ public class DBPluginMgr implements Database{
       return false;
   }
 
-  public synchronized int createJobDefinition (final JobDefinition jobDef) {
+  public synchronized boolean createJobDefinition (final JobDefinition jobDef) {
   
     MyThread t = new MyThread(){
-      int res = -1;
+      boolean res = false;
       public void run(){
         try{
           res = db.createJobDefinition(jobDef);
@@ -522,15 +522,15 @@ public class DBPluginMgr implements Database{
                              jobDef.toString(), t);
         }
       }
-      public int getIntRes(){return res;}
+      public boolean getBoolRes(){return res;}
     };
   
     t.start();
   
     if(waitForThread(t, dbName, dbTimeOut, "createJobDefinition"))
-      return t.getIntRes();
+      return t.getBoolRes();
     else
-      return -1;
+      return false;
   }
 
   public synchronized boolean updateJobDefinition (final JobDefinition jobDef) {
