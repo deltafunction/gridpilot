@@ -30,6 +30,7 @@ import java.util.HashMap;
    private HashMap pTable = new HashMap();
    private String [] relationNames = {"=", "CONTAINS", "<", ">", "!="};
    private GridBagConstraints gbcVC;
+   public SPanel.ConstraintPanel spcp;
 
    /**
    * Constructors
@@ -151,7 +152,7 @@ import java.util.HashMap;
   }
 
   /**
-     * Initialises the panel n0 'panel'.
+     * Initialises the panel # 'panel'.
      * Called by : this.initGUI()
      */
     private class SPanel extends JPanel{
@@ -204,7 +205,8 @@ import java.util.HashMap;
       gbcVC.gridy = 0;
       gbcVC.anchor = GridBagConstraints.WEST;
       this.add(spConstraints, gbcVC);
-      spConstraintList.add(new ConstraintPanel());
+      spcp = new ConstraintPanel();
+      spConstraintList.add(spcp);
       gbcVC.gridx = 1;
       gbcVC.gridy = 0;
       this.add(spConstraintList, gbcVC);
@@ -243,18 +245,17 @@ import java.util.HashMap;
      protected class ConstraintPanel extends JPanel{
        private JComboBox cbConstraintAttribute;
        private JComboBox cbConstraintRelation;
-       private JTextField tfConstraintValue;
+       public JTextField tfConstraintValue;
        ConstraintPanel(){
          // Combobox attribute
-	   if (fieldList == null) {
-       Debug.debug2("fieldlist null");
-	     return;
-	   
-	   }
-	   if (relationNames == null) {
-       Debug.debug2("relationNames null");
-	     return;
-	   }
+	     if (fieldList == null) {
+         Debug.debug2("fieldlist null");
+	       return;	   
+	       }
+	       if (relationNames == null) {
+           Debug.debug2("relationNames null");
+	         return;
+	       }
          cbConstraintAttribute = new JComboBox();
          for(int i=0;i<fieldList.length; ++i)
            cbConstraintAttribute.insertItemAt(fieldList[i], i);
@@ -336,7 +337,7 @@ import java.util.HashMap;
         ((SPanel) pTable.get(tableName)).spConstraintList.remove(i);
       }
     }
-    SPanel.ConstraintPanel spcp =
+    spcp =
       ((SPanel.ConstraintPanel)((SPanel) pTable.get(tableName)).spConstraintList.getComponent(0));
     if (spcp.cbConstraintAttribute == null) return;
     if (spcp.cbConstraintRelation == null) return;

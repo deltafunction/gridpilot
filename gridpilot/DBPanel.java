@@ -156,6 +156,17 @@ public class DBPanel extends JPanel {
         ,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
 
 
+    this.selectPanel.spcp.tfConstraintValue.addKeyListener(new KeyAdapter(){
+      public void keyPressed(KeyEvent e){
+        switch(e.getKeyCode()){
+          case KeyEvent.VK_ENTER:
+            //Debug.debug("ENTER!", 1);
+            searchRequest();
+        }
+      }
+    });
+
+
     //// panel table results
 
     /*bPrev.addActionListener(new java.awt.event.ActionListener() {
@@ -201,21 +212,6 @@ public class DBPanel extends JPanel {
     ct.ipady = 250;
     this.add(panelTableResults,ct);
     this.updateUI();
-
-
-    addKeyListener(new KeyAdapter(){
-      public void keyPressed(KeyEvent e){
-        switch(e.getKeyCode()){
-          case KeyEvent.VK_CONTROL:
-            break;
-
-          case KeyEvent.VK_S:
-            if(e.isControlDown()){
-              searchRequest();
-            }
-        }
-      }
-    });
   }
 
 
