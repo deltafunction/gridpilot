@@ -27,8 +27,6 @@ import gridpilot.IconProxy;
 public class GlobalFrame extends JFrame {
 
 
-  private JMenuBar menuBar = new JMenuBar();
-  private JPanel contentPane;
   private JTabbedPane tabbedPane = new JTabbedPane();
   private AllTasksPanel allTasksPanel;
   private Vector allPanels;
@@ -52,8 +50,6 @@ public class GlobalFrame extends JFrame {
     /**
      * Called by : gridpilot.gridpilot
      */
-    // save global frame pointer in classMgr
-    GridPilot.getClassMgr().setGlobalFrame(this);
 
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
 
@@ -76,28 +72,27 @@ public class GlobalFrame extends JFrame {
 
     allPanels = new Vector();
     
-    initGUI();
+    //initGUI(((JFrame) this).getContentPane());
   }
 
   /**
    * GUI initialisation
    */
 
-  private void initGUI() throws Exception  {
+  public void initGUI(Container container) throws Exception  {
     /**
      * Called by : this.GlobalFrame();
      */
 
-    contentPane = (JPanel) this.getContentPane();
-    contentPane.setLayout(new BorderLayout());
+    container.setLayout(new BorderLayout());
 
     setTitle("GridPilot welcomes you");
 
     //// Menu
 
-    makeMenu();
+    //makeMenu();
 
-    contentPane.add(tabbedPane,  BorderLayout.CENTER);
+    container.add(tabbedPane,  BorderLayout.CENTER);
 
     allTasksPanel = new AllTasksPanel(this);
 
@@ -268,8 +263,7 @@ public void removeMonitoringPanel(JobPanel panel) {
     Debug.debug("Exiting ...", 2);
     //gridpilot.getClassMgr().getJobControl().exit();
     Debug.debug("Exit", 2);
-    System.exit(0);
-
+    GridPilot.getClassMgr().getGridPilot().exit(0);
   }
   //Help | About action performed
   public void menuHelpAbout_actionPerformed() {
@@ -315,18 +309,24 @@ public void removeMonitoringPanel(JobPanel panel) {
   /**
    * Creates the menu in the main menu bar.
    */
-  private void makeMenu(){
+  public JMenuBar makeMenu(){
+
+    JMenuBar menuBar = new JMenuBar();
 
     // gridpilot
 
-    JMenu menuAtCom = new JMenu("GridPilot");
-    JMenuItem miExit = new JMenuItem("Exit");
-    miExit.addActionListener(new ActionListener()  {
-      public void actionPerformed(ActionEvent e) {
-        exit();
-      }
-    });
-    menuAtCom.add(miExit);
+    JMenu menuGridPilot = null;
+    
+    if(!GridPilot.applet){
+      menuGridPilot = new JMenu("GridPilot");
+      JMenuItem miExit = new JMenuItem("Exit");
+      miExit.addActionListener(new ActionListener()  {
+        public void actionPerformed(ActionEvent e) {
+          exit();
+        }
+      });
+      menuGridPilot.add(miExit);
+    }
     //menuAtCom.addSeparator();
     //menuAtCom.addSeparator();
 
@@ -367,11 +367,13 @@ public void removeMonitoringPanel(JobPanel panel) {
     menuDB.add(miDbClearCaches);
     menuDB.add(miDbReconnect);
 
-    menuBar.add(menuAtCom);
+    if(!GridPilot.applet){
+      menuBar.add(menuGridPilot);
+    }
     menuBar.add(menuDB);
     menuBar.add(menuHelp);
-
-    this.setJMenuBar(menuBar);
+    
+    return menuBar;
 
   }
 
@@ -458,7 +460,7 @@ public void removeMonitoringPanel(JobPanel panel) {
           // TODO: reload panels?
         } catch (Throwable e) {
           Debug.debug("Could not load step/project " + step + " " + e.getMessage(), 3);
-          System.exit(-1);
+          GridPilot.getClassMgr().getGridPilot().exit(-1);
         }
       }
     }

@@ -13,6 +13,7 @@ public class ClassMgr {
   private GlobalFrame globalFrame;
   private JobControl jobControl;
   private LogFile logFile;
+  private GridPilot prodCom;
   private int debugLevel = 3;
   private HashMap dbMgts = new HashMap();
 
@@ -44,6 +45,10 @@ public class ClassMgr {
 
   public void setGlobalFrame(GlobalFrame _globalFrame) {
     globalFrame = _globalFrame;
+  }
+
+  public void setGridPilot(GridPilot _gridpilot) {
+    prodCom = _gridpilot;
   }
 
   public void setDebugLevel(int _debugLevel){
@@ -102,6 +107,15 @@ public class ClassMgr {
 
 		return globalFrame;
 	}
+
+  public GridPilot getGridPilot(){
+    if(prodCom == null){
+      Debug.debug("prodCom null", 3);
+      new Exception().printStackTrace();
+    }
+
+    return prodCom;
+  }
 
   public int getDebugLevel(){
     return debugLevel;

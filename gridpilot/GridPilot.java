@@ -11,7 +11,7 @@ import javax.swing.*;
  * Instantiates all global objects and calls GlobalFrame.
  */
 
-public class GridPilot {
+public class GridPilot extends JApplet{
   private boolean packFrame = false;
   private GlobalFrame frame;
 
@@ -26,15 +26,13 @@ public class GridPilot {
   private static String step;
   private static String userName;
   private static String passwd;
-
-  
-  
+  public static boolean applet = true;
 
   /**
    * Constructor
    */
   public GridPilot() {
-
+    
     try{
       classMgr.setLogFile(new LogFile(logsFileName));
       classMgr.setConfigFile(new ConfigFile(confFileName));
@@ -60,7 +58,7 @@ public class GridPilot {
         getClassMgr().getLogFile().addMessage("Error during gridpilot loading", e);
       else{
         getClassMgr().getLogFile().addMessage("Exception during gridpilot loading", e);
-        System.exit(-1);
+        exit(-1);
       }
     }
   }
@@ -125,32 +123,53 @@ public class GridPilot {
    */
   private void initGUI() throws Exception{
 
-    frame = new GlobalFrame();
-    //classMgr.getJobControl().setGlobalFrame(); // job control was created before GlobalFrame so now we must set GlobalFrame pointer in JobControl class
-
-    //Validate frames that have preset sizes
-    //Pack frames that have useful preferred size info, e.g. from their layout
-
-    if(packFrame)
-      frame.pack();
-    else
-      frame.validate();
-
-    frame.setSize(new Dimension(800, 600));
-
-    //Center the window
-    Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-    Dimension frameSize = frame.getSize();
-    if (frameSize.height > screenSize.height) {
-      frameSize.height = screenSize.height;
+    if(applet){
+      GridPilot.getClassMgr().setGlobalFrame(frame = new GlobalFrame());
+      GridPilot.getClassMgr().getGlobalFrame().initGUI(this.getContentPane());
+      setJMenuBar(
+          GridPilot.getClassMgr().getGlobalFrame().makeMenu());
     }
-    if (frameSize.width > screenSize.width) {
-      frameSize.width = screenSize.width;
+    else{
+      GridPilot.getClassMgr().setGlobalFrame(frame = new GlobalFrame());
+      GridPilot.getClassMgr().getGlobalFrame().initGUI(((JFrame)  
+          GridPilot.getClassMgr().getGlobalFrame()).getContentPane());
+      frame.setJMenuBar(
+          GridPilot.getClassMgr().getGlobalFrame().makeMenu());
+      //frame = new GlobalFrame();
+      //classMgr.getJobControl().setGlobalFrame(); // job control was created before GlobalFrame so now we must set GlobalFrame pointer in JobControl class
+
+      //Validate frames that have preset sizes
+      //Pack frames that have useful preferred size info, e.g. from their layout
+
+      if(packFrame)
+        frame.pack();
+      else
+        frame.validate();
+
+      frame.setSize(new Dimension(800, 600));
+
+      //Center the window
+      Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+      Dimension frameSize = frame.getSize();
+      if (frameSize.height > screenSize.height) {
+        frameSize.height = screenSize.height;
+      }
+      if (frameSize.width > screenSize.width) {
+        frameSize.width = screenSize.width;
+      }
+      requestFocusInWindow();
+      frame.setLocation((screenSize.width - frameSize.width) / 2, (screenSize.height - frameSize.height) / 2);
+      frame.setVisible(true);
     }
-    frame.setLocation((screenSize.width - frameSize.width) / 2, (screenSize.height - frameSize.height) / 2);
-    frame.setVisible(true);
+          
+   }
+
+  public void exit(int exitCode){
+    GridPilot.getClassMgr().getGlobalFrame().dispose();
+    Debug.debug("NAME: "+GridPilot.getClassMgr().getGridPilot(), 2);
+    //System.exit(exitCode);
   }
-
+  
   public static String [] userPwd(String user){
     // asking for user and password for DBPluginMgr
 
@@ -183,16 +202,23 @@ public class GridPilot {
     else
       results = null;
 
-    if(choice == JOptionPane.CANCEL_OPTION)
-      System.exit(0);
+    if(choice == JOptionPane.CANCEL_OPTION){
+      GridPilot.getClassMgr().getGridPilot().exit(0);
+    }
 
     return results;
+  }
+  
+  public void init(){
+    GridPilot.getClassMgr().setGridPilot(this);
+    Debug.debug("NAME: "+GridPilot.getClassMgr().getGridPilot().getAppletInfo(), 2);
   }
 
   /**
    * Main method
    */
   public static void main(String[] args) {
+    applet = false;
     if(args != null){
       for(int i=0; i<args.length; ++i){
         if(args[i] != null && (args[i].equals("-c") || args[i].equals("-conf"))){
@@ -221,7 +247,8 @@ public class GridPilot {
         }
       }
     }
-    new GridPilot();
+    GridPilot.getClassMgr().setGridPilot(new GridPilot());
+    Debug.debug("NAME: "+GridPilot.getClassMgr().getGridPilot().getName(), 2);
   }
 
   private static void badUsage(String s){

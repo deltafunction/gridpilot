@@ -93,7 +93,7 @@ public class DBPanel extends JPanel {
                  !taskIdentifier1.equals(taskIdentifier) ||
                  !defaultFields1[0].equals(defaultFields[0]))){
             Debug.debug("ERROR: incompatible databases",1); 
-            System.exit(-1); 
+            GridPilot.getClassMgr().getGridPilot().exit(-1);
          }
        }
        firstIterationDone = true;
