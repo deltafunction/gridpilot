@@ -23,8 +23,9 @@ public class DBPluginMgr implements Database{
   private LogFile logFile;
   private Database db ;
   private String dbName ;
-  private String stepName ;
-  private String userName;
+  
+  private String database ;
+  private String user;
   private String passwd;
 // TODO: cache here??
   private HashMap partInfoCacheId = null ;
@@ -35,21 +36,21 @@ public class DBPluginMgr implements Database{
   
   private boolean askBeforeInterrupt = true;
 
-  public DBPluginMgr(String _dbName, String _stepName, String _userName, String _passwd){
+  public DBPluginMgr(String _dbName, String _database, String _user, String _passwd){
     dbName = _dbName;
-    stepName = _stepName;
-    userName = _userName;
+    database = _database;
+    user = _user;
     passwd = _passwd;
   }
 
   public String getDBName(){
     return dbName;
   }
-  public String getStepName(){
-    return stepName;
+  public String getDatabase(){
+    return database;
   }
-  public String getUserName(){
-    return userName;
+  public String getUser(){
+    return user;
   }
   public String getPasswd(){
     return passwd;
@@ -79,24 +80,26 @@ public class DBPluginMgr implements Database{
     public void loadClass() throws Throwable{//Exception{
         System.out.println("Loading plugin: "+dbName);
         // Arguments and class name for <DatabaseName>Database
-        String driverName = configFile.getValue(dbName, "driverName");
-        String database = configFile.getValue(dbName, "database");
+        //  AMI ****
+        String driver = configFile.getValue(dbName, "driver");
         String transDB = configFile.getValue(dbName, "transDB");
         String project = configFile.getValue(dbName, "project");
         String level = configFile.getValue(dbName, "level");
         String site = configFile.getValue(dbName, "site");
-        String user = configFile.getValue(dbName, "user");
-        String passwd = configFile.getValue(dbName, "passwd");
+        // ****
+        database = configFile.getValue(dbName, "database");
+        user = configFile.getValue(dbName, "user");
+        passwd = configFile.getValue(dbName, "passwd");
         String dbClass = configFile.getValue(dbName, "Database class");
         if(dbClass == null){
-          throw new Exception("Cannot load classes for system " + dbName + " : \n"+
+          throw new Exception("Cannot load class for system " + dbName + " : \n"+
                               configFile.getMissingMessage(dbName, "Database class"));
         }
   
-        Class [] dbArgsType = {String.class, String.class, String.class, String.class,
-                 String.class, String.class, String.class, String.class, String.class};
-        Object [] dbArgs = {project, stepName, level, site, userName, passwd,
-                transDB, driverName, database};
+        Class [] dbArgsType = {String.class, String.class, String.class,
+            String.class, String.class, String.class, String.class, String.class};
+        Object [] dbArgs = {/*AMI*/project, level, site, transDB,/**/
+            driver, database, user, passwd};
         boolean loadfailed = false;
         try {
         	Class dbclass = this.getClass().getClassLoader().loadClass(dbClass);
@@ -877,7 +880,7 @@ public class DBPluginMgr implements Database{
         }catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             userName + " " + passwd, t);
+                             user + " " + passwd, t);
         }
       }
       public String getStringRes(){return res;}
@@ -900,7 +903,7 @@ public class DBPluginMgr implements Database{
         }catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             userName + " " + passwd, t);
+                             user + " " + passwd, t);
         }
       }
     };
@@ -922,7 +925,7 @@ public class DBPluginMgr implements Database{
         }catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             userName + " " + passwd, t);
+                             user + " " + passwd, t);
         }
       }
     };
