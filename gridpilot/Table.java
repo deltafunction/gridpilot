@@ -316,10 +316,10 @@ public class Table extends JTable {
   public void hideRow(int row, int partId){
 
     //setRowHeight(tableModel.getRow(row), 1);
-    System.out.println("row nr:"+row);
-    System.out.println("tableModel.getValueAt(row,1):"+tableModel.getValueAt(row,1));
-    System.out.println("tableModel.getRow(row):"+tableModel.getRow(row));
-    System.out.println("--> tableModel.getUnsortedValueAt(row,1):"+tableModel.getUnsortedValueAt(row,1));
+    Debug.debug2("row nr:"+row);
+    Debug.debug2("tableModel.getValueAt(row,1):"+tableModel.getValueAt(row,1));
+    Debug.debug2("tableModel.getRow(row):"+tableModel.getRow(row));
+    Debug.debug2("--> tableModel.getUnsortedValueAt(row,1):"+tableModel.getUnsortedValueAt(row,1));
     
     // agora eh questao de guardar akela "linha" em qq lado e depois apagar. Agora para repor eh igual... Com a chamada
     // equivalmente ao 4o system.out, podemos obter o verda... nao podemos nada pq a linha foi apagada... Talvez fazer

@@ -183,7 +183,7 @@ public void removeMonitoringPanel() {
 
 public void removeMonitoringPanel(JobPanel panel) {
   // remove from vector and from tab
-  /***/System.out.println("entering removeMonitoringPanel");
+  /***/Debug.debug2("entering removeMonitoringPanel");
   allPanels.removeElement(panel);
   if(panel.getClass() == TaskPanel.class){
     taskMgrs.remove(((TaskPanel) panel).taskMgr);
@@ -195,7 +195,7 @@ public void removeMonitoringPanel(JobPanel panel) {
     Debug.debug("WARNING: unkown class " + panel.getClass(), 1);
   }
   tabbedPane.removeTabAt(tabbedPane.getSelectedIndex());
-  /***/System.out.println("leaving removeMonitoringPanel");
+  /***/Debug.debug2("leaving removeMonitoringPanel");
 }
 
   public void addTaskPanel(DBPluginMgr dbPluginMgr, int selectedTask, String selectedName) {
@@ -221,7 +221,7 @@ public void removeMonitoringPanel(JobPanel panel) {
         taskMgrs.addElement(newTask);
         /**/Debug.debug2("added panel");
       } catch (Exception e) {
-        System.out.println("Couldn't create monitoring panel for task " + selectedName + "\n" +
+        Debug.debug2("Couldn't create monitoring panel for task " + selectedName + "\n" +
                            "\tException\t : " + e.getMessage());
         e.printStackTrace();
       }
@@ -253,7 +253,7 @@ public void removeMonitoringPanel(JobPanel panel) {
         taskTransMgrs.addElement(newTT);
         /**/Debug.debug2("added panel");
       } catch (Exception e) {
-        System.out.println("Couldn't create monitoring panel for task " + taskTransName + "\n" +
+        Debug.debug2("Couldn't create monitoring panel for task " + taskTransName + "\n" +
                            "\tException\t : " + e.getMessage());
         e.printStackTrace();
       }
@@ -402,7 +402,7 @@ public void removeMonitoringPanel(JobPanel panel) {
       Debug.toTrace="";
     } else {
       Debug.toTrace=debugList;
-      System.out.println("debug list set to : "+debugList);
+      Debug.debug2("debug list set to : "+debugList);
     }
 
     String debugLevel = configFile.getValue("gridpilot", "debug");

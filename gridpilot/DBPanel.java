@@ -322,7 +322,7 @@ public class DBPanel extends JPanel {
     try{
       selectPanel.initGUI();
     }catch(Exception e){
-      System.out.println("Couldn't create init GUI for SelectPanel \n" +
+      Debug.debug2("Couldn't create init GUI for SelectPanel \n" +
           "\tException\t : " + e.getMessage());
           e.printStackTrace();  
     }*/

@@ -200,10 +200,6 @@ public class JobInfo extends DBRecord{
     setValues();
   }
 
-  public void print(){
-    System.out.println(toString());
-  }
-
   public String toString(){
     return "\nJob n0 " + getPartId()+ "\n" +
         "  Name \t: " + getName() + "\n" +

@@ -17,7 +17,7 @@ class MyClassLoader extends ClassLoader{
   	
     try{
     	 URL classUrl = ClassLoader.getSystemResource(name.replace('.', '/').concat(".class"));
-      System.out.println(classUrl);
+      Debug.debug2(classUrl.toString());
       if(classUrl == null)
         throw new ClassNotFoundException();
 
@@ -25,7 +25,7 @@ class MyClassLoader extends ClassLoader{
       File [] files = d.listFiles();
       if(files != null){
         for(int i=0; i<files.length; ++i){
-           System.out.println("tmp:"+files[i].getName());
+          Debug.debug2("tmp:"+files[i].getName());
           if(files[i].getName().endsWith(".class")){
             String className = name.substring(0, name.lastIndexOf(".")) + "." +
                   files[i].getName().substring(0, files[i].getName().indexOf(".class"));

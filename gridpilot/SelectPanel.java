@@ -64,7 +64,7 @@ import java.util.HashMap;
     SPanel sPanel;
   
     for(int i=0; i<numberOfTables; ++i){
-      System.out.println("creating sPanel");
+      Debug.debug2("creating sPanel");
      sPanel = new SPanel(tableNames[i],
           (String []) fieldNames.get(tableNames[i]));
      
@@ -247,13 +247,13 @@ import java.util.HashMap;
        ConstraintPanel(){
          // Combobox attribute
 	   if (fieldList == null) {
-	       System.out.println("fieldlist null");
-	       return;
+       Debug.debug2("fieldlist null");
+	     return;
 	   
 	   }
 	   if (relationNames == null) {
-	       System.out.println("relationNames null");
-	       return;
+       Debug.debug2("relationNames null");
+	     return;
 	   }
          cbConstraintAttribute = new JComboBox();
          for(int i=0;i<fieldList.length; ++i)

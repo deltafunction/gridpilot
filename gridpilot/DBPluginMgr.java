@@ -79,7 +79,7 @@ public class DBPluginMgr implements Database{
      * @throws Throwable if an exception or an error occurs during plug-in loading
      */
     public void loadClass() throws Throwable{//Exception{
-        System.out.println("Loading plugin: "+dbName);
+        Debug.debug2("Loading plugin: "+dbName);
         // Arguments and class name for <DatabaseName>Database
         //  AMI ****
         String driver = configFile.getValue(dbName, "driver");
