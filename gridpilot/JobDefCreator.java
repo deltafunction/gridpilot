@@ -373,6 +373,7 @@ public class JobDefCreator {
       ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
       JComponent jval;
       if(cstAttrNames[i].equals("jobXML")){
+        resCstAttr[i] = "<jobDef>"+resCstAttr[i]+"</jobDef>";
         /*This shows XML*/
         /*JTextArea textArea = new JTextArea(resCstAttr[i]);*/
         simplexmlnode.parseString(resCstAttr[i], 0).fillText();
