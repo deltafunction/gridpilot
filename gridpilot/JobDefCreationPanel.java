@@ -40,7 +40,6 @@ public class JobDefCreationPanel extends CreateEditPanel {
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
   private static JPanel jobXmlPanel;
-  private static JPanel stdoutErrXmlPanel;
   private JPanel pButtons = new JPanel();
   
   private JComboBox cbHomePackageSelection = null;
@@ -488,7 +487,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
       else if(cstAttributesNames[i].equals("jobXML")){
         cl.gridx=0;
         cl.gridy=i;
-        pAttributes.add(new JLabel("jobXML" + " : "),cl);
+        //pAttributes.add(new JLabel("jobXML" + " : "),cl);
         JPanel jobXmlContainer = new JPanel(new GridBagLayout());
         GridBagConstraints cv = new GridBagConstraints();
         cv.fill = GridBagConstraints.VERTICAL;
@@ -502,9 +501,14 @@ public class JobDefCreationPanel extends CreateEditPanel {
         jobXmlContainer.add(jobXmlPanel,cv);
         cv.gridx = 0;
         cv.gridy = 1;
-        //createStdOutErrXmlPanel();
-        //jobXmlContainer.add(stdoutErrXmlPanel,cv);
+        // We add jobXmlContainer to tcCstAttributes
+        // although it is displayed in the first column and not the second.
+        // This is to allow parsing to XML later.
         tcCstAttributes[i] = jobXmlContainer;
+        
+        cl.gridwidth = 2;
+        pAttributes.add(jobXmlContainer,cl);
+        cl.gridwidth=1;
       }
       else if(cstAttributesNames[i].equals("ipConnectivity")){
         cl.gridx=0;
@@ -526,7 +530,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
       }      
       cl.gridx=1;
       cl.gridy=i;
-      pAttributes.add(tcCstAttributes[i], cl);
+      if(!cstAttributesNames[i].equals("jobXML")){
+        pAttributes.add(tcCstAttributes[i], cl);
+      }
     }
   }
 
@@ -538,7 +544,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
         ((JTextComponent) tcCstAttributes[i]).setEnabled(false);
         setJText(tcCstAttributes[i], jobTransFK);
       }
-      else if(cstAttributesNames[i].equals("jobXML")){
+      else if(false && cstAttributesNames[i].equals("jobXML")){
           tcCstAttributes[i].removeAll();
           GridBagConstraints cv = new GridBagConstraints();
           cv.ipady = 10;
@@ -549,9 +555,6 @@ public class JobDefCreationPanel extends CreateEditPanel {
           cv.gridx = 0;
           cv.gridy = 0;
           tcCstAttributes[i].add(jobXmlPanel,cv);
-          //cv.gridx = 0;
-          //cv.gridy = 1;         
-          //tcCstAttributes[i].add(stdoutErrXmlPanel,cv);
       }
       else{
       }
@@ -598,100 +601,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
     }
   }
 
-   private void createStdOutErrXmlPanel(){
-
-     stdoutErrXmlPanel = new JPanel(new GridBagLayout());
-     stdoutErrXmlPanel.setName("stdOutErrXML");
-     JTextField tf = new JTextField();
-     JLabel jLabel = new JLabel();
-     GridBagConstraints ch = new GridBagConstraints();
-     ch.fill = GridBagConstraints.HORIZONTAL;
-     ch.weightx = 0.0;
-     ch.ipadx = 0;
-     
-     ch.gridx = 0;
-     ch.gridy = 0;
-     jLabel = new JLabel("  stdout : ");
-     jLabel.setName("stdout");
-     stdoutErrXmlPanel.add(jLabel,ch);
-     
-     ch.gridx = 0;
-     ch.gridy = 1;
-     stdoutErrXmlPanel.add(new JLabel("  LFN : "),ch);
-     ch.gridx = 1;
-     ch.gridy = 1;
-     tf = new JTextField("",TEXTFIELDWIDTH);
-     tf.setName("LFN");
-     stdoutErrXmlPanel.add(tf,ch);     
-     ch.gridx = 2;
-     ch.gridy = 1;
-     stdoutErrXmlPanel.add(new JLabel("  collection : "),ch);
-     ch.gridx = 3;
-     ch.gridy = 1; 
-     tf = new JTextField("",TEXTFIELDWIDTH);
-     tf.setName("logCol");
-     stdoutErrXmlPanel.add(tf,ch);
-     
-     ch.gridx = 0;
-     ch.gridy = 2;
-     stdoutErrXmlPanel.add(new JLabel("  dataset : "),ch);
-     ch.gridx = 1;
-     ch.gridy = 2;         
-     tf = new JTextField("",TEXTFIELDWIDTH);
-     tf.setName("dataset");
-     stdoutErrXmlPanel.add(tf,ch);
-     ch.gridx = 2;
-     ch.gridy = 2;         
-     stdoutErrXmlPanel.add(new JLabel("  SE hint : "),ch);
-     ch.gridx = 3;
-     ch.gridy = 2;         
-     tf = new JTextField("",TEXTFIELDWIDTH);
-     tf.setName("SEList");
-     stdoutErrXmlPanel.add(tf,ch);
-
-     ch.gridx = 0;
-     ch.gridy = 3; 
-     jLabel = new JLabel("  stderr : ");
-     jLabel.setName("stderr");
-     stdoutErrXmlPanel.add(jLabel,ch);
-     
-     ch.gridx = 0;
-     ch.gridy = 4;         
-     stdoutErrXmlPanel.add(new JLabel("  LFN : "),ch);
-     ch.gridx = 1;
-     ch.gridy = 4;         
-     tf = new JTextField("",TEXTFIELDWIDTH);
-     tf.setName("LFN");
-     stdoutErrXmlPanel.add(tf,ch);
-     ch.gridx = 2;
-     ch.gridy = 4;         
-     stdoutErrXmlPanel.add(new JLabel("  collection : "),ch);
-     ch.gridx = 3;
-     ch.gridy = 4;         
-     tf = new JTextField("",TEXTFIELDWIDTH);
-     tf.setName("logCol");
-     stdoutErrXmlPanel.add(tf,ch);
-     
-     ch.gridx = 0;
-     ch.gridy = 5;         
-     stdoutErrXmlPanel.add(new JLabel("  dataset : "),ch);
-     ch.gridx = 1;
-     ch.gridy = 5;         
-     tf = new JTextField("",TEXTFIELDWIDTH);
-     tf.setName("dataset");
-     stdoutErrXmlPanel.add(tf,ch);
-     ch.gridx = 2;
-     ch.gridy = 5;         
-     stdoutErrXmlPanel.add(new JLabel("  SE hint : "),ch);
-     ch.gridx = 3;
-     ch.gridy = 5;         
-     tf = new JTextField("",TEXTFIELDWIDTH);
-     tf.setName("SEList");
-     stdoutErrXmlPanel.add(tf,ch);
-   }
-  
-  
-  /**
+   /**
    * Action Events
    */
 
@@ -931,43 +841,6 @@ public class JobDefCreationPanel extends CreateEditPanel {
             ((JPanel) comp.getComponent(i)).getName().equals("jobPars")){
           xmlParsNode.fillXML();
           text += xmlParsNode.xmlstring;
-        }
-        else if(false && ((JPanel) comp.getComponent(i)).getName() != null &&
-            ((JPanel) comp.getComponent(i)).getName().equals("stdOutErrXML")){
-          text += "<"+"jobLogs"+">";
-          for(int j=0; j<((JPanel) comp.getComponent(i)).getComponentCount(); ++j){
-            com = ((JComponent) ((JPanel) comp.getComponent(i)).getComponent(j));
-            if(com.getClass().isInstance(new JLabel()) && ((JLabel) com).getName()!=null){
-              if(!name.equals("")){
-                text += "</"+"fileInfo"+">";
-              }
-              text += "  <"+"fileInfo"+">";
-              name = ((JLabel) com).getName();
-              text += "    <stream>"+name+"</stream>\n";
-            }
-            if(com.getClass().isInstance(new JTextField())){
-               label = ((JTextComponent) com).getName();
-               if(label.equals("dataset")){
-                 text += "    <dataset>\n      <name>"+((JTextComponent) com).getText()+
-                 "      </name>\n    </dataset>\n";
-               }
-               else if(label.equals("SEList")){
-                 ses = GridPilot.split(((JTextComponent) com).getText());
-                 text += "    <SEList>\n";
-                 for(int k=0; k<ses.length; ++k){
-                   text += "      <SE>"+ses[k]+"</SE>\n";
-                 }
-                 text += "    </SEList>";
-               }
-               else{
-                 text += "    <"+label+">\n";
-                 text += ((JTextComponent) com).getText();
-                 text += "\n    </"+label+">\n";
-               }
-            }
-          }
-          text += "  </"+"fileInfo"+">\n";
-          text += "</"+"jobLogs"+">";
         }
       }
       text += xmlParsNode.filesXmlstring;

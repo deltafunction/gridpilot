@@ -373,11 +373,14 @@ public class JobDefCreator {
       ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
       JComponent jval;
       if(cstAttrNames[i].equals("jobXML")){
-        JTextArea textArea = new JTextArea(resCstAttr[i]);
+        /*This shows XML*/
+        /*JTextArea textArea = new JTextArea(resCstAttr[i]);
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
         textArea.setEditable(false);
-        jval = textArea;
+        jval = textArea;*/
+        simplexmlnode.parseString(resCstAttr[i], 0).fillText();
+        jval = new JLabel(simplexmlnode.parsedText);
       }
       else{
         jval = new JLabel(resCstAttr[i]);
