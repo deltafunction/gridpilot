@@ -51,7 +51,7 @@ public class GridPilot {
 
       dbs = getClassMgr().getConfigFile().getValues("Databases", "Systems");
       for(int i = 0; i < dbs.length; ++i){
-         userName = getClassMgr().getConfigFile().getValue(dbs[i], "user");
+        userName = getClassMgr().getConfigFile().getValue(dbs[i], "user");
         passwd = getClassMgr().getConfigFile().getValue(dbs[i], "passwd");
         steps.put(dbs[i], getClassMgr().getConfigFile().getValues(dbs[i], "steps"));
         for(int j = 0; j < ((String []) steps.get(dbs[i])).length; ++j){
