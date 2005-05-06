@@ -16,7 +16,7 @@ public class CreateEditDialog extends JDialog {
   
   private boolean editing;
 
-  private JButton bPrev = new JButton("Cancel");
+  private JButton bPrev = new JButton("Close");
   private JButton bCreate = null;
   private JButton bClear = new JButton("Clear");
   private JCheckBox cbShowResults = new JCheckBox("Show before writing to DB", true);
