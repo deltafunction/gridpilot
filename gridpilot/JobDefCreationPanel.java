@@ -149,13 +149,14 @@ public class JobDefCreationPanel extends CreateEditPanel {
         Color.white,new Color(165, 163, 151)),taskMgr.getTaskName()));
     
     spAttributes.setPreferredSize(new Dimension(550, 500));
-
+    spAttributes.setMinimumSize(new Dimension(550, 500));
+    
     setLayout(new GridBagLayout());
     removeAll();
 
+    initAttributePanel();
     initHomePackagePanel();
     initVersionPanel();
-    initAttributePanel();
     
     GridBagConstraints ct = new GridBagConstraints();
     ct.fill = GridBagConstraints.VERTICAL;
@@ -193,6 +194,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
       ct.gridwidth=3;
       ct.gridheight=1;
       pConstants.setLayout(new GridBagLayout());
+      pConstants.setMinimumSize(new Dimension(550, 50));
       add(pConstants,ct);    
             
       ct.gridx = 0;
@@ -214,6 +216,11 @@ public class JobDefCreationPanel extends CreateEditPanel {
     }
 
     setValuesInAttributePanel();
+    
+    if(!editing){
+      setEnabledAttributes(false);
+    }
+    
     updateUI();
     
     loaded = true;
@@ -242,19 +249,19 @@ public class JobDefCreationPanel extends CreateEditPanel {
       else{
         Debug.debug("WARNING: homePackage null for transformation 0", 2);
       }
-     }
-
-    if(vec.size()>0){
-      homePackages = new String [vec.size()];
-      for(int i = 0; i < vec.size(); ++i){
-        homePackages[i] = vec.get(i).toString();
-      }    
     }
-    else{
+    
+    if(vec.size()==0 || configFile.getValue(dbName, "show all transformations")){
       Debug.debug("WARNING: No homePackages found for transformations belonging to task "+
           taskMgr.getTaskName()+". Displaying all homePackages...", 2);
       homePackages = taskMgr.getDBPluginMgr().getHomePackages();
       transformations = taskMgr.getDBPluginMgr().getAllJobTransRecords(-1);
+    }
+    else{
+      homePackages = new String [vec.size()];
+      for(int i = 0; i < vec.size(); ++i){
+        homePackages[i] = vec.get(i).toString();
+      }    
     }
 
     // Find homePackage of jobTransFK
@@ -276,13 +283,15 @@ public class JobDefCreationPanel extends CreateEditPanel {
             break;
           }
         }
-        if(ok && transformations.getValue(i,"homePackage") != null){
-          Debug.debug("Adding homePackage "+
-              transformations.getValue(i,"homePackage"), 3);
-          vec.add(transformations.getValue(i,"homePackage"));
-        }
-        else{
-          Debug.debug("WARNING: homePackage null for transformation "+i, 2);
+        if(ok){
+          if(transformations.getValue(i,"homePackage") != null){
+            Debug.debug("Adding homePackage "+
+                transformations.getValue(i,"homePackage"), 3);
+            vec.add(transformations.getValue(i,"homePackage"));
+          }    
+          else{
+            Debug.debug("WARNING: homePackage null for transformation "+i, 2);
+          }
         }
       }
     }
@@ -698,6 +707,21 @@ public class JobDefCreationPanel extends CreateEditPanel {
     }
   }
 
+  private void setEnabledAttributes(boolean enabled){
+    for(int i =0; i<cstAttributesNames.length; ++i){
+      if(cstAttributesNames[i].equalsIgnoreCase("jobXML")){
+      }
+      else if(!cstAttributesNames[i].equalsIgnoreCase("jobTransFK") &&
+              !cstAttributesNames[i].equalsIgnoreCase("jobDefinitionID") &&
+              !cstAttributesNames[i].equalsIgnoreCase("taskFK")){
+        tcCstAttributes[i].setEnabled(enabled);
+      }
+    }
+    if(jobXmlPanel!=null){
+      jobXmlPanel.setVisible(enabled);
+      jobXmlPanel.updateUI();
+    }
+  }
 
   private void setValuesInAttributePanel(){
     
@@ -775,7 +799,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
       // This should not happen...
       DBRecord taskTransRecord = taskMgr.getDBPluginMgr().getTaskTransRecord(taskMgr.taskID);
       if (taskTransRecord == null ) {
-        Debug.debug2("createJobXmlPanel: taskTransRecord is null!");
+        Debug.debug2("getSignature: taskTransRecord is null!");
         signature = "";
       }
       else{
@@ -848,6 +872,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
      */
     Debug.debug("Initializing version panel for homePackage "+homePackage, 3);
     initVersionPanel();
+    setEnabledAttributes(false);
     pAttributes.updateUI();
   }
 
@@ -896,6 +921,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
       }
      }
     pAttributes.updateUI();
+    if(!versionInit){
+      setEnabledAttributes(true);
+    }
     setValuesInAttributePanel();
   }
 
@@ -940,11 +968,11 @@ public class JobDefCreationPanel extends CreateEditPanel {
 
     Debug.debug("create",  1);
     
-    String signature = getSignature();
-    if(signature!=null && !signature.equals("")){
-      xmlParsNode.fillXML(editing);
-      Debug.debug("xmlParsNode: "+xmlParsNode.xmlstring, 3);
-    }
+    //String signature = getSignature();
+    //if(signature!=null && !signature.equals("")){
+     // xmlParsNode.fillXML(editing);
+     // Debug.debug("xmlParsNode: "+xmlParsNode.xmlstring, 3);
+    //}
     
     for(int i=0; i< cstAttr.length; ++i){
       Debug.debug("setting " + cstAttributesNames[i],  3);
