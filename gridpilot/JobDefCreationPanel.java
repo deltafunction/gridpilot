@@ -251,9 +251,12 @@ public class JobDefCreationPanel extends CreateEditPanel {
       }
     }
     
-    if(vec.size()==0 || configFile.getValue(dbName, "show all transformations")){
-      Debug.debug("WARNING: No homePackages found for transformations belonging to task "+
-          taskMgr.getTaskName()+". Displaying all homePackages...", 2);
+    if(vec.size()==0 ||
+        GridPilot.getClassMgr().getConfigFile().getValue("Databases", "Show all transformations").equalsIgnoreCase("true")){
+      if(vec.size()==0){
+        Debug.debug("WARNING: No homePackages found for transformations belonging to task "+
+            taskMgr.getTaskName()+". Displaying all homePackages...", 2);
+      }
       homePackages = taskMgr.getDBPluginMgr().getHomePackages();
       transformations = taskMgr.getDBPluginMgr().getAllJobTransRecords(-1);
     }
