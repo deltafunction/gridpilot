@@ -346,6 +346,7 @@ public class Table extends JTable {
   }
 
   private void initTable(){
+    getTableHeader().setReorderingAllowed(false);
     createMenu();
     initListeners();
   }
