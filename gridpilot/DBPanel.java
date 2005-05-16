@@ -13,7 +13,6 @@ import javax.swing.event.*;
 import java.awt.*;
 import java.awt.event.*;
 
-
 /**
  * This panel contains one SelectPanel.
  *
@@ -22,31 +21,29 @@ import java.awt.event.*;
 public class DBPanel extends JPanel {
 
   private ConfigFile configFile;
-  private String [] dbs;
-  private String [] steps;
-
   private boolean withSplit = true;
+  private String [] dbs;
 
-  private JScrollPane spSelectPanel = new JScrollPane();
-  private SelectPanel selectPanel;
+  public JScrollPane spSelectPanel = new JScrollPane();
+  public SelectPanel selectPanel;
   private JButton bSearch = new JButton("Search");
   private JButton bClear = new JButton("Clear");
   private JPanel pButtonSelectPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-  private JPanel panelSelectPanel = new JPanel(new GridBagLayout());
-
+  public JPanel panelSelectPanel = new JPanel(new GridBagLayout());
 
   private JScrollPane spTableResults = new JScrollPane();
   private Table tableResults = new Table();
   //private JButton bPrev = new JButton("New Search");
   private JPanel pButtonTableResults = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-  private JPanel panelTableResults = new JPanel(new GridBagLayout());
+  public JPanel panelTableResults = new JPanel(new GridBagLayout());
   private int [] jobDefIdentifiers;
   private String [] dbIdentifiers;
   private String [] stepIdentifiers;
+  // lists of field names with table name as key
+  private String [] fieldNames = null;
 
-  private AllTasksPanel jobDefinitionPanel;
-  private String taskTableName = "task";
-  private String taskIdentifier = "TASKID";
+  private String tableName;
+  private String identifier;
   private String [] defaultFields = null;
   
   public GridBagConstraints ct = new GridBagConstraints();
@@ -62,57 +59,54 @@ public class DBPanel extends JPanel {
    * - JobCreationPanel.JobCreationPanel()
    */
 
-   public DBPanel(/*panel in which this panel is to be placed*/
-       AllTasksPanel _jobDefinitionPanel) throws Exception{
+   public DBPanel( /*name of tables for the select*/
+                  String _tableName,
+                  /*identifier of the table actually to be searched*/
+                  String _identifier) throws Exception{
   
+     tableName = _tableName;
+     identifier = _identifier;
+     
      configFile = GridPilot.getClassMgr().getConfigFile();
-     jobDefinitionPanel = _jobDefinitionPanel;
      
-     String dbName = null;
-     String [] stepList = null;
-     String taskTableName1 = null;
-     String taskIdentifier1 = null;
-     String [] defaultFields1 = null;
-     boolean firstIterationDone = false;
-     
-//// SelectPanel
+     String [] steps;
+     dbs = GridPilot.getDBs();
 
-    // Reads DB structure
-     for(int i = 0; i < GridPilot.getDBs().length; ++i){
-       dbName = GridPilot.getDBs()[i];
-       stepList = GridPilot.getSteps(dbName);
-       if (stepList == null) return;
-       for(int j = 0; j < stepList.length; ++j){
-         // TODO: get from db
-         taskTableName = "task";
-         taskIdentifier = "TASKID";
-         defaultFields = GridPilot.getClassMgr().getDBPluginMgr(dbName, stepList[j]).getDBDefFields(GridPilot.getDBs()[i], taskTableName) ;
-         if((firstIterationDone || j > 0) &&
-             // TODO: check all fields...
-             (!taskTableName1.equals(taskTableName) ||
-                 !taskIdentifier1.equals(taskIdentifier) ||
-                 !defaultFields1[0].equals(defaultFields[0]))){
-            Debug.debug("ERROR: incompatible databases",1); 
-            GridPilot.exit(-1);
+     String dbName = null;
+     String [] previousDefaultFields = null;
+
+     // Check that default fields set in config file agree for the databases used
+     for(int i = 0; i < dbs.length; ++i){
+       dbName = dbs[i];
+       steps = GridPilot.getSteps(dbName);
+       if (steps == null) return;     
+       for(int j=0; j<steps.length; ++j){
+         defaultFields = GridPilot.getClassMgr().getDBPluginMgr(
+             dbName, steps[j]).getDBDefFields(dbs[i], tableName);
+         if(j>0){
+           previousDefaultFields = GridPilot.getClassMgr().getDBPluginMgr(
+               dbName, steps[j-1]).getDBDefFields(dbs[i], tableName);
+           if(defaultFields.length!=previousDefaultFields.length){
+             Debug.debug("WARNING: number of default fields disagree", 1);
+           }
+           else{
+             for(int k=0; k<defaultFields.length; ++k){
+               if(!defaultFields[k].equalsIgnoreCase(previousDefaultFields[k])){
+                 Debug.debug("WARNING: default fields disagree, " +
+                     defaultFields[k]+" != " + previousDefaultFields[k], 1);
+               }
+             }
+           }
          }
        }
-       firstIterationDone = true;
-       taskTableName1 = taskTableName;
-       taskIdentifier1 = taskIdentifier;
-       defaultFields1 = defaultFields;
      }
     
-    // we only need task selection
-    String[] taskTableNames = {taskTableName};
-    // TODO: SelectPanel... rethink, clean up...
-    //selectPanel = new SelectPanel(getSelectedDBName(), getSelectedStepName(),
-        //taskTableNames);
-    
-    // Use the last of the dbs for initializing values.
-    selectPanel = new SelectPanel(dbName, stepList[0],
-        taskTableNames);
-    selectPanel.initGUI();
-    selectDefaultValues();
+    // the same table from the various databases used should have the same
+    // columns, so we use the first db and the first stepName to get the fields.
+    // TODO: stepName should go.
+    fieldNames =
+       GridPilot.getClassMgr().getDBPluginMgr(dbs[0],
+           GridPilot.getSteps(dbs[0])[0]).getFieldNames(tableName);
 
     initGUI();
   }
@@ -122,13 +116,16 @@ public class DBPanel extends JPanel {
    */
 
   private void initGUI() throws Exception {
-    /**
-     * Called by this.DBPanel(...)
-     */
+
+////SelectPanel
+
+    selectPanel = new SelectPanel(tableName, fieldNames);
+    selectPanel.initGUI();
+    selectDefaultValues();
 
     this.setLayout(new GridBagLayout());
 
-    //// panel Select
+//// panel Select
 
     bSearch.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(ActionEvent e) {
@@ -188,12 +185,6 @@ public class DBPanel extends JPanel {
     panelTableResults.add(pButtonTableResults,    new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0
         ,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
 
-
-    //this.add(panelSelectPanel, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
-    //    ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
-    
-    //panelSelectPanel.setPreferredSize(new Dimension(590, 180));
-    //panelTableResults.setPreferredSize(new Dimension(620, 500));
     ct.fill = GridBagConstraints.HORIZONTAL;
     ct.anchor = GridBagConstraints.NORTH;
     ct.insets = new Insets(0,0,0,0);
@@ -235,7 +226,7 @@ public class DBPanel extends JPanel {
         }
       }
       selectPanel.setDisplayFieldValue(values);
-      selectPanel.resetConstraintList(taskTableName);
+      selectPanel.resetConstraintList(tableName);
       selectPanel.updateUI();
   }
 
@@ -314,19 +305,7 @@ public class DBPanel extends JPanel {
    * Clears all fields
    */
   public void clear(){
-    /*spSelectPanel.remove(0);
-    try{
-      selectPanel.initGUI();
-    }catch(Exception e){
-      Debug.debug2("Couldn't create init GUI for SelectPanel \n" +
-          "\tException\t : " + e.getMessage());
-          e.printStackTrace();  
-    }*/
     selectDefaultValues();
-    //selectPanel.clear();
-    //tableResults = new Table();//.setTable(null, null);
-    //tableResults.setTable(null, null);
-    //previous();
   }
 
   /**
@@ -341,22 +320,22 @@ public class DBPanel extends JPanel {
    */
 
   /**
-   * Request DBPluginMgr for select request from SelectPanel, and fill tableResults with results.
-   * This request is performed in a separeted thread, avoiding to block all the GUI during
-   * this action.
-   * This search can be stopped by clicking on the indeterminate progress bar.
+   * Request DBPluginMgr for select request from SelectPanel, and fill tableResults
+   * with results. The request is performed in a separeted thread, avoiding to block
+   * all the GUI during this action.
    * Called when button "Search" is clicked
    */
 
-  private void searchRequest(){
-
+  public void searchRequest(){
+    
+    String [] steps = null;
    // TODO: why does it not work as thread when
     // not in it's own pane?
     // new Thread(){
     //  public void run(){
 
         String selectRequest;
-        selectRequest = selectPanel.getRequest(taskTableName);
+        selectRequest = selectPanel.getRequest();
         if(selectRequest == null)
             return;
 
@@ -367,7 +346,6 @@ public class DBPanel extends JPanel {
          all in one big table (res) with two extra column (last columns) specifying
          the name of the db and the step from which each row came
          */      
-        dbs = GridPilot.getDBs();
         DBResult [][] stepRes = new DBResult[dbs.length][dbs[0].length()];
         DBResult res = null;
         int lastCol = 0;
@@ -378,7 +356,10 @@ public class DBPanel extends JPanel {
           steps = GridPilot.getSteps(dbs[h]);
           Debug.debug("Number of steps: "+steps.length, 3);         
           for (int i=0; i<steps.length; i++) {
-            stepRes[h][i] = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[h], ((String []) GridPilot.steps.get(GridPilot.dbs[h]))[i]).select(selectRequest,taskIdentifier);
+            // the actual selection
+            stepRes[h][i] = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[h],
+                ((String []) GridPilot.steps.get(GridPilot.dbs[h]))[i]).select(
+                    selectRequest,identifier);
             nrValues += stepRes[h][i].values.length;
             
             /*
@@ -440,7 +421,7 @@ public class DBPanel extends JPanel {
           Debug.debug("-->"+debug, 3);
           debug = "";
         }
-        jobDefinitionPanel.makeMenu(); // add some items to the popup menu in the table. These items are from the (parent) job definition panel
+        //jobDefinitionPanel.makeMenu(); // add some items to the popup menu in the table. These items are from the (parent) job definition panel
         if(/*selectRequest.indexOf(tableResults.getColumnName(tableResults.getColumnCount()-3))==-1 &&*/
             selectRequest.indexOf("*")>-1){
           tableResults.hideLastColumns(2); // hide db name, step name column

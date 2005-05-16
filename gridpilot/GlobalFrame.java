@@ -27,7 +27,7 @@ import gridpilot.IconProxy;
 public class GlobalFrame extends JFrame {
 
 
-  private JTabbedPane tabbedPane = new JTabbedPane();
+  public JTabbedPane tabbedPane = new JTabbedPane();
   private AllTasksPanel allTasksPanel;
   private Vector allPanels;
   private Vector taskMgrs = new Vector() ;
@@ -94,9 +94,9 @@ public class GlobalFrame extends JFrame {
 
     container.add(tabbedPane,  BorderLayout.CENTER);
 
-    allTasksPanel = new AllTasksPanel(this);
+    allTasksPanel = new AllTasksPanel(/*this*/);
 
-    tabbedPane.add(allTasksPanel, "Tasks");
+    tabbedPane.add(allTasksPanel, "Select");
 
     selectedPanel = tabbedPane.getSelectedIndex();
 
@@ -211,7 +211,7 @@ public void removeMonitoringPanel(JobPanel panel) {
       TaskMgr newTask = new TaskMgr(dbPluginMgr, selectedTask/*, selectedName*/);
       try{
         /**/Debug.debug2("creating panel");
-        TaskPanel panel = new TaskPanel(newTask,this) ;
+        TaskPanel panel = new TaskPanel(newTask/*,this*/) ;
         /**/Debug.debug2("adding panel");
         addMonitoringPanel(panel);
         taskMgrs.addElement(newTask);
