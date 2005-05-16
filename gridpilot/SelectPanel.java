@@ -7,8 +7,6 @@ import javax.swing.*;
 import java.awt.*;
 import javax.swing.border.*;
 import java.awt.event.*;
-import java.util.HashMap;
-
 
 
 /**
@@ -24,13 +22,13 @@ import java.util.HashMap;
 
  public class SelectPanel extends JPanel {
 
-   private HashMap fieldNames = new HashMap();
-   private int numberOfTables;
-   private String[] tableNames;
-   private HashMap pTable = new HashMap();
+   // lists of field names with table name as key
+   private String [] fieldNames = null;
+   private String tableName;
    private String [] relationNames = {"=", "CONTAINS", "<", ">", "!="};
    private GridBagConstraints gbcVC;
    public SPanel.ConstraintPanel spcp;
+   private SPanel sPanel;
 
    /**
    * Constructors
@@ -41,14 +39,10 @@ import java.util.HashMap;
     * Called by : DBPanel.DBPanel()
     */
 
-   public SelectPanel(String dbName, String stepName, String [] _tables)
+   public SelectPanel(String _tableName, String [] _fieldNames)
        throws Exception{
-     tableNames = _tables;
-     numberOfTables = tableNames.length;
-     Debug.debug("Starting SelectPanel for " + dbName + " " + stepName, 3);
-     for(int i = 0; i < numberOfTables; ++i){
-       fieldNames.put(tableNames[i], GridPilot.getClassMgr().getDBPluginMgr(dbName, stepName).getFieldNames(tableNames[i]));
-     }
+     fieldNames = _fieldNames;
+     tableName = _tableName;
    }
    
   /**
@@ -61,51 +55,48 @@ import java.util.HashMap;
     gbcVC.fill = GridBagConstraints.VERTICAL;
     
     this.setLayout(new GridBagLayout());
+      
+    Debug.debug2("creating sPanel");
+    sPanel = new SPanel(tableName, fieldNames);
+   
+    sPanel.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
+       Color.white,new Color(165, 163, 151)),this.getName()));
+     
+   
+    Debug.debug("Created SPanel with " + ((JPanel) sPanel.getComponent(1)).getComponentCount() + " components", 3);
+             
+    gbcVC.gridx = 0;
+    gbcVC.gridy = 0;
+    gbcVC.anchor = GridBagConstraints.NORTHWEST;
+    this.add(sPanel, gbcVC);
     
-    SPanel sPanel;
-  
-    for(int i=0; i<numberOfTables; ++i){
-      Debug.debug2("creating sPanel");
-     sPanel = new SPanel(tableNames[i],
-          (String []) fieldNames.get(tableNames[i]));
-     
-     sPanel.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
-         Color.white,new Color(165, 163, 151)),this.getName()));
-       
-     
-     Debug.debug("Created SPanel with " + ((JPanel) sPanel.getComponent(1)).getComponentCount() + " components", 3);
-               
-     gbcVC.gridx = 0;
-     gbcVC.gridy = 0;
-     gbcVC.anchor = GridBagConstraints.NORTHWEST;
-     this.add(sPanel, gbcVC);
-      
-     pTable.put(tableNames[i], sPanel);
-      ((JPanel) pTable.get(tableNames[i])).setName(tableNames[i]);
-      
-    }  
+    sPanel.setName(tableName);
   }
 
-  public String getRequest(String tableName){
+  /**
+   * Reads the selection panel and returns a representation of the selection in
+   * basic SQL
+   */
+  public String getRequest(){
     String ret = "SELECT ";
     for(int i = 0; i <
-    ((SPanel) pTable.get(tableName)).spDisplayList.getComponentCount();
+    sPanel.spDisplayList.getComponentCount();
     ++i){
-      SPanel.DisplayPanel cb = ((SPanel.DisplayPanel) ((SPanel) pTable.get(tableName)).spDisplayList.getComponent(i));
+      SPanel.DisplayPanel cb = ((SPanel.DisplayPanel) sPanel.spDisplayList.getComponent(i));
       if(i>0){
         ret += ", ";
       }
       ret += cb.cbDisplayAttribute.getSelectedItem();
     }
     ret += " FROM " + tableName;
-    if(((SPanel) pTable.get(tableName)).spConstraintList.getComponentCount() > 0 &&
-        !((SPanel.ConstraintPanel) ((SPanel) pTable.get(tableName)).spConstraintList.getComponent(0)).tfConstraintValue.getText().equals("")){
+    if(sPanel.spConstraintList.getComponentCount() > 0 &&
+        !((SPanel.ConstraintPanel) sPanel.spConstraintList.getComponent(0)).tfConstraintValue.getText().equals("")){
       ret += " WHERE ";
     }
     for(int i = 0; i <
-    ((SPanel) pTable.get(tableName)).spConstraintList.getComponentCount();
+    sPanel.spConstraintList.getComponentCount();
     ++i){
-      SPanel.ConstraintPanel cb = ((SPanel.ConstraintPanel) ((SPanel) pTable.get(tableName)).spConstraintList.getComponent(i));
+      SPanel.ConstraintPanel cb = ((SPanel.ConstraintPanel) sPanel.spConstraintList.getComponent(i));
       if(!cb.tfConstraintValue.getText().equals("")){
         if(i>0){
           ret += " AND ";
@@ -117,9 +108,6 @@ import java.util.HashMap;
     }
     Debug.debug("Search request: " + ret, 3);
     return ret;
-  }
-  //TODO: implement !
-  public void clear(){
   }
 
   /**
@@ -170,7 +158,6 @@ import java.util.HashMap;
       public SPanel (String _name, String [] _fieldList){
        name = _name;
        fieldList = _fieldList;
-       //Debug.debug("Initializing SPanel for " + name + " with " + fieldList.length + " fields",3);
        bAddConstraintRow = new JButton();
        bRemoveConstraintRow = new JButton();
        spConstraints = new JPanel();
@@ -211,7 +198,7 @@ import java.util.HashMap;
       gbcVC.gridy = 0;
       this.add(spConstraintList, gbcVC);
                    
-      //// Display attributes
+//// Display attributes
     
       // Label
       spDisplays.add(new JLabel("Display : "));
@@ -338,15 +325,13 @@ import java.util.HashMap;
     }
     
   public void resetConstraintList(String tableName){
-    int comps =
-      ((SPanel) pTable.get(tableName)).spConstraintList.getComponentCount();
+    int comps = sPanel.spConstraintList.getComponentCount();
     if(comps>1){
       for(int i=comps-1; i>0; --i){
-        ((SPanel) pTable.get(tableName)).spConstraintList.remove(i);
+        sPanel.spConstraintList.remove(i);
       }
     }
-    spcp =
-      ((SPanel.ConstraintPanel)((SPanel) pTable.get(tableName)).spConstraintList.getComponent(0));
+    spcp = ((SPanel.ConstraintPanel)sPanel.spConstraintList.getComponent(0));
     if (spcp.cbConstraintAttribute == null) return;
     if (spcp.cbConstraintRelation == null) return;
     Component[] parts = spcp.cbConstraintAttribute.getComponents();
@@ -355,13 +340,38 @@ import java.util.HashMap;
     if ((parts != null) && (parts.length > 0)) spcp.cbConstraintRelation.setSelectedIndex(0);
     spcp.tfConstraintValue.setText("");
   }
- 
+
+  /**
+   * Sets the constraint box to key = value.
+   */
+  public void setConstraint(String tableName, String key, String value){
+    int comps = sPanel.spConstraintList.getComponentCount();
+    if(comps>1){
+      for(int i=comps-1; i>0; --i){
+        sPanel.spConstraintList.remove(i);
+      }
+    }
+    spcp = ((SPanel.ConstraintPanel)sPanel.spConstraintList.getComponent(0));
+    if (spcp.cbConstraintAttribute == null) return;
+    if (spcp.cbConstraintRelation == null) return;
+    Component[] parts = spcp.cbConstraintAttribute.getComponents();
+    if ((parts != null) && (parts.length > 0)){
+      for(int i=0; i<fieldNames.length; ++i){
+        if(fieldNames[i].equalsIgnoreCase(key)){
+          spcp.cbConstraintAttribute.setSelectedIndex(i);
+        }
+      }
+    }
+    parts = spcp.cbConstraintRelation.getComponents();
+    if ((parts != null) && (parts.length > 0)) spcp.cbConstraintRelation.setSelectedIndex(0);
+    spcp.tfConstraintValue.setText(value);
+  }
+
   public void setDisplayFieldValue(String [][] values){
     SPanel spanel;
     SPanel thisSPanel = null;
-    //int nr = 0;
     for(int h=0; h < values.length; ++h){
-      spanel = (SPanel) pTable.get(values[h][0]);
+      spanel = sPanel;
       Debug.debug("Table: "+h+" "+values[h][0], 3);
       Debug.debug("Table: "+spanel.name, 3);
       if(spanel.name.equals(values[h][0])){
@@ -388,7 +398,6 @@ import java.util.HashMap;
           }
         }
       }
-      //++nr;
     }
     if (thisSPanel != null)
     	if (thisSPanel.spDisplayList != null)
