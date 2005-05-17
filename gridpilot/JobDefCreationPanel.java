@@ -46,7 +46,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
   private String [] versions;
   private String jobTransFK = "-1";
   private String jobDefinitionID = "-1";
-  private DBVectorTable table;
+  private Table table;
   private JSpinner sFrom = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
   private JSpinner sTo = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
   private String [] cstAttributesNames;
@@ -75,7 +75,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
    * Constructor
    */
 
-  public JobDefCreationPanel(TaskMgr _taskMgr, DBVectorTable _table,
+  public JobDefCreationPanel(TaskMgr _taskMgr, Table _table,
       boolean _editing){
     
     editing = _editing;
@@ -92,7 +92,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
     transformations = taskMgr.getDBPluginMgr().getAllJobTransRecords(taskMgr.getTaskIdentifier());
     
     Debug.debug("Editing job record for task "+taskMgr.getTaskName()+". Rows: "+
-        table.getRowCount()+
+        //table.getRowCount()+
         ". Number of transformations: "+
        (transformations!=null ? transformations.values.length : 0), 3);
 
@@ -100,8 +100,10 @@ public class JobDefCreationPanel extends CreateEditPanel {
     if(table.getSelectedRow()>-1 && editing){
       for(int i=0; i<table.getColumnNames().length; ++i){
         Object fieldVal = table.getValueAt(table.getSelectedRow(),i);
+        Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
         if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase("jobDefinitionID")){
           jobDefinitionID = fieldVal.toString();
+          break;
         }
       }
       if(jobDefinitionID==null || jobDefinitionID.equals("-1")||

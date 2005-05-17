@@ -12,8 +12,6 @@ import java.util.*;
 import gridpilot.ConfigFile;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
-import gridpilot.DBPluginMgr;
-import gridpilot.TaskMgr;
 import gridpilot.JobPanel;
 import gridpilot.IconProxy;
 
@@ -88,10 +86,6 @@ public class GlobalFrame extends JFrame {
 
     setTitle("GridPilot welcomes you");
 
-    //// Menu
-
-    //makeMenu();
-
     container.add(tabbedPane,  BorderLayout.CENTER);
 
     allTasksPanel = new AllTasksPanel(/*this*/);
@@ -113,7 +107,7 @@ public class GlobalFrame extends JFrame {
          IconProxy iconProxy = (IconProxy) tabbedPane.getIconAt(tabbedPane.getSelectedIndex());
 
          if (iconProxy.contains(evt.getX(), evt.getY())) {
-           removeMonitoringPanel();
+           removePanel();
          }
        }
      }
@@ -145,9 +139,10 @@ public class GlobalFrame extends JFrame {
 
 
   /*
-  Add a new monitoring panel.
+  Add a new panel.
   */
-public void addMonitoringPanel(JobPanel newPanel) {
+public void addPanel(JobPanel newPanel) {
+  
   //      Trim title name before adding new tab
   String title = newPanel.getTitle();
   String smallTitle = null;
@@ -168,94 +163,17 @@ public void addMonitoringPanel(JobPanel newPanel) {
 }
 
  /*
-  Remove monitoring panel.
-  () version is called from mouselistener
-  (panel) version is called from TaskPanel::close() called from menu therein
+  Remove panel.
   */
-public void removeMonitoringPanel() {
-  JobPanel panel = (JobPanel)allPanels.elementAt(tabbedPane.getSelectedIndex()-1);
-  removeMonitoringPanel(panel);
-}
-
-public void removeMonitoringPanel(JobPanel panel) {
-  // remove from vector and from tab
-  /***/Debug.debug2("entering removeMonitoringPanel");
-  allPanels.removeElement(panel);
-  if(panel.getClass() == TaskPanel.class){
-    taskMgrs.remove(((TaskPanel) panel).taskMgr);
+  public void removePanel() {
+    JobPanel panel = (JobPanel)allPanels.elementAt(tabbedPane.getSelectedIndex()-1);
+    removePanel(panel);
   }
-  else if(panel.getClass() == TaskTransPanel.class){
-    taskTransMgrs.remove(((TaskTransPanel) panel).taskTransMgr);
-  }
-  else{
-    Debug.debug("WARNING: unkown class " + panel.getClass(), 1);
-  }
-  tabbedPane.removeTabAt(tabbedPane.getSelectedIndex());
-  /***/Debug.debug2("leaving removeMonitoringPanel");
-}
-
-  public void addTaskPanel(DBPluginMgr dbPluginMgr, int selectedTask/*, String selectedName*/) {
-  /*
-   Check if selected task is already opened. If it is, don't let user create another one.
-   Otherwise, create a TaskMgr for the selected task
-   */
-    /**/Debug.debug2("entering");
-    boolean exists = false;
-    for (int i=0; i<taskMgrs.size(); i++) {
-      if (((TaskMgr)taskMgrs.elementAt(i)).getTaskIdentifier() == selectedTask) {
-        exists = true;
-        break;
-      }
-    }
-    if (!exists) {
-      TaskMgr newTask = new TaskMgr(dbPluginMgr, selectedTask/*, selectedName*/);
-      try{
-        /**/Debug.debug2("creating panel");
-        TaskPanel panel = new TaskPanel(newTask/*,this*/) ;
-        /**/Debug.debug2("adding panel");
-        addMonitoringPanel(panel);
-        taskMgrs.addElement(newTask);
-        /**/Debug.debug2("added panel");
-      } catch (Exception e) {
-        Debug.debug2("Couldn't create monitoring panel for task " + "\n" +
-                           "\tException\t : " + e.getMessage());
-        e.printStackTrace();
-      }
-    } else {
-      JOptionPane.showMessageDialog(JOptionPane.getRootFrame(), "Task is already open! Cannot open another copy.", "Error", JOptionPane.INFORMATION_MESSAGE);
-    }
-  }
-
-  public void addTaskTransPanel(DBPluginMgr dbPluginMgr, int taskTransID, String taskTransName) {
-  /*
-   Check if selected taskTrans is already opened. If it is, don't let user create another one.
-   Otherwise, create a TaskTransMgr for the selected task
-   */
-    /**/Debug.debug2("entering");
-    boolean exists = false;
-    for (int i=0; i<taskTransMgrs.size(); i++) {
-      if (((TaskTransMgr) taskTransMgrs.elementAt(i)).getTaskTransID() == taskTransID) {
-        exists = true;
-        break;
-      }
-    }
-    if (!exists) {
-      TaskTransMgr newTT = new TaskTransMgr(dbPluginMgr, taskTransID/*, taskTransName*/);
-      try{
-        /**/Debug.debug2("creating panel");
-        TaskTransPanel taskTransPanel = new TaskTransPanel(newTT,this) ;
-        /**/Debug.debug2("adding panel");
-        addMonitoringPanel(taskTransPanel);
-        taskTransMgrs.addElement(newTT);
-        /**/Debug.debug2("added panel");
-      } catch (Exception e) {
-        Debug.debug2("Couldn't create monitoring panel for task " + taskTransName + "\n" +
-                           "\tException\t : " + e.getMessage());
-        e.printStackTrace();
-      }
-    } else {
-      JOptionPane.showMessageDialog(JOptionPane.getRootFrame(), "taskTrans is already open! Cannot open another copy.", "Error", JOptionPane.INFORMATION_MESSAGE);
-    }
+  
+  public void removePanel(JobPanel panel) {
+    // remove from vector and from tab
+    allPanels.removeElement(panel);
+    tabbedPane.removeTabAt(tabbedPane.getSelectedIndex());
   }
 
   //File | Exit action performed

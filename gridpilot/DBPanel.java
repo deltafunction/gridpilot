@@ -18,24 +18,21 @@ import java.awt.event.*;
  *
  */
 
-public class DBPanel extends JPanel {
+public class DBPanel extends JPanel implements JobPanel{
 
   private ConfigFile configFile;
   private boolean withSplit = true;
   private String [] dbs;
 
-  public JScrollPane spSelectPanel = new JScrollPane();
-  public SelectPanel selectPanel;
-  private JButton bSearch = new JButton("Search");
-  private JButton bClear = new JButton("Clear");
+  private JScrollPane spSelectPanel = new JScrollPane();
+  private SelectPanel selectPanel;
   private JPanel pButtonSelectPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
   public JPanel panelSelectPanel = new JPanel(new GridBagLayout());
 
   private JScrollPane spTableResults = new JScrollPane();
   private Table tableResults = new Table();
-  //private JButton bPrev = new JButton("New Search");
   private JPanel pButtonTableResults = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-  public JPanel panelTableResults = new JPanel(new GridBagLayout());
+  private JPanel panelTableResults = new JPanel(new GridBagLayout());
   private int [] jobDefIdentifiers;
   private String [] dbIdentifiers;
   private String [] stepIdentifiers;
@@ -46,22 +43,22 @@ public class DBPanel extends JPanel {
   private String identifier;
   private String [] defaultFields = null;
   
-  public GridBagConstraints ct = new GridBagConstraints();
+  private GridBagConstraints ct = new GridBagConstraints();
+  
+  private DBPluginMgr dbPluginMgr = null;
+  private int parentId = -1;
 
   /**
    * Constructor
    */
 
   /**
-   * Create a new DBPanel.
-   *
-   * Called by :
-   * - JobCreationPanel.JobCreationPanel()
+   * Create a new DBPanel from scratch.
    */
 
    public DBPanel( /*name of tables for the select*/
                   String _tableName,
-                  /*identifier of the table actually to be searched*/
+                  /*name of identifier of the table actually to be searched*/
                   String _identifier) throws Exception{
   
      tableName = _tableName;
@@ -111,7 +108,32 @@ public class DBPanel extends JPanel {
     initGUI();
   }
 
-  /**
+   /**
+    * Create a new DBPanel from a parent panel.
+    */
+
+    public DBPanel( /*name of tables for the select*/
+                   String _tableName,
+                   /*name of identifier of the table actually to be searched*/
+                   String _identifier,
+                   /*pointer to the db in use for this panel*/
+                   DBPluginMgr _dbPluginMgr,
+                   /*identifier of the parent record (task <- jobDefinition)*/
+                   int _parentId) throws Exception{
+      this(_tableName, _identifier);
+      dbPluginMgr = _dbPluginMgr;
+      parentId = _parentId;
+    }
+    
+    public DBPluginMgr getDbPluginMgr(){
+      return dbPluginMgr;
+    }
+   
+    public int getParentId(){
+      return parentId;
+    }
+   
+   /**
    * GUI initialisation
    */
 
@@ -121,29 +143,9 @@ public class DBPanel extends JPanel {
 
     selectPanel = new SelectPanel(tableName, fieldNames);
     selectPanel.initGUI();
-    selectDefaultValues();
+    clear();
 
     this.setLayout(new GridBagLayout());
-
-//// panel Select
-
-    bSearch.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(ActionEvent e) {
-        searchRequest();
-      }
-    });
-
-    bSearch.setToolTipText("Search results for this request");
-
-    bClear.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(ActionEvent e) {
-        clear();
-      }
-    });
-
-
-    pButtonSelectPanel.add(bClear);
-    pButtonSelectPanel.add(bSearch);
 
     spSelectPanel.getViewport().add(selectPanel);
 
@@ -153,11 +155,11 @@ public class DBPanel extends JPanel {
         ,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
 
 
+    // Listen for enter key in text field
     this.selectPanel.spcp.tfConstraintValue.addKeyListener(new KeyAdapter(){
       public void keyPressed(KeyEvent e){
         switch(e.getKeyCode()){
           case KeyEvent.VK_ENTER:
-            //Debug.debug("ENTER!", 1);
             searchRequest();
         }
       }
@@ -165,16 +167,6 @@ public class DBPanel extends JPanel {
 
 
     //// panel table results
-
-    /*bPrev.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(ActionEvent e) {
-        previous();
-      }
-    });
-
-    bPrev.setToolTipText("Create another request");
-
-    pButtonTableResults.add(bPrev);*/
 
     tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
@@ -210,26 +202,18 @@ public class DBPanel extends JPanel {
    * public properties
    */
 
-  public void selectDefaultValues() {
-      String [][] values = new String[defaultFields.length][2];
-
-      for(int i = 0; i<defaultFields.length; ++i){
-        String [] split = defaultFields[i].split("\\.");
-        if(split.length != 2){
-            Debug.debug(defaultFields[i] + " " + " : wrong format in config file ; " +
-                      "should be : \ndefault task fields = table.field1 table.field2", 3);
-        }
-        else{
-          Debug.debug("Setting default value "+split[0]+" "+split[1],3);
-          values[i][0] = split[0];
-          values[i][1] = split[1];
-        }
-      }
-      selectPanel.setDisplayFieldValue(values);
-      selectPanel.resetConstraintList(tableName);
-      selectPanel.updateUI();
+  public String getTitle(){
+    //return tableName;
+    return "Select";
   }
 
+  public void panelShown(){
+    Debug.debug("panelShown", 1);
+  }
+
+  public void panelHidden(){
+    Debug.debug("", 1);
+  }
 
   /**
    * Returns identifiers of the selected jobDefinitions, corresponding to
@@ -288,44 +272,76 @@ public class DBPanel extends JPanel {
   }*/
 
   /**
-   * public operation
-   */
-
-   /**
-    * Deletes the selected rows (the selected jobDefinitions)
-    */
-/*
-    public void deleteSelectedJobDefs() {
-     int [] selectedRows = tableResults.getSelectedRows();
-     tableResults.deleteRows(selectedRows);
-   }
-  */
-
-  /**
-   * Clears all fields
-   */
-  public void clear(){
-    selectDefaultValues();
-  }
-
-  /**
    * Adds a button on the left of the buttons shown when the panel with results is shown.
    */
-  public void addButtonSecondPanel(JButton b){
+  public void addButtonResultsPanel(JButton b){
     pButtonTableResults.add(b);
   }
 
   /**
-   * private methods
+   * Adds a button on the select panel.
    */
+  public void addButtonSelectPanel(JButton b){
+    pButtonSelectPanel.add(b);
+  }
 
   /**
+   * Add a ListSelectionListener to the Table showing results.
+   */
+  public void addListSelectionListener(ListSelectionListener lsl){
+    tableResults.addListSelectionListener(lsl);
+  }
+
+  /**
+   * Return pointer to tableResults object
+   */
+  public Table getTableResults(){
+    return tableResults;
+  }
+  
+  /**
+   * Return pointer to panelTableResults object
+   */
+  public JPanel getPanelTableResults(){
+    return panelTableResults;
+  }
+
+  /**
+   * Return pointer to selectPanel object
+   */
+  public SelectPanel getSelectPanel(){
+    return selectPanel;
+  }
+
+  /**
+   * Resets fields to default fields and clear values
+   */
+  public void clear(){
+    String [][] values = new String[defaultFields.length][2];
+
+    for(int i = 0; i<defaultFields.length; ++i){
+      String [] split = defaultFields[i].split("\\.");
+      if(split.length != 2){
+          Debug.debug(defaultFields[i] + " " + " : wrong format in config file ; " +
+                    "should be : \ndefault task fields = table.field1 table.field2", 3);
+      }
+      else{
+        Debug.debug("Setting default value "+split[0]+" "+split[1],3);
+        values[i][0] = split[0];
+        values[i][1] = split[1];
+      }
+    }
+    selectPanel.setDisplayFieldValue(values);
+    selectPanel.resetConstraintList(tableName);
+    selectPanel.updateUI();
+  }
+
+/**
    * Request DBPluginMgr for select request from SelectPanel, and fill tableResults
    * with results. The request is performed in a separeted thread, avoiding to block
    * all the GUI during this action.
    * Called when button "Search" is clicked
    */
-
   public void searchRequest(){
     
     String [] steps = null;
@@ -339,7 +355,6 @@ public class DBPanel extends JPanel {
         if(selectRequest == null)
             return;
 
-        bSearch.setEnabled(false);
 
         /*
          Support several dbs and steps (represented by dbRes[] and stepRes[]) and merge them
@@ -378,7 +393,7 @@ public class DBPanel extends JPanel {
            anything
           */
           if (notEmptyStepId == -1) {
-            bSearch.setEnabled(true);
+            //bSearch.setEnabled(true);
             continue;
           }
         }
@@ -421,9 +436,8 @@ public class DBPanel extends JPanel {
           Debug.debug("-->"+debug, 3);
           debug = "";
         }
-        //jobDefinitionPanel.makeMenu(); // add some items to the popup menu in the table. These items are from the (parent) job definition panel
-        if(/*selectRequest.indexOf(tableResults.getColumnName(tableResults.getColumnCount()-3))==-1 &&*/
-            selectRequest.indexOf("*")>-1){
+
+        if(selectRequest.indexOf("*")>-1){
           tableResults.hideLastColumns(2); // hide db name, step name column
         }
         else{
@@ -449,53 +463,8 @@ public class DBPanel extends JPanel {
         for(int i=0; i<stepIdentifiers.length; ++i)
           stepIdentifiers[i] = tableResults.getUnsortedValueAt(i, col).toString();
 
-        bSearch.setEnabled(true);
-        next();
      // }
     //}.start();
 
-  }
-
-  /**
-   * Called when button "New Search" is clicked.
-   * Hides the current panel (Table), shows to the first panel (SelectPanel)
-   */
-  /*public void previous(){
-    this.removeAll();
-    this.add(panelSelectPanel, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
-        ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
-    this.updateUI();
-  }*/
-
-  /**
-   * Called when button "Next" is clicked, or when "searchRequest" is finished.
-   * Hides the current panel (SelectPanel), shows to the second panel (Table)
-   */
-  public void next(){
-
-    //this.removeAll();
-    this.remove(1);
-    //this.add(panelTableResults, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
-        //,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
-
-    //ct.gridx = 0;
-    //ct.gridy = 1;   
-    this.add(panelTableResults,ct);
-    this.updateUI();
-
-  }
-
-  /**
-   * Add a ListSelectionListener to the Table showing results.
-   */
-  public void addListSelectionListener(ListSelectionListener lsl){
-    tableResults.addLisSelectionListener(lsl);
-  }
-
-  /**
-   * Return pointer to tableResults object
-   */
-  public Table getTableResults(){
-    return tableResults;
   }
 }

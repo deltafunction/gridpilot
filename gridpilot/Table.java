@@ -1,6 +1,5 @@
 package gridpilot;
 
-import gridpilot.MyTableModel;
 import gridpilot.Debug;
 
 import javax.swing.table.*;
@@ -22,7 +21,7 @@ public class Table extends JTable {
   
   private ListSelectionListener lsl;
 
-  private MyTableModel tableModel;
+  public DBVectorTableModel tableModel;
 
   /** Popup menu shown when the user right-clicks on this table */
   private JPopupMenu popupMenu = new JPopupMenu();
@@ -87,17 +86,35 @@ public class Table extends JTable {
   * Constructs an empty table.
   */
   public Table() {
-    tableModel = new MyTableModel();
+    tableModel = new DBVectorTableModel();
     setModel(tableModel);
     
     initTable();
   }
 
   /**
+   * Constructs an empty table.
+   */
+  /* public Table(MyTableModel _model) {
+     tableModel = _model;
+     setModel(_model);
+     initTable();
+   }*/
+
+   /**
+    * Constructs an empty table.
+    */
+    public Table(DBVectorTableModel _model) {
+      tableModel = _model;
+      setModel(_model);
+      initTable();
+    }
+
+  /**
    * Constructs a table, with rowCount rows and colCount.
    */
   public Table(int rowCount, int colCount) {
-    tableModel = new MyTableModel(rowCount, colCount);
+    tableModel = new DBVectorTableModel(rowCount, colCount);
     setModel(tableModel);
     
     initTable();
@@ -109,7 +126,7 @@ public class Table extends JTable {
    * an empty table is created.
    */
   public Table(Object [][] values, String [] columnNames){
-    tableModel = new MyTableModel(values, columnNames);
+    tableModel = new DBVectorTableModel(values, columnNames);
     setModel(tableModel);
 
     initTable();
@@ -119,7 +136,7 @@ public class Table extends JTable {
    * Constructs a table with 0 rows, where column titles are in columnNames.
    */
   public Table(String [] columnNames){
-    tableModel = new MyTableModel(columnNames);
+    tableModel = new DBVectorTableModel(columnNames);
     setModel(tableModel);
     
     initTable();
@@ -503,7 +520,7 @@ public class Table extends JTable {
       tableModel.sort(column, true);
   }
 
-  public void addLisSelectionListener(ListSelectionListener _lsl){
+  public void addListSelectionListener(ListSelectionListener _lsl){
     getSelectionModel().addListSelectionListener(_lsl);
     lsl = _lsl;
   }

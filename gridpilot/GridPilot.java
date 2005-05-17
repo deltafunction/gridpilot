@@ -125,7 +125,7 @@ public class GridPilot extends JApplet{
   private void initGUI() throws Exception{
 
     if(applet){
-      GridPilot.getClassMgr().setGlobalFrame(frame = new GlobalFrame());
+      //GridPilot.getClassMgr().setGlobalFrame(frame = new GlobalFrame());
       GridPilot.getClassMgr().getGlobalFrame().initGUI(this.getContentPane());
       setJMenuBar(
           GridPilot.getClassMgr().getGlobalFrame().makeMenu());
@@ -136,12 +136,9 @@ public class GridPilot extends JApplet{
           GridPilot.getClassMgr().getGlobalFrame()).getContentPane());
       frame.setJMenuBar(
           GridPilot.getClassMgr().getGlobalFrame().makeMenu());
-      //frame = new GlobalFrame();
-      //classMgr.getJobControl().setGlobalFrame(); // job control was created before GlobalFrame so now we must set GlobalFrame pointer in JobControl class
 
-      //Validate frames that have preset sizes
-      //Pack frames that have useful preferred size info, e.g. from their layout
-
+      //Validate frames that have preset sizes.
+      //Pack frames that have useful preferred size info, e.g. from their layout.
       if(packFrame)
         frame.pack();
       else
