@@ -203,8 +203,11 @@ public class DBPanel extends JPanel implements JobPanel{
    */
 
   public String getTitle(){
-    //return tableName;
-    return "Select";
+    return tableName/*+"s"*//*jobTranss looks bad...*/;
+  }
+
+  public void setTitle(String name){
+    setName(name);
   }
 
   public void panelShown(){
