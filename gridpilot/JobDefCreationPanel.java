@@ -804,7 +804,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
       // This should not happen...
       DBRecord taskTransRecord = taskMgr.getDBPluginMgr().getTaskTransRecord(taskMgr.taskID);
       if (taskTransRecord == null ) {
-        Debug.debug2("getSignature: taskTransRecord is null!");
+        Debug.debug("getSignature: taskTransRecord is null!", 2);
         signature = "";
       }
       else{

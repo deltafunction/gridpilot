@@ -247,7 +247,7 @@ public class DBVectorTableModel extends AbstractTableModel {
    * Sorts the table, based on specified column
    */
   synchronized public void sort(int col, boolean _ascending){
-    Debug.debug2("sort " + col + ", "+ _ascending);
+    Debug.debug("sort " + col + ", "+ _ascending, 2);
     ascending = _ascending;
     sortColumn = col;
     int begin;

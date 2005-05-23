@@ -201,7 +201,7 @@ public class LogFile {
     }
 
     if(printMessages)
-      Debug.debug2(s);
+      Debug.debug(s, 2);
     if(showMessages)
       MessagePane.showMessage(s, getMessageTypeName(type));
 

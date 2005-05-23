@@ -180,11 +180,11 @@ public class JobDefCreator {
 
     if(!skipAll){
 
-      Debug.debug2("going to set pb");
+      Debug.debug("going to set pb", 2);
       //pb.setMaximum(pb.getMaximum() + jobDefCount);
       pb.setMaximum(jobDefCount);
 
-      Debug.debug2("going to call createDBJobDefs");
+      Debug.debug("going to call createDBJobDefs", 2);
       createDBJobDefs();
 
     }
@@ -196,9 +196,9 @@ public class JobDefCreator {
         int part = ((Integer) vJobDef.remove(0)).intValue();
         resCstAttr = (String [] ) vCstAttr.remove(0);
 
-        Debug.debug2("Creating jobDefinition # " + part + " ...");
+        Debug.debug("Creating jobDefinition # " + part + " ...", 2);
         pb.setValue(pb.getValue()+1);
-        Debug.debug2(this.getClass().getName() + " is calling DB");
+        Debug.debug(this.getClass().getName() + " is calling DB", 2);
 
         if(editing){
           Debug.debug("Updating...", 3);
@@ -413,7 +413,7 @@ public class JobDefCreator {
     	(int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5;
     Dimension screenSize = new Dimension(Toolkit.getDefaultToolkit().getScreenSize());
     if (size1 > screenSize.height) size1 = 500;
-      Debug.debug2(Integer.toString(size1));
+      Debug.debug(Integer.toString(size1), 2);
     sp.setPreferredSize(new Dimension(500,size1));
 
     JOptionPane op = new JOptionPane(sp,

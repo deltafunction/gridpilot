@@ -17,19 +17,6 @@ public class Debug{
   private static boolean withMethodName = true;
   private static boolean withLineNumber = true;
 
-
-  public synchronized static void debug2(String msg){
-    Throwable t = new Throwable();
-    String className = t.getStackTrace()[1].getClassName() ;
-    className = className.substring(className.lastIndexOf(".")+1);
-    String mName =  className + "::" + t.getStackTrace()[1].getMethodName();
-    if ((toTrace.indexOf("all") != -1) ||
-        (toTrace.indexOf(className+"::*") != -1) ||
-        (toTrace.indexOf(mName) != -1)) {
-      System.out.println("DBG>> "+mName +  " : " + msg);
-    }
-  }
-
   public synchronized static void debug(String msg, int level){
      //level : 1 : function name, 2 : 3: temporal debugs
     if(isExclude())

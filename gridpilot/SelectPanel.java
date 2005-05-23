@@ -56,7 +56,7 @@ import java.awt.event.*;
     
     this.setLayout(new GridBagLayout());
       
-    Debug.debug2("creating sPanel");
+    Debug.debug("creating sPanel", 2);
     sPanel = new SPanel(tableName, fieldNames);
    
     sPanel.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
@@ -155,7 +155,7 @@ import java.awt.event.*;
       private JPanel spDisplays;
       protected String [] fieldList;
           
-      public SPanel (String _name, String [] _fieldList){
+      public SPanel(String _name, String [] _fieldList){
        name = _name;
        fieldList = _fieldList;
        bAddConstraintRow = new JButton();
@@ -236,11 +236,11 @@ import java.awt.event.*;
        ConstraintPanel(){
          // Combobox attribute
 	     if (fieldList == null) {
-         Debug.debug2("fieldlist null");
+         Debug.debug("fieldlist null", 2);
 	       return;	   
 	       }
 	       if (relationNames == null) {
-           Debug.debug2("relationNames null");
+           Debug.debug("relationNames null", 2);
 	         return;
 	       }
          cbConstraintAttribute = new JComboBox();
