@@ -61,10 +61,6 @@ public class GlobalFrame extends JFrame {
         resourcesPath = resourcesPath + "/";
     }
 
-
-    ImageIcon iconAtCom = new ImageIcon(resourcesPath + "gridpilot.gif");
-    setIconImage(iconAtCom.getImage());
-
     allPanels = new Vector();
   }
 
@@ -83,7 +79,7 @@ public class GlobalFrame extends JFrame {
 
     container.add(tabbedPane,  BorderLayout.CENTER);
 
-    addPanel(new AllTasksPanel(), "tasks");
+    addPanel(new DBPanel("task", "TASKID"));
     selectedPanel = tabbedPane.getSelectedIndex();
 
     /*
@@ -135,7 +131,6 @@ public class GlobalFrame extends JFrame {
   */
 
   public void addPanel(JobPanel newPanel, String title) {
-    newPanel.setTitle(title);
     Debug.debug("Adding panel "+newPanel.getTitle(), 3);
     addPanel(newPanel);
   }
@@ -151,8 +146,8 @@ public class GlobalFrame extends JFrame {
     smallTitle = title;
   }
   Debug.debug("Adding tab "+allPanels.size(), 3);
-  tabbedPane.addTab(smallTitle, new IconProxy(closeIcon), (JPanel) newPanel);
   allPanels.addElement(newPanel);
+  tabbedPane.addTab(smallTitle, new IconProxy(closeIcon), (JPanel) newPanel);
   Debug.debug("Added tab "+allPanels.size(), 3);
   // focus on new panel
   ((JobPanel) tabbedPane.getComponentAt(tabbedPane.getSelectedIndex())).panelHidden();
@@ -167,7 +162,7 @@ public class GlobalFrame extends JFrame {
   Remove panel.
   */
   public void removePanel() {
-    JobPanel panel = (JobPanel)allPanels.elementAt(tabbedPane.getSelectedIndex()/*-1*/);
+    JobPanel panel = (JobPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
     removePanel(panel);
   }
   
@@ -216,12 +211,12 @@ public class GlobalFrame extends JFrame {
    * Called when selected tab changes
    */
   private void tabbedSelected(ChangeEvent e){
-    if(selectedPanel>=tabbedPane.getComponentCount()){
+    selectedPanel = tabbedPane.getSelectedIndex();
+    if(selectedPanel>=0){
       ((JobPanel) tabbedPane.getComponentAt(selectedPanel)).panelHidden();
-      selectedPanel = tabbedPane.getSelectedIndex();
       ((JobPanel) tabbedPane.getComponentAt(selectedPanel)).panelShown();
-      String title = ((JobPanel)allPanels.elementAt(selectedPanel/*-1*/)).getTitle();
-      setTitle("gridpilot - "+title);
+      String title = ((JobPanel)allPanels.elementAt(selectedPanel)).getTitle();
+      setTitle("GridPilot - "+title);
     }
   }
 
@@ -237,11 +232,11 @@ public class GlobalFrame extends JFrame {
     JMenu menuGridPilot = null;
     
     menuGridPilot = new JMenu("GridPilot");
-    JMenuItem miNewTab = new JMenuItem("New search tab");
+    JMenuItem miNewTab = new JMenuItem("New tab");
     miNewTab.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e) {
         try{
-          addPanel(new AllTasksPanel(), "tasks");          
+          addPanel(new DBPanel("task", "TASKID"), "task");          
         }catch(Exception ex){
           Debug.debug("Could not add panel ", 1);
           ex.printStackTrace();
