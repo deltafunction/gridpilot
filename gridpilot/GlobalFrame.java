@@ -17,16 +17,13 @@ import gridpilot.IconProxy;
 
 /**
  * Main frame of GridPilot application.
- * This frame contains 1 fixed tabbed panel: JobDefinitionPanel.
- * More tabs can be added dynamically.
- *
+ * This frame contains tab, more can be added dynamically.
  */
 
 public class GlobalFrame extends JFrame {
 
 
   public JTabbedPane tabbedPane = new JTabbedPane();
-  private AllTasksPanel allTasksPanel;
   private Vector allPanels;
   private Vector taskMgrs = new Vector() ;
   private Vector taskTransMgrs = new Vector() ;
@@ -69,8 +66,6 @@ public class GlobalFrame extends JFrame {
     setIconImage(iconAtCom.getImage());
 
     allPanels = new Vector();
-    
-    //initGUI(((JFrame) this).getContentPane());
   }
 
   /**
@@ -88,10 +83,7 @@ public class GlobalFrame extends JFrame {
 
     container.add(tabbedPane,  BorderLayout.CENTER);
 
-    allTasksPanel = new AllTasksPanel(/*this*/);
-
-    tabbedPane.add(allTasksPanel, "Select");
-
+    addPanel(new AllTasksPanel(), "tasks");
     selectedPanel = tabbedPane.getSelectedIndex();
 
     /*
@@ -99,7 +91,7 @@ public class GlobalFrame extends JFrame {
     */
    tabbedPane.addMouseListener(new MouseAdapter() {
      public void mouseReleased(MouseEvent evt) {
-       if (tabbedPane.getTabCount() == 1 || tabbedPane.getSelectedIndex() == 0) {
+       if (tabbedPane.getTabCount() == 0 || tabbedPane.getSelectedIndex() < 0) {
          return;
        }
 
@@ -141,9 +133,16 @@ public class GlobalFrame extends JFrame {
   /*
   Add a new panel.
   */
-public void addPanel(JobPanel newPanel) {
+
+  public void addPanel(JobPanel newPanel, String title) {
+    newPanel.setTitle(title);
+    Debug.debug("Adding panel "+newPanel.getTitle(), 3);
+    addPanel(newPanel);
+  }
+
+  public void addPanel(JobPanel newPanel) {
   
-  //      Trim title name before adding new tab
+  // Trim title name before adding new tab
   String title = newPanel.getTitle();
   String smallTitle = null;
   if (title.length() > 20) {
@@ -151,13 +150,15 @@ public void addPanel(JobPanel newPanel) {
   } else {
     smallTitle = title;
   }
-
+  Debug.debug("Adding tab "+allPanels.size(), 3);
   tabbedPane.addTab(smallTitle, new IconProxy(closeIcon), (JPanel) newPanel);
   allPanels.addElement(newPanel);
+  Debug.debug("Added tab "+allPanels.size(), 3);
   // focus on new panel
   ((JobPanel) tabbedPane.getComponentAt(tabbedPane.getSelectedIndex())).panelHidden();
   int newSelIndex = tabbedPane.getTabCount()-1;
   ((JobPanel) tabbedPane.getComponentAt(newSelIndex)).panelShown();
+  Debug.debug("Setting selected index "+newSelIndex, 3);
   tabbedPane.setSelectedIndex(newSelIndex);
   setTitle("GridPilot - "+title);
 }
@@ -166,13 +167,19 @@ public void addPanel(JobPanel newPanel) {
   Remove panel.
   */
   public void removePanel() {
-    JobPanel panel = (JobPanel)allPanels.elementAt(tabbedPane.getSelectedIndex()-1);
+    JobPanel panel = (JobPanel)allPanels.elementAt(tabbedPane.getSelectedIndex()/*-1*/);
     removePanel(panel);
   }
   
   public void removePanel(JobPanel panel) {
     // remove from vector and from tab
-    allPanels.removeElement(panel);
+    Debug.debug("Removing panel#"+tabbedPane.getSelectedIndex(), 3);
+    try{
+      allPanels.removeElement(panel);
+    }catch(Exception e){
+      Debug.debug("ERROR: could not remove panel.", 1);
+      return;
+    }
     tabbedPane.removeTabAt(tabbedPane.getSelectedIndex());
   }
 
@@ -197,7 +204,6 @@ public void addPanel(JobPanel newPanel) {
     WebBox dlg = new WebBox(this, "About", aboutURL);
   }
 
-
   //Overridden so we can exit when window is closed
   protected void processWindowEvent(WindowEvent e) {
     super.processWindowEvent(e);
@@ -210,17 +216,12 @@ public void addPanel(JobPanel newPanel) {
    * Called when selected tab changes
    */
   private void tabbedSelected(ChangeEvent e){
-    ((JobPanel) tabbedPane.getComponentAt(selectedPanel)).panelHidden();
-    selectedPanel = tabbedPane.getSelectedIndex();
-    ((JobPanel) tabbedPane.getComponentAt(selectedPanel)).panelShown();
-    if (selectedPanel > 0){
-      /*
-      Trim title name if it's too long
-      */
-      String title = ((JobPanel)allPanels.elementAt(selectedPanel-1)).getTitle();
+    if(selectedPanel>=tabbedPane.getComponentCount()){
+      ((JobPanel) tabbedPane.getComponentAt(selectedPanel)).panelHidden();
+      selectedPanel = tabbedPane.getSelectedIndex();
+      ((JobPanel) tabbedPane.getComponentAt(selectedPanel)).panelShown();
+      String title = ((JobPanel)allPanels.elementAt(selectedPanel/*-1*/)).getTitle();
       setTitle("gridpilot - "+title);
-    } else {
-      setTitle("gridpilot - an Atlas Commander");
     }
   }
 
@@ -235,8 +236,23 @@ public void addPanel(JobPanel newPanel) {
 
     JMenu menuGridPilot = null;
     
+    menuGridPilot = new JMenu("GridPilot");
+    JMenuItem miNewTab = new JMenuItem("New search tab");
+    miNewTab.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e) {
+        try{
+          addPanel(new AllTasksPanel(), "tasks");          
+        }catch(Exception ex){
+          Debug.debug("Could not add panel ", 1);
+          ex.printStackTrace();
+        }
+        selectedPanel = tabbedPane.getSelectedIndex();
+      }
+    });
+    menuGridPilot.add(miNewTab);
+
     if(!GridPilot.applet){
-      menuGridPilot = new JMenu("GridPilot");
+      menuGridPilot.addSeparator();
       JMenuItem miExit = new JMenuItem("Exit");
       miExit.addActionListener(new ActionListener()  {
         public void actionPerformed(ActionEvent e) {
@@ -245,8 +261,6 @@ public void addPanel(JobPanel newPanel) {
       });
       menuGridPilot.add(miExit);
     }
-    //menuAtCom.addSeparator();
-    //menuAtCom.addSeparator();
 
 
     //Help
@@ -327,7 +341,7 @@ public void addPanel(JobPanel newPanel) {
       Debug.toTrace="";
     } else {
       Debug.toTrace=debugList;
-      Debug.debug2("debug list set to : "+debugList);
+      Debug.debug("debug list set to : "+debugList, 2);
     }
 
     String debugLevel = configFile.getValue("gridpilot", "debug");
