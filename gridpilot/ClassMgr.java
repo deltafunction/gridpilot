@@ -3,6 +3,9 @@ package gridpilot;
 import java.util.HashMap;
 import java.util.Iterator;
 
+import gridpilot.Debug;
+import gridpilot.StatusBar;
+
 /**
  * This class allows access to all global objects in gridpilot.
  */
@@ -13,6 +16,7 @@ public class ClassMgr {
   private GlobalFrame globalFrame;
   private JobControl jobControl;
   private LogFile logFile;
+  private StatusBar statusBar;
   private GridPilot prodCom;
   private int debugLevel = 3;
   private HashMap dbMgts = new HashMap();
@@ -41,6 +45,10 @@ public class ClassMgr {
 
   public void setLogFile(LogFile _logFile){
     logFile = _logFile;
+  }
+
+  public void setStatusBar(StatusBar _statusBar){
+    statusBar = _statusBar;
   }
 
   public void setGlobalFrame(GlobalFrame _globalFrame) {
@@ -95,6 +103,15 @@ public class ClassMgr {
     }
 
     return logFile;
+  }
+
+  public StatusBar getStatusBar(){
+    if(statusBar == null){
+      Debug.debug("statusBar null", 3);
+      new Exception().printStackTrace();
+    }
+
+    return statusBar;
   }
 
   public GlobalFrame getGlobalFrame(){
