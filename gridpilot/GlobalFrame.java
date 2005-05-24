@@ -7,6 +7,8 @@ import java.net.URL;
 import javax.swing.*;
 import javax.swing.event.*;
 
+import gridpilot.StatusBar;
+
 import java.util.*;
 
 import gridpilot.ConfigFile;
@@ -30,6 +32,7 @@ public class GlobalFrame extends JFrame {
   private int selectedPanel;
   private ConfigFile configFile;
   private ImageIcon closeIcon = new ImageIcon("resources/close.png");
+  private StatusBar statusBar;
   
   private String dbNames;
   private String userName;
@@ -72,11 +75,16 @@ public class GlobalFrame extends JFrame {
     /**
      * Called by : this.GlobalFrame();
      */
-
+    
     container.setLayout(new BorderLayout());
+    
+    GridPilot.classMgr.setStatusBar(new StatusBar());
+    statusBar = GridPilot.getClassMgr().getStatusBar();
+    container.add(statusBar, BorderLayout.SOUTH);
+    container.add(tabbedPane,  BorderLayout.CENTER);
 
-    setTitle("GridPilot welcomes you");
-
+    statusBar.setLabel("GridPilot welcomes you", 20);
+    
     container.add(tabbedPane,  BorderLayout.CENTER);
 
     addPanel(new DBPanel("task", "TASKID"));
@@ -228,12 +236,11 @@ public class GlobalFrame extends JFrame {
     JMenuBar menuBar = new JMenuBar();
 
     // gridpilot
-
-    JMenu menuGridPilot = null;
     
-    menuGridPilot = new JMenu("GridPilot");
-    JMenuItem miNewTab = new JMenuItem("New tab");
-    miNewTab.addActionListener(new ActionListener(){
+    JMenu menuGridPilot = new JMenu("GridPilot");
+    JMenu menuNewTab = new JMenu("New tab");
+    JMenuItem miNewTaskTab = new JMenuItem("task");
+    miNewTaskTab.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e) {
         try{
           addPanel(new DBPanel("task", "TASKID"), "task");          
@@ -244,7 +251,34 @@ public class GlobalFrame extends JFrame {
         selectedPanel = tabbedPane.getSelectedIndex();
       }
     });
-    menuGridPilot.add(miNewTab);
+    JMenuItem miNewJobDefTab = new JMenuItem("jobDefinition");
+    miNewJobDefTab.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e) {
+        try{
+          addPanel(new DBPanel("jobDefinition", "JOBDEFINITIONID"), "jobDefinition");          
+        }catch(Exception ex){
+          Debug.debug("Could not add panel ", 1);
+          ex.printStackTrace();
+        }
+        selectedPanel = tabbedPane.getSelectedIndex();
+      }
+    });
+    JMenuItem miNewJobTransTab = new JMenuItem("jobTrans");
+    miNewJobTransTab.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e) {
+        try{
+          addPanel(new DBPanel("jobTrans", "JOBTRANSID"), "jobTrans");          
+        }catch(Exception ex){
+          Debug.debug("Could not add panel ", 1);
+          ex.printStackTrace();
+        }
+        selectedPanel = tabbedPane.getSelectedIndex();
+      }
+    });
+    menuNewTab.add(miNewTaskTab);
+    menuNewTab.add(miNewJobDefTab);
+    menuNewTab.add(miNewJobTransTab);
+    menuGridPilot.add(menuNewTab);
 
     if(!GridPilot.applet){
       menuGridPilot.addSeparator();
