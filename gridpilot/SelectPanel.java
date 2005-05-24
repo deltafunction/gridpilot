@@ -201,7 +201,7 @@ import java.awt.event.*;
 //// Display attributes
     
       // Label
-      spDisplays.add(new JLabel("Display : "));
+      spDisplays.add(new JLabel("Select : "));
   
       // Button More
       bAddDisplayRow.setText("More");
