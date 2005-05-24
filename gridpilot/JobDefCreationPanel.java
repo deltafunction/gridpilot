@@ -31,7 +31,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
    variable (just to make sure no conflicts happen).
    */
 
-  TaskMgr taskMgr;
+  private TaskMgr taskMgr;
 
   private String homePackage;
   private String version;
@@ -67,7 +67,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
   
   private static JComponent [] oldTcCstAttributes;
   private static String oldJobTransFK = "-1";
-  private static int TEXTFIELDWIDTH = 16;
+  private static int TEXTFIELDWIDTH = 32;
   private static int CFIELDWIDTH = 8;
   
   
@@ -115,11 +115,11 @@ public class JobDefCreationPanel extends CreateEditPanel {
       for(int i=0; i < JobDefinition.Fields.length; ++i){
         if(editing){
           if(JobDefinition.Fields[i]!=null && JobDefinition.Fields[i].equalsIgnoreCase("jobTransFK")){
-            jobTransFK = jobDef.getValue(JobDefinition.Fields[i]);
+            jobTransFK = jobDef.getValue(JobDefinition.Fields[i]).toString();
             Debug.debug("Set jobTransFK from db: "+jobTransFK, 1);
           }
           Debug.debug("filling " + cstAttributesNames[i],  3);
-          cstAttr[i] = jobDef.getValue(JobDefinition.Fields[i]);
+          cstAttr[i] = jobDef.getValue(JobDefinition.Fields[i]).toString();
           Debug.debug("to " + cstAttr[i],  3);
         }
       }
@@ -808,7 +808,13 @@ public class JobDefCreationPanel extends CreateEditPanel {
         signature = "";
       }
       else{
-        signature = taskTransRecord.getValue("formalPars");
+        try{
+          signature = taskTransRecord.getValue("formalPars").toString();
+        }
+        catch(Throwable e){
+          Debug.debug("getSignature: formalPars is null!", 2);
+          signature = "";
+        }
       }
       if (signature == null){
           Debug.debug("got signature: null", 3);
