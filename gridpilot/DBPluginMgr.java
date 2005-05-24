@@ -1048,24 +1048,32 @@ public class DBPluginMgr implements Database{
     String [] res = {"stdout", "stderr"};
     return res;
   }
-  
-  private HashMap dbDefFields = new HashMap();
+    
   public synchronized String [] getDBDefFields(String dbName, String tableName){
-   String [] ret;
-    if(dbDefFields.get(tableName) != null){
-      return (String []) dbDefFields.get(tableName);
-    }
-    else{
-      try{
-          ret = GridPilot.split((String)
-          GridPilot.getClassMgr().getConfigFile().getValue(dbName, "default "+tableName+" fields"));
+    HashMap dbDefFields = new HashMap();
+    String [] ret;
+    try{
+      ret = GridPilot.split((String)
+      GridPilot.getClassMgr().getConfigFile().getValue(dbName, "default "+tableName+" fields"));
       dbDefFields.put(tableName, ret);
       return ret;
-      }catch(Exception e){
-        // hard default
-        String [] ret1 = {"dataset.logicalDatasetName"};
-        return ret1;
-        }
+    }catch(Exception e){
+      // hard default
+      return new String []  {"task.*"};
+    }
+  }
+
+  public synchronized String [] getDBHiddenFields(String dbName, String tableName){
+    HashMap dbDefFields = new HashMap();
+    String [] ret;
+    try{
+      ret = GridPilot.split((String)
+      GridPilot.getClassMgr().getConfigFile().getValue(dbName, "hidden "+tableName+" fields"));
+      dbDefFields.put(tableName, ret);
+      return ret;
+    }catch(Exception e){
+      // hard default
+      return new String []  {"task.actualPars"};
     }
   }
 
@@ -1092,6 +1100,30 @@ public class DBPluginMgr implements Database{
     else
       return -1;
   }
+
+  public synchronized int getTaskId(final int jobDefID) {
+    
+      MyThread t = new MyThread(){
+        int res = -1;
+        public void run(){
+          try{
+            res = db.getTaskId(jobDefID);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               jobDefID, t);
+          }
+        }
+        public int getIntRes(){return res;}
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "getTaskId"))
+        return t.getIntRes();
+      else
+        return -1;
+    }
 
   public synchronized String [] getHomePackages(){
     MyThread t = new MyThread(){
