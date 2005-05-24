@@ -31,37 +31,30 @@ public class DBVectorTableModel extends AbstractTableModel {
  * Constructors
  */
 
-  /**
-   * Constructors
-   */
+  public DBVectorTableModel() {
+    setTable(null, null);
+  }
 
-    public DBVectorTableModel() {
-      setTable(null, null);
+  public DBVectorTableModel(Object [][] _values, String [] _columnNames){
+    setTable(_values, columnNames);
+  }
+
+  public DBVectorTableModel(int rowCount, int colCount){
+    Object [][] _values = new Object[rowCount][];
+    for(int i=0; i<_values.length; ++i){
+      _values[i] = new Object[colCount];
     }
+    setTable(_values, new String[colCount]);
+  }
 
-    public DBVectorTableModel(Object [][] _values, String [] _columnNames){
-      setTable(_values, columnNames);
-    }
-
-    public DBVectorTableModel(int rowCount, int colCount){
-      Object [][] _values = new Object[rowCount][];
-      for(int i=0; i<_values.length; ++i){
-        _values[i] = new Object[colCount];
-      }
-      setTable(_values, new String[colCount]);
-    }
-
-    public DBVectorTableModel(String [] _columnNames){
-      setTable(new Object[0][], _columnNames);
-    }
-
-  public DBVectorTableModel(DBVector _theRecords) {
-    theRecords = _theRecords;
+  public DBVectorTableModel(String [] _columnNames){
+    setTable(new Object[0][], _columnNames);
   }
 
   public DBVectorTableModel(DBVector _theRecords, String [] _columnNames) {
     theRecords = _theRecords;
     columnNames = _columnNames;
+    setTable(_theRecords);
   }
   
   public void setColumnNames(String [] _columnNames) {
@@ -147,8 +140,8 @@ public class DBVectorTableModel extends AbstractTableModel {
   }
 
   synchronized public void setTable(Object [][] _values, String [] _columnNames){
-    if(_values != null && _values.length != 0 && _values[0] !=null && _columnNames != null &&
-       _values[0].length !=  _columnNames.length){
+    if(_values!=null && _values.length!=0 && _values[0]!=null && _columnNames!=null &&
+       _values[0].length!= _columnNames.length){
         System.err.println("MyTableModel : column count for values and columnNames are different ");
         return;
     }
@@ -156,9 +149,14 @@ public class DBVectorTableModel extends AbstractTableModel {
     if(_values == null || _columnNames == null){
       values = new Object[0][];
       columnNames = new String[0];
+      theRecords = new DBVector();
     }else{
       values = _values;
       columnNames = _columnNames;
+      theRecords = new DBVector();
+      for(int i=0; i<values.length; ++i){
+        theRecords.add(new DBRecord(columnNames, values[i]));
+      }
       columnClass = new Class[columnNames.length];
       indexes = new int [getRowCount()];
       if(values.length !=0  && values[0] !=null){
@@ -178,6 +176,14 @@ public class DBVectorTableModel extends AbstractTableModel {
 
   synchronized public void setTable(String [] _columnNames){
     setTable(new Object[0][], _columnNames);
+  }
+
+  synchronized public void setTable(DBVector _theRecords){
+    Object [][] values = new Object[_theRecords.size()][_theRecords.get(0).fields.length];
+    for(int i=0; i<_theRecords.size(); ++i){
+      values[i] = _theRecords.get(i).values;
+    }
+    setTable(values, _theRecords.get(0).fields);
   }
 
   synchronized public void createRows(int r){
@@ -271,7 +277,8 @@ public class DBVectorTableModel extends AbstractTableModel {
         if(isGreaterThan(getValueAt(iMin, col), getValueAt(j, col)))
            iMin = j;
       if(iMin != i) {
-        //swapRows(i, iMin);
+        swapRows(i, iMin);
+        Debug.debug("Record "+theRecords.size()+" : "+i, 3);
         a = theRecords.get(i);
         b = theRecords.get(iMin);
         theRecords.setRecordAt(b,i);
