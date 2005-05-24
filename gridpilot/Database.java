@@ -272,6 +272,7 @@ public interface Database {
   
   // PRODDB ADDITIONS
   public int getTaskTransId(int taskID);
+  public int getTaskId(int jobDefID);
   //public JobTrans [] getJobTrans(int taskID);
   public DBResult getAllJobTransRecords(int taskID);
   public DBRecord getJobDefinition(int jobDefinitionID);
@@ -286,19 +287,19 @@ public interface Database {
   
   public class DBRecord {
     public String [] fields = null;
-    public String [] values = null;
+    public Object [] values = null;
     public String identifier = null;
     public DBRecord(){
       fields = new String [] {""};
     }
-    public DBRecord(String [] _fields, String [] _values){
+    public DBRecord(String [] _fields, Object [] _values){
       fields = _fields;
       values = _values;
     }
-    public String getAt(int i){
+    public Object getAt(int i){
       return values[i];  
     }
-    public String getValue(String col){
+    public Object getValue(String col){
       for (int i = 0 ; i < fields.length ; i++) {
         if (col.equals(fields[i])) return values[i] ;
       }
