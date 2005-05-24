@@ -20,6 +20,7 @@ import java.util.Vector;
 public class Table extends JTable {
   
   private ListSelectionListener lsl;
+  private String [] hide;
 
   public DBVectorTableModel tableModel;
 
@@ -93,6 +94,17 @@ public class Table extends JTable {
   }
 
   /**
+   * Constructs an empty table with the columns hide hidden.
+   */
+
+  public Table(String [] _hide) {
+    tableModel = new DBVectorTableModel();
+    setModel(tableModel);
+    hide = _hide;
+    initTable();
+  }
+
+  /**
    * Constructs an empty table.
    */
   /* public Table(MyTableModel _model) {
@@ -102,13 +114,22 @@ public class Table extends JTable {
    }*/
 
    /**
-    * Constructs an empty table.
+    * Constructs a table.
     */
     public Table(DBVectorTableModel _model) {
       tableModel = _model;
       setModel(_model);
       initTable();
     }
+
+    /**
+     * Constructs a with the columns hide hidden.
+     */
+     public Table(DBVectorTableModel _model, String [] _hide) {
+       tableModel = _model;
+       setModel(_model);
+       hide = _hide;
+     }
 
   /**
    * Constructs a table, with rowCount rows and colCount.
@@ -131,17 +152,6 @@ public class Table extends JTable {
 
     initTable();
   }
-
-  /**
-   * Constructs a table with 0 rows, where column titles are in columnNames.
-   */
-  public Table(String [] columnNames){
-    tableModel = new DBVectorTableModel(columnNames);
-    setModel(tableModel);
-    
-    initTable();
-  }
-
 
   /**
    * Sets values and column names to this table, using values and columnNames.
@@ -364,6 +374,7 @@ public class Table extends JTable {
 
   private void initTable(){
     getTableHeader().setReorderingAllowed(false);
+    Debug.debug("Hiding fields "+hide.length, 3);
     createMenu();
     initListeners();
   }
@@ -462,6 +473,8 @@ public class Table extends JTable {
 
     currentMenu = menuShow;
 
+    boolean show = true;
+    
     for(int i=0; i<tableModel.getColumnCount() ; ++i){
       for(int j=0; j<maxItem && i<tableModel.getColumnCount() ; ++i, ++j){
         JCheckBoxMenuItem item = new JCheckBoxMenuItem(tableModel.getColumnName(i));
@@ -470,7 +483,23 @@ public class Table extends JTable {
           public void actionPerformed(ActionEvent e){
             changeShow(e);
         }});
-        item.setSelected(true);
+        
+        show = true;
+        Debug.debug("Hide fields "+hide.length, 3);
+        for(int k=0; k<hide.length; ++k){
+          Debug.debug("Checking fields "+hide[k]+"<->"+tableModel.getColumnName(i), 3);
+          if(hide[k].equalsIgnoreCase(tableModel.getColumnName(i))){
+            show = false;
+            break;
+          }
+        }
+        
+        if(show){
+          item.setSelected(true);
+        }
+        else{
+          hideColumn(i);
+        }
         currentMenu.add(item);
 
       }
