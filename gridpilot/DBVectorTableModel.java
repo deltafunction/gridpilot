@@ -209,6 +209,7 @@ public class DBVectorTableModel extends AbstractTableModel {
 //    fireTableStructureChanged();*/
   }
 
+  /*FO: this is buggy, doesn't work when sorted on columns. Use removeRow instead*/
   synchronized public void deleteRows(int[] _indexes){
     if (_indexes.length == 0) {
       return;
@@ -228,6 +229,28 @@ public class DBVectorTableModel extends AbstractTableModel {
       indexes = new int [newr];
       resetIndexes();
       values = tmpValues;
+    }
+  }
+
+  /**
+   * @see Table#removeRow
+   */
+  synchronized public void removeRow(int r){
+    if(r >= getRowCount()){
+      return;
+    }
+    else{
+     Object[][] tmpValues = new Object[getRowCount()-1][];
+      int i;
+      for(i=0; i<r; ++i)  // recovering of old rows
+        tmpValues[i]=values[i];
+      for(i=r+1;i<getRowCount(); ++i)
+        tmpValues[i-1]=values[i];
+
+      //indexes = new int [getRowCount()-1];
+      values = tmpValues;
+      //setTable(values, this.columnNames);
+      resetIndexes();
     }
   }
 

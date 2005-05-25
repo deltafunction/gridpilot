@@ -280,6 +280,7 @@ public class Table extends JTable {
     tableModel.deleteRows(indexes);
     revalidate();
   }
+  
   synchronized public void deleteRows(Vector vecIndexes){
     int[] indexes = new int[vecIndexes.size()];
     for (int i=0; i<vecIndexes.size(); i++)
@@ -288,7 +289,17 @@ public class Table extends JTable {
     tableModel.deleteRows(indexes);
     revalidate();
   }
-/*
+
+  /**
+   * Removes a row in this table. <br>
+   * All possible current values are kept.
+   */
+  public synchronized void removeRow(int r){
+    tableModel.removeRow(r);
+    revalidate();
+  }
+  
+  /*
   public synchronized void deleteRow(int index) {
     clearSelection();
     tableModel.deleteRow(index);
