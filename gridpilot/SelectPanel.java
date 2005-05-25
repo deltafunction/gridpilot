@@ -274,7 +274,7 @@ import java.awt.event.*;
            cbDisplayAttribute.insertItemAt("*", 0);
          }
 	   if (fieldList == null) {
-	       System.out.println("fieldlist null");
+         Debug.debug("fieldlist null", 2);
 	       return;
 	   
 	   }
