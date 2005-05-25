@@ -119,7 +119,13 @@ public class JobDefCreationPanel extends CreateEditPanel {
             Debug.debug("Set jobTransFK from db: "+jobTransFK, 1);
           }
           Debug.debug("filling " + cstAttributesNames[i],  3);
-          cstAttr[i] = jobDef.getValue(JobDefinition.Fields[i]).toString();
+          if(jobDef.getValue(JobDefinition.Fields[i])!=null){
+            cstAttr[i] = jobDef.getValue(JobDefinition.Fields[i]).toString();
+          }
+          else{
+            cstAttr[i] = "";
+          }
+          
           Debug.debug("to " + cstAttr[i],  3);
         }
       }
