@@ -125,7 +125,7 @@ public class GridPilot extends JApplet{
   private void initGUI() throws Exception{
 
     if(applet){
-      //GridPilot.getClassMgr().setGlobalFrame(frame = new GlobalFrame());
+      GridPilot.getClassMgr().setGlobalFrame(frame = new GlobalFrame());
       GridPilot.getClassMgr().getGlobalFrame().initGUI(this.getContentPane());
       setJMenuBar(
           GridPilot.getClassMgr().getGlobalFrame().makeMenu());
