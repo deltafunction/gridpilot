@@ -31,7 +31,6 @@ public class GlobalFrame extends JFrame {
   private Vector taskTransMgrs = new Vector() ;
   private int selectedPanel;
   private ConfigFile configFile;
-  private ImageIcon closeIcon = new ImageIcon("resources/close.png");
   private StatusBar statusBar;
   
   private String dbNames;
@@ -144,27 +143,47 @@ public class GlobalFrame extends JFrame {
   }
 
   public void addPanel(JobPanel newPanel) {
+    
+    String resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "resources");
+    if(resourcesPath == null){
+      GridPilot.getClassMgr().getLogFile().addMessage(GridPilot.getClassMgr().getConfigFile().getMissingMessage("gridpilot", "resources"));
+      resourcesPath = ".";
+    }
+    else{
+      if (!resourcesPath.endsWith("/"))
+        resourcesPath = resourcesPath + "/";
+    }
+
+    URL imgURL=null;
+    ImageIcon closeIcon = null;
+    try{
+      imgURL = GridPilot.class.getResource(resourcesPath + "close.png");
+      closeIcon = new ImageIcon(imgURL);
+    }catch(Exception e){
+      Debug.debug("Could not find image "+ resourcesPath + "close.png", 3);
+      closeIcon = new ImageIcon();
+    }
   
-  // Trim title name before adding new tab
-  String title = newPanel.getTitle();
-  String smallTitle = null;
-  if (title.length() > 20) {
-    smallTitle = title.substring(0,20) + "...";
-  } else {
-    smallTitle = title;
+    // Trim title name before adding new tab
+    String title = newPanel.getTitle();
+    String smallTitle = null;
+    if (title.length() > 20) {
+      smallTitle = title.substring(0,20) + "...";
+    } else {
+      smallTitle = title;
+    }
+    Debug.debug("Adding tab "+allPanels.size(), 3);
+    allPanels.addElement(newPanel);
+    tabbedPane.addTab(smallTitle, new IconProxy(closeIcon), (JPanel) newPanel);
+    Debug.debug("Added tab "+allPanels.size(), 3);
+    // focus on new panel
+    ((JobPanel) tabbedPane.getComponentAt(tabbedPane.getSelectedIndex())).panelHidden();
+    int newSelIndex = tabbedPane.getTabCount()-1;
+    ((JobPanel) tabbedPane.getComponentAt(newSelIndex)).panelShown();
+    Debug.debug("Setting selected index "+newSelIndex, 3);
+    tabbedPane.setSelectedIndex(newSelIndex);
+    setTitle("GridPilot - "+title);
   }
-  Debug.debug("Adding tab "+allPanels.size(), 3);
-  allPanels.addElement(newPanel);
-  tabbedPane.addTab(smallTitle, new IconProxy(closeIcon), (JPanel) newPanel);
-  Debug.debug("Added tab "+allPanels.size(), 3);
-  // focus on new panel
-  ((JobPanel) tabbedPane.getComponentAt(tabbedPane.getSelectedIndex())).panelHidden();
-  int newSelIndex = tabbedPane.getTabCount()-1;
-  ((JobPanel) tabbedPane.getComponentAt(newSelIndex)).panelShown();
-  Debug.debug("Setting selected index "+newSelIndex, 3);
-  tabbedPane.setSelectedIndex(newSelIndex);
-  setTitle("GridPilot - "+title);
-}
 
  /*
   Remove panel.
@@ -328,9 +347,9 @@ public class GlobalFrame extends JFrame {
     menuDB.add(miDbClearCaches);
     menuDB.add(miDbReconnect);
 
-    if(!GridPilot.applet){
+    //if(!GridPilot.applet){
       menuBar.add(menuGridPilot);
-    }
+    //}
     menuBar.add(menuDB);
     menuBar.add(menuHelp);
     
