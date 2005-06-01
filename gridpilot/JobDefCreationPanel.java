@@ -19,10 +19,7 @@ import java.util.*;
 /**
  * This panel creates records in the DB table. It's shown inside the CreateEditDialog.
  *
- * One instance of this class is created by TaskPanel
- *
  */
-
 
 public class JobDefCreationPanel extends CreateEditPanel {
 
@@ -99,7 +96,8 @@ public class JobDefCreationPanel extends CreateEditPanel {
     // Find jobdDefinitionID from table
     if(table.getSelectedRow()>-1 && editing){
       for(int i=0; i<table.getColumnNames().length; ++i){
-        Object fieldVal = table.getValueAt(table.getSelectedRow(),i);
+        //Object fieldVal = table.getValueAt(table.getSelectedRow(),i);
+        Object fieldVal = table.getUnsortedValueAt(table.getSelectedRow(),i);
         Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
         if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase("jobDefinitionID")){
           jobDefinitionID = fieldVal.toString();
@@ -255,16 +253,12 @@ public class JobDefCreationPanel extends CreateEditPanel {
         vec.add(transformations.getValue(0,"homePackage"));
       }
       else{
-        Debug.debug("WARNING: homePackage null for transformation 0", 2);
+        //Debug.debug("WARNING: homePackage null for transformation 0", 2);
       }
     }
     
     if(vec.size()==0 ||
         GridPilot.getClassMgr().getConfigFile().getValue("Databases", "Show all transformations").equalsIgnoreCase("true")){
-      if(vec.size()==0){
-        Debug.debug("WARNING: No homePackages found for transformations belonging to task "+
-            taskMgr.getTaskName()+". Displaying all homePackages...", 2);
-      }
       homePackages = taskMgr.getDBPluginMgr().getHomePackages();
       transformations = taskMgr.getDBPluginMgr().getAllJobTransRecords(-1);
     }
@@ -301,12 +295,17 @@ public class JobDefCreationPanel extends CreateEditPanel {
             vec.add(transformations.getValue(i,"homePackage"));
           }    
           else{
-            Debug.debug("WARNING: homePackage null for transformation "+i, 2);
+            //Debug.debug("WARNING: homePackage null for transformation "+i, 2);
           }
         }
       }
     }
           
+    if(vec.size()==0){
+      Debug.debug("WARNING: No homePackages found for transformations belonging to task "+
+          taskMgr.getTaskName()+". Displaying all homePackages...", 2);
+    }
+
     if(cbHomePackageSelection == null){
       cbHomePackageSelection = new JComboBox(); 
       cbHomePackageSelection.addActionListener(new java.awt.event.ActionListener(){
