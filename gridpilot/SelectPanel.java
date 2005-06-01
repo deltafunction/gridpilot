@@ -344,7 +344,8 @@ import java.awt.event.*;
   /**
    * Sets the constraint box to key = value.
    */
-  public void setConstraint(String tableName, String key, String value){
+  public void setConstraint(String tableName, String key, String value,
+      int constraintRelationIndex){
     int comps = sPanel.spConstraintList.getComponentCount();
     if(comps>1){
       for(int i=comps-1; i>0; --i){
@@ -363,7 +364,7 @@ import java.awt.event.*;
       }
     }
     parts = spcp.cbConstraintRelation.getComponents();
-    if ((parts != null) && (parts.length > 0)) spcp.cbConstraintRelation.setSelectedIndex(0);
+    if ((parts != null) && (parts.length > 0)) spcp.cbConstraintRelation.setSelectedIndex(constraintRelationIndex);
     spcp.tfConstraintValue.setText(value);
   }
 
