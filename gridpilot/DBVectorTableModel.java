@@ -31,9 +31,9 @@ public class DBVectorTableModel extends AbstractTableModel {
  * Constructors
  */
 
-  public DBVectorTableModel() {
+  /*public DBVectorTableModel() {
     setTable(null, null);
-  }
+  }*/
 
   public DBVectorTableModel(Object [][] _values, String [] _columnNames){
     setTable(_values, columnNames);
@@ -54,7 +54,7 @@ public class DBVectorTableModel extends AbstractTableModel {
   public DBVectorTableModel(DBVector _theRecords, String [] _columnNames) {
     theRecords = _theRecords;
     columnNames = _columnNames;
-    setTable(_theRecords);
+    setTable(_theRecords, _columnNames);
   }
   
   public void setColumnNames(String [] _columnNames) {
@@ -178,12 +178,20 @@ public class DBVectorTableModel extends AbstractTableModel {
     setTable(new Object[0][], _columnNames);
   }
 
-  synchronized public void setTable(DBVector _theRecords){
+  /*synchronized public void setTable(DBVector _theRecords){
     Object [][] values = new Object[_theRecords.size()][_theRecords.get(0).fields.length];
     for(int i=0; i<_theRecords.size(); ++i){
       values[i] = _theRecords.get(i).values;
     }
     setTable(values, _theRecords.get(0).fields);
+  }*/
+
+  synchronized public void setTable(DBVector _theRecords, String [] _columnNames){
+    Object [][] values = new Object[_theRecords.size()][_columnNames.length];
+    for(int i=0; i<_theRecords.size(); ++i){
+      values[i] = _theRecords.get(i).values;
+    }
+    setTable(values, _columnNames);
   }
 
   synchronized public void createRows(int r){

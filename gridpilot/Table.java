@@ -86,19 +86,19 @@ public class Table extends JTable {
   /**
   * Constructs an empty table.
   */
-  public Table() {
+/*  public Table() {
     tableModel = new DBVectorTableModel();
     setModel(tableModel);
     
     initTable();
-  }
+  }*/
 
   /**
    * Constructs an empty table with the columns hide hidden.
    */
 
-  public Table(String [] _hide) {
-    tableModel = new DBVectorTableModel();
+  public Table(String [] _hide, String [] fieldNames) {
+    tableModel = new DBVectorTableModel(fieldNames);
     setModel(tableModel);
     hide = _hide;
     initTable();
@@ -190,7 +190,7 @@ public class Table extends JTable {
     }
   }
 
-  private void removeLastSubItem(JMenu m){
+  public void removeLastSubItem(JMenu m){
     JMenuItem i;
     do{
       i = m.getItem(m.getItemCount()-1);
