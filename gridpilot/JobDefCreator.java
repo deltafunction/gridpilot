@@ -15,7 +15,6 @@ import gridpilot.ArithmeticExpression;
 public class JobDefCreator {
 
   private TaskMgr taskMgr;
-  private int taskIdentifier;
   private int from;
   private int to;
   private boolean showResults;
@@ -48,7 +47,6 @@ public class JobDefCreator {
                           ){
 
     taskMgr = _taskMgr;
-    taskIdentifier = taskMgr.getTaskIdentifier();
     from = _from;
     to = _to;
     showResults = _showResults;
@@ -155,7 +153,6 @@ public class JobDefCreator {
 
       
       if(showThis){
-        //int choice = 1;
         int choice = showResult(currentJobDef, resCstAttr,
             currentJobDef < lastJobDef);
 
