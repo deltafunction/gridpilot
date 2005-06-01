@@ -533,6 +533,55 @@ public class DBPluginMgr implements Database{
       return false;
   }
 
+  public synchronized boolean createTask (final Task task) {
+    
+      MyThread t = new MyThread(){
+        boolean res = false;
+        public void run(){
+          try{
+            res = db.createTask(task);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               task.toString(), t);
+          }
+        }
+        public boolean getBoolRes(){return res;}
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "createTask"))
+        return t.getBoolRes();
+      else
+        return false;
+    }
+
+  public synchronized boolean setJobDefinitionField (final int [] identifiers,
+      final String field, final String value) {
+    
+      MyThread t = new MyThread(){
+        boolean res = false;
+        public void run(){
+          try{
+            res = db.setJobDefinitionField(identifiers, field, value);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               field, t);
+          }
+        }
+        public boolean getBoolRes(){return res;}
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "setJobDefinitionField"))
+        return t.getBoolRes();
+      else
+        return false;
+    }
+
   public synchronized boolean updateJobDefinition (final JobDefinition jobDef) {
   
     MyThread t = new MyThread(){
@@ -557,6 +606,30 @@ public class DBPluginMgr implements Database{
       return false;
   }
 
+  public synchronized boolean updateTask (final Task task) {
+    
+      MyThread t = new MyThread(){
+        boolean res = false;
+        public void run(){
+          try{
+            res = db.updateTask(task);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               task.toString(), t);
+          }
+        }
+        public boolean getBoolRes(){return res;}
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "updateTask"))
+        return t.getBoolRes();
+      else
+        return false;
+    }
+
   public synchronized boolean deleteJobDefinition (final JobDefinition jobDef) {
     
       MyThread t = new MyThread(){
@@ -576,6 +649,30 @@ public class DBPluginMgr implements Database{
       t.start();
     
       if(waitForThread(t, dbName, dbTimeOut, "deleteJobDefinition"))
+        return t.getBoolRes();
+      else
+        return false;
+    }
+
+  public synchronized boolean deleteTask (final int taskID) {
+    
+      MyThread t = new MyThread(){
+        boolean res = false;
+        public void run(){
+          try{
+            res = db.deleteTask(taskID);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               taskID, t);
+          }
+        }
+        public boolean getBoolRes(){return res;}
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "deleteTask"))
         return t.getBoolRes();
       else
         return false;
@@ -818,12 +915,35 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getAllPartJobTransRecords"))
+    if(waitForThread(t, dbName, dbTimeOut, "getAllJobTransRecords"))
       return t.getDB2Res();
     else
       return null;
   }
 
+  public synchronized DBResult getAllTaskTransRecords(){
+    
+      MyThread t = new MyThread(){
+        DBResult res = null;
+        public void run(){
+          try{
+            res = db.getAllTaskTransRecords();
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName, t);
+          }
+        }
+        public DBResult getDB2Res(){return res;}
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "getAllTaskTransRecords"))
+        return t.getDB2Res();
+      else
+        return null;
+    }
+  
   public synchronized DBRecord getTaskTransRecord (final int taskID) {
     
       MyThread t = new MyThread(){
@@ -1059,7 +1179,7 @@ public class DBPluginMgr implements Database{
       return ret;
     }catch(Exception e){
       // hard default
-      return new String []  {"task.*"};
+      return new String []  {"*"};
     }
   }
 
@@ -1073,7 +1193,7 @@ public class DBPluginMgr implements Database{
       return ret;
     }catch(Exception e){
       // hard default
-      return new String []  {"task.actualPars"};
+      return new String []  {"actualPars"};
     }
   }
 

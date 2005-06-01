@@ -158,7 +158,7 @@ public interface Database {
     
     //public static String [] fields;
     
-    private static String _identifier = "jobDefinitionID";
+    public static String _identifier = "jobDefinitionID";
     
     public static String [] Fields =  new String [] {"jobDefinitionID", "jobTransFK", "taskFK", "currentState", "maxAttempt",
         "jobName", "cpuCount", "cpuUnit", "ramCount", "ramUnit", "diskCount",
@@ -277,9 +277,15 @@ public interface Database {
   public DBResult getAllJobTransRecords(int taskID);
   public DBRecord getJobDefinition(int jobDefinitionID);
   public DBResult getAllJobDefinitions(int taskID, String [] fieldNames);
+  public DBResult getAllTaskTransRecords();
   public boolean createJobDefinition(JobDefinition jobDef);
   public boolean updateJobDefinition(JobDefinition jobDef);
+  public boolean setJobDefinitionField(int [] identifiers,
+      String field, String value);
   public boolean deleteJobDefinition(JobDefinition jobDef);
+  public boolean createTask(Task task);
+  public boolean updateTask(Task task);
+  public boolean deleteTask(int task);
   public DBRecord getTaskTransRecord(int taskID);
   public DBRecord getTask(int taskID);
   public String [] getHomePackages();
@@ -288,7 +294,7 @@ public interface Database {
   public class DBRecord {
     public String [] fields = null;
     public Object [] values = null;
-    public String identifier = null;
+    public static String identifier = null;
     public DBRecord(){
       fields = new String [] {""};
     }
