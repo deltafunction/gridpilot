@@ -285,8 +285,12 @@ public interface Database {
   public boolean deleteJobDefinition(JobDefinition jobDef);
   public boolean createTask(Task task);
   public boolean updateTask(Task task);
-  public boolean deleteTask(int task);
+  public boolean createJobTransRecord(JobTrans jobTrans);
+  public boolean updateJobTransRecord(JobTrans jobTrans);
+  public boolean deleteTask(int taskID);
+  public boolean deleteJobTransRecord(int jobTransID);
   public DBRecord getTaskTransRecord(int taskID);
+  public DBRecord getJobTransRecord(int taskID);
   public DBRecord getTask(int taskID);
   public String [] getHomePackages();
   public String [] getVersions(String homePackage);

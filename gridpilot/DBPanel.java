@@ -350,8 +350,33 @@ public class DBPanel extends JPanel implements JobPanel{
       updateUI();
     }
     else if(tableName.equalsIgnoreCase("jobTrans")){
+      bCreateRecords.addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          createJobTransRecords();
+        }
+      });
+
+      bEditRecord.addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          editJobTransRecord();
+        }
+      });
+
+      bDeleteRecord.addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          deleteJobTransRecords();
+        }
+      });
+      
+      addButtonResultsPanel(bCreateRecords);
+      addButtonResultsPanel(bEditRecord);
+      addButtonResultsPanel(bDeleteRecord);
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
+      bViewJobDefinitions.setEnabled(false);
+      bViewJobTransRecords.setEnabled(false);
+      bEditRecord.setEnabled(false);
+      bDeleteRecord.setEnabled(false);
       updateUI();
     }    
   }
@@ -657,6 +682,19 @@ public class DBPanel extends JPanel implements JobPanel{
           makeJobDefMenu();
         }
         else if(tableName.equalsIgnoreCase("jobTrans")){
+          tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+          tableResults.addListSelectionListener(new ListSelectionListener(){
+            public void valueChanged(ListSelectionEvent e) {
+              if (e.getValueIsAdjusting()) return;
+              ListSelectionModel lsm = (ListSelectionModel)e.getSource();
+              Debug.debug("lsm indices: "+
+                  lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
+              bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
+              bEditRecord.setEnabled(!lsm.isSelectionEmpty());
+            }
+          });
+
+          makeJobTransMenu();
         }
         
         GridPilot.getClassMgr().getStatusBar().setLabel("Records found: "+tableResults.getRowCount(), 20);
@@ -711,10 +749,27 @@ public class DBPanel extends JPanel implements JobPanel{
     tableResults.addMenuItem(miEdit);
   }
 
-  /**
-   * Add menu items to the table with search results. This function is called from within DBPanel
-   *  after the results table is filled
-   */
+  public void makeJobTransMenu(){
+    Debug.debug("Making jobTrans menu", 3);
+    JMenuItem miDelete = new JMenuItem("Delete");
+    miEdit = new JMenuItem("Edit");
+    miDelete.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        deleteJobTransRecords();
+      }
+    });
+    miEdit.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        editJobTransRecord();
+      }
+    });
+    miDelete.setEnabled(true);
+    miEdit.setEnabled(true);
+    tableResults.addMenuSeparator();
+    tableResults.addMenuItem(miDelete);
+    tableResults.addMenuItem(miEdit);
+  }
+
   public void makeJobDefMenu(){
     JMenuItem miDelete = new JMenuItem("Delete");
     miEdit = new JMenuItem("Edit");
@@ -779,7 +834,9 @@ public class DBPanel extends JPanel implements JobPanel{
         new JobDefCreationPanel(taskMgr, tableResults, false), false);
     pDialog.setTitle(tableName);
     pDialog.show();
-    searchRequest();
+    if(tableResults!=null && tableResults.getRowCount()>0){
+      searchRequest();
+    }
   }
 
   private void editJobDef() {
@@ -851,7 +908,9 @@ public class DBPanel extends JPanel implements JobPanel{
        new TaskCreationPanel(dbPluginMgr, tableResults, false), false);
    pDialog.setTitle(tableName);
    pDialog.show();
-   searchRequest();
+   if(tableResults!=null && tableResults.getRowCount()>0){
+     searchRequest();
+   }
  }
 
  private void editTask() {
@@ -894,6 +953,74 @@ public class DBPanel extends JPanel implements JobPanel{
           pb.setMaximum(ids.length);
           for (int i = ids.length-1; i>=0; i--) {
             boolean success = dbPluginMgr.deleteTask(ids[i]);
+            pb.setValue(pb.getValue()+1);
+            tableResults.removeRow(rows[i]);
+            tableResults.tableModel.fireTableDataChanged();
+          }
+        }
+        stopWorking();
+        searchRequest();
+      }
+    };
+    workThread.start();
+  }
+
+  /**
+   * Open dialog with jobTrans creation panel
+   */ 
+  private void createJobTransRecords() {
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[0],
+        ((String []) GridPilot.steps.get(GridPilot.dbs[0]))[0]);
+   CreateEditDialog pDialog = new CreateEditDialog(
+      GridPilot.getClassMgr().getGlobalFrame(),
+       new JobTransCreationPanel(dbPluginMgr, tableResults, false), false);
+   pDialog.setTitle(tableName);
+   pDialog.show();
+   if(tableResults!=null && tableResults.getRowCount()>0){
+     searchRequest();
+   }
+ }
+
+ private void editJobTransRecord() {
+   DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[0],
+       ((String []) GridPilot.steps.get(GridPilot.dbs[0]))[0]);
+   CreateEditDialog pDialog = new CreateEditDialog(
+       GridPilot.getClassMgr().getGlobalFrame(),
+       new JobTransCreationPanel(dbPluginMgr, tableResults, true), true);
+   pDialog.setTitle(tableName);
+   pDialog.show();
+   searchRequest();
+ }
+
+  private void deleteJobTransRecords() {
+    String msg = "Are you sure you want to delete jobTrans records ";
+    int [] ids = getSelectedIdentifiers();
+    for(int i=0; i<getSelectedIdentifiers().length; ++i){
+      msg += ", " + ids[i];
+    }
+    msg += "?";
+    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
+        msg, "Delete?",
+        JOptionPane.YES_NO_OPTION);
+    if(choice == JOptionPane.NO_OPTION){
+      return;
+    }
+    workThread = new Thread() {
+      public void run(){
+        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(getSelectedDBName(),
+            getSelectedStepName());
+        if(!getWorking()){
+          Debug.debug("please wait ...", 2);
+          return;
+        }
+        int [] ids = getSelectedIdentifiers();
+        int [] rows = tableResults.getSelectedRows();
+        Debug.debug("Deleting "+ids.length+" rows", 2);
+        if(ids.length != 0){
+          JProgressBar pb = new JProgressBar();
+          pb.setMaximum(ids.length);
+          for (int i = ids.length-1; i>=0; i--) {
+            boolean success = dbPluginMgr.deleteJobTransRecord(ids[i]);
             pb.setValue(pb.getValue()+1);
             tableResults.removeRow(rows[i]);
             tableResults.tableModel.fireTableDataChanged();
