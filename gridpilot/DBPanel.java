@@ -10,7 +10,6 @@ import gridpilot.ConfigFile;
 import javax.swing.*;
 import javax.swing.event.*;
 
-
 import java.awt.*;
 import java.awt.event.*;
 import java.util.Vector;
@@ -58,6 +57,7 @@ public class DBPanel extends JPanel implements JobPanel{
   private String [] defaultFields = null;
   private String [] hiddenFields = null;
   private String [] shownFields = null;
+  private String [] selectFields = null;
   
   private JMenu jmSetFieldValue = null;
   
@@ -157,37 +157,72 @@ public class DBPanel extends JPanel implements JobPanel{
     hiddenFields =  GridPilot.getClassMgr().getDBPluginMgr(dbs[0],
         GridPilot.getSteps(dbs[0])[0]).getDBHiddenFields(dbs[0], tableName);
     Debug.debug("Hidden fields "+hiddenFields.length, 3);
-    tableResults = new Table(hiddenFields, fieldNames);
-
-    Vector shownSet = new Vector();  
-    boolean ok = true;
-    for(int i=0; i<defaultFields.length; ++i){
-      ok = true;
-      for(int j=0; j<hiddenFields.length; ++j){
-        Debug.debug("Checking fields "+defaultFields[i]+"<->"+hiddenFields[j], 3);
-        if(defaultFields[i].equalsIgnoreCase(hiddenFields[j])){
-          ok = false;
-          break;
-        }
-      }
-      if(ok){
-        Debug.debug("Showing "+defaultFields[i], 3);
-        shownSet.add(defaultFields[i]);
-      }
-    }
+    tableResults = new Table(hiddenFields, fieldNames,
+        GridPilot.getColorMapping());
     
-    shownFields = new String[shownSet.size()];
-    for(int i=0; i<shownSet.size(); ++i){
-      shownFields[i] = shownSet.get(i).toString();
-    }
+    setFieldArrays();
     
-    for(int k=0; k<shownFields.length; ++k){
-      shownFields[k] = tableName+"."+shownFields[k];
-    }
-   
     initGUI();
   }
 
+
+   private void setFieldArrays(){
+     Vector shownSet = new Vector();  
+     boolean ok = true;
+     for(int i=0; i<defaultFields.length; ++i){
+       ok = false;
+       for(int j=0; j<fieldNames.length; ++j){
+         Debug.debug("Checking fields for showing"+defaultFields[i]+"<->"+fieldNames[j], 3);
+         if(defaultFields[i].equalsIgnoreCase(fieldNames[j]) ||
+             defaultFields[i].equalsIgnoreCase("*")){
+           ok = true;
+           break;
+         }
+       }
+       if(ok){
+         Debug.debug("Showing "+defaultFields[i], 3);
+         shownSet.add(defaultFields[i]);
+       }
+     }
+     
+     shownFields = new String[shownSet.size()];
+     for(int i=0; i<shownSet.size(); ++i){
+       shownFields[i] = shownSet.get(i).toString();
+     }
+     
+     for(int k=0; k<shownFields.length; ++k){
+       shownFields[k] = tableName+"."+shownFields[k];
+     }
+     
+     
+     Vector selectSet = new Vector();  
+     ok = true;
+     for(int i=0; i<defaultFields.length; ++i){
+       ok = true;
+       for(int j=0; j<hiddenFields.length; ++j){
+         Debug.debug("Checking fields for selecting "+defaultFields[i]+"<->"+hiddenFields[j], 3);
+         if(defaultFields[i].equalsIgnoreCase(hiddenFields[j]) &&
+             !defaultFields[i].equalsIgnoreCase("*")){
+           ok = false;
+           break;
+         }
+       }
+       if(ok){
+         Debug.debug("Selecting "+defaultFields[i], 3);
+         selectSet.add(defaultFields[i]);
+       }
+     }
+     
+     selectFields = new String[selectSet.size()];
+     for(int i=0; i<selectSet.size(); ++i){
+       selectFields[i] = selectSet.get(i).toString();
+     }
+     
+     for(int k=0; k<selectFields.length; ++k){
+       selectFields[k] = tableName+"."+selectFields[k];
+     }
+   }
+   
    /**
     * Create a new DBPanel from a parent panel.
     */
@@ -485,12 +520,12 @@ public class DBPanel extends JPanel implements JobPanel{
    * Resets fields to default fields and clear values
    */
   public void clear(){
-    String [][] values = new String[shownFields.length][2];
+    String [][] values = new String[selectFields.length][2];
 
-    for(int i = 0; i<shownFields.length; ++i){
-      String [] split = shownFields[i].split("\\.");
+    for(int i = 0; i<selectFields.length; ++i){
+      String [] split = selectFields[i].split("\\.");
       if(split.length != 2){
-          Debug.debug(shownFields[i] + " " + " : wrong format in config file ; " +
+          Debug.debug(selectFields[i] + " " + " : wrong format in config file ; " +
                     "should be : \ndefault task fields = table.field1 table.field2", 3);
       }
       else{
@@ -511,8 +546,8 @@ public class DBPanel extends JPanel implements JobPanel{
    * Called when button "Search" is clicked
    */
   public void searchRequest(){
-    
-   // TODO: why does it not work as thread when
+        
+    // TODO: why does it not work as thread when
    // not in it's own pane?
     //workThread = new Thread() {
       //public void run(){
@@ -520,9 +555,10 @@ public class DBPanel extends JPanel implements JobPanel{
           //Debug.debug("please wait ...", 2);
           //return;
         //}
+        //setFieldArrays();
         String [] steps = null;
         String selectRequest;
-        selectRequest = selectPanel.getRequest();
+        selectRequest = selectPanel.getRequest(shownFields);
         if(selectRequest == null)
             return;
         
@@ -563,7 +599,6 @@ public class DBPanel extends JPanel implements JobPanel{
            anything
           */
           if (notEmptyStepId == -1) {
-            //bSearch.setEnabled(true);
             continue;
           }
         }
@@ -602,24 +637,9 @@ public class DBPanel extends JPanel implements JobPanel{
         bEditRecord.setEnabled(false);
         bDeleteRecord.setEnabled(false);
         
-        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[0],
-            ((String []) GridPilot.steps.get(GridPilot.dbs[0]))[0]);
-        //Debug.debug("dbPluginMgr: "+dbPluginMgr, 3);
-        //hiddenFields = dbPluginMgr.getDBHiddenFields(dbs[0], tableName);
-        //Debug.debug("Hidden fields "+hiddenFields.length, 3);
-        //tableResults = new Table(hiddenFields);
         tableResults.setTable(res.values, res.fields);
         spTableResults.getViewport().add(tableResults);
         
-        String debug = "";
-        for(int i = 0; i < res.values.length; ++i){
-          for(int j = 0; j < res.values[i].length; ++j){
-            debug += res.values[i][j] + " ";
-          }
-          //Debug.debug("-->"+debug, 3);
-          debug = "";
-        }
-
         if(selectRequest.indexOf("*")>-1){
           tableResults.hideLastColumns(2); // hide db name, step name column
         }
