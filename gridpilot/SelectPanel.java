@@ -111,6 +111,55 @@ import java.awt.event.*;
   }
 
   /**
+   * Reads the selection panel and returns a representation of the selection in
+   * basic SQL. Uses shownFields for SELECT, the selection for WHERE.
+   */
+  public String getRequest(String [] shownFields){
+    String ret = "SELECT ";
+    boolean ok = false;
+    for(int i = 0; i <
+    sPanel.spDisplayList.getComponentCount();
+    ++i){
+      SPanel.DisplayPanel cb = ((SPanel.DisplayPanel) sPanel.spDisplayList.getComponent(i));
+      if(i>0 && ok){
+        ret += ", ";
+      }
+      ok = false;
+      for(int j=0; j<shownFields.length; ++j){
+        Debug.debug("Checking fields in getRequest "+tableName+"."+
+            cb.cbDisplayAttribute.getSelectedItem().toString()+"<->"+shownFields[j], 3);
+        if(shownFields[j].equals(tableName+".*") ||
+            (tableName+"."+cb.cbDisplayAttribute.getSelectedItem().toString()
+                ).equalsIgnoreCase(shownFields[j])){
+          ret += cb.cbDisplayAttribute.getSelectedItem();
+          ok = true;
+          break;
+        }
+      }
+    }    
+    ret += " FROM " + tableName;
+    if(sPanel.spConstraintList.getComponentCount() > 0 &&
+        !((SPanel.ConstraintPanel) sPanel.spConstraintList.getComponent(0)).tfConstraintValue.getText().equals("")){
+      ret += " WHERE ";
+    }
+    for(int i = 0; i <
+    sPanel.spConstraintList.getComponentCount();
+    ++i){
+      SPanel.ConstraintPanel cb = ((SPanel.ConstraintPanel) sPanel.spConstraintList.getComponent(i));
+      if(!cb.tfConstraintValue.getText().equals("")){
+        if(i>0){
+          ret += " AND ";
+        }
+        ret += cb.cbConstraintAttribute.getSelectedItem() + " ";
+        ret += cb.cbConstraintRelation.getSelectedItem() + " ";
+        ret += cb.tfConstraintValue.getText();
+      }
+    }
+    Debug.debug("Search request: " + ret, 3);
+    return ret;
+  }
+
+  /**
    * Returns the index of the string s in the array array, or -1
    */
   private int getIndexOf(String [] array, String s){
