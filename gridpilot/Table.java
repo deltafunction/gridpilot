@@ -21,6 +21,7 @@ public class Table extends JTable {
   
   private ListSelectionListener lsl;
   private String [] hide;
+  private String [] colorMapping;
 
   public DBVectorTableModel tableModel;
 
@@ -45,9 +46,25 @@ public class Table extends JTable {
         boolean hasFocus, int row, int column){
       synchronized (table){
 
-        if(value instanceof JLabel){
-          JLabel l = (JLabel) value;
+        if(colorMapping!=null  && value!=null && (
+            table.getColumnName(column).equalsIgnoreCase("status") ||
+            table.getColumnName(column).equalsIgnoreCase("currentstate"))){
+          for(int i=0; i<colorMapping.length/2; ++i){
+            if(value.toString().equalsIgnoreCase(colorMapping[2*i])){
+              JLabel l = new JLabel(value.toString());
+              l.setForeground(new Color(Integer.parseInt(colorMapping[2*i+1], 16 )));
+              if(isSelected){
+                l.setBackground(table.getSelectionBackground());
+                l.setOpaque(true);
+              }
+              return l;
+            }
+          }
+        }
 
+        if(value instanceof JLabel){          
+          JLabel l = (JLabel) value;
+          
           if(isSelected){
             l.setBackground(table.getSelectionBackground());
             l.setOpaque(true);
@@ -101,6 +118,19 @@ public class Table extends JTable {
     tableModel = new DBVectorTableModel(fieldNames);
     setModel(tableModel);
     hide = _hide;
+    initTable();
+  }
+
+  /**
+   * Constructs an empty table with the columns hide hidden and
+   * colored according to colorMapping.
+   */
+
+  public Table(String [] _hide, String [] fieldNames, String [] _colorMapping) {
+    tableModel = new DBVectorTableModel(fieldNames);
+    setModel(tableModel);
+    hide = _hide;
+    colorMapping = _colorMapping;
     initTable();
   }
 
@@ -328,7 +358,7 @@ public class Table extends JTable {
    * Shows the (hidden) column at index col
    * Called when user chooses to show this column in popup menu
    */
-  private synchronized void showColumn(int col){
+  public synchronized void showColumn(int col){
     getColumnModel().getColumn(col).sizeWidthToFit();
     int width = getColumnModel().getTotalColumnWidth()/getColumnCount();
     getColumnModel().getColumn(col).setMaxWidth(getColumnModel().getTotalColumnWidth());
@@ -341,7 +371,7 @@ public class Table extends JTable {
    * Hides the (shown) column at index col.
    * Called when user chooses to hide this column in popup menu
    */
-  private synchronized void hideColumn(int col){
+  public synchronized void hideColumn(int col){
     getColumnModel().getColumn(col).setMinWidth(0);
     getColumnModel().getColumn(col).setMaxWidth(0);
     updateUI();

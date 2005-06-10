@@ -23,6 +23,7 @@ public class GridPilot extends JApplet{
   // TODO: reread on reloading values
   public static String [] dbs;
   public static HashMap steps = new HashMap();
+  public static String [] colorMapping;
   public static boolean applet = true;
 
   /**
@@ -79,6 +80,9 @@ public class GridPilot extends JApplet{
          GridPilot.getClassMgr().setDBPluginMgr(dbs[i], step, new DBPluginMgr(dbs[i], step, user, passwd));
        }
      }
+     
+     colorMapping = getClassMgr().getConfigFile().getValues("gridpilot", "color mapping");
+
   }
   /**
    * "Class distributor"
@@ -118,6 +122,13 @@ public class GridPilot extends JApplet{
    }
    return ((String []) steps.get(dbName));
  }
+
+   /**
+   * Return color mapping for job definition table, specified in the configuration file
+   */
+  public static String [] getColorMapping(){
+    return colorMapping;
+  }
 
   /**
    * GUI
