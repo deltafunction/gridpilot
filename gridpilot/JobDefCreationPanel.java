@@ -30,16 +30,16 @@ public class JobDefCreationPanel extends CreateEditPanel {
 
   private TaskMgr taskMgr;
 
-  private String homePackage;
+  private String jobTransName;
   private String version;
   private JPanel pCounter = new JPanel();
   private JPanel pConstants = new JPanel();
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
   private JPanel pButtons = new JPanel();
-  private JComboBox cbHomePackageSelection = null;
+  private JComboBox cbJobTransNameSelection = null;
   private JComboBox cbVersionSelection = null;
-  private String [] homePackages;
+  private String [] jobTransNames;
   private String [] versions;
   private String jobTransFK = "-1";
   private String jobDefinitionID = "-1";
@@ -86,7 +86,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
     cstAttributesNames = JobDefinition.Fields;
     cstAttr = new String[cstAttributesNames.length];
     
-    transformations = taskMgr.getDBPluginMgr().getAllJobTransRecords(taskMgr.getTaskIdentifier());
+    transformations = taskMgr.getDBPluginMgr().getJobTransRecords(taskMgr.getTaskIdentifier());
     
     Debug.debug("Editing job record for task "+taskMgr.getTaskName()+". Rows: "+
         //table.getRowCount()+
@@ -161,7 +161,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
     removeAll();
 
     initAttributePanel();
-    initHomePackagePanel();
+    initJobTransNamePanel();
     initVersionPanel();
     
     GridBagConstraints ct = new GridBagConstraints();
@@ -177,7 +177,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
       initArithmeticPanel();
       ct.gridx = 0;
       ct.gridy = 0;         
-      add(cbHomePackageSelection,ct);
+      add(cbJobTransNameSelection,ct);
       
       ct.gridx = 1;
       ct.gridy = 0;         
@@ -211,7 +211,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
     else{
       ct.gridx = 0;
       ct.gridy = 0;
-      add(cbHomePackageSelection,ct);
+      add(cbJobTransNameSelection,ct);
       ct.gridx = 1;
       ct.gridy = 0;         
       add(cbVersionSelection,ct);
@@ -234,112 +234,112 @@ public class JobDefCreationPanel extends CreateEditPanel {
     }
 
   /**
-   * Creates a combobox homePackagePanel which with user can select transformation.
+   * Creates a combobox jobTransNamePanel which with user can select transformation.
    **/
-  private void initHomePackagePanel(){
-    Debug.debug("initHomePackagePanel with jobTransFK "+jobTransFK, 3);    
-    String jtHomePack = "-1";
+  private void initJobTransNamePanel(){
+    Debug.debug("initJobTransNamePanel with jobTransFK "+jobTransFK, 3);    
+    String jtName = "-1";
     boolean ok = true;
     Vector vec = new Vector();
     
     if(transformations.values.length > 0){
       if(transformations.getValue(0,"jobTransID").equals(jobTransFK) &&
-          transformations.getValue(0,"homePackage")!=null){
-        jtHomePack = transformations.getValue(0,"homePackage");
+          transformations.getValue(0,"jobTransName")!=null){
+        jtName = transformations.getValue(0,"jobTransName");
       }
-      if(transformations.getValue(0,"homePackage")!=null){
-        Debug.debug("Adding homePackage "+
-            transformations.getValue(0,"homePackage"), 3);
-        vec.add(transformations.getValue(0,"homePackage"));
+      if(transformations.getValue(0,"jobTransName")!=null){
+        Debug.debug("Adding jobTransName "+
+            transformations.getValue(0,"jobTransName"), 3);
+        vec.add(transformations.getValue(0,"jobTransName"));
       }
       else{
-        //Debug.debug("WARNING: homePackage null for transformation 0", 2);
+        //Debug.debug("WARNING: jobTransName null for transformation 0", 2);
       }
     }
     
     if(vec.size()==0 ||
         GridPilot.getClassMgr().getConfigFile().getValue("Databases", "Show all transformations").equalsIgnoreCase("true")){
-      homePackages = taskMgr.getDBPluginMgr().getHomePackages();
-      transformations = taskMgr.getDBPluginMgr().getAllJobTransRecords(-1);
+      jobTransNames = taskMgr.getDBPluginMgr().getJobTransNames();
+      transformations = taskMgr.getDBPluginMgr().getJobTransRecords(-1);
     }
     else{
-      homePackages = new String [vec.size()];
+      jobTransNames = new String [vec.size()];
       for(int i = 0; i < vec.size(); ++i){
-        homePackages[i] = vec.get(i).toString();
+        jobTransNames[i] = vec.get(i).toString();
       }    
     }
 
-    // Find homePackage of jobTransFK
+    // Find jobTransName of jobTransFK
     if(transformations.values.length > 1){
       for(int i=1; i<transformations.values.length; ++i){
         ok = true;
-        Debug.debug("Checking homePackage with jobTransID "+
+        Debug.debug("Checking jobTransName with jobTransID "+
             transformations.getValue(i,"jobTransID"), 3);
         if(transformations.getValue(i,"jobTransID").equals(jobTransFK) &&
-            transformations.getValue(i,"homePackage")!=null){
-          jtHomePack = transformations.getValue(i,"homePackage");
+            transformations.getValue(i,"jobTransName")!=null){
+          jtName = transformations.getValue(i,"jobTransName");
         }
         // Avoid duplicates
         for(int j=0; j<vec.size(); ++j){
-          if(transformations.getValue(i,"homePackage") != null &&
-              transformations.getValue(i,"homePackage").equals(
+          if(transformations.getValue(i,"jobTransName") != null &&
+              transformations.getValue(i,"jobTransName").equals(
               vec.get(j))){
             ok = false;
             break;
           }
         }
         if(ok){
-          if(transformations.getValue(i,"homePackage") != null){
-            Debug.debug("Adding homePackage "+
-                transformations.getValue(i,"homePackage"), 3);
-            vec.add(transformations.getValue(i,"homePackage"));
+          if(transformations.getValue(i,"jobTransName") != null){
+            Debug.debug("Adding jobTransName "+
+                transformations.getValue(i,"jobTransName"), 3);
+            vec.add(transformations.getValue(i,"jobTransName"));
           }    
           else{
-            //Debug.debug("WARNING: homePackage null for transformation "+i, 2);
+            //Debug.debug("WARNING: jobTransName null for transformation "+i, 2);
           }
         }
       }
     }
           
     if(vec.size()==0){
-      Debug.debug("WARNING: No homePackages found for transformations belonging to task "+
-          taskMgr.getTaskName()+". Displaying all homePackages...", 2);
+      Debug.debug("WARNING: No jobTransNames found for transformations belonging to task "+
+          taskMgr.getTaskName()+". Displaying all jobTransNames...", 2);
     }
 
-    if(cbHomePackageSelection == null){
-      cbHomePackageSelection = new JComboBox(); 
-      cbHomePackageSelection.addActionListener(new java.awt.event.ActionListener(){
+    if(cbJobTransNameSelection == null){
+      cbJobTransNameSelection = new JComboBox(); 
+      cbJobTransNameSelection.addActionListener(new java.awt.event.ActionListener(){
         public void actionPerformed(java.awt.event.ActionEvent e){
-          cbHomePackageSelection_actionPerformed();
+          cbJobTransNameSelection_actionPerformed();
       }});
     }
     else{
-      cbHomePackageSelection.removeAllItems();
+      cbJobTransNameSelection.removeAllItems();
     }
     
-    if(homePackages.length == 0){  
-      homePackage = null;
-      cbHomePackageSelection.setEnabled(false);
+    if(jobTransNames.length == 0){  
+      jobTransName = null;
+      cbJobTransNameSelection.setEnabled(false);
     }
-    if(homePackages.length == 1){  
-      homePackage = homePackages[0];
-      cbHomePackageSelection.setEnabled(false);
+    if(jobTransNames.length == 1){  
+      jobTransName = jobTransNames[0];
+      cbJobTransNameSelection.setEnabled(false);
     }
-    if(homePackages.length > 0){
-      for(int i=0; i<homePackages.length; ++i){
-        cbHomePackageSelection.addItem(homePackages[i]);
+    if(jobTransNames.length > 0){
+      for(int i=0; i<jobTransNames.length; ++i){
+        cbJobTransNameSelection.addItem(jobTransNames[i]);
       }
-      cbHomePackageSelection.setEnabled(true);
+      cbJobTransNameSelection.setEnabled(true);
     }
     
     // Set the selection
-    if(homePackages.length > 1 && cbHomePackageSelection.getClass().isInstance(new JComboBox())){
-      for(int i=0; i<homePackages.length; ++i){
-        Debug.debug("Trying to set homePackage, "+homePackages[i]+" : "+
-            jtHomePack, 3);
-        if(homePackages[i].equals(jtHomePack)){
-          homePackage = jtHomePack;
-          ((JComboBox) cbHomePackageSelection).setSelectedIndex(i);
+    if(jobTransNames.length > 1 && cbJobTransNameSelection.getClass().isInstance(new JComboBox())){
+      for(int i=0; i<jobTransNames.length; ++i){
+        Debug.debug("Trying to set jobTransName, "+jobTransNames[i]+" : "+
+            jtName, 3);
+        if(jobTransNames[i].equals(jtName)){
+          jobTransName = jtName;
+          ((JComboBox) cbJobTransNameSelection).setSelectedIndex(i);
         }
       }
     }
@@ -357,8 +357,8 @@ public class JobDefCreationPanel extends CreateEditPanel {
     boolean ok = true;
     if(transformations.values.length > 0){
       imp = transformations.getValue(0,"version");
-      if(transformations.getValue(0,"homePackage")!=null &&
-          transformations.getValue(0,"homePackage").equals(homePackage)){
+      if(transformations.getValue(0,"jobTransName")!=null &&
+          transformations.getValue(0,"jobTransName").equals(jobTransName)){
         vec.add(imp);
       }
     }
@@ -379,8 +379,8 @@ public class JobDefCreationPanel extends CreateEditPanel {
             break;
           }
         }
-        if(ok && transformations.getValue(i,"homePackage")!=null &&
-            transformations.getValue(i,"homePackage").equals(homePackage)){
+        if(ok && transformations.getValue(i,"jobTransName")!=null &&
+            transformations.getValue(i,"jobTransName").equals(jobTransName)){
           vec.add(imp);
         }
       }
@@ -404,9 +404,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
     }
     else{
       Debug.debug("WARNING: No versions found for transformations belonging to task"+
-          taskMgr.getTaskName()+" with homePackage "+homePackage+
-          ". Displaying all versions of homePackage...", 2);
-      versions = taskMgr.getDBPluginMgr().getVersions(homePackage);
+          taskMgr.getTaskName()+" with jobTransName "+jobTransName+
+          ". Displaying all versions of jobTransName...", 2);
+      versions = taskMgr.getDBPluginMgr().getVersions(jobTransName);
     }
     
     Debug.debug("Number of versions: "+versions.length, 3);
@@ -868,25 +868,25 @@ public class JobDefCreationPanel extends CreateEditPanel {
    * Action Events
    */
 
-  private void cbHomePackageSelection_actionPerformed(){
+  private void cbJobTransNameSelection_actionPerformed(){
     if(!loaded) return;
     
-    if(cbHomePackageSelection == null ||
-        cbHomePackageSelection.getSelectedItem() == null){
-      if(cbHomePackageSelection.getItemCount()>0){
-        homePackage = cbHomePackageSelection.getItemAt(0).toString();
+    if(cbJobTransNameSelection == null ||
+        cbJobTransNameSelection.getSelectedItem() == null){
+      if(cbJobTransNameSelection.getItemCount()>0){
+        jobTransName = cbJobTransNameSelection.getItemAt(0).toString();
       }
       else{
-        Debug.debug("No homePackage selected...", 3);
+        Debug.debug("No jobTransName selected...", 3);
         return;
       }
     }
     
-    homePackage = cbHomePackageSelection.getSelectedItem().toString();
+    jobTransName = cbJobTransNameSelection.getSelectedItem().toString();
     /*
      Using DBPluginMgr object which was passed when function initGUI(..) was called
      */
-    Debug.debug("Initializing version panel for homePackage "+homePackage, 3);
+    Debug.debug("Initializing version panel for jobTransName "+jobTransName, 3);
     initVersionPanel();
     setEnabledAttributes(false);
     pAttributes.updateUI();
@@ -922,14 +922,14 @@ public class JobDefCreationPanel extends CreateEditPanel {
      Using DBPluginMgr object which was passed when function initGUI(..) was called
      */
     // Set jobTransFK
-    Debug.debug("homePackage, version: "+homePackage+","+version, 3);
+    Debug.debug("jobTransName, version: "+jobTransName+","+version, 3);
     for(int i=0; i<transformations.values.length; ++i){
       Debug.debug("Checking jobTransFK "+transformations.getValue(i,"jobTransID"), 3);
-      Debug.debug("  "+transformations.getValue(i,"homePackage"), 3);
+      Debug.debug("  "+transformations.getValue(i,"jobTransName"), 3);
       Debug.debug("  "+transformations.getValue(i,"version"), 3);
-      if(transformations.getValue(i,"homePackage")!=null &&
+      if(transformations.getValue(i,"jobTransName")!=null &&
          transformations.getValue(i,"version")!=null &&
-         transformations.getValue(i,"homePackage").equals(homePackage) &&
+         transformations.getValue(i,"jobTransName").equals(jobTransName) &&
          transformations.getValue(i,"version").equals(version)){
         Debug.debug("Setting jobTransFK to "+transformations.getValue(i,"jobTransID"), 3);
         jobTransFK = transformations.getValue(i,"jobTransID");
@@ -1058,7 +1058,8 @@ public class JobDefCreationPanel extends CreateEditPanel {
       if(values[i].length() == 0)
         values[i] = " ";
     }
-    if(!taskMgr.getDBPluginMgr().saveDefVals(taskMgr.getTaskIdentifier(), values)){
+    String user = taskMgr.getDBPluginMgr().getUserLabel();
+    if(!taskMgr.getDBPluginMgr().saveDefVals(taskMgr.getTaskIdentifier(), values, user)){
       Debug.debug("ERROR: Could not save values: "+values, 1);
       return false;
     }
@@ -1066,8 +1067,10 @@ public class JobDefCreationPanel extends CreateEditPanel {
   }
 
   private void load(){
+    
+    String user = taskMgr.getDBPluginMgr().getUserLabel();
 
-    String [] defValues = taskMgr.getDBPluginMgr().getDefVals(taskMgr.getTaskIdentifier());
+    String [] defValues = taskMgr.getDBPluginMgr().getDefVals(taskMgr.getTaskIdentifier(), user);
 
     if(defValues ==null || defValues.length == 0)
       return;

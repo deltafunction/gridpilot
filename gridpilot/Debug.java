@@ -11,18 +11,16 @@ public class Debug{
   public static String toTrace = "all";
 
   private static Class [] excludeClasses = {/*DBPluginMgr.class*/};
-//  static int debugLevel = 3; // 3 : only temporary debugs, 1 : all debugs, with fuctionNames
   private static boolean withClassName = true;
   private static boolean withPackage = false;
   private static boolean withMethodName = true;
   private static boolean withLineNumber = true;
 
   public synchronized static void debug(String msg, int level){
-     //level : 1 : function name, 2 : 3: temporal debugs
     if(isExclude())
        return;
 
-    if(level >= GridPilot.getClassMgr().getDebugLevel()){
+    if(level <= GridPilot.getClassMgr().getDebugLevel()){
       String className = "";
       Throwable t = new Throwable();
       if(withClassName)

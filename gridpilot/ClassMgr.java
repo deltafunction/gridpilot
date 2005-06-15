@@ -80,8 +80,8 @@ public class ClassMgr {
   }
 
   public void clearDBCaches(){
-    for (Iterator i = dbMgts.values().iterator(); i.hasNext();) {
-        for (Iterator j = ((HashMap) i.next()).values().iterator(); j.hasNext();) {
+    for(Iterator i=dbMgts.values().iterator(); i.hasNext();){
+        for (Iterator j=((HashMap) i.next()).values().iterator(); j.hasNext();){
         ((DBPluginMgr) j.next()).clearCaches();
       }
     }

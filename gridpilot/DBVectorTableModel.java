@@ -189,7 +189,7 @@ public class DBVectorTableModel extends AbstractTableModel {
   synchronized public void setTable(DBVector _theRecords, String [] _columnNames){
     Object [][] values = new Object[_theRecords.size()][_columnNames.length];
     for(int i=0; i<_theRecords.size(); ++i){
-      values[i] = _theRecords.get(i).values;
+      values[i] = _theRecords.getDBRecord(i).values;
     }
     setTable(values, _columnNames);
   }
@@ -310,8 +310,8 @@ public class DBVectorTableModel extends AbstractTableModel {
       if(iMin != i) {
         swapRows(i, iMin);
         Debug.debug("Record "+theRecords.size()+" : "+i, 3);
-        a = theRecords.get(i);
-        b = theRecords.get(iMin);
+        a = theRecords.getDBRecord(i);
+        b = theRecords.getDBRecord(iMin);
         theRecords.setRecordAt(b,i);
         theRecords.setRecordAt(a,iMin);
       }

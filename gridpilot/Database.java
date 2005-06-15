@@ -1,6 +1,6 @@
 package gridpilot;
 
-import java.util.HashMap;
+//import java.util.HashMap;
 
 public interface Database {
   
@@ -234,66 +234,89 @@ public interface Database {
     }
   }
   
-
+  // TODO: shouldn't we make this more flexible?
+  //public int createPart (int datasetID, String lfn, String partNr,
+   //   String evMin, String evMax,
+   //   String transID, String [] trpars,
+    //  String [] [] ofmap, String odest, String edest);
+  //public boolean deletePart(int partID);
+  //public boolean dereservePart(int partID);
+  //public boolean reservePart(int partID, String user /*user name recorded*/);
+  //public boolean saveDefVals(int datasetId, String[] defvals);
+  //public String [] getFieldNames(String table);
+  //public DBResult select(String selectRequest, String identifier);
+  //public String getDatasetTableName();
+  //public String getPartitionTableName();
+  //public DBResult getAllPartJobInfo(int datasetID);
+  //public boolean updatePartition(int partID, HashMap attrVals);
+  //public String getTransId(int datasetIdentifier, String version);
+  //public String [] getTransformationVersions(int datasetIdentifier);
+  //public String getPartTransValue (int partID, String key);
+  //public String getPartValue (int partID, String key);
+  //public String getPartOutLogicalName (int partID, String outpar);
+  //public String getPartOutLocalName (int partID, String outpar);
+  //public String getPackInitText (String pack, String cluster);
+  //public String [] getOutputMapping(int transformationIdentifier, String version);
+  //public String [] getJobParameters(int transformationIdentifier, String version);
+  //public String [] getDefVals(int datasetIdentifier);
+  //public String getDatasetName(int datasetID);
+  // TODO: shouldn't we make this more flexible?
+  //public boolean createRunRecord(int partID, String user, String cluster, String jobID,
+  //    String jobName, String outTmp, String errTmp);
   
-
   public String connect();
   public void disconnect();
   public void clearCaches();
-  // TODO: shouldn't we make this more flexible?
-  public int createPart (int datasetID, String lfn, String partNr,
-      String evMin, String evMax,
-      String transID, String [] trpars,
-      String [] [] ofmap, String odest, String edest);
-  public boolean deletePart(int partID);
-  public boolean dereservePart(int partID);
-  public boolean reservePart(int partID, String user /*user name recorded*/);
-  public boolean saveDefVals(int datasetId, String[] defvals);
-  public String [] getFieldNames(String table);
-  public DBResult select(String selectRequest, String identifier);
-  public String getDatasetTableName();
-  public String getPartitionTableName();
-  public DBResult getAllPartJobInfo(int datasetID);
-  public boolean updatePartition(int partID, HashMap attrVals);
-  public String getTransId(int datasetIdentifier, String version);
-  public String [] getTransformationVersions(int datasetIdentifier);
-  public String getPartTransValue (int partID, String key);
-  public String getPartValue (int partID, String key);
-  public String getPartOutLogicalName (int partID, String outpar);
-  public String getPartOutLocalName (int partID, String outpar);
-  public String getPackInitText (String pack, String cluster);
-  public String [] getOutputMapping(int datasetIdentifier, String version);
-  public String [] getJobParameters(int datasetIdentifier, String version);
-  public String [] getDefVals(int datasetIdentifier);
-  public String getDatasetName(int datasetID);
-  // TODO: shouldn't we make this more flexible?
-  public boolean createRunRecord(int partID, String user, String cluster, String jobID,
-      String jobName, String outTmp, String errTmp);
-  
   // PRODDB ADDITIONS
-  public int getTaskTransId(int taskID);
-  public int getTaskId(int jobDefID);
-  //public JobTrans [] getJobTrans(int taskID);
-  public DBResult getAllJobTransRecords(int taskID);
-  public DBRecord getJobDefinition(int jobDefinitionID);
-  public DBResult getAllJobDefinitions(int taskID, String [] fieldNames);
+  // TODO: should go...
   public DBResult getAllTaskTransRecords();
-  public boolean createJobDefinition(JobDefinition jobDef);
-  public boolean updateJobDefinition(JobDefinition jobDef);
-  public boolean setJobDefinitionField(int [] identifiers,
-      String field, String value);
-  public boolean deleteJobDefinition(JobDefinition jobDef);
+  public int getTaskTransId(int taskID);
+  public DBRecord getTaskTransRecord(int taskID);
+  public DBResult select(String selectRequest, String identifier);
+  //
+
   public boolean createTask(Task task);
   public boolean updateTask(Task task);
+  public boolean deleteTask(int taskID);
+  public DBRecord getTask(int taskID);
+
+  public int getTaskId(int jobDefID);
+  public DBResult getJobDefinitions(int taskID, String [] fieldNames);
+  public DBRecord getJobDefinition(int jobDefinitionID);
+  public boolean createJobDefinition(JobDefinition jobDef);
+  public boolean updateJobDefinition(JobDefinition jobDef);
+  public boolean setJobDefsField(int [] identifiers,
+      String field, String value);
+  public boolean deleteJobDefinition(int jobDefID);
+
+  //public JobTrans [] getJobTrans(int taskID);
+  public DBResult getJobTransRecords(int taskID);
+  public DBRecord getJobTransRecord(int taskID);
   public boolean createJobTransRecord(JobTrans jobTrans);
   public boolean updateJobTransRecord(JobTrans jobTrans);
-  public boolean deleteTask(int taskID);
   public boolean deleteJobTransRecord(int jobTransID);
-  public DBRecord getTaskTransRecord(int taskID);
-  public DBRecord getJobTransRecord(int taskID);
-  public DBRecord getTask(int taskID);
-  public String [] getHomePackages();
-  public String [] getVersions(String homePackage);
+  // In the case of proddb there is no such thing. Only the distribution kit homePackage/implementation.
+  // Still, we need a name to label a transformation the user can select...
+  public String [] getJobTransNames();
+  public String [] getVersions(String jobTransName);
+  public String getUserLabel();
+  // Not yet used
+  public boolean reserveJobDefinition(int jobDefinitionID, String user);
+  public boolean dereserveJobDefinition(int jobDefinitionID);
+  public String [] getFieldNames(String table);
+  public boolean saveDefVals(int taskId, String[] defvals, String user);
+  public String [] getDefVals(int taskId, String user);
+  public String getJobTransValue(int jobDefinitionID, String key);
+  public String getJobDefValue(int jobDefinitionID, String key);
+  public String [] getOutputMapping(int transformationID);
+  public String [] getInputMapping(int transformationID);
+  public String getJobDefInRemoteName (int jobDefinitionID, String inpar);
+  public String getJobDefInLocalName (int jobDefinitionID, String inpar);
+  public String getJobDefOutRemoteName (int jobDefinitionID, String outpar);
+  public String getJobDefOutLocalName (int jobDefinitionID, String outpar);
+  public String getPackInitText (String pack, String cluster);
+  public String [] getJobParameters(int transformationID);
+
   
   public class DBRecord {
     public String [] fields = null;
@@ -366,10 +389,11 @@ public interface Database {
       return "no such field" ;
     }
   }
-  public static final int ABORTED = 6;
   public static final int DEFINED = 1;
-  public static final int FAILED = 5;
   public static final int SUBMITTED = 2;
-  public static final int UNDECIDED = 4;
   public static final int VALIDATED = 3;
+  public static final int UNDECIDED = 4;
+  public static final int FAILED = 5;
+  public static final int ABORTED = 6;
+  public static final int UNEXPECTED = 7;
 }

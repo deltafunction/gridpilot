@@ -839,7 +839,7 @@ public class DBPanel extends JPanel implements JobPanel{
   }
   
   private void setFieldValues(String field, String value) {
-    getDbPluginMgr().setJobDefinitionField(getSelectedIdentifiers(), field, value);
+    getDbPluginMgr().setJobDefsField(getSelectedIdentifiers(), field, value);
     searchRequest();
   }
     
