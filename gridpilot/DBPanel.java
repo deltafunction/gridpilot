@@ -2,7 +2,6 @@ package gridpilot;
 
 import gridpilot.Table;
 import gridpilot.Database.DBResult;
-import gridpilot.Database.JobDefinition;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.ConfigFile;
@@ -843,11 +842,17 @@ public class DBPanel extends JPanel implements JobPanel{
     searchRequest();
   }
     
-    /**
-    * Open dialog with jobDefintion creation panel
-    */ 
-   private void createJobDefs() {
-    TaskMgr taskMgr = new TaskMgr(getDbPluginMgr(), getParentId());
+   /**
+   * Open dialog with jobDefintion creation panel
+   */ 
+  private void createJobDefs(){
+    TaskMgr taskMgr = null;
+    try{
+      taskMgr = new TaskMgr(getDbPluginMgr(), getParentId());
+    }
+    catch(Throwable e){
+      Debug.debug("ERROR: could not create TaskMgr. "+e.getMessage(), 1);
+    }
     //hiddenFields = getDbPluginMgr().getDBHiddenFields(dbs[0], tableName);
     CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
@@ -859,7 +864,8 @@ public class DBPanel extends JPanel implements JobPanel{
     }
   }
 
-  private void editJobDef() {
+  private void editJobDef(){
+    TaskMgr taskMgr = null;
     int parentId = getParentId();
     dbPluginMgr = getDbPluginMgr();
     if(parentId<0){
@@ -867,7 +873,12 @@ public class DBPanel extends JPanel implements JobPanel{
           getSelectedStepName());
       parentId = dbPluginMgr.getTaskId(getSelectedIdentifier());
     }
-    TaskMgr taskMgr = new TaskMgr(dbPluginMgr, parentId);
+    try{
+      taskMgr = new TaskMgr(dbPluginMgr, parentId);
+    }
+    catch(Throwable e){
+      Debug.debug("ERROR: could not create TaskMgr. "+e.getMessage(), 1);
+    }
     CreateEditDialog pDialog = new CreateEditDialog(
         GridPilot.getClassMgr().getGlobalFrame(),
         new JobDefCreationPanel(taskMgr, tableResults, true), true);
@@ -904,8 +915,7 @@ public class DBPanel extends JPanel implements JobPanel{
           JProgressBar pb = new JProgressBar();
           pb.setMaximum(ids.length);
           for (int i = ids.length-1; i>=0; i--) {
-            boolean success = dbPluginMgr.deleteJobDefinition(new JobDefinition(
-                (String []) dbPluginMgr.getJobDefinition(ids[i]).values));
+            boolean success = dbPluginMgr.deleteJobDefinition(ids[i]);
             pb.setValue(pb.getValue()+1);
             tableResults.removeRow(rows[i]);
             tableResults.tableModel.fireTableDataChanged();

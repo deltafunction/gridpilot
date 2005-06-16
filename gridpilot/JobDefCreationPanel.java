@@ -687,7 +687,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
         if(!reuseTextFields || tcCstAttributes[i] == null)
           tcCstAttributes[i] = createTextComponent(TEXTFIELDWIDTH);
         
-        setJText(tcCstAttributes[i], Integer.toString(taskMgr.taskID));
+        setJText(tcCstAttributes[i], Integer.toString(taskMgr.getTaskIdentifier()));
         tcCstAttributes[i].setEnabled(false);
       }
       else{
@@ -807,7 +807,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
       jobTransFK = "";
       // When jobTransFK is not set, the signature is obtained from the taskTransFK.
       // This should not happen...
-      DBRecord taskTransRecord = taskMgr.getDBPluginMgr().getTaskTransRecord(taskMgr.taskID);
+      DBRecord taskTransRecord = taskMgr.getDBPluginMgr().getTaskTransRecord(taskMgr.getTaskIdentifier());
       if (taskTransRecord == null ) {
         Debug.debug("getSignature: taskTransRecord is null!", 2);
         signature = "";

@@ -300,23 +300,31 @@ public interface Database {
   public String [] getJobTransNames();
   public String [] getVersions(String jobTransName);
   public String getUserLabel();
+  public String getJobRunInfo(int jobDefID, String key);
   // Not yet used
   public boolean reserveJobDefinition(int jobDefinitionID, String user);
   public boolean dereserveJobDefinition(int jobDefinitionID);
-  public String [] getFieldNames(String table);
+
   public boolean saveDefVals(int taskId, String[] defvals, String user);
   public String [] getDefVals(int taskId, String user);
-  public String getJobTransValue(int jobDefinitionID, String key);
-  public String getJobDefValue(int jobDefinitionID, String key);
-  public String [] getOutputMapping(int transformationID);
-  public String [] getInputMapping(int transformationID);
-  public String getJobDefInRemoteName (int jobDefinitionID, String inpar);
-  public String getJobDefInLocalName (int jobDefinitionID, String inpar);
-  public String getJobDefOutRemoteName (int jobDefinitionID, String outpar);
-  public String getJobDefOutLocalName (int jobDefinitionID, String outpar);
-  public String getPackInitText (String pack, String cluster);
-  public String [] getJobParameters(int transformationID);
 
+  public String [] getJobParameters(int transformationID);
+  public String getJobTransValue(int jobDefinitionID, String key);
+
+  public String [] getOutputs(int transformationID);
+  public String [] getInputs(int transformationID);
+  /**
+   * Get the value of the parameter par (from the signature of the transformation),
+   * as set in the jobDefinition record.
+   */
+  public String getJobDefInRemoteName (int jobDefinitionID, String par);
+  public String getJobDefInLocalName (int jobDefinitionID, String par);
+  public String getJobDefOutRemoteName (int jobDefinitionID, String par);
+  public String getJobDefOutLocalName (int jobDefinitionID, String par);
+
+  public String [] getFieldNames(String table);
+  public String getJobDefValue(int jobDefinitionID, String key);
+  public String getPackInitText (String pack, String cluster);
   
   public class DBRecord {
     public String [] fields = null;
