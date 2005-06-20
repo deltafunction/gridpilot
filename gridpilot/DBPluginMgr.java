@@ -1087,6 +1087,7 @@ public class DBPluginMgr implements Database{
     else
       return false;
   }
+  
   public static String getStatusName(int status){
     switch(status){
       case DEFINED : return "Defined";
@@ -1095,12 +1096,13 @@ public class DBPluginMgr implements Database{
       case FAILED : return "Failed";
       case UNDECIDED : return "Undecided";
       case ABORTED : return "Aborted";
+      case UNEXPECTED : return "UnexpectedErrors";
       default : return "status not found";
     }
   }
 
   public static int getStatusId(String status){
-    for(int i=1; i<= 6 ; ++i){
+    for(int i=1; i<=7 ; ++i){
       if(status.compareToIgnoreCase(getStatusName(i)) == 0)
         return i;
     }

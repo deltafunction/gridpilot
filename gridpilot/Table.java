@@ -172,6 +172,17 @@ public class Table extends JTable {
   }
 
   /**
+   * Constructs a table with 0 rows, where column titles are in <code>columnNames</code>.
+   */
+  public Table(String [] columnNames){
+    tableModel = new DBVectorTableModel(columnNames);
+
+    setModel(tableModel);
+    initTable();
+  }
+
+
+  /**
    * Constructs a table using values in values, and where column titles are in columnNames.
    * If length of values and columnNames are incompatibles,
    * an empty table is created.

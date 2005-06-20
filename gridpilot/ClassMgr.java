@@ -14,7 +14,6 @@ public class ClassMgr {
 
   private ConfigFile configFile;
   private GlobalFrame globalFrame;
-  private JobControl jobControl;
   private LogFile logFile;
   private StatusBar statusBar;
   private GridPilot prodCom;
@@ -87,15 +86,6 @@ public class ClassMgr {
     }
   }
   
-  public JobControl getJobControl(){
-    if(jobControl == null){
-      Debug.debug("jobControl null", 3);
-      new Exception().printStackTrace();
-    }
-
-    return jobControl;
-  }
-
   public LogFile getLogFile(){
     if(logFile == null){
       Debug.debug("logFile null", 3);

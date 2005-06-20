@@ -60,6 +60,7 @@ public class JobInfo extends DBRecord{
   private int dbStatus = gridpilot.DBPluginMgr.DEFINED;
   private String host="";
   private boolean needUpdate;
+  private int tableRow = -1;
 
   public JobInfo(int _jobDefID, String _jobName, String _cs, String _db){
     
@@ -204,6 +205,12 @@ public class JobInfo extends DBRecord{
         "  StdErr \t: " + getStdErr() + "\n" +
         "  Val sdtOut \t: " + getValidationStdOut() +"\n"+
         "  Val stdErr \t: " + getValidationStdErr() + "\n" ;
+  }
+
+  public int getTableRow(){ return tableRow;}
+
+  void setTableRow(int _tableRow){
+    tableRow = _tableRow;
   }
 }
 
