@@ -199,6 +199,52 @@ public class DBPluginMgr implements Database{
       return null;
   }
 
+  public synchronized String getStdOutFinalDest(final int jobDefinitionID){
+    MyThread t = new MyThread(){
+      String res = null;
+      public void run(){
+        try{
+          res = db.getStdOutFinalDest(jobDefinitionID);
+        }catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             jobDefinitionID, t);
+        }
+      }
+      public String getStringRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getStdOutFinalDest"))
+      return t.getStringRes();
+    else
+      return null;
+  }
+
+  public synchronized String getStdErrFinalDest(final int jobDefinitionID){
+    MyThread t = new MyThread(){
+      String res = null;
+      public void run(){
+        try{
+          res = db.getStdErrFinalDest(jobDefinitionID);
+        }catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             jobDefinitionID, t);
+        }
+      }
+      public String getStringRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getStdErrFinalDest"))
+      return t.getStringRes();
+    else
+      return null;
+  }
+
   public synchronized String getJobDefValue(final int jobDefID, final String key){
     MyThread t = new MyThread(){
       String res = null;

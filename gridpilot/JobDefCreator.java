@@ -199,7 +199,7 @@ public class JobDefCreator {
 
         if(editing){
           Debug.debug("Updating...", 3);
-          if(!taskMgr.updateJobDef(resCstAttr)) {
+          if(!taskMgr.updateJobDef(cstAttrNames, resCstAttr)) {
             if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDef " + part +
                 " cannot be updated", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION)
             //cancel creation
@@ -207,7 +207,7 @@ public class JobDefCreator {
           }
         }
         else{
-        if(!taskMgr.createJobDef(resCstAttr)) {
+        if(!taskMgr.createJobDef(cstAttrNames, resCstAttr)) {
             if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDef " + part +
                 " cannot be created", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION)
             //cancel creation

@@ -322,6 +322,9 @@ public interface Database {
   public String getJobDefOutRemoteName (int jobDefinitionID, String par);
   public String getJobDefOutLocalName (int jobDefinitionID, String par);
 
+  public String getStdOutFinalDest(int jobDefinitionID);
+  public String getStdErrFinalDest(int jobDefinitionID);
+  
   public String [] getFieldNames(String table);
   public String getJobDefValue(int jobDefinitionID, String key);
   public String getPackInitText (String pack, String cluster);
@@ -356,7 +359,7 @@ public interface Database {
            return;
         }
       }
-        throw new Exception("no such field "+col) ;
+        throw new Exception("no such field "+col);
     }
   }
   
