@@ -61,6 +61,13 @@ public class JobInfo extends DBRecord{
   private String host="";
   private boolean needUpdate;
   private int tableRow = -1;
+  public static String [] Fields= new String [] {
+      /*These are the fields of the runtime DB table*/
+      "jobName", "jobDefID", "jobDefDB", "cs", "user", "db", "outTmp", "errTmp", "outVal", "errVal",
+      /*----*/
+      "jobId", "jobStatus", "newStatus", "atComStatus", "dbStatus", "host", "needUpdate"};
+  
+  public static String Identifier = "jobId";
 
   public JobInfo(int _jobDefID, String _jobName, String _cs, String _db){
     
@@ -69,11 +76,7 @@ public class JobInfo extends DBRecord{
     cs = _cs;
     db = _db;
     
-    fields = new String [] {
-        /*These are the fields of the runtime DB table*/
-        "jobName", "jobDefID", "jobDefDB", "cs", "user", "db", "outTmp", "errTmp", "outVal", "errVal",
-        /*----*/
-        "jobId", "jobStatus", "newStatus", "atComStatus", "dbStatus", "host", "needUpdate"};
+    fields = Fields;
     
     setValues();
   }
@@ -118,7 +121,7 @@ public class JobInfo extends DBRecord{
     jobName = _jobName;
   }
 
-  void setPartId(int _jobDefId){
+  void setJobDefId(int _jobDefId){
     jobDefID = _jobDefId;
     setValues();
   }

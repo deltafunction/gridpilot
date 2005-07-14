@@ -1,7 +1,6 @@
 package gridpilot;
 
 import java.awt.*;
-import java.util.HashMap;
 import java.util.StringTokenizer;
 
 import javax.swing.*;
@@ -22,7 +21,6 @@ public class GridPilot extends JApplet{
   
   // TODO: reread on reloading values
   public static String [] dbs;
-  public static HashMap steps = new HashMap();
   public static String [] colorMapping;
   public static boolean applet = true;
 
@@ -65,20 +63,14 @@ public class GridPilot extends JApplet{
     String user;
     String passwd;
     String database;
-    String step;
 
     String [] up = null;
   	 dbs = getClassMgr().getConfigFile().getValues("Databases", "Systems");
      for(int i = 0; i < dbs.length; ++i){
        user = getClassMgr().getConfigFile().getValue(dbs[i], "user");
        passwd = getClassMgr().getConfigFile().getValue(dbs[i], "passwd");
-       steps.put(dbs[i], getClassMgr().getConfigFile().getValues(dbs[i], "steps"));
-
-       for(int j = 0; j < ((String []) steps.get(dbs[i])).length; ++j){
-         step = ((String []) steps.get(dbs[i]))[j];
-         Debug.debug("Initializing step "+step+". For db "+dbs[i],3);
-         GridPilot.getClassMgr().setDBPluginMgr(dbs[i], step, new DBPluginMgr(dbs[i], step, user, passwd));
-       }
+       Debug.debug("Initializing db "+dbs[i],3);
+       GridPilot.getClassMgr().setDBPluginMgr(dbs[i], new DBPluginMgr(dbs[i], user, passwd));
      }
      
      colorMapping = getClassMgr().getConfigFile().getValues("gridpilot", "color mapping");
@@ -102,25 +94,6 @@ public class GridPilot extends JApplet{
    if(dbs == null)
      Debug.debug("dbs == null", 3);
    return dbs;
- }
-
-  /**
-  + Return database steps specified in the configuration file
-  */
- public static String [] getSteps(String dbName){
-   if(steps == null) {
-	Debug.debug("steps == null", 3);
-	return new String[] { "test" };
-	}
-     
-   Debug.debug("db -> "+dbName, 3);
-   //   Debug.debug("step 1 -> "+((String []) steps.get(dbName))[0], 3);
-   try {
-   		String[] st = (String []) steps.get(dbName);
-   } catch (Exception e) {
-   		return new String[] { "test" };
-   }
-   return ((String []) steps.get(dbName));
  }
 
    /**

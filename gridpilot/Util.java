@@ -10,7 +10,11 @@ import java.util.StringTokenizer;
  * @author Frederik.Orellana@cern.ch
  *
  */
+
 public class Util {
+
+  public static String prefix = "";
+  public static String url = "";
 
   public static String [] split(String s) {
     StringTokenizer tok = new StringTokenizer(s);
@@ -44,6 +48,44 @@ public class Util {
       res += (values[i] == null ? "null" : values[i].toString()) + " ";
     }
     return res;
+  }
+
+  /**
+   * Converts a local path (<code>file</code>) into a absolute path by prepending the "prefix" attribute
+   * of the AtCom section in config file. <br>
+   * If the file name begins by '/' or the prefix is not defined, nothing is prepend, <br>
+   * If prepend doesn't end by '/', a '/' is added between <code>file</code> and
+   * <code>prepend</code>.
+   */
+  public static String getFullPath(String file){
+    prefix = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot","prefix");
+    url = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot","url");
+    if(file.startsWith("/"))
+      return file;
+
+    if(prefix == null)
+      return file;
+    else
+      return prefix + file;
+  }
+
+  /**
+   * Converts a local path (<code>file</code>) into a URL by prepending the "url" attribute
+   * of the AtCom section in config file. <br>
+   * If the file name begins by 'http://' or the prefix is not defined, nothing is prepend, <br>
+   * If prepend doesn't end by '/', a '/' is added between <code>file</code> and
+   * <code>prepend</code>.
+   */
+  public static String getURL(String file){
+    prefix = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot","prefix");
+    url = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot","url");
+    if(file.startsWith("http://") || file.startsWith("https://"))
+      return file;
+
+    if(url == null)
+      return file;
+    else
+      return url + file;
   }
 
 }

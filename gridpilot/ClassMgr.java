@@ -16,6 +16,7 @@ public class ClassMgr {
   private GlobalFrame globalFrame;
   private LogFile logFile;
   private StatusBar statusBar;
+  private JobValidation jobValidation;
   private GridPilot prodCom;
   private int debugLevel = 3;
   private HashMap dbMgts = new HashMap();
@@ -24,15 +25,12 @@ public class ClassMgr {
     configFile = _configFile;
   }
 
-  public boolean setDBPluginMgr(String db, String step, DBPluginMgr dbPluginMgr) {
+  public boolean setDBPluginMgr(String dbName, DBPluginMgr dbPluginMgr) {
     try{
-      if(dbMgts.get(db) == null){
-        dbMgts.put(db, new HashMap());
-      }       
+      dbMgts.put(dbName, dbPluginMgr);
     }catch(NullPointerException e){
-      dbMgts.put(db, new HashMap());
+      dbMgts.put(dbName, new HashMap());
     }
-    ((HashMap) dbMgts.get(db)).put(step, dbPluginMgr);
     try {
       dbPluginMgr.init();
     } catch (Throwable e) {
@@ -48,6 +46,10 @@ public class ClassMgr {
 
   public void setStatusBar(StatusBar _statusBar){
     statusBar = _statusBar;
+  }
+
+  public void setJobValidation(JobValidation _jobValidation){
+    jobValidation = _jobValidation;
   }
 
   public void setGlobalFrame(GlobalFrame _globalFrame) {
@@ -69,20 +71,18 @@ public class ClassMgr {
     return configFile;
   }
 
-  public DBPluginMgr getDBPluginMgr(String db, String step){
-    Debug.debug("Getting DBPluginMgr for db " + db + " and step " + step, 2);
-    if(((HashMap) dbMgts.get(db)).get(step) == null){
+  public DBPluginMgr getDBPluginMgr(String dbName){
+    Debug.debug("Getting DBPluginMgr for db " + dbName, 2);
+    if(dbMgts.get(dbName) == null){
       Debug.debug("DBPluginMgr null", 3);
       new Exception().printStackTrace();
     }
-    return (DBPluginMgr) ((HashMap) dbMgts.get(db)).get(step);
+    return (DBPluginMgr) dbMgts.get(dbName);
   }
 
   public void clearDBCaches(){
     for(Iterator i=dbMgts.values().iterator(); i.hasNext();){
-        for (Iterator j=((HashMap) i.next()).values().iterator(); j.hasNext();){
-        ((DBPluginMgr) j.next()).clearCaches();
-      }
+      ((DBPluginMgr) i.next()).clearCaches();
     }
   }
   
@@ -93,6 +93,15 @@ public class ClassMgr {
     }
 
     return logFile;
+  }
+
+  public JobValidation getJobValidation(){
+    if(jobValidation == null){
+      Debug.debug("jobValidation null", 3);
+      new Exception().printStackTrace();
+    }
+
+    return jobValidation;
   }
 
   public StatusBar getStatusBar(){

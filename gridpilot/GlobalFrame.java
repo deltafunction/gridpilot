@@ -36,8 +36,6 @@ public class GlobalFrame extends JFrame {
   private String dbNames;
   private String userName;
   private String passwd;
-  private String step;
-
 
   /**
    * Constructor
@@ -364,16 +362,10 @@ public class GlobalFrame extends JFrame {
   private void reloadValues(){
    
     GridPilot.dbs = GridPilot.getClassMgr().getConfigFile().getValues("gridpilot", "Databases");
-    GridPilot.steps.clear();
     for(int i = 0; i < GridPilot.dbs.length; ++i){
       userName = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
       passwd = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
-      GridPilot.steps.put(GridPilot.dbs[i], GridPilot.getClassMgr().getConfigFile().getValues(GridPilot.dbs[i], "steps"));
-      for(int j = 0; j < ((String []) GridPilot.steps.get(GridPilot.dbs[i])).length; ++j){
-        step = ((String []) GridPilot.steps.get(GridPilot.dbs[i]))[j];
-        GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[i], step).loadValues();
-        // TODO: reload panels?
-      }
+      GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[i]).loadValues();
     }
     initDebug();
   }
@@ -427,21 +419,16 @@ public class GlobalFrame extends JFrame {
      Reconnect DB
      */
     GridPilot.dbs = GridPilot.getClassMgr().getConfigFile().getValues("gridpilot", "Databases");
-    GridPilot.steps.clear();
     for(int i = 0; i < GridPilot.dbs.length; ++i){
       userName = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
       passwd = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
-      GridPilot.steps.put(GridPilot.dbs[i], GridPilot.getClassMgr().getConfigFile().getValues(GridPilot.dbs[i], "steps"));
-      for(int j = 0; j < ((String []) GridPilot.steps.get(GridPilot.dbs[i])).length; ++j){
-        step = ((String []) GridPilot.steps.get(GridPilot.dbs[i]))[j];
-        GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[i], step).disconnect();
-        try {
-          GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[i], step).init();
-          // TODO: reload panels?
-        } catch (Throwable e) {
-          Debug.debug("Could not load step/project " + step + " " + e.getMessage(), 3);
-          GridPilot.exit(-1);
-        }
+      GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[i]).disconnect();
+      try {
+        GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[i]).init();
+        // TODO: reload panels?
+      } catch (Throwable e) {
+        Debug.debug("Could not load db  " + e.getMessage(), 3);
+        GridPilot.exit(-1);
       }
     }
 

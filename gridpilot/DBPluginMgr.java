@@ -12,7 +12,6 @@ import gridpilot.Database;
 import gridpilot.MyThread;
 import gridpilot.MyClassLoader;
 
-
 /**
  * This class manages access to job databases.
  *
@@ -37,9 +36,8 @@ public class DBPluginMgr implements Database{
   
   private boolean askBeforeInterrupt = true;
 
-  public DBPluginMgr(String _dbName, String _database, String _user, String _passwd){
+  public DBPluginMgr(String _dbName, String _user, String _passwd){
     dbName = _dbName;
-    database = _database;
     user = _user;
     passwd = _passwd;
   }
@@ -151,6 +149,75 @@ public class DBPluginMgr implements Database{
         logFile.addMessage("value of default timeout (" + tmp +") is not an integer");
       }
     }
+  }
+
+  public boolean updateJobDef(int jobDefID, String [] fields, String [] values) {
+    if(fields.length!=values.length){
+      Debug.debug("The number of fields and values do not agree, "+
+          fields.length+"!="+values.length, 1);
+      return false;
+    }
+    if(fields.length>JobDefinition.Fields.length){
+      Debug.debug("The number of fields is too large, "+
+          fields.length+">"+JobDefinition.Fields.length, 1);
+    }
+    String [] vals = new String[JobDefinition.Fields.length];
+    for(int i=0; i<JobDefinition.Fields.length; ++i){
+      vals[i] = "";
+      for(int j=0; i<fields.length; ++j){
+        if(fields[j].equalsIgnoreCase(JobDefinition.Fields[i])){
+          vals[i] = values[j];
+          break;
+        }
+        if(fields[j].equalsIgnoreCase(JobDefinition.Identifier)){
+          vals[i] = Integer.toString(jobDefID);
+          break;
+        }
+      }
+    }
+    JobDefinition jobDef = new JobDefinition(vals);
+    return GridPilot.getClassMgr().getDBPluginMgr(dbName).updateJobDefinition(jobDef) ;
+  }
+
+  public boolean updateJobStdoutErr(int jobDefID, String stdOut, String stdErr){
+    return updateRunInf(jobDefID, new String [] {"outVal", "errVal"}, new String [] {stdOut, stdErr});
+  }
+  
+  public boolean updateRunInf(int jobDefID, String [] fields, String [] values){
+    if(fields.length!=values.length){
+      Debug.debug("The number of fields and values do not agree, "+
+          fields.length+"!="+values.length, 1);
+      return false;
+    }
+    if(fields.length>JobInfo.Fields.length){
+      Debug.debug("The number of fields is too large, "+
+          fields.length+">"+JobInfo.Fields.length, 1);
+    }
+    String [] vals = new String[JobInfo.Fields.length];
+    for(int i=0; i<JobInfo.Fields.length; ++i){
+      vals[i] = "";
+      for(int j=0; i<fields.length; ++j){
+        if(fields[j].equalsIgnoreCase(JobInfo.Fields[i])){
+          vals[i] = values[j];
+          break;
+        }
+        if(fields[j].equalsIgnoreCase(JobInfo.Identifier)){
+          vals[i] = Integer.toString(jobDefID);
+          break;
+        }
+      }
+    }
+    JobInfo job = (JobInfo) GridPilot.getClassMgr().getDBPluginMgr(dbName).getRunInfo(jobDefID);
+
+    for(int i=0; i<fields.length; ++i){
+      try{
+        job.setValue(fields[i], values[i]);
+      }
+      catch(Throwable e){
+        Debug.debug("Could not set "+fields[i]+" to "+values[i], 1);
+      }
+    }
+    return GridPilot.getClassMgr().getDBPluginMgr(dbName).updateRunInfo(job);
   }
 
   public synchronized String [] getFieldNames(final String table){
@@ -573,6 +640,30 @@ public class DBPluginMgr implements Database{
       return false;
   }
 
+  public synchronized boolean createRunInfo(final JobInfo jobInfo){
+    
+      MyThread t = new MyThread(){
+        boolean res = false;
+        public void run(){
+          try{
+            res = db.createRunInfo(jobInfo);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               jobInfo.toString(), t);
+          }
+        }
+        public boolean getBoolRes(){return res;}
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "createRunInfo"))
+        return t.getBoolRes();
+      else
+        return false;
+    }
+
   public synchronized boolean createTask(final Task task){
     
       MyThread t = new MyThread(){
@@ -669,6 +760,30 @@ public class DBPluginMgr implements Database{
     else
       return false;
   }
+
+  public synchronized boolean updateRunInfo(final JobInfo jobInfo){
+    
+      MyThread t = new MyThread(){
+        boolean res = false;
+        public void run(){
+          try{
+            res = db.updateRunInfo(jobInfo);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               jobInfo.toString(), t);
+          }
+        }
+        public boolean getBoolRes(){return res;}
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "updateRunInfo"))
+        return t.getBoolRes();
+      else
+        return false;
+    }
 
   public synchronized boolean updateTask(final Task task){
     
@@ -976,6 +1091,30 @@ public class DBPluginMgr implements Database{
       t.start();
     
       if(waitForThread(t, dbName, dbTimeOut, "jobTransID"))
+        return t.getDBRes();
+      else
+        return null;
+    }
+
+  public synchronized DBRecord getRunInfo(final int jobDefID){
+    
+      MyThread t = new MyThread(){
+        DBRecord res = null;
+        public void run(){
+          try{
+            res = db.getRunInfo(jobDefID);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               jobDefID, t);
+          }
+        }
+        public DBRecord getDBRes(){return res;}
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "getRunInfo"))
         return t.getDBRes();
       else
         return null;

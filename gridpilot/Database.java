@@ -158,7 +158,7 @@ public interface Database {
     
     //public static String [] fields;
     
-    public static String _identifier = "jobDefinitionID";
+    public static String Identifier = "jobDefinitionID";
     
     public static String [] Fields =  new String [] {"jobDefinitionID", "jobTransFK", "taskFK", "currentState", "maxAttempt",
         "jobName", "cpuCount", "cpuUnit", "ramCount", "ramUnit", "diskCount",
@@ -190,7 +190,7 @@ public interface Database {
       events =_events ;
       jobXML =_jobXML ;
             
-      identifier = _identifier;
+      identifier = Identifier;
       fields = Fields;
       values = new String [] {jobDefinitionID, jobTransFK, taskFK, currentState, maxAttempt,
           jobName, cpuCount, cpuUnit, ramCount, ramUnit, diskCount,
@@ -216,7 +216,7 @@ public interface Database {
       events = _values[15] ;
       jobXML = _values[16] ;
       
-      identifier = _identifier;      
+      identifier = Identifier;      
       fields = Fields;
       values = _values;
     }
@@ -268,7 +268,6 @@ public interface Database {
   public void disconnect();
   public void clearCaches();
   // PRODDB ADDITIONS
-  // TODO: should go...
   public DBResult getAllTaskTransRecords();
   public int getTaskTransId(int taskID);
   public DBRecord getTaskTransRecord(int taskID);
@@ -285,6 +284,9 @@ public interface Database {
   public DBRecord getJobDefinition(int jobDefinitionID);
   public boolean createJobDefinition(JobDefinition jobDef);
   public boolean updateJobDefinition(JobDefinition jobDef);
+  public DBRecord getRunInfo(int jobDefID);
+  public boolean createRunInfo(JobInfo jobInfo);
+  public boolean updateRunInfo(JobInfo jobInfo);
   public boolean setJobDefsField(int [] identifiers,
       String field, String value);
   public boolean deleteJobDefinition(int jobDefID);

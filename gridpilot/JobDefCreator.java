@@ -198,8 +198,15 @@ public class JobDefCreator {
         Debug.debug(this.getClass().getName() + " is calling DB", 2);
 
         if(editing){
+          int id = -1;
+          for(int i=0; i<cstAttrNames.length; ++i){
+            if(cstAttrNames.toString().equalsIgnoreCase(Database.JobDefinition.Identifier)){
+              id = Integer.parseInt(resCstAttr[i]);
+              break;
+            }
+          }
           Debug.debug("Updating...", 3);
-          if(!taskMgr.updateJobDef(cstAttrNames, resCstAttr)) {
+          if(!taskMgr.getDBPluginMgr().updateJobDef(id, cstAttrNames, resCstAttr)){
             if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDef " + part +
                 " cannot be updated", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION)
             //cancel creation
