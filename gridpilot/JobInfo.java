@@ -106,6 +106,7 @@ public class JobInfo extends DBRecord{
   public String getJobId(){ return jobID;}
   public String getJobStatus(){ return jobStatus;}
   public String getHost(){ return host;}
+  public String getUser(){ return user;}
   
   public boolean needToBeRefreshed() { return needUpdate;}
 
