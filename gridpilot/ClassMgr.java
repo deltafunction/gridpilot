@@ -20,6 +20,7 @@ public class ClassMgr {
   private GridPilot prodCom;
   private int debugLevel = 3;
   private HashMap dbMgts = new HashMap();
+  private CSPluginMgr csPluginMgr;
 
   public void setConfigFile(ConfigFile _configFile){
     configFile = _configFile;
@@ -71,6 +72,7 @@ public class ClassMgr {
     return configFile;
   }
 
+  // The HashMap of DB objects, dbMgts, is kept here
   public DBPluginMgr getDBPluginMgr(String dbName){
     Debug.debug("Getting DBPluginMgr for db " + dbName, 2);
     if(dbMgts.get(dbName) == null){
@@ -78,6 +80,23 @@ public class ClassMgr {
       new Exception().printStackTrace();
     }
     return (DBPluginMgr) dbMgts.get(dbName);
+  }
+
+  // Different model here: the HashMap of CS objects is kept in csPluginMgr.
+  // We don't use a setCsPluginMgr method because we don't want to load
+  // the classes and make the connections until it is necessary.
+  public CSPluginMgr getCsPluginMgr(){
+    if(csPluginMgr==null){
+      try{
+        csPluginMgr = new CSPluginMgr();
+        csPluginMgr.init();
+      }
+      catch(Throwable e){
+        Debug.debug("Could not load plugin. "+e.getMessage(), 3);
+        e.printStackTrace();
+      }
+    }
+    return csPluginMgr;
   }
 
   public void clearDBCaches(){
