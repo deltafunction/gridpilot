@@ -17,12 +17,13 @@ public class GridPilot extends JApplet{
   private static String logsFileName = "gridpilot.logs";
   private static String confFileName = "gridpilot.conf";
 
-  static ClassMgr classMgr = new ClassMgr();
+  private static ClassMgr classMgr = new ClassMgr();
   
   // TODO: reread on reloading values
-  public static String [] dbs;
-  public static String [] colorMapping;
-  public static boolean applet = true;
+  private static String [] dbs;
+  private static String [] colorMapping;
+  private static boolean applet = true;
+  private static String replicaPrefix = "";
 
   /**
    * Constructor
@@ -33,23 +34,14 @@ public class GridPilot extends JApplet{
       classMgr.setLogFile(new LogFile(logsFileName));
       classMgr.setConfigFile(new ConfigFile(confFileName));
 
-      String resourcesPath =  getClassMgr().getConfigFile().getValue("gridpilot", "resources");
-      if(resourcesPath == null){
-        getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("gridpilot", "resources"));
-        resourcesPath = ".";
-      }
-      else{
-        if (!resourcesPath.endsWith("/"))
-          resourcesPath = resourcesPath + "/";
-      }
+      gridpilotCommon();
 
-     gridpilotCommon();
+      initGUI();
 
-     initGUI();
+      classMgr.getLogFile().addInfo("gridpilot loaded");
 
-     classMgr.getLogFile().addInfo("gridpilot loaded");
-
-    }catch(Throwable e){
+    }
+    catch(Throwable e){
       if(e instanceof Error)
         getClassMgr().getLogFile().addMessage("Error during gridpilot loading", e);
       else{
@@ -74,12 +66,23 @@ public class GridPilot extends JApplet{
      }
      
      colorMapping = getClassMgr().getConfigFile().getValues("gridpilot", "color mapping");
-
+     
+     String resourcesPath =  getClassMgr().getConfigFile().getValue("gridpilot", "resources");
+     if(resourcesPath == null){
+       getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("gridpilot", "resources"));
+       resourcesPath = ".";
+     }
+     else{
+       if (!resourcesPath.endsWith("/"))
+         resourcesPath = resourcesPath + "/";
+     }
+     
+     replicaPrefix = getClassMgr().getConfigFile().getValue("Replica", "prefix");
   }
+  
   /**
    * "Class distributor"
    */
-
   public static ClassMgr getClassMgr(){
     if(classMgr == null)
       Debug.debug("classMgr == null", 3);
@@ -101,6 +104,13 @@ public class GridPilot extends JApplet{
    */
   public static String [] getColorMapping(){
     return colorMapping;
+  }
+
+  /**
+   * Return replica prefix specified in the configuration file
+   */
+  public static String getReplicaPrefix(){
+    return replicaPrefix;
   }
 
   /**
