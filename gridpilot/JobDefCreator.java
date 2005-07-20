@@ -198,15 +198,19 @@ public class JobDefCreator {
         Debug.debug(this.getClass().getName() + " is calling DB", 2);
 
         if(editing){
+          String jobDefIdentifier = GridPilot.getClassMgr().getConfigFile().getValue(
+              taskMgr.getDBPluginMgr().getDBName(),
+          "job definition identifier name");
           int id = -1;
           for(int i=0; i<cstAttrNames.length; ++i){
-            if(cstAttrNames.toString().equalsIgnoreCase(Database.JobDefinition.Identifier)){
+            if(cstAttrNames.toString().equalsIgnoreCase(
+                jobDefIdentifier)){
               id = Integer.parseInt(resCstAttr[i]);
               break;
             }
           }
           Debug.debug("Updating...", 3);
-          if(!taskMgr.getDBPluginMgr().updateJobDef(id, cstAttrNames, resCstAttr)){
+          if(!taskMgr.getDBPluginMgr().updateJobDefinition(id, cstAttrNames, resCstAttr)){
             if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDef " + part +
                 " cannot be updated", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION)
             //cancel creation

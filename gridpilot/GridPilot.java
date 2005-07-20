@@ -25,6 +25,10 @@ public class GridPilot extends JApplet{
   private static boolean applet = true;
   private static String replicaPrefix = "";
 
+  private static String dbNames;
+  private static String userName;
+  private static String passwd;
+
   /**
    * Constructor
    */
@@ -33,13 +37,10 @@ public class GridPilot extends JApplet{
     try{
       classMgr.setLogFile(new LogFile(logsFileName));
       classMgr.setConfigFile(new ConfigFile(confFileName));
-
+      initDebug();
       gridpilotCommon();
-
       initGUI();
-
       classMgr.getLogFile().addInfo("gridpilot loaded");
-
     }
     catch(Throwable e){
       if(e instanceof Error)
@@ -61,10 +62,10 @@ public class GridPilot extends JApplet{
      for(int i = 0; i < dbs.length; ++i){
        user = getClassMgr().getConfigFile().getValue(dbs[i], "user");
        passwd = getClassMgr().getConfigFile().getValue(dbs[i], "passwd");
-       Debug.debug("Initializing db "+dbs[i],3);
-       GridPilot.getClassMgr().setDBPluginMgr(dbs[i], new DBPluginMgr(dbs[i], user, passwd));
+       Debug.debug("Initializing db "+i+": "+dbs[i],3);
+       getClassMgr().setDBPluginMgr(dbs[i], new DBPluginMgr(dbs[i], user, passwd));
      }
-     
+          
      colorMapping = getClassMgr().getConfigFile().getValues("gridpilot", "color mapping");
      
      String resourcesPath =  getClassMgr().getConfigFile().getValue("gridpilot", "resources");
@@ -93,11 +94,18 @@ public class GridPilot extends JApplet{
   /**
   + Return databases specified in the configuration file
   */
- public static String [] getDBs(){
-   if(dbs == null)
-     Debug.debug("dbs == null", 3);
-   return dbs;
- }
+  public static String [] getDBs(){
+    if(dbs == null)
+      Debug.debug("dbs == null", 3);
+    return dbs;
+  }
+ 
+ /**
+ + Are we running as an applet?
+ */
+public static boolean isApplet(){
+  return applet;
+} 
 
    /**
    * Return color mapping for job definition table, specified in the configuration file
@@ -119,17 +127,17 @@ public class GridPilot extends JApplet{
   private void initGUI() throws Exception{
 
     if(applet){
-      GridPilot.getClassMgr().setGlobalFrame(frame = new GlobalFrame());
-      GridPilot.getClassMgr().getGlobalFrame().initGUI(this.getContentPane());
+      getClassMgr().setGlobalFrame(frame = new GlobalFrame());
+      getClassMgr().getGlobalFrame().initGUI(this.getContentPane());
       setJMenuBar(
-          GridPilot.getClassMgr().getGlobalFrame().makeMenu());
+          getClassMgr().getGlobalFrame().makeMenu());
     }
     else{
-      GridPilot.getClassMgr().setGlobalFrame(frame = new GlobalFrame());
-      GridPilot.getClassMgr().getGlobalFrame().initGUI(((JFrame)  
-          GridPilot.getClassMgr().getGlobalFrame()).getContentPane());
+      getClassMgr().setGlobalFrame(frame = new GlobalFrame());
+      getClassMgr().getGlobalFrame().initGUI(((JFrame)  
+          getClassMgr().getGlobalFrame()).getContentPane());
       frame.setJMenuBar(
-          GridPilot.getClassMgr().getGlobalFrame().makeMenu());
+          getClassMgr().getGlobalFrame().makeMenu());
 
       //Validate frames that have preset sizes.
       //Pack frames that have useful preferred size info, e.g. from their layout.
@@ -162,8 +170,8 @@ public class GridPilot extends JApplet{
     }
     else{
       try{
-        Debug.debug("NAME: "+GridPilot.getClassMgr().getGridPilot(), 2);
-        GridPilot.getClassMgr().getGlobalFrame().dispose();
+        Debug.debug("NAME: "+getClassMgr().getGridPilot(), 2);
+        getClassMgr().getGlobalFrame().dispose();
       }
       catch(Exception e){
         Debug.debug(e.getMessage(), 1);
@@ -215,8 +223,8 @@ public class GridPilot extends JApplet{
   }
   
   public void init(){
-    GridPilot.getClassMgr().setGridPilot(this);
-    Debug.debug("NAME: "+GridPilot.getClassMgr().getGridPilot().getAppletInfo(), 2);
+    getClassMgr().setGridPilot(this);
+    Debug.debug("NAME: "+getClassMgr().getGridPilot().getAppletInfo(), 2);
   }
 
   /**
@@ -252,8 +260,8 @@ public class GridPilot extends JApplet{
         }
       }
     }
-    GridPilot.getClassMgr().setGridPilot(new GridPilot());
-    Debug.debug("NAME: "+GridPilot.getClassMgr().getGridPilot().getName(), 2);
+    getClassMgr().setGridPilot(new GridPilot());
+    Debug.debug("NAME: "+getClassMgr().getGridPilot().getName(), 2);
   }
 
   private static void badUsage(String s){
@@ -272,5 +280,88 @@ public class GridPilot extends JApplet{
     return res ;
   }
 
+  /**
+   * Reloads values from configuration file.
+   * Called when user chooses "Reload values" in gridpilot menu
+   */
+  private void reloadValues(){
+   
+    dbs = getClassMgr().getConfigFile().getValues("gridpilot", "Databases");
+    for(int i = 0; i < dbs.length; ++i){
+      userName = getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
+      passwd = getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
+      getClassMgr().getDBPluginMgr(dbs[i]).loadValues();
+    }
+    initDebug();
+  }
+
+  /**
+   * Reads in configuration file the debug level.
+   */
+  private static void initDebug(){
+    if ((getClassMgr().getConfigFile() == null ) || getClassMgr().getConfigFile().isFake()) return;
+    String debugList = getClassMgr().getConfigFile().getValue("gridpilot", "debugList");
+    if(debugList == null){
+      getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("gridpilot", "debugList"));
+      Debug.toTrace="";
+    } else {
+      Debug.toTrace=debugList;
+      Debug.debug("debug list set to : "+debugList, 2);
+    }
+
+    String debugLevel = getClassMgr().getConfigFile().getValue("gridpilot", "debug");
+    if(debugLevel == null){
+      getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("gridpilot", "debug"));
+      getClassMgr().setDebugLevel(3);
+    }
+
+    try{ getClassMgr().setDebugLevel(new Integer(debugLevel).intValue());}
+    catch(NumberFormatException nfe){
+      getClassMgr().getLogFile().addMessage("Debug is not an integer in configFile, section [gridpilot]");
+      getClassMgr().setDebugLevel(3);
+    }
+  }
+
+
+  // TODO: need to re-think this a bit
+
+  public static void dbReconnect(){
+    /*
+     Show small window with label
+     */
+    JWindow w = new JWindow(JOptionPane.getRootFrame());
+    JLabel message = new JLabel("Reconnecting... please wait...");
+    JPanel panel = new JPanel(new FlowLayout());
+    panel.add(message);
+    panel.updateUI();
+    w.getContentPane().add(panel);
+    w.pack();
+    w.show();
+    Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+    w.setLocation(screenSize.width/2 - w.getSize().width/2,
+                  screenSize.height/2 - w.getSize().height/2);
+    /*
+     Reconnect DB
+     */
+    dbs = getClassMgr().getConfigFile().getValues("gridpilot", "Databases");
+    for(int i = 0; i < dbs.length; ++i){
+      userName = getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
+      passwd = getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
+      getClassMgr().getDBPluginMgr(dbs[i]).disconnect();
+      try {
+        getClassMgr().getDBPluginMgr(dbs[i]).init();
+        // TODO: reload panels?
+      } catch (Throwable e) {
+        Debug.debug("Could not load db  " + e.getMessage(), 3);
+        exit(-1);
+      }
+    }
+
+    /*
+     Close small progress window
+     */
+    w.hide();
+    w.dispose();
+  }
 
 }

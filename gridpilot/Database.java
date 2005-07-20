@@ -141,79 +141,25 @@ public interface Database {
     public String jobDefinitionID ;
     public String jobTransFK ;
     public String taskFK ;
-    public String currentState ;
-    public String maxAttempt ;
     public String jobName ;
-    public String cpuCount ;
-    public String cpuUnit;
-    public String ramCount ;
-    public String ramUnit ;
-    public String diskCount ;
-    public String diskUnit ;
-    public String ipConnectivity ;
-    public String priority ;
-    public String inputHint ;
-    public String events ;
     public String jobXML ;
     
     //public static String [] fields;
     
     public static String Identifier = "jobDefinitionID";
     
-    public static String [] Fields =  new String [] {"jobDefinitionID", "jobTransFK", "taskFK", "currentState", "maxAttempt",
+    public static String [] Fields = new String []{
+        "jobDefinitionID", "jobTransFK", "taskFK", "currentState", "maxAttempt",
         "jobName", "cpuCount", "cpuUnit", "ramCount", "ramUnit", "diskCount",
         "diskUnit", "ipConnectivity", "priority", "inputHint", "events", "jobXML"};
     
   
-    public JobDefinition(String _jobDefinitionID, String _jobTransFK, String _taskFK, 
-              String _currentState, String _maxAttempt, String _jobName,
-              String _cpuCount, String _cpuUnit, String _ramCount, String _ramUnit,
-              String _diskCount, String _diskUnit, String _ipConnectivity,   
-              String _priority, String _inputHint, String _events,
-              String _jobXML) {
-      
-      jobDefinitionID = _jobDefinitionID;
-      jobTransFK =_jobTransFK ;
-      taskFK =_taskFK ;
-      currentState =_currentState ;
-      maxAttempt =_maxAttempt ;
-      jobName =_jobName ;
-      cpuCount =_cpuCount ;
-      cpuUnit =_cpuUnit ;
-      ramCount =_ramCount ;
-      ramUnit =_ramUnit ;
-      diskCount =_diskCount ;
-      diskUnit =_diskUnit ;
-      ipConnectivity =_ipConnectivity ;
-      priority =_priority ;
-      inputHint =_inputHint ;
-      events =_events ;
-      jobXML =_jobXML ;
-            
-      identifier = Identifier;
-      fields = Fields;
-      values = new String [] {jobDefinitionID, jobTransFK, taskFK, currentState, maxAttempt,
-          jobName, cpuCount, cpuUnit, ramCount, ramUnit, diskCount,
-          diskUnit, ipConnectivity, priority, inputHint, events, jobXML};      
-    }
-    public JobDefinition(String [] _values) {
+    public JobDefinition(String [] _values){
       
       jobDefinitionID = _values[0] ;
       jobTransFK = _values[1] ;
       taskFK = _values[2] ;
-      currentState = _values[3] ;
-      maxAttempt = _values[4] ;
       jobName = _values[5] ;
-      cpuCount = _values[6] ;
-      cpuUnit = _values[7] ;
-      ramCount = _values[8] ;
-      ramUnit = _values[9] ;
-      diskCount = _values[10] ;
-      diskUnit = _values[11] ;
-      ipConnectivity = _values[12] ;
-      priority = _values[13] ;
-      inputHint = _values[14] ;
-      events = _values[15] ;
       jobXML = _values[16] ;
       
       identifier = Identifier;      
@@ -223,8 +169,7 @@ public interface Database {
 
     //returns the values of fields in the order of fields
     public String[] getValues() {
-      	return new String[] {jobDefinitionID, jobTransFK, taskFK, currentState, maxAttempt, jobName, cpuCount, cpuUnit, 
-      			ramCount, ramUnit, diskCount, diskUnit, ipConnectivity, priority, inputHint, events, jobXML};
+      	return (String []) values;
       }
     
     public static boolean isNumericField(String s) {
@@ -274,16 +219,16 @@ public interface Database {
   public DBResult select(String selectRequest, String identifier);
   //
 
-  public boolean createTask(Task task);
-  public boolean updateTask(Task task);
+  public boolean createTask(String [] values);
+  public boolean updateTask(int taskID, String [] fields, String [] values);
   public boolean deleteTask(int taskID);
   public DBRecord getTask(int taskID);
 
   public int getTaskId(int jobDefID);
   public DBResult getJobDefinitions(int taskID, String [] fieldNames);
   public DBRecord getJobDefinition(int jobDefinitionID);
-  public boolean createJobDefinition(JobDefinition jobDef);
-  public boolean updateJobDefinition(JobDefinition jobDef);
+  public boolean createJobDefinition(String [] values);
+  public boolean updateJobDefinition(int jobDefID, String [] fields, String [] values);
   public DBRecord getRunInfo(int jobDefID);
   public boolean createRunInfo(JobInfo jobInfo);
   public boolean updateRunInfo(JobInfo jobInfo);
@@ -294,12 +239,9 @@ public interface Database {
   //public JobTrans [] getJobTrans(int taskID);
   public DBResult getJobTransRecords(int taskID);
   public DBRecord getJobTransRecord(int taskID);
-  public boolean createJobTransRecord(JobTrans jobTrans);
-  public boolean updateJobTransRecord(JobTrans jobTrans);
+  public boolean createJobTransRecord(String [] values);
+  public boolean updateJobTransRecord(int jobTransID, String [] fields, String [] values);
   public boolean deleteJobTransRecord(int jobTransID);
-  // In the case of proddb there is no such thing. Only the distribution kit homePackage/implementation.
-  // Still, we need a name to label a transformation the user can select...
-  public String [] getJobTransNames();
   public String [] getVersions(String jobTransName);
   public String getUserLabel();
   public String getJobRunInfo(int jobDefID, String key);

@@ -3,7 +3,6 @@ package gridpilot;
 import gridpilot.Debug;
 import gridpilot.TaskMgr;
 import gridpilot.Database.DBResult;
-import gridpilot.Database.JobDefinition;
 import gridpilot.XmlNode;
 import gridpilot.Database.DBRecord;
 
@@ -67,6 +66,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
   private static int TEXTFIELDWIDTH = 32;
   private static int CFIELDWIDTH = 8;
   
+  private String jobDefIdentifier = null;
   
   /**
    * Constructor
@@ -83,11 +83,18 @@ public class JobDefCreationPanel extends CreateEditPanel {
       jobTransFK = oldJobTransFK;
     }
 
-    cstAttributesNames = JobDefinition.Fields;
+    //cstAttributesNames = JobDefinition.Fields;
+    cstAttributesNames = taskMgr.getDBPluginMgr().getFieldNames(
+        GridPilot.getClassMgr().getConfigFile().getValue(
+            taskMgr.getDBPluginMgr().getDBName(),
+            "job definition table name"));
     cstAttr = new String[cstAttributesNames.length];
     
     transformations = taskMgr.getDBPluginMgr().getJobTransRecords(taskMgr.getTaskIdentifier());
     
+    jobDefIdentifier = GridPilot.getClassMgr().getConfigFile().getValue(taskMgr.getDBPluginMgr().getDBName(),
+       "job definition table identifier");
+
     Debug.debug("Editing job record for task "+taskMgr.getTaskName()+". Rows: "+
         //table.getRowCount()+
         ". Number of transformations: "+
@@ -99,7 +106,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
         //Object fieldVal = table.getValueAt(table.getSelectedRow(),i);
         Object fieldVal = table.getUnsortedValueAt(table.getSelectedRow(),i);
         Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
-        if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase("jobDefinitionID")){
+        if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase(jobDefIdentifier)){
           jobDefinitionID = fieldVal.toString();
           break;
         }
@@ -110,15 +117,15 @@ public class JobDefCreationPanel extends CreateEditPanel {
       }
       // Fill cstAttr from db
       DBRecord jobDef = taskMgr.getDBPluginMgr().getJobDefinition(Integer.parseInt(jobDefinitionID));
-      for(int i=0; i < JobDefinition.Fields.length; ++i){
+      for(int i=0; i < cstAttributesNames.length; ++i){
         if(editing){
-          if(JobDefinition.Fields[i]!=null && JobDefinition.Fields[i].equalsIgnoreCase("jobTransFK")){
-            jobTransFK = jobDef.getValue(JobDefinition.Fields[i]).toString();
+          if(cstAttributesNames[i]!=null && cstAttributesNames[i].equalsIgnoreCase("jobTransFK")){
+            jobTransFK = jobDef.getValue(cstAttributesNames[i]).toString();
             Debug.debug("Set jobTransFK from db: "+jobTransFK, 1);
           }
           Debug.debug("filling " + cstAttributesNames[i],  3);
-          if(jobDef.getValue(JobDefinition.Fields[i])!=null){
-            cstAttr[i] = jobDef.getValue(JobDefinition.Fields[i]).toString();
+          if(jobDef.getValue(cstAttributesNames[i])!=null){
+            cstAttr[i] = jobDef.getValue(cstAttributesNames[i]).toString();
           }
           else{
             cstAttr[i] = "";
@@ -259,8 +266,11 @@ public class JobDefCreationPanel extends CreateEditPanel {
     
     if(vec.size()==0 ||
         GridPilot.getClassMgr().getConfigFile().getValue("Databases", "Show all transformations").equalsIgnoreCase("true")){
-      jobTransNames = taskMgr.getDBPluginMgr().getJobTransNames();
       transformations = taskMgr.getDBPluginMgr().getJobTransRecords(-1);
+      jobTransNames = new String[transformations.values.length];
+      for(int i=0; i<transformations.values.length; ++i){
+        jobTransNames[i] = transformations.getValue(i, "jobTransName");
+      }
     }
     else{
       jobTransNames = new String [vec.size()];
@@ -552,7 +562,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
       // when creating, zap loaded jobDefinitionID
       /*if(!editing){
         for(int i =0; i<tcCstAttributes.length; ++i){
-          if(cstAttributesNames[i].equalsIgnoreCase("jobDefinitionID")){
+          if(cstAttributesNames[i].equalsIgnoreCase(jobDefIdentifier)){
             setJText((JComponent) tcCstAttributes[i],"");
             ((JComponent) tcCstAttributes[i]).setEnabled(false);
           }
@@ -572,7 +582,21 @@ public class JobDefCreationPanel extends CreateEditPanel {
       tcCstAttributes = new JComponent[cstAttributesNames.length];
     }
     
+    boolean jobParsOk = false;
+    boolean jobOutputsOk = false;
+    boolean jobLogsOk = false;
+    
     for(int i =0; i<cstAttributesNames.length; ++i){
+      
+      if(cstAttributesNames[i].equalsIgnoreCase("jobPars") /*&& editing*/){
+        jobParsOk = true;
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("jobOutputs") /*&& editing*/){
+        jobOutputsOk = true;
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("jobLogs") /*&& editing*/){
+        jobLogsOk = true;
+      }
       
       if(cstAttributesNames[i].equalsIgnoreCase("jobTransFK")){
         cl.gridx=0;
@@ -583,7 +607,8 @@ public class JobDefCreationPanel extends CreateEditPanel {
         
         ((JTextComponent) tcCstAttributes[i]).setEnabled(false);
       }
-      else if(cstAttributesNames[i].equalsIgnoreCase("jobXML")){
+      else if((cstAttributesNames[i].equalsIgnoreCase("jobXML") ||
+          jobParsOk && jobOutputsOk && jobLogsOk)){
         Debug.debug("Setting jobXML panel", 3);
         cl.gridx=0;
         cl.gridy=i;
@@ -610,6 +635,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
         cl.gridwidth = 2;
         pAttributes.add(jobXmlContainer,cl);
         cl.gridwidth=1;
+        
+        // just to not have the panel added again
+        jobParsOk = false;
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("ipConnectivity")){
         cl.gridx=0;
@@ -690,7 +718,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
         setJText(tcCstAttributes[i], Integer.toString(taskMgr.getTaskIdentifier()));
         tcCstAttributes[i].setEnabled(false);
       }
-      else{
+      else if(!cstAttributesNames[i].equalsIgnoreCase("jobPars") &&
+              !cstAttributesNames[i].equalsIgnoreCase("jobOutputs") &&
+              !cstAttributesNames[i].equalsIgnoreCase("jobLogs")){
         cl.gridx=0;
         cl.gridy=i;
         pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
@@ -704,10 +734,13 @@ public class JobDefCreationPanel extends CreateEditPanel {
       }      
       cl.gridx=1;
       cl.gridy=i;
-      if(!cstAttributesNames[i].equalsIgnoreCase("jobXML")){
+      if(!cstAttributesNames[i].equalsIgnoreCase("jobXML") &&
+          !cstAttributesNames[i].equalsIgnoreCase("jobPars") &&
+          !cstAttributesNames[i].equalsIgnoreCase("jobOutputs") &&
+          !cstAttributesNames[i].equalsIgnoreCase("jobLogs")){
         pAttributes.add(tcCstAttributes[i], cl);
       }
-      if(cstAttributesNames[i].equalsIgnoreCase("jobDefinitionID")){
+      if(cstAttributesNames[i].equalsIgnoreCase(jobDefIdentifier)){
         // when creating, zap loaded jobDefinitionID
         if(!editing){
           setJText((JComponent) tcCstAttributes[i],"");
@@ -722,8 +755,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
       if(cstAttributesNames[i].equalsIgnoreCase("jobXML")){
       }
       else if(!cstAttributesNames[i].equalsIgnoreCase("jobTransFK") &&
-              !cstAttributesNames[i].equalsIgnoreCase("jobDefinitionID") &&
-              !cstAttributesNames[i].equalsIgnoreCase("taskFK")){
+              !cstAttributesNames[i].equalsIgnoreCase(jobDefIdentifier) &&
+              !cstAttributesNames[i].equalsIgnoreCase("taskFK") &&
+              tcCstAttributes[i]!=null){
         tcCstAttributes[i].setEnabled(enabled);
       }
     }
@@ -737,27 +771,51 @@ public class JobDefCreationPanel extends CreateEditPanel {
     
     Debug.debug("Setting values...", 3);
 
+    boolean jobParsOk = false;
+    boolean jobOutputsOk = false;
+    boolean jobLogsOk = false;
+    String jobXml = "";
+
     for(int i =0; i<cstAttributesNames.length; ++i){     
       if(cstAttributesNames[i].equalsIgnoreCase("jobTransFK")){
         ((JTextComponent) tcCstAttributes[i]).setEnabled(false);
         setJText(tcCstAttributes[i], jobTransFK);
       }
-      else if(cstAttributesNames[i].equalsIgnoreCase("jobXML") /*&& editing*/){
-          tcCstAttributes[i].removeAll();
-          GridBagConstraints cv = new GridBagConstraints();
-          cv.ipady = 10;
-          cv.weighty = 0.5;
-          cv.anchor = GridBagConstraints.NORTHWEST;
-          cv.fill = GridBagConstraints.VERTICAL;
-          cv.weightx = 0.5;
-          cv.gridx = 0;
-          cv.gridy = 0;
-          createJobXmlPanel();
-          if(jobXmlPanel!=null){
-            tcCstAttributes[i].add(jobXmlPanel,cv);
-          }
+      // With the new schema jobPars, jobOutputs and jobLogs are in separate DB fields.
+      // With the old schema they were in the same field and different XML sections.
+      // Wrap <jobDef> around the three sections to emulate old schema...
+      else if(cstAttributesNames[i].equalsIgnoreCase("jobPars") /*&& editing*/){
+        jobXml += tcCstAttributes[i];
+        jobParsOk = true;
       }
-      else{
+      else if(cstAttributesNames[i].equalsIgnoreCase("jobOutputs") /*&& editing*/){
+        jobXml += tcCstAttributes[i];
+        jobOutputsOk = true;
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("jobLogs") /*&& editing*/){
+        jobXml += tcCstAttributes[i];
+        jobLogsOk = true;
+      }
+      if(jobParsOk && jobOutputsOk && jobLogsOk){
+        cstAttributesNames[i] = "jobXML";
+        cstAttr[i] = "<jobDef>"+jobXml+"</jobDef>";
+      }
+      if(cstAttributesNames[i].equalsIgnoreCase("jobXML") /*&& editing*/){
+        Debug.debug("Setting jobXML", 2);
+        tcCstAttributes[i].removeAll();
+        GridBagConstraints cv = new GridBagConstraints();
+        cv.ipady = 10;
+        cv.weighty = 0.5;
+        cv.anchor = GridBagConstraints.NORTHWEST;
+        cv.fill = GridBagConstraints.VERTICAL;
+        cv.weightx = 0.5;
+        cv.gridx = 0;
+        cv.gridy = 0;
+        createJobXmlPanel();
+        if(jobXmlPanel!=null){
+          tcCstAttributes[i].add(jobXmlPanel,cv);
+        }
+        jobParsOk = false;
       }
     }
   }
@@ -783,6 +841,8 @@ public class JobDefCreationPanel extends CreateEditPanel {
     if(!jobTransFK.equals("-1") &&
         transformations.values.length!=0){
       if(table==null || table.getSelectedRow()<0 || !editing){
+        Debug.debug("getting signature from jobTrans..."+transformations.values.length+
+            " "+jobTransFK, 3);
         for(int i=0; i<transformations.values.length; ++i){
           if(transformations.getValue(i, "jobTransId").equals(jobTransFK)){
             signature = transformations.getValue(i, "formalPars");
@@ -793,8 +853,31 @@ public class JobDefCreationPanel extends CreateEditPanel {
         }      
       }
       else{
-        for(int i=0; i<JobDefinition.Fields.length; ++i){
-          if(JobDefinition.Fields[i].equalsIgnoreCase("jobXML")){
+        boolean jobParsOk = false;
+        boolean jobOutputsOk = false;
+        boolean jobLogsOk = false;
+        String jobXml = "";
+        for(int i=0; i<cstAttributesNames.length; ++i){
+
+          if(cstAttributesNames[i].equalsIgnoreCase("jobPars") /*&& editing*/){
+            jobXml += cstAttr[i];
+            jobParsOk = true;
+          }
+          else if(cstAttributesNames[i].equalsIgnoreCase("jobOutputs") /*&& editing*/){
+            jobXml += cstAttr[i];
+            jobOutputsOk = true;
+          }
+          else if(cstAttributesNames[i].equalsIgnoreCase("jobLogs") /*&& editing*/){
+            jobXml += cstAttr[i];
+            jobLogsOk = true;
+          }
+          if(jobParsOk && jobOutputsOk && jobLogsOk){
+            cstAttributesNames[i] = "jobXML";
+            cstAttr[i] = "<jobDef>"+jobXml+"</jobDef>";
+            jobParsOk = false;
+          }
+          
+          if(cstAttributesNames[i].equalsIgnoreCase("jobXML")){
             signature = cstAttr[i];
             Debug.debug("got signature from jobDefinition: "+signature, 3);
           }
@@ -802,8 +885,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
       }
     }
     if(signature==null || signature.equals("")){
-      Debug.debug("Ended here because "+jobTransFK+ " : "+table +" : "+
-          transformations, 3);
+      Debug.debug("Ended here because "+jobTransFK+ " : "+editing+ " : "+table.getSelectedRow()+
+          //" : "+transformations.values.length+
+          " : "+table +" : "+transformations, 3);
       jobTransFK = "";
       // When jobTransFK is not set, the signature is obtained from the taskTransFK.
       // This should not happen...
@@ -922,7 +1006,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
      Using DBPluginMgr object which was passed when function initGUI(..) was called
      */
     // Set jobTransFK
-    Debug.debug("jobTransName, version: "+jobTransName+","+version, 3);
+    Debug.debug("jobTransName, version: "+jobTransName+", "+version, 3);
     for(int i=0; i<transformations.values.length; ++i){
       Debug.debug("Checking jobTransFK "+transformations.getValue(i,"jobTransID"), 3);
       Debug.debug("  "+transformations.getValue(i,"jobTransName"), 3);
@@ -1115,7 +1199,7 @@ public class JobDefCreationPanel extends CreateEditPanel {
     v.addAll(tcConstant);
 
     for(int i=0; i<tcCstAttributes.length; ++i){
-      if(!cstAttributesNames[i].equalsIgnoreCase("jobDefinitionID") &&
+      if(!cstAttributesNames[i].equalsIgnoreCase(jobDefIdentifier) &&
           !cstAttributesNames[i].equalsIgnoreCase("jobTransFK") &&
           !cstAttributesNames[i].equalsIgnoreCase("taskFK")){
         v.add(tcCstAttributes[i]);
@@ -1155,6 +1239,10 @@ public class JobDefCreationPanel extends CreateEditPanel {
   
   private static String getJTextOrEmptyString(JComponent comp,
       XmlNode node, boolean editing){
+    if(comp==null){
+      Debug.debug("WARNING: JComponent is null", 3);
+      return "";
+    }
     String name = "";
     String label = "";
     String text = "";
@@ -1175,6 +1263,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
     // the jobXML panel
     else if(comp.getClass().isInstance(new JPanel())){
       for(int i=0; i<comp.getComponentCount(); ++i){
+        // TODO: Here we seem to be missing jobOutputs in the case where
+        // there is only one output/input file. As in e.g.
+        // JobTransforms-0.2.19-share/ctb.g4sim.partgen.trf
         if(((JPanel) comp.getComponent(i)).getName() != null &&
             ((JPanel) comp.getComponent(i)).getName().equalsIgnoreCase("jobPars")){
           Debug.debug("Filling XML", 3);

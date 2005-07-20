@@ -213,7 +213,7 @@ public class JobValidation {
 
     long beginTime = new Date().getTime();
 
-    ShellMgr shell = taskMgr.getCsPluginMgr().getShellMgr(job);
+    ShellMgr shell = GridPilot.getClassMgr().getCsPluginMgr().getShellMgr(job);
 
     Debug.debug("is going to validate ("+currentSimultaneousValidation + ") " + job.getName() + "..." , 2);
 

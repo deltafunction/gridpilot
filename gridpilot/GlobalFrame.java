@@ -11,7 +11,6 @@ import gridpilot.StatusBar;
 
 import java.util.*;
 
-import gridpilot.ConfigFile;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.JobPanel;
@@ -22,7 +21,7 @@ import gridpilot.IconProxy;
  * This frame contains tab, more can be added dynamically.
  */
 
-public class GlobalFrame extends JFrame {
+public class GlobalFrame extends JFrame{
 
 
   public JTabbedPane tabbedPane = new JTabbedPane();
@@ -30,12 +29,8 @@ public class GlobalFrame extends JFrame {
   private Vector taskMgrs = new Vector() ;
   private Vector taskTransMgrs = new Vector() ;
   private int selectedPanel;
-  private ConfigFile configFile;
   private StatusBar statusBar;
-  
-  private String dbNames;
-  private String userName;
-  private String passwd;
+  private static int i;
 
   /**
    * Constructor
@@ -48,12 +43,9 @@ public class GlobalFrame extends JFrame {
 
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
 
-    configFile = GridPilot.getClassMgr().getConfigFile();
-
-    initDebug();
-    String resourcesPath = configFile.getValue("gridpilot", "resources");
+    String resourcesPath = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "resources");
     if(resourcesPath == null){
-      GridPilot.getClassMgr().getLogFile().addMessage(configFile.getMissingMessage("gridpilot", "resources"));
+      GridPilot.getClassMgr().getLogFile().addMessage(GridPilot.getClassMgr().getConfigFile().getMissingMessage("gridpilot", "resources"));
       resourcesPath = ".";
     }
     else{
@@ -68,14 +60,14 @@ public class GlobalFrame extends JFrame {
    * GUI initialisation
    */
 
-  public void initGUI(Container container) throws Exception  {
+  public void initGUI(Container container) throws Exception {
     /**
      * Called by : this.GlobalFrame();
      */
     
     container.setLayout(new BorderLayout());
     
-    GridPilot.classMgr.setStatusBar(new StatusBar());
+    GridPilot.getClassMgr().setStatusBar(new StatusBar());
     statusBar = GridPilot.getClassMgr().getStatusBar();
     container.add(statusBar, BorderLayout.SOUTH);
     container.add(tabbedPane,  BorderLayout.CENTER);
@@ -84,7 +76,7 @@ public class GlobalFrame extends JFrame {
     
     container.add(tabbedPane,  BorderLayout.CENTER);
 
-    addPanel(new DBPanel("task", "TASKID"));
+    addPanel(new DBPanel(GridPilot.getDBs()[0], "task"));
     selectedPanel = tabbedPane.getSelectedIndex();
 
     /*
@@ -142,7 +134,7 @@ public class GlobalFrame extends JFrame {
 
   public void addPanel(JobPanel newPanel) {
     
-    String resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "resources");
+    String resourcesPath = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "resources");
     if(resourcesPath == null){
       GridPilot.getClassMgr().getLogFile().addMessage(GridPilot.getClassMgr().getConfigFile().getMissingMessage("gridpilot", "resources"));
       resourcesPath = ".";
@@ -212,7 +204,7 @@ public class GlobalFrame extends JFrame {
   }
   //Help | About action performed
   public void menuHelpAbout_actionPerformed() {
-    String path = configFile.getValue("gridpilot", "resources");
+    String path = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "resources");
     URL aboutURL = null;
     try{
       //aboutURL = AtCom.class.getResource(AtCom.resources + "about.htm");
@@ -256,48 +248,76 @@ public class GlobalFrame extends JFrame {
     
     JMenu menuGridPilot = new JMenu("GridPilot");
     JMenu menuNewTab = new JMenu("New tab");
-    JMenuItem miNewTaskTab = new JMenuItem("task");
-    miNewTaskTab.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e) {
-        try{
-          addPanel(new DBPanel("task", "TASKID"), "task");          
-        }catch(Exception ex){
-          Debug.debug("Could not add panel ", 1);
-          ex.printStackTrace();
-        }
-        selectedPanel = tabbedPane.getSelectedIndex();
-      }
-    });
-    JMenuItem miNewJobDefTab = new JMenuItem("jobDefinition");
-    miNewJobDefTab.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e) {
-        try{
-          addPanel(new DBPanel("jobDefinition", "JOBDEFINITIONID"), "jobDefinition");          
-        }catch(Exception ex){
-          Debug.debug("Could not add panel ", 1);
-          ex.printStackTrace();
-        }
-        selectedPanel = tabbedPane.getSelectedIndex();
-      }
-    });
-    JMenuItem miNewJobTransTab = new JMenuItem("jobTrans");
-    miNewJobTransTab.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e) {
-        try{
-          addPanel(new DBPanel("jobTrans", "JOBTRANSID"), "jobTrans");          
-        }catch(Exception ex){
-          Debug.debug("Could not add panel ", 1);
-          ex.printStackTrace();
-        }
-        selectedPanel = tabbedPane.getSelectedIndex();
-      }
-    });
+    
+    JMenu miNewTaskTab = new JMenu("task");
+    JMenuItem [] miNewTaskTabs = new JMenuItem[GridPilot.getDBs().length];
     menuNewTab.add(miNewTaskTab);
+    for(i=0; i<GridPilot.getDBs().length; ++i){
+      miNewTaskTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
+      miNewTaskTabs[i].addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          try{
+            addPanel(new DBPanel(
+                ((JMenuItem)e.getSource()).getText(),
+                   "task"),
+                "task");          
+          }catch(Exception ex){
+            Debug.debug("Could not add panel ", 1);
+            ex.printStackTrace();
+          }
+          selectedPanel = tabbedPane.getSelectedIndex();
+        }
+      });
+      miNewTaskTab.add(miNewTaskTabs[i]);
+    }
+    
+    JMenu miNewJobDefTab = new JMenu("jobDefinition");
+    JMenuItem [] miNewJobDefTabs = new JMenuItem[GridPilot.getDBs().length];
     menuNewTab.add(miNewJobDefTab);
+    for(i=0; i<GridPilot.getDBs().length; ++i){
+      miNewJobDefTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
+      miNewJobDefTabs[i].addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          try{
+            addPanel(new DBPanel(
+                ((JMenuItem)e.getSource()).getText(),
+                   "job definition"),
+                "job definition");          
+          }catch(Exception ex){
+            Debug.debug("Could not add panel ", 1);
+            ex.printStackTrace();
+          }
+          selectedPanel = tabbedPane.getSelectedIndex();
+        }
+      });
+      miNewJobDefTab.add(miNewJobDefTabs[i]);
+    }
+    
+    JMenu miNewJobTransTab = new JMenu("jobTrans");
+    JMenuItem [] miNewJobTransTabs = new JMenuItem[GridPilot.getDBs().length];
     menuNewTab.add(miNewJobTransTab);
+    for(i=0; i<GridPilot.getDBs().length; ++i){
+      miNewJobTransTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
+      miNewJobTransTabs[i].addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          try{
+            addPanel(new DBPanel(
+                ((JMenuItem)e.getSource()).getText(),
+                   "transformation"),
+                "transformation");          
+          }catch(Exception ex){
+            Debug.debug("Could not add panel ", 1);
+            ex.printStackTrace();
+          }
+          selectedPanel = tabbedPane.getSelectedIndex();
+        }
+      });
+      miNewJobTransTab.add(miNewJobTransTabs[i]);
+    }
+
     menuGridPilot.add(menuNewTab);
 
-    if(!GridPilot.applet){
+    if(!GridPilot.isApplet()){
       menuGridPilot.addSeparator();
       JMenuItem miExit = new JMenuItem("Exit");
       miExit.addActionListener(new ActionListener()  {
@@ -337,7 +357,7 @@ public class GlobalFrame extends JFrame {
     JMenuItem miDbReconnect = new JMenuItem("Reconnect");
     miDbReconnect.addActionListener(new ActionListener()  {
       public void actionPerformed(ActionEvent e) {
-        dbReconnect();
+        GridPilot.dbReconnect();
       }
     });
 
@@ -355,87 +375,4 @@ public class GlobalFrame extends JFrame {
 
   }
 
-  /**
-   * Reloads values from configuration file.
-   * Called when user chooses "Reload values" in gridpilot menu
-   */
-  private void reloadValues(){
-   
-    GridPilot.dbs = GridPilot.getClassMgr().getConfigFile().getValues("gridpilot", "Databases");
-    for(int i = 0; i < GridPilot.dbs.length; ++i){
-      userName = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
-      passwd = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
-      GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[i]).loadValues();
-    }
-    initDebug();
-  }
-
-  /**
-   * Reads in configuration file the debug level.
-   */
-  private void initDebug(){
-  	if ((configFile == null ) || configFile.isFake()) return;
-    String debugList = configFile.getValue("gridpilot", "debugList");
-    if(debugList == null){
-      GridPilot.getClassMgr().getLogFile().addMessage(configFile.getMissingMessage("gridpilot", "debugList"));
-      Debug.toTrace="";
-    } else {
-      Debug.toTrace=debugList;
-      Debug.debug("debug list set to : "+debugList, 2);
-    }
-
-    String debugLevel = configFile.getValue("gridpilot", "debug");
-    if(debugLevel == null){
-      GridPilot.getClassMgr().getLogFile().addMessage(configFile.getMissingMessage("gridpilot", "debug"));
-      GridPilot.getClassMgr().setDebugLevel(3);
-    }
-
-    try{ GridPilot.getClassMgr().setDebugLevel(new Integer(debugLevel).intValue());}
-    catch(NumberFormatException nfe){
-      GridPilot.getClassMgr().getLogFile().addMessage("Debug is not an integer in configFile, section [gridpilot]");
-      GridPilot.getClassMgr().setDebugLevel(3);
-    }
-  }
-
-
-  //need to re-think this a bit
-
-  private void dbReconnect(){
-    /*
-     Show small window with label
-     */
-    JWindow w = new JWindow(JOptionPane.getRootFrame());
-    JLabel message = new JLabel("Reconnecting... please wait...");
-    JPanel panel = new JPanel(new FlowLayout());
-    panel.add(message);
-    panel.updateUI();
-    w.getContentPane().add(panel);
-    w.pack();
-    w.show();
-    Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-    w.setLocation(screenSize.width/2 - w.getSize().width/2,
-                  screenSize.height/2 - w.getSize().height/2);
-    /*
-     Reconnect DB
-     */
-    GridPilot.dbs = GridPilot.getClassMgr().getConfigFile().getValues("gridpilot", "Databases");
-    for(int i = 0; i < GridPilot.dbs.length; ++i){
-      userName = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
-      passwd = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
-      GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[i]).disconnect();
-      try {
-        GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[i]).init();
-        // TODO: reload panels?
-      } catch (Throwable e) {
-        Debug.debug("Could not load db  " + e.getMessage(), 3);
-        GridPilot.exit(-1);
-      }
-    }
-
-    /*
-     Close small progress window
-     */
-    w.hide();
-    w.dispose();
-  }
 }

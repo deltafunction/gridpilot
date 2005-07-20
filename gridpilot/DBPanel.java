@@ -22,10 +22,7 @@ public class DBPanel extends JPanel implements JobPanel{
 
   private ConfigFile configFile;
   private boolean withSplit = true;
-  private String [] dbs;
 
-  //private String [] tables = {"task", "jobDefinition", "jobTrans"};
-  
   private JScrollPane spSelectPanel = new JScrollPane();
   private SelectPanel selectPanel;
   private JPanel pButtonSelectPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -50,14 +47,17 @@ public class DBPanel extends JPanel implements JobPanel{
   private String [] stepIdentifiers;
   // lists of field names with table name as key
   private String [] fieldNames = null;
-
+  private String dbName = null;
+  
+  private String realTableName;
   private String tableName;
   private String identifier;
+  private String jobDefIdentifier;
   private String [] defaultFields = null;
   private String [] hiddenFields = null;
   private String [] shownFields = null;
   private String [] selectFields = null;
-  
+
   private JMenu jmSetFieldValue = null;
   
   private GridBagConstraints ct = new GridBagConstraints();
@@ -92,21 +92,22 @@ public class DBPanel extends JPanel implements JobPanel{
    * Create a new DBPanel from scratch.
    */
 
-   public DBPanel( /*name of tables for the select*/
-                  String _tableName,
-                  /*name of identifier of the table actually to be searched*/
-                  String _identifier) throws Exception{
+   public DBPanel(/*name of database*/
+                  String _dbName,
+                  /*name of tables for the select*/
+                  String _tableName) throws Exception{
   
-     tableName = _tableName;
-     identifier = _identifier;
-     
      configFile = GridPilot.getClassMgr().getConfigFile();
+     dbName = _dbName;
      
-     dbs = GridPilot.getDBs();
-
-     String dbName = null;
-     String [] previousDefaultFields = null;
-
+     tableName = _tableName;
+     realTableName = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
+         tableName+" table name");
+     identifier = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
+         tableName+" table identifier");
+     jobDefIdentifier = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
+         "job definnition table identifier");
+     
      ct.fill = GridBagConstraints.HORIZONTAL;
      ct.anchor = GridBagConstraints.NORTH;
      ct.insets = new Insets(0,0,0,0);
@@ -117,37 +118,16 @@ public class DBPanel extends JPanel implements JobPanel{
      ct.gridy = 1;   
      ct.ipady = 250;
 
-     // Check that default fields set in config file agree for the databases used
-     for(int i = 0; i < dbs.length; ++i){
-       dbName = dbs[i];
-       defaultFields = GridPilot.getClassMgr().getDBPluginMgr(
-           dbName).getDBDefFields(dbs[i], tableName);
-       if(i>0){
-         previousDefaultFields = GridPilot.getClassMgr().getDBPluginMgr(
-             dbName).getDBDefFields(dbs[i-1], tableName);
-         if(defaultFields.length!=previousDefaultFields.length){
-           Debug.debug("WARNING: number of default fields disagree", 1);
-         }
-         else{
-           for(int k=0; k<defaultFields.length; ++k){
-             if(!defaultFields[k].equalsIgnoreCase(previousDefaultFields[k])){
-               Debug.debug("WARNING: default fields disagree, " +
-                   defaultFields[k]+" != " + previousDefaultFields[k], 1);
-             }
-           }
-         }
-       }
-     }
-     
+     // Check that default fields set in config file agree for the database used
+     defaultFields = GridPilot.getClassMgr().getDBPluginMgr(
+         dbName).getDBDefFields(dbName, tableName);
      Debug.debug("Default fields "+defaultFields.length, 3);
 
-     // the same table from the various databases used should have the same
-    // columns, so we use the first db and the first stepName to get the fields.
     fieldNames =
-       GridPilot.getClassMgr().getDBPluginMgr(dbs[0]).getFieldNames(tableName);
+       GridPilot.getClassMgr().getDBPluginMgr(dbName).getFieldNames(realTableName);
     
-    hiddenFields = GridPilot.getClassMgr().getDBPluginMgr(dbs[0]
-       ).getDBHiddenFields(dbs[0], tableName);
+    hiddenFields = GridPilot.getClassMgr().getDBPluginMgr(dbName
+       ).getDBHiddenFields(dbName, tableName);
     Debug.debug("Hidden fields "+hiddenFields.length, 3);
     tableResults = new Table(hiddenFields, fieldNames,
         GridPilot.getColorMapping());
@@ -183,7 +163,7 @@ public class DBPanel extends JPanel implements JobPanel{
      }
      
      for(int k=0; k<shownFields.length; ++k){
-       shownFields[k] = tableName+"."+shownFields[k];
+       shownFields[k] = realTableName+"."+shownFields[k];
      }
      
      
@@ -211,7 +191,7 @@ public class DBPanel extends JPanel implements JobPanel{
      }
      
      for(int k=0; k<selectFields.length; ++k){
-       selectFields[k] = tableName+"."+selectFields[k];
+       selectFields[k] = realTableName+"."+selectFields[k];
      }
    }
    
@@ -221,13 +201,11 @@ public class DBPanel extends JPanel implements JobPanel{
 
   public DBPanel(/*name of tables for the select*/
                  String _tableName,
-                 /*name of identifier of the table actually to be searched*/
-                 String _identifier,
                  /*pointer to the db in use for this panel*/
                  DBPluginMgr _dbPluginMgr,
                  /*identifier of the parent record (task <- jobDefinition)*/
                  int _parentId) throws Exception{
-      this(_tableName, _identifier);
+      this(_dbPluginMgr.getDBName(), _tableName);
       dbPluginMgr = _dbPluginMgr;
       parentId = _parentId;
   }
@@ -240,7 +218,7 @@ public class DBPanel extends JPanel implements JobPanel{
 
 //// SelectPanel
 
-    selectPanel = new SelectPanel(tableName, fieldNames);
+    selectPanel = new SelectPanel(realTableName, fieldNames);
     selectPanel.initGUI();
     clear();
 
@@ -253,7 +231,7 @@ public class DBPanel extends JPanel implements JobPanel{
     panelSelectPanel.add(pButtonSelectPanel, new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0
         ,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
 
-    selectPanel.setConstraint("task", "TASKNAME", "", 1);
+    selectPanel.setConstraint(dbName, "TASKNAME", "", 1);
     
     // Listen for enter key in text field
     this.selectPanel.spcp.tfConstraintValue.addKeyListener(new KeyAdapter(){
@@ -350,7 +328,7 @@ public class DBPanel extends JPanel implements JobPanel{
       bDeleteRecord.setEnabled(false);
       updateUI();
     }
-    else if(tableName.equalsIgnoreCase("jobDefinition")){
+    else if(tableName.equalsIgnoreCase("job definition")){
       bEditRecord.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
           editJobDef();
@@ -376,7 +354,7 @@ public class DBPanel extends JPanel implements JobPanel{
       addButtonSelectPanel(bSearch);
       updateUI();
     }
-    else if(tableName.equalsIgnoreCase("jobTrans")){
+    else if(tableName.equalsIgnoreCase("transformation")){
       bCreateRecords.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
           createJobTransRecords();
@@ -417,7 +395,7 @@ public class DBPanel extends JPanel implements JobPanel{
   }
   
   public String getTitle(){
-    return tableName/*+"s"*//*jobTranss looks bad...*/;
+    return realTableName/*+"s"*//*jobTranss looks bad...*/;
   }
 
   public void panelShown(){
@@ -455,15 +433,6 @@ public class DBPanel extends JPanel implements JobPanel{
   public int getSelectedIdentifier(){
     int selRow = tableResults.getSelectedRow();
     return (selRow==-1) ? -1 : identifiers[selRow];
-  }
-
-  /**
-   * Returns the DB name of the first selected row, "-1" if no row is selected.
-   */
-
-  public String getSelectedDBName(){
-    int selRow = tableResults.getSelectedRow();
-    return (selRow==-1) ? "-1" : dbIdentifiers[selRow];
   }
 
   /**
@@ -518,7 +487,7 @@ public class DBPanel extends JPanel implements JobPanel{
       }
     }
     selectPanel.setDisplayFieldValue(values);
-    selectPanel.resetConstraintList(tableName);
+    selectPanel.resetConstraintList(realTableName);
     selectPanel.updateUI();
   }
 
@@ -545,55 +514,15 @@ public class DBPanel extends JPanel implements JobPanel{
             return;
         
         /*
-         Support several dbs and steps (represented by dbRes[] and stepRes[]) and merge them
-         all in one big table (res) with two extra column (last columns) specifying
-         the name of the db and the step from which each row came
+         Support several dbs (represented by dbRes[]) and merge them
+         all in one big table (res) with an extra column specifying
+         the name of the db from which each row came
         */      
-        DBResult [] stepRes = new DBResult[dbs.length];
+        //DBResult [] stepRes = new DBResult[dbs.length];
         DBResult res = null;
-        int lastCol = 0;
-        int notEmptyDbId = -1;
-        int nrValues=0;
-        for (int h=0; h<dbs.length; h++) {
-          // the actual selection
-          stepRes[h] = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[h]).select(
-                  selectRequest,identifier);
-          nrValues += stepRes[h].values.length;
-          
-          /*
-           Creates fields structure for 'res' based on the first element of stepRes
-           which has some results in it
-           */
-          if (stepRes[h].fields.length > 0){
-            notEmptyDbId = h;
-            lastCol = stepRes[notEmptyDbId].fields.length;
-          }
-        }
-        res = new DBResult(lastCol+1, nrValues);
-        System.arraycopy(stepRes[notEmptyDbId].fields,0,res.fields,0,
-            stepRes[notEmptyDbId].fields.length);
+        res = GridPilot.getClassMgr().getDBPluginMgr(dbName).select(
+            selectRequest,identifier);
 
-        /*
-         Heavy performance penalty here!!! Go through everything in table and fill extra column specifying
-         to which db and step each row belongs
-         */
-        int c=0;
-        for (int h=0; h<dbs.length; h++) {
-          for (int i=0; i<nrValues; i++) {
-            if ((i-c)==stepRes[h].values.length) {
-              c=i;
-            }
-            for (int j=0; j<lastCol; j++){
-              res.values[i][j] = stepRes[h].values[i-c][j];
-            }
-            res.values[i][lastCol]=dbs[h];
-          }
-        }
-        /*
-         Now we have on 'res' everything. Now for esthetic reasons, hide
-         db name, step name identifier and task identifier
-         */
-        
         bViewJobDefinitions.setEnabled(false);
         bViewJobTransRecords.setEnabled(false);
         bEditRecord.setEnabled(false);
@@ -602,25 +531,21 @@ public class DBPanel extends JPanel implements JobPanel{
         tableResults.setTable(res.values, res.fields);
         spTableResults.getViewport().add(tableResults);
         
-        if(selectRequest.indexOf("*")>-1){
-          tableResults.hideLastColumns(1); // hide db name column
-        }
-        else{
-          tableResults.hideLastColumns(2); // hide db name and task identifier column
-        }
-
         identifiers = new int[tableResults.getRowCount()];
         // 'col' is the column with the jobDefinition identifier
-        int col = tableResults.getColumnCount()-2;
+        int col = tableResults.getColumnCount()-1;
+        String idName = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
+           "job definition table identifier");
+        for(int i=0; i<tableResults.getColumnCount(); ++i){
+          Debug.debug("Column: "+tableResults.getColumnName(i)+"<->"+idName, 3);
+          if(tableResults.getColumnName(i).equalsIgnoreCase(idName)){
+            col = i;
+            break;
+          }
+        }
         for(int i=0; i<identifiers.length; ++i){
           identifiers[i] = new Integer(tableResults.getUnsortedValueAt(i, col).toString()).intValue();
         }
-
-        dbIdentifiers = new String[tableResults.getRowCount()];
-        // 'col' is now the column with the db identifier
-        col = tableResults.getColumnCount()-1;
-        for(int i=0; i<dbIdentifiers.length; ++i)
-          dbIdentifiers[i] = tableResults.getUnsortedValueAt(i, col).toString();
 
         if(tableName.equalsIgnoreCase("task")){
           tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -639,7 +564,7 @@ public class DBPanel extends JPanel implements JobPanel{
 
           makeTaskMenu();
         }
-        else if(tableName.equalsIgnoreCase("jobDefinition")){
+        else if(tableName.equalsIgnoreCase("job definition")){
           tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
           tableResults.addListSelectionListener(new ListSelectionListener(){
             public void valueChanged(ListSelectionEvent e) {
@@ -657,7 +582,7 @@ public class DBPanel extends JPanel implements JobPanel{
 
           makeJobDefMenu();
         }
-        else if(tableName.equalsIgnoreCase("jobTrans")){
+        else if(tableName.equalsIgnoreCase("transformation")){
           tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
           tableResults.addListSelectionListener(new ListSelectionListener(){
             public void valueChanged(ListSelectionEvent e) {
@@ -754,7 +679,7 @@ public class DBPanel extends JPanel implements JobPanel{
     JMenuItem [] miSetFields = new JMenuItem[fieldNames.length];
     for(int i=0; i<fieldNames.length; ++i){
       if(fieldNames[i]!=null && !fieldNames[i].equalsIgnoreCase("") &&
-          !fieldNames[i].equalsIgnoreCase("jobDefinitionID")){
+          !fieldNames[i].equalsIgnoreCase(jobDefIdentifier)){
            miSetFields[i] = new JMenuItem(fieldNames[i]);
            miSetFields[i].setName(fieldNames[i]);
            miSetFields[i].addActionListener(new ActionListener(){
@@ -814,7 +739,7 @@ public class DBPanel extends JPanel implements JobPanel{
     CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
         new JobDefCreationPanel(taskMgr, tableResults, false), false);
-    pDialog.setTitle(tableName);
+    pDialog.setTitle(realTableName);
     pDialog.show();
     if(tableResults!=null && tableResults.getRowCount()>0){
       searchRequest();
@@ -824,7 +749,7 @@ public class DBPanel extends JPanel implements JobPanel{
   private void editJobDef(){
     TaskMgr taskMgr = null;
     if(parentId<0){
-      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(getSelectedDBName());
+      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
       parentId = dbPluginMgr.getTaskId(getSelectedIdentifier());
     }
     Debug.debug("Got dbPluginMgr:"+dbPluginMgr+":"+parentId, 1);
@@ -839,7 +764,7 @@ public class DBPanel extends JPanel implements JobPanel{
     CreateEditDialog pDialog = new CreateEditDialog(
         GridPilot.getClassMgr().getGlobalFrame(),
         new JobDefCreationPanel(taskMgr, tableResults, true), true);
-    pDialog.setTitle(tableName);
+    pDialog.setTitle(realTableName);
     pDialog.show();
     searchRequest();
   }
@@ -859,7 +784,7 @@ public class DBPanel extends JPanel implements JobPanel{
     }
     workThread = new Thread() {
       public void run(){
-        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(getSelectedDBName());
+        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
         if(!getWorking()){
           Debug.debug("please wait ...", 2);
           return;
@@ -887,11 +812,11 @@ public class DBPanel extends JPanel implements JobPanel{
    * Open dialog with task creation panel
    */ 
   private void createTasks() {
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[0]);
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.getDBs()[0]);
    CreateEditDialog pDialog = new CreateEditDialog(
       GridPilot.getClassMgr().getGlobalFrame(),
        new TaskCreationPanel(dbPluginMgr, tableResults, false), false);
-   pDialog.setTitle(tableName);
+   pDialog.setTitle(realTableName);
    pDialog.show();
    if(tableResults!=null && tableResults.getRowCount()>0){
      searchRequest();
@@ -899,11 +824,11 @@ public class DBPanel extends JPanel implements JobPanel{
  }
 
  private void editTask() {
-   DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[0]);
+   DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.getDBs()[0]);
    CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
        new TaskCreationPanel(dbPluginMgr, tableResults, true), true);
-   pDialog.setTitle(tableName);
+   pDialog.setTitle(realTableName);
    pDialog.show();
    searchRequest();
  }
@@ -923,7 +848,7 @@ public class DBPanel extends JPanel implements JobPanel{
     }
     workThread = new Thread() {
       public void run(){
-        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(getSelectedDBName());
+        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
         if(!getWorking()){
           Debug.debug("please wait ...", 2);
           return;
@@ -952,11 +877,11 @@ public class DBPanel extends JPanel implements JobPanel{
    * Open dialog with jobTrans creation panel
    */ 
   private void createJobTransRecords() {
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[0]);
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.getDBs()[0]);
    CreateEditDialog pDialog = new CreateEditDialog(
       GridPilot.getClassMgr().getGlobalFrame(),
        new JobTransCreationPanel(dbPluginMgr, tableResults, false), false);
-   pDialog.setTitle(tableName);
+   pDialog.setTitle(realTableName);
    pDialog.show();
    if(tableResults!=null && tableResults.getRowCount()>0){
      searchRequest();
@@ -964,11 +889,11 @@ public class DBPanel extends JPanel implements JobPanel{
  }
 
  private void editJobTransRecord() {
-   DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[0]);
+   DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.getDBs()[0]);
    CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
        new JobTransCreationPanel(dbPluginMgr, tableResults, true), true);
-   pDialog.setTitle(tableName);
+   pDialog.setTitle(realTableName);
    pDialog.show();
    searchRequest();
  }
@@ -988,7 +913,7 @@ public class DBPanel extends JPanel implements JobPanel{
     }
     workThread = new Thread() {
       public void run(){
-        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(getSelectedDBName());
+        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
         if(!getWorking()){
           Debug.debug("please wait ...", 2);
           return;
@@ -1020,13 +945,13 @@ public class DBPanel extends JPanel implements JobPanel{
     if(getSelectedIdentifier() != -1){
       new Thread(){
         public void run(){
-          DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(getSelectedDBName());
+          DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
           try{
             // Create new panel with jobDefinitions.         
             int id = getSelectedIdentifier();
-            DBPanel dbPanel = new DBPanel("jobDefinition", "JOBDEFINITIONID",
+            DBPanel dbPanel = new DBPanel("job definition",
                 dbPluginMgr, id);
-            dbPanel.selectPanel.setConstraint("jobDefinition", "TASKFK",
+            dbPanel.selectPanel.setConstraint("job definition", "TASKFK",
                 Integer.toString(id), 0);
             dbPanel.searchRequest();           
             // Create new task panel showing JobTrans records
@@ -1048,13 +973,13 @@ public class DBPanel extends JPanel implements JobPanel{
     if(getSelectedIdentifier() != -1){
       new Thread(){
         public void run(){
-         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(getSelectedDBName());
+         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
           try{
             // Create new panel with jobTrans records.         
             int id = dbPluginMgr.getTaskTransId(/*taskID*/getSelectedIdentifier());
-            DBPanel dbPanel = new DBPanel("jobTrans", "JOBTRANSID",
+            DBPanel dbPanel = new DBPanel("transformation",
                 dbPluginMgr, id);
-            dbPanel.selectPanel.setConstraint("jobTrans", "TASKTRANSFK",
+            dbPanel.selectPanel.setConstraint("transformation", "TASKTRANSFK",
                 Integer.toString(id), 0);
             dbPanel.searchRequest();
             // Create new task panel showing JobTrans records

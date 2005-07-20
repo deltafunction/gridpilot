@@ -81,10 +81,10 @@ public class DBPluginMgr implements Database{
         // Arguments and class name for <DatabaseName>Database
         //  AMI ****
         String driver = configFile.getValue(dbName, "driver");
-        String transDB = configFile.getValue(dbName, "transDB");
+        /*String transDB = configFile.getValue(dbName, "transDB");
         String project = configFile.getValue(dbName, "project");
         String level = configFile.getValue(dbName, "level");
-        String site = configFile.getValue(dbName, "site");
+        String site = configFile.getValue(dbName, "site");*/
         // ****
         database = configFile.getValue(dbName, "database");
         user = configFile.getValue(dbName, "user");
@@ -96,10 +96,10 @@ public class DBPluginMgr implements Database{
                               configFile.getMissingMessage(dbName, "Database class"));
         }
   
-        Class [] dbArgsType = {String.class, String.class, String.class,
+        Class [] dbArgsType = {/*String.class, String.class, String.class,*/
             String.class, String.class, String.class, String.class, String.class, String.class};
-        Object [] dbArgs = {/*AMI*/project, level, site, transDB,/**/
-            driver, database, user, passwd, dbprefix};
+        Object [] dbArgs = {/*AMI*//*project, level, site, transDB,*//**/
+            dbName, driver, database, user, passwd, dbprefix};
         boolean loadfailed = false;
         try {
         	Class dbclass = this.getClass().getClassLoader().loadClass(dbClass);
@@ -149,34 +149,6 @@ public class DBPluginMgr implements Database{
         logFile.addMessage("value of default timeout (" + tmp +") is not an integer");
       }
     }
-  }
-
-  public boolean updateJobDef(int jobDefID, String [] fields, String [] values) {
-    if(fields.length!=values.length){
-      Debug.debug("The number of fields and values do not agree, "+
-          fields.length+"!="+values.length, 1);
-      return false;
-    }
-    if(fields.length>JobDefinition.Fields.length){
-      Debug.debug("The number of fields is too large, "+
-          fields.length+">"+JobDefinition.Fields.length, 1);
-    }
-    String [] vals = new String[JobDefinition.Fields.length];
-    for(int i=0; i<JobDefinition.Fields.length; ++i){
-      vals[i] = "";
-      for(int j=0; i<fields.length; ++j){
-        if(fields[j].equalsIgnoreCase(JobDefinition.Fields[i])){
-          vals[i] = values[j];
-          break;
-        }
-        if(fields[j].equalsIgnoreCase(JobDefinition.Identifier)){
-          vals[i] = Integer.toString(jobDefID);
-          break;
-        }
-      }
-    }
-    JobDefinition jobDef = new JobDefinition(vals);
-    return GridPilot.getClassMgr().getDBPluginMgr(dbName).updateJobDefinition(jobDef) ;
   }
 
   public boolean updateJobStdoutErr(int jobDefID, String stdOut, String stdErr){
@@ -616,17 +588,17 @@ public class DBPluginMgr implements Database{
       return false;
   }
 
-  public synchronized boolean createJobDefinition(final JobDefinition jobDef){
+  public synchronized boolean createJobDefinition(final String [] values){
   
     MyThread t = new MyThread(){
       boolean res = false;
       public void run(){
         try{
-          res = db.createJobDefinition(jobDef);
+          res = db.createJobDefinition(values);
         }catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             jobDef.toString(), t);
+                             values.toString(), t);
         }
       }
       public boolean getBoolRes(){return res;}
@@ -664,17 +636,17 @@ public class DBPluginMgr implements Database{
         return false;
     }
 
-  public synchronized boolean createTask(final Task task){
+  public synchronized boolean createTask(final String [] values){
     
       MyThread t = new MyThread(){
         boolean res = false;
         public void run(){
           try{
-            res = db.createTask(task);
+            res = db.createTask(values);
           }catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
-                               task.toString(), t);
+                               values.toString(), t);
           }
         }
         public boolean getBoolRes(){return res;}
@@ -688,17 +660,17 @@ public class DBPluginMgr implements Database{
         return false;
     }
 
-  public synchronized boolean createJobTransRecord(final JobTrans jobTrans){
+  public synchronized boolean createJobTransRecord(final String [] values){
     
       MyThread t = new MyThread(){
         boolean res = false;
         public void run(){
           try{
-            res = db.createJobTransRecord(jobTrans);
+            res = db.createJobTransRecord(values);
           }catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
-                               jobTrans.toString(), t);
+                               values.toString(), t);
           }
         }
         public boolean getBoolRes(){return res;}
@@ -737,17 +709,18 @@ public class DBPluginMgr implements Database{
         return false;
     }
 
-  public synchronized boolean updateJobDefinition(final JobDefinition jobDef){
+  public synchronized boolean updateJobDefinition(final int jobDefID,
+      final String [] fields, final String [] values){
   
     MyThread t = new MyThread(){
       boolean res = false;
       public void run(){
         try{
-          res = db.updateJobDefinition(jobDef);
+          res = db.updateJobDefinition(jobDefID, fields, values);
         }catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             jobDef.toString(), t);
+                             jobDefID, t);
         }
       }
       public boolean getBoolRes(){return res;}
@@ -785,17 +758,18 @@ public class DBPluginMgr implements Database{
         return false;
     }
 
-  public synchronized boolean updateTask(final Task task){
+  public synchronized boolean updateTask(final int taskID,
+      final String [] fields, final String [] values){
     
       MyThread t = new MyThread(){
         boolean res = false;
         public void run(){
           try{
-            res = db.updateTask(task);
+            res = db.updateTask(taskID, fields, values);
           }catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
-                               task.toString(), t);
+                               taskID, t);
           }
         }
         public boolean getBoolRes(){return res;}
@@ -809,17 +783,18 @@ public class DBPluginMgr implements Database{
         return false;
     }
 
-  public synchronized boolean updateJobTransRecord(final JobTrans jobTrans){
+  public synchronized boolean updateJobTransRecord(final int jobTransID,
+      final String [] fields, final String [] values){
     
       MyThread t = new MyThread(){
         boolean res = false;
         public void run(){
           try{
-            res = db.updateJobTransRecord(jobTrans);
+            res = db.updateJobTransRecord(jobTransID, fields, values);
           }catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
-                               jobTrans.toString(), t);
+                               jobTransID, t);
           }
         }
         public boolean getBoolRes(){return res;}
@@ -1317,8 +1292,27 @@ public class DBPluginMgr implements Database{
     HashMap dbDefFields = new HashMap();
     String [] ret;
     try{
-      ret = GridPilot.split((String)
-      GridPilot.getClassMgr().getConfigFile().getValue(dbName, "hidden "+tableName+" fields"));
+      // This method is called with e.g. ETASK as table, this needs to be
+      // inversely mapped to TASK to find default task fields.
+      /*String taskTableName = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
+         "task table name");
+      String jobDefTableName = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
+         "job definition table name");
+      String transformationTableName = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
+         "transformation table name");
+      String tableName = "";
+      if(taskTableName.equalsIgnoreCase(table)){
+        tableName = "task";
+      }
+      else if(taskTableName.equalsIgnoreCase(table)){
+        tableName = "job definition";
+      }
+      else if(taskTableName.equalsIgnoreCase(table)){
+        tableName = "transformation";
+      }*/
+      ret =
+        GridPilot.getClassMgr().getConfigFile().getValues(dbName,
+            "hidden "+tableName+" fields");
       dbDefFields.put(tableName, ret);
       return ret;
     }catch(Exception e){
@@ -1374,30 +1368,6 @@ public class DBPluginMgr implements Database{
       else
         return -1;
     }
-
-  public synchronized String [] getJobTransNames(){
-    MyThread t = new MyThread(){
-      String [] res = null;
-      public void run(){
-        try{
-          res = db.getJobTransNames();
-        }catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName , t);
-        }
-      }
-      public String [] getString2Res(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "getHomePackages"))
-      return t.getString2Res();
-    else
-      return new String [] {};
-   }
 
   public synchronized String [] getVersions(final String homePackage){
     MyThread t = new MyThread(){
