@@ -200,10 +200,10 @@ public class JobDefCreator {
         if(editing){
           String jobDefIdentifier = GridPilot.getClassMgr().getConfigFile().getValue(
               taskMgr.getDBPluginMgr().getDBName(),
-          "job definition identifier name");
+          "job definition table identifier");
           int id = -1;
           for(int i=0; i<cstAttrNames.length; ++i){
-            if(cstAttrNames.toString().equalsIgnoreCase(
+            if(cstAttrNames[i].toString().equalsIgnoreCase(
                 jobDefIdentifier)){
               id = Integer.parseInt(resCstAttr[i]);
               break;
