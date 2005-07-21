@@ -765,6 +765,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
       jobXmlPanel.setVisible(enabled);
       jobXmlPanel.updateUI();
     }
+    // the create/update button on the CreateEditDialog panel
+    ((JButton) ((JPanel) this.getParent().getComponent(1)).getComponent(3)).setEnabled(enabled);
+    updateUI();
   }
 
   private void setValuesInAttributePanel(){
