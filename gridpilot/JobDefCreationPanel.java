@@ -20,7 +20,7 @@ import java.util.*;
  *
  */
 
-public class JobDefCreationPanel extends CreateEditPanel {
+public class JobDefCreationPanel extends CreateEditPanel{
 
   /*
    DBPluginMgr to be used is stored here by initGUI(..). Still, not all functions use this global
@@ -830,11 +830,14 @@ public class JobDefCreationPanel extends CreateEditPanel {
     if(!editing && jobXmlPanel!=null &&
         (jobTransFK==null || jobTransFK.equals("-1") ||
         jobTransFK.equals(oldJobTransFK))){
+      Debug.debug("NOT making new jobXmlPanel", 3);
       return;
     }
     else{
       Debug.debug("making new jobXmlPanel", 3);
       makeJobXmlPanel(false);
+      oldJobTransFK = jobTransFK;
+      Debug.debug("Seting oldJobTransFK to "+oldJobTransFK, 3);
     }
   }
   
@@ -932,9 +935,31 @@ public class JobDefCreationPanel extends CreateEditPanel {
         Debug.debug("Setting new jobXmlPanel", 3);
         xmlParsNode.fillJPanel(clearFields, editing);
         if(!editing){
-          XmlNode leafNode = ((XmlNode)xmlParsNode.nodes.elementAt(xmlParsNode.nodes.size()-1));
+          int logPanelNr = xmlParsNode.nodes.size()-1;
+          XmlNode leafNode = (XmlNode)xmlParsNode.nodes.elementAt(logPanelNr);
+          XmlNode testNode;
+          // We attach the log fields to the last panel, which is
+          // 'normal', i.e. with 2 components, i.e. not an output or
+          // input files panel. Not too elegant if the last panel
+          // is an output/input panel...
+          if(leafNode.jpanel.getName().equals("OUTPUT") ||
+              leafNode.jpanel.getName().equals("INPUT")){
+            int i = xmlParsNode.nodes.size()-1;
+            for(i=xmlParsNode.nodes.size()-1; i>=0; --i){
+              testNode = (XmlNode)xmlParsNode.nodes.elementAt(i);
+              if(!testNode.jpanel.getName().equals("OUTPUT") &&
+                  !testNode.jpanel.getName().equals("INPUT")){
+                leafNode = testNode;
+                break;
+              }
+            }
+            if(i==0 && (leafNode.jpanel.getName().equals("OUTPUT") ||
+                leafNode.jpanel.getName().equals("INPUT"))){
+              Debug.debug("ERROR! There needs to be at least one regular XML field.", 1);
+            }
+          }
           leafNode.addLogJFields();
-        }
+        } 
         jobXmlPanel = xmlParsNode.jpanel;
       }
       else{
@@ -989,6 +1014,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
     if(cbVersionSelection == null){
       return;
     }
+    
+    //oldJobTransFK = jobTransFK;
+    //Debug.debug("Seting oldJobTransFK to "+oldJobTransFK, 3);
 
     if(cbVersionSelection!=null && cbVersionSelection.getSelectedItem()!=null){
       if(!versionInit){
@@ -1083,8 +1111,9 @@ public class JobDefCreationPanel extends CreateEditPanel {
       Debug.debug("to " + cstAttr[i],  3);
     }
 
-      oldTcCstAttributes = tcCstAttributes;
+      oldTcCstAttributes = tcCstAttributes;     
       oldJobTransFK = jobTransFK;
+      Debug.debug("Seting oldJobTransFK to "+oldJobTransFK, 3);
 
   
     Debug.debug("creating new JobDefCreator",  3);
