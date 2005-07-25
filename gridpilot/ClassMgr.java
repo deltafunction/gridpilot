@@ -17,6 +17,7 @@ public class ClassMgr {
   private LogFile logFile;
   private StatusBar statusBar;
   private Table statusTable;
+  private StatisticsPanel statisticsPanel;
   private JobValidation jobValidation;
   private GridPilot prodCom;
   private int debugLevel = 3;
@@ -54,6 +55,10 @@ public class ClassMgr {
      statusTable = _statusTable;
   }
 
+  public void setStatisticsPanel(StatisticsPanel _statisticsPanel){
+      statisticsPanel = _statisticsPanel;
+  }
+  
   public void setJobValidation(JobValidation _jobValidation){
     jobValidation = _jobValidation;
   }
@@ -140,10 +145,21 @@ public class ClassMgr {
   public Table getStatusTable(){
     if(statusTable == null){
       Debug.debug("statusTable null", 3);
-      new Exception().printStackTrace();
+      String[] fieldNames = GridPilot.getStatusFields();
+      statusTable = new Table(new String [] {}, fieldNames,
+          GridPilot.getColorMapping());
+       GridPilot.getClassMgr().setStatusTable(statusTable);
+      //new Exception().printStackTrace();
     }
-
     return statusTable;
+  }
+
+  public StatisticsPanel getStatisticsPanel(){
+    if(statisticsPanel == null){
+      Debug.debug("statisticsPanel null", 3);
+      statisticsPanel = new StatisticsPanel();
+    }
+    return statisticsPanel;
   }
 
   public GlobalFrame getGlobalFrame(){

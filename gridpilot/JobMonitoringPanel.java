@@ -5,7 +5,6 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.event.*;
 
-
 /**
  * Third panel of the main frame. <br>
  *
@@ -16,7 +15,7 @@ import javax.swing.event.*;
 
 public class JobMonitoringPanel extends JPanel implements JobPanel{
 
-  private JobControl jobControl;
+  private TaskMgr taskMgr;
   private Table statusTable;
 
   private StatusBar statusBar;
@@ -37,12 +36,6 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
   //// Options panel
   private JPanel pOptions = new JPanel();
 
-  // view options
-  private ButtonGroup bgView = new ButtonGroup();
-
-  private JRadioButton rbAllJobs = new JRadioButton("View all jobs", true);
-  private JRadioButton rbRunningJobs = new JRadioButton("View only running jobs");
-  private JRadioButton rbDoneJobs = new JRadioButton("View only done jobs");
 
   // jobs loading
   private JButton bLoadJobs = new JButton("Load jobs from AMI");
@@ -95,13 +88,8 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
 
   public JobMonitoringPanel() throws Exception{
     statusBar = GridPilot.getClassMgr().getStatusBar();
-    
-    if(GridPilot.getClassMgr().getStatusTable()==null){
-      statusTable = new Table(new String [] {}, fieldNames,
-      GridPilot.getColorMapping());
-     GridPilot.getClassMgr().setStatusTable(statusTable);
-   }
     statusTable = GridPilot.getClassMgr().getStatusTable();
+    taskMgr = GridPilot.getClassMgr();
 
     initGUI();
   }
@@ -131,14 +119,8 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
 
     spLogView.getViewport().add(logViewerPanel);
 
-//    tpLogView.setDocument(new DefaultStyledDocument());
-//    tpLogView.setDocument(new DefaultStyledDocument());
-//    new atcom.LogFile.MyAction();
-    //// table result
-/*    this.add(spStatusTable,        new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
-        ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));*/
     spStatusTable.getViewport().add(statusTable);
-    statusTable.addLisSelectionListener(new ListSelectionListener(){
+    statusTable.addListSelectionListener(new ListSelectionListener(){
       public void valueChanged(ListSelectionEvent e) {
         selectionEvent(e);
       }
@@ -152,40 +134,6 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
 
     this.add(pOptions,     new GridBagConstraints(1, 0, 1, 1, 0.1, 0.1
         ,GridBagConstraints.SOUTH, GridBagConstraints.VERTICAL, new Insets(100, 10, 0, 0), 0, 0));
-
-    // view
-    pOptions.add(rbAllJobs, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0
-        ,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(0, 10, 0, 0), 0, 0));
-    pOptions.add(rbRunningJobs, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0
-        ,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(0, 10, 0, 0), 0, 0));
-    pOptions.add(rbDoneJobs, new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0
-        ,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(0, 10, 0, 0), 0, 0));
-
-    bgView.add(rbAllJobs);
-    bgView.add(rbRunningJobs);
-    bgView.add(rbDoneJobs);
-
-    rbAllJobs.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        onlyJobsSelected();
-      }
-    });
-
-    rbRunningJobs.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        onlyJobsSelected();
-      }
-    });
-
-    rbDoneJobs.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        onlyJobsSelected();
-      }
-    });
-
-    rbAllJobs.setMnemonic(JobControl.ALL_JOBS);
-    rbRunningJobs.setMnemonic(JobControl.ONLY_RUNNING_JOBS);
-    rbDoneJobs.setMnemonic(JobControl.ONLY_DONE_JOBS);
 
     pOptions.add(bLoadJobs, new GridBagConstraints(0, 3, 1, 1, 0.0, 0.0
         ,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(30, 10, 0, 0), 0, 0));
@@ -343,25 +291,25 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
 
     miAMIAborted.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        setAMIStatus(AMIMgt.ABORTED);
+        setAMIStatus(DBPluginMgr.ABORTED);
       }
     });
 
     miAMIDefined.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        setAMIStatus(AMIMgt.DEFINED);
+        setAMIStatus(DBPluginMgr.DEFINED);
       }
     });
 
     miAMIFailed.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        setAMIStatus(AMIMgt.FAILED);
+        setAMIStatus(DBPluginMgr.FAILED);
       }
     });
 
     miAMIUnexpected.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        setAMIStatus(AMIMgt.UNEXPECTED);
+        setAMIStatus(DBPluginMgr.UNEXPECTED);
       }
     });
 
@@ -374,7 +322,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
     });
 
 
-    String [] csNames = jobControl.getComputingSystemNames();
+    String [] csNames = GridPilot.getClassMgr().getCsPluginMgr().getCSNames();
     for(int i=0; i<csNames.length; ++i){
       JMenuItem mi = new JMenuItem(csNames[i], i);
       mi.addActionListener(new ActionListener(){
@@ -511,12 +459,12 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
 
     JobVector jobs = jobControl.getJobsAtRows(rows);
 
-    int [] options = {AMIMgt.VALIDATED, AMIMgt.FAILED, AMIMgt.UNDECIDED, AMIMgt.ABORTED};
+    int [] options = {DBPluginMgr.VALIDATED, DBPluginMgr.FAILED, DBPluginMgr.UNDECIDED, DBPluginMgr.ABORTED};
     String [] sOptions = {
-      AMIMgt.getStatusName(options[0]),
-      AMIMgt.getStatusName(options[1]),
-      AMIMgt.getStatusName(options[2]),
-      AMIMgt.getStatusName(options[3])
+        DBPluginMgr.getStatusName(options[0]),
+        DBPluginMgr.getStatusName(options[1]),
+        DBPluginMgr.getStatusName(options[2]),
+        DBPluginMgr.getStatusName(options[3])
     };
 
 
@@ -526,7 +474,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
 
     for(int i = 0; i< jobs.size() ; ++i){
       if(choices[i] == -1)
-        amiChoices[i] = AMIMgt.UNDECIDED;
+        amiChoices[i] = DBPluginMgr.UNDECIDED;
       else
         amiChoices[i]  = options[choices[i]];
     }
@@ -756,7 +704,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
 
     String dir = job.getStdOut();
     if(dir ==null){
-      AtCom.getClassMgr().getLogFile().addMessage("Stdout is null", job);
+      GridPilot.getClassMgr().getLogFile().addMessage("Stdout is null", job);
       return;
 
     }

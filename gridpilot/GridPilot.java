@@ -22,6 +22,7 @@ public class GridPilot extends JApplet{
   // TODO: reread on reloading values
   private static String [] dbs;
   private static String [] colorMapping;
+  private static String[] statusFields;
   private static boolean applet = true;
   private static String replicaPrefix = "";
 
@@ -68,6 +69,10 @@ public class GridPilot extends JApplet{
           
      colorMapping = getClassMgr().getConfigFile().getValues("gridpilot", "color mapping");
      
+     /** Status table header*/
+     String[] statusFields = {
+         " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "user"};
+
      String resourcesPath =  getClassMgr().getConfigFile().getValue("gridpilot", "resources");
      if(resourcesPath == null){
        getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("gridpilot", "resources"));
@@ -112,6 +117,13 @@ public static boolean isApplet(){
    */
   public static String [] getColorMapping(){
     return colorMapping;
+  }
+
+  /**
+   * Return column names for job monitoring table, hard coded above
+   */
+  public static String [] getStatusFields(){
+    return statusFields;
   }
 
   /**
