@@ -636,6 +636,48 @@ public class DBPluginMgr implements Database{
         return false;
     }
 
+  // Here, in contrast to updateJobDef (in DBPluginMgr), because it is not needed by other
+  // classes and it needs to update display.
+  public DBRecord createJobDef(String [] fields, String [] values) throws Exception {
+    
+    String [] jobDefFieldNames = getFieldNames(
+        GridPilot.getClassMgr().getConfigFile().getValue(
+            getDBName(), "job definition table name"));
+    
+    if(fields.length!=values.length){
+      throw new Exception("The number of fields and values do not agree, "+
+          fields.length+"!="+values.length);
+    }
+    if(fields.length>jobDefFieldNames.length){
+      throw new Exception("The number of fields is too large, "+
+          fields.length+">"+jobDefFieldNames.length);
+    }
+    String [] vals = new String[jobDefFieldNames.length];
+    for(int i=0; i<jobDefFieldNames.length; ++i){
+      vals[i] = "";
+      for(int j=0; i<fields.length; ++j){
+        if(fields[j].equalsIgnoreCase(jobDefFieldNames[i])){
+          vals[i] = values[j];
+          break;
+        }
+      }
+    }
+    DBRecord jobDef = new DBRecord(jobDefFieldNames, vals);
+    /*try{
+      jobDef.setValue("currentState", "DEFINED");
+    }catch(Exception e){
+      Debug.debug("Failed setting currentState. " +e.getMessage(),3);
+      return false;
+    }*/
+    if(createJobDefinition(vals)){
+      //shownJobs.add(jobDef);
+      return jobDef;
+    }
+    else{
+      throw new Exception("ERROR: createJobDefinition failed");
+    }
+  }
+
   public synchronized boolean createTask(final String [] values){
     
       MyThread t = new MyThread(){
