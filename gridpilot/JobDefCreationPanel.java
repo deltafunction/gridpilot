@@ -775,7 +775,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
       }
       else if(!cstAttributesNames[i].equalsIgnoreCase("jobTransFK") &&
               !cstAttributesNames[i].equalsIgnoreCase(jobDefIdentifier) &&
-              !cstAttributesNames[i].equalsIgnoreCase("taskFK") &&
+              (!cstAttributesNames[i].equalsIgnoreCase("taskFK") ||
+                  taskID==-1) &&
               tcCstAttributes[i]!=null){
         tcCstAttributes[i].setEnabled(enabled);
       }
