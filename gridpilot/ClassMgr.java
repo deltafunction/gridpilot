@@ -16,6 +16,7 @@ public class ClassMgr {
   private GlobalFrame globalFrame;
   private LogFile logFile;
   private StatusBar statusBar;
+  private Table statusTable;
   private JobValidation jobValidation;
   private GridPilot prodCom;
   private int debugLevel = 3;
@@ -47,6 +48,10 @@ public class ClassMgr {
 
   public void setStatusBar(StatusBar _statusBar){
     statusBar = _statusBar;
+  }
+
+  public void setStatusTable(Table _statusTable){
+     statusTable = _statusTable;
   }
 
   public void setJobValidation(JobValidation _jobValidation){
@@ -130,6 +135,15 @@ public class ClassMgr {
     }
 
     return statusBar;
+  }
+
+  public Table getStatusTable(){
+    if(statusTable == null){
+      Debug.debug("statusTable null", 3);
+      new Exception().printStackTrace();
+    }
+
+    return statusTable;
   }
 
   public GlobalFrame getGlobalFrame(){

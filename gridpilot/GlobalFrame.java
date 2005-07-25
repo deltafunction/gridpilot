@@ -248,7 +248,8 @@ public class GlobalFrame extends JFrame{
     
     JMenu menuGridPilot = new JMenu("GridPilot");
     JMenu menuNewTab = new JMenu("New tab");
-    
+    JMenu menuNewMonitor = new JMenu("New job monitor");
+   
     JMenu miNewTaskTab = new JMenu("task");
     JMenuItem [] miNewTaskTabs = new JMenuItem[GridPilot.getDBs().length];
     menuNewTab.add(miNewTaskTab);
@@ -258,9 +259,7 @@ public class GlobalFrame extends JFrame{
         public void actionPerformed(ActionEvent e){
           try{
             addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(),
-                   "task"),
-                "task");          
+                ((JMenuItem)e.getSource()).getText(), "task"), "task");          
           }catch(Exception ex){
             Debug.debug("Could not add panel ", 1);
             ex.printStackTrace();
@@ -280,9 +279,7 @@ public class GlobalFrame extends JFrame{
         public void actionPerformed(ActionEvent e){
           try{
             addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(),
-                   "job definition"),
-                "job definition");          
+                ((JMenuItem)e.getSource()).getText(), "job definition"), "job definition");          
           }catch(Exception ex){
             Debug.debug("Could not add panel ", 1);
             ex.printStackTrace();
@@ -302,9 +299,7 @@ public class GlobalFrame extends JFrame{
         public void actionPerformed(ActionEvent e){
           try{
             addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(),
-                   "transformation"),
-                "transformation");          
+                ((JMenuItem)e.getSource()).getText(), "transformation"), "transformation");          
           }catch(Exception ex){
             Debug.debug("Could not add panel ", 1);
             ex.printStackTrace();
@@ -316,6 +311,20 @@ public class GlobalFrame extends JFrame{
     }
 
     menuGridPilot.add(menuNewTab);
+    
+    menuNewMonitor.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        try{
+          addPanel(new JobMonitoringPanel(), "Job Monitor");          
+        }catch(Exception ex){
+          Debug.debug("Could not add panel ", 1);
+          ex.printStackTrace();
+        }
+        selectedPanel = tabbedPane.getSelectedIndex();
+      }
+    });    
+    
+    menuGridPilot.add(menuNewMonitor);
 
     if(!GridPilot.isApplet()){
       menuGridPilot.addSeparator();

@@ -20,7 +20,7 @@ import java.util.*;
  *
  * <p><a href="StatisticsPanel.java.html">see sources</a>
  */
-public class StatisticsPanel extends JPanel {
+public class StatisticsPanel extends JPanel{
 
   interface painter{
     public void paint(Graphics2D g);
