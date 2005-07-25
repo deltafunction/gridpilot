@@ -15,6 +15,7 @@ import gridpilot.ArithmeticExpression;
 public class JobDefCreator {
 
   private TaskMgr taskMgr;
+  private DBPluginMgr dbPluginMgr;
   private int from;
   private int to;
   private boolean showResults;
@@ -26,6 +27,8 @@ public class JobDefCreator {
   private String [] cstAttrNames;
   
   private boolean editing;
+  
+  private String dbName;
 
   private static Vector vJobDef = new Vector();
   private static Vector vCstAttr = new Vector();
@@ -36,17 +39,27 @@ public class JobDefCreator {
 
   private Object[] showResultsOptions = {"OK", "OK for all", "Skip", "Skip all"};
 
-  public JobDefCreator(TaskMgr _taskMgr,
-                          int _from,
-                          int _to,
-                          boolean _showResults,
-                          Vector _constants,
-                          String [] _cstAttr,
-                          String [] _cstAttrNames,
-                          boolean _editing
-                          ){
+  public JobDefCreator(String _dbName,
+                       TaskMgr _taskMgr,
+                       int _from,
+                       int _to,
+                       boolean _showResults,
+                       Vector _constants,
+                       String [] _cstAttr,
+                       String [] _cstAttrNames,
+                       boolean _editing
+                       ){
 
     taskMgr = _taskMgr;
+    dbName = _dbName;
+    
+    if(taskMgr!=null){
+      dbPluginMgr = taskMgr.getDBPluginMgr();
+    }
+    else{
+      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
+    }
+    
     from = _from;
     to = _to;
     showResults = _showResults;
@@ -218,15 +231,30 @@ public class JobDefCreator {
           }
         }
         else{
-        if(!taskMgr.createJobDef(cstAttrNames, resCstAttr)) {
-            if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDef " + part +
-                " cannot be created", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION)
-            //cancel creation
-            vJobDef.removeAllElements();
+          if(taskMgr!=null){
+            if(!taskMgr.createJobDef(cstAttrNames, resCstAttr)){
+              if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDef " + part +
+                  " cannot be created", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION)
+              //cancel creation
+              vJobDef.removeAllElements();
+            }
+          }
+          else{
+            try{
+              dbPluginMgr.createJobDef(cstAttrNames, resCstAttr);
+            }
+            catch(Exception e){
+              Debug.debug(e.getMessage(), 1);
+              if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDef " + part +
+                  " cannot be created", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION){
+                //cancel creation
+                vJobDef.removeAllElements();
+              }
+            }
           }
         }
       }
-      taskMgr.getVectorTableModel().fireTableDataChanged();
+      //taskMgr.getVectorTableModel().fireTableDataChanged();
     }
   }
 

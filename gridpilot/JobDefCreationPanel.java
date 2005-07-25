@@ -56,6 +56,10 @@ public class JobDefCreationPanel extends CreateEditPanel{
   private DBResult transformations;
   private boolean loaded = false;
   private boolean versionInit = false;
+  private String dbName;
+  private DBPluginMgr dbPluginMgr = null;
+  private int taskID = -1;
+  private String taskName;
   
   // these two variables must either both be static or not.
   private static JPanel jobXmlPanel;
@@ -72,33 +76,48 @@ public class JobDefCreationPanel extends CreateEditPanel{
    * Constructor
    */
 
-  public JobDefCreationPanel(TaskMgr _taskMgr, Table _table,
+  public JobDefCreationPanel(/*this is in case DBPanel was opened from the menu and_taskMgr is null*/String _dbName,
+      TaskMgr _taskMgr, Table _table,
       boolean _editing){
     
     editing = _editing;
     taskMgr=_taskMgr;
+    dbName = _dbName;
     table = _table;
     
     if(!editing){
       jobTransFK = oldJobTransFK;
     }
 
+    if(taskMgr!=null){
+      dbPluginMgr = taskMgr.getDBPluginMgr();
+      taskID = taskMgr.getTaskIdentifier();
+      taskName = taskMgr.getTaskName();
+    }
+    else{
+      taskID = -1;
+      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
+      taskName = "";
+    }
+
     //cstAttributesNames = JobDefinition.Fields;
-    cstAttributesNames = taskMgr.getDBPluginMgr().getFieldNames(
+    cstAttributesNames = dbPluginMgr.getFieldNames(
         GridPilot.getClassMgr().getConfigFile().getValue(
-            taskMgr.getDBPluginMgr().getDBName(),
+            dbPluginMgr.getDBName(),
             "job definition table name"));
     cstAttr = new String[cstAttributesNames.length];
     
-    transformations = taskMgr.getDBPluginMgr().getJobTransRecords(taskMgr.getTaskIdentifier());
+    transformations = dbPluginMgr.getJobTransRecords(taskID);
     
-    jobDefIdentifier = GridPilot.getClassMgr().getConfigFile().getValue(taskMgr.getDBPluginMgr().getDBName(),
+    jobDefIdentifier = GridPilot.getClassMgr().getConfigFile().getValue(dbPluginMgr.getDBName(),
        "job definition table identifier");
 
-    Debug.debug("Editing job record for task "+taskMgr.getTaskName()+". Rows: "+
+    /*Debug.debug("Editing job record for task "+dbPluginMgr.getTask(taskID).getValue(
+        GridPilot.getClassMgr().getConfigFile().getValue(dbPluginMgr.getDBName(),
+    "task table identifier")).toString()+". Rows: "+
         //table.getRowCount()+
         ". Number of transformations: "+
-       (transformations!=null ? transformations.values.length : 0), 3);
+       (transformations!=null ? transformations.values.length : 0), 3);*/
 
     // Find jobdDefinitionID from table
     if(table.getSelectedRow()>-1 && editing){
@@ -116,7 +135,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
         Debug.debug("ERROR: could not find jobDefinitionID in table!", 1);
       }
       // Fill cstAttr from db
-      DBRecord jobDef = taskMgr.getDBPluginMgr().getJobDefinition(Integer.parseInt(jobDefinitionID));
+      DBRecord jobDef = dbPluginMgr.getJobDefinition(Integer.parseInt(jobDefinitionID));
       for(int i=0; i < cstAttributesNames.length; ++i){
         if(editing){
           if(cstAttributesNames[i]!=null && cstAttributesNames[i].equalsIgnoreCase("jobTransFK")){
@@ -159,7 +178,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
   public void initGUI(){
 
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
-        Color.white,new Color(165, 163, 151)),taskMgr.getTaskName()));
+        Color.white,new Color(165, 163, 151)),taskName));
     
     spAttributes.setPreferredSize(new Dimension(550, 500));
     spAttributes.setMinimumSize(new Dimension(550, 500));
@@ -266,7 +285,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
     
     if(vec.size()==0 ||
         GridPilot.getClassMgr().getConfigFile().getValue("Databases", "Show all transformations").equalsIgnoreCase("true")){
-      transformations = taskMgr.getDBPluginMgr().getJobTransRecords(-1);
+      transformations = dbPluginMgr.getJobTransRecords(-1);
       jobTransNames = new String[transformations.values.length];
       for(int i=0; i<transformations.values.length; ++i){
         jobTransNames[i] = transformations.getValue(i, "jobTransName");
@@ -313,7 +332,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
           
     if(vec.size()==0){
       Debug.debug("WARNING: No jobTransNames found for transformations belonging to task "+
-          taskMgr.getTaskName()+". Displaying all jobTransNames...", 2);
+          taskName+". Displaying all jobTransNames...", 2);
     }
 
     if(cbJobTransNameSelection == null){
@@ -414,9 +433,9 @@ public class JobDefCreationPanel extends CreateEditPanel{
     }
     else{
       Debug.debug("WARNING: No versions found for transformations belonging to task"+
-          taskMgr.getTaskName()+" with jobTransName "+jobTransName+
+          taskName+" with jobTransName "+jobTransName+
           ". Displaying all versions of jobTransName...", 2);
-      versions = taskMgr.getDBPluginMgr().getVersions(jobTransName);
+      versions = dbPluginMgr.getVersions(jobTransName);
     }
     
     Debug.debug("Number of versions: "+versions.length, 3);
@@ -715,7 +734,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
         if(!reuseTextFields || tcCstAttributes[i] == null)
           tcCstAttributes[i] = createTextComponent(TEXTFIELDWIDTH);
         
-        setJText(tcCstAttributes[i], Integer.toString(taskMgr.getTaskIdentifier()));
+        setJText(tcCstAttributes[i], Integer.toString(taskID));
         tcCstAttributes[i].setEnabled(false);
       }
       else if(!cstAttributesNames[i].equalsIgnoreCase("jobPars") &&
@@ -897,7 +916,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
       jobTransFK = "";
       // When jobTransFK is not set, the signature is obtained from the taskTransFK.
       // This should not happen...
-      DBRecord taskTransRecord = taskMgr.getDBPluginMgr().getTaskTransRecord(taskMgr.getTaskIdentifier());
+      DBRecord taskTransRecord = dbPluginMgr.getTaskTransRecord(taskID);
       if (taskTransRecord == null ) {
         Debug.debug("getSignature: taskTransRecord is null!", 2);
         signature = "";
@@ -1118,15 +1137,16 @@ public class JobDefCreationPanel extends CreateEditPanel{
   
     Debug.debug("creating new JobDefCreator",  3);
     
-    new JobDefCreator(taskMgr,
-                         ((Integer)(sFrom.getValue())).intValue(),
-                         ((Integer)(sTo.getValue())).intValue(),
-                         showResults,
-                         tcConstant,
-                         cstAttr,
-                         cstAttributesNames,
-                         editing
-                         );
+    new JobDefCreator(dbName,
+                      taskMgr,
+                      ((Integer)(sFrom.getValue())).intValue(),
+                      ((Integer)(sTo.getValue())).intValue(),
+                      showResults,
+                      tcConstant,
+                      cstAttr,
+                      cstAttributesNames,
+                      editing
+                      );
 
   }
 
@@ -1174,8 +1194,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
       if(values[i].length() == 0)
         values[i] = " ";
     }
-    String user = taskMgr.getDBPluginMgr().getUserLabel();
-    if(!taskMgr.getDBPluginMgr().saveDefVals(taskMgr.getTaskIdentifier(), values, user)){
+    String user = dbPluginMgr.getUserLabel();
+    if(!dbPluginMgr.saveDefVals(taskID, values, user)){
       Debug.debug("ERROR: Could not save values: "+values, 1);
       return false;
     }
@@ -1184,9 +1204,9 @@ public class JobDefCreationPanel extends CreateEditPanel{
 
   private void load(){
     
-    String user = taskMgr.getDBPluginMgr().getUserLabel();
+    String user = dbPluginMgr.getUserLabel();
 
-    String [] defValues = taskMgr.getDBPluginMgr().getDefVals(taskMgr.getTaskIdentifier(), user);
+    String [] defValues = dbPluginMgr.getDefVals(taskID, user);
 
     if(defValues ==null || defValues.length == 0)
       return;
