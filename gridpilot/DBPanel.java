@@ -733,7 +733,7 @@ public class DBPanel extends JPanel implements JobPanel{
     //hiddenFields = dbPluginMgr.getDBHiddenFields(dbs[0], tableName);
     CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
-        new JobDefCreationPanel(taskMgr, tableResults, false), false);
+        new JobDefCreationPanel(dbName, taskMgr, tableResults, false), false);
     pDialog.setTitle(realTableName);
     pDialog.show();
     if(tableResults!=null && tableResults.getRowCount()>0){
@@ -758,7 +758,7 @@ public class DBPanel extends JPanel implements JobPanel{
     }
     CreateEditDialog pDialog = new CreateEditDialog(
         GridPilot.getClassMgr().getGlobalFrame(),
-        new JobDefCreationPanel(taskMgr, tableResults, true), true);
+        new JobDefCreationPanel(dbName,taskMgr, tableResults, true), true);
     pDialog.setTitle(realTableName);
     pDialog.show();
     searchRequest();
