@@ -60,7 +60,7 @@ public class ShowOutputsJobsDialog
         files[k] = vFiles.get(k).toString();
 
       choices[i] = showFilesTabs(parent, "Job " + job.getName(),
-         GridPilot.getClassMgr().getCsPluginMgr().getShellMgr(job),
+         GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job),
          files, options, cbForAll);
 
       if (cbForAll != null && cbForAll.isSelected()) {

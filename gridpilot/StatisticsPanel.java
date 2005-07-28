@@ -26,18 +26,19 @@ public class StatisticsPanel extends JPanel{
     public void paint(Graphics2D g);
   }
 
-  String [] statusNames;
-  int [] values;
-  Color [] colors = {Color.black, Color.blue, Color.green, Color.orange, Color.magenta, Color.red, Color.darkGray};
-
-  Color [] numberColors = {Color.white};
-
+  private String [] statusNames;
+  private HashMap valuesTable; 
+  private int [] values; 
+  private Color [] colors;
+  private Color [] numberColors = {Color.white};
   private int style =0;
+  private Vector painters = new Vector();
 
-  Vector painters = new Vector();
-
-  public StatisticsPanel(){//String [] _statusNames) {
-    setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED),"Jobs statistics"));
+  public StatisticsPanel(){
+    
+    colors = DBPluginMgr.getStatusColors();
+    
+    setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED), "Jobs statistics"));
 
     addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent e){
@@ -65,13 +66,39 @@ public class StatisticsPanel extends JPanel{
 
   }
 
-  public void update(String [] _statusNames, int [] _values){
+  public void update(int taskID){
+    Vector taskMgrs = GridPilot.getClassMgr().getTaskMgrs();
     if(style<painters.size()){
-      values = _values;//GridPilot.getClassMgr().getJobControl().getJobByDBStatus();
-      statusNames = _statusNames;//GridPilot.getClassMgr().getJobControl().getDBStatusNames();
-    }else{
-      values = _values;//GridPilot.getClassMgr().getJobControl().getJobByStatus();
-      statusNames = _statusNames;//GridPilot.getClassMgr().getJobControl().getStatusNames();
+      for(int i=0; i<taskMgrs.size(); ++i){
+        if(((TaskMgr) taskMgrs.get(i)).getTaskIdentifier()==taskID){
+          //values = ((TaskMgr) taskMgrs.get(i)).getJobsByDBStatus();
+          valuesTable.put(new Integer(taskID),
+              ((TaskMgr) taskMgrs.get(i)).getJobsByDBStatus());
+          for(Iterator it=valuesTable.values().iterator(); it.hasNext();){
+            for(int j=0; j<values.length; ++j){
+              values[j] += ((int []) valuesTable.get(((Integer) it.next())))[j];
+            }
+          }
+          statusNames = DBPluginMgr.getDBStatusNames();
+          break;
+        }
+      }
+    }
+    else{
+      for(int i=0; i<taskMgrs.size(); ++i){
+        if(((TaskMgr) taskMgrs.get(i)).getTaskIdentifier()==taskID){
+          //values = ((TaskMgr) taskMgrs.get(i)).getJobsByStatus();
+          valuesTable.put(new Integer(taskID),
+              ((TaskMgr) taskMgrs.get(i)).getJobsByStatus());
+          for(Iterator it=valuesTable.values().iterator(); it.hasNext();){
+            for(int j=0; j<values.length; ++j){
+              values[j] += ((int []) valuesTable.get(((Integer) it.next())))[j];
+            }
+          }
+          statusNames = DBPluginMgr.getStatusNames();
+          break;
+        }
+      }
     }
     repaint();
   }

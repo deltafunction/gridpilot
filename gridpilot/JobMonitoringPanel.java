@@ -3,6 +3,8 @@ package gridpilot;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.Vector;
+
 import javax.swing.event.*;
 
 /**
@@ -31,15 +33,6 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
 
   private JScrollPane spStatusTable = new JScrollPane();
   private JScrollPane spLogView = new JScrollPane();
-
-
-  //// Options panel
-  private JPanel pOptions = new JPanel();
-
-
-  // jobs loading
-  private JButton bLoadJobs = new JButton("Load jobs from AMI");
-  private JButton bClearTable = new JButton("Clear");
 
   public static StatisticsPanel statisticPanel = new StatisticsPanel();;
 
@@ -80,6 +73,8 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
   private JMenu mAMI = new JMenu("Set AMI Status");
 
   private LogViewerPanel logViewerPanel = new LogViewerPanel();
+  
+  private StatusUpdateControl statusUpdateControl;
 
 
   /**
@@ -87,10 +82,12 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
    */
 
   public JobMonitoringPanel() throws Exception{
+    
     statusBar = GridPilot.getClassMgr().getStatusBar();
     statusTable = GridPilot.getClassMgr().getStatusTable();
-    taskMgr = GridPilot.getClassMgr();
-
+    
+    statusUpdateControl = new StatusUpdateControl();
+    
     initGUI();
   }
   
@@ -127,36 +124,6 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
     });
 
     makeMenu();
-
-    //// options panel
-
-    pOptions.setLayout(new GridBagLayout());
-
-    this.add(pOptions,     new GridBagConstraints(1, 0, 1, 1, 0.1, 0.1
-        ,GridBagConstraints.SOUTH, GridBagConstraints.VERTICAL, new Insets(100, 10, 0, 0), 0, 0));
-
-    pOptions.add(bLoadJobs, new GridBagConstraints(0, 3, 1, 1, 0.0, 0.0
-        ,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(30, 10, 0, 0), 0, 0));
-
-    bLoadJobs.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        loadAMIJobs();
-      }
-    });
-
-    pOptions.add(bClearTable, new GridBagConstraints(0, 4, 1, 1, 0.0, 0.0
-        ,GridBagConstraints.CENTER, GridBagConstraints.NONE, new Insets(10, 10, 0, 0), 0, 0));
-
-    bClearTable.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        jobControl.clearTable();
-      }
-    });
-
-
-    pOptions.add(statisticPanel, new GridBagConstraints(0, 5, 1, 1, 0.1, 0.1
-        ,GridBagConstraints.WEST, GridBagConstraints.BOTH, new Insets(30, 5, 0, 5), 0, 0));
-
 
     //// Buttons panel
 
@@ -236,14 +203,13 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
 
     miRefresh.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        //refresh();
-        jobControl.refreshStatus(statusTable.getSelectedRows());
+        statusUpdateControl.updateStatus();
       }
     });
 
     miResubmit.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        jobControl.resubmit(statusTable.getSelectedRows());
+        submissionControl.resubmit(TaskMgr.getJobsAtRows(statusTable.getSelectedRows()));
       }
     });
 
@@ -322,7 +288,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
     });
 
 
-    String [] csNames = GridPilot.getClassMgr().getCsPluginMgr().getCSNames();
+    String [] csNames = GridPilot.getClassMgr().getCSPluginMgr().getCSNames();
     for(int i=0; i<csNames.length; ++i){
       JMenuItem mi = new JMenuItem(csNames[i], i);
       mi.addActionListener(new ActionListener(){
@@ -457,7 +423,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
     if(!jobControl.areDecidables(rows))
       return;
 
-    JobVector jobs = jobControl.getJobsAtRows(rows);
+    Vector jobs = TaskMgr.getJobsAtRows(rows);
 
     int [] options = {DBPluginMgr.VALIDATED, DBPluginMgr.FAILED, DBPluginMgr.UNDECIDED, DBPluginMgr.ABORTED};
     String [] sOptions = {

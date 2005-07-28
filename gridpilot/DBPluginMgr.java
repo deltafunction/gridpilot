@@ -1,5 +1,6 @@
 package gridpilot;
 
+import java.awt.Color;
 import java.util.HashMap;
 
 import javax.swing.JOptionPane;
@@ -1290,6 +1291,39 @@ public class DBPluginMgr implements Database{
       return false;
   }
   
+  /**
+   * Returns status names for statistics panel.
+   * (From AtCom1)
+   */
+  public static String [] getStatusNames(){
+    return new String [] {"Wait", "Run", "Done"};
+  }
+  
+  /**
+   * Returns colors corresponding to getStatusNames for statistics panel.
+   */
+  public static Color [] getStatusColors(){
+    return new Color [] {Color.black, Color.blue, Color.green, Color.orange, Color.magenta, Color.red, Color.darkGray};
+  }
+
+
+  /**
+   * DB status names for statistics panel. <p>
+   * (From AtCom1)
+   */
+  private static String [] dbStatusNames = new String [] {
+      "Defined",
+      "Submitted",
+      "Validated",
+      "Undecided",
+      "Failed",
+      "Aborted",
+      "Unexpected"};
+
+  public static String [] getDBStatusNames(){
+    return dbStatusNames;
+  }
+
   public static String getStatusName(int status){
     switch(status){
       case DEFINED : return "Defined";

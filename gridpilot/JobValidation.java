@@ -90,7 +90,6 @@ public class JobValidation {
    * <code>delayBeforeValidation</code> ms. <p>
    * After this delay, and if there is not too much pending validation, this job
    * validation is started immediatly. <p>
-   * Called by {@link JobControl#endOfJob(JobInfo)}
    *
    */
   public synchronized void validate(JobInfo job){
@@ -117,7 +116,6 @@ public class JobValidation {
 
   /**
    * Checks is any validation thread is pending. <p>
-   * Called by {@link JobControl#clearTable()}
    */
   public synchronized boolean isValidating(){
     return !toValidateJobs.isEmpty();
@@ -213,7 +211,7 @@ public class JobValidation {
 
     long beginTime = new Date().getTime();
 
-    ShellMgr shell = GridPilot.getClassMgr().getCsPluginMgr().getShellMgr(job);
+    ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
 
     Debug.debug("is going to validate ("+currentSimultaneousValidation + ") " + job.getName() + "..." , 2);
 
