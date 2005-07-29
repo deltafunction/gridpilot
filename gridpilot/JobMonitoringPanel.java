@@ -3,6 +3,7 @@ package gridpilot;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.Iterator;
 import java.util.Vector;
 
 import javax.swing.event.*;
@@ -17,7 +18,6 @@ import javax.swing.event.*;
 
 public class JobMonitoringPanel extends JPanel implements JobPanel{
 
-  private TaskMgr taskMgr;
   private Table statusTable;
 
   private StatusBar statusBar;
@@ -69,12 +69,13 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
   private JMenuItem miStopUpdate = new JMenuItem("Stop update");
 
   private JMenuItem miRevalidate = new JMenuItem("Revalidate");
-  private JMenuItem miResetChanges = new JMenuItem("Reset changes");
-  private JMenu mAMI = new JMenu("Set AMI Status");
+  //private JMenuItem miResetChanges = new JMenuItem("Reset changes");
+  private JMenu mDB = new JMenu("Set DB Status");
 
   private LogViewerPanel logViewerPanel = new LogViewerPanel();
   
   private StatusUpdateControl statusUpdateControl;
+  private SubmissionControl submissionControl;
 
 
   /**
@@ -87,7 +88,9 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
     statusTable = GridPilot.getClassMgr().getStatusTable();
     
     statusUpdateControl = new StatusUpdateControl();
-    
+    submissionControl = new SubmissionControl(pluginMgr, submittedJobs,
+        statusTable);
+   
     initGUI();
   }
   
@@ -245,37 +248,37 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
 
     miRevalidate.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        jobControl.revalidate(statusTable.getSelectedRows());
+        TaskMgr.revalidate(statusTable.getSelectedRows());
       }
     });
 
-    JMenuItem miAMIUnexpected = new JMenuItem("UnexpectedErrors");
-    JMenuItem miAMIFailed = new JMenuItem("Failed");
-    JMenuItem miAMIAborted = new JMenuItem("Aborted");
-    JMenuItem miAMIDefined = new JMenuItem("Defined");
+    JMenuItem miDBUnexpected = new JMenuItem("UnexpectedErrors");
+    JMenuItem miDBFailed = new JMenuItem("Failed");
+    JMenuItem miDBAborted = new JMenuItem("Aborted");
+    JMenuItem miDBDefined = new JMenuItem("Defined");
 
 
-    miAMIAborted.addActionListener(new ActionListener(){
+    miDBAborted.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        setAMIStatus(DBPluginMgr.ABORTED);
+        setDBStatus(DBPluginMgr.ABORTED);
       }
     });
 
-    miAMIDefined.addActionListener(new ActionListener(){
+    miDBDefined.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        setAMIStatus(DBPluginMgr.DEFINED);
+        setDBStatus(DBPluginMgr.DEFINED);
       }
     });
 
-    miAMIFailed.addActionListener(new ActionListener(){
+    miDBFailed.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        setAMIStatus(DBPluginMgr.FAILED);
+        setDBStatus(DBPluginMgr.FAILED);
       }
     });
 
-    miAMIUnexpected.addActionListener(new ActionListener(){
+    miDBUnexpected.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        setAMIStatus(DBPluginMgr.UNEXPECTED);
+        setDBStatus(DBPluginMgr.UNEXPECTED);
       }
     });
 
@@ -283,7 +286,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
 
     miStopUpdate.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        jobControl.stopUpdate();
+        statusUpdateControl.reset();
       }
     });
 
@@ -293,18 +296,18 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
       JMenuItem mi = new JMenuItem(csNames[i], i);
       mi.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          jobControl.submitJobs(statusTable.getSelectedRows(),
-                                ((JMenuItem) e.getSource()).getMnemonic());
+          submissionControl.submitJobs(TaskMgr.getJobsAtRows(statusTable.getSelectedRows()),
+              /*computingSystem*/((JMenuItem) e.getSource()).getMnemonic());
         }
       });
       mSubmit.add(mi);
     }
 
-    miResetChanges.addActionListener(new ActionListener(){
+    /*miResetChanges.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         jobControl.resetChanges();
       }
-    });
+    });*/
 
 
     miKill.setEnabled(false);
@@ -318,13 +321,13 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
 //    miShowFullStatus.setEnabled(false);
 //    miShowInfo.setEnabled(false);
     miRevalidate.setEnabled(false);
-    mAMI.setEnabled(false);
+    mDB.setEnabled(false);
 
-    miResetChanges.setEnabled(true);
+    //miResetChanges.setEnabled(true);
 
-    mAMI.add(miAMIDefined);
-    mAMI.add(miAMIFailed);
-    mAMI.add(miAMIAborted);
+    mDB.add(miDBDefined);
+    mDB.add(miDBFailed);
+    mDB.add(miDBAborted);
 
     mShow.add(miShowOutput);
     mShow.add(miShowFullStatus);
@@ -343,10 +346,10 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
     statusTable.addMenuItem(mShow);
     statusTable.addMenuItem(miRevalidate);
     statusTable.addMenuItem(miStopUpdate);
-    statusTable.addMenuItem(miResetChanges);
+    //statusTable.addMenuItem(miResetChanges);
 
 
-    statusTable.addMenuItem(mAMI);
+    statusTable.addMenuItem(mDB);
 
   }
 
@@ -359,7 +362,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
    */
   public void panelShown(){
     Debug.debug("panelShown",1);
-    statusBar.setLabel(jobControl.getJobCount() + " job(s) monitored");
+    statusBar.setLabel(GridPilot.getClassMgr().getSubmittedJobs().size() + " job(s) monitored");
   }
 
   /**
@@ -378,10 +381,8 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
    * Called when timeout on timer occurs or the user clicks on "Refresh"
    */
   private void refresh(){
-
     Debug.debug("Refresh", 1);
-
-    jobControl.refreshStatus();
+    statusUpdateControl.updateStatus();
   }
 
   /**
@@ -411,7 +412,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
    * Called when button or menu item "Kill" is selected
    */
   void kill() {
-    jobControl.killJobs(statusTable.getSelectedRows());
+    TaskMgr.killJobs(statusTable.getSelectedRows());
   }
 
   /**
@@ -420,10 +421,10 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
   void decide(){
     int [] rows = statusTable.getSelectedRows();
 
-    if(!jobControl.areDecidables(rows))
+    if(!TaskMgr.areDecidables(rows))
       return;
 
-    Vector jobs = TaskMgr.getJobsAtRows(rows);
+    DBVector jobs = TaskMgr.getJobsAtRows(rows);
 
     int [] options = {DBPluginMgr.VALIDATED, DBPluginMgr.FAILED, DBPluginMgr.UNDECIDED, DBPluginMgr.ABORTED};
     String [] sOptions = {
@@ -434,18 +435,34 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
     };
 
 
-//    int choices [] = ShowOutputsJobsDialog.show(JOptionPane.getRootFrame(), jobs, sOptions, true);
     int choices [] = ShowOutputsJobsDialog.show(JOptionPane.getRootFrame(), jobs, sOptions);
-    int amiChoices [] = new int[choices.length];
+    int dbChoices [] = new int[choices.length];
 
     for(int i = 0; i< jobs.size() ; ++i){
       if(choices[i] == -1)
-        amiChoices[i] = DBPluginMgr.UNDECIDED;
+        dbChoices[i] = DBPluginMgr.UNDECIDED;
       else
-        amiChoices[i]  = options[choices[i]];
+        dbChoices[i]  = options[choices[i]];
     }
 
-    jobControl.undecidedChoices(jobs, amiChoices);
+    //jobControl.undecidedChoices(jobs, dbChoices);
+
+    for(int i = 0; i < jobs.size(); ++i){
+      JobInfo job = (JobInfo) jobs.getDBRecord(i);
+      if(job.getDBStatus()!=dbChoices[i]){
+        Vector taskMgrs = GridPilot.getClassMgr().getTaskMgrs();
+        TaskMgr taskMgr;
+        for(Iterator it = taskMgrs.iterator(); it.hasNext();){
+          // use the relevant TaskMgr to update db status
+          taskMgr = ((TaskMgr) it.next());
+          if(GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTaskId(
+              job.getJobDefId())==taskMgr.getTaskIdentifier()){
+            taskMgr.updateDBStatus(job, dbChoices[i]);
+            break;
+          }         
+        }
+      }
+    }
 
     statusTable.updateSelection();
   }
@@ -462,16 +479,17 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
     if(selectedRow == -1)
       return;
 
-    if(jobControl.isRunning(selectedRow)){
+    if(TaskMgr.isRunning(selectedRow)){
       statusBar.setLabel("Wait for current outputs ...");
       statusBar.animateProgressBar();
 
 
       final Thread t = new Thread(){
         public void run(){
-          String [] outs = jobControl.getCurrentOutputs(selectedRow);
+          String [] outs = GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(
+              TaskMgr.getJobAtRow(selectedRow));
 
-          JobInfo job = jobControl.getJobAtRow(selectedRow);
+          JobInfo job = TaskMgr.getJobAtRow(selectedRow);
           String path[] = job.getStdErr() == null ?
               new String[]{job.getStdOut()} :
               new String[]{job.getStdOut(), job.getStdErr()};
@@ -496,18 +514,26 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
       t.start();
     }
     else{
-      jobControl.setFinalDest(selectedRow);
-      JobInfo job = jobControl.getJobAtRow(selectedRow);
-      ShellMgr shell = jobControl.getShellMgr(job);
+      //jobControl.setFinalDest(selectedRow);
+      JobInfo job = TaskMgr.getJobAtRow(selectedRow);
+      if((job.getStdOut() == null || job.getStdOut().equals("")) &&
+         (job.getStdErr() == null || job.getStdErr().equals(""))){
+        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+        job.setOutputs(dbPluginMgr.getStdOutFinalDest(job.getJobDefId()),
+                       dbPluginMgr.getStdErrFinalDest(job.getJobDefId()));
+      }
+
+      ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
       String [] files;
       
       if(job.getStdOut() == null){
         Debug.debug("No stdout, trying to get...", 2);
         final Thread t = new Thread(){
           public void run(){
-            String [] outs = jobControl.getCurrentOutputs(selectedRow);
+            String [] outs = GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(
+                  TaskMgr.getJobAtRow(selectedRow));
 
-            JobInfo job = jobControl.getJobAtRow(selectedRow);
+            JobInfo job = TaskMgr.getJobAtRow(selectedRow);
             String path[] = job.getStdErr() == null ?
                 new String[]{job.getStdOut()} :
                 new String[]{job.getStdOut(), job.getStdErr()};
@@ -515,7 +541,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
               outs = new String[] {outs[0]};
               // Save the obtained stdout
               try{
-                jobControl.getShellMgr(job).writeFile(job.getStdOut(), outs[0], false);
+                GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job).writeFile(job.getStdOut(), outs[0], false);
               }catch(Exception e){
                 Debug.debug("WARNING: Could not save. "+e.getMessage(), 1);
               }
@@ -523,8 +549,8 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
             else{
               // Save the obtained stdout/stderr
               try{
-                jobControl.getShellMgr(job).writeFile(job.getStdOut(), outs[0], false);
-                jobControl.getShellMgr(job).writeFile(job.getStdErr(), outs[1], false);
+                GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job).writeFile(job.getStdOut(), outs[0], false);
+                GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job).writeFile(job.getStdErr(), outs[1], false);
               }catch(Exception e){
                 Debug.debug("WARNING: Could not save. "+e.getMessage(), 1);
               }
@@ -561,80 +587,6 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
             files);
       }
     }
-
-
-    /*
-
-      final Thread t = new Thread (){
-        public void run(){
-
-          String [] outs;
-          if(jobControl.isRunning(row)){
-            outs = jobControl.getCurrentOutputs(selectedRow);
-          }
-          else{
-            jobControl.setFinalDest(row);
-            JobInfo job = jobControl.getJobAtRow(row);
-            ShellMgr shell = jobControl.getShellMgr(job);
-
-
-            if(job.getStdErr()!= null && job.getStdErr().trim().length() != 0){
-              outs = new String[2];
-              try{
-                outs[1] = shell.readFile(job.getStdErr());
-              }catch(Exception e){
-                outs[1] = e.getMessage();
-              }
-
-            }
-            else {
-              outs = new String[1];
-            }
-            try{
-              outs[0] = shell.readFile(job.getStdOut());
-            }catch(Exception e){
-              outs[0] = e.getMessage();
-            }
-
-
-          }
-
-          if(outs == null){
-            MessagePane.showMessage(
-                "This plug-in doesn't support the current output option",
-                "Current outputs not supported");
-            return;
-          }
-          statusBar.removeLabel();
-          statusBar.stopAnimation();
-
-//          ShowOutputsJobsDialog.show(JOptionPane.getRootFrame(), jobControl.getJobAtRow(selectedRow),
-//                                     outs);
-          JobInfo job = jobControl.getJobAtRow(selectedRow);
-          String path[] = job.getStdErr() == null ?
-              new String[]{job.getStdOut()} :
-              new String[]{job.getStdOut(), job.getStdErr()};
-          if(job.getStdErr() == null)
-            outs = new String[]{outs[0]};
-
-          ShowOutputsJobsDialog.showFilesTabs(JOptionPane.getRootFrame(),
-                                              "Current outputs of job " + job.getName(),
-                                              path,
-                                              outs);
-
-          Debug.debug("show outputs : end of Thread",2);
-        }
-      };
-
-      statusBar.setIndeterminateProgressBarToolTip("click here to stop");
-      statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
-        public void mouseClicked(MouseEvent me){
-          t.interrupt();
-        }
-      });
-      t.start();
-      Debug.debug("show outputs : end of function", 2);
-*/
   }
 
   /**
@@ -643,7 +595,8 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
    * @see atcom.jobcontrol.JobControl#getFullStatus(int)
    */
   private void showFullStatus(){
-    String status = jobControl.getFullStatus(statusTable.getSelectedRow());
+    JobInfo job = TaskMgr.getJobAtRow(statusTable.getSelectedRow());
+    String status = GridPilot.getClassMgr().getCSPluginMgr().getFullStatus(job);
     MessagePane.showMessage(status, "Job status");
   }
 
@@ -652,7 +605,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
    * @see atcom.jobcontrol.JobControl#getJobInfo(int)
    */
   private void showInfo(){
-    String info = jobControl.getJobInfo(statusTable.getSelectedRow());
+    String info = TaskMgr.getJobInfo(statusTable.getSelectedRow());
     MessagePane.showMessage(info, "Job Infos");
   }
 
@@ -662,9 +615,9 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
    * In each tab, a file is shown.
    */
   private void showFiles(){
-    JobInfo job = jobControl.getJobAtRow(statusTable.getSelectedRow());
+    JobInfo job = TaskMgr.getJobAtRow(statusTable.getSelectedRow());
 
-    ShellMgr shell = jobControl.getShellMgr(job);
+    ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
 
     // looks for the directory
 
@@ -682,7 +635,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
     // checks if dir was a directory
 
     if(files == null){
-      AtCom.getClassMgr().getLogFile().addMessage("This directory (" + dir +
+      GridPilot.getClassMgr().getLogFile().addMessage("This directory (" + dir +
                                                   ") doesn't exist");
       return;
     }
@@ -701,36 +654,25 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
   }
 
   private void showScripts(){
-    JobInfo job = jobControl.getJobAtRow(statusTable.getSelectedRow());
+    JobInfo job = TaskMgr.getJobAtRow(statusTable.getSelectedRow());
 
-    ShellMgr shell = jobControl.getShellMgr(job);
+    ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
 
-
-    ShowOutputsJobsDialog.showFilesTabs(JOptionPane.getRootFrame(),
-                                        "Scripts for job " + job.getName(),
-                                        shell, jobControl.getScripts(statusTable.getSelectedRow()));
-  }
-
-  /**
-   * Load jobs from AMI database. <p>
-   * @see atcom.jobcontrol.JobControl#loadAMIJobs()
-   */
-
-  private void loadAMIJobs(){
-    new Thread(){
-      public void run(){
-        statusBar.setLabel("Waiting for AMI Server ...");
-        statusBar.animateProgressBar();
-        bLoadJobs.setEnabled(false);
-
-        statusTable.clearSelection();
-
-        jobControl.loadAMIJobs();
-
-        statusBar.stopAnimation();
-        bLoadJobs.setEnabled(true);
-      }
-    }.start();
+    Vector taskMgrs = GridPilot.getClassMgr().getTaskMgrs();
+    TaskMgr taskMgr;
+    for(Iterator it = taskMgrs.iterator(); it.hasNext();){
+      // use the relevant TaskMgr to update db status
+      taskMgr = ((TaskMgr) it.next());
+      if(GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTaskId(
+          job.getJobDefId())==taskMgr.getTaskIdentifier()){
+        ShowOutputsJobsDialog.showFilesTabs(JOptionPane.getRootFrame(),
+            "Scripts for job " + job.getName(),
+            shell,
+            taskMgr.getScripts(statusTable.getSelectedRow())            
+            );
+        break;
+      }         
+    }  
   }
 
   /**
@@ -754,13 +696,13 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
 
       mShow.setEnabled(false);
       miRevalidate.setEnabled(false);
-      mAMI.setEnabled(false);
+      mDB.setEnabled(false);
 
     }
     else{
       int [] rows = statusTable.getSelectedRows();
 
-      if(jobControl.areDecidables(rows)){
+      if(TaskMgr.areDecidables(rows)){
         bDecide.setEnabled(true);
         miDecide.setEnabled(true);
         miRevalidate.setEnabled(true);
@@ -771,7 +713,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
         miRevalidate.setEnabled(false);
       }
 
-      if(jobControl.areKillables(rows)){
+      if(TaskMgr.areKillables(rows)){
         bKill.setEnabled(true);
         miKill.setEnabled(true);
       }
@@ -780,12 +722,12 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
         miKill.setEnabled(false);
       }
 
-      if(jobControl.areResumbitables(rows))
+      if(TaskMgr.areResumbitables(rows))
         miResubmit.setEnabled(true);
       else
         miResubmit.setEnabled(false);
 
-      if(jobControl.areSubmitables(rows))
+      if(TaskMgr.areSubmitables(rows))
         mSubmit.setEnabled(true);
       else
         mSubmit.setEnabled(false);
@@ -794,23 +736,34 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
       miShowOutput.setEnabled(true);
       miShowInfo.setEnabled(true);
 
-      mAMI.setEnabled(true);
+      mDB.setEnabled(true);
       mShow.setEnabled(true);
     }
   }
 
-  private void onlyJobsSelected(){
-    jobControl.setOnlyJobs(bgView.getSelection().getMnemonic());
-  }
-
-  private void setAMIStatus(final int amiStatus){
+  private void setDBStatus(final int dbStatus){
     new Thread(){
       public void run() {
-        jobControl.setAMIStatus(statusTable.getSelectedRows(), amiStatus);
+        //jobControl.setDBStatus(statusTable.getSelectedRows(), dbStatus);
+        Vector jobs = TaskMgr.getJobsAtRows(statusTable.getSelectedRows());
+        JobInfo job;
+        Vector taskMgrs = GridPilot.getClassMgr().getTaskMgrs();
+        TaskMgr taskMgr;
+        for(int i=0; i<jobs.size(); ++i){
+          for(Iterator it = taskMgrs.iterator(); it.hasNext();){
+            // use the relevant TaskMgr to update db status
+            taskMgr = ((TaskMgr) it.next());
+            job = (JobInfo) jobs.get(i);
+            if(GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTaskId(
+                job.getJobDefId())==taskMgr.getTaskIdentifier()){
+              taskMgr.setDBStatus(new int [] {statusTable.getSelectedRows()[i]}, dbStatus);
+              break;
+            }         
+          }
+        }
       }
     }.start();
   }
-
 
 }
 

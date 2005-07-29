@@ -60,13 +60,10 @@ public class JobValidation {
   private int delayBeforeValidation = 5000;
   private java.util.Timer timer = new java.util.Timer();
   
-  private TaskMgr taskMgr;
-
-  public JobValidation(TaskMgr _taskMgr){
+  public JobValidation(){
     logFile =  GridPilot.getClassMgr().getLogFile();
     configFile = GridPilot.getClassMgr().getConfigFile();
     loadValues();
-    taskMgr = _taskMgr;
   }
 
   public void loadValues(){
@@ -186,8 +183,19 @@ public class JobValidation {
                          job.getValidationStdOut() + ", " + job.getValidationStdErr() +
                          ") failed", job);
 
-    if(dbStatus != job.getDBStatus())
-      taskMgr.updateDBStatus(job, dbStatus);
+    if(dbStatus != job.getDBStatus()){
+      Vector taskMgrs = GridPilot.getClassMgr().getTaskMgrs();
+      for(int i=0; i<taskMgrs.size(); ++i){
+        // Find the TaskMgr for this job and update the db status
+        TaskMgr taskMgr = ((TaskMgr) taskMgrs.get(i));
+        int taskID = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()
+            ).getTaskId(job.getJobDefId());
+        if(taskMgr.getTaskIdentifier()==taskID){
+          taskMgr.updateDBStatus(job, dbStatus);
+          break;
+        }
+      }
+    }
 
     if(dbStatus != job.getDBStatus()){ // checks that updateAMIStatus succeded
       logFile.addMessage("update AMI status failed after validation ; " +
