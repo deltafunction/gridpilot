@@ -16,7 +16,7 @@ import javax.swing.event.*;
  * <p><a href="JobMonitoringPanel.java.html">see sources</a>
  */
 
-public class JobMonitoringPanel extends JPanel implements JobPanel{
+public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
 
   private Table statusTable;
 
@@ -88,8 +88,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
     statusTable = GridPilot.getClassMgr().getStatusTable();
     
     statusUpdateControl = new StatusUpdateControl();
-    submissionControl = new SubmissionControl(pluginMgr, submittedJobs,
-        statusTable);
+    submissionControl = GridPilot.getClassMgr().getSubmissionControl();
    
     initGUI();
   }
@@ -102,7 +101,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
    * GUI initialisation
    */
 
-  private void initGUI() throws Exception {
+  public void initGUI(){
 
     this.setLayout(new GridBagLayout());
 
@@ -296,8 +295,10 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
       JMenuItem mi = new JMenuItem(csNames[i], i);
       mi.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          submissionControl.submitJobs(TaskMgr.getJobsAtRows(statusTable.getSelectedRows()),
-              /*computingSystem*/((JMenuItem) e.getSource()).getMnemonic());
+          submissionControl.submitJobs((Vector) TaskMgr.getJobsAtRows(statusTable.getSelectedRows()),
+              /*computingSystem*/
+              /*((JMenuItem) e.getSource()).getMnemonic()*/
+              ((JMenuItem) e.getSource()).getText());
         }
       });
       mSubmit.add(mi);
@@ -480,7 +481,7 @@ public class JobMonitoringPanel extends JPanel implements JobPanel{
       return;
 
     if(TaskMgr.isRunning(selectedRow)){
-      statusBar.setLabel("Wait for current outputs ...");
+      statusBar.setLabel("Waiting for current outputs ...");
       statusBar.animateProgressBar();
 
 

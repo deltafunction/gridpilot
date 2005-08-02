@@ -31,7 +31,9 @@ public class GlobalFrame extends JFrame{
   private int selectedPanel;
   private StatusBar statusBar;
   private static int i;
-
+  private JobMonitoringPanel jobMonitoringPanel;
+  private CreateEditDialog pDialog;
+  
   /**
    * Constructor
    */
@@ -54,6 +56,7 @@ public class GlobalFrame extends JFrame{
     }
 
     allPanels = new Vector();
+    
   }
 
   /**
@@ -115,6 +118,8 @@ public class GlobalFrame extends JFrame{
         }
       }
     });
+
+    jobMonitoringPanel = new JobMonitoringPanel();
 
   }
 
@@ -248,7 +253,7 @@ public class GlobalFrame extends JFrame{
     
     JMenu menuGridPilot = new JMenu("GridPilot");
     JMenu menuNewTab = new JMenu("New tab");
-    JMenu menuNewMonitor = new JMenu("New job monitor");
+    JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show job monitor");
    
     JMenu miNewTaskTab = new JMenu("task");
     JMenuItem [] miNewTaskTabs = new JMenuItem[GridPilot.getDBs().length];
@@ -312,19 +317,29 @@ public class GlobalFrame extends JFrame{
 
     menuGridPilot.add(menuNewTab);
     
-    menuNewMonitor.addActionListener(new ActionListener(){
+    cbMonitor.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         try{
-          addPanel(new JobMonitoringPanel(), "Job Monitor");          
+          if(pDialog==null){
+            pDialog = new CreateEditDialog(
+                GridPilot.getClassMgr().getGlobalFrame(),
+                jobMonitoringPanel, false, false);
+             pDialog.setTitle("Job Monitoring");
+          }
+          if(pDialog.isShowing()){
+            pDialog.hide();
+          }
+          else{
+            pDialog.show();
+          }
         }catch(Exception ex){
-          Debug.debug("Could not add panel ", 1);
+          Debug.debug("Could not create panel ", 1);
           ex.printStackTrace();
         }
-        selectedPanel = tabbedPane.getSelectedIndex();
       }
     });    
     
-    menuGridPilot.add(menuNewMonitor);
+    menuGridPilot.add(cbMonitor);
 
     if(!GridPilot.isApplet()){
       menuGridPilot.addSeparator();
