@@ -22,11 +22,9 @@ import java.io.*;
 
 
 
-abstract public class ScriptGenerator {
-  protected DBPluginMgr dbPluginMgr;
+abstract public class ScriptGenerator{
   protected ConfigFile configFile;
   protected String csName;
-
   protected LogFile logFile;
 
 
@@ -36,7 +34,6 @@ abstract public class ScriptGenerator {
 
   public ScriptGenerator(String _csName) {
     csName = _csName;
-    dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(csName);
     configFile = GridPilot.getClassMgr().getConfigFile();
     logFile = GridPilot.getClassMgr().getLogFile();
 
