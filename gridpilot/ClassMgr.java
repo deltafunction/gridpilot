@@ -4,14 +4,11 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
 
-import gridpilot.Debug;
-import gridpilot.StatusBar;
-
 /**
  * This class allows access to all global objects in gridpilot.
  */
 
-public class ClassMgr {
+public class ClassMgr{
 
   private ConfigFile configFile;
   private GlobalFrame globalFrame;
@@ -26,6 +23,7 @@ public class ClassMgr {
   private CSPluginMgr csPluginMgr;
   private Vector taskMgrs = new Vector();
   private DBVector submittedJobs = new DBVector();
+  private SubmissionControl submissionControl;
 
   public void setConfigFile(ConfigFile _configFile){
     configFile = _configFile;
@@ -76,6 +74,10 @@ public class ClassMgr {
 
   public void setDebugLevel(int _debugLevel){
     debugLevel = _debugLevel;
+  }
+
+  public void setSubmissionControl(SubmissionControl _submissionControl){
+     submissionControl = _submissionControl;
   }
 
   public ConfigFile getConfigFile(){
@@ -211,4 +213,13 @@ public class ClassMgr {
   public int getDebugLevel(){
     return debugLevel;
   }
+  
+  public SubmissionControl getSubmissionControl(){
+    if(submissionControl == null){
+      Debug.debug("submissionControl null, creating new", 3);
+      setSubmissionControl(new SubmissionControl());
+    }
+    return submissionControl;
+  }
+
 }
