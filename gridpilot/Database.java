@@ -2,7 +2,7 @@ package gridpilot;
 
 //import java.util.HashMap;
 
-public interface Database {
+public interface Database{
   
   public class Task extends DBRecord{
     
@@ -246,7 +246,7 @@ public interface Database {
   public String getUserLabel();
   public String getJobRunInfo(int jobDefID, String key);
   // Not yet used
-  public boolean reserveJobDefinition(int jobDefinitionID, String user);
+  public boolean reserveJobDefinition(int jobDefinitionID, String UserName);
   public boolean dereserveJobDefinition(int jobDefinitionID);
 
   public boolean saveDefVals(int taskId, String[] defvals, String user);

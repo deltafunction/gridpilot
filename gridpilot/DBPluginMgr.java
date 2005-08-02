@@ -923,13 +923,13 @@ public class DBPluginMgr implements Database{
         return false;
     }
 
-  public synchronized boolean reserveJobDefinition(final int jobDefID, final String user){
+  public synchronized boolean reserveJobDefinition(final int jobDefID, final String userName){
   
     MyThread t = new MyThread(){
       boolean res = false;
       public void run(){
         try{
-          res = db.reserveJobDefinition(jobDefID, user);
+          res = db.reserveJobDefinition(jobDefID, userName);
         }catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
