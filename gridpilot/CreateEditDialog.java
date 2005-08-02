@@ -4,7 +4,7 @@ import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
 
-public class CreateEditDialog extends JDialog {
+public class CreateEditDialog extends JDialog{
 
   private JPanel buttonPanel = new JPanel();
   private final int BPREV = 0;
@@ -22,7 +22,8 @@ public class CreateEditDialog extends JDialog {
   private JCheckBox cbShowResults = new JCheckBox("Show before writing to DB", true);
 
 
-  public CreateEditDialog(JFrame frame, CreateEditPanel _panel, boolean _editing) {
+  public CreateEditDialog(JFrame frame, CreateEditPanel _panel, boolean _editing,
+      boolean modal) {
     super(frame, "jobDefinition", true);
     
     createEditPanel = _panel;
@@ -40,6 +41,7 @@ public class CreateEditDialog extends JDialog {
       initGUI();
       pack();
       requestFocusInWindow();
+      setModal(modal);
     }
     catch (Exception e) {
       e.printStackTrace();
@@ -117,6 +119,4 @@ public class CreateEditDialog extends JDialog {
 
     }
   }
-
-
 }
