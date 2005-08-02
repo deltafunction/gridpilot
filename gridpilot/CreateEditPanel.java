@@ -7,7 +7,7 @@ import javax.swing.JPanel;
  * @author fjob
  *
  */
-public abstract class CreateEditPanel extends JPanel {
+public abstract class CreateEditPanel extends JPanel{
 
   public void clear(){
   }
