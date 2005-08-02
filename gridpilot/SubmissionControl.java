@@ -3,10 +3,14 @@ package gridpilot;
 import javax.swing.*;
 
 import java.awt.event.*;
-import java.io.IOException;
+//import java.io.IOException;
 import java.net.URL;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.Random;
+import java.util.Vector;
+
+import gridpilot.Database.JobDefinition;
 
 
 /**
@@ -20,11 +24,10 @@ import java.util.Random;
  *
  * <p><a href="SubmissionControl.java.html">see sources</a>
  */
-public class SubmissionControl {
+public class SubmissionControl{
 
-  /** @see JobControl#submittedJobs */
-  private JobVector submittedJobs;
-  private AMIMgt amiMgt;
+  private Vector submittedJobs;
+  private DBPluginMgr dbPluginMgr;
   private StatusBar statusBar;
   private JProgressBar pbSubmission;
   private boolean isProgressBarSet=false;
@@ -35,7 +38,7 @@ public class SubmissionControl {
 
   private Table statusTable;
 
-  private PluginMgr pluginMgr;
+  private CSPluginMgr csPluginMgr;
 
   private Timer timer;
 
@@ -47,10 +50,10 @@ public class SubmissionControl {
   private ImageIcon iconSubmitting;
 
   /** All jobs for which the submission is not made yet */
-  private JobVector toSubmitJobs = new JobVector();
+  private Vector toSubmitJobs = new Vector();
 
   /** All jobs for which the submission is in progress */
-  private JobVector submittingJobs = new JobVector();
+  private Vector submittingJobs = new Vector();
 
  /** Maximum number of simulaneous threads for submission. <br>
    * It is not the maximum number of running jobs on the Computing System */
@@ -62,19 +65,14 @@ public class SubmissionControl {
 
   private Random rand = new Random();
 
-  public SubmissionControl(PluginMgr _pluginMgr, JobVector _submittedJobs, Table _statusTable) {
-    submittedJobs = _submittedJobs;
-//    cs = _cs;
-//    csNames = _csNames;
-    statusTable = _statusTable;
-
-    pluginMgr = _pluginMgr;
-
-
-    amiMgt = AtCom.getClassMgr().getAMIMgt();
-    statusBar = AtCom.getClassMgr().getStatusBar();
-    configFile = AtCom.getClassMgr().getConfigFile();
-    logFile = AtCom.getClassMgr().getLogFile();
+  public SubmissionControl(){
+    submittedJobs = GridPilot.getClassMgr().getSubmittedJobs();
+    statusTable = GridPilot.getClassMgr().getStatusTable();
+    csPluginMgr = GridPilot.getClassMgr().getCSPluginMgr();
+    
+    statusBar = GridPilot.getClassMgr().getStatusBar();
+    configFile = GridPilot.getClassMgr().getConfigFile();
+    logFile = GridPilot.getClassMgr().getLogFile();
 
     timer = new Timer(0, new ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -86,13 +84,13 @@ public class SubmissionControl {
 
     pbSubmission = new JProgressBar(0,0);
 
-    String resourcesPath = configFile.getValue("AtCom", "resources");
+    String resourcesPath = configFile.getValue("gridpilot", "resources");
     if(resourcesPath != null && !resourcesPath.endsWith("/"))
       resourcesPath += "/";
     ImageIcon iconSubmitting;
     URL imgURL=null;
     try{
-      imgURL = AtCom.class.getResource(resourcesPath + "submitting.gif");
+      imgURL = GridPilot.class.getResource(resourcesPath + "submitting.gif");
       iconSubmitting = new ImageIcon(resourcesPath + "submitting.gif");
     }catch(Exception e){
       Debug.debug("Could not find image "+ resourcesPath + "submitting.gif", 3);
@@ -112,9 +110,9 @@ public class SubmissionControl {
    */
   
   public void loadValues(){
-    userName = configFile.getValue("AtCom", "username");
+    userName = configFile.getValue("gridpilot", "username");
 
-    String tmp = configFile.getValue("AtCom", "maximum simultaneous submission");
+    String tmp = configFile.getValue("gridpilot", "maximum simultaneous submission");
     if(tmp != null){
       try{
         maxSimultaneousSubmission = Integer.parseInt(tmp);
@@ -124,11 +122,11 @@ public class SubmissionControl {
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage("AtCom", "maximum simultaneous submission") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage("gridpilot", "maximum simultaneous submission") + "\n" +
                               "Default value = " + maxSimultaneousSubmission);
 
 
-    tmp = configFile.getValue("AtCom", "time between submissions");
+    tmp = configFile.getValue("gridpilot", "time between submissions");
     if(tmp != null){
       try{
         timeBetweenSubmission = Integer.parseInt(tmp);
@@ -138,91 +136,114 @@ public class SubmissionControl {
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage("AtCom", "time between submissions") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage("gridpilot", "time between submissions") + "\n" +
                               "Default value = " + timeBetweenSubmission);
 
     timer.setDelay(timeBetweenSubmission);
   }
 
   /**
-   * Creates the jobs for the specified logical files (partitions), and submits them on the specified
+   * Creates the jobs for the specified job definitions and submits them on the specified
    * computing system. <p>
-   * Each logical file is reserved, the job is created, a row is added to statusTable,
+   * Each job is reserved, the job is created, a row is added to statusTable,
    * and {@link #submit(JobInfo)} is called. <p>
-   *
-   * Called by {@link JobControl#submitPartitions(int[], int)}
    */
-  public void submitPartitions(int [] selectedPartitions, int computingSystem){
-    if(jobControl == null)
-      jobControl = AtCom.getClassMgr().getJobControl();
+  public void submitJobDefinitions(/*vector of JobDefinitions*/Vector selectedJobs,
+      String csName){
     synchronized(submittedJobs){
-      JobVector newJobs = new JobVector();
-      statusBar.setLabel("reserving logical files ...");
+      Vector newJobs = new Vector();
+      statusBar.setLabel("Reserving jobs ...");
       // This label is not shown because this function is not called in a Thread.
       // It seems to be quite dangereous to call this function in a thread, because
-      // if one does it, you can "load job from ami" during reservation (when jobs
+      // if one does it, you can "load job from db" during reservation (when jobs
       // are not yet put in toSubmitJobs).
-
-      String resourcesPath =  atcom.AtCom.getClassMgr().getConfigFile().getValue("AtCom", "resources");
+      
+      String resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "resources");
       if(resourcesPath == null){
-        atcom.AtCom.getClassMgr().getLogFile().addMessage(
-            atcom.AtCom.getClassMgr().getConfigFile().getMissingMessage("AtCom", "resources"));
+        GridPilot.getClassMgr().getLogFile().addMessage(
+            GridPilot.getClassMgr().getConfigFile().getMissingMessage("gridpilot", "resources"));
         resourcesPath = ".";
       }
       else{
         if (!resourcesPath.endsWith("/"))
           resourcesPath = resourcesPath + "/";
       }
-      Splash splash = new Splash(resourcesPath, "wait.gif");
-      splash.show("Submitting. Please wait...");
-      for(int i=0; i< selectedPartitions.length; ++i){
-        String csName = pluginMgr.getCSName(computingSystem);
-        if(userName != null && amiMgt.reservePart(selectedPartitions[i], userName, csName)){
+      statusBar.setLabel("Submitting. Please wait...");
+      statusBar.animateProgressBar();
+      for(int i=0; i< selectedJobs.size(); ++i){
+        JobDefinition jobDef = ((JobDefinition) selectedJobs.get(i));
+        int jobDefID = Integer.parseInt(
+            jobDef.getValue(JobDefinition.Identifier).toString());
+        // TODO: Change this to whatever we end up with
+        String jobUser = dbPluginMgr.getJobRunInfo(jobDefID, "user");
+        if(jobUser==null){
+          Debug.debug("Job user null, getting from DB", 3);
+          // TODO: Change this to whatever we end up with
+          jobUser = dbPluginMgr.getJobDefinition(jobDefID).getValue("reservedBy").toString();
+        }
+        if(jobUser==null){
+          Debug.debug("Job user null, getting from config file", 3);
+           jobUser = userName;
+        }
+        if(userName != null && GridPilot.getClassMgr().getDBPluginMgr(csName
+            ).reserveJobDefinition(jobDefID, jobUser)){
           // checks if this partition has not been monitored (and is Submitted,
-          // otherwise reservation don't work)
-          JobInfo job = submittedJobs.getJobWithPartId(selectedPartitions[i]);
-
-          if(job == null){ // this job doesn't exist yet
-            job = new JobInfo(selectedPartitions[i], computingSystem);
+          // otherwise reservation doesn't work)
+          //JobInfo job = submittedJobs.getJobWithPartId(sJob.getJobDefId());
+          JobInfo job = null;
+          boolean isjobMonitored = false;
+          for(Iterator it = submittedJobs.iterator(); it.hasNext();){
+            job = ((JobInfo) it.next());
+            if(job.getJobDefId()==jobDefID){
+              isjobMonitored = true;
+              break;
+            };
+          }
+          if(isjobMonitored==false){ // this job doesn't exist yet
+            job = new JobInfo(
+                jobDefID,
+                // TODO: Change this to whatever we end up with
+                dbPluginMgr.getJobDefinition(jobDefID).getValue("jobName").toString(),
+                csName,
+                dbPluginMgr.getDBName()
+                );
             job.setTableRow(submittedJobs.size());
             submittedJobs.add(job);
-            job.setAMIStatus(AMIMgt.SUBMITTED);
-            job.setName(amiMgt.getPartLFN(job.getPartId()));
-            if(AtCom.showAllJobs){
-              String jobUser = amiMgt.getPartJobUser(job.getPartId());
-              if(jobUser==null){
-                Debug.debug("Job user null, getting from DB, "+jobUser, 3);
-                jobUser = amiMgt.getPartReserved(job.getPartId());
-              }
-              Debug.debug("Setting job user :"+jobUser+":", 3);
-              job.setUser(jobUser);
-            }
+            job.setDBStatus(DBPluginMgr.SUBMITTED);
+            job.setName(dbPluginMgr.getJobDefinition(jobDefID).getValue("jobName").toString());
+            Debug.debug("Setting job user :"+jobUser+":", 3);
+            job.setUser(jobUser);
+            job.setCSName(csName);
           }
-          else{ // this job exists, it gets computingSystem, keeps its row number,
-            // and is not added to submittedJobs
-            job.setComputingSystem(computingSystem);
-            job.setAMIStatus(AMIMgt.SUBMITTED);
+          else{
+            // this job exists, get its computingSystem, keeps its row number,
+            // and do not add to submittedJobs
+            job.setCSName(csName);
+            job.setDBStatus(DBPluginMgr.SUBMITTED);
           }
           newJobs.add(job);
 
 //          ++jobControl.jobsByStatus[JobControl.waitIndex];
 
-          Debug.debug("logical file " + job.getPartId() + "("+job.getName()+") reserved", 2);
+          Debug.debug("logical file " + job.getJobDefId() + "("+job.getName()+") reserved", 2);
         }
         else{
           if(userName == null)
-            logFile.addMessage(configFile.getMissingMessage("AtCom", "username"));
-          logFile.addMessage("cannot reserve logical file "+selectedPartitions[i]);
+            logFile.addMessage(configFile.getMissingMessage("gridpilot", "username"));
+          logFile.addMessage("cannot reserve logical file "+((JobInfo) selectedJobs.get(i)));
 
-          Debug.debug("logical file " + selectedPartitions[i] + " cannot be reserved", 3);
+          Debug.debug("logical file " + ((JobInfo) selectedJobs.get(i)) + " cannot be reserved", 3);
         }
       }
-      splash.stopSplash();
+      statusBar.setLabel("Submitting done.");
       statusBar.removeLabel();
       if(!newJobs.isEmpty()){
         // new rows in table
         statusTable.createRows(submittedJobs.size());
-        jobControl.initChanges();
+        //jobControl.initChanges();
+        for(Iterator it = GridPilot.getClassMgr().getTaskMgrs().iterator(); it.hasNext();){
+          ((TaskMgr) it.next()).initChanges();
+        }
 //        jobControl.updateJobsByStatus();
         submit(newJobs);
       }
@@ -233,35 +254,31 @@ public class SubmissionControl {
    * Submits the specified jobs on the given computing system. <p>
    *
    * Each logical file (partition) is reserved, and {@link #submit(JobInfo)} is called. <p>
-   *
-   * Called by {@link JobControl#submitJobs(int[],int)}
    */
-  public void submitJobs(JobVector jobs, int computingSystem){
+  public void submitJobs(Vector jobs, String csName){
     if(jobControl == null)
-      jobControl = AtCom.getClassMgr().getJobControl();
     synchronized(submittedJobs){
-      JobVector newJobs = new JobVector();
+      Vector newJobs = new Vector();
 
 
       for(int i=0; i< jobs.size(); ++i){
-        String csName = pluginMgr.getCSName(computingSystem);
-        JobInfo job = jobs.get(i);
-        if(userName != null && amiMgt.reservePart(job.getPartId(), userName, csName)){
-          job.setComputingSystem(computingSystem);
+        JobInfo job = (JobInfo) jobs.get(i);
+        if(userName != null && dbPluginMgr.reserveJobDefinition(job.getJobDefId(), userName)){
+          job.setCSName(csName);
           newJobs.add(job);
-          job.setAMIStatus(AMIMgt.SUBMITTED);
+          job.setDBStatus(DBPluginMgr.SUBMITTED);
           job.setAtComStatus(ComputingSystem.STATUS_WAIT);
           job.setUser(userName);
           job.setJobId(null);
           job.setHost(null);
           job.setJobStatus(null);
 
-          Debug.debug("logical file " + job.getPartId() + "("+job.getName()+") reserved", 2);
+          Debug.debug("logical file " + job.getJobDefId() + "("+job.getName()+") reserved", 2);
         }
         else{
           if(userName == null)
-            logFile.addMessage(configFile.getMissingMessage("AtCom", "username"));
-          logFile.addMessage("cannot reserve logical file "+job.getPartId());
+            logFile.addMessage(configFile.getMissingMessage("gridpilot", "username"));
+          logFile.addMessage("cannot reserve logical file "+job.getJobDefId());
         }
       }
       statusBar.removeLabel();
@@ -275,21 +292,12 @@ public class SubmissionControl {
   /**
    * Submits the given jobs, on the computing system given by job.getComputingSystem. <p>
    * Theses job are put in {@link #toSubmitJobs}. <p>
-   *
-   * Called by : <ul>
-   * <li>{@link #submitPartitions(int[],int)}
-   * <li>{@link #submitJobs(JobVector,int)} </ul>
-   *
    */
-  private void submit(JobVector jobs){
-    String isRand = configFile.getValue("AtCom", "randomized submission");
+  private void submit(Vector jobs){
+    String isRand = configFile.getValue("gridpilot", "randomized submission");
     Debug.debug("isRand = " + isRand, 2);
     if(isRand != null && isRand.equalsIgnoreCase("yes"))
       jobs = shuffle(jobs);
-
-
-    if(jobControl == null)
-      jobControl = AtCom.getClassMgr().getJobControl();
 
     pbSubmission.setMaximum(pbSubmission.getMaximum() + jobs.size());
     pbSubmission.addMouseListener(new MouseAdapter(){
@@ -304,8 +312,8 @@ public class SubmissionControl {
       isProgressBarSet = true;
     }
 
-    jobControl.updateAMICells(jobs);
-    jobControl.updateJobCells(jobs);
+    TaskMgr.updateDBCells(jobs, statusTable);
+    TaskMgr.updateJobCells(jobs, statusTable);
 
 
     toSubmitJobs.addAll(jobs);
@@ -315,13 +323,11 @@ public class SubmissionControl {
   }
 
   /**
-   * Returns a JobVector which contains all jobs from <code>v</code>, but in a
+   * Returns a Vector which contains all jobs from <code>v</code>, but in a
    * random order. <p>
-   *
-   * Called by {@link #submit(JobVector)}
    */
-  private JobVector shuffle(JobVector v){
-    JobVector w = new JobVector();
+  private Vector shuffle(Vector v){
+    Vector w = new Vector();
     while(v.size() > 0)
       w.add(v.remove(rand.nextInt(v.size())));
     return w;
@@ -333,21 +339,18 @@ public class SubmissionControl {
    * If a job is not Failed, it cannot be resubmitted. <br>
    * If some outputs exist, the user is asked for save them.
    * If the user chooses to not save them, outputs are deleted <p>
-   *
-   * Called by {@link JobControl#resubmit(int[])}
    */
-  public void resubmit(JobVector jobs){
+  public void resubmit(Vector jobs){
 
     boolean askSave = false;
     boolean deleteFiles = false;
     for(int i=0; i < jobs.size() ; ++i){
 
-      JobInfo job = jobs.get(i);
+      JobInfo job = (JobInfo) jobs.get(i);
+      ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
 
-      ShellMgr shell = pluginMgr.getShellMgr(job);
-
-      if (job.getAMIStatus() != AMIMgt.FAILED &&
-          job.getAMIStatus() != AMIMgt.UNEXPECTED) {
+      if(job.getDBStatus() != DBPluginMgr.FAILED &&
+          job.getDBStatus() != DBPluginMgr.UNEXPECTED){
         java.awt.Frame frame = javax.swing.JOptionPane.getRootFrame();
         javax.swing.JOptionPane.showMessageDialog(frame, "Cannot resubmit job " +
                                                   job.getName() +
@@ -364,7 +367,7 @@ public class SubmissionControl {
         stdOutExists = job.getStdOut() != null &&
         shell.existsFile(job.getStdOut());
       }
-      catch(IOException e){
+      catch(Exception e){
         Debug.debug("ERROR checking for stdout: "+e.getMessage(), 2);
         logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
         //throw e;
@@ -373,13 +376,13 @@ public class SubmissionControl {
         stdErrExists = job.getStdErr() != null &&
         shell.existsFile(job.getStdErr());
       }
-      catch(IOException e){
+      catch(Exception e){
         Debug.debug("ERROR checking for stdout: "+e.getMessage(), 2);
         logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
         //throw e;
       }
 
-      if (!askSave) {
+      if(!askSave){
         if (deleteFiles) {
           if (stdOutExists)
             shell.deleteFile(job.getStdOut());
@@ -387,8 +390,8 @@ public class SubmissionControl {
             shell.deleteFile(job.getStdErr());
         }
       }
-      else {
-        if (stdOutExists || stdErrExists) {
+      else{
+        if(stdOutExists || stdErrExists){
           Object[] options = {"Yes", "No", "No for all", "Cancel"};
 
           int choice = JOptionPane.showOptionDialog(JOptionPane.getRootFrame(),
@@ -398,7 +401,7 @@ public class SubmissionControl {
               JOptionPane.QUESTION_MESSAGE, null,
               options, options[0]);
 
-          switch (choice) {
+          switch(choice){
             case JOptionPane.CLOSED_OPTION:
             case 3://JOptionPane.CANCEL_OPTION:
               return;
@@ -422,19 +425,19 @@ public class SubmissionControl {
               f.setMultiSelectionEnabled(false);
 
               // stdout
-              if (stdOutExists) {
-                if (f.showDialog(JOptionPane.getRootFrame(), "Save stdout") ==
+              if(stdOutExists){
+                if(f.showDialog(JOptionPane.getRootFrame(), "Save stdout")==
                     JFileChooser.APPROVE_OPTION) {
 
                   java.io.File stdOut = f.getSelectedFile();
-                  if (stdOut != null) {
+                  if (stdOut != null){
                     try {
-                      pluginMgr.getLocalShellMgr().writeFile(stdOut.getPath(),
+                      /*pluginMgr.getLocalShellMgr()*/shell.writeFile(stdOut.getPath(),
                           shell.readFile(job.getStdOut()), false);
 //                  File oldStdOut = new File(job.getStdOut());
 //                  oldStdOut.renameTo(stdOut);
                     }
-                    catch (java.io.IOException ioe) {
+                    catch(java.io.IOException ioe){
                       logFile.addMessage("Cannot rename " + job.getStdOut() +
                                          " in " + stdOut.getPath(), ioe);
                     }
@@ -444,21 +447,19 @@ public class SubmissionControl {
                 if(deleteFiles) //remove StdOut
                   shell.deleteFile(job.getStdOut());
               }
-
               // stderr
-
-              if (stdErrExists) {
-                if (f.showDialog(JOptionPane.getRootFrame(), "Save stderr") ==
+              if(stdErrExists){
+                if(f.showDialog(JOptionPane.getRootFrame(), "Save stderr")==
                     JFileChooser.APPROVE_OPTION) {
                   java.io.File stdErr = f.getSelectedFile();
                   if (stdErr != null) {
-                    try {
-                      pluginMgr.getLocalShellMgr().writeFile(stdErr.getPath(),
+                    try{
+                      /*pluginMgr.getLocalShellMgr()*/shell.writeFile(stdErr.getPath(),
                           shell.readFile(job.getStdErr()), false);
 //                  File oldStdErr = new File(job.getStdErr());
 //                  oldStdErr.renameTo(stdErr);
                     }
-                    catch (java.io.IOException ioe) {
+                    catch(java.io.IOException ioe){
                       logFile.addMessage("Cannot rename " + job.getStdErr() +
                                          " in " + stdErr.getPath(), ioe);
                     }
@@ -477,17 +478,25 @@ public class SubmissionControl {
       }
     }
 
-    if (jobControl == null)
-      jobControl = AtCom.getClassMgr().getJobControl();
+    Vector submitables = new Vector();
 
-    JobVector submitables = new JobVector();
+    while (jobs.size() > 0){
+      JobInfo job = (JobInfo) jobs.remove(0);
 
-    while (jobs.size() > 0) {
-      JobInfo job = jobs.remove(0);
+      //jobControl.updateDBStatus(job, DBPluginMgr.SUBMITTED);
+      Vector taskMgrs = GridPilot.getClassMgr().getTaskMgrs();
+      for(int i=0; i<taskMgrs.size(); ++i){
+        // Find the TaskMgr for this job and update the db status
+        TaskMgr taskMgr = ((TaskMgr) taskMgrs.get(i));
+        int taskID = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()
+            ).getTaskId(job.getJobDefId());
+        if(taskMgr.getTaskIdentifier()==taskID){
+          taskMgr.updateDBStatus(job, DBPluginMgr.SUBMITTED);
+          break;
+        }
+      }
 
-      jobControl.updateAMIStatus(job, AMIMgt.SUBMITTED);
-
-      if (job.getAMIStatus() != AMIMgt.SUBMITTED) { // updateAMIStatus didn't work
+      if (job.getDBStatus() != DBPluginMgr.SUBMITTED) { // updateDBStatus didn't work
         logFile.addMessage(
             "This job cannot be set Submitted -> this job cannot be resubmited",
             job);
@@ -501,7 +510,7 @@ public class SubmissionControl {
       }
     }
 
-    jobControl.updateJobCells(submitables);
+    TaskMgr.updateJobCells(submitables, statusTable);
 
     submit(submitables);
   }
@@ -509,15 +518,13 @@ public class SubmissionControl {
  /**
   * Checks if there are not too many active Threads (for submission), and there are
   * waiting jobs. If there are any, creates new submission threads
-  *
-  * Called by timer
   */
 
   private synchronized void trigSubmission() {
 
     if(submittingJobs.size() < maxSimultaneousSubmission && !toSubmitJobs.isEmpty()){
       // transferts job from toSubmitJobs to submittingJobs
-      final JobInfo job = toSubmitJobs.remove(0);
+      final JobInfo job = (JobInfo) toSubmitJobs.remove(0);
 
       submittingJobs.add(job);
 
@@ -536,14 +543,13 @@ public class SubmissionControl {
    * Submits the specified job. <p>
    * Creates these job outputs, and calls the plugin submission method (via PluginMgr). <br>
    * This method is started in a thread. <p>
-   *
-   * Called by {@link #trigSubmission()}
    */
   private void submit(final JobInfo job) {
 
-    job.setName(amiMgt.getPartLFN(job.getPartId()));
+    // TODO: change this to whatever we end up with
+    job.setName(dbPluginMgr.getJobDefValue(job.getJobDefId(), "jobName"));
 
-    statusTable.setValueAt(pluginMgr.getCSName(job), job.getTableRow(),
+    statusTable.setValueAt(job.getCSName(), job.getTableRow(),
                            JobControl.FIELD_CS);
 /*    statusTable.setValueAt(job.getName(), job.getTableRow(),
                            JobControl.FIELD_JOBNAME);
@@ -551,32 +557,37 @@ public class SubmissionControl {
     statusTable.setValueAt(iconSubmitting, job.getTableRow(),
                            JobControl.FIELD_CONTROL);
 
-    if (createOutputs(job) && pluginMgr.submit(job)) {
+    if (createOutputs(job) && csPluginMgr.submit(job)) {
 
       Debug.debug("Job " + job.getName() + " submitted : \n" +
                   "\tCSJobId = " + job.getJobId() + "\n" +
                   "\tStdOut = " + job.getStdOut() + "\n" +
                   "\tStdErr = " + job.getStdErr(), 2);
 
-      if (!amiMgt.updatePartJob(job.getPartId(), job.getJobId(), job.getName(),
-                                job.getStdOut(), job.getStdErr()))
-        logFile.addMessage("AMI updatePartJob(" + job.getPartId() + ", " +
+      if(/*!dbPluginMgr.updatePartJob(job.getJobDefId(), job.getJobId(), job.getName(),
+                                job.getStdOut(), job.getStdErr())*/
+          !dbPluginMgr.updateJobDefinition(
+              job.getJobDefId(),
+              // TODO: change this to whatever we end up with
+              new String [] {"jobID", "jobName", "stdOut", "stdErr"},
+              new String []{job.getJobId(), job.getName(),
+              job.getStdOut(), job.getStdErr()}))
+        logFile.addMessage("DB update(" + job.getJobDefId() + ", " +
                            job.getJobId() + ", " + job.getName() + ", " +
                            job.getStdOut() + ", " + job.getStdErr() +
                            ") failed", job);
 
       statusTable.setValueAt(job.getJobId(), job.getTableRow(),
                              JobControl.FIELD_JOBID);
-      if(AtCom.showAllJobs){
-        Debug.debug("Setting job user "+job.getUser(), 3);
-        statusTable.setValueAt(job.getUser(), job.getTableRow(),
-           JobControl.FIELD_USER);
-        statusTable.updateSelection();
-      }
+      Debug.debug("Setting job user "+job.getUser(), 3);
+      statusTable.setValueAt(job.getUser(), job.getTableRow(),
+         JobControl.FIELD_USER);
+      statusTable.updateSelection();
+
       job.setNeedToBeRefreshed(true);
       job.setAtComStatus(ComputingSystem.STATUS_WAIT);
     }
-    else {
+    else{
       statusTable.setValueAt("Not submitted !", job.getTableRow(),
                              JobControl.FIELD_JOBID);
 
@@ -585,20 +596,27 @@ public class SubmissionControl {
 
       job.setNeedToBeRefreshed(false);
 
-      if (amiMgt.updatePartStatus(job.getPartId(), AMIMgt.FAILED))
-        job.setAMIStatus(AMIMgt.FAILED);
+      if(//dbPluginMgr.updatePartStatus(job.getJobDefId(), DBPluginMgr.FAILED))
+          dbPluginMgr.updateJobDefinition(
+              job.getJobDefId(),
+              // TODO: change this to whatever we end up with
+              new String [] {"status"},
+              new String []{Integer.toString(DBPluginMgr.FAILED)}))
+        job.setDBStatus(DBPluginMgr.FAILED);
       else
-        logFile.addMessage("AMI updatePartStatus(" + job.getPartId() + ", " +
-                           AMIMgt.getStatusName(job.getAMIStatus()) +
+        logFile.addMessage("DB update status(" + job.getJobDefId() + ", " +
+            DBPluginMgr.getStatusName(job.getDBStatus()) +
                            ") failed", job);
 
-      jobControl.updateAMICell(job);
-      jobControl.updateJobsByStatus();
-
+      TaskMgr.updateDBCell(job, statusTable);
+      //jobControl.updateJobsByStatus();
     }
 	// remove iconSubmitting
     statusTable.setValueAt(null, job.getTableRow(), JobControl.FIELD_CONTROL);
-    jobControl.updateJobsByStatus();
+    //jobControl.updateJobsByStatus();
+    for(Iterator it = GridPilot.getClassMgr().getTaskMgrs().iterator(); it.hasNext();){
+      ((TaskMgr) it.next()).updateJobsByStatus();
+    }
 
     submittingJobs.remove(job);
 
@@ -618,23 +636,21 @@ public class SubmissionControl {
   /**
    * Create fields stdOut and (possibly) stdErr in this job. <br>
    * These names are &lt;working path&gt;/&lt;logicalFile (partition) LFN&gt;.&lt;rand&gt/stdout and /stderr <br>
-   * If stderrDest is not defined in AMI, stdErr = null. <p>
-   *
-   * Called by {@link #submit(JobInfo)}
+   * If stderrDest is not defined in DB, stdErr = null. <p>
    */
   private boolean createOutputs(JobInfo job) {
 
-    ShellMgr shell = pluginMgr.getShellMgr(job);
-
-    String workingPath = configFile.getValue(pluginMgr.getCSName(job),
+    ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+    String workingPath = configFile.getValue(job.getCSName(),
                                              "working path");
 
     if (workingPath == null)
-      workingPath = pluginMgr.getCSName(job);
+      workingPath = job.getCSName();
 
 
 
-    String finalStdErr = AtCom.getClassMgr().getAMIMgt().getPartStderrDest(job.getPartId());
+    //String finalStdErr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getPartStderrDest(job.getJobDefId());
+    String finalStdErr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getStdErrFinalDest(job.getJobDefId());
     //boolean withStdErr = finalStdErr != null && finalStdErr.trim().length() > 0;
 
     String prefix = null;
@@ -642,7 +658,7 @@ public class SubmissionControl {
     try{
       prefix = shell.createTempDir(job.getName()+".", workingPath);
     }
-    catch(IOException e){
+    catch(Exception e){
       Debug.debug("ERROR checking for stdout: "+e.getMessage(), 2);
       logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
       //throw e;
@@ -674,8 +690,6 @@ public class SubmissionControl {
   /**
    * Stops the submission. <br>
    * Empies toSubmitJobs, and set theses jobs to Failed. <p>
-   *
-   * Called when the user click on the submission progress bar
    */
   private void cancelSubmission(){
     timer.stop();
@@ -688,14 +702,20 @@ public class SubmissionControl {
       job.setAtComStatus(ComputingSystem.STATUS_FAILED);
 
       job.setNeedToBeRefreshed(false);
-      if(amiMgt.updatePartStatus(job.getPartId(), AMIMgt.FAILED))
-	      job.setAMIStatus(AMIMgt.FAILED);
+      if(
+          //dbPluginMgr.updatePartStatus(job.getJobDefId(), DBPluginMgr.FAILED))
+          dbPluginMgr.updateJobDefinition(
+              job.getJobDefId(),
+              // TODO: change this to whatever we end up with
+              new String [] {"status"},
+              new String []{Integer.toString(DBPluginMgr.FAILED)}))
+	      job.setDBStatus(DBPluginMgr.FAILED);
       else
-        logFile.addMessage("AMI updatePartStatus(" + job.getPartId() + ", " +
-                           AMIMgt.getStatusName(job.getAMIStatus()) + ") failed", job);
+        logFile.addMessage("DB update status(" + job.getJobDefId() + ", " +
+            DBPluginMgr.getStatusName(job.getDBStatus()) + ") failed", job);
 
     }
-    jobControl.updateAMICells(toSubmitJobs);
+    TaskMgr.updateDBCells(toSubmitJobs, statusTable);
 
     toSubmitJobs.removeAllElements();
 
