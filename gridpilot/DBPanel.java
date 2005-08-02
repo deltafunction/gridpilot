@@ -21,7 +21,6 @@ import java.util.Vector;
 public class DBPanel extends JPanel implements JobPanel{
 
   private ConfigFile configFile;
-  private boolean withSplit = true;
 
   private JScrollPane spSelectPanel = new JScrollPane();
   private SelectPanel selectPanel;
@@ -36,6 +35,9 @@ public class DBPanel extends JPanel implements JobPanel{
   private JButton bViewJobTransRecords = new JButton("Show jobTrans'");
   private JButton bCreateRecords = new JButton("Define new records");
   private JButton bEditRecord = new JButton("Edit record");
+  private JPopupMenu pmSubmitMenu = new JPopupMenu();
+  private JButton bSubmit = new JButton("Submit job(s)");
+  private JButton bMonitor = new JButton("Monitor job(s)");
   private JButton bDeleteRecord = new JButton("Delete record(s)");
   private JButton bSearch = new JButton("Search");
   private JButton bClear = new JButton("Clear");
@@ -82,6 +84,8 @@ public class DBPanel extends JPanel implements JobPanel{
   private synchronized void stopWorking() {
     working = false;
   }
+  
+  private SubmissionControl submissionControl;
 
 
   /**
@@ -133,6 +137,8 @@ public class DBPanel extends JPanel implements JobPanel{
     Debug.debug("Hidden fields "+hiddenFields.length, 3);
     tableResults = new Table(hiddenFields, fieldNames,
         GridPilot.getColorMapping());
+    
+    submissionControl = GridPilot.getClassMgr().getSubmissionControl();
     
     setFieldArrays();
     
@@ -331,6 +337,18 @@ public class DBPanel extends JPanel implements JobPanel{
       updateUI();
     }
     else if(tableName.equalsIgnoreCase("job definition")){
+      bSubmit.addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          bSubmit_mousePressed();
+        }
+      });
+      
+      bMonitor.addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          monitor();
+        }
+      });
+
       bEditRecord.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
           editJobDef();
@@ -349,11 +367,25 @@ public class DBPanel extends JPanel implements JobPanel{
         }
       });
       
+      String [] csNames = GridPilot.getClassMgr().getCSPluginMgr().getCSNames();
+      for(int i=0; i< csNames.length ; ++i){
+        JMenuItem mi = new JMenuItem(csNames[i]);
+        //mi.setMnemonic(i);
+        mi.addActionListener(new ActionListener(){
+          public void actionPerformed(final ActionEvent e){
+                submit(e);
+          }});
+        pmSubmitMenu.add(mi);
+      }
+
+      
+      addButtonResultsPanel(bSubmit);
       addButtonResultsPanel(bCreateRecords);
       addButtonResultsPanel(bEditRecord);
       addButtonResultsPanel(bDeleteRecord);
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
+      bSubmit.setEnabled(false);
       updateUI();
     }
     else if(tableName.equalsIgnoreCase("transformation")){
@@ -521,6 +553,7 @@ public class DBPanel extends JPanel implements JobPanel{
         bViewJobTransRecords.setEnabled(false);
         bEditRecord.setEnabled(false);
         bDeleteRecord.setEnabled(false);
+        bSubmit.setEnabled(false);
         
         tableResults.setTable(res.values, res.fields);
         spTableResults.getViewport().add(tableResults);
@@ -566,6 +599,7 @@ public class DBPanel extends JPanel implements JobPanel{
               ListSelectionModel lsm = (ListSelectionModel)e.getSource();
               Debug.debug("lsm indices: "+
                   lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
+              bSubmit.setEnabled(!lsm.isSelectionEmpty());
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
               bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
@@ -669,6 +703,8 @@ public class DBPanel extends JPanel implements JobPanel{
     JMenuItem miDelete = new JMenuItem("Delete");
     miEdit = new JMenuItem("Edit");
     jmSetFieldValue = new JMenu("Set field value");
+    JMenu jmSubmit = new JMenu("Submit job()");
+    JMenu miMonitor = new JMenu("Monitor job()");
     String [] fieldNames = tableResults.getColumnNames();
     JMenuItem [] miSetFields = new JMenuItem[fieldNames.length];
     for(int i=0; i<fieldNames.length; ++i){
@@ -693,6 +729,20 @@ public class DBPanel extends JPanel implements JobPanel{
            jmSetFieldValue.add(miSetFields[i]);
       }
     }
+    String [] csNames = GridPilot.getClassMgr().getCSPluginMgr().getCSNames();
+    for(int i=0; i<csNames.length; ++i){
+      JMenuItem mi = new JMenuItem(csNames[i]);
+      mi.addActionListener(new ActionListener(){
+        public void actionPerformed(final ActionEvent e){
+              submit(e);
+        }});
+      jmSubmit.add(mi);
+    }
+    miMonitor.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        monitor();
+      }
+    });
     miDelete.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         deleteJobDefs();
@@ -705,12 +755,16 @@ public class DBPanel extends JPanel implements JobPanel{
     });
     miDelete.setEnabled(true);
     miEdit.setEnabled(true);
-    tableResults.addMenuSeparator();
-    tableResults.addMenuItem(miDelete);
+    miMonitor.setEnabled(true);
+    tableResults.addMenuItem(jmSetFieldValue);
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miEdit);
     tableResults.addMenuSeparator();
-    tableResults.addMenuItem(jmSetFieldValue);
+    tableResults.addMenuItem(miDelete);
+    tableResults.addMenuSeparator();
+    tableResults.addMenuItem(miMonitor);
+    tableResults.addMenuSeparator();
+    tableResults.addMenuItem(jmSubmit);
   }
   
   private void setFieldValues(String field, String value) {
@@ -733,7 +787,7 @@ public class DBPanel extends JPanel implements JobPanel{
     //hiddenFields = dbPluginMgr.getDBHiddenFields(dbs[0], tableName);
     CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
-        new JobDefCreationPanel(dbName, taskMgr, tableResults, false), false);
+        new JobDefCreationPanel(dbName, taskMgr, tableResults, false), false, false);
     pDialog.setTitle(realTableName);
     pDialog.show();
     if(tableResults!=null && tableResults.getRowCount()>0){
@@ -758,7 +812,7 @@ public class DBPanel extends JPanel implements JobPanel{
     }
     CreateEditDialog pDialog = new CreateEditDialog(
         GridPilot.getClassMgr().getGlobalFrame(),
-        new JobDefCreationPanel(dbName,taskMgr, tableResults, true), true);
+        new JobDefCreationPanel(dbName,taskMgr, tableResults, true), true, false);
     pDialog.setTitle(realTableName);
     pDialog.show();
     searchRequest();
@@ -810,7 +864,7 @@ public class DBPanel extends JPanel implements JobPanel{
     //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.getDBs()[0]);
     CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
-        new TaskCreationPanel(dbPluginMgr, tableResults, false), false);
+        new TaskCreationPanel(dbPluginMgr, tableResults, false), false, false);
     pDialog.setTitle(realTableName);
     pDialog.show();
     if(tableResults!=null && tableResults.getRowCount()>0){
@@ -822,7 +876,7 @@ public class DBPanel extends JPanel implements JobPanel{
    //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.getDBs()[0]);
    CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
-       new TaskCreationPanel(dbPluginMgr, tableResults, true), true);
+       new TaskCreationPanel(dbPluginMgr, tableResults, true), true, false);
    pDialog.setTitle(realTableName);
    pDialog.show();
    searchRequest();
@@ -875,7 +929,7 @@ public class DBPanel extends JPanel implements JobPanel{
     //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.getDBs()[0]);
     CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
-          new JobTransCreationPanel(dbPluginMgr, tableResults, false), false);
+          new JobTransCreationPanel(dbPluginMgr, tableResults, false), false, false);
     pDialog.setTitle(realTableName);
     pDialog.show();
     if(tableResults!=null && tableResults.getRowCount()>0){
@@ -887,7 +941,7 @@ public class DBPanel extends JPanel implements JobPanel{
     //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.getDBs()[0]);
     CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
-          new JobTransCreationPanel(dbPluginMgr, tableResults, true), true);
+          new JobTransCreationPanel(dbPluginMgr, tableResults, true), true, false);
     pDialog.setTitle(realTableName);
     pDialog.show();
     searchRequest();
@@ -987,5 +1041,48 @@ public class DBPanel extends JPanel implements JobPanel{
         }
       }.start();
     }
+  }
+  
+  /**
+   * Called when mouse is pressed on Monitor button
+   */
+  private void monitor(){
+    new Thread(){
+      public void run(){
+        addJobs(getSelectedIdentifiers());
+      }
+    }.start();
+  }
+
+  /**
+   * Called when mouse is pressed on Submit button
+   */
+  private void bSubmit_mousePressed(){
+
+    // if a partition is selected, shows the menu with computing systems
+
+    if(getSelectedIdentifiers().length != 0){
+      pmSubmitMenu.show(this, 0, 0); // without this, pmSubmitMenu.getWidth == 0
+
+      pmSubmitMenu.show(bSubmit, -pmSubmitMenu.getWidth(),
+                        -pmSubmitMenu.getHeight() + bSubmit.getHeight());
+    }
+  }
+
+  /**
+   * Called when a computing system in pmSubmitMenu is selected
+   * Submits all selected logicalFiles (partitions) in computing system chosen in the popupMenu
+   */
+  private void submit(ActionEvent e){
+    int[] selectedJobIdentifiers = getSelectedIdentifiers();
+    Vector selectedJobDefinitions = new Vector();
+    for(int i=0; i<selectedJobIdentifiers.length; ++i){
+      selectedJobDefinitions.add(dbPluginMgr.getJobDefinition(i));
+    }
+    //String csName = ((JMenuItem)e.getSource()).getMnemonic();
+    String csName = ((JMenuItem)e.getSource()).getText();
+
+    // submit the jobs
+    submissionControl.submitJobDefinitions(selectedJobDefinitions, csName);
   }
 }
