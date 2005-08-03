@@ -289,7 +289,7 @@ public interface Database{
     }
     public Object getValue(String col){
       for (int i = 0 ; i < fields.length ; i++) {
-        if (col.equals(fields[i])) return values[i] ;
+        if (col.equalsIgnoreCase(fields[i])) return values[i] ;
       }
       return "no such field "+col ;
     }
