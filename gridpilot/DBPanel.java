@@ -2,6 +2,7 @@ package gridpilot;
 
 import gridpilot.Table;
 import gridpilot.Database.DBResult;
+import gridpilot.Database.DBRecord;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.ConfigFile;
@@ -380,12 +381,14 @@ public class DBPanel extends JPanel implements JobPanel{
 
       
       addButtonResultsPanel(bSubmit);
+      addButtonResultsPanel(bMonitor);
       addButtonResultsPanel(bCreateRecords);
       addButtonResultsPanel(bEditRecord);
       addButtonResultsPanel(bDeleteRecord);
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
       bSubmit.setEnabled(false);
+      bMonitor.setEnabled(false);
       updateUI();
     }
     else if(tableName.equalsIgnoreCase("transformation")){
@@ -554,6 +557,7 @@ public class DBPanel extends JPanel implements JobPanel{
         bEditRecord.setEnabled(false);
         bDeleteRecord.setEnabled(false);
         bSubmit.setEnabled(false);
+        bMonitor.setEnabled(false);
         
         tableResults.setTable(res.values, res.fields);
         spTableResults.getViewport().add(tableResults);
@@ -600,6 +604,7 @@ public class DBPanel extends JPanel implements JobPanel{
               Debug.debug("lsm indices: "+
                   lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
               bSubmit.setEnabled(!lsm.isSelectionEmpty());
+              bMonitor.setEnabled(!lsm.isSelectionEmpty());
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
               bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
@@ -778,7 +783,8 @@ public class DBPanel extends JPanel implements JobPanel{
   private void createJobDefs(){
     TaskMgr taskMgr = null;
     try{
-      taskMgr = new TaskMgr(dbPluginMgr, parentId);
+      //taskMgr = new TaskMgr(dbPluginMgr, parentId);
+      taskMgr = GridPilot.getClassMgr().getTaskMgr(dbPluginMgr.getDBName(), parentId);
     }
     catch(Throwable e){
       Debug.debug("ERROR: could not create TaskMgr. "+e.getMessage(), 1);
@@ -797,16 +803,18 @@ public class DBPanel extends JPanel implements JobPanel{
 
   private void editJobDef(){
     TaskMgr taskMgr = null;
+    int selectedTaskID = dbPluginMgr.getTaskId(getSelectedIdentifier());
     if(parentId<0){
       //dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
-      parentId = dbPluginMgr.getTaskId(getSelectedIdentifier());
+      parentId = selectedTaskID;
     }
     Debug.debug("Got dbPluginMgr:"+dbPluginMgr+":"+parentId, 1);
     try{
-      taskMgr = new TaskMgr(dbPluginMgr, parentId);
+      //taskMgr = new TaskMgr(dbPluginMgr, parentId);
+      taskMgr = GridPilot.getClassMgr().getTaskMgr(dbPluginMgr.getDBName(), selectedTaskID);
     }
     catch(Throwable e){
-      Debug.debug("ERROR: could not create TaskMgr. "+e.getMessage(), 1);
+      Debug.debug("ERROR: could not get TaskMgr. "+e.getMessage(), 1);
       e.printStackTrace();
       return;
     }
@@ -1048,8 +1056,16 @@ public class DBPanel extends JPanel implements JobPanel{
    */
   private void monitor(){
     new Thread(){
-      public void run(){
-        addJobs(getSelectedIdentifiers());
+      public void run(){        
+        DBRecord jobDef;
+        int[] selectedJobIdentifiers = getSelectedIdentifiers();
+        for(int i=0; i<selectedJobIdentifiers.length; ++i){
+          jobDef = dbPluginMgr.getJobDefinition(
+              selectedJobIdentifiers[i]);
+          TaskMgr taskMgr = GridPilot.getClassMgr().getTaskMgr(dbPluginMgr.getDBName(),
+              Integer.parseInt(jobDef.getValue("taskFK").toString()));
+          taskMgr.addJobs(new int [] {selectedJobIdentifiers[i]});
+        }
       }
     }.start();
   }
