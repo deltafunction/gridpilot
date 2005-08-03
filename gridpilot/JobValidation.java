@@ -184,17 +184,10 @@ public class JobValidation {
                          ") failed", job);
 
     if(dbStatus != job.getDBStatus()){
-      Vector taskMgrs = GridPilot.getClassMgr().getTaskMgrs();
-      for(int i=0; i<taskMgrs.size(); ++i){
-        // Find the TaskMgr for this job and update the db status
-        TaskMgr taskMgr = ((TaskMgr) taskMgrs.get(i));
-        int taskID = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()
-            ).getTaskId(job.getJobDefId());
-        if(taskMgr.getTaskIdentifier()==taskID){
-          taskMgr.updateDBStatus(job, dbStatus);
-          break;
-        }
-      }
+      TaskMgr taskMgr = GridPilot.getClassMgr().getTaskMgr(job.getDBName(),
+          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTaskId(
+              job.getJobDefId()));
+      taskMgr.updateDBStatus(job, dbStatus);
     }
 
     if(dbStatus != job.getDBStatus()){ // checks that updateAMIStatus succeded

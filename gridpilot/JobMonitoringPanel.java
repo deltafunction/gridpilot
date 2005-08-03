@@ -3,7 +3,6 @@ package gridpilot;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.Iterator;
 import java.util.Vector;
 
 import javax.swing.event.*;
@@ -448,23 +447,16 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
 
     //jobControl.undecidedChoices(jobs, dbChoices);
 
+    TaskMgr taskMgr;
     for(int i = 0; i < jobs.size(); ++i){
       JobInfo job = (JobInfo) jobs.getDBRecord(i);
       if(job.getDBStatus()!=dbChoices[i]){
-        Vector taskMgrs = GridPilot.getClassMgr().getTaskMgrs();
-        TaskMgr taskMgr;
-        for(Iterator it = taskMgrs.iterator(); it.hasNext();){
-          // use the relevant TaskMgr to update db status
-          taskMgr = ((TaskMgr) it.next());
-          if(GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTaskId(
-              job.getJobDefId())==taskMgr.getTaskIdentifier()){
-            taskMgr.updateDBStatus(job, dbChoices[i]);
-            break;
-          }         
-        }
+        taskMgr = GridPilot.getClassMgr().getTaskMgr(job.getDBName(),
+            GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTaskId(
+                job.getJobDefId()));
+        taskMgr.updateDBStatus(job, dbChoices[i]);
       }
     }
-
     statusTable.updateSelection();
   }
 
@@ -656,24 +648,16 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
 
   private void showScripts(){
     JobInfo job = TaskMgr.getJobAtRow(statusTable.getSelectedRow());
-
     ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
-
-    Vector taskMgrs = GridPilot.getClassMgr().getTaskMgrs();
     TaskMgr taskMgr;
-    for(Iterator it = taskMgrs.iterator(); it.hasNext();){
-      // use the relevant TaskMgr to update db status
-      taskMgr = ((TaskMgr) it.next());
-      if(GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTaskId(
-          job.getJobDefId())==taskMgr.getTaskIdentifier()){
-        ShowOutputsJobsDialog.showFilesTabs(JOptionPane.getRootFrame(),
-            "Scripts for job " + job.getName(),
-            shell,
-            taskMgr.getScripts(statusTable.getSelectedRow())            
-            );
-        break;
-      }         
-    }  
+    taskMgr = GridPilot.getClassMgr().getTaskMgr(job.getDBName(),
+        GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTaskId(
+            job.getJobDefId()));
+    ShowOutputsJobsDialog.showFilesTabs(JOptionPane.getRootFrame(),
+        "Scripts for job " + job.getName(),
+        shell,
+        taskMgr.getScripts(statusTable.getSelectedRow())            
+        );
   }
 
   /**
@@ -748,19 +732,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
         //jobControl.setDBStatus(statusTable.getSelectedRows(), dbStatus);
         Vector jobs = TaskMgr.getJobsAtRows(statusTable.getSelectedRows());
         JobInfo job;
-        Vector taskMgrs = GridPilot.getClassMgr().getTaskMgrs();
         TaskMgr taskMgr;
         for(int i=0; i<jobs.size(); ++i){
-          for(Iterator it = taskMgrs.iterator(); it.hasNext();){
-            // use the relevant TaskMgr to update db status
-            taskMgr = ((TaskMgr) it.next());
-            job = (JobInfo) jobs.get(i);
-            if(GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTaskId(
-                job.getJobDefId())==taskMgr.getTaskIdentifier()){
-              taskMgr.setDBStatus(new int [] {statusTable.getSelectedRows()[i]}, dbStatus);
-              break;
-            }         
-          }
+          job = (JobInfo) jobs.get(i);
+          taskMgr = GridPilot.getClassMgr().getTaskMgr(job.getDBName(),
+              GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTaskId(
+                  job.getJobDefId()));
+          taskMgr.setDBStatus(new int [] {statusTable.getSelectedRows()[i]}, dbStatus);
         }
       }
     }.start();

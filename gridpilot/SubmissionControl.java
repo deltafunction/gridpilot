@@ -170,7 +170,7 @@ public class SubmissionControl{
       }
       statusBar.setLabel("Submitting. Please wait...");
       statusBar.animateProgressBar();
-      for(int i=0; i< selectedJobs.size(); ++i){
+      for(int i=0; i<selectedJobs.size(); ++i){
         JobDefinition jobDef = ((JobDefinition) selectedJobs.get(i));
         int jobDefID = Integer.parseInt(
             jobDef.getValue(JobDefinition.Identifier).toString());
@@ -484,18 +484,12 @@ public class SubmissionControl{
       JobInfo job = (JobInfo) jobs.remove(0);
 
       //jobControl.updateDBStatus(job, DBPluginMgr.SUBMITTED);
-      Vector taskMgrs = GridPilot.getClassMgr().getTaskMgrs();
-      for(int i=0; i<taskMgrs.size(); ++i){
-        // Find the TaskMgr for this job and update the db status
-        TaskMgr taskMgr = ((TaskMgr) taskMgrs.get(i));
-        int taskID = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()
-            ).getTaskId(job.getJobDefId());
-        if(taskMgr.getTaskIdentifier()==taskID){
-          taskMgr.updateDBStatus(job, DBPluginMgr.SUBMITTED);
-          break;
-        }
-      }
 
+      TaskMgr taskMgr = GridPilot.getClassMgr().getTaskMgr(job.getDBName(),
+          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTaskId(
+              job.getJobDefId()));
+      taskMgr.updateDBStatus(job, DBPluginMgr.SUBMITTED);
+      
       if (job.getDBStatus() != DBPluginMgr.SUBMITTED) { // updateDBStatus didn't work
         logFile.addMessage(
             "This job cannot be set Submitted -> this job cannot be resubmited",

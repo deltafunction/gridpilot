@@ -21,7 +21,7 @@ public class ClassMgr{
   private int debugLevel = 3;
   private HashMap dbMgts = new HashMap();
   private CSPluginMgr csPluginMgr;
-  private Vector taskMgrs = new Vector();
+  private HashMap taskMgrs = new HashMap();
   private DBVector submittedJobs = new DBVector();
   private SubmissionControl submissionControl;
 
@@ -97,21 +97,44 @@ public class ClassMgr{
     return (DBPluginMgr) dbMgts.get(dbName);
   }
 
-  // The HashMap of tasks is kept here
+  // This method creates a new TaskMgr if there is
+  // none in the HashMap with keys dbName, taskID
+  public TaskMgr getTaskMgr(String dbName, int taskID){
+    if(taskMgrs == null){
+      Debug.debug("taskMgrs null", 3);
+    }
+    if(!taskMgrs.keySet().contains(dbName)){
+      taskMgrs.put(dbName, new HashMap());
+    }
+    if(!((HashMap) taskMgrs.get(dbName)).keySet().contains(Integer.toString(taskID))){
+      Debug.debug("Creating new TaskMgr, "+taskID+", in "+dbName, 3);
+      addTaskMgr(new TaskMgr(dbName, taskID));
+    }
+    return (TaskMgr) ((HashMap) taskMgrs.get(dbName)).get(Integer.toString(taskID));
+  }
+  
   public Vector getTaskMgrs(){
     if(taskMgrs == null){
       Debug.debug("taskMgrs null", 3);
     }
-    return taskMgrs;
+    Vector allTaskMgrs = new Vector();
+    for(Iterator it=taskMgrs.values().iterator(); it.hasNext();){
+      allTaskMgrs.addAll(((HashMap) it.next()).values());
+    }
+    return allTaskMgrs;
   }
   
-  // The HashMap of tasks is kept here
+  // The HashMap of HashMaps of tasks is kept here
   public void addTaskMgr(TaskMgr taskMgr){
     if(taskMgrs == null){
       Debug.debug("taskMgrs null", 3);
       new Exception().printStackTrace();
     }
-    taskMgrs.add(taskMgr);
+    if(!taskMgrs.keySet().contains(taskMgr.dbName)){
+      taskMgrs.put(taskMgr.dbName, new HashMap());
+    }
+    ((HashMap) taskMgrs.get(taskMgr.dbName)
+        ).put(Integer.toString(taskMgr.getTaskIdentifier()), taskMgr);
   }
 
 
