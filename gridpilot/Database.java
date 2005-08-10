@@ -229,6 +229,8 @@ public interface Database{
   public DBRecord getJobDefinition(int jobDefinitionID);
   public boolean createJobDefinition(String [] values);
   public boolean updateJobDefinition(int jobDefID, String [] fields, String [] values);
+  public boolean updateJobDefinition(int jobDefID, String [] values);
+  public boolean updateJobDefStatus(int jobDefID, String status);
   public DBRecord getRunInfo(int jobDefID);
   public boolean createRunInfo(JobInfo jobInfo);
   public boolean updateRunInfo(JobInfo jobInfo);
@@ -244,36 +246,39 @@ public interface Database{
   public boolean deleteJobTransRecord(int jobTransID);
   public String [] getVersions(String jobTransName);
   public String getUserLabel();
-  public String getJobRunInfo(int jobDefID, String key);
   // Not yet used
   public boolean reserveJobDefinition(int jobDefinitionID, String UserName);
   public boolean dereserveJobDefinition(int jobDefinitionID);
+
+  public String getJobRunUser(int jobDefinitionID);
 
   public boolean saveDefVals(int taskId, String[] defvals, String user);
   public String [] getDefVals(int taskId, String user);
 
   public String [] getJobParameters(int transformationID);
-  public String getJobTransValue(int jobDefinitionID, String key);
-
-  public String [] getOutputs(int transformationID);
-  public String [] getInputs(int transformationID);
+  public String getJobTransID(int jobDefinitionID);
+  public String getJobTransXstractScript(int jobDefinitionID);
+  
+  public String [] getOutputs(int jobDefID);
+  public String [] getInputs(int jobDefID);
   /**
    * Get the value of the parameter par (from the signature of the transformation),
    * as set in the jobDefinition record.
    */
-  public String getJobDefInRemoteName (int jobDefinitionID, String par);
-  public String getJobDefInLocalName (int jobDefinitionID, String par);
-  public String getJobDefOutRemoteName (int jobDefinitionID, String par);
-  public String getJobDefOutLocalName (int jobDefinitionID, String par);
-
+  public String getJobDefInRemoteName(int jobDefinitionID, String par);
+  public String getJobDefInLocalName(int jobDefinitionID, String par);
+  public String getJobDefOutRemoteName(int jobDefinitionID, String par);
+  public String getJobDefOutLocalName(int jobDefinitionID, String par);
+  public String getJobDefUser(int jobDefinitionID);
+  public String getJobDefName(int jobDefinitionID);
   public String getStdOutFinalDest(int jobDefinitionID);
   public String getStdErrFinalDest(int jobDefinitionID);
   
   public String [] getFieldNames(String table);
-  public String getJobDefValue(int jobDefinitionID, String key);
+  //public String getJobDefValue(int jobDefinitionID, String key);
   public String getPackInitText (String pack, String cluster);
   
-  public class DBRecord {
+  public class DBRecord{
     public String [] fields = null;
     public Object [] values = null;
     public static String identifier = null;

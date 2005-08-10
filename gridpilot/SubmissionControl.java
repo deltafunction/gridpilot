@@ -3,7 +3,6 @@ package gridpilot;
 import javax.swing.*;
 
 import java.awt.event.*;
-//import java.io.IOException;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.Iterator;
@@ -15,7 +14,7 @@ import gridpilot.Database.JobDefinition;
 
 /**
  * Controls the job submission. <p>
- * When JobControl asks for submitting some jobs (giving logical file Id or jobs already created),
+ * When submitting some jobs (giving logical file id or jobs already created),
  * these jobs are put in a queue (<code>toSubmitJobs</code>). Each <code>timeBetweenSubmission</code>,
  * a Timer checks if there is some jobs in this queue (this timer is stopped when the
  * queue is empty, and re-started when new jobs arrive). <br>
@@ -33,13 +32,8 @@ public class SubmissionControl{
   private boolean isProgressBarSet=false;
   private ConfigFile configFile;
   private LogFile logFile;
-
-  private JobControl jobControl;
-
   private Table statusTable;
-
   private CSPluginMgr csPluginMgr;
-
   private Timer timer;
 
   /**
@@ -104,8 +98,6 @@ public class SubmissionControl{
    * <li>{@link #userName}
    * <li>{@link #maxSimultaneousSubmission}
    * <li>{@link #timeBetweenSubmission} </ul><p>
-   *
-   * Called by {@link JobControl#reloadValues()}
    *
    */
   
@@ -175,11 +167,13 @@ public class SubmissionControl{
         int jobDefID = Integer.parseInt(
             jobDef.getValue(JobDefinition.Identifier).toString());
         // TODO: Change this to whatever we end up with
-        String jobUser = dbPluginMgr.getJobRunInfo(jobDefID, "user");
+        //String jobUser = dbPluginMgr.getJobRunValue(jobDefID, "user");
+        String jobUser = dbPluginMgr.getJobRunUser(jobDefID);
         if(jobUser==null){
           Debug.debug("Job user null, getting from DB", 3);
           // TODO: Change this to whatever we end up with
-          jobUser = dbPluginMgr.getJobDefinition(jobDefID).getValue("reservedBy").toString();
+          //jobUser = dbPluginMgr.getJobDefValue(jobDefID, "reservedBy");
+          jobUser = dbPluginMgr.getJobDefUser(jobDefID);
         }
         if(jobUser==null){
           Debug.debug("Job user null, getting from config file", 3);
@@ -203,7 +197,8 @@ public class SubmissionControl{
             job = new JobInfo(
                 jobDefID,
                 // TODO: Change this to whatever we end up with
-                dbPluginMgr.getJobDefinition(jobDefID).getValue("jobName").toString(),
+                //dbPluginMgr.getJobDefValue(jobDefID, "jobName"),
+                dbPluginMgr.getJobDefName(jobDefID),
                 csName,
                 dbPluginMgr.getDBName()
                 );
@@ -222,10 +217,7 @@ public class SubmissionControl{
             job.setDBStatus(DBPluginMgr.SUBMITTED);
           }
           newJobs.add(job);
-
-//          ++jobControl.jobsByStatus[JobControl.waitIndex];
-
-          Debug.debug("logical file " + job.getJobDefId() + "("+job.getName()+") reserved", 2);
+          Debug.debug("job definition " + job.getJobDefId() + "("+job.getName()+") reserved", 2);
         }
         else{
           if(userName == null)
@@ -256,7 +248,6 @@ public class SubmissionControl{
    * Each logical file (partition) is reserved, and {@link #submit(JobInfo)} is called. <p>
    */
   public void submitJobs(Vector jobs, String csName){
-    if(jobControl == null)
     synchronized(submittedJobs){
       Vector newJobs = new Vector();
 
@@ -541,15 +532,15 @@ public class SubmissionControl{
   private void submit(final JobInfo job) {
 
     // TODO: change this to whatever we end up with
-    job.setName(dbPluginMgr.getJobDefValue(job.getJobDefId(), "jobName"));
+    job.setName(dbPluginMgr.getJobDefName(job.getJobDefId()));
 
     statusTable.setValueAt(job.getCSName(), job.getTableRow(),
-                           JobControl.FIELD_CS);
+        TaskMgr.FIELD_CS);
 /*    statusTable.setValueAt(job.getName(), job.getTableRow(),
-                           JobControl.FIELD_JOBNAME);
+                           TaskMgr);
     Debug.debug("jobName : " + job.getName(), 3);*/
     statusTable.setValueAt(iconSubmitting, job.getTableRow(),
-                           JobControl.FIELD_CONTROL);
+        TaskMgr.FIELD_CONTROL);
 
     if (createOutputs(job) && csPluginMgr.submit(job)) {
 
@@ -563,7 +554,7 @@ public class SubmissionControl{
           !dbPluginMgr.updateJobDefinition(
               job.getJobDefId(),
               // TODO: change this to whatever we end up with
-              new String [] {"jobID", "jobName", "stdOut", "stdErr"},
+              //new String [] {"jobID", "jobName", "stdOut", "stdErr"},
               new String []{job.getJobId(), job.getName(),
               job.getStdOut(), job.getStdErr()}))
         logFile.addMessage("DB update(" + job.getJobDefId() + ", " +
@@ -572,10 +563,10 @@ public class SubmissionControl{
                            ") failed", job);
 
       statusTable.setValueAt(job.getJobId(), job.getTableRow(),
-                             JobControl.FIELD_JOBID);
+          TaskMgr.FIELD_JOBID);
       Debug.debug("Setting job user "+job.getUser(), 3);
       statusTable.setValueAt(job.getUser(), job.getTableRow(),
-         JobControl.FIELD_USER);
+          TaskMgr.FIELD_USER);
       statusTable.updateSelection();
 
       job.setNeedToBeRefreshed(true);
@@ -583,7 +574,7 @@ public class SubmissionControl{
     }
     else{
       statusTable.setValueAt("Not submitted !", job.getTableRow(),
-                             JobControl.FIELD_JOBID);
+          TaskMgr.FIELD_JOBID);
 
       job.setAtComStatus(ComputingSystem.STATUS_FAILED);
 
@@ -591,11 +582,13 @@ public class SubmissionControl{
       job.setNeedToBeRefreshed(false);
 
       if(//dbPluginMgr.updatePartStatus(job.getJobDefId(), DBPluginMgr.FAILED))
-          dbPluginMgr.updateJobDefinition(
+          dbPluginMgr.updateJobDefStatus(
               job.getJobDefId(),
               // TODO: change this to whatever we end up with
-              new String [] {"status"},
-              new String []{Integer.toString(DBPluginMgr.FAILED)}))
+              //new String [] {"status"},
+              //new String []{Integer.toString(DBPluginMgr.FAILED)}
+              Integer.toString(DBPluginMgr.FAILED)
+              ))
         job.setDBStatus(DBPluginMgr.FAILED);
       else
         logFile.addMessage("DB update status(" + job.getJobDefId() + ", " +
@@ -606,7 +599,7 @@ public class SubmissionControl{
       //jobControl.updateJobsByStatus();
     }
 	// remove iconSubmitting
-    statusTable.setValueAt(null, job.getTableRow(), JobControl.FIELD_CONTROL);
+    statusTable.setValueAt(null, job.getTableRow(), TaskMgr.FIELD_CONTROL);
     //jobControl.updateJobsByStatus();
     for(Iterator it = GridPilot.getClassMgr().getTaskMgrs().iterator(); it.hasNext();){
       ((TaskMgr) it.next()).updateJobsByStatus();
@@ -690,19 +683,21 @@ public class SubmissionControl{
     Enumeration e = toSubmitJobs.elements();
     while(e.hasMoreElements()){
       JobInfo job = (JobInfo) e.nextElement();
-      statusTable.setValueAt("Not submitted (Cancelled)!", job.getTableRow(), JobControl.FIELD_JOBID);
-      statusTable.setValueAt(job.getName(), job.getTableRow(), JobControl.FIELD_JOBNAME);
+      statusTable.setValueAt("Not submitted (Cancelled)!", job.getTableRow(), TaskMgr.FIELD_JOBID);
+      statusTable.setValueAt(job.getName(), job.getTableRow(), TaskMgr.FIELD_JOBNAME);
 
       job.setAtComStatus(ComputingSystem.STATUS_FAILED);
 
       job.setNeedToBeRefreshed(false);
       if(
           //dbPluginMgr.updatePartStatus(job.getJobDefId(), DBPluginMgr.FAILED))
-          dbPluginMgr.updateJobDefinition(
+          dbPluginMgr.updateJobDefStatus(
               job.getJobDefId(),
               // TODO: change this to whatever we end up with
-              new String [] {"status"},
-              new String []{Integer.toString(DBPluginMgr.FAILED)}))
+              //new String [] {"status"},
+              //new String []{Integer.toString(DBPluginMgr.FAILED)}
+              Integer.toString(DBPluginMgr.FAILED)
+              ))
 	      job.setDBStatus(DBPluginMgr.FAILED);
       else
         logFile.addMessage("DB update status(" + job.getJobDefId() + ", " +
