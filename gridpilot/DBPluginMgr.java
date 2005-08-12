@@ -308,6 +308,75 @@ public class DBPluginMgr implements Database{
       return null;
   }
 
+  public synchronized String getJobTransDefinition(final int jobDefinitionID){
+    MyThread t = new MyThread(){
+      String res = null;
+      public void run(){
+        try{
+          res = db.getJobTransDefinition(jobDefinitionID);
+        }catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             jobDefinitionID, t);
+        }
+      }
+      public String getStringRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getJobTransDefinition"))
+      return t.getStringRes();
+    else
+      return null;
+  }
+
+  public synchronized String [] getJobTransPackages(final int jobDefinitionID){
+    MyThread t = new MyThread(){
+      String [] res = null;
+      public void run(){
+        try{
+          res = db.getJobTransPackages(jobDefinitionID);
+        }catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             jobDefinitionID, t);
+        }
+      }
+      public String [] getString2Res(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getJobTransPackages"))
+      return t.getString2Res();
+    else
+      return null;
+  }
+
+  public synchronized String [] getJobTransSignature(final int jobDefinitionID){
+    MyThread t = new MyThread(){
+      String [] res = null;
+      public void run(){
+        try{
+          res = db.getJobTransSignature(jobDefinitionID);
+        }catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             jobDefinitionID, t);
+        }
+      }
+      public String [] getString2Res(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getJobTransSignature"))
+      return t.getString2Res();
+    else
+      return null;
+  }
+
   public synchronized String getJobDefUser(final int jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
@@ -536,6 +605,30 @@ public class DBPluginMgr implements Database{
       t.start();
     
       if(waitForThread(t, dbName, dbTimeOut, "getInputs"))
+        return t.getString2Res();
+      else
+        return null;
+    }
+
+  public synchronized String [] getJobDefTransPars(final int jobDefID){
+    
+      MyThread t = new MyThread(){
+        String [] res = null;
+        public void run(){
+          try{
+            res = db.getJobDefTransPars(jobDefID);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               jobDefID, t);
+          }
+        }
+        public String [] getString2Res(){return res;}
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "getJobDefTransPars"))
         return t.getString2Res();
       else
         return null;
@@ -1162,17 +1255,17 @@ public class DBPluginMgr implements Database{
       return null;
   }
 
-  public synchronized DBResult getJobTransRecords(final int taskID){
+  public synchronized DBResult getJobTransRecords(final int jobTransID){
   
     MyThread t = new MyThread(){
       DBResult res = null;
       public void run(){
         try{
-          res = db.getJobTransRecords(taskID);
+          res = db.getJobTransRecords(jobTransID);
         }catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             taskID, t);
+                             jobTransID, t);
         }
       }
       public DBResult getDB2Res(){return res;}

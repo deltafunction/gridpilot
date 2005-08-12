@@ -240,7 +240,7 @@ public interface Database{
 
   //public JobTrans [] getJobTrans(int taskID);
   public DBResult getJobTransRecords(int taskID);
-  public DBRecord getJobTransRecord(int taskID);
+  public DBRecord getJobTransRecord(int jobTransID);
   public boolean createJobTransRecord(String [] values);
   public boolean updateJobTransRecord(int jobTransID, String [] fields, String [] values);
   public boolean deleteJobTransRecord(int jobTransID);
@@ -258,7 +258,11 @@ public interface Database{
   public String [] getJobParameters(int transformationID);
   public String getJobTransID(int jobDefinitionID);
   public String getJobTransXstractScript(int jobDefinitionID);
-  
+  public String getJobTransDefinition(int jobDefinitionID);
+  public String [] getJobTransPackages(int jobDefinitionID);
+  public String [] getJobTransSignature(int jobDefinitionID);
+ 
+  public String [] getJobDefTransPars(int jobDefID);
   public String [] getOutputs(int jobDefID);
   public String [] getInputs(int jobDefID);
   /**
