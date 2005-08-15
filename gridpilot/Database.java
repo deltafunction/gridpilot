@@ -179,66 +179,41 @@ public interface Database{
     }
   }
   
-  // TODO: shouldn't we make this more flexible?
-  //public int createPart (int datasetID, String lfn, String partNr,
-   //   String evMin, String evMax,
-   //   String transID, String [] trpars,
-    //  String [] [] ofmap, String odest, String edest);
-  //public boolean deletePart(int partID);
-  //public boolean dereservePart(int partID);
-  //public boolean reservePart(int partID, String user /*user name recorded*/);
-  //public boolean saveDefVals(int datasetId, String[] defvals);
-  //public String [] getFieldNames(String table);
-  //public DBResult select(String selectRequest, String identifier);
-  //public String getDatasetTableName();
-  //public String getPartitionTableName();
-  //public DBResult getAllPartJobInfo(int datasetID);
-  //public boolean updatePartition(int partID, HashMap attrVals);
-  //public String getTransId(int datasetIdentifier, String version);
-  //public String [] getTransformationVersions(int datasetIdentifier);
-  //public String getPartTransValue (int partID, String key);
-  //public String getPartValue (int partID, String key);
-  //public String getPartOutLogicalName (int partID, String outpar);
-  //public String getPartOutLocalName (int partID, String outpar);
-  //public String getPackInitText (String pack, String cluster);
-  //public String [] getOutputMapping(int transformationIdentifier, String version);
-  //public String [] getJobParameters(int transformationIdentifier, String version);
-  //public String [] getDefVals(int datasetIdentifier);
-  //public String getDatasetName(int datasetID);
-  // TODO: shouldn't we make this more flexible?
-  //public boolean createRunRecord(int partID, String user, String cluster, String jobID,
-  //    String jobName, String outTmp, String errTmp);
-  
   public String connect();
   public void disconnect();
   public void clearCaches();
-  // PRODDB ADDITIONS
+  
+  // In other cases than proddb, just return an empty result set
   public DBResult getAllTaskTransRecords();
-  public int getTaskTransId(int taskID);
-  public DBRecord getTaskTransRecord(int taskID);
+  //public int getTaskTransId(int taskID);
+  //public DBRecord getTaskTransRecord(int taskID);
+  
+  // This is the parser of the select request from SelectPanel.
+  // The last returned column must be the identifier.
   public DBResult select(String selectRequest, String identifier);
-  //
-
+  
   public boolean createTask(String [] values);
   public boolean updateTask(int taskID, String [] fields, String [] values);
   public boolean deleteTask(int taskID);
   public DBRecord getTask(int taskID);
+  
+  public DBResult getJobDefinitions(int taskID, String [] fieldNames);
 
   public int getTaskId(int jobDefID);
-  public DBResult getJobDefinitions(int taskID, String [] fieldNames);
+  
   public DBRecord getJobDefinition(int jobDefinitionID);
   public boolean createJobDefinition(String [] values);
   public boolean updateJobDefinition(int jobDefID, String [] fields, String [] values);
+  // Here the following fields are assumed: "jobDefID", "jobName", "stdOut", "stdErr"
   public boolean updateJobDefinition(int jobDefID, String [] values);
   public boolean updateJobDefStatus(int jobDefID, String status);
+  
   public DBRecord getRunInfo(int jobDefID);
   public boolean createRunInfo(JobInfo jobInfo);
   public boolean updateRunInfo(JobInfo jobInfo);
-  public boolean setJobDefsField(int [] identifiers,
-      String field, String value);
+  public boolean setJobDefsField(int [] identifiers, String field, String value);
   public boolean deleteJobDefinition(int jobDefID);
-
-  //public JobTrans [] getJobTrans(int taskID);
+  // These records must contain fields "jobTransName" and "version". If necessary, added by hand.
   public DBResult getJobTransRecords(int taskID);
   public DBRecord getJobTransRecord(int jobTransID);
   public boolean createJobTransRecord(String [] values);
@@ -246,29 +221,20 @@ public interface Database{
   public boolean deleteJobTransRecord(int jobTransID);
   public String [] getVersions(String jobTransName);
   public String getUserLabel();
-  // Not yet used
   public boolean reserveJobDefinition(int jobDefinitionID, String UserName);
   public boolean dereserveJobDefinition(int jobDefinitionID);
-
   public String getJobRunUser(int jobDefinitionID);
-
   public boolean saveDefVals(int taskId, String[] defvals, String user);
   public String [] getDefVals(int taskId, String user);
-
   public String [] getJobParameters(int transformationID);
   public String getJobTransID(int jobDefinitionID);
   public String getJobTransXstractScript(int jobDefinitionID);
   public String getJobTransDefinition(int jobDefinitionID);
   public String [] getJobTransPackages(int jobDefinitionID);
   public String [] getJobTransSignature(int jobDefinitionID);
- 
   public String [] getJobDefTransPars(int jobDefID);
   public String [] getOutputs(int jobDefID);
   public String [] getInputs(int jobDefID);
-  /**
-   * Get the value of the parameter par (from the signature of the transformation),
-   * as set in the jobDefinition record.
-   */
   public String getJobDefInRemoteName(int jobDefinitionID, String par);
   public String getJobDefInLocalName(int jobDefinitionID, String par);
   public String getJobDefOutRemoteName(int jobDefinitionID, String par);
@@ -277,9 +243,7 @@ public interface Database{
   public String getJobDefName(int jobDefinitionID);
   public String getStdOutFinalDest(int jobDefinitionID);
   public String getStdErrFinalDest(int jobDefinitionID);
-  
   public String [] getFieldNames(String table);
-  //public String getJobDefValue(int jobDefinitionID, String key);
   public String getPackInitText (String pack, String cluster);
   
   public class DBRecord{
