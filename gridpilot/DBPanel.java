@@ -33,7 +33,8 @@ public class DBPanel extends JPanel implements JobPanel{
   private JPanel pButtonTableResults = new JPanel(new FlowLayout(FlowLayout.RIGHT));
   private JPanel panelTableResults = new JPanel(new GridBagLayout());
   
-  private JButton bViewJobTransRecords = new JButton("Show jobTrans'");
+  /*Don't think we really need this*/
+  //private JButton bViewJobTransRecords = new JButton("Show jobTrans'");
   private JButton bCreateRecords = new JButton("Define new records");
   private JButton bEditRecord = new JButton("Edit record");
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
@@ -299,12 +300,14 @@ public class DBPanel extends JPanel implements JobPanel{
         }
       }
       );
-      bViewJobTransRecords.addActionListener(new java.awt.event.ActionListener(){
+      
+      /*Don't think we really need this*/
+      /*bViewJobTransRecords.addActionListener(new java.awt.event.ActionListener(){
         public void actionPerformed(ActionEvent e){
           viewJobTransRecords();
         }
       }
-      );
+      );*/
 
       bCreateRecords.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent e) {
@@ -325,14 +328,15 @@ public class DBPanel extends JPanel implements JobPanel{
       });
       
       addButtonResultsPanel(bViewJobDefinitions);
-      addButtonResultsPanel(bViewJobTransRecords);    
+      /*Don't think we really need this*/
+      //addButtonResultsPanel(bViewJobTransRecords);    
       addButtonResultsPanel(bCreateRecords);
       addButtonResultsPanel(bEditRecord);
       addButtonResultsPanel(bDeleteRecord);
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
       bViewJobDefinitions.setEnabled(false);
-      bViewJobTransRecords.setEnabled(false);
+      //bViewJobTransRecords.setEnabled(false);
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
       updateUI();
@@ -416,7 +420,7 @@ public class DBPanel extends JPanel implements JobPanel{
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
       bViewJobDefinitions.setEnabled(false);
-      bViewJobTransRecords.setEnabled(false);
+      //bViewJobTransRecords.setEnabled(false);
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
       updateUI();
@@ -553,7 +557,7 @@ public class DBPanel extends JPanel implements JobPanel{
             selectRequest,identifier);
 
         bViewJobDefinitions.setEnabled(false);
-        bViewJobTransRecords.setEnabled(false);
+        //bViewJobTransRecords.setEnabled(false);
         bEditRecord.setEnabled(false);
         bDeleteRecord.setEnabled(false);
         bSubmit.setEnabled(false);
@@ -587,7 +591,7 @@ public class DBPanel extends JPanel implements JobPanel{
               Debug.debug("lsm indices: "+
                   lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
               bViewJobDefinitions.setEnabled(!lsm.isSelectionEmpty());
-              bViewJobTransRecords.setEnabled(!lsm.isSelectionEmpty());
+              //bViewJobTransRecords.setEnabled(!lsm.isSelectionEmpty());
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
               bEditRecord.setEnabled(!lsm.isSelectionEmpty());
             }
@@ -652,11 +656,12 @@ public class DBPanel extends JPanel implements JobPanel{
         viewJobDefinitions();
       }
     });
-    miViewJobTransRecords.addActionListener(new ActionListener(){
+    /*Don't think we really need this*/
+    /*miViewJobTransRecords.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         viewJobTransRecords();
       }
-    });
+    });*/
     JMenuItem miDelete = new JMenuItem("Delete");
     miEdit = new JMenuItem("Edit");
     miDelete.addActionListener(new ActionListener(){
@@ -791,9 +796,16 @@ public class DBPanel extends JPanel implements JobPanel{
       e.printStackTrace();
     }
     //hiddenFields = dbPluginMgr.getDBHiddenFields(dbs[0], tableName);
+    JobDefCreationPanel panel = new JobDefCreationPanel(dbName, taskMgr, tableResults, false);
+    try{
+      dbPluginMgr.initJobDefCreationPanel(panel);
+    }
+    catch(Throwable e){
+      Debug.debug("Could not initialize panel "+dbName+". "+e.getMessage(), 1);
+    }
     CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
-        new JobDefCreationPanel(dbName, taskMgr, tableResults, false), false, false);
+        panel, false, false);
     pDialog.setTitle(realTableName);
     pDialog.show();
     if(tableResults!=null && tableResults.getRowCount()>0){
@@ -818,9 +830,16 @@ public class DBPanel extends JPanel implements JobPanel{
       e.printStackTrace();
       return;
     }
+    JobDefCreationPanel panel = new JobDefCreationPanel(dbName, taskMgr, tableResults, true);
+    try{
+      dbPluginMgr.initJobDefCreationPanel(panel);
+    }
+    catch(Throwable e){
+      Debug.debug("Could not initialize panel "+dbName+". "+e.getMessage(), 1);
+    }
     CreateEditDialog pDialog = new CreateEditDialog(
         GridPilot.getClassMgr().getGlobalFrame(),
-        new JobDefCreationPanel(dbName,taskMgr, tableResults, true), true, false);
+        panel, true, false);
     pDialog.setTitle(realTableName);
     pDialog.show();
     searchRequest();
@@ -1026,14 +1045,16 @@ public class DBPanel extends JPanel implements JobPanel{
   /**
    * Open new pane with list of jobTrans records.
    */
-  private void viewJobTransRecords() {
+  /*Don't think we really need this...*/
+  /*private void viewJobTransRecords() {
     if(getSelectedIdentifier() != -1){
       new Thread(){
         public void run(){
          //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
           try{
             // Create new panel with jobTrans records.         
-            int id = dbPluginMgr.getTaskTransId(/*taskID*/getSelectedIdentifier());
+            int id = dbPluginMgr.getTaskTransId(//taskID
+                                                 getSelectedIdentifier());
             DBPanel dbPanel = new DBPanel("transformation",
                 dbPluginMgr, id);
             dbPanel.selectPanel.setConstraint("transformation", "TASKTRANSFK",
@@ -1049,7 +1070,7 @@ public class DBPanel extends JPanel implements JobPanel{
         }
       }.start();
     }
-  }
+  }*/
   
   /**
    * Called when mouse is pressed on Monitor button
