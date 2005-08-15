@@ -114,7 +114,7 @@ public class CreateEditDialog extends JDialog{
         break;
 
       case BCLEAR :
-        createEditPanel.clear();
+        createEditPanel.clearPanel();
         break;
 
     }

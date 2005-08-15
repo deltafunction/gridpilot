@@ -9,7 +9,7 @@ import javax.swing.JPanel;
  */
 public abstract class CreateEditPanel extends JPanel{
 
-  public void clear(){
+  public void clearPanel(){
   }
 
   public void create(final boolean showResults, boolean editing) {
