@@ -29,7 +29,7 @@ public class ClassMgr{
     configFile = _configFile;
   }
 
-  public boolean setDBPluginMgr(String dbName, DBPluginMgr dbPluginMgr) {
+  public boolean setDBPluginMgr(String dbName, DBPluginMgr dbPluginMgr){
     try{
       dbMgts.put(dbName, dbPluginMgr);
     }catch(NullPointerException e){
@@ -37,7 +37,8 @@ public class ClassMgr{
     }
     try {
       dbPluginMgr.init();
-    } catch (Throwable e) {
+    }
+    catch(Throwable e){
       e.printStackTrace();
       return false;
     }
