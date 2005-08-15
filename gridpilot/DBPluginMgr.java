@@ -2,8 +2,11 @@ package gridpilot;
 
 import java.awt.Color;
 import java.util.HashMap;
+import java.util.Vector;
 
+import javax.swing.JComponent;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 
 import gridpilot.GridPilot;
 import gridpilot.ConfigFile;
@@ -17,17 +20,19 @@ import gridpilot.MyClassLoader;
  * This class manages access to job databases.
  *
  */
-public class DBPluginMgr implements Database{
+public class DBPluginMgr implements Database, PanelUtil{
 
   private ConfigFile configFile;
   private LogFile logFile;
-  private Database db ;
+  private Database db;
   private String dbName ;
+  
+  private PanelUtil pu;
   
   private String database ;
   private String user;
   private String passwd;
-  private String dbprefix; //prepend to tables
+  private String dbPrefix; //prepend to tables
 // TODO: cache here??
   private HashMap partInfoCacheId = null ;
 
@@ -46,15 +51,7 @@ public class DBPluginMgr implements Database{
   public String getDBName(){
     return dbName;
   }
-  public String getDatabase(){
-    return database;
-  }
-  public String getUser(){
-    return user;
-  }
-  public String getPasswd(){
-    return passwd;
-  }
+
   /**
    * Constructs a DBPluginMgr.
    * Looks after plug-in names and class in configFile, load them, and read time out values.
@@ -69,66 +66,97 @@ public class DBPluginMgr implements Database{
     logFile = GridPilot.getClassMgr().getLogFile();
     configFile = GridPilot.getClassMgr().getConfigFile();
   
-    loadClass();
     loadValues();
-  }
 
+    /*String transDB = configFile.getValue(dbName, "transDB");
+    String project = configFile.getValue(dbName, "project");
+    String level = configFile.getValue(dbName, "level");
+    String site = configFile.getValue(dbName, "site");*/
+    // ****
+    
+    String driver = configFile.getValue(dbName, "driver");
+    database = configFile.getValue(dbName, "database");
+    user = configFile.getValue(dbName, "user");
+    passwd = configFile.getValue(dbName, "passwd");
+    dbPrefix = configFile.getValue(dbName, "dbprefix");
+    
+    String dbClass = configFile.getValue(dbName, "database class");
+    if(dbClass == null){
+      throw new Exception("Cannot load class for system " + dbName + " : \n"+
+                          configFile.getMissingMessage(dbName, "database class"));
+    }
+
+    Class [] dbArgsType = {/*String.class, String.class, String.class,*/
+        String.class, String.class, String.class, String.class, String.class, String.class};
+    
+    Object [] dbArgs = {/*AMI*//*project, level, site, transDB,*//**/
+        dbName, driver, database, user, passwd, dbPrefix};
+
+    db = (Database) loadClass(dbClass, dbArgsType, dbArgs);
+
+}
+
+  /**
+   * Initializes a JobDefCreationPanel
+   */
+  public void initJobDefCreationPanel(JobDefCreationPanel panel) throws Throwable{
+  
+    logFile = GridPilot.getClassMgr().getLogFile();
+    configFile = GridPilot.getClassMgr().getConfigFile();
+  
+    loadValues();
+
+    String puClass = configFile.getValue(dbName, "panel class");
+    if(puClass == null){
+      throw new Exception("Cannot load class for system " + dbName + " : \n"+
+                          configFile.getMissingMessage(dbName, "panel class"));
+    }
+
+    Class [] puArgsType = {JobDefCreationPanel.class};
+    
+    Object [] puArgs = {panel};
+
+    pu = (PanelUtil) loadClass(puClass, puArgsType, puArgs);
+}
+  
   /**
      * Loads plug-in.
      * @throws Throwable if an exception or an error occurs during plug-in loading
      */
-    public void loadClass() throws Throwable{//Exception{
-        Debug.debug("Loading plugin: "+dbName, 2);
+    public Object loadClass(String dbClass, Class [] dbArgsType,
+        Object [] dbArgs) throws Throwable{//Exception{
+        Debug.debug("Loading plugin: "+dbName+" : "+dbClass, 2);
         // Arguments and class name for <DatabaseName>Database
-        //  AMI ****
-        String driver = configFile.getValue(dbName, "driver");
-        /*String transDB = configFile.getValue(dbName, "transDB");
-        String project = configFile.getValue(dbName, "project");
-        String level = configFile.getValue(dbName, "level");
-        String site = configFile.getValue(dbName, "site");*/
-        // ****
-        database = configFile.getValue(dbName, "database");
-        user = configFile.getValue(dbName, "user");
-        passwd = configFile.getValue(dbName, "passwd");
-        dbprefix = configFile.getValue(dbName, "dbprefix");
-        String dbClass = configFile.getValue(dbName, "Database class");
-        if(dbClass == null){
-          throw new Exception("Cannot load class for system " + dbName + " : \n"+
-                              configFile.getMissingMessage(dbName, "Database class"));
-        }
-  
-        Class [] dbArgsType = {/*String.class, String.class, String.class,*/
-            String.class, String.class, String.class, String.class, String.class, String.class};
-        Object [] dbArgs = {/*AMI*//*project, level, site, transDB,*//**/
-            dbName, driver, database, user, passwd, dbprefix};
         boolean loadfailed = false;
-        try {
-        	Class dbclass = this.getClass().getClassLoader().loadClass(dbClass);
-            db = (Database)(dbclass.getConstructor(dbArgsType).newInstance(dbArgs));
+        Object ret = null;
+        
+        try{
+        	Class newClass = this.getClass().getClassLoader().loadClass(dbClass);
+          ret = /*(Database)*/(newClass.getConstructor(dbArgsType).newInstance(dbArgs));
+          Debug.debug("plugin " + dbName + "(" + dbClass + ") loaded", 2);
         }
         catch(Exception e){
         	loadfailed = true;
         	//do nothing, will try with MyClassLoader.
         }
-        if(loadfailed == false) return;
-        try{
-           // loading of this plug-in
-          MyClassLoader mcl = new MyClassLoader();
-  
-          db = (Database)(mcl.findClass(dbClass).getConstructor(dbArgsType).newInstance(dbArgs));
-  
-          Debug.debug("plugin " + dbName + "(" + dbClass + ") loaded", 2);
-  
+        if(loadfailed){
+          try{
+            // loading of this plug-in
+           MyClassLoader mcl = new MyClassLoader();
+           ret = /*(Database)*/(mcl.findClass(dbClass).getConstructor(dbArgsType).newInstance(dbArgs)); 
+           Debug.debug("plugin " + dbName + "(" + dbClass + ") loaded", 2);
+         }
+         catch(IllegalArgumentException iae){
+           logFile.addMessage("Cannot load class for " + dbName + ".\nThe plugin constructor " +
+                              "must have one parameter (String)", iae);
+           throw iae;
+         }
+         catch(Exception e){
+           logFile.addMessage("Cannot load class for " + dbName, e);
+           //throw e;
+         }
         }
-        catch(IllegalArgumentException iae){
-          logFile.addMessage("Cannot load class for " + dbName + ".\nThe plugin constructor " +
-                             "must have one parameter (String)", iae);
-          throw iae;
-        }
-        catch(Exception e){
-          logFile.addMessage("Cannot load class for " + dbName, e);
-          //throw e;
-        }
+        return ret;
     }
 
   /**
@@ -194,6 +222,8 @@ public class DBPluginMgr implements Database{
   }
 
   public synchronized String [] getFieldNames(final String table){
+    Debug.debug("Getting field names for table "+table, 3);
+   
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
@@ -1302,7 +1332,7 @@ public class DBPluginMgr implements Database{
         return null;
     }
   
-  public synchronized DBRecord getTaskTransRecord(final int taskID){
+/*  public synchronized DBRecord getTaskTransRecord(final int taskID){
     
       MyThread t = new MyThread(){
         DBRecord res = null;
@@ -1324,7 +1354,7 @@ public class DBPluginMgr implements Database{
         return t.getDBRes();
       else
         return null;
-    }
+    }*/
 
   public synchronized DBRecord getTask(final int taskID){
   
@@ -1657,7 +1687,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized int getTaskTransId(final int taskID){
+  /*public synchronized int getTaskTransId(final int taskID){
   
     MyThread t = new MyThread(){
       int res = -1;
@@ -1679,7 +1709,7 @@ public class DBPluginMgr implements Database{
       return t.getIntRes();
     else
       return -1;
-  }
+  }*/
 
   public synchronized int getTaskId(final int jobDefID){
     
@@ -1729,4 +1759,156 @@ public class DBPluginMgr implements Database{
       return new String [] {};
    }
 
+  public synchronized void clearPanel(final String [] cstAttributesNames,
+      final JComponent [] tcCstAttributes,
+      final JPanel jobXmlContainer,
+      final Vector tcConstant){
+    
+      MyThread t = new MyThread(){
+        public void run(){
+          try{
+             pu.clearPanel(cstAttributesNames, tcCstAttributes, jobXmlContainer,
+                 tcConstant);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               user + " " + passwd, t);
+          }
+        }
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "clearPanel"))
+        return;
+      else
+        return;
+    }
+
+  public synchronized void initAttributePanel(final String [] cstAttributesNames,
+      final String [] cstAttr,
+      final JComponent [] tcCstAttributes,
+      final JPanel pAttributes,
+      final JPanel jobXmlContainer){
+    
+      MyThread t = new MyThread(){
+        public void run(){
+          try{
+             pu.initAttributePanel(cstAttributesNames, cstAttr, tcCstAttributes,
+                 pAttributes, jobXmlContainer);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               user + " " + passwd, t);
+          }
+        }
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "initAttributePanel"))
+        return;
+      else
+        return;
+    }
+
+  public synchronized void setEnabledAttributes(final boolean enabled,
+      final String [] cstAttributesNames,
+      final JComponent [] tcCstAttributes){
+    
+      MyThread t = new MyThread(){
+        public void run(){
+          try{
+             pu.setEnabledAttributes(enabled, cstAttributesNames, tcCstAttributes);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               user + " " + passwd, t);
+          }
+        }
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "setEnabledAttributes"))
+        return;
+      else
+        return;
+    }
+
+  public synchronized void setValuesInAttributePanel(final String [] cstAttributesNames,
+      final String [] cstAttr,
+      final JComponent [] tcCstAttributes){
+    
+      MyThread t = new MyThread(){
+        public void run(){
+          try{
+             pu.setValuesInAttributePanel(cstAttributesNames, cstAttr, tcCstAttributes);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               user + " " + passwd, t);
+            t.printStackTrace();
+          }
+        }
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "setValuesInAttributePanel"))
+        return;
+      else
+        return;
+    }
+  
+  public String getJTextOrEmptyString(final JComponent comp,
+      final boolean editing){
+    
+      MyThread t = new MyThread(){
+        String res = null;
+        public void run(){
+          try{
+            res = pu.getJTextOrEmptyString(comp, editing);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               user + " " + passwd, t);
+          }
+        }
+        public String getStringRes(){return res;}
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "getJTextOrEmptyString"))
+        return t.getStringRes();
+      else
+        return null;
+    }
+
+  public Vector getNonIdTextFields(final String [] cstAttributesNames,
+      final JComponent [] tcCstAttributes, final Vector tcConstant){
+    
+      MyThread t = new MyThread(){
+        Vector res = null;
+        public void run(){
+          try{
+            res = pu.getNonIdTextFields(cstAttributesNames, tcCstAttributes,
+                tcConstant);
+          }catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               user + " " + passwd, t);
+          }
+        }
+        public Vector getVectorRes(){return res;}
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "getNonIdTextFields"))
+        return t.getVectorRes();
+      else
+        return null;
+    }
 }
