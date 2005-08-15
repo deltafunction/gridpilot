@@ -95,7 +95,6 @@ public interface Database{
     }  
   }
   
-  
   public class TaskTrans extends DBRecord{
   
     public String taskTransID ;
