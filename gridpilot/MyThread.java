@@ -1,5 +1,7 @@
 package gridpilot;
 
+import java.util.Vector;
+
 import gridpilot.Database.DBResult;
 import gridpilot.Database.DBRecord;
 import gridpilot.Database.JobTrans;
@@ -14,5 +16,5 @@ class MyThread extends Thread{
   public DBResult getDB2Res(){throw new UnsupportedOperationException("getDB2Res not implemented !");}
   public JobTrans[] getJTRes(){throw new UnsupportedOperationException("getJTRes not implemented !");}
   public boolean getBoolRes(){throw new UnsupportedOperationException("getBoolRes not implemented !");}
-  
+  public Vector getVectorRes(){throw new UnsupportedOperationException("getVectorRes not implemented !");}
 }
