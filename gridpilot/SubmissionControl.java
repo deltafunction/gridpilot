@@ -9,7 +9,7 @@ import java.util.Iterator;
 import java.util.Random;
 import java.util.Vector;
 
-import gridpilot.Database.JobDefinition;
+import gridpilot.Database.DBRecord;
 
 
 /**
@@ -162,10 +162,15 @@ public class SubmissionControl{
       }
       statusBar.setLabel("Submitting. Please wait...");
       statusBar.animateProgressBar();
+      String jobDefIdentifier = GridPilot.getClassMgr().getConfigFile().getValue(
+          dbPluginMgr.getDBName(),
+      "job definition table identifier");
       for(int i=0; i<selectedJobs.size(); ++i){
-        JobDefinition jobDef = ((JobDefinition) selectedJobs.get(i));
+        //JobDefinition jobDef = ((JobDefinition) selectedJobs.get(i));
+        DBRecord jobDef = ((DBRecord) selectedJobs.get(i));
         int jobDefID = Integer.parseInt(
-            jobDef.getValue(JobDefinition.Identifier).toString());
+            //jobDef.getValue(JobDefinition.Identifier).toString());
+            jobDef.getValue(jobDefIdentifier).toString());
         // TODO: Change this to whatever we end up with
         //String jobUser = dbPluginMgr.getJobRunValue(jobDefID, "user");
         String jobUser = dbPluginMgr.getJobRunUser(jobDefID);
