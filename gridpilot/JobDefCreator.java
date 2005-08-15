@@ -6,6 +6,7 @@ import javax.swing.*;
 import java.awt.*;
 import gridpilot.SyntaxException;
 import gridpilot.ArithmeticExpression;
+import gridpilot.dbplugins.proddb.ProdDBXmlNode;
 
 /**
  * Creates the partititons with datas given by JobDefCreationPanel.
@@ -151,7 +152,7 @@ public class JobDefCreator {
         }
       }
 
-      for(int i =0; i<cstAttr.length; ++i){
+      /*for(int i =0; i<cstAttr.length; ++i){
         if(cstAttrNames[i].equals("jobXML")){
           if(resCstAttr[i]==null || resCstAttr[i].equals("null") || resCstAttr[i].equals("")){
             resCstAttr[i] = "";
@@ -161,8 +162,9 @@ public class JobDefCreator {
               resCstAttr[i] = "<jobDef>"+resCstAttr[i]+"</jobDef>";
             }
           }
+          break;
         }
-      }
+      }*/
 
       
       if(showThis){
@@ -416,22 +418,29 @@ public class JobDefCreator {
 
     JPanel pResult = new JPanel(new GridBagLayout());
     int row = 0;
-    XmlNode xmlNode = null;
+    ProdDBXmlNode xmlNode = null;
 
     for(int i =0; i<cstAttr.length; ++i, ++row){
       pResult.add(new JLabel(cstAttrNames[i] + " : "), new GridBagConstraints(0, row, 1, 1, 0.0, 0.0
       ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
-      JComponent jval;
+      JComponent jval = null;
+      JTextArea textArea = null;
       if(cstAttrNames[i].equals("jobXML")){
-        if(resCstAttr[i]!=null && !resCstAttr[i].equals("null") &&
-            !resCstAttr[i].equals("")){
-          xmlNode = XmlNode.parseString(resCstAttr[i], 0);
-          xmlNode.fillText();
-        }
-        /*This shows XML*/
-        /*JTextArea textArea = new JTextArea(resCstAttr[i]);*/
+        try{
+          // Just give it a try with the proddb schema...
+          if(resCstAttr[i]!=null && !resCstAttr[i].equals("null") &&
+              !resCstAttr[i].equals("")){
+            xmlNode = ProdDBXmlNode.parseString(resCstAttr[i], 0);
+            xmlNode.fillText();
+          }
 
-        JTextArea textArea = new JTextArea(xmlNode.parsedText);
+          textArea = new JTextArea(xmlNode.parsedText);
+
+        }
+        catch(Exception e){
+          // If it doesn't work, show raw XML
+          textArea = new JTextArea(resCstAttr[i]);
+        }
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
         textArea.setEditable(false);
