@@ -808,9 +808,9 @@ public class DBPanel extends JPanel implements JobPanel{
         panel, false, false);
     pDialog.setTitle(realTableName);
     pDialog.show();
-    if(tableResults!=null && tableResults.getRowCount()>0){
+    /*if(tableResults!=null && tableResults.getRowCount()>0){
       searchRequest();
-    }
+    }*/
   }
 
   private void editJobDef(){
@@ -842,7 +842,7 @@ public class DBPanel extends JPanel implements JobPanel{
         panel, true, false);
     pDialog.setTitle(realTableName);
     pDialog.show();
-    searchRequest();
+    /*searchRequest();*/
   }
 
   private void deleteJobDefs() {
@@ -894,9 +894,9 @@ public class DBPanel extends JPanel implements JobPanel{
         new TaskCreationPanel(dbPluginMgr, tableResults, false), false, false);
     pDialog.setTitle(realTableName);
     pDialog.show();
-    if(tableResults!=null && tableResults.getRowCount()>0){
+    /*if(tableResults!=null && tableResults.getRowCount()>0){
       searchRequest();
-   }
+   }*/
  }
 
  private void editTask() {
@@ -906,7 +906,7 @@ public class DBPanel extends JPanel implements JobPanel{
        new TaskCreationPanel(dbPluginMgr, tableResults, true), true, false);
    pDialog.setTitle(realTableName);
    pDialog.show();
-   searchRequest();
+   /*searchRequest();*/
  }
 
   private void deleteTasks() {
@@ -959,9 +959,9 @@ public class DBPanel extends JPanel implements JobPanel{
           new JobTransCreationPanel(dbPluginMgr, tableResults, false), false, false);
     pDialog.setTitle(realTableName);
     pDialog.show();
-    if(tableResults!=null && tableResults.getRowCount()>0){
+    /*if(tableResults!=null && tableResults.getRowCount()>0){
       searchRequest();
-    }
+    }*/
   }
 
   private void editJobTransRecord() {
@@ -971,7 +971,7 @@ public class DBPanel extends JPanel implements JobPanel{
           new JobTransCreationPanel(dbPluginMgr, tableResults, true), true, false);
     pDialog.setTitle(realTableName);
     pDialog.show();
-    searchRequest();
+    /*searchRequest();*/
   }
 
   private void deleteJobTransRecords() {
