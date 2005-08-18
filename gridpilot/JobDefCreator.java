@@ -169,7 +169,7 @@ public class JobDefCreator {
       
       if(showThis){
         int choice = showResult(currentJobDef, resCstAttr,
-            currentJobDef < lastJobDef);
+            currentJobDef<lastJobDef);
 
         switch(choice){
           case 0  : skip = false;  break;  // OK
@@ -425,7 +425,11 @@ public class JobDefCreator {
       ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
       JComponent jval = null;
       JTextArea textArea = null;
-      if(cstAttrNames[i].equals("jobXML")){
+      if(cstAttrNames[i].equalsIgnoreCase("jobXML") ||
+          cstAttrNames[i].equalsIgnoreCase("jobPars") ||
+         cstAttrNames[i].equalsIgnoreCase("jobOutputs") ||
+         cstAttrNames[i].equalsIgnoreCase("jobLogs") ||
+         cstAttrNames[i].equalsIgnoreCase("jobInputs")){
         try{
           // Just give it a try with the proddb schema...
           if(resCstAttr[i]!=null && !resCstAttr[i].equals("null") &&
@@ -438,6 +442,8 @@ public class JobDefCreator {
 
         }
         catch(Exception e){
+          Debug.debug("Could not parse XML. "+e.getMessage(), 2);
+          e.printStackTrace();
           // If it doesn't work, show raw XML
           textArea = new JTextArea(resCstAttr[i]);
         }
