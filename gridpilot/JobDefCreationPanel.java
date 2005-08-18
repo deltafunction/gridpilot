@@ -107,6 +107,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
             dbPluginMgr.getDBName(),
             "job definition table name"));
     
+    Debug.debug("cstAttributesNames: "+Util.arrayToString(cstAttributesNames), 3);
+    
     cstAttr = new String[cstAttributesNames.length];
     
     transformations = dbPluginMgr.getJobTransRecords(taskID);
@@ -590,12 +592,14 @@ public class JobDefCreationPanel extends CreateEditPanel{
             jobLogsOk = true;
           }
           if(jobParsOk && jobOutputsOk && jobLogsOk){
-            cstAttributesNames[i] = "jobXML";
+            //cstAttributesNames[i] = "jobXML";
             cstAttr[i] = "<jobDef>"+jobXml+"</jobDef>";
             jobParsOk = false;
+            signature = "<jobDef>"+jobXml+"</jobDef>";
           }
           
           if(cstAttributesNames[i].equalsIgnoreCase("jobXML")){
+            Debug.debug("cstAttributesNames: "+Util.arrayToString(cstAttributesNames), 3);
             signature = cstAttr[i];
             Debug.debug("got signature from jobDefinition: "+signature, 3);
           }
@@ -722,7 +726,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
     
     for(int i=0; i< cstAttr.length; ++i){
       Debug.debug("setting " + cstAttributesNames[i],  3);
-      cstAttr[i] = dbPluginMgr.getJTextOrEmptyString(tcCstAttributes[i], editing);
+      cstAttr[i] = dbPluginMgr.getJTextOrEmptyString(cstAttributesNames[i],
+          tcCstAttributes[i], editing);
       Debug.debug("to " + cstAttr[i],  3);
     }
 

@@ -1861,14 +1861,14 @@ public class DBPluginMgr implements Database, PanelUtil{
         return;
     }
   
-  public String getJTextOrEmptyString(final JComponent comp,
+  public String getJTextOrEmptyString(final String attr, final JComponent comp,
       final boolean editing){
     
       MyThread t = new MyThread(){
         String res = null;
         public void run(){
           try{
-            res = pu.getJTextOrEmptyString(comp, editing);
+            res = pu.getJTextOrEmptyString(attr, comp, editing);
           }catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
