@@ -116,23 +116,18 @@ import java.awt.event.*;
    */
   public String getRequest(String [] shownFields){
     String ret = "SELECT ";
-    boolean ok = false;
-    for(int i = 0; i <
-    sPanel.spDisplayList.getComponentCount();
-    ++i){
+    for(int i=0; i<sPanel.spDisplayList.getComponentCount(); ++i){
       SPanel.DisplayPanel cb = ((SPanel.DisplayPanel) sPanel.spDisplayList.getComponent(i));
-      if(i>0 && ok){
-        ret += ", ";
-      }
-      ok = false;
       for(int j=0; j<shownFields.length; ++j){
         Debug.debug("Checking fields in getRequest "+tableName+"."+
             cb.cbDisplayAttribute.getSelectedItem().toString()+"<->"+shownFields[j], 3);
         if(shownFields[j].equals(tableName+".*") ||
             (tableName+"."+cb.cbDisplayAttribute.getSelectedItem().toString()
                 ).equalsIgnoreCase(shownFields[j])){
+          if(i>0 && !cb.cbDisplayAttribute.getSelectedItem().toString().equals("")){
+            ret += ", ";
+          }
           ret += cb.cbDisplayAttribute.getSelectedItem();
-          ok = true;
           break;
         }
       }
@@ -322,11 +317,10 @@ import java.awt.event.*;
          if(withStar){
            cbDisplayAttribute.insertItemAt("*", 0);
          }
-	   if (fieldList == null) {
-         Debug.debug("fieldlist null", 2);
-	       return;
-	   
-	   }
+	       if(fieldList == null){
+           Debug.debug("fieldlist null", 2);
+	         return;
+	       }
          for(int i=0;i<fieldList.length; ++i){
            if(withStar){
              cbDisplayAttribute.insertItemAt(fieldList[i], i+1);
@@ -335,9 +329,7 @@ import java.awt.event.*;
              cbDisplayAttribute.insertItemAt(fieldList[i], i);
            }
          }
-         
          cbDisplayAttribute.setSelectedIndex(0);
-     
          this.add(cbDisplayAttribute);
        }
      }
@@ -381,12 +373,12 @@ import java.awt.event.*;
       }
     }
     spcp = ((SPanel.ConstraintPanel)sPanel.spConstraintList.getComponent(0));
-    if (spcp.cbConstraintAttribute == null) return;
-    if (spcp.cbConstraintRelation == null) return;
+    if(spcp.cbConstraintAttribute == null) return;
+    if(spcp.cbConstraintRelation == null) return;
     Component[] parts = spcp.cbConstraintAttribute.getComponents();
-    if ((parts != null) && (parts.length > 0)) spcp.cbConstraintAttribute.setSelectedIndex(0);
+    if((parts!=null) && (parts.length>0)) spcp.cbConstraintAttribute.setSelectedIndex(0);
     parts = spcp.cbConstraintRelation.getComponents();
-    if ((parts != null) && (parts.length > 0)) spcp.cbConstraintRelation.setSelectedIndex(0);
+    if((parts!=null) && (parts.length>0)) spcp.cbConstraintRelation.setSelectedIndex(0);
     spcp.tfConstraintValue.setText("");
   }
 
@@ -420,31 +412,43 @@ import java.awt.event.*;
   public void setDisplayFieldValue(String [][] values){
     SPanel spanel;
     SPanel thisSPanel = null;
-    for(int h=0; h < values.length; ++h){
+    boolean fieldOk = false;
+    for(int h=0; h<values.length; ++h){
       spanel = sPanel;
       Debug.debug("Table: "+h+" "+values[h][0], 3);
       Debug.debug("Table: "+spanel.name, 3);
       if(spanel.name.equals(values[h][0])){
         thisSPanel = spanel;
-         // make sure we have enough display panels
-        if(spanel.spDisplayList.getComponentCount() < /*nr*/h+1){
-          spanel.spDisplayList.add(spanel.new DisplayPanel(false));
-          spanel.bRemoveDisplayRow.setEnabled(true);
-        }
-      	if ((values[h].length > 0) && (spanel.spDisplayList != null)) {
+      	if((values[h].length>0) && (spanel.spDisplayList!=null)){
       		String val = values[h][1];
-      		Component firstcomp = spanel.spDisplayList.getComponent(h);
-      		Component secondcomp = null;
-      		Component comps[] = null;
-      		if (firstcomp != null){
-            comps = ((SelectPanel.SPanel.DisplayPanel) firstcomp).getComponents();
+          // make sure we have enough display panels
+          fieldOk = false;
+          for(int k=0; k<spanel.fieldList.length; ++k){
+            if(val.equalsIgnoreCase(spanel.fieldList[k])){
+              fieldOk = true;
+              break;
+            }
           }
-      		if (comps != null && comps.length > -1){
-            secondcomp = ((SelectPanel.SPanel.DisplayPanel) firstcomp).getComponent(0);
-          }
-      		if ((val != null) && (secondcomp != null)){
-            Debug.debug("Setting selected "+val, 3);
-            ((JComboBox) ((SelectPanel.SPanel.DisplayPanel) spanel.spDisplayList.getComponent(/*nr*/h)).getComponent(0)).setSelectedItem(val.toUpperCase());
+          if(fieldOk){
+            if(spanel.spDisplayList.getComponentCount()</*nr*/h+2){
+              spanel.spDisplayList.add(spanel.new DisplayPanel(false));
+              spanel.bRemoveDisplayRow.setEnabled(true);
+            }
+            Component firstcomp = spanel.spDisplayList.getComponent(h);
+            Component secondcomp = null;
+            Component comps[] = null;
+            if(firstcomp != null){
+              comps = ((SelectPanel.SPanel.DisplayPanel) firstcomp).getComponents();
+            }
+            if(comps!=null && comps.length>-1){
+              secondcomp = ((SelectPanel.SPanel.DisplayPanel) firstcomp).getComponent(0);
+            }
+            if((val!=null) && (secondcomp!=null)){
+              Debug.debug("Setting selected "+val, 3);
+              //((JComboBox) ((SelectPanel.SPanel.DisplayPanel) spanel.spDisplayList.getComponent(
+              //    /*nr*/h)).getComponent(0)).setSelectedItem(val.toUpperCase());
+              ((JComboBox) secondcomp).setSelectedItem(val.toUpperCase());
+            }
           }
         }
       }
