@@ -126,7 +126,6 @@ public class DBPanel extends JPanel implements JobPanel{
      ct.gridy = 1;   
      ct.ipady = 250;
 
-     // Check that default fields set in config file agree for the database used
      defaultFields = GridPilot.getClassMgr().getDBPluginMgr(
          dbName).getDBDefFields(dbName, tableName);
      Debug.debug("Default fields "+defaultFields.length, 3);
@@ -189,7 +188,14 @@ public class DBPanel extends JPanel implements JobPanel{
            break;
          }
        }
-       if(ok){
+       boolean fieldOk = false;
+       for(int j=0; j<fieldNames.length; ++j){
+         if(fieldNames[j].equalsIgnoreCase(defaultFields[i])){
+           fieldOk = true;
+           break;
+         }
+       }
+       if(ok && fieldOk){
          Debug.debug("Selecting "+defaultFields[i], 3);
          selectSet.add(defaultFields[i]);
        }
