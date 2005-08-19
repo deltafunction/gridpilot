@@ -1,6 +1,8 @@
 package gridpilot;
 
-import gridpilot.DBVector;
+import java.util.Vector;
+
+//import gridpilot.DBVector;
 import gridpilot.Database.DBRecord;
 
 import javax.swing.JLabel;
@@ -8,14 +10,14 @@ import javax.swing.table.AbstractTableModel;
 
 /**
  * Extention of AbstractTableModel. <p>
- * Contains (but does not own) a DBVector. <p>
+ * Contains (but does not own) a Vector. <p>
  * uses direct sorting instead of redirection table
  */
 
 
 public class DBVectorTableModel extends AbstractTableModel {
 
-  DBVector theRecords;
+  Vector theRecords;
   //String [] columnNames = {"name","partID","jobID","newStatus","host"};
   String [] columnNames = {""};
   //Class [] columnClasses ={String.class, String.class, String.class, String.class, String.class} ;
@@ -51,7 +53,7 @@ public class DBVectorTableModel extends AbstractTableModel {
     setTable(new Object[0][], _columnNames);
   }
 
-  public DBVectorTableModel(DBVector _theRecords, String [] _columnNames) {
+  public DBVectorTableModel(Vector _theRecords, String [] _columnNames) {
     theRecords = _theRecords;
     columnNames = _columnNames;
     setTable(_theRecords, _columnNames);
@@ -61,7 +63,7 @@ public class DBVectorTableModel extends AbstractTableModel {
     columnNames = _columnNames;
   }
   
-  public void setRecords(DBVector _theRecords) {
+  public void setRecords(Vector _theRecords) {
     theRecords = _theRecords;
   }
 
@@ -149,11 +151,11 @@ public class DBVectorTableModel extends AbstractTableModel {
     if(_values == null || _columnNames == null){
       values = new Object[0][];
       columnNames = new String[0];
-      theRecords = new DBVector();
+      theRecords = new Vector();
     }else{
       values = _values;
       columnNames = _columnNames;
-      theRecords = new DBVector();
+      theRecords = new Vector();
       for(int i=0; i<values.length; ++i){
         theRecords.add(new DBRecord(columnNames, values[i]));
       }
@@ -186,10 +188,10 @@ public class DBVectorTableModel extends AbstractTableModel {
     setTable(values, _theRecords.get(0).fields);
   }*/
 
-  synchronized public void setTable(DBVector _theRecords, String [] _columnNames){
+  synchronized public void setTable(Vector _theRecords, String [] _columnNames){
     Object [][] values = new Object[_theRecords.size()][_columnNames.length];
     for(int i=0; i<_theRecords.size(); ++i){
-      values[i] = _theRecords.getDBRecord(i).values;
+      values[i] = ((DBRecord) _theRecords.get(i)).values;
     }
     setTable(values, _columnNames);
   }
@@ -310,10 +312,10 @@ public class DBVectorTableModel extends AbstractTableModel {
       if(iMin != i) {
         swapRows(i, iMin);
         Debug.debug("Record "+theRecords.size()+" : "+i, 3);
-        a = theRecords.getDBRecord(i);
-        b = theRecords.getDBRecord(iMin);
-        theRecords.setRecordAt(b,i);
-        theRecords.setRecordAt(a,iMin);
+        a = (DBRecord) theRecords.get(i);
+        b = (DBRecord) theRecords.get(iMin);
+        theRecords.setElementAt(b,i);
+        theRecords.setElementAt(a,iMin);
       }
     }
     fireTableDataChanged();

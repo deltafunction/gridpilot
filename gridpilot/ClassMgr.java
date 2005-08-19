@@ -22,7 +22,7 @@ public class ClassMgr{
   private HashMap dbMgts = new HashMap();
   private CSPluginMgr csPluginMgr;
   private HashMap taskMgrs = new HashMap();
-  private DBVector submittedJobs = new DBVector();
+  private Vector submittedJobs = new Vector();
   private SubmissionControl submissionControl;
 
   public void setConfigFile(ConfigFile _configFile){
@@ -193,6 +193,7 @@ public class ClassMgr{
     if(statusTable == null){
       Debug.debug("statusTable null", 3);
       String[] fieldNames = GridPilot.getStatusFields();
+      Debug.debug("Creating new Table with fields "+Util.arrayToString(fieldNames), 3);
       statusTable = new Table(new String [] {}, fieldNames,
           GridPilot.getColorMapping());
        GridPilot.getClassMgr().setStatusTable(statusTable);
@@ -209,7 +210,7 @@ public class ClassMgr{
     return statisticsPanel;
   }
 
-  public DBVector getSubmittedJobs(){
+  public Vector getSubmittedJobs(){
     if(submittedJobs == null){
       Debug.debug("statusTable null", 3);
     }

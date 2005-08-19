@@ -424,7 +424,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
     if(!TaskMgr.areDecidables(rows))
       return;
 
-    DBVector jobs = TaskMgr.getJobsAtRows(rows);
+    Vector jobs = TaskMgr.getJobsAtRows(rows);
 
     int [] options = {DBPluginMgr.VALIDATED, DBPluginMgr.FAILED, DBPluginMgr.UNDECIDED, DBPluginMgr.ABORTED};
     String [] sOptions = {
@@ -449,7 +449,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
 
     TaskMgr taskMgr;
     for(int i = 0; i < jobs.size(); ++i){
-      JobInfo job = (JobInfo) jobs.getDBRecord(i);
+      JobInfo job = (JobInfo) jobs.get(i);
       if(job.getDBStatus()!=dbChoices[i]){
         taskMgr = GridPilot.getClassMgr().getTaskMgr(job.getDBName(),
             GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTaskId(
