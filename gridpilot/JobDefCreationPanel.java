@@ -558,6 +558,12 @@ public class JobDefCreationPanel extends CreateEditPanel{
   public String getSignature(){
     String signature = "";
     
+    Debug.debug("Entering getSignature with "+
+        jobTransFK+
+        " : "+editing+ " : "+table.getSelectedRow()+
+        " : "+transformations.values.length+
+        " : "+table, 3);
+
     if(!jobTransFK.equals("-1") &&
         transformations.values.length!=0){
       if(table==null || table.getSelectedRow()<0 || !editing){
