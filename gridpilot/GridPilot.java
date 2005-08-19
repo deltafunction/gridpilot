@@ -33,7 +33,7 @@ public class GridPilot extends JApplet{
   /**
    * Constructor
    */
-  public GridPilot() {
+  public GridPilot(){
     
     try{
       classMgr.setLogFile(new LogFile(logsFileName));
@@ -53,7 +53,7 @@ public class GridPilot extends JApplet{
     }
   }
 
-  public static void gridpilotCommon () {
+  public void gridpilotCommon(){
     String user;
     String passwd;
     String database;
@@ -70,7 +70,7 @@ public class GridPilot extends JApplet{
      colorMapping = getClassMgr().getConfigFile().getValues("gridpilot", "color mapping");
      
      /** Status table header*/
-     String[] statusFields = {
+     statusFields = new String [] {
          " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "user"};
 
      String resourcesPath =  getClassMgr().getConfigFile().getValue("gridpilot", "resources");

@@ -435,7 +435,7 @@ public class DBPluginMgr implements Database, PanelUtil{
       String res = null;
       public void run(){
         try{
-          res = db.getJobDefUser(jobDefinitionID);
+          res = db.getJobDefName(jobDefinitionID);
         }catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
@@ -448,6 +448,29 @@ public class DBPluginMgr implements Database, PanelUtil{
     t.start();
   
     if(waitForThread(t, dbName, dbTimeOut, "getJobDefName"))
+      return t.getStringRes();
+    else
+      return null;
+  }
+
+  public synchronized String getJobStatus(final int jobDefinitionID){
+    MyThread t = new MyThread(){
+      String res = null;
+      public void run(){
+        try{
+          res = db.getJobStatus(jobDefinitionID);
+        }catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             jobDefinitionID, t);
+        }
+      }
+      public String getStringRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getJobStatus"))
       return t.getStringRes();
     else
       return null;
@@ -1632,6 +1655,7 @@ public class DBPluginMgr implements Database, PanelUtil{
       if(status.compareToIgnoreCase(getStatusName(i)) == 0)
         return i;
     }
+    Debug.debug("ERROR: the status "+status+" does not correspond to any known status ID", 1);
     return -1;
   }
 
