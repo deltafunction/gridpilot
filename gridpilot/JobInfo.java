@@ -63,9 +63,11 @@ public class JobInfo extends DBRecord{
   private int tableRow = -1;
   public static String [] Fields= new String [] {
       /*These are the fields of the runtime DB table*/
-      "jobName", "jobDefID", "jobDefTable", "cs", "user", "db", "outTmp", "errTmp", "outVal", "errVal",
+      "jobName", "jobDefID", "cs", "user", "db", "outTmp", "errTmp",
+      "outVal", "errVal",
       /*----*/
-      "jobId", "jobStatus", "newStatus", "atComStatus", "dbStatus", "host", "needUpdate"};
+      "jobId", "jobStatus", "newStatus", "atComStatus", "dbStatus",
+      "host", "needUpdate"};
   
   public static String Identifier = "jobId";
 
@@ -82,8 +84,11 @@ public class JobInfo extends DBRecord{
   }
   
   private void setValues(){
-    values = new String [] {jobName, Integer.toString(jobDefID), cs, user, db, outTmp, errTmp, outVal, errVal,
-        jobID, jobStatus, newStatus, Integer.toString(atComStatus), Integer.toString(dbStatus), host, Boolean.toString(needUpdate)};
+    values = new String [] {
+        jobName, Integer.toString(jobDefID), cs, user, db, outTmp, errTmp,
+        outVal, errVal,
+        jobID, jobStatus, newStatus, Integer.toString(atComStatus), Integer.toString(dbStatus),
+        host, Boolean.toString(needUpdate)};
   }
 
   public JobInfo(){}
