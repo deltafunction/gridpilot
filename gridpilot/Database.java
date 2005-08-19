@@ -4,7 +4,7 @@ package gridpilot;
 
 public interface Database{
   
-  public class Task extends DBRecord{
+  /*public class Task extends DBRecord{
     
     public String taskID ;
     public String taskName ;
@@ -42,9 +42,9 @@ public interface Database{
       fields = Fields;
       values = _values;
     }  
-  }
+  }*/
   
-  public class JobTrans extends DBRecord{
+  /*public class JobTrans extends DBRecord{
   
     public String jobTransID ;
     public String taskTransFK ;
@@ -93,7 +93,7 @@ public interface Database{
       fields = Fields;
       values = _values;
     }  
-  }
+  }*/
   
   public class TaskTrans extends DBRecord{
   
@@ -135,7 +135,7 @@ public interface Database{
     }  
   }
   
-  public class JobDefinition extends DBRecord{
+  /*public class JobDefinition extends DBRecord{
     
     public String jobDefinitionID ;
     public String jobTransFK ;
@@ -176,7 +176,7 @@ public interface Database{
     	if (s.equalsIgnoreCase("priority") || s.endsWith("Count") || s.startsWith("max") || s.startsWith("last")) return true;
     	return false;
     }
-  }
+  }*/
   
   public String connect();
   public void disconnect();
@@ -206,6 +206,7 @@ public interface Database{
   // Here the following fields are assumed: "jobDefID", "jobName", "stdOut", "stdErr"
   public boolean updateJobDefinition(int jobDefID, String [] values);
   public boolean updateJobDefStatus(int jobDefID, String status);
+  public String getJobStatus(int jobDefID);
   
   public DBRecord getRunInfo(int jobDefID);
   public boolean createRunInfo(JobInfo jobInfo);
