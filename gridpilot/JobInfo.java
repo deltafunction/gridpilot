@@ -137,6 +137,11 @@ public class JobInfo extends DBRecord{
     setValues();
   }
 
+  void setDBName(String _database){
+    db = _database;
+    setValues();
+  }
+
   public void setStdOut(String _stdOut){
     outTmp = _stdOut;
     setValues();
