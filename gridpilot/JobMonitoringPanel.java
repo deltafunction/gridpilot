@@ -101,7 +101,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
    */
 
   public void initGUI(){
-
+    
     this.setLayout(new GridBagLayout());
 
 
@@ -184,6 +184,10 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
     bRefresh.setToolTipText("Refresh all jobs");
   }
 
+  public void windowClosing(){
+    GridPilot.getClassMgr().getGlobalFrame().cbMonitor.setSelected(false);
+  }
+  
   /**
    * Makes the menu shown when the user right-clicks on the status table
    */

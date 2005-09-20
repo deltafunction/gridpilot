@@ -6,7 +6,7 @@ import java.awt.event.*;
 
 public class CreateEditDialog extends JDialog{
 
-  private JPanel buttonPanel = new JPanel();
+  public JPanel buttonPanel = new JPanel();
   private final int BPREV = 0;
   private final int BCREATE = 1;
   private final int BCLEAR = 2;
@@ -28,6 +28,15 @@ public class CreateEditDialog extends JDialog{
     
     createEditPanel = _panel;
     editing = _editing;
+    
+    this.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+    this.addWindowListener(new WindowAdapter(){
+      public void windowClosing(WindowEvent we){
+        createEditPanel.windowClosing();
+        we.getWindow().hide();
+        //Debug.debug("Thwarted user attempt to close window.", 3);
+      }
+    });
     
     if(editing){
       bCreate = new JButton("Update");
@@ -99,6 +108,7 @@ public class CreateEditDialog extends JDialog{
   void button_actionPerformed(ActionEvent e) {
     switch(((JButton)e.getSource()).getMnemonic()){
       case BPREV :
+        createEditPanel.windowClosing();
         this.hide();
         break;
 

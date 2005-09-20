@@ -18,4 +18,7 @@ public abstract class CreateEditPanel extends JPanel{
   public void initGUI(){
   }
 
+  public void windowClosing(){
+  }
+
 }

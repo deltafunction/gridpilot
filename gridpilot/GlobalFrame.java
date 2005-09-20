@@ -242,6 +242,7 @@ public class GlobalFrame extends JFrame{
     }
   }
 
+  public JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show job monitor");
   /**
    * Creates the menu in the main menu bar.
    */
@@ -253,7 +254,6 @@ public class GlobalFrame extends JFrame{
     
     JMenu menuGridPilot = new JMenu("GridPilot");
     JMenu menuNewTab = new JMenu("New tab");
-    JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show job monitor");
    
     JMenu miNewTaskTab = new JMenu("task");
     JMenuItem [] miNewTaskTabs = new JMenuItem[GridPilot.getDBs().length];
@@ -325,6 +325,7 @@ public class GlobalFrame extends JFrame{
                 GridPilot.getClassMgr().getGlobalFrame(),
                 jobMonitoringPanel, false, false);
              pDialog.setTitle("Job Monitoring");
+             pDialog.remove(pDialog.buttonPanel);
           }
           if(pDialog.isShowing()){
             pDialog.hide();
