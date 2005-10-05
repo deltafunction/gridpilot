@@ -26,8 +26,6 @@ public class SecureShellMgr implements ShellMgr{
   private int sshChannels;
   private String scpChannelsString;
   private int scpChannels;
-  private int usedSshChannels;
-  private int usedScpChannels;
   private int sshChannelInUse;
   private int scpChannelInUse;
 
@@ -60,8 +58,6 @@ public class SecureShellMgr implements ShellMgr{
     remoteHome = getFullPath(_remoteHome);
     logFile.addInfo("Authentication completed on " + host + "(user : " + user +
                 ", home : " + remoteHome + ")");
-    usedSshChannels = sshChannels;
-    usedScpChannels = scpChannels;
     sshChannelInUse = 0;
     scpChannelInUse = 0;
     connect();
@@ -105,32 +101,27 @@ public class SecureShellMgr implements ShellMgr{
     connect();
    }
 
-  public int exec(String[] cmd, StringBuffer stdOut, StringBuffer stdErr) throws IOException {
+  public int exec(String cmd, StringBuffer stdOut, StringBuffer stdErr) throws IOException {
     return exec(cmd, null, null, stdOut, stdErr);
   }
 
-  public int exec(String[] cmd, String[] env, StringBuffer stdOut, StringBuffer stdErr) throws IOException {
+  public int exec(String cmd, String[] env, StringBuffer stdOut, StringBuffer stdErr) throws IOException {
     return exec(cmd, env, null, stdOut, stdErr);
   }
 
-  public int exec(String[] cmd, String workingDirectory, StringBuffer stdOut, StringBuffer stdErr) throws IOException {
+  public int exec(String cmd, String workingDirectory, StringBuffer stdOut, StringBuffer stdErr) throws IOException {
     return exec(cmd, null, workingDirectory, stdOut, stdErr);
   }
 
-  public int exec(String[] cmd, String[] env, String workingDirectory,
+  public int exec(String cmd, String[] env, String workingDirectory,
       StringBuffer stdOut, StringBuffer stdErr) throws IOException {
-    Debug.debug(Util.arrayToString(cmd), 1);
-
-    ChannelExec channel = getExecChannel();
-
-    // first cd to workingDirectory
-    
-    ((ChannelExec)channel).setCommand(cmd);
-    
-
-    // workingDirectory
+    Debug.debug(cmd, 1);
+    ChannelExec channel = getSshChannel();
+    ((ChannelExec) channel).setCommand(cmd);
+    // first cd to workingDirectory  
     if(workingDirectory != null){
-      write(scc, "cd " + workingDirectory + "\n");
+      String cdCommand = "cd " + workingDirectory + "\n";
+      channel.getOutputStream().write(cdCommand.getBytes());
       String error = readStdErr(scc);
       if(stdErr!=null)
         Debug.debug("Working directory (" + workingDirectory + ") cannot be used " +
@@ -194,29 +185,6 @@ public class SecureShellMgr implements ShellMgr{
 
     releaseChannel(scc);
     return intExit;
-  }
-
-  /**
-   * Write the String s on the channel scc.
-   */
-  private void write(SessionChannelClient scc, String s) throws IOException {
-    Debug.debug(s, 1);
-    if(s==null)
-      return;
-
-    OutputStream os = scc.getOutputStream();
-
-/*    for(int i = 0; i<5 && os ==null; ++i){
-      logFile.addMessage("Cannot open an Output stream on this channel ... " +
-                         "still trying (attempt " + i +")");
-      try{Thread.sleep(i * 5000);}
-      catch(InterruptedException ie){}
-      os = scc.getOutputStream();
-    }*/
-    if(os == null)
-      throw new IOException("Cannot open an OutputStream on this channel");
-
-    scc.getOutputStream().write(s.getBytes());
   }
 
   private String readStdOut(SessionChannelClient scc) throws IOException{
@@ -547,36 +515,17 @@ public class SecureShellMgr implements ShellMgr{
       ssh.disconnect();
   }
 
-  synchronized private void releaseSshChannel(){
-    if(!usedChannels.remove(scc))
-      Debug.debug("this channel was no used!", 3);
-    try {
-      int r;
-      if ( (r = scc.getInputStream().available()) != 0) {
-        byte[] b = new byte[r];
-        scc.getInputStream().read(b);
-        Debug.debug("StdOut wasn't empty : " + new String(b), 3);
-      }
-
-      if ( (r = scc.getStderrInputStream().available()) != 0) {
-        byte[] b = new byte[r];
-        scc.getStderrInputStream().read(b);
-        Debug.debug("StdErr wasn't empty : " + new String(b), 3);
-      }
-
-    }
-    catch (Exception e) {
-      e.printStackTrace();
-    }
-    freeChannels.add(scc);
-  }
-
-
   synchronized private ChannelExec getSshChannel(){
-    Debug.debug("usedChannels : " + usedSshChannels, 2);
     ChannelExec channel = null;
     try{
-      if(usedSshChannels==sshChannels){
+      // pick first unused channel
+      for(int i=0; i<=sshChannels; ++i){
+        if(sshs[i].isEOF()){
+          channel = (ChannelExec) sshs[i];
+        }
+      }
+      // all channels used, cycle through them
+      if(channel==null){
         if(sshChannelInUse==sshChannels){
           sshChannelInUse=0;
         }
@@ -585,16 +534,9 @@ public class SecureShellMgr implements ShellMgr{
         }
         channel = (ChannelExec) sshs[sshChannelInUse];
       }
-      else{
-        for(int i=0; i<=sshChannels; ++i){
-          if(sshs[i].isEOF()){
-            channel = (ChannelExec) sshs[i];
-            ++usedSshChannels;
-          }
-        }
-      }
       return (ChannelExec) channel;
-    }catch(Exception e){
+    }
+    catch(Exception e){
       Debug.debug("Could not get ssh channel. "+e.getMessage(), 1);
       e.printStackTrace();
       return null;
