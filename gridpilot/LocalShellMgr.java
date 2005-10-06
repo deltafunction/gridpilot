@@ -27,7 +27,7 @@ public class LocalShellMgr implements ShellMgr {
       }
 
 
-    String[] cmd = {"cp", src, dest};
+    String cmd = "cp "+ src + " " + dest;
 //    String [] cmd = {"mv", src.getAbsolutePath(), dest.getAbsolutePath()};
     StringBuffer stdErr = new StringBuffer();
     StringBuffer stdOut = new StringBuffer();
@@ -37,7 +37,7 @@ public class LocalShellMgr implements ShellMgr {
       if (stdErr.length() != 0) {
         GridPilot.getClassMgr().getLogFile().addMessage(
             "Error during move : \n" +
-            "\tCommand\t: " + arrayToString(cmd) + "\n" +
+            "\tCommand\t: " + cmd + "\n" +
             "\tStdOut\t: " + stdOut + "\n" +
             "\tStdErr\t: " + stdErr);
         return false;
@@ -47,7 +47,7 @@ public class LocalShellMgr implements ShellMgr {
     catch (IOException e) {
       GridPilot.getClassMgr().getLogFile().addMessage(
           "IOExeption during move : \n" +
-          "\tCommand\t: " + arrayToString(cmd), e);
+          "\tCommand\t: " + cmd, e);
       return false;
 
     }
@@ -81,27 +81,9 @@ public class LocalShellMgr implements ShellMgr {
    * @return exit value of the command
    * @throws IOException
    */
-  public int exec(String[] cmd, StringBuffer stdOut, StringBuffer stdErr) throws
+  public int exec(String cmd, StringBuffer stdOut, StringBuffer stdErr) throws
       IOException {
     return exec(cmd, null, null, stdOut, stdErr);
-  }
-
-  /**
-   * Executes in the shell the command 'cmd', in the current directory, with
-   * the environment 'env'. <br>
-   * Standard output is written in stdOut (if stdOut != null) <br>
-   * Standard error is written in stdErr (if stdErr != null) <br>
-   * <p>
-   * All elements of cmd can be <code>null</code>, or contain several tokens ;
-   * if an element of cmd contains spaces, all "words" are used like as much as
-   * differents parameters.
-   *
-   * @return exit value of the command
-   * @throws IOException
-   */
-  public int exec(String[] cmd, String[] env, StringBuffer stdOut,
-                         StringBuffer stdErr) throws IOException {
-    return exec(cmd, env, null, stdOut, stdErr);
   }
 
   /**
@@ -117,7 +99,7 @@ public class LocalShellMgr implements ShellMgr {
    * @return exit value of the command
    * @throws IOException
    */
-  public int exec(String[] cmd, String workingDirectory,
+  public int exec(String cmd, String workingDirectory,
                          StringBuffer stdOut, StringBuffer stdErr) throws
       IOException {
     return exec(cmd, null, workingDirectory, stdOut, stdErr);
@@ -136,10 +118,10 @@ public class LocalShellMgr implements ShellMgr {
    * @return exit value of the command
    * @throws IOException
    */
-  public int exec(String[] cmd, String[] env, String workingDirectory,
+  public int exec(String cmd, String[] env, String workingDirectory,
                          StringBuffer stdOut, StringBuffer stdErr) throws
       IOException {
-    cmd = convert(cmd);
+    cmd = arrayToString(convert(Util.split(cmd)));
     int exitValue;
     Process p = Runtime.getRuntime().exec(cmd, env,
                                           (workingDirectory == null ? null : new File(workingDirectory)));
@@ -151,7 +133,7 @@ public class LocalShellMgr implements ShellMgr {
     }
     catch (InterruptedException ie) {
       System.err.println("InterruptedException in Utils.exec : " +
-                         "\tCommand : " + arrayToString(cmd) + "\n" +
+                         "\tCommand : " + cmd + "\n" +
                          "\tException : " + ie.getMessage() + "\n" +
                          "\texit value set to -1");
       exitValue = -1;
@@ -200,35 +182,6 @@ public class LocalShellMgr implements ShellMgr {
         stdErr.insert(0, new String(b, 0, nbRead));
   }
 
-
-  public String createTempDir(String prefix, String parentDir) {
-    File workingDirectory = new File(parentDir);
-
-    if (!workingDirectory.exists())
-      if (!workingDirectory.mkdirs())
-        return null;
-
-    try {
-      if(prefix.length() < 3)
-        prefix = "./tmp";
-      File dir = File.createTempFile(prefix, "", workingDirectory);
-
-      if (!dir.delete()){
-        Debug.debug("cannot delete file " + dir.getAbsolutePath(), 3);
-        return null;
-      }
-      if (!dir.mkdirs()){
-        Debug.debug("cannot create dir " + dir.getAbsolutePath(), 3);
-        return null;
-      }
-
-      return dir.getAbsolutePath();
-
-    }catch(IOException ioe){
-      return null;
-    }
-
-  }
 
   public String readFile(String path) throws FileNotFoundException, IOException {
     RandomAccessFile f = new RandomAccessFile(path, "r");

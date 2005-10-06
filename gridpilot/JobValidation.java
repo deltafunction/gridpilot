@@ -233,7 +233,7 @@ public class JobValidation {
 
 
     int exitValue;
-    String cmd [] = null;
+    String cmd = "";
     try{
       if((job.getStdOut() == null || job.getStdOut().length() == 0) &&
          (job.getStdErr() == null || job.getStdErr().length() == 0)){
@@ -272,12 +272,12 @@ public class JobValidation {
       String validationStdErr = parent + "validationStdErr";
   
   
-      cmd = new String [] {validationScript, job.getStdOut(), job.getStdErr()};
+      cmd = validationScript+" "+job.getStdOut()+" "+job.getStdErr();
 
     //try{
       StringBuffer stdOut = new StringBuffer();
       StringBuffer stdErr = new StringBuffer();
-      Debug.debug("exec ... (" + Util.arrayToString(cmd) +")", 2);
+      Debug.debug("exec ... (" + cmd +")", 2);
       exitValue = shell.exec(cmd, stdOut, stdErr);
       Debug.debug("validation script ended with exit value : " + exitValue, 2);
 
@@ -299,7 +299,7 @@ public class JobValidation {
     }catch(IOException ioe){
       exitValue = ERROR;
       logFile.addMessage("IOException during job " + job.getName() + " validation :\n" +
-                         "\tCommand\t: " + Util.arrayToString(cmd) +"\n" +
+                         "\tCommand\t: " + cmd +"\n" +
                          "\tException\t: " + ioe.getMessage(), ioe);
     }
 
@@ -328,7 +328,7 @@ public class JobValidation {
       default :
         Debug.debug("exit ? : " + exitValue, 3);
         logFile.addMessage("Validation script (" +validationScript + ") returns a wrong value\n" +
-                           " Command : " + Util.arrayToString(cmd));
+                           " Command : " + cmd);
         amiStatus = DBPluginMgr.UNDECIDED;
 
       break;

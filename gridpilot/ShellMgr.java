@@ -1,5 +1,8 @@
 /**
  * $Log: ShellMgr.java,v $
+ * Revision 1.2  2005/10/06 15:55:26  fjob
+ * changed command from String [] to String
+ *
  * Revision 1.1  2005/06/15 15:22:20  fjob
  * Merging started.
  *
@@ -12,7 +15,7 @@
  *
  * @author vberten
  * @author $Author: fjob $
- * @version $Revision: 1.1 $
+ * @version $Revision: 1.2 $
  */
 
 package gridpilot;
@@ -23,21 +26,6 @@ public interface ShellMgr {
 
   /**
    * Executes in the shell the command 'cmd', in the current directory, with
-   * the current environment.
-   * Standard output is written in stdOut (if stdOut != null)
-   * Standard error is written in stdErr (if stdErr != null)
-   *
-   * All elements of cmd can be null, or contain several tokens ;
-   * if an element of cmd contains spaces, all "words" are used like as much as
-   * differents parameters.
-   *
-   * @return exit value of the command
-   * @throws IOException
-   */
-  public int exec(String[] cmd, StringBuffer stdOut, StringBuffer stdErr) throws IOException;
-
-  /**
-   * Executes in the shell the command 'cmd', in the current directory, with
    * the environment 'env'.
    * Standard output is written in stdOut (if stdOut != null)
    * Standard error is written in stdErr (if stdErr != null)
@@ -49,11 +37,10 @@ public interface ShellMgr {
    * @return exit value of the command
    * @throws IOException
    */
-  public int exec(String[] cmd, String[] env, StringBuffer stdOut, StringBuffer stdErr) throws IOException;
+  public int exec(String cmd, StringBuffer stdOut, StringBuffer stdErr) throws IOException;
 
   /**
-   * Executes in the shell the command 'cmd', in the directory 'workingDirecory', with
-   * the current environment.
+   * Executes in the shell the command 'cmd', in the directory 'workingDirecory'.
    * Standard output is written in stdOut (if stdOut != null)
    * Standard error is written in stdErr (if stdErr != null)
    *
@@ -64,36 +51,9 @@ public interface ShellMgr {
    * @return exit value of the command
    * @throws IOException
    */
-  public int exec(String[] cmd, String workingDirectory,
-                         StringBuffer stdOut, StringBuffer stdErr) throws IOException;
-
-
-  /**
-   * Executes in the shell the command 'cmd', in the directory 'workingDirecory', with
-   * the environment 'env'.
-   * Standard output is written in stdOut (if stdOut != null)
-   * Standard error is written in stdErr (if stdErr != null)
-   *
-   * All elements of cmd can be null, or contain several tokens ;
-   * if an element of cmd contains spaces, all "words" are used like as much as
-   * differents parameters.
-   *
-   * @return exit value of the command
-   * @throws IOException
-   */
-  public int exec(String[] cmd, String[] env, String workingDirectory,
+  public int exec(String cmd, String workingDirectory,
                   StringBuffer stdOut, StringBuffer stdErr) throws IOException;
 
-
-  /**
-   * Creates a directory which doesn't exist, in the directory specified by parentDir,
-   * and with a name beginning by prefix.
-   * If the dircetory cannot be created, null is returned.
-   * @return the name of a new directory, or null is this file
-   * cannot be created
-   *
-   */
-  public String createTempDir(String prefix, String parentDir);
 
   /**
    * Returns the content of the file named by this abstract pathname
