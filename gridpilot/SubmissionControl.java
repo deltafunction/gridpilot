@@ -4,6 +4,7 @@ import javax.swing.*;
 
 import java.awt.event.*;
 import java.net.URL;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Random;
@@ -638,8 +639,9 @@ public class SubmissionControl{
 
     if (workingPath == null)
       workingPath = job.getCSName();
-
-
+    
+    if(!workingPath.endsWith("/"))
+      workingPath += "/";
 
     //String finalStdErr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getPartStderrDest(job.getJobDefId());
     String finalStdErr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getStdErrFinalDest(job.getJobDefId());
@@ -648,9 +650,14 @@ public class SubmissionControl{
     String prefix = null;
     
     try{
-      prefix = shell.createTempDir(job.getName()+".", workingPath);
+      // Temp dir, assuming seconds since 1970 is unique from submission
+      // to submission.
+      prefix = workingPath+"/"+job.getName()+"."+
+        new Date().getTime();
+      shell.mkdirs(prefix);
     }
     catch(Exception e){
+      prefix = null;
       Debug.debug("ERROR checking for stdout: "+e.getMessage(), 2);
       logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
       //throw e;
