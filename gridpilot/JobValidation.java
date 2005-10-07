@@ -185,7 +185,7 @@ public class JobValidation {
 
     if(dbStatus != job.getDBStatus()){
       TaskMgr taskMgr = GridPilot.getClassMgr().getTaskMgr(job.getDBName(),
-          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTaskId(
+          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefTaskId(
               job.getJobDefId()));
       taskMgr.updateDBStatus(job, dbStatus);
     }

@@ -821,7 +821,7 @@ public class DBPanel extends JPanel implements JobPanel{
 
   private void editJobDef(){
     TaskMgr taskMgr = null;
-    int selectedTaskID = dbPluginMgr.getTaskId(getSelectedIdentifier());
+    int selectedTaskID = dbPluginMgr.getJobDefTaskId(getSelectedIdentifier());
     if(parentId<0){
       //dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
       parentId = selectedTaskID;
@@ -1007,7 +1007,7 @@ public class DBPanel extends JPanel implements JobPanel{
           JProgressBar pb = new JProgressBar();
           pb.setMaximum(ids.length);
           for (int i = ids.length-1; i>=0; i--) {
-            boolean success = dbPluginMgr.deleteJobTransRecord(ids[i]);
+            boolean success = dbPluginMgr.deleteTransformation(ids[i]);
             pb.setValue(pb.getValue()+1);
             tableResults.removeRow(rows[i]);
             tableResults.tableModel.fireTableDataChanged();

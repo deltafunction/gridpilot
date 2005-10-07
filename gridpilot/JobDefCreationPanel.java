@@ -111,7 +111,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
     
     cstAttr = new String[cstAttributesNames.length];
     
-    transformations = dbPluginMgr.getJobTransRecords(taskID);
+    transformations = dbPluginMgr.getTransformations(taskID);
     
     // When editing, fill cstAttr from db
     if(table.getSelectedRow()>-1 && editing){
@@ -129,7 +129,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
         Debug.debug("ERROR: could not find jobDefinitionID in table!", 1);
       }
       // Find jobTransFK from db
-      jobTransFK = dbPluginMgr.getJobTransID(Integer.parseInt(jobDefinitionID));
+      jobTransFK = dbPluginMgr.getTransformationID(Integer.parseInt(jobDefinitionID));
       Debug.debug("Set jobTransFK from db: "+jobTransFK, 2);
       // Get job definition from db
       DBRecord jobDef = dbPluginMgr.getJobDefinition(Integer.parseInt(jobDefinitionID));
@@ -285,7 +285,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
       }
     }
     
-    transformations = dbPluginMgr.getJobTransRecords(-1);
+    transformations = dbPluginMgr.getTransformations(-1);
     jobTransNames = new String[transformations.values.length];
     for(int i=0; i<transformations.values.length; ++i){
       jobTransNames[i] = transformations.getValue(i, "jobTransName");

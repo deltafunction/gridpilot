@@ -483,7 +483,7 @@ public class SubmissionControl{
       //jobControl.updateDBStatus(job, DBPluginMgr.SUBMITTED);
 
       TaskMgr taskMgr = GridPilot.getClassMgr().getTaskMgr(job.getDBName(),
-          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTaskId(
+          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefTaskId(
               job.getJobDefId()));
       taskMgr.updateDBStatus(job, DBPluginMgr.SUBMITTED);
       
