@@ -229,8 +229,16 @@ public class ConfigFile {
 	do{
         res= file.readLine();
         if(res!=null){
-          if (res.indexOf('#') != -1)
-      		res = res.substring(0, res.indexOf('#'));
+          if(res.indexOf('#')!=-1){
+            // Allow \#, strip off the \
+            if(res.indexOf('#')!=0 && res.indexOf('#')==res.indexOf('\\')+1){
+              res = res.substring(0, res.indexOf('#')-1)+
+              res.substring(res.indexOf('#'));           
+            }
+            else{
+              res = res.substring(0, res.indexOf('#'));           
+            }
+          }
           res = res.trim();
         }
     }while(res !=null && res.length()==0);
