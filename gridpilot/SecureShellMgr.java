@@ -28,7 +28,7 @@ public class SecureShellMgr implements ShellMgr{
     host = _host;
     user = _user;
     password = _password;
-    remoteHome = "";
+    remoteHome = getFullPath(_remoteHome);
     logFile = GridPilot.getClassMgr().getLogFile();
     configFile = GridPilot.getClassMgr().getConfigFile();
     channelsString = configFile.getValue("gridpilot", "ssh channels");
@@ -39,11 +39,10 @@ public class SecureShellMgr implements ShellMgr{
     else{
       channels = Integer.parseInt(channelsString);
     }
-    remoteHome = getFullPath(_remoteHome);
-    logFile.addInfo("Authentication completed on " + host + "(user : " + user +
-                ", home : " + remoteHome + ")");
     channelInUse = 0;
     connect();
+    logFile.addInfo("Authentication completed on " + host + "(user : " + user +
+        ", password : " + password + ", home : " + remoteHome + ")");
   }
 
   private void connect(){
@@ -301,42 +300,55 @@ public class SecureShellMgr implements ShellMgr{
   }
 
   public String [] listFiles(String dirPath){
+    String dirFullPath = "";
+    if(dirPath ==null || dirPath.equals("")){
+      dirFullPath = "";
+    }
+    else{
+      dirFullPath = getFullPath(dirPath);
+    }
+    if(dirFullPath.endsWith("/")){
+      dirFullPath = dirFullPath.substring(0, dirFullPath.length() -1);
+    }
+    Debug.debug("dirFullPath : " + dirFullPath, 2);
+    StringBuffer stdOut = new StringBuffer();
+    StringBuffer stdErr = new StringBuffer();
     try{
-      String dirFullPath = getFullPath(dirPath);
-      if(dirFullPath.endsWith("/")){
-        dirFullPath = dirFullPath.substring(0, dirFullPath.length() -1);
+      int ret = exec("ls "+dirFullPath+" | awk '{print ENVIRON[\"PWD\"]\"/\"$1}'", stdOut, stdErr);
+      if(ret!=0 || stdErr.length()>0){
+        Debug.debug("directory "+dirFullPath+" does not exist. "+stdErr, 3);
+        return new String [] {};
       }
-      Debug.debug("dirFullPath : " + dirFullPath, 2);
-      SftpSubsystemClient sftp = getSftp();
-      SftpFile dir = sftp.openDirectory(dirFullPath);
-      java.util.Vector children = new java.util.Vector();
-      while(sftp.listChildren(dir, children)>0){
-        Debug.debug("Children.size : " + children.size(), 2);
-      }
-      String [] res = new String[children.size()];
-      for(int i=0; i<res.length; ++i){
-        res[i] = ((SftpFile)children.get(i)).getAbsolutePath();
-      }
-      dir.close();
-      return res;
     }
     catch(IOException e){
-      logFile.addMessage("Cannot list this directory ("+dirPath +")", e);
-      return null;
+      Debug.debug(e.getMessage(), 2);
+      return new String [] {};
     }
+    return Util.split(stdOut.toString());
   }
 
   public boolean isDirectory(String dir){
-    try{
-      SftpFile file = getSftp().openFile(getFullPath(dir), SftpSubsystemClient.OPEN_READ);
-      boolean res = file.isDirectory();
-      file.close();
-      return res;
-    }catch(IOException e){
-      logFile.addMessage("Exeption when trying to know if " + dir +
-                         " was a directory", e);
+    if(dir ==null){
       return false;
     }
+    Debug.debug("checking directory " + dir, 2);
+    dir = getFullPath(dir);
+    StringBuffer stdOut = new StringBuffer();
+    StringBuffer stdErr = new StringBuffer();
+    try{
+      int ret = exec("ls -pd "+dir+"| grep'.*/$'", stdOut, stdErr);
+      if(ret!=0 || stdErr.length()>0){
+        Debug.debug("directory "+dir+" does not exist. "+stdErr, 3);
+        return false;
+      }
+    }
+    catch(IOException e){
+      logFile.addMessage("Exeption when checking if " + dir +
+          " was a directory", e);
+      Debug.debug(e.getMessage(), 2);
+      return false;
+    }
+    return(stdOut!=null && !stdOut.equals(""));
   }
 
   public void exit(){
