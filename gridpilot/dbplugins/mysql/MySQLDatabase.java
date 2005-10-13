@@ -230,6 +230,11 @@ public class MySQLDatabase implements Database{
     return "";
   }
 
+  public synchronized String getValidationScript(int jobDefinitionID){
+    // nothing for now
+    return "";
+  }
+
   public synchronized String getTransformationScript(int jobDefinitionID){
     // nothing for now
     return "";
