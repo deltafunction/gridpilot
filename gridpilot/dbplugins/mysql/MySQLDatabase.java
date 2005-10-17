@@ -1196,19 +1196,19 @@ public class MySQLDatabase implements Database{
       }
       catch(Exception e){ Debug.debug(e.getMessage(), 2); ok = false; }
       return ok;
-      };
+    };
     
-      public synchronized boolean deleteTransformation(int jobTransID){
-        boolean ok = true;
-        try {
-          String sql = "DELETE FROM "+jobTransTable+" WHERE "+jobTransIdentifier+" = '"+
-          jobTransID+"'";
-          Statement stmt = conn.createStatement();
-          ResultSet rset = stmt.executeQuery(sql);
-        }
-        catch(Exception e){ Debug.debug(e.getMessage(), 2); ok = false; }
-        return ok;
-        };
+    public synchronized boolean deleteTransformation(int jobTransID){
+      boolean ok = true;
+      try {
+        String sql = "DELETE FROM "+jobTransTable+" WHERE "+jobTransIdentifier+" = '"+
+        jobTransID+"'";
+        Statement stmt = conn.createStatement();
+        ResultSet rset = stmt.executeQuery(sql);
+      }
+      catch(Exception e){ Debug.debug(e.getMessage(), 2); ok = false; }
+      return ok;
+    };
       
   public synchronized String [] getVersions(String homePackage){   
     String req = "SELECT "+jobTransIdentifier+", VERSION FROM "+

@@ -112,7 +112,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
     
     cstAttr = new String[cstAttributesNames.length];
     
-    transformations = dbPluginMgr.getTransformations(taskID);
+    transformations = dbPluginMgr.getTransformations();
     
     jobTransNameColumn = dbPluginMgr.getTransNameColumn();
     
@@ -288,7 +288,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
       }
     }
     
-    transformations = dbPluginMgr.getTransformations(-1);
+    transformations = dbPluginMgr.getTransformations();
     jobTransNames = new String[transformations.values.length];
     for(int i=0; i<transformations.values.length; ++i){
       jobTransNames[i] = transformations.getValue(i, jobTransNameColumn);
@@ -378,59 +378,18 @@ public class JobDefCreationPanel extends CreateEditPanel{
     String imp = "";
     String jtVersion = "-1";
     Vector vec = new Vector();
-    boolean ok = true;
-    if(transformations.values.length > 0){
-      imp = transformations.getValue(0,"version");
-      if(transformations.getValue(0,jobTransNameColumn)!=null &&
-          transformations.getValue(0,jobTransNameColumn).equals(jobTransName)){
-        vec.add(imp);
-      }
-    }
-    if(transformations.values.length > 1){
+    if(transformations.values.length>0){
       // When editing, find version of original jobTransFK
-      for(int i=1; i<transformations.values.length; ++i){
-        ok= true;
-        imp = transformations.getValue(i,"version");
+      for(int i=0; i<transformations.values.length; ++i){
         if(transformations.getValue(i,jobTransIdentifier).equals(jobTransFK)){
           jtVersion = transformations.getValue(i,"version");
-        }
-        // Avoid duplicates
-        for(int j=0; j<vec.size(); ++j){
-          if(transformations.getValue(i,"version")!=null &&
-              transformations.getValue(i,"version").equals(
-              vec.get(j))){
-            ok = false;
-            break;
-          }
-        }
-        if(ok && transformations.getValue(i,jobTransNameColumn)!=null &&
-            transformations.getValue(i,jobTransNameColumn).equals(jobTransName)){
-          vec.add(imp);
+          break;
         }
       }
-    }
-    
-    versions = new String [vec.size()];
-    for(int i = 0; i < vec.size(); ++i){
-      
-      if((vec.toArray())[i]!=null){
-        versions[i] = (vec.toArray())[i].toString();
-      }
-    }    
-
-    if(vec.size()>0){
-      versions = new String [vec.size()];
-      for(int i = 0; i < vec.size(); ++i){
-        if((vec.toArray())[i]!=null){
-          versions[i] = vec.get(i).toString();
-        }
-      }    
+      versions = dbPluginMgr.getVersions(jobTransName);
     }
     else{
-      Debug.debug("WARNING: No versions found for transformations belonging to task"+
-          taskName+" with name "+jobTransName+
-          ". Displaying all versions of transformation ...", 2);
-      versions = dbPluginMgr.getVersions(jobTransName);
+      Debug.debug("WARNING: No transformations found.", 1);
     }
     
     Debug.debug("Number of versions: "+versions.length, 3);

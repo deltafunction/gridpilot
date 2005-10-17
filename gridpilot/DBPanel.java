@@ -981,7 +981,7 @@ public class DBPanel extends JPanel implements JobPanel{
   }
 
   private void deleteJobTransRecords() {
-    String msg = "Are you sure you want to delete jobTrans records ";
+    String msg = "Are you sure you want to delete transformation records ";
     int [] ids = getSelectedIdentifiers();
     for(int i=0; i<getSelectedIdentifiers().length; ++i){
       msg += ", " + ids[i];

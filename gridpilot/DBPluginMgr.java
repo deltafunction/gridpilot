@@ -334,7 +334,30 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobTransXstractScript"))
+    if(waitForThread(t, dbName, dbTimeOut, "getExtractScript"))
+      return t.getStringRes();
+    else
+      return null;
+  }
+
+  public synchronized String getValidationScript(final int jobDefinitionID){
+    MyThread t = new MyThread(){
+      String res = null;
+      public void run(){
+        try{
+          res = db.getValidationScript(jobDefinitionID);
+        }catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             jobDefinitionID, t);
+        }
+      }
+      public String getStringRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getValidationScript"))
       return t.getStringRes();
     else
       return null;
@@ -405,6 +428,28 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     if(waitForThread(t, dbName, dbTimeOut, "getJobTransSignature"))
       return t.getString2Res();
+    else
+      return null;
+  }
+
+  public synchronized String getTransNameColumn(){
+    MyThread t = new MyThread(){
+      String res = null;
+      public void run(){
+        try{
+          res = db.getTransNameColumn();
+        }catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName , t);
+        }
+      }
+      public String getStringRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getTransNameColumn"))
+      return t.getStringRes();
     else
       return null;
   }
@@ -1310,17 +1355,16 @@ public class DBPluginMgr implements Database, PanelUtil{
       return null;
   }
 
-  public synchronized DBResult getTransformations(final int jobTransID){
+  public synchronized DBResult getTransformations(){
   
     MyThread t = new MyThread(){
       DBResult res = null;
       public void run(){
         try{
-          res = db.getTransformations(jobTransID);
+          res = db.getTransformations();
         }catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             jobTransID, t);
+                             " from plugin " + dbName, t);
         }
       }
       public DBResult getDB2Res(){return res;}
