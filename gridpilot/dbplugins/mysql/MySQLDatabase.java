@@ -522,35 +522,17 @@ public class MySQLDatabase implements Database{
     // TODO: implement
     return new DBRecord();
   }
+
   /*
-   * Find JobTrans records belonging to the taskTrans of a given task
+   * Find JobTrans records
    */
-  public synchronized DBRecord [] getJobTrans(int taskID){
+  private synchronized DBRecord [] getJobTransRecords(){
     
     String [] fields = getFieldNames(jobTransTable);
-
-    String taskTransFK = "-1";
-    ResultSet rset;
-    String req = "SELECT TASKTRANSFK FROM "+taskTable;
-    if(taskID!=-1){
-      req += " WHERE "+taskIdentifier+" = '"+ taskID+"'";
-    }
-    Debug.debug(req, 3);
-    DBRecord [] allJobTrans = null;
-    
-    try{
-      rset = conn.createStatement().executeQuery(req);
-      
-      while(rset.next()){
-        taskTransFK=rset.getString("TASKTRANSFK");
-      }
-      if(taskTransFK == null ){
-        Debug.debug("ERROR: No taskTransFK found for taskID "+taskID, 1);
-        taskID = -1;
-      }
-      if(rset.getRow()>1){
-        Debug.debug("WARNING: More than one ("+rset.getRow()+") taskTransFK found for taskID "+taskID, 1);
-      }
+    ResultSet rset = null;
+    String req = "";
+    DBRecord [] allJobTrans = null;   
+    try{      
       req = "SELECT "+fields[0];
       if(fields.length>1){
         for(int i=1; i<fields.length; ++i){
@@ -558,10 +540,6 @@ public class MySQLDatabase implements Database{
         }
       }
       req += " FROM "+jobTransTable;
-      // If no task was found, return all jobTrans records.
-      if(taskID!=-1){
-        req += " WHERE TASKTRANSFK = '"+taskTransFK+"'";
-      }
       Debug.debug(req, 3);
       rset = conn.createStatement().executeQuery(req);
       //ResultSetMetaData md = rset.getMetaData();
@@ -591,11 +569,11 @@ public class MySQLDatabase implements Database{
         Debug.debug("Added value "+allJobTrans[j].getAt(0), 3);
       }
     }catch(SQLException e){
-      Debug.debug("WARNING: No jobTrans found for taskID "+taskID+". "+e.getMessage(), 1);
+      Debug.debug("WARNING: No jobTrans found. "+e.getMessage(), 1);
     }
     return allJobTrans;
   }
-  
+
   // Selects only the fields listed in fieldNames. Other fields are set to "".
   public synchronized DBRecord getJobDefinition(int jobDefinitionID){
     
@@ -726,28 +704,10 @@ public class MySQLDatabase implements Database{
     return taskid;
   }
   
-  // In the case of proddb there is no unique name.
-  // Only the distribution kit homePackage/implementation.
-  // Still, we need a name to label a transformation the user can select,
-  // so we add and extra field by hand.
-  public synchronized DBResult getTransformations(int taskID){
-    
+  public synchronized DBResult getTransformations(){
     String [] fields = getFieldNames(jobTransTable);
-    
-    DBRecord jt [] = getJobTrans(taskID);
-    DBResult res = new DBResult(fields.length+1, jt.length);
-
-    System.arraycopy(fields, 0, res.fields, 0, fields.length);
-            
-    res.fields[fields.length] = "jobTransName";
-    for(int i = 0; i<jt.length; ++i){
-      Debug.debug("Copying over "+jt[i].values.length, 3);
-      System.arraycopy(jt[i].values, 0, res.values[i], 0, fields.length);
-      res.values[i][fields.length] = res.getValue(i, "homePackage")+":"+
-         res.getValue(i, "implementation");
-      Debug.debug("Setting jobTransName to "+res.values[i][fields.length], 3);
-    }
-
+    DBRecord jt [] = getJobTransRecords();
+    DBResult res = new DBResult(fields.length, jt.length);
     return res;
   }
   
@@ -1291,5 +1251,9 @@ public class MySQLDatabase implements Database{
     }
     return ret;
   }
-    
+  
+  public String getTransNameColumn(){
+    return "name";
+  }
+
 }

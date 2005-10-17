@@ -82,6 +82,9 @@ public interface Database{
   public String [] getDefVals(int taskId, String user);
   public String [] getFieldNames(String table);
   public String getPackInitText (String pack, String cluster);
+  // The column in the tranformation table holding the
+  // name of the transformation
+  public String getTransNameColumn();
   
   public class DBRecord{
     public String [] fields = null;
