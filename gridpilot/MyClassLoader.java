@@ -16,11 +16,11 @@ class MyClassLoader extends ClassLoader{
   public Class findClass(String name)throws ClassNotFoundException{
   	
     try{
-    	 URL classUrl = ClassLoader.getSystemResource(name.replace('.', '/').concat(".class"));
-      Debug.debug(classUrl.toString(), 2);
+    	URL classUrl = ClassLoader.getSystemResource(name.replace('.', '/').concat(".class"));
       if(classUrl == null)
         throw new ClassNotFoundException();
 
+      Debug.debug(classUrl.toString(), 2);
       File d = new File(classUrl.getFile()).getParentFile();
       File [] files = d.listFiles();
       if(files != null){
@@ -41,8 +41,9 @@ class MyClassLoader extends ClassLoader{
         return loadClass(classUrl, name);
       }
 
-    }catch(java.io.IOException ioe){
+    }catch(Exception ioe){
       ioe.printStackTrace();
+      return null;
     }
 
     return super.loadClass(name);
