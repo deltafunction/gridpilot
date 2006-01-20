@@ -79,7 +79,9 @@ public class GlobalFrame extends JFrame{
     
     container.add(tabbedPane,  BorderLayout.CENTER);
 
-    addPanel(new DBPanel(GridPilot.getDBs()[0], "task"));
+    if(GridPilot.getDBs().length>0){
+      addPanel(new DBPanel(GridPilot.getDBs()[0], "task"));
+    }
     selectedPanel = tabbedPane.getSelectedIndex();
 
     /*

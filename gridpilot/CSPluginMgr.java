@@ -78,7 +78,13 @@ public class CSPluginMgr implements ComputingSystem{
     cs = new HashMap(csNames.length);
     shellMgr = new HashMap(csNames.length);
 
-    loadClasses();
+    try{
+      loadClasses();
+    }
+    catch(Throwable e){
+      Debug.debug("Error loading class "+e.getMessage(), 1);
+      e.printStackTrace();
+    }
     loadValues();
 
   }
@@ -96,7 +102,7 @@ public class CSPluginMgr implements ComputingSystem{
         String password = configFile.getValue(csNames[i], "password");
         String remoteHome = configFile.getValue(csNames[i], "remote home");
         shellMgr.put(csNames[i],
-            new SecureShellMgr(host, user, password, remoteHome));
+            new RemoteShellMgr(host, user, password, remoteHome));
       }
       else{
         shellMgr.put(csNames[i], new LocalShellMgr());
@@ -110,32 +116,44 @@ public class CSPluginMgr implements ComputingSystem{
       }
 
       Class [] csArgsType = {String.class};
-
+      
       try{
-        Object [] csArgs = {csNames[i]};
+        try{
+          try{
+            Object [] csArgs = {csNames[i]};
 
-        // loading of this plug-in
-        MyClassLoader mcl = new MyClassLoader();
-        cs.put(csNames[i], (ComputingSystem)(mcl.findClass(csClass).getConstructor(csArgsType).
-                                  newInstance(csArgs)));
+            // loading of this plug-in
+            MyClassLoader mcl = new MyClassLoader();
+            Debug.debug("Loading class "+csClass, 3);
+            if(mcl!=null && csClass!=null && csArgsType!=null && csArgs!=null &&
+                mcl.findClass(csClass)!=null){
+              cs.put(csNames[i],
+                  (ComputingSystem)(mcl.findClass(csClass).getConstructor(csArgsType).newInstance(csArgs)));
 
-        Debug.debug("plugin " + csNames[i] + "(" + csClass + ") loaded", 2);
-
-      }catch(IllegalArgumentException iae){
+              //Debug.debug("plugin " + csNames[i] + "(" + csClass + ") loaded", 2);
+            }
+          }
+          catch(ClassNotFoundException e){
+            logFile.addMessage("Cannot load class for " + csNames[i], e);
+            //throw e;
+          }      
+        }
+        catch(IllegalArgumentException iae){
         logFile.addMessage("Cannot load class for " + csNames[i] + ".\nThe plugin constructor " +
                            "must have one parameter (String)", iae);
-        throw iae;
-      }catch (Exception e){
+        //throw iae;
+        }
+      }
+      catch(Exception e){
         logFile.addMessage("Cannot load class for " + csNames[i], e);
-        throw e;
-      }      
+      }
     }
   }
 
   void reconnectShells(){
     for(int i=0; i<csNames.length ; ++i){
-      if(shellMgr.get(csNames[i]) instanceof SecureShellMgr)
-        ((SecureShellMgr) shellMgr.get(csNames[i])).reconnect();
+      if(shellMgr.get(csNames[i]) instanceof RemoteShellMgr)
+        ((RemoteShellMgr) shellMgr.get(csNames[i])).reconnect();
     }
   }
 
@@ -479,7 +497,7 @@ public class CSPluginMgr implements ComputingSystem{
     JComboBox cb = new JComboBox();
     for(int i=0; i<shellMgr.size() ; ++i){
       String type = "";
-      if(shellMgr.get(csNames[i]) instanceof SecureShellMgr)
+      if(shellMgr.get(csNames[i]) instanceof RemoteShellMgr)
         type = " (remote)";
       if(shellMgr.get(csNames[i]) instanceof LocalShellMgr)
         type = " (local)";
