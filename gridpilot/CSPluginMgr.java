@@ -102,7 +102,7 @@ public class CSPluginMgr implements ComputingSystem{
         String password = configFile.getValue(csNames[i], "password");
         String remoteHome = configFile.getValue(csNames[i], "remote home");
         shellMgr.put(csNames[i],
-            new RemoteShellMgr(host, user, password, remoteHome));
+            new SecureShellMgr(host, user, password, remoteHome));
       }
       else{
         shellMgr.put(csNames[i], new LocalShellMgr());
@@ -121,7 +121,6 @@ public class CSPluginMgr implements ComputingSystem{
         try{
           try{
             Object [] csArgs = {csNames[i]};
-
             // loading of this plug-in
             MyClassLoader mcl = new MyClassLoader();
             Debug.debug("Loading class "+csClass, 3);
@@ -152,8 +151,8 @@ public class CSPluginMgr implements ComputingSystem{
 
   void reconnectShells(){
     for(int i=0; i<csNames.length ; ++i){
-      if(shellMgr.get(csNames[i]) instanceof RemoteShellMgr)
-        ((RemoteShellMgr) shellMgr.get(csNames[i])).reconnect();
+      if(shellMgr.get(csNames[i]) instanceof SecureShellMgr)
+        ((SecureShellMgr) shellMgr.get(csNames[i])).reconnect();
     }
   }
 
@@ -497,7 +496,7 @@ public class CSPluginMgr implements ComputingSystem{
     JComboBox cb = new JComboBox();
     for(int i=0; i<shellMgr.size() ; ++i){
       String type = "";
-      if(shellMgr.get(csNames[i]) instanceof RemoteShellMgr)
+      if(shellMgr.get(csNames[i]) instanceof SecureShellMgr)
         type = " (remote)";
       if(shellMgr.get(csNames[i]) instanceof LocalShellMgr)
         type = " (local)";
