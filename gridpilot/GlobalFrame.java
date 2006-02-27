@@ -80,7 +80,7 @@ public class GlobalFrame extends JFrame{
     container.add(tabbedPane,  BorderLayout.CENTER);
 
     if(GridPilot.getDBs().length>0){
-      addPanel(new DBPanel(GridPilot.getDBs()[0], "task"));
+      addPanel(new DBPanel(GridPilot.getDBs()[0], "dataset"));
     }
     selectedPanel = tabbedPane.getSelectedIndex();
 
@@ -258,7 +258,7 @@ public class GlobalFrame extends JFrame{
     JMenu menuGridPilot = new JMenu("GridPilot");
     JMenu menuNewTab = new JMenu("New tab");
    
-    JMenu miNewTaskTab = new JMenu("task");
+    JMenu miNewTaskTab = new JMenu("dataset");
     JMenuItem [] miNewTaskTabs = new JMenuItem[GridPilot.getDBs().length];
     menuNewTab.add(miNewTaskTab);
     for(i=0; i<GridPilot.getDBs().length; ++i){
@@ -267,7 +267,7 @@ public class GlobalFrame extends JFrame{
         public void actionPerformed(ActionEvent e){
           try{
             addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(), "task"), "task");          
+                ((JMenuItem)e.getSource()).getText(), "dataset"), "dataset");          
           }catch(Exception ex){
             Debug.debug("Could not add panel ", 1);
             ex.printStackTrace();

@@ -781,16 +781,16 @@ public class DBPanel extends JPanel implements JobPanel{
    * Open dialog with jobDefintion creation panel
    */ 
   private void createJobDefs(){
-    DatasetMgr taskMgr = null;
+    DatasetMgr datasetMgr = null;
     try{
-      taskMgr = GridPilot.getClassMgr().getDatasetMgr(dbPluginMgr.getDBName(), parentId);
+      datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbPluginMgr.getDBName(), parentId);
     }
     catch(Throwable e){
       Debug.debug("ERROR: could not create DatasetMgr. "+e.getMessage(), 1);
       e.printStackTrace();
     }
     //hiddenFields = dbPluginMgr.getDBHiddenFields(dbs[0], tableName);
-    JobDefCreationPanel panel = new JobDefCreationPanel(dbName, taskMgr, tableResults, false);
+    JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, tableResults, false);
     try{
       dbPluginMgr.initJobDefCreationPanel(panel);
     }
@@ -808,21 +808,21 @@ public class DBPanel extends JPanel implements JobPanel{
   }
 
   private void editJobDef(){
-    DatasetMgr taskMgr = null;
+    DatasetMgr datasetMgr = null;
     int selectedDatasetID = dbPluginMgr.getJobDefDatasetID(getSelectedIdentifier());
     if(parentId<0){
       parentId = selectedDatasetID;
     }
     Debug.debug("Got dbPluginMgr:"+dbPluginMgr+":"+parentId, 1);
     try{
-      taskMgr = GridPilot.getClassMgr().getDatasetMgr(dbPluginMgr.getDBName(), selectedDatasetID);
+      datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbPluginMgr.getDBName(), selectedDatasetID);
     }
     catch(Throwable e){
       Debug.debug("ERROR: could not get DatasetMgr. "+e.getMessage(), 1);
       e.printStackTrace();
       return;
     }
-    JobDefCreationPanel panel = new JobDefCreationPanel(dbName, taskMgr, tableResults, true);
+    JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, tableResults, true);
     try{
       dbPluginMgr.initJobDefCreationPanel(panel);
     }
@@ -1041,9 +1041,9 @@ public class DBPanel extends JPanel implements JobPanel{
         for(int i=0; i<selectedJobIdentifiers.length; ++i){
           jobDef = dbPluginMgr.getJobDefinition(
               selectedJobIdentifiers[i]);
-          DatasetMgr taskMgr = GridPilot.getClassMgr().getDatasetMgr(dbPluginMgr.getDBName(),
+          DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbPluginMgr.getDBName(),
               Integer.parseInt(jobDef.getValue("datasetFK").toString()));
-          taskMgr.addJobs(new int [] {selectedJobIdentifiers[i]});
+          datasetMgr.addJobs(new int [] {selectedJobIdentifiers[i]});
         }
       }
     }.start();
