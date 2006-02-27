@@ -239,8 +239,8 @@ public class SubmissionControl{
         // new rows in table
         statusTable.createRows(submittedJobs.size());
         //jobControl.initChanges();
-        for(Iterator it = GridPilot.getClassMgr().getTaskMgrs().iterator(); it.hasNext();){
-          ((TaskMgr) it.next()).initChanges();
+        for(Iterator it = GridPilot.getClassMgr().getDatasetMgrs().iterator(); it.hasNext();){
+          ((DatasetMgr) it.next()).initChanges();
         }
 //        jobControl.updateJobsByStatus();
         submit(newJobs);
@@ -309,8 +309,8 @@ public class SubmissionControl{
       isProgressBarSet = true;
     }
 
-    TaskMgr.updateDBCells(jobs, statusTable);
-    TaskMgr.updateJobCells(jobs, statusTable);
+    DatasetMgr.updateDBCells(jobs, statusTable);
+    DatasetMgr.updateJobCells(jobs, statusTable);
 
 
     toSubmitJobs.addAll(jobs);
@@ -482,10 +482,10 @@ public class SubmissionControl{
 
       //jobControl.updateDBStatus(job, DBPluginMgr.SUBMITTED);
 
-      TaskMgr taskMgr = GridPilot.getClassMgr().getTaskMgr(job.getDBName(),
-          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefTaskId(
+      DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
+          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
               job.getJobDefId()));
-      taskMgr.updateDBStatus(job, DBPluginMgr.SUBMITTED);
+      datasetMgr.updateDBStatus(job, DBPluginMgr.SUBMITTED);
       
       if (job.getDBStatus() != DBPluginMgr.SUBMITTED) { // updateDBStatus didn't work
         logFile.addMessage(
@@ -501,7 +501,7 @@ public class SubmissionControl{
       }
     }
 
-    TaskMgr.updateJobCells(submitables, statusTable);
+    DatasetMgr.updateJobCells(submitables, statusTable);
 
     submit(submitables);
   }
@@ -541,12 +541,12 @@ public class SubmissionControl{
     job.setName(dbPluginMgr.getJobDefName(job.getJobDefId()));
 
     statusTable.setValueAt(job.getCSName(), job.getTableRow(),
-        TaskMgr.FIELD_CS);
+        DatasetMgr.FIELD_CS);
 /*    statusTable.setValueAt(job.getName(), job.getTableRow(),
-                           TaskMgr);
+                           DatasetMgr);
     Debug.debug("jobName : " + job.getName(), 3);*/
     statusTable.setValueAt(iconSubmitting, job.getTableRow(),
-        TaskMgr.FIELD_CONTROL);
+        DatasetMgr.FIELD_CONTROL);
 
     if (createOutputs(job) && csPluginMgr.submit(job)) {
 
@@ -569,10 +569,10 @@ public class SubmissionControl{
                            ") failed", job);
 
       statusTable.setValueAt(job.getJobId(), job.getTableRow(),
-          TaskMgr.FIELD_JOBID);
+          DatasetMgr.FIELD_JOBID);
       Debug.debug("Setting job user "+job.getUser(), 3);
       statusTable.setValueAt(job.getUser(), job.getTableRow(),
-          TaskMgr.FIELD_USER);
+          DatasetMgr.FIELD_USER);
       statusTable.updateSelection();
 
       job.setNeedToBeRefreshed(true);
@@ -580,7 +580,7 @@ public class SubmissionControl{
     }
     else{
       statusTable.setValueAt("Not submitted !", job.getTableRow(),
-          TaskMgr.FIELD_JOBID);
+          DatasetMgr.FIELD_JOBID);
 
       job.setAtComStatus(ComputingSystem.STATUS_FAILED);
 
@@ -601,14 +601,14 @@ public class SubmissionControl{
             DBPluginMgr.getStatusName(job.getDBStatus()) +
                            ") failed", job);
 
-      TaskMgr.updateDBCell(job, statusTable);
+      DatasetMgr.updateDBCell(job, statusTable);
       //jobControl.updateJobsByStatus();
     }
 	// remove iconSubmitting
-    statusTable.setValueAt(null, job.getTableRow(), TaskMgr.FIELD_CONTROL);
+    statusTable.setValueAt(null, job.getTableRow(), DatasetMgr.FIELD_CONTROL);
     //jobControl.updateJobsByStatus();
-    for(Iterator it = GridPilot.getClassMgr().getTaskMgrs().iterator(); it.hasNext();){
-      ((TaskMgr) it.next()).updateJobsByStatus();
+    for(Iterator it = GridPilot.getClassMgr().getDatasetMgrs().iterator(); it.hasNext();){
+      ((DatasetMgr) it.next()).updateJobsByStatus();
     }
 
     submittingJobs.remove(job);
@@ -695,8 +695,8 @@ public class SubmissionControl{
     Enumeration e = toSubmitJobs.elements();
     while(e.hasMoreElements()){
       JobInfo job = (JobInfo) e.nextElement();
-      statusTable.setValueAt("Not submitted (Cancelled)!", job.getTableRow(), TaskMgr.FIELD_JOBID);
-      statusTable.setValueAt(job.getName(), job.getTableRow(), TaskMgr.FIELD_JOBNAME);
+      statusTable.setValueAt("Not submitted (Cancelled)!", job.getTableRow(), DatasetMgr.FIELD_JOBID);
+      statusTable.setValueAt(job.getName(), job.getTableRow(), DatasetMgr.FIELD_JOBNAME);
 
       job.setAtComStatus(ComputingSystem.STATUS_FAILED);
 
@@ -716,7 +716,7 @@ public class SubmissionControl{
             DBPluginMgr.getStatusName(job.getDBStatus()) + ") failed", job);
 
     }
-    TaskMgr.updateDBCells(toSubmitJobs, statusTable);
+    DatasetMgr.updateDBCells(toSubmitJobs, statusTable);
 
     toSubmitJobs.removeAllElements();
 

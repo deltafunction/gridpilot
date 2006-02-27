@@ -25,7 +25,7 @@ public class MessagePane {
     ta.getPreferredSize(); // without this line, this dialog is too small !!! ???????
     dialog.pack();
     dialog.validate();
-    dialog.show();
+    dialog.setVisible(true);
     dialog.dispose();
 
   }

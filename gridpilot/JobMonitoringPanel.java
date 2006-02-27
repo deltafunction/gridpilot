@@ -214,7 +214,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
 
     miResubmit.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        submissionControl.resubmit(TaskMgr.getJobsAtRows(statusTable.getSelectedRows()));
+        submissionControl.resubmit(DatasetMgr.getJobsAtRows(statusTable.getSelectedRows()));
       }
     });
 
@@ -250,7 +250,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
 
     miRevalidate.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        TaskMgr.revalidate(statusTable.getSelectedRows());
+        DatasetMgr.revalidate(statusTable.getSelectedRows());
       }
     });
 
@@ -298,7 +298,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
       JMenuItem mi = new JMenuItem(csNames[i], i);
       mi.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          submissionControl.submitJobs((Vector) TaskMgr.getJobsAtRows(statusTable.getSelectedRows()),
+          submissionControl.submitJobs((Vector) DatasetMgr.getJobsAtRows(statusTable.getSelectedRows()),
               /*computingSystem*/
               /*((JMenuItem) e.getSource()).getMnemonic()*/
               ((JMenuItem) e.getSource()).getText());
@@ -416,7 +416,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
    * Called when button or menu item "Kill" is selected
    */
   void kill() {
-    TaskMgr.killJobs(statusTable.getSelectedRows());
+    DatasetMgr.killJobs(statusTable.getSelectedRows());
   }
 
   /**
@@ -425,10 +425,10 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
   void decide(){
     int [] rows = statusTable.getSelectedRows();
 
-    if(!TaskMgr.areDecidables(rows))
+    if(!DatasetMgr.areDecidables(rows))
       return;
 
-    Vector jobs = TaskMgr.getJobsAtRows(rows);
+    Vector jobs = DatasetMgr.getJobsAtRows(rows);
 
     int [] options = {DBPluginMgr.VALIDATED, DBPluginMgr.FAILED, DBPluginMgr.UNDECIDED, DBPluginMgr.ABORTED};
     String [] sOptions = {
@@ -451,14 +451,14 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
 
     //jobControl.undecidedChoices(jobs, dbChoices);
 
-    TaskMgr taskMgr;
+    DatasetMgr datasetMgr;
     for(int i = 0; i < jobs.size(); ++i){
       JobInfo job = (JobInfo) jobs.get(i);
       if(job.getDBStatus()!=dbChoices[i]){
-        taskMgr = GridPilot.getClassMgr().getTaskMgr(job.getDBName(),
-            GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefTaskId(
+        datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
+            GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
                 job.getJobDefId()));
-        taskMgr.updateDBStatus(job, dbChoices[i]);
+        datasetMgr.updateDBStatus(job, dbChoices[i]);
       }
     }
     statusTable.updateSelection();
@@ -476,7 +476,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
     if(selectedRow == -1)
       return;
 
-    if(TaskMgr.isRunning(selectedRow)){
+    if(DatasetMgr.isRunning(selectedRow)){
       statusBar.setLabel("Waiting for current outputs ...");
       statusBar.animateProgressBar();
 
@@ -484,9 +484,9 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
       final Thread t = new Thread(){
         public void run(){
           String [] outs = GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(
-              TaskMgr.getJobAtRow(selectedRow));
+              DatasetMgr.getJobAtRow(selectedRow));
 
-          JobInfo job = TaskMgr.getJobAtRow(selectedRow);
+          JobInfo job = DatasetMgr.getJobAtRow(selectedRow);
           String path[] = job.getStdErr() == null ?
               new String[]{job.getStdOut()} :
               new String[]{job.getStdOut(), job.getStdErr()};
@@ -512,7 +512,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
     }
     else{
       //jobControl.setFinalDest(selectedRow);
-      JobInfo job = TaskMgr.getJobAtRow(selectedRow);
+      JobInfo job = DatasetMgr.getJobAtRow(selectedRow);
       if((job.getStdOut() == null || job.getStdOut().equals("")) &&
          (job.getStdErr() == null || job.getStdErr().equals(""))){
         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
@@ -528,9 +528,9 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
         final Thread t = new Thread(){
           public void run(){
             String [] outs = GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(
-                  TaskMgr.getJobAtRow(selectedRow));
+                  DatasetMgr.getJobAtRow(selectedRow));
 
-            JobInfo job = TaskMgr.getJobAtRow(selectedRow);
+            JobInfo job = DatasetMgr.getJobAtRow(selectedRow);
             String path[] = job.getStdErr() == null ?
                 new String[]{job.getStdOut()} :
                 new String[]{job.getStdOut(), job.getStdErr()};
@@ -592,7 +592,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
    * @see atcom.jobcontrol.JobControl#getFullStatus(int)
    */
   private void showFullStatus(){
-    JobInfo job = TaskMgr.getJobAtRow(statusTable.getSelectedRow());
+    JobInfo job = DatasetMgr.getJobAtRow(statusTable.getSelectedRow());
     String status = GridPilot.getClassMgr().getCSPluginMgr().getFullStatus(job);
     MessagePane.showMessage(status, "Job status");
   }
@@ -602,7 +602,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
    * @see atcom.jobcontrol.JobControl#getJobInfo(int)
    */
   private void showInfo(){
-    String info = TaskMgr.getJobInfo(statusTable.getSelectedRow());
+    String info = DatasetMgr.getJobInfo(statusTable.getSelectedRow());
     MessagePane.showMessage(info, "Job Infos");
   }
 
@@ -612,7 +612,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
    * In each tab, a file is shown.
    */
   private void showFiles(){
-    JobInfo job = TaskMgr.getJobAtRow(statusTable.getSelectedRow());
+    JobInfo job = DatasetMgr.getJobAtRow(statusTable.getSelectedRow());
 
     ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
 
@@ -651,16 +651,16 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
   }
 
   private void showScripts(){
-    JobInfo job = TaskMgr.getJobAtRow(statusTable.getSelectedRow());
+    JobInfo job = DatasetMgr.getJobAtRow(statusTable.getSelectedRow());
     ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
-    TaskMgr taskMgr;
-    taskMgr = GridPilot.getClassMgr().getTaskMgr(job.getDBName(),
-        GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefTaskId(
+    DatasetMgr datasetMgr;
+    datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
+        GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
             job.getJobDefId()));
     ShowOutputsJobsDialog.showFilesTabs(JOptionPane.getRootFrame(),
         "Scripts for job " + job.getName(),
         shell,
-        taskMgr.getScripts(statusTable.getSelectedRow())            
+        datasetMgr.getScripts(statusTable.getSelectedRow())            
         );
   }
 
@@ -691,7 +691,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
     else{
       int [] rows = statusTable.getSelectedRows();
 
-      if(TaskMgr.areDecidables(rows)){
+      if(DatasetMgr.areDecidables(rows)){
         bDecide.setEnabled(true);
         miDecide.setEnabled(true);
         miRevalidate.setEnabled(true);
@@ -702,7 +702,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
         miRevalidate.setEnabled(false);
       }
 
-      if(TaskMgr.areKillables(rows)){
+      if(DatasetMgr.areKillables(rows)){
         bKill.setEnabled(true);
         miKill.setEnabled(true);
       }
@@ -711,12 +711,12 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
         miKill.setEnabled(false);
       }
 
-      if(TaskMgr.areResumbitables(rows))
+      if(DatasetMgr.areResumbitables(rows))
         miResubmit.setEnabled(true);
       else
         miResubmit.setEnabled(false);
 
-      if(TaskMgr.areSubmitables(rows))
+      if(DatasetMgr.areSubmitables(rows))
         mSubmit.setEnabled(true);
       else
         mSubmit.setEnabled(false);
@@ -734,15 +734,15 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
     new Thread(){
       public void run() {
         //jobControl.setDBStatus(statusTable.getSelectedRows(), dbStatus);
-        Vector jobs = TaskMgr.getJobsAtRows(statusTable.getSelectedRows());
+        Vector jobs = DatasetMgr.getJobsAtRows(statusTable.getSelectedRows());
         JobInfo job;
-        TaskMgr taskMgr;
+        DatasetMgr datasetMgr;
         for(int i=0; i<jobs.size(); ++i){
           job = (JobInfo) jobs.get(i);
-          taskMgr = GridPilot.getClassMgr().getTaskMgr(job.getDBName(),
-              GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefTaskId(
+          datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
+              GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
                   job.getJobDefId()));
-          taskMgr.setDBStatus(new int [] {statusTable.getSelectedRows()[i]}, dbStatus);
+          datasetMgr.setDBStatus(new int [] {statusTable.getSelectedRows()[i]}, dbStatus);
         }
       }
     }.start();

@@ -1,7 +1,7 @@
 package gridpilot;
 
 import gridpilot.Debug;
-import gridpilot.TaskMgr;
+import gridpilot.DatasetMgr;
 import gridpilot.Database.DBResult;
 import gridpilot.Database.DBRecord;
 
@@ -26,7 +26,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
    variable (just to make sure no conflicts happen).
    */
 
-  private TaskMgr taskMgr;
+  private DatasetMgr taskMgr;
 
   private String jobTransName;
   private String version;
@@ -70,7 +70,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
   private String jobTransIdentifier;
   
   public JobDefCreationPanel(/*this is in case DBPanel was opened from the menu and_taskMgr is null*/String _dbName,
-      TaskMgr _taskMgr, Table _table,
+      DatasetMgr _taskMgr, Table _table,
       boolean _editing){
     
     editing = _editing;
@@ -84,8 +84,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
 
     if(taskMgr!=null){
       dbPluginMgr = taskMgr.getDBPluginMgr();
-      taskID = taskMgr.getTaskIdentifier();
-      taskName = taskMgr.getTaskName();
+      taskID = taskMgr.getDatasetID();
+      taskName = taskMgr.getDatasetName();
     }
     else{
       taskID = -1;

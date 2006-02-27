@@ -27,8 +27,6 @@ public class GridPilot extends JApplet{
   private static String replicaPrefix = "";
 
   private static String dbNames;
-  private static String userName;
-  private static String passwd;
 
   /**
    * Constructor
@@ -54,17 +52,13 @@ public class GridPilot extends JApplet{
   }
 
   public void gridpilotCommon(){
-    String user;
-    String passwd;
     String database;
 
     String [] up = null;
   	 dbs = getClassMgr().getConfigFile().getValues("Databases", "Systems");
      for(int i = 0; i < dbs.length; ++i){
-       user = getClassMgr().getConfigFile().getValue(dbs[i], "user");
-       passwd = getClassMgr().getConfigFile().getValue(dbs[i], "passwd");
        Debug.debug("Initializing db "+i+": "+dbs[i],3);
-       getClassMgr().setDBPluginMgr(dbs[i], new DBPluginMgr(dbs[i], user, passwd));
+       getClassMgr().setDBPluginMgr(dbs[i], new DBPluginMgr(dbs[i]));
      }
           
      colorMapping = getClassMgr().getConfigFile().getValues("gridpilot", "color mapping");
@@ -108,9 +102,9 @@ public class GridPilot extends JApplet{
  /**
  + Are we running as an applet?
  */
-public static boolean isApplet(){
-  return applet;
-} 
+  public static boolean isApplet(){
+    return applet;
+  } 
 
    /**
    * Return color mapping for job definition table, specified in the configuration file
@@ -300,8 +294,6 @@ public static boolean isApplet(){
    
     dbs = getClassMgr().getConfigFile().getValues("gridpilot", "Databases");
     for(int i = 0; i < dbs.length; ++i){
-      userName = getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
-      passwd = getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
       getClassMgr().getDBPluginMgr(dbs[i]).loadValues();
     }
     initDebug();
@@ -316,7 +308,8 @@ public static boolean isApplet(){
     if(debugList == null){
       getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("gridpilot", "debugList"));
       Debug.toTrace="";
-    } else {
+    }
+    else {
       Debug.toTrace=debugList;
       Debug.debug("debug list set to : "+debugList, 2);
     }
@@ -327,7 +320,9 @@ public static boolean isApplet(){
       getClassMgr().setDebugLevel(3);
     }
 
-    try{ getClassMgr().setDebugLevel(new Integer(debugLevel).intValue());}
+    try{
+      getClassMgr().setDebugLevel(new Integer(debugLevel).intValue());
+    }
     catch(NumberFormatException nfe){
       getClassMgr().getLogFile().addMessage("Debug is not an integer in configFile, section [gridpilot]");
       getClassMgr().setDebugLevel(3);
@@ -348,7 +343,7 @@ public static boolean isApplet(){
     panel.updateUI();
     w.getContentPane().add(panel);
     w.pack();
-    w.show();
+    w.setVisible(true);
     Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
     w.setLocation(screenSize.width/2 - w.getSize().width/2,
                   screenSize.height/2 - w.getSize().height/2);
@@ -357,13 +352,12 @@ public static boolean isApplet(){
      */
     dbs = getClassMgr().getConfigFile().getValues("gridpilot", "Databases");
     for(int i = 0; i < dbs.length; ++i){
-      userName = getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
-      passwd = getClassMgr().getConfigFile().getValue("gridpilot", "Databases");
       getClassMgr().getDBPluginMgr(dbs[i]).disconnect();
-      try {
+      try{
         getClassMgr().getDBPluginMgr(dbs[i]).init();
         // TODO: reload panels?
-      } catch (Throwable e) {
+      }
+      catch (Throwable e){
         Debug.debug("Could not load db  " + e.getMessage(), 3);
         exit(-1);
       }
@@ -372,7 +366,7 @@ public static boolean isApplet(){
     /*
      Close small progress window
      */
-    w.hide();
+    w.setVisible(false);
     w.dispose();
   }
 

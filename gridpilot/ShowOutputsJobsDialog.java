@@ -165,7 +165,7 @@ public class ShowOutputsJobsDialog
 
     dialog.setResizable(true);
 
-    dialog.show();
+    dialog.setVisible(true);
     dialog.dispose();
 
     for (int i = 0; i < threads.size(); ++i) {

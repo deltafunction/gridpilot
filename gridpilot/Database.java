@@ -11,7 +11,7 @@ public interface Database{
   public static final int FAILED = 5;
   public static final int ABORTED = 6;
   public static final int UNEXPECTED = 7;
-
+  
   public String connect();
   public void disconnect();
   public void clearCaches();
@@ -22,21 +22,21 @@ public interface Database{
   
   // ####### Transformation table
   // TODO: change this to whatever we end up with
-  // These records must contain fields "jobTransName" and "version". If necessary, added by hand.
+  // These records must contain fields "transformation" and "version". If necessary, added by hand.
   public DBResult getTransformations();
   public DBRecord getTransformation(int transformationID);
   public boolean createTransformation(String [] values);
-  public boolean updateTransformation(int jobTransID, String [] fields, String [] values);
+  public boolean updateTransformation(int transformatinID, String [] fields, String [] values);
   public boolean deleteTransformation(int transformationID);
   public String [] getVersions(String transformationName);
   public String [] getTransJobParameters(int transformationID);
 
-  // ####### Task table
-  public boolean createTask(String [] values);
-  public boolean updateTask(int taskID, String [] fields, String [] values);
-  public boolean deleteTask(int taskID);
-  public DBRecord getTask(int taskID);
-  public DBResult getJobDefinitions(int taskID, String [] fieldNames);
+  // ####### Dataset table
+  public DBResult getJobDefinitions(int datasetID, String [] fieldNames);
+  public boolean createDataset(String [] values);
+  public boolean updateDataset(int taskID, String [] fields, String [] values);
+  public boolean deleteDataset(int taskID);
+  public DBRecord getDataset(int taskID);
 
   // ####### Job definition table
   public DBRecord getJobDefinition(int jobDefID);
@@ -50,7 +50,7 @@ public interface Database{
   public String getJobStatus(int jobDefID);
   public String getJobDefUser(int jobDefID);
   public String getJobDefName(int jobDefID);
-  public int getJobDefTaskId(int jobDefID);
+  public int getJobDefDatasetID(int jobDefID);
   public String getTransformationID(int jobDefID);
   public String getExtractScript(int jobDefID);
   public String getValidationScript(int jobDefID);
@@ -78,8 +78,8 @@ public interface Database{
   public boolean updateRunInfo(JobInfo jobInfo);
   public boolean setJobDefsField(int [] identifiers, String field, String value);
   public String getUserLabel();
-  public boolean saveDefVals(int taskId, String[] defvals, String user);
-  public String [] getDefVals(int taskId, String user);
+  public boolean saveDefVals(int datasetID, String[] defvals, String user);
+  public String [] getDefVals(int datasetID, String user);
   public String [] getFieldNames(String table);
   public String getPackInitText (String pack, String cluster);
   // The column in the tranformation table holding the

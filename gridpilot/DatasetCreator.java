@@ -1,6 +1,5 @@
 package gridpilot;
 
-import gridpilot.DatasetMgr;
 import java.util.*;
 import javax.swing.*;
 import java.awt.*;
@@ -9,14 +8,12 @@ import gridpilot.ArithmeticExpression;
 import gridpilot.dbplugins.proddb.ProdDBXmlNode;
 
 /**
- * Creates the partititons with datas given by JobDefCreationPanel.
+ * Creates the datasets with datas given by DatasetCreationPanel.
  * This object removes all known constants from the attributes, and evaluates them.
  *
  */
-public class JobDefCreator {
+public class DatasetCreator{
 
-  private DatasetMgr taskMgr;
-  private DBPluginMgr dbPluginMgr;
   private int from;
   private int to;
   private boolean showResults;
@@ -28,10 +25,8 @@ public class JobDefCreator {
   private String [] cstAttrNames;
   
   private boolean editing;
-  
-  private String dbName;
 
-  private static Vector vJobDef = new Vector();
+  private static Vector vDataset = new Vector();
   private static Vector vCstAttr = new Vector();
 
   private static JProgressBar pb = new JProgressBar();
@@ -40,27 +35,19 @@ public class JobDefCreator {
 
   private Object[] showResultsOptions = {"OK", "OK for all", "Skip", "Skip all"};
 
-  public JobDefCreator(String _dbName,
-                       DatasetMgr _taskMgr,
-                       int _from,
-                       int _to,
-                       boolean _showResults,
-                       Vector _constants,
-                       String [] _cstAttr,
-                       String [] _cstAttrNames,
-                       boolean _editing
-                       ){
+  private DBPluginMgr dbPluginMgr = null;
 
-    taskMgr = _taskMgr;
-    dbName = _dbName;
-    
-    if(taskMgr!=null){
-      dbPluginMgr = taskMgr.getDBPluginMgr();
-    }
-    else{
-      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
-    }
-    
+  public DatasetCreator(     DBPluginMgr _dbPluginMgr,
+                          int _from,
+                          int _to,
+                          boolean _showResults,
+                          Vector _constants,
+                          String [] _cstAttr,
+                          String [] _cstAttrNames,
+                          boolean _editing
+                          ){
+
+    dbPluginMgr = _dbPluginMgr;
     from = _from;
     to = _to;
     showResults = _showResults;
@@ -75,30 +62,30 @@ public class JobDefCreator {
 
     resCstAttr = new String[cstAttr.length];
 
-    createJobDefs();
+    createDatasts();
   }
 
-  private void createJobDefs(){
-    Debug.debug("createJobDefs", 1);
+  private void createDatasts(){
+    Debug.debug("createDatasets", 1);
     
     try{
       removeConstants();
     }catch(SyntaxException se){
 
-      String msg = "Syntax error  : \n" + se.getMessage() + "\nCannot create jobDefinition";
+      String msg = "Syntax error  : \n" + se.getMessage() + "\nCannot create dataset";
       String title = "Syntax error";
       MessagePane.showMessage(msg, title);
       return;
     }
 
 
-    int firstJobDef = from;
-    int lastJobDef  = to;
+    int firstDataset = from;
+    int lastDataset  = to;
 
-    if(firstJobDef > lastJobDef){
+    if(firstDataset > lastDataset){
       GridPilot.getClassMgr().getLogFile().addMessage(
           "first value (from) cannot be greater then last value (To) : " +
-          firstJobDef + ">" + lastJobDef);
+          firstDataset + ">" + lastDataset);
       return;
     }
 
@@ -108,34 +95,34 @@ public class JobDefCreator {
 
     boolean showThis;
 
-    int jobDefCount = 0;
+    int datasetCount = 0;
 
-    for(int currentJobDef = firstJobDef ; currentJobDef <= lastJobDef && !skipAll; ++currentJobDef){
+    for(int currentDataset = firstDataset ; currentDataset <= lastDataset && !skipAll; ++currentDataset){
 
       showThis = showResults;
 
       try{
-        evaluate(currentJobDef);
+        evaluate(currentDataset);
       }catch(Exception ex){
         String msg = "";
         String title = "";
         if(ex instanceof ArithmeticException){
-          msg = "Arithmetic error in jobDefinition " + currentJobDef+" : \n" +
+          msg = "Arithmetic error in dataset " + currentDataset+" : \n" +
                 ex.getMessage() +
-                "\n\nDo you want to continue jobDefinition creation ?";
+                "\n\nDo you want to continue dataset creation ?";
           title = "Arithmetic error";
         }
         else{
           if(ex instanceof SyntaxException){
-            msg = "Syntax error in jobDefinition " + currentJobDef+" : \n" +
+            msg = "Syntax error in dataset " + currentDataset+" : \n" +
                   ex.getMessage() +
-                  "\n\nDo you want to continue jobDefinition creation ?";
+                  "\n\nDo you want to continue dataset creation ?";
             title = "Syntax error";
           }
           else{ // ??? should not happen
             msg = "Unexpected " + ex.getClass().getName() + " : " + ex.getMessage();
             title = "Unexpected exception";
-            GridPilot.getClassMgr().getLogFile().addMessage("JobDef creation", ex);
+            GridPilot.getClassMgr().getLogFile().addMessage("Dataset creation", ex);
           }
         }
 
@@ -151,25 +138,10 @@ public class JobDefCreator {
           skip = true;
         }
       }
-
-      /*for(int i =0; i<cstAttr.length; ++i){
-        if(cstAttrNames[i].equals("jobXML")){
-          if(resCstAttr[i]==null || resCstAttr[i].equals("null") || resCstAttr[i].equals("")){
-            resCstAttr[i] = "";
-          }
-          else{
-            if(!editing && resCstAttr[i].indexOf("</jobDef>")<0 && resCstAttr[i].indexOf("<jobDef>")<0){
-              resCstAttr[i] = "<jobDef>"+resCstAttr[i]+"</jobDef>";
-            }
-          }
-          break;
-        }
-      }*/
-
       
       if(showThis){
-        int choice = showResult(currentJobDef, resCstAttr,
-            currentJobDef<lastJobDef);
+        int choice = showResult(currentDataset, resCstAttr,
+            currentDataset < lastDataset);
 
         switch(choice){
           case 0  : skip = false;  break;  // OK
@@ -180,11 +152,11 @@ public class JobDefCreator {
         }
       }
       if(!skip){
-        Debug.debug("creating jobDefinition # " + currentJobDef, 2);
-        vJobDef.add(new Integer(currentJobDef));
+        Debug.debug("creating dataset # " + currentDataset, 2);
+        vDataset.add(new Integer(currentDataset));
         vCstAttr.add(resCstAttr.clone());
  
-        ++jobDefCount;
+        ++datasetCount;
 
       }
     }
@@ -193,70 +165,54 @@ public class JobDefCreator {
     if(!skipAll){
 
       Debug.debug("going to set pb", 2);
-      //pb.setMaximum(pb.getMaximum() + jobDefCount);
-      pb.setMaximum(jobDefCount);
+      //pb.setMaximum(pb.getMaximum() + datasetCount);
+      pb.setMaximum(datasetCount);
 
-      Debug.debug("going to call createDBJobDefs", 2);
-      createDBJobDefs();
+      Debug.debug("going to call createDBDatasets", 2);
+      createDBDatasets();
 
     }
   }
 
-  private void createDBJobDefs(){
+  private void createDBDatasets(){
     synchronized(semaphoreDBCreation){
-      while(!vJobDef.isEmpty()){
-        int part = ((Integer) vJobDef.remove(0)).intValue();
+      while(!vDataset.isEmpty()){
+        int part = ((Integer) vDataset.remove(0)).intValue();
         resCstAttr = (String [] ) vCstAttr.remove(0);
 
-        Debug.debug("Creating jobDefinition # " + part + " ...", 2);
+        Debug.debug("Creating dataset # " + part + " ...", 2);
         pb.setValue(pb.getValue()+1);
         Debug.debug(this.getClass().getName() + " is calling DB", 2);
 
         if(editing){
-          String jobDefIdentifier = GridPilot.getClassMgr().getConfigFile().getValue(
-              taskMgr.getDBPluginMgr().getDBName(),
-          "job definition table identifier");
           int id = -1;
           for(int i=0; i<cstAttrNames.length; ++i){
             if(cstAttrNames[i].toString().equalsIgnoreCase(
-                jobDefIdentifier)){
+                "identifier")){
               id = Integer.parseInt(resCstAttr[i]);
               break;
             }
           }
           Debug.debug("Updating...", 3);
-          if(!taskMgr.getDBPluginMgr().updateJobDefinition(id, cstAttrNames, resCstAttr)){
-            if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDef " + part +
+          if(!dbPluginMgr.updateDataset(id, cstAttrNames, resCstAttr)){
+            if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "Dataset " + part +
                 " cannot be updated", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION)
             //cancel creation
-            vJobDef.removeAllElements();
+            vDataset.removeAllElements();
           }
         }
         else{
-          if(taskMgr!=null){
-            if(!taskMgr.createJobDef(cstAttrNames, resCstAttr)){
-              if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDef " + part +
+          if(!dbPluginMgr.createDataset(resCstAttr)){
+              if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "Dataset " + part +
                   " cannot be created", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION)
               //cancel creation
-              vJobDef.removeAllElements();
-            }
+              vDataset.removeAllElements();
           }
           else{
-            try{
-              dbPluginMgr.createJobDef(cstAttrNames, resCstAttr);
-            }
-            catch(Exception e){
-              Debug.debug(e.getMessage(), 1);
-              if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDef " + part +
-                  " cannot be created", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION){
-                //cancel creation
-                vJobDef.removeAllElements();
-              }
-            }
+            //shownDatasets.add(task);
           }
         }
       }
-      //taskMgr.getVectorTableModel().fireTableDataChanged();
     }
   }
 
@@ -355,10 +311,10 @@ public class JobDefCreator {
   }
 
 
-  private void evaluate(int currentJobDef)throws ArithmeticException, SyntaxException{
+  private void evaluate(int currentTask)throws ArithmeticException, SyntaxException{
 
     for(int i=0; i< resCstAttr.length; ++i)
-      resCstAttr[i] = evaluate(cstAttr[i], currentJobDef);
+      resCstAttr[i] = evaluate(cstAttr[i], currentTask);
 
   }
 
@@ -413,7 +369,7 @@ public class JobDefCreator {
     return res;
 
   }
-  private int showResult(int currentJobDef, String [] resCstAttr,
+  private int showResult(int currentTask, String [] resCstAttr,
                          boolean moreThanOne){
 
     JPanel pResult = new JPanel(new GridBagLayout());
@@ -423,30 +379,26 @@ public class JobDefCreator {
     for(int i =0; i<cstAttr.length; ++i, ++row){
       pResult.add(new JLabel(cstAttrNames[i] + " : "), new GridBagConstraints(0, row, 1, 1, 0.0, 0.0
       ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
-      JComponent jval = null;
-      JTextArea textArea = null;
-      if(cstAttrNames[i].equalsIgnoreCase("jobXML") ||
-          cstAttrNames[i].equalsIgnoreCase("jobPars") ||
-         cstAttrNames[i].equalsIgnoreCase("jobOutputs") ||
-         cstAttrNames[i].equalsIgnoreCase("jobLogs") ||
-         cstAttrNames[i].equalsIgnoreCase("jobInputs")){
+      JComponent jval;
+      if(cstAttrNames[i].equals("actualPars")){
+
+        JTextArea textArea = new JTextArea("");
         try{
-          // Just give it a try with the proddb schema...
           if(resCstAttr[i]!=null && !resCstAttr[i].equals("null") &&
               !resCstAttr[i].equals("")){
             xmlNode = ProdDBXmlNode.parseString(resCstAttr[i], 0);
             xmlNode.fillText();
           }
-
-          textArea = new JTextArea(xmlNode.parsedText);
-
         }
         catch(Exception e){
-          Debug.debug("Could not parse XML. "+e.getMessage(), 2);
-          e.printStackTrace();
           // If it doesn't work, show raw XML
           textArea = new JTextArea(resCstAttr[i]);
         }
+
+        if(xmlNode!=null && xmlNode.parsedText!=null){
+          textArea = new JTextArea(xmlNode.parsedText);
+        }
+        
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
         textArea.setEditable(false);
@@ -475,7 +427,7 @@ public class JobDefCreator {
                                      showResultsOptions[0]);
     
 
-    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "JobDef # "+currentJobDef);
+    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "Task # "+currentTask);
     
     dialog.requestFocusInWindow();
     
@@ -498,15 +450,5 @@ public class JobDefCreator {
         return i;
     return JOptionPane.CLOSED_OPTION;
 
-
-
-    /*
-
-    int choice = JOptionPane.showOptionDialog(JOptionPane.getRootFrame(),
-        sp, "JobDef # " +
-        currentJobDef, JOptionPane.YES_NO_CANCEL_OPTION,JOptionPane.QUESTION_MESSAGE,
-        null, showResultsOptions, showResultsOptions[0]);
-
-    return choice;*/
   }
 }

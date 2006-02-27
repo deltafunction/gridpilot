@@ -184,10 +184,10 @@ public class JobValidation {
                          ") failed", job);
 
     if(dbStatus != job.getDBStatus()){
-      TaskMgr taskMgr = GridPilot.getClassMgr().getTaskMgr(job.getDBName(),
-          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefTaskId(
+      DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
+          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
               job.getJobDefId()));
-      taskMgr.updateDBStatus(job, dbStatus);
+      datasetMgr.updateDBStatus(job, dbStatus);
     }
 
     if(dbStatus != job.getDBStatus()){ // checks that updateAMIStatus succeded

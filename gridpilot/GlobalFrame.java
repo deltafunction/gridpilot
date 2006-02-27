@@ -164,9 +164,10 @@ public class GlobalFrame extends JFrame{
     // Trim title name before adding new tab
     String title = newPanel.getTitle();
     String smallTitle = null;
-    if (title.length() > 20) {
+    if(title.length()>20){
       smallTitle = title.substring(0,20) + "...";
-    } else {
+    }
+    else{
       smallTitle = title;
     }
     Debug.debug("Adding tab "+allPanels.size(), 3);
@@ -330,10 +331,10 @@ public class GlobalFrame extends JFrame{
              pDialog.remove(pDialog.buttonPanel);
           }
           if(pDialog.isShowing()){
-            pDialog.hide();
+            pDialog.setVisible(false);
           }
           else{
-            pDialog.show();
+            pDialog.setVisible(true);
           }
         }catch(Exception ex){
           Debug.debug("Could not create panel ", 1);

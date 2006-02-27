@@ -163,18 +163,18 @@ public class ConfigFile {
         line = readLine();
         if(line == null)
           break;
-      }while(line != null && (
-             (begin = line.indexOf('['))== -1 ||
-             (end = line.indexOf(']'))== -1 ||
-             !line.substring(begin+1, end).trim().equalsIgnoreCase(section.trim())));
-//             !line.trim().startsWith("["+section.trim()+"]"));
+      }
+      while(line!=null && (
+            (begin = line.indexOf('['))==-1 ||
+            (end = line.indexOf(']'))==-1 ||
+            !line.substring(begin+1, end).trim().equalsIgnoreCase(section.trim())));
 
-      if(line == null){
-//        System.err.println("ConfigFile : section "+section+ " doesn't exist");
+      if(line==null){
         return false;
       }
 
-    }catch(IOException ioe){
+    }
+    catch(IOException ioe){
       System.err.println("cannot read "+ configFileName);
       System.err.println(ioe.getMessage());
       return false;
@@ -198,13 +198,14 @@ public class ConfigFile {
     int isIndex=0; // index of '='
     try{
       do{ // read the file until end of file is reached, next section is reached or
-      // an suitable 'attribute = value' is found
+          // a suitable 'attribute = value' is found
         line = readLine();
-      }while(line != null && !line.startsWith("[") &&
-             ((isIndex = line.indexOf('=')) == -1 ||
-             !line.substring(0, isIndex).trim().equalsIgnoreCase(attribute.trim())));
+      }
+      while(line!=null && !line.startsWith("[") &&
+            ((isIndex = line.indexOf('='))==-1 ||
+            !line.substring(0, isIndex).trim().equalsIgnoreCase(attribute.trim())));
 
-      if(line == null || line.trim().startsWith("[")){
+      if(line==null || line.trim().startsWith("[")){
         res = null;
       }
       else {
@@ -212,7 +213,8 @@ public class ConfigFile {
         if (res.length() == 0)
           res = null; // case 'attribute = '
       }
-    }catch(IOException ioe){
+    }
+    catch(IOException ioe){
       System.err.println("cannot read "+ configFileName);
       res = null;
     }

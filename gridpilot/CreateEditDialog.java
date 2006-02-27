@@ -33,7 +33,7 @@ public class CreateEditDialog extends JDialog{
     this.addWindowListener(new WindowAdapter(){
       public void windowClosing(WindowEvent we){
         createEditPanel.windowClosing();
-        we.getWindow().hide();
+        we.getWindow().setVisible(false);
         //Debug.debug("Thwarted user attempt to close window.", 3);
       }
     });
@@ -109,7 +109,7 @@ public class CreateEditDialog extends JDialog{
     switch(((JButton)e.getSource()).getMnemonic()){
       case BPREV :
         createEditPanel.windowClosing();
-        this.hide();
+        this.setVisible(false);
         break;
 
       case BCREATE :
@@ -119,7 +119,7 @@ public class CreateEditDialog extends JDialog{
           }
           }.start();
         //if(editing){
-          //this.hide();
+          //this.setVisible(false);
         //}
         break;
 

@@ -22,7 +22,7 @@ import java.util.Vector;
  * <li>in configuration file, in section [Computing systems], add an item 'systemName'
  * <li>create a section ['systemName'], with minimum these attributes :
  * <ul>
- *  <li> ComputingSystem class = Name.of.the.class
+ *  <li> class = Name.of.the.class
  *  <li> working path = 'path'
  *  and optionaly
  *  <li> max jobs by update = 'number'

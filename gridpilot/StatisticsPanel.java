@@ -67,13 +67,13 @@ public class StatisticsPanel extends JPanel{
   }
 
   public void update(int taskID){
-    Vector taskMgrs = GridPilot.getClassMgr().getTaskMgrs();
+    Vector taskMgrs = GridPilot.getClassMgr().getDatasetMgrs();
     if(style<painters.size()){
       for(int i=0; i<taskMgrs.size(); ++i){
-        if(((TaskMgr) taskMgrs.get(i)).getTaskIdentifier()==taskID){
-          //values = ((TaskMgr) taskMgrs.get(i)).getJobsByDBStatus();
+        if(((DatasetMgr) taskMgrs.get(i)).getDatasetID()==taskID){
+          //values = ((DatasetMgr) taskMgrs.get(i)).getJobsByDBStatus();
           valuesTable.put(new Integer(taskID),
-              ((TaskMgr) taskMgrs.get(i)).getJobsByDBStatus());
+              ((DatasetMgr) taskMgrs.get(i)).getJobsByDBStatus());
           for(Iterator it=valuesTable.values().iterator(); it.hasNext();){
             for(int j=0; j<values.length; ++j){
               values[j] += ((int []) valuesTable.get(((Integer) it.next())))[j];
@@ -86,10 +86,10 @@ public class StatisticsPanel extends JPanel{
     }
     else{
       for(int i=0; i<taskMgrs.size(); ++i){
-        if(((TaskMgr) taskMgrs.get(i)).getTaskIdentifier()==taskID){
-          //values = ((TaskMgr) taskMgrs.get(i)).getJobsByStatus();
+        if(((DatasetMgr) taskMgrs.get(i)).getDatasetID()==taskID){
+          //values = ((DatasetMgr) taskMgrs.get(i)).getJobsByStatus();
           valuesTable.put(new Integer(taskID),
-              ((TaskMgr) taskMgrs.get(i)).getJobsByStatus());
+              ((DatasetMgr) taskMgrs.get(i)).getJobsByStatus());
           for(Iterator it=valuesTable.values().iterator(); it.hasNext();){
             for(int j=0; j<values.length; ++j){
               values[j] += ((int []) valuesTable.get(((Integer) it.next())))[j];

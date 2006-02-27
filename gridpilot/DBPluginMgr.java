@@ -29,11 +29,6 @@ public class DBPluginMgr implements Database, PanelUtil{
   
   private PanelUtil pu;
   
-  private String database ;
-  private String host ;
-  private String user;
-  private String passwd;
-  private String dbPrefix; //prepend to tables
 // TODO: cache here??
   private HashMap partInfoCacheId = null ;
 
@@ -43,10 +38,8 @@ public class DBPluginMgr implements Database, PanelUtil{
   
   private boolean askBeforeInterrupt = true;
 
-  public DBPluginMgr(String _dbName, String _user, String _passwd){
+  public DBPluginMgr(String _dbName){
     dbName = _dbName;
-    user = _user;
-    passwd = _passwd;
   }
 
   public String getDBName(){
@@ -69,34 +62,26 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     loadValues();
 
-    /*String transDB = configFile.getValue(dbName, "transDB");
-    String project = configFile.getValue(dbName, "project");
-    String level = configFile.getValue(dbName, "level");
-    String site = configFile.getValue(dbName, "site");*/
-    // ****
-    
-    String driver = configFile.getValue(dbName, "driver");
-    host = configFile.getValue(dbName, "host");
-    database = configFile.getValue(dbName, "database");
-    user = configFile.getValue(dbName, "user");
-    passwd = configFile.getValue(dbName, "passwd");
-    dbPrefix = configFile.getValue(dbName, "dbprefix");
-    
-    String dbClass = configFile.getValue(dbName, "database class");
+    String dbClass = configFile.getValue(dbName, "class");
     if(dbClass == null){
       throw new Exception("Cannot load class for system " + dbName + " : \n"+
-                          configFile.getMissingMessage(dbName, "database class"));
+                          configFile.getMissingMessage(dbName, "class"));
     }
 
-    Class [] dbArgsType = {/*String.class, String.class, String.class,*/
-        String.class, String.class, String.class, String.class, String.class, String.class, String.class};
-    
-    Object [] dbArgs = {/*AMI*//*project, level, site, transDB,*//**/
-        dbName, driver, host, database, user, passwd, dbPrefix};
+    String [] parameters = configFile.getValues(dbName, "parameters");
+    Class [] dbArgsType = new Class [parameters.length];
+    Object [] dbArgs = new String [parameters.length];
+    for(int i=0; i<parameters.length; ++i){
+      dbArgsType[i] = String.class;
+      dbArgs[i] = configFile.getValue(dbName, parameters[i]);
+      if(dbArgs[i]==null){
+        dbArgs[i] = "";
+      }
+    }
 
     db = (Database) loadClass(dbClass, dbArgsType, dbArgs);
 
-}
+  }
 
   /**
    * Initializes a JobDefCreationPanel
@@ -119,47 +104,49 @@ public class DBPluginMgr implements Database, PanelUtil{
     Object [] puArgs = {panel};
 
     pu = (PanelUtil) loadClass(puClass, puArgsType, puArgs);
-}
+  }
   
   /**
-     * Loads plug-in.
-     * @throws Throwable if an exception or an error occurs during plug-in loading
-     */
-    public Object loadClass(String dbClass, Class [] dbArgsType,
-        Object [] dbArgs) throws Throwable{//Exception{
-        Debug.debug("Loading plugin: "+dbName+" : "+dbClass, 2);
-        // Arguments and class name for <DatabaseName>Database
-        boolean loadfailed = false;
-        Object ret = null;
-        
-        try{
-        	Class newClass = this.getClass().getClassLoader().loadClass(dbClass);
-          ret = /*(Database)*/(newClass.getConstructor(dbArgsType).newInstance(dbArgs));
-          Debug.debug("plugin " + dbName + "(" + dbClass + ") loaded", 2);
-        }
-        catch(Exception e){
-        	loadfailed = true;
-        	//do nothing, will try with MyClassLoader.
-        }
-        if(loadfailed){
-          try{
-            // loading of this plug-in
-           MyClassLoader mcl = new MyClassLoader();
-           ret = /*(Database)*/(mcl.findClass(dbClass).getConstructor(dbArgsType).newInstance(dbArgs)); 
-           Debug.debug("plugin " + dbName + "(" + dbClass + ") loaded", 2);
-         }
-         catch(IllegalArgumentException iae){
-           logFile.addMessage("Cannot load class for " + dbName + ".\nThe plugin constructor " +
-                              "must have one parameter (String)", iae);
-           throw iae;
-         }
-         catch(Exception e){
-           logFile.addMessage("Cannot load class for " + dbName, e);
-           //throw e;
-         }
-        }
-        return ret;
+   * Loads plug-in.
+   * @throws Throwable if an exception or an error occurs during plug-in loading
+   */
+  public Object loadClass(String dbClass, Class [] dbArgsType,
+     Object [] dbArgs) throws Throwable{
+    Debug.debug("Loading plugin: "+dbName+" : "+dbClass, 2);
+    // Arguments and class name for <DatabaseName>Database
+    boolean loadfailed = false;
+    Object ret = null;
+    Debug.debug("argument types: "+Util.arrayToString(dbArgsType), 3);
+    Debug.debug("arguments: "+Util.arrayToString(dbArgs), 3);
+    try{
+      Class newClass = this.getClass().getClassLoader().loadClass(dbClass);
+      ret = (newClass.getConstructor(dbArgsType).newInstance(dbArgs));
+      Debug.debug("plugin " + dbName + "(" + dbClass + ") loaded, "+ret.getClass(), 2);
     }
+    catch(Exception e){
+      e.printStackTrace();
+      loadfailed = true;
+      //do nothing, will try with MyClassLoader.
+    }
+    if(loadfailed){
+      try{
+        // loading of this plug-in
+       MyClassLoader mcl = new MyClassLoader();
+       ret = (mcl.findClass(dbClass).getConstructor(dbArgsType).newInstance(dbArgs)); 
+       Debug.debug("plugin " + dbName + "(" + dbClass + ") loaded", 2);
+      }
+      catch(IllegalArgumentException iae){
+        logFile.addMessage("Cannot load class for " + dbName + ".\nThe plugin constructor " +
+                          "must have one parameter (String)", iae);
+        throw iae;
+      }
+      catch(Exception e){
+        logFile.addMessage("Cannot load class for " + dbName, e);
+        //throw e;
+      }
+    }
+    return ret;
+  }
 
   /**
    * Reads time out values in configuration file.
@@ -176,7 +163,8 @@ public class DBPluginMgr implements Database, PanelUtil{
     if(tmp!=null){
       try{
         dbTimeOut = new Integer(tmp).intValue();
-      }catch(NumberFormatException nfa){
+      }
+      catch(NumberFormatException nfa){
         logFile.addMessage("value of default timeout (" + tmp +") is not an integer");
       }
     }
@@ -231,7 +219,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getFieldNames(table);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                               table, t);
@@ -254,7 +243,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getPackInitText(pack, cluster);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              pack + " " + cluster, t);
@@ -277,7 +267,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getStdOutFinalDest(jobDefinitionID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -300,7 +291,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getStdErrFinalDest(jobDefinitionID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -323,7 +315,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getExtractScript(jobDefinitionID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -346,7 +339,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getValidationScript(jobDefinitionID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -369,7 +363,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getTransformationScript(jobDefinitionID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -392,7 +387,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getTransformationPackages(jobDefinitionID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -415,7 +411,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getTransformationSignature(jobDefinitionID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -438,7 +435,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getTransNameColumn();
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName , t);
         }
@@ -460,7 +458,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getJobDefUser(jobDefinitionID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -483,7 +482,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getJobDefName(jobDefinitionID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -500,13 +500,38 @@ public class DBPluginMgr implements Database, PanelUtil{
       return null;
   }
 
+  public synchronized int getJobDefDatasetID(final int jobDefinitionID){
+    MyThread t = new MyThread(){
+      int res = -1;
+      public void run(){
+        try{
+          res = db.getJobDefDatasetID(jobDefinitionID);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             jobDefinitionID, t);
+        }
+      }
+      public int getIntRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getJobDefDatasetID"))
+      return t.getIntRes();
+    else
+      return -1;
+  }
+
   public synchronized String getJobStatus(final int jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
         try{
           res = db.getJobStatus(jobDefinitionID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -529,7 +554,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getJobRunUser(jobDefinitionID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -552,7 +578,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getJobDefinition(jobDefID).getValue(key).toString();
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -575,7 +602,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getRunInfo(jobDefID).getValue(key).toString();
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -598,7 +626,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getUserLabel();
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName, t);
         }
@@ -620,7 +649,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getTransformationID(jobDefID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -645,7 +675,8 @@ public class DBPluginMgr implements Database, PanelUtil{
           res = db.getTransformation(
               Integer.parseInt(db.getTransformationID(jobDefID))
               ).getValue(key).toString();
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -669,7 +700,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getOutputs(jobDefID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -693,7 +725,8 @@ public class DBPluginMgr implements Database, PanelUtil{
         public void run(){
           try{
             res = db.getInputs(jobDefID);
-          }catch(Throwable t){
+          }
+          catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                jobDefID, t);
@@ -717,7 +750,8 @@ public class DBPluginMgr implements Database, PanelUtil{
         public void run(){
           try{
             res = db.getJobDefTransPars(jobDefID);
-          }catch(Throwable t){
+          }
+          catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                jobDefID, t);
@@ -740,7 +774,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getJobDefOutLocalName(jobDefID, outpar);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -763,7 +798,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getJobDefInLocalName(jobDefID, outpar);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -786,7 +822,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getJobDefOutRemoteName(jobDefinitionID, outpar);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -809,7 +846,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getJobDefInRemoteName(jobDefinitionID, outpar);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -826,17 +864,18 @@ public class DBPluginMgr implements Database, PanelUtil{
       return null;
   }
 
-  public synchronized String [] getDefVals(final int taskId, final String user){
+  public synchronized String [] getDefVals(final int datasetID, final String user){
   
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getDefVals(taskId, user);
-        }catch(Throwable t){
+          res = db.getDefVals(datasetID, user);
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             taskId, t);
+                             datasetID, t);
         }
       }
       public String [] getString2Res(){return res;}
@@ -857,7 +896,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getTransJobParameters(transformationID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              transformationID, t);
@@ -874,18 +914,19 @@ public class DBPluginMgr implements Database, PanelUtil{
       return null;
   }
 
-  public synchronized boolean saveDefVals(final int taskID,
+  public synchronized boolean saveDefVals(final int datasetID,
       final String[] defvals, final String user){
   
     MyThread t = new MyThread(){
       boolean res = false;
       public void run(){
         try{
-          res = db.saveDefVals(taskID, defvals, user);
-        }catch(Throwable t){
+          res = db.saveDefVals(datasetID, defvals, user);
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             taskID, t);
+                             datasetID, t);
         }
       }
       public boolean getBoolRes(){return res;}
@@ -906,7 +947,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.createJobDefinition(values);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              values.toString(), t);
@@ -930,7 +972,8 @@ public class DBPluginMgr implements Database, PanelUtil{
         public void run(){
           try{
             res = db.createRunInfo(jobInfo);
-          }catch(Throwable t){
+          }
+          catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                jobInfo.toString(), t);
@@ -975,8 +1018,9 @@ public class DBPluginMgr implements Database, PanelUtil{
     }
     DBRecord jobDef = new DBRecord(jobDefFieldNames, vals);
     /*try{
-      jobDef.setValue("currentState", "DEFINED");
-    }catch(Exception e){
+        jobDef.setValue("currentState", "DEFINED");
+      }
+      catch(Exception e){
       Debug.debug("Failed setting currentState. " +e.getMessage(),3);
       return false;
     }*/
@@ -989,30 +1033,6 @@ public class DBPluginMgr implements Database, PanelUtil{
     }
   }
 
-  public synchronized boolean createTask(final String [] values){
-    
-      MyThread t = new MyThread(){
-        boolean res = false;
-        public void run(){
-          try{
-            res = db.createTask(values);
-          }catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               values.toString(), t);
-          }
-        }
-        public boolean getBoolRes(){return res;}
-      };
-    
-      t.start();
-    
-      if(waitForThread(t, dbName, dbTimeOut, "createTask"))
-        return t.getBoolRes();
-      else
-        return false;
-    }
-
   public synchronized boolean createTransformation(final String [] values){
     
       MyThread t = new MyThread(){
@@ -1020,7 +1040,8 @@ public class DBPluginMgr implements Database, PanelUtil{
         public void run(){
           try{
             res = db.createTransformation(values);
-          }catch(Throwable t){
+          }
+          catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                values.toString(), t);
@@ -1037,6 +1058,31 @@ public class DBPluginMgr implements Database, PanelUtil{
         return false;
     }
 
+  public synchronized boolean createDataset(final String [] values){
+    
+      MyThread t = new MyThread(){
+        boolean res = false;
+        public void run(){
+          try{
+            res = db.createDataset(values);
+          }
+          catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               values.toString(), t);
+          }
+        }
+        public boolean getBoolRes(){return res;}
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "createDataset"))
+        return t.getBoolRes();
+      else
+        return false;
+    }
+
   public synchronized boolean setJobDefsField(final int [] identifiers,
       final String field, final String value){
     
@@ -1045,7 +1091,8 @@ public class DBPluginMgr implements Database, PanelUtil{
         public void run(){
           try{
             res = db.setJobDefsField(identifiers, field, value);
-          }catch(Throwable t){
+          }
+          catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                field, t);
@@ -1070,7 +1117,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.updateJobDefinition(jobDefID, fields, values);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -1095,7 +1143,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.updateJobDefinition(jobDefID, values);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -1120,7 +1169,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.updateJobDefStatus(jobDefID, status);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -1144,7 +1194,8 @@ public class DBPluginMgr implements Database, PanelUtil{
         public void run(){
           try{
             res = db.updateRunInfo(jobInfo);
-          }catch(Throwable t){
+          }
+          catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                jobInfo.toString(), t);
@@ -1161,15 +1212,16 @@ public class DBPluginMgr implements Database, PanelUtil{
         return false;
     }
 
-  public synchronized boolean updateTask(final int taskID,
+  public synchronized boolean updateDataset(final int taskID,
       final String [] fields, final String [] values){
     
       MyThread t = new MyThread(){
         boolean res = false;
         public void run(){
           try{
-            res = db.updateTask(taskID, fields, values);
-          }catch(Throwable t){
+            res = db.updateDataset(taskID, fields, values);
+          }
+          catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                taskID, t);
@@ -1180,7 +1232,7 @@ public class DBPluginMgr implements Database, PanelUtil{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "updateTask"))
+      if(waitForThread(t, dbName, dbTimeOut, "updateDataset"))
         return t.getBoolRes();
       else
         return false;
@@ -1194,7 +1246,8 @@ public class DBPluginMgr implements Database, PanelUtil{
         public void run(){
           try{
             res = db.updateTransformation(jobTransID, fields, values);
-          }catch(Throwable t){
+          }
+          catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                jobTransID, t);
@@ -1218,7 +1271,8 @@ public class DBPluginMgr implements Database, PanelUtil{
         public void run(){
           try{
             res = db.deleteJobDefinition(jobDefID);
-          }catch(Throwable t){
+          }
+          catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                jobDefID, t);
@@ -1235,14 +1289,15 @@ public class DBPluginMgr implements Database, PanelUtil{
         return false;
     }
 
-  public synchronized boolean deleteTask(final int taskID){
+  public synchronized boolean deleteDataset(final int taskID){
     
       MyThread t = new MyThread(){
         boolean res = false;
         public void run(){
           try{
-            res = db.deleteTask(taskID);
-          }catch(Throwable t){
+            res = db.deleteDataset(taskID);
+          }
+          catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                taskID, t);
@@ -1253,23 +1308,24 @@ public class DBPluginMgr implements Database, PanelUtil{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "deleteTask"))
+      if(waitForThread(t, dbName, dbTimeOut, "deleteDataset"))
         return t.getBoolRes();
       else
         return false;
     }
 
-  public synchronized boolean deleteTransformation(final int taskID){
+  public synchronized boolean deleteTransformation(final int transformationID){
     
       MyThread t = new MyThread(){
         boolean res = false;
         public void run(){
           try{
-            res = db.deleteTransformation(taskID);
-          }catch(Throwable t){
+            res = db.deleteTransformation(transformationID);
+          }
+          catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
-                               taskID, t);
+                               transformationID, t);
           }
         }
         public boolean getBoolRes(){return res;}
@@ -1277,7 +1333,7 @@ public class DBPluginMgr implements Database, PanelUtil{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "deleteJobTransRecord"))
+      if(waitForThread(t, dbName, dbTimeOut, "deleteTransformation"))
         return t.getBoolRes();
       else
         return false;
@@ -1290,7 +1346,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.reserveJobDefinition(jobDefID, userName);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -1314,7 +1371,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.dereserveJobDefinition(jobDefID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -1338,7 +1396,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.select(selectQuery, identifier);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                               selectQuery, t);
@@ -1362,7 +1421,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getTransformations();
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName, t);
         }
@@ -1378,29 +1438,30 @@ public class DBPluginMgr implements Database, PanelUtil{
       return null;
   }
 
-  public synchronized DBRecord getTask(final int taskID){
-  
-    MyThread t = new MyThread(){
-      DBRecord res = null;
-      public void run(){
-        try{
-          res = db.getTask(taskID);
-        }catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             taskID, t);
+  public synchronized DBRecord getDataset(final int taskID){
+    
+      MyThread t = new MyThread(){
+        DBRecord res = null;
+        public void run(){
+          try{
+            res = db.getDataset(taskID);
+          }
+          catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName + " " +
+                               taskID, t);
+          }
         }
-      }
-      public DBRecord getDBRes(){return res;}
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "getTask"))
-      return t.getDBRes();
-    else
-      return null;
-  }
+        public DBRecord getDBRes(){return res;}
+      };
+    
+      t.start();
+    
+      if(waitForThread(t, dbName, dbTimeOut, "getDataset"))
+        return t.getDBRes();
+      else
+        return null;
+    }
 
   public synchronized DBRecord getTransformation(final int jobTransID){
     
@@ -1409,7 +1470,8 @@ public class DBPluginMgr implements Database, PanelUtil{
         public void run(){
           try{
             res = db.getTransformation(jobTransID);
-          }catch(Throwable t){
+          }
+          catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                jobTransID, t);
@@ -1433,7 +1495,8 @@ public class DBPluginMgr implements Database, PanelUtil{
         public void run(){
           try{
             res = db.getRunInfo(jobDefID);
-          }catch(Throwable t){
+          }
+          catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                jobDefID, t);
@@ -1450,17 +1513,18 @@ public class DBPluginMgr implements Database, PanelUtil{
         return null;
     }
 
-  public synchronized DBResult getJobDefinitions(final int taskID, final String [] fieldNames){
+  public synchronized DBResult getJobDefinitions(final int datasetID, final String [] fieldNames){
   
     MyThread t = new MyThread(){
       DBResult res = null;
       public void run(){
         try{
-          res = db.getJobDefinitions(taskID, fieldNames);
-        }catch(Throwable t){
+          res = db.getJobDefinitions(datasetID, fieldNames);
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             taskID, t);
+                             datasetID, t);
         }
       }
       public DBResult getDB2Res(){return res;}
@@ -1468,7 +1532,7 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getAllJobDefinitions"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJobDefinitions"))
       return t.getDB2Res();
     else
       return null;
@@ -1481,7 +1545,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getJobDefinition(jobDefinitionID);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -1505,10 +1570,10 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.connect();
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             user + " " + passwd, t);
+                             " from plugin " + dbName, t);
         }
       }
       public String getStringRes(){return res;}
@@ -1528,10 +1593,10 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
            db.disconnect();
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             user + " " + passwd, t);
+                             " from plugin " + dbName, t);
         }
       }
     };
@@ -1550,10 +1615,10 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
            db.clearCaches();
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             user + " " + passwd, t);
+                             " from plugin " + dbName, t);
         }
       }
     };
@@ -1671,7 +1736,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       GridPilot.getClassMgr().getConfigFile().getValue(dbName, "default "+tableName+" fields"));
       dbDefFields.put(tableName, ret);
       return ret;
-    }catch(Exception e){
+    }
+    catch(Exception e){
       // hard default
       return new String []  {"*"};
     }
@@ -1681,58 +1747,17 @@ public class DBPluginMgr implements Database, PanelUtil{
     HashMap dbDefFields = new HashMap();
     String [] ret;
     try{
-      // This method is called with e.g. ETASK as table, this needs to be
-      // inversely mapped to TASK to find default task fields.
-      /*String taskTableName = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
-         "task table name");
-      String jobDefTableName = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
-         "job definition table name");
-      String transformationTableName = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
-         "transformation table name");
-      String tableName = "";
-      if(taskTableName.equalsIgnoreCase(table)){
-        tableName = "task";
-      }
-      else if(taskTableName.equalsIgnoreCase(table)){
-        tableName = "job definition";
-      }
-      else if(taskTableName.equalsIgnoreCase(table)){
-        tableName = "transformation";
-      }*/
       ret =
         GridPilot.getClassMgr().getConfigFile().getValues(dbName,
             "hidden "+tableName+" fields");
       dbDefFields.put(tableName, ret);
       return ret;
-    }catch(Exception e){
+    }
+    catch(Exception e){
       // hard default
       return new String []  {"actualPars"};
     }
   }
-
-  public synchronized int getJobDefTaskId(final int jobDefID){
-    
-      MyThread t = new MyThread(){
-        int res = -1;
-        public void run(){
-          try{
-            res = db.getJobDefTaskId(jobDefID);
-          }catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               jobDefID, t);
-          }
-        }
-        public int getIntRes(){return res;}
-      };
-    
-      t.start();
-    
-      if(waitForThread(t, dbName, dbTimeOut, "getTaskId"))
-        return t.getIntRes();
-      else
-        return -1;
-    }
 
   public synchronized String [] getVersions(final String homePackage){
     MyThread t = new MyThread(){
@@ -1740,7 +1765,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       public void run(){
         try{
           res = db.getVersions(homePackage);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName , t);
         }
@@ -1756,158 +1782,153 @@ public class DBPluginMgr implements Database, PanelUtil{
       return t.getString2Res();
     else
       return new String [] {};
-   }
+  }
 
   public synchronized void clearPanel(final String [] cstAttributesNames,
-      final JComponent [] tcCstAttributes,
-      final JPanel jobXmlContainer,
-      final Vector tcConstant){
-    
-      MyThread t = new MyThread(){
-        public void run(){
-          try{
-             pu.clearPanel(cstAttributesNames, tcCstAttributes, jobXmlContainer,
-                 tcConstant);
-          }catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               user + " " + passwd, t);
-          }
+     final JComponent [] tcCstAttributes,
+     final JPanel jobXmlContainer,
+     final Vector tcConstant){    
+    MyThread t = new MyThread(){
+      public void run(){
+        try{
+           pu.clearPanel(cstAttributesNames, tcCstAttributes, jobXmlContainer,
+               tcConstant);
         }
-      };
-    
-      t.start();
-    
-      if(waitForThread(t, dbName, dbTimeOut, "clearPanel"))
-        return;
-      else
-        return;
-    }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName, t);
+        }
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "clearPanel"))
+      return;
+    else
+      return;
+  }
 
-  public synchronized void initAttributePanel(final String [] cstAttributesNames,
-      final String [] cstAttr,
-      final JComponent [] tcCstAttributes,
-      final JPanel pAttributes,
-      final JPanel jobXmlContainer){
-    
-      MyThread t = new MyThread(){
-        public void run(){
-          try{
-             pu.initAttributePanel(cstAttributesNames, cstAttr, tcCstAttributes,
-                 pAttributes, jobXmlContainer);
-          }catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               user + " " + passwd, t);
-          }
+  public synchronized void initAttributePanel(
+     final String [] cstAttributesNames,
+     final String [] cstAttr,
+     final JComponent [] tcCstAttributes,
+     final JPanel pAttributes,
+     final JPanel jobXmlContainer){
+    MyThread t = new MyThread(){
+      public void run(){
+        try{
+           pu.initAttributePanel(cstAttributesNames, cstAttr, tcCstAttributes,
+               pAttributes, jobXmlContainer);
         }
-      };
-    
-      t.start();
-    
-      if(waitForThread(t, dbName, dbTimeOut, "initAttributePanel"))
-        return;
-      else
-        return;
-    }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName, t);
+        }
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "initAttributePanel"))
+      return;
+    else
+      return;
+  }
 
   public synchronized void setEnabledAttributes(final boolean enabled,
-      final String [] cstAttributesNames,
-      final JComponent [] tcCstAttributes){
-    
-      MyThread t = new MyThread(){
-        public void run(){
-          try{
-             pu.setEnabledAttributes(enabled, cstAttributesNames, tcCstAttributes);
-          }catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               user + " " + passwd, t);
-          }
+     final String [] cstAttributesNames,
+     final JComponent [] tcCstAttributes){
+    MyThread t = new MyThread(){
+      public void run(){
+        try{
+           pu.setEnabledAttributes(enabled, cstAttributesNames, tcCstAttributes);
         }
-      };
-    
-      t.start();
-    
-      if(waitForThread(t, dbName, dbTimeOut, "setEnabledAttributes"))
-        return;
-      else
-        return;
-    }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName, t);
+        }
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "setEnabledAttributes"))
+      return;
+    else
+      return;
+  }
 
   public synchronized void setValuesInAttributePanel(final String [] cstAttributesNames,
-      final String [] cstAttr,
-      final JComponent [] tcCstAttributes){
-    
-      MyThread t = new MyThread(){
-        public void run(){
-          try{
-             pu.setValuesInAttributePanel(cstAttributesNames, cstAttr, tcCstAttributes);
-          }catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               user + " " + passwd, t);
-            t.printStackTrace();
-          }
+     final String [] cstAttr,
+     final JComponent [] tcCstAttributes){    
+    MyThread t = new MyThread(){
+      public void run(){
+        try{
+           pu.setValuesInAttributePanel(cstAttributesNames, cstAttr, tcCstAttributes);
         }
-      };
-    
-      t.start();
-    
-      if(waitForThread(t, dbName, dbTimeOut, "setValuesInAttributePanel"))
-        return;
-      else
-        return;
-    }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName, t);
+          t.printStackTrace();
+        }
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "setValuesInAttributePanel"))
+      return;
+    else
+      return;
+  }
   
   public String getJTextOrEmptyString(final String attr, final JComponent comp,
-      final boolean editing){
-    
-      MyThread t = new MyThread(){
-        String res = null;
-        public void run(){
-          try{
-            res = pu.getJTextOrEmptyString(attr, comp, editing);
-          }catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               user + " " + passwd, t);
-          }
+     final boolean editing){    
+    MyThread t = new MyThread(){
+      String res = null;
+      public void run(){
+        try{
+          res = pu.getJTextOrEmptyString(attr, comp, editing);
         }
-        public String getStringRes(){return res;}
-      };
-    
-      t.start();
-    
-      if(waitForThread(t, dbName, dbTimeOut, "getJTextOrEmptyString"))
-        return t.getStringRes();
-      else
-        return null;
-    }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName, t);
+        }
+      }
+      public String getStringRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getJTextOrEmptyString"))
+      return t.getStringRes();
+    else
+      return null;
+  }
 
   public Vector getNonIdTextFields(final String [] cstAttributesNames,
-      final JComponent [] tcCstAttributes, final Vector tcConstant){
-    
-      MyThread t = new MyThread(){
-        Vector res = null;
-        public void run(){
-          try{
-            res = pu.getNonIdTextFields(cstAttributesNames, tcCstAttributes,
-                tcConstant);
-          }catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               user + " " + passwd, t);
-          }
+     final JComponent [] tcCstAttributes, final Vector tcConstant){
+    MyThread t = new MyThread(){
+      Vector res = null;
+      public void run(){
+        try{
+          res = pu.getNonIdTextFields(cstAttributesNames, tcCstAttributes,
+              tcConstant);
         }
-        public Vector getVectorRes(){return res;}
-      };
-    
-      t.start();
-    
-      if(waitForThread(t, dbName, dbTimeOut, "getNonIdTextFields"))
-        return t.getVectorRes();
-      else
-        return null;
-    }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName, t);
+        }
+      }
+      public Vector getVectorRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getNonIdTextFields"))
+      return t.getVectorRes();
+    else
+      return null;    
+  }
 }

@@ -98,9 +98,9 @@ public class ClassMgr{
     return (DBPluginMgr) dbMgts.get(dbName);
   }
 
-  // This method creates a new TaskMgr if there is
+  // This method creates a new DatasetMgr if there is
   // none in the HashMap with keys dbName, taskID
-  public TaskMgr getTaskMgr(String dbName, int taskID){
+  public DatasetMgr getDatasetMgr(String dbName, int taskID){
     if(taskMgrs == null){
       Debug.debug("taskMgrs null", 3);
     }
@@ -108,13 +108,13 @@ public class ClassMgr{
       taskMgrs.put(dbName, new HashMap());
     }
     if(!((HashMap) taskMgrs.get(dbName)).keySet().contains(Integer.toString(taskID))){
-      Debug.debug("Creating new TaskMgr, "+taskID+", in "+dbName, 3);
-      addTaskMgr(new TaskMgr(dbName, taskID));
+      Debug.debug("Creating new DatasetMgr, "+taskID+", in "+dbName, 3);
+      addTaskMgr(new DatasetMgr(dbName, taskID));
     }
-    return (TaskMgr) ((HashMap) taskMgrs.get(dbName)).get(Integer.toString(taskID));
+    return (DatasetMgr) ((HashMap) taskMgrs.get(dbName)).get(Integer.toString(taskID));
   }
   
-  public Vector getTaskMgrs(){
+  public Vector getDatasetMgrs(){
     if(taskMgrs == null){
       Debug.debug("taskMgrs null", 3);
     }
@@ -126,7 +126,7 @@ public class ClassMgr{
   }
   
   // The HashMap of HashMaps of tasks is kept here
-  public void addTaskMgr(TaskMgr taskMgr){
+  public void addTaskMgr(DatasetMgr taskMgr){
     if(taskMgrs == null){
       Debug.debug("taskMgrs null", 3);
       new Exception().printStackTrace();
@@ -135,7 +135,7 @@ public class ClassMgr{
       taskMgrs.put(taskMgr.dbName, new HashMap());
     }
     ((HashMap) taskMgrs.get(taskMgr.dbName)
-        ).put(Integer.toString(taskMgr.getTaskIdentifier()), taskMgr);
+        ).put(Integer.toString(taskMgr.getDatasetID()), taskMgr);
   }
 
 
