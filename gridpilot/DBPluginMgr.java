@@ -1742,6 +1742,15 @@ public class DBPluginMgr implements Database, PanelUtil{
       return new String []  {"*"};
     }
   }
+  
+  public synchronized String getJobDefIdentifier(String dbName){
+    String ret = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
+      "job definition table identifier");
+    if(ret==null || ret.equals("")){
+      ret = "identifier";
+    }
+    return ret;
+  }
 
   public synchronized String [] getDBHiddenFields(String dbName, String tableName){
     HashMap dbDefFields = new HashMap();

@@ -287,7 +287,7 @@ public class GlobalFrame extends JFrame{
         public void actionPerformed(ActionEvent e){
           try{
             addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(), "job definition"), "job definition");          
+                ((JMenuItem)e.getSource()).getText(), "jobDefinition"), "job definition");          
           }catch(Exception ex){
             Debug.debug("Could not add panel ", 1);
             ex.printStackTrace();
@@ -298,7 +298,7 @@ public class GlobalFrame extends JFrame{
       miNewJobDefTab.add(miNewJobDefTabs[i]);
     }
     
-    JMenu miNewJobTransTab = new JMenu("jobTrans");
+    JMenu miNewJobTransTab = new JMenu("transformation");
     JMenuItem [] miNewJobTransTabs = new JMenuItem[GridPilot.getDBs().length];
     menuNewTab.add(miNewJobTransTab);
     for(i=0; i<GridPilot.getDBs().length; ++i){

@@ -15,7 +15,7 @@ import gridpilot.dbplugins.proddb.ProdDBXmlNode;
  */
 public class JobDefCreator {
 
-  private DatasetMgr taskMgr;
+  private DatasetMgr datasetMgr;
   private DBPluginMgr dbPluginMgr;
   private int from;
   private int to;
@@ -41,7 +41,7 @@ public class JobDefCreator {
   private Object[] showResultsOptions = {"OK", "OK for all", "Skip", "Skip all"};
 
   public JobDefCreator(String _dbName,
-                       DatasetMgr _taskMgr,
+                       DatasetMgr _datasetMgr,
                        int _from,
                        int _to,
                        boolean _showResults,
@@ -51,11 +51,11 @@ public class JobDefCreator {
                        boolean _editing
                        ){
 
-    taskMgr = _taskMgr;
+    datasetMgr = _datasetMgr;
     dbName = _dbName;
     
-    if(taskMgr!=null){
-      dbPluginMgr = taskMgr.getDBPluginMgr();
+    if(datasetMgr!=null){
+      dbPluginMgr = datasetMgr.getDBPluginMgr();
     }
     else{
       dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
@@ -213,9 +213,9 @@ public class JobDefCreator {
         Debug.debug(this.getClass().getName() + " is calling DB", 2);
 
         if(editing){
-          String jobDefIdentifier = GridPilot.getClassMgr().getConfigFile().getValue(
-              taskMgr.getDBPluginMgr().getDBName(),
-          "job definition table identifier");
+          String jobDefIdentifier =
+            datasetMgr.getDBPluginMgr().getJobDefIdentifier(
+                datasetMgr.getDBPluginMgr().getDBName());
           int id = -1;
           for(int i=0; i<cstAttrNames.length; ++i){
             if(cstAttrNames[i].toString().equalsIgnoreCase(
@@ -225,7 +225,7 @@ public class JobDefCreator {
             }
           }
           Debug.debug("Updating...", 3);
-          if(!taskMgr.getDBPluginMgr().updateJobDefinition(id, cstAttrNames, resCstAttr)){
+          if(!datasetMgr.getDBPluginMgr().updateJobDefinition(id, cstAttrNames, resCstAttr)){
             if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDef " + part +
                 " cannot be updated", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION)
             //cancel creation
@@ -233,8 +233,8 @@ public class JobDefCreator {
           }
         }
         else{
-          if(taskMgr!=null){
-            if(!taskMgr.createJobDef(cstAttrNames, resCstAttr)){
+          if(datasetMgr!=null){
+            if(!datasetMgr.createJobDef(cstAttrNames, resCstAttr)){
               if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDef " + part +
                   " cannot be created", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION)
               //cancel creation
@@ -256,7 +256,7 @@ public class JobDefCreator {
           }
         }
       }
-      //taskMgr.getVectorTableModel().fireTableDataChanged();
+      //datasetMgr.getVectorTableModel().fireTableDataChanged();
     }
   }
 
