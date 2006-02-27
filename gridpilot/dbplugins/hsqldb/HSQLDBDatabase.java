@@ -19,6 +19,7 @@ import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.JobInfo;
+import gridpilot.Util;
 
 public class HSQLDBDatabase implements Database{
   
@@ -33,6 +34,8 @@ public class HSQLDBDatabase implements Database{
   private String [] transformationFields = null;
   private String [] jobDefFields = null;
   private String [] datasetFields = null;
+  private String [] runInfoFields = null;
+  private String [] packageFields = null;
 
   public HSQLDBDatabase(
       String _driver, String _database, String _user, String _passwd){
@@ -83,14 +86,319 @@ public class HSQLDBDatabase implements Database{
   		conn.setAutoCommit(true);
   	}
     catch(Exception e){
-      Debug.debug("talking to the db failed: "+e.getMessage(), 2);
-  		//return null;
-      return "";
+      Debug.debug("failed setting auto commit to true: "+e.getMessage(), 2);
   	}
-    transformationFields = getFieldNames("transformation");
-    jobDefFields = getFieldNames("jobDefinition");
-    datasetFields = getFieldNames("dataset");
+    setFieldNames();
+    if(datasetFields==null || datasetFields.length<1){
+      makeDatasetTable();
+    }
+    if(jobDefFields==null || jobDefFields.length<1){
+      makeJobDefTable();
+    }
+    if(transformationFields==null || transformationFields.length<1){
+      makeTransformationTable();
+    }
+    if(packageFields==null || packageFields.length<1){
+      makePackageTable();
+    }
+    if(runInfoFields==null || runInfoFields.length<1){
+      makeRunInfoTable();
+    }
+    setFieldNames();
     return "";
+  }
+  
+  private void setFieldNames(){
+    datasetFields = getFieldNames("dataset");
+    jobDefFields = getFieldNames("jobDefinition");
+    transformationFields = getFieldNames("transformation");
+    // only used for checking
+    runInfoFields = getFieldNames("runInfo");
+    packageFields = getFieldNames("package");
+  }
+
+  private boolean makeDatasetTable(){
+    // CTB simulation, digitization and reconstruction
+    String [] fields = {
+        "identifier",
+        "name",
+        "runNumber",
+        "transformation",
+        "transVersion",
+        "projectName",
+        "physicsWorkingGroup",
+        "physicsShort",
+        "detectorLayout",
+        "status",
+        "principalSite",
+        "softwareRelease",
+        "physicsPackage",
+        "externalPackages",
+        "outputFormat",
+        "percentageValidatedFiles",
+        "percentageFailedFiles",
+        "totalFiles",
+        "totalDataSize",
+        "averageEventSize",
+        "totalEvents",
+        "averageCPUTime",
+        "totalCPUTime",
+        "requestedBy",
+        "comment",
+        "created",
+        "lastModified",
+        "transValues",
+        "beam_energy",
+        "mag_field",
+        "beam_polarity",
+        "beam_particle",
+        // not needed beyond simulation
+        "magneticField_Type",
+        "ID_magneticField",
+        "MBPL_magneticField",
+        "MBPS_magneticField",
+        "eta",
+        "z",
+        "theta",
+        "Pix_StatusWord",
+        "SCT_StatusWord",
+        "TRT_StatusWord",
+        "LAr_StatusWord",
+        "Tile_StatusWord",
+        "TileEB_StatusWord",
+        "MDT_StatusWord",
+        "TGC_StatusWord",
+        "RPC_StatusWord",
+        "CSC_StatusWord",
+        "BEE_StatusWord",
+        "Pix_xBeamPosition",
+        "SCT_xBeamPosition",
+        "TRT_xBeamPosition",
+        "TRT_yBeamPosition",
+        "TRT_zBeamPosition",
+        "LArTile_xBeamPosition",
+        "Muon_xBeamPosition",
+        "MuonBee_xBeamPosition",
+        // end of not needed
+        "dataType",
+        "InputDataset",
+        "InputDB",
+        "OutputLocation"
+        };
+    String [] fieldTypes = {
+        "INT NOT NULL PRIMARY KEY",
+        "LONGVARCHAR NOT NULL",
+        "INT NOT NULL",
+        "LONGVARCHAR NOT NULL",
+        "VARCHAR NOT NULL",
+        "LONGVARCHAR NULL",
+        "LONGVARCHAR NULL",
+        "LONGVARCHAR NULL",
+        "LONGVARCHAR NULL",
+        "VARCHAR NULL",//"enum('Requested', 'Approved', 'Running', 'Finished', 'Validated', 'Failed')",
+        "LONGVARCHAR NULL",
+        "VARCHAR NULL",
+        "VARCHAR NULL",//"enum('GEANT3', 'GEANT4', 'ATLFAST')",
+        "LONGVARCHAR NULL",
+        "VARCHAR NULL",//"enum('pool', 'root')",
+        "FLOAT NULL",
+        "FLOAT NULL",
+        "FLOAT NULL",
+        "BIGINT NULL",
+        "FLOAT NULL",
+        "BIGINT NULL",
+        "FLOAT NULL",
+        "BIGINT NULL",
+        "LONGVARCHAR NULL",
+        "LONGVARCHAR NULL",
+        "DATE NULL",
+        "DATE NULL",
+        "LONGVARCHAR NULL",
+        "FLOAT NULL",
+        "VARCHAR NULL",
+        "TINYINT NULL",
+        "VARCHAR NULL",//"enum('no beam', 'photon', 'electron', 'muon', 'pion', 'proton', 'gamma', 'other', 'unknown')",
+        "VARCHAR NULL",//"enum('constant', 'field map')",
+        "FLOAT NULL",
+        "FLOAT NULL",
+        "FLOAT NULL",
+        "FLOAT NULL",
+        "FLOAT NULL",
+        "FLOAT NULL",
+        "TINYINT NULL",//"enum('-1', '0', '1')",
+        "TINYINT NULL",//"enum('-1', '0', '1')",
+        "TINYINT NULL",//"enum('-1', '0', '1')",
+        "TINYINT NULL",//"enum('-1', '0', '1')",
+        "TINYINT NULL",//"enum('-1', '0', '1')",
+        "TINYINT NULL",//"enum('-1', '0', '1')",
+        "TINYINT NULL",//"enum('-1', '0', '1')",
+        "TINYINT NULL",//"enum('-1', '0', '1')",
+        "TINYINT NULL",//"enum('-1', '0', '1')",
+        "TINYINT NULL",//"enum('-1', '0', '1')",
+        "TINYINT NULL",//"enum('-1', '0', '1')",
+        "FLOAT NULL",
+        "FLOAT NULL",
+        "FLOAT NULL",
+        "FLOAT NULL",
+        "FLOAT NULL",
+        "FLOAT NULL",
+        "FLOAT NULL",
+        "FLOAT NULL",
+        "VARCHAR NULL",//"enum('EVGEN', 'ESD', 'AOD', 'BYTESTREAM', 'TAG', 'HITS', 'RDO', 'DIGITS', 'DATASET')",
+        "LONGVARCHAR NULL",
+        "LONGVARCHAR NULL",
+        "LONGVARCHAR NULL"
+        };
+    String sql = "CREATE TABLE dataset(";
+    for(int i=0; i<fields.length; ++i){
+      if(i>0){
+        sql += ", ";
+      }
+      sql += fields[i];
+      sql += " "+fieldTypes[i];
+    }
+    sql += ")";
+    Debug.debug(sql, 2);
+    boolean execok = true;
+    try {
+     Statement stmt = conn.createStatement();
+     stmt.executeUpdate(sql);
+      conn.commit();
+    }
+    catch(Exception e){
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+    };
+    return execok;
+  }
+  
+  private boolean makeJobDefTable(){
+    // CTB simulation, digitization and reconstruction
+    String [] fields = {"identifier", "dataset", "name", "GUID", "number",
+        "eventMin", "eventMax", "nEvents", 
+        "outputFileSize", "CPU", "status", "userInfo",
+        "inputFileName", "transID", "transLogPars", "outFileMapping", "md5sum",
+        "stdoutDest", "stderrDest", "productionSite", "hostMachine", "storageType",
+        "created", "lastModified"};
+    String [] fieldTypes = {"INT", "INT", "LONGVARCHAR", "LONGVARCHAR", "INT",
+        "INT", "INT", "INT", 
+        "INT", "INT",
+        "VARCHAR",//"enum('Defined', 'Submitted', 'Validated', 'Failed', 'Undecided', 'Aborted')",
+        "LONGVARCHAR",
+        "LONGVARCHAR", "INT", "LONGVARCHAR", "LONGVARCHAR", "LONGVARCHAR",
+        "LONGVARCHAR", "LONGVARCHAR", "VARCHAR", "VARCHAR",
+        "VARCHAR NULL",//"enum('HPSS', 'CASTOR', 'DISK', 'TAPE', 'SRM', 'GRIDFTP')",
+        "DATE", "DATE"};
+    String sql = "CREATE TABLE jobDefinition(";
+    for(int i=0; i<fields.length; ++i){
+      if(i>0){
+        sql += ", ";
+      }
+      sql += fields[i];
+      sql += " "+fieldTypes[i];
+    }
+    sql += ")";
+    Debug.debug(sql, 2);
+    boolean execok = true;
+    try {
+     Statement stmt = conn.createStatement();
+     stmt.executeUpdate(sql);
+      conn.commit();
+    }
+    catch(Exception e){
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+    };
+    return execok;
+  }
+  
+  private boolean makeTransformationTable(){
+    // CTB simulation, digitization and reconstruction
+    String [] fields = {"identifier", "name", "version", "package", "signature",
+        "outputs", "script", "validationScript", "extractionScript",
+        "comment", "created", "lastModified", "code"};
+    String [] fieldTypes = {"INT", "LONGVARCHAR", "VARCHAR",
+        "LONGVARCHAR", "LONGVARCHAR",
+        "LONGVARCHAR", "LONGVARCHAR", "LONGVARCHAR", "LONGVARCHAR",
+        "LONGVARCHAR", "DATE", "DATE", "LONGVARCHAR"};
+    String sql = "CREATE TABLE transformation(";
+    for(int i=0; i<fields.length; ++i){
+      if(i>0){
+        sql += ", ";
+      }
+      sql += fields[i];
+      sql += " "+fieldTypes[i];
+    }
+    sql += ")";
+    Debug.debug(sql, 2);
+    boolean execok = true;
+    try {
+     Statement stmt = conn.createStatement();
+     stmt.executeUpdate(sql);
+      conn.commit();
+    }
+    catch(Exception e){
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+    };
+    return execok;
+  }
+  
+  private boolean makePackageTable(){
+    // CTB simulation, digitization and reconstruction
+    String [] fields = {"identifier", "name", "resource", "init"};
+    String [] fieldTypes = {"INT", "LONGVARCHAR", "LONGVARCHAR", "LONGVARCHAR"};
+    String sql = "CREATE TABLE package(";
+    for(int i=0; i<fields.length; ++i){
+      if(i>0){
+        sql += ", ";
+      }
+      sql += fields[i];
+      sql += " "+fieldTypes[i];
+    }
+    sql += ")";
+    Debug.debug(sql, 2);
+    boolean execok = true;
+    try {
+     Statement stmt = conn.createStatement();
+     stmt.executeUpdate(sql);
+      conn.commit();
+    }
+    catch(Exception e){
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+    };
+    return execok;
+  }
+  
+  private boolean makeRunInfoTable(){
+    // CTB simulation, digitization and reconstruction
+    String [] fields = {"identifier", "jobDefinition", "jobID",
+        "resource", "userInfo", "outTmp ", "errTmp", "valOut", "valErr"};
+    String [] fieldTypes = {"INT", "LONGVARCHAR", "LONGVARCHAR",
+        "VARCHAR", "LONGVARCHAR", "LONGVARCHAR ", "LONGVARCHAR",
+        "LONGVARCHAR", "LONGVARCHAR"};
+    String sql = "CREATE TABLE runInfo(";
+    for(int i=0; i<fields.length; ++i){
+      if(i>0){
+        sql += ", ";
+      }
+      sql += fields[i];
+      sql += " "+fieldTypes[i];
+    }
+    sql += ")";
+    Debug.debug(sql, 2);
+    boolean execok = true;
+    try {
+     Statement stmt = conn.createStatement();
+     stmt.executeUpdate(sql);
+      conn.commit();
+    }
+    catch(Exception e){
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+    };
+    return execok;
   }
   
   public synchronized void clearCaches(){
@@ -140,12 +448,13 @@ public class HSQLDBDatabase implements Database{
       Debug.debug("getFieldNames for table "+table, 3);
       Statement stmt = conn.createStatement();
       // TODO: Do we need to execute a query to get the metadata?
-      ResultSet rset = stmt.executeQuery("describe " + table);
+      ResultSet rset = stmt.executeQuery("SELECT * FROM "+table);
       ResultSetMetaData md = rset.getMetaData();
       String [] res = new String[md.getColumnCount()];
       for(int i=1; i<=md.getColumnCount(); ++i){
         res[i-1] = md.getColumnName(i);
       }
+      Debug.debug("found "+Util.arrayToString(res), 3);
       return res;
     }
     catch(Exception e){
@@ -805,7 +1114,7 @@ public class HSQLDBDatabase implements Database{
     try {
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
-      //conn.commit();
+      conn.commit();
     }
     catch(Exception e){
       execok = false;
