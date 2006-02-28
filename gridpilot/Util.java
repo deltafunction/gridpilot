@@ -9,9 +9,6 @@ import java.util.StringTokenizer;
 
 public class Util{
 
-  public static String prefix = "";
-  public static String url = "";
-
   public static String [] split(String s) {
     StringTokenizer tok = new StringTokenizer(s);
     int len = tok.countTokens();
@@ -54,15 +51,13 @@ public class Util{
    * <code>prepend</code>.
    */
   public static String getFullPath(String file){
-    prefix = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot","prefix");
-    url = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot","url");
     if(file.startsWith("/"))
       return file;
 
-    if(prefix == null)
+    if(GridPilot.prefix == null)
       return file;
     else
-      return prefix + file;
+      return GridPilot.prefix + file;
   }
 
   /**
@@ -73,15 +68,13 @@ public class Util{
    * <code>prepend</code>.
    */
   public static String getURL(String file){
-    prefix = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot","prefix");
-    url = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot","url");
     if(file.startsWith("http://") || file.startsWith("https://"))
       return file;
 
-    if(url == null)
+    if(GridPilot.url == null)
       return file;
     else
-      return url + file;
+      return GridPilot.url + file;
   }
 
   /**

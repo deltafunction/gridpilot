@@ -25,8 +25,10 @@ public class GridPilot extends JApplet{
   private static String[] statusFields;
   private static boolean applet = true;
   private static String replicaPrefix = "";
-
   private static String dbNames;
+  
+  public static String prefix = "";
+  public static String url = "";
 
   /**
    * Constructor
@@ -37,7 +39,7 @@ public class GridPilot extends JApplet{
       classMgr.setLogFile(new LogFile(logsFileName));
       classMgr.setConfigFile(new ConfigFile(confFileName));
       initDebug();
-      gridpilotCommon();
+      loadConfigValues();
       initGUI();
       classMgr.getLogFile().addInfo("gridpilot loaded");
     }
@@ -51,35 +53,42 @@ public class GridPilot extends JApplet{
     }
   }
 
-  public void gridpilotCommon(){
-    String database;
+  public void loadConfigValues(){
+    try{
+      String database;
+      String [] up = null;
+       dbs = getClassMgr().getConfigFile().getValues("Databases", "Systems");
+       for(int i = 0; i < dbs.length; ++i){
+         Debug.debug("Initializing db "+i+": "+dbs[i],3);
+         getClassMgr().setDBPluginMgr(dbs[i], new DBPluginMgr(dbs[i]));
+       }          
+       colorMapping = getClassMgr().getConfigFile().getValues("gridpilot", "color mapping");  
+       /** Status table header*/
+       statusFields = new String [] {
+           " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "user"};
 
-    String [] up = null;
-  	 dbs = getClassMgr().getConfigFile().getValues("Databases", "Systems");
-     for(int i = 0; i < dbs.length; ++i){
-       Debug.debug("Initializing db "+i+": "+dbs[i],3);
-       getClassMgr().setDBPluginMgr(dbs[i], new DBPluginMgr(dbs[i]));
-     }
-          
-     colorMapping = getClassMgr().getConfigFile().getValues("gridpilot", "color mapping");
-     
-     /** Status table header*/
-     statusFields = new String [] {
-         " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "user"};
-
-     String resourcesPath =  getClassMgr().getConfigFile().getValue("gridpilot", "resources");
-     if(resourcesPath == null){
-       getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("gridpilot", "resources"));
-       resourcesPath = ".";
-     }
-     else{
-       if (!resourcesPath.endsWith("/"))
-         resourcesPath = resourcesPath + "/";
-     }
-     
-     replicaPrefix = getClassMgr().getConfigFile().getValue("Replica", "prefix");
+       String resourcesPath =  getClassMgr().getConfigFile().getValue("gridpilot", "resources");
+       if(resourcesPath == null){
+         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("gridpilot", "resources"));
+         resourcesPath = ".";
+       }
+       else{
+         if (!resourcesPath.endsWith("/"))
+           resourcesPath = resourcesPath + "/";
+       }    
+       replicaPrefix = getClassMgr().getConfigFile().getValue("Replica", "prefix");
+       prefix = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot","prefix");
+       url = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot","url");    }
+    catch(Throwable e){
+      if(e instanceof Error)
+        getClassMgr().getLogFile().addMessage("Error during loading of config values", e);
+      else{
+        getClassMgr().getLogFile().addMessage("Exception during loading of config values", e);
+        System.exit(-1);
+      }
+    }    
   }
-  
+    
   /**
    * "Class distributor"
    */
