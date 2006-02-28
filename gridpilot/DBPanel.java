@@ -571,8 +571,7 @@ public class DBPanel extends JPanel implements JobPanel{
         identifiers = new int[tableResults.getRowCount()];
         // 'col' is the column with the jobDefinition identifier
         int col = tableResults.getColumnCount()-1;
-        String idName = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
-           "job definition table identifier");
+        String idName = dbPluginMgr.getJobDefIdentifier(dbPluginMgr.getDBName());
         for(int i=0; i<tableResults.getColumnCount(); ++i){
           Debug.debug("Column: "+tableResults.getColumnName(i)+"<->"+idName, 3);
           if(tableResults.getColumnName(i).equalsIgnoreCase(idName)){
@@ -944,7 +943,7 @@ public class DBPanel extends JPanel implements JobPanel{
   private void createJobTransRecords(){
     CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
-          new JobTransCreationPanel(dbPluginMgr, tableResults, false), false, false);
+          new TransformationCreationPanel(dbPluginMgr, tableResults, false), false, false);
     pDialog.setTitle(tableName);
     pDialog.setVisible(true);
     /*if(tableResults!=null && tableResults.getRowCount()>0){
@@ -956,7 +955,7 @@ public class DBPanel extends JPanel implements JobPanel{
     //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.getDBs()[0]);
     CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
-          new JobTransCreationPanel(dbPluginMgr, tableResults, true), true, false);
+          new TransformationCreationPanel(dbPluginMgr, tableResults, true), true, false);
     pDialog.setTitle(tableName);
     pDialog.setVisible(true);
     /*searchRequest();*/

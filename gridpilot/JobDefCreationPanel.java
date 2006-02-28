@@ -98,9 +98,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
         dbPluginMgr.getDBName(),
     "transformation table identifier");
 
-    jobDefIdentifier = GridPilot.getClassMgr().getConfigFile().getValue(
-        dbPluginMgr.getDBName(),
-    "job definition table identifier");
+    jobDefIdentifier = dbPluginMgr.getJobDefIdentifier(dbPluginMgr.getDBName());
 
     //cstAttributesNames = JobDefinition.Fields;
     cstAttributesNames = dbPluginMgr.getFieldNames(
