@@ -67,7 +67,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
   private static int CFIELDWIDTH = 8;
   
   public String jobDefIdentifier;
-  private String jobTransIdentifier;
+  private String transformationIdentifier;
   
   public JobDefCreationPanel(/*this is in case DBPanel was opened from the menu and_taskMgr is null*/String _dbName,
       DatasetMgr _taskMgr, Table _table,
@@ -94,17 +94,13 @@ public class JobDefCreationPanel extends CreateEditPanel{
     }
 
     
-    jobTransIdentifier = GridPilot.getClassMgr().getConfigFile().getValue(
-        dbPluginMgr.getDBName(),
-    "transformation table identifier");
+    transformationIdentifier = dbPluginMgr.getIdentifier(dbPluginMgr.getDBName(),
+        "transformation");
 
-    jobDefIdentifier = dbPluginMgr.getJobDefIdentifier(dbPluginMgr.getDBName());
+    jobDefIdentifier = dbPluginMgr.getIdentifier(dbPluginMgr.getDBName(),
+        "jobDefinition");
 
-    //cstAttributesNames = JobDefinition.Fields;
-    cstAttributesNames = dbPluginMgr.getFieldNames(
-        GridPilot.getClassMgr().getConfigFile().getValue(
-            dbPluginMgr.getDBName(),
-            "job definition table name"));
+    cstAttributesNames = dbPluginMgr.getFieldNames("jobDefinition");
     
     Debug.debug("cstAttributesNames: "+Util.arrayToString(cstAttributesNames), 3);
     
@@ -277,7 +273,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
         Debug.debug("Adding transformation "+
             transformations.getValue(0,jobTransNameColumn), 3);
         vec.add(transformations.getValue(0,jobTransNameColumn));
-        if(transformations.getValue(0,jobTransIdentifier).equals(jobTransFK)){
+        if(transformations.getValue(0,transformationIdentifier).equals(jobTransFK)){
           jtName = transformations.getValue(0,jobTransNameColumn);
         }
       }
@@ -297,8 +293,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
       for(int i=1; i<transformations.values.length; ++i){
         ok = true;
         Debug.debug("Checking transformation with jobTransID "+
-            transformations.getValue(i,jobTransIdentifier), 3);
-        if(transformations.getValue(i,jobTransIdentifier).equals(jobTransFK) &&
+            transformations.getValue(i,transformationIdentifier), 3);
+        if(transformations.getValue(i,transformationIdentifier).equals(jobTransFK) &&
             transformations.getValue(i,jobTransNameColumn)!=null){
           jtName = transformations.getValue(i,jobTransNameColumn);
         }
@@ -379,7 +375,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
     if(transformations.values.length>0){
       // When editing, find version of original jobTransFK
       for(int i=0; i<transformations.values.length; ++i){
-        if(transformations.getValue(i,jobTransIdentifier).equals(jobTransFK)){
+        if(transformations.getValue(i,transformationIdentifier).equals(jobTransFK)){
           jtVersion = transformations.getValue(i,"version");
           break;
         }
@@ -659,15 +655,15 @@ public class JobDefCreationPanel extends CreateEditPanel{
     // Set jobTransFK
     Debug.debug("name, version: "+jobTransName+", "+version, 3);
     for(int i=0; i<transformations.values.length; ++i){
-      Debug.debug("Checking jobTransFK "+transformations.getValue(i,jobTransIdentifier), 3);
+      Debug.debug("Checking jobTransFK "+transformations.getValue(i,transformationIdentifier), 3);
       Debug.debug("  "+transformations.getValue(i,jobTransNameColumn), 3);
       Debug.debug("  "+transformations.getValue(i,"version"), 3);
       if(transformations.getValue(i,jobTransNameColumn)!=null &&
          transformations.getValue(i,"version")!=null &&
          transformations.getValue(i,jobTransNameColumn).equals(jobTransName) &&
          transformations.getValue(i,"version").equals(version)){
-        Debug.debug("Setting jobTransFK to "+transformations.getValue(i,jobTransIdentifier), 3);
-        jobTransFK = transformations.getValue(i,jobTransIdentifier);
+        Debug.debug("Setting jobTransFK to "+transformations.getValue(i,transformationIdentifier), 3);
+        jobTransFK = transformations.getValue(i,transformationIdentifier);
         break;
       }
      }

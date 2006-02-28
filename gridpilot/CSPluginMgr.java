@@ -69,11 +69,7 @@ public class CSPluginMgr implements ComputingSystem{
     logFile = GridPilot.getClassMgr().getLogFile();
     configFile = GridPilot.getClassMgr().getConfigFile();
 
-    csNames = configFile.getValues("Computing systems", "systems");
-    if(csNames == null || csNames.length == 0){
-      logFile.addMessage(configFile.getMissingMessage("Computing systems", "systems"));
-      throw new Exception("No computing systems specified in configuration file");
-    }
+    csNames = GridPilot.csNames;
 
     cs = new HashMap(csNames.length);
     shellMgr = new HashMap(csNames.length);
@@ -208,10 +204,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     String tmp;
 
-    /**
-     * default timeout
-     */
-
+    // default timeout
     tmp = configFile.getValue("gridpilot", "default timeout");
     if(tmp!=null){
       try{

@@ -17,7 +17,6 @@ public class SecureShellMgr implements ShellMgr{
   private LogFile logFile;
   private ConfigFile configFile;
   private Session session;
-  private String channelsString;
   private int channels;
   private int channelInUse;
 
@@ -30,15 +29,7 @@ public class SecureShellMgr implements ShellMgr{
     password = _password;
     remoteHome = getFullPath(_remoteHome);
     logFile = GridPilot.getClassMgr().getLogFile();
-    configFile = GridPilot.getClassMgr().getConfigFile();
-    channelsString = configFile.getValue("gridpilot", "ssh channels");
-    if(channelsString == null){
-      Debug.debug("ssh channels not found in config file", 1);
-      channels = 4;
-    }
-    else{
-      channels = Integer.parseInt(channelsString);
-    }
+    channels = GridPilot.sshChannels;
     channelInUse = 0;
     connect();
     logFile.addInfo("Authentication completed on " + host + "(user : " + user +

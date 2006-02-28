@@ -2,6 +2,11 @@ package gridpilot;
 
 import java.util.StringTokenizer;
 
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JTextArea;
+import javax.swing.text.JTextComponent;
+
 /**
  * @author Frederik.Orellana@cern.ch
  *
@@ -43,6 +48,20 @@ public class Util{
     return res;
   }
 
+  /**
+   * Returns the text of a JComponent.
+   */
+  public static String getJTextOrEmptyString(JComponent comp){
+    String text = "";
+    if(comp.getClass().isInstance(new JTextArea())){
+      text =  ((JTextComponent) comp).getText();
+    }
+    else if(comp.getClass().isInstance(new JComboBox())){
+      text =  ((JComboBox) comp).getSelectedItem().toString();
+    }
+    return text;
+  }
+  
   /**
    * Converts a local path (<code>file</code>) into a absolute path by prepending the "prefix" attribute
    * of the gridpilot section in config file. <br>
@@ -133,5 +152,5 @@ public class Util{
     Debug.debug("logToPhys: "+log+"||"+prefix+" ->" +res,3);
     return res;
     }
-
+  
 }

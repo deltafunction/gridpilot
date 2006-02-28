@@ -401,6 +401,10 @@ public class HSQLDBDatabase implements Database{
     return execok;
   }
   
+  public String getPanelUtilClass(){
+    return "HSQLDBPanelUtil";
+  }
+
   public synchronized void clearCaches(){
     // nothing for now
   }

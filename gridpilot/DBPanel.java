@@ -5,7 +5,6 @@ import gridpilot.Database.DBResult;
 import gridpilot.Database.DBRecord;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
-import gridpilot.ConfigFile;
 
 import javax.swing.*;
 import javax.swing.event.*;
@@ -20,8 +19,6 @@ import java.util.Vector;
  */
 
 public class DBPanel extends JPanel implements JobPanel{
-
-  private ConfigFile configFile;
 
   private JScrollPane spSelectPanel = new JScrollPane();
   private SelectPanel selectPanel;
@@ -45,8 +42,8 @@ public class DBPanel extends JPanel implements JobPanel{
   private JMenuItem miEdit = null;
   
   private int [] identifiers;
-  private String [] dbIdentifiers;
-  private String [] stepIdentifiers;
+  //private String [] dbIdentifiers;
+  //private String [] stepIdentifiers;
   // lists of field names with table name as key
   private String [] fieldNames = null;
   private String dbName = null;
@@ -100,27 +97,13 @@ public class DBPanel extends JPanel implements JobPanel{
                   /*name of tables for the select*/
                   String _tableName) throws Exception{
   
-     configFile = GridPilot.getClassMgr().getConfigFile();
-     dbName = _dbName;
-     
+     dbName = _dbName;     
+     tableName = _tableName;
      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
      
-     tableName = _tableName;
-     identifier = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
-         tableName+" identifier");
-     jobDefIdentifier = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
-         "jobDefinition identifier");
-     if(identifier==null){
-       // not defined, assuming "identifier"
-       identifier = "identifier";
-     }
-     if(jobDefIdentifier==null){
-       // not defined, assuming "identifier"
-       jobDefIdentifier = "identifier";
-     }
-     
-     Debug.debug("identifiers: "+identifier+", "+jobDefIdentifier, 3);
-     
+     identifier = dbPluginMgr.getIdentifier(dbPluginMgr.getDBName(), tableName);
+     jobDefIdentifier = dbPluginMgr.getIdentifier(dbPluginMgr.getDBName(), "jobDefinition");
+          
      ct.fill = GridBagConstraints.HORIZONTAL;
      ct.anchor = GridBagConstraints.NORTH;
      ct.insets = new Insets(0,0,0,0);
@@ -150,6 +133,10 @@ public class DBPanel extends JPanel implements JobPanel{
     
     initGUI();
   }
+   
+   public Table getTable(){
+     return tableResults;
+   }
 
 
    private void setFieldArrays(){
@@ -444,10 +431,7 @@ public class DBPanel extends JPanel implements JobPanel{
   /**
    * Returns identifiers of the selected jobDefinitions, corresponding to
    * jobDefinition.identifier in DB.
-   *
-   * Called by : JobCreationPanel.Add()
    */
-
   public int [] getSelectedIdentifiers(){
 
     int [] selectedRows = tableResults.getSelectedRows();
@@ -464,7 +448,6 @@ public class DBPanel extends JPanel implements JobPanel{
    * @return Id of the first selected row, -1 if no row is selected
    *
    */
-
   public int getSelectedIdentifier(){
     int selRow = tableResults.getSelectedRow();
     return (selRow==-1) ? -1 : identifiers[selRow];
@@ -473,7 +456,6 @@ public class DBPanel extends JPanel implements JobPanel{
   /**
    * Returns the name of the first selected row, "-1" if no row is selected.
    */
-
   /*public String getSelectedName(){
     int selRow = tableResults.getSelectedRow();
     return (selRow==-1) ? "-1" : tableResults.getUnsortedValueAt(selRow, 0).toString();
@@ -571,10 +553,9 @@ public class DBPanel extends JPanel implements JobPanel{
         identifiers = new int[tableResults.getRowCount()];
         // 'col' is the column with the jobDefinition identifier
         int col = tableResults.getColumnCount()-1;
-        String idName = dbPluginMgr.getJobDefIdentifier(dbPluginMgr.getDBName());
         for(int i=0; i<tableResults.getColumnCount(); ++i){
-          Debug.debug("Column: "+tableResults.getColumnName(i)+"<->"+idName, 3);
-          if(tableResults.getColumnName(i).equalsIgnoreCase(idName)){
+          Debug.debug("Column: "+tableResults.getColumnName(i)+"<->"+identifier, 3);
+          if(tableResults.getColumnName(i).equalsIgnoreCase(identifier)){
             col = i;
             break;
           }
@@ -881,7 +862,7 @@ public class DBPanel extends JPanel implements JobPanel{
   private void createDatasets(){
     CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
-        new DatasetCreationPanel(dbPluginMgr, tableResults, false), false, false);
+        new DatasetCreationPanel(dbPluginMgr, this, false), false, false);
     pDialog.setTitle(tableName);
     pDialog.setVisible(true);
     /*if(tableResults!=null && tableResults.getRowCount()>0){
@@ -892,7 +873,7 @@ public class DBPanel extends JPanel implements JobPanel{
  private void editDataset(){
    CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
-       new DatasetCreationPanel(dbPluginMgr, tableResults, true), true, false);
+       new DatasetCreationPanel(dbPluginMgr, this, true), true, false);
    pDialog.setTitle(tableName);
    pDialog.setVisible(true);
    /*searchRequest();*/

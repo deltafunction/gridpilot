@@ -7,7 +7,7 @@ import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.event.*;
 import java.awt.*;
-import java.awt.event.*;
+
 import javax.swing.text.*;
 
 import java.util.*;
@@ -20,12 +20,10 @@ import java.util.*;
 
 public class DatasetCreationPanel extends CreateEditPanel{
 
-  private JPanel pCounter = new JPanel();
-  private JPanel pConstants = new JPanel();
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
-  private JPanel pButtons = new JPanel();
   private String datasetID = "-1";
+  private DBPanel panel;
   private Table table;
   private JSpinner sFrom = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
   private JSpinner sTo = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
@@ -39,33 +37,55 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private boolean loaded = false;
   private DBPluginMgr dbPluginMgr = null;
   
-  private static JComponent [] oldTcCstAttributes;
   private static int TEXTFIELDWIDTH = 32;
   private static int CFIELDWIDTH = 8;
+  
+  private String transformation = "";
+  private String version = "";
+  private int [] datasetIDs = new int [] {-1};
+
+  private JPanel pTransformation = new JPanel();
+  private JPanel pVersion = new JPanel();
+
+  private JComboBox cbTargetDBSelection;
+  private JComboBox cbTransformationSelection;
+  private JComboBox cbTransVersionSelection;
+  
+  private boolean transformationChosen = false;
+  private boolean versionChosen = false;
   
   /**
    * Constructor
    */
 
-  public DatasetCreationPanel(DBPluginMgr _dbPluginMgr, Table _table, boolean _editing){
+  public DatasetCreationPanel(DBPluginMgr _dbPluginMgr, DBPanel _panel, boolean _editing){
     
     editing = _editing;
-    table = _table;
+    panel = _panel;
     dbPluginMgr = _dbPluginMgr;
+    
+    table = panel.getTable();
     
     cstAttributesNames = dbPluginMgr.getFieldNames("dataset");
     cstAttr = new String[cstAttributesNames.length];
     
+    // Find identifier index
+    int identifierIndex = -1;
+    String identifier = dbPluginMgr.getIdentifier(dbPluginMgr.getDBName(), "dataset");
+    for(int i=0; i<table.getColumnNames().length; ++i){
+      Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
+      if(table.getColumnName(i).equalsIgnoreCase(identifier)){
+        identifierIndex = i;
+        break;
+      }
+      if(identifierIndex ==-1){
+        Debug.debug("ERROR: could not find index of dataset, "+identifier, 1);
+      }
+    }
+    
     // Find dataset id from table
     if(table.getSelectedRow()>-1 && editing){
-      for(int i=0; i<table.getColumnNames().length; ++i){
-        Object fieldVal = table.getUnsortedValueAt(table.getSelectedRow(),i);
-        Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
-        if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase("identifier")){
-          datasetID = fieldVal.toString();
-          break;
-        }
-      }
+      datasetID = table.getUnsortedValueAt(table.getSelectedRow(), identifierIndex).toString();
       if(datasetID==null || datasetID.equals("-1") ||
           datasetID.equals("")){
         Debug.debug("ERROR: could not find datasetID in table!", 1);
@@ -76,6 +96,17 @@ public class DatasetCreationPanel extends CreateEditPanel{
       DBRecord dataset = dbPluginMgr.getDataset(Integer.parseInt(datasetID));
     }
 
+    // Dataset(s) selected and not editing - creating with input dataset(s)
+    if(table.getSelectedRows().length>0 && !editing){
+      // Find input datasets
+      int [] selectedIDs = panel.getSelectedIdentifiers();
+      datasetIDs = new int [selectedIDs.length];
+      for(int i=0; i<selectedIDs.length; ++i){
+        datasetIDs[i] = Integer.parseInt(
+            table.getUnsortedValueAt(i, identifierIndex).toString());
+      }
+    }
+    
     sFrom.addChangeListener(new ChangeListener(){
       public void stateChanged(ChangeEvent e){
         if(((Integer)sTo.getValue()).intValue() < ((Integer)sFrom.getValue()).intValue())
@@ -95,7 +126,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
   /**
    * GUI initialisation
    */
-
   public void initGUI(){
 
     String datasetName = "";
@@ -131,25 +161,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
       ct.gridy = 0;
       ct.gridwidth=1;
       ct.gridheight=1;
-      add(pButtons,ct);
-      
-      ct.gridx = 0;
-      ct.gridy = 1;
-      ct.gridwidth=2;
-      ct.gridheight=1;
-      add(pCounter,ct);
-
-      ct.gridx = 0;
-      ct.gridy = 2;
-      ct.gridwidth=3;
-      ct.gridheight=1;
-      pConstants.setLayout(new GridBagLayout());
-      pConstants.setMinimumSize(new Dimension(550, 50));
-      add(pConstants,ct);    
-            
-      ct.gridx = 0;
-      ct.gridy = 4;
-      ct.gridwidth=3;
       add(spAttributes, ct);
     }
     else{
@@ -177,54 +188,11 @@ public class DatasetCreationPanel extends CreateEditPanel{
      * Initialises text fields with attributes
      */
 
-    // Panel counter
-
-    pCounter.setLayout(new GridBagLayout());
-
-    pCounter.removeAll();
-
     if(!reuseTextFields)
       sFrom.setValue(new Integer(1));
     if(!reuseTextFields)
       sTo.setValue(new Integer(1));
 
-    pCounter.add(new JLabel("for i = "));
-    pCounter.add(sFrom);
-
-    pCounter.add(new JLabel("  to "));
-
-    pCounter.add(sTo);
-
-
-// Panel Constants
-
-    if(!reuseTextFields || tcConstant.size() == 0){
-      pConstants.removeAll();
-      tcConstant.removeAllElements();
-
-      for(int i=0; i<4; ++i)
-        addConstant();
-      
-    }
-
-// panel Button
-
-    JButton bAddConstant = new JButton("New Constant");
-
-    bAddConstant.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        addConstant();
-      }
-    });
-
-    pButtons.setLayout(new GridBagLayout());
-
-    GridBagConstraints cb = new GridBagConstraints();
-    cb.fill = GridBagConstraints.VERTICAL;
-    cb.anchor = GridBagConstraints.NORTHWEST;
-    cb.gridx = 3;
-    cb.gridy = 0;         
-    pButtons.add(bAddConstant, cb);
   }
 
 
@@ -241,18 +209,15 @@ public class DatasetCreationPanel extends CreateEditPanel{
 
     spAttributes.getViewport().add(pAttributes, cl);
     
-    if(oldTcCstAttributes != null){
-      tcCstAttributes = oldTcCstAttributes;
-      // when creating, zap loaded dataset id
-      /*if(!editing){
-        for(int i =0; i<tcCstAttributes.length; ++i){
-          if(cstAttributesNames[i].equalsIgnoreCase("datasetID")){
-            setJText((JComponent) tcCstAttributes[i],"");
-            ((JComponent) tcCstAttributes[i]).setEnabled(false);
-          }
+    // when creating, zap loaded dataset id
+    /*if(!editing){
+      for(int i =0; i<tcCstAttributes.length; ++i){
+        if(cstAttributesNames[i].equalsIgnoreCase("datasetID")){
+          setJText((JComponent) tcCstAttributes[i],"");
+          ((JComponent) tcCstAttributes[i]).setEnabled(false);
         }
-      }*/
-    }
+      }
+    }*/
 
     if(!reuseTextFields || tcCstAttributes == null ||
         tcCstAttributes.length != cstAttributesNames.length){
@@ -385,66 +350,388 @@ public class DatasetCreationPanel extends CreateEditPanel{
     updateUI();
   }
 
-
-  public void create(final boolean showResults, final boolean editing) {
-    /**
-     * Called when button Create is clicked
-     */
+  public void create(final boolean showResults){
 
     Debug.debug("create",  1);
+
+    String targetDB = null;
     
-    for(int i=0; i< cstAttr.length; ++i){
-      Debug.debug("setting " + cstAttributesNames[i],  3);
-      cstAttr[i] = getJTextOrEmptyString(tcCstAttributes[i], editing);
-      Debug.debug("to " + cstAttr[i],  3);
+    if(cbTargetDBSelection.getSelectedItem().toString()!=null &&
+         !cbTargetDBSelection.getSelectedItem().toString().equals("") &&
+         panel.getSelectedIdentifiers().length>0){
+      targetDB = cbTargetDBSelection.getSelectedItem().toString();
     }
 
-    oldTcCstAttributes = tcCstAttributes;
-  
-    Debug.debug("creating new DatasetCreator",  3);
-    
-    new DatasetCreator(     dbPluginMgr,
-                         ((Integer)(sFrom.getValue())).intValue(),
-                         ((Integer)(sTo.getValue())).intValue(),
-                         showResults,
-                         tcConstant,
-                         cstAttr,
-                         cstAttributesNames,
-                         editing
-                         );
+    final String [] cstAttr = new String[tcCstAttributes.length];
 
+    for(int i=0; i< cstAttr.length; ++i){
+      if(cstAttributesNames[i].equalsIgnoreCase("datasetFK")){
+        cstAttr[i] = datasetID;
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("transformation")){
+        cstAttr[i] = transformation;
+      }   
+      else if(cstAttributesNames[i].equalsIgnoreCase("transVersion")){
+        cstAttr[i] = version;
+      }
+      else{
+        cstAttr[i] = Util.getJTextOrEmptyString(tcCstAttributes[i]);
+        Debug.debug("createDataset: cstAttr["+i+"]: "+cstAttr[i],  3);
+      }
+    }
+
+    Debug.debug("create dataset",  1);
+
+    new DatasetCreator(dbPluginMgr,
+                       showResults,
+                       cstAttr,
+                       cstAttributesNames,
+                       datasetIDs,
+                       targetDB,
+                       transformation,
+                       version);
+
+  }
+
+  /**
+   *  Edit a dataset
+   */
+
+  public void editDataset(int datasetIdentifier, String table){
+    
+    Debug.debug("editDataset: " + Integer.toString(datasetIdentifier) + " " + table,3); 
+    Debug.debug("Got field names: "+Util.arrayToString(cstAttributesNames),3);
+
+    int row = 0;
+
+    //// Constants attributes
+
+    String arg = "";
+    String iden = "";
+    AMITable res = null;
+    iden = "identifier";
+    arg="select * from "+table+" where "+iden+"='"+
+    datasetIdentifier+"'";
+    res = amiMgt.sqlRequest(arg);
+    if(res.values.length < 1){
+    Debug.debug("Cannot get "+table+" with "+iden+" "+datasetIdentifier,1);
+    try{
+      AtCom.getClassMgr().getDatasetDefinitionPanel(table).bUpdate.setEnabled(false);
+      AtCom.getClassMgr().getDatasetDefinitionPanel(table).bCreate.setEnabled(true);
+    }
+    catch(java.lang.Exception e){Debug.debug("DatasetDefinitionPanel not initialized, "+e.getMessage(),1);}
+    }
+    else{
+      try{
+        AtCom.getClassMgr().getDatasetDefinitionPanel(table).bUpdate.setEnabled(true);
+        AtCom.getClassMgr().getDatasetDefinitionPanel(table).bCreate.setEnabled(true);
+      }
+      catch(java.lang.Exception e){Debug.debug("DatasetDefinitionPanel not initialized, "+e.getMessage(),1);}
+    }
+    
+    for(int i =0; i<tcCstAttributes.length; ++i){
+      for(int j=0; j<res.fields.length;++j){
+        if(res.fields[j].toString().equalsIgnoreCase(cstAttributesNames[i].toString())){
+          if(tcCstAttributes[i] == null || !tcCstAttributes[i].isEnabled() &&
+                   getJTextOrEmptyString(tcCstAttributes[i]).length() == 0  /*&& 
+             res.fields[j].toString().equalsIgnoreCase("identifier")*/
+             ){
+            tcCstAttributes[i] = createTextComponent();
+            pAttributes.add(tcCstAttributes[i], new GridBagConstraints(1, i/*row*/, 3, 1, 1.0, 0.0,
+                GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
+          }
+          Debug.debug(cstAttributesNames[i].toString()+"="+res.fields[j]+". Setting to "+res.values[0][j].toString(),3);
+          try{
+            setJText(tcCstAttributes[i], res.values[0][j].toString());
+          }
+          catch(java.lang.Exception e){
+            Debug.debug("Attribute not found, "+e.getMessage(),1);
+          }
+          // TODO: Make primary key fields inactive
+          break;
+        }
+      }
+      if(cstAttributesNames[i].equalsIgnoreCase("identifier") || cstAttributesNames[i].equalsIgnoreCase("datasetFK") ||
+            cstAttributesNames[i].equalsIgnoreCase("transformation") || cstAttributesNames[i].equalsIgnoreCase("transVersion") ||
+            cstAttributesNames[i].equalsIgnoreCase("reconName") || cstAttributesNames[i].equalsIgnoreCase("logicalDatasetName")){          
+        if(!cstAttributesNames[i].equalsIgnoreCase("reconName") &&
+           !cstAttributesNames[i].equalsIgnoreCase("identifier") &&
+           datasetIdentifier!=-1){
+          setJEditable(tcCstAttributes[i], false);
+        }
+        //else{
+        //  tcCstAttributes[i].setBackground(Color.white);
+        //}
+        //tcCstAttributes[i].setEnabled(false);
+        keyValues.put(cstAttributesNames[i].toString(), Integer.toString(i));
+        if(cstAttributesNames[i].equalsIgnoreCase("datasetFK")){
+          try{
+            setJText(tcCstAttributes[i], Integer.toString(datasetIdentifier));
+          }
+          catch(java.lang.Exception e){Debug.debug("Attribute not found, "+e.getMessage(),1);}
+        }
+        if(cstAttributesNames[i].equalsIgnoreCase("identifier") && res.values.length < 1){
+          try{
+            Debug.debug("Clearing identifier",3);
+            setJText(tcCstAttributes[i], "");
+          }
+          catch(java.lang.Exception e){
+            Debug.debug("Attribute not found, "+e.getMessage(),1);
+          }
+        }
+      }
+    } 
+  }
+
+  /**
+   *  Delete datasets. Returns HashSet of identifier strings.
+   */
+
+  public HashSet deleteDatasets(int [] datasetIdentifiers){
+    boolean skip = false;
+    boolean okAll = false;
+    int choice = 3;
+    HashSet deleted = new HashSet();
+    JCheckBox cbCleanup = null;
+    for(int i=datasetIdentifiers.length-1; i>=0; --i){
+      if(datasetIdentifiers[i]!=-1){
+        if(!okAll){
+          ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+          cbCleanup = new JCheckBox("Delete child records", true);
+          
+          if(i <  1){
+            try{
+              choice = confirmBox.getConfirm("Confirm delete",
+                                   "Really delete "+table+" # "+datasetIdentifiers[i]+"?",
+                                new Object[] {"OK", "Skip", cbCleanup});
+             }catch(java.lang.Exception e){Debug.debug("Could not get confirmation, "+e.getMessage(),1);}
+          }
+          else{
+            try{
+              choice = confirmBox.getConfirm("Confirm delete",
+                                   "Really delete "+table+" # "+datasetIdentifiers[i]+"?",
+                                new Object[] {"OK", "Skip", "OK for all", "Skip all", cbCleanup});
+              }catch(java.lang.Exception e){Debug.debug("Could not get confirmation, "+e.getMessage(),1);}
+          }
+    
+          switch(choice){
+          case 0  : skip = false; break;  // OK
+          case 1  : skip = true ; break;  // Skip
+          case 2  : skip = false; okAll = true ;break;  // OK for all
+          case 3  : skip = true ; return deleted; // Skip all
+          default : skip = true;    // other (closing the dialog). Same action as "Skip"
+          }
+        }
+        if(!skip || okAll){
+          if(table.equalsIgnoreCase("dataset")){
+            Debug.debug("deleting dataset # " + datasetIdentifiers[i], 2);
+            if(!AtCom.threePanes){
+              if(amiMgt.deleteDS(datasetIdentifiers[i], cbCleanup.isSelected())){
+                deleted.add(Integer.toString(datasetIdentifiers[i]));
+                statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " deleted.");
+              }
+              else{
+                Debug.debug("WARNING: dataset "+datasetIdentifiers[i]+" could not be deleted",1);
+                statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " NOT deleted.");
+              }
+            }
+            else{
+              if(amiMgt.deleteDSandRD(datasetIdentifiers[i], cbCleanup.isSelected())){
+                deleted.add(Integer.toString(datasetIdentifiers[i]));
+                statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " deleted.");
+              }
+              else{
+                Debug.debug("WARNING: dataset "+datasetIdentifiers[i]+" could not be deleted",1);
+                statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " NOT deleted.");
+              }
+            }
+          }
+          else if(table.equalsIgnoreCase("recon_detail")){
+            if(amiMgt.deleteRD(datasetIdentifiers[i], cbCleanup.isSelected())){
+              deleted.add(Integer.toString(datasetIdentifiers[i]));
+              statusBar.setLabel("Recon_detail # " + datasetIdentifiers[i] + " deleted.");
+            }
+            else{
+              statusBar.setLabel("Recon_detail # " + datasetIdentifiers[i] + " NOT deleted.");
+              Debug.debug("WARNING: dataset "+datasetIdentifiers[i]+" could not be deleted",1);
+            }
+          }
+          else{
+            Debug.debug("WARNING: the table "+table+"does not exist",3);
+          }
+        }
+      }
+      else{
+        Debug.debug("WARNING: dataset undefined and could not be deleted",1);
+      }
+    }
+    return deleted;
   }
 
   /**
    * Private methods
    */
 
-  private void addConstant(){
-    if(tcConstant.size() == 26)
-      return;
-    
-    JTextField tf = new JTextField(CFIELDWIDTH);
-    char name = (char) ('A' + (char)tcConstant.size());
-    int cstByRow = 4;
-
-    int row = tcConstant.size() / cstByRow;
-    int col = tcConstant.size() % cstByRow;
-    
-    tcConstant.add(tf);
-    
-    GridBagConstraints cc = new GridBagConstraints();
-
-    cc.gridx = col*2;
-    cc.gridy = row;   
-    pConstants.add(new JLabel("  " + new String(new char[]{name}) + " : "),cc);
-    
-    cc.gridx = col*2+1;
-    cc.gridy = row;   
-    pConstants.add(tf,cc);
-    
-    pConstants.updateUI();
+  private String[] getTransNames(){
+    Database.DBResult res = dbPluginMgr.getTransformations();
+    Debug.debug("Number of transformations found: "+res.values.length,3);
+    String [] ret = new String[res.values.length];
+    for(int i=0; i<res.values.length; ++i){
+      ret[i] = res.getValue(i,"name"); 
+    }
+    // This is to ensure only unique elements
+    // TODO: for some reason this doesn't seam to work
+    Arrays.sort(ret);
+    Vector vec = new Vector();
+    if(res.values.length>0){
+      vec.add(ret[0]);
+    }
+    if(res.values.length>1){
+      for(int i=1; i<res.values.length; ++i){
+        Debug.debug("Comparing "+ret[i]+" <-> "+ret[i-1],3);
+        if(!ret[i].equals(ret[i-1])){
+          Debug.debug("Adding "+ret[i],3);
+            vec.add(ret[i]);
+        }
+      }
+    }
+    String[] arr = new String[vec.size()];
+    for(int i=0; i<vec.size(); ++i){
+      arr[i]=vec.elementAt(i).toString();
+    } 
+    return arr;
+  }
+  
+  private String[] getTransVersions(String transformation){
+    Debug.debug("Finding version for transformation "+transformation, 3);
+    Database.DBResult res = dbPluginMgr.getTransformations();
+    String [] names = new String[res.values.length];
+    String [] versions = new String[res.values.length];
+    for(int i=0; i<res.values.length; ++i){
+      names[i] = res.getValue(i,"name"); 
+      versions[i] = res.getValue(i,"version"); 
+    }
+    // This is to ensure only unique elements
+    // TODO: for some reason this doesn't seam to work
+    Vector vec = new Vector();
+    if(res.values.length>0){
+      for(int i=0; i<versions.length; ++i){
+        if(names[i].equals(transformation)){
+          boolean found = false;
+          for(int j=0; j<vec.size(); ++j){
+            Debug.debug("Comparing "+versions[i]+" <-> "+vec.get(j),3);
+            if(versions[i].equals(vec.get(j))){
+              found = true;
+              break;
+            }
+          }
+          if(!found){
+            Debug.debug("Adding "+versions[i],3);
+            vec.add(versions[i]);
+          }
+        }
+      }
+    }
+    String[] arr = new String[vec.size()];
+    for(int i=0; i<vec.size(); ++i){
+      arr[i]=vec.elementAt(i).toString();
+    } 
+    return arr;
   }
 
+  private void initTransformationPanel(int datasetIdentifier){
+    boolean found = false;
+    
+    Debug.debug("Finding transformations...",3);
+
+    pTransformation.removeAll();
+    pTransformation.setLayout(new FlowLayout());
+
+    String [] transformations = getTransNames();
+
+    if(transformations.length == 0){
+      pTransformation.add(new JLabel("No transformations found."));
+      transformationChosen = false;
+    }
+    else if(transformations.length == 1){
+      transformation = transformations[0];
+      pTransformation.add(new JLabel("Transformation:" + transformation));
+      initTransVersionPanel(datasetIdentifier, transformation);
+      transformationChosen = true;
+    }
+    else{
+      cbTransformationSelection = new JComboBox();
+      for(int i=0; i<transformations.length; ++i){
+          cbTransformationSelection.addItem(transformations[i]);
+      }
+      pTransformation.add(new JLabel("Transformation:"), null);
+      pTransformation.add(cbTransformationSelection, null);
+
+      cbTransformationSelection.addActionListener(
+        new java.awt.event.ActionListener(){
+          public void actionPerformed(java.awt.event.ActionEvent e){
+            cbTransformationSelection_actionPerformed();
+          }
+        }
+      );
+      transformationChosen = false;
+    }
+    add(pTransformation,   new GridBagConstraints(2, 0, 1, 1, 0.0, 0.01
+        ,GridBagConstraints.NORTH, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+    updateUI();
+  }
+
+  private void initTransVersionPanel(int datasetIdentifier, String transformation){
+    boolean found = false;
+
+    Debug.debug("Finding versions...",3);
+
+    pVersion.removeAll();
+    pVersion.setLayout(new FlowLayout());
+
+    String [] versions = getTransVersions(transformation);
+    Debug.debug("Number of versions found: "+versions.length,3);
+
+    if(versions.length == 0){
+
+      pVersion.add(new JLabel("No versions found."));
+      versionChosen = false;
+
+    }
+    else if(versions.length == 1){
+
+      version = versions[0];
+      pVersion.add(new JLabel("Version:" + version));
+
+        versionChosen = true;
+        editDataset(datasetID, table);
+    }
+    else{
+      cbTransVersionSelection = new JComboBox();
+
+      for(int i=0; i<versions.length; ++i){
+        Debug.debug("Adding version "+versions[i],3);
+        cbTransVersionSelection.addItem(versions[i]);
+      }
+
+      pVersion.add(new JLabel("Version:"), null);
+      pVersion.add(cbTransVersionSelection, null);
+
+      cbTransVersionSelection.addActionListener(
+        new java.awt.event.ActionListener(){
+          public void actionPerformed(java.awt.event.ActionEvent e){
+            cbTransVersionSelection_actionPerformed();
+          }
+        }
+      );
+      versionChosen = false;
+    }
+
+    add(pVersion,   new GridBagConstraints(3, 0, 1, 1, 0.0, 0.01
+      ,GridBagConstraints.NORTHWEST, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+
+    updateUI();
+  }
 
   private Vector getTextFields(){
     Vector v = new Vector();

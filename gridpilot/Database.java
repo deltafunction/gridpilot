@@ -21,7 +21,6 @@ public interface Database{
   public DBResult select(String selectRequest, String identifier);
   
   // ####### Transformation table
-  // TODO: change this to whatever we end up with
   // These records must contain fields "transformation" and "version". If necessary, added by hand.
   public DBResult getTransformations();
   public DBRecord getTransformation(int transformationID);
@@ -33,10 +32,12 @@ public interface Database{
 
   // ####### Dataset table
   public DBResult getJobDefinitions(int datasetID, String [] fieldNames);
-  public boolean createDataset(String [] values);
-  public boolean updateDataset(int taskID, String [] fields, String [] values);
-  public boolean deleteDataset(int taskID);
-  public DBRecord getDataset(int taskID);
+  public String getDatasetName(int datasetID);
+  public String getRunNumber(int datasetID);
+  public boolean createDataset(String targetTable, String[] fields, String [] values);
+  public boolean updateDataset(int datasetID, String [] fields, String [] values);
+  public boolean deleteDataset(int datasetID);
+  public DBRecord getDataset(int datasetID);
 
   // ####### Job definition table
   public DBRecord getJobDefinition(int jobDefID);
@@ -85,6 +86,8 @@ public interface Database{
   // The column in the tranformation table holding the
   // name of the transformation
   public String getTransNameColumn();
+  // The class providing the panel for job creation
+  public String getPanelUtilClass();
   
   public class DBRecord{
     public String [] fields = null;

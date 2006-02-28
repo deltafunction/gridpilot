@@ -3,6 +3,8 @@ package gridpilot;
 import java.awt.Color;
 import java.util.HashMap;
 import java.util.Vector;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.swing.JComponent;
 import javax.swing.JOptionPane;
@@ -25,8 +27,7 @@ public class DBPluginMgr implements Database, PanelUtil{
   private ConfigFile configFile;
   private LogFile logFile;
   private Database db;
-  private String dbName ;
-  
+  private String dbName;
   private PanelUtil pu;
   
 // TODO: cache here??
@@ -45,7 +46,7 @@ public class DBPluginMgr implements Database, PanelUtil{
   public String getDBName(){
     return dbName;
   }
-
+  
   /**
    * Constructs a DBPluginMgr.
    * Looks after plug-in names and class in configFile, load them, and read time out values.
@@ -87,23 +88,15 @@ public class DBPluginMgr implements Database, PanelUtil{
    * Initializes a JobDefCreationPanel
    */
   public void initJobDefCreationPanel(JobDefCreationPanel panel) throws Throwable{
-  
-    logFile = GridPilot.getClassMgr().getLogFile();
-    configFile = GridPilot.getClassMgr().getConfigFile();
-  
-    loadValues();
-
-    String puClass = configFile.getValue(dbName, "panel class");
-    if(puClass == null){
-      throw new Exception("Cannot load class for system " + dbName + " : \n"+
-                          configFile.getMissingMessage(dbName, "panel class"));
-    }
+    
+    String puClass = getPanelUtilClass();
 
     Class [] puArgsType = {JobDefCreationPanel.class};
     
     Object [] puArgs = {panel};
 
     pu = (PanelUtil) loadClass(puClass, puArgsType, puArgs);
+    
   }
   
   /**
@@ -149,17 +142,11 @@ public class DBPluginMgr implements Database, PanelUtil{
   }
 
   /**
-   * Reads time out values in configuration file.
+   * Reads time-out values in configuration file.
    */
   public void loadValues(){
-  
-    String tmp;
-  
-    /**
-     * default timeout
-     */
-  
-    tmp = configFile.getValue("gridpilot", "db timeout");
+    // default timeout  
+    String tmp = configFile.getValue("gridpilot", "db timeout");
     if(tmp!=null){
       try{
         dbTimeOut = new Integer(tmp).intValue();
@@ -209,6 +196,101 @@ public class DBPluginMgr implements Database, PanelUtil{
       }
     }
     return GridPilot.getClassMgr().getDBPluginMgr(dbName).updateRunInfo(job);
+  }
+
+  /** 
+   * Construct the name of the target dataset when creating a new dataset
+   * from an input dataset.
+   */ 
+  public String getTargetDatasetName(String targetDB, String sourceDatasetName,
+      String transformation, String version){
+    Debug.debug("finding target dataset for "+sourceDatasetName+" in "+targetDB, 3);
+    String findString = "";
+    String replaceString = "";
+    String matchString = "";
+    Pattern p = null;
+    Matcher m = null;
+    String s = "";
+    String ret = "";
+    // TODO: make these patterns configurable
+    s = ".*simulation.*";
+    p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
+    m = p.matcher(targetDB);
+    if(m.matches()){
+      replaceString = "SimProd";
+    }
+    s = ".*digitization.*";
+    p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
+    m = p.matcher(targetDB);
+    if(m.matches()){
+      replaceString = "DigitProd";
+    }
+    s = ".*reconstruction.*";
+    p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
+    m = p.matcher(targetDB);
+    if(m.matches()){
+      replaceString = "ReconProd";
+    }
+    
+    findString = "SimProd";
+    Debug.debug("replacing "+findString+" -> "+replaceString, 3);
+    ret = sourceDatasetName.replaceFirst(findString, replaceString);
+    
+    findString = "DigitProd"; 
+    Debug.debug("replacing "+findString+" -> "+replaceString, 3);
+    ret = sourceDatasetName.replaceFirst(findString, replaceString);
+    
+    findString = "ReconProd";  
+    Debug.debug("replacing "+findString+" -> "+replaceString, 3);
+    ret = sourceDatasetName.replaceFirst(findString, replaceString);
+    
+    // Get rid of redundant .simul extension
+    s = "\\.simul$";
+    p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
+    m = p.matcher(ret);
+    ret = m.replaceAll("");    
+
+    boolean matched = false;
+    String ret1 = ret;
+    if(version!=null && !version.equals("")){
+      // Change the version to match the transformation version
+      s = "\\.v\\w*\\.\\w*$";
+      p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
+      m = p.matcher(ret);
+      if(!matched){
+        Debug.debug("replacing version", 3);
+        ret1 = m.replaceAll("."+version);
+        if(!ret.equals(ret1)){
+          matched = true;
+        }
+      }
+      s = "\\.\\w*\\.v\\w*$";
+      p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
+      m = p.matcher(ret);
+      if(!matched){
+        Debug.debug("replacing version", 3);
+        ret1 = m.replaceAll("."+version);
+        if(!ret.equals(ret1)){
+          matched = true;
+        }
+      }
+      s = "\\.v\\w*$";
+      p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
+      m = p.matcher(ret);
+      if(!matched){
+        Debug.debug("replacing version", 3);
+        ret1 = m.replaceAll("."+version);
+        if(!ret.equals(ret1)){
+          matched = true;
+        }
+      }
+    }
+    
+    return ret1;
+  }
+
+  public synchronized String getPanelUtilClass(){
+    return db.getPanelUtilClass();
   }
 
   public synchronized String [] getFieldNames(final String table){
@@ -495,6 +577,54 @@ public class DBPluginMgr implements Database, PanelUtil{
     t.start();
   
     if(waitForThread(t, dbName, dbTimeOut, "getJobDefName"))
+      return t.getStringRes();
+    else
+      return null;
+  }
+
+  public synchronized String getDatasetName(final int datasetID){
+    MyThread t = new MyThread(){
+      String res = null;
+      public void run(){
+        try{
+          res = db.getDatasetName(datasetID);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             datasetID, t);
+        }
+      }
+      public String getStringRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getDatasetName"))
+      return t.getStringRes();
+    else
+      return null;
+  }
+
+  public synchronized String getRunNumber(final int datasetID){
+    MyThread t = new MyThread(){
+      String res = null;
+      public void run(){
+        try{
+          res = db.getRunNumber(datasetID);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             datasetID, t);
+        }
+      }
+      public String getStringRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getRunNumber"))
       return t.getStringRes();
     else
       return null;
@@ -995,7 +1125,7 @@ public class DBPluginMgr implements Database, PanelUtil{
   public DBRecord createJobDef(String [] fields, String [] values) throws Exception {
     
     String [] jobDefFieldNames = getFieldNames(
-        GridPilot.getClassMgr().getConfigFile().getValue(
+        configFile.getValue(
             getDBName(), "job definition table name"));
     
     if(fields.length!=values.length){
@@ -1035,83 +1165,81 @@ public class DBPluginMgr implements Database, PanelUtil{
 
   public synchronized boolean createTransformation(final String [] values){
     
-      MyThread t = new MyThread(){
-        boolean res = false;
-        public void run(){
-          try{
-            res = db.createTransformation(values);
-          }
-          catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               values.toString(), t);
-          }
+    MyThread t = new MyThread(){
+      boolean res = false;
+      public void run(){
+        try{
+          res = db.createTransformation(values);
         }
-        public boolean getBoolRes(){return res;}
-      };
-    
-      t.start();
-    
-      if(waitForThread(t, dbName, dbTimeOut, "createJobTrans"))
-        return t.getBoolRes();
-      else
-        return false;
-    }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             values.toString(), t);
+        }
+      }
+      public boolean getBoolRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "createJobTrans"))
+      return t.getBoolRes();
+    else
+      return false;
+  }
 
-  public synchronized boolean createDataset(final String [] values){
-    
-      MyThread t = new MyThread(){
-        boolean res = false;
-        public void run(){
-          try{
-            res = db.createDataset(values);
-          }
-          catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               values.toString(), t);
-          }
+  public synchronized boolean createDataset(final String targetTable,
+      final String [] fields, final String [] values){
+    MyThread t = new MyThread(){
+      boolean res = false;
+      public void run(){
+        try{
+          res = db.createDataset(targetTable, fields, values);
         }
-        public boolean getBoolRes(){return res;}
-      };
-    
-      t.start();
-    
-      if(waitForThread(t, dbName, dbTimeOut, "createDataset"))
-        return t.getBoolRes();
-      else
-        return false;
-    }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             values.toString(), t);
+        }
+      }
+      public boolean getBoolRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "createDataset"))
+      return t.getBoolRes();
+    else
+      return false;
+  }
 
   public synchronized boolean setJobDefsField(final int [] identifiers,
-      final String field, final String value){
-    
-      MyThread t = new MyThread(){
-        boolean res = false;
-        public void run(){
-          try{
-            res = db.setJobDefsField(identifiers, field, value);
-          }
-          catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               field, t);
-          }
+      final String field, final String value){  
+    MyThread t = new MyThread(){
+      boolean res = false;
+      public void run(){
+        try{
+          res = db.setJobDefsField(identifiers, field, value);
         }
-        public boolean getBoolRes(){return res;}
-      };
-    
-      t.start();
-    
-      if(waitForThread(t, dbName, dbTimeOut, "setJobDefinitionField"))
-        return t.getBoolRes();
-      else
-        return false;
-    }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             field, t);
+        }
+      }
+      public boolean getBoolRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "setJobDefinitionField"))
+      return t.getBoolRes();
+    else
+      return false;
+  }
 
   public synchronized boolean updateJobDefinition(final int jobDefID,
       final String [] fields, final String [] values){
-  
     MyThread t = new MyThread(){
       boolean res = false;
       public void run(){
@@ -1438,18 +1566,18 @@ public class DBPluginMgr implements Database, PanelUtil{
       return null;
   }
 
-  public synchronized DBRecord getDataset(final int taskID){
+  public synchronized DBRecord getDataset(final int datasetID){
     
       MyThread t = new MyThread(){
         DBRecord res = null;
         public void run(){
           try{
-            res = db.getDataset(taskID);
+            res = db.getDataset(datasetID);
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
-                               taskID, t);
+                               datasetID, t);
           }
         }
         public DBRecord getDBRes(){return res;}
@@ -1733,7 +1861,7 @@ public class DBPluginMgr implements Database, PanelUtil{
     String [] ret;
     try{
       ret = GridPilot.split((String)
-      GridPilot.getClassMgr().getConfigFile().getValue(dbName, "default "+tableName+" fields"));
+          configFile.getValue(dbName, "default "+tableName+" fields"));
       dbDefFields.put(tableName, ret);
       return ret;
     }
@@ -1743,9 +1871,9 @@ public class DBPluginMgr implements Database, PanelUtil{
     }
   }
   
-  public synchronized String getJobDefIdentifier(String dbName){
-    String ret = GridPilot.getClassMgr().getConfigFile().getValue(dbName,
-      "job definition table identifier");
+  public synchronized String getIdentifier(String dbName, String table){
+    String ret = configFile.getValue(dbName,
+      table+" table identifier");
     if(ret==null || ret.equals("")){
       ret = "identifier";
     }
@@ -1757,7 +1885,7 @@ public class DBPluginMgr implements Database, PanelUtil{
     String [] ret;
     try{
       ret =
-        GridPilot.getClassMgr().getConfigFile().getValues(dbName,
+        configFile.getValues(dbName,
             "hidden "+tableName+" fields");
       dbDefFields.put(tableName, ret);
       return ret;

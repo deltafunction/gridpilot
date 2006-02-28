@@ -31,32 +31,15 @@ public class GlobalFrame extends JFrame{
   private int selectedPanel;
   private StatusBar statusBar;
   private static int i;
-  private JobMonitoringPanel jobMonitoringPanel;
+  public JobMonitoringPanel jobMonitoringPanel;
   private CreateEditDialog pDialog;
   
   /**
    * Constructor
    */
-
   public GlobalFrame() throws Exception{
-    /**
-     * Called by : gridpilot.gridpilot
-     */
-
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
-
-    String resourcesPath = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "resources");
-    if(resourcesPath == null){
-      GridPilot.getClassMgr().getLogFile().addMessage(GridPilot.getClassMgr().getConfigFile().getMissingMessage("gridpilot", "resources"));
-      resourcesPath = ".";
-    }
-    else{
-      if (!resourcesPath.endsWith("/"))
-        resourcesPath = resourcesPath + "/";
-    }
-
     allPanels = new Vector();
-    
   }
 
   /**
@@ -141,23 +124,13 @@ public class GlobalFrame extends JFrame{
 
   public void addPanel(JobPanel newPanel) {
     
-    String resourcesPath = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "resources");
-    if(resourcesPath == null){
-      GridPilot.getClassMgr().getLogFile().addMessage(GridPilot.getClassMgr().getConfigFile().getMissingMessage("gridpilot", "resources"));
-      resourcesPath = ".";
-    }
-    else{
-      if (!resourcesPath.endsWith("/"))
-        resourcesPath = resourcesPath + "/";
-    }
-
     URL imgURL=null;
     ImageIcon closeIcon = null;
     try{
-      imgURL = GridPilot.class.getResource(resourcesPath + "close.png");
+      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "close.png");
       closeIcon = new ImageIcon(imgURL);
     }catch(Exception e){
-      Debug.debug("Could not find image "+ resourcesPath + "close.png", 3);
+      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "close.png", 3);
       closeIcon = new ImageIcon();
     }
   
@@ -212,13 +185,11 @@ public class GlobalFrame extends JFrame{
   }
   //Help | About action performed
   public void menuHelpAbout_actionPerformed() {
-    String path = GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "resources");
     URL aboutURL = null;
     try{
-      //aboutURL = AtCom.class.getResource(AtCom.resources + "about.htm");
-      aboutURL = GridPilot.class.getResource(path + "about.htm");
+      aboutURL = GridPilot.class.getResource(GridPilot.resourcesPath + "about.htm");
     }catch(Exception e){
-      Debug.debug("Could not find file "+ path + "about.htm", 3);
+      Debug.debug("Could not find file "+ GridPilot.resourcesPath + "about.htm", 3);
       return;
     } 
     WebBox dlg = new WebBox(this, "About", aboutURL);
@@ -257,6 +228,14 @@ public class GlobalFrame extends JFrame{
     
     JMenu menuGridPilot = new JMenu("GridPilot");
     JMenu menuNewTab = new JMenu("New tab");
+    
+    JMenuItem miReloadValues = new JMenuItem("Reload values from config file");
+    miReloadValues.addActionListener(new ActionListener()  {
+      public void actionPerformed(ActionEvent e) {
+        GridPilot.reloadValues();
+      }
+    });
+    menuGridPilot.add(miReloadValues);
    
     JMenu miNewTaskTab = new JMenu("dataset");
     JMenuItem [] miNewTaskTabs = new JMenuItem[GridPilot.getDBs().length];

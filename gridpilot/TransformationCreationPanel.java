@@ -55,9 +55,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     table = _table;
     dbPluginMgr = _dbPluginMgr;
 
-    transformationIdentifier = GridPilot.getClassMgr().getConfigFile().getValue(
-        dbPluginMgr.getDBName(),
-    "transformation table identifier");
+    transformationIdentifier = "identifier";
 
     //cstAttributesNames = JobTrans.Fields;
     cstAttributesNames = dbPluginMgr.getFieldNames("transformation");

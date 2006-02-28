@@ -73,14 +73,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
 
   private LogViewerPanel logViewerPanel = new LogViewerPanel();
   
-  private StatusUpdateControl statusUpdateControl;
+  public StatusUpdateControl statusUpdateControl;
   private SubmissionControl submissionControl;
 
 
   /**
    * Constructor
    */
-
   public JobMonitoringPanel() throws Exception{
     
     statusBar = GridPilot.getClassMgr().getStatusBar();

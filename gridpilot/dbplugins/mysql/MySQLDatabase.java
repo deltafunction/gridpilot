@@ -94,6 +94,10 @@ public class MySQLDatabase implements Database{
     return "";
   }
   
+  public String getPanelUtilClass(){
+    return "MySQLPanelUtil";
+  }
+
   public synchronized void clearCaches(){
     // nothing for now
   }

@@ -53,23 +53,13 @@ public class StatusBar extends JPanel {
     timerLabel.setRepeats(false);
 
     add(new JLabel(" "), BorderLayout.WEST);
-
-    String resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "resources");
-    if(resourcesPath == null){
-      GridPilot.getClassMgr().getLogFile().addMessage(GridPilot.getClassMgr().getConfigFile().getMissingMessage("gridpilot", "resources"));
-      resourcesPath = ".";
-    }
-    else{
-      if (!resourcesPath.endsWith("/"))
-        resourcesPath = resourcesPath + "/";
-    }
-
+    
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(resourcesPath + "wait.gif");
+      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "wait.gif");
       waitingIcon = new ImageIcon(imgURL);
     }catch(Exception e){
-      Debug.debug("Could not find image "+ resourcesPath + "wait.gif", 3);
+      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "wait.gif", 3);
       waitingIcon = new ImageIcon();
     }
   }

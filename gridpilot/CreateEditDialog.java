@@ -23,7 +23,7 @@ public class CreateEditDialog extends JDialog{
 
 
   public CreateEditDialog(JFrame frame, CreateEditPanel _panel, boolean _editing,
-      boolean modal) {
+      boolean modal){
     super(frame, "jobDefinition", true);
     
     createEditPanel = _panel;
@@ -52,33 +52,33 @@ public class CreateEditDialog extends JDialog{
       requestFocusInWindow();
       setModal(modal);
     }
-    catch (Exception e) {
+    catch (Exception e){
       e.printStackTrace();
     }
   }
   
-  public void initGUI() {
+  public void initGUI(){
     //buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
 
     // buttons initialisation
 
     bPrev.setMnemonic(BPREV);
-    bPrev.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(ActionEvent e) {
+    bPrev.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(ActionEvent e){
         button_actionPerformed(e);
       }
     });
 
     bClear.setMnemonic(BCLEAR);
-    bClear.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(ActionEvent e) {
+    bClear.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(ActionEvent e){
         button_actionPerformed(e);
       }
     });
 
     bCreate.setMnemonic(BCREATE);
-    bCreate.addActionListener(new java.awt.event.ActionListener() {
-      public void actionPerformed(ActionEvent e) {
+    bCreate.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(ActionEvent e){
         button_actionPerformed(e);
       }
     });
@@ -105,7 +105,7 @@ public class CreateEditDialog extends JDialog{
   /**
    * Called when a button is clicked
    */
-  void button_actionPerformed(ActionEvent e) {
+  void button_actionPerformed(ActionEvent e){
     switch(((JButton)e.getSource()).getMnemonic()){
       case BPREV :
         createEditPanel.windowClosing();

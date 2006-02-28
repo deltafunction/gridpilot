@@ -184,9 +184,8 @@ public class TransformationCreator{
         Debug.debug(this.getClass().getName() + " is calling DB", 2);
 
         if(editing){
-          String jobTransIdentifier = GridPilot.getClassMgr().getConfigFile().getValue(
-              dbPluginMgr.getDBName(),
-          "transformation table identifier");
+          String jobTransIdentifier =
+            dbPluginMgr.getIdentifier(dbPluginMgr.getDBName() ,"transformation");
           int id = -1;
           for(int i=0; i<cstAttrNames.length; ++i){
             Debug.debug("Checking name "+jobTransIdentifier+":"+cstAttrNames[i].toString(), 3);
