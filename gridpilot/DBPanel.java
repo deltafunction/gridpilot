@@ -905,7 +905,7 @@ public class DBPanel extends JPanel implements JobPanel{
           JProgressBar pb = new JProgressBar();
           pb.setMaximum(ids.length);
           for(int i = ids.length-1; i>=0; i--){
-            boolean success = dbPluginMgr.deleteDataset(ids[i]);
+            boolean success = dbPluginMgr.deleteDataset(ids[i], true);
             pb.setValue(pb.getValue()+1);
             tableResults.removeRow(rows[i]);
             tableResults.tableModel.fireTableDataChanged();

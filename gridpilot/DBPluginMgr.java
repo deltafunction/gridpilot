@@ -212,37 +212,42 @@ public class DBPluginMgr implements Database, PanelUtil{
     Matcher m = null;
     String s = "";
     String ret = "";
-    // TODO: make these patterns configurable
-    s = ".*simulation.*";
-    p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
-    m = p.matcher(targetDB);
-    if(m.matches()){
-      replaceString = "SimProd";
+    if(targetDB!=null){
+      // TODO: make these patterns configurable
+      s = ".*simulation.*";
+      p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
+      m = p.matcher(targetDB);
+      if(m.matches()){
+        replaceString = "SimProd";
+      }
+      s = ".*digitization.*";
+      p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
+      m = p.matcher(targetDB);
+      if(m.matches()){
+        replaceString = "DigitProd";
+      }
+      s = ".*reconstruction.*";
+      p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
+      m = p.matcher(targetDB);
+      if(m.matches()){
+        replaceString = "ReconProd";
+      }
+      
+      findString = "SimProd";
+      Debug.debug("replacing "+findString+" -> "+replaceString, 3);
+      ret = sourceDatasetName.replaceFirst(findString, replaceString);
+      
+      findString = "DigitProd"; 
+      Debug.debug("replacing "+findString+" -> "+replaceString, 3);
+      ret = sourceDatasetName.replaceFirst(findString, replaceString);
+      
+      findString = "ReconProd";  
+      Debug.debug("replacing "+findString+" -> "+replaceString, 3);
+      ret = sourceDatasetName.replaceFirst(findString, replaceString);
     }
-    s = ".*digitization.*";
-    p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
-    m = p.matcher(targetDB);
-    if(m.matches()){
-      replaceString = "DigitProd";
+    else{
+      ret = sourceDatasetName;
     }
-    s = ".*reconstruction.*";
-    p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
-    m = p.matcher(targetDB);
-    if(m.matches()){
-      replaceString = "ReconProd";
-    }
-    
-    findString = "SimProd";
-    Debug.debug("replacing "+findString+" -> "+replaceString, 3);
-    ret = sourceDatasetName.replaceFirst(findString, replaceString);
-    
-    findString = "DigitProd"; 
-    Debug.debug("replacing "+findString+" -> "+replaceString, 3);
-    ret = sourceDatasetName.replaceFirst(findString, replaceString);
-    
-    findString = "ReconProd";  
-    Debug.debug("replacing "+findString+" -> "+replaceString, 3);
-    ret = sourceDatasetName.replaceFirst(findString, replaceString);
     
     // Get rid of redundant .simul extension
     s = "\\.simul$";
@@ -1417,13 +1422,13 @@ public class DBPluginMgr implements Database, PanelUtil{
         return false;
     }
 
-  public synchronized boolean deleteDataset(final int taskID){
+  public synchronized boolean deleteDataset(final int taskID, final boolean cleanup){
     
       MyThread t = new MyThread(){
         boolean res = false;
         public void run(){
           try{
-            res = db.deleteDataset(taskID);
+            res = db.deleteDataset(taskID, cleanup);
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +

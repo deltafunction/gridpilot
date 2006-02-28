@@ -36,7 +36,7 @@ public interface Database{
   public String getRunNumber(int datasetID);
   public boolean createDataset(String targetTable, String[] fields, String [] values);
   public boolean updateDataset(int datasetID, String [] fields, String [] values);
-  public boolean deleteDataset(int datasetID);
+  public boolean deleteDataset(int datasetID, boolean cleanup);
   public DBRecord getDataset(int datasetID);
 
   // ####### Job definition table

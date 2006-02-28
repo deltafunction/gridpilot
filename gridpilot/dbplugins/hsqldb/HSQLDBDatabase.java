@@ -452,7 +452,7 @@ public class HSQLDBDatabase implements Database{
       Debug.debug("getFieldNames for table "+table, 3);
       Statement stmt = conn.createStatement();
       // TODO: Do we need to execute a query to get the metadata?
-      ResultSet rset = stmt.executeQuery("SELECT * FROM "+table);
+      ResultSet rset = stmt.executeQuery("SELECT * FROM "+table+" LIMIT 0 2");
       ResultSetMetaData md = rset.getMetaData();
       String [] res = new String[md.getColumnCount()];
       for(int i=1; i<=md.getColumnCount(); ++i){

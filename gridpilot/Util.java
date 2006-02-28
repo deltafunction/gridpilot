@@ -1,5 +1,6 @@
 package gridpilot;
 
+import java.awt.Color;
 import java.util.StringTokenizer;
 
 import javax.swing.JComboBox;
@@ -62,6 +63,25 @@ public class Util{
     return text;
   }
   
+  /**
+   * Enables or disables a JComponent.
+   */
+  public static void setJEditable(JComponent comp, boolean edi){
+    if(comp.getClass().isInstance(new JTextArea())){
+      ((JTextComponent) comp).setEditable(edi);
+    }
+    else if(comp.getClass().isInstance(new JComboBox())){
+      //((JComboBox) comp).setEditable(edi);
+      ((JComboBox) comp).setEnabled(edi);
+    }
+    if(!edi){
+      comp.setBackground(Color.lightGray);
+    }
+    else{
+      comp.setBackground(Color.white);
+    }
+  }
+
   /**
    * Converts a local path (<code>file</code>) into a absolute path by prepending the "prefix" attribute
    * of the gridpilot section in config file. <br>
