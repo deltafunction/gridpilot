@@ -43,51 +43,31 @@ public class HSQLDBDatabase implements Database{
     database = _database;
   	user = _user;
   	passwd = _passwd;
+    
+    boolean showDialog = true;
+    // if csNames is set, this is a reload
+    if(GridPilot.csNames==null){
+      showDialog = false;
+    }
         
     String [] up = null;
     
     for(int rep=0; rep<3; ++rep){
-      up = GridPilot.userPwd(user, passwd, database);
-      if(up==null){
-        //GridPilot.exit(0);
-        return;
-      }
-      else{
-        user = up[0];
-        passwd = up[1];
-        database = up[2];
+      if(showDialog || user==null || passwd==null || database==null){
+        up = GridPilot.userPwd(user, passwd, database);
+        if(up==null){
+          return;
+        }
+        else{
+          user = up[0];
+          passwd = up[1];
+          database = up[2];
+        }
       }
       if(connect()!=null){
-        return;
+        break;
       }
     }
-  }
-  
-  public String connect(){
-
-    try{
-      Class.forName(driver).newInstance();
-    }
-    catch(Exception e){
-  		Debug.debug("Could not load the driver "+driver, 3);
-      e.printStackTrace();
-  		return null;
-  	}
-  	try {
-      conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
-         user, passwd);
-  	}
-    catch(Exception e){
-      Debug.debug("Could not connect to db "+database+
-          ", "+user+", "+passwd+" : "+e, 3);
-  		return null;
-  	}	
-  	try {
-  		conn.setAutoCommit(true);
-  	}
-    catch(Exception e){
-      Debug.debug("failed setting auto commit to true: "+e.getMessage(), 2);
-  	}
     setFieldNames();
     if(datasetFields==null || datasetFields.length<1){
       makeDatasetTable();
@@ -105,6 +85,33 @@ public class HSQLDBDatabase implements Database{
       makeRunInfoTable();
     }
     setFieldNames();
+  }
+  
+  public String connect(){
+
+    try{
+      Class.forName(driver).newInstance();
+    }
+    catch(Exception e){
+  		Debug.debug("Could not load the driver "+driver, 3);
+      e.printStackTrace();
+  		return null;
+  	}
+  	try{
+      conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
+         user, passwd);
+  	}
+    catch(Exception e){
+      Debug.debug("Could not connect to db "+database+
+          ", "+user+", "+passwd+" : "+e, 3);
+  		return null;
+  	}	
+  	try{
+  		conn.setAutoCommit(true);
+  	}
+    catch(Exception e){
+      Debug.debug("failed setting auto commit to true: "+e.getMessage(), 2);
+  	}
     return "";
   }
   
@@ -260,7 +267,7 @@ public class HSQLDBDatabase implements Database{
     sql += ")";
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
      Statement stmt = conn.createStatement();
      stmt.executeUpdate(sql);
       conn.commit();
@@ -300,7 +307,7 @@ public class HSQLDBDatabase implements Database{
     sql += ")";
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
      Statement stmt = conn.createStatement();
      stmt.executeUpdate(sql);
       conn.commit();
@@ -332,7 +339,7 @@ public class HSQLDBDatabase implements Database{
     sql += ")";
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
      Statement stmt = conn.createStatement();
      stmt.executeUpdate(sql);
       conn.commit();
@@ -359,7 +366,7 @@ public class HSQLDBDatabase implements Database{
     sql += ")";
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
      Statement stmt = conn.createStatement();
      stmt.executeUpdate(sql);
       conn.commit();
@@ -389,7 +396,7 @@ public class HSQLDBDatabase implements Database{
     sql += ")";
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
      Statement stmt = conn.createStatement();
      stmt.executeUpdate(sql);
       conn.commit();
@@ -442,7 +449,7 @@ public class HSQLDBDatabase implements Database{
     return new DBResult();
   }
 
-  public synchronized String [] getDefVals(int datasetId, String user){
+  public synchronized String [] getDefVals(int datasetID, String user){
     // nothing for now
     return new String [] {""};
   }
@@ -452,7 +459,7 @@ public class HSQLDBDatabase implements Database{
       Debug.debug("getFieldNames for table "+table, 3);
       Statement stmt = conn.createStatement();
       // TODO: Do we need to execute a query to get the metadata?
-      ResultSet rset = stmt.executeQuery("SELECT * FROM "+table+" LIMIT 0 2");
+      ResultSet rset = stmt.executeQuery("SELECT LIMIT 0 1 * FROM "+table);
       ResultSetMetaData md = rset.getMetaData();
       String [] res = new String[md.getColumnCount()];
       for(int i=1; i<=md.getColumnCount(); ++i){
@@ -462,6 +469,7 @@ public class HSQLDBDatabase implements Database{
       return res;
     }
     catch(Exception e){
+      e.printStackTrace();
       Debug.debug(e.getMessage(),1);
       return null;
     }
@@ -475,7 +483,7 @@ public class HSQLDBDatabase implements Database{
   public synchronized String [] getOutputs(int jobDefID){
     String transformationID = "";
     transformationID = getTransformationID(jobDefID);
-    // TODO: finish - go into XML
+    // TODO: finish
     getTransformation(Integer.parseInt(transformationID)).getValue("outputs");
     // nothing for now
     return new String [] {""};
@@ -537,9 +545,7 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized String [] getTransformationPackages(int jobDefID){
-    String transformationID = "";
-    transformationID = getTransformationID(jobDefID);
-    // TODO: finish - go into XML
+    String transformationID = getTransformationID(jobDefID);
     getTransformation(Integer.parseInt(transformationID)).getValue("uses");
     // nothing for now
     return new String [] {""};
@@ -548,27 +554,28 @@ public class HSQLDBDatabase implements Database{
   public synchronized String [] getTransformationSignature(int jobDefID){
     String transformationID = "";
     transformationID = getTransformationID(jobDefID);
-    // TODO: finish - go into XML
+    // TODO: finish
     getTransformation(Integer.parseInt(transformationID)).getValue("uses");
     // nothing for now
     return new String [] {""};
   }
 
   public synchronized String getJobDefUser(int jobDefinitionID){
-    return getJobDefinition(jobDefinitionID).getValue("userName").toString();
+    return getJobDefinition(jobDefinitionID).getValue("userInfo").toString();
   }
 
   public synchronized String getJobStatus(int jobDefinitionID){
-    return getJobDefinition(jobDefinitionID).getValue("currentStatus").toString();
+    return getJobDefinition(jobDefinitionID).getValue("status").toString();
   }
 
   public synchronized String getJobDefName(int jobDefinitionID){
-    return getJobDefinition(jobDefinitionID).getValue("jobName").toString();
+    return getJobDefinition(jobDefinitionID).getValue("name").toString();
   }
 
   public synchronized int getJobDefDatasetID(int jobDefinitionID){
-    return Integer.parseInt(
-        getJobDefinition(jobDefinitionID).getValue("datasetFK").toString());
+    int datasetID = Integer.parseInt(
+        getJobDefinition(jobDefinitionID).getValue("dataset").toString());
+    return Integer.parseInt(getDataset(datasetID).getValue("identifier").toString());
   }
 
   public synchronized String getJobRunUser(int jobDefinitionID){
@@ -582,9 +589,38 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized String getTransformationID(int jobDefinitionID){
-    String transformationID = "-1";    
-    transformationID = getJobDefinition(jobDefinitionID).getValue("transformationFK").toString();
-    return transformationID;
+    DBRecord dataset = getDataset(getJobDefDatasetID(jobDefinitionID));
+    String transformation = dataset.getValue("transformation").toString();
+    String version = dataset.getValue("transVersion").toString();
+    String transID = null;
+    String req = "SELECT identifier FROM "+
+    "transformation WHERE name = '"+transformation+"' AND version = '"+version+"'";
+    Vector vec = new Vector();
+    Debug.debug(req, 2);
+    try{
+      Statement stmt = conn.createStatement();
+      ResultSet rset = stmt.executeQuery(req);
+      while(rset.next()){
+        if(transID!=null){
+          Debug.debug("WARNING: more than one transformation for name, version :" +
+              transformation+", "+version, 1);
+          break;
+        }
+        transID = rset.getString("identifier");
+        if(transID!=null){
+          Debug.debug("Adding version "+transID, 3);
+          vec.add(version);
+        }
+        else{
+          Debug.debug("WARNING: identifier null", 1);
+        }
+      };
+      rset.close();  
+    }
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 1);
+    }
+    return transID;
   }
 
   public synchronized String getUserLabel(){
@@ -617,7 +653,6 @@ public class HSQLDBDatabase implements Database{
     Pattern patt;
     Matcher matcher;
 
-    // Oracle uses username.tablename.
     // Make sure we have identifier.
     // *, row1, row2 -> *
     if(selectRequest.matches("SELECT \\* FROM.*")){
@@ -762,6 +797,14 @@ public class HSQLDBDatabase implements Database{
      return task;
   }
   
+  public synchronized String getDatasetName(int datasetID){
+    return getDataset(datasetID).getValue("name").toString();
+  }
+
+  public synchronized String getRunNumber(int datasetID){
+    return getDataset(datasetID).getValue("runNumber").toString();
+  }
+
   public synchronized DBRecord getTransformation(int transformationID){
     
     DBRecord transformation = null;
@@ -932,7 +975,7 @@ public class HSQLDBDatabase implements Database{
     datasetID + "'";
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
-    try {
+    try{
     	Statement stmt = conn.createStatement();
     	ResultSet rset = stmt.executeQuery(req);
     	while(rset.next()){
@@ -1061,7 +1104,7 @@ public class HSQLDBDatabase implements Database{
     sql += ")";
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
     	Statement stmt = conn.createStatement();
     	stmt.executeUpdate(sql);
       conn.commit();
@@ -1078,44 +1121,70 @@ public class HSQLDBDatabase implements Database{
     return true;
   }
   
-  public synchronized boolean createDataset(String [] values){
-    
-    String sql = "INSERT INTO dataset (";
+  public synchronized boolean createDataset(String table,
+      String [] fields, String [] values){
+    String nonMatchedStr = "";
+    Vector nonMatchedFields = new Vector();
+    boolean match = false;
+    for(int i=1; i<fields.length; ++i){
+      match = false;
+      for(int j=1; j<datasetFields.length; ++j){
+        if(fields[i].equalsIgnoreCase(datasetFields[j])){
+          match = true;
+          break;
+        }
+      }
+      if(!match){
+        nonMatchedFields.add(new Integer(i));
+        if(i>0){
+          nonMatchedStr += "\n";
+        }
+        nonMatchedStr += fields[i]+" : "+values[i];
+      }
+    }
+    String sql = "INSERT INTO "+table+" (";
     for(int i=1; i<datasetFields.length; ++i){
-      sql += datasetFields[i];
-      if(datasetFields.length>0 && i<datasetFields.length-1){
-        sql += ",";
+      if(!nonMatchedFields.contains(new Integer(i))){
+        sql += datasetFields[i];
+        if(datasetFields.length>0 && i<datasetFields.length-1){
+          sql += ",";
+        }
       }
     }
     sql += ") VALUES (";
     for(int i=1; i<datasetFields.length; ++i){
-
-      if(datasetFields[i].equalsIgnoreCase("creationTime") ||
-          datasetFields[i].equalsIgnoreCase("modificationTime")){
-        try{
-          SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-          java.util.Date date = df.parse(values[i]);
-          String dateString = df.format(date);
-          values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
+      if(!nonMatchedFields.contains(new Integer(i))){
+        if(!nonMatchedStr.equals("") &&
+            datasetFields[i].equalsIgnoreCase("comment")){
+          values[i] = nonMatchedStr;
         }
-        catch(Throwable e){
-          Debug.debug("Could not set date. "+e.getMessage(), 1);
-          e.printStackTrace();
+        if(datasetFields[i].equalsIgnoreCase("creationTime") ||
+            datasetFields[i].equalsIgnoreCase("modificationTime")){
+          try{
+            SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            java.util.Date date = df.parse(values[i]);
+            String dateString = df.format(date);
+            values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
+          }
+          catch(Throwable e){
+            Debug.debug("Could not set date. "+e.getMessage(), 1);
+            e.printStackTrace();
+          }
         }
-      }
-      else{
-        values[i] = "'"+values[i]+"'";
-      }
-      
-      sql += values[i];
-      if(datasetFields.length>0 && i<datasetFields.length-1){
-        sql += ",";
+        else{
+          values[i] = values[i].replaceAll("\n","\\\\n");
+          values[i] = "'"+values[i]+"'";
+        }
+        sql += values[i];
+        if(datasetFields.length>0 && i<datasetFields.length-1){
+          sql += ",";
+        }
       }
     }
     sql += ")";
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -1164,7 +1233,7 @@ public class HSQLDBDatabase implements Database{
     sql += ")";
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -1192,7 +1261,7 @@ public class HSQLDBDatabase implements Database{
     }
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -1208,10 +1277,9 @@ public class HSQLDBDatabase implements Database{
       String status){
     return updateJobDefinition(
         jobDefID,
-        new String [] {"currentStatus"},
+        new String [] {"status"},
         new String [] {status}
         );
-    // TODO: update in XML
   }
   
   public synchronized boolean updateJobDefinition(int jobDefID,
@@ -1221,7 +1289,6 @@ public class HSQLDBDatabase implements Database{
         new String [] {"jobDefID", "jobName"/*, "stdOut", "stdErr"*/},
         new String [] {values[0], values[1]}
         );
-    // TODO: update stdout and stderr in XML
   }
   
   public synchronized boolean updateJobDefinition(int jobDefID, String [] fields,
@@ -1283,7 +1350,7 @@ public class HSQLDBDatabase implements Database{
     sql += " WHERE identifier="+jobDefID;
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
     	Statement stmt = conn.createStatement();
     	stmt.executeUpdate(sql);
     	conn.commit();
@@ -1353,7 +1420,7 @@ public class HSQLDBDatabase implements Database{
     sql += " WHERE identifier="+datasetID;
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
     }
@@ -1417,7 +1484,7 @@ public class HSQLDBDatabase implements Database{
     sql += " WHERE identifier="+transformationID;
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
     }
@@ -1430,7 +1497,7 @@ public class HSQLDBDatabase implements Database{
   
   public synchronized boolean deleteJobDefinition(int jobDefId){
   	boolean ok = true;
-  	try {
+  	try{
   		//String idstr = jobDef.jobDefinitionID;
   		//Integer jobid = Integer.valueOf(idstr);
   		String sql = "DELETE FROM jobDefinition WHERE identifier = '"+
@@ -1438,51 +1505,82 @@ public class HSQLDBDatabase implements Database{
   		Statement stmt = conn.createStatement();
     	ResultSet rset = stmt.executeQuery(sql);
   	}
-    catch(Exception e){ Debug.debug(e.getMessage(), 2); ok = false; }
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 2);
+      ok = false;
+    }
     return ok;
     };
   
-    public synchronized boolean deleteDataset(int datasetID){
+    public synchronized boolean deleteDataset(int datasetID, boolean cleanup){
       boolean ok = true;
-      try {
+      try{
         String sql = "DELETE FROM dataset WHERE identifier = '"+
         datasetID+"'";
         Statement stmt = conn.createStatement();
         ResultSet rset = stmt.executeQuery(sql);
       }
-      catch(Exception e){ Debug.debug(e.getMessage(), 2); ok = false; }
+      catch(Exception e){
+        Debug.debug(e.getMessage(), 2);
+        ok = false;
+      }
+      if(ok && cleanup){
+        ok = deleteJobDefsFromDataset(datasetID);
+        if(!ok){
+          Debug.debug("ERROR: Deleting job definitions of dataset #"+
+              datasetID+" failed."+" Please clean up by hand.", 1);
+        }
+      }
       return ok;
     };
 
+    public synchronized boolean deleteJobDefsFromDataset(int datasetID){
+      boolean ok = true;
+      try{
+        String sql = "DELETE FROM jobDefinition WHERE dataset = '"+
+        getDataset(datasetID).getValue("name")+"'";
+        Statement stmt = conn.createStatement();
+        ResultSet rset = stmt.executeQuery(sql);
+      }
+      catch(Exception e){
+        Debug.debug(e.getMessage(), 1);
+        ok = false;
+      }
+      return ok;
+    }
+
     public synchronized boolean deleteTransformation(int transformationID){
       boolean ok = true;
-      try {
+      try{
         String sql = "DELETE FROM transformation WHERE identifier = '"+
         transformationID+"'";
         Statement stmt = conn.createStatement();
         ResultSet rset = stmt.executeQuery(sql);
       }
-      catch(Exception e){ Debug.debug(e.getMessage(), 2); ok = false; }
+      catch(Exception e){
+        Debug.debug(e.getMessage(), 2);
+        ok = false;
+      }
       return ok;
     };
       
-  public synchronized String [] getVersions(String homePackage){   
-    String req = "SELECT identifier, VERSION FROM "+
-    "transformation WHERE HOMEPACKAGE = '"+homePackage+"'";
+  public synchronized String [] getVersions(String transformation){   
+    String req = "SELECT identifier, version FROM "+
+    "transformation WHERE name = '"+transformation+"'";
     Vector vec = new Vector();
     Debug.debug(req, 2);
     String version;
-    try {
+    try{
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
-        version = rset.getString("VERSION");
+        version = rset.getString("version");
         if(version!=null){
           Debug.debug("Adding version "+version, 3);
           vec.add(version);
         }
         else{
-          Debug.debug("WARNING: VERSION null for identifier "+
+          Debug.debug("WARNING: version null for identifier "+
               rset.getInt("identifier"), 1);
         }
       };

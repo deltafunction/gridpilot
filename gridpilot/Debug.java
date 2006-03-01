@@ -8,8 +8,6 @@ package gridpilot;
 
 public class Debug{
 
-  public static String toTrace = "all";
-
   private static Class [] excludeClasses = {/*DBPluginMgr.class*/};
   private static boolean withClassName = true;
   private static boolean withPackage = false;

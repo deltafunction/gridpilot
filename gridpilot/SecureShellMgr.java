@@ -38,8 +38,8 @@ public class SecureShellMgr implements ShellMgr{
 
   private void connect(){
     try{
-      session=jsch.getSession(user, host, 22);
-      java.util.Hashtable config=new java.util.Hashtable();
+      session = jsch.getSession(user, host, 22);
+      java.util.Hashtable config = new java.util.Hashtable();
       config.put("StrictHostKeyChecking", "no");
       session.setConfig(config);
       if(password!=null){
@@ -383,9 +383,11 @@ public class SecureShellMgr implements ShellMgr{
   }
 
   public static class MyUserInfo implements UserInfo{
-    public String getPassword(){ return passwd; }
+    public String getPassword(){
+      return passwd;
+    }
     public boolean promptYesNo(String str){
-      Object[] options={ "yes", "no" };
+      Object[] options={"yes", "no"};
       int foo=JOptionPane.showOptionDialog(null, 
              str,
              "Warning", 
@@ -398,8 +400,12 @@ public class SecureShellMgr implements ShellMgr{
     String passwd;
     JTextField passwordField=(JTextField)new JPasswordField(20);
 
-    public String getPassphrase(){ return null; }
-    public boolean promptPassphrase(String message){ return true; }
+    public String getPassphrase(){
+      return null;
+    }
+    public boolean promptPassphrase(String message){
+      return true;
+    }
     public boolean promptPassword(String message){
       Object[] ob={passwordField}; 
       int result=JOptionPane.showConfirmDialog(null, ob, message,

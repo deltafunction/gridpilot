@@ -146,7 +146,7 @@ public class DBPluginMgr implements Database, PanelUtil{
    */
   public void loadValues(){
     // default timeout  
-    String tmp = configFile.getValue("gridpilot", "db timeout");
+    String tmp = configFile.getValue("GridPilot", "db timeout");
     if(tmp!=null){
       try{
         dbTimeOut = new Integer(tmp).intValue();
@@ -1129,9 +1129,7 @@ public class DBPluginMgr implements Database, PanelUtil{
   // classes and it needs to update display.
   public DBRecord createJobDef(String [] fields, String [] values) throws Exception {
     
-    String [] jobDefFieldNames = getFieldNames(
-        configFile.getValue(
-            getDBName(), "job definition table name"));
+    String [] jobDefFieldNames = getFieldNames("jobDefinition");
     
     if(fields.length!=values.length){
       throw new Exception("The number of fields and values do not agree, "+
@@ -1865,7 +1863,7 @@ public class DBPluginMgr implements Database, PanelUtil{
     HashMap dbDefFields = new HashMap();
     String [] ret;
     try{
-      ret = GridPilot.split((String)
+      ret = Util.split((String)
           configFile.getValue(dbName, "default "+tableName+" fields"));
       dbDefFields.put(tableName, ret);
       return ret;
@@ -1878,10 +1876,11 @@ public class DBPluginMgr implements Database, PanelUtil{
   
   public synchronized String getIdentifier(String dbName, String table){
     String ret = configFile.getValue(dbName,
-      table+" table identifier");
+      table+" identifier");
     if(ret==null || ret.equals("")){
       ret = "identifier";
     }
+    Debug.debug("Identifier for "+dbName+" - "+table+" : "+ret, 2);
     return ret;
   }
 

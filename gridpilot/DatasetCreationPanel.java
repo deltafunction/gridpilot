@@ -692,7 +692,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
 
   private void cbTransformationSelection_actionPerformed(){
-    if(cbTransformationSelection.getSelectedItem() == null){
+    if(cbTransformationSelection.getSelectedItem()==null){
         //transformation = cbTransformationSelection.getItemAt(0).toString();
         return;
     }
@@ -708,7 +708,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
 
   private void cbTransVersionSelection_actionPerformed(){
-    if(cbTransVersionSelection.getSelectedItem() == null){
+    if(cbTransVersionSelection.getSelectedItem()==null){
       //transformation = cbTransVersionSelection.getItemAt(0).toString();
       return;
     }

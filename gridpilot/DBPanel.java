@@ -125,7 +125,7 @@ public class DBPanel extends JPanel implements JobPanel{
        ).getDBHiddenFields(dbName, tableName);
     Debug.debug("Hidden fields "+hiddenFields.length, 3);
     tableResults = new Table(hiddenFields, fieldNames,
-        GridPilot.getColorMapping());
+        GridPilot.colorMapping);
     
     submissionControl = GridPilot.getClassMgr().getSubmissionControl();
     
@@ -580,7 +580,7 @@ public class DBPanel extends JPanel implements JobPanel{
 
           makeDatasetMenu();
         }
-        else if(tableName.equalsIgnoreCase("job definition")){
+        else if(tableName.equalsIgnoreCase("jobDefinition")){
           tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
           tableResults.addListSelectionListener(new ListSelectionListener(){
             public void valueChanged(ListSelectionEvent e){
@@ -993,10 +993,12 @@ public class DBPanel extends JPanel implements JobPanel{
           try{
             // Create new panel with jobDefinitions.         
             int id = getSelectedIdentifier();
-            DBPanel dbPanel = new DBPanel("job definition",
+            DBPanel dbPanel = new DBPanel("jobDefinition",
                 dbPluginMgr, id);
-            dbPanel.selectPanel.setConstraint("job definition", "datasetFK",
+            dbPanel.selectPanel.setConstraint("jobDefinition", "datasetFK",
                 Integer.toString(id), 0);
+            dbPanel.selectPanel.setConstraint("jobDefinition", "dataset",
+                dbPluginMgr.getDatasetName(id), 0);
             dbPanel.searchRequest();           
             // Create new dataset panel showing transformation records
             GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                   

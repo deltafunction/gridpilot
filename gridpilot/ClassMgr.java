@@ -89,11 +89,10 @@ public class ClassMgr{
   }
 
   // The HashMap of DB objects, dbMgts, is kept here
-  public DBPluginMgr getDBPluginMgr(String dbName){
-    Debug.debug("Getting DBPluginMgr for db " + dbName, 2);
+  public DBPluginMgr getDBPluginMgr(String dbName) throws NullPointerException{
+    Debug.debug("Getting DBPluginMgr for db " + dbName, 3);
     if(dbMgts.get(dbName) == null){
-      Debug.debug("DBPluginMgr null for "+dbName, 3);
-      new Exception().printStackTrace();
+      throw new NullPointerException("DBPluginMgr null for "+dbName);
     }
     return (DBPluginMgr) dbMgts.get(dbName);
   }
@@ -192,10 +191,10 @@ public class ClassMgr{
   public Table getStatusTable(){
     if(statusTable == null){
       Debug.debug("statusTable null", 3);
-      String[] fieldNames = GridPilot.getStatusFields();
+      String[] fieldNames = GridPilot.statusFields;
       Debug.debug("Creating new Table with fields "+Util.arrayToString(fieldNames), 3);
       statusTable = new Table(new String [] {}, fieldNames,
-          GridPilot.getColorMapping());
+          GridPilot.colorMapping);
        GridPilot.getClassMgr().setStatusTable(statusTable);
       //new Exception().printStackTrace();
     }

@@ -537,7 +537,7 @@ public class Table extends JTable {
         }});
         
         show = true;
-        Debug.debug("Hide fields "+hide.length, 3);
+        //Debug.debug("Hide fields "+hide.length, 3);
         for(int k=0; k<hide.length; ++k){
           Debug.debug("Checking fields "+hide[k]+"<->"+tableModel.getColumnName(i), 3);
           if(hide[k].equalsIgnoreCase(tableModel.getColumnName(i))){

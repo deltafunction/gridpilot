@@ -117,10 +117,10 @@ public class ConfigFile {
       // we first extract the config file to a tmp file and then open
       // the tmp file.
       URL fileURL = getClass().getClassLoader().getResource(configFileName);
-      Debug.debug("fileURL: "+configFileName, 3);
+      //Debug.debug("fileURL: "+configFileName, 3);
       BufferedReader in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
 
-      File tmpFile = File.createTempFile("gridpilot","conf");
+      File tmpFile = File.createTempFile("GridPilot","conf");
       PrintWriter out = new PrintWriter(new FileWriter(tmpFile));
       
       String line;
@@ -131,10 +131,12 @@ public class ConfigFile {
       out.close();
       
       file = new RandomAccessFile(/*configFileName*/tmpFile, "r");
-    }catch(FileNotFoundException e){
+    }
+    catch(FileNotFoundException e){
       System.err.println("cannot find file "+ configFileName+". "+e.getMessage());
       return false;
-    }catch(IOException e){
+    }
+    catch(IOException e){
       System.err.println("cannot find file "+ configFileName+". "+e.getMessage());
       return false;
     }
@@ -180,7 +182,7 @@ public class ConfigFile {
       return false;
     }
     return true;
-}
+  }
 
 
   /**
@@ -228,7 +230,7 @@ public class ConfigFile {
    */
   private String readLine() throws IOException{
     String res;
-	do{
+	  do{
         res= file.readLine();
         if(res!=null){
           if(res.indexOf('#')!=-1){
@@ -243,7 +245,8 @@ public class ConfigFile {
           }
           res = res.trim();
         }
-    }while(res !=null && res.length()==0);
+    }
+    while(res !=null && res.length()==0);
 
     return res;
   }

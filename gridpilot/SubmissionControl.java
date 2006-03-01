@@ -79,7 +79,7 @@ public class SubmissionControl{
 
     pbSubmission = new JProgressBar(0,0);
 
-    String resourcesPath = configFile.getValue("gridpilot", "resources");
+    String resourcesPath = configFile.getValue("GridPilot", "resources");
     if(resourcesPath != null && !resourcesPath.endsWith("/"))
       resourcesPath += "/";
     ImageIcon iconSubmitting;
@@ -103,9 +103,9 @@ public class SubmissionControl{
    */
   
   public void loadValues(){
-    userName = configFile.getValue("gridpilot", "username");
+    userName = configFile.getValue("GridPilot", "user");
 
-    String tmp = configFile.getValue("gridpilot", "maximum simultaneous submission");
+    String tmp = configFile.getValue("GridPilot", "maximum simultaneous submission");
     if(tmp != null){
       try{
         maxSimultaneousSubmission = Integer.parseInt(tmp);
@@ -115,11 +115,11 @@ public class SubmissionControl{
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage("gridpilot", "maximum simultaneous submission") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage("GridPilot", "maximum simultaneous submission") + "\n" +
                               "Default value = " + maxSimultaneousSubmission);
 
 
-    tmp = configFile.getValue("gridpilot", "time between submissions");
+    tmp = configFile.getValue("GridPilot", "time between submissions");
     if(tmp != null){
       try{
         timeBetweenSubmission = Integer.parseInt(tmp);
@@ -129,7 +129,7 @@ public class SubmissionControl{
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage("gridpilot", "time between submissions") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage("GridPilot", "time between submissions") + "\n" +
                               "Default value = " + timeBetweenSubmission);
 
     timer.setDelay(timeBetweenSubmission);
@@ -151,10 +151,10 @@ public class SubmissionControl{
       // if one does it, you can "load job from db" during reservation (when jobs
       // are not yet put in toSubmitJobs).
       
-      String resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue("gridpilot", "resources");
+      String resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "resources");
       if(resourcesPath == null){
         GridPilot.getClassMgr().getLogFile().addMessage(
-            GridPilot.getClassMgr().getConfigFile().getMissingMessage("gridpilot", "resources"));
+            GridPilot.getClassMgr().getConfigFile().getMissingMessage("GridPilot", "resources"));
         resourcesPath = ".";
       }
       else{
@@ -226,7 +226,7 @@ public class SubmissionControl{
         }
         else{
           if(userName == null)
-            logFile.addMessage(configFile.getMissingMessage("gridpilot", "username"));
+            logFile.addMessage(configFile.getMissingMessage("GridPilot", "username"));
           logFile.addMessage("cannot reserve logical file "+((JobInfo) selectedJobs.get(i)));
 
           Debug.debug("logical file " + ((JobInfo) selectedJobs.get(i)) + " cannot be reserved", 3);
@@ -273,7 +273,7 @@ public class SubmissionControl{
         }
         else{
           if(userName == null)
-            logFile.addMessage(configFile.getMissingMessage("gridpilot", "username"));
+            logFile.addMessage(configFile.getMissingMessage("GridPilot", "username"));
           logFile.addMessage("cannot reserve logical file "+job.getJobDefId());
         }
       }
@@ -290,7 +290,7 @@ public class SubmissionControl{
    * Theses job are put in {@link #toSubmitJobs}. <p>
    */
   private void submit(Vector jobs){
-    String isRand = configFile.getValue("gridpilot", "randomized submission");
+    String isRand = configFile.getValue("GridPilot", "randomized submission");
     Debug.debug("isRand = " + isRand, 2);
     if(isRand != null && isRand.equalsIgnoreCase("yes"))
       jobs = shuffle(jobs);

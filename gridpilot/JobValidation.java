@@ -67,7 +67,7 @@ public class JobValidation {
   }
 
   public void loadValues(){
-    String delay = configFile.getValue("gridpilot", "delay before validation");
+    String delay = configFile.getValue("GridPilot", "delay before validation");
     if(delay != null){
       try{
         delayBeforeValidation = Integer.parseInt(delay);
@@ -77,7 +77,7 @@ public class JobValidation {
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage("gridpilot", "delay before validation") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage("GridPilot", "delay before validation") + "\n" +
                          "Default value = " + delayBeforeValidation);
 
   }

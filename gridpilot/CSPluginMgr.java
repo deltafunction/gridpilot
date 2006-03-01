@@ -205,7 +205,7 @@ public class CSPluginMgr implements ComputingSystem{
     String tmp;
 
     // default timeout
-    tmp = configFile.getValue("gridpilot", "default timeout");
+    tmp = configFile.getValue("GridPilot", "default timeout");
     if(tmp!=null){
       try{
         defaultTimeOut = new Integer(tmp).intValue();
@@ -223,7 +223,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     for(int i=0; i<timeOutNames.length; ++i){
 
-      tmp = configFile.getValue("gridpilot", timeOutNames[i] + " timeout");
+      tmp = configFile.getValue("GridPilot", timeOutNames[i] + " timeout");
       if(tmp!=null){
         try{
           values[i] = new Integer(tmp).intValue();
@@ -234,7 +234,7 @@ public class CSPluginMgr implements ComputingSystem{
       }
       else{
         values[i] = defaultTimeOut;
-        Debug.debug(configFile.getMissingMessage("gridpilot", timeOutNames[i] + " timeout"), 3);
+        Debug.debug(configFile.getMissingMessage("GridPilot", timeOutNames[i] + " timeout"), 3);
       }
     }
 

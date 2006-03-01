@@ -19,6 +19,7 @@ import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.JobInfo;
+import gridpilot.Util;
 
 public class MySQLDatabase implements Database{
   
@@ -46,21 +47,32 @@ public class MySQLDatabase implements Database{
         
     String [] up = null;
     
+    boolean showDialog = true;
+    // if csNames is set, this is a reload
+    if(GridPilot.csNames==null){
+      showDialog = false;
+    }
+
     for(int rep=0; rep<3; ++rep){
-      up = GridPilot.userPwd(user, passwd, database);
-      if(up == null){
-        GridPilot.exit(0);
-        return;
-      }
-      else{
-        user = up[0];
-        passwd = up[1];
-        database = up[2];
+      if(showDialog ||
+          user==null || passwd==null || database==null){
+        up = GridPilot.userPwd(user, passwd, database);
+        if(up==null){
+          return;
+        }
+        else{
+          user = up[0];
+          passwd = up[1];
+          database = up[2];
+        }
       }
       if(connect()!=null){
-        return;
+        break;
       }
     }
+    transformationFields = getFieldNames("transformation");
+    jobDefFields = getFieldNames("jobDefinition");
+    datasetFields = getFieldNames("dataset");
   }
   
   public String connect(){
@@ -84,13 +96,8 @@ public class MySQLDatabase implements Database{
   		conn.setAutoCommit(true);
   	}
     catch(Exception e){
-      Debug.debug("talking to the db failed: "+e.getMessage(), 2);
-  		//return null;
-      return "";
+      Debug.debug("failed setting auto commit to true: "+e.getMessage(), 2);
   	}
-    transformationFields = getFieldNames("transformation");
-    jobDefFields = getFieldNames("jobDefinition");
-    datasetFields = getFieldNames("dataset");
     return "";
   }
   
@@ -135,7 +142,7 @@ public class MySQLDatabase implements Database{
     return new DBResult();
   }
 
-  public synchronized String [] getDefVals(int taskId, String user){
+  public synchronized String [] getDefVals(int datasetID, String user){
     // nothing for now
     return new String [] {""};
   }
@@ -151,6 +158,7 @@ public class MySQLDatabase implements Database{
       for(int i=1; i<=md.getColumnCount(); ++i){
         res[i-1] = md.getColumnName(i);
       }
+      Debug.debug("found "+Util.arrayToString(res), 3);
       return res;
     }
     catch(Exception e){
@@ -165,10 +173,10 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized String [] getOutputs(int jobDefID){
-    String jobTransID = "";
-    jobTransID = getTransformationID(jobDefID);
-    // TODO: finish - go into XML
-    getTransformation(Integer.parseInt(jobTransID)).getValue("outputs");
+    String transformationID = "";
+    transformationID = getTransformationID(jobDefID);
+    // TODO: finish
+    getTransformation(Integer.parseInt(transformationID)).getValue("outputs");
     // nothing for now
     return new String [] {""};
   }
@@ -229,31 +237,37 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized String [] getTransformationPackages(int jobDefID){
-    String jobTransID = "";
-    jobTransID = getTransformationID(jobDefID);
-    getTransformation(Integer.parseInt(jobTransID)).getValue("uses");
+    String transformationID = getTransformationID(jobDefID);
+    getTransformation(Integer.parseInt(transformationID)).getValue("uses");
     // nothing for now
     return new String [] {""};
   }
 
   public synchronized String [] getTransformationSignature(int jobDefID){
-    String jobTransID = "";
-    jobTransID = getTransformationID(jobDefID);
-    getTransformation(Integer.parseInt(jobTransID)).getValue("uses");
+    String transformationID = "";
+    transformationID = getTransformationID(jobDefID);
+    // TODO: finish
+    getTransformation(Integer.parseInt(transformationID)).getValue("uses");
     // nothing for now
     return new String [] {""};
   }
 
   public synchronized String getJobDefUser(int jobDefinitionID){
-    return getJobDefinition(jobDefinitionID).getValue("userName").toString();
+    return getJobDefinition(jobDefinitionID).getValue("userInfo").toString();
   }
 
   public synchronized String getJobStatus(int jobDefinitionID){
-    return getJobDefinition(jobDefinitionID).getValue("currentStatus").toString();
+    return getJobDefinition(jobDefinitionID).getValue("status").toString();
   }
 
   public synchronized String getJobDefName(int jobDefinitionID){
-    return getJobDefinition(jobDefinitionID).getValue("jobName").toString();
+    return getJobDefinition(jobDefinitionID).getValue("name").toString();
+  }
+
+  public synchronized int getJobDefDatasetID(int jobDefinitionID){
+    int datasetID = Integer.parseInt(
+        getJobDefinition(jobDefinitionID).getValue("dataset").toString());
+    return Integer.parseInt(getDataset(datasetID).getValue("identifier").toString());
   }
 
   public synchronized String getJobRunUser(int jobDefinitionID){
@@ -267,9 +281,38 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized String getTransformationID(int jobDefinitionID){
-    String jobTransID = "-1";    
-    jobTransID = getJobDefinition(jobDefinitionID).getValue("JobTransFK").toString();
-    return jobTransID;
+    DBRecord dataset = getDataset(getJobDefDatasetID(jobDefinitionID));
+    String transformation = dataset.getValue("transformation").toString();
+    String version = dataset.getValue("transVersion").toString();
+    String transID = null;
+    String req = "SELECT identifier FROM "+
+    "transformation WHERE name = '"+transformation+"' AND version = '"+version+"'";
+    Vector vec = new Vector();
+    Debug.debug(req, 2);
+    try{
+      Statement stmt = conn.createStatement();
+      ResultSet rset = stmt.executeQuery(req);
+      while(rset.next()){
+        if(transID!=null){
+          Debug.debug("WARNING: more than one transformation for name, version :" +
+              transformation+", "+version, 1);
+          break;
+        }
+        transID = rset.getString("identifier");
+        if(transID!=null){
+          Debug.debug("Adding version "+transID, 3);
+          vec.add(version);
+        }
+        else{
+          Debug.debug("WARNING: identifier null", 1);
+        }
+      };
+      rset.close();  
+    }
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 1);
+    }
+    return transID;
   }
 
   public synchronized String getUserLabel(){
@@ -395,11 +438,65 @@ public class MySQLDatabase implements Database{
 
 ////////////////////////////////////////////////////////////
   
-  public void commit(){
-    // nothing for now
-    Debug.debug(">>> commiting ... done ", 2);
+  public synchronized DBRecord getDataset(int datasetID){
+    
+    DBRecord task = null;
+    String req = "SELECT "+datasetFields[0];
+    if(datasetFields.length>1){
+      for(int i=1; i<datasetFields.length; ++i){
+        req += ", "+datasetFields[i];
+      }
+    }
+    req += " FROM dataset";
+    req += " WHERE identifier = '"+ datasetID+"'";
+    try{
+      Debug.debug(">> "+req, 3);
+      ResultSet rset = conn.createStatement().executeQuery(req);
+      Vector taskVector = new Vector();
+      String [] jt = new String[datasetFields.length];
+      while(rset.next()){
+        String values[] = new String[datasetFields.length];
+        for(int i=0; i<datasetFields.length;i++){
+          if(datasetFields[i].endsWith("FK") || datasetFields[i].endsWith("ID") &&
+              !datasetFields[i].equalsIgnoreCase("grid") ||
+              datasetFields[i].endsWith("COUNT")){
+            int tmp = rset.getInt(datasetFields[i]);
+            values[i] = Integer.toString(rset.getInt(datasetFields[i]));
+          }
+          else{
+            values[i] = rset.getString(datasetFields[i]);
+          }
+          Debug.debug(datasetFields[i]+"-->"+values[i], 2);
+        }
+        DBRecord jobd = new DBRecord(datasetFields, values);
+        taskVector.add(jobd);
+      };
+      rset.close();
+      if(taskVector.size()==0){
+        Debug.debug("ERROR: No dataset with id "+datasetID, 1);
+      }
+      else{
+        task = ((DBRecord) taskVector.get(0));
+      }
+      if(taskVector.size()>1){
+        Debug.debug("WARNING: More than one ("+rset.getRow()+") dataset found with id "+datasetID, 1);
+      }
+    }
+    catch(SQLException e){
+      Debug.debug("WARNING: No dataset found with id "+datasetID+". "+e.getMessage(), 1);
+      return task;
+    }
+     return task;
   }
   
+  public synchronized String getDatasetName(int datasetID){
+    return getDataset(datasetID).getValue("name").toString();
+  }
+
+  public synchronized String getRunNumber(int datasetID){
+    return getDataset(datasetID).getValue("runNumber").toString();
+  }
+
   public synchronized DBRecord getTransformation(int transformationID){
     
     DBRecord transformation = null;
@@ -454,76 +551,72 @@ public class MySQLDatabase implements Database{
   }
 
   /*
-   * Find JobTrans records
+   * Find transformation records
    */
-  private synchronized DBRecord [] getJobTransRecords(){
+  private synchronized DBRecord [] getTransformationRecords(){
     
-    String [] fields = getFieldNames("transformation");
     ResultSet rset = null;
     String req = "";
-    DBRecord [] allJobTrans = null;   
+    DBRecord [] allTransformationRecords = null;   
     try{      
-      req = "SELECT "+fields[0];
-      if(fields.length>1){
-        for(int i=1; i<fields.length; ++i){
-          req += ", "+fields[i];
+      req = "SELECT "+transformationFields[0];
+      if(transformationFields.length>1){
+        for(int i=1; i<transformationFields.length; ++i){
+          req += ", "+transformationFields[i];
         }
       }
-      req += " FROM "+"transformation";
+      req += " FROM transformation";
       Debug.debug(req, 3);
       rset = conn.createStatement().executeQuery(req);
       //ResultSetMetaData md = rset.getMetaData();
-      Vector jobTransVector = new Vector();
-      String [] jt = new String[fields.length];
+      Vector transformationVector = new Vector();
+      String [] jt = new String[transformationFields.length];
       int i = 0;
       while(rset.next()){
-        jt = new String[fields.length];
-        for(int j=0; j<fields.length; ++j){
+        jt = new String[transformationFields.length];
+        for(int j=0; j<transformationFields.length; ++j){
           try{
-            //((JobTrans) jobTransVector.get(i)).setValue(fields[j],rset.getString(j+1));
             jt[j] = rset.getString(j+1);
           }catch(Exception e){
             Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
-                fields[j]+". "+e.getMessage(),1);
+                transformationFields[j]+". "+e.getMessage(),1);
           }
         }
         Debug.debug("Adding value "+jt[0], 3);
-        //jobTransVector.add(new JobTrans(jt));
-        jobTransVector.add(new DBRecord(fields, jt));
-        Debug.debug("Added value "+((DBRecord) jobTransVector.get(i)).getAt(0), 3);
+        transformationVector.add(new DBRecord(transformationFields, jt));
+        Debug.debug("Added value "+((DBRecord) transformationVector.get(i)).getAt(0), 3);
         ++i;
       }
-      allJobTrans = new DBRecord[i];
+      allTransformationRecords = new DBRecord[i];
       for(int j=0; j<i; ++j){
-        allJobTrans[j] = ((DBRecord) jobTransVector.get(j));
-        Debug.debug("Added value "+allJobTrans[j].getAt(0), 3);
+        allTransformationRecords[j] = ((DBRecord) transformationVector.get(j));
+        Debug.debug("Added value "+allTransformationRecords[j].getAt(0), 3);
       }
-    }catch(SQLException e){
-      Debug.debug("WARNING: No jobTrans found. "+e.getMessage(), 1);
     }
-    return allJobTrans;
+    catch(SQLException e){
+      Debug.debug("WARNING: No transformations found. "+e.getMessage(), 1);
+    }
+    return allTransformationRecords;
   }
 
   // Selects only the fields listed in fieldNames. Other fields are set to "".
   public synchronized DBRecord getJobDefinition(int jobDefinitionID){
     
-    String [] fields = getFieldNames("jobDefinition");
-    
     String req = "SELECT *";
-    req += " FROM "+"jobDefinition"+" where "+"identifier"+" = '"+
+    req += " FROM jobDefinition where identifier = '"+
     jobDefinitionID + "'";
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{
-    	Statement stmt = conn.createStatement();
-    	ResultSet rset = stmt.executeQuery(req);
-    	while(rset.next()){
-    		String values[] = new String[fields.length];
-    		for(int i=0; i<fields.length;i++){
-    			String fieldname = fields[i];
-    			String val = "";
-          for(int j=0; j<fields.length; ++j){
-            if(fieldname.equalsIgnoreCase(fields[j])){
+      Statement stmt = conn.createStatement();
+      ResultSet rset = stmt.executeQuery(req);
+      while(rset.next()){
+        String values[] = new String[jobDefFields.length];
+        for(int i=0; i<jobDefFields.length;i++){
+          String fieldname = jobDefFields[i];
+          String val = "";
+          for(int j=0; j<jobDefFields.length; ++j){
+            if(fieldname.equalsIgnoreCase(jobDefFields[j])){
               if(fieldname.endsWith("FK") || fieldname.endsWith("ID")){
                 int tmp = rset.getInt(fieldname);
                 val = Integer.toString(tmp);
@@ -536,12 +629,12 @@ public class MySQLDatabase implements Database{
             val = "";
           }
           values[i] = val;
-    			Debug.debug(fieldname+"-->"+val, 2);
-    		}
-    		DBRecord jobd = new DBRecord(fields, values);
-			  jobdefv.add(jobd);
-    	};
-    	rset.close();
+          Debug.debug(fieldname+"-->"+val, 2);
+        }
+        DBRecord jobd = new DBRecord(jobDefFields, values);
+        jobdefv.add(jobd);
+      };
+      rset.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -574,14 +667,14 @@ public class MySQLDatabase implements Database{
     datasetID + "'";
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
-    try {
-      Statement stmt = conn.createStatement();
-      ResultSet rset = stmt.executeQuery(req);
-      while(rset.next()){
-        String values[] = new String[jobDefFields.length];
-        for(int i=0; i<jobDefFields.length;i++){
-          String fieldname = jobDefFields[i];
-          String val = "";
+    try{
+    	Statement stmt = conn.createStatement();
+    	ResultSet rset = stmt.executeQuery(req);
+    	while(rset.next()){
+    		String values[] = new String[jobDefFields.length];
+    		for(int i=0; i<jobDefFields.length;i++){
+    			String fieldname = jobDefFields[i];
+    			String val = "";
           for(int j=0; j<fieldNames.length; ++j){
             if(fieldname.equalsIgnoreCase(fieldNames[j])){
               if(fieldname.endsWith("FK") || fieldname.endsWith("ID")){
@@ -596,13 +689,13 @@ public class MySQLDatabase implements Database{
             val = "";
           }
           values[i] = val;
-          //Debug.debug(fieldname+"-->"+val, 2);
-        }
-        DBRecord jobd = new DBRecord(jobDefFields, values);
-        jobdefv.add(jobd);
-      
-      };
-      rset.close();
+    			//Debug.debug(fieldname+"-->"+val, 2);
+    		}
+    		DBRecord jobd = new DBRecord(jobDefFields, values);
+  		  jobdefv.add(jobd);
+  		
+    	};
+    	rset.close();
     
     }
     catch(Exception e){
@@ -616,34 +709,15 @@ public class MySQLDatabase implements Database{
   
   //// FJOB PRODDB
   
-  public int getJobDefTaskId(int jobDefID){
-    String sql = "SELECT TASKFK FROM "+"jobDefinition"+" WHERE "+"identifier"+" = '"+
-    jobDefID + "'";
-    int taskid = 0;
-    try {
-      Statement stmt = conn.createStatement();
-      ResultSet rset = stmt.executeQuery(sql);
-      while(rset.next()){
-        taskid = rset.getInt("TASKFK");
-      }
-      rset.close();
-    }
-    catch(Exception e){Debug.debug(e.getMessage(), 2);} 
-    return taskid;
-  }
-  
   public synchronized DBResult getTransformations(){
-    String [] fields = getFieldNames("transformation");
-    DBRecord jt [] = getJobTransRecords();
-    DBResult res = new DBResult(fields.length, jt.length);
+    DBRecord jt [] = getTransformationRecords();
+    DBResult res = new DBResult(transformationFields.length, jt.length);
     return res;
   }
   
-  public synchronized DBResult getJobDefinitions(int taskID, String [] fieldNames){
+  public synchronized DBResult getJobDefinitions(int datasetID, String [] fieldNames){
     
-    String [] fields = getFieldNames("jobDefinition");
-    
-    DBRecord jt [] = selectJobDefinitions(taskID, fieldNames);
+    DBRecord jt [] = selectJobDefinitions(datasetID, fieldNames);
     DBResult res = new DBResult(fieldNames.length, jt.length);
     
     System.arraycopy(
@@ -652,8 +726,8 @@ public class MySQLDatabase implements Database{
             
     for(int i=0; i<jt.length; ++i){
       for(int j=0; j<fieldNames.length;j++){
-        for(int k=0; k<fields.length;k++){
-          if(fieldNames[j].equalsIgnoreCase(fields[k])){
+        for(int k=0; k<jobDefFields.length;k++){
+          if(fieldNames[j].equalsIgnoreCase(jobDefFields[k])){
             try{
               if(jt[i].getValue(fieldNames[j])==null){
                 res.values[i][j] = "";
@@ -678,7 +752,7 @@ public class MySQLDatabase implements Database{
   
   public synchronized boolean createJobDefinition(String [] values){
     
-    String [] fields = getFieldNames("jobDefinition");
+    String [] fields = getFieldNames("jobDefintion");
     
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -686,7 +760,7 @@ public class MySQLDatabase implements Database{
       return false;
     }
 
-    String sql = "INSERT INTO "+"jobDefinition"+" (";
+    String sql = "INSERT INTO jobDefinition (";
     for(int i = 1; i < fields.length; ++i){
       sql += fields[i];
       if(fields.length > 2 && i < fields.length - 1){
@@ -719,14 +793,13 @@ public class MySQLDatabase implements Database{
         sql += ",";
       }
     }
-    //sql += ",'0'";
     sql += ")";
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
     	Statement stmt = conn.createStatement();
     	stmt.executeUpdate(sql);
-      //conn.commit();
+      conn.commit();
     }
     catch(Exception e){
       execok = false;
@@ -740,22 +813,95 @@ public class MySQLDatabase implements Database{
     return true;
   }
   
+  public synchronized boolean createDataset(String table,
+      String [] fields, String [] values){ 
+    String nonMatchedStr = "";
+    Vector nonMatchedFields = new Vector();
+    boolean match = false;
+    for(int i=1; i<fields.length; ++i){
+      match = false;
+      for(int j=1; j<datasetFields.length; ++j){
+        if(fields[i].equalsIgnoreCase(datasetFields[j])){
+          match = true;
+          break;
+        }
+      }
+      if(!match){
+        nonMatchedFields.add(new Integer(i));
+        if(i>0){
+          nonMatchedStr += "\n";
+        }
+        nonMatchedStr += fields[i]+" : "+values[i];
+      }
+    }
+    String sql = "INSERT INTO "+table+" (";
+    for(int i=1; i<datasetFields.length; ++i){
+      if(!nonMatchedFields.contains(new Integer(i))){
+        sql += datasetFields[i];
+        if(datasetFields.length>0 && i<datasetFields.length-1){
+          sql += ",";
+        }
+      }
+    }
+    sql += ") VALUES (";
+    for(int i=1; i<datasetFields.length; ++i){
+      if(!nonMatchedFields.contains(new Integer(i))){
+        if(!nonMatchedStr.equals("") &&
+            datasetFields[i].equalsIgnoreCase("comment")){
+          values[i] = nonMatchedStr;
+        }
+        if(datasetFields[i].equalsIgnoreCase("creationTime") ||
+            datasetFields[i].equalsIgnoreCase("modificationTime")){
+          try{
+            SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            java.util.Date date = df.parse(values[i]);
+            String dateString = df.format(date);
+            values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
+          }
+          catch(Throwable e){
+            Debug.debug("Could not set date. "+e.getMessage(), 1);
+            e.printStackTrace();
+          }
+        }
+        else{
+          values[i] = values[i].replaceAll("\n","\\\\n");
+          values[i] = "'"+values[i]+"'";
+        }
+        sql += values[i];
+        if(datasetFields.length>0 && i<datasetFields.length-1){
+          sql += ",";
+        }
+      }
+    }
+    sql += ")";
+    Debug.debug(sql, 2);
+    boolean execok = true;
+    try{
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+      conn.commit();
+    }
+    catch(Exception e){
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+    };
+    return execok;
+  };
+
   public synchronized boolean createTransformation(String [] values){
 
-    String [] fields = getFieldNames("transformation");
-
-    String sql = "INSERT INTO "+"transformation"+" (";
-    for(int i = 1; i < fields.length; ++i){
-      sql += fields[i];
-      if(fields.length > 2 && i < fields.length - 1){
+    String sql = "INSERT INTO transformation (";
+    for(int i=1; i<transformationFields.length; ++i){
+      sql += transformationFields[i];
+      if(transformationFields.length>2 && i<transformationFields.length - 1){
         sql += ",";
       }
     }
     sql += ") VALUES (";
-    for(int i = 1; i < fields.length; ++i){
+    for(int i=1; i<transformationFields.length; ++i){
       
-      if(fields[i].equalsIgnoreCase("creationTime") ||
-          fields[i].equalsIgnoreCase("modificationTime")){
+      if(transformationFields[i].equalsIgnoreCase("creationTime") ||
+          transformationFields[i].equalsIgnoreCase("modificationTime")){
         try{
           SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
           java.util.Date date = df.parse(values[i]);
@@ -772,17 +918,17 @@ public class MySQLDatabase implements Database{
       }
 
       sql += values[i];
-      if(fields.length > 1 && i < fields.length - 1){
+      if(transformationFields.length>1 && i<transformationFields.length - 1){
         sql += ",";
       }
     }
     sql += ")";
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
-      //conn.commit();
+      conn.commit();
     }
     catch(Exception e){
       execok = false;
@@ -793,7 +939,7 @@ public class MySQLDatabase implements Database{
   
   public synchronized boolean setJobDefsField(int [] identifiers,
       String field, String value){
-    String sql = "UPDATE "+"jobDefinition"+"  SET ";
+    String sql = "UPDATE jobDefinition SET ";
     sql += field+"='"+value+"' WHERE ";
     // Not very elegant, but we need to use Identifier instead of
     // identifier, because identifier will only have been set if
@@ -807,10 +953,10 @@ public class MySQLDatabase implements Database{
     }
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
-      //conn.commit();
+      conn.commit();
     }
     catch(Exception e){
       execok = false; Debug.debug(e.getMessage(), 2);
@@ -823,10 +969,9 @@ public class MySQLDatabase implements Database{
       String status){
     return updateJobDefinition(
         jobDefID,
-        new String [] {"currentStatus"},
+        new String [] {"status"},
         new String [] {status}
         );
-    // TODO: update in XML
   }
   
   public synchronized boolean updateJobDefinition(int jobDefID,
@@ -836,41 +981,38 @@ public class MySQLDatabase implements Database{
         new String [] {"jobDefID", "jobName"/*, "stdOut", "stdErr"*/},
         new String [] {values[0], values[1]}
         );
-    // TODO: update stdout and stderr in XML
   }
   
   public synchronized boolean updateJobDefinition(int jobDefID, String [] fields,
       String [] values){
-    
-    String [] defFields = getFieldNames("jobDefinition");
     
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
           fields.length+"!="+values.length, 1);
       return false;
     }
-    if(fields.length>defFields.length){
+    if(fields.length>jobDefFields.length){
       Debug.debug("The number of fields is too large, "+
-          fields.length+">"+defFields.length, 1);
+          fields.length+">"+jobDefFields.length, 1);
     }
 
-    String sql = "UPDATE "+"jobDefinition"+"  SET ";
+    String sql = "UPDATE jobDefinition  SET ";
     int addedFields = 0;
-    for(int i=0; i<defFields.length; ++i){
-      if(!defFields[i].equals("identifier")){
+    for(int i=0; i<jobDefFields.length; ++i){
+      if(!jobDefFields[i].equals("identifier")){
         for(int j=0; j<fields.length; ++j){
-          // only add if present in defFields
-          if(defFields[i].equalsIgnoreCase(fields[j])){
+          // only add if present in transformationFields
+          if(jobDefFields[i].equalsIgnoreCase(fields[j])){
 
-            if(defFields[i].equalsIgnoreCase("creationTime") ||
-                defFields[i].equalsIgnoreCase("modificationTime")){
+            if(jobDefFields[i].equalsIgnoreCase("creationTime") ||
+                jobDefFields[i].equalsIgnoreCase("modificationTime")){
               try{
                 SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 String dateString = null;
-                if(defFields[i].equalsIgnoreCase("modificationTime")){
+                if(jobDefFields[i].equalsIgnoreCase("modificationTime")){
                   dateString = df.format(Calendar.getInstance().getTime());
                 }
-                if(defFields[i].equalsIgnoreCase("creationTime")){
+                if(jobDefFields[i].equalsIgnoreCase("creationTime")){
                   java.util.Date date = df.parse(values[j]);
                   dateString = df.format(date);
                 }
@@ -897,13 +1039,13 @@ public class MySQLDatabase implements Database{
         }
       }
     }
-    sql += " WHERE "+"identifier"+"="+jobDefID;
+    sql += " WHERE identifier="+jobDefID;
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
     	Statement stmt = conn.createStatement();
     	stmt.executeUpdate(sql);
-    	//conn.commit();
+    	conn.commit();
     }
     catch(Exception e){
       execok = false; Debug.debug(e.getMessage(), 2);
@@ -917,213 +1059,9 @@ public class MySQLDatabase implements Database{
     return true;
   }
   
-  public synchronized boolean updateTransformation(int jobTransID, String [] fields,
-      String [] values){
-    
-    String [] defFields = getFieldNames("transformation");
-    
-    if(fields.length!=values.length){
-      Debug.debug("The number of fields and values do not agree, "+
-          fields.length+"!="+values.length, 1);
-      return false;
-    }
-    if(fields.length>defFields.length){
-      Debug.debug("The number of fields is too large, "+
-          fields.length+">"+defFields.length, 1);
-    }
-
-    String sql = "UPDATE "+"transformation"+" SET ";
-    int addedFields = 0;
-    for(int i = 0; i<defFields.length; ++i){
-      if(!defFields[i].equals("identifier")){
-        for(int j=0; j<fields.length; ++j){
-          // only add if present in defFields
-          if(defFields[i].equalsIgnoreCase(fields[j])){
-            
-            if(defFields[i].equalsIgnoreCase("creationTime") ||
-                  defFields[i].equalsIgnoreCase("modificationTime")){
-              try{
-                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                java.util.Date date = df.parse(values[j]);
-                String dateString = df.format(date);
-                values[j] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
-              }
-              catch(Throwable e){
-                Debug.debug("Could not set date. "+e.getMessage(), 1);
-                e.printStackTrace();
-              }
-            }
-            else{
-              values[j] = "'"+values[j]+"'";
-            }
-            
-            sql += fields[j];
-            sql += "=";
-            sql += values[j];
-            ++addedFields;
-            break;
-          }
-        }
-        if(addedFields>0 && addedFields<fields.length-1){
-          sql += ", ";
-        }
-      }
-    }
-    sql += " WHERE "+"identifier"+"="+jobTransID;
-    Debug.debug(sql, 2);
-    boolean execok = true;
-    try {
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-    }
-    catch(Exception e){
-      execok = false; Debug.debug(e.getMessage(), 2);
-    };
-    Debug.debug("update exec: "+execok, 2);
-    return execok;
-  };
-  
-  public synchronized boolean deleteJobDefinition(int jobDefId){
-  	boolean ok = true;
-  	try {
-  		//String idstr = jobDef.jobDefinitionID;
-  		//Integer jobid = Integer.valueOf(idstr);
-  		String sql = "DELETE FROM "+"jobDefinition"+" WHERE "+"identifier"+" = '"+
-      jobDefId+"'";
-  		Statement stmt = conn.createStatement();
-    	ResultSet rset = stmt.executeQuery(sql);
-  	}
-    catch(Exception e){ Debug.debug(e.getMessage(), 2); ok = false; }
-    return ok;
-    };
-  
-    public synchronized boolean deleteTransformation(int jobTransID){
-      boolean ok = true;
-      try {
-        String sql = "DELETE FROM "+"transformation"+" WHERE "+"identifier"+" = '"+
-        jobTransID+"'";
-        Statement stmt = conn.createStatement();
-        ResultSet rset = stmt.executeQuery(sql);
-      }
-      catch(Exception e){ Debug.debug(e.getMessage(), 2); ok = false; }
-      return ok;
-    };
-      
-  public synchronized String [] getVersions(String homePackage){   
-    String req = "SELECT "+"identifier"+", VERSION FROM "+
-    "transformation"+" WHERE HOMEPACKAGE = '"+homePackage+"'";
-    Vector vec = new Vector();
-    Debug.debug(req, 2);
-    String version;
-    try {
-      Statement stmt = conn.createStatement();
-      ResultSet rset = stmt.executeQuery(req);
-      while(rset.next()){
-        version = rset.getString("VERSION");
-        if(version!=null){
-          Debug.debug("Adding version "+version, 3);
-          vec.add(version);
-        }
-        else{
-          Debug.debug("WARNING: VERSION null for "+"identifier"+" "+
-              rset.getInt("identifier"), 1);
-        }
-      };
-      rset.close();  
-    }
-    catch(Exception e){
-      Debug.debug(e.getMessage(), 1);
-    }
-    Vector vec1 = new Vector();
-    if(vec.size()>0){
-      Collections.sort(vec);
-      vec1.add(vec.get(0));
-    }
-    for(int i=0; i<vec.size(); ++i){
-      if(i>0 && !vec.get(i).toString().equalsIgnoreCase(vec.get(i-1).toString())){
-        vec1.add(vec.get(i));
-      }
-    }
-    String [] ret = new String[vec1.size()];
-    for(int i=0; i<vec1.size(); ++i){
-      ret[i] = vec1.get(i).toString();
-    }
-    return ret;
-  }
-  
-  public String getTransNameColumn(){
-    return "name";
-  }
-
-  public synchronized boolean createDataset(String [] values){
-    
-    String sql = "INSERT INTO dataset (";
-    for(int i=1; i<datasetFields.length; ++i){
-      sql += datasetFields[i];
-      if(datasetFields.length>0 && i<datasetFields.length-1){
-        sql += ",";
-      }
-    }
-    sql += ") VALUES (";
-    for(int i=1; i<datasetFields.length; ++i){
-  
-      if(datasetFields[i].equalsIgnoreCase("creationTime") ||
-          datasetFields[i].equalsIgnoreCase("modificationTime")){
-        try{
-          SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-          java.util.Date date = df.parse(values[i]);
-          String dateString = df.format(date);
-          values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
-        }
-        catch(Throwable e){
-          Debug.debug("Could not set date. "+e.getMessage(), 1);
-          e.printStackTrace();
-        }
-      }
-      else{
-        values[i] = "'"+values[i]+"'";
-      }
-      
-      sql += values[i];
-      if(datasetFields.length>0 && i<datasetFields.length-1){
-        sql += ",";
-      }
-    }
-    sql += ")";
-    Debug.debug(sql, 2);
-    boolean execok = true;
-    try {
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      //conn.commit();
-    }
-    catch(Exception e){
-      execok = false;
-      Debug.debug(e.getMessage(), 2);
-    };
-    return execok;
-  }
-
-  public synchronized boolean deleteDataset(int datasetID){
-    boolean ok = true;
-    try {
-      String sql = "DELETE FROM dataset WHERE identifier = '"+
-      datasetID+"'";
-      Statement stmt = conn.createStatement();
-      ResultSet rset = stmt.executeQuery(sql);
-    }
-    catch(Exception e){ Debug.debug(e.getMessage(), 2); ok = false; }
-    return ok;
-  }
-
-  public synchronized int getJobDefDatasetID(int jobDefinitionID){
-    return Integer.parseInt(
-        getJobDefinition(jobDefinitionID).getValue("datasetFK").toString());
-  }
-
   public synchronized boolean updateDataset(int datasetID, String [] fields,
       String [] values){
-  
+
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
           fields.length+"!="+values.length, 1);
@@ -1133,7 +1071,7 @@ public class MySQLDatabase implements Database{
       Debug.debug("The number of fields is too large, "+
           fields.length+">"+datasetFields.length, 1);
     }
-  
+
     String sql = "UPDATE dataset SET ";
     int addedFields = 0;
     for(int i = 0; i < datasetFields.length; ++i){
@@ -1174,7 +1112,7 @@ public class MySQLDatabase implements Database{
     sql += " WHERE identifier="+datasetID;
     Debug.debug(sql, 2);
     boolean execok = true;
-    try {
+    try{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
     }
@@ -1183,59 +1121,185 @@ public class MySQLDatabase implements Database{
     };
     Debug.debug("update exec: "+execok, 2);
     return execok;
-  }
+  };
 
-  ////////////////////////////////////////////////////////////
-  
-  public synchronized DBRecord getDataset(int datasetID){
+  public synchronized boolean updateTransformation(int transformationID, String [] fields,
+      String [] values){
     
-    DBRecord task = null;
-    String req = "SELECT "+datasetFields[0];
-    if(datasetFields.length>1){
-      for(int i=1; i<datasetFields.length; ++i){
-        req += ", "+datasetFields[i];
+    if(fields.length!=values.length){
+      Debug.debug("The number of fields and values do not agree, "+
+          fields.length+"!="+values.length, 1);
+      return false;
+    }
+    if(fields.length>transformationFields.length){
+      Debug.debug("The number of fields is too large, "+
+          fields.length+">"+transformationFields.length, 1);
+    }
+
+    String sql = "UPDATE transformation SET ";
+    int addedFields = 0;
+    for(int i = 0; i<transformationFields.length; ++i){
+      if(!transformationFields[i].equals("identifier")){
+        for(int j=0; j<fields.length; ++j){
+          // only add if present in transformationFields
+          if(transformationFields[i].equalsIgnoreCase(fields[j])){
+            
+            if(transformationFields[i].equalsIgnoreCase("creationTime") ||
+                transformationFields[i].equalsIgnoreCase("modificationTime")){
+              try{
+                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                java.util.Date date = df.parse(values[j]);
+                String dateString = df.format(date);
+                values[j] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
+              }
+              catch(Throwable e){
+                Debug.debug("Could not set date. "+e.getMessage(), 1);
+                e.printStackTrace();
+              }
+            }
+            else{
+              values[j] = "'"+values[j]+"'";
+            }
+            
+            sql += fields[j];
+            sql += "=";
+            sql += values[j];
+            ++addedFields;
+            break;
+          }
+        }
+        if(addedFields>0 && addedFields<fields.length-1){
+          sql += ", ";
+        }
       }
     }
-    req += " FROM dataset";
-    req += " WHERE identifier = '"+ datasetID+"'";
+    sql += " WHERE identifier="+transformationID;
+    Debug.debug(sql, 2);
+    boolean execok = true;
     try{
-      Debug.debug(">> "+req, 3);
-      ResultSet rset = conn.createStatement().executeQuery(req);
-      Vector taskVector = new Vector();
-      String [] jt = new String[datasetFields.length];
-      while(rset.next()){
-        String values[] = new String[datasetFields.length];
-        for(int i=0; i<datasetFields.length;i++){
-          if(datasetFields[i].endsWith("FK") || datasetFields[i].endsWith("ID") &&
-              !datasetFields[i].equalsIgnoreCase("grid") ||
-              datasetFields[i].endsWith("COUNT")){
-            int tmp = rset.getInt(datasetFields[i]);
-            values[i] = Integer.toString(rset.getInt(datasetFields[i]));
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+    }
+    catch(Exception e){
+      execok = false; Debug.debug(e.getMessage(), 2);
+    };
+    Debug.debug("update exec: "+execok, 2);
+    return execok;
+  };
+  
+  public synchronized boolean deleteJobDefinition(int jobDefId){
+    boolean ok = true;
+    try{
+      //String idstr = jobDef.jobDefinitionID;
+      //Integer jobid = Integer.valueOf(idstr);
+      String sql = "DELETE FROM jobDefinition WHERE identifier = '"+
+      jobDefId+"'";
+      Statement stmt = conn.createStatement();
+      ResultSet rset = stmt.executeQuery(sql);
+    }
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 2);
+      ok = false;
+    }
+    return ok;
+    };
+  
+    public synchronized boolean deleteDataset(int datasetID, boolean cleanup){
+      boolean ok = true;
+      try{
+        String sql = "DELETE FROM dataset WHERE identifier = '"+
+        datasetID+"'";
+        Statement stmt = conn.createStatement();
+        ResultSet rset = stmt.executeQuery(sql);
+      }
+      catch(Exception e){
+        Debug.debug(e.getMessage(), 2);
+        ok = false;
+      }
+      if(ok && cleanup){
+        ok = deleteJobDefsFromDataset(datasetID);
+        if(!ok){
+          Debug.debug("ERROR: Deleting job definitions of dataset #"+
+              datasetID+" failed."+" Please clean up by hand.", 1);
+        }
+      }
+      return ok;
+    };
+
+    public synchronized boolean deleteJobDefsFromDataset(int datasetID){
+      boolean ok = true;
+      try{
+        String sql = "DELETE FROM jobDefinition WHERE dataset = '"+
+        getDataset(datasetID).getValue("name")+"'";
+        Statement stmt = conn.createStatement();
+        ResultSet rset = stmt.executeQuery(sql);
+      }
+      catch(Exception e){
+        Debug.debug(e.getMessage(), 1);
+        ok = false;
+      }
+      return ok;
+    }
+
+    public synchronized boolean deleteTransformation(int transformationID){
+      boolean ok = true;
+      try{
+        String sql = "DELETE FROM transformation WHERE identifier = '"+
+        transformationID+"'";
+        Statement stmt = conn.createStatement();
+        ResultSet rset = stmt.executeQuery(sql);
+      }
+      catch(Exception e){
+        Debug.debug(e.getMessage(), 2);
+        ok = false;
+      }
+      return ok;
+    };
+      
+    public synchronized String [] getVersions(String transformation){   
+      String req = "SELECT identifier, version FROM "+
+      "transformation WHERE name = '"+transformation+"'";
+      Vector vec = new Vector();
+      Debug.debug(req, 2);
+      String version;
+      try{
+        Statement stmt = conn.createStatement();
+        ResultSet rset = stmt.executeQuery(req);
+        while(rset.next()){
+          version = rset.getString("version");
+          if(version!=null){
+            Debug.debug("Adding version "+version, 3);
+            vec.add(version);
           }
           else{
-            values[i] = rset.getString(datasetFields[i]);
+            Debug.debug("WARNING: version null for identifier "+
+                rset.getInt("identifier"), 1);
           }
-          Debug.debug(datasetFields[i]+"-->"+values[i], 2);
+        };
+        rset.close();  
+      }
+      catch(Exception e){
+        Debug.debug(e.getMessage(), 1);
+      }
+      Vector vec1 = new Vector();
+      if(vec.size()>0){
+        Collections.sort(vec);
+        vec1.add(vec.get(0));
+      }
+      for(int i=0; i<vec.size(); ++i){
+        if(i>0 && !vec.get(i).toString().equalsIgnoreCase(vec.get(i-1).toString())){
+          vec1.add(vec.get(i));
         }
-        DBRecord jobd = new DBRecord(datasetFields, values);
-        taskVector.add(jobd);
-      };
-      rset.close();
-      if(taskVector.size()==0){
-        Debug.debug("ERROR: No dataset with id "+datasetID, 1);
       }
-      else{
-        task = ((DBRecord) taskVector.get(0));
+      String [] ret = new String[vec1.size()];
+      for(int i=0; i<vec1.size(); ++i){
+        ret[i] = vec1.get(i).toString();
       }
-      if(taskVector.size()>1){
-        Debug.debug("WARNING: More than one ("+rset.getRow()+") dataset found with id "+datasetID, 1);
-      }
+      return ret;
     }
-    catch(SQLException e){
-      Debug.debug("WARNING: No dataset found with id "+datasetID+". "+e.getMessage(), 1);
-      return task;
+    
+    public String getTransNameColumn(){
+      return "name";
     }
-     return task;
-  }
 
 }

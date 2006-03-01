@@ -28,7 +28,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
 
   private DatasetMgr taskMgr;
 
-  private String jobTransName;
+  private String transformationName;
   private String version;
   private JPanel pCounter = new JPanel();
   private JPanel pConstants = new JPanel();
@@ -37,7 +37,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
   private JPanel pButtons = new JPanel();
   private JComboBox cbJobTransNameSelection = null;
   private JComboBox cbVersionSelection = null;
-  private String [] jobTransNames;
+  private String [] transformationNames;
   private String [] versions;
   public String jobTransFK = "-1";
   private String jobDefinitionID = "-1";
@@ -283,12 +283,12 @@ public class JobDefCreationPanel extends CreateEditPanel{
     }
     
     transformations = dbPluginMgr.getTransformations();
-    jobTransNames = new String[transformations.values.length];
+    transformationNames = new String[transformations.values.length];
     for(int i=0; i<transformations.values.length; ++i){
-      jobTransNames[i] = transformations.getValue(i, jobTransNameColumn);
+      transformationNames[i] = transformations.getValue(i, jobTransNameColumn);
     }
 
-    // Find jobTransName of jobTransFK
+    // Find transformationName of jobTransFK
     if(transformations.values.length > 1){
       for(int i=1; i<transformations.values.length; ++i){
         ok = true;
@@ -335,28 +335,28 @@ public class JobDefCreationPanel extends CreateEditPanel{
       cbJobTransNameSelection.removeAllItems();
     }
     
-    if(jobTransNames.length == 0){  
-      jobTransName = null;
+    if(transformationNames.length == 0){  
+      transformationName = null;
       cbJobTransNameSelection.setEnabled(false);
     }
-    if(jobTransNames.length == 1){  
-      jobTransName = jobTransNames[0];
+    if(transformationNames.length == 1){  
+      transformationName = transformationNames[0];
       cbJobTransNameSelection.setEnabled(false);
     }
-    if(jobTransNames.length > 0){
-      for(int i=0; i<jobTransNames.length; ++i){
-        cbJobTransNameSelection.addItem(jobTransNames[i]);
+    if(transformationNames.length > 0){
+      for(int i=0; i<transformationNames.length; ++i){
+        cbJobTransNameSelection.addItem(transformationNames[i]);
       }
       cbJobTransNameSelection.setEnabled(true);
     }
     
     // Set the selection
-    if(jobTransNames.length > 1 && cbJobTransNameSelection.getClass().isInstance(new JComboBox())){
-      for(int i=0; i<jobTransNames.length; ++i){
-        Debug.debug("Trying to set jobTransName, "+jobTransNames[i]+" : "+
+    if(transformationNames.length > 1 && cbJobTransNameSelection.getClass().isInstance(new JComboBox())){
+      for(int i=0; i<transformationNames.length; ++i){
+        Debug.debug("Trying to set transformationName, "+transformationNames[i]+" : "+
             jtName, 3);
-        if(jobTransNames[i].equals(jtName)){
-          jobTransName = jtName;
+        if(transformationNames[i].equals(jtName)){
+          transformationName = jtName;
           ((JComboBox) cbJobTransNameSelection).setSelectedIndex(i);
         }
       }
@@ -380,7 +380,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
           break;
         }
       }
-      versions = dbPluginMgr.getVersions(jobTransName);
+      versions = dbPluginMgr.getVersions(transformationName);
     }
     else{
       Debug.debug("WARNING: No transformations found.", 1);
@@ -609,7 +609,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
     if(cbJobTransNameSelection == null ||
         cbJobTransNameSelection.getSelectedItem() == null){
       if(cbJobTransNameSelection.getItemCount()>0){
-        jobTransName = cbJobTransNameSelection.getItemAt(0).toString();
+        transformationName = cbJobTransNameSelection.getItemAt(0).toString();
       }
       else{
         Debug.debug("No transformation selected...", 3);
@@ -617,8 +617,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
       }
     }
     
-    jobTransName = cbJobTransNameSelection.getSelectedItem().toString();
-    Debug.debug("Initializing version panel for transformation "+jobTransName, 3);
+    transformationName = cbJobTransNameSelection.getSelectedItem().toString();
+    Debug.debug("Initializing version panel for transformation "+transformationName, 3);
     initVersionPanel();
     dbPluginMgr.setEnabledAttributes(false,
         cstAttributesNames,
@@ -653,14 +653,14 @@ public class JobDefCreationPanel extends CreateEditPanel{
       }
     }
     // Set jobTransFK
-    Debug.debug("name, version: "+jobTransName+", "+version, 3);
+    Debug.debug("name, version: "+transformationName+", "+version, 3);
     for(int i=0; i<transformations.values.length; ++i){
       Debug.debug("Checking jobTransFK "+transformations.getValue(i,transformationIdentifier), 3);
       Debug.debug("  "+transformations.getValue(i,jobTransNameColumn), 3);
       Debug.debug("  "+transformations.getValue(i,"version"), 3);
       if(transformations.getValue(i,jobTransNameColumn)!=null &&
          transformations.getValue(i,"version")!=null &&
-         transformations.getValue(i,jobTransNameColumn).equals(jobTransName) &&
+         transformations.getValue(i,jobTransNameColumn).equals(transformationName) &&
          transformations.getValue(i,"version").equals(version)){
         Debug.debug("Setting jobTransFK to "+transformations.getValue(i,transformationIdentifier), 3);
         jobTransFK = transformations.getValue(i,transformationIdentifier);

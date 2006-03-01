@@ -1,7 +1,6 @@
 package gridpilot;
 
 import java.awt.*;
-import java.util.StringTokenizer;
 
 import javax.swing.*;
 
@@ -19,18 +18,16 @@ public class GridPilot extends JApplet{
 
   private static ClassMgr classMgr = new ClassMgr();
   
-  // TODO: reread on reloading values
   private static String [] dbs;
-  private static String [] colorMapping;
-  private static String[] statusFields;
   private static boolean applet = true;
-  private static String replicaPrefix = "";
   private static String dbNames;
   
+  public static String [] colorMapping;
+  public static String[] statusFields;
   public static String resourcesPath = "";
   public static String prefix = "";
   public static String url = "";
-  public static String [] csNames = {""};
+  public static String [] csNames = null;
   public static int sshChannels = 0;
 
   /**
@@ -60,33 +57,40 @@ public class GridPilot extends JApplet{
     try{
       String database;
       String [] up = null;
+      String tmpDb = null;
       dbs = getClassMgr().getConfigFile().getValues("Databases", "Systems");
       for(int i = 0; i < dbs.length; ++i){
-        Debug.debug("Initializing db "+i+": "+dbs[i],3);
-        getClassMgr().setDBPluginMgr(dbs[i], new DBPluginMgr(dbs[i]));
+        try{
+          tmpDb = getClassMgr().getDBPluginMgr(dbs[i]).getDBName();
+        }
+        catch(NullPointerException e){
+        }
+        if(tmpDb==null){
+          Debug.debug("Initializing db "+i+": "+dbs[i],3);
+          getClassMgr().setDBPluginMgr(dbs[i], new DBPluginMgr(dbs[i]));
+        }
       }          
-      colorMapping = getClassMgr().getConfigFile().getValues("gridpilot", "color mapping");  
+      colorMapping = getClassMgr().getConfigFile().getValues("GridPilot", "color mapping");  
       /** Status table header*/
       statusFields = new String [] {
           " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "user"};
 
-      resourcesPath =  getClassMgr().getConfigFile().getValue("gridpilot", "resources");
+      resourcesPath =  getClassMgr().getConfigFile().getValue("GridPilot", "resources");
       if(resourcesPath == null){
-        getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("gridpilot", "resources"));
+        getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("GridPilot", "resources"));
         resourcesPath = ".";
       }
       else{
         if (!resourcesPath.endsWith("/"))
           resourcesPath = resourcesPath + "/";
       }    
-      replicaPrefix = getClassMgr().getConfigFile().getValue("Replica", "prefix");
-      prefix = getClassMgr().getConfigFile().getValue("gridpilot","prefix");
-      url = getClassMgr().getConfigFile().getValue("gridpilot","url");
+      prefix = getClassMgr().getConfigFile().getValue("GridPilot","prefix");
+      url = getClassMgr().getConfigFile().getValue("GridPilot","url");
       csNames = getClassMgr().getConfigFile().getValues("Computing systems", "systems");
       if(csNames == null || csNames.length == 0){
         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("Computing systems", "systems"));
       }
-      String channelsString = getClassMgr().getConfigFile().getValue("gridpilot", "ssh channels");
+      String channelsString = getClassMgr().getConfigFile().getValue("GridPilot", "ssh channels");
       if(channelsString == null){
         Debug.debug("ssh channels not found in config file", 1);
         sshChannels = 4;
@@ -116,13 +120,13 @@ public class GridPilot extends JApplet{
   }
 
   /**
-  + Return databases specified in the configuration file
+  * Return databases specified in the configuration file
   */
   public static String [] getDBs(){
     if(dbs == null || dbs[0] == null){
       Debug.debug("dbs null", 3);
     }
-    Debug.debug("dbs: "+Util.arrayToString(dbs), 3);
+    //Debug.debug("dbs: "+Util.arrayToString(dbs), 3);
     return dbs;
   }
  
@@ -132,27 +136,6 @@ public class GridPilot extends JApplet{
   public static boolean isApplet(){
     return applet;
   } 
-
-   /**
-   * Return color mapping for job definition table, specified in the configuration file
-   */
-  public static String [] getColorMapping(){
-    return colorMapping;
-  }
-
-  /**
-   * Return column names for job monitoring table, hard coded above
-   */
-  public static String [] getStatusFields(){
-    return statusFields;
-  }
-
-  /**
-   * Return replica prefix specified in the configuration file
-   */
-  public static String getReplicaPrefix(){
-    return replicaPrefix;
-  }
 
   /**
    * GUI
@@ -303,16 +286,6 @@ public class GridPilot extends JApplet{
         GridPilot.class.getName() + " [-log log_file][-conf conf_file]\n");
   }
   
-  public static String [] split(String s) {
-    StringTokenizer tok = new StringTokenizer(s);
-    int len = tok.countTokens();
-    String [] res = new String[len];
-    for (int i = 0 ; i < len ; i++) {
-      res[i] = tok.nextToken();
-    }
-    return res ;
-  }
-
   /**
    * Reloads values from configuration file.
    * Called when user chooses "Reload values" in gridpilot menu
@@ -323,7 +296,7 @@ public class GridPilot extends JApplet{
     GridPilot.getClassMgr().getSubmissionControl().loadValues();
     GridPilot.getClassMgr().getGlobalFrame().jobMonitoringPanel.statusUpdateControl.loadValues();
     GridPilot.getClassMgr().getCSPluginMgr().loadValues();
-    dbs = getClassMgr().getConfigFile().getValues("gridpilot", "Databases");
+    dbs = getClassMgr().getConfigFile().getValues("GridPilot", "Databases");
     for(int i = 0; i < dbs.length; ++i){
       getClassMgr().getDBPluginMgr(dbs[i]).loadValues();
     }
@@ -334,20 +307,10 @@ public class GridPilot extends JApplet{
    * Reads in configuration file the debug level.
    */
   private static void initDebug(){
-    if ((getClassMgr().getConfigFile() == null ) || getClassMgr().getConfigFile().isFake()) return;
-    String debugList = getClassMgr().getConfigFile().getValue("gridpilot", "debugList");
-    if(debugList == null){
-      getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("gridpilot", "debugList"));
-      Debug.toTrace="";
-    }
-    else {
-      Debug.toTrace=debugList;
-      Debug.debug("debug list set to : "+debugList, 2);
-    }
-
-    String debugLevel = getClassMgr().getConfigFile().getValue("gridpilot", "debug");
+    
+    String debugLevel = getClassMgr().getConfigFile().getValue("GridPilot", "debug");
     if(debugLevel == null){
-      getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("gridpilot", "debug"));
+      getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("GridPilot", "debug"));
       getClassMgr().setDebugLevel(3);
     }
 
@@ -358,6 +321,7 @@ public class GridPilot extends JApplet{
       getClassMgr().getLogFile().addMessage("Debug is not an integer in configFile, section [gridpilot]");
       getClassMgr().setDebugLevel(3);
     }
+    
   }
 
 
@@ -381,7 +345,7 @@ public class GridPilot extends JApplet{
     /*
      Reconnect DB
      */
-    dbs = getClassMgr().getConfigFile().getValues("gridpilot", "Databases");
+    dbs = getClassMgr().getConfigFile().getValues("GridPilot", "Databases");
     for(int i = 0; i < dbs.length; ++i){
       getClassMgr().getDBPluginMgr(dbs[i]).disconnect();
       try{
