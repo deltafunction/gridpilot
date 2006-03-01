@@ -145,7 +145,7 @@ public class DBPanel extends JPanel implements JobPanel{
      for(int i=0; i<defaultFields.length; ++i){
        ok = false;
        for(int j=0; j<fieldNames.length; ++j){
-         Debug.debug("Checking fields for showing"+defaultFields[i]+"<->"+fieldNames[j], 3);
+         //Debug.debug("Checking fields for showing"+defaultFields[i]+"<->"+fieldNames[j], 3);
          if(defaultFields[i].equalsIgnoreCase(fieldNames[j]) ||
              defaultFields[i].equalsIgnoreCase("*")){
            ok = true;
@@ -173,7 +173,7 @@ public class DBPanel extends JPanel implements JobPanel{
      for(int i=0; i<defaultFields.length; ++i){
        ok = true;
        for(int j=0; j<hiddenFields.length; ++j){
-         Debug.debug("Checking fields for selecting "+defaultFields[i]+"<->"+hiddenFields[j], 3);
+         //Debug.debug("Checking fields for selecting "+defaultFields[i]+"<->"+hiddenFields[j], 3);
          if(defaultFields[i].equalsIgnoreCase(hiddenFields[j]) &&
              !defaultFields[i].equalsIgnoreCase("*")){
            ok = false;
@@ -539,7 +539,7 @@ public class DBPanel extends JPanel implements JobPanel{
         //DBResult [] stepRes = new DBResult[dbs.length];
         DBResult res = null;
         res = GridPilot.getClassMgr().getDBPluginMgr(dbName).select(
-            selectRequest,identifier);
+            selectRequest, identifier);
 
         bViewJobDefinitions.setEnabled(false);
         //bViewJobTransRecords.setEnabled(false);
@@ -998,7 +998,9 @@ public class DBPanel extends JPanel implements JobPanel{
             int id = getSelectedIdentifier();
             DBPanel dbPanel = new DBPanel("jobDefinition",
                 dbPluginMgr, id);
-            dbPanel.selectPanel.setConstraint("jobDefinition", "datasetFK",
+            dbPanel.selectPanel.setConstraint("jobDefinition",
+                dbPluginMgr.getJobDefDatasetFK(dbPluginMgr.getDBName()),
+                //"datasetFK",
                 Integer.toString(id), 0);
             //dbPanel.selectPanel.setConstraint("jobDefinition", "dataset",
                 //dbPluginMgr.getDatasetName(id), 0);
@@ -1006,7 +1008,7 @@ public class DBPanel extends JPanel implements JobPanel{
             // Create new dataset panel showing transformation records
             GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                   
           }
-          catch (Exception e){
+          catch(Exception e){
             Debug.debug("Couldn't create panel for dataset " + "\n" +
                                "\tException\t : " + e.getMessage(), 2);
             e.printStackTrace();

@@ -1894,6 +1894,16 @@ public class DBPluginMgr implements Database, PanelUtil{
     return ret;
   }
 
+  public synchronized String getJobDefDatasetFK(String dbName){
+    String ret = configFile.getValue(dbName,
+      "jobDefinition dataset FK");
+    if(ret==null || ret.equals("")){
+      ret = "datasetFK";
+    }
+    Debug.debug("jobDef dataset FK for "+dbName+" : "+ret, 2);
+    return ret;
+  }
+
   public synchronized String [] getDBHiddenFields(String dbName, String tableName){
     HashMap dbDefFields = new HashMap();
     String [] ret;

@@ -281,7 +281,7 @@ public class HSQLDBDatabase implements Database{
   
   private boolean makeJobDefTable(){
     // CTB simulation, digitization and reconstruction
-    String [] fields = {"identifier", "dataset", "name", "GUID", "number",
+    String [] fields = {"identifier", "datasetFK", "name", "GUID", "number",
         "eventMin", "eventMax", "nEvents", 
         "outputFileSize", "CPU", "status", "userInfo",
         "inputFileName", "transID", "transLogPars", "outFileMapping", "md5sum",

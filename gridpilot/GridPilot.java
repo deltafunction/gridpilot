@@ -78,7 +78,7 @@ public class GridPilot extends JApplet{
       resourcesPath =  getClassMgr().getConfigFile().getValue("GridPilot", "resources");
       if(resourcesPath == null){
         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("GridPilot", "resources"));
-        resourcesPath = ".";
+        resourcesPath = "./";
       }
       else{
         if (!resourcesPath.endsWith("/"))
