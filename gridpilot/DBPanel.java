@@ -239,7 +239,8 @@ public class DBPanel extends JPanel implements JobPanel{
     panelSelectPanel.add(pButtonSelectPanel, new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0
         ,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
 
-    selectPanel.setConstraint(dbName, "name", "", 1);
+    selectPanel.setConstraint(dbName, dbPluginMgr.getName(dbPluginMgr.getDBName(),
+        tableName), "", 1);
     
     // Listen for enter key in text field
     this.selectPanel.spcp.tfConstraintValue.addKeyListener(new KeyAdapter(){
@@ -557,11 +558,13 @@ public class DBPanel extends JPanel implements JobPanel{
           Debug.debug("Column: "+tableResults.getColumnName(i)+"<->"+identifier, 3);
           if(tableResults.getColumnName(i).equalsIgnoreCase(identifier)){
             col = i;
+            Debug.debug("OK: "+i, 3);
             break;
           }
         }
         for(int i=0; i<identifiers.length; ++i){
-          identifiers[i] = new Integer(tableResults.getUnsortedValueAt(i, col).toString()).intValue();
+          identifiers[i] =
+            new Integer(tableResults.getUnsortedValueAt(i, col).toString()).intValue();
         }
 
         if(tableName.equalsIgnoreCase("dataset")){
@@ -997,12 +1000,13 @@ public class DBPanel extends JPanel implements JobPanel{
                 dbPluginMgr, id);
             dbPanel.selectPanel.setConstraint("jobDefinition", "datasetFK",
                 Integer.toString(id), 0);
-            dbPanel.selectPanel.setConstraint("jobDefinition", "dataset",
-                dbPluginMgr.getDatasetName(id), 0);
+            //dbPanel.selectPanel.setConstraint("jobDefinition", "dataset",
+                //dbPluginMgr.getDatasetName(id), 0);
             dbPanel.searchRequest();           
             // Create new dataset panel showing transformation records
             GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                   
-          }catch (Exception e){
+          }
+          catch (Exception e){
             Debug.debug("Couldn't create panel for dataset " + "\n" +
                                "\tException\t : " + e.getMessage(), 2);
             e.printStackTrace();

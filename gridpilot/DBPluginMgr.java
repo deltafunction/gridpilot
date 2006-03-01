@@ -1884,6 +1884,16 @@ public class DBPluginMgr implements Database, PanelUtil{
     return ret;
   }
 
+  public synchronized String getName(String dbName, String table){
+    String ret = configFile.getValue(dbName,
+      table+" name");
+    if(ret==null || ret.equals("")){
+      ret = "name";
+    }
+    Debug.debug("Name for "+dbName+" - "+table+" : "+ret, 2);
+    return ret;
+  }
+
   public synchronized String [] getDBHiddenFields(String dbName, String tableName){
     HashMap dbDefFields = new HashMap();
     String [] ret;

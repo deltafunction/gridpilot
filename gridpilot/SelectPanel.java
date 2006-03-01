@@ -405,7 +405,9 @@ import java.awt.event.*;
       }
     }
     parts = spcp.cbConstraintRelation.getComponents();
-    if ((parts != null) && (parts.length > 0)) spcp.cbConstraintRelation.setSelectedIndex(constraintRelationIndex);
+    if ((parts!=null) && (parts.length>0)){
+      spcp.cbConstraintRelation.setSelectedIndex(constraintRelationIndex);
+    }
     spcp.tfConstraintValue.setText(value);
   }
 
