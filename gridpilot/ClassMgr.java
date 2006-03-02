@@ -82,7 +82,7 @@ public class ClassMgr{
   }
 
   public ConfigFile getConfigFile(){
-    if(configFile == null){
+    if(configFile==null){
       Debug.debug("configFile null", 3);
     }
     return configFile;
@@ -91,7 +91,7 @@ public class ClassMgr{
   // The HashMap of DB objects, dbMgts, is kept here
   public DBPluginMgr getDBPluginMgr(String dbName) throws NullPointerException{
     Debug.debug("Getting DBPluginMgr for db " + dbName, 3);
-    if(dbMgts.get(dbName) == null){
+    if(dbMgts.get(dbName)==null){
       throw new NullPointerException("DBPluginMgr null for "+dbName);
     }
     return (DBPluginMgr) dbMgts.get(dbName);
@@ -100,7 +100,7 @@ public class ClassMgr{
   // This method creates a new DatasetMgr if there is
   // none in the HashMap with keys dbName, taskID
   public DatasetMgr getDatasetMgr(String dbName, int taskID){
-    if(taskMgrs == null){
+    if(taskMgrs==null){
       Debug.debug("taskMgrs null", 3);
     }
     if(!taskMgrs.keySet().contains(dbName)){
@@ -114,7 +114,7 @@ public class ClassMgr{
   }
   
   public Vector getDatasetMgrs(){
-    if(taskMgrs == null){
+    if(taskMgrs==null){
       Debug.debug("taskMgrs null", 3);
     }
     Vector allTaskMgrs = new Vector();
@@ -126,7 +126,7 @@ public class ClassMgr{
   
   // The HashMap of HashMaps of tasks is kept here
   public void addTaskMgr(DatasetMgr taskMgr){
-    if(taskMgrs == null){
+    if(taskMgrs==null){
       Debug.debug("taskMgrs null", 3);
       new Exception().printStackTrace();
     }
@@ -162,7 +162,7 @@ public class ClassMgr{
   }
   
   public LogFile getLogFile(){
-    if(logFile == null){
+    if(logFile==null){
       Debug.debug("logFile null", 3);
       return new LogFile("");
     }
@@ -171,7 +171,7 @@ public class ClassMgr{
   }
 
   public JobValidation getJobValidation(){
-    if(jobValidation == null){
+    if(jobValidation==null){
       Debug.debug("jobValidation null", 3);
       new Exception().printStackTrace();
     }
@@ -180,7 +180,7 @@ public class ClassMgr{
   }
 
   public StatusBar getStatusBar(){
-    if(statusBar == null){
+    if(statusBar==null){
       Debug.debug("statusBar null", 3);
       new Exception().printStackTrace();
     }
@@ -189,7 +189,7 @@ public class ClassMgr{
   }
 
   public Table getStatusTable(){
-    if(statusTable == null){
+    if(statusTable==null){
       Debug.debug("statusTable null", 3);
       String[] fieldNames = GridPilot.statusFields;
       Debug.debug("Creating new Table with fields "+Util.arrayToString(fieldNames), 3);
@@ -202,7 +202,7 @@ public class ClassMgr{
   }
 
   public StatisticsPanel getStatisticsPanel(){
-    if(statisticsPanel == null){
+    if(statisticsPanel==null){
       Debug.debug("statisticsPanel null", 3);
       statisticsPanel = new StatisticsPanel();
     }
@@ -210,14 +210,14 @@ public class ClassMgr{
   }
 
   public Vector getSubmittedJobs(){
-    if(submittedJobs == null){
+    if(submittedJobs==null){
       Debug.debug("statusTable null", 3);
     }
     return submittedJobs;
   }
 
   public GlobalFrame getGlobalFrame(){
-    if(globalFrame == null){
+    if(globalFrame==null){
       Debug.debug("globalFrame null", 3);
 			new Exception().printStackTrace();
 		}
@@ -226,7 +226,7 @@ public class ClassMgr{
 	}
 
   public GridPilot getGridPilot(){
-    if(prodCom == null){
+    if(prodCom==null){
       Debug.debug("prodCom null", 3);
       new Exception().printStackTrace();
     }
@@ -239,7 +239,7 @@ public class ClassMgr{
   }
   
   public SubmissionControl getSubmissionControl(){
-    if(submissionControl == null){
+    if(submissionControl==null){
       Debug.debug("submissionControl null, creating new", 3);
       setSubmissionControl(new SubmissionControl());
     }

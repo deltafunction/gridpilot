@@ -76,7 +76,14 @@ public class GlobalFrame extends JFrame{
 
     if(GridPilot.getDBs().length>0){
     	GridPilot.splash.show("Connecting to database "+GridPilot.getDBs()[0]+"...");
-      addPanel(new DBPanel(GridPilot.getDBs()[0], "dataset"));
+      try{
+      	addPanel(new DBPanel(GridPilot.getDBs()[0], "dataset"));
+      }
+      catch(Exception e){
+      	Debug.debug("ERROR: could not load database panel for "+
+      			GridPilot.getDBs()[0], 1);
+      	e.printStackTrace();
+      }
     }
     selectedPanel = tabbedPane.getSelectedIndex();
 

@@ -32,7 +32,7 @@ import java.util.*;
  *
  */
 
-public class JobValidation {
+public class JobValidation{
 
   static final int EXIT_VALIDATED = 1;
   static final int EXIT_UNDECIDED = 2;

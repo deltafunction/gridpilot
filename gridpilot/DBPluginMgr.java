@@ -75,9 +75,6 @@ public class DBPluginMgr implements Database, PanelUtil{
     for(int i=0; i<parameters.length; ++i){
       dbArgsType[i] = String.class;
       dbArgs[i] = configFile.getValue(dbName, parameters[i]);
-      if(dbArgs[i]==null){
-        dbArgs[i] = "";
-      }
     }
 
     db = (Database) loadClass(dbClass, dbArgsType, dbArgs);
