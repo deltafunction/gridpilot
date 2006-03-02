@@ -28,7 +28,7 @@ public class GridPilot extends JApplet{
   public static String prefix = "";
   public static String url = "";
   public static String [] csNames = null;
-  public static int sshChannels = 0;
+  public static Splash splash;
 
   /**
    * Constructor
@@ -40,12 +40,15 @@ public class GridPilot extends JApplet{
       classMgr.setConfigFile(new ConfigFile(confFileName));
       initDebug();
       loadConfigValues();
+      splash = new Splash(resourcesPath, "splash.png");
       initGUI();
+      splash.stopSplash();
       classMgr.getLogFile().addInfo("gridpilot loaded");
     }
     catch(Throwable e){
-      if(e instanceof Error)
+      if(e instanceof Error){
         getClassMgr().getLogFile().addMessage("Error during gridpilot loading", e);
+      }
       else{
         getClassMgr().getLogFile().addMessage("Exception during gridpilot loading", e);
         exit(-1);
@@ -90,14 +93,6 @@ public class GridPilot extends JApplet{
       if(csNames == null || csNames.length == 0){
         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("Computing systems", "systems"));
       }
-      String channelsString = getClassMgr().getConfigFile().getValue("GridPilot", "ssh channels");
-      if(channelsString == null){
-        Debug.debug("ssh channels not found in config file", 1);
-        sshChannels = 4;
-      }
-      else{
-        sshChannels = Integer.parseInt(channelsString);
-      }
     }
     catch(Throwable e){
       if(e instanceof Error)
@@ -113,9 +108,9 @@ public class GridPilot extends JApplet{
    * "Class distributor"
    */
   public static ClassMgr getClassMgr(){
-    if(classMgr == null)
+    if(classMgr == null){
       Debug.debug("classMgr == null", 3);
-
+    }
     return classMgr;
   }
 
@@ -254,7 +249,8 @@ public class GridPilot extends JApplet{
           if(i+1 >= args.length){
             badUsage("Configuration file missing after " + args[i]);
             break;
-          }else{
+          }
+          else{
             confFileName = args[i+1];
             ++i;
           }
@@ -264,7 +260,8 @@ public class GridPilot extends JApplet{
             if(i+1 >= args.length){
               badUsage("log file missing after " + args[i]);
               break;
-            }else{
+            }
+            else{
               logsFileName = args[i+1];
               ++i;
             }

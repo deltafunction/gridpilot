@@ -30,7 +30,9 @@ public class ConfigFile {
    * public methods
    */
 
-	/*tells if this is a real config or do we just use fake values. Returns true based on the file name*/
+	/*
+	 * tells if this is a real config or do we just use fake values. Returns true based on the file name
+	 * */
 	public boolean isFake() {
 		return (configFileName.equals(""));
 	}
@@ -50,22 +52,30 @@ public class ConfigFile {
 
 	if (this.isFake()) return null; //makes sense
 	
+	Debug.debug("getValue("+section+", "+attribute+")", 3);
+	
     String result;
-    if(!openFile()) 
+    if(!openFile()){
       return null;
-
+    }
     if(searchSection(section)){
       result = searchAttribute(attribute);
     }
-    else
+    else{
       result = null; // this section doesn't exist
-
+    }
+    if(result==null){
+      Debug.debug("WARNING: The attribute "+attribute+
+      		" is not defined in section "+section+
+      		" of the config file.", 1);
+    }
     try{
       file.close();
-    }catch(IOException ioe){
+    }
+    catch(IOException ioe){
       System.err.println("cannot close "+ configFileName);
     }
-
+    Debug.debug("got value: "+result, 3);
     return result;
   }
 
@@ -91,17 +101,21 @@ public class ConfigFile {
     if(searchSection(section)){
       do{
         res = searchAttribute(attribute);
-        if(res == null)
+        if(res == null){
           break;
+        }
         StringTokenizer st = new StringTokenizer(res);
-        while(st.hasMoreTokens())
+        while(st.hasMoreTokens()){
           l.add(st.nextToken());
-      }while(true);
+        }
+      }
+      while(true);
     }
 
     String [] stringRes = new String[l.size()];
-    for(int i=0; i<l.size(); ++i)
+    for(int i=0; i<l.size(); ++i){
       stringRes[i] = l.elementAt(i).toString();
+    }
     return stringRes;
   }
 
@@ -210,7 +224,7 @@ public class ConfigFile {
       if(line==null || line.trim().startsWith("[")){
         res = null;
       }
-      else {
+      else{
         res = line.substring(isIndex+1).trim();
         if (res.length() == 0)
           res = null; // case 'attribute = '

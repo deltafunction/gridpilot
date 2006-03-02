@@ -92,11 +92,17 @@ public class CSPluginMgr implements ComputingSystem{
   public void loadClasses() throws Throwable{
 
     for(int i=0; i<csNames.length; ++i){
+    	try{
+      	GridPilot.splash.show("Connecting to "+csNames[i]+"...");
+    	}
+    	catch(Exception e){
+    		// if we cannot show text on splash, just silently ignore
+    	}
       String host = configFile.getValue(csNames[i], "host");
       if(host != null){
         String user = configFile.getValue(csNames[i], "user");
-        String password = configFile.getValue(csNames[i], "passwd");
-        String remoteHome = configFile.getValue(csNames[i], "home");
+        String password = configFile.getValue(csNames[i], "password");
+        String remoteHome = configFile.getValue(csNames[i], "home directory");
         shellMgr.put(csNames[i],
            new SecureShellMgr(host, user, password, remoteHome));
       }

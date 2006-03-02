@@ -21,15 +21,15 @@ public class SecureShellMgr implements ShellMgr{
   private int channelInUse;
 
   public SecureShellMgr(String _host, String _user,
-      String _password, String _remoteHome) {
+      String _password, String _remoteHome){
     BasicConfigurator.configure();
     Logger.getRootLogger().setLevel(Level.ERROR);
     host = _host;
     user = _user;
     password = _password;
-    remoteHome = getFullPath(_remoteHome);
+    remoteHome = _remoteHome;
     logFile = GridPilot.getClassMgr().getLogFile();
-    channels = GridPilot.sshChannels;
+    configFile = GridPilot.getClassMgr().getConfigFile();
     channelInUse = 0;
     connect();
     logFile.addInfo("Authentication completed on " + host + "(user : " + user +
@@ -50,7 +50,21 @@ public class SecureShellMgr implements ShellMgr{
         session.setUserInfo(ui);
       }
       session.connect();
-      sshs = new Channel[channels];
+      int channelsNum = 1;
+      try{
+      	channelsNum = Integer.parseInt(
+            configFile.getValue("GridPilot", "maximum simultaneous submission"))+
+        Integer.parseInt(
+            configFile.getValue("GridPilot", "maximum simultaneous checking"))+
+            Integer.parseInt(
+                configFile.getValue("GridPilot", "maximum simultaneous validating"));
+      }
+      catch(Exception e){
+      	Debug.debug("WARNING: could not construct number of channels. "+
+      			e.getMessage(), 1);
+      }
+      sshs = new Channel[channelsNum];
+      remoteHome = getFullPath(remoteHome);
     }
     catch (Exception e){
       Debug.debug("Could not connect via ssh, "+user+", "+password+", "+host+
@@ -155,13 +169,23 @@ public class SecureShellMgr implements ShellMgr{
     }
   }
 
-  private String getFullPath(String name) {
+  private String getFullPath(String name){
     if(!name.startsWith("/") && !name.startsWith("~"))
       name = remoteHome + (remoteHome.endsWith("/") ? "" : "/") + name;
-    //if(name.startsWith("~")){
-    //  try {name = getSftp().getDefaultDirectory() + name.substring(1);}
-    //  catch (IOException e) {e.printStackTrace();}
-    //}
+    if(name.startsWith("~")){
+      StringBuffer stdOut = new StringBuffer();
+      StringBuffer stdErr = new StringBuffer();
+      try{
+        int ret = exec("echo $HOME", stdOut, stdErr);
+        if(ret!=0 || stdErr.length()>0){
+          Debug.debug("ERROR: cannot get home directory. "+stdErr, 3);
+        }
+      }
+      catch(IOException e){
+        Debug.debug(e.getMessage(), 2);
+      }
+    	name = stdOut.toString()+name.substring(1);
+   }
     return name;
   }
 
@@ -176,7 +200,7 @@ public class SecureShellMgr implements ShellMgr{
     try{
       int ret = exec("ls "+name, stdOut, stdErr);
       if(ret!=0 || stdErr.length()>0){
-        Debug.debug("file "+name+" does not exist. "+stdErr, 3);
+        Debug.debug("WARNING: file "+name+" does not exist. "+stdErr, 3);
         return false;
       }
     }
@@ -187,7 +211,7 @@ public class SecureShellMgr implements ShellMgr{
     return true;
   }
 
-  public synchronized boolean mkdirs(String dir) {
+  public synchronized boolean mkdirs(String dir){
     if(dir ==null){
       return false;
     }
@@ -201,7 +225,7 @@ public class SecureShellMgr implements ShellMgr{
     try{
       int ret = exec("mkdir -p "+dir, stdOut, stdErr);
       if(ret!=0 || stdErr.length()>0){
-        Debug.debug("directory "+dir+" could not be created. "+stdErr, 3);
+        Debug.debug("WARNING: directory "+dir+" could not be created. "+stdErr, 2);
         return false;
       }
     }
@@ -212,14 +236,14 @@ public class SecureShellMgr implements ShellMgr{
     return true;
   }
 
-  public boolean deleteFile(String path) {
+  public boolean deleteFile(String path){
     Debug.debug("deleting file "+path, 2); 
     StringBuffer stdOut = new StringBuffer();
     StringBuffer stdErr = new StringBuffer();
     try{
       int ret = exec("rm "+path, stdOut, stdErr);
       if(ret!=0 || stdErr.length()>0){
-        Debug.debug("Could not delete file "+path+". "+stdErr, 1);
+        Debug.debug("WARNING: could not delete file "+path+". "+stdErr, 1);
         return false;
       }
     }
@@ -230,7 +254,7 @@ public class SecureShellMgr implements ShellMgr{
     return true;
   }
 
-  public boolean copyFile(String src, String dest) {
+  public boolean copyFile(String src, String dest){
     Debug.debug("copying file "+src+"->"+dest, 2); 
     StringBuffer stdOut = new StringBuffer();
     StringBuffer stdErr = new StringBuffer();
@@ -260,7 +284,7 @@ public class SecureShellMgr implements ShellMgr{
     return true;
   }
 
-  public boolean moveFile(String src, String dest) {
+  public boolean moveFile(String src, String dest){
     Debug.debug("moving file "+src+"->"+dest, 2); 
     StringBuffer stdOut = new StringBuffer();
     StringBuffer stdErr = new StringBuffer();

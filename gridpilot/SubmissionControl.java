@@ -85,10 +85,10 @@ public class SubmissionControl{
     ImageIcon iconSubmitting;
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(resourcesPath + "submitting.gif");
-      iconSubmitting = new ImageIcon(resourcesPath + "submitting.gif");
+      imgURL = GridPilot.class.getResource(resourcesPath + "submitting.png");
+      iconSubmitting = new ImageIcon(resourcesPath + "submitting.png");
     }catch(Exception e){
-      Debug.debug("Could not find image "+ resourcesPath + "submitting.gif", 3);
+      Debug.debug("Could not find image "+ resourcesPath + "submitting.png", 3);
       iconSubmitting = new ImageIcon();
     }
   }

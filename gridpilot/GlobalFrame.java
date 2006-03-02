@@ -40,6 +40,18 @@ public class GlobalFrame extends JFrame{
   public GlobalFrame() throws Exception{
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     allPanels = new Vector();
+    ImageIcon icon;
+    URL imgURL=null;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "Aviateur.png");
+      icon = new ImageIcon(imgURL);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "Aviateur.png", 3);
+      icon = new ImageIcon();
+    }
+    setIconImage(icon.getImage());
+
   }
 
   /**
@@ -63,6 +75,7 @@ public class GlobalFrame extends JFrame{
     container.add(tabbedPane,  BorderLayout.CENTER);
 
     if(GridPilot.getDBs().length>0){
+    	GridPilot.splash.show("Connecting to database "+GridPilot.getDBs()[0]+"...");
       addPanel(new DBPanel(GridPilot.getDBs()[0], "dataset"));
     }
     selectedPanel = tabbedPane.getSelectedIndex();
@@ -70,16 +83,16 @@ public class GlobalFrame extends JFrame{
     /*
     Detect click over X in tab
     */
-   tabbedPane.addMouseListener(new MouseAdapter() {
-     public void mouseReleased(MouseEvent evt) {
-       if (tabbedPane.getTabCount() == 0 || tabbedPane.getSelectedIndex() < 0) {
+   tabbedPane.addMouseListener(new MouseAdapter(){
+     public void mouseReleased(MouseEvent evt){
+       if (tabbedPane.getTabCount() == 0 || tabbedPane.getSelectedIndex() < 0){
          return;
        }
 
-       if (!evt.isPopupTrigger()) {
+       if (!evt.isPopupTrigger()){
          IconProxy iconProxy = (IconProxy) tabbedPane.getIconAt(tabbedPane.getSelectedIndex());
 
-         if (iconProxy.contains(evt.getX(), evt.getY())) {
+         if (iconProxy.contains(evt.getX(), evt.getY())){
            removePanel();
          }
        }
@@ -117,12 +130,12 @@ public class GlobalFrame extends JFrame{
   Add a new panel.
   */
 
-  public void addPanel(JobPanel newPanel, String title) {
+  public void addPanel(JobPanel newPanel, String title){
     Debug.debug("Adding panel "+newPanel.getTitle(), 3);
     addPanel(newPanel);
   }
 
-  public void addPanel(JobPanel newPanel) {
+  public void addPanel(JobPanel newPanel){
     
     URL imgURL=null;
     ImageIcon closeIcon = null;
@@ -159,12 +172,12 @@ public class GlobalFrame extends JFrame{
  /*
   Remove panel.
   */
-  public void removePanel() {
+  public void removePanel(){
     JobPanel panel = (JobPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
     removePanel(panel);
   }
   
-  public void removePanel(JobPanel panel) {
+  public void removePanel(JobPanel panel){
     // remove from vector and from tab
     Debug.debug("Removing panel#"+tabbedPane.getSelectedIndex(), 3);
     try{
@@ -184,7 +197,7 @@ public class GlobalFrame extends JFrame{
     GridPilot.exit(0);
   }
   //Help | About action performed
-  public void menuHelpAbout_actionPerformed() {
+  public void menuHelpAbout_actionPerformed(){
     URL aboutURL = null;
     try{
       aboutURL = GridPilot.class.getResource(GridPilot.resourcesPath + "about.htm");
@@ -196,9 +209,9 @@ public class GlobalFrame extends JFrame{
   }
 
   //Overridden so we can exit when window is closed
-  protected void processWindowEvent(WindowEvent e) {
+  protected void processWindowEvent(WindowEvent e){
     super.processWindowEvent(e);
-    if (e.getID() == WindowEvent.WINDOW_CLOSING) {
+    if (e.getID() == WindowEvent.WINDOW_CLOSING){
       exit();
     }
   }
@@ -231,7 +244,7 @@ public class GlobalFrame extends JFrame{
     
     JMenuItem miReloadValues = new JMenuItem("Reload values from config file");
     miReloadValues.addActionListener(new ActionListener()  {
-      public void actionPerformed(ActionEvent e) {
+      public void actionPerformed(ActionEvent e){
         GridPilot.reloadValues();
       }
     });
@@ -327,8 +340,8 @@ public class GlobalFrame extends JFrame{
     if(!GridPilot.isApplet()){
       menuGridPilot.addSeparator();
       JMenuItem miExit = new JMenuItem("Exit");
-      miExit.addActionListener(new ActionListener()  {
-        public void actionPerformed(ActionEvent e) {
+      miExit.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
           exit();
         }
       });
@@ -339,8 +352,8 @@ public class GlobalFrame extends JFrame{
     //Help
     JMenu menuHelp = new JMenu("Help");
     JMenuItem menuHelpAbout = new JMenuItem("About");
-    menuHelpAbout.addActionListener(new ActionListener()  {
-      public void actionPerformed(ActionEvent e) {
+    menuHelpAbout.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
         menuHelpAbout_actionPerformed();
       }
     });
@@ -352,8 +365,8 @@ public class GlobalFrame extends JFrame{
 
     JMenu menuDB = new JMenu("DB");
     JMenuItem miDbClearCaches = new JMenuItem("Clear DB caches");
-    miDbClearCaches.addActionListener(new ActionListener()  {
-      public void actionPerformed(ActionEvent e) {
+    miDbClearCaches.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
         /*
          Clear caches in all of the DB connections
          */
@@ -362,8 +375,8 @@ public class GlobalFrame extends JFrame{
     });
 
     JMenuItem miDbReconnect = new JMenuItem("Reconnect");
-    miDbReconnect.addActionListener(new ActionListener()  {
-      public void actionPerformed(ActionEvent e) {
+    miDbReconnect.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
         GridPilot.dbReconnect();
       }
     });
