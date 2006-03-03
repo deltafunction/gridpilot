@@ -116,6 +116,7 @@ import java.awt.event.*;
    */
   public String getRequest(String [] shownFields){
     String ret = "SELECT ";
+    Debug.debug("Checking "+sPanel.spDisplayList.getComponentCount()+":"+shownFields.length, 3);
     for(int i=0; i<sPanel.spDisplayList.getComponentCount(); ++i){
       SPanel.DisplayPanel cb = ((SPanel.DisplayPanel) sPanel.spDisplayList.getComponent(i));
       for(int j=0; j<shownFields.length; ++j){
@@ -137,10 +138,9 @@ import java.awt.event.*;
         !((SPanel.ConstraintPanel) sPanel.spConstraintList.getComponent(0)).tfConstraintValue.getText().equals("")){
       ret += " WHERE ";
     }
-    for(int i = 0; i <
-    sPanel.spConstraintList.getComponentCount();
-    ++i){
-      SPanel.ConstraintPanel cb = ((SPanel.ConstraintPanel) sPanel.spConstraintList.getComponent(i));
+    for(int i=0; i<sPanel.spConstraintList.getComponentCount();  ++i){
+      SPanel.ConstraintPanel cb =
+        ((SPanel.ConstraintPanel) sPanel.spConstraintList.getComponent(i));
       if(!cb.tfConstraintValue.getText().equals("")){
         if(i>0){
           ret += " AND ";

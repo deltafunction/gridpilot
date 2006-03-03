@@ -142,10 +142,11 @@ public class DBPanel extends JPanel implements JobPanel{
    private void setFieldArrays(){
      Vector shownSet = new Vector();  
      boolean ok = true;
+     Debug.debug("Finding fields to show from: "+Util.arrayToString(defaultFields), 3);
      for(int i=0; i<defaultFields.length; ++i){
        ok = false;
        for(int j=0; j<fieldNames.length; ++j){
-         //Debug.debug("Checking fields for showing"+defaultFields[i]+"<->"+fieldNames[j], 3);
+         Debug.debug("Checking fields for showing: "+defaultFields[i]+"<->"+fieldNames[j], 3);
          if(defaultFields[i].equalsIgnoreCase(fieldNames[j]) ||
              defaultFields[i].equalsIgnoreCase("*")){
            ok = true;
@@ -528,10 +529,10 @@ public class DBPanel extends JPanel implements JobPanel{
         //setFieldArrays();
         String selectRequest;
         selectRequest = selectPanel.getRequest(shownFields);
-        if(selectRequest == null)
+        if(selectRequest == null){
             return;
-        
-        /*
+        }
+         /*
          Support several dbs (represented by dbRes[]) and merge them
          all in one big table (res) with an extra column specifying
          the name of the db from which each row came
