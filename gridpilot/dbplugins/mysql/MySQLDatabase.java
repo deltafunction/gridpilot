@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
+import gridpilot.ConfigFile;
 import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
@@ -23,9 +24,7 @@ import gridpilot.Util;
 
 public class MySQLDatabase implements Database{
   
-  private String dbName = null;
   private String driver = "";
-  private String host = "";
   private String database = "";
   private String user = "";
   private String passwd = "";
@@ -34,16 +33,16 @@ public class MySQLDatabase implements Database{
   private String [] transformationFields = null;
   private String [] jobDefFields = null;
   private String [] datasetFields = null;
+  private String [] runInfoFields = null;
+  private String [] packageFields = null;
 
   public MySQLDatabase(
-      String _dbName, String _driver, String _host, String _database,
+      String _driver, String _database,
       String _user, String _passwd){
   	driver = _driver;
-    host = _host;
     database = _database;
   	user = _user;
   	passwd = _passwd;
-    dbName = _dbName;
         
     String [] up = null;
     
@@ -70,9 +69,23 @@ public class MySQLDatabase implements Database{
         break;
       }
     }
-    transformationFields = getFieldNames("transformation");
-    jobDefFields = getFieldNames("jobDefinition");
-    datasetFields = getFieldNames("dataset");
+    setFieldNames();
+    if(datasetFields==null || datasetFields.length<1){
+      makeTable("dataset");
+    }
+    if(jobDefFields==null || jobDefFields.length<1){
+      makeTable("jobDefinition");
+    }
+    if(transformationFields==null || transformationFields.length<1){
+      makeTable("transformation");
+    }
+    if(packageFields==null || packageFields.length<1){
+      makeTable("package");
+    }
+    if(runInfoFields==null || runInfoFields.length<1){
+      makeTable("runInfo");
+    }
+    setFieldNames();
   }
   
   public String connect(){
@@ -84,7 +97,7 @@ public class MySQLDatabase implements Database{
   		return null;
   	}
   	try {
-      conn = DriverManager.getConnection("jdbc:mysql://"+host+"/"+database+
+      conn = DriverManager.getConnection(database+
           "?user="+user+"&password="+passwd);
   	}
     catch(Exception e){
@@ -101,6 +114,46 @@ public class MySQLDatabase implements Database{
     return "";
   }
   
+  private void setFieldNames(){
+    transformationFields = getFieldNames("transformation");
+    jobDefFields = getFieldNames("jobDefinition");
+    datasetFields = getFieldNames("dataset");
+    // only used for checking
+    runInfoFields = getFieldNames("runInfo");
+    packageFields = getFieldNames("package");
+  }
+
+  private boolean makeTable(String table){
+    ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/mysql/tables.conf");
+    String [] fields = Util.split(tablesConfig.getValue("tables", table+" field names"), ",");
+    String [] fieldTypes = Util.split(tablesConfig.getValue("tables", table+" field types"), ",");
+    String sql = "CREATE TABLE "+table+"(";
+    for(int i=0; i<fields.length; ++i){
+      if(i>0){
+        sql += ", ";
+      }
+      //Debug.debug("-->"+fields[i], 3);
+      sql += fields[i];
+      //Debug.debug("-->"+fieldTypes[i], 3);
+      sql += " "+fieldTypes[i];
+    }
+    sql += ")";
+    sql = sql.replaceAll(";", ",");
+    Debug.debug(sql, 2);
+    boolean execok = true;
+    try{
+      Debug.debug("Creating table. "+sql, 1);
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+    }
+    catch(Exception e){
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+      e.printStackTrace();
+    };
+    return execok;
+  }
+
   public String getPanelUtilClass(){
     return "MySQLPanelUtil";
   }
@@ -152,7 +205,7 @@ public class MySQLDatabase implements Database{
       Debug.debug("getFieldNames for table "+table, 3);
       Statement stmt = conn.createStatement();
       // TODO: Do we need to execute a query to get the metadata?
-      ResultSet rset = stmt.executeQuery("describe " + table);
+      ResultSet rset = stmt.executeQuery("SELECT * FROM "+table+" LIMIT 1");
       ResultSetMetaData md = rset.getMetaData();
       String [] res = new String[md.getColumnCount()];
       for(int i=1; i<=md.getColumnCount(); ++i){
@@ -345,6 +398,8 @@ public class MySQLDatabase implements Database{
     Pattern patt;
     Matcher matcher;
 
+    Debug.debug(">>> sql string was: "+req, 3);
+
     // Make sure we have identifier.
     // *, row1, row2 -> *
     if(selectRequest.matches("SELECT \\* FROM.*")){
@@ -371,7 +426,7 @@ public class MySQLDatabase implements Database{
     matcher = patt.matcher(req);
     req = matcher.replaceAll("$1 '$2'");
     
-    Debug.debug(">>> sql string was : "+req, 3);
+    Debug.debug(">>> sql string is: "+req, 3);
     
     try{
       Statement stmt = conn.createStatement();
@@ -799,7 +854,6 @@ public class MySQLDatabase implements Database{
     try{
     	Statement stmt = conn.createStatement();
     	stmt.executeUpdate(sql);
-      conn.commit();
     }
     catch(Exception e){
       execok = false;
@@ -879,7 +933,6 @@ public class MySQLDatabase implements Database{
     try{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
-      conn.commit();
     }
     catch(Exception e){
       execok = false;
@@ -928,7 +981,6 @@ public class MySQLDatabase implements Database{
     try{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
-      conn.commit();
     }
     catch(Exception e){
       execok = false;
@@ -956,7 +1008,6 @@ public class MySQLDatabase implements Database{
     try{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
-      conn.commit();
     }
     catch(Exception e){
       execok = false; Debug.debug(e.getMessage(), 2);
@@ -1045,7 +1096,6 @@ public class MySQLDatabase implements Database{
     try{
     	Statement stmt = conn.createStatement();
     	stmt.executeUpdate(sql);
-    	conn.commit();
     }
     catch(Exception e){
       execok = false; Debug.debug(e.getMessage(), 2);
