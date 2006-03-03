@@ -14,7 +14,7 @@ import java.util.*;
   * 
   */
 
-public class ConfigFile {
+public class ConfigFile{
   private String configFileName;
   private RandomAccessFile file;
 
@@ -22,7 +22,7 @@ public class ConfigFile {
    * Constructor. Initalizes this configuration file manager with the file 'confiFileName'
    */
 
-  public ConfigFile(String configFileName) {
+  public ConfigFile(String configFileName){
     this.configFileName = configFileName;
   }
 
@@ -33,7 +33,7 @@ public class ConfigFile {
 	/*
 	 * tells if this is a real config or do we just use fake values. Returns true based on the file name
 	 * */
-	public boolean isFake() {
+	public boolean isFake(){
 		return (configFileName.equals(""));
 	}
   /**
@@ -50,10 +50,12 @@ public class ConfigFile {
    */
   public synchronized String getValue(String section, String attribute){
 
-	if (this.isFake()) return null; //makes sense
-	
-	Debug.debug("getValue("+section+", "+attribute+")", 3);
-	
+	  if(this.isFake()){
+      return null;
+    }
+    
+	  Debug.debug("getValue("+section+", "+attribute+")", 3);
+    
     String result;
     if(!openFile()){
       return null;
@@ -74,6 +76,10 @@ public class ConfigFile {
     }
     catch(IOException ioe){
       System.err.println("cannot close "+ configFileName);
+    }
+    if(result!=null && result.equals("\"\"")){
+      Debug.debug("WARNING: Empty config value!", 2);
+      result = "";
     }
     Debug.debug("got value: "+result, 3);
     return result;
@@ -245,22 +251,22 @@ public class ConfigFile {
   private String readLine() throws IOException{
     String res;
 	  do{
-        res= file.readLine();
-        if(res!=null){
-          if(res.indexOf('#')!=-1){
-            // Allow \#, strip off the \
-            if(res.indexOf('#')!=0 && res.indexOf('#')==res.indexOf('\\')+1){
-              res = res.substring(0, res.indexOf('#')-1)+
-              res.substring(res.indexOf('#'));           
-            }
-            else{
-              res = res.substring(0, res.indexOf('#'));           
-            }
+      res= file.readLine();
+      if(res!=null){
+        if(res.indexOf('#')!=-1){
+          // Allow \#, strip off the \
+          if(res.indexOf('#')!=0 && res.indexOf('#')==res.indexOf('\\')+1){
+            res = res.substring(0, res.indexOf('#')-1)+
+            res.substring(res.indexOf('#'));           
           }
-          res = res.trim();
+          else{
+            res = res.substring(0, res.indexOf('#'));           
+          }
         }
+        res = res.trim();
+      }
     }
-    while(res !=null && res.length()==0);
+    while(res!=null && res.length()==0);
 
     return res;
   }
