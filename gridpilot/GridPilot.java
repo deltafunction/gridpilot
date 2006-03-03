@@ -13,7 +13,7 @@ public class GridPilot extends JApplet{
   private boolean packFrame = false;
   private GlobalFrame frame;
 
-  private static String logsFileName = "gridpilot.logs";
+  private static String logFileName = "gridpilot.log";
   private static String confFileName = "gridpilot.conf";
 
   private static ClassMgr classMgr = new ClassMgr();
@@ -36,14 +36,14 @@ public class GridPilot extends JApplet{
   public GridPilot(){
     
     try{
-      classMgr.setLogFile(new LogFile(logsFileName));
+      classMgr.setLogFile(new LogFile(logFileName));
       classMgr.setConfigFile(new ConfigFile(confFileName));
       initDebug();
       loadConfigValues();
       splash = new Splash(resourcesPath, "splash.png");
       initGUI();
       splash.stopSplash();
-      classMgr.getLogFile().addInfo("gridpilot loaded");
+      classMgr.getLogFile().addInfo("GridPilot loaded");
     }
     catch(Throwable e){
       if(e instanceof Error){
@@ -262,7 +262,7 @@ public class GridPilot extends JApplet{
               break;
             }
             else{
-              logsFileName = args[i+1];
+              logFileName = args[i+1];
               ++i;
             }
           }

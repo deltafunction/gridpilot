@@ -227,7 +227,7 @@ public class ClassMgr{
 
   public GridPilot getGridPilot(){
     if(prodCom==null){
-      Debug.debug("prodCom null", 3);
+      Debug.debug("Object null", 3);
       new Exception().printStackTrace();
     }
 
