@@ -149,7 +149,8 @@ public class GlobalFrame extends JFrame{
     try{
       imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "close.png");
       closeIcon = new ImageIcon(imgURL);
-    }catch(Exception e){
+    }
+    catch(Exception e){
       Debug.debug("Could not find image "+ GridPilot.resourcesPath + "close.png", 3);
       closeIcon = new ImageIcon();
     }
@@ -189,7 +190,8 @@ public class GlobalFrame extends JFrame{
     Debug.debug("Removing panel#"+tabbedPane.getSelectedIndex(), 3);
     try{
       allPanels.removeElement(panel);
-    }catch(Exception e){
+    }
+    catch(Exception e){
       Debug.debug("ERROR: could not remove panel.", 1);
       return;
     }
@@ -208,7 +210,8 @@ public class GlobalFrame extends JFrame{
     URL aboutURL = null;
     try{
       aboutURL = GridPilot.class.getResource(GridPilot.resourcesPath + "about.htm");
-    }catch(Exception e){
+    }
+    catch(Exception e){
       Debug.debug("Could not find file "+ GridPilot.resourcesPath + "about.htm", 3);
       return;
     } 
@@ -267,7 +270,8 @@ public class GlobalFrame extends JFrame{
           try{
             addPanel(new DBPanel(
                 ((JMenuItem)e.getSource()).getText(), "dataset"), "dataset");          
-          }catch(Exception ex){
+          }
+          catch(Exception ex){
             Debug.debug("Could not add panel ", 1);
             ex.printStackTrace();
           }
@@ -287,7 +291,8 @@ public class GlobalFrame extends JFrame{
           try{
             addPanel(new DBPanel(
                 ((JMenuItem)e.getSource()).getText(), "jobDefinition"), "job definition");          
-          }catch(Exception ex){
+          }
+          catch(Exception ex){
             Debug.debug("Could not add panel ", 1);
             ex.printStackTrace();
           }
@@ -307,7 +312,8 @@ public class GlobalFrame extends JFrame{
           try{
             addPanel(new DBPanel(
                 ((JMenuItem)e.getSource()).getText(), "transformation"), "transformation");          
-          }catch(Exception ex){
+          }
+          catch(Exception ex){
             Debug.debug("Could not add panel ", 1);
             ex.printStackTrace();
           }
@@ -335,7 +341,8 @@ public class GlobalFrame extends JFrame{
           else{
             pDialog.setVisible(true);
           }
-        }catch(Exception ex){
+        }
+        catch(Exception ex){
           Debug.debug("Could not create panel ", 1);
           ex.printStackTrace();
         }
