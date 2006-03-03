@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
+import gridpilot.ConfigFile;
 import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
@@ -70,19 +71,19 @@ public class HSQLDBDatabase implements Database{
     }
     setFieldNames();
     if(datasetFields==null || datasetFields.length<1){
-      makeDatasetTable();
+      makeTable("dataset");
     }
     if(jobDefFields==null || jobDefFields.length<1){
-      makeJobDefTable();
+      makeTable("jobDefinition");
     }
     if(transformationFields==null || transformationFields.length<1){
-      makeTransformationTable();
+      makeTable("transformation");
     }
     if(packageFields==null || packageFields.length<1){
-      makePackageTable();
+      makeTable("package");
     }
     if(runInfoFields==null || runInfoFields.length<1){
-      makeRunInfoTable();
+      makeTable("runInfo");
     }
     setFieldNames();
   }
@@ -124,152 +125,27 @@ public class HSQLDBDatabase implements Database{
     packageFields = getFieldNames("package");
   }
 
-  private boolean makeDatasetTable(){
-    // CTB simulation, digitization and reconstruction
-    String [] fields = {
-        "identifier",
-        "name",
-        "runNumber",
-        "transformation",
-        "transVersion",
-        "projectName",
-        "physicsWorkingGroup",
-        "physicsShort",
-        "detectorLayout",
-        "status",
-        "principalSite",
-        "softwareRelease",
-        "physicsPackage",
-        "externalPackages",
-        "outputFormat",
-        "percentageValidatedFiles",
-        "percentageFailedFiles",
-        "totalFiles",
-        "totalDataSize",
-        "averageEventSize",
-        "totalEvents",
-        "averageCPUTime",
-        "totalCPUTime",
-        "requestedBy",
-        "comment",
-        "created",
-        "lastModified",
-        "transValues",
-        "beam_energy",
-        "mag_field",
-        "beam_polarity",
-        "beam_particle",
-        // not needed beyond simulation
-        "magneticField_Type",
-        "ID_magneticField",
-        "MBPL_magneticField",
-        "MBPS_magneticField",
-        "eta",
-        "z",
-        "theta",
-        "Pix_StatusWord",
-        "SCT_StatusWord",
-        "TRT_StatusWord",
-        "LAr_StatusWord",
-        "Tile_StatusWord",
-        "TileEB_StatusWord",
-        "MDT_StatusWord",
-        "TGC_StatusWord",
-        "RPC_StatusWord",
-        "CSC_StatusWord",
-        "BEE_StatusWord",
-        "Pix_xBeamPosition",
-        "SCT_xBeamPosition",
-        "TRT_xBeamPosition",
-        "TRT_yBeamPosition",
-        "TRT_zBeamPosition",
-        "LArTile_xBeamPosition",
-        "Muon_xBeamPosition",
-        "MuonBee_xBeamPosition",
-        // end of not needed
-        "dataType",
-        "InputDataset",
-        "InputDB",
-        "OutputLocation"
-        };
-    String [] fieldTypes = {
-        "INT NOT NULL PRIMARY KEY",
-        "LONGVARCHAR NOT NULL",
-        "INT NOT NULL",
-        "LONGVARCHAR NOT NULL",
-        "VARCHAR NOT NULL",
-        "LONGVARCHAR NULL",
-        "LONGVARCHAR NULL",
-        "LONGVARCHAR NULL",
-        "LONGVARCHAR NULL",
-        "VARCHAR NULL",//"enum('Requested', 'Approved', 'Running', 'Finished', 'Validated', 'Failed')",
-        "LONGVARCHAR NULL",
-        "VARCHAR NULL",
-        "VARCHAR NULL",//"enum('GEANT3', 'GEANT4', 'ATLFAST')",
-        "LONGVARCHAR NULL",
-        "VARCHAR NULL",//"enum('pool', 'root')",
-        "FLOAT NULL",
-        "FLOAT NULL",
-        "FLOAT NULL",
-        "BIGINT NULL",
-        "FLOAT NULL",
-        "BIGINT NULL",
-        "FLOAT NULL",
-        "BIGINT NULL",
-        "LONGVARCHAR NULL",
-        "LONGVARCHAR NULL",
-        "DATE NULL",
-        "DATE NULL",
-        "LONGVARCHAR NULL",
-        "FLOAT NULL",
-        "VARCHAR NULL",
-        "TINYINT NULL",
-        "VARCHAR NULL",//"enum('no beam', 'photon', 'electron', 'muon', 'pion', 'proton', 'gamma', 'other', 'unknown')",
-        "VARCHAR NULL",//"enum('constant', 'field map')",
-        "FLOAT NULL",
-        "FLOAT NULL",
-        "FLOAT NULL",
-        "FLOAT NULL",
-        "FLOAT NULL",
-        "FLOAT NULL",
-        "TINYINT NULL",//"enum('-1', '0', '1')",
-        "TINYINT NULL",//"enum('-1', '0', '1')",
-        "TINYINT NULL",//"enum('-1', '0', '1')",
-        "TINYINT NULL",//"enum('-1', '0', '1')",
-        "TINYINT NULL",//"enum('-1', '0', '1')",
-        "TINYINT NULL",//"enum('-1', '0', '1')",
-        "TINYINT NULL",//"enum('-1', '0', '1')",
-        "TINYINT NULL",//"enum('-1', '0', '1')",
-        "TINYINT NULL",//"enum('-1', '0', '1')",
-        "TINYINT NULL",//"enum('-1', '0', '1')",
-        "TINYINT NULL",//"enum('-1', '0', '1')",
-        "FLOAT NULL",
-        "FLOAT NULL",
-        "FLOAT NULL",
-        "FLOAT NULL",
-        "FLOAT NULL",
-        "FLOAT NULL",
-        "FLOAT NULL",
-        "FLOAT NULL",
-        "VARCHAR NULL",//"enum('EVGEN', 'ESD', 'AOD', 'BYTESTREAM', 'TAG', 'HITS', 'RDO', 'DIGITS', 'DATASET')",
-        "LONGVARCHAR NULL",
-        "LONGVARCHAR NULL",
-        "LONGVARCHAR NULL"
-        };
-    String sql = "CREATE TABLE dataset(";
+  private boolean makeTable(String table){
+    ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/hsqldb/tables.conf");
+    String [] fields = Util.split(tablesConfig.getValue("tables", table+" field names"), ",");
+    String [] fieldTypes = Util.split(tablesConfig.getValue("tables", table+" field types"), ",");
+    String sql = "CREATE TABLE "+table+"(";
     for(int i=0; i<fields.length; ++i){
       if(i>0){
         sql += ", ";
       }
+      //Debug.debug("-->"+fields[i], 3);
       sql += fields[i];
+      //Debug.debug("-->"+fieldTypes[i], 3);
       sql += " "+fieldTypes[i];
     }
     sql += ")";
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-     Statement stmt = conn.createStatement();
-     stmt.executeUpdate(sql);
+      Debug.debug("Creating table. "+sql, 1);
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
       conn.commit();
     }
     catch(Exception e){
@@ -278,136 +154,7 @@ public class HSQLDBDatabase implements Database{
     };
     return execok;
   }
-  
-  private boolean makeJobDefTable(){
-    // CTB simulation, digitization and reconstruction
-    String [] fields = {"identifier", "datasetFK", "name", "GUID", "number",
-        "eventMin", "eventMax", "nEvents", 
-        "outputFileSize", "CPU", "status", "userInfo",
-        "inputFileName", "transID", "transLogPars", "outFileMapping", "md5sum",
-        "stdoutDest", "stderrDest", "productionSite", "hostMachine", "storageType",
-        "created", "lastModified"};
-    String [] fieldTypes = {"INT", "INT", "LONGVARCHAR", "LONGVARCHAR", "INT",
-        "INT", "INT", "INT", 
-        "INT", "INT",
-        "VARCHAR",//"enum('Defined', 'Submitted', 'Validated', 'Failed', 'Undecided', 'Aborted')",
-        "LONGVARCHAR",
-        "LONGVARCHAR", "INT", "LONGVARCHAR", "LONGVARCHAR", "LONGVARCHAR",
-        "LONGVARCHAR", "LONGVARCHAR", "VARCHAR", "VARCHAR",
-        "VARCHAR NULL",//"enum('HPSS', 'CASTOR', 'DISK', 'TAPE', 'SRM', 'GRIDFTP')",
-        "DATE", "DATE"};
-    String sql = "CREATE TABLE jobDefinition(";
-    for(int i=0; i<fields.length; ++i){
-      if(i>0){
-        sql += ", ";
-      }
-      sql += fields[i];
-      sql += " "+fieldTypes[i];
-    }
-    sql += ")";
-    Debug.debug(sql, 2);
-    boolean execok = true;
-    try{
-     Statement stmt = conn.createStatement();
-     stmt.executeUpdate(sql);
-      conn.commit();
-    }
-    catch(Exception e){
-      execok = false;
-      Debug.debug(e.getMessage(), 2);
-    };
-    return execok;
-  }
-  
-  private boolean makeTransformationTable(){
-    // CTB simulation, digitization and reconstruction
-    String [] fields = {"identifier", "name", "version", "package", "signature",
-        "outputs", "script", "validationScript", "extractionScript",
-        "comment", "created", "lastModified", "code"};
-    String [] fieldTypes = {"INT", "LONGVARCHAR", "VARCHAR",
-        "LONGVARCHAR", "LONGVARCHAR",
-        "LONGVARCHAR", "LONGVARCHAR", "LONGVARCHAR", "LONGVARCHAR",
-        "LONGVARCHAR", "DATE", "DATE", "LONGVARCHAR"};
-    String sql = "CREATE TABLE transformation(";
-    for(int i=0; i<fields.length; ++i){
-      if(i>0){
-        sql += ", ";
-      }
-      sql += fields[i];
-      sql += " "+fieldTypes[i];
-    }
-    sql += ")";
-    Debug.debug(sql, 2);
-    boolean execok = true;
-    try{
-     Statement stmt = conn.createStatement();
-     stmt.executeUpdate(sql);
-      conn.commit();
-    }
-    catch(Exception e){
-      execok = false;
-      Debug.debug(e.getMessage(), 2);
-    };
-    return execok;
-  }
-  
-  private boolean makePackageTable(){
-    // CTB simulation, digitization and reconstruction
-    String [] fields = {"identifier", "name", "resource", "init"};
-    String [] fieldTypes = {"INT", "LONGVARCHAR", "LONGVARCHAR", "LONGVARCHAR"};
-    String sql = "CREATE TABLE package(";
-    for(int i=0; i<fields.length; ++i){
-      if(i>0){
-        sql += ", ";
-      }
-      sql += fields[i];
-      sql += " "+fieldTypes[i];
-    }
-    sql += ")";
-    Debug.debug(sql, 2);
-    boolean execok = true;
-    try{
-     Statement stmt = conn.createStatement();
-     stmt.executeUpdate(sql);
-      conn.commit();
-    }
-    catch(Exception e){
-      execok = false;
-      Debug.debug(e.getMessage(), 2);
-    };
-    return execok;
-  }
-  
-  private boolean makeRunInfoTable(){
-    // CTB simulation, digitization and reconstruction
-    String [] fields = {"identifier", "jobDefinition", "jobID",
-        "resource", "userInfo", "outTmp ", "errTmp", "valOut", "valErr"};
-    String [] fieldTypes = {"INT", "LONGVARCHAR", "LONGVARCHAR",
-        "VARCHAR", "LONGVARCHAR", "LONGVARCHAR ", "LONGVARCHAR",
-        "LONGVARCHAR", "LONGVARCHAR"};
-    String sql = "CREATE TABLE runInfo(";
-    for(int i=0; i<fields.length; ++i){
-      if(i>0){
-        sql += ", ";
-      }
-      sql += fields[i];
-      sql += " "+fieldTypes[i];
-    }
-    sql += ")";
-    Debug.debug(sql, 2);
-    boolean execok = true;
-    try{
-     Statement stmt = conn.createStatement();
-     stmt.executeUpdate(sql);
-      conn.commit();
-    }
-    catch(Exception e){
-      execok = false;
-      Debug.debug(e.getMessage(), 2);
-    };
-    return execok;
-  }
-  
+    
   public String getPanelUtilClass(){
     return "HSQLDBPanelUtil";
   }
