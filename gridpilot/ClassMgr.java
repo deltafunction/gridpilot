@@ -32,7 +32,8 @@ public class ClassMgr{
   public boolean setDBPluginMgr(String dbName, DBPluginMgr dbPluginMgr){
     try{
       dbMgts.put(dbName, dbPluginMgr);
-    }catch(NullPointerException e){
+    }
+    catch(NullPointerException e){
       dbMgts.put(dbName, new HashMap());
     }
     try {
@@ -166,7 +167,6 @@ public class ClassMgr{
       Debug.debug("logFile null", 3);
       return new LogFile("");
     }
-
     return logFile;
   }
 
@@ -184,7 +184,6 @@ public class ClassMgr{
       Debug.debug("statusBar null", 3);
       new Exception().printStackTrace();
     }
-
     return statusBar;
   }
 
@@ -230,7 +229,6 @@ public class ClassMgr{
       Debug.debug("Object null", 3);
       new Exception().printStackTrace();
     }
-
     return prodCom;
   }
 
