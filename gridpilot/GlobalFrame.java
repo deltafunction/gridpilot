@@ -75,7 +75,6 @@ public class GlobalFrame extends JFrame{
     container.add(tabbedPane,  BorderLayout.CENTER);
 
     if(GridPilot.getDBs().length>0){
-    	GridPilot.splash.show("Connecting to database "+GridPilot.getDBs()[0]+"...");
       try{
       	addPanel(new DBPanel(GridPilot.getDBs()[0], "dataset"));
       }

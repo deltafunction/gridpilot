@@ -36,14 +36,13 @@ public class GridPilot extends JApplet{
   public GridPilot(){
     
     try{
-      classMgr.setLogFile(new LogFile(logFileName));
-      classMgr.setConfigFile(new ConfigFile(confFileName));
+      getClassMgr().setLogFile(new LogFile(logFileName));
+      getClassMgr().setConfigFile(new ConfigFile(confFileName));
       initDebug();
       loadConfigValues();
-      splash = new Splash(resourcesPath, "splash.png");
       initGUI();
       splash.stopSplash();
-      classMgr.getLogFile().addInfo("GridPilot loaded");
+      getClassMgr().getLogFile().addInfo("GridPilot loaded");
     }
     catch(Throwable e){
       if(e instanceof Error){
@@ -58,11 +57,27 @@ public class GridPilot extends JApplet{
 
   public static void loadConfigValues(){
     try{
+      resourcesPath =  getClassMgr().getConfigFile().getValue("GridPilot", "resources");
+      if(resourcesPath == null){
+        getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("GridPilot", "resources"));
+        resourcesPath = "./";
+      }
+      else{
+        if (!resourcesPath.endsWith("/"))
+          resourcesPath = resourcesPath + "/";
+      }
+      splash = new Splash(resourcesPath, "splash.png");
       String database;
       String [] up = null;
       String tmpDb = null;
       dbs = getClassMgr().getConfigFile().getValues("Databases", "Systems");
       for(int i = 0; i < dbs.length; ++i){
+        try{
+          splash.show("Connecting to "+dbs[i]+"...");
+        }
+        catch(Exception e){
+          // if we cannot show text on splash, just silently ignore
+        }
         try{
           tmpDb = getClassMgr().getDBPluginMgr(dbs[i]).getDBName();
         }
@@ -78,15 +93,6 @@ public class GridPilot extends JApplet{
       statusFields = new String [] {
           " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "user"};
 
-      resourcesPath =  getClassMgr().getConfigFile().getValue("GridPilot", "resources");
-      if(resourcesPath == null){
-        getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("GridPilot", "resources"));
-        resourcesPath = "./";
-      }
-      else{
-        if (!resourcesPath.endsWith("/"))
-          resourcesPath = resourcesPath + "/";
-      }    
       prefix = getClassMgr().getConfigFile().getValue("GridPilot","prefix");
       url = getClassMgr().getConfigFile().getValue("GridPilot","url");
       csNames = getClassMgr().getConfigFile().getValues("Computing systems", "systems");
@@ -289,10 +295,10 @@ public class GridPilot extends JApplet{
    */
   public static void reloadValues(){
     loadConfigValues();
-    GridPilot.getClassMgr().getJobValidation().loadValues();
-    GridPilot.getClassMgr().getSubmissionControl().loadValues();
-    GridPilot.getClassMgr().getGlobalFrame().jobMonitoringPanel.statusUpdateControl.loadValues();
-    GridPilot.getClassMgr().getCSPluginMgr().loadValues();
+    getClassMgr().getJobValidation().loadValues();
+    getClassMgr().getSubmissionControl().loadValues();
+    getClassMgr().getGlobalFrame().jobMonitoringPanel.statusUpdateControl.loadValues();
+    getClassMgr().getCSPluginMgr().loadValues();
     dbs = getClassMgr().getConfigFile().getValues("GridPilot", "Databases");
     for(int i = 0; i < dbs.length; ++i){
       getClassMgr().getDBPluginMgr(dbs[i]).loadValues();
