@@ -28,7 +28,7 @@ import java.awt.event.*;
    private String [] relationNames = {"=", "CONTAINS", "<", ">", "!="};
    private GridBagConstraints gbcVC;
    public SPanel.ConstraintPanel spcp;
-   private SPanel sPanel;
+   protected SPanel sPanel;
 
    /**
    * Constructors
@@ -79,9 +79,7 @@ import java.awt.event.*;
    */
   public String getRequest(){
     String ret = "SELECT ";
-    for(int i = 0; i <
-    sPanel.spDisplayList.getComponentCount();
-    ++i){
+    for(int i = 0; i<sPanel.spDisplayList.getComponentCount(); ++i){
       SPanel.DisplayPanel cb = ((SPanel.DisplayPanel) sPanel.spDisplayList.getComponent(i));
       if(i>0){
         ret += ", ";
@@ -93,9 +91,7 @@ import java.awt.event.*;
         !((SPanel.ConstraintPanel) sPanel.spConstraintList.getComponent(0)).tfConstraintValue.getText().equals("")){
       ret += " WHERE ";
     }
-    for(int i = 0; i <
-    sPanel.spConstraintList.getComponentCount();
-    ++i){
+    for(int i = 0; i<sPanel.spConstraintList.getComponentCount(); ++i){
       SPanel.ConstraintPanel cb = ((SPanel.ConstraintPanel) sPanel.spConstraintList.getComponent(i));
       if(!cb.tfConstraintValue.getText().equals("")){
         if(i>0){
@@ -187,7 +183,7 @@ import java.awt.event.*;
      * Initialises the panel # 'panel'.
      * Called by : this.initGUI()
      */
-    private class SPanel extends JPanel{
+    protected class SPanel extends JPanel{
       public String name = "";
       private JButton bAddConstraintRow;
       private JButton bRemoveConstraintRow ;
@@ -195,7 +191,7 @@ import java.awt.event.*;
       private JPanel spConstraints;
       private JButton bAddDisplayRow;
       private JButton bRemoveDisplayRow;
-      private JPanel spDisplayList;
+      protected JPanel spDisplayList;
       private JPanel spDisplays;
       protected String [] fieldList;
           
@@ -245,7 +241,7 @@ import java.awt.event.*;
 //// Display attributes
     
       // Label
-      spDisplays.add(new JLabel("Select : "));
+      spDisplays.add(new JLabel("Show : "));
   
       // Button More
       bAddDisplayRow.setText("More");
@@ -310,7 +306,7 @@ import java.awt.event.*;
      }        
      
      protected class DisplayPanel extends JPanel{
-       private JComboBox cbDisplayAttribute;
+       protected JComboBox cbDisplayAttribute;
        DisplayPanel(boolean withStar){
          // Combobox attribute
          cbDisplayAttribute = new JComboBox();

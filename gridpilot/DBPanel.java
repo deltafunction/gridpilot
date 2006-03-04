@@ -3,6 +3,7 @@ package gridpilot;
 import gridpilot.Table;
 import gridpilot.Database.DBResult;
 import gridpilot.Database.DBRecord;
+import gridpilot.SelectPanel.SPanel;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
 
@@ -42,8 +43,6 @@ public class DBPanel extends JPanel implements JobPanel{
   private JMenuItem miEdit = null;
   
   private int [] identifiers;
-  //private String [] dbIdentifiers;
-  //private String [] stepIdentifiers;
   // lists of field names with table name as key
   private String [] fieldNames = null;
   private String dbName = null;
@@ -158,7 +157,29 @@ public class DBPanel extends JPanel implements JobPanel{
          shownSet.add(defaultFields[i]);
        }
      }
-     
+          
+     if(selectPanel!=null){
+       Debug.debug("Checking "+selectPanel.sPanel.spDisplayList.getComponentCount()+":"+shownFields.length, 3);
+       boolean fieldOk = true;
+       for(int i=0; i<selectPanel.sPanel.spDisplayList.getComponentCount(); ++i){
+         fieldOk = true;
+         SPanel.DisplayPanel cb =
+           ((SPanel.DisplayPanel) selectPanel.sPanel.spDisplayList.getComponent(i));
+         for(int j=0; j<shownFields.length; ++j){
+           Debug.debug("Checking fields "+
+               cb.cbDisplayAttribute.getSelectedItem().toString()+"<->"+shownFields[j], 3);
+           if((cb.cbDisplayAttribute.getSelectedItem().toString()
+                   ).equalsIgnoreCase(shownFields[j])){
+             fieldOk = false;
+             break;
+           }
+         }
+         if(fieldOk){
+           shownSet.add(cb.cbDisplayAttribute.getSelectedItem().toString());
+         }
+       }    
+     }
+
      shownFields = new String[shownSet.size()];
      for(int i=0; i<shownSet.size(); ++i){
        shownFields[i] = shownSet.get(i).toString();
@@ -167,7 +188,6 @@ public class DBPanel extends JPanel implements JobPanel{
      for(int k=0; k<shownFields.length; ++k){
        shownFields[k] = tableName+"."+shownFields[k];
      }
-     
      
      Vector selectSet = new Vector();  
      ok = true;
@@ -411,7 +431,6 @@ public class DBPanel extends JPanel implements JobPanel{
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
       bViewJobDefinitions.setEnabled(false);
-      //bViewJobTransRecords.setEnabled(false);
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
       updateUI();
@@ -454,14 +473,6 @@ public class DBPanel extends JPanel implements JobPanel{
     int selRow = tableResults.getSelectedRow();
     return (selRow==-1) ? -1 : identifiers[selRow];
   }
-
-  /**
-   * Returns the name of the first selected row, "-1" if no row is selected.
-   */
-  /*public String getSelectedName(){
-    int selRow = tableResults.getSelectedRow();
-    return (selRow==-1) ? "-1" : tableResults.getUnsortedValueAt(selRow, 0).toString();
-  }*/
 
   /**
    * Adds a button on the left of the buttons shown when the panel with results is shown.
@@ -526,24 +537,17 @@ public class DBPanel extends JPanel implements JobPanel{
           //Debug.debug("please wait ...", 2);
           //return;
         //}
-        //setFieldArrays();
+        setFieldArrays();
         String selectRequest;
         selectRequest = selectPanel.getRequest(shownFields);
         if(selectRequest == null){
             return;
         }
-         /*
-         Support several dbs (represented by dbRes[]) and merge them
-         all in one big table (res) with an extra column specifying
-         the name of the db from which each row came
-        */      
-        //DBResult [] stepRes = new DBResult[dbs.length];
         DBResult res = null;
         res = GridPilot.getClassMgr().getDBPluginMgr(dbName).select(
             selectRequest, identifier);
 
         bViewJobDefinitions.setEnabled(false);
-        //bViewJobTransRecords.setEnabled(false);
         bEditRecord.setEnabled(false);
         bDeleteRecord.setEnabled(false);
         bSubmit.setEnabled(false);
@@ -818,7 +822,6 @@ public class DBPanel extends JPanel implements JobPanel{
         panel, true, false);
     pDialog.setTitle(tableName);
     pDialog.setVisible(true);
-    /*searchRequest();*/
   }
 
   private void deleteJobDefs(){
@@ -836,7 +839,6 @@ public class DBPanel extends JPanel implements JobPanel{
     }
     workThread = new Thread(){
       public void run(){
-        //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
         if(!getWorking()){
           Debug.debug("please wait ...", 2);
           return;
@@ -993,7 +995,6 @@ public class DBPanel extends JPanel implements JobPanel{
     if(getSelectedIdentifier() != -1){
       new Thread(){
         public void run(){
-          //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
           try{
             // Create new panel with jobDefinitions.         
             int id = getSelectedIdentifier();
@@ -1001,12 +1002,8 @@ public class DBPanel extends JPanel implements JobPanel{
                 dbPluginMgr, id);
             dbPanel.selectPanel.setConstraint("jobDefinition",
                 dbPluginMgr.getJobDefDatasetFK(dbPluginMgr.getDBName()),
-                //"datasetFK",
                 Integer.toString(id), 0);
-            //dbPanel.selectPanel.setConstraint("jobDefinition", "dataset",
-                //dbPluginMgr.getDatasetName(id), 0);
             dbPanel.searchRequest();           
-            // Create new dataset panel showing transformation records
             GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                   
           }
           catch(Exception e){
@@ -1042,9 +1039,7 @@ public class DBPanel extends JPanel implements JobPanel{
    * Called when mouse is pressed on Submit button
    */
   private void bSubmit_mousePressed(){
-
     // if a partition is selected, shows the menu with computing systems
-
     if(getSelectedIdentifiers().length != 0){
       pmSubmitMenu.show(this, 0, 0); // without this, pmSubmitMenu.getWidth == 0
 
@@ -1063,9 +1058,7 @@ public class DBPanel extends JPanel implements JobPanel{
     for(int i=0; i<selectedJobIdentifiers.length; ++i){
       selectedJobDefinitions.add(dbPluginMgr.getJobDefinition(i));
     }
-    //String csName = ((JMenuItem)e.getSource()).getMnemonic();
     String csName = ((JMenuItem)e.getSource()).getText();
-
     // submit the jobs
     submissionControl.submitJobDefinitions(selectedJobDefinitions, csName);
   }

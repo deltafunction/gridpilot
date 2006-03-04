@@ -400,7 +400,7 @@ public class HSQLDBDatabase implements Database{
     Pattern patt;
     Matcher matcher;
 
-    // Make sure we have identifier.
+    // Make sure we have identifier as last column.
     // *, row1, row2 -> *
     if(selectRequest.matches("SELECT \\* FROM.*")){
       withStar = true;
@@ -413,9 +413,16 @@ public class HSQLDBDatabase implements Database{
       req = matcher.replaceAll("SELECT * FROM");
     }
     else{
-      patt = Pattern.compile(" FROM (\\w+)", Pattern.CASE_INSENSITIVE);
+      patt = Pattern.compile(", "+identifier+" ", Pattern.CASE_INSENSITIVE);
       matcher = patt.matcher(req);
-      req = matcher.replaceAll(", "+identifier+" FROM "+"$1");
+      req = matcher.replaceAll(" ");
+      
+      patt = Pattern.compile("SELECT "+identifier+" FROM", Pattern.CASE_INSENSITIVE);
+      if(!patt.matcher(req).find()){
+        patt = Pattern.compile(" FROM (\\w+)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceAll(", "+identifier+" FROM "+"$1");
+      }
     }
     
     patt = Pattern.compile("CONTAINS (\\w+)", Pattern.CASE_INSENSITIVE);
