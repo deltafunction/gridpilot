@@ -413,11 +413,13 @@ import java.awt.event.*;
     boolean fieldOk = false;
     for(int h=0; h<values.length; ++h){
       spanel = sPanel;
-      Debug.debug("Table: "+h+" "+values[h][0], 3);
+      Debug.debug("Table: "+h+" "+values[h][0]+h+" "+values[h][1]+
+          " "+spanel.name, 3);
       Debug.debug("Table: "+spanel.name, 3);
       if(spanel.name.equals(values[h][0])){
         thisSPanel = spanel;
       	if((values[h].length>0) && (spanel.spDisplayList!=null)){
+          Debug.debug("Setting value", 3);
       		String val = values[h][1];
           // make sure we have enough display panels
           fieldOk = false;
@@ -445,7 +447,11 @@ import java.awt.event.*;
               Debug.debug("Setting selected "+val, 3);
               //((JComboBox) ((SelectPanel.SPanel.DisplayPanel) spanel.spDisplayList.getComponent(
               //    /*nr*/h)).getComponent(0)).setSelectedItem(val.toUpperCase());
+              // the various databases like to upper-case the names,
+              // so try all possibilities
+              ((JComboBox) secondcomp).setSelectedItem(val);
               ((JComboBox) secondcomp).setSelectedItem(val.toUpperCase());
+              ((JComboBox) secondcomp).setSelectedItem(val.toLowerCase());
             }
           }
         }

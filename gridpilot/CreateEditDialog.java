@@ -7,8 +7,8 @@ import java.awt.event.*;
 public class CreateEditDialog extends JDialog{
 
   public JPanel buttonPanel = new JPanel();
-  private final int BPREV = 0;
-  private final int BCREATE = 1;
+  private final int BCLOSE = 0;
+  private final int BCREATEUPDATE = 1;
   private final int BCLEAR = 2;
 
   JPanel pCreateEdit = new JPanel(new BorderLayout());
@@ -16,8 +16,8 @@ public class CreateEditDialog extends JDialog{
   
   private boolean editing;
 
-  private JButton bPrev = new JButton("Close");
-  private JButton bCreate = null;
+  private JButton bClose = new JButton("Close");
+  private JButton bCreateUpdate = null;
   private JButton bClear = new JButton("Clear");
   private JCheckBox cbShowResults = new JCheckBox("Show before writing to DB", true);
 
@@ -39,10 +39,10 @@ public class CreateEditDialog extends JDialog{
     });
     
     if(editing){
-      bCreate = new JButton("Update");
+      bCreateUpdate = new JButton("Update");
     }
     else{
-      bCreate = new JButton("Create");
+      bCreateUpdate = new JButton("Create");
     }
 
     try {
@@ -62,8 +62,8 @@ public class CreateEditDialog extends JDialog{
 
     // buttons initialisation
 
-    bPrev.setMnemonic(BPREV);
-    bPrev.addActionListener(new java.awt.event.ActionListener(){
+    bClose.setMnemonic(BCLOSE);
+    bClose.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         button_actionPerformed(e);
       }
@@ -76,8 +76,8 @@ public class CreateEditDialog extends JDialog{
       }
     });
 
-    bCreate.setMnemonic(BCREATE);
-    bCreate.addActionListener(new java.awt.event.ActionListener(){
+    bCreateUpdate.setMnemonic(BCREATEUPDATE);
+    bCreateUpdate.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         button_actionPerformed(e);
       }
@@ -85,9 +85,9 @@ public class CreateEditDialog extends JDialog{
 
 
     buttonPanel.add(cbShowResults);
-    buttonPanel.add(bPrev);
+    buttonPanel.add(bClose);
     buttonPanel.add(bClear);
-    buttonPanel.add(bCreate);
+    buttonPanel.add(bCreateUpdate);
 
     pCreateEdit.add(createEditPanel, BorderLayout.NORTH);
     pCreateEdit.add(buttonPanel, BorderLayout.SOUTH);
@@ -107,20 +107,17 @@ public class CreateEditDialog extends JDialog{
    */
   void button_actionPerformed(ActionEvent e){
     switch(((JButton)e.getSource()).getMnemonic()){
-      case BPREV :
+      case BCLOSE :
         createEditPanel.windowClosing();
         this.setVisible(false);
         break;
 
-      case BCREATE :
+      case BCREATEUPDATE :
         new Thread(){
           public void run(){
             createEditPanel.create(cbShowResults.isSelected(), editing);
           }
           }.start();
-        //if(editing){
-          //this.setVisible(false);
-        //}
         break;
 
       case BCLEAR :

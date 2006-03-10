@@ -107,9 +107,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
     cstAttr = new String[cstAttributesNames.length];
     
     transformations = dbPluginMgr.getTransformations();
-    
-    jobTransNameColumn = dbPluginMgr.getTransNameColumn();
-    
+        
     // When editing, fill cstAttr from db
     if(table.getSelectedRow()>-1 && editing){
       // Find jobdDefinitionID from db
@@ -274,7 +272,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
             transformations.getValue(0,jobTransNameColumn), 3);
         vec.add(transformations.getValue(0,jobTransNameColumn));
         if(transformations.getValue(0,transformationIdentifier).equals(jobTransFK)){
-          jtName = transformations.getValue(0,jobTransNameColumn);
+          jtName = transformations.getValue(0,jobTransNameColumn).toString();
         }
       }
       else{
@@ -285,7 +283,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
     transformations = dbPluginMgr.getTransformations();
     transformationNames = new String[transformations.values.length];
     for(int i=0; i<transformations.values.length; ++i){
-      transformationNames[i] = transformations.getValue(i, jobTransNameColumn);
+      transformationNames[i] = transformations.getValue(i, jobTransNameColumn).toString();
     }
 
     // Find transformationName of jobTransFK
@@ -296,7 +294,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
             transformations.getValue(i,transformationIdentifier), 3);
         if(transformations.getValue(i,transformationIdentifier).equals(jobTransFK) &&
             transformations.getValue(i,jobTransNameColumn)!=null){
-          jtName = transformations.getValue(i,jobTransNameColumn);
+          jtName = transformations.getValue(i,jobTransNameColumn).toString();
         }
         // Avoid duplicates
         for(int j=0; j<vec.size(); ++j){
@@ -376,7 +374,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
       // When editing, find version of original jobTransFK
       for(int i=0; i<transformations.values.length; ++i){
         if(transformations.getValue(i,transformationIdentifier).equals(jobTransFK)){
-          jtVersion = transformations.getValue(i,"version");
+          jtVersion = transformations.getValue(i,"version").toString();
           break;
         }
       }
@@ -527,7 +525,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
             " "+jobTransFK, 3);
         for(int i=0; i<transformations.values.length; ++i){
           if(transformations.getValue(i, "jobTransId").equals(jobTransFK)){
-            signature = transformations.getValue(i, "formalPars");
+            signature = transformations.getValue(i, "formalPars").toString();
             if (signature == null) Debug.debug("got signature: null from jobTrans",3); else
               Debug.debug("got signature from jobTrans: "+signature, 3);
             break;
@@ -663,7 +661,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
          transformations.getValue(i,jobTransNameColumn).equals(transformationName) &&
          transformations.getValue(i,"version").equals(version)){
         Debug.debug("Setting jobTransFK to "+transformations.getValue(i,transformationIdentifier), 3);
-        jobTransFK = transformations.getValue(i,transformationIdentifier);
+        jobTransFK = transformations.getValue(i,transformationIdentifier).toString();
         break;
       }
      }

@@ -83,9 +83,6 @@ public interface Database{
   public String [] getDefVals(int datasetID, String user);
   public String [] getFieldNames(String table);
   public String getPackInitText (String pack, String cluster);
-  // The column in the tranformation table holding the
-  // name of the transformation
-  public String getTransNameColumn();
   // The class providing the panel for job creation
   public String getPanelUtilClass();
   
@@ -127,7 +124,7 @@ public interface Database{
   public static class DBResult {
   
     public String[]    fields ;
-    public String[][]  values ;
+    public Object[][]  values ;
   
     public DBResult(int nrFields, int nrValues) {
       fields = new String [nrFields];
@@ -146,18 +143,29 @@ public interface Database{
       values = v ;
     }
   
-    public String getAt(int row, int column){
+    public Object getAt(int row, int column){
       if (row > values.length-1) return "no such row";
       if (column > values[0].length-1) return "no such column";
       return values[row][column];
     }
 
-   public String getValue(int row, String col) {
+   public Object getValue(int row, String col) {
       if (row > values.length-1) return "no such row";
       for (int i = 0 ; i < fields.length ; i++) {
         if (col.equalsIgnoreCase(fields[i])) return values[row][i] ;
       }
       return "no such field" ;
     }
-  }
+
+   public boolean setValue(int row, String col, String value) {
+     if (row > values.length-1) return false;
+     for (int i = 0 ; i < fields.length ; i++) {
+       if (col.equalsIgnoreCase(fields[i])){
+         values[row][i] = value;
+         return true;
+       }
+     }
+     return false;
+   }
+}
 }

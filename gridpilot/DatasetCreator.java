@@ -5,12 +5,10 @@ import java.awt.*;
 import java.util.HashSet;
 import java.util.Iterator;
 
-import gridpilot.Database.DBRecord;
-
 /**
  * Creates the dataset with data given by DatasetCreationPanel.
  */
-public class DatasetCreator {
+public class DatasetCreator{
 
   private boolean showResults;
   private String [] cstAttr;
@@ -19,8 +17,6 @@ public class DatasetCreator {
   private String [] cstAttrNames;
   private int [] datasetIDs;
   private String targetDB;
-  private String transformation;
-  private String version;
   private static JProgressBar pb = new JProgressBar();
   private static Object semaphoreAMICreation = new Object();
   private DBPluginMgr dbPluginMgr;
@@ -28,14 +24,13 @@ public class DatasetCreator {
   private Object[] showResultsOptions = {"OK", "Skip", "OK for all", "Skip all"};
   private Object[] showResultsOptions1 = {"OK", "Skip"};
 
-  public DatasetCreator(  DBPluginMgr _dbPluginMgr,
+  public DatasetCreator(  
+                          DBPluginMgr _dbPluginMgr,
                           boolean _showResults,
                           String [] _cstAttr,
                           String [] _cstAttrNames,
                           int [] _datasetIDs,
-                          String _targetDB,
-                          String _transformation,
-                          String _version
+                          String _targetDB
                           ){
 
     showResults = _showResults;
@@ -44,9 +39,7 @@ public class DatasetCreator {
 	  resCstAttr = _cstAttr;
     datasetIDs =  _datasetIDs;
     targetDB = _targetDB;
-    transformation = _transformation;
-    version = _version;
-
+    
     statusBar = GridPilot.getClassMgr().getStatusBar();
     dbPluginMgr = _dbPluginMgr;
 
@@ -55,14 +48,22 @@ public class DatasetCreator {
   
   private void createDataset(){
     
-    Debug.debug("createDataset", 2);
     boolean okAll = false;
     boolean skip = false;
     boolean showThis  = showResults;
     
+    //String reconName = "";
+    
     if(targetDB!=null){   
       // this set is used to keep track of which fields were set to ""
       HashSet clearAttrs = new HashSet();
+      String transformationID = "";
+      for(int j=0; j<cstAttrNames.length; ++j){
+        if(cstAttrNames[j].equalsIgnoreCase("transformationFK") ||
+            cstAttrNames[j].equalsIgnoreCase("transFK")){
+          transformationID = cstAttr[j];
+        }
+      }
       for(int i=0; i<datasetIDs.length; ++i){     
         Debug.debug("creating #"+datasetIDs[i], 2);
         clearAttrs.clear();        
@@ -71,15 +72,17 @@ public class DatasetCreator {
             // Get values from source dataset in question, excluding
             // transformation, transVersion and any other filled-in values.
             // Construct name for new target dataset.
-            if(cstAttrNames[j].equalsIgnoreCase("logicalDatasetName")){
-              resCstAttr[j] = dbPluginMgr.getTargetDatasetName(targetDB,
+            if(cstAttrNames[j].equalsIgnoreCase("name") ||
+                cstAttrNames[j].equalsIgnoreCase("taskName")){
+              resCstAttr[j] = dbPluginMgr.getTargetDatasetName(
+                  targetDB,
                   dbPluginMgr.getDatasetName(datasetIDs[i]),
-                  transformation, version);
+                  transformationID);
             }
             else if(cstAttrNames[j].equalsIgnoreCase("runNumber")){
               resCstAttr[j] = dbPluginMgr.getRunNumber(datasetIDs[i]);
             }
-            else if(cstAttrNames[j].equalsIgnoreCase("inputDataset")){
+            else if(cstAttrNames[j].equalsIgnoreCase("InputDataset")){
               resCstAttr[j] = dbPluginMgr.getDatasetName(datasetIDs[i]);
             }
             else if(cstAttrNames[j].equalsIgnoreCase("identifier") ||
@@ -92,13 +95,16 @@ public class DatasetCreator {
                 cstAttrNames[j].equalsIgnoreCase("averageCPUTime") ||
                 cstAttrNames[j].equalsIgnoreCase("totalCPUTime") ||
                 cstAttrNames[j].equalsIgnoreCase("created") ||
-                cstAttrNames[j].equalsIgnoreCase("lastModified")){
+                cstAttrNames[j].equalsIgnoreCase("lastModified") ||
+                cstAttrNames[j].equalsIgnoreCase("lastStatusUpdate")){
               resCstAttr[j] = "";
             }
             // See if attribute has not been set. If it hasn't, set it and clear it
             // again after the new dataset has been created.
             else if(resCstAttr[j]==null || resCstAttr[j].equals("")){
-              DBRecord res = dbPluginMgr.getDataset(datasetIDs[i]);
+              String arg = "select "+cstAttrNames[j]+" from dataset where logicalDatasetName='"+
+              dbPluginMgr.getDatasetName(datasetIDs[i])+"'";
+              Database.DBRecord res = dbPluginMgr.getDataset(datasetIDs[i]);
               try{
                 if(res.values.length==1){
                   resCstAttr[j] = res.getValue(cstAttrNames[j]).toString();
@@ -112,7 +118,7 @@ public class DatasetCreator {
             if(resCstAttr[j]==null){
               resCstAttr[j] = "";
             }
-          }
+          }       
         }
         if(showThis && !okAll){
         int choice = showResult(resCstAttr,datasetIDs[i],i+1<datasetIDs.length);  
@@ -126,9 +132,10 @@ public class DatasetCreator {
         }
         
         if(!skip || okAll){
-          if(!createAMIDataset(targetDB+".dataset")){
+          if(!createDataset(targetDB+".dataset")){
             return;
           };
+          //statusBar.removeLabel();
         }
         // Clear attributes that were set to "" on the panel and are thus
         // to be read from each source dataset.
@@ -141,12 +148,8 @@ public class DatasetCreator {
       for(int i=0; i<datasetIDs.length; ++i){     
         
         Debug.debug("creating #"+datasetIDs[i], 2);
+        //vDataset.add(new Integer(0));
         for(int j=0; j<resCstAttr.length; ++j){
-          if(cstAttrNames[j].equalsIgnoreCase("datasetFK") &&
-             datasetIDs[i]>0){
-            resCstAttr[j] = Integer.toString(datasetIDs[i]);
-            Debug.debug("Setting "+cstAttrNames[j]+" to "+resCstAttr[j],3);
-          }
         }
 
         if(showThis && !okAll){
@@ -161,30 +164,33 @@ public class DatasetCreator {
         }
         
         if(!skip || okAll){
-          if(!createAMIDataset("dataset")){
+          if(!createDataset("dataset")){
             return;
           };
+          //statusBar.removeLabel();
         }
       }
     }
     
   }
 
-  private boolean createAMIDataset(String target_table){
+  private boolean createDataset(String target_table){
     synchronized(semaphoreAMICreation){
-      statusBar.setLabel("Creating dataset...");
-      pb.setValue(pb.getValue()+1);
-      //TODO: Force name to be filled
-      if(!dbPluginMgr.createDataset(target_table, cstAttrNames, resCstAttr)){
-        if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "Dataset cannot be created",
-          "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION){
-          statusBar.setLabel("Dataset NOT created. See log file.");
-          return false;
-        }
-      }
-      else{
-        statusBar.setLabel("Dataset created.");
-      }
+          statusBar.setLabel("Creating dataset ...");
+          pb.setValue(pb.getValue()+1);
+        
+          boolean succes = dbPluginMgr.createDataset(
+              target_table, cstAttrNames, resCstAttr);
+          if(!succes){
+            JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
+               "ERROR: dataset cannot be created in "+target_table,
+               "", JOptionPane.OK_OPTION);
+            statusBar.setLabel("Dataset NOT created.");
+            return false;
+          }
+          else{
+            statusBar.setLabel("Dataset created.");
+          }
     }
     return true;
   }
@@ -240,9 +246,9 @@ public class DatasetCreator {
           showResultsOptions[0]);
     }
 
-    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "dataset");
+    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "Dataset");
     dialog.setResizable(true);
-    dialog.setVisible(true);
+    dialog.show();
     dialog.dispose();
 
 

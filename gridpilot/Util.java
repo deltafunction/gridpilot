@@ -6,6 +6,7 @@ import java.util.StringTokenizer;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.text.JTextComponent;
 
 /**
@@ -64,14 +65,41 @@ public class Util{
   }
   
   /**
+   * Sets the text of a JComponent.
+   */
+  public static String setJText(JComponent comp, String text){
+    if(comp.getClass().isInstance(new JTextArea())){
+      Debug.debug("Setting text "+((JTextArea) comp).getText()+"->"+text, 3);
+      ((JTextArea) comp).setText(text);
+    }
+    else if(comp.getClass().isInstance(new JTextField())){
+      Debug.debug("Setting text "+((JTextField) comp).getText()+"->"+text, 3);
+      ((JTextField) comp).setText(text);
+    }
+    else if(comp.getClass().isInstance(new JComboBox())){
+      ((JComboBox) comp).setSelectedItem(text);
+    }
+    else{
+      Debug.debug("WARNING: component type "+comp.getClass()+
+          " not known. Failed to set text "+text, 3);
+    }
+    return text;
+  }
+  
+  /**
    * Enables or disables a JComponent.
    */
   public static void setJEditable(JComponent comp, boolean edi){
     if(comp.getClass().isInstance(new JTextArea())){
       ((JTextComponent) comp).setEditable(edi);
+      ((JTextComponent) comp).setEnabled(edi);
+    }
+    else if(comp.getClass().isInstance(new JTextField())){
+      ((JTextField) comp).setEditable(edi);
+      ((JTextField) comp).setEnabled(edi);
     }
     else if(comp.getClass().isInstance(new JComboBox())){
-      //((JComboBox) comp).setEditable(edi);
+      ((JComboBox) comp).setEditable(edi);
       ((JComboBox) comp).setEnabled(edi);
     }
     if(!edi){

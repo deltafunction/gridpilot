@@ -44,14 +44,14 @@ public class MySQLDatabase implements Database{
   	user = _user;
   	passwd = _passwd;
         
-    String [] up = null;
-    
     boolean showDialog = true;
     // if csNames is set, this is a reload
     if(GridPilot.csNames==null){
       showDialog = false;
     }
 
+    String [] up = null;
+    
     for(int rep=0; rep<3; ++rep){
       if(showDialog ||
           user==null || passwd==null || database==null){
@@ -115,9 +115,9 @@ public class MySQLDatabase implements Database{
   }
   
   private void setFieldNames(){
-    transformationFields = getFieldNames("transformation");
-    jobDefFields = getFieldNames("jobDefinition");
     datasetFields = getFieldNames("dataset");
+    jobDefFields = getFieldNames("jobDefinition");
+    transformationFields = getFieldNames("transformation");
     // only used for checking
     runInfoFields = getFieldNames("runInfo");
     packageFields = getFieldNames("package");
@@ -413,9 +413,16 @@ public class MySQLDatabase implements Database{
       req = matcher.replaceAll("SELECT * FROM");
     }
     else{
-      patt = Pattern.compile(" FROM (\\w+)", Pattern.CASE_INSENSITIVE);
+      patt = Pattern.compile(", "+identifier+" ", Pattern.CASE_INSENSITIVE);
       matcher = patt.matcher(req);
-      req = matcher.replaceAll(", "+identifier+" FROM "+"$1");
+      req = matcher.replaceAll(" ");
+      
+      patt = Pattern.compile("SELECT "+identifier+" FROM", Pattern.CASE_INSENSITIVE);
+      if(!patt.matcher(req).find()){
+        patt = Pattern.compile(" FROM (\\w+)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceAll(", "+identifier+" FROM "+"$1");
+      }
     }
     
     patt = Pattern.compile("CONTAINS (\\w+)", Pattern.CASE_INSENSITIVE);
@@ -767,6 +774,12 @@ public class MySQLDatabase implements Database{
   public synchronized DBResult getTransformations(){
     DBRecord jt [] = getTransformationRecords();
     DBResult res = new DBResult(transformationFields.length, jt.length);
+    res.fields = transformationFields;
+    for(int i=0; i<jt.length; ++i){
+      for(int j=0; j<jt.length; ++j){
+        res.values[i][j] = jt[i].values[j];
+      }
+    }
     return res;
   }
   
@@ -1348,8 +1361,4 @@ public class MySQLDatabase implements Database{
       return ret;
     }
     
-    public String getTransNameColumn(){
-      return "name";
-    }
-
 }

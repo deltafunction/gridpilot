@@ -24,9 +24,7 @@ import gridpilot.Util;
 
 public class HSQLDBDatabase implements Database{
   
-  private String dbName = null;
   private String driver = "";
-  private String host = "";
   private String database = "";
   private String user = "";
   private String passwd = "";
@@ -54,7 +52,8 @@ public class HSQLDBDatabase implements Database{
     String [] up = null;
     
     for(int rep=0; rep<3; ++rep){
-      if(showDialog || user==null || passwd==null || database==null){
+      if(showDialog ||
+          user==null || passwd==null || database==null){
         up = GridPilot.userPwd(user, passwd, database);
         if(up==null){
           return;
@@ -140,13 +139,18 @@ public class HSQLDBDatabase implements Database{
       sql += " "+fieldTypes[i];
     }
     sql += ")";
+    for(int i=0; i<fields.length; ++i){
+      if(fields[i].equalsIgnoreCase("name")){
+        sql += ", UNIQUE (name)";
+        break;
+      }
+    }
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
       Debug.debug("Creating table. "+sql, 1);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
-      conn.commit();
     }
     catch(Exception e){
       execok = false;
@@ -1360,8 +1364,4 @@ public class HSQLDBDatabase implements Database{
     return ret;
   }
   
-  public String getTransNameColumn(){
-    return "name";
-  }
-
 }

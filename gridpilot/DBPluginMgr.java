@@ -200,8 +200,18 @@ public class DBPluginMgr implements Database, PanelUtil{
    * from an input dataset.
    */ 
   public String getTargetDatasetName(String targetDB, String sourceDatasetName,
-      String transformation, String version){
+      String transformationID){
     Debug.debug("finding target dataset for "+sourceDatasetName+" in "+targetDB, 3);
+    
+    String version = "";
+    try{
+      version = getTransformation(Integer.parseInt(
+        transformationID)).getValue("version").toString();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    
     String findString = "";
     String replaceString = "";
     String matchString = "";
@@ -459,7 +469,7 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobTransDefinition"))
+    if(waitForThread(t, dbName, dbTimeOut, "getTransformationScript"))
       return t.getStringRes();
     else
       return null;
@@ -483,7 +493,7 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobTransPackages"))
+    if(waitForThread(t, dbName, dbTimeOut, "getTransformationPackages"))
       return t.getString2Res();
     else
       return null;
@@ -507,31 +517,8 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobTransSignature"))
+    if(waitForThread(t, dbName, dbTimeOut, "getTransformationSignature"))
       return t.getString2Res();
-    else
-      return null;
-  }
-
-  public synchronized String getTransNameColumn(){
-    MyThread t = new MyThread(){
-      String res = null;
-      public void run(){
-        try{
-          res = db.getTransNameColumn();
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName , t);
-        }
-      }
-      public String getStringRes(){return res;}
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "getTransNameColumn"))
-      return t.getStringRes();
     else
       return null;
   }
@@ -793,13 +780,13 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobTransID"))
+    if(waitForThread(t, dbName, dbTimeOut, "getTransformationID"))
       return t.getStringRes();
     else
       return null;
   }
 
-  public synchronized String getJobTransValue(final int jobDefID, final String key){
+  public synchronized String getTransformationValue(final int jobDefID, final String key){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -1591,18 +1578,18 @@ public class DBPluginMgr implements Database, PanelUtil{
         return null;
     }
 
-  public synchronized DBRecord getTransformation(final int jobTransID){
+  public synchronized DBRecord getTransformation(final int transformationID){
     
       MyThread t = new MyThread(){
         DBRecord res = null;
         public void run(){
           try{
-            res = db.getTransformation(jobTransID);
+            res = db.getTransformation(transformationID);
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
-                               jobTransID, t);
+                               transformationID, t);
           }
         }
         public DBRecord getDBRes(){return res;}
@@ -1610,7 +1597,7 @@ public class DBPluginMgr implements Database, PanelUtil{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "jobTransID"))
+      if(waitForThread(t, dbName, dbTimeOut, "getTransformation"))
         return t.getDBRes();
       else
         return null;
@@ -1917,12 +1904,12 @@ public class DBPluginMgr implements Database, PanelUtil{
     }
   }
 
-  public synchronized String [] getVersions(final String homePackage){
+  public synchronized String [] getVersions(final String transformationName){
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getVersions(homePackage);
+          res = db.getVersions(transformationName);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -2019,11 +2006,11 @@ public class DBPluginMgr implements Database, PanelUtil{
 
   public synchronized void setValuesInAttributePanel(final String [] cstAttributesNames,
      final String [] cstAttr,
-     final JComponent [] tcCstAttributes){    
+    final JComponent [] tcCstAttributes){    
     MyThread t = new MyThread(){
       public void run(){
         try{
-           pu.setValuesInAttributePanel(cstAttributesNames, cstAttr, tcCstAttributes);
+          pu.setValuesInAttributePanel(cstAttributesNames, cstAttr, tcCstAttributes);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -2032,9 +2019,9 @@ public class DBPluginMgr implements Database, PanelUtil{
         }
       }
     };
-  
+
     t.start();
-  
+
     if(waitForThread(t, dbName, dbTimeOut, "setValuesInAttributePanel"))
       return;
     else

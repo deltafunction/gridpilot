@@ -134,7 +134,7 @@ public class JobValidation{
           GridPilot.getClassMgr().getStatusBar().setLabel("Validating " + job.getName() + " ... " +
               "(" + (toValidateJobs.size() + waitingJobs.size())+ " jobs in the queue )");
           String validationScriptShortPath =
-            GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobTransValue(job.getJobDefId(), "valScript");
+            GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTransformationValue(job.getJobDefId(), "validationScript");
           String validationScriptFile = (new File(validationScriptShortPath)).getName();
           String validationScriptPath = Util.getFullPath(validationScriptShortPath);
           String validationScriptUrl = Util.getURL(validationScriptShortPath);

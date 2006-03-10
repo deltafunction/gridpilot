@@ -31,7 +31,7 @@ public class DBPanel extends JPanel implements JobPanel{
   private JPanel pButtonTableResults = new JPanel(new FlowLayout(FlowLayout.RIGHT));
   private JPanel panelTableResults = new JPanel(new GridBagLayout());
   
-  private JButton bCreateRecords = new JButton("Define new records");
+  private JButton bCreateRecords = new JButton("Define new record(s)");
   private JButton bEditRecord = new JButton("Edit record");
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
   private JButton bSubmit = new JButton("Submit job(s)");
@@ -59,7 +59,6 @@ public class DBPanel extends JPanel implements JobPanel{
   
   private GridBagConstraints ct = new GridBagConstraints();
   
-  // TODO: clean up getting and setting and usage of dbPluginMgr
   private DBPluginMgr dbPluginMgr = null;
   private int parentId = -1;
 
@@ -100,8 +99,8 @@ public class DBPanel extends JPanel implements JobPanel{
      tableName = _tableName;
      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
      
-     identifier = dbPluginMgr.getIdentifier(dbPluginMgr.getDBName(), tableName);
-     jobDefIdentifier = dbPluginMgr.getIdentifier(dbPluginMgr.getDBName(), "jobDefinition");
+     identifier = dbPluginMgr.getIdentifier(dbName, tableName);
+     jobDefIdentifier = dbPluginMgr.getIdentifier(dbName, "jobDefinition");
           
      ct.fill = GridBagConstraints.HORIZONTAL;
      ct.anchor = GridBagConstraints.NORTH;
@@ -113,16 +112,38 @@ public class DBPanel extends JPanel implements JobPanel{
      ct.gridy = 1;   
      ct.ipady = 250;
 
-     defaultFields = GridPilot.getClassMgr().getDBPluginMgr(
-         dbName).getDBDefFields(dbName, tableName);
+     defaultFields = dbPluginMgr.getDBDefFields(dbName, tableName);
      Debug.debug("Default fields "+defaultFields.length, 3);
 
-    fieldNames =
-       GridPilot.getClassMgr().getDBPluginMgr(dbName).getFieldNames(tableName);
+    fieldNames = dbPluginMgr.getFieldNames(tableName);
     
-    hiddenFields = GridPilot.getClassMgr().getDBPluginMgr(dbName
-       ).getDBHiddenFields(dbName, tableName);
-    Debug.debug("Hidden fields "+hiddenFields.length, 3);
+    hiddenFields = dbPluginMgr.getDBHiddenFields(dbName, tableName);
+    Debug.debug("Hidden fields "+Util.arrayToString(hiddenFields), 3);
+    
+    
+    // Pass on only non-hidden fields to
+    // Table. Dropped - Table hides fields...
+    /*Vector fieldSet = new Vector();
+    boolean ok;
+    for(int i=0; i<fieldNames.length; ++i){
+      ok = true;
+      for(int j=0; j<hiddenFields.length; ++j){
+        Debug.debug("Checking fields for hiding: "+fieldNames[i]+"<->"+hiddenFields[j], 3);
+        if(fieldNames[i].equalsIgnoreCase(hiddenFields[j])){
+          ok = false;
+          break;
+        }
+      }
+      if(ok){
+        fieldSet.add(fieldNames[i]);
+      }
+    }
+    
+    fieldNames = new String[fieldSet.size()];
+    for(int i=0; i<fieldSet.size(); ++i){
+      fieldNames[i] = fieldSet.get(i).toString();
+    }*/
+    
     tableResults = new Table(hiddenFields, fieldNames,
         GridPilot.colorMapping);
     
@@ -141,6 +162,7 @@ public class DBPanel extends JPanel implements JobPanel{
    private void setFieldArrays(){
      Vector shownSet = new Vector();  
      boolean ok = true;
+     boolean hiddenOk = true;
      Debug.debug("Finding fields to show from: "+Util.arrayToString(defaultFields), 3);
      for(int i=0; i<defaultFields.length; ++i){
        ok = false;
@@ -152,7 +174,16 @@ public class DBPanel extends JPanel implements JobPanel{
            break;
          }
        }
-       if(ok){
+       hiddenOk = true;
+       for(int j=0; j<hiddenFields.length; ++j){
+         Debug.debug("Checking fields for hiding "+defaultFields[i]+"<->"+hiddenFields[j], 3);
+         if(defaultFields[i].equalsIgnoreCase(hiddenFields[j]) &&
+             !hiddenFields[j].equalsIgnoreCase("*")){
+           hiddenOk = false;
+           break;
+         }
+       }
+       if(ok && hiddenOk){
          Debug.debug("Showing "+defaultFields[i], 3);
          shownSet.add(defaultFields[i]);
        }
@@ -189,18 +220,10 @@ public class DBPanel extends JPanel implements JobPanel{
        shownFields[k] = tableName+"."+shownFields[k];
      }
      
+     // Set the default values of the selection drop downs.
+     // selectFields only used by clear().
      Vector selectSet = new Vector();  
-     ok = true;
      for(int i=0; i<defaultFields.length; ++i){
-       ok = true;
-       for(int j=0; j<hiddenFields.length; ++j){
-         //Debug.debug("Checking fields for selecting "+defaultFields[i]+"<->"+hiddenFields[j], 3);
-         if(defaultFields[i].equalsIgnoreCase(hiddenFields[j]) &&
-             !defaultFields[i].equalsIgnoreCase("*")){
-           ok = false;
-           break;
-         }
-       }
        boolean fieldOk = false;
        for(int j=0; j<fieldNames.length; ++j){
          if(fieldNames[j].equalsIgnoreCase(defaultFields[i])){
@@ -208,7 +231,7 @@ public class DBPanel extends JPanel implements JobPanel{
            break;
          }
        }
-       if(ok && fieldOk){
+       if(fieldOk){
          Debug.debug("Selecting "+defaultFields[i], 3);
          selectSet.add(defaultFields[i]);
        }
@@ -257,10 +280,12 @@ public class DBPanel extends JPanel implements JobPanel{
 
     panelSelectPanel.add(spSelectPanel, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
         ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+    panelSelectPanel.add(new JLabel(dbName), new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0
+        ,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
     panelSelectPanel.add(pButtonSelectPanel, new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0
         ,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
 
-    selectPanel.setConstraint(dbName, dbPluginMgr.getName(dbPluginMgr.getDBName(),
+    selectPanel.setConstraint(dbName, dbPluginMgr.getName(dbName,
         tableName), "", 1);
     
     // Listen for enter key in text field
@@ -544,8 +569,7 @@ public class DBPanel extends JPanel implements JobPanel{
             return;
         }
         DBResult res = null;
-        res = GridPilot.getClassMgr().getDBPluginMgr(dbName).select(
-            selectRequest, identifier);
+        res = dbPluginMgr.select(selectRequest, identifier);
 
         bViewJobDefinitions.setEnabled(false);
         bEditRecord.setEnabled(false);
@@ -771,13 +795,12 @@ public class DBPanel extends JPanel implements JobPanel{
   private void createJobDefs(){
     DatasetMgr datasetMgr = null;
     try{
-      datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbPluginMgr.getDBName(), parentId);
+      datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName, parentId);
     }
     catch(Throwable e){
       Debug.debug("ERROR: could not create DatasetMgr. "+e.getMessage(), 1);
       e.printStackTrace();
     }
-    //hiddenFields = dbPluginMgr.getDBHiddenFields(dbs[0], tableName);
     JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, tableResults, false);
     try{
       dbPluginMgr.initJobDefCreationPanel(panel);
@@ -803,7 +826,7 @@ public class DBPanel extends JPanel implements JobPanel{
     }
     Debug.debug("Got dbPluginMgr:"+dbPluginMgr+":"+parentId, 1);
     try{
-      datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbPluginMgr.getDBName(), selectedDatasetID);
+      datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName, selectedDatasetID);
     }
     catch(Throwable e){
       Debug.debug("ERROR: could not get DatasetMgr. "+e.getMessage(), 1);
@@ -863,7 +886,7 @@ public class DBPanel extends JPanel implements JobPanel{
   }
 
   /**
-   * Open dialog with dataset creation panel
+   * Open dialog with dataset creation panel in creation mode
    */ 
   private void createDatasets(){
     CreateEditDialog pDialog = new CreateEditDialog(
@@ -875,7 +898,10 @@ public class DBPanel extends JPanel implements JobPanel{
       searchRequest();
    }*/
  }
-
+  
+  /**
+   * Open dialog with dataset creation panel in editing mode
+   */ 
  private void editDataset(){
    CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
@@ -939,7 +965,6 @@ public class DBPanel extends JPanel implements JobPanel{
   }
 
   private void editJobTransRecord(){
-    //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.getDBs()[0]);
     CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
           new TransformationCreationPanel(dbPluginMgr, tableResults, true), true, false);
@@ -963,7 +988,6 @@ public class DBPanel extends JPanel implements JobPanel{
     }
     workThread = new Thread(){
       public void run(){
-        //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
         if(!getWorking()){
           Debug.debug("please wait ...", 2);
           return;
@@ -1001,7 +1025,7 @@ public class DBPanel extends JPanel implements JobPanel{
             DBPanel dbPanel = new DBPanel("jobDefinition",
                 dbPluginMgr, id);
             dbPanel.selectPanel.setConstraint("jobDefinition",
-                dbPluginMgr.getJobDefDatasetFK(dbPluginMgr.getDBName()),
+                dbPluginMgr.getJobDefDatasetFK(dbName),
                 Integer.toString(id), 0);
             dbPanel.searchRequest();           
             GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                   
@@ -1027,7 +1051,7 @@ public class DBPanel extends JPanel implements JobPanel{
         for(int i=0; i<selectedJobIdentifiers.length; ++i){
           jobDef = dbPluginMgr.getJobDefinition(
               selectedJobIdentifiers[i]);
-          DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbPluginMgr.getDBName(),
+          DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName,
               Integer.parseInt(jobDef.getValue("datasetFK").toString()));
           datasetMgr.addJobs(new int [] {selectedJobIdentifiers[i]});
         }
