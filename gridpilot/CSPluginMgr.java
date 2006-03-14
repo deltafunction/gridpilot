@@ -166,10 +166,17 @@ public class CSPluginMgr implements ComputingSystem{
     }
   }
 
-  void reconnectShells(){
+  void reconnect(){
     for(int i=0; i<csNames.length ; ++i){
       if(shellMgr.get(csNames[i]) instanceof SecureShellMgr)
         ((SecureShellMgr) shellMgr.get(csNames[i])).reconnect();
+    }
+  }
+
+  void disconnect(){
+    for(int i=0; i<csNames.length ; ++i){
+      if(shellMgr.get(csNames[i]) instanceof SecureShellMgr)
+        ((SecureShellMgr) shellMgr.get(csNames[i])).exit();
     }
   }
 
@@ -310,31 +317,66 @@ public class CSPluginMgr implements ComputingSystem{
   }
 
 
+  private int killThreadIndex = 0;
+  private int getKillThreadIndex(){
+    return killThreadIndex;
+  }
   /**
-   * Kills this job
-   * @see ComputingSystem#killJob(JobInfo)
+   * Kills these jobs
+   * @see ComputingSystem#killJobs(Vector)
    */
-  public void killJob(final JobInfo job){
-    final String csName = job.getCSName();
-    if(csName==null || csName.equals("")){
-      return;
+  public void killJobs(final Vector jobs){
+    
+    StatusBar statusBar = GridPilot.getClassMgr().getStatusBar();
+    statusBar.setLabel("Killing jobs ...");
+    statusBar.animateProgressBar();
+    
+    HashMap csJobs = new HashMap();
+    for(int i=0; i<csNames.length; ++i){
+      csJobs.put(csNames[i], new Vector());
     }
-
-    MyThread t = new MyThread(){
-      public void run(){
-        try{
-          ((ComputingSystem) cs.get(csName)).killJob(job);
-        }catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + csName +
-                             " during job " + job.getName() + " killing", job, t);
-        }
+    for(int i=0; i<jobs.size(); ++i){
+      ((Vector) csJobs.get(((JobInfo) jobs.get(i)).getCSName())
+          ).add(jobs.get(i));
+    }
+    
+    final Vector [] csJobsArray = (Vector []) csJobs.values().toArray();
+    
+    MyThread [] threads = new MyThread[csNames.length];
+    for(killThreadIndex=0; killThreadIndex<csNames.length;
+       ++killThreadIndex){
+ 
+      if(csJobsArray==null || csJobsArray[killThreadIndex]==null ||
+          csJobsArray[killThreadIndex].size()==0 ||
+          ((JobInfo) csJobsArray[killThreadIndex].get(0)).getCSName()==null){
+        continue;
       }
-    };
+            
+      threads[killThreadIndex] = new MyThread(){
+        public void run(){
+          int i = getKillThreadIndex();
+          try{
+            ((ComputingSystem) cs.get(((JobInfo) csJobsArray[i].get(0)).getCSName())
+                ).killJobs(csJobsArray[i]);
+          }
+          catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + i +
+                               " during job " + ((JobInfo) csJobsArray[i].get(0)).getCSName() + " killing",
+                               (JobInfo) csJobsArray[i].get(0),
+                               t);
+          }
+        }
+      };
 
-    t.start();
+      threads[killThreadIndex].start();
 
-    waitForThread(t, csName, killTimeOut, "killJob");
+      waitForThread(threads[killThreadIndex],
+          ((JobInfo) csJobsArray[killThreadIndex].get(0)).getCSName(),
+          killTimeOut, "killJobs");
+    }
+    statusBar.stopAnimation();
+    statusBar.setLabel("Killing jobs done.");
   }
 
   public void clearOutputMapping(final JobInfo job) {

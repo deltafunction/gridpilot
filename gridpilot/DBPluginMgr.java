@@ -19,7 +19,7 @@ import gridpilot.MyThread;
 import gridpilot.MyClassLoader;
 
 /**
- * This class manages access to job databases.
+ * This class manages access to databases.
  *
  */
 public class DBPluginMgr implements Database, PanelUtil{

@@ -64,7 +64,7 @@ public class SecureShellMgr implements ShellMgr{
       			e.getMessage(), 1);
       }
       sshs = new Channel[channelsNum];
-      remoteHome = getFullPath(remoteHome);
+      //remoteHome = getFullPath(remoteHome);
     }
     catch (Exception e){
       Debug.debug("Could not connect via ssh, "+user+", "+password+", "+host+

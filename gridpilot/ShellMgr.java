@@ -1,28 +1,8 @@
-/**
- * $Log: ShellMgr.java,v $
- * Revision 1.2  2005/10/06 15:55:26  fjob
- * changed command from String [] to String
- *
- * Revision 1.1  2005/06/15 15:22:20  fjob
- * Merging started.
- *
- * Revision 1.1.1.1  2004/03/29 20:20:48  fjob
- * initial import into CVS
- *
- * Revision 1.2  2003/07/02 12:55:14  mbranco
- * Several changes for AtCom
- *
- *
- * @author vberten
- * @author $Author: fjob $
- * @version $Revision: 1.2 $
- */
-
 package gridpilot;
 
 import java.io.*;
 
-public interface ShellMgr {
+public interface ShellMgr{
 
   /**
    * Executes in the shell the command 'cmd', in the current directory, with

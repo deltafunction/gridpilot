@@ -1,68 +1,74 @@
 package gridpilot;
 
-import gridpilot.Debug;
-import gridpilot.Database.DBRecord;
-
 import javax.swing.*;
 import javax.swing.border.*;
-import javax.swing.event.*;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
+
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+
 import javax.swing.text.*;
 
+import java.net.URL;
 import java.util.*;
 
 /**
  * This panel creates records in the DB table. It's shown inside the CreateEditDialog.
- *
  */
 
 
 public class TransformationCreationPanel extends CreateEditPanel{
 
-  private JPanel pCounter = new JPanel();
-  private JPanel pConstants = new JPanel();
+  DBPluginMgr dbPluginMgr;
+
+  StatusBar statusBar;
+
+  String version = "";
+  String transformation;
+
+  private JPanel pConstants = new JPanel(new GridBagLayout());
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
-  private JPanel pButtons = new JPanel();
-  private String transformationID = "-1";
-  private Table table;
-  private JSpinner sFrom = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
-  private JSpinner sTo = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
-  private String [] cstAttributesNames;
-  private JComponent [] tcCstAttributes;
-  private JComponent [] tcCstJobDefAttributes;
-  private boolean reuseTextFields = true;
-  private Vector tcConstant = new Vector(); // contains all text components
-  private String [] cstAttr = null;
+  private JPanel pButtons = new JPanel(new GridBagLayout());
   private boolean editing = false;
-  private boolean loaded = false;
-  private DBPluginMgr dbPluginMgr = null;
+  private Table table;
+  private String transformationID = "-1";
+  private String [] cstAttributesNames;
+  private String [] cstAttr = null;
+  public JTextComponent [] tcCstAttributes;
   private String transformationIdentifier;
- 
-  private static JComponent [] oldTcCstAttributes;
-  private static int TEXTFIELDWIDTH = 32;
-  private static int CFIELDWIDTH = 8;
   
+  boolean reuseTextFields = true;
+  
+  private Map id = new HashMap();
+
+
+  Vector tcConstant = new Vector(); // contains all text components
+  
+  private static WebBox wb;
+
   
   /**
    * Constructor
    */
-
   public TransformationCreationPanel(DBPluginMgr _dbPluginMgr, Table _table, boolean _editing){
-    
+    dbPluginMgr = _dbPluginMgr;
     editing = _editing;
     table = _table;
-    dbPluginMgr = _dbPluginMgr;
+    statusBar = GridPilot.getClassMgr().getStatusBar();
 
     transformationIdentifier = "identifier";
-
-    //cstAttributesNames = JobTrans.Fields;
+    
     cstAttributesNames = dbPluginMgr.getFieldNames("transformation");
-    cstAttr = new String[cstAttributesNames.length];
+    Debug.debug("Got field names: "+Util.arrayToString(cstAttributesNames),3);
+
+    //initGUI();
     
     // Find transformation ID from table
     if(table.getSelectedRow()>-1 && editing){
+      Debug.debug("Editing...", 3);
       for(int i=0; i<table.getColumnNames().length; ++i){
         Object fieldVal = table.getUnsortedValueAt(table.getSelectedRow(),i);
         Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
@@ -76,8 +82,8 @@ public class TransformationCreationPanel extends CreateEditPanel{
         Debug.debug("ERROR: could not find transformationID in table!", 1);
       }
       // Fill cstAttr from db
-      DBRecord transformation = dbPluginMgr.getTransformation(Integer.parseInt(transformationID));
-      for(int i=0; i < cstAttributesNames.length; ++i){
+      Database.DBRecord transformation = dbPluginMgr.getTransformation(Integer.parseInt(transformationID));
+      for(int i=0; i <cstAttributesNames.length; ++i){
         if(editing){
           Debug.debug("filling " + cstAttributesNames[i],  3);
           if(transformation.getValue(cstAttributesNames[i])!=null){
@@ -86,26 +92,10 @@ public class TransformationCreationPanel extends CreateEditPanel{
           else{
             cstAttr[i] = "";
           }
-          
           Debug.debug("to " + cstAttr[i],  3);
         }
       }
     }
-
-    sFrom.addChangeListener(new ChangeListener(){
-      public void stateChanged(ChangeEvent e){
-        if(((Integer)sTo.getValue()).intValue() < ((Integer)sFrom.getValue()).intValue())
-          sTo.setValue(sFrom.getValue());
-      }
-    });
-
-    sTo.addChangeListener(new ChangeListener(){
-
-      public void stateChanged(ChangeEvent e){
-        if(((Integer)sTo.getValue()).intValue() < ((Integer)sFrom.getValue()).intValue())
-          sFrom.setValue(sTo.getValue());
-      }
-    });
   }
 
   /**
@@ -113,15 +103,9 @@ public class TransformationCreationPanel extends CreateEditPanel{
    */
 
   public void initGUI(){
+    
+    Debug.debug("Initializing GUI", 3);
 
-    /*String homePackage = "";
-    if(dbPluginMgr.getJobTransRecord(Integer.parseInt(transformationID))!=null &&
-        dbPluginMgr.getJobTransRecord(Integer.parseInt(transformationID)).getValue("homePackage")!=null){
-      dbPluginMgr.getJobTransRecord(Integer.parseInt(transformationID)).getValue("homePackage").toString();
-    }*/
-    
-    
-    
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
         Color.white,new Color(165, 163, 151)), "transformation "+transformationID));
     
@@ -142,320 +126,260 @@ public class TransformationCreationPanel extends CreateEditPanel{
     ct.gridwidth=1;
     ct.gridheight=1;
     
-    if(!editing){
-      initArithmeticPanel();
-      //ct.gridx = 0;
-      //ct.gridy = 0;         
-      //add(cbTaskTransSelection,ct);
-      
-      ct.gridx = 2;
-      ct.gridy = 0;
-      ct.gridwidth=1;
-      ct.gridheight=1;
-      add(pButtons,ct);
-      
-      ct.gridx = 0;
-      ct.gridy = 1;
-      ct.gridwidth=2;
-      ct.gridheight=1;
-      add(pCounter,ct);
+    ct.gridx = 0;
+    ct.gridy = 1;
+    ct.gridwidth=2;
+    add(spAttributes,ct);
 
-      ct.gridx = 0;
-      ct.gridy = 2;
-      ct.gridwidth=3;
-      ct.gridheight=1;
-      pConstants.setLayout(new GridBagLayout());
-      pConstants.setMinimumSize(new Dimension(550, 50));
-      add(pConstants,ct);    
-            
-      ct.gridx = 0;
-      ct.gridy = 4;
-      ct.gridwidth=3;
-      add(spAttributes, ct);
+    Debug.debug("Initializing panel", 3);
+    initTransformationCreationPanel();
+    if(editing){
+      Debug.debug("Editing...", 3);
+      editTransformation(Integer.parseInt(transformationID));
     }
     else{
-      //ct.gridx = 0;
-      //ct.gridy = 0;
-      //add(cbTaskTransSelection,ct);
-      ct.gridx = 0;
-      ct.gridy = 1;
-      ct.gridwidth=2;
-      add(spAttributes,ct);
-    }
-
-    setValuesInAttributePanel();
-    
-    if(!editing){
-      setEnabledAttributes(false);
-    }
-    
-    updateUI();
-    
-    loaded = true;
-    
-    }
-
-  private void initArithmeticPanel(){
-
-    /**
-     * Called when version is selected in combo box cbTaskTransSelection
-     *
-     * Initialises text fields with attributes
-     */
-
-    // Panel counter
-
-    pCounter.setLayout(new GridBagLayout());
-
-    pCounter.removeAll();
-
-    if(!reuseTextFields)
-      sFrom.setValue(new Integer(1));
-    if(!reuseTextFields)
-      sTo.setValue(new Integer(1));
-
-    pCounter.add(new JLabel("for i = "));
-    pCounter.add(sFrom);
-
-    pCounter.add(new JLabel("  to "));
-
-    pCounter.add(sTo);
-
-
-// Panel Constants
-
-    if(!reuseTextFields || tcConstant.size() == 0){
-      pConstants.removeAll();
-      tcConstant.removeAllElements();
-
-      for(int i=0; i<4; ++i)
-        addConstant();
-      
-    }
-
-// panel Button
-
-    JButton bAddConstant = new JButton("New Constant");
-
-    bAddConstant.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        addConstant();
+      Debug.debug("Disabling identifier field", 3);
+      // Disable identifier field when creating
+      for(int i =0; i<cstAttributesNames.length; ++i){
+        if(cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier)){
+          tcCstAttributes[i].setEnabled(false);
+        }
       }
-    });
-
-    pButtons.setLayout(new GridBagLayout());
-
-    GridBagConstraints cb = new GridBagConstraints();
-    cb.fill = GridBagConstraints.VERTICAL;
-    cb.anchor = GridBagConstraints.NORTHWEST;
-    cb.gridx = 3;
-    cb.gridy = 0;         
-    pButtons.add(bAddConstant, cb);
-  }
+    }
+    updateUI();
+   }
 
 
-  private void initAttributePanel(){
-    
-    GridBagConstraints cl = new GridBagConstraints();
-    cl.fill = GridBagConstraints.VERTICAL;
-    cl.gridx = 1;
-    cl.gridy = 0;         
-    cl.anchor = GridBagConstraints.NORTHWEST;
+  /**
+   * Called initially.
+   * Initialises text fields with attributes for transformation.
+    */
+  private void initTransformationCreationPanel(){
 
+    // Panel Attributes
     pAttributes.setLayout(new GridBagLayout());
     pAttributes.removeAll();
 
-    spAttributes.getViewport().add(pAttributes, cl);
+    spAttributes.getViewport().add(pAttributes, null);
+
+    add(spAttributes,   new GridBagConstraints(0, 3, 3, 1, 0.9, 0.9
+        ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+
+    initAttributePanel();
     
-    if(oldTcCstAttributes != null){
-      tcCstAttributes = oldTcCstAttributes;
-      // when creating, zap loaded transformationID
-      /*if(!editing){
-        for(int i =0; i<tcCstAttributes.length; ++i){
-          if(cstAttributesNames[i].equalsIgnoreCase("transformationID")){
-            setJText((JComponent) tcCstAttributes[i],"");
-            ((JComponent) tcCstAttributes[i]).setEnabled(false);
+  }
+
+
+  private JEditorPane createCheckPanel(final String name, final JTextComponent jt){
+    String markup = "<b>"+name+" : </b><br>"+
+    "<a href=\"http://check/\">check</a>";
+    JEditorPane checkPanel = new JEditorPane("text/html", markup);
+    checkPanel.setEditable(false);
+    checkPanel.setOpaque(false);
+    checkPanel.addHyperlinkListener(
+      new HyperlinkListener(){
+      public void hyperlinkUpdate(HyperlinkEvent e){
+        if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
+          Debug.debug("URL: "+e.getURL().toExternalForm(), 3);
+          if(e.getURL().toExternalForm().equals("http://check/")){
+            String httpscript = Util.getURL(jt.getText());
+            if(statusBar != null){
+              statusBar.setLabel("Looking for file ...");
+              statusBar.animateProgressBar();
+              statusBar.setIndeterminateProgressBarToolTip("click here to cancel");
+              statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
+                public void mouseClicked(MouseEvent e){
+                  wb.dispose();
+                  statusBar.setLabel("Search interrupted.");
+                  statusBar.stopAnimation();
+                }
+              });
+            }
+            try{
+              wb = new WebBox(GridPilot.getClassMgr().getGlobalFrame(), "choose script",
+                 new URL(httpscript));
+            }
+            catch(Exception ee){
+              Debug.debug("Could not open URL "+httpscript+". "+ee.getMessage(), 1);
+              statusBar.stopAnimation();
+              GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+httpscript);
+              try{
+                wb = new WebBox(GridPilot.getClassMgr().getGlobalFrame(), "choose script",
+                    new URL(GridPilot.url));
+              }
+              catch(Exception eee){
+                Debug.debug("Could not open URL "+GridPilot.url+". "+eee.getMessage(), 1);
+              }
+            }
+            statusBar.stopAnimation();
+            if(GridPilot.lastURL!=null && GridPilot.lastURL.toExternalForm().startsWith(GridPilot.url)){
+              // Set the text: the URL browsed to with AtCom.url removed
+              jt.setText(GridPilot.lastURL.toExternalForm().substring(
+                  GridPilot.url.length()));
+            }
+            else{
+              // Don't do anything if we cannot get a URL
+              Debug.debug("ERROR: Could not open URL "+GridPilot.url+". "+GridPilot.lastURL, 1);
+            }
+            statusBar.setLabel("");
           }
         }
-      }*/
-    }
-
-    if(!reuseTextFields || tcCstAttributes == null ||
-        tcCstAttributes.length != cstAttributesNames.length){
-      Debug.debug("Creating new tcCstAttributes, "+
-          tcCstAttributes+", "+(tcCstAttributes==null ? "":Integer.toString(tcCstAttributes.length)),
-              3);
-      tcCstAttributes = new JComponent[cstAttributesNames.length];
-    }
+      }
+    });
+    return checkPanel;
+  }
+  
+  private void initAttributePanel(){
     
-    for(int i =0; i<cstAttributesNames.length; ++i){
+    if(!reuseTextFields || tcCstAttributes==null || tcCstAttributes.length != cstAttributesNames.length)
+      tcCstAttributes = new JTextComponent[cstAttributesNames.length];
+
+    int row = 0;
+    
+    //// Constants attributes
+
+    for(int i = 0; i<cstAttributesNames.length; ++i, ++row){
       
-      if(cstAttributesNames[i].equalsIgnoreCase("taskTransFK")){
-        cl.gridx=0;
-        cl.gridy=i;
-        pAttributes.add(new JLabel("taskTransFK" + " : "), cl);
-        if(!reuseTextFields || tcCstAttributes[i] == null)
-          tcCstAttributes[i] = createTextComponent(TEXTFIELDWIDTH);
-        
-        ((JTextComponent) tcCstAttributes[i]).setEnabled(false);
-      }
-      else if(cstAttributesNames[i].equalsIgnoreCase("formalPars")){
-        cl.gridx=0;
-        cl.gridy=i;
-        JTextArea textArea = new JTextArea(10, TEXTFIELDWIDTH);
-        textArea.setLineWrap(true);
-        textArea.setWrapStyleWord(true);
-        textArea.setEditable(true);
-        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
-        if(!reuseTextFields || tcCstAttributes[i] == null)
-          tcCstAttributes[i] = textArea;
-        
-        setJText(tcCstAttributes[i], cstAttr[i]);
+      if(cstAttributesNames[i].equalsIgnoreCase("definition") ||
+         cstAttributesNames[i].equalsIgnoreCase("valScript") ||
+         cstAttributesNames[i].equalsIgnoreCase("xtractScript") ||
+         cstAttributesNames[i].equalsIgnoreCase("code") ||
+         cstAttributesNames[i].equalsIgnoreCase("script") ||
+         cstAttributesNames[i].equalsIgnoreCase("validaitionScript") ||
+         cstAttributesNames[i].equalsIgnoreCase("extractionScript")){
+        pAttributes.add(createCheckPanel(cstAttributesNames[i], tcCstAttributes[i]), new GridBagConstraints(0, row, 1, 1, 0.0, 0.0
+            ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
       }
       else{
-        cl.gridx=0;
-        cl.gridy=i;
-        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
-        if(!reuseTextFields || tcCstAttributes[i] == null)
-          tcCstAttributes[i] = createTextComponent(TEXTFIELDWIDTH);
-        
-        if(cstAttr[i]!=null && !cstAttr[i].equals("")){
-          Debug.debug("Setting cstAttr["+i+"]: "+cstAttr[i], 3);
-          setJText(tcCstAttributes[i], cstAttr[i]);
-        }
-      }      
-      cl.gridx=1;
-      cl.gridy=i;
-      //if(!cstAttributesNames[i].equalsIgnoreCase("formalPars")){
-        pAttributes.add(tcCstAttributes[i], cl);
-      //}
-      if(cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier)){
-        // when creating, zap loaded transformationID
-        if(!editing){
-          setJText((JComponent) tcCstAttributes[i],"");
-        }
-        ((JTextComponent) tcCstAttributes[i]).setEnabled(false);
+        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), new GridBagConstraints(0, row, 1, 1, 0.0, 0.0
+            ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
       }
+    	
+	    if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled())
+	      tcCstAttributes[i] = createTextComponent();
+	
+	    pAttributes.add(tcCstAttributes[i], new GridBagConstraints(1, row, 3, 1, 1.0, 0.0
+	        ,GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
+
     }
-  }
-
-  private void setEnabledAttributes(boolean enabled){
-    for(int i =0; i<cstAttributesNames.length; ++i){
-      if(!cstAttributesNames[i].equalsIgnoreCase("taskTransFK") &&
-              !cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier)){
-        tcCstAttributes[i].setEnabled(enabled);
-      }
-    }
-  }
-
-  private void setValuesInAttributePanel(){
-    
-    Debug.debug("Setting values...", 3);
-
-    for(int i =0; i<cstAttributesNames.length; ++i){     
-      if(cstAttributesNames[i].equalsIgnoreCase("jobXML") /*&& editing*/){
-          tcCstAttributes[i].removeAll();
-          GridBagConstraints cv = new GridBagConstraints();
-          cv.ipady = 10;
-          cv.weighty = 0.5;
-          cv.anchor = GridBagConstraints.NORTHWEST;
-          cv.fill = GridBagConstraints.VERTICAL;
-          cv.weightx = 0.5;
-          cv.gridx = 0;
-          cv.gridy = 0;
-      }
-      else{
-      }
-    }
-  }
-  
-   /**
-   * public methods
-   */
-
-  public void clear(){
-    /**
-     * Called by : JobDefinition.button_ActionPerformed()
-     */
-
-    Vector textFields = getNonIdTextFields();
-
-    for(int i =0; i<textFields.size(); ++i)
-      setJText((JComponent) textFields.get(i),"");
-    
-    GridBagConstraints cv = new GridBagConstraints();
-    cv.fill = GridBagConstraints.VERTICAL;
-    cv.weightx = 0.5;
-    cv.gridx = 0;
-    cv.gridy = 0;         
-    cv.ipady = 10;
-    cv.weighty = 0.5;
-    cv.anchor = GridBagConstraints.NORTHWEST;
-    cv.gridx = 0;
-    cv.gridy = 1;
-    updateUI();
-  }
-
-
-  public void create(final boolean showResults, final boolean editing) {
-    /**
-     * Called when button Create is clicked in JobTrans
-     */
-
-    Debug.debug("create",  1);
-    
-    for(int i=0; i< cstAttr.length; ++i){
-      Debug.debug("setting " + cstAttributesNames[i],  3);
-      cstAttr[i] = getJTextOrEmptyString(tcCstAttributes[i], editing);
-      Debug.debug("to " + cstAttr[i],  3);
-    }
-
-    oldTcCstAttributes = tcCstAttributes;
-  
-    Debug.debug("creating new TransformationCreator",  3);
-    
-    new TransformationCreator( dbPluginMgr,
-                         ((Integer)(sFrom.getValue())).intValue(),
-                         ((Integer)(sTo.getValue())).intValue(),
-                         showResults,
-                         tcConstant,
-                         cstAttr,
-                         cstAttributesNames,
-                         editing
-                         );
-
   }
 
   /**
-   * Private methods
+   *  Edit a transformation
    */
 
-  private void addConstant(){
-    if(tcConstant.size() == 26)
-      return;
-    
-    JTextField tf = new JTextField(CFIELDWIDTH);
-    char name = (char) ('A' + (char)tcConstant.size());
-    int cstByRow = 4;
+  public void editTransformation(int transformationID){
 
-    int row = tcConstant.size() / cstByRow;
-    int col = tcConstant.size() % cstByRow;
-    
-    tcConstant.add(tf);
-    
-    GridBagConstraints cc = new GridBagConstraints();
+    int row = 0;
 
-    cc.gridx = col*2;
-    cc.gridy = row;   
-    pConstants.add(new JLabel("  " + new String(new char[]{name}) + " : "),cc);
-    
-    cc.gridx = col*2+1;
-    cc.gridy = row;   
-    pConstants.add(tf,cc);
-    
-    pConstants.updateUI();
+    //// Constants attributes
+    Database.DBRecord res = dbPluginMgr.getTransformation(transformationID);
+    for(int i =0; i<tcCstAttributes.length; ++i){
+      Debug.debug("Length of res: "+res.fields.length,3);
+      for(int j=0; j<res.fields.length;++j){
+        //Debug.debug(res.fields[j].toString()+" <-> "+cstAttributesNames[i].toString(),3);
+        if(res.fields[j].toString().equals(cstAttributesNames[i].toString()) && !res.fields[j].toString().equals("")){
+          if(tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled() &&
+             tcCstAttributes[i].getText().length()==0){
+            tcCstAttributes[i] = createTextComponent();
+            pAttributes.add(tcCstAttributes[i], new GridBagConstraints(1, i/*row*/, 3, 1, 1.0, 0.0
+               ,GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
+          }
+        try{
+          tcCstAttributes[i].setText(res.values[j].toString());
+              Debug.debug(i+": "+cstAttributesNames[i].toString()+"="+res.fields[j]+". Setting to "+tcCstAttributes[i].getText(),3);
+        }
+        catch(java.lang.Exception e){Debug.debug("Attribute not found, "+e.getMessage(),1);}
+          break;
+        }
+      }
+      if((cstAttributesNames[i].equals("identifier"))){         
+        tcCstAttributes[i].setEditable(false);
+        tcCstAttributes[i].setBackground(Color.lightGray);
+        //tcCstAttributes[i].setEnabled(false);
+        id.put(cstAttributesNames[i].toString(), Integer.toString(i));
+        if(cstAttributesNames[i].equals("datasetFK")){
+          try{
+            tcCstAttributes[i].setText(Integer.toString(transformationID));
+          }
+          catch(java.lang.Exception e){Debug.debug("Attribute not found, "+e.getMessage(),1);}
+        }
+        if(cstAttributesNames[i].equals("identifier") &&
+            res.values.length != 1){
+          try{
+            Debug.debug("Clearing identifier",3);
+            tcCstAttributes[i].setText("");
+          }
+          catch(java.lang.Exception e){Debug.debug("Attribute not found, "+e.getMessage(),1);}
+        }
+      }
+    }
   }
 
+  /**
+   *  Delete a transformation
+   */
+
+  public boolean deleteTransformation(int transformationIdentifier){
+  	boolean skip = false;
+  
+  	int choice = 1;
+  	  
+  	  ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/);	
+  	  
+  	  try{
+  		 choice = confirmBox.getConfirm("Confirm delete",
+  						  "Really delete transformation # "+transformationIdentifier+"?",
+  						   new Object[] {"OK", "Cancel"});
+  	  }catch(java.lang.Exception e){Debug.debug("Could not get confirmation, "+e.getMessage(),1);}
+  
+  	  switch(choice){
+  		case 0  : skip = false;  break;  // OK
+  		case 1  : skip = true ; break;   // Skip
+  		default : skip = true;    // other (closing the dialog). Same action as "Skip"
+  	  }
+  	  
+  	if(!skip){
+  	  Debug.debug("deleting transformation # " + transformationIdentifier, 2);
+  	  if(dbPluginMgr.deleteTransformation(transformationIdentifier)){
+        statusBar.setLabel("Transformation # " + transformationIdentifier + " deleted.");
+        return true;
+      }
+      else{
+        statusBar.setLabel("Transformation # " + transformationIdentifier + " NOT deleted.");
+      }
+  	}
+    return false;
+  }
+
+  public void clear(){
+
+    Vector textFields = getTextFields();
+
+    for(int i =0; i<textFields.size(); ++i)
+	if(!(cstAttributesNames[i].equals( "identifier"))){
+					((JTextComponent) textFields.get(i)).setText("");
+    }
+  }
+
+
+  public void create(final boolean showResults, final boolean editing){
+
+    final String [] cstAttr = new String[tcCstAttributes.length];
+
+    for(int i=0; i<cstAttr.length; ++i){
+      cstAttr[i] = tcCstAttributes[i].getText();
+    }
+
+	Debug.debug("createTransformation",  1);
+
+    new TransformationCreator(
+        dbPluginMgr,
+        showResults,
+        cstAttr,
+        cstAttributesNames,
+        editing);
+  }
 
   private Vector getTextFields(){
     Vector v = new Vector();
@@ -468,80 +392,11 @@ public class TransformationCreationPanel extends CreateEditPanel{
     return v;
   }
 
-  private Vector getNonIdTextFields(){
-    Vector v = new Vector();
-
-    v.addAll(tcConstant);
-
-    for(int i=0; i<tcCstAttributes.length; ++i){
-      if(!cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier)){
-        v.add(tcCstAttributes[i]);
-      }
-    }
-
-    return v;
-  }
-
   private JTextComponent createTextComponent(){
     JTextArea ta = new JTextArea();
     ta.setBorder(new JTextField().getBorder());
     ta.setWrapStyleWord(true);
     ta.setLineWrap(true);
     return ta;
-  }
-  
-  private JTextComponent createTextComponent(int cols){
-    JTextField tf = new JTextField("", cols);
-    return tf;
-  }
-  
-  private JTextComponent createTextComponent(String str){
-    int length;
-    if(str.length()>10){
-      length = str.length()-5;
-    }
-    else{
-      length = 6;
-    }
-    JTextArea ta = new JTextArea(str, 1, length);
-    ta.setBorder(new JTextField().getBorder());
-    ta.setWrapStyleWord(true);
-    ta.setLineWrap(true);
-    return ta;
-  }
-  
-  private static String getJTextOrEmptyString(JComponent comp, boolean editing){
-    String name = "";
-    String label = "";
-    String text = "";
-    String [] ses;
-    JComponent com;
-    if(comp.getClass().isInstance(new JTextArea())||
-        comp.getClass().isInstance(new JTextField())){
-      text =  ((JTextComponent) comp).getText();
-    }
-    else if(comp.getClass().isInstance(new JComboBox())){
-      if(((JComboBox) comp).getSelectedItem()==null){
-        text = "";
-      }
-      else{
-        text = ((JComboBox) comp).getSelectedItem().toString();
-      }
-    }
-    else{
-      Debug.debug("WARNING: unsupported component type "+comp.getClass().toString(), 1);
-    }
-    return text;
-  }
-  
-  private static String setJText(JComponent comp, String text){
-    if(comp.getClass().isInstance(new JTextArea()) ||
-        comp.getClass().isInstance(new JTextField())){
-      ((JTextComponent) comp).setText(text);
-    }
-    else if(comp.getClass().isInstance(new JComboBox())){
-      ((JComboBox) comp).setSelectedItem(text);
-    }
-    return text;
   }
 }

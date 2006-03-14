@@ -51,15 +51,39 @@ public class Util{
   }
 
   /**
+   * Converts an array of object in a String representing this array,
+   * using the delimiter string delim to separate the records.
+   */
+  public static String arrayToString(Object [] values, String delim){
+    String res = "";
+    if(values == null)
+      return "(null)";
+    for(int i=0; i<values.length ; ++i){
+      res += (values[i] == null ? "" : values[i].toString());
+      if(i<values.length-1){
+        res += delim;
+      }       
+    }
+    return res;
+  }
+
+  /**
    * Returns the text of a JComponent.
    */
   public static String getJTextOrEmptyString(JComponent comp){
     String text = "";
     if(comp.getClass().isInstance(new JTextArea())){
-      text =  ((JTextComponent) comp).getText();
+      text = ((JTextComponent) comp).getText();
+    }
+    else if(comp.getClass().isInstance(new JTextField())){
+      text = ((JTextField) comp).getText();
     }
     else if(comp.getClass().isInstance(new JComboBox())){
-      text =  ((JComboBox) comp).getSelectedItem().toString();
+      text = ((JComboBox) comp).getSelectedItem().toString();
+    }
+    else{
+      Debug.debug("WARNING: component type "+comp.getClass()+
+          " not known. Failed to set text "+text, 3);
     }
     return text;
   }
@@ -142,5 +166,26 @@ public class Util{
       return file;
     else
       return GridPilot.url + file;
+  }
+
+  public static String encode(String s){
+    // Put quotes around and escape all enclosed quotes/dollars.
+    // Tried to get this working using replaceAll without luck.
+    String tmp = "";
+    char c;
+    for(int i=0; i<s.length(); i++){
+      if(s.charAt(i)=='"'){
+        tmp = tmp + '\\';
+        tmp = tmp + '"';
+      }
+      else if(s.charAt(i)=='$'){
+        tmp = tmp + '\\';
+        tmp = tmp + '$';
+      }
+      else {
+        tmp = tmp + s.charAt(i);
+      }
+    }
+    return "\"" + tmp + "\"";
   }  
 }

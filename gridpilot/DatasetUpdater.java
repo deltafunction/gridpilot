@@ -18,7 +18,7 @@ public class DatasetUpdater{
   private static Vector vCstAttr = new Vector();
   private static Vector vDataset = new Vector();
   private static JProgressBar pb = new JProgressBar();
-  private static Object semaphoreAMICreation = new Object();
+  private static Object semaphoreDBCreation = new Object();
   private DBPluginMgr dbPluginMgr;
   private Object[] showResultsOptions = {"OK",  "Cancel"};
 
@@ -64,12 +64,12 @@ public class DatasetUpdater{
       vCstAttr.add(resCstAttr.clone());
     }
     if(!skipAll){
-      updateAMIDataset();
+      updateDBDataset();
     }
   }
 
-  private void updateAMIDataset(){
-    synchronized(semaphoreAMICreation){
+  private void updateDBDataset(){
+    synchronized(semaphoreDBCreation){
       while(!vDataset.isEmpty()){
 		    int part = ((Integer) vDataset.remove(0)).intValue();
         resCstAttr = (String [] ) vCstAttr.remove(0);
@@ -125,18 +125,24 @@ public class DatasetUpdater{
                                      showResultsOptions,
                                      showResultsOptions[0]);
 
-    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "Dataset");
+    op.setPreferredSize(new Dimension(550, 500));
+    op.setMinimumSize(new Dimension(550, 500));
+    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(),
+        "Dataset");
     dialog.setResizable(true);
-    dialog.show();
+    dialog.setVisible(true);
     dialog.dispose();
 
     Object selectedValue = op.getValue();
 
-    if (selectedValue == null)
+    if (selectedValue==null){
       return JOptionPane.CLOSED_OPTION;
-    for (int i = 0; i < showResultsOptions.length; ++i)
-      if (showResultsOptions[i] == selectedValue)
+    }
+    for (int i=0; i<showResultsOptions.length; ++i){
+      if (showResultsOptions[i]==selectedValue){
         return i;
+      }
+    }
     return JOptionPane.CLOSED_OPTION;
   }
 }

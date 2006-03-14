@@ -194,7 +194,7 @@ public class JobValidation{
       logFile.addMessage("update AMI status failed after validation ; " +
                          "this job is set back updatable, and will be revalidated later " +
                          "(after redetection of this job end", job);
-      job.setAtComStatus(ComputingSystem.STATUS_ERROR);
+      job.setLocalStatus(ComputingSystem.STATUS_ERROR);
       job.setNeedToBeRefreshed(true);
     }
 

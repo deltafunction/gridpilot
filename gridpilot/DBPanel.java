@@ -12,6 +12,7 @@ import javax.swing.event.*;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.util.HashSet;
 import java.util.Vector;
 
 /**
@@ -57,6 +58,8 @@ public class DBPanel extends JPanel implements JobPanel{
 
   private JMenu jmSetFieldValue = null;
   
+  private StatusBar statusBar = null;
+  
   private GridBagConstraints ct = new GridBagConstraints();
   
   private DBPluginMgr dbPluginMgr = null;
@@ -98,6 +101,7 @@ public class DBPanel extends JPanel implements JobPanel{
      dbName = _dbName;     
      tableName = _tableName;
      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
+     statusBar = GridPilot.getClassMgr().getStatusBar();
      
      identifier = dbPluginMgr.getIdentifier(dbName, tableName);
      jobDefIdentifier = dbPluginMgr.getIdentifier(dbName, "jobDefinition");
@@ -325,6 +329,7 @@ public class DBPanel extends JPanel implements JobPanel{
     this.updateUI();
     
 //// buttons
+  // Costumized for each type of table
     
     bSearch.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -460,6 +465,35 @@ public class DBPanel extends JPanel implements JobPanel{
       bDeleteRecord.setEnabled(false);
       updateUI();
     }    
+    else if(tableName.equalsIgnoreCase("package")){
+      bCreateRecords.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          createJobTransRecords();
+        }
+      });
+
+      bEditRecord.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          editJobTransRecord();
+        }
+      });
+
+      bDeleteRecord.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          deleteJobTransRecords();
+        }
+      });
+      
+      addButtonResultsPanel(bCreateRecords);
+      addButtonResultsPanel(bEditRecord);
+      addButtonResultsPanel(bDeleteRecord);
+      addButtonSelectPanel(bClear);
+      addButtonSelectPanel(bSearch);
+      bViewJobDefinitions.setEnabled(false);
+      bEditRecord.setEnabled(false);
+      bDeleteRecord.setEnabled(false);
+      updateUI();
+    }    
   }
 
   public String getTitle(){
@@ -552,9 +586,9 @@ public class DBPanel extends JPanel implements JobPanel{
    * all the GUI during this action.
    * Called when button "Search" is clicked
    */
-  public void searchRequest(){
+  public void searchRequest(final int sortColumn, final boolean isAscending){
         
-    // TODO: why does it not work as thread when
+   // TODO: why does it not work as thread when
    // not in it's own pane?
     //workThread = new Thread(){
       //public void run(){
@@ -649,6 +683,11 @@ public class DBPanel extends JPanel implements JobPanel{
         }
         
         GridPilot.getClassMgr().getStatusBar().setLabel("Records found: "+tableResults.getRowCount(), 20);
+        
+        if(sortColumn>-1){
+          Debug.debug("Sorting: "+sortColumn+":"+isAscending, 3);
+          ((DBVectorTableModel) tableResults.getModel()).sort(sortColumn, isAscending);
+        }
         //stopWorking();
       //}
     //};
@@ -656,6 +695,10 @@ public class DBPanel extends JPanel implements JobPanel{
 
   }
   
+  public void searchRequest(){
+    searchRequest(-1, true);
+  }
+ 
   /**
    * Add menu items to the table with search results. This function is called from within DBPanel
    * after the results table is filled
@@ -911,43 +954,74 @@ public class DBPanel extends JPanel implements JobPanel{
    /*searchRequest();*/
  }
 
-  private void deleteDatasets(){
-    String msg = "Are you sure you want to delete dataset ";
-    int [] ids = getSelectedIdentifiers();
-    for(int i=0; i<getSelectedIdentifiers().length; ++i){
-      msg += ", " + ids[i];
-    }
-    msg += "?";
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
-        msg, "Delete?",
-        JOptionPane.YES_NO_OPTION);
-    if(choice == JOptionPane.NO_OPTION){
-      return;
-    }
-    workThread = new Thread(){
-      public void run(){
-        if(!getWorking()){
-          Debug.debug("please wait ...", 2);
-          return;
-        }
-        int [] ids = getSelectedIdentifiers();
-        int [] rows = tableResults.getSelectedRows();
-        Debug.debug("Deleting "+ids.length+" rows", 2);
-        if(ids.length != 0){
-          JProgressBar pb = new JProgressBar();
-          pb.setMaximum(ids.length);
-          for(int i = ids.length-1; i>=0; i--){
-            boolean success = dbPluginMgr.deleteDataset(ids[i], true);
-            pb.setValue(pb.getValue()+1);
-            tableResults.removeRow(rows[i]);
-            tableResults.tableModel.fireTableDataChanged();
+  /**
+   *  Delete datasets. Returns HashSet of identifier strings.
+   *  From AtCom1.
+   */
+  public HashSet deleteDatasets(){
+    boolean skip = false;
+    boolean okAll = false;
+    int choice = 3;
+    HashSet deleted = new HashSet();
+    JCheckBox cbCleanup = null;
+    int [] datasetIdentifiers = getSelectedIdentifiers();
+    for(int i=datasetIdentifiers.length-1; i>=0; --i){
+      if(datasetIdentifiers[i]!=-1){
+        if(!okAll){
+          ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+          cbCleanup = new JCheckBox("Delete child records", true);
+          
+          if(i<1){
+            try{
+              choice = confirmBox.getConfirm("Confirm delete",
+                                   "Really delete dataset # "+datasetIdentifiers[i]+"?",
+                                new Object[] {"OK", "Skip", cbCleanup});
+            }
+            catch(java.lang.Exception e){Debug.debug("Could not get confirmation, "+e.getMessage(),1);}
+          }
+          else{
+            try{
+              choice = confirmBox.getConfirm("Confirm delete",
+                                   "Really delete dataset # "+datasetIdentifiers[i]+"?",
+                                new Object[] {"OK", "Skip", "OK for all", "Skip all", cbCleanup});
+              }
+            catch(java.lang.Exception e){Debug.debug("Could not get confirmation, "+e.getMessage(),1);}
+          }
+    
+          switch(choice){
+          case 0  : skip = false; break;  // OK
+          case 1  : skip = true ; break;  // Skip
+          case 2  : skip = false; okAll = true ;break;  // OK for all
+          case 3  : skip = true ; return deleted; // Skip all
+          default : skip = true;    // other (closing the dialog). Same action as "Skip"
           }
         }
-        stopWorking();
-        searchRequest();
+        if(!skip || okAll){
+          Debug.debug("deleting dataset # " + datasetIdentifiers[i], 2);
+          if(dbPluginMgr.deleteDataset(datasetIdentifiers[i], cbCleanup.isSelected())){
+            deleted.add(Integer.toString(datasetIdentifiers[i]));
+            statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " deleted.");
+          }
+          else{
+            Debug.debug("WARNING: dataset "+datasetIdentifiers[i]+" could not be deleted",1);
+            statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " NOT deleted.");
+          }
+        }
       }
-    };
-    workThread.start();
+      else{
+        Debug.debug("WARNING: dataset undefined and could not be deleted",1);
+      }
+    }
+    Debug.debug("Refreshing search results", 3);
+    DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
+    int sortColumn = tableModel.getColumnSort();
+    boolean isAscending = tableModel.isSortAscending();
+    searchRequest(sortColumn, isAscending);
+    if(datasetIdentifiers.length>1){
+      statusBar.setLabel(deleted.size()+" of "+
+          datasetIdentifiers.length+" datasets deleted.");
+    }
+    return deleted;
   }
 
   /**

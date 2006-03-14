@@ -21,8 +21,6 @@ import gridpilot.Database.DBRecord;
  * queue is empty, and re-started when new jobs arrive). <br>
  * If there is any, the first job is removed from <code>toSubmitJobs</code>, put in
  * <code>submittingJobs</code>
- *
- * <p><a href="SubmissionControl.java.html">see sources</a>
  */
 public class SubmissionControl{
 
@@ -263,7 +261,7 @@ public class SubmissionControl{
           job.setCSName(csName);
           newJobs.add(job);
           job.setDBStatus(DBPluginMgr.SUBMITTED);
-          job.setAtComStatus(ComputingSystem.STATUS_WAIT);
+          job.setLocalStatus(ComputingSystem.STATUS_WAIT);
           job.setUser(userName);
           job.setJobId(null);
           job.setHost(null);
@@ -379,7 +377,7 @@ public class SubmissionControl{
       }
 
       if(!askSave){
-        if (deleteFiles) {
+        if (deleteFiles){
           if (stdOutExists)
             shell.deleteFile(job.getStdOut());
           if (stdErrExists)
@@ -423,7 +421,7 @@ public class SubmissionControl{
               // stdout
               if(stdOutExists){
                 if(f.showDialog(JOptionPane.getRootFrame(), "Save stdout")==
-                    JFileChooser.APPROVE_OPTION) {
+                    JFileChooser.APPROVE_OPTION){
 
                   java.io.File stdOut = f.getSelectedFile();
                   if (stdOut != null){
@@ -446,9 +444,9 @@ public class SubmissionControl{
               // stderr
               if(stdErrExists){
                 if(f.showDialog(JOptionPane.getRootFrame(), "Save stderr")==
-                    JFileChooser.APPROVE_OPTION) {
+                    JFileChooser.APPROVE_OPTION){
                   java.io.File stdErr = f.getSelectedFile();
-                  if (stdErr != null) {
+                  if (stdErr != null){
                     try{
                       /*pluginMgr.getLocalShellMgr()*/shell.writeFile(stdErr.getPath(),
                           shell.readFile(job.getStdErr()), false);
@@ -486,7 +484,7 @@ public class SubmissionControl{
               job.getJobDefId()));
       datasetMgr.updateDBStatus(job, DBPluginMgr.SUBMITTED);
       
-      if (job.getDBStatus() != DBPluginMgr.SUBMITTED) { // updateDBStatus didn't work
+      if (job.getDBStatus() != DBPluginMgr.SUBMITTED){ // updateDBStatus didn't work
         logFile.addMessage(
             "This job cannot be set Submitted -> this job cannot be resubmited",
             job);
@@ -510,7 +508,7 @@ public class SubmissionControl{
   * waiting jobs. If there are any, creates new submission threads
   */
 
-  private synchronized void trigSubmission() {
+  private synchronized void trigSubmission(){
 
     if(submittingJobs.size() < maxSimultaneousSubmission && !toSubmitJobs.isEmpty()){
       // transferts job from toSubmitJobs to submittingJobs
@@ -519,7 +517,7 @@ public class SubmissionControl{
       submittingJobs.add(job);
 
       new Thread(){
-        public void run() {
+        public void run(){
           submit(job);
         }
       }.start();
@@ -534,7 +532,7 @@ public class SubmissionControl{
    * Creates these job outputs, and calls the plugin submission method (via PluginMgr). <br>
    * This method is started in a thread. <p>
    */
-  private void submit(final JobInfo job) {
+  private void submit(final JobInfo job){
 
     // TODO: change this to whatever we end up with
     job.setName(dbPluginMgr.getJobDefName(job.getJobDefId()));
@@ -547,7 +545,7 @@ public class SubmissionControl{
     statusTable.setValueAt(iconSubmitting, job.getTableRow(),
         DatasetMgr.FIELD_CONTROL);
 
-    if (createOutputs(job) && csPluginMgr.submit(job)) {
+    if (createOutputs(job) && csPluginMgr.submit(job)){
 
       Debug.debug("Job " + job.getName() + " submitted : \n" +
                   "\tCSJobId = " + job.getJobId() + "\n" +
@@ -575,13 +573,13 @@ public class SubmissionControl{
       statusTable.updateSelection();
 
       job.setNeedToBeRefreshed(true);
-      job.setAtComStatus(ComputingSystem.STATUS_WAIT);
+      job.setLocalStatus(ComputingSystem.STATUS_WAIT);
     }
     else{
       statusTable.setValueAt("Not submitted !", job.getTableRow(),
           DatasetMgr.FIELD_JOBID);
 
-      job.setAtComStatus(ComputingSystem.STATUS_FAILED);
+      job.setLocalStatus(ComputingSystem.STATUS_FAILED);
 
 
       job.setNeedToBeRefreshed(false);
@@ -617,7 +615,7 @@ public class SubmissionControl{
 
     pbSubmission.setValue(pbSubmission.getValue() + 1);
 
-    if (pbSubmission.getPercentComplete() == 1.0) {
+    if (pbSubmission.getPercentComplete() == 1.0){
       statusBar.removeProgressBar(pbSubmission);
       isProgressBarSet = false;
       pbSubmission.setMaximum(0);
@@ -630,7 +628,7 @@ public class SubmissionControl{
    * These names are &lt;working path&gt;/&lt;logicalFile (partition) LFN&gt;.&lt;rand&gt/stdout and /stderr <br>
    * If stderrDest is not defined in DB, stdErr = null. <p>
    */
-  private boolean createOutputs(JobInfo job) {
+  private boolean createOutputs(JobInfo job){
 
     ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
     String workingPath = configFile.getValue(job.getCSName(),
@@ -680,7 +678,7 @@ public class SubmissionControl{
   }
 
 
-  public boolean isSubmitting() {
+  public boolean isSubmitting(){
 //    return timer.isRunning();
     return !(submittingJobs.isEmpty() && toSubmitJobs.isEmpty());
   }
@@ -697,7 +695,7 @@ public class SubmissionControl{
       statusTable.setValueAt("Not submitted (Cancelled)!", job.getTableRow(), DatasetMgr.FIELD_JOBID);
       statusTable.setValueAt(job.getName(), job.getTableRow(), DatasetMgr.FIELD_JOBNAME);
 
-      job.setAtComStatus(ComputingSystem.STATUS_FAILED);
+      job.setLocalStatus(ComputingSystem.STATUS_FAILED);
 
       job.setNeedToBeRefreshed(false);
       if(

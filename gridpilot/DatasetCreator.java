@@ -248,7 +248,7 @@ public class DatasetCreator{
 
     JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "Dataset");
     dialog.setResizable(true);
-    dialog.show();
+    dialog.setVisible(true);
     dialog.dispose();
 
 

@@ -2,7 +2,6 @@ package gridpilot;
 
 import gridpilot.Debug;
 import gridpilot.Database.DBRecord;
-import gridpilot.ConfirmBox;
 
 import javax.swing.*;
 import javax.swing.border.*;
@@ -16,8 +15,6 @@ import java.util.*;
  * This panel creates records in the DB table. It's shown inside the CreateEditDialog.
  *
  */
-
-
 public class DatasetCreationPanel extends CreateEditPanel{
 
   private JPanel pAttributes = new JPanel();
@@ -168,16 +165,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
 
     spAttributes.getViewport().add(pAttributes, cl);
     
-    // when creating, zap loaded dataset id
-    /*if(!editing){
-      for(int i =0; i<tcCstAttributes.length; ++i){
-        if(cstAttributesNames[i].equalsIgnoreCase("datasetID")){
-          Util.setJText((JComponent) tcCstAttributes[i],"");
-          ((JComponent) tcCstAttributes[i]).setEnabled(false);
-        }
-      }
-    }*/
-
     if(!reuseTextFields || tcCstAttributes==null ||
         tcCstAttributes.length != cstAttributesNames.length){
       Debug.debug("Creating new tcCstAttributes, "+
@@ -201,25 +188,13 @@ public class DatasetCreationPanel extends CreateEditPanel{
         }
         Util.setJText(tcCstAttributes[i], cstAttr[i]);
       }
-      /*else if(cstAttributesNames[i].equalsIgnoreCase("status")){
-      cl.gridx=0;
-      cl.gridy=i;
-      pAttributes.add(new JLabel("currentState" + " : "), cl);
-      tcCstAttributes[i] = new JComboBox();
-      ((JComboBox) tcCstAttributes[i]).addItem("DEFINED");
-      ((JComboBox) tcCstAttributes[i]).addItem("RUNNING");
-      ((JComboBox) tcCstAttributes[i]).addItem("TOBEDONE");
-      ((JComboBox) tcCstAttributes[i]).addItem("ABORTED");
-      ((JComboBox) tcCstAttributes[i]).addItem("FAILED");
-      if(!editing){
-        ((JComboBox) tcCstAttributes[i]).setSelectedItem("DEFINED");
-      }
-      if(editing || cstAttr[i]!=null){
-        Util.setJText(tcCstAttributes[i], cstAttr[i]);
-      }
-      }*/
+      // when creating, zap loaded dataset id
       else{
-        if(!reuseTextFields || tcCstAttributes[i]==null){
+        if(cstAttr[i]!=null){
+          Util.setJText(tcCstAttributes[i], cstAttr[i]);
+        }
+        if(!editing && !reuseTextFields ||
+            tcCstAttributes[i]==null){
          // Debug.debug("Creating tcCstAttributes["+i+"]: "+cstAttributesNames[i], 3);
           //tcCstAttributes[i] = createTextComponent(TEXTFIELDWIDTH);
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
@@ -237,10 +212,16 @@ public class DatasetCreationPanel extends CreateEditPanel{
       Debug.debug("Adding cstAttributesNames["+i+"], "+cstAttributesNames[i]+
           " "+tcCstAttributes[i].getClass().toString(), 3);
       pAttributes.add(tcCstAttributes[i], cl);//,
-          //new GridBagConstraints(1, i/*row*/, 3, 1, 1.0, 0.0,
-          //GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
-          //new Insets(5, 5, 5, 5), 0, 0));
-
+    }
+    if(!editing){
+      for(int i =0; i<tcCstAttributes.length; ++i){
+        if(cstAttributesNames[i].equalsIgnoreCase(datasetIdentifier) ||
+            cstAttributesNames[i].equalsIgnoreCase("transFK") ||
+            cstAttributesNames[i].equalsIgnoreCase("transformationFK")){
+          Util.setJText((JComponent) tcCstAttributes[i],"");
+          Util.setJEditable(tcCstAttributes[i], false);
+        }
+      }
     }
     editDataset(Integer.parseInt(datasetID), transformation, version);
   }
@@ -447,67 +428,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     setValuesInAttributePanel(transformation, version);
   }
-
-  /**
-   *  Delete datasets. Returns HashSet of identifier strings.
-   */
-
-  public HashSet deleteDatasets(int [] datasetIdentifiers){
-    boolean skip = false;
-    boolean okAll = false;
-    int choice = 3;
-    HashSet deleted = new HashSet();
-    JCheckBox cbCleanup = null;
-    for(int i=datasetIdentifiers.length-1; i>=0; --i){
-      if(datasetIdentifiers[i]!=-1){
-        if(!okAll){
-          ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
-          cbCleanup = new JCheckBox("Delete child records", true);
-          
-          if(i<1){
-            try{
-              choice = confirmBox.getConfirm("Confirm delete",
-                                   "Really delete "+table+" # "+datasetIdentifiers[i]+"?",
-                                new Object[] {"OK", "Skip", cbCleanup});
-            }
-            catch(java.lang.Exception e){Debug.debug("Could not get confirmation, "+e.getMessage(),1);}
-          }
-          else{
-            try{
-              choice = confirmBox.getConfirm("Confirm delete",
-                                   "Really delete "+table+" # "+datasetIdentifiers[i]+"?",
-                                new Object[] {"OK", "Skip", "OK for all", "Skip all", cbCleanup});
-              }catch(java.lang.Exception e){Debug.debug("Could not get confirmation, "+e.getMessage(),1);}
-          }
-    
-          switch(choice){
-          case 0  : skip = false; break;  // OK
-          case 1  : skip = true ; break;  // Skip
-          case 2  : skip = false; okAll = true ;break;  // OK for all
-          case 3  : skip = true ; return deleted; // Skip all
-          default : skip = true;    // other (closing the dialog). Same action as "Skip"
-          }
-        }
-        if(!skip || okAll){
-          Debug.debug("deleting dataset # " + datasetIdentifiers[i], 2);
-          if(dbPluginMgr.deleteDataset(datasetIdentifiers[i], cbCleanup.isSelected())){
-            deleted.add(Integer.toString(datasetIdentifiers[i]));
-            statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " deleted.");
-          }
-          else{
-            Debug.debug("WARNING: dataset "+datasetIdentifiers[i]+" could not be deleted",1);
-            statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " NOT deleted.");
-          }
-        }
-      }
-      else{
-        Debug.debug("WARNING: dataset undefined and could not be deleted",1);
-      }
-    }
-    return deleted;
-  }
-
-  //// Private methods
 
   private String[] getTransNames(){
     Database.DBResult res = dbPluginMgr.getTransformations();

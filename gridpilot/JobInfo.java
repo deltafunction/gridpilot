@@ -197,7 +197,7 @@ public class JobInfo extends DBRecord{
     setValues();
   }
 
-  public void setAtComStatus(int _atComStatus){
+  public void setLocalStatus(int _atComStatus){
     atComStatus = _atComStatus;
     setValues();
   }

@@ -109,15 +109,11 @@ public class StatusBar extends JPanel {
    * Sets this JProgressBar on the rigth of this status bar. <br>
    */
   public synchronized void setProgressBar(JProgressBar pb) {
-    if(!stackProgressBar.empty())
+    if(!stackProgressBar.empty()){
       remove((JProgressBar) stackProgressBar.peek());
-
+    }
     stackProgressBar.push(pb);
-
     add(pb, BorderLayout.EAST);
-//    pb.setVisible(true);
-
-//    updateUI();
   }
 
   /**
@@ -156,6 +152,7 @@ public class StatusBar extends JPanel {
    */
   public synchronized void animateProgressBar(){
     setProgressBar(indeterminatePB);
+    indeterminatePB.setIndeterminate(true);
     if(frame == null)
       frame = JFrame.getFrames()[1]; // ?? dangerous !!!
 
@@ -167,6 +164,7 @@ public class StatusBar extends JPanel {
    * Removes this animated progress bar
    */
   public synchronized void stopAnimation(){
+    indeterminatePB.setIndeterminate(false);
     removeProgressBar(indeterminatePB);
     indeterminatePB.removeAll();
     frame.setIconImage(save.getImage());

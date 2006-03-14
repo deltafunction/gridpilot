@@ -51,7 +51,6 @@ public class GlobalFrame extends JFrame{
       icon = new ImageIcon();
     }
     setIconImage(icon.getImage());
-
   }
 
   /**
@@ -70,13 +69,16 @@ public class GlobalFrame extends JFrame{
     container.add(statusBar, BorderLayout.SOUTH);
     container.add(tabbedPane,  BorderLayout.CENTER);
 
-    statusBar.setLabel("GridPilot welcomes you", 20);
+    statusBar.setLabel("GridPilot welcomes you!", 20);
     
     container.add(tabbedPane,  BorderLayout.CENTER);
 
     if(GridPilot.getDBs().length>0){
       try{
-      	addPanel(new DBPanel(GridPilot.getDBs()[0], "dataset"));
+      	addPanel(new DBPanel(GridPilot.getDBs()[0], "package"));
+        addPanel(new DBPanel(GridPilot.getDBs()[0], "transformation"));
+        addPanel(new DBPanel(GridPilot.getDBs()[0], "dataset"));
+        addPanel(new DBPanel(GridPilot.getDBs()[0], "jobDefinition"));
       }
       catch(Exception e){
       	Debug.debug("ERROR: could not load database panel for "+
@@ -111,14 +113,29 @@ public class GlobalFrame extends JFrame{
       }
     });
 
-
     tabbedPane.addKeyListener(new KeyAdapter(){
       public void keyPressed(KeyEvent e){
-        switch(e.getKeyCode()){
-          case KeyEvent.VK_F1 :
-            menuHelpAbout_actionPerformed();
-          default :
-            tabbedPane.getSelectedComponent().dispatchEvent(e);
+        //Debug.debug("key code: "+KeyEvent.getKeyText(e.getKeyCode()), 3);
+        if(e.getKeyCode()==KeyEvent.VK_F1){
+          menuHelpAbout_actionPerformed();
+        }
+        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("x")){
+          if(e.isControlDown()){
+            menuEditCut_actionPerformed();
+          }
+        }
+        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c")){
+          if(e.isControlDown()){
+            menuEditCopy_actionPerformed();
+          }
+        }
+        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("v")){
+          if(e.isControlDown()){
+            menuEditPaste_actionPerformed();
+          }
+        }
+        else{
+          tabbedPane.getSelectedComponent().dispatchEvent(e);
         }
       }
     });
@@ -197,13 +214,19 @@ public class GlobalFrame extends JFrame{
     tabbedPane.removeTabAt(tabbedPane.getSelectedIndex());
   }
 
-  //File | Exit action performed
-  public void exit(){
-    Debug.debug("Exiting ...", 2);
-    //gridpilot.getClassMgr().getJobControl().exit();
-    Debug.debug("Exit", 2);
-    GridPilot.exit(0);
+  //Edit-cut | About action performed
+  public void menuEditCut_actionPerformed(){
+    Debug.debug("Cutting", 3);
   }
+  //Edit-copy | About action performed
+  public void menuEditCopy_actionPerformed(){
+    Debug.debug("Copying", 3);
+  }
+  //Edit-paste | About action performed
+  public void menuEditPaste_actionPerformed(){
+    Debug.debug("Pasting", 3);
+  }
+
   //Help | About action performed
   public void menuHelpAbout_actionPerformed(){
     URL aboutURL = null;
@@ -214,14 +237,20 @@ public class GlobalFrame extends JFrame{
       Debug.debug("Could not find file "+ GridPilot.resourcesPath + "about.htm", 3);
       return;
     } 
-    WebBox dlg = new WebBox(this, "About", aboutURL);
+    try{
+      WebBox dlg = new WebBox(this, "About", aboutURL);
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: could not create WebBox", 1);
+      e.printStackTrace();
+    }
   }
 
   //Overridden so we can exit when window is closed
   protected void processWindowEvent(WindowEvent e){
     super.processWindowEvent(e);
     if (e.getID() == WindowEvent.WINDOW_CLOSING){
-      exit();
+      GridPilot.exit(0);
     }
   }
 
@@ -248,7 +277,7 @@ public class GlobalFrame extends JFrame{
 
     // gridpilot
     
-    JMenu menuGridPilot = new JMenu("GridPilot");
+    JMenu menuGridPilot = new JMenu("File");
     JMenu menuNewTab = new JMenu("New tab");
     
     JMenuItem miReloadValues = new JMenuItem("Reload values from config file");
@@ -259,6 +288,85 @@ public class GlobalFrame extends JFrame{
     });
     menuGridPilot.add(miReloadValues);
    
+    //DB
+    JMenu menuDB = new JMenu("Databases");
+    JMenuItem miDbClearCaches = new JMenuItem("Clear DB caches");
+    miDbClearCaches.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        /*
+         Clear caches in all of the DB connections
+         */
+        GridPilot.getClassMgr().clearDBCaches();
+      }
+    });
+
+    JMenuItem miDbReconnect = new JMenuItem("Reconnect");
+    miDbReconnect.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        Debug.debug("Reconnecting DBs", 2);
+        GridPilot.dbReconnect();
+      }
+    });
+
+    menuDB.add(miDbClearCaches);
+    menuDB.add(miDbReconnect);
+    menuGridPilot.add(menuDB);
+
+    //CS
+    JMenu menuCS = new JMenu("Computing systems");
+    JMenuItem miCsReconnect = new JMenuItem("Reconnect");
+    miCsReconnect.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        Debug.debug("Reconnecting CSs", 2);
+        GridPilot.csReconnect();
+      }
+    });
+
+    menuCS.add(miCsReconnect);
+    menuGridPilot.add(menuCS);
+
+    JMenu miNewPackageTab = new JMenu("package");
+    JMenuItem [] miNewPackageTabs = new JMenuItem[GridPilot.getDBs().length];
+    menuNewTab.add(miNewPackageTab);
+    for(i=0; i<GridPilot.getDBs().length; ++i){
+      miNewPackageTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
+      miNewPackageTabs[i].addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          try{
+            addPanel(new DBPanel(
+                ((JMenuItem)e.getSource()).getText(), "package"), "transformation");          
+          }
+          catch(Exception ex){
+            Debug.debug("Could not add panel ", 1);
+            ex.printStackTrace();
+          }
+          selectedPanel = tabbedPane.getSelectedIndex();
+        }
+      });
+      miNewPackageTab.add(miNewPackageTabs[i]);
+    }
+
+    JMenu miNewTransformationTab = new JMenu("transformation");
+    JMenuItem [] miNewTransformationTabTabs = new JMenuItem[GridPilot.getDBs().length];
+    menuNewTab.add(miNewTransformationTab);
+    for(i=0; i<GridPilot.getDBs().length; ++i){
+      miNewTransformationTabTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
+      miNewTransformationTabTabs[i].addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          try{
+            addPanel(new DBPanel(
+                ((JMenuItem)e.getSource()).getText(), "transformation"), "transformation");          
+          }
+          catch(Exception ex){
+            Debug.debug("Could not add panel ", 1);
+            ex.printStackTrace();
+          }
+          selectedPanel = tabbedPane.getSelectedIndex();
+        }
+      });
+      miNewTransformationTab.add(miNewTransformationTabTabs[i]);
+    }
+
     JMenu miNewTaskTab = new JMenu("dataset");
     JMenuItem [] miNewTaskTabs = new JMenuItem[GridPilot.getDBs().length];
     menuNewTab.add(miNewTaskTab);
@@ -301,27 +409,6 @@ public class GlobalFrame extends JFrame{
       miNewJobDefTab.add(miNewJobDefTabs[i]);
     }
     
-    JMenu miNewJobTransTab = new JMenu("transformation");
-    JMenuItem [] miNewJobTransTabs = new JMenuItem[GridPilot.getDBs().length];
-    menuNewTab.add(miNewJobTransTab);
-    for(i=0; i<GridPilot.getDBs().length; ++i){
-      miNewJobTransTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
-      miNewJobTransTabs[i].addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          try{
-            addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(), "transformation"), "transformation");          
-          }
-          catch(Exception ex){
-            Debug.debug("Could not add panel ", 1);
-            ex.printStackTrace();
-          }
-          selectedPanel = tabbedPane.getSelectedIndex();
-        }
-      });
-      miNewJobTransTab.add(miNewJobTransTabs[i]);
-    }
-
     menuGridPilot.add(menuNewTab);
     
     cbMonitor.addActionListener(new ActionListener(){
@@ -355,12 +442,36 @@ public class GlobalFrame extends JFrame{
       JMenuItem miExit = new JMenuItem("Exit");
       miExit.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          exit();
+          GridPilot.exit(0);
         }
       });
       menuGridPilot.add(miExit);
     }
 
+    // Edit
+    JMenu menuEdit = new JMenu("Edit");
+    
+    JMenuItem menuEditCut = new JMenuItem("Cut");
+    menuEditCut.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        menuEditCut_actionPerformed();
+      }
+    });
+    menuEdit.add(menuEditCut);
+    JMenuItem menuEditCopy = new JMenuItem("Copy");
+    menuEditCopy.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        menuEditCopy_actionPerformed();
+      }
+    });
+    menuEdit.add(menuEditCopy);
+    JMenuItem menuEditPaste = new JMenuItem("Paste");
+    menuEditPaste.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        menuEditPaste_actionPerformed();
+      }
+    });
+    menuEdit.add(menuEditPaste);
 
     //Help
     JMenu menuHelp = new JMenu("Help");
@@ -372,36 +483,9 @@ public class GlobalFrame extends JFrame{
     });
 
     menuHelp.add(menuHelpAbout);
-
-
-    //DB
-
-    JMenu menuDB = new JMenu("DB");
-    JMenuItem miDbClearCaches = new JMenuItem("Clear DB caches");
-    miDbClearCaches.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        /*
-         Clear caches in all of the DB connections
-         */
-        GridPilot.getClassMgr().clearDBCaches();
-      }
-    });
-
-    JMenuItem miDbReconnect = new JMenuItem("Reconnect");
-    miDbReconnect.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        GridPilot.dbReconnect();
-      }
-    });
-
-
-    menuDB.add(miDbClearCaches);
-    menuDB.add(miDbReconnect);
-
-    //if(!GridPilot.applet){
-      menuBar.add(menuGridPilot);
-    //}
-    menuBar.add(menuDB);
+    
+    menuBar.add(menuGridPilot);
+    menuBar.add(menuEdit);
     menuBar.add(menuHelp);
     
     return menuBar;

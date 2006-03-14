@@ -3,17 +3,6 @@ package gridpilot;
 import java.util.Vector;
 
 /**
- * <p>ComputingSystem.java</p>
- * <p>Project: AtCom</p>
- * <p>Description: Atlas Commander</p>
- * <p>Copyright: Copyright (c) 2002</p>
- * <p>Company: CERN - EP/ATC</p>
- * @author Vandy BERTEN (Vandy.Berten@cern.ch)
- * @version 1.2
- */
-
-
-/**
  * Interface a plugin for a computing system must implement. <p>
  *
  * Creating a plugin (let say 'systemName') requires following things :
@@ -79,8 +68,7 @@ import java.util.Vector;
  * <p><a href="ComputingSystem.java.html">see sources</a>
  */
 
-public interface ComputingSystem {
-
+public interface ComputingSystem{
 
   /**
    * This job has been submitted, but hasn't yet started.
@@ -136,11 +124,11 @@ public interface ComputingSystem {
   public void updateStatus(Vector jobs);
 
   /**
-   * Kills job 'job'.
-   * Shouldn't change anything in 'job' ; all changed will be done by the next update
+   * Kills jobs 'jobs'.
+   * Shouldn't change anything in 'jobs' ; all changed will be done by the next update.
    *
    */
-  public void killJob(JobInfo job);
+  public void killJobs(Vector jobs);
 
   /**
    * Called when job 'job' failed, in order to delete all "garbages" made by job.

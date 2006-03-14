@@ -476,7 +476,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
       return;
 
     if(DatasetMgr.isRunning(selectedRow)){
-      statusBar.setLabel("Waiting for current outputs ...");
+      statusBar.setLabel("Waiting for outputs ...");
       statusBar.animateProgressBar();
 
 

@@ -87,7 +87,7 @@ abstract public class ScriptGenerator{
     writeBloc(out, s2, type);
   }
 
-  protected void writeLine(StringBuffer buf, String s){
+  public void writeLine(StringBuffer buf, String s){
     buf.append(getLine(s));
   }
 

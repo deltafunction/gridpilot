@@ -126,7 +126,9 @@ public class Table extends JTable {
    * colored according to colorMapping.
    */
 
-  public Table(String [] _hide, String [] fieldNames, String [] _colorMapping) {
+  public Table(String [] _hide,
+               String [] fieldNames,
+               String [] _colorMapping){
     tableModel = new DBVectorTableModel(fieldNames);
     setModel(tableModel);
     hide = _hide;
@@ -295,6 +297,14 @@ public class Table extends JTable {
   public synchronized Object getValueAt(int row, int col){
     return tableModel.getValueAt(row, col);
   }
+
+  /**
+   * Returns the table model.
+   * For some reason it crashes startup when there...
+   */
+  /*public synchronized TableModel getModel(){
+    return tableModel;
+  }*/
 
   /**
    * Creates r rows in this table.

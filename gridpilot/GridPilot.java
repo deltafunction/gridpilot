@@ -1,6 +1,7 @@
 package gridpilot;
 
 import java.awt.*;
+import java.net.URL;
 
 import javax.swing.*;
 
@@ -29,6 +30,9 @@ public class GridPilot extends JApplet{
   public static String url = "";
   public static String [] csNames = null;
   public static Splash splash;
+  
+  // keep track of last url opened in blocking WebBox dialog.
+  public static  URL lastURL = null;
 
   /**
    * Constructor
@@ -71,7 +75,7 @@ public class GridPilot extends JApplet{
       String [] up = null;
       String tmpDb = null;
       dbs = getClassMgr().getConfigFile().getValues("Databases", "Systems");
-      for(int i = 0; i < dbs.length; ++i){
+      for(int i=0; i<dbs.length; ++i){
         try{
           splash.show("Connecting to "+dbs[i]+"...");
         }
@@ -182,18 +186,28 @@ public class GridPilot extends JApplet{
    }
 
   public static void exit(int exitCode){
-    if(!applet){
-      System.exit(exitCode);
-    }
-    else{
-      try{
-        Debug.debug("NAME: "+getClassMgr().getGridPilot(), 2);
-        getClassMgr().getGlobalFrame().dispose();
-      }
-      catch(Exception e){
-        Debug.debug(e.getMessage(), 1);
-      }
-    }
+    /*
+    Disconnect DBs
+    */
+   for(int i=0; i<dbs.length; ++i){
+     getClassMgr().getDBPluginMgr(dbs[i]).disconnect();
+     Debug.debug("Disconnecting "+dbs[i], 2);
+   }
+   Debug.debug("Disconnecting computing systems...", 2);
+   getClassMgr().getCSPluginMgr().disconnect();
+   Debug.debug("All systems disconnected.", 2);
+   if(!applet){
+     System.exit(exitCode);
+   }
+   else{
+     try{
+       Debug.debug("NAME: "+getClassMgr().getGridPilot(), 2);
+       getClassMgr().getGlobalFrame().dispose();
+     }
+     catch(Exception e){
+       Debug.debug(e.getMessage(), 1);
+     }
+   }
   }
   
   public static String [] userPwd(String _user, String _passwd, String _database){
@@ -300,7 +314,7 @@ public class GridPilot extends JApplet{
     getClassMgr().getGlobalFrame().jobMonitoringPanel.statusUpdateControl.loadValues();
     getClassMgr().getCSPluginMgr().loadValues();
     dbs = getClassMgr().getConfigFile().getValues("GridPilot", "Databases");
-    for(int i = 0; i < dbs.length; ++i){
+    for(int i=0; i<dbs.length; ++i){
       getClassMgr().getDBPluginMgr(dbs[i]).loadValues();
     }
     initDebug();
@@ -328,44 +342,61 @@ public class GridPilot extends JApplet{
   }
 
 
-  // TODO: need to re-think this a bit
-
   public static void dbReconnect(){
+    GridPilot.getClassMgr().getStatusBar().setLabel(
+        "Reconnecting "+dbs.length+" databases. Please wait...");
+    GridPilot.getClassMgr().getStatusBar().animateProgressBar();
     /*
-     Show small window with label
+     Reconnect DBs
      */
-    JWindow w = new JWindow(JOptionPane.getRootFrame());
-    JLabel message = new JLabel("Reconnecting... please wait...");
-    JPanel panel = new JPanel(new FlowLayout());
-    panel.add(message);
-    panel.updateUI();
-    w.getContentPane().add(panel);
-    w.pack();
-    w.setVisible(true);
-    Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-    w.setLocation(screenSize.width/2 - w.getSize().width/2,
-                  screenSize.height/2 - w.getSize().height/2);
-    /*
-     Reconnect DB
-     */
-    dbs = getClassMgr().getConfigFile().getValues("GridPilot", "Databases");
-    for(int i = 0; i < dbs.length; ++i){
-      getClassMgr().getDBPluginMgr(dbs[i]).disconnect();
+    for(int i=0; i<dbs.length; ++i){
       try{
+        Debug.debug("Disconnecting "+dbs[i], 2);
+        GridPilot.getClassMgr().getStatusBar().setLabel(
+            "Disconnecting "+dbs[i]);
+        GridPilot.getClassMgr().getStatusBar().animateProgressBar();
+        getClassMgr().getDBPluginMgr(dbs[i]).disconnect();
+        Debug.debug("Connecting "+dbs[i], 2);
+        GridPilot.getClassMgr().getStatusBar().setLabel(
+            "Connecting "+dbs[i]);
+        GridPilot.getClassMgr().getStatusBar().animateProgressBar();
         getClassMgr().getDBPluginMgr(dbs[i]).init();
+        Debug.debug("Connection ok.", 2);
+        GridPilot.getClassMgr().getStatusBar().setLabel(
+            "Connection ok.");
+        GridPilot.getClassMgr().getStatusBar().animateProgressBar();
         // TODO: reload panels?
       }
       catch (Throwable e){
-        Debug.debug("Could not load db  " + e.getMessage(), 3);
+        Debug.debug("ERROR: Could not load DB " + dbs[i] + ". " + 
+            e.getMessage(), 3);
+        GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: Could not load DB " + dbs[i] + ". " + 
+            e.getMessage());
         exit(-1);
       }
     }
+    GridPilot.getClassMgr().getStatusBar().stopAnimation();
+  }
 
+  public static void csReconnect(){
+    GridPilot.getClassMgr().getStatusBar().setLabel(
+        "Reconnecting computing systems. Please wait...");
+    GridPilot.getClassMgr().getStatusBar().animateProgressBar();
     /*
-     Close small progress window
+     Reconnect CSs
      */
-    w.setVisible(false);
-    w.dispose();
+    dbs = getClassMgr().getConfigFile().getValues("GridPilot", "Computing systems");
+    try{
+      getClassMgr().getCSPluginMgr().reconnect();
+      // TODO: reload panels?
+    }
+    catch (Throwable e){
+      Debug.debug("ERROR: Could not reload CSs. " + e.getMessage(), 3);
+      GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: Could not reload computing systems. " + 
+          e.getMessage());
+      exit(-1);
+    }
+    GridPilot.getClassMgr().getStatusBar().stopAnimation();
   }
 
 }

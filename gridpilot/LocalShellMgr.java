@@ -3,9 +3,9 @@ package gridpilot;
 import java.io.*;
 import java.util.*;
 
-public class LocalShellMgr implements ShellMgr {
+public class LocalShellMgr implements ShellMgr{
 
-  public LocalShellMgr() {
+  public LocalShellMgr(){
   }
 
   /**
@@ -15,64 +15,54 @@ public class LocalShellMgr implements ShellMgr {
    *          <code>false</code> otherwise
    *
    */
-  public boolean copyFile(String src, String dest) {
-    if (src.equals(dest))
+  public boolean copyFile(String src, String dest){
+    if (src.equals(dest)){
       return true;
+    }
 
     File destFile = new File(dest);
-    if(destFile.getParent() != null &&  !destFile.getParentFile().exists())
+    if(destFile.getParent()!=null &&  !destFile.getParentFile().exists())
       if(!destFile.getParentFile().mkdirs()){
         Debug.debug("cannot create parent directory for " + dest, 3);
         return false;
       }
-
-
-    String cmd = "cp "+ src + " " + dest;
-//    String [] cmd = {"mv", src.getAbsolutePath(), dest.getAbsolutePath()};
-    StringBuffer stdErr = new StringBuffer();
-    StringBuffer stdOut = new StringBuffer();
-
-    try {
-      exec(cmd, stdOut, stdErr);
-      if (stdErr.length() != 0) {
+      
+    try{
+      File srcFile = new File(src);
+      // Copies src file to dst file.
+      // If the dst file does not exist, it is created
+      InputStream in = new FileInputStream(srcFile);
+      OutputStream out = new FileOutputStream(destFile);
+  
+      // Transfer bytes from in to out
+      byte[] buf = new byte[1024];
+      int len;
+      try{
+        while ((len = in.read(buf))>0) {
+          out.write(buf, 0, len);
+      }
+      in.close();
+      out.close();
+      }
+      catch(IOException e){
         GridPilot.getClassMgr().getLogFile().addMessage(
-            "Error during move : \n" +
-            "\tCommand\t: " + cmd + "\n" +
-            "\tStdOut\t: " + stdOut + "\n" +
-            "\tStdErr\t: " + stdErr);
+            "FileNotFoundException during copy : \n", e);
         return false;
       }
-
     }
-    catch (IOException e) {
+    catch(FileNotFoundException e){
       GridPilot.getClassMgr().getLogFile().addMessage(
-          "IOExeption during move : \n" +
-          "\tCommand\t: " + cmd, e);
+          "FileNotFoundException during copy : \n", e);
       return false;
-
     }
-    return true;
-  }
-
-  /**
-   * Converts an array of object in a String representing this array. <p>
-   * Example : {"a", new Integer(32), "ABCE", null} is converted in "a 32 ABCE null"
-   */
-  public static String arrayToString(Object[] values) {
-    String res = "";
-    if (values == null)
-      return "(null)";
-    for (int i = 0; i < values.length; ++i) {
-      res += (values[i] == null ? "null" : values[i].toString()) + " ";
-    }
-    return res;
+    return true;    
   }
 
   /**
    * Executes in the shell the command 'cmd', in the current directory, with
    * the current environment. <br>
-   * Standard output is written in stdOut (if stdOut != null) <br>
-   * Standard error is written in stdErr (if stdErr != null) <br>
+   * Standard output is written in stdOut (if stdOut!=null) <br>
+   * Standard error is written in stdErr (if stdErr!=null) <br>
    * <p>
    * All elements of cmd can be <code>null</code>, or contain several tokens ;
    * if an element of cmd contains spaces, all "words" are used like as much as
@@ -89,8 +79,8 @@ public class LocalShellMgr implements ShellMgr {
   /**
    * Executes in the shell the command 'cmd', in the directory 'workingDirecory', with
    * the current environment. <br>
-   * Standard output is written in stdOut (if stdOut != null) <br>
-   * Standard error is written in stdErr (if stdErr != null) <br>
+   * Standard output is written in stdOut (if stdOut!=null) <br>
+   * Standard error is written in stdErr (if stdErr!=null) <br>
    * <p>
    * All elements of cmd can be <code>null</code>, or contain several tokens ;
    * if an element of cmd contains spaces, all "words" are used like as much as
@@ -108,8 +98,8 @@ public class LocalShellMgr implements ShellMgr {
   /**
    * Executes in the shell the command 'cmd', in the directory 'workingDirecory', with
    * the environment 'env'. <br>
-   * Standard output is written in stdOut (if stdOut != null) <br>
-   * Standard error is written in stdErr (if stdErr != null) <br>
+   * Standard output is written in stdOut (if stdOut!=null) <br>
+   * Standard error is written in stdErr (if stdErr!=null) <br>
    * <p>
    * All elements of cmd can be <code>null</code>, or contain several tokens ;
    * if an element of cmd contains spaces, all "words" are used like as much as
@@ -121,17 +111,17 @@ public class LocalShellMgr implements ShellMgr {
   public int exec(String cmd, String[] env, String workingDirectory,
                          StringBuffer stdOut, StringBuffer stdErr) throws
       IOException {
-    cmd = arrayToString(convert(Util.split(cmd)));
+    cmd = Util.arrayToString(convert(Util.split(cmd)));
     int exitValue;
     Process p = Runtime.getRuntime().exec(cmd, env,
-                                          (workingDirectory == null ? null : new File(workingDirectory)));
+                                          (workingDirectory==null ? null : new File(workingDirectory)));
 
     waitOutputs(p, stdOut, stdErr);
 
-    try {
+    try{
       exitValue = p.waitFor();
     }
-    catch (InterruptedException ie) {
+    catch(InterruptedException ie){
       System.err.println("InterruptedException in Utils.exec : " +
                          "\tCommand : " + cmd + "\n" +
                          "\tException : " + ie.getMessage() + "\n" +
@@ -145,11 +135,11 @@ public class LocalShellMgr implements ShellMgr {
   /**
    * Removes all null elements, tokenizes all composit (which contains spaces) elements
    */
-  private static String[] convert(String[] cmd) {
+  private static String[] convert(String[] cmd){
     Vector vectorRes = new Vector();
 
-    for (int i = 0; i < cmd.length; ++i) {
-      if (cmd[i] != null) {
+    for (int i = 0; i < cmd.length; ++i){
+      if (cmd[i]!=null){
         StringTokenizer st = new StringTokenizer(cmd[i]);
 
         while (st.hasMoreTokens())
@@ -173,12 +163,12 @@ public class LocalShellMgr implements ShellMgr {
 
     byte[] b = new byte[256];
     int nbRead;
-    if (stdOut != null)
-      while ( (nbRead = p.getInputStream().read(b)) != -1)
+    if (stdOut!=null)
+      while ( (nbRead = p.getInputStream().read(b))!=-1)
         stdOut.insert(0, new String(b, 0, nbRead));
 
-    if (stdErr != null)
-      while ( (nbRead = p.getErrorStream().read(b)) != -1)
+    if (stdErr!=null)
+      while ( (nbRead = p.getErrorStream().read(b))!=-1)
         stdErr.insert(0, new String(b, 0, nbRead));
   }
 
@@ -197,7 +187,7 @@ public class LocalShellMgr implements ShellMgr {
   public void writeFile(String name, String content, boolean append) throws IOException {
     Debug.debug("name : " + name + "\nappend : " + append + "\ncontent : \n" + content, 1);
     File parent = new File(name).getParentFile();
-    if(parent != null && !parent.exists())
+    if(parent!=null && !parent.exists())
       parent.mkdirs();
 
     RandomAccessFile of = new RandomAccessFile(name, "rw");
@@ -221,7 +211,7 @@ public class LocalShellMgr implements ShellMgr {
 
   public boolean moveFile(String src, String dest){
     File destFile = new File(dest);
-    if(destFile.getParent() != null &&  !destFile.getParentFile().exists())
+    if(destFile.getParent()!=null &&  !destFile.getParentFile().exists())
       if(!destFile.getParentFile().mkdirs()){
         Debug.debug("cannot create parent directory for " + dest, 3);
         return false;
@@ -232,7 +222,7 @@ public class LocalShellMgr implements ShellMgr {
   public String[] listFiles(String dir){
     File fdir = new File(dir);
     File [] fres = fdir.listFiles();
-    if(fres == null)
+    if(fres==null)
       return null;
     String [] sres = new String [fres.length];
     for(int i=0; i<fres.length ; ++i)
@@ -243,5 +233,6 @@ public class LocalShellMgr implements ShellMgr {
   public boolean isDirectory(String dir){
     return new File(dir).isDirectory();
   }
+  
   public void exit(){}
 }
