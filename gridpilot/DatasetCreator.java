@@ -182,9 +182,10 @@ public class DatasetCreator{
           boolean succes = dbPluginMgr.createDataset(
               target_table, cstAttrNames, resCstAttr);
           if(!succes){
-            JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
-               "ERROR: dataset cannot be created in "+target_table,
-               "", JOptionPane.OK_OPTION);
+            JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
+               "ERROR: dataset cannot be created.\n"+
+               dbPluginMgr.getError(),
+               "", JOptionPane.PLAIN_MESSAGE);
             statusBar.setLabel("Dataset NOT created.");
             return false;
           }
@@ -224,10 +225,22 @@ public class DatasetCreator{
 
 
     JScrollPane sp = new JScrollPane(pResult);
-    sp.setPreferredSize(new Dimension(500,
-                                      (int)pResult.getPreferredSize().getHeight() +
-                                      (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5));
-
+    int height = (int)pResult.getPreferredSize().getHeight() +
+    (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5;
+    int width = (int)pResult.getPreferredSize().getWidth() +
+    (int)sp.getVerticalScrollBar().getPreferredSize().getWidth() + 5;
+    Dimension screenSize = new Dimension(Toolkit.getDefaultToolkit().getScreenSize());
+    if (height>screenSize.height){
+      height = 700;
+      Debug.debug("Screen height exceeded, setting "+height, 2);
+    }
+    if (width>screenSize.width){
+      width = 550;
+      Debug.debug("Screen width exceeded, setting "+width, 2);
+    }
+    Debug.debug("Setting size "+width+":"+height, 3);
+    sp.setPreferredSize(new Dimension(width, height));
+    
     JOptionPane op;
     if(moreThanOne){
        op = new JOptionPane(sp,

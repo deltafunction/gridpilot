@@ -5,10 +5,8 @@ import gridpilot.Database.DBRecord;
 
 import javax.swing.*;
 import javax.swing.border.*;
+
 import java.awt.*;
-
-import javax.swing.text.*;
-
 import java.util.*;
 
 /**
@@ -35,15 +33,16 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private static int TEXTFIELDWIDTH = 32;
   private static int CFIELDWIDTH = 8;
   private String transformation = "";
+  private String transformationFK = "-1";
   private String version = "";
   private int [] datasetIDs = new int [] {-1};
   private JPanel pTransformation = new JPanel();
+  private JPanel pTargetDBs = new JPanel();
+  private JLabel jlTargetDBSelection = null;
   private JPanel pVersion = new JPanel();
   private JComboBox cbTargetDBSelection;
   private JComboBox cbTransformationSelection;
   private JComboBox cbTransVersionSelection;
-  private boolean transformationChosen = false;
-  private boolean versionChosen = false;
   private StatusBar statusBar = null;
   private String targetDB = null;
   private DBRecord dataset = null;
@@ -124,6 +123,12 @@ public class DatasetCreationPanel extends CreateEditPanel{
         // nothing
       }
     }
+    else if(GridPilot.dbs!=null && GridPilot.dbs.length!=0 &&
+        datasetIDs!=null && datasetIDs.length!=0 &&
+        (datasetIDs.length!=1 || datasetIDs[0]!=-1)){
+      initTargetDBsPanel();
+    }
+
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
         Color.white,new Color(165, 163, 151)), datasetName));
     
@@ -195,8 +200,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
         }
         if(!editing && !reuseTextFields ||
             tcCstAttributes[i]==null){
-         // Debug.debug("Creating tcCstAttributes["+i+"]: "+cstAttributesNames[i], 3);
-          //tcCstAttributes[i] = createTextComponent(TEXTFIELDWIDTH);
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
         }
         if(cstAttr[i]!=null && !cstAttr[i].equals("")){
@@ -263,20 +266,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
         }
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("transformationFK")){
-        Database.DBResult res = dbPluginMgr.getTransformations();
-        for(int j=0; j<res.values.length; ++j){
-          if(res.getValue(j, "name").toString().equalsIgnoreCase(transformation) &&
-            res.getValue(j, "version").toString().equalsIgnoreCase(version)){
-            String transformationIdentifier = dbPluginMgr.getIdentifier(
-                dbPluginMgr.getDBName(), "transformation");
-            Debug.debug("Setting transformation FK: "+
-                res.getValue(j, transformationIdentifier)+" "+
-                tcCstAttributes[i].getClass().toString(), 3);
-            Util.setJText(tcCstAttributes[i],
-                res.getValue(j, transformationIdentifier).toString());
-            break;
-          }
-        }
+        Util.setJText(tcCstAttributes[i], transformationFK);
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("targetDatabase")){
         // TODO
@@ -290,11 +280,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
   }
   
-   /**
-   * public methods
-   */
-
-  public void clear(){
+  public void clearPanel(){
     Vector textFields;
     if(editing){
       textFields = getFields(); 
@@ -343,7 +329,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           );
     }
     else{
-      if(cbTargetDBSelection.getSelectedItem().toString()!=null &&
+      if(cbTargetDBSelection!=null && cbTargetDBSelection.getSelectedItem()!=null &&
           !cbTargetDBSelection.getSelectedItem().toString().equals("") &&
           panel.getSelectedIdentifiers().length>0){
         targetDB = cbTargetDBSelection.getSelectedItem().toString();
@@ -366,7 +352,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
   /**
    *  Edit or create a dataset
    */
-
   public void editDataset(int datasetID,
       String transformation, String version){
     
@@ -384,12 +369,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
         for(int j=0; j<dataset.fields.length;++j){
           //Debug.debug("Checking dataset field, "+dataset.fields[j].toString()+"<->"+cstAttributesNames[i].toString(), 3);
           if(dataset.fields[j].toString().equalsIgnoreCase(cstAttributesNames[i].toString())){
-            //if(tcCstAttributes[i]==null /*|| !tcCstAttributes[i].isEnabled() &&
-              // Util.getJTextOrEmptyString(tcCstAttributes[i]).length()==0*/){
-              //tcCstAttributes[i] = createTextComponent();
-            //}
-            //if(!cstAttributesNames[i].equalsIgnoreCase("transFK") &&
-              //  !cstAttributesNames[i].equalsIgnoreCase("transformationFK")){
               try{
                 Debug.debug(cstAttributesNames[i].toString()+"="+dataset.fields[j]+". Setting to "+
                     dataset.values[j].toString(),3);
@@ -398,7 +377,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
               catch(java.lang.Exception e){
                 Debug.debug("Field not found or set, "+e.getMessage(),1);
               }
-            //}
             break;
           }
         }
@@ -473,13 +451,11 @@ public class DatasetCreationPanel extends CreateEditPanel{
 
     if(transformations.length==0){
       pTransformation.add(new JLabel("No transformations found."));
-      transformationChosen = false;
     }
     else if(transformations.length==1){
       transformation = transformations[0];
       pTransformation.add(new JLabel("Transformation:" + transformation));
       initTransVersionPanel(datasetID, transformation);
-      transformationChosen = true;
     }
     else{
       cbTransformationSelection = new JComboBox();
@@ -496,7 +472,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
           }
         }
       );
-      transformationChosen = false;
     }
     
     ct.gridx = 0;
@@ -520,18 +495,12 @@ public class DatasetCreationPanel extends CreateEditPanel{
     Debug.debug("Number of versions found: "+versions.length,3);
 
     if(versions.length==0){
-
       pVersion.add(new JLabel("No versions found."));
-      versionChosen = false;
-
     }
     else if(versions.length==1){
-
       version = versions[0];
       pVersion.add(new JLabel("Version:" + version));
-
-        versionChosen = true;
-        editDataset(datasetID, transformation, version);
+      editDataset(datasetID, transformation, version);
     }
     else{
       cbTransVersionSelection = new JComboBox();
@@ -551,7 +520,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
           }
         }
       );
-      versionChosen = false;
     }
 
     ct.gridx = 1;
@@ -565,25 +533,32 @@ public class DatasetCreationPanel extends CreateEditPanel{
 
   private void cbTransformationSelection_actionPerformed(){
     if(cbTransformationSelection.getSelectedItem()==null){
-        //transformation = cbTransformationSelection.getItemAt(0).toString();
         return;
     }
     else{
         transformation = cbTransformationSelection.getSelectedItem().toString();
     }
-    transformationChosen = true;
     initTransVersionPanel(Integer.parseInt(datasetID), transformation);
   }
 
   private void cbTransVersionSelection_actionPerformed(){
     if(cbTransVersionSelection.getSelectedItem()==null){
-      //transformation = cbTransVersionSelection.getItemAt(0).toString();
       return;
     }
     else{
       version = cbTransVersionSelection.getSelectedItem().toString();
+      Database.DBResult res = dbPluginMgr.getTransformations();
+      for(int j=0; j<res.values.length; ++j){
+        if(res.getValue(j, "name").toString().equalsIgnoreCase(transformation) &&
+          res.getValue(j, "version").toString().equalsIgnoreCase(version)){
+          String transformationIdentifier = dbPluginMgr.getIdentifier(
+              dbPluginMgr.getDBName(), "transformation");
+          transformationFK = res.getValue(j, transformationIdentifier).toString();
+          Debug.debug("Setting transformation FK: "+transformationFK, 3);
+          break;
+        }
+      }
     }
-    versionChosen = true;
     editDataset(Integer.parseInt(datasetID), transformation, version);
   }
 
@@ -626,55 +601,150 @@ public class DatasetCreationPanel extends CreateEditPanel{
     return v;
   }
 
-  /*private JTextComponent createTextComponent(){
-    JTextArea ta = new JTextArea();
-    ta.setBorder(new JTextField().getBorder());
-    ta.setWrapStyleWord(true);
-    ta.setLineWrap(true);
-    return ta;
-  }*/
+  private void initTargetDBsPanel(){
+  	
+    Debug.debug("Finding target dataset databases...",3);
   
-  /*private JTextComponent createTextComponent(int cols){
-    JTextField tf = new JTextField("", cols);
-    return tf;
-  }*/
+    pTargetDBs.removeAll();
+    pTargetDBs.setLayout(new FlowLayout());
   
-  /*private JTextComponent createTextComponent(String str){
-    int length;
-    if(str.length()>10){
-      length = str.length()-5;
-    }
-    else{
-      length = 6;
-    }
-    JTextArea ta = new JTextArea(str, 1, length);
-    ta.setBorder(new JTextField().getBorder());
-    ta.setWrapStyleWord(true);
-    ta.setLineWrap(true);
-    return ta;
-  }*/
+    cbTargetDBSelection = new JComboBox();
+    
+    cbTargetDBSelection.addItem("");
+    for(int i=0; i<GridPilot.dbs.length; ++i){
+      cbTargetDBSelection.addItem(GridPilot.dbs[i]);
+     }
+
+    jlTargetDBSelection = new JLabel("DB:");
+    pTargetDBs.add(jlTargetDBSelection, null);
+    pTargetDBs.add(cbTargetDBSelection, null);
+    
+    cbTargetDBSelection.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(java.awt.event.ActionEvent e){
+        cbTargetDBSelection_actionPerformed();
+    }});
   
-  private static String getJTextOrEmptyString(JComponent comp, boolean editing){
-    String name = "";
-    String label = "";
-    String text = "";
-    String [] ses;
-    JComponent com;
-    if(comp.getClass().isInstance(new JTextArea())||
-        comp.getClass().isInstance(new JTextField())){
-      text =  ((JTextComponent) comp).getText();
-    }
-    else if(comp.getClass().isInstance(new JComboBox())){
-      if(((JComboBox) comp).getSelectedItem()==null){
-        text = "";
-      }
-      else{
-        text = ((JComboBox) comp).getSelectedItem().toString();
-      }
-    }
-    else{
-      Debug.debug("WARNING: unsupported component type "+comp.getClass().toString(), 1);
-    }
-    return text;
+    add(pTargetDBs, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.01
+        ,GridBagConstraints.NORTH, GridBagConstraints.BOTH,
+        new Insets(0, 0, 0, 0), 0, 0));
+      
+    updateUI();
   }
+
+  /**
+   * Action Events
+   */
+  
+  /**
+   * Modify attributes according to target database selected:
+   * map source fields to target fields if possible.
+   */
+  private void cbTargetDBSelection_actionPerformed(){
+    if(cbTargetDBSelection.getSelectedItem()==null){
+      return;
+    }
+    // only do anything if there are input dataset(s) selected
+    if(datasetIDs[0]>0){
+      return;
+    }
+    String [] sourceFields = cstAttributesNames;
+    String [] sourceAttr = new String[cstAttributesNames.length];
+    for(int i=0; i<tcCstAttributes.length; ++i){
+      sourceAttr[i] = Util.getJTextOrEmptyString(tcCstAttributes[i]);
+    }
+    targetDB = cbTargetDBSelection.getSelectedItem().toString();
+    String [] targetFields = GridPilot.getClassMgr().getDBPluginMgr(
+        targetDB).getFieldNames("dataset");
+    String [] targetAttr = new String[targetFields.length];
+    for(int j=0; j<targetFields.length; ++j){ 
+      targetAttr[j] = "";
+      //Do the mapping.
+      for(int k=0; k<sourceFields.length; ++k){
+        if(sourceFields[k].equalsIgnoreCase(targetFields[j])){
+          targetAttr[j] = sourceAttr[k];
+          break;
+        }
+      }
+      // Get values from source dataset in question, excluding
+      // transformationFK and any other filled-in values.
+      // Construct name for new target dataset.
+      if(targetFields[j].equalsIgnoreCase("transformationFK") ||
+          targetFields[j].equalsIgnoreCase("transFK")){
+      }
+      else if(targetFields[j].equalsIgnoreCase(
+          dbPluginMgr.getName(targetDB, "dataset"))){
+        targetAttr[j] = dbPluginMgr.getTargetDatasetName(
+            targetDB, dbPluginMgr.getDatasetName(datasetIDs[0]),
+            transformationFK);
+      }
+      //else if(targetFields[j].equalsIgnoreCase("runNumber")){
+      //  targetAttr[j] = dbPluginMgr.getRunNumber(datasetIDs[0]);
+      //}
+      else if(targetFields[j].equalsIgnoreCase("InputDataset")){
+        targetAttr[j] = dbPluginMgr.getDatasetName(datasetIDs[0]);
+      }
+      else if(targetFields[j].equalsIgnoreCase("InputDB")){
+        targetAttr[j] = dbPluginMgr.getDBName();
+      }
+      else if(targetFields[j].equalsIgnoreCase("identifier") ||
+          targetFields[j].equalsIgnoreCase("percentageValidatedFiles") ||
+          targetFields[j].equalsIgnoreCase("percentageFailedFiles ") ||
+          //targetFields[j].equalsIgnoreCase("totalFiles") ||
+          //targetFields[j].equalsIgnoreCase("totalEvents") ||
+          targetFields[j].equalsIgnoreCase("averageEventSize") ||
+          targetFields[j].equalsIgnoreCase("totalDataSize") ||
+          targetFields[j].equalsIgnoreCase("averageCPUTime") ||
+          targetFields[j].equalsIgnoreCase("totalCPUTime") ||
+          targetFields[j].equalsIgnoreCase("created") ||
+          targetFields[j].equalsIgnoreCase("lastModified") ||
+          targetFields[j].equalsIgnoreCase("lastStatusUpdate")){
+        targetAttr[j] = "";
+      }
+      // For unset fields:
+      // see if attribute is in target dataset and set. If not, ignore.
+      else if(targetAttr[j]==null || targetAttr[j].equals("")){
+        boolean fieldPresent = false;
+        DBRecord inputDataset0 = dbPluginMgr.getDataset(datasetIDs[0]);
+        for(int l=0; l<sourceFields.length; ++l){
+          if(targetFields[j].equalsIgnoreCase(sourceFields[l])){
+            fieldPresent = true;
+            break;
+          }
+        }
+        if(fieldPresent){
+          try{
+            if(inputDataset0.getValue(targetFields[j])!=null){
+              targetAttr[j] = inputDataset0.getValue(targetFields[j]).toString();
+            }
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+        }
+      }
+    }
+    
+    cstAttributesNames = targetFields;
+    tcCstAttributes = null;
+    Debug.debug("initAttributePanel", 3);
+    initAttributePanel();
+    Debug.debug("initAttributePanel done, setting values, "+targetAttr.length+", "+tcCstAttributes.length, 3);
+    for(int i=0; i<tcCstAttributes.length; ++i){
+      Debug.debug("Setting "+targetFields[i]+"->"+targetAttr[i], 3);
+      Util.setJText(tcCstAttributes[i], targetAttr[i]);
+      if((cstAttributesNames[i].equalsIgnoreCase("runNumber") ||
+          cstAttributesNames[i].equalsIgnoreCase("InputDataset") ||
+          cstAttributesNames[i].equalsIgnoreCase("InputDB") ||
+          cstAttributesNames[i].equalsIgnoreCase("transformationFK") ||
+          cstAttributesNames[i].equalsIgnoreCase("transFK"))){         
+        try{
+          Util.setJEditable(tcCstAttributes[i], false);
+        }
+        catch(java.lang.Exception e){
+        	Debug.debug("Attribute not found, "+e.getMessage(),1);
+        }
+      }
+    }
+  }
+
 }

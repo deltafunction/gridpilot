@@ -1,6 +1,5 @@
 package gridpilot;
 
-import java.util.*;
 import javax.swing.*;
 import java.awt.*;
 
@@ -13,12 +12,7 @@ public class DatasetUpdater{
   private boolean showResults;
   private String [] cstAttr;
   private StatusBar statusBar;
-  private String [] resCstAttr;
   private String [] cstAttrNames;
-  private static Vector vCstAttr = new Vector();
-  private static Vector vDataset = new Vector();
-  private static JProgressBar pb = new JProgressBar();
-  private static Object semaphoreDBCreation = new Object();
   private DBPluginMgr dbPluginMgr;
   private Object[] showResultsOptions = {"OK",  "Cancel"};
 
@@ -32,11 +26,7 @@ public class DatasetUpdater{
     identifier = _identifier;
     showResults = _showResults;
     cstAttr = _cstAttr;
-
     cstAttrNames =  _cstAttrNames;
-
- 	  resCstAttr = _cstAttr;
-
     statusBar = GridPilot.getClassMgr().getStatusBar();
     dbPluginMgr = _dbPluginMgr;
 
@@ -45,59 +35,46 @@ public class DatasetUpdater{
 
   private void updateDataset(){
 
-    boolean skipAll = false;
     boolean skip = false;
     boolean showThis;
 
     showThis = showResults;
 
     if(showThis){
-      int choice = showResult(resCstAttr);
+      int choice = showResult();
       switch(choice){
         case 0  : skip = false;  break;  // OK
-        case 1  : skip = true;   skipAll = true; // Skip all
-        default : skip = true;   skipAll = true; // other (closing the dialog). Same action as "Cancel"
+        case 1  : skip = true; // Skip
+        default : skip = true;
       }
     }
     if(!skip){
-      vDataset.add(new Integer(0));
-      vCstAttr.add(resCstAttr.clone());
-    }
-    if(!skipAll){
       updateDBDataset();
     }
   }
 
   private void updateDBDataset(){
-    synchronized(semaphoreDBCreation){
-      while(!vDataset.isEmpty()){
-		    int part = ((Integer) vDataset.remove(0)).intValue();
-        resCstAttr = (String [] ) vCstAttr.remove(0);
-
-        statusBar.setLabel("Updating dataset  ...");
-        pb.setValue(pb.getValue()+1);
-        
-        if(!dbPluginMgr.updateDataset(identifier, cstAttrNames, resCstAttr)){
-            JOptionPane.showMessageDialog(JOptionPane.getRootFrame(), "Datatset cannot be updated");
-            vDataset.removeAllElements();
-          statusBar.setLabel("Updated NOT succeeded.");
-        }
-        else{
-          statusBar.setLabel("Updated succeeded.");
-        }
-      }
+    if(!dbPluginMgr.updateDataset(identifier, cstAttrNames, cstAttr)){
+      JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
+          "ERROR: dataset cannot be updated.\n"+
+          dbPluginMgr.getError(),
+          "", JOptionPane.PLAIN_MESSAGE);
+      statusBar.setLabel("Updated NOT succeeded.");
+    }
+    else{
+      statusBar.setLabel("Updated succeeded.");
     }
   }
 
 
-  private int showResult(String [] resCstAttr){
+  private int showResult(){
 
     JPanel pResult = new JPanel(new GridBagLayout());
     int row = 0;
 
     for(int i =0; i<cstAttr.length; ++i, ++row){
       if(cstAttrNames[i].equals("init")){
-        JTextArea ta = new JTextArea(resCstAttr[i]);
+        JTextArea ta = new JTextArea(cstAttr[i]);
         ta.setWrapStyleWord(true);
         ta.setLineWrap(true);
         ta.setEditable(false);
@@ -107,16 +84,28 @@ public class DatasetUpdater{
       else{
         pResult.add(new JLabel(cstAttrNames[i] + " : "), new GridBagConstraints(0, row, 1, 1, 0.0, 0.0
             ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
-            pResult.add(new JLabel(resCstAttr[i]), new GridBagConstraints(1, row, 3, 1, 1.0, 0.0
+            pResult.add(new JLabel(cstAttr[i]), new GridBagConstraints(1, row, 3, 1, 1.0, 0.0
                 ,GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
       }
     }
 
 
     JScrollPane sp = new JScrollPane(pResult);
-    sp.setPreferredSize(new Dimension(500,
-                                      (int)pResult.getPreferredSize().getHeight() +
-                                      (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5));
+    int height = (int)pResult.getPreferredSize().getHeight() +
+    (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5;
+    int width = (int)pResult.getPreferredSize().getWidth() +
+    (int)sp.getVerticalScrollBar().getPreferredSize().getWidth() + 5;
+    Dimension screenSize = new Dimension(Toolkit.getDefaultToolkit().getScreenSize());
+    if (height>screenSize.height){
+      height = 700;
+      Debug.debug("Screen height exceeded, setting "+height, 2);
+    }
+    if (width>screenSize.width){
+      width = 550;
+      Debug.debug("Screen width exceeded, setting "+width, 2);
+    }
+    Debug.debug("Setting size "+width+":"+height, 3);
+    sp.setPreferredSize(new Dimension(width, height));
 
     JOptionPane op = new JOptionPane(sp,
                                      JOptionPane.QUESTION_MESSAGE,

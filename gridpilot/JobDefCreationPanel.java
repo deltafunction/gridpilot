@@ -59,7 +59,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
   private DBPluginMgr dbPluginMgr = null;
   private String jobTransNameColumn = "jobTrans";
   public int taskID = -1;
-  private String taskName;
+  private String datasetName;
   
   public static JComponent [] oldTcCstAttributes;
   public static String oldJobTransFK = "-1";
@@ -85,12 +85,12 @@ public class JobDefCreationPanel extends CreateEditPanel{
     if(taskMgr!=null){
       dbPluginMgr = taskMgr.getDBPluginMgr();
       taskID = taskMgr.getDatasetID();
-      taskName = taskMgr.getDatasetName();
+      datasetName = taskMgr.getDatasetName();
     }
     else{
       taskID = -1;
       dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
-      taskName = "";
+      datasetName = "";
     }
 
     
@@ -159,7 +159,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
   public void initGUI(){
 
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
-        Color.white,new Color(165, 163, 151)),taskName));
+        Color.white,new Color(165, 163, 151)),datasetName));
     
     spAttributes.setPreferredSize(new Dimension(550, 500));
     spAttributes.setMinimumSize(new Dimension(550, 500));
@@ -794,7 +794,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
     int i=1;
     while(tfs.hasMoreElements() && i<defValues.length){
       JTextComponent tf = (JTextComponent) tfs.nextElement();
-      setJText(tf, defValues[i].trim());
+      Util.setJText(tf, defValues[i].trim());
       ++i;
     }
   }
@@ -810,45 +810,6 @@ public class JobDefCreationPanel extends CreateEditPanel{
     return v;
   }
 
-  public JTextComponent createTextComponent(){
-    JTextArea ta = new JTextArea();
-    ta.setBorder(new JTextField().getBorder());
-    ta.setWrapStyleWord(true);
-    ta.setLineWrap(true);
-    return ta;
-  }
-  
-  public JTextComponent createTextComponent(int cols){
-    JTextField tf = new JTextField("", cols);
-    return tf;
-  }
-  
-  public JTextComponent createTextComponent(String str){
-    int length;
-    if(str.length()>10){
-      length = str.length()-5;
-    }
-    else{
-      length = 6;
-    }
-    JTextArea ta = new JTextArea(str, 1, length);
-    ta.setBorder(new JTextField().getBorder());
-    ta.setWrapStyleWord(true);
-    ta.setLineWrap(true);
-    return ta;
-  }
-  
-  public static String setJText(JComponent comp, String text){
-    if(comp.getClass().isInstance(new JTextArea()) ||
-        comp.getClass().isInstance(new JTextField())){
-      ((JTextComponent) comp).setText(text);
-    }
-    else if(/*text!=null && !text.equals("") && */comp.getClass().isInstance(new JComboBox())){
-      ((JComboBox) comp).setSelectedItem(text);
-    }
-    return text;
-  }
-  
   public void clearPanel(){
     dbPluginMgr.clearPanel(
         cstAttributesNames,

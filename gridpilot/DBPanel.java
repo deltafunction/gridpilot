@@ -126,8 +126,8 @@ public class DBPanel extends JPanel implements JobPanel{
     
     
     // Pass on only non-hidden fields to
-    // Table. Dropped - Table hides fields...
-    /*Vector fieldSet = new Vector();
+    // Table. Perhaps rethink: - Table hides fields...
+    Vector fieldSet = new Vector();
     boolean ok;
     for(int i=0; i<fieldNames.length; ++i){
       ok = true;
@@ -146,7 +146,7 @@ public class DBPanel extends JPanel implements JobPanel{
     fieldNames = new String[fieldSet.size()];
     for(int i=0; i<fieldSet.size(); ++i){
       fieldNames[i] = fieldSet.get(i).toString();
-    }*/
+    }
     
     tableResults = new Table(hiddenFields, fieldNames,
         GridPilot.colorMapping);
@@ -439,19 +439,19 @@ public class DBPanel extends JPanel implements JobPanel{
     else if(tableName.equalsIgnoreCase("transformation")){
       bCreateRecords.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          createJobTransRecords();
+          createTransformation();
         }
       });
 
       bEditRecord.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          editJobTransRecord();
+          editTransformation();
         }
       });
 
       bDeleteRecord.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          deleteJobTransRecords();
+          deleteTransformations();
         }
       });
       
@@ -468,19 +468,19 @@ public class DBPanel extends JPanel implements JobPanel{
     else if(tableName.equalsIgnoreCase("package")){
       bCreateRecords.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          createJobTransRecords();
+          createPackage();
         }
       });
 
       bEditRecord.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          editJobTransRecord();
+          editPackage();
         }
       });
 
       bDeleteRecord.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          deleteJobTransRecords();
+          deleteTransformations();
         }
       });
       
@@ -631,7 +631,7 @@ public class DBPanel extends JPanel implements JobPanel{
         }
 
         if(tableName.equalsIgnoreCase("dataset")){
-          tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+          tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
           tableResults.addListSelectionListener(new ListSelectionListener(){
             public void valueChanged(ListSelectionEvent e){
               if (e.getValueIsAdjusting()) return;
@@ -679,7 +679,22 @@ public class DBPanel extends JPanel implements JobPanel{
             }
           });
 
-          makeJobTransMenu();
+          makeTransformationMenu();
+        }
+        else if(tableName.equalsIgnoreCase("package")){
+          tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+          tableResults.addListSelectionListener(new ListSelectionListener(){
+            public void valueChanged(ListSelectionEvent e){
+              if (e.getValueIsAdjusting()) return;
+              ListSelectionModel lsm = (ListSelectionModel)e.getSource();
+              Debug.debug("lsm indices: "+
+                  lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
+              bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
+              bEditRecord.setEnabled(!lsm.isSelectionEmpty());
+            }
+          });
+
+          makeTransformationMenu();
         }
         
         GridPilot.getClassMgr().getStatusBar().setLabel("Records found: "+tableResults.getRowCount(), 20);
@@ -706,7 +721,6 @@ public class DBPanel extends JPanel implements JobPanel{
   public void makeDatasetMenu(){
     Debug.debug("Making dataset menu", 3);
     JMenuItem miViewJobDefinitions = new JMenuItem("Show job definitions");
-    JMenuItem miViewJobTransRecords = new JMenuItem("Show transformations");
     miViewJobDefinitions.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         viewJobDefinitions();
@@ -725,31 +739,49 @@ public class DBPanel extends JPanel implements JobPanel{
       }
     });
     miViewJobDefinitions.setEnabled(true);
-    miViewJobTransRecords.setEnabled(true);
     miDelete.setEnabled(true);
     miEdit.setEnabled(true);
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miViewJobDefinitions);
     tableResults.addMenuSeparator();
-    tableResults.addMenuItem(miViewJobTransRecords);
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miDelete);
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miEdit);
   }
 
-  public void makeJobTransMenu(){
-    Debug.debug("Making jobTrans menu", 3);
+  public void makeTransformationMenu(){
+    Debug.debug("Making transformation menu", 3);
     JMenuItem miDelete = new JMenuItem("Delete");
     miEdit = new JMenuItem("Edit");
     miDelete.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        deleteJobTransRecords();
+        deleteTransformations();
       }
     });
     miEdit.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        editJobTransRecord();
+        editTransformation();
+      }
+    });
+    miDelete.setEnabled(true);
+    miEdit.setEnabled(true);
+    tableResults.addMenuSeparator();
+    tableResults.addMenuItem(miDelete);
+    tableResults.addMenuItem(miEdit);
+  }
+  public void makePackageMenu(){
+    Debug.debug("Making package menu", 3);
+    JMenuItem miDelete = new JMenuItem("Delete");
+    miEdit = new JMenuItem("Edit");
+    miDelete.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        deletePackages();
+      }
+    });
+    miEdit.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        editPackage();
       }
     });
     miDelete.setEnabled(true);
@@ -1025,9 +1057,9 @@ public class DBPanel extends JPanel implements JobPanel{
   }
 
   /**
-   * Open dialog with jobTrans creation panel
+   * Open dialog with transformation creation panel
    */ 
-  private void createJobTransRecords(){
+  private void createTransformation(){
     CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
           new TransformationCreationPanel(dbPluginMgr, tableResults, false), false, false);
@@ -1037,8 +1069,21 @@ public class DBPanel extends JPanel implements JobPanel{
       searchRequest();
     }*/
   }
+  /**
+   * Open dialog with package creation panel
+   */ 
+  private void createPackage(){
+    CreateEditDialog pDialog = new CreateEditDialog(
+       GridPilot.getClassMgr().getGlobalFrame(),
+          new PackageCreationPanel(dbPluginMgr, tableResults, false), false, false);
+    pDialog.setTitle(tableName);
+    pDialog.setVisible(true);
+    /*if(tableResults!=null && tableResults.getRowCount()>0){
+      searchRequest();
+    }*/
+  }
 
-  private void editJobTransRecord(){
+  private void editTransformation(){
     CreateEditDialog pDialog = new CreateEditDialog(
        GridPilot.getClassMgr().getGlobalFrame(),
           new TransformationCreationPanel(dbPluginMgr, tableResults, true), true, false);
@@ -1046,8 +1091,17 @@ public class DBPanel extends JPanel implements JobPanel{
     pDialog.setVisible(true);
     /*searchRequest();*/
   }
+  
+  private void editPackage(){
+    CreateEditDialog pDialog = new CreateEditDialog(
+       GridPilot.getClassMgr().getGlobalFrame(),
+          new PackageCreationPanel(dbPluginMgr, tableResults, true), true, false);
+    pDialog.setTitle(tableName);
+    pDialog.setVisible(true);
+    /*searchRequest();*/
+  }
 
-  private void deleteJobTransRecords(){
+  private void deleteTransformations(){
     String msg = "Are you sure you want to delete transformation records ";
     int [] ids = getSelectedIdentifiers();
     for(int i=0; i<getSelectedIdentifiers().length; ++i){
@@ -1074,6 +1128,44 @@ public class DBPanel extends JPanel implements JobPanel{
           pb.setMaximum(ids.length);
           for(int i = ids.length-1; i>=0; i--){
             boolean success = dbPluginMgr.deleteTransformation(ids[i]);
+            pb.setValue(pb.getValue()+1);
+            tableResults.removeRow(rows[i]);
+            tableResults.tableModel.fireTableDataChanged();
+          }
+        }
+        stopWorking();
+        searchRequest();
+      }
+    };
+    workThread.start();
+  }
+  private void deletePackages(){
+    String msg = "Are you sure you want to delete package records ";
+    int [] ids = getSelectedIdentifiers();
+    for(int i=0; i<getSelectedIdentifiers().length; ++i){
+      msg += ", " + ids[i];
+    }
+    msg += "?";
+    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
+        msg, "Delete?",
+        JOptionPane.YES_NO_OPTION);
+    if(choice == JOptionPane.NO_OPTION){
+      return;
+    }
+    workThread = new Thread(){
+      public void run(){
+        if(!getWorking()){
+          Debug.debug("please wait ...", 2);
+          return;
+        }
+        int [] ids = getSelectedIdentifiers();
+        int [] rows = tableResults.getSelectedRows();
+        Debug.debug("Deleting "+ids.length+" rows", 2);
+        if(ids.length != 0){
+          JProgressBar pb = new JProgressBar();
+          pb.setMaximum(ids.length);
+          for(int i = ids.length-1; i>=0; i--){
+            boolean success = dbPluginMgr.deletePackage(ids[i]);
             pb.setValue(pb.getValue()+1);
             tableResults.removeRow(rows[i]);
             tableResults.tableModel.fireTableDataChanged();

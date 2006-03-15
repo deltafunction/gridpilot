@@ -12,17 +12,11 @@ public class TransformationCreator{
 
   private boolean showResults;
   private String [] cstAttr;
-
   private String [] resCstAttr;
-
   private String [] cstAttrNames;
-  
   private boolean editing;
-
   private static Object semaphoreDBCreation = new Object();
-
   private Object[] showResultsOptions = {"OK", "Skip"};
-
   private DBPluginMgr dbPluginMgr = null;
 
   public TransformationCreator(
@@ -36,15 +30,11 @@ public class TransformationCreator{
     dbPluginMgr = _dbPluginMgr;
     showResults = _showResults;
     cstAttr = _cstAttr;
-
     cstAttrNames =  _cstAttrNames;
-    
     editing = _editing;
     
-    Debug.debug("Are we editing? "+editing,3);
-
     resCstAttr = new String[cstAttr.length];
-
+    Debug.debug("Are we editing? "+editing,3);
     createTransformationRecord();
   }
 
@@ -53,7 +43,7 @@ public class TransformationCreator{
 
     switch(choice){
       case 0  : break;  // OK
-      case 2  : return; // Skip
+      case 1  : return; // Skip
       default : return;
     }
 
@@ -71,14 +61,16 @@ public class TransformationCreator{
       }
       Debug.debug("Updating...", 3);
       if(!dbPluginMgr.updateTransformation(id, cstAttrNames, resCstAttr)){
-        JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "transformation" +
-            " cannot be updated", "", JOptionPane.OK_OPTION);
+        JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
+            "Transformation cannot be updated.\n"+
+          dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
       }
     }
     else{
       if(!dbPluginMgr.createTransformation(resCstAttr)){
-        JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "transformation" +
-            " cannot be created", "", JOptionPane.OK_OPTION);
+        JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
+            "Transformation cannot be created.\n"+
+          dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
       }
     }     
   }
@@ -122,12 +114,21 @@ public class TransformationCreator{
     }
 
     JScrollPane sp = new JScrollPane(pResult);
-    int size1 = (int)pResult.getPreferredSize().getHeight() +
-    	(int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5;
+    int height = (int)pResult.getPreferredSize().getHeight() +
+    (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5;
+    int width = (int)pResult.getPreferredSize().getWidth() +
+    (int)sp.getVerticalScrollBar().getPreferredSize().getWidth() + 5;
     Dimension screenSize = new Dimension(Toolkit.getDefaultToolkit().getScreenSize());
-    if (size1 > screenSize.height) size1 = 500;
-      Debug.debug(Integer.toString(size1), 2);
-    sp.setPreferredSize(new Dimension(500,size1));
+    if (height>screenSize.height){
+      height = 700;
+      Debug.debug("Screen height exceeded, setting "+height, 2);
+    }
+    if (width>screenSize.width){
+      width = 550;
+      Debug.debug("Screen width exceeded, setting "+width, 2);
+    }
+    Debug.debug("Setting size "+width+":"+height, 3);
+    sp.setPreferredSize(new Dimension(width, height));
 
     JOptionPane op = new JOptionPane(sp,
                                      JOptionPane.QUESTION_MESSAGE,

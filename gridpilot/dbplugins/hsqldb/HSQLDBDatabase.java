@@ -29,6 +29,7 @@ public class HSQLDBDatabase implements Database{
   private String user = "";
   private String passwd = "";
   private Connection conn = null;
+  private String error = "";
   
   private String [] transformationFields = null;
   private String [] jobDefFields = null;
@@ -66,6 +67,12 @@ public class HSQLDBDatabase implements Database{
       }
       if(connect()!=null){
         break;
+      }
+      Debug.debug("WARNING: connection to HSQLDB failed, retrying.", 1);
+      try{
+        Thread.sleep(5000);
+      }
+      catch(Exception e){
       }
     }
     setFieldNames();
@@ -155,7 +162,9 @@ public class HSQLDBDatabase implements Database{
     catch(Exception e){
       execok = false;
       Debug.debug(e.getMessage(), 2);
-    };
+      e.printStackTrace();
+      error = e.getMessage();
+    }
     return execok;
   }
     
@@ -165,19 +174,6 @@ public class HSQLDBDatabase implements Database{
 
   public synchronized void clearCaches(){
     // nothing for now
-  }
-
-  public synchronized int createPart(int datasetID, String lfn, String partNr,
-      String evMin, String evMax,
-      String transID, String [] trpars,
-      String [] [] ofmap, String odest, String edest){
-    // nothing for now
-    return -1;
-  }
-  
-  public synchronized boolean deletePart(int partID){
-    // nothing for now
-    return false;
   }
 
   public synchronized boolean dereserveJobDefinition(int partID){
@@ -365,7 +361,7 @@ public class HSQLDBDatabase implements Database{
         else{
           Debug.debug("WARNING: identifier null", 1);
         }
-      };
+      }
       rset.close();  
     }
     catch(Exception e){
@@ -536,7 +532,7 @@ public class HSQLDBDatabase implements Database{
         }
         DBRecord jobd = new DBRecord(datasetFields, values);
         taskVector.add(jobd);
-      };
+      }
       rset.close();
       if(taskVector.size()==0){
         Debug.debug("ERROR: No dataset with id "+datasetID, 1);
@@ -563,6 +559,55 @@ public class HSQLDBDatabase implements Database{
     return getDataset(datasetID).getValue("runNumber").toString();
   }
 
+  public synchronized DBRecord getPackage(int packageID){
+    
+    DBRecord pack = null;
+    String req = "SELECT "+packageFields[0];
+    if(packageFields.length>1){
+      for(int i=1; i<packageFields.length; ++i){
+        req += ", "+packageFields[i];
+      }
+    }
+    req += " FROM package";
+    req += " WHERE identifier = '"+ packageID+"'";
+    try{
+      Debug.debug(">> "+req, 3);
+      ResultSet rset = conn.createStatement().executeQuery(req);
+      Vector packageVector = new Vector();
+      String [] jt = new String[packageFields.length];
+      int i = 0;
+      while(rset.next()){
+        jt = new String[packageFields.length];
+        for(int j=0; j<packageFields.length; ++j){
+          try{
+            jt[j] = rset.getString(j+1);
+          }
+          catch(Exception e){
+            Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
+                packageFields[j]+". "+e.getMessage(),1);
+          }
+        }
+        Debug.debug("Adding value "+jt[0], 3);
+        packageVector.add(new DBRecord(packageFields, jt));
+        Debug.debug("Added value "+((DBRecord) packageVector.get(i)).getAt(0), 3);
+        ++i;
+      }
+      if(i==0){
+        Debug.debug("ERROR: No package found with id "+packageID, 1);
+      }
+      else{
+        pack = ((DBRecord) packageVector.get(0));
+      }
+      if(i>1){
+        Debug.debug("WARNING: More than one ("+rset.getRow()+") package found with id "+packageID, 1);
+      }
+    }
+    catch(SQLException e){
+      Debug.debug("WARNING: No package with id "+packageID+". "+e.getMessage(), 1);
+    }
+     return pack;
+  }
+  
   public synchronized DBRecord getTransformation(int transformationID){
     
     DBRecord transformation = null;
@@ -585,7 +630,8 @@ public class HSQLDBDatabase implements Database{
         for(int j=0; j<transformationFields.length; ++j){
           try{
             jt[j] = rset.getString(j+1);
-          }catch(Exception e){
+          }
+          catch(Exception e){
             Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
                 transformationFields[j]+". "+e.getMessage(),1);
           }
@@ -643,7 +689,8 @@ public class HSQLDBDatabase implements Database{
         for(int j=0; j<transformationFields.length; ++j){
           try{
             jt[j] = rset.getString(j+1);
-          }catch(Exception e){
+          }
+          catch(Exception e){
             Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
                 transformationFields[j]+". "+e.getMessage(),1);
           }
@@ -699,7 +746,7 @@ public class HSQLDBDatabase implements Database{
     		}
     		DBRecord jobd = new DBRecord(jobDefFields, values);
 			  jobdefv.add(jobd);
-    	};
+    	}
     	rset.close();
     }
     catch(Exception e){
@@ -766,7 +813,7 @@ public class HSQLDBDatabase implements Database{
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
-    };
+    }
     DBRecord[] defs = new DBRecord[jobdefv.size()];
     for(int i=0; i<jobdefv.size(); i++) defs[i] = (DBRecord)jobdefv.get(i);
     jobdefv.removeAllElements();
@@ -778,6 +825,12 @@ public class HSQLDBDatabase implements Database{
   public synchronized DBResult getTransformations(){
     DBRecord jt [] = getTransformationRecords();
     DBResult res = new DBResult(transformationFields.length, jt.length);
+    res.fields = transformationFields;
+    for(int i=0; i<jt.length; ++i){
+      for(int j=0; j<jt.length; ++j){
+        res.values[i][j] = jt[i].values[j];
+      }
+    }
     return res;
   }
   
@@ -870,9 +923,10 @@ public class HSQLDBDatabase implements Database{
     catch(Exception e){
       execok = false;
       Debug.debug(e.getMessage(), 2);
-    };
+      error = e.getMessage();
+    }
     return execok;
-  };
+  }
   
   public synchronized boolean createRunInfo(JobInfo jobInfo){
     // TODO: implement
@@ -950,9 +1004,10 @@ public class HSQLDBDatabase implements Database{
     catch(Exception e){
       execok = false;
       Debug.debug(e.getMessage(), 2);
-    };
+      error = e.getMessage();
+    }
     return execok;
-  };
+  }
 
   public synchronized boolean createTransformation(String [] values){
 
@@ -999,9 +1054,60 @@ public class HSQLDBDatabase implements Database{
     catch(Exception e){
       execok = false;
       Debug.debug(e.getMessage(), 2);
-    };
+      error = e.getMessage();
+    }
     return execok;
-  };
+  }
+
+  public synchronized boolean createPackage(String [] values){
+  
+    String sql = "INSERT INTO package (";
+    for(int i=1; i<packageFields.length; ++i){
+      sql += packageFields[i];
+      if(packageFields.length>2 && i<packageFields.length - 1){
+        sql += ",";
+      }
+    }
+    sql += ") VALUES (";
+    for(int i=1; i<packageFields.length; ++i){
+      
+      if(packageFields[i].equalsIgnoreCase("creationTime") ||
+          packageFields[i].equalsIgnoreCase("modificationTime")){
+        try{
+          SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+          java.util.Date date = df.parse(values[i]);
+          String dateString = df.format(date);
+          values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
+        }
+        catch(Throwable e){
+          Debug.debug("Could not set date. "+e.getMessage(), 1);
+          e.printStackTrace();
+        }
+      }
+      else{
+        values[i] = "'"+values[i]+"'";
+      }
+  
+      sql += values[i];
+      if(packageFields.length>1 && i<packageFields.length - 1){
+        sql += ",";
+      }
+    }
+    sql += ")";
+    Debug.debug(sql, 2);
+    boolean execok = true;
+    try{
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+      conn.commit();
+    }
+    catch(Exception e){
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+    }
+    return execok;
+  }
   
   public synchronized boolean setJobDefsField(int [] identifiers,
       String field, String value){
@@ -1025,11 +1131,13 @@ public class HSQLDBDatabase implements Database{
       conn.commit();
     }
     catch(Exception e){
-      execok = false; Debug.debug(e.getMessage(), 2);
-    };
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+    }
     Debug.debug("update exec: "+execok, 2);
     return execok;
-  };
+  }
   
   public synchronized boolean updateJobDefStatus(int jobDefID,
       String status){
@@ -1055,11 +1163,15 @@ public class HSQLDBDatabase implements Database{
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
           fields.length+"!="+values.length, 1);
+      error = "The number of fields and values do not agree, "+
+         fields.length+"!="+values.length;
       return false;
     }
     if(fields.length>jobDefFields.length){
       Debug.debug("The number of fields is too large, "+
           fields.length+">"+jobDefFields.length, 1);
+      error = "The number of fields is too large, "+
+         fields.length+">"+jobDefFields.length;
     }
 
     String sql = "UPDATE jobDefinition  SET ";
@@ -1114,11 +1226,13 @@ public class HSQLDBDatabase implements Database{
     	conn.commit();
     }
     catch(Exception e){
-      execok = false; Debug.debug(e.getMessage(), 2);
-    };
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+    }
     Debug.debug("update exec: "+execok, 2);
     return execok;
-  };
+  }
   
   public synchronized boolean updateRunInfo(JobInfo jobInfo){
     // TODO: implement
@@ -1131,6 +1245,8 @@ public class HSQLDBDatabase implements Database{
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
           fields.length+"!="+values.length, 1);
+      error = "The number of fields and values do not agree, "+
+         fields.length+"!="+values.length;
       return false;
     }
     if(fields.length>datasetFields.length){
@@ -1183,11 +1299,13 @@ public class HSQLDBDatabase implements Database{
       stmt.executeUpdate(sql);
     }
     catch(Exception e){
-      execok = false; Debug.debug(e.getMessage(), 2);
-    };
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+    }
     Debug.debug("update exec: "+execok, 2);
     return execok;
-  };
+  }
 
   public synchronized boolean updateTransformation(int transformationID, String [] fields,
       String [] values){
@@ -1195,11 +1313,15 @@ public class HSQLDBDatabase implements Database{
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
           fields.length+"!="+values.length, 1);
+      error = "The number of fields and values do not agree, "+
+         fields.length+"!="+values.length;
       return false;
     }
     if(fields.length>transformationFields.length){
       Debug.debug("The number of fields is too large, "+
           fields.length+">"+transformationFields.length, 1);
+      error = "The number of fields is too large, "+
+         fields.length+">"+transformationFields.length;
     }
 
     String sql = "UPDATE transformation SET ";
@@ -1247,11 +1369,83 @@ public class HSQLDBDatabase implements Database{
       stmt.executeUpdate(sql);
     }
     catch(Exception e){
-      execok = false; Debug.debug(e.getMessage(), 2);
-    };
+      execok = false;
+      error = e.getMessage();
+      Debug.debug(e.getMessage(), 2);
+    }
     Debug.debug("update exec: "+execok, 2);
     return execok;
-  };
+  }
+
+  public synchronized boolean updatePackage(int packageID, String [] fields,
+      String [] values){
+    
+    if(fields.length!=values.length){
+      Debug.debug("The number of fields and values do not agree, "+
+          fields.length+"!="+values.length, 1);
+      error = "The number of fields and values do not agree, "+
+         fields.length+"!="+values.length;
+      return false;
+    }
+    if(fields.length>packageFields.length){
+      Debug.debug("The number of fields is too large, "+
+          fields.length+">"+packageFields.length, 1);
+      error = "The number of fields is too large, "+
+         fields.length+">"+packageFields.length;
+    }
+  
+    String sql = "UPDATE package SET ";
+    int addedFields = 0;
+    for(int i = 0; i<packageFields.length; ++i){
+      if(!packageFields[i].equals("identifier")){
+        for(int j=0; j<fields.length; ++j){
+          // only add if present in packageFields
+          if(packageFields[i].equalsIgnoreCase(fields[j])){
+            
+            if(packageFields[i].equalsIgnoreCase("creationTime") ||
+                packageFields[i].equalsIgnoreCase("modificationTime")){
+              try{
+                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                java.util.Date date = df.parse(values[j]);
+                String dateString = df.format(date);
+                values[j] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
+              }
+              catch(Throwable e){
+                Debug.debug("Could not set date. "+e.getMessage(), 1);
+                e.printStackTrace();
+              }
+            }
+            else{
+              values[j] = "'"+values[j]+"'";
+            }
+            
+            sql += fields[j];
+            sql += "=";
+            sql += values[j];
+            ++addedFields;
+            break;
+          }
+        }
+        if(addedFields>0 && addedFields<fields.length-1){
+          sql += ", ";
+        }
+      }
+    }
+    sql += " WHERE identifier="+packageID;
+    Debug.debug(sql, 2);
+    boolean execok = true;
+    try{
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+    }
+    catch(Exception e){
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+    }
+    Debug.debug("update exec: "+execok, 2);
+    return execok;
+  }
   
   public synchronized boolean deleteJobDefinition(int jobDefId){
   	boolean ok = true;
@@ -1265,10 +1459,11 @@ public class HSQLDBDatabase implements Database{
   	}
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
       ok = false;
     }
     return ok;
-    };
+  }
   
     public synchronized boolean deleteDataset(int datasetID, boolean cleanup){
       boolean ok = true;
@@ -1280,6 +1475,7 @@ public class HSQLDBDatabase implements Database{
       }
       catch(Exception e){
         Debug.debug(e.getMessage(), 2);
+        error = e.getMessage();
         ok = false;
       }
       if(ok && cleanup){
@@ -1287,10 +1483,12 @@ public class HSQLDBDatabase implements Database{
         if(!ok){
           Debug.debug("ERROR: Deleting job definitions of dataset #"+
               datasetID+" failed."+" Please clean up by hand.", 1);
+          error = "ERROR: Deleting job definitions of dataset #"+
+             datasetID+" failed."+" Please clean up by hand.";
         }
       }
       return ok;
-    };
+    }
 
     public synchronized boolean deleteJobDefsFromDataset(int datasetID){
       boolean ok = true;
@@ -1317,10 +1515,27 @@ public class HSQLDBDatabase implements Database{
       }
       catch(Exception e){
         Debug.debug(e.getMessage(), 2);
+        error = e.getMessage();
         ok = false;
       }
       return ok;
-    };
+    }
+      
+    public synchronized boolean deletePackage(int packageID){
+      boolean ok = true;
+      try{
+        String sql = "DELETE FROM package WHERE identifier = '"+
+        packageID+"'";
+        Statement stmt = conn.createStatement();
+        ResultSet rset = stmt.executeQuery(sql);
+      }
+      catch(Exception e){
+        Debug.debug(e.getMessage(), 2);
+        error = e.getMessage();
+        ok = false;
+      }
+      return ok;
+    }
       
   public synchronized String [] getVersions(String transformation){   
     String req = "SELECT identifier, version FROM "+
@@ -1341,7 +1556,7 @@ public class HSQLDBDatabase implements Database{
           Debug.debug("WARNING: version null for identifier "+
               rset.getInt("identifier"), 1);
         }
-      };
+      }
       rset.close();  
     }
     catch(Exception e){
@@ -1363,5 +1578,9 @@ public class HSQLDBDatabase implements Database{
     }
     return ret;
   }
-  
+
+  public synchronized String getError(){
+    return error;
+  }
+
 }

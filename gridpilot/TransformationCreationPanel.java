@@ -8,26 +8,21 @@ import javax.swing.event.HyperlinkListener;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-
-import javax.swing.text.*;
-
 import java.net.URL;
 import java.util.*;
 
+import javax.swing.text.*;
+
 /**
- * This panel creates records in the DB table. It's shown inside the CreateEditDialog.
+ * This panel creates records in the DB table.
+ * It's shown inside the CreateEditDialog.
  */
-
-
 public class TransformationCreationPanel extends CreateEditPanel{
 
-  DBPluginMgr dbPluginMgr;
-
-  StatusBar statusBar;
-
-  String version = "";
-  String transformation;
-
+  private DBPluginMgr dbPluginMgr;
+  private StatusBar statusBar;
+  private String version = "";
+  private String transformation;
   private JPanel pConstants = new JPanel(new GridBagLayout());
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
@@ -37,19 +32,15 @@ public class TransformationCreationPanel extends CreateEditPanel{
   private String transformationID = "-1";
   private String [] cstAttributesNames;
   private String [] cstAttr = null;
-  public JTextComponent [] tcCstAttributes;
   private String transformationIdentifier;
-  
-  boolean reuseTextFields = true;
-  
+  private static int TEXTFIELDWIDTH = 32;
+  private boolean reuseTextFields = true;
   private Map id = new HashMap();
-
-
-  Vector tcConstant = new Vector(); // contains all text components
-  
+  private Vector tcConstant = new Vector(); // contains all text components
   private static WebBox wb;
 
-  
+  public JTextComponent [] tcCstAttributes;
+
   /**
    * Constructor
    */
@@ -107,7 +98,8 @@ public class TransformationCreationPanel extends CreateEditPanel{
     Debug.debug("Initializing GUI", 3);
 
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
-        Color.white,new Color(165, 163, 151)), "transformation "+transformationID));
+        Color.white,new Color(165, 163, 151)), 
+        (transformationID.equals("-1")?"new transformation":"transformation "+transformationID)));
     
     spAttributes.setPreferredSize(new Dimension(550, 500));
     spAttributes.setMinimumSize(new Dimension(550, 500));
@@ -237,7 +229,6 @@ public class TransformationCreationPanel extends CreateEditPanel{
     int row = 0;
     
     //// Constants attributes
-
     for(int i = 0; i<cstAttributesNames.length; ++i, ++row){
       
       if(cstAttributesNames[i].equalsIgnoreCase("definition") ||
@@ -245,7 +236,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
          cstAttributesNames[i].equalsIgnoreCase("xtractScript") ||
          cstAttributesNames[i].equalsIgnoreCase("code") ||
          cstAttributesNames[i].equalsIgnoreCase("script") ||
-         cstAttributesNames[i].equalsIgnoreCase("validaitionScript") ||
+         cstAttributesNames[i].equalsIgnoreCase("validationScript") ||
          cstAttributesNames[i].equalsIgnoreCase("extractionScript")){
         pAttributes.add(createCheckPanel(cstAttributesNames[i], tcCstAttributes[i]), new GridBagConstraints(0, row, 1, 1, 0.0, 0.0
             ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
@@ -256,7 +247,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
       }
     	
 	    if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled())
-	      tcCstAttributes[i] = createTextComponent();
+	      tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
 	
 	    pAttributes.add(tcCstAttributes[i], new GridBagConstraints(1, row, 3, 1, 1.0, 0.0
 	        ,GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
@@ -281,7 +272,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
         if(res.fields[j].toString().equals(cstAttributesNames[i].toString()) && !res.fields[j].toString().equals("")){
           if(tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled() &&
              tcCstAttributes[i].getText().length()==0){
-            tcCstAttributes[i] = createTextComponent();
+            tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
             pAttributes.add(tcCstAttributes[i], new GridBagConstraints(1, i/*row*/, 3, 1, 1.0, 0.0
                ,GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
           }
@@ -390,13 +381,5 @@ public class TransformationCreationPanel extends CreateEditPanel{
       v.add(tcCstAttributes[i]);
 
     return v;
-  }
-
-  private JTextComponent createTextComponent(){
-    JTextArea ta = new JTextArea();
-    ta.setBorder(new JTextField().getBorder());
-    ta.setWrapStyleWord(true);
-    ta.setLineWrap(true);
-    return ta;
   }
 }

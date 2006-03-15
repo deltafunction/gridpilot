@@ -14,14 +14,20 @@ public interface Database{
   
   public String connect();
   public void disconnect();
+  // TODO: implement in plugins and make menu point active.
   public void clearCaches();
   
   // This is the parser of the select request from SelectPanel.
   // The last returned column must be the identifier.
   public DBResult select(String selectRequest, String identifier);
   
+  // ####### Package table
+  public DBRecord getPackage(int packageID);
+  public boolean createPackage(String [] values);
+  public boolean updatePackage(int packageID, String [] fields, String [] values);
+  public boolean deletePackage(int packageID);
+
   // ####### Transformation table
-  // These records must contain fields "transformation" and "version". If necessary, added by hand.
   public DBResult getTransformations();
   public DBRecord getTransformation(int transformationID);
   public boolean createTransformation(String [] values);
@@ -85,6 +91,9 @@ public interface Database{
   public String getPackInitText (String pack, String cluster);
   // The class providing the panel for job creation
   public String getPanelUtilClass();
+  // The last database error reported
+  public String getError();
+
   
   public class DBRecord{
     public String [] fields = null;
@@ -121,7 +130,7 @@ public interface Database{
   }
   
   
-  public static class DBResult {
+  public static class DBResult{
   
     public String[]    fields ;
     public Object[][]  values ;

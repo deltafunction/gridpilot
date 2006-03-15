@@ -9,11 +9,11 @@ import gridpilot.ArithmeticExpression;
 import gridpilot.dbplugins.proddb.ProdDBXmlNode;
 
 /**
- * Creates the partititons with datas given by JobDefCreationPanel.
+ * Creates the job definitions with datas given by JobDefCreationPanel.
  * This object removes all known constants from the attributes, and evaluates them.
  *
  */
-public class JobDefCreator {
+public class JobDefCreator{
 
   private DatasetMgr datasetMgr;
   private DBPluginMgr dbPluginMgr;
@@ -227,8 +227,9 @@ public class JobDefCreator {
           Debug.debug("Updating...", 3);
           if(!datasetMgr.getDBPluginMgr().updateJobDefinition(id, cstAttrNames, resCstAttr)){
             if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDef " + part +
-                " cannot be updated", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION)
-            //cancel creation
+                " cannot be updated", "",
+                JOptionPane.OK_CANCEL_OPTION)==JOptionPane.CANCEL_OPTION)
+            //cancel updating
             vJobDef.removeAllElements();
           }
         }
@@ -236,9 +237,11 @@ public class JobDefCreator {
           if(datasetMgr!=null){
             if(!datasetMgr.createJobDef(cstAttrNames, resCstAttr)){
               if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDef " + part +
-                  " cannot be created", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION)
+                  " cannot be created", "",
+                  JOptionPane.OK_CANCEL_OPTION)==JOptionPane.CANCEL_OPTION){
               //cancel creation
               vJobDef.removeAllElements();
+              }
             }
           }
           else{
@@ -336,7 +339,7 @@ public class JobDefCreator {
    */
   private String getConstantValue(char c){
     int index = (int) (c - 'A');
-    if(index < 0 || index >=constants.size())
+    if(index<0 || index>=constants.size())
       return null;
     else
       return ((JTextField ) (constants.get(index))).getText();
@@ -460,12 +463,21 @@ public class JobDefCreator {
     }
 
     JScrollPane sp = new JScrollPane(pResult);
-    int size1 = (int)pResult.getPreferredSize().getHeight() +
-    	(int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5;
+    int height = (int)pResult.getPreferredSize().getHeight() +
+    (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5;
+    int width = (int)pResult.getPreferredSize().getWidth() +
+    (int)sp.getVerticalScrollBar().getPreferredSize().getWidth() + 5;
     Dimension screenSize = new Dimension(Toolkit.getDefaultToolkit().getScreenSize());
-    if (size1 > screenSize.height) size1 = 500;
-      Debug.debug(Integer.toString(size1), 2);
-    sp.setPreferredSize(new Dimension(500,size1));
+    if (height>screenSize.height){
+      height = 700;
+      Debug.debug("Screen height exceeded, setting "+height, 2);
+    }
+    if (width>screenSize.width){
+      width = 550;
+      Debug.debug("Screen width exceeded, setting "+width, 2);
+    }
+    Debug.debug("Setting size "+width+":"+height, 3);
+    sp.setPreferredSize(new Dimension(width, height));
 
     JOptionPane op = new JOptionPane(sp,
                                      JOptionPane.QUESTION_MESSAGE,

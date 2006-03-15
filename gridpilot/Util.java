@@ -187,5 +187,33 @@ public class Util{
       }
     }
     return "\"" + tmp + "\"";
-  }  
+  }
+  
+  public static JTextComponent createTextArea(){
+    JTextArea ta = new JTextArea();
+    ta.setBorder(new JTextField().getBorder());
+    ta.setWrapStyleWord(true);
+    ta.setLineWrap(true);
+    return ta;
+  }
+  
+  public static String dbEncode(String str){
+    if(str==null || str.length()==0){
+      return str;
+    }
+    String retStr = str;
+    retStr = retStr.replaceAll("\\$", "\\\\\\$");
+    retStr = str.replace('\n',' ');
+    retStr = retStr.replaceAll("\n","\\\\n");
+    return str;
+  }
+  
+  public static String [] dbEncode(String [] strArray){
+    String [] retStrArray = new String [strArray.length];
+    for(int i=0; i<strArray.length; ++i){
+      retStrArray[i] = dbEncode(strArray[i]);
+    }
+    return retStrArray;
+  }
+
 }

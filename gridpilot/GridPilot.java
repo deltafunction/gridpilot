@@ -19,10 +19,10 @@ public class GridPilot extends JApplet{
 
   private static ClassMgr classMgr = new ClassMgr();
   
-  private static String [] dbs;
   private static boolean applet = true;
   private static String dbNames;
   
+  public static String [] dbs;
   public static String [] colorMapping;
   public static String[] statusFields;
   public static String resourcesPath = "";
