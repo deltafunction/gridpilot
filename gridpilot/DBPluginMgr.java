@@ -1088,7 +1088,7 @@ public class DBPluginMgr implements Database, PanelUtil{
       boolean res = false;
       public void run(){
         try{
-          res = db.createJobDefinition(Util.dbEncode(values));
+          res = db.createJobDefinition(values);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1179,7 +1179,7 @@ public class DBPluginMgr implements Database, PanelUtil{
       boolean res = false;
       public void run(){
         try{
-          res = db.createTransformation(Util.dbEncode(values));
+          res = db.createTransformation(values);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1204,7 +1204,7 @@ public class DBPluginMgr implements Database, PanelUtil{
       boolean res = false;
       public void run(){
         try{
-          res = db.createPackage(Util.dbEncode(values));
+          res = db.createPackage(values);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1229,8 +1229,7 @@ public class DBPluginMgr implements Database, PanelUtil{
       boolean res = false;
       public void run(){
         try{
-          res = db.createDataset(targetTable, fields,
-              Util.dbEncode(values));
+          res = db.createDataset(targetTable, fields, values);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1280,8 +1279,7 @@ public class DBPluginMgr implements Database, PanelUtil{
       boolean res = false;
       public void run(){
         try{
-          res = db.updateJobDefinition(jobDefID, fields,
-              Util.dbEncode(values));
+          res = db.updateJobDefinition(jobDefID, fields, values);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1384,8 +1382,7 @@ public class DBPluginMgr implements Database, PanelUtil{
         boolean res = false;
         public void run(){
           try{
-            res = db.updateDataset(taskID, fields,
-                Util.dbEncode(values));
+            res = db.updateDataset(taskID, fields, values);
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1411,8 +1408,7 @@ public class DBPluginMgr implements Database, PanelUtil{
         boolean res = false;
         public void run(){
           try{
-            res = db.updateTransformation(transformationID, fields,
-                Util.dbEncode(values));
+            res = db.updateTransformation(transformationID, fields, values);
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1438,8 +1434,7 @@ public class DBPluginMgr implements Database, PanelUtil{
       boolean res = false;
       public void run(){
         try{
-          res = db.updatePackage(packageID, fields,
-              Util.dbEncode(values));
+          res = db.updatePackage(packageID, fields, values);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +

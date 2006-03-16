@@ -1177,7 +1177,7 @@ public class HSQLDBDatabase implements Database{
     String sql = "UPDATE jobDefinition  SET ";
     int addedFields = 0;
     for(int i=0; i<jobDefFields.length; ++i){
-      if(!jobDefFields[i].equals("identifier")){
+      if(!jobDefFields[i].equalsIgnoreCase("identifier")){
         for(int j=0; j<fields.length; ++j){
           // only add if present in transformationFields
           if(jobDefFields[i].equalsIgnoreCase(fields[j])){
@@ -1257,7 +1257,7 @@ public class HSQLDBDatabase implements Database{
     String sql = "UPDATE dataset SET ";
     int addedFields = 0;
     for(int i = 0; i < datasetFields.length; ++i){
-      if(!datasetFields[i].equals("identifier")){
+      if(!datasetFields[i].equalsIgnoreCase("identifier")){
         for(int j=0; j<fields.length; ++j){
           // only add if present in datasetFields
           if(datasetFields[i].equalsIgnoreCase(fields[j])){
@@ -1327,7 +1327,7 @@ public class HSQLDBDatabase implements Database{
     String sql = "UPDATE transformation SET ";
     int addedFields = 0;
     for(int i = 0; i<transformationFields.length; ++i){
-      if(!transformationFields[i].equals("identifier")){
+      if(!transformationFields[i].equalsIgnoreCase("identifier")){
         for(int j=0; j<fields.length; ++j){
           // only add if present in transformationFields
           if(transformationFields[i].equalsIgnoreCase(fields[j])){
@@ -1397,7 +1397,7 @@ public class HSQLDBDatabase implements Database{
     String sql = "UPDATE package SET ";
     int addedFields = 0;
     for(int i = 0; i<packageFields.length; ++i){
-      if(!packageFields[i].equals("identifier")){
+      if(!packageFields[i].equalsIgnoreCase("identifier")){
         for(int j=0; j<fields.length; ++j){
           // only add if present in packageFields
           if(packageFields[i].equalsIgnoreCase(fields[j])){
@@ -1416,7 +1416,7 @@ public class HSQLDBDatabase implements Database{
               }
             }
             else{
-              values[j] = "'"+values[j]+"'";
+              values[j] = "'"+Util.dbEncode(values[j])+"'";
             }
             
             sql += fields[j];

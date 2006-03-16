@@ -7,6 +7,8 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.UIManager;
+import javax.swing.plaf.UIResource;
 import javax.swing.text.JTextComponent;
 
 /**
@@ -204,7 +206,9 @@ public class Util{
     String retStr = str;
     retStr = retStr.replaceAll("\\$", "\\\\\\$");
     retStr = str.replace('\n',' ');
+    retStr = str.replace('\r',' ');
     retStr = retStr.replaceAll("\n","\\\\n");
+    Debug.debug("Encoded: "+str+"->"+retStr, 3);
     return str;
   }
   
@@ -215,5 +219,11 @@ public class Util{
     }
     return retStrArray;
   }
-
+  
+  public static void setBackgroundColor(JComponent c){
+    Color background = c.getBackground();
+    if (background instanceof UIResource){
+      c.setBackground(UIManager.getColor("TextField.inactiveBackground"));
+    }
+  } 
 }

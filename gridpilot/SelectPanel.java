@@ -19,8 +19,7 @@ import java.awt.event.*;
  * One instance of this class is created by each DBPanel instance.
  *
  */
-
- public class SelectPanel extends JPanel {
+ public class SelectPanel extends JPanel{
 
    // lists of field names with table name as key
    private String [] fieldNames = null;
@@ -154,12 +153,14 @@ import java.awt.event.*;
    * Returns the index of the string s in the array array, or -1
    */
   private int getIndexOf(String [] array, String s){
-    if(array == null || s == null)
+    if(array==null || s==null){
       return -1;
-    for(int i=0; i<array.length; ++i)
-      if(array[i].equals(s))
+    }
+    for(int i=0; i<array.length; ++i){
+      if(array[i].equals(s)){
         return i;
-  
+      }
+    }
     return -1;
   }
   
@@ -168,11 +169,11 @@ import java.awt.event.*;
    * @return index in sources of e.getSource
    */
   private int getPanel(ActionEvent e, Object [] sources){
-    if(e.getSource().getClass() == JButton.class)
+    if(e.getSource().getClass()==JButton.class){
       return ((JButton)(e.getSource())).getMnemonic();
-
+    }
     for(int i=0; i<sources.length; ++i){
-      if(e.getSource() == sources[i])
+      if(e.getSource()==sources[i])
         return i;
     }
     System.err.println("SelectPanel.getPanel : source not found");
@@ -180,36 +181,36 @@ import java.awt.event.*;
   }
 
   /**
-     * Initialises the panel # 'panel'.
-     * Called by : this.initGUI()
-     */
-    protected class SPanel extends JPanel{
-      public String name = "";
-      private JButton bAddConstraintRow;
-      private JButton bRemoveConstraintRow ;
-      private JPanel spConstraintList;
-      private JPanel spConstraints;
-      private JButton bAddDisplayRow;
-      private JButton bRemoveDisplayRow;
-      protected JPanel spDisplayList;
-      private JPanel spDisplays;
-      protected String [] fieldList;
-          
-      public SPanel(String _name, String [] _fieldList){
-       name = _name;
-       fieldList = _fieldList;
-       bAddConstraintRow = new JButton();
-       bRemoveConstraintRow = new JButton();
-       spConstraints = new JPanel();
-       spConstraintList = new JPanel();
-       bAddDisplayRow = new JButton();
-       bRemoveDisplayRow = new JButton();
-       spDisplayList = new JPanel();
-       spDisplays = new JPanel();
-       
-       this.setLayout(new GridBagLayout());
-         
-  //// Add constraints
+   * Initialises the panel # 'panel'.
+   * Called by : this.initGUI()
+   */
+  protected class SPanel extends JPanel{
+    public String name = "";
+    private JButton bAddConstraintRow;
+    private JButton bRemoveConstraintRow ;
+    private JPanel spConstraintList;
+    private JPanel spConstraints;
+    private JButton bAddDisplayRow;
+    private JButton bRemoveDisplayRow;
+    protected JPanel spDisplayList;
+    private JPanel spDisplays;
+    protected String [] fieldList;
+        
+    public SPanel(String _name, String [] _fieldList){
+      name = _name;
+      fieldList = _fieldList;
+      bAddConstraintRow = new JButton();
+      bRemoveConstraintRow = new JButton();
+      spConstraints = new JPanel();
+      spConstraintList = new JPanel();
+      bAddDisplayRow = new JButton();
+      bRemoveDisplayRow = new JButton();
+      spDisplayList = new JPanel();
+      spDisplays = new JPanel();
+      
+      this.setLayout(new GridBagLayout());
+        
+      //// Add constraints
       //Label
       spConstraints.add(new JLabel("Constraints :"));
 
@@ -238,7 +239,7 @@ import java.awt.event.*;
       gbcVC.gridy = 0;
       this.add(spConstraintList, gbcVC);
                    
-//// Display attributes
+      //// Display attributes
     
       // Label
       spDisplays.add(new JLabel("Show : "));
@@ -267,100 +268,103 @@ import java.awt.event.*;
       gbcVC.gridx = 1;
       gbcVC.gridy = 1;
       this.add(spDisplayList, gbcVC);
-     }
+    }
+   
+    protected class ConstraintPanel extends JPanel{
+      private JComboBox cbConstraintAttribute;
+      private JComboBox cbConstraintRelation;
+      public JTextField tfConstraintValue;
+      ConstraintPanel(){
+        // Combobox attribute
+        if(fieldList==null){
+          Debug.debug("fieldlist null", 2);
+          return;     
+        }
+        if(relationNames==null){
+          Debug.debug("relationNames null", 2);
+          return;
+        }
+        cbConstraintAttribute = new JComboBox();
+        for(int i=0;i<fieldList.length; ++i){
+          cbConstraintAttribute.insertItemAt(fieldList[i], i);
+        }
+        cbConstraintAttribute.setSelectedIndex(0);
+        this.add(cbConstraintAttribute);
+        // Combobox relation
+        cbConstraintRelation = new JComboBox();
+        for(int i=0; i<relationNames.length; ++i){
+          cbConstraintRelation.insertItemAt(relationNames[i], i);
+        }
+        cbConstraintRelation.setSelectedIndex(0);
+        this.add(cbConstraintRelation);
+        // Textfield value
+        tfConstraintValue = new JTextField(12);
+        this.add(tfConstraintValue);
+      }
+    }        
      
-     protected class ConstraintPanel extends JPanel{
-       private JComboBox cbConstraintAttribute;
-       private JComboBox cbConstraintRelation;
-       public JTextField tfConstraintValue;
-       ConstraintPanel(){
-         // Combobox attribute
-	     if (fieldList == null) {
-         Debug.debug("fieldlist null", 2);
-	       return;	   
-	       }
-	       if (relationNames == null) {
-           Debug.debug("relationNames null", 2);
-	         return;
-	       }
-         cbConstraintAttribute = new JComboBox();
-         for(int i=0;i<fieldList.length; ++i)
-           cbConstraintAttribute.insertItemAt(fieldList[i], i);
-           
-         cbConstraintAttribute.setSelectedIndex(0);
-     
-         this.add(cbConstraintAttribute);
-     
-         // Combobox relation
-         cbConstraintRelation = new JComboBox();
-         for(int i=0; i<relationNames.length; ++i)
-             cbConstraintRelation.insertItemAt(relationNames[i], i);
-         cbConstraintRelation.setSelectedIndex(0);
-     
-         this.add(cbConstraintRelation);
-     
-         // Textfield value
-         tfConstraintValue = new JTextField(12);
-         this.add(tfConstraintValue);
+    protected class DisplayPanel extends JPanel{
+      protected JComboBox cbDisplayAttribute;
+      DisplayPanel(boolean withStar){
+        // Combobox attribute
+        cbDisplayAttribute = new JComboBox();
+        if(withStar){
+          cbDisplayAttribute.insertItemAt("*", 0);
+        }
+       if(fieldList == null){
+          Debug.debug("fieldlist null", 2);
+         return;
        }
-     }        
-     
-     protected class DisplayPanel extends JPanel{
-       protected JComboBox cbDisplayAttribute;
-       DisplayPanel(boolean withStar){
-         // Combobox attribute
-         cbDisplayAttribute = new JComboBox();
-         if(withStar){
-           cbDisplayAttribute.insertItemAt("*", 0);
-         }
-	       if(fieldList == null){
-           Debug.debug("fieldlist null", 2);
-	         return;
-	       }
-         for(int i=0;i<fieldList.length; ++i){
-           if(withStar){
-             cbDisplayAttribute.insertItemAt(fieldList[i], i+1);
-           }
-           else{
-             cbDisplayAttribute.insertItemAt(fieldList[i], i);
-           }
-         }
-         cbDisplayAttribute.setSelectedIndex(0);
-         this.add(cbDisplayAttribute);
-       }
-     }
+        for(int i=0;i<fieldList.length; ++i){
+          if(withStar){
+            cbDisplayAttribute.insertItemAt(fieldList[i], i+1);
+          }
+          else{
+            cbDisplayAttribute.insertItemAt(fieldList[i], i);
+          }
+        }
+        cbDisplayAttribute.setSelectedIndex(0);
+        this.add(cbDisplayAttribute);
+      }
+    }
 
      /**
       * Action Events
       */
      
-     private void bAddConstraintRow_actionPerformed(){
-       spConstraintList.add(new ConstraintPanel());
-       bRemoveConstraintRow.setEnabled(true);
-       spConstraintList.updateUI();
-     }
-     private void bRemoveConstraintRow_actionPerformed(){
-       spConstraintList.remove(spConstraintList.getComponentCount()-1);
-       if(spConstraintList.getComponentCount() == 1){
-         bRemoveConstraintRow.setEnabled(false);
-       }
-       spConstraintList.updateUI();
-     }
-     private void bAddDisplayRow_actionPerformed(){
-       spDisplayList.add(new DisplayPanel(false));
-       bRemoveDisplayRow.setEnabled(true);
-       spDisplayList.updateUI();
-     }
-     private void bRemoveDisplayRow_actionPerformed(){
-       spDisplayList.remove(spDisplayList.getComponentCount()-1);
-       if(spDisplayList.getComponentCount() == 1){
-         bRemoveDisplayRow.setEnabled(false);
-       }
-       spDisplayList.updateUI();
-     }
-
+    private void bAddConstraintRow_actionPerformed(){
+      spConstraintList.add(new ConstraintPanel());
+      bRemoveConstraintRow.setEnabled(true);
+      spConstraintList.updateUI();
     }
     
+    private void bRemoveConstraintRow_actionPerformed(){
+      spConstraintList.remove(spConstraintList.getComponentCount()-1);
+      if(spConstraintList.getComponentCount() == 1){
+        bRemoveConstraintRow.setEnabled(false);
+      }
+      spConstraintList.updateUI();
+    }
+    
+    private void bAddDisplayRow_actionPerformed(){
+      spDisplayList.add(new DisplayPanel(false));
+      bRemoveDisplayRow.setEnabled(true);
+      spDisplayList.updateUI();
+    }
+    
+    private void bRemoveDisplayRow_actionPerformed(){
+      spDisplayList.remove(spDisplayList.getComponentCount()-1);
+      if(spDisplayList.getComponentCount()==1){
+        bRemoveDisplayRow.setEnabled(false);
+      }
+      spDisplayList.updateUI();
+    }
+    
+  }
+    
+  /**
+   * Resets the constraint box to .
+   */
   public void resetConstraintList(String tableName){
     int comps = sPanel.spConstraintList.getComponentCount();
     if(comps>1){
@@ -369,8 +373,12 @@ import java.awt.event.*;
       }
     }
     spcp = ((SPanel.ConstraintPanel)sPanel.spConstraintList.getComponent(0));
-    if(spcp.cbConstraintAttribute == null) return;
-    if(spcp.cbConstraintRelation == null) return;
+    if(spcp.cbConstraintAttribute==null){
+      return;
+    }
+    if(spcp.cbConstraintRelation==null){
+      return;
+    }
     Component[] parts = spcp.cbConstraintAttribute.getComponents();
     if((parts!=null) && (parts.length>0)) spcp.cbConstraintAttribute.setSelectedIndex(0);
     parts = spcp.cbConstraintRelation.getComponents();
@@ -390,8 +398,12 @@ import java.awt.event.*;
       }
     }
     spcp = ((SPanel.ConstraintPanel)sPanel.spConstraintList.getComponent(0));
-    if (spcp.cbConstraintAttribute == null) return;
-    if (spcp.cbConstraintRelation == null) return;
+    if(spcp.cbConstraintAttribute==null){
+      return;
+    }
+    if(spcp.cbConstraintRelation==null){
+      return;
+    }
     Component[] parts = spcp.cbConstraintAttribute.getComponents();
     if ((parts != null) && (parts.length > 0)){
       for(int i=0; i<fieldNames.length; ++i){
@@ -463,7 +475,7 @@ import java.awt.event.*;
       // remove excess display panels
       Debug.debug("removing panel "+j, 3);
       thisSPanel.spDisplayList.remove(j);
-      if(j == 1){
+      if(j==1){
         thisSPanel.bRemoveDisplayRow.setEnabled(false);
       }
     }

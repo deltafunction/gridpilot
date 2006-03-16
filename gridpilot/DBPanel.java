@@ -297,7 +297,7 @@ public class DBPanel extends JPanel implements JobPanel{
       public void keyPressed(KeyEvent e){
         switch(e.getKeyCode()){
           case KeyEvent.VK_ENTER:
-            searchRequest();
+            search();
         }
       }
     });
@@ -551,7 +551,15 @@ public class DBPanel extends JPanel implements JobPanel{
    * Carries out search according to selection
    */
   public void search(){
-    searchRequest();
+    if(tableResults==null){
+      searchRequest();
+    }
+    else{
+      DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
+      int sortColumn = tableModel.getColumnSort();
+      boolean isAscending = tableModel.isSortAscending();
+      searchRequest(sortColumn, isAscending);
+    }
     remove(panelTableResults);
     add(panelTableResults, ct);
     updateUI();
@@ -562,8 +570,8 @@ public class DBPanel extends JPanel implements JobPanel{
    */
   public void clear(){
     String [][] values = new String[selectFields.length][2];
-
-    for(int i = 0; i<selectFields.length; ++i){
+    Debug.debug("Clearing "+selectFields.length, 3);
+    for(int i=0; i<selectFields.length; ++i){
       String [] split = selectFields[i].split("\\.");
       if(split.length != 2){
           Debug.debug(selectFields[i] + " " + " : wrong format in config file ; " +
@@ -636,8 +644,8 @@ public class DBPanel extends JPanel implements JobPanel{
             public void valueChanged(ListSelectionEvent e){
               if (e.getValueIsAdjusting()) return;
               ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-              Debug.debug("lsm indices: "+
-                  lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
+              //Debug.debug("lsm indices: "+
+              //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
               bViewJobDefinitions.setEnabled(!lsm.isSelectionEmpty());
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
               bEditRecord.setEnabled(!lsm.isSelectionEmpty());
@@ -652,8 +660,8 @@ public class DBPanel extends JPanel implements JobPanel{
             public void valueChanged(ListSelectionEvent e){
               if (e.getValueIsAdjusting()) return;
               ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-              Debug.debug("lsm indices: "+
-                  lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
+              //Debug.debug("lsm indices: "+
+              //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
               bSubmit.setEnabled(!lsm.isSelectionEmpty());
               bMonitor.setEnabled(!lsm.isSelectionEmpty());
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
@@ -672,8 +680,8 @@ public class DBPanel extends JPanel implements JobPanel{
             public void valueChanged(ListSelectionEvent e){
               if (e.getValueIsAdjusting()) return;
               ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-              Debug.debug("lsm indices: "+
-                  lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
+              //Debug.debug("lsm indices: "+
+              //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
               bEditRecord.setEnabled(!lsm.isSelectionEmpty());
             }
@@ -687,8 +695,8 @@ public class DBPanel extends JPanel implements JobPanel{
             public void valueChanged(ListSelectionEvent e){
               if (e.getValueIsAdjusting()) return;
               ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-              Debug.debug("lsm indices: "+
-                  lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
+              //Debug.debug("lsm indices: "+
+              //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
               bEditRecord.setEnabled(!lsm.isSelectionEmpty());
             }
@@ -861,7 +869,7 @@ public class DBPanel extends JPanel implements JobPanel{
   
   private void setFieldValues(String field, String value){
     dbPluginMgr.setJobDefsField(getSelectedIdentifiers(), field, value);
-    searchRequest();
+    refresh();
   }
     
    /**
@@ -888,9 +896,7 @@ public class DBPanel extends JPanel implements JobPanel{
         panel, false, false);
     pDialog.setTitle(tableName);
     pDialog.setVisible(true);
-    /*if(tableResults!=null && tableResults.getRowCount()>0){
-      searchRequest();
-    }*/
+    refresh();
   }
 
   private void editJobDef(){
@@ -954,6 +960,7 @@ public class DBPanel extends JPanel implements JobPanel{
             tableResults.tableModel.fireTableDataChanged();
           }
         }
+        refresh();
         stopWorking();
       }
     };
@@ -969,9 +976,7 @@ public class DBPanel extends JPanel implements JobPanel{
         new DatasetCreationPanel(dbPluginMgr, this, false), false, false);
     pDialog.setTitle(tableName);
     pDialog.setVisible(true);
-    /*if(tableResults!=null && tableResults.getRowCount()>0){
-      searchRequest();
-   }*/
+    refresh();
  }
   
   /**
@@ -983,7 +988,7 @@ public class DBPanel extends JPanel implements JobPanel{
        new DatasetCreationPanel(dbPluginMgr, this, true), true, false);
    pDialog.setTitle(tableName);
    pDialog.setVisible(true);
-   /*searchRequest();*/
+   /*refresh();*/
  }
 
   /**
@@ -1044,20 +1049,30 @@ public class DBPanel extends JPanel implements JobPanel{
         Debug.debug("WARNING: dataset undefined and could not be deleted",1);
       }
     }
-    Debug.debug("Refreshing search results", 3);
-    DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
-    int sortColumn = tableModel.getColumnSort();
-    boolean isAscending = tableModel.isSortAscending();
-    searchRequest(sortColumn, isAscending);
+    refresh();
     if(datasetIdentifiers.length>1){
       statusBar.setLabel(deleted.size()+" of "+
           datasetIdentifiers.length+" datasets deleted.");
     }
     return deleted;
   }
-
+  
   /**
-   * Open dialog with transformation creation panel
+   * Refresh search results.
+   */ 
+  private void refresh(){
+    if(tableResults==null || tableResults.getRowCount()==0){
+      return;
+    }
+    Debug.debug("Refreshing search results", 3);
+    DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
+    int sortColumn = tableModel.getColumnSort();
+    boolean isAscending = tableModel.isSortAscending();
+    searchRequest(sortColumn, isAscending);
+  }
+  
+  /**
+   * Open dialog with transformation creation panel.
    */ 
   private void createTransformation(){
     CreateEditDialog pDialog = new CreateEditDialog(
@@ -1065,9 +1080,7 @@ public class DBPanel extends JPanel implements JobPanel{
           new TransformationCreationPanel(dbPluginMgr, tableResults, false), false, false);
     pDialog.setTitle(tableName);
     pDialog.setVisible(true);
-    /*if(tableResults!=null && tableResults.getRowCount()>0){
-      searchRequest();
-    }*/
+    refresh();
   }
   /**
    * Open dialog with package creation panel
@@ -1078,9 +1091,7 @@ public class DBPanel extends JPanel implements JobPanel{
           new PackageCreationPanel(dbPluginMgr, tableResults, false), false, false);
     pDialog.setTitle(tableName);
     pDialog.setVisible(true);
-    /*if(tableResults!=null && tableResults.getRowCount()>0){
-      searchRequest();
-    }*/
+    refresh();
   }
 
   private void editTransformation(){
@@ -1089,7 +1100,7 @@ public class DBPanel extends JPanel implements JobPanel{
           new TransformationCreationPanel(dbPluginMgr, tableResults, true), true, false);
     pDialog.setTitle(tableName);
     pDialog.setVisible(true);
-    /*searchRequest();*/
+    /*refresh();*/
   }
   
   private void editPackage(){
@@ -1098,7 +1109,7 @@ public class DBPanel extends JPanel implements JobPanel{
           new PackageCreationPanel(dbPluginMgr, tableResults, true), true, false);
     pDialog.setTitle(tableName);
     pDialog.setVisible(true);
-    /*searchRequest();*/
+    /*refresh();*/
   }
 
   private void deleteTransformations(){
@@ -1134,7 +1145,7 @@ public class DBPanel extends JPanel implements JobPanel{
           }
         }
         stopWorking();
-        searchRequest();
+        refresh();
       }
     };
     workThread.start();
@@ -1172,7 +1183,7 @@ public class DBPanel extends JPanel implements JobPanel{
           }
         }
         stopWorking();
-        searchRequest();
+        refresh();
       }
     };
     workThread.start();

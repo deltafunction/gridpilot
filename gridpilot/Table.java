@@ -224,7 +224,7 @@ public class Table extends JTable {
    * Hides the last columns of this table, and removes them from sort- and show-menu.
    */
   public void hideLastColumns(int nrCols){
-    if(tableModel.getColumnCount() > nrCols){
+    if(tableModel.getColumnCount()>nrCols){
       for (int i=0; i<nrCols; i++) {
         hideColumn(tableModel.getColumnCount()-(i+1));
         removeLastSubItem(menuShow);
@@ -261,7 +261,7 @@ public class Table extends JTable {
   public synchronized int getSelectedRow(){
     int selRow = super.getSelectedRow();
 //    return (selRow==-1) ? -1 : tableModel.indexes[selRow];
-      return (selRow==-1 || selRow >= getRowCount()) ? -1 : tableModel.indexes[selRow];
+      return (selRow==-1 || selRow>=getRowCount()) ? -1 : tableModel.indexes[selRow];
   }
 
   /**
@@ -460,9 +460,9 @@ public class Table extends JTable {
 
     this.getTableHeader().addMouseListener(new java.awt.event.MouseAdapter (){
       public void mouseClicked(MouseEvent e) {
-        if(e.getButton() == MouseEvent.BUTTON1){ // left button
+        if(e.getButton()==MouseEvent.BUTTON1){ // left button
           int column = columnAtPoint(e.getPoint());//getTableHeader().getColumnModel().getColumnIndexAtX(e.getX());
-          if(tableModel.getColumnSort() == column)
+          if(tableModel.getColumnSort()==column)
             tableModel.sort(column, !tableModel.isSortAscending());
           else
             tableModel.sort(column, true);
@@ -470,7 +470,7 @@ public class Table extends JTable {
           int i = column;
           JMenu m = menuSort;
           Debug.debug("sort : " + i, 2);
-          while(i >= maxItem){
+          while(i>=maxItem){
             m = (JMenu) m.getItem(maxItem);
             i = i-maxItem;
             Debug.debug(i + ",  " + m.getText(), 2);
@@ -605,7 +605,7 @@ public class Table extends JTable {
    */
   private void changeSort(ActionEvent e){
     int column = ((JRadioButtonMenuItem)e.getSource()).getMnemonic();
-    if(tableModel.getColumnSort() == column)
+    if(tableModel.getColumnSort()==column)
       tableModel.sort(column, !tableModel.isSortAscending());
     else
       tableModel.sort(column, true);
@@ -647,8 +647,8 @@ public class Table extends JTable {
 
   public synchronized Graphics getGraphics(){
     Graphics g = super.getGraphics();
-    if(g == null){
-      Debug.debug("getGraphics : g == null", 3);
+    if(g==null){
+      Debug.debug("getGraphics : g==null", 3);
       g = new JTable().getGraphics();
     }
     return g;
