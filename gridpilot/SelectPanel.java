@@ -373,16 +373,19 @@ import java.awt.event.*;
       }
     }
     spcp = ((SPanel.ConstraintPanel)sPanel.spConstraintList.getComponent(0));
-    if(spcp.cbConstraintAttribute==null){
-      return;
-    }
-    if(spcp.cbConstraintRelation==null){
+    if(spcp.cbConstraintAttribute==null ||
+        spcp.cbConstraintRelation==null){
       return;
     }
     Component[] parts = spcp.cbConstraintAttribute.getComponents();
-    if((parts!=null) && (parts.length>0)) spcp.cbConstraintAttribute.setSelectedIndex(0);
+    // TODO: set default field (e.g. 'name') instead of the first one...
+    if((parts!=null) && (parts.length>0)){
+      spcp.cbConstraintAttribute.setSelectedIndex(0);
+    }
     parts = spcp.cbConstraintRelation.getComponents();
-    if((parts!=null) && (parts.length>0)) spcp.cbConstraintRelation.setSelectedIndex(0);
+    if((parts!=null) && (parts.length>0)){
+      spcp.cbConstraintRelation.setSelectedIndex(0);
+    }
     spcp.tfConstraintValue.setText("");
   }
 
@@ -405,7 +408,7 @@ import java.awt.event.*;
       return;
     }
     Component[] parts = spcp.cbConstraintAttribute.getComponents();
-    if ((parts != null) && (parts.length > 0)){
+    if((parts != null) && (parts.length > 0)){
       for(int i=0; i<fieldNames.length; ++i){
         if(fieldNames[i].equalsIgnoreCase(key)){
           spcp.cbConstraintAttribute.setSelectedIndex(i);
@@ -413,7 +416,7 @@ import java.awt.event.*;
       }
     }
     parts = spcp.cbConstraintRelation.getComponents();
-    if ((parts!=null) && (parts.length>0)){
+    if((parts!=null) && (parts.length>0)){
       spcp.cbConstraintRelation.setSelectedIndex(constraintRelationIndex);
     }
     spcp.tfConstraintValue.setText(value);
@@ -469,14 +472,17 @@ import java.awt.event.*;
         }
       }
     }
-    if (thisSPanel != null)
-    	if (thisSPanel.spDisplayList != null)
-    for(int j=thisSPanel.spDisplayList.getComponentCount()-1; j+1>values.length; --j){
-      // remove excess display panels
-      Debug.debug("removing panel "+j, 3);
-      thisSPanel.spDisplayList.remove(j);
-      if(j==1){
-        thisSPanel.bRemoveDisplayRow.setEnabled(false);
+    if(thisSPanel != null){
+      if(thisSPanel.spDisplayList != null){
+        for(int j=thisSPanel.spDisplayList.getComponentCount()-1;
+        j+1>values.length; --j){
+          // remove excess display panels
+          Debug.debug("removing panel "+j, 3);
+          thisSPanel.spDisplayList.remove(j);
+          if(j==1){
+            thisSPanel.bRemoveDisplayRow.setEnabled(false);
+          }
+        }
       }
     }
   }
