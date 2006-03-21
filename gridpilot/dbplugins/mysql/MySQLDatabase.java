@@ -21,6 +21,8 @@ import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.JobInfo;
 import gridpilot.Util;
+import gridpilot.Database.DBRecord;
+import gridpilot.Database.DBResult;
 
 public class MySQLDatabase implements Database{
   
@@ -506,14 +508,12 @@ public class MySQLDatabase implements Database{
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
       Vector taskVector = new Vector();
-      String [] jt = new String[datasetFields.length];
       while(rset.next()){
         String values[] = new String[datasetFields.length];
         for(int i=0; i<datasetFields.length;i++){
           if(datasetFields[i].endsWith("FK") || datasetFields[i].endsWith("ID") &&
               !datasetFields[i].equalsIgnoreCase("grid") ||
               datasetFields[i].endsWith("COUNT")){
-            int tmp = rset.getInt(datasetFields[i]);
             values[i] = Integer.toString(rset.getInt(datasetFields[i]));
           }
           else{
@@ -654,6 +654,55 @@ public class MySQLDatabase implements Database{
   }
 
   /*
+   * Find package records
+   */
+  private synchronized DBRecord [] getPackageRecords(){
+    
+    ResultSet rset = null;
+    String req = "";
+    DBRecord [] allPackageRecords = null;   
+    try{      
+      req = "SELECT "+packageFields[0];
+      if(packageFields.length>1){
+        for(int i=1; i<packageFields.length; ++i){
+          req += ", "+packageFields[i];
+        }
+      }
+      req += " FROM package";
+      Debug.debug(req, 3);
+      rset = conn.createStatement().executeQuery(req);
+      Vector packageVector = new Vector();
+      String [] jt = new String[packageFields.length];
+      int i = 0;
+      while(rset.next()){
+        jt = new String[packageFields.length];
+        for(int j=0; j<packageFields.length; ++j){
+          try{
+            jt[j] = rset.getString(j+1);
+          }
+          catch(Exception e){
+            Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
+                packageFields[j]+". "+e.getMessage(),1);
+          }
+        }
+        Debug.debug("Adding value "+jt[0], 3);
+        packageVector.add(new DBRecord(packageFields, jt));
+        Debug.debug("Added value "+((DBRecord) packageVector.get(i)).getAt(0), 3);
+        ++i;
+      }
+      allPackageRecords = new DBRecord[i];
+      for(int j=0; j<i; ++j){
+        allPackageRecords[j] = ((DBRecord) packageVector.get(j));
+        Debug.debug("Added value "+allPackageRecords[j].getAt(0), 3);
+      }
+    }
+    catch(SQLException e){
+      Debug.debug("WARNING: No packages found. "+e.getMessage(), 1);
+    }
+    return allPackageRecords;
+  }
+
+  /*
    * Find transformation records
    */
   private synchronized DBRecord [] getTransformationRecords(){
@@ -671,7 +720,6 @@ public class MySQLDatabase implements Database{
       req += " FROM transformation";
       Debug.debug(req, 3);
       rset = conn.createStatement().executeQuery(req);
-      //ResultSetMetaData md = rset.getMetaData();
       Vector transformationVector = new Vector();
       String [] jt = new String[transformationFields.length];
       int i = 0;
@@ -810,8 +858,18 @@ public class MySQLDatabase implements Database{
     jobdefv.removeAllElements();
     return defs;
   }
-  
-  //// FJOB PRODDB
+    
+  public synchronized DBResult getPackages(){
+    DBRecord jt [] = getPackageRecords();
+    DBResult res = new DBResult(packageFields.length, jt.length);
+    res.fields = packageFields;
+    for(int i=0; i<jt.length; ++i){
+      for(int j=0; j<jt.length; ++j){
+        res.values[i][j] = jt[i].values[j];
+      }
+    }
+    return res;
+  }
   
   public synchronized DBResult getTransformations(){
     DBRecord jt [] = getTransformationRecords();
@@ -1441,7 +1499,7 @@ public class MySQLDatabase implements Database{
       String sql = "DELETE FROM jobDefinition WHERE identifier = '"+
       jobDefId+"'";
       Statement stmt = conn.createStatement();
-      ResultSet rset = stmt.executeQuery(sql);
+      stmt.executeUpdate(sql);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -1457,7 +1515,7 @@ public class MySQLDatabase implements Database{
         String sql = "DELETE FROM dataset WHERE identifier = '"+
         datasetID+"'";
         Statement stmt = conn.createStatement();
-        ResultSet rset = stmt.executeQuery(sql);
+        stmt.executeUpdate(sql);
       }
       catch(Exception e){
         Debug.debug(e.getMessage(), 2);
@@ -1482,7 +1540,7 @@ public class MySQLDatabase implements Database{
         String sql = "DELETE FROM jobDefinition WHERE dataset = '"+
         getDataset(datasetID).getValue("name")+"'";
         Statement stmt = conn.createStatement();
-        ResultSet rset = stmt.executeQuery(sql);
+        stmt.executeUpdate(sql);
       }
       catch(Exception e){
         Debug.debug(e.getMessage(), 1);
@@ -1497,7 +1555,7 @@ public class MySQLDatabase implements Database{
         String sql = "DELETE FROM transformation WHERE identifier = '"+
         transformationID+"'";
         Statement stmt = conn.createStatement();
-        ResultSet rset = stmt.executeQuery(sql);
+        stmt.executeUpdate(sql);
       }
       catch(Exception e){
         Debug.debug(e.getMessage(), 2);
@@ -1513,7 +1571,7 @@ public class MySQLDatabase implements Database{
         String sql = "DELETE FROM package WHERE identifier = '"+
         packageID+"'";
         Statement stmt = conn.createStatement();
-        ResultSet rset = stmt.executeQuery(sql);
+        stmt.executeUpdate(sql);
       }
       catch(Exception e){
         Debug.debug(e.getMessage(), 2);

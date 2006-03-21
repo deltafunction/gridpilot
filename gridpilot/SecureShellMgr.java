@@ -90,7 +90,6 @@ public class SecureShellMgr implements ShellMgr{
     ChannelExec channel = getChannel();
     InputStream in = channel.getInputStream();
     InputStream err = channel.getErrStream();
-    OutputStream out = channel.getOutputStream();
     byte[] tmp=new byte[1024];
     byte[] tmp1=new byte[1024];
     // first cd to workingDirectory  

@@ -18,65 +18,60 @@ import java.util.*;
  * This panel creates records in the DB table. It's shown inside the CreateEditDialog.
  *
  */
-
 public class JobDefCreationPanel extends CreateEditPanel{
 
-  /*
-   DBPluginMgr to be used is stored here by initGUI(..). Still, not all functions use this global
-   variable (just to make sure no conflicts happen).
-   */
-
+  private static final long serialVersionUID = 1L;
   private DatasetMgr taskMgr;
-
   private String transformationName;
   private String version;
   private JPanel pCounter = new JPanel();
   private JPanel pConstants = new JPanel();
-  public JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
   private JPanel pButtons = new JPanel();
   private JComboBox cbJobTransNameSelection = null;
   private JComboBox cbVersionSelection = null;
   private String [] transformationNames;
   private String [] versions;
-  public String jobTransFK = "-1";
   private String jobDefinitionID = "-1";
   private Table table;
   private JSpinner sFrom = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
   private JSpinner sTo = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
+  private DBResult transformations;
+  private boolean loaded = false;
+  private boolean versionInit = false;
+  private String dbName;
+  // DBPluginMgr to be used is stored here by initGUI(..). Still, not all functions use this global
+  // variable (just to make sure no conflicts happen).
+  private DBPluginMgr dbPluginMgr = null;
+  private String jobTransNameColumn = "jobTrans";
+  public int taskID = -1;
+  private String datasetName;
+  private static int CFIELDWIDTH = 8;
+  private String transformationIdentifier;
+  private DBPanel panel = null;
+  
+  public String jobTransFK = "-1";
+  public JPanel pAttributes = new JPanel();
   public String [] cstAttributesNames;
   public JComponent [] tcCstAttributes;
-  private JComponent [] tcCstJobDefAttributes;
   public boolean reuseTextFields = true;
   public Vector tcConstant = new Vector(); // contains all text components
   public String [] cstAttr = null;
   public boolean editing = false;
   public JPanel jobXmlContainer = new JPanel(new GridBagLayout());
-  private DBResult transformations;
-  private boolean loaded = false;
-  private boolean versionInit = false;
-  private String dbName;
-  private DBPluginMgr dbPluginMgr = null;
-  private String jobTransNameColumn = "jobTrans";
-  public int taskID = -1;
-  private String datasetName;
-  
   public static JComponent [] oldTcCstAttributes;
   public static String oldJobTransFK = "-1";
-  private static int TEXTFIELDWIDTH = 32;
-  private static int CFIELDWIDTH = 8;
-  
   public String jobDefIdentifier;
-  private String transformationIdentifier;
   
   public JobDefCreationPanel(/*this is in case DBPanel was opened from the menu and_taskMgr is null*/String _dbName,
-      DatasetMgr _taskMgr, Table _table,
+      DatasetMgr _taskMgr, DBPanel _panel,
       boolean _editing){
     
     editing = _editing;
     taskMgr=_taskMgr;
     dbName = _dbName;
-    table = _table;
+    panel = _panel;
+    table = panel.getTable();
 
     if(!editing){
       jobTransFK = oldJobTransFK;
@@ -367,9 +362,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
      */
     versionInit = true;
     Debug.debug("initVersionPanel with jobTransFK "+jobTransFK, 3);
-    String imp = "";
     String jtVersion = "-1";
-    Vector vec = new Vector();
     if(transformations.values.length>0){
       // When editing, find version of original jobTransFK
       for(int i=0; i<transformations.values.length; ++i){
@@ -721,6 +714,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
                       editing
                       );
 
+    panel.refresh();
+    
   }
 
   private void addConstant(){

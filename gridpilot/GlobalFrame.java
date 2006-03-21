@@ -23,11 +23,9 @@ import gridpilot.IconProxy;
 
 public class GlobalFrame extends JFrame{
 
-
+  private static final long serialVersionUID = 1L;
   public JTabbedPane tabbedPane = new JTabbedPane();
   private Vector allPanels;
-  private Vector taskMgrs = new Vector() ;
-  private Vector taskTransMgrs = new Vector() ;
   private int selectedPanel;
   private StatusBar statusBar;
   private static int i;
@@ -76,9 +74,9 @@ public class GlobalFrame extends JFrame{
     if(GridPilot.getDBs().length>0){
       try{
       	addPanel(new DBPanel(GridPilot.getDBs()[0], "package"));
-        //addPanel(new DBPanel(GridPilot.getDBs()[0], "transformation"));
-        //addPanel(new DBPanel(GridPilot.getDBs()[0], "dataset"));
-        //addPanel(new DBPanel(GridPilot.getDBs()[0], "jobDefinition"));
+        addPanel(new DBPanel(GridPilot.getDBs()[0], "transformation"));
+        addPanel(new DBPanel(GridPilot.getDBs()[0], "dataset"));
+        addPanel(new DBPanel(GridPilot.getDBs()[0], "jobDefinition"));
       }
       catch(Exception e){
       	Debug.debug("ERROR: could not load database panel for "+
@@ -238,7 +236,7 @@ public class GlobalFrame extends JFrame{
       return;
     } 
     try{
-      WebBox dlg = new WebBox(this, "About", aboutURL);
+      new WebBox(this, "About", aboutURL, "");
     }
     catch(Exception e){
       Debug.debug("WARNING: could not create WebBox", 1);
@@ -415,9 +413,7 @@ public class GlobalFrame extends JFrame{
       public void actionPerformed(ActionEvent e){
         try{
           if(pDialog==null){
-            pDialog = new CreateEditDialog(
-                GridPilot.getClassMgr().getGlobalFrame(),
-                jobMonitoringPanel, false, false);
+            pDialog = new CreateEditDialog(jobMonitoringPanel, false);
              pDialog.setTitle("Job Monitoring");
              pDialog.remove(pDialog.buttonPanel);
           }

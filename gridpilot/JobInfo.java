@@ -44,7 +44,6 @@ public class JobInfo extends DBRecord{
 
   private String jobName="";
   private int jobDefID=-1;
-  private String jobDefDB="";
   private String cs="";
   private String user="";
   private String db="";

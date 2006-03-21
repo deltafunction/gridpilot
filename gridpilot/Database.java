@@ -22,6 +22,7 @@ public interface Database{
   public DBResult select(String selectRequest, String identifier);
   
   // ####### Package table
+  public DBResult getPackages();
   public DBRecord getPackage(int packageID);
   public boolean createPackage(String [] values);
   public boolean updatePackage(int packageID, String [] fields, String [] values);
@@ -153,13 +154,13 @@ public interface Database{
     }
   
     public Object getAt(int row, int column){
-      if (row > values.length-1) return "no such row";
-      if (column > values[0].length-1) return "no such column";
+      if (row>values.length-1) return "no such row";
+      if (column>values[0].length-1) return "no such column";
       return values[row][column];
     }
 
    public Object getValue(int row, String col) {
-      if (row > values.length-1) return "no such row";
+      if (row>values.length-1) return "no such row";
       for (int i = 0 ; i < fields.length ; i++) {
         if (col.equalsIgnoreCase(fields[i])) return values[row][i] ;
       }
@@ -167,7 +168,7 @@ public interface Database{
     }
 
    public boolean setValue(int row, String col, String value) {
-     if (row > values.length-1) return false;
+     if (row>values.length-1) return false;
      for (int i = 0 ; i < fields.length ; i++) {
        if (col.equalsIgnoreCase(fields[i])){
          values[row][i] = value;

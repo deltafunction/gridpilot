@@ -17,8 +17,8 @@ import javax.swing.event.*;
 
 public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
 
+  private static final long serialVersionUID = 1L;
   private Table statusTable;
-
   private StatusBar statusBar;
 
   Timer timerRefresh = new Timer(0, new ActionListener (){
@@ -47,8 +47,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
   private JSpinner sAutoRefresh = new JSpinner();
   private JComboBox cbRefreshUnits = new JComboBox(new Object []{"sec", "min"});
   private int SEC = 0;
-  private int MIN = 1;
-
 
 //  private JMenu menu = new JMenu("Job options");
 

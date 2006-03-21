@@ -12,13 +12,11 @@ import java.util.*;
  * Shows dialog boxes with job outputs. <br>
  * <p><a href="ShowOutputsJobsDialog.java.html">see sources</a>
  */
-public class ShowOutputsJobsDialog
-    extends JOptionPane {
+public class ShowOutputsJobsDialog extends JOptionPane{
 
+  private static final long serialVersionUID = 1L;
   private static Dimension winDim = new Dimension(600, 600);
-  /*
-   */
-
+  
   /**
    * Shows an option dialog for each job in 'jobs', with button for each String 'options'
    * Dialog contains job stdOut, job stdErr, and if withValid is true, validation stdOut,

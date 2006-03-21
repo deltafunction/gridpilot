@@ -15,23 +15,22 @@ import java.util.*;
  */
 public class DatasetCreationPanel extends CreateEditPanel{
 
+  private static final long serialVersionUID = 1L;
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
   private String datasetID = "-1";
   private String datasetIdentifier = "identifier";
+  private String transformationIdentifier = "identifier";
   private DBPanel panel;
   private Table table;
   private String [] cstAttributesNames;
   private JComponent [] tcCstAttributes;
-  private JComponent [] tcCstJobDefAttributes;
   private boolean reuseTextFields = true;
   private Vector tcConstant = new Vector(); // contains all text components
   private String [] cstAttr = null;
   private boolean editing = false;
-  private boolean loaded = false;
   private DBPluginMgr dbPluginMgr = null;
   private static int TEXTFIELDWIDTH = 32;
-  private static int CFIELDWIDTH = 8;
   private String transformation = "";
   private String transformationFK = "-1";
   private String version = "";
@@ -43,11 +42,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private JComboBox cbTargetDBSelection;
   private JComboBox cbTransformationSelection;
   private JComboBox cbTransVersionSelection;
-  private StatusBar statusBar = null;
   private String targetDB = null;
   private DBRecord dataset = null;
-  
-  GridBagConstraints ct = new GridBagConstraints();
+  private GridBagConstraints ct = new GridBagConstraints();
+  private Database.DBResult transformations = null;
 
   /**
    * Constructor
@@ -57,16 +55,14 @@ public class DatasetCreationPanel extends CreateEditPanel{
     editing = _editing;
     panel = _panel;
     dbPluginMgr = _dbPluginMgr;
-    
     table = panel.getTable();
-    
-    statusBar = GridPilot.getClassMgr().getStatusBar();
-    
     cstAttributesNames = dbPluginMgr.getFieldNames("dataset");
     cstAttr = new String[cstAttributesNames.length];
-    
     datasetIdentifier = dbPluginMgr.getIdentifier(
        dbPluginMgr.getDBName(), "dataset");
+    transformationIdentifier = dbPluginMgr.getIdentifier(
+        dbPluginMgr.getDBName(), "transformation");
+    transformations = dbPluginMgr.getTransformations();
     
     // Find identifier index
     int identifierIndex = -1;
@@ -152,9 +148,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
     add(spAttributes,ct);
     
     updateUI();
-    
-    loaded = true;
-    
   }
 
   private void initAttributePanel(){
@@ -250,17 +243,14 @@ public class DatasetCreationPanel extends CreateEditPanel{
           cv.gridy = 0;
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("transFK")){
-        Database.DBResult res = dbPluginMgr.getTransformations();
-        for(int j=0; j<res.values.length; ++j){
-          if(res.getValue(j, "name").toString().equalsIgnoreCase(transformation) &&
-            res.getValue(j, "version").toString().equalsIgnoreCase(version)){
-            String transformationIdentifier = dbPluginMgr.getIdentifier(
-                dbPluginMgr.getDBName(), "transformation");
+        for(int j=0; j<transformations.values.length; ++j){
+          if(transformations.getValue(j, "name").toString().equalsIgnoreCase(transformation) &&
+              transformations.getValue(j, "version").toString().equalsIgnoreCase(version)){
             Debug.debug("Setting transformation FK: "+
-                res.getValue(j, transformationIdentifier)+" "+
+                transformations.getValue(j, transformationIdentifier)+" "+
                 tcCstAttributes[i].getClass().toString(), 3);
             Util.setJText(tcCstAttributes[i],
-                res.getValue(j, transformationIdentifier).toString());
+                transformations.getValue(j, transformationIdentifier).toString());
             break;
           }
         }
@@ -327,6 +317,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           cstAttributesNames,
           Integer.parseInt(datasetID)
           );
+      panel.refresh();
     }
     else{
       if(cbTargetDBSelection!=null && cbTargetDBSelection.getSelectedItem()!=null &&
@@ -346,6 +337,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           datasetIDs,
           targetDB
           );
+      panel.refresh();
     }
   }
 
@@ -356,10 +348,9 @@ public class DatasetCreationPanel extends CreateEditPanel{
       String transformation, String version){
     
     Debug.debug("editDataset: " + Integer.toString(datasetID) +
-        " " + transformation + " " + version,3); 
-    Debug.debug("Got field names: "+Util.arrayToString(cstAttributesNames),3);
-
-    int row = 0;
+        " " + transformation + " " + version, 3); 
+    Debug.debug("Got field names: "+
+        Util.arrayToString(cstAttributesNames), 3);
 
     if(editing){
       // set values of fields
@@ -408,23 +399,20 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
 
   private String[] getTransNames(){
-    Database.DBResult res = dbPluginMgr.getTransformations();
-    Debug.debug("Number of transformations found: "+res.values.length+
-        "; "+Util.arrayToString(res.fields),3);
-    String [] ret = new String[res.values.length];
-    for(int i=0; i<res.values.length; ++i){
-      ret[i] = res.getValue(i, "name").toString(); 
+    String [] ret = new String[transformations.values.length];
+    for(int i=0; i<transformations.values.length; ++i){
+      ret[i] = transformations.getValue(i, "name").toString(); 
       Debug.debug("name is "+ret[i], 3);
     }
     // This is to ensure only unique elements
     // TODO: for some reason this doesn't seam to work
     Arrays.sort(ret);
     Vector vec = new Vector();
-    if(res.values.length>0){
+    if(transformations.values.length>0){
       vec.add(ret[0]);
     }
-    if(res.values.length>1){
-      for(int i=1; i<res.values.length; ++i){
+    if(transformations.values.length>1){
+      for(int i=1; i<transformations.values.length; ++i){
         //Debug.debug("Comparing "+ret[i]+" <-> "+ret[i-1],3);
         if(!ret[i].equals(ret[i-1])){
           Debug.debug("Adding "+ret[i],3);
@@ -440,7 +428,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
   
   private void initTransformationPanel(int datasetID){
-    boolean found = false;
     
     Debug.debug("Finding transformations...",3);
 
@@ -484,7 +471,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
 
   private void initTransVersionPanel(int datasetID, String transformation){
-    boolean found = false;
 
     Debug.debug("Finding versions...",3);
 
@@ -547,13 +533,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     else{
       version = cbTransVersionSelection.getSelectedItem().toString();
-      Database.DBResult res = dbPluginMgr.getTransformations();
-      for(int j=0; j<res.values.length; ++j){
-        if(res.getValue(j, "name").toString().equalsIgnoreCase(transformation) &&
-          res.getValue(j, "version").toString().equalsIgnoreCase(version)){
-          String transformationIdentifier = dbPluginMgr.getIdentifier(
-              dbPluginMgr.getDBName(), "transformation");
-          transformationFK = res.getValue(j, transformationIdentifier).toString();
+      for(int j=0; j<transformations.values.length; ++j){
+        if(transformations.getValue(j, "name").toString().equalsIgnoreCase(transformation) &&
+            transformations.getValue(j, "version").toString().equalsIgnoreCase(version)){
+          transformationFK = transformations.getValue(j, transformationIdentifier).toString();
           Debug.debug("Setting transformation FK: "+transformationFK, 3);
           break;
         }
@@ -587,7 +570,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     return v;
   }
 
-  private Vector getIdTextFields(){
+  /*private Vector getIdTextFields(){
     Vector v = new Vector();
 
     v.addAll(tcConstant);
@@ -599,7 +582,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
 
     return v;
-  }
+  }*/
 
   private void initTargetDBsPanel(){
   	

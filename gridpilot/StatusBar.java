@@ -10,16 +10,6 @@ import java.awt.*;
 import java.net.URL;
 
 /**
- * <p>Title: AtCom</p>
- * <p>Description: An Atlas Commander</p>
- * <p>Copyright: Copyright (c) 2002</p>
- * <p>Company: CERN - EP/ATC</p>
- * @author  Vandy BERTEN (Vandy.Berten@cern.ch)
- * @version 1.2
- */
-
-
-/**
  * The <code>StatusBar</code> implements a status bar in two parts : a label on the left,
  * and a progress bar on the right. <p>
  * The label can be used in two mode : in the first one, the label is shown until another label
@@ -27,11 +17,10 @@ import java.net.URL;
  * is elapsed or another label is set. <br>
  * The progress bar has two mode as well : the first one is a "normal" progress bar which is
  * created outside this status bar, and the second one is an undeterminate progress bar.
- *
- * <p><a href="StatusBar.java.html">see sources</a>
  */
 public class StatusBar extends JPanel {
 
+  private static final long serialVersionUID = 1L;
   private JLabel label = new JLabel();
   private JProgressBar indeterminatePB = new JProgressBar();
 

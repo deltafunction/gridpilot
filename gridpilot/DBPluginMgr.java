@@ -30,8 +30,8 @@ public class DBPluginMgr implements Database, PanelUtil{
   private String dbName;
   private PanelUtil pu;
   
-// TODO: cache here??
-  private HashMap partInfoCacheId = null ;
+  // TODO: cache here??
+  //private HashMap partInfoCacheId = null ;
 
   // Time out in ms used if neither the specific time out nor "default timeout" is
   // defined in configFile
@@ -214,7 +214,6 @@ public class DBPluginMgr implements Database, PanelUtil{
     
     String findString = "";
     String replaceString = "";
-    String matchString = "";
     Pattern p = null;
     Matcher m = null;
     String s = "";
@@ -1628,6 +1627,30 @@ public class DBPluginMgr implements Database, PanelUtil{
       return null;
   }
 
+  public synchronized DBResult getPackages(){
+    
+    MyThread t = new MyThread(){
+      DBResult res = null;
+      public void run(){
+        try{
+          res = db.getPackages();
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName, t);
+        }
+      }
+      public DBResult getDB2Res(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getPackages"))
+      return t.getDB2Res();
+    else
+      return null;
+  }
+
   public synchronized DBResult getTransformations(){
   
     MyThread t = new MyThread(){
@@ -2202,5 +2225,102 @@ public class DBPluginMgr implements Database, PanelUtil{
       return t.getVectorRes();
     else
       return null;    
+  }
+
+  /**
+   * Converts a local path (<code>file</code>) into a absolute path (URL)
+   * by prepending the "prefix" attribute of the repository of the package
+   * of the transformation of the  <code>file</code>. <br>
+   * If the file name begins by '/' or the prefix is not defined, nothing
+   * is prepended. <br>
+   * If the obtained prefix doesn't end by '/', a '/' is added between
+   * <code>file</code> and the prefix.
+   */
+  public String getURL(String file, int packageID){
+    if(file.startsWith("/")){
+      return file;
+    }
+    String prefix = null;
+    Database.DBRecord pack = getPackage(packageID);
+    try{
+      prefix =
+        pack.getValue("scriptRepository").toString();
+    }
+    catch(Exception e){
+    }
+    if(prefix==null){
+      // E.g. proddb will not have this defined, so we just assume
+      // fully qualified file names...
+      return file;
+    }
+    else{
+      if(!prefix.endsWith("/")){
+        prefix = prefix+"/";
+      }
+      return prefix + file;
+    }
+  }
+  
+  public String getUrlFromTransformation(String file, int transformationID){
+    if(file.startsWith("/")){
+      return file;
+    }
+    Database.DBRecord transformation = 
+      getTransformation(transformationID);
+    String packageFK = null;
+    try{
+      packageFK =
+        transformation.getValue("packageFK").toString();
+    }
+    catch(Exception e){
+    }
+    if(packageFK==null){
+      Debug.debug("Could not find package FK of transformation "+
+          transformationID, 3);
+      return file;
+    }
+    return getURL(file, Integer.parseInt(packageFK));
+  }
+
+  public String getUrlFromDS(String file, int datasetID){
+    if(file.startsWith("/")){
+      return file;
+    }
+    Database.DBRecord dataset = getDataset(datasetID);
+    String transformationFK = null;
+    try{
+      transformationFK =
+      dataset.getValue("transformationFK").toString();
+    }
+    catch(Exception e){
+    }
+    if(transformationFK==null){
+      try{
+        transformationFK =
+           dataset.getValue("transFK").toString();
+      }
+      catch(Exception e){
+      }
+    }
+    if(transformationFK==null){
+      Debug.debug("Could not find transformation FK of dataset "+
+          datasetID, 3);
+      return file;
+    }
+    Database.DBRecord transformation = 
+      getTransformation(Integer.parseInt(transformationFK));
+    String packageFK = null;
+    try{
+      packageFK =
+        transformation.getValue("packageFK").toString();
+    }
+    catch(Exception e){
+    }
+    if(packageFK==null){
+      Debug.debug("Could not find package FK of transformation "+
+          transformationFK, 3);
+      return file;
+    }
+    return getURL(file, Integer.parseInt(packageFK));
   }
 }

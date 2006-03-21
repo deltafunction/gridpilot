@@ -4,27 +4,25 @@ import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
 
-public class CreateEditDialog extends JDialog{
+public class CreateEditDialog extends JFrame{
 
-  public JPanel buttonPanel = new JPanel();
+  private static final long serialVersionUID = 1L;
   private final int BCLOSE = 0;
   private final int BCREATEUPDATE = 1;
   private final int BCLEAR = 2;
-
-  JPanel pCreateEdit = new JPanel(new BorderLayout());
-  CreateEditPanel createEditPanel;
-  
+  private JPanel pCreateEdit = new JPanel(new BorderLayout());
+  private CreateEditPanel createEditPanel;
   private boolean editing;
-
   private JButton bClose = new JButton("Close");
   private JButton bCreateUpdate = null;
   private JButton bClear = new JButton("Clear");
   private JCheckBox cbShowResults = new JCheckBox("Show before writing to DB", true);
 
+  public JPanel buttonPanel = new JPanel();
 
-  public CreateEditDialog(JFrame frame, CreateEditPanel _panel, boolean _editing,
-      boolean modal){
-    super(frame, "jobDefinition", true);
+  public CreateEditDialog(CreateEditPanel _panel, boolean _editing){
+    
+    super();
     
     createEditPanel = _panel;
     editing = _editing;
@@ -45,14 +43,16 @@ public class CreateEditDialog extends JDialog{
       bCreateUpdate = new JButton("Create");
     }
 
-    try {
+    try{
       setContentPane(pCreateEdit);
       initGUI();
       pack();
       requestFocusInWindow();
-      setModal(modal);
+      // Doesn't seem to make any difference...
+      setAlwaysOnTop(false);
+      this.setVisible(true);
     }
-    catch (Exception e){
+    catch(Exception e){
       e.printStackTrace();
     }
   }
@@ -117,13 +117,12 @@ public class CreateEditDialog extends JDialog{
           public void run(){
             createEditPanel.create(cbShowResults.isSelected(), editing);
           }
-          }.start();
+        }.start();
         break;
 
       case BCLEAR :
         createEditPanel.clearPanel();
         break;
-
     }
   }
 }

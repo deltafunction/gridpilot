@@ -5,9 +5,9 @@ import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.*;
 
-public class LogViewerPanel
-    extends JTextPane {
+public class LogViewerPanel extends JTextPane{
 
+  private static final long serialVersionUID = 1L;
   private JPopupMenu popupMenu = new JPopupMenu();
   boolean showInfoMessages = true;
   boolean showHeader = true;

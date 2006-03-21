@@ -3,7 +3,6 @@ package gridpilot;
 import javax.swing.*;
 
 import java.awt.event.*;
-import java.net.URL;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Iterator;
@@ -80,12 +79,10 @@ public class SubmissionControl{
     String resourcesPath = configFile.getValue("GridPilot", "resources");
     if(resourcesPath != null && !resourcesPath.endsWith("/"))
       resourcesPath += "/";
-    ImageIcon iconSubmitting;
-    URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(resourcesPath + "submitting.png");
       iconSubmitting = new ImageIcon(resourcesPath + "submitting.png");
-    }catch(Exception e){
+    }
+    catch(Exception e){
       Debug.debug("Could not find image "+ resourcesPath + "submitting.png", 3);
       iconSubmitting = new ImageIcon();
     }
@@ -150,14 +147,15 @@ public class SubmissionControl{
       // are not yet put in toSubmitJobs).
       
       String resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "resources");
-      if(resourcesPath == null){
+      if(resourcesPath==null){
         GridPilot.getClassMgr().getLogFile().addMessage(
             GridPilot.getClassMgr().getConfigFile().getMissingMessage("GridPilot", "resources"));
         resourcesPath = ".";
       }
       else{
-        if (!resourcesPath.endsWith("/"))
+        if(!resourcesPath.endsWith("/")){
           resourcesPath = resourcesPath + "/";
+        }
       }
       statusBar.setLabel("Submitting. Please wait...");
       statusBar.animateProgressBar();
@@ -223,7 +221,7 @@ public class SubmissionControl{
           Debug.debug("job definition " + job.getJobDefId() + "("+job.getName()+") reserved", 2);
         }
         else{
-          if(userName == null)
+          if(userName==null)
             logFile.addMessage(configFile.getMissingMessage("GridPilot", "username"));
           logFile.addMessage("cannot reserve logical file "+((JobInfo) selectedJobs.get(i)));
 
@@ -270,7 +268,7 @@ public class SubmissionControl{
           Debug.debug("logical file " + job.getJobDefId() + "("+job.getName()+") reserved", 2);
         }
         else{
-          if(userName == null)
+          if(userName==null)
             logFile.addMessage(configFile.getMissingMessage("GridPilot", "username"));
           logFile.addMessage("cannot reserve logical file "+job.getJobDefId());
         }
@@ -377,11 +375,13 @@ public class SubmissionControl{
       }
 
       if(!askSave){
-        if (deleteFiles){
-          if (stdOutExists)
+        if(deleteFiles){
+          if(stdOutExists){
             shell.deleteFile(job.getStdOut());
-          if (stdErrExists)
+          }
+          if(stdErrExists){
             shell.deleteFile(job.getStdErr());
+          }
         }
       }
       else{
@@ -424,12 +424,10 @@ public class SubmissionControl{
                     JFileChooser.APPROVE_OPTION){
 
                   java.io.File stdOut = f.getSelectedFile();
-                  if (stdOut != null){
-                    try {
-                      /*pluginMgr.getLocalShellMgr()*/shell.writeFile(stdOut.getPath(),
-                          shell.readFile(job.getStdOut()), false);
-//                  File oldStdOut = new File(job.getStdOut());
-//                  oldStdOut.renameTo(stdOut);
+                  if(stdOut != null){
+                    try{
+                     shell.writeFile(stdOut.getPath(),
+                        shell.readFile(job.getStdOut()), false);
                     }
                     catch(java.io.IOException ioe){
                       logFile.addMessage("Cannot rename " + job.getStdOut() +
@@ -446,12 +444,10 @@ public class SubmissionControl{
                 if(f.showDialog(JOptionPane.getRootFrame(), "Save stderr")==
                     JFileChooser.APPROVE_OPTION){
                   java.io.File stdErr = f.getSelectedFile();
-                  if (stdErr != null){
+                  if(stdErr != null){
                     try{
-                      /*pluginMgr.getLocalShellMgr()*/shell.writeFile(stdErr.getPath(),
-                          shell.readFile(job.getStdErr()), false);
-//                  File oldStdErr = new File(job.getStdErr());
-//                  oldStdErr.renameTo(stdErr);
+                      shell.writeFile(stdErr.getPath(),
+                         shell.readFile(job.getStdErr()), false);
                     }
                     catch(java.io.IOException ioe){
                       logFile.addMessage("Cannot rename " + job.getStdErr() +
@@ -484,12 +480,13 @@ public class SubmissionControl{
               job.getJobDefId()));
       datasetMgr.updateDBStatus(job, DBPluginMgr.SUBMITTED);
       
-      if (job.getDBStatus() != DBPluginMgr.SUBMITTED){ // updateDBStatus didn't work
+      if(job.getDBStatus() != DBPluginMgr.SUBMITTED){
+        // updateDBStatus didn't work
         logFile.addMessage(
             "This job cannot be set Submitted -> this job cannot be resubmited",
             job);
       }
-      else {
+      else{
         job.setNeedToBeRefreshed(false);
         job.setJobId(null);
         job.setHost(null);
@@ -539,25 +536,20 @@ public class SubmissionControl{
 
     statusTable.setValueAt(job.getCSName(), job.getTableRow(),
         DatasetMgr.FIELD_CS);
-/*    statusTable.setValueAt(job.getName(), job.getTableRow(),
-                           DatasetMgr);
-    Debug.debug("jobName : " + job.getName(), 3);*/
+    //statusTable.setValueAt(job.getName(), job.getTableRow(),
+    //                       DatasetMgr);
+    //Debug.debug("jobName : " + job.getName(), 3);
     statusTable.setValueAt(iconSubmitting, job.getTableRow(),
         DatasetMgr.FIELD_CONTROL);
 
-    if (createOutputs(job) && csPluginMgr.submit(job)){
-
+    if(createOutputs(job) && csPluginMgr.submit(job)){
       Debug.debug("Job " + job.getName() + " submitted : \n" +
                   "\tCSJobId = " + job.getJobId() + "\n" +
                   "\tStdOut = " + job.getStdOut() + "\n" +
                   "\tStdErr = " + job.getStdErr(), 2);
 
-      if(/*!dbPluginMgr.updatePartJob(job.getJobDefId(), job.getJobId(), job.getName(),
-                                job.getStdOut(), job.getStdErr())*/
-          !dbPluginMgr.updateJobDefinition(
+      if(!dbPluginMgr.updateJobDefinition(
               job.getJobDefId(),
-              // TODO: change this to whatever we end up with
-              //new String [] {"jobID", "jobName", "stdOut", "stdErr"},
               new String []{job.getJobId(), job.getName(),
               job.getStdOut(), job.getStdErr()}))
         logFile.addMessage("DB update(" + job.getJobDefId() + ", " +
@@ -610,12 +602,13 @@ public class SubmissionControl{
 
     submittingJobs.remove(job);
 
-    if (!timer.isRunning())
+    if(!timer.isRunning()){
       timer.restart();
+    }
 
     pbSubmission.setValue(pbSubmission.getValue() + 1);
 
-    if (pbSubmission.getPercentComplete() == 1.0){
+    if(pbSubmission.getPercentComplete()==1.0){
       statusBar.removeProgressBar(pbSubmission);
       isProgressBarSet = false;
       pbSubmission.setMaximum(0);
@@ -634,15 +627,13 @@ public class SubmissionControl{
     String workingPath = configFile.getValue(job.getCSName(),
                                              "working path");
 
-    if (workingPath == null)
+    if(workingPath==null){
       workingPath = job.getCSName();
+    }
     
-    if(!workingPath.endsWith("/"))
+    if(!workingPath.endsWith("/")){
       workingPath += "/";
-
-    //String finalStdErr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getPartStderrDest(job.getJobDefId());
-    String finalStdErr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getStdErrFinalDest(job.getJobDefId());
-    //boolean withStdErr = finalStdErr != null && finalStdErr.trim().length() > 0;
+    }
 
     String prefix = null;
     
@@ -660,7 +651,7 @@ public class SubmissionControl{
       //throw e;
     }
     
-    if(prefix == null){ // if dir cannot be created
+    if(prefix==null){ // if dir cannot be created
       logFile.addMessage("Temp dir cannot be created with prefix " + job.getName()+
                          ". in the directory " + workingPath, job);
       return false;

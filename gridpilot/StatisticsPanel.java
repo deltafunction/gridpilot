@@ -7,20 +7,11 @@ import java.awt.event.*;
 import java.util.*;
 
 /**
- * <p>Title: AtCom</p>
- * <p>Description: An Atlas Commander</p>
- * <p>Copyright: Copyright (c) 2002</p>
- * <p>Company: CERN - EP/ATC</p>
- * @author  Vandy BERTEN (Vandy.Berten@cern.ch)
- * @version 1.2
- */
-
-/**
  * Shows some charts about the jobs status.
- *
- * <p><a href="StatisticsPanel.java.html">see sources</a>
  */
 public class StatisticsPanel extends JPanel{
+
+  private static final long serialVersionUID = 1L;
 
   interface painter{
     public void paint(Graphics2D g);
@@ -152,14 +143,11 @@ public class StatisticsPanel extends JPanel{
 
     for(int i=0; i<statusNames.length; ++i){
       g.setColor(colors[i%colors.length]);
-
-      int nameWitdh = metrics.stringWidth(statusNames[i]);
-
       g.drawString(values[i] + " " + statusNames[i],
                    horMargin + col*(getWidth() - 2*horMargin)/nbColumn,
                    bottom + (row + 1) *metrics.getAscent());
       row = row + 1;
-      if(row == nbRow) {
+      if(row==nbRow){
         ++col;
         row = 0;
       }
@@ -177,18 +165,10 @@ public class StatisticsPanel extends JPanel{
     int topMargin = 20;
     int bottomMargin = 20;
     int horMargin = 10;
-
-//    g.drawRect(horMargin, topMargin, getWidth()-2*horMargin -1, getHeight() - topMargin - bottomMargin -1);
-
     FontMetrics metrics = new Canvas().getFontMetrics(g.getFont());
-
     int columnWitdh = (getWidth() - 2 * horMargin) / statusNames.length;
-
-    int height = getHeight() - topMargin - bottomMargin;
-
     int bottom = getHeight() - bottomMargin; //- metrics.getAscent()-1;
     double step = (double)(bottom - topMargin) / maxValues();
-//    Debug.debug("step = " + step, this, 3);
     int inset = columnWitdh/4;
 
 

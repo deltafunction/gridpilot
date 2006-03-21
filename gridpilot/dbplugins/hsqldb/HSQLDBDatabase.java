@@ -515,7 +515,6 @@ public class HSQLDBDatabase implements Database{
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
       Vector taskVector = new Vector();
-      String [] jt = new String[datasetFields.length];
       while(rset.next()){
         String values[] = new String[datasetFields.length];
         for(int i=0; i<datasetFields.length;i++){
@@ -523,7 +522,7 @@ public class HSQLDBDatabase implements Database{
               !datasetFields[i].equalsIgnoreCase("grid") ||
               datasetFields[i].endsWith("COUNT")){
             int tmp = rset.getInt(datasetFields[i]);
-            values[i] = Integer.toString(rset.getInt(datasetFields[i]));
+            values[i] = Integer.toString(tmp);
           }
           else{
             values[i] = rset.getString(datasetFields[i]);
@@ -663,6 +662,55 @@ public class HSQLDBDatabase implements Database{
   }
 
   /*
+   * Find package records
+   */
+  private synchronized DBRecord [] getPackageRecords(){
+    
+    ResultSet rset = null;
+    String req = "";
+    DBRecord [] allPackageRecords = null;   
+    try{      
+      req = "SELECT "+packageFields[0];
+      if(packageFields.length>1){
+        for(int i=1; i<packageFields.length; ++i){
+          req += ", "+packageFields[i];
+        }
+      }
+      req += " FROM package";
+      Debug.debug(req, 3);
+      rset = conn.createStatement().executeQuery(req);
+      Vector packageVector = new Vector();
+      String [] jt = new String[packageFields.length];
+      int i = 0;
+      while(rset.next()){
+        jt = new String[packageFields.length];
+        for(int j=0; j<packageFields.length; ++j){
+          try{
+            jt[j] = rset.getString(j+1);
+          }
+          catch(Exception e){
+            Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
+                packageFields[j]+". "+e.getMessage(),1);
+          }
+        }
+        Debug.debug("Adding value "+jt[0], 3);
+        packageVector.add(new DBRecord(packageFields, jt));
+        Debug.debug("Added value "+((DBRecord) packageVector.get(i)).getAt(0), 3);
+        ++i;
+      }
+      allPackageRecords = new DBRecord[i];
+      for(int j=0; j<i; ++j){
+        allPackageRecords[j] = ((DBRecord) packageVector.get(j));
+        Debug.debug("Added value "+allPackageRecords[j].getAt(0), 3);
+      }
+    }
+    catch(SQLException e){
+      Debug.debug("WARNING: No packages found. "+e.getMessage(), 1);
+    }
+    return allPackageRecords;
+  }
+
+  /*
    * Find transformation records
    */
   private synchronized DBRecord [] getTransformationRecords(){
@@ -680,7 +728,6 @@ public class HSQLDBDatabase implements Database{
       req += " FROM transformation";
       Debug.debug(req, 3);
       rset = conn.createStatement().executeQuery(req);
-      //ResultSetMetaData md = rset.getMetaData();
       Vector transformationVector = new Vector();
       String [] jt = new String[transformationFields.length];
       int i = 0;
@@ -819,8 +866,18 @@ public class HSQLDBDatabase implements Database{
     jobdefv.removeAllElements();
     return defs;
   }
-  
-  //// FJOB PRODDB
+    
+  public synchronized DBResult getPackages(){
+    DBRecord jt [] = getPackageRecords();
+    DBResult res = new DBResult(packageFields.length, jt.length);
+    res.fields = packageFields;
+    for(int i=0; i<jt.length; ++i){
+      for(int j=0; j<packageFields.length; ++j){
+        res.values[i][j] = jt[i].values[j];
+      }
+    }
+    return res;
+  }
   
   public synchronized DBResult getTransformations(){
     DBRecord jt [] = getTransformationRecords();
@@ -871,44 +928,35 @@ public class HSQLDBDatabase implements Database{
   
   public synchronized boolean createJobDefinition(String [] values){
     
-    String [] fields = getFieldNames("jobDefintion");
-    
-    if(fields.length!=values.length){
+    if(jobDefFields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
-          fields.length+"!="+values.length, 1);
+          jobDefFields.length+"!="+values.length, 1);
       return false;
     }
 
     String sql = "INSERT INTO jobDefinition (";
-    for(int i = 1; i < fields.length; ++i){
-      sql += fields[i];
-      if(fields.length > 2 && i < fields.length - 1){
+    for(int i=1; i<jobDefFields.length; ++i){
+      sql += jobDefFields[i];
+      if(jobDefFields.length>2 && i<jobDefFields.length - 1){
         sql += ",";
       }
     }
     //sql += ",lastAttempt";
     sql += ") VALUES (";
-    for(int i = 1; i < fields.length; ++i){
+    for(int i = 1; i < jobDefFields.length; ++i){
       
-      if(fields[i].equalsIgnoreCase("creationTime") ||
-          fields[i].equalsIgnoreCase("modificationTime")){
-        try{
-          SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-          java.util.Date date = df.parse(values[i]);
-          String dateString = df.format(date);
-          values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
-        }
-        catch(Throwable e){
-          Debug.debug("Could not set date. "+e.getMessage(), 1);
-          e.printStackTrace();
-        }
+      if(jobDefFields[i].equalsIgnoreCase("created")){
+        values[i] = makeDate(values[i]);
+      }
+      else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
+        values[i] = makeDate("");
       }
       else{
         values[i] = "'"+values[i]+"'";
       }
       
       sql += values[i];
-      if(fields.length > 1 && i < fields.length - 1){
+      if(jobDefFields.length>1 && i<jobDefFields.length - 1){
         sql += ",";
       }
     }
@@ -970,18 +1018,11 @@ public class HSQLDBDatabase implements Database{
             datasetFields[i].equalsIgnoreCase("comment")){
           values[i] = nonMatchedStr;
         }
-        if(datasetFields[i].equalsIgnoreCase("creationTime") ||
-            datasetFields[i].equalsIgnoreCase("modificationTime")){
-          try{
-            SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            java.util.Date date = df.parse(values[i]);
-            String dateString = df.format(date);
-            values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
-          }
-          catch(Throwable e){
-            Debug.debug("Could not set date. "+e.getMessage(), 1);
-            e.printStackTrace();
-          }
+        if(datasetFields[i].equalsIgnoreCase("created")){
+          values[i] = makeDate(values[i]);
+        }
+        else if(datasetFields[i].equalsIgnoreCase("lastModified")){
+          values[i] = makeDate("");
         }
         else{
           values[i] = values[i].replaceAll("\n","\\\\n");
@@ -1020,19 +1061,11 @@ public class HSQLDBDatabase implements Database{
     }
     sql += ") VALUES (";
     for(int i=1; i<transformationFields.length; ++i){
-      
-      if(transformationFields[i].equalsIgnoreCase("creationTime") ||
-          transformationFields[i].equalsIgnoreCase("modificationTime")){
-        try{
-          SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-          java.util.Date date = df.parse(values[i]);
-          String dateString = df.format(date);
-          values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
-        }
-        catch(Throwable e){
-          Debug.debug("Could not set date. "+e.getMessage(), 1);
-          e.printStackTrace();
-        }
+      if(transformationFields[i].equalsIgnoreCase("created")){
+        values[i] = makeDate(values[i]);
+      }
+      else if(transformationFields[i].equalsIgnoreCase("lastModified")){
+        values[i] = makeDate("");
       }
       else{
         values[i] = "'"+values[i]+"'";
@@ -1070,19 +1103,11 @@ public class HSQLDBDatabase implements Database{
     }
     sql += ") VALUES (";
     for(int i=1; i<packageFields.length; ++i){
-      
-      if(packageFields[i].equalsIgnoreCase("creationTime") ||
-          packageFields[i].equalsIgnoreCase("modificationTime")){
-        try{
-          SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-          java.util.Date date = df.parse(values[i]);
-          String dateString = df.format(date);
-          values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
-        }
-        catch(Throwable e){
-          Debug.debug("Could not set date. "+e.getMessage(), 1);
-          e.printStackTrace();
-        }
+      if(packageFields[i].equalsIgnoreCase("created")){
+        values[i] = makeDate(values[i]);
+      }
+      else if(packageFields[i].equalsIgnoreCase("lastModified")){
+        values[i] = makeDate("");
       }
       else{
         values[i] = "'"+values[i]+"'";
@@ -1181,25 +1206,11 @@ public class HSQLDBDatabase implements Database{
         for(int j=0; j<fields.length; ++j){
           // only add if present in transformationFields
           if(jobDefFields[i].equalsIgnoreCase(fields[j])){
-
-            if(jobDefFields[i].equalsIgnoreCase("creationTime") ||
-                jobDefFields[i].equalsIgnoreCase("modificationTime")){
-              try{
-                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                String dateString = null;
-                if(jobDefFields[i].equalsIgnoreCase("modificationTime")){
-                  dateString = df.format(Calendar.getInstance().getTime());
-                }
-                if(jobDefFields[i].equalsIgnoreCase("creationTime")){
-                  java.util.Date date = df.parse(values[j]);
-                  dateString = df.format(date);
-                }
-                values[j] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
-              }
-              catch(Throwable e){
-                Debug.debug("Could not set date. "+e.getMessage(), 1);
-                e.printStackTrace();
-              }
+            if(jobDefFields[i].equalsIgnoreCase("created")){
+              values[i] = makeDate(values[i]);
+            }
+            else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
+              values[i] = makeDate("");
             }
             else{
               values[j] = "'"+values[j]+"'";
@@ -1261,19 +1272,11 @@ public class HSQLDBDatabase implements Database{
         for(int j=0; j<fields.length; ++j){
           // only add if present in datasetFields
           if(datasetFields[i].equalsIgnoreCase(fields[j])){
-            
-            if(datasetFields[i].equalsIgnoreCase("creationTime") ||
-                datasetFields[i].equalsIgnoreCase("modificationTime")){
-              try{
-                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                java.util.Date date = df.parse(values[j]);
-                String dateString = df.format(date);
-                values[j] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
-              }
-              catch(Throwable e){
-                Debug.debug("Could not set date. "+e.getMessage(), 1);
-                e.printStackTrace();
-              }
+            if(datasetFields[i].equalsIgnoreCase("created")){
+              values[i] = makeDate(values[i]);
+            }
+            else if(datasetFields[i].equalsIgnoreCase("lastModified")){
+              values[i] = makeDate("");
             }
             else{
               values[j] = "'"+values[j]+"'";
@@ -1331,19 +1334,11 @@ public class HSQLDBDatabase implements Database{
         for(int j=0; j<fields.length; ++j){
           // only add if present in transformationFields
           if(transformationFields[i].equalsIgnoreCase(fields[j])){
-            
-            if(transformationFields[i].equalsIgnoreCase("creationTime") ||
-                transformationFields[i].equalsIgnoreCase("modificationTime")){
-              try{
-                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                java.util.Date date = df.parse(values[j]);
-                String dateString = df.format(date);
-                values[j] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
-              }
-              catch(Throwable e){
-                Debug.debug("Could not set date. "+e.getMessage(), 1);
-                e.printStackTrace();
-              }
+            if(transformationFields[i].equalsIgnoreCase("created")){
+              values[i] = makeDate(values[i]);
+            }
+            else if(transformationFields[i].equalsIgnoreCase("lastModified")){
+              values[i] = makeDate("");
             }
             else{
               values[j] = "'"+values[j]+"'";
@@ -1401,19 +1396,11 @@ public class HSQLDBDatabase implements Database{
         for(int j=0; j<fields.length; ++j){
           // only add if present in packageFields
           if(packageFields[i].equalsIgnoreCase(fields[j])){
-            
-            if(packageFields[i].equalsIgnoreCase("creationTime") ||
-                packageFields[i].equalsIgnoreCase("modificationTime")){
-              try{
-                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                java.util.Date date = df.parse(values[j]);
-                String dateString = df.format(date);
-                values[j] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
-              }
-              catch(Throwable e){
-                Debug.debug("Could not set date. "+e.getMessage(), 1);
-                e.printStackTrace();
-              }
+            if(packageFields[i].equalsIgnoreCase("created")){
+              values[i] = makeDate(values[i]);
+            }
+            else if(packageFields[i].equalsIgnoreCase("lastModified")){
+              values[i] = makeDate("");
             }
             else{
               values[j] = "'"+Util.dbEncode(values[j])+"'";
@@ -1455,7 +1442,7 @@ public class HSQLDBDatabase implements Database{
   		String sql = "DELETE FROM jobDefinition WHERE identifier = '"+
       jobDefId+"'";
   		Statement stmt = conn.createStatement();
-    	ResultSet rset = stmt.executeQuery(sql);
+    	stmt.executeUpdate(sql);
   	}
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -1471,7 +1458,7 @@ public class HSQLDBDatabase implements Database{
         String sql = "DELETE FROM dataset WHERE identifier = '"+
         datasetID+"'";
         Statement stmt = conn.createStatement();
-        ResultSet rset = stmt.executeQuery(sql);
+        stmt.executeUpdate(sql);
       }
       catch(Exception e){
         Debug.debug(e.getMessage(), 2);
@@ -1496,7 +1483,7 @@ public class HSQLDBDatabase implements Database{
         String sql = "DELETE FROM jobDefinition WHERE dataset = '"+
         getDataset(datasetID).getValue("name")+"'";
         Statement stmt = conn.createStatement();
-        ResultSet rset = stmt.executeQuery(sql);
+        stmt.executeUpdate(sql);
       }
       catch(Exception e){
         Debug.debug(e.getMessage(), 1);
@@ -1511,7 +1498,7 @@ public class HSQLDBDatabase implements Database{
         String sql = "DELETE FROM transformation WHERE identifier = '"+
         transformationID+"'";
         Statement stmt = conn.createStatement();
-        ResultSet rset = stmt.executeQuery(sql);
+        stmt.executeUpdate(sql);
       }
       catch(Exception e){
         Debug.debug(e.getMessage(), 2);
@@ -1527,7 +1514,7 @@ public class HSQLDBDatabase implements Database{
         String sql = "DELETE FROM package WHERE identifier = '"+
         packageID+"'";
         Statement stmt = conn.createStatement();
-        ResultSet rset = stmt.executeQuery(sql);
+        stmt.executeUpdate(sql);
       }
       catch(Exception e){
         Debug.debug(e.getMessage(), 2);
@@ -1581,6 +1568,26 @@ public class HSQLDBDatabase implements Database{
 
   public synchronized String getError(){
     return error;
+  }
+  
+  private String makeDate(String dateInput){
+    try{
+      SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+      String dateString = "";
+      if(dateInput == null || dateInput.equals("")){
+        dateString = df.format(Calendar.getInstance().getTime());
+      }
+      else{
+        java.util.Date date = df.parse(dateInput);
+        dateString = df.format(date);
+     }
+      return "'"+dateString+"'";
+    }
+    catch(Throwable e){
+      Debug.debug("Could not set date. "+e.getMessage(), 1);
+      e.printStackTrace();
+      return dateInput;
+    }
   }
 
 }

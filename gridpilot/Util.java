@@ -44,10 +44,10 @@ public class Util{
    */
   public static String arrayToString(Object [] values){
     String res = "";
-    if(values == null)
+    if(values==null)
       return "(null)";
     for(int i=0; i< values.length ; ++i){
-      res += (values[i] == null ? "null" : values[i].toString()) + " ";
+      res += (values[i]==null ? "null" : values[i].toString()) + " ";
     }
     return res;
   }
@@ -58,10 +58,10 @@ public class Util{
    */
   public static String arrayToString(Object [] values, String delim){
     String res = "";
-    if(values == null)
+    if(values==null)
       return "(null)";
     for(int i=0; i<values.length ; ++i){
-      res += (values[i] == null ? "" : values[i].toString());
+      res += (values[i]==null ? "" : values[i].toString());
       if(i<values.length-1){
         res += delim;
       }       
@@ -118,15 +118,15 @@ public class Util{
   public static void setJEditable(JComponent comp, boolean edi){
     if(comp.getClass().isInstance(new JTextArea())){
       ((JTextComponent) comp).setEditable(edi);
-      ((JTextComponent) comp).setEnabled(edi);
+      //((JTextComponent) comp).setEnabled(edi);
     }
     else if(comp.getClass().isInstance(new JTextField())){
       ((JTextField) comp).setEditable(edi);
-      ((JTextField) comp).setEnabled(edi);
+      //((JTextField) comp).setEnabled(edi);
     }
     else if(comp.getClass().isInstance(new JComboBox())){
       ((JComboBox) comp).setEditable(edi);
-      ((JComboBox) comp).setEnabled(edi);
+      //((JComboBox) comp).setEnabled(edi);
     }
     if(!edi){
       comp.setBackground(Color.lightGray);
@@ -136,45 +136,10 @@ public class Util{
     }
   }
 
-  /**
-   * Converts a local path (<code>file</code>) into a absolute path by prepending the "prefix" attribute
-   * of the gridpilot section in config file. <br>
-   * If the file name begins by '/' or the prefix is not defined, nothing is prepend, <br>
-   * If prepend doesn't end by '/', a '/' is added between <code>file</code> and
-   * <code>prepend</code>.
-   */
-  public static String getFullPath(String file){
-    if(file.startsWith("/"))
-      return file;
-
-    if(GridPilot.prefix == null)
-      return file;
-    else
-      return GridPilot.prefix + file;
-  }
-
-  /**
-   * Converts a local path (<code>file</code>) into a URL by prepending the "url" attribute
-   * of the gridpilot section in config file. <br>
-   * If the file name begins by 'http://' or the prefix is not defined, nothing is prepend, <br>
-   * If prepend doesn't end by '/', a '/' is added between <code>file</code> and
-   * <code>prepend</code>.
-   */
-  public static String getURL(String file){
-    if(file.startsWith("http://") || file.startsWith("https://"))
-      return file;
-
-    if(GridPilot.url == null)
-      return file;
-    else
-      return GridPilot.url + file;
-  }
-
   public static String encode(String s){
     // Put quotes around and escape all enclosed quotes/dollars.
     // Tried to get this working using replaceAll without luck.
     String tmp = "";
-    char c;
     for(int i=0; i<s.length(); i++){
       if(s.charAt(i)=='"'){
         tmp = tmp + '\\';
@@ -225,5 +190,6 @@ public class Util{
     if (background instanceof UIResource){
       c.setBackground(UIManager.getColor("TextField.inactiveBackground"));
     }
-  } 
+  }
+ 
 }

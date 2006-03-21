@@ -12,10 +12,8 @@ public class TransformationCreator{
 
   private boolean showResults;
   private String [] cstAttr;
-  private String [] resCstAttr;
   private String [] cstAttrNames;
   private boolean editing;
-  private static Object semaphoreDBCreation = new Object();
   private Object[] showResultsOptions = {"OK", "Skip"};
   private DBPluginMgr dbPluginMgr = null;
 
@@ -33,13 +31,15 @@ public class TransformationCreator{
     cstAttrNames =  _cstAttrNames;
     editing = _editing;
     
-    resCstAttr = new String[cstAttr.length];
     Debug.debug("Are we editing? "+editing,3);
     createTransformationRecord();
   }
 
   private void createTransformationRecord(){
-    int choice = showResult(resCstAttr);
+    int choice = 0;
+    if(showResults){
+      choice = showResult();
+    }
 
     switch(choice){
       case 0  : break;  // OK
@@ -55,19 +55,19 @@ public class TransformationCreator{
         Debug.debug("Checking name "+tranformationIdentifier+":"+cstAttrNames[i].toString(), 3);
         if(cstAttrNames[i].toString().equalsIgnoreCase(
             tranformationIdentifier)){
-          id = Integer.parseInt(resCstAttr[i]);
+          id = Integer.parseInt(cstAttr[i]);
           break;
         }
       }
       Debug.debug("Updating...", 3);
-      if(!dbPluginMgr.updateTransformation(id, cstAttrNames, resCstAttr)){
+      if(!dbPluginMgr.updateTransformation(id, cstAttrNames, cstAttr)){
         JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
             "Transformation cannot be updated.\n"+
           dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
       }
     }
     else{
-      if(!dbPluginMgr.createTransformation(resCstAttr)){
+      if(!dbPluginMgr.createTransformation(cstAttr)){
         JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
             "Transformation cannot be created.\n"+
           dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
@@ -75,7 +75,7 @@ public class TransformationCreator{
     }     
   }
 
-  private int showResult(String [] resCstAttr){
+  private int showResult(){
 
     JPanel pResult = new JPanel(new GridBagLayout());
     int row = 0;
@@ -88,14 +88,14 @@ public class TransformationCreator{
       JTextArea textArea = new JTextArea("");
       if(cstAttrNames[i].equalsIgnoreCase("formalPars")){
         try{
-          if(resCstAttr[i]!=null && !resCstAttr[i].equals("null") &&
-              !resCstAttr[i].equals("")){
-            xmlNode = ProdDBXmlNode.parseString(resCstAttr[i], 0);
+          if(cstAttr[i]!=null && !cstAttr[i].equals("null") &&
+              !cstAttr[i].equals("")){
+            xmlNode = ProdDBXmlNode.parseString(cstAttr[i], 0);
             xmlNode.fillText();
           }
         }
         catch(Exception e){
-          textArea = new JTextArea(resCstAttr[i]);
+          textArea = new JTextArea(cstAttr[i]);
         }
 
         if(xmlNode!=null && xmlNode.parsedText!=null){
@@ -107,7 +107,7 @@ public class TransformationCreator{
         jval = textArea;
       }
       else{
-        jval = new JLabel(resCstAttr[i]);
+        jval = new JLabel(cstAttr[i]);
       }
       pResult.add(jval, new GridBagConstraints(1, row, 3, 1, 1.0, 0.0
           ,GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));

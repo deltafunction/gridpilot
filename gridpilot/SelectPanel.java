@@ -19,35 +19,34 @@ import java.awt.event.*;
  * One instance of this class is created by each DBPanel instance.
  *
  */
- public class SelectPanel extends JPanel{
+public class SelectPanel extends JPanel{
 
-   // lists of field names with table name as key
-   private String [] fieldNames = null;
-   private String tableName;
-   private String [] relationNames = {"=", "CONTAINS", "<", ">", "!="};
-   private GridBagConstraints gbcVC;
-   public SPanel.ConstraintPanel spcp;
-   protected SPanel sPanel;
+  private static final long serialVersionUID = 1L;
+  // lists of field names with table name as key
+  private String [] fieldNames = null;
+  private String tableName;
+  private String [] relationNames = {"=", "CONTAINS", "<", ">", "!="};
+  private GridBagConstraints gbcVC;
+  public SPanel.ConstraintPanel spcp;
+  protected SPanel sPanel;
 
-   /**
-   * Constructors
-   */
-
-   /**
-    * Creates a SelectPanel, with n tables.
-    * Called by : DBPanel.DBPanel()
-    */
-
-   public SelectPanel(String _tableName, String [] _fieldNames)
-       throws Exception{
-     fieldNames = _fieldNames;
-     tableName = _tableName;
-   }
-   
   /**
-   * GUI Initialisation
+  * Constructors
+  */
+
+  /**
+   * Creates a SelectPanel, with n tables.
+   * Called by : DBPanel.DBPanel()
    */
+  public SelectPanel(String _tableName, String [] _fieldNames)
+      throws Exception{
+    fieldNames = _fieldNames;
+    tableName = _tableName;
+  }
   
+ /**
+  * GUI Initialisation
+  */  
   public void initGUI() throws Exception {
     
     gbcVC = new GridBagConstraints();
@@ -152,7 +151,7 @@ import java.awt.event.*;
   /**
    * Returns the index of the string s in the array array, or -1
    */
-  private int getIndexOf(String [] array, String s){
+  /*private int getIndexOf(String [] array, String s){
     if(array==null || s==null){
       return -1;
     }
@@ -162,13 +161,13 @@ import java.awt.event.*;
       }
     }
     return -1;
-  }
+  }*/
   
   /**
    * Gets panel number of the panel which contains the source of the current event.
    * @return index in sources of e.getSource
    */
-  private int getPanel(ActionEvent e, Object [] sources){
+  /*private int getPanel(ActionEvent e, Object [] sources){
     if(e.getSource().getClass()==JButton.class){
       return ((JButton)(e.getSource())).getMnemonic();
     }
@@ -178,24 +177,25 @@ import java.awt.event.*;
     }
     System.err.println("SelectPanel.getPanel : source not found");
     return -1;
-  }
+  }*/
 
   /**
    * Initialises the panel # 'panel'.
    * Called by : this.initGUI()
    */
   protected class SPanel extends JPanel{
-    public String name = "";
+    private static final long serialVersionUID = 1L;
     private JButton bAddConstraintRow;
     private JButton bRemoveConstraintRow ;
     private JPanel spConstraintList;
     private JPanel spConstraints;
     private JButton bAddDisplayRow;
     private JButton bRemoveDisplayRow;
-    protected JPanel spDisplayList;
     private JPanel spDisplays;
+    protected JPanel spDisplayList;
     protected String [] fieldList;
-        
+    public String name = "";
+       
     public SPanel(String _name, String [] _fieldList){
       name = _name;
       fieldList = _fieldList;
@@ -271,6 +271,7 @@ import java.awt.event.*;
     }
    
     protected class ConstraintPanel extends JPanel{
+      private static final long serialVersionUID = 1L;
       private JComboBox cbConstraintAttribute;
       private JComboBox cbConstraintRelation;
       public JTextField tfConstraintValue;
@@ -304,6 +305,7 @@ import java.awt.event.*;
     }        
      
     protected class DisplayPanel extends JPanel{
+      private static final long serialVersionUID = 1L;
       protected JComboBox cbDisplayAttribute;
       DisplayPanel(boolean withStar){
         // Combobox attribute
@@ -363,7 +365,9 @@ import java.awt.event.*;
   }
     
   /**
-   * Resets the constraint box to .
+   * Resets the constraint box to have only one constraint
+   * box and have the first value selected in the drop downs
+   * of this box.
    */
   public void resetConstraintList(String tableName){
     int comps = sPanel.spConstraintList.getComponentCount();
@@ -378,7 +382,6 @@ import java.awt.event.*;
       return;
     }
     Component[] parts = spcp.cbConstraintAttribute.getComponents();
-    // TODO: set default field (e.g. 'name') instead of the first one...
     if((parts!=null) && (parts.length>0)){
       spcp.cbConstraintAttribute.setSelectedIndex(0);
     }
@@ -392,7 +395,7 @@ import java.awt.event.*;
   /**
    * Sets the constraint box to key = value.
    */
-  public void setConstraint(String tableName, String key, String value,
+  public void setConstraint(String key, String value,
       int constraintRelationIndex){
     int comps = sPanel.spConstraintList.getComponentCount();
     if(comps>1){

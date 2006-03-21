@@ -17,6 +17,7 @@ import javax.swing.table.AbstractTableModel;
 
 public class DBVectorTableModel extends AbstractTableModel {
 
+  private static final long serialVersionUID = 1L;
   Vector theRecords;
   //String [] columnNames = {"name","partID","jobID","newStatus","host"};
   String [] columnNames = {""};

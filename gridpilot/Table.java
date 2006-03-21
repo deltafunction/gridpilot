@@ -19,6 +19,7 @@ import java.util.Vector;
 
 public class Table extends JTable {
   
+  private static final long serialVersionUID = 1L;
   private ListSelectionListener lsl;
   private String [] hide;
   private String [] colorMapping;
@@ -42,6 +43,9 @@ public class Table extends JTable {
 
   /** TableCellRenderer of this table*/
   private TableCellRenderer tableCellRenderer = new DefaultTableCellRenderer(){
+
+    private static final long serialVersionUID = 1L;
+
     public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
         boolean hasFocus, int row, int column){
       synchronized (table){
@@ -103,7 +107,7 @@ public class Table extends JTable {
   /**
   * Constructs an empty table.
   */
-/*  public Table() {
+/*  public Table(){
     tableModel = new DBVectorTableModel();
     setModel(tableModel);
     
@@ -114,7 +118,7 @@ public class Table extends JTable {
    * Constructs an empty table with the columns hide hidden.
    */
 
-  public Table(String [] _hide, String [] fieldNames) {
+  public Table(String [] _hide, String [] fieldNames){
     tableModel = new DBVectorTableModel(fieldNames);
     setModel(tableModel);
     hide = _hide;
@@ -139,7 +143,7 @@ public class Table extends JTable {
   /**
    * Constructs an empty table.
    */
-  /* public Table(MyTableModel _model) {
+  /* public Table(MyTableModel _model){
      tableModel = _model;
      setModel(_model);
      initTable();
@@ -148,7 +152,7 @@ public class Table extends JTable {
    /**
     * Constructs a table.
     */
-    public Table(DBVectorTableModel _model) {
+    public Table(DBVectorTableModel _model){
       tableModel = _model;
       setModel(_model);
       initTable();
@@ -157,7 +161,7 @@ public class Table extends JTable {
     /**
      * Constructs a with the columns hide hidden.
      */
-     public Table(DBVectorTableModel _model, String [] _hide) {
+     public Table(DBVectorTableModel _model, String [] _hide){
        tableModel = _model;
        setModel(_model);
        hide = _hide;
@@ -166,7 +170,7 @@ public class Table extends JTable {
   /**
    * Constructs a table, with rowCount rows and colCount.
    */
-  public Table(int rowCount, int colCount) {
+  public Table(int rowCount, int colCount){
     tableModel = new DBVectorTableModel(rowCount, colCount);
     setModel(tableModel);
     
@@ -225,7 +229,7 @@ public class Table extends JTable {
    */
   public void hideLastColumns(int nrCols){
     if(tableModel.getColumnCount()>nrCols){
-      for (int i=0; i<nrCols; i++) {
+      for (int i=0; i<nrCols; i++){
         hideColumn(tableModel.getColumnCount()-(i+1));
         removeLastSubItem(menuShow);
         removeLastSubItem(menuSort);
@@ -326,7 +330,7 @@ public class Table extends JTable {
   /**
    * Delete rows from this table.
    */
-  public synchronized void deleteRows(int[] indexes) {
+  public synchronized void deleteRows(int[] indexes){
     clearSelection();
     tableModel.deleteRows(indexes);
     revalidate();
@@ -351,7 +355,7 @@ public class Table extends JTable {
   }
   
   /*
-  public synchronized void deleteRow(int index) {
+  public synchronized void deleteRow(int index){
     clearSelection();
     tableModel.deleteRow(index);
     revalidate();
@@ -444,8 +448,8 @@ public class Table extends JTable {
   private void initListeners(){
 //    removeAll();
 
-    this.addMouseListener(new java.awt.event.MouseAdapter() {
-      public void mousePressed(MouseEvent e) {
+    this.addMouseListener(new java.awt.event.MouseAdapter(){
+      public void mousePressed(MouseEvent e){
         if (e.getButton() != MouseEvent.BUTTON1){ // right button
 
           int row = rowAtPoint(e.getPoint());
@@ -459,7 +463,7 @@ public class Table extends JTable {
     });
 
     this.getTableHeader().addMouseListener(new java.awt.event.MouseAdapter (){
-      public void mouseClicked(MouseEvent e) {
+      public void mouseClicked(MouseEvent e){
         if(e.getButton()==MouseEvent.BUTTON1){ // left button
           int column = columnAtPoint(e.getPoint());//getTableHeader().getColumnModel().getColumnIndexAtX(e.getX());
           if(tableModel.getColumnSort()==column)
@@ -635,7 +639,7 @@ public class Table extends JTable {
       hideColumn(cbmu.getMnemonic());
   }
 
-  public synchronized void paintImmediately(int x,int y,int w, int h) {
+  public synchronized void paintImmediately(int x,int y,int w, int h){
     try{
       super.paintImmediately(x, y, w, h);
     }catch(Exception e){

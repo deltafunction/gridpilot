@@ -102,8 +102,6 @@ public class DatasetCreator{
             // See if attribute has not been set. If it hasn't, set it and clear it
             // again after the new dataset has been created.
             else if(resCstAttr[j]==null || resCstAttr[j].equals("")){
-              String arg = "select "+cstAttrNames[j]+" from dataset where logicalDatasetName='"+
-              dbPluginMgr.getDatasetName(datasetIDs[i])+"'";
               Database.DBRecord res = dbPluginMgr.getDataset(datasetIDs[i]);
               try{
                 if(res.values.length==1){
@@ -267,11 +265,14 @@ public class DatasetCreator{
 
     Object selectedValue = op.getValue();
 
-    if (selectedValue == null)
+    if(selectedValue==null){
       return JOptionPane.CLOSED_OPTION;
-    for (int i = 0; i < showResultsOptions.length; ++i)
-      if (showResultsOptions[i] == selectedValue)
+    }
+    for(int i=0; i<showResultsOptions.length; ++i){
+      if(showResultsOptions[i]==selectedValue){
         return i;
+      }
+    }
     return JOptionPane.CLOSED_OPTION;
   }
 }

@@ -19,14 +19,11 @@ import javax.swing.text.*;
  */
 public class TransformationCreationPanel extends CreateEditPanel{
 
+  private static final long serialVersionUID = 1L;
   private DBPluginMgr dbPluginMgr;
   private StatusBar statusBar;
-  private String version = "";
-  private String transformation;
-  private JPanel pConstants = new JPanel(new GridBagLayout());
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
-  private JPanel pButtons = new JPanel(new GridBagLayout());
   private boolean editing = false;
   private Table table;
   private String transformationID = "-1";
@@ -35,28 +32,38 @@ public class TransformationCreationPanel extends CreateEditPanel{
   private String transformationIdentifier;
   private static int TEXTFIELDWIDTH = 32;
   private boolean reuseTextFields = true;
-  private Map id = new HashMap();
   private Vector tcConstant = new Vector(); // contains all text components
   private static WebBox wb;
+  private DBPanel panel = null;
+  private JPanel pPackage = new JPanel();
+  private String packageName = "";
+  private JComboBox cbPackageSelection;
+  private GridBagConstraints ct = new GridBagConstraints();
+  private Database.DBRecord transformation = null;
+  private String packageFK = "-1";
+  Database.DBResult packages = null;
+  private String [] transformationFields = null;
 
   public JTextComponent [] tcCstAttributes;
 
   /**
    * Constructor
    */
-  public TransformationCreationPanel(DBPluginMgr _dbPluginMgr, Table _table, boolean _editing){
+  public TransformationCreationPanel(DBPluginMgr _dbPluginMgr,
+      DBPanel _panel, boolean _editing){
     dbPluginMgr = _dbPluginMgr;
     editing = _editing;
-    table = _table;
+    panel = _panel;
+    table = panel.getTable();
     statusBar = GridPilot.getClassMgr().getStatusBar();
-
     transformationIdentifier = "identifier";
-    
-    cstAttributesNames = dbPluginMgr.getFieldNames("transformation");
+    transformationFields = dbPluginMgr.getFieldNames("transformation");
+    cstAttributesNames = dbPluginMgr.getFieldNames("transformation");    
+    packages = dbPluginMgr.getPackages();
     Debug.debug("Got field names: "+Util.arrayToString(cstAttributesNames),3);
-
-    //initGUI();
-    
+    Debug.debug("Number of packages found: "+packages.values.length+
+        "; "+Util.arrayToString(packages.fields),3);
+    cstAttr = new String[cstAttributesNames.length];
     // Find transformation ID from table
     if(table.getSelectedRow()>-1 && editing){
       Debug.debug("Editing...", 3);
@@ -73,7 +80,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
         Debug.debug("ERROR: could not find transformationID in table!", 1);
       }
       // Fill cstAttr from db
-      Database.DBRecord transformation = dbPluginMgr.getTransformation(Integer.parseInt(transformationID));
+      transformation = dbPluginMgr.getTransformation(Integer.parseInt(transformationID));
       for(int i=0; i <cstAttributesNames.length; ++i){
         if(editing){
           Debug.debug("filling " + cstAttributesNames[i],  3);
@@ -101,15 +108,16 @@ public class TransformationCreationPanel extends CreateEditPanel{
         Color.white,new Color(165, 163, 151)), 
         (transformationID.equals("-1")?"new transformation":"transformation "+transformationID)));
     
-    spAttributes.setPreferredSize(new Dimension(550, 500));
-    spAttributes.setMinimumSize(new Dimension(550, 500));
+    spAttributes.setPreferredSize(new Dimension(650, 500));
+    spAttributes.setMinimumSize(new Dimension(650, 500));
     
     setLayout(new GridBagLayout());
     removeAll();
 
+    initPackagePanel(Integer.parseInt(transformationID));
+
     initAttributePanel();
     
-    GridBagConstraints ct = new GridBagConstraints();
     ct.fill = GridBagConstraints.VERTICAL;
     ct.insets = new Insets(2,2,2,2);
     
@@ -127,14 +135,14 @@ public class TransformationCreationPanel extends CreateEditPanel{
     initTransformationCreationPanel();
     if(editing){
       Debug.debug("Editing...", 3);
-      editTransformation(Integer.parseInt(transformationID));
+      editTransformation(Integer.parseInt(transformationID), null);
     }
     else{
-      Debug.debug("Disabling identifier field", 3);
       // Disable identifier field when creating
+      Debug.debug("Disabling identifier field", 3);
       for(int i =0; i<cstAttributesNames.length; ++i){
         if(cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier)){
-          tcCstAttributes[i].setEnabled(false);
+          Util.setJEditable(tcCstAttributes[i], false);
         }
       }
     }
@@ -161,10 +169,11 @@ public class TransformationCreationPanel extends CreateEditPanel{
     
   }
 
-
-  private JEditorPane createCheckPanel(final String name, final JTextComponent jt){
+  private JEditorPane createCheckPanel(
+      final String name, final JTextComponent jt,
+      final DBPluginMgr dbPluginMgr){
     String markup = "<b>"+name+" : </b><br>"+
-    "<a href=\"http://check/\">check</a>";
+      "<a href=\"http://check/\">check</a>";
     JEditorPane checkPanel = new JEditorPane("text/html", markup);
     checkPanel.setEditable(false);
     checkPanel.setOpaque(false);
@@ -173,8 +182,12 @@ public class TransformationCreationPanel extends CreateEditPanel{
       public void hyperlinkUpdate(HyperlinkEvent e){
         if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
           Debug.debug("URL: "+e.getURL().toExternalForm(), 3);
+          Debug.debug("PackID: "+packageFK, 3);
+          String baseUrl = dbPluginMgr.getURL("", Integer.parseInt(packageFK));
+          Debug.debug("Base URL: "+baseUrl, 3);
           if(e.getURL().toExternalForm().equals("http://check/")){
-            String httpscript = Util.getURL(jt.getText());
+            String httpScript =
+              dbPluginMgr.getURL(jt.getText(), Integer.parseInt(packageFK));
             if(statusBar != null){
               statusBar.setLabel("Looking for file ...");
               statusBar.animateProgressBar();
@@ -188,32 +201,50 @@ public class TransformationCreationPanel extends CreateEditPanel{
               });
             }
             try{
-              wb = new WebBox(GridPilot.getClassMgr().getGlobalFrame(), "choose script",
-                 new URL(httpscript));
+              wb = new WebBox(GridPilot.getClassMgr().getGlobalFrame(),
+                              "Choose script",
+                              new URL(httpScript),
+                              baseUrl);
             }
             catch(Exception ee){
-              Debug.debug("Could not open URL "+httpscript+". "+ee.getMessage(), 1);
               statusBar.stopAnimation();
-              GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+httpscript);
+              Debug.debug("Could not open URL "+httpScript+". "+ee.getMessage(), 1);
+              GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+httpScript);
               try{
-                wb = new WebBox(GridPilot.getClassMgr().getGlobalFrame(), "choose script",
-                    new URL(GridPilot.url));
+                wb = new WebBox(GridPilot.getClassMgr().getGlobalFrame(),
+                                "Choose script",
+                                new URL(baseUrl),
+                                baseUrl);
               }
               catch(Exception eee){
-                Debug.debug("Could not open URL "+GridPilot.url+". "+eee.getMessage(), 1);
+                Debug.debug("Could not open URL "+baseUrl+". "+eee.getMessage(), 1);
+                GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+baseUrl+". "+eee.getMessage());
+                ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+                try{
+                  confirmBox.getConfirm("URL not found",
+                                       "The URL "+baseUrl+" was not found.\n" +
+                                       "Please check that a package was chosen " +
+                                       "and that this package has a correctly set " +
+                                       "scriptRepository.",
+                                    new Object[] {"OK"});
+                }
+                catch(Exception eeee){
+                  Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
+                }
               }
             }
             statusBar.stopAnimation();
-            if(GridPilot.lastURL!=null && GridPilot.lastURL.toExternalForm().startsWith(GridPilot.url)){
-              // Set the text: the URL browsed to with AtCom.url removed
+            if(GridPilot.lastURL!=null &&
+                GridPilot.lastURL.toExternalForm().startsWith(baseUrl)){
+              // Set the text: the URL browsed to with case URL removed
               jt.setText(GridPilot.lastURL.toExternalForm().substring(
-                  GridPilot.url.length()));
+                  baseUrl.length()));
+              statusBar.setLabel("");
             }
             else{
               // Don't do anything if we cannot get a URL
-              Debug.debug("ERROR: Could not open URL "+GridPilot.url+". "+GridPilot.lastURL, 1);
+              Debug.debug("ERROR: Could not open URL "+baseUrl+". "+GridPilot.lastURL, 1);
             }
-            statusBar.setLabel("");
           }
         }
       }
@@ -221,16 +252,102 @@ public class TransformationCreationPanel extends CreateEditPanel{
     return checkPanel;
   }
   
+  private String[] getPackageNames(){
+    String [] ret = new String[packages.values.length];
+    for(int i=0; i<packages.values.length; ++i){
+      ret[i] = packages.getValue(i, "name").toString(); 
+      Debug.debug("name is "+ret[i], 3);
+    }
+    // This is to ensure only unique elements
+    // TODO: for some reason this doesn't seam to work
+    Arrays.sort(ret);
+    Vector vec = new Vector();
+    if(packages.values.length>0){
+      vec.add(ret[0]);
+    }
+    if(packages.values.length>1){
+      for(int i=1; i<packages.values.length; ++i){
+        //Debug.debug("Comparing "+ret[i]+" <-> "+ret[i-1],3);
+        if(!ret[i].equalsIgnoreCase(ret[i-1])){
+          Debug.debug("Adding "+ret[i],3);
+            vec.add(ret[i]);
+        }
+      }
+    }
+    String[] arr = new String[vec.size()];
+    for(int i=0; i<vec.size(); ++i){
+      arr[i]=vec.elementAt(i).toString();
+    } 
+    return arr;
+  }
+
+  private void initPackagePanel(int datasetID){
+    
+    pPackage.removeAll();
+    pPackage.setLayout(new FlowLayout());
+
+    String [] packageNames = getPackageNames();
+
+    if(packageNames.length==0){
+      pPackage.add(new JLabel("No packages found."));
+    }
+    else if(packageNames.length==1){
+      packageName = packageNames[0];
+      pPackage.add(new JLabel("Package: " + packageName));
+    }
+    else{
+      cbPackageSelection = new JComboBox();
+      for(int i=0; i<packageNames.length; ++i){
+          cbPackageSelection.addItem(packageNames[i]);
+      }
+      pPackage.add(new JLabel("Package: "), null);
+      pPackage.add(cbPackageSelection, null);
+
+      cbPackageSelection.addActionListener(
+        new java.awt.event.ActionListener(){
+          public void actionPerformed(java.awt.event.ActionEvent e){
+            cbPackageSelection_actionPerformed();
+          }
+        }
+      );
+    }
+    
+    ct.gridx = 0;
+    ct.gridy = 0;
+    ct.gridwidth=1;
+    ct.gridheight=1;
+    add(pPackage, ct);
+
+    updateUI();
+  }
+
+  private void cbPackageSelection_actionPerformed(){
+    if(cbPackageSelection.getSelectedItem()==null){
+        return;
+    }
+    else{
+        packageName = cbPackageSelection.getSelectedItem().toString();
+    }
+    for(int j=0; j<packages.values.length; ++j){
+      if(packages.getValue(j, "name").toString().equalsIgnoreCase(packageName)){
+        packageFK = packages.getValue(j, transformationIdentifier).toString();
+        Debug.debug("Setting package FK: "+packageFK, 3);
+        break;
+      }
+    }
+    editTransformation(Integer.parseInt(transformationID),
+        packageName);
+  }
+  
   private void initAttributePanel(){
     
-    if(!reuseTextFields || tcCstAttributes==null || tcCstAttributes.length != cstAttributesNames.length)
+    if(!reuseTextFields || tcCstAttributes==null || tcCstAttributes.length!=cstAttributesNames.length)
       tcCstAttributes = new JTextComponent[cstAttributesNames.length];
 
     int row = 0;
     
     //// Constants attributes
     for(int i = 0; i<cstAttributesNames.length; ++i, ++row){
-      
       if(cstAttributesNames[i].equalsIgnoreCase("definition") ||
          cstAttributesNames[i].equalsIgnoreCase("valScript") ||
          cstAttributesNames[i].equalsIgnoreCase("xtractScript") ||
@@ -238,118 +355,96 @@ public class TransformationCreationPanel extends CreateEditPanel{
          cstAttributesNames[i].equalsIgnoreCase("script") ||
          cstAttributesNames[i].equalsIgnoreCase("validationScript") ||
          cstAttributesNames[i].equalsIgnoreCase("extractionScript")){
-        pAttributes.add(createCheckPanel(cstAttributesNames[i], tcCstAttributes[i]), new GridBagConstraints(0, row, 1, 1, 0.0, 0.0
-            ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
+        pAttributes.add(createCheckPanel(
+            cstAttributesNames[i], tcCstAttributes[i],
+            dbPluginMgr),
+            new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
+                GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                new Insets(5, 25, 5, 5), 0, 0));
       }
       else{
-        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), new GridBagConstraints(0, row, 1, 1, 0.0, 0.0
-            ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
+        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "),
+            new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
+            GridBagConstraints.CENTER,
+            GridBagConstraints.BOTH,
+            new Insets(5, 25, 5, 5), 0, 0));
       }
     	
-	    if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled())
+	    if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled()){
 	      tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
-	
-	    pAttributes.add(tcCstAttributes[i], new GridBagConstraints(1, row, 3, 1, 1.0, 0.0
-	        ,GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
-
+      }
+      if(cstAttributesNames[i].equalsIgnoreCase("packageFK")){
+        Util.setJEditable(tcCstAttributes[i], false);
+      }
+	    pAttributes.add(tcCstAttributes[i],
+          new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
+          GridBagConstraints.CENTER,
+          GridBagConstraints.HORIZONTAL,
+          new Insets(5, 5, 5, 5), 0, 0));
     }
   }
 
   /**
    *  Edit a transformation
    */
-
-  public void editTransformation(int transformationID){
-
-    int row = 0;
+  public void editTransformation(int transformationID,
+      String packageName){
 
     //// Constants attributes
-    Database.DBRecord res = dbPluginMgr.getTransformation(transformationID);
     for(int i =0; i<tcCstAttributes.length; ++i){
-      Debug.debug("Length of res: "+res.fields.length,3);
-      for(int j=0; j<res.fields.length;++j){
-        //Debug.debug(res.fields[j].toString()+" <-> "+cstAttributesNames[i].toString(),3);
-        if(res.fields[j].toString().equals(cstAttributesNames[i].toString()) && !res.fields[j].toString().equals("")){
+      for(int j=0; j<transformationFields.length;++j){
+        if(transformationFields[j].toString().equalsIgnoreCase(
+            cstAttributesNames[i].toString()) &&
+            !transformationFields[j].toString().equals("")){
           if(tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled() &&
              tcCstAttributes[i].getText().length()==0){
             tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
-            pAttributes.add(tcCstAttributes[i], new GridBagConstraints(1, i/*row*/, 3, 1, 1.0, 0.0
-               ,GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
+            pAttributes.add(tcCstAttributes[i],
+                new GridBagConstraints(
+                    1,i/*row*/, 3, 1, 1.0, 0.0,
+                    GridBagConstraints.CENTER,
+                    GridBagConstraints.HORIZONTAL,
+                    new Insets(5, 5, 5, 5), 0, 0));
           }
-        try{
-          tcCstAttributes[i].setText(res.values[j].toString());
-              Debug.debug(i+": "+cstAttributesNames[i].toString()+"="+res.fields[j]+". Setting to "+tcCstAttributes[i].getText(),3);
-        }
-        catch(java.lang.Exception e){Debug.debug("Attribute not found, "+e.getMessage(),1);}
+          if(editing){
+            try{
+              Util.setJText(tcCstAttributes[i], transformation.values[j].toString());
+                Debug.debug(i+": "+cstAttributesNames[i].toString()+"="+
+                    transformationFields[j]+". Setting to "+tcCstAttributes[i].getText(),3);
+            }
+            catch(java.lang.Exception e){
+              Debug.debug("Attribute not found, "+e.getMessage(),1);
+            }
+          }
           break;
         }
       }
-      if((cstAttributesNames[i].equals("identifier"))){         
-        tcCstAttributes[i].setEditable(false);
-        tcCstAttributes[i].setBackground(Color.lightGray);
-        //tcCstAttributes[i].setEnabled(false);
-        id.put(cstAttributesNames[i].toString(), Integer.toString(i));
-        if(cstAttributesNames[i].equals("datasetFK")){
-          try{
-            tcCstAttributes[i].setText(Integer.toString(transformationID));
-          }
-          catch(java.lang.Exception e){Debug.debug("Attribute not found, "+e.getMessage(),1);}
-        }
-        if(cstAttributesNames[i].equals("identifier") &&
-            res.values.length != 1){
+      if((cstAttributesNames[i].equalsIgnoreCase("identifier"))){
+        Util.setJEditable(tcCstAttributes[i], false);
+        if(!editing){
           try{
             Debug.debug("Clearing identifier",3);
-            tcCstAttributes[i].setText("");
+            Util.setJText(tcCstAttributes[i], "");
           }
-          catch(java.lang.Exception e){Debug.debug("Attribute not found, "+e.getMessage(),1);}
+          catch(java.lang.Exception e){
+            Debug.debug("Attribute not found, "+e.getMessage(),1);
+          }
         }
+      }
+      else if(packageFK!=null && Integer.parseInt(packageFK)>-1 &&
+          cstAttributesNames[i].equalsIgnoreCase("packageFK")){
+        Util.setJText(tcCstAttributes[i], packageFK);
       }
     }
   }
 
-  /**
-   *  Delete a transformation
-   */
-
-  public boolean deleteTransformation(int transformationIdentifier){
-  	boolean skip = false;
-  
-  	int choice = 1;
-  	  
-  	  ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/);	
-  	  
-  	  try{
-  		 choice = confirmBox.getConfirm("Confirm delete",
-  						  "Really delete transformation # "+transformationIdentifier+"?",
-  						   new Object[] {"OK", "Cancel"});
-  	  }catch(java.lang.Exception e){Debug.debug("Could not get confirmation, "+e.getMessage(),1);}
-  
-  	  switch(choice){
-  		case 0  : skip = false;  break;  // OK
-  		case 1  : skip = true ; break;   // Skip
-  		default : skip = true;    // other (closing the dialog). Same action as "Skip"
-  	  }
-  	  
-  	if(!skip){
-  	  Debug.debug("deleting transformation # " + transformationIdentifier, 2);
-  	  if(dbPluginMgr.deleteTransformation(transformationIdentifier)){
-        statusBar.setLabel("Transformation # " + transformationIdentifier + " deleted.");
-        return true;
-      }
-      else{
-        statusBar.setLabel("Transformation # " + transformationIdentifier + " NOT deleted.");
-      }
-  	}
-    return false;
-  }
-
-  public void clear(){
+  public void clearPanel(){
 
     Vector textFields = getTextFields();
 
     for(int i =0; i<textFields.size(); ++i)
-	if(!(cstAttributesNames[i].equals( "identifier"))){
-					((JTextComponent) textFields.get(i)).setText("");
+	  if(!(cstAttributesNames[i].equalsIgnoreCase("identifier"))){
+	    ((JTextComponent) textFields.get(i)).setText("");
     }
   }
 
@@ -370,6 +465,8 @@ public class TransformationCreationPanel extends CreateEditPanel{
         cstAttr,
         cstAttributesNames,
         editing);
+    
+    panel.refresh();
   }
 
   private Vector getTextFields(){

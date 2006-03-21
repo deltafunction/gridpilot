@@ -22,6 +22,7 @@ import java.util.Vector;
 
 public class DBPanel extends JPanel implements JobPanel{
 
+  private static final long serialVersionUID = 1L;
   private JScrollPane spSelectPanel = new JScrollPane();
   private SelectPanel selectPanel;
   private JPanel pButtonSelectPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -132,7 +133,7 @@ public class DBPanel extends JPanel implements JobPanel{
     for(int i=0; i<fieldNames.length; ++i){
       ok = true;
       for(int j=0; j<hiddenFields.length; ++j){
-        Debug.debug("Checking fields for hiding: "+fieldNames[i]+"<->"+hiddenFields[j], 3);
+        //Debug.debug("Checking fields for hiding: "+fieldNames[i]+"<->"+hiddenFields[j], 3);
         if(fieldNames[i].equalsIgnoreCase(hiddenFields[j])){
           ok = false;
           break;
@@ -162,7 +163,6 @@ public class DBPanel extends JPanel implements JobPanel{
      return tableResults;
    }
 
-
    private void setFieldArrays(){
      Vector shownSet = new Vector();  
      boolean ok = true;
@@ -180,7 +180,7 @@ public class DBPanel extends JPanel implements JobPanel{
        }
        hiddenOk = true;
        for(int j=0; j<hiddenFields.length; ++j){
-         Debug.debug("Checking fields for hiding "+defaultFields[i]+"<->"+hiddenFields[j], 3);
+         //Debug.debug("Checking fields for hiding "+defaultFields[i]+"<->"+hiddenFields[j], 3);
          if(defaultFields[i].equalsIgnoreCase(hiddenFields[j]) &&
              !hiddenFields[j].equalsIgnoreCase("*")){
            hiddenOk = false;
@@ -289,7 +289,7 @@ public class DBPanel extends JPanel implements JobPanel{
     panelSelectPanel.add(pButtonSelectPanel, new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0
         ,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
 
-    selectPanel.setConstraint(dbName, dbPluginMgr.getName(dbName,
+    selectPanel.setConstraint(dbPluginMgr.getName(dbName,
         tableName), "", 1);
     
     // Listen for enter key in text field
@@ -346,6 +346,15 @@ public class DBPanel extends JPanel implements JobPanel{
     if(tableName.equalsIgnoreCase("dataset") ||
         // support external schema on proddb
         tableName.equalsIgnoreCase("task")){
+      
+      tableResults.addMouseListener(new MouseAdapter(){
+        public void mouseClicked(MouseEvent e){
+          if(e.getClickCount()==2){
+            editDataset();
+          }
+        }
+      });
+
       bViewJobDefinitions.addActionListener(new java.awt.event.ActionListener(){
         public void actionPerformed(ActionEvent e){
           viewJobDefinitions();
@@ -383,6 +392,15 @@ public class DBPanel extends JPanel implements JobPanel{
       updateUI();
     }
     else if(tableName.equalsIgnoreCase("jobDefinition")){
+      
+      tableResults.addMouseListener(new MouseAdapter(){
+        public void mouseClicked(MouseEvent e){
+          if(e.getClickCount()==2){
+            editJobDef();
+          }
+        }
+      });
+
       bSubmit.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           bSubmit_mousePressed();
@@ -437,6 +455,15 @@ public class DBPanel extends JPanel implements JobPanel{
       updateUI();
     }
     else if(tableName.equalsIgnoreCase("transformation")){
+      
+      tableResults.addMouseListener(new MouseAdapter(){
+        public void mouseClicked(MouseEvent e){
+          if(e.getClickCount()==2){
+            editTransformation();
+          }
+        }
+      });
+
       bCreateRecords.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           createTransformation();
@@ -466,6 +493,15 @@ public class DBPanel extends JPanel implements JobPanel{
       updateUI();
     }    
     else if(tableName.equalsIgnoreCase("package")){
+      
+      tableResults.addMouseListener(new MouseAdapter(){
+        public void mouseClicked(MouseEvent e){
+          if(e.getClickCount()==2){
+            editPackage();
+          }
+        }
+      });
+      
       bCreateRecords.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           createPackage();
@@ -480,7 +516,7 @@ public class DBPanel extends JPanel implements JobPanel{
 
       bDeleteRecord.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          deleteTransformations();
+          deletePackages();
         }
       });
       
@@ -585,6 +621,8 @@ public class DBPanel extends JPanel implements JobPanel{
     }
     selectPanel.setDisplayFieldValue(values);
     selectPanel.resetConstraintList(tableName);
+    selectPanel.setConstraint(dbPluginMgr.getName(dbName,
+        tableName), "", 1);
     selectPanel.updateUI();
   }
 
@@ -884,19 +922,15 @@ public class DBPanel extends JPanel implements JobPanel{
       Debug.debug("ERROR: could not create DatasetMgr. "+e.getMessage(), 1);
       e.printStackTrace();
     }
-    JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, tableResults, false);
+    JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, this, false);
     try{
       dbPluginMgr.initJobDefCreationPanel(panel);
     }
     catch(Throwable e){
       Debug.debug("Could not initialize panel "+dbName+". "+e.getMessage(), 1);
     }
-    CreateEditDialog pDialog = new CreateEditDialog(
-       GridPilot.getClassMgr().getGlobalFrame(),
-        panel, false, false);
+    CreateEditDialog pDialog = new CreateEditDialog(panel, false);
     pDialog.setTitle(tableName);
-    pDialog.setVisible(true);
-    refresh();
   }
 
   private void editJobDef(){
@@ -914,25 +948,29 @@ public class DBPanel extends JPanel implements JobPanel{
       e.printStackTrace();
       return;
     }
-    JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, tableResults, true);
+    JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, this, true);
     try{
       dbPluginMgr.initJobDefCreationPanel(panel);
     }
     catch(Throwable e){
       Debug.debug("Could not initialize panel "+dbName+". "+e.getMessage(), 1);
     }
-    CreateEditDialog pDialog = new CreateEditDialog(
-        GridPilot.getClassMgr().getGlobalFrame(),
-        panel, true, false);
+    CreateEditDialog pDialog = new CreateEditDialog(panel, true);
     pDialog.setTitle(tableName);
-    pDialog.setVisible(true);
+    //pDialog.setVisible(true);
   }
 
   private void deleteJobDefs(){
-    String msg = "Are you sure you want to delete jobDefinition(s) ";
+    String msg = "Are you sure you want to delete jobDefinition";
+    if(getSelectedIdentifiers().length>1){
+      msg += "s";
+    }
     int [] ids = getSelectedIdentifiers();
     for(int i=0; i<getSelectedIdentifiers().length; ++i){
-      msg += ", " + ids[i];
+      if(i>0){
+        msg += ",";
+      }
+      msg += " " + ids[i];
     }
     msg += "?";
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
@@ -953,8 +991,15 @@ public class DBPanel extends JPanel implements JobPanel{
         if(ids.length != 0){
           JProgressBar pb = new JProgressBar();
           pb.setMaximum(ids.length);
-          for(int i = ids.length-1; i>=0; i--){
+          for(int i=ids.length-1; i>=0; i--){
             boolean success = dbPluginMgr.deleteJobDefinition(ids[i]);
+            if(!success){
+              String msg = "Deleting job definition "+ids[i]+" failed";
+              Debug.debug(msg, 1);
+              GridPilot.getClassMgr().getStatusBar().setLabel(msg);
+              GridPilot.getClassMgr().getLogFile().addMessage(msg);
+              continue;
+            }
             pb.setValue(pb.getValue()+1);
             tableResults.removeRow(rows[i]);
             tableResults.tableModel.fireTableDataChanged();
@@ -972,11 +1017,8 @@ public class DBPanel extends JPanel implements JobPanel{
    */ 
   private void createDatasets(){
     CreateEditDialog pDialog = new CreateEditDialog(
-       GridPilot.getClassMgr().getGlobalFrame(),
-        new DatasetCreationPanel(dbPluginMgr, this, false), false, false);
+        new DatasetCreationPanel(dbPluginMgr, this, false), false);
     pDialog.setTitle(tableName);
-    pDialog.setVisible(true);
-    refresh();
  }
   
   /**
@@ -984,11 +1026,8 @@ public class DBPanel extends JPanel implements JobPanel{
    */ 
  private void editDataset(){
    CreateEditDialog pDialog = new CreateEditDialog(
-       GridPilot.getClassMgr().getGlobalFrame(),
-       new DatasetCreationPanel(dbPluginMgr, this, true), true, false);
+     new DatasetCreationPanel(dbPluginMgr, this, true), true);
    pDialog.setTitle(tableName);
-   pDialog.setVisible(true);
-   /*refresh();*/
  }
 
   /**
@@ -1006,15 +1045,16 @@ public class DBPanel extends JPanel implements JobPanel{
       if(datasetIdentifiers[i]!=-1){
         if(!okAll){
           ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
-          cbCleanup = new JCheckBox("Delete child records", true);
-          
+          cbCleanup = new JCheckBox("Delete child records", true);    
           if(i<1){
             try{
               choice = confirmBox.getConfirm("Confirm delete",
                                    "Really delete dataset # "+datasetIdentifiers[i]+"?",
                                 new Object[] {"OK", "Skip", cbCleanup});
             }
-            catch(java.lang.Exception e){Debug.debug("Could not get confirmation, "+e.getMessage(),1);}
+            catch(java.lang.Exception e){
+              Debug.debug("Could not get confirmation, "+e.getMessage(),1);
+            }
           }
           else{
             try{
@@ -1022,7 +1062,9 @@ public class DBPanel extends JPanel implements JobPanel{
                                    "Really delete dataset # "+datasetIdentifiers[i]+"?",
                                 new Object[] {"OK", "Skip", "OK for all", "Skip all", cbCleanup});
               }
-            catch(java.lang.Exception e){Debug.debug("Could not get confirmation, "+e.getMessage(),1);}
+            catch(java.lang.Exception e){
+              Debug.debug("Could not get confirmation, "+e.getMessage(),1);
+            }
           }
     
           switch(choice){
@@ -1060,7 +1102,7 @@ public class DBPanel extends JPanel implements JobPanel{
   /**
    * Refresh search results.
    */ 
-  private void refresh(){
+  public void refresh(){
     if(tableResults==null || tableResults.getRowCount()==0){
       return;
     }
@@ -1076,47 +1118,45 @@ public class DBPanel extends JPanel implements JobPanel{
    */ 
   private void createTransformation(){
     CreateEditDialog pDialog = new CreateEditDialog(
-       GridPilot.getClassMgr().getGlobalFrame(),
-          new TransformationCreationPanel(dbPluginMgr, tableResults, false), false, false);
+       new TransformationCreationPanel(dbPluginMgr, this, false),
+       false);
     pDialog.setTitle(tableName);
-    pDialog.setVisible(true);
-    refresh();
   }
   /**
    * Open dialog with package creation panel
    */ 
   private void createPackage(){
     CreateEditDialog pDialog = new CreateEditDialog(
-       GridPilot.getClassMgr().getGlobalFrame(),
-          new PackageCreationPanel(dbPluginMgr, tableResults, false), false, false);
+       new PackageCreationPanel(dbPluginMgr, this, false),
+       false);
     pDialog.setTitle(tableName);
-    pDialog.setVisible(true);
-    refresh();
   }
 
   private void editTransformation(){
     CreateEditDialog pDialog = new CreateEditDialog(
-       GridPilot.getClassMgr().getGlobalFrame(),
-          new TransformationCreationPanel(dbPluginMgr, tableResults, true), true, false);
+       new TransformationCreationPanel(dbPluginMgr, this, true),
+       true);
     pDialog.setTitle(tableName);
-    pDialog.setVisible(true);
-    /*refresh();*/
   }
   
   private void editPackage(){
     CreateEditDialog pDialog = new CreateEditDialog(
-       GridPilot.getClassMgr().getGlobalFrame(),
-          new PackageCreationPanel(dbPluginMgr, tableResults, true), true, false);
+       new PackageCreationPanel(dbPluginMgr, this, true),
+       true);
     pDialog.setTitle(tableName);
-    pDialog.setVisible(true);
-    /*refresh();*/
   }
 
   private void deleteTransformations(){
-    String msg = "Are you sure you want to delete transformation records ";
+    String msg = "Are you sure you want to delete transformation record";
+    if(getSelectedIdentifiers().length>1){
+      msg += "s";
+    }
     int [] ids = getSelectedIdentifiers();
     for(int i=0; i<getSelectedIdentifiers().length; ++i){
-      msg += ", " + ids[i];
+      if(i>0){
+        msg += ",";
+      }
+      msg += " " + ids[i];
     }
     msg += "?";
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
@@ -1139,6 +1179,13 @@ public class DBPanel extends JPanel implements JobPanel{
           pb.setMaximum(ids.length);
           for(int i = ids.length-1; i>=0; i--){
             boolean success = dbPluginMgr.deleteTransformation(ids[i]);
+            if(!success){
+              String msg = "Deleting transformation "+ids[i]+" failed";
+              Debug.debug(msg, 1);
+              GridPilot.getClassMgr().getStatusBar().setLabel(msg);
+              GridPilot.getClassMgr().getLogFile().addMessage(msg);
+              continue;
+            }
             pb.setValue(pb.getValue()+1);
             tableResults.removeRow(rows[i]);
             tableResults.tableModel.fireTableDataChanged();
@@ -1151,10 +1198,16 @@ public class DBPanel extends JPanel implements JobPanel{
     workThread.start();
   }
   private void deletePackages(){
-    String msg = "Are you sure you want to delete package records ";
+    String msg = "Are you sure you want to delete package record";
+    if(getSelectedIdentifiers().length>1){
+      msg += "s";
+    }
     int [] ids = getSelectedIdentifiers();
     for(int i=0; i<getSelectedIdentifiers().length; ++i){
-      msg += ", " + ids[i];
+      if(i>0){
+        msg += ",";
+      }
+      msg += " " + ids[i];
     }
     msg += "?";
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
@@ -1177,6 +1230,13 @@ public class DBPanel extends JPanel implements JobPanel{
           pb.setMaximum(ids.length);
           for(int i = ids.length-1; i>=0; i--){
             boolean success = dbPluginMgr.deletePackage(ids[i]);
+            if(!success){
+              String msg = "Deleting package "+ids[i]+" failed";
+              Debug.debug(msg, 1);
+              GridPilot.getClassMgr().getStatusBar().setLabel(msg);
+              GridPilot.getClassMgr().getLogFile().addMessage(msg);
+              continue;
+            }
             pb.setValue(pb.getValue()+1);
             tableResults.removeRow(rows[i]);
             tableResults.tableModel.fireTableDataChanged();
@@ -1201,7 +1261,7 @@ public class DBPanel extends JPanel implements JobPanel{
             int id = getSelectedIdentifier();
             DBPanel dbPanel = new DBPanel("jobDefinition",
                 dbPluginMgr, id);
-            dbPanel.selectPanel.setConstraint("jobDefinition",
+            dbPanel.selectPanel.setConstraint(
                 dbPluginMgr.getJobDefDatasetFK(dbName),
                 Integer.toString(id), 0);
             dbPanel.searchRequest();           

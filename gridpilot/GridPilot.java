@@ -11,23 +11,17 @@ import javax.swing.*;
  */
 
 public class GridPilot extends JApplet{
+  private static final long serialVersionUID = 1L;
   private boolean packFrame = false;
   private GlobalFrame frame;
-
   private static String logFileName = "gridpilot.log";
   private static String confFileName = "gridpilot.conf";
-
   private static ClassMgr classMgr = new ClassMgr();
-  
-  private static boolean applet = true;
-  private static String dbNames;
-  
+  private static boolean applet = true;  
   public static String [] dbs;
   public static String [] colorMapping;
   public static String[] statusFields;
   public static String resourcesPath = "";
-  public static String prefix = "";
-  public static String url = "";
   public static String [] csNames = null;
   public static Splash splash;
   
@@ -71,8 +65,6 @@ public class GridPilot extends JApplet{
           resourcesPath = resourcesPath + "/";
       }
       splash = new Splash(resourcesPath, "splash.png");
-      String database;
-      String [] up = null;
       String tmpDb = null;
       dbs = getClassMgr().getConfigFile().getValues("Databases", "Systems");
       for(int i=0; i<dbs.length; ++i){
@@ -97,8 +89,6 @@ public class GridPilot extends JApplet{
       statusFields = new String [] {
           " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "user"};
 
-      prefix = getClassMgr().getConfigFile().getValue("GridPilot","prefix");
-      url = getClassMgr().getConfigFile().getValue("GridPilot","url");
       csNames = getClassMgr().getConfigFile().getValues("Computing systems", "systems");
       if(csNames == null || csNames.length == 0){
         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("Computing systems", "systems"));

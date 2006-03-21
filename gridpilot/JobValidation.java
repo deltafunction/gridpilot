@@ -1,15 +1,5 @@
 package gridpilot;
 
-/**
- * <p>Title: AtCom</p>
- * <p>Description: An Atlas Commander</p>
- * <p>Copyright: Copyright (c) 2002</p>
- * <p>Company: CERN - EP/ATC</p>
- * @author  Vandy BERTEN (Vandy.Berten@cern.ch)
- * @version 1.2
- */
-
-
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -38,14 +28,13 @@ public class JobValidation{
   static final int EXIT_UNDECIDED = 2;
   static final int EXIT_FAILED = 3;
   static final int EXIT_UNEXPECTED = 4;
-//  static final
   static final int ERROR = -1;
 
-  private String [] env = {
+  /*private String [] env = {
     "ATCOM_VALIDATED=" + EXIT_VALIDATED,
     "ATCOM_UNDECIDED="+ EXIT_UNDECIDED,
     "ATCOM_FAILED="+ EXIT_FAILED,
-    "ATCOM_UNEXPECTED="+ EXIT_UNEXPECTED};
+    "ATCOM_UNEXPECTED="+ EXIT_UNEXPECTED};*/
 
   LogFile logFile;
   ConfigFile configFile;
@@ -131,18 +120,23 @@ public class JobValidation{
       ++currentSimultaneousValidation;
       new Thread(){
         public void run(){
+          DBPluginMgr dbPluginMgr = 
+            GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
           GridPilot.getClassMgr().getStatusBar().setLabel("Validating " + job.getName() + " ... " +
               "(" + (toValidateJobs.size() + waitingJobs.size())+ " jobs in the queue )");
-          String validationScriptShortPath =
-            GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getTransformationValue(job.getJobDefId(), "validationScript");
+          String validationScriptShortPath = 
+            dbPluginMgr.getTransformationValue(
+                    job.getJobDefId(), "validationScript");
           String validationScriptFile = (new File(validationScriptShortPath)).getName();
-          String validationScriptPath = Util.getFullPath(validationScriptShortPath);
-          String validationScriptUrl = Util.getURL(validationScriptShortPath);
+          
+          String validationScriptUrl = dbPluginMgr.getUrlFromDS(
+              dbPluginMgr.getExtractScript(job.getJobDefId()),
+              dbPluginMgr.getJobDefDatasetID(job.getJobDefId()));
           String validationScript = null;
           // If url is given, the file will already have been downloaded to the
           // working directory. Currently NG is the only plugin supporting this
           Debug.debug("Checking CS "+job.getCSName(), 2);
-          if(job.getCSName().equalsIgnoreCase("NG") &&
+          if(job.getCSName().toUpperCase().startsWith("NG") &&
               validationScriptUrl!=null && validationScriptUrl.length()>0){
             int lastSlash = job.getStdOut().lastIndexOf("/");
             // stdout will always be one level above the working directory.
@@ -156,7 +150,10 @@ public class JobValidation{
             }
           }
           else{
-            validationScript = validationScriptPath;
+            // Local shell or LSF+AFS - validation is then started
+            // in the scriptRepository and validationScriptShortPath
+            // is relative to there
+            validationScript = validationScriptShortPath;
           }
           int amiStatus = validate(job, validationScript);
           GridPilot.getClassMgr().getStatusBar().setLabel("Validation of " + job.getName() + " done : "
@@ -257,7 +254,6 @@ public class JobValidation{
       //throw e;
     }*/
 
-      LogFile logFile = GridPilot.getClassMgr().getLogFile();
       /** -> not necessary anymore -> if job.getStdOut exists, its parents exists
       File f = new File(job.getStdOut());
       if(!f.getParentFile().exists()){

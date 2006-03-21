@@ -1,6 +1,5 @@
 package gridpilot;
 
-
 import javax.swing.JPanel;
 
 /**
