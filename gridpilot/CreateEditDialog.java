@@ -49,7 +49,7 @@ public class CreateEditDialog extends JFrame{
       pack();
       requestFocusInWindow();
       // Doesn't seem to make any difference...
-      setAlwaysOnTop(false);
+      //setAlwaysOnTop(false);
       this.setVisible(true);
     }
     catch(Exception e){
