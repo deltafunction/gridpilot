@@ -175,7 +175,7 @@ public class SelectPanel extends JPanel{
       if(e.getSource()==sources[i])
         return i;
     }
-    System.err.println("SelectPanel.getPanel : source not found");
+    Debug.debug("ERROR: SelectPanel.getPanel : source not found", 1);
     return -1;
   }*/
 

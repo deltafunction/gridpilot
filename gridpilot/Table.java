@@ -609,10 +609,12 @@ public class Table extends JTable {
    */
   private void changeSort(ActionEvent e){
     int column = ((JRadioButtonMenuItem)e.getSource()).getMnemonic();
-    if(tableModel.getColumnSort()==column)
+    if(tableModel.getColumnSort()==column){
       tableModel.sort(column, !tableModel.isSortAscending());
-    else
+    }
+    else{
       tableModel.sort(column, true);
+    }
   }
 
   public void addListSelectionListener(ListSelectionListener _lsl){
@@ -642,9 +644,10 @@ public class Table extends JTable {
   public synchronized void paintImmediately(int x,int y,int w, int h){
     try{
       super.paintImmediately(x, y, w, h);
-    }catch(Exception e){
-      System.err.println("AtCom : Exception in paintImmediately(" + x + ", " + y + ", " +
-                         w + ", " + h +")");
+    }
+    catch(Exception e){
+    	GridPilot.getClassMgr().getLogFile().addMessage(" Exception in paintImmediately(" + x + ", " + y + ", " +
+                         w + ", " + h +")", e);
       e.printStackTrace();
     }
   }

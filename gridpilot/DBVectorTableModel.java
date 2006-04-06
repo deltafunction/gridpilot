@@ -145,7 +145,8 @@ public class DBVectorTableModel extends AbstractTableModel {
   synchronized public void setTable(Object [][] _values, String [] _columnNames){
     if(_values!=null && _values.length!=0 && _values[0]!=null && _columnNames!=null &&
        _values[0].length!= _columnNames.length){
-        System.err.println("MyTableModel : column count for values and columnNames are different ");
+        Debug.debug("ERROR: MyTableModel : column count for " +
+        		"values and columnNames are different", 1);
         return;
     }
 
