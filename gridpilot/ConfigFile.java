@@ -24,6 +24,33 @@ public class ConfigFile{
 
   public ConfigFile(String configFileName){
     this.configFileName = configFileName;
+    if(GridPilot.tmpConfFile==null){
+    	makeTmpConfigFile();
+    }
+  }
+  
+  public void makeTmpConfigFile(){
+  	try{
+      // To be able to open with random access when running from a jar
+      // we first extract the config file to a tmp file and then open
+      // the tmp file.
+      URL fileURL = getClass().getClassLoader().getResource(configFileName);
+      //Debug.debug("fileURL: "+configFileName, 3);
+      BufferedReader in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
+    	GridPilot.tmpConfFile = File.createTempFile("GridPilot","conf");
+      PrintWriter out = new PrintWriter(
+      		new FileWriter(GridPilot.tmpConfFile)); 
+      String line;
+      while((line = in.readLine())!=null){
+        out.println(line);
+      }
+      in.close();
+      out.close();
+    }
+    catch(IOException e){
+      Debug.debug("cannot find file "+ configFileName+". "+
+      		e.getMessage(), 1);
+    }
   }
 
   /**
@@ -131,32 +158,10 @@ public class ConfigFile{
    * @return true if opening was ok, false otherwise
    */
   private synchronized boolean openFile(){
-
     try{
-      // To be able to open with random access when running from a jar
-      // we first extract the config file to a tmp file and then open
-      // the tmp file.
-      URL fileURL = getClass().getClassLoader().getResource(configFileName);
-      //Debug.debug("fileURL: "+configFileName, 3);
-      BufferedReader in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
-
-      File tmpFile = File.createTempFile("GridPilot","conf");
-      PrintWriter out = new PrintWriter(new FileWriter(tmpFile));
-      
-      String line;
-      while((line = in.readLine())!=null){
-        out.println(line);
-      }
-      in.close();
-      out.close();
-      
-      file = new RandomAccessFile(/*configFileName*/tmpFile, "r");
+      file = new RandomAccessFile(GridPilot.tmpConfFile, "r");
     }
     catch(FileNotFoundException e){
-      System.err.println("cannot find file "+ configFileName+". "+e.getMessage());
-      return false;
-    }
-    catch(IOException e){
       System.err.println("cannot find file "+ configFileName+". "+e.getMessage());
       return false;
     }
