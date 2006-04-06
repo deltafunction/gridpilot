@@ -122,10 +122,10 @@ public class LocalShellMgr implements ShellMgr{
       exitValue = p.waitFor();
     }
     catch(InterruptedException ie){
-      System.err.println("InterruptedException in Utils.exec : " +
+    	GridPilot.getClassMgr().getLogFile().addMessage("InterruptedException in Utils.exec : " +
                          "\tCommand : " + cmd + "\n" +
                          "\tException : " + ie.getMessage() + "\n" +
-                         "\texit value set to -1");
+                         "\texit value set to -1", ie);
       exitValue = -1;
     }
 
@@ -222,11 +222,16 @@ public class LocalShellMgr implements ShellMgr{
   public String[] listFiles(String dir){
     File fdir = new File(dir);
     File [] fres = fdir.listFiles();
-    if(fres==null)
+    if(fres==null){
       return null;
+    }
     String [] sres = new String [fres.length];
-    for(int i=0; i<fres.length ; ++i)
+    for(int i=0; i<fres.length ; ++i){
       sres[i] = fres[i].getAbsolutePath();
+      if(!sres[i].endsWith("/") && isDirectory(sres[i])){
+      	sres[i] = sres[i]+"/";
+      }
+    }
     return sres;
   }
 
