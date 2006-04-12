@@ -232,6 +232,7 @@ public class LocalShellMgr implements ShellMgr{
       	sres[i] = sres[i]+"/";
       }
     }
+    Arrays.sort(sres);
     return sres;
   }
 
