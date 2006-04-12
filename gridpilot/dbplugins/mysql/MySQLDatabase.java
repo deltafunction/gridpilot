@@ -21,8 +21,8 @@ import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.JobInfo;
 import gridpilot.Util;
-import gridpilot.Database.DBRecord;
-import gridpilot.Database.DBResult;
+//import gridpilot.Database.DBRecord;
+//import gridpilot.Database.DBResult;
 
 public class MySQLDatabase implements Database{
   
