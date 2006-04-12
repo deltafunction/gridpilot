@@ -203,7 +203,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
             try{
               wb = new WebBox(GridPilot.getClassMgr().getGlobalFrame(),
                               "Choose script",
-                              new URL(httpScript),
+                              (new URL(httpScript)).toExternalForm(),
                               baseUrl);
             }
             catch(Exception ee){
@@ -213,7 +213,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
               try{
                 wb = new WebBox(GridPilot.getClassMgr().getGlobalFrame(),
                                 "Choose script",
-                                new URL(baseUrl),
+                                (new URL(baseUrl)).toExternalForm(),
                                 baseUrl);
               }
               catch(Exception eee){
@@ -235,9 +235,9 @@ public class TransformationCreationPanel extends CreateEditPanel{
             }
             statusBar.stopAnimation();
             if(GridPilot.lastURL!=null &&
-                GridPilot.lastURL.toExternalForm().startsWith(baseUrl)){
+                GridPilot.lastURL.startsWith(baseUrl)){
               // Set the text: the URL browsed to with case URL removed
-              jt.setText(GridPilot.lastURL.toExternalForm().substring(
+              jt.setText(GridPilot.lastURL.substring(
                   baseUrl.length()));
               statusBar.setLabel("");
             }

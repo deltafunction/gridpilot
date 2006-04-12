@@ -236,7 +236,7 @@ public class GlobalFrame extends JFrame{
       return;
     } 
     try{
-      new WebBox(this, "About", aboutURL, "");
+      new WebBox(this, "About", aboutURL.toExternalForm(), "");
     }
     catch(Exception e){
       Debug.debug("WARNING: could not create WebBox", 1);

@@ -28,7 +28,7 @@ public class GridPilot extends JApplet{
   public static Splash splash;
   
   // keep track of last url opened in blocking WebBox dialog.
-  public static  URL lastURL = null;
+  public static  String lastURL = null;
 
   /**
    * Constructor
