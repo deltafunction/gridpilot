@@ -24,7 +24,8 @@ public class ConfigFile{
 
   public ConfigFile(String configFileName){
     this.configFileName = configFileName;
-    if(GridPilot.tmpConfFile==null){
+    if(!GridPilot.tmpConfFile.containsKey(configFileName) ||
+        GridPilot.tmpConfFile.get(configFileName)==null){
     	makeTmpConfigFile();
     }
   }
@@ -35,11 +36,24 @@ public class ConfigFile{
       // we first extract the config file to a tmp file and then open
       // the tmp file.
       URL fileURL = getClass().getClassLoader().getResource(configFileName);
-      //Debug.debug("fileURL: "+configFileName, 3);
+      // If file.conf is used, create temp file with prefix file and suffix conf.
+      String shortName = (new File(configFileName).getName());
+      String prefix = "";
+      String suffix = "";
+      
+      if(shortName.indexOf(".")>0){
+    	  prefix = shortName.substring(0, shortName.indexOf(".")+1);
+    	  suffix = shortName.substring(shortName.indexOf("."));
+      }
+      else{
+        prefix = shortName;
+      }
+      
+      Debug.debug("fileURL: "+configFileName+":"+prefix+":"+suffix, 3);
       BufferedReader in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
-    	GridPilot.tmpConfFile = File.createTempFile("GridPilot","conf");
+      GridPilot.tmpConfFile.put(configFileName, File.createTempFile(prefix, suffix));
       PrintWriter out = new PrintWriter(
-      		new FileWriter(GridPilot.tmpConfFile)); 
+          new FileWriter((File) GridPilot.tmpConfFile.get(configFileName))); 
       String line;
       while((line = in.readLine())!=null){
         out.println(line);
@@ -50,6 +64,7 @@ public class ConfigFile{
     catch(IOException e){
       Debug.debug("cannot find file "+ configFileName+". "+
       		e.getMessage(), 1);
+      e.printStackTrace();
     }
   }
 
@@ -159,7 +174,7 @@ public class ConfigFile{
    */
   private synchronized boolean openFile(){
     try{
-      file = new RandomAccessFile(GridPilot.tmpConfFile, "r");
+      file = new RandomAccessFile((File) GridPilot.tmpConfFile.get(configFileName), "r");
     }
     catch(FileNotFoundException e){
       System.err.println("cannot find file "+ configFileName+". "+e.getMessage());

@@ -3,6 +3,8 @@ package gridpilot;
 import java.awt.*;
 import java.io.File;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Iterator;
 
 import javax.swing.*;
 
@@ -19,7 +21,7 @@ public class GridPilot extends JApplet{
   private static String confFileName = "gridpilot.conf";
   private static ClassMgr classMgr = new ClassMgr();
   private static boolean applet = true;  
-  public static File tmpConfFile = null;
+  public static HashMap tmpConfFile = new HashMap();
   public static String [] dbs;
   public static String [] colorMapping;
   public static String[] statusFields;
@@ -179,7 +181,9 @@ public class GridPilot extends JApplet{
 
   public static void exit(int exitCode){
   	try{
-    	tmpConfFile.delete();
+      for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext(); ){
+        ((File) tmpConfFile.get(it.next())).delete();
+      }
   	}
   	catch(Exception e){
   	}
@@ -306,7 +310,9 @@ public class GridPilot extends JApplet{
    */
   public static void reloadValues(){
   	try{
-    	tmpConfFile.delete();
+      for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext(); ){
+        ((File) tmpConfFile.get(it.next())).delete();
+      }
   	}
   	catch(Exception e){
   	}
