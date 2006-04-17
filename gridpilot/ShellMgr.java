@@ -99,6 +99,10 @@ public interface ShellMgr{
    */
   public boolean isDirectory(String dir);
 
+  /**
+   * Tells wether this is a local shell manager or not (remote).
+   */
+  public boolean isLocal();
 
   public void exit();
 

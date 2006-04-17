@@ -52,7 +52,7 @@ public class SecureShellMgr implements ShellMgr{
       session.connect();
       int channelsNum = 1;
       try{
-      	channelsNum = Integer.parseInt(
+        channelsNum = Integer.parseInt(
             configFile.getValue("GridPilot", "maximum simultaneous submission"))+
         Integer.parseInt(
             configFile.getValue("GridPilot", "maximum simultaneous checking"))+
@@ -60,8 +60,8 @@ public class SecureShellMgr implements ShellMgr{
                 configFile.getValue("GridPilot", "maximum simultaneous validating"));
       }
       catch(Exception e){
-      	Debug.debug("WARNING: could not construct number of channels. "+
-      			e.getMessage(), 1);
+        Debug.debug("WARNING: could not construct number of channels. "+
+            e.getMessage(), 1);
       }
       sshs = new Channel[channelsNum];
       //remoteHome = getFullPath(remoteHome);
@@ -183,7 +183,7 @@ public class SecureShellMgr implements ShellMgr{
       catch(IOException e){
         Debug.debug(e.getMessage(), 2);
       }
-    	name = stdOut.toString()+name.substring(1);
+      name = stdOut.toString()+name.substring(1);
    }
     return name;
   }
@@ -445,4 +445,9 @@ public class SecureShellMgr implements ShellMgr{
       JOptionPane.showMessageDialog(null, message);
     }
   }
+  
+  public boolean isLocal(){
+    return false;
+  }
+    
 }
