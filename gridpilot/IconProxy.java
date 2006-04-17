@@ -8,7 +8,7 @@ import javax.swing.Icon;
  Icon class to be used in Panels for the (X) image to close a monitoring panel
  */
 public class IconProxy implements Icon {
-	
+
     private int x;
     private int y;
     private int xMax;

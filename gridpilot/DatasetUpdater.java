@@ -30,7 +30,7 @@ public class DatasetUpdater{
     statusBar = GridPilot.getClassMgr().getStatusBar();
     dbPluginMgr = _dbPluginMgr;
 
-	  updateDataset();
+    updateDataset();
   }
 
   private void updateDataset(){

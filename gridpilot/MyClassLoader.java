@@ -14,9 +14,9 @@ import java.io.*;
 
 class MyClassLoader extends ClassLoader{
   public Class findClass(String name)throws ClassNotFoundException{
-  	
+
     try{
-    	URL classUrl = ClassLoader.getSystemResource(name.replace('.', '/').concat(".class"));
+      URL classUrl = ClassLoader.getSystemResource(name.replace('.', '/').concat(".class"));
       if(classUrl == null)
         throw new ClassNotFoundException();
 

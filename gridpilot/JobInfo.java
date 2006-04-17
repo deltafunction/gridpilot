@@ -6,35 +6,35 @@ import gridpilot.Database.DBRecord;
  * Each object of this represents a submitted job.
  *
  * - String Name
- * 	 Usually the partition logical file name ; used for choosing working directories
+ *    Usually the partition logical file name ; used for choosing working directories
  * (&lt;plugin working directory&gt;/name.&lt;random&gt;)
  * - int PartId
- * 		Partition.identifier of this job/partition in DB database (used for all request in DBPluginMgr)
+ *     Partition.identifier of this job/partition in DB database (used for all request in DBPluginMgr)
  * - int ComputingSystem
- * 		 id of the computingSystem which this job is running on
+ *      id of the computingSystem which this job is running on
  * - String StdOut (StdErr)
- * 		 Standard output (error) of this job ; created by AtCom, has to be respected by the plugin
- * 		If the system doesn't allow the choice outputs, plugin has to move outputs in these destiniation
- * 		after the job end.
- * 		If StdErr is null, all outputs have to be written in StdOut
+ *      Standard output (error) of this job ; created by AtCom, has to be respected by the plugin
+ *     If the system doesn't allow the choice outputs, plugin has to move outputs in these destiniation
+ *     after the job end.
+ *     If StdErr is null, all outputs have to be written in StdOut
  * - String ValidationStdOut (ValidationStdErr)
- * 		 Outputs of the validation script ran on this job (at the end)
+ *      Outputs of the validation script ran on this job (at the end)
  * - String  JobId
- * 		 Id of this job (only if this job has been submitted), specific to
+ *      Id of this job (only if this job has been submitted), specific to
  * his computing system (an integer on LSF, https://... on European Datagrid, gsiftp://... on NorduGrid, ...
  * - String JobStatus
- * 		 Status of this job on his system
+ *      Status of this job on his system
  * - int  AtComStatus
- * 		 Status used by AtCom (defined in ComputingSystem :STATUS_WAIT, STATUS_RUNNING,
- * 		STATUS_DONE, STATUS_ERROR, STATUS_FAILED)
+ *      Status used by AtCom (defined in ComputingSystem :STATUS_WAIT, STATUS_RUNNING,
+ *     STATUS_DONE, STATUS_ERROR, STATUS_FAILED)
  * - int DBStatus
- * 		 Status of this partition (defined in DBPluginMgr :DEFINED, SUBMITTED, UNDECIDED, VALIDATED, FAILED, ABORTED)
+ *      Status of this partition (defined in DBPluginMgr :DEFINED, SUBMITTED, UNDECIDED, VALIDATED, FAILED, ABORTED)
  * - String Host
- * 		 Host where this job is running
+ *      Host where this job is running
  * - int TableRow
- * 		 Row in monitoring table where this job is shown
+ *      Row in monitoring table where this job is shown
  * - boolean NeedToBeRefreshed
- * 		 True if this job status can still possibly change
+ *      True if this job status can still possibly change
  * - boolean SkipValidation
  *     When job status is being checked, skip job validation
  *

@@ -369,14 +369,14 @@ public class TransformationCreationPanel extends CreateEditPanel{
             GridBagConstraints.BOTH,
             new Insets(5, 25, 5, 5), 0, 0));
       }
-    	
-	    if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled()){
-	      tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
+      
+      if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled()){
+        tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
       }
       if(cstAttributesNames[i].equalsIgnoreCase("packageFK")){
         Util.setJEditable(tcCstAttributes[i], false);
       }
-	    pAttributes.add(tcCstAttributes[i],
+      pAttributes.add(tcCstAttributes[i],
           new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
           GridBagConstraints.CENTER,
           GridBagConstraints.HORIZONTAL,
@@ -443,8 +443,8 @@ public class TransformationCreationPanel extends CreateEditPanel{
     Vector textFields = getTextFields();
 
     for(int i =0; i<textFields.size(); ++i)
-	  if(!(cstAttributesNames[i].equalsIgnoreCase("identifier"))){
-	    ((JTextComponent) textFields.get(i)).setText("");
+    if(!(cstAttributesNames[i].equalsIgnoreCase("identifier"))){
+      ((JTextComponent) textFields.get(i)).setText("");
     }
   }
 
@@ -457,7 +457,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
       cstAttr[i] = tcCstAttributes[i].getText();
     }
 
-	Debug.debug("createTransformation",  1);
+  Debug.debug("createTransformation",  1);
 
     new TransformationCreator(
         dbPluginMgr,

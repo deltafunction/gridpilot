@@ -26,12 +26,12 @@ public class ConfigFile{
     this.configFileName = configFileName;
     if(!GridPilot.tmpConfFile.containsKey(configFileName) ||
         GridPilot.tmpConfFile.get(configFileName)==null){
-    	makeTmpConfigFile();
+      makeTmpConfigFile();
     }
   }
   
   public void makeTmpConfigFile(){
-  	try{
+    try{
       // To be able to open with random access when running from a jar
       // we first extract the config file to a tmp file and then open
       // the tmp file.
@@ -42,8 +42,8 @@ public class ConfigFile{
       String suffix = "";
       
       if(shortName.indexOf(".")>0){
-    	  prefix = shortName.substring(0, shortName.indexOf(".")+1);
-    	  suffix = shortName.substring(shortName.indexOf("."));
+        prefix = shortName.substring(0, shortName.indexOf(".")+1);
+        suffix = shortName.substring(shortName.indexOf("."));
       }
       else{
         prefix = shortName;
@@ -63,7 +63,7 @@ public class ConfigFile{
     }
     catch(IOException e){
       Debug.debug("cannot find file "+ configFileName+". "+
-      		e.getMessage(), 1);
+          e.getMessage(), 1);
       e.printStackTrace();
     }
   }
@@ -72,12 +72,12 @@ public class ConfigFile{
    * public methods
    */
 
-	/*
-	 * tells if this is a real config or do we just use fake values. Returns true based on the file name
-	 * */
-	public boolean isFake(){
-		return (configFileName.equals(""));
-	}
+  /*
+   * tells if this is a real config or do we just use fake values. Returns true based on the file name
+   * */
+  public boolean isFake(){
+    return (configFileName.equals(""));
+  }
   /**
    * Returns the first value of attribute "attribute" in the first section "section".
    * If section "[section]" contains
@@ -92,11 +92,11 @@ public class ConfigFile{
    */
   public synchronized String getValue(String section, String attribute){
 
-	  if(this.isFake()){
+    if(this.isFake()){
       return null;
     }
     
-	  Debug.debug("getValue("+section+", "+attribute+")", 3);
+    Debug.debug("getValue("+section+", "+attribute+")", 3);
     
     String result;
     if(!openFile()){
@@ -110,8 +110,8 @@ public class ConfigFile{
     }
     if(result==null){
       Debug.debug("WARNING: The attribute "+attribute+
-      		" is not defined in section "+section+
-      		" of the config file.", 1);
+          " is not defined in section "+section+
+          " of the config file.", 1);
     }
     try{
       file.close();
@@ -270,7 +270,7 @@ public class ConfigFile{
    */
   private String readLine() throws IOException{
     String res;
-	  do{
+    do{
       res= file.readLine();
       if(res!=null){
         if(res.indexOf('#')!=-1){

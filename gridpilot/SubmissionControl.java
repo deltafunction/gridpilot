@@ -593,7 +593,7 @@ public class SubmissionControl{
       DatasetMgr.updateDBCell(job, statusTable);
       //jobControl.updateJobsByStatus();
     }
-	// remove iconSubmitting
+  // remove iconSubmitting
     statusTable.setValueAt(null, job.getTableRow(), DatasetMgr.FIELD_CONTROL);
     //jobControl.updateJobsByStatus();
     for(Iterator it = GridPilot.getClassMgr().getDatasetMgrs().iterator(); it.hasNext();){
@@ -698,7 +698,7 @@ public class SubmissionControl{
               //new String []{Integer.toString(DBPluginMgr.FAILED)}
               Integer.toString(DBPluginMgr.FAILED)
               ))
-	      job.setDBStatus(DBPluginMgr.FAILED);
+        job.setDBStatus(DBPluginMgr.FAILED);
       else
         logFile.addMessage("DB update status(" + job.getJobDefId() + ", " +
             DBPluginMgr.getStatusName(job.getDBStatus()) + ") failed", job);

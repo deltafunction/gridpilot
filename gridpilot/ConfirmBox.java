@@ -65,8 +65,8 @@ public class ConfirmBox extends JDialog implements ActionListener {
     if (e.getSource() == bOk) {
       cancel();
     }
-	  if (e.getSource() == bCancel) {
-	    cancel();
-	  }
+    if (e.getSource() == bCancel) {
+      cancel();
+    }
   }
 }

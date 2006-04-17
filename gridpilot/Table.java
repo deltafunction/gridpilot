@@ -646,7 +646,7 @@ public class Table extends JTable {
       super.paintImmediately(x, y, w, h);
     }
     catch(Exception e){
-    	GridPilot.getClassMgr().getLogFile().addMessage(" Exception in paintImmediately(" + x + ", " + y + ", " +
+      GridPilot.getClassMgr().getLogFile().addMessage(" Exception in paintImmediately(" + x + ", " + y + ", " +
                          w + ", " + h +")", e);
       e.printStackTrace();
     }

@@ -36,7 +36,7 @@ public class DatasetCreator{
     showResults = _showResults;
     cstAttr = _cstAttr;
     cstAttrNames =  _cstAttrNames;
-	  resCstAttr = _cstAttr;
+    resCstAttr = _cstAttr;
     datasetIDs =  _datasetIDs;
     targetDB = _targetDB;
     

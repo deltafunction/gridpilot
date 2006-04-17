@@ -41,8 +41,8 @@ public class HSQLDBDatabase implements Database{
       String _driver, String _database, String _user, String _passwd){
     driver = _driver;
     database = _database;
-  	user = _user;
-  	passwd = _passwd;
+    user = _user;
+    passwd = _passwd;
     
     boolean showDialog = true;
     // if csNames is set, this is a reload
@@ -100,25 +100,25 @@ public class HSQLDBDatabase implements Database{
       Class.forName(driver).newInstance();
     }
     catch(Exception e){
-  		Debug.debug("Could not load the driver "+driver, 3);
+      Debug.debug("Could not load the driver "+driver, 3);
       e.printStackTrace();
-  		return null;
-  	}
-  	try{
+      return null;
+    }
+    try{
       conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
          user, passwd);
-  	}
+    }
     catch(Exception e){
       Debug.debug("Could not connect to db "+database+
           ", "+user+", "+passwd+" : "+e, 3);
-  		return null;
-  	}	
-  	try{
-  		conn.setAutoCommit(true);
-  	}
+      return null;
+    }  
+    try{
+      conn.setAutoCommit(true);
+    }
     catch(Exception e){
       Debug.debug("failed setting auto commit to true: "+e.getMessage(), 2);
-  	}
+    }
     return "";
   }
   
@@ -768,13 +768,13 @@ public class HSQLDBDatabase implements Database{
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{
-    	Statement stmt = conn.createStatement();
-    	ResultSet rset = stmt.executeQuery(req);
-    	while(rset.next()){
-    		String values[] = new String[jobDefFields.length];
-    		for(int i=0; i<jobDefFields.length;i++){
-    			String fieldname = jobDefFields[i];
-    			String val = "";
+      Statement stmt = conn.createStatement();
+      ResultSet rset = stmt.executeQuery(req);
+      while(rset.next()){
+        String values[] = new String[jobDefFields.length];
+        for(int i=0; i<jobDefFields.length;i++){
+          String fieldname = jobDefFields[i];
+          String val = "";
           for(int j=0; j<jobDefFields.length; ++j){
             if(fieldname.equalsIgnoreCase(jobDefFields[j])){
               if(fieldname.endsWith("FK") || fieldname.endsWith("ID")){
@@ -789,12 +789,12 @@ public class HSQLDBDatabase implements Database{
             val = "";
           }
           values[i] = val;
-    			Debug.debug(fieldname+"-->"+val, 2);
-    		}
-    		DBRecord jobd = new DBRecord(jobDefFields, values);
-			  jobdefv.add(jobd);
-    	}
-    	rset.close();
+          Debug.debug(fieldname+"-->"+val, 2);
+        }
+        DBRecord jobd = new DBRecord(jobDefFields, values);
+        jobdefv.add(jobd);
+      }
+      rset.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -828,13 +828,13 @@ public class HSQLDBDatabase implements Database{
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{
-    	Statement stmt = conn.createStatement();
-    	ResultSet rset = stmt.executeQuery(req);
-    	while(rset.next()){
-    		String values[] = new String[jobDefFields.length];
-    		for(int i=0; i<jobDefFields.length;i++){
-    			String fieldname = jobDefFields[i];
-    			String val = "";
+      Statement stmt = conn.createStatement();
+      ResultSet rset = stmt.executeQuery(req);
+      while(rset.next()){
+        String values[] = new String[jobDefFields.length];
+        for(int i=0; i<jobDefFields.length;i++){
+          String fieldname = jobDefFields[i];
+          String val = "";
           for(int j=0; j<fieldNames.length; ++j){
             if(fieldname.equalsIgnoreCase(fieldNames[j])){
               if(fieldname.endsWith("FK") || fieldname.endsWith("ID")){
@@ -849,13 +849,13 @@ public class HSQLDBDatabase implements Database{
             val = "";
           }
           values[i] = val;
-    			//Debug.debug(fieldname+"-->"+val, 2);
-    		}
-    		DBRecord jobd = new DBRecord(jobDefFields, values);
-  		  jobdefv.add(jobd);
-  		
-    	};
-    	rset.close();
+          //Debug.debug(fieldname+"-->"+val, 2);
+        }
+        DBRecord jobd = new DBRecord(jobDefFields, values);
+        jobdefv.add(jobd);
+      
+      };
+      rset.close();
     
     }
     catch(Exception e){
@@ -964,8 +964,8 @@ public class HSQLDBDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-    	Statement stmt = conn.createStatement();
-    	stmt.executeUpdate(sql);
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
       conn.commit();
     }
     catch(Exception e){
@@ -1232,9 +1232,9 @@ public class HSQLDBDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-    	Statement stmt = conn.createStatement();
-    	stmt.executeUpdate(sql);
-    	conn.commit();
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+      conn.commit();
     }
     catch(Exception e){
       execok = false;
@@ -1435,15 +1435,15 @@ public class HSQLDBDatabase implements Database{
   }
   
   public synchronized boolean deleteJobDefinition(int jobDefId){
-  	boolean ok = true;
-  	try{
-  		//String idstr = jobDef.jobDefinitionID;
-  		//Integer jobid = Integer.valueOf(idstr);
-  		String sql = "DELETE FROM jobDefinition WHERE identifier = '"+
+    boolean ok = true;
+    try{
+      //String idstr = jobDef.jobDefinitionID;
+      //Integer jobid = Integer.valueOf(idstr);
+      String sql = "DELETE FROM jobDefinition WHERE identifier = '"+
       jobDefId+"'";
-  		Statement stmt = conn.createStatement();
-    	stmt.executeUpdate(sql);
-  	}
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+    }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();

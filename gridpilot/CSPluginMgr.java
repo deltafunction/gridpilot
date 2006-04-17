@@ -18,7 +18,7 @@ import javax.swing.*;
  * "default timeout", and if this one is not defined either, AtCom uses
  * <code>defaultTimeOut</code>. <p>
  * If the time out delay is elapsed before the end of a method, the user is asked for
- * interrupt the plug-in (if <code>askBeforeInterrupt == true</code>)
+ * interrupt the plug-in (if <code>askBeforeInterrupt==true</code>)
  *
  * <p><a href="CSPluginMgr.java.html">see sources</a>
  */
@@ -92,12 +92,12 @@ public class CSPluginMgr implements ComputingSystem{
   public void loadClasses() throws Throwable{
 
     for(int i=0; i<csNames.length; ++i){
-    	try{
-      	GridPilot.splash.show("Connecting to "+csNames[i]+"...");
-    	}
-    	catch(Exception e){
-    		// if we cannot show text on splash, just silently ignore
-    	}
+      try{
+        GridPilot.splash.show("Connecting to "+csNames[i]+"...");
+      }
+      catch(Exception e){
+        // if we cannot show text on splash, just silently ignore
+      }
       String host = configFile.getValue(csNames[i], "host");
       if(host != null){
         String user = configFile.getValue(csNames[i], "user");
@@ -112,7 +112,7 @@ public class CSPluginMgr implements ComputingSystem{
 
       // Arguments and class name for <ComputingSystemName>ComputingSystem
       String csClass = configFile.getValue(csNames[i], "class");
-      if(csClass == null){
+      if(csClass==null){
         throw new Exception("Cannot load classes for system " + csNames[i] + " : \n"+
                             configFile.getMissingMessage(csNames[i], "class"));
       }
@@ -175,8 +175,9 @@ public class CSPluginMgr implements ComputingSystem{
 
   void disconnect(){
     for(int i=0; i<csNames.length ; ++i){
-      if(shellMgr.get(csNames[i]) instanceof SecureShellMgr)
+      if(shellMgr.get(csNames[i]) instanceof SecureShellMgr){
         ((SecureShellMgr) shellMgr.get(csNames[i])).exit();
+      }
     }
   }
 
@@ -193,15 +194,17 @@ public class CSPluginMgr implements ComputingSystem{
    */
   public ShellMgr getShellMgr(JobInfo job){
     String csName = job.getCSName();
-    if(csName == null || csName.equals(""))
+    if(csName==null || csName.equals("")){
       return askWhichShell(job);
-    else
+    }
+    else{
       return getShellMgr(csName);
+    }
   }
 
   public ShellMgr getShellMgr(String csName){
     ShellMgr smgr = (ShellMgr) shellMgr.get(csName);
-    if(smgr == null){
+    if(smgr==null){
       Debug.debug("No computing system "+csName, 3);
       return null;
     }
@@ -222,7 +225,8 @@ public class CSPluginMgr implements ComputingSystem{
     if(tmp!=null){
       try{
         defaultTimeOut = new Integer(tmp).intValue();
-      }catch(NumberFormatException nfa){
+      }
+      catch(NumberFormatException nfa){
         logFile.addMessage("value of default timeout (" + tmp +") is not an integer");
       }
     }
@@ -240,7 +244,8 @@ public class CSPluginMgr implements ComputingSystem{
       if(tmp!=null){
         try{
           values[i] = new Integer(tmp).intValue();
-        }catch(NumberFormatException nfa){
+        }
+        catch(NumberFormatException nfa){
           logFile.addMessage("value of " + timeOutNames[i] + " timeout (" + tmp +") is not an integer");
           values[i] = defaultTimeOut;
         }
@@ -272,7 +277,8 @@ public class CSPluginMgr implements ComputingSystem{
       public void run(){
         try{
           res = ((ComputingSystem) cs.get(job.getCSName())).submit(job);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + job.getCSName() +
                              " during job " + job.getName() + " submission", job, t);
@@ -303,7 +309,8 @@ public class CSPluginMgr implements ComputingSystem{
       public void run(){
         try{
           ((ComputingSystem) cs.get(csName)).updateStatus(jobs);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + csName +
                              " during updateStatus", t);
@@ -389,7 +396,8 @@ public class CSPluginMgr implements ComputingSystem{
       public void run(){
         try{
           ((ComputingSystem) cs.get(csName)).clearOutputMapping(job);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + csName +
                              " during job " + job.getName() + " clearOutputMapping", job, t);
@@ -416,7 +424,8 @@ public class CSPluginMgr implements ComputingSystem{
             ((ComputingSystem) cs.get(csNames[k])).exit();
             // TODO: is this necessary?
             ((ShellMgr) shellMgr.get(csNames[k])).exit();
-          }catch(Throwable t){
+          }
+          catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                "Exception from plugin " + csNames[k] +
                                " during exit", t);
@@ -447,22 +456,27 @@ public class CSPluginMgr implements ComputingSystem{
       public void run(){
         try{
           res = ((ComputingSystem) cs.get(csName)).getFullStatus(job);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + csName +
                              " during job " + job.getName() + " getFullStatus", job, t);
           res = null;
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
 
     t.start();
 
-    if(waitForThread(t, csName, fullStatusTimeOut, "getFullStatus"))
+    if(waitForThread(t, csName, fullStatusTimeOut, "getFullStatus")){
       return t.getStringRes();
-    else
+    }
+    else{
       return "No response";
+    }
   }
 
   /**
@@ -480,14 +494,17 @@ public class CSPluginMgr implements ComputingSystem{
       public void run(){
         try{
           res = ((ComputingSystem) cs.get(csName)).getCurrentOutputs(job);
-        }catch(Throwable t){
+        }
+        catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + csName +
                              " during job " + job.getName() + " getCurrentOutpus", job, t);
           res = new String[]{null, null};
         }
       }
-      public String [] getString2Res(){return res;}
+      public String [] getString2Res(){
+        return res;
+      }
     };
 
     t.start();
@@ -507,8 +524,9 @@ public class CSPluginMgr implements ComputingSystem{
                  "Do you want to interrupt it ?";
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), msg, "No response from plugin",
         JOptionPane.YES_NO_OPTION);
-    if(choice == JOptionPane.YES_OPTION)
+    if(choice==JOptionPane.YES_OPTION){
       return true;
+    }
     else
       return false;
   }
@@ -530,7 +548,10 @@ public class CSPluginMgr implements ComputingSystem{
       timeOut = _timeOut;
     //}
     do{
-      try{t.join(timeOut);}catch(InterruptedException ie){}
+      try{
+        t.join(timeOut);
+      }
+      catch(InterruptedException ie){}
 
       if(t.isAlive()){
         if(!askBeforeInterrupt || askForInterrupt(csName, function)){
@@ -540,9 +561,11 @@ public class CSPluginMgr implements ComputingSystem{
           return false;
         }
       }
-      else
+      else{
         break;
-    }while(true);
+      }
+    }
+    while(true);
     return true;
   }
 
@@ -552,11 +575,12 @@ public class CSPluginMgr implements ComputingSystem{
     JComboBox cb = new JComboBox();
     for(int i=0; i<shellMgr.size() ; ++i){
       String type = "";
-      if(shellMgr.get(csNames[i]) instanceof SecureShellMgr)
+      if(shellMgr.get(csNames[i]) instanceof SecureShellMgr){
         type = " (remote)";
-      if(shellMgr.get(csNames[i]) instanceof LocalShellMgr)
+      }
+      if(shellMgr.get(csNames[i]) instanceof LocalShellMgr){
         type = " (local)";
-
+      }
       cb.addItem(csNames[i] + type);
     }
     cb.setSelectedIndex(0);

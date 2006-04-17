@@ -218,11 +218,11 @@ public class ClassMgr{
   public GlobalFrame getGlobalFrame(){
     if(globalFrame==null){
       Debug.debug("globalFrame null", 3);
-			new Exception().printStackTrace();
-		}
+      new Exception().printStackTrace();
+    }
 
-		return globalFrame;
-	}
+    return globalFrame;
+  }
 
   public GridPilot getGridPilot(){
     if(prodCom==null){

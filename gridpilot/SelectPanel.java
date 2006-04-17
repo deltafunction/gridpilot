@@ -436,9 +436,9 @@ public class SelectPanel extends JPanel{
       Debug.debug("Table: "+spanel.name, 3);
       if(spanel.name.equals(values[h][0])){
         thisSPanel = spanel;
-      	if((values[h].length>0) && (spanel.spDisplayList!=null)){
+        if((values[h].length>0) && (spanel.spDisplayList!=null)){
           Debug.debug("Setting value", 3);
-      		String val = values[h][1];
+          String val = values[h][1];
           // make sure we have enough display panels
           fieldOk = false;
           for(int k=0; k<spanel.fieldList.length; ++k){
