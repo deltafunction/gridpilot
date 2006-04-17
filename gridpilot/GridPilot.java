@@ -2,7 +2,6 @@ package gridpilot;
 
 import java.awt.*;
 import java.io.File;
-import java.net.URL;
 import java.util.HashMap;
 import java.util.Iterator;
 
@@ -28,6 +27,11 @@ public class GridPilot extends JApplet{
   public static String resourcesPath = "";
   public static String [] csNames = null;
   public static Splash splash;
+  public static int proxyTimeLeftLimit = 43200;
+  public static int proxyTimeValid = 129600;
+  public static String keyFile = "~/.globus/userkey.pem";
+  public static String certFile = "~/.globus/usercert.pem";
+  public static String keyPassword = null;
   
   // keep track of last url opened in blocking WebBox dialog.
   public static  String lastURL = null;
@@ -97,6 +101,16 @@ public class GridPilot extends JApplet{
       if(csNames == null || csNames.length == 0){
         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("Computing systems", "systems"));
       }
+      proxyTimeLeftLimit = Integer.parseInt(
+        getClassMgr().getConfigFile().getValue("GridPilot", "proxy time left limit"));
+      proxyTimeValid = Integer.parseInt(
+          getClassMgr().getConfigFile().getValue("GridPilot", "proxy time valid"));
+      keyFile = getClassMgr().getConfigFile().getValue("GridPilot",
+          "key file");
+      certFile = getClassMgr().getConfigFile().getValue("GridPilot",
+      "certificate file");
+      keyPassword = getClassMgr().getConfigFile().getValue("GridPilot",
+      "key password");
     }
     catch(Throwable e){
       if(e instanceof Error)
@@ -180,13 +194,13 @@ public class GridPilot extends JApplet{
    }
 
   public static void exit(int exitCode){
-  	try{
+    try{
       for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext(); ){
         ((File) tmpConfFile.get(it.next())).delete();
       }
-  	}
-  	catch(Exception e){
-  	}
+    }
+    catch(Exception e){
+    }
     /*
     Disconnect DBs
     */
@@ -309,14 +323,14 @@ public class GridPilot extends JApplet{
    * Called when user chooses "Reload values" in gridpilot menu
    */
   public static void reloadValues(){
-  	try{
+    try{
       for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext(); ){
         ((File) tmpConfFile.get(it.next())).delete();
       }
-  	}
-  	catch(Exception e){
-  	}
-  	getClassMgr().getConfigFile().makeTmpConfigFile();
+    }
+    catch(Exception e){
+    }
+    getClassMgr().getConfigFile().makeTmpConfigFile();
     loadConfigValues();
     getClassMgr().getJobValidation().loadValues();
     getClassMgr().getSubmissionControl().loadValues();
