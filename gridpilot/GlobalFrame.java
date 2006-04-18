@@ -38,8 +38,8 @@ public class GlobalFrame extends JFrame{
   public GlobalFrame() throws Exception{
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     allPanels = new Vector();
-    ImageIcon icon;
-    URL imgURL=null;
+    ImageIcon icon = null;
+    URL imgURL = null;
     try{
       imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "Aviateur.png");
       icon = new ImageIcon(imgURL);
