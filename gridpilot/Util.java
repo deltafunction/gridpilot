@@ -44,14 +44,35 @@ public class Util{
    */
   public static String arrayToString(Object [] values){
     String res = "";
-    if(values==null)
+    if(values==null){
       return "(null)";
-    for(int i=0; i< values.length ; ++i){
-      res += (values[i]==null ? "null" : values[i].toString()) + " ";
+    }
+    for(int i=0; i<values.length ; ++i){
+      res += (values[i]==null ? "null" : values[i].toString());
+      if(i<values.length-1){
+        res += " ";
+      }
     }
     return res;
   }
 
+  /**
+   * Converts an array of integers in a String representing this array.
+   */
+  public static String arrayToString(int [] values){
+    String res = "";
+    if(values==null){
+      return "(null)";
+    }
+    for(int i=0; i<values.length ; ++i){
+      res += values[i];
+      if(i<values.length-1){
+        res += " ";
+      }
+    }
+    return res;
+  }
+  
   /**
    * Converts an array of object in a String representing this array,
    * using the delimiter string delim to separate the records.
