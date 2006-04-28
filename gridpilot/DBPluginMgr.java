@@ -1133,7 +1133,7 @@ public class DBPluginMgr implements Database, PanelUtil{
 
   // Here, in contrast to updateJobDef (in DBPluginMgr), because it is not needed by other
   // classes and it needs to update display.
-  public DBRecord createJobDef(String [] fields, String [] values) throws Exception {
+  public DBRecord createJobDef(String [] fields, Object [] values) throws Exception {
     
     String [] jobDefFieldNames = getFieldNames("jobDefinition");
     
@@ -1142,15 +1142,16 @@ public class DBPluginMgr implements Database, PanelUtil{
           fields.length+"!="+values.length);
     }
     if(fields.length>jobDefFieldNames.length){
-      throw new Exception("The number of fields is too large, "+
-          fields.length+">"+jobDefFieldNames.length);
+      Debug.debug("The number of fields is too large, "+
+          fields.length+">"+jobDefFieldNames.length, 1);
     }
     String [] vals = new String[jobDefFieldNames.length];
     for(int i=0; i<jobDefFieldNames.length; ++i){
       vals[i] = "";
       for(int j=0; i<fields.length; ++j){
-        if(fields[j].equalsIgnoreCase(jobDefFieldNames[i])){
-          vals[i] = values[j];
+        if(fields[j].equalsIgnoreCase(jobDefFieldNames[i]) &&
+            !fields[j].equalsIgnoreCase(getIdentifier(dbName, "jobDefinition"))){
+          vals[i] = values[j].toString();
           break;
         }
       }
