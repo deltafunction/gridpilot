@@ -15,12 +15,21 @@ import java.awt.event.*;
 import java.util.HashSet;
 import java.util.Vector;
 
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.ClipboardOwner;
+import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.Toolkit;
+import java.io.*;
+
 /**
  * This panel contains one SelectPanel.
  *
  */
 
-public class DBPanel extends JPanel implements JobPanel{
+public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
   private static final long serialVersionUID = 1L;
   private JScrollPane spSelectPanel = new JScrollPane();
@@ -328,8 +337,37 @@ public class DBPanel extends JPanel implements JobPanel{
     this.add(panelTableResults,ct);
     this.updateUI();
     
-//// buttons
-  // Costumized for each type of table
+    // Disable clipboard handling inherited from JPanel
+    TransferHandler th = new TransferHandler(null);
+    tableResults.setTransferHandler(th);
+    
+    tableResults.addKeyListener(new KeyAdapter(){
+      public void keyPressed(KeyEvent e){
+        //Debug.debug("key code: "+KeyEvent.getKeyText(e.getKeyCode()), 3);
+        if(e.getKeyCode()==KeyEvent.VK_F1){
+          //menuHelpAbout_actionPerformed();
+        }
+        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("x")){
+          if(e.isControlDown()){
+            //cut();
+          }
+        }
+        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c")){
+          if(e.isControlDown()){
+            copy();
+          }
+        }
+        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("v")){
+          if(e.isControlDown()){
+            paste();
+          }
+        }
+      }
+    });
+
+    
+    //// buttons
+    // Costumized for each type of table
     
     bSearch.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -982,13 +1020,14 @@ public class DBPanel extends JPanel implements JobPanel{
     workThread = new Thread(){
       public void run(){
         if(!getWorking()){
-          Debug.debug("please wait ...", 2);
           return;
         }
         int [] ids = getSelectedIdentifiers();
         int [] rows = tableResults.getSelectedRows();
         Debug.debug("Deleting "+ids.length+" rows", 2);
         if(ids.length != 0){
+          GridPilot.getClassMgr().getStatusBar().setLabel(
+             "Deleting job definition(s). Please wait ...");
           JProgressBar pb = new JProgressBar();
           pb.setMaximum(ids.length);
           for(int i=ids.length-1; i>=0; i--){
@@ -1004,6 +1043,8 @@ public class DBPanel extends JPanel implements JobPanel{
             tableResults.removeRow(rows[i]);
             tableResults.tableModel.fireTableDataChanged();
           }
+          GridPilot.getClassMgr().getStatusBar().setLabel(
+             "Deleting job definition(s) done.");
         }
         refresh();
         stopWorking();
@@ -1041,6 +1082,8 @@ public class DBPanel extends JPanel implements JobPanel{
     HashSet deleted = new HashSet();
     JCheckBox cbCleanup = null;
     int [] datasetIdentifiers = getSelectedIdentifiers();
+    GridPilot.getClassMgr().getStatusBar().setLabel(
+    "Deleting dataset(s).");
     for(int i=datasetIdentifiers.length-1; i>=0; --i){
       if(datasetIdentifiers[i]!=-1){
         if(!okAll){
@@ -1091,6 +1134,8 @@ public class DBPanel extends JPanel implements JobPanel{
         Debug.debug("WARNING: dataset undefined and could not be deleted",1);
       }
     }
+    GridPilot.getClassMgr().getStatusBar().setLabel(
+    "Deleting package(s) done.");
     refresh();
     if(datasetIdentifiers.length>1){
       statusBar.setLabel(deleted.size()+" of "+
@@ -1168,13 +1213,14 @@ public class DBPanel extends JPanel implements JobPanel{
     workThread = new Thread(){
       public void run(){
         if(!getWorking()){
-          Debug.debug("please wait ...", 2);
           return;
         }
         int [] ids = getSelectedIdentifiers();
         int [] rows = tableResults.getSelectedRows();
         Debug.debug("Deleting "+ids.length+" rows", 2);
         if(ids.length != 0){
+          GridPilot.getClassMgr().getStatusBar().setLabel(
+             "Deleting transformation(s). Please wait ...");
           JProgressBar pb = new JProgressBar();
           pb.setMaximum(ids.length);
           for(int i = ids.length-1; i>=0; i--){
@@ -1190,6 +1236,8 @@ public class DBPanel extends JPanel implements JobPanel{
             tableResults.removeRow(rows[i]);
             tableResults.tableModel.fireTableDataChanged();
           }
+          GridPilot.getClassMgr().getStatusBar().setLabel(
+             "Deleting transformation(s) done.");
         }
         stopWorking();
         refresh();
@@ -1219,13 +1267,14 @@ public class DBPanel extends JPanel implements JobPanel{
     workThread = new Thread(){
       public void run(){
         if(!getWorking()){
-          Debug.debug("please wait ...", 2);
           return;
         }
         int [] ids = getSelectedIdentifiers();
         int [] rows = tableResults.getSelectedRows();
         Debug.debug("Deleting "+ids.length+" rows", 2);
         if(ids.length != 0){
+          GridPilot.getClassMgr().getStatusBar().setLabel(
+             "Deleting package(s). Please wait ...");
           JProgressBar pb = new JProgressBar();
           pb.setMaximum(ids.length);
           for(int i = ids.length-1; i>=0; i--){
@@ -1241,6 +1290,8 @@ public class DBPanel extends JPanel implements JobPanel{
             tableResults.removeRow(rows[i]);
             tableResults.tableModel.fireTableDataChanged();
           }
+          GridPilot.getClassMgr().getStatusBar().setLabel(
+             "Deleting package(s) done.");
         }
         stopWorking();
         refresh();
@@ -1323,4 +1374,152 @@ public class DBPanel extends JPanel implements JobPanel{
     // submit the jobs
     submissionControl.submitJobDefinitions(selectedJobDefinitions, csName);
   }
+  
+  /**
+   * Empty implementation of the ClipboardOwner interface.
+   */
+   public void lostOwnership(Clipboard aClipboard, Transferable aContents){
+     //do nothing
+   }
+
+  public void copy(){
+    Debug.debug("Copying!", 3);
+    int [] ids = getSelectedIdentifiers();
+    StringSelection stringSelection = new StringSelection(
+        dbName+" "+tableName+" "+Util.arrayToString(ids));
+    Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+    clipboard.setContents(stringSelection, this);
+  }
+  /*public void cut(){
+    Debug.debug("Cutting!", 3);
+    copy();
+    if(tableName.equalsIgnoreCase("jobDefinition")){
+      deleteJobDefs();
+    }
+    else if(tableName.equalsIgnoreCase("dataset") ||
+        // support external schema on proddb
+        tableName.equalsIgnoreCase("task")){
+      deleteDatasets();
+    }
+    else if(tableName.equalsIgnoreCase("transformation")){
+      deleteTransformations();
+    }
+    else if(tableName.equalsIgnoreCase("package")){
+      deletePackages();
+    }
+  }*/
+  
+  public boolean insertJobDefinition(DBRecord jobDef, DBPluginMgr dbMgr) throws Exception {  
+    try{
+      dbMgr.createJobDef(jobDef.fields, jobDef.values);
+    }
+    catch(Exception e){
+      return false;
+    }
+    return true;
+  }
+  
+  public boolean insertDataset(DBRecord dataset, DBPluginMgr dbMgr){
+    try{
+      //dbMgr.createDataset(dataset.fields, dataset.values);
+    }
+    catch(Exception e){
+      return false;
+    }
+    return true;
+  }
+  
+  
+  public void insertRecord(String sourceDB, String sourceTable,
+      String targetDB, String targetTable, int id){
+    
+    DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(sourceDB);
+    DBPluginMgr targetMgr = GridPilot.getClassMgr().getDBPluginMgr(targetDB);
+    
+    DBRecord record = null;
+
+    if(tableName.equalsIgnoreCase("jobDefinition")){
+      record = sourceMgr.getJobDefinition(id);
+      try{
+        insertJobDefinition(record, targetMgr);
+      }
+      catch(Exception e){
+        String msg = "ERROR: job definition "+id+" could not be created, "+sourceDB+
+        "."+sourceTable+"->"+targetDB+"."+targetTable;
+        Debug.debug(msg, 1);
+        statusBar.setLabel(msg);
+        GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
+      }
+
+    }
+    else if(tableName.equalsIgnoreCase("dataset") ||
+        // support external schema on proddb
+        tableName.equalsIgnoreCase("task")){
+      record = sourceMgr.getDataset(id);
+    }
+    else if(tableName.equalsIgnoreCase("transformation")){
+      // Do nothing. Transformations are administered by
+      // the local administrator
+    }
+    else if(tableName.equalsIgnoreCase("package")){
+      // Do nothing. Packages are administered by
+      // the local administrator
+    }
+  }
+  
+  public void paste(){
+    String clip = getClipboardContents();
+    Debug.debug("Pasting "+clip, 3);
+    String [] records = Util.split(clip);
+    if(records.length<3){
+      return;
+    }
+    for(int i=2; i<records.length; ++i){
+      insertRecord(records[0], records[1], dbName, tableName,
+          Integer.parseInt(records[i]));
+    }
+  }
+   
+   /**
+  * Place a String on the clipboard, and make this class the
+  * owner of the Clipboard's contents.
+  */
+  public void setClipboardContents(String aString){
+    StringSelection stringSelection = new StringSelection(aString);
+    Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+    clipboard.setContents(stringSelection, this);
+  }
+
+  /**
+  * Get the String residing on the clipboard.
+  *
+  * @return any text found on the Clipboard; if none found, return an
+  * empty String.
+  */
+  public String getClipboardContents(){
+    String result = "";
+    Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+    //odd: the Object param of getContents is not currently used
+    Transferable contents = clipboard.getContents(null);
+    boolean hasTransferableText =
+      (contents != null) &&
+      contents.isDataFlavorSupported(DataFlavor.stringFlavor)
+    ;
+    if ( hasTransferableText ) {
+      try {
+        result = (String)contents.getTransferData(DataFlavor.stringFlavor);
+      }
+      catch (UnsupportedFlavorException ex){
+        //highly unlikely since we are using a standard DataFlavor
+        System.out.println(ex);
+        ex.printStackTrace();
+      }
+      catch (IOException ex) {
+        System.out.println(ex);
+        ex.printStackTrace();
+      }
+    }
+    return result;
+  }
+
 }

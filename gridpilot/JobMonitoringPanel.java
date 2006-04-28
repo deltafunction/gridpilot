@@ -15,7 +15,7 @@ import javax.swing.event.*;
  * <p><a href="JobMonitoringPanel.java.html">see sources</a>
  */
 
-public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
+public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   private static final long serialVersionUID = 1L;
   private Table statusTable;
@@ -745,5 +745,11 @@ public class JobMonitoringPanel extends CreateEditPanel implements JobPanel{
     }.start();
   }
 
+  public void copy(){
+  }
+  /*public void cut(){
+  }*/
+  public void paste(){
+  }
 }
 

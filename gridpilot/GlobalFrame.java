@@ -13,7 +13,7 @@ import java.util.*;
 
 import gridpilot.Debug;
 import gridpilot.GridPilot;
-import gridpilot.JobPanel;
+import gridpilot.ListPanel;
 import gridpilot.IconProxy;
 
 /**
@@ -111,33 +111,6 @@ public class GlobalFrame extends JFrame{
       }
     });
 
-    tabbedPane.addKeyListener(new KeyAdapter(){
-      public void keyPressed(KeyEvent e){
-        //Debug.debug("key code: "+KeyEvent.getKeyText(e.getKeyCode()), 3);
-        if(e.getKeyCode()==KeyEvent.VK_F1){
-          menuHelpAbout_actionPerformed();
-        }
-        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("x")){
-          if(e.isControlDown()){
-            menuEditCut_actionPerformed();
-          }
-        }
-        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c")){
-          if(e.isControlDown()){
-            menuEditCopy_actionPerformed();
-          }
-        }
-        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("v")){
-          if(e.isControlDown()){
-            menuEditPaste_actionPerformed();
-          }
-        }
-        else{
-          tabbedPane.getSelectedComponent().dispatchEvent(e);
-        }
-      }
-    });
-
     jobMonitoringPanel = new JobMonitoringPanel();
 
   }
@@ -151,12 +124,12 @@ public class GlobalFrame extends JFrame{
   Add a new panel.
   */
 
-  public void addPanel(JobPanel newPanel, String title){
+  public void addPanel(ListPanel newPanel, String title){
     Debug.debug("Adding panel "+newPanel.getTitle(), 3);
     addPanel(newPanel);
   }
 
-  public void addPanel(JobPanel newPanel){
+  public void addPanel(ListPanel newPanel){
     
     URL imgURL=null;
     ImageIcon closeIcon = null;
@@ -183,9 +156,9 @@ public class GlobalFrame extends JFrame{
     tabbedPane.addTab(smallTitle, new IconProxy(closeIcon), (JPanel) newPanel);
     Debug.debug("Added tab "+allPanels.size(), 3);
     // focus on new panel
-    ((JobPanel) tabbedPane.getComponentAt(tabbedPane.getSelectedIndex())).panelHidden();
+    ((ListPanel) tabbedPane.getComponentAt(tabbedPane.getSelectedIndex())).panelHidden();
     int newSelIndex = tabbedPane.getTabCount()-1;
-    ((JobPanel) tabbedPane.getComponentAt(newSelIndex)).panelShown();
+    ((ListPanel) tabbedPane.getComponentAt(newSelIndex)).panelShown();
     Debug.debug("Setting selected index "+newSelIndex, 3);
     tabbedPane.setSelectedIndex(newSelIndex);
     setTitle("GridPilot - "+title);
@@ -195,11 +168,11 @@ public class GlobalFrame extends JFrame{
   Remove panel.
   */
   public void removePanel(){
-    JobPanel panel = (JobPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
+    ListPanel panel = (ListPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
     removePanel(panel);
   }
   
-  public void removePanel(JobPanel panel){
+  public void removePanel(ListPanel panel){
     // remove from vector and from tab
     Debug.debug("Removing panel#"+tabbedPane.getSelectedIndex(), 3);
     try{
@@ -213,12 +186,14 @@ public class GlobalFrame extends JFrame{
   }
 
   //Edit-cut | About action performed
-  public void menuEditCut_actionPerformed(){
+  /*public void menuEditCut_actionPerformed(){
     Debug.debug("Cutting", 3);
-  }
+  }*/
   //Edit-copy | About action performed
   public void menuEditCopy_actionPerformed(){
     Debug.debug("Copying", 3);
+    ListPanel panel = (ListPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
+    panel.copy();
   }
   //Edit-paste | About action performed
   public void menuEditPaste_actionPerformed(){
@@ -236,7 +211,7 @@ public class GlobalFrame extends JFrame{
       return;
     } 
     try{
-      new WebBox(this, "About", aboutURL.toExternalForm(), "");
+      new WebBox(this, "About", aboutURL.toExternalForm(), "", false);
     }
     catch(Exception e){
       Debug.debug("WARNING: could not create WebBox", 1);
@@ -258,9 +233,9 @@ public class GlobalFrame extends JFrame{
   private void tabbedSelected(ChangeEvent e){
     selectedPanel = tabbedPane.getSelectedIndex();
     if(selectedPanel>=0){
-      ((JobPanel) tabbedPane.getComponentAt(selectedPanel)).panelHidden();
-      ((JobPanel) tabbedPane.getComponentAt(selectedPanel)).panelShown();
-      String title = ((JobPanel)allPanels.elementAt(selectedPanel)).getTitle();
+      ((ListPanel) tabbedPane.getComponentAt(selectedPanel)).panelHidden();
+      ((ListPanel) tabbedPane.getComponentAt(selectedPanel)).panelShown();
+      String title = ((ListPanel)allPanels.elementAt(selectedPanel)).getTitle();
       setTitle("GridPilot - "+title);
     }
   }
