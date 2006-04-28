@@ -33,9 +33,6 @@ public class GridPilot extends JApplet{
   public static String certFile = "~/.globus/usercert.pem";
   public static String keyPassword = null;
   
-  // keep track of last url opened in blocking WebBox dialog.
-  public static  String lastURL = null;
-
   /**
    * Constructor
    */

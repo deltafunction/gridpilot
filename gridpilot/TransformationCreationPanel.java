@@ -6,8 +6,7 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.io.File;
 import java.net.URL;
 import java.util.*;
 
@@ -33,7 +32,6 @@ public class TransformationCreationPanel extends CreateEditPanel{
   private static int TEXTFIELDWIDTH = 32;
   private boolean reuseTextFields = true;
   private Vector tcConstant = new Vector(); // contains all text components
-  private static WebBox wb;
   private DBPanel panel = null;
   private JPanel pPackage = new JPanel();
   private String packageName = "";
@@ -188,63 +186,81 @@ public class TransformationCreationPanel extends CreateEditPanel{
           if(e.getURL().toExternalForm().equals("http://check/")){
             String httpScript =
               dbPluginMgr.getURL(jt.getText(), Integer.parseInt(packageFK));
-            if(statusBar != null){
-              statusBar.setLabel("Looking for file ...");
-              statusBar.animateProgressBar();
-              statusBar.setIndeterminateProgressBarToolTip("click here to cancel");
-              statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
-                public void mouseClicked(MouseEvent e){
-                  wb.dispose();
-                  statusBar.setLabel("Search interrupted.");
-                  statusBar.stopAnimation();
-                }
-              });
-            }
+            String url = null;
             try{
-              wb = new WebBox(GridPilot.getClassMgr().getGlobalFrame(),
-                              "Choose script",
-                              (new URL(httpScript)).toExternalForm(),
-                              baseUrl);
+              if(httpScript.startsWith("/")){
+                url = (new File(httpScript)).toURL().toExternalForm();
+              }
+              else if(httpScript.startsWith("file://")){
+                url = (new File(httpScript.substring(6))).toURL().toExternalForm();
+              }
+              else if(httpScript.startsWith("file://")){
+                url = (new File(httpScript.substring(5))).toURL().toExternalForm();
+              }
+              else{
+                url = httpScript;
+              }
             }
             catch(Exception ee){
-              statusBar.stopAnimation();
               Debug.debug("Could not open URL "+httpScript+". "+ee.getMessage(), 1);
+              ee.printStackTrace();
               GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+httpScript);
-              try{
-                wb = new WebBox(GridPilot.getClassMgr().getGlobalFrame(),
-                                "Choose script",
-                                (new URL(baseUrl)).toExternalForm(),
-                                baseUrl);
-              }
-              catch(Exception eee){
-                Debug.debug("Could not open URL "+baseUrl+". "+eee.getMessage(), 1);
-                GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+baseUrl+". "+eee.getMessage());
-                ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+              return;
+            }
+            Debug.debug("URL: "+url, 3);
+            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            final String finUrl = url;
+            final String finBaseUrl = baseUrl;
+            MyThread t = new MyThread(){
+              public void run(){
+                WebBox wb = null;
                 try{
-                  confirmBox.getConfirm("URL not found",
-                                       "The URL "+baseUrl+" was not found.\n" +
-                                       "Please check that a package was chosen " +
-                                       "and that this package has a correctly set " +
-                                       "scriptRepository.",
-                                    new Object[] {"OK"});
+                  wb = new WebBox(GridPilot.getClassMgr().getGlobalFrame(),
+                                  "Choose script",
+                                  finUrl,
+                                  finBaseUrl,
+                                  true);
                 }
-                catch(Exception eeee){
-                  Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
+                catch(Exception ee){
+                  Debug.debug("Could not open URL "+finUrl+". "+ee.getMessage(), 1);
+                  GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finUrl);
+                  try{
+                    wb = new WebBox(GridPilot.getClassMgr().getGlobalFrame(),
+                                    "Choose script",
+                                    (new URL(finBaseUrl)).toExternalForm(),
+                                    finBaseUrl,
+                                    true);
+                  }
+                  catch(Exception eee){
+                    Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
+                    GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
+                    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+                    try{
+                      confirmBox.getConfirm("URL not found",
+                                           "The URL "+finBaseUrl+" was not found.",
+                                        new Object[] {"OK"});
+                    }
+                    catch(Exception eeee){
+                      Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
+                    }
+                  }
                 }
+                if(wb.lastURL!=null &&
+                    wb.lastURL.startsWith(finBaseUrl)){
+                  // Set the text: the URL browsed to with case URL removed
+                  jt.setText(wb.lastURL.substring(
+                      finBaseUrl.length()));
+                  statusBar.setLabel("");
+                }
+                else{
+                  // Don't do anything if we cannot get a URL
+                  Debug.debug("ERROR: Could not open URL "+finBaseUrl+". "+wb.lastURL, 1);
+                }
+                setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+                statusBar.setLabel("");
               }
-            }
-            statusBar.stopAnimation();
-            if(GridPilot.lastURL!=null &&
-                GridPilot.lastURL.startsWith(baseUrl)){
-              // Set the text: the URL browsed to with case URL removed
-              jt.setText(GridPilot.lastURL.substring(
-                  baseUrl.length()));
-              statusBar.setLabel("");
-            }
-            else{
-              // Don't do anything if we cannot get a URL
-              Debug.debug("ERROR: Could not open URL "+baseUrl+". "+GridPilot.lastURL, 1);
-            }
+            };
+            t.start();
           }
         }
       }
