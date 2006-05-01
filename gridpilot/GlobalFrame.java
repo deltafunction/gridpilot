@@ -24,13 +24,19 @@ import gridpilot.IconProxy;
 public class GlobalFrame extends JFrame{
 
   private static final long serialVersionUID = 1L;
-  public JTabbedPane tabbedPane = new JTabbedPane();
   private Vector allPanels;
   private int selectedPanel;
   private StatusBar statusBar;
   private static int i;
-  public JobMonitoringPanel jobMonitoringPanel;
   private CreateEditDialog pDialog;
+  
+  public JTabbedPane tabbedPane = new JTabbedPane();
+  public JobMonitoringPanel jobMonitoringPanel;
+  public JMenu menuEdit = new JMenu("Edit");
+  public JMenuItem menuEditCopy = new JMenuItem("Copy (ctrl c)");
+  public JMenuItem menuEditCut = new JMenuItem("Cut (ctrl x)");
+  public JMenuItem menuEditPaste = new JMenuItem("Paste (ctrl v)");
+
   
   /**
    * Constructor
@@ -55,7 +61,7 @@ public class GlobalFrame extends JFrame{
    * GUI initialisation
    */
 
-  public void initGUI(Container container) throws Exception {
+  public void initGUI(Container container) throws Exception{
     /**
      * Called by : this.GlobalFrame();
      */
@@ -112,6 +118,10 @@ public class GlobalFrame extends JFrame{
     });
 
     jobMonitoringPanel = new JobMonitoringPanel();
+
+    menuEditCopy.setEnabled(false);
+    menuEditCut.setEnabled(false);
+    menuEditPaste.setEnabled(false);
 
   }
 
@@ -186,9 +196,11 @@ public class GlobalFrame extends JFrame{
   }
 
   //Edit-cut | About action performed
-  /*public void menuEditCut_actionPerformed(){
+  public void menuEditCut_actionPerformed(){
     Debug.debug("Cutting", 3);
-  }*/
+    ListPanel panel = (ListPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
+    panel.cut();
+  }
   //Edit-copy | About action performed
   public void menuEditCopy_actionPerformed(){
     Debug.debug("Copying", 3);
@@ -198,6 +210,8 @@ public class GlobalFrame extends JFrame{
   //Edit-paste | About action performed
   public void menuEditPaste_actionPerformed(){
     Debug.debug("Pasting", 3);
+    ListPanel panel = (ListPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
+    panel.paste();
   }
 
   //Help | About action performed
@@ -419,24 +433,18 @@ public class GlobalFrame extends JFrame{
       menuGridPilot.add(miExit);
     }
 
-    // Edit
-    JMenu menuEdit = new JMenu("Edit");
-    
-    JMenuItem menuEditCut = new JMenuItem("Cut");
-    menuEditCut.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        menuEditCut_actionPerformed();
-      }
-    });
-    menuEdit.add(menuEditCut);
-    JMenuItem menuEditCopy = new JMenuItem("Copy");
     menuEditCopy.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         menuEditCopy_actionPerformed();
       }
     });
     menuEdit.add(menuEditCopy);
-    JMenuItem menuEditPaste = new JMenuItem("Paste");
+    menuEditCut.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        menuEditCut_actionPerformed();
+      }
+    });
+    menuEdit.add(menuEditCut);
     menuEditPaste.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         menuEditPaste_actionPerformed();

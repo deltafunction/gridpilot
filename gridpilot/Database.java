@@ -24,14 +24,14 @@ public interface Database{
   // ####### Package table
   public DBResult getPackages();
   public DBRecord getPackage(int packageID);
-  public boolean createPackage(String [] values);
+  public boolean createPackage(Object [] values);
   public boolean updatePackage(int packageID, String [] fields, String [] values);
   public boolean deletePackage(int packageID);
 
   // ####### Transformation table
   public DBResult getTransformations();
   public DBRecord getTransformation(int transformationID);
-  public boolean createTransformation(String [] values);
+  public boolean createTransformation(Object [] values);
   public boolean updateTransformation(int transformatinID, String [] fields, String [] values);
   public boolean deleteTransformation(int transformationID);
   public String [] getVersions(String transformationName);
@@ -41,7 +41,7 @@ public interface Database{
   public DBResult getJobDefinitions(int datasetID, String [] fieldNames);
   public String getDatasetName(int datasetID);
   public String getRunNumber(int datasetID);
-  public boolean createDataset(String targetTable, String[] fields, String [] values);
+  public boolean createDataset(String targetTable, String[] fields, Object [] values);
   public boolean updateDataset(int datasetID, String [] fields, String [] values);
   public boolean deleteDataset(int datasetID, boolean cleanup);
   public DBRecord getDataset(int datasetID);

@@ -75,6 +75,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private DBPluginMgr dbPluginMgr = null;
   private int parentId = -1;
 
+  private SubmissionControl submissionControl;
+  
+  private boolean clipboardOwned = false;
+  private boolean cutting = false;
+  
+  private JMenuItem menuEditCopy = null;
+  private JMenuItem menuEditCut = null;
+  private JMenuItem menuEditPaste = null;
+
   private Thread workThread;
   // WORKING THREAD SEMAPHORE
   private boolean working = false;
@@ -92,8 +101,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     working = false;
   }
   
-  private SubmissionControl submissionControl;
-
 
   /**
    * Constructor
@@ -164,6 +171,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     submissionControl = GridPilot.getClassMgr().getSubmissionControl();
     
     setFieldArrays();
+    
+    menuEditCopy = GridPilot.getClassMgr().getGlobalFrame().menuEditCopy;
+    menuEditCut = GridPilot.getClassMgr().getGlobalFrame().menuEditCut;
+    menuEditPaste = GridPilot.getClassMgr().getGlobalFrame().menuEditPaste;
     
     initGUI();
   }
@@ -279,7 +290,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   * GUI initialisation
   */
 
-  private void initGUI() throws Exception {
+  private void initGUI() throws Exception{
 
 //// SelectPanel
 
@@ -308,6 +319,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           case KeyEvent.VK_ENTER:
             search();
         }
+        if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c") ||
+            KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("x")){
+          if(e.isControlDown()){
+            clipboardOwned = false;
+            menuEditPaste.setEnabled(clipboardOwned);
+          }
+        }
+
       }
     });
 
@@ -349,7 +368,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("x")){
           if(e.isControlDown()){
-            //cut();
+            cut();
           }
         }
         else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c")){
@@ -566,6 +585,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       bViewJobDefinitions.setEnabled(false);
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
+      menuEditCopy.setEnabled(false);
+      menuEditCut.setEnabled(false);
+      menuEditPaste.setEnabled(false);
       updateUI();
     }    
   }
@@ -576,6 +598,22 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
   public void panelShown(){
     Debug.debug("panelShown", 1);
+    boolean rowsAreSelected = tableResults.getSelectedRows().length>0;
+    menuEditCopy.setEnabled(rowsAreSelected);
+    menuEditCut.setEnabled(rowsAreSelected);
+    // Check if clipboard is of the form "db table id1 id2 id3 ..."
+    String clip = getClipboardContents();
+    String clips [] = null;
+    if(clip!=null){
+      clips = Util.split(clip);
+    }
+    if(clips!=null && clips.length>2 && clips[1].equalsIgnoreCase(tableName)){
+      clipboardOwned = true;
+    }
+    else{
+      clipboardOwned = false;
+    }
+    menuEditPaste.setEnabled(clipboardOwned);
   }
 
   public void panelHidden(){
@@ -694,6 +732,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         bDeleteRecord.setEnabled(false);
         bSubmit.setEnabled(false);
         bMonitor.setEnabled(false);
+        menuEditCopy.setEnabled(false);
+        menuEditCut.setEnabled(false);
+        menuEditPaste.setEnabled(clipboardOwned);
         
         tableResults.setTable(res.values, res.fields);
         spTableResults.getViewport().add(tableResults);
@@ -725,6 +766,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               bViewJobDefinitions.setEnabled(!lsm.isSelectionEmpty());
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
               bEditRecord.setEnabled(!lsm.isSelectionEmpty());
+              menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
+              menuEditCut.setEnabled(!lsm.isSelectionEmpty());
+              menuEditPaste.setEnabled(clipboardOwned);
             }
           });
 
@@ -745,6 +789,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
               miEdit.setEnabled(!lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+              menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
+              menuEditCut.setEnabled(!lsm.isSelectionEmpty());
+              menuEditPaste.setEnabled(clipboardOwned);
             }
           });
 
@@ -760,6 +807,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
               bEditRecord.setEnabled(!lsm.isSelectionEmpty());
+              menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
+              menuEditCut.setEnabled(!lsm.isSelectionEmpty());
+              menuEditPaste.setEnabled(clipboardOwned);
             }
           });
 
@@ -775,11 +825,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
               bEditRecord.setEnabled(!lsm.isSelectionEmpty());
+              menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
+              menuEditCut.setEnabled(!lsm.isSelectionEmpty());
+              menuEditPaste.setEnabled(clipboardOwned);
             }
           });
 
-          makeTransformationMenu();
+          makePackageMenu();
         }
+        
+        GridPilot.getClassMgr().getGlobalFrame().menuEdit.updateUI();
         
         GridPilot.getClassMgr().getStatusBar().setLabel("Records found: "+tableResults.getRowCount(), 20);
         
@@ -1375,13 +1430,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     submissionControl.submitJobDefinitions(selectedJobDefinitions, csName);
   }
   
-  /**
-   * Empty implementation of the ClipboardOwner interface.
-   */
-   public void lostOwnership(Clipboard aClipboard, Transferable aContents){
-     //do nothing
-   }
-
   public void copy(){
     Debug.debug("Copying!", 3);
     int [] ids = getSelectedIdentifiers();
@@ -1389,82 +1437,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         dbName+" "+tableName+" "+Util.arrayToString(ids));
     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
     clipboard.setContents(stringSelection, this);
+    clipboardOwned = true;
+    menuEditPaste.setEnabled(true);
+    cutting = false;
   }
-  /*public void cut(){
+  
+  public void cut(){
     Debug.debug("Cutting!", 3);
     copy();
-    if(tableName.equalsIgnoreCase("jobDefinition")){
-      deleteJobDefs();
-    }
-    else if(tableName.equalsIgnoreCase("dataset") ||
-        // support external schema on proddb
-        tableName.equalsIgnoreCase("task")){
-      deleteDatasets();
-    }
-    else if(tableName.equalsIgnoreCase("transformation")){
-      deleteTransformations();
-    }
-    else if(tableName.equalsIgnoreCase("package")){
-      deletePackages();
-    }
-  }*/
-  
-  public boolean insertJobDefinition(DBRecord jobDef, DBPluginMgr dbMgr) throws Exception {  
-    try{
-      dbMgr.createJobDef(jobDef.fields, jobDef.values);
-    }
-    catch(Exception e){
-      return false;
-    }
-    return true;
-  }
-  
-  public boolean insertDataset(DBRecord dataset, DBPluginMgr dbMgr){
-    try{
-      //dbMgr.createDataset(dataset.fields, dataset.values);
-    }
-    catch(Exception e){
-      return false;
-    }
-    return true;
-  }
-  
-  
-  public void insertRecord(String sourceDB, String sourceTable,
-      String targetDB, String targetTable, int id){
-    
-    DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(sourceDB);
-    DBPluginMgr targetMgr = GridPilot.getClassMgr().getDBPluginMgr(targetDB);
-    
-    DBRecord record = null;
-
-    if(tableName.equalsIgnoreCase("jobDefinition")){
-      record = sourceMgr.getJobDefinition(id);
-      try{
-        insertJobDefinition(record, targetMgr);
-      }
-      catch(Exception e){
-        String msg = "ERROR: job definition "+id+" could not be created, "+sourceDB+
-        "."+sourceTable+"->"+targetDB+"."+targetTable;
-        Debug.debug(msg, 1);
-        statusBar.setLabel(msg);
-        GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
-      }
-
-    }
-    else if(tableName.equalsIgnoreCase("dataset") ||
-        // support external schema on proddb
-        tableName.equalsIgnoreCase("task")){
-      record = sourceMgr.getDataset(id);
-    }
-    else if(tableName.equalsIgnoreCase("transformation")){
-      // Do nothing. Transformations are administered by
-      // the local administrator
-    }
-    else if(tableName.equalsIgnoreCase("package")){
-      // Do nothing. Packages are administered by
-      // the local administrator
-    }
+    cutting = true;
   }
   
   public void paste(){
@@ -1474,13 +1455,251 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(records.length<3){
       return;
     }
-    for(int i=2; i<records.length; ++i){
-      insertRecord(records[0], records[1], dbName, tableName,
-          Integer.parseInt(records[i]));
+    if(!clipboardOwned){
+      return;
+    }
+    try{
+      for(int i=2; i<records.length; ++i){
+        insertRecord(records[0], records[1], dbName, tableName,
+            Integer.parseInt(records[i]));
+      }
+    }
+    catch(Exception e){
+      return;
+    }
+    // If records were inserted in target table and we're cutting,
+    // delete source records
+    if(cutting){
+      Debug.debug("Deleting "+(records.length-2)+" rows", 2);
+      GridPilot.getClassMgr().getStatusBar().setLabel(
+      "Deleting job definition(s). Please wait ...");
+      JProgressBar pb = new JProgressBar();
+      pb.setMaximum((records.length-2));
+      for(int i=2; i<records.length; ++i){
+        try{
+          deleteRecord(records[0], records[1],
+              Integer.parseInt(records[i]));
+        }
+        catch(Exception e){
+          String msg = "Deleting record "+(i-2)+" failed";
+          Debug.debug(msg, 1);
+          GridPilot.getClassMgr().getStatusBar().setLabel(msg);
+          GridPilot.getClassMgr().getLogFile().addMessage(msg);
+          continue;
+        }
+        pb.setValue(pb.getValue()+1);
+      }
+      GridPilot.getClassMgr().getStatusBar().setLabel(
+         "Deleting job definition(s) done.");
+    }
+    cutting = false;
+    refresh();
+  }
+  
+  public void insertRecord(String sourceDB, String sourceTable,
+      String targetDB, String targetTable, int id) throws Exception{
+    
+    DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(sourceDB);
+    DBPluginMgr targetMgr = GridPilot.getClassMgr().getDBPluginMgr(targetDB);
+    
+    DBRecord record = null;
+
+    if(tableName.equalsIgnoreCase("jobDefinition")){
+      try{
+        record = sourceMgr.getJobDefinition(id);
+        insertJobDefinition(record, targetMgr);
+      }
+      catch(Exception e){
+        String msg = "ERROR: job definition "+id+" could not be created, "+sourceDB+
+        "."+sourceTable+"->"+targetDB+"."+targetTable+". "+e.getMessage();
+        Debug.debug(msg, 1);
+        statusBar.setLabel(msg);
+        GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
+        throw e;
+      }
+    }
+    else if(tableName.equalsIgnoreCase("dataset") ||
+        // support external schema on proddb
+        tableName.equalsIgnoreCase("task")){
+      try{
+        record = sourceMgr.getDataset(id);
+        insertDataset(record, targetMgr);
+      }
+      catch(Exception e){
+        String msg = "ERROR: dataset "+id+" could not be created, "+sourceDB+
+        "."+sourceTable+"->"+targetDB+"."+targetTable+". "+e.getMessage();
+        Debug.debug(msg, 1);
+        statusBar.setLabel(msg);
+        GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
+        throw e;
+      }
+    }
+    else if(tableName.equalsIgnoreCase("transformation")){
+      try{
+        record = sourceMgr.getTransformation(id);
+        insertTransformation(record, targetMgr);
+      }
+      catch(Exception e){
+        String msg = "ERROR: transformation "+id+" could not be created, "+sourceDB+
+        "."+sourceTable+"->"+targetDB+"."+targetTable+". "+e.getMessage();
+        Debug.debug(msg, 1);
+        statusBar.setLabel(msg);
+        GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
+        throw e;
+      }
+    }
+    else if(tableName.equalsIgnoreCase("package")){
+      try{
+        record = sourceMgr.getPackage(id);
+        insertPackage(record, targetMgr);
+      }
+      catch(Exception e){
+        String msg = "ERROR: package "+id+" could not be created, "+sourceDB+
+        "."+sourceTable+"->"+targetDB+"."+targetTable+". "+e.getMessage();
+        Debug.debug(msg, 1);
+        statusBar.setLabel(msg);
+        GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
+        throw e;
+      }
     }
   }
-   
-   /**
+  
+  public boolean insertJobDefinition(DBRecord jobDef, DBPluginMgr dbMgr) throws Exception{  
+    try{
+      // Check if parent dataset exists
+      String targetJobDefIdentifier = dbMgr.getIdentifier(dbName, "jobDefinition");
+      int targetDsId = dbMgr.getJobDefDatasetID(Integer.parseInt(jobDef.getValue(targetJobDefIdentifier).toString()));
+      if(targetDsId>-1){
+        dbMgr.createJobDef(jobDef.fields, jobDef.values);
+      }
+      else{
+        throw(new Exception("ERROR: Parent dataset for job defintion "+
+            jobDef.getValue(targetJobDefIdentifier)+" does not exist."));
+      }
+    }
+    catch(Exception e){
+      throw e;
+    }
+    return true;
+  }
+  
+  public boolean insertDataset(DBRecord dataset, DBPluginMgr dbMgr) throws Exception{
+    try{
+      // Check if referenced transformation exists
+      String targetDatasetIdentifier = dbMgr.getIdentifier(dbName, "dataset");
+      String targetTransId = dbMgr.getTransformationID(
+          Integer.parseInt(dataset.getValue(targetDatasetIdentifier).toString()));
+      if(targetTransId!=null && Integer.parseInt(targetTransId)>-1){
+        dbMgr.createDataset("dataset", dataset.fields, dataset.values);
+      }
+      else{
+        throw(new Exception("ERROR: Transformation for dataset "+
+            dataset.getValue(targetDatasetIdentifier)+" does not exist."));
+      }
+    }
+    catch(Exception e){
+      throw e;
+    }
+    return true;
+  }
+  
+  public boolean insertTransformation(DBRecord transformation, DBPluginMgr dbMgr) throws Exception{
+    try{
+      // Check if referenced package exists
+      String targetTransformationIdentifier = dbMgr.getIdentifier(dbName, "transformation");
+      String targetPackageIdentifier = dbMgr.getIdentifier(dbName, "package");
+      String targetPackId = dbMgr.getPackage(
+          Integer.parseInt(transformation.getValue(targetTransformationIdentifier).toString())
+          ).getValue(targetPackageIdentifier).toString();
+      if(targetPackId!=null && Integer.parseInt(targetPackId)>-1){
+        dbMgr.createTransformation(transformation.values);
+      }
+      else{
+        throw(new Exception("ERROR: Package for transformation "+
+            transformation.getValue(targetTransformationIdentifier)+" does not exist."));
+      }
+    }
+    catch(Exception e){
+      throw e;
+    }
+    return true;
+  }
+  
+  public boolean insertPackage(DBRecord pack, DBPluginMgr dbMgr) throws Exception{
+    try{
+      dbMgr.createPackage(pack.values);
+    }
+    catch(Exception e){
+      throw e;
+    }
+    return true;
+  }
+  
+  public void deleteRecord(String sourceDB, String sourceTable, int id) throws Exception{
+    DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(sourceDB);
+    if(tableName.equalsIgnoreCase("jobDefinition")){
+      try{
+        sourceMgr.deleteJobDefinition(id);
+      }
+      catch(Exception e){
+        String msg = "ERROR: job definition "+id+" could not be deleted from, "+sourceDB+
+        "."+sourceTable;
+        Debug.debug(msg, 1);
+        statusBar.setLabel(msg);
+        GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
+        throw e;
+      }
+    }
+    else if(tableName.equalsIgnoreCase("dataset") ||
+        // support external schema on proddb
+        tableName.equalsIgnoreCase("task")){
+      try{
+        sourceMgr.deleteDataset(id, true);
+      }
+      catch(Exception e){
+        String msg = "ERROR: dataset "+id+" could not be deleted from, "+sourceDB+
+        "."+sourceTable;
+        Debug.debug(msg, 1);
+        statusBar.setLabel(msg);
+        GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
+        throw e;
+      }
+    }
+    else if(tableName.equalsIgnoreCase("transformation")){
+      try{
+        sourceMgr.deleteTransformation(id);
+      }
+      catch(Exception e){
+        String msg = "ERROR: transformation "+id+" could not be deleted from, "+sourceDB+
+        "."+sourceTable;
+        Debug.debug(msg, 1);
+        statusBar.setLabel(msg);
+        GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
+        throw e;
+      }
+    }
+    else if(tableName.equalsIgnoreCase("package")){
+      try{
+        sourceMgr.deletePackage(id);
+      }
+      catch(Exception e){
+        String msg = "ERROR: package "+id+" could not be deleted from, "+sourceDB+
+        "."+sourceTable;
+        Debug.debug(msg, 1);
+        statusBar.setLabel(msg);
+        GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
+        throw e;
+      }
+    }
+  }
+  
+  /**
+   * Implementation of the ClipboardOwner interface.
+   */
+   public void lostOwnership(Clipboard aClipboard, Transferable aContents){
+   }
+
+  /**
   * Place a String on the clipboard, and make this class the
   * owner of the Clipboard's contents.
   */
@@ -1503,13 +1722,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     Transferable contents = clipboard.getContents(null);
     boolean hasTransferableText =
       (contents != null) &&
-      contents.isDataFlavorSupported(DataFlavor.stringFlavor)
-    ;
-    if ( hasTransferableText ) {
-      try {
+      contents.isDataFlavorSupported(DataFlavor.stringFlavor);
+    if(hasTransferableText){
+      try{
         result = (String)contents.getTransferData(DataFlavor.stringFlavor);
       }
-      catch (UnsupportedFlavorException ex){
+      catch(UnsupportedFlavorException ex){
         //highly unlikely since we are using a standard DataFlavor
         System.out.println(ex);
         ex.printStackTrace();

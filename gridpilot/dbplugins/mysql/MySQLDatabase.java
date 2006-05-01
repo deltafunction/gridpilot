@@ -982,7 +982,7 @@ public class MySQLDatabase implements Database{
   }
   
   public synchronized boolean createDataset(String table,
-      String [] fields, String [] values){ 
+      String [] fields, Object [] values){ 
     String nonMatchedStr = "";
     Vector nonMatchedFields = new Vector();
     boolean match = false;
@@ -1022,7 +1022,7 @@ public class MySQLDatabase implements Database{
             datasetFields[i].equalsIgnoreCase("modificationTime")){
           try{
             SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            java.util.Date date = df.parse(values[i]);
+            java.util.Date date = df.parse(values[i].toString());
             String dateString = df.format(date);
             values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
           }
@@ -1032,10 +1032,10 @@ public class MySQLDatabase implements Database{
           }
         }
         else{
-          values[i] = values[i].replaceAll("\n","\\\\n");
+          values[i] = values[i].toString().replaceAll("\n","\\\\n");
           values[i] = "'"+values[i]+"'";
         }
-        sql += values[i];
+        sql += values[i].toString();
         if(datasetFields.length>0 && i<datasetFields.length-1){
           sql += ",";
         }
@@ -1056,7 +1056,7 @@ public class MySQLDatabase implements Database{
     return execok;
   }
 
-  public synchronized boolean createTransformation(String [] values){
+  public synchronized boolean createTransformation(Object [] values){
 
     String sql = "INSERT INTO transformation (";
     for(int i=1; i<transformationFields.length; ++i){
@@ -1072,7 +1072,7 @@ public class MySQLDatabase implements Database{
           transformationFields[i].equalsIgnoreCase("modificationTime")){
         try{
           SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-          java.util.Date date = df.parse(values[i]);
+          java.util.Date date = df.parse(values[i].toString());
           String dateString = df.format(date);
           values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
         }
@@ -1082,10 +1082,10 @@ public class MySQLDatabase implements Database{
         }
       }
       else{
-        values[i] = "'"+values[i]+"'";
+        values[i] = "'"+values[i].toString()+"'";
       }
 
-      sql += values[i];
+      sql += values[i].toString();
       if(transformationFields.length>1 && i<transformationFields.length - 1){
         sql += ",";
       }
@@ -1105,7 +1105,7 @@ public class MySQLDatabase implements Database{
     return execok;
   }
   
-  public synchronized boolean createPackage(String [] values){
+  public synchronized boolean createPackage(Object [] values){
     
       String sql = "INSERT INTO package (";
       for(int i=1; i<packageFields.length; ++i){
@@ -1121,7 +1121,7 @@ public class MySQLDatabase implements Database{
             packageFields[i].equalsIgnoreCase("modificationTime")){
           try{
             SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            java.util.Date date = df.parse(values[i]);
+            java.util.Date date = df.parse(values[i].toString());
             String dateString = df.format(date);
             values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
           }
@@ -1131,10 +1131,10 @@ public class MySQLDatabase implements Database{
           }
         }
         else{
-          values[i] = "'"+values[i]+"'";
+          values[i] = "'"+values[i].toString()+"'";
         }
     
-        sql += values[i];
+        sql += values[i].toString();
         if(packageFields.length>1 && i<packageFields.length - 1){
           sql += ",";
         }
@@ -1145,7 +1145,6 @@ public class MySQLDatabase implements Database{
       try{
         Statement stmt = conn.createStatement();
         stmt.executeUpdate(sql);
-        conn.commit();
       }
       catch(Exception e){
         execok = false;

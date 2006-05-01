@@ -982,7 +982,7 @@ public class HSQLDBDatabase implements Database{
   }
   
   public synchronized boolean createDataset(String table,
-      String [] fields, String [] values){
+      String [] fields, Object [] values){
     String nonMatchedStr = "";
     Vector nonMatchedFields = new Vector();
     boolean match = false;
@@ -1019,16 +1019,16 @@ public class HSQLDBDatabase implements Database{
           values[i] = nonMatchedStr;
         }
         if(datasetFields[i].equalsIgnoreCase("created")){
-          values[i] = makeDate(values[i]);
+          values[i] = makeDate(values[i].toString());
         }
         else if(datasetFields[i].equalsIgnoreCase("lastModified")){
           values[i] = makeDate("");
         }
         else{
-          values[i] = values[i].replaceAll("\n","\\\\n");
-          values[i] = "'"+values[i]+"'";
+          values[i] = values[i].toString().replaceAll("\n","\\\\n");
+          values[i] = "'"+values[i].toString()+"'";
         }
-        sql += values[i];
+        sql += values[i].toString();
         if(datasetFields.length>0 && i<datasetFields.length-1){
           sql += ",";
         }
@@ -1050,7 +1050,7 @@ public class HSQLDBDatabase implements Database{
     return execok;
   }
 
-  public synchronized boolean createTransformation(String [] values){
+  public synchronized boolean createTransformation(Object [] values){
 
     String sql = "INSERT INTO transformation (";
     for(int i=1; i<transformationFields.length; ++i){
@@ -1062,16 +1062,16 @@ public class HSQLDBDatabase implements Database{
     sql += ") VALUES (";
     for(int i=1; i<transformationFields.length; ++i){
       if(transformationFields[i].equalsIgnoreCase("created")){
-        values[i] = makeDate(values[i]);
+        values[i] = makeDate(values[i].toString());
       }
       else if(transformationFields[i].equalsIgnoreCase("lastModified")){
         values[i] = makeDate("");
       }
       else{
-        values[i] = "'"+values[i]+"'";
+        values[i] = "'"+values[i].toString()+"'";
       }
 
-      sql += values[i];
+      sql += values[i].toString();
       if(transformationFields.length>1 && i<transformationFields.length - 1){
         sql += ",";
       }
@@ -1092,7 +1092,7 @@ public class HSQLDBDatabase implements Database{
     return execok;
   }
 
-  public synchronized boolean createPackage(String [] values){
+  public synchronized boolean createPackage(Object [] values){
   
     String sql = "INSERT INTO package (";
     for(int i=1; i<packageFields.length; ++i){
@@ -1104,16 +1104,16 @@ public class HSQLDBDatabase implements Database{
     sql += ") VALUES (";
     for(int i=1; i<packageFields.length; ++i){
       if(packageFields[i].equalsIgnoreCase("created")){
-        values[i] = makeDate(values[i]);
+        values[i] = makeDate(values[i].toString());
       }
       else if(packageFields[i].equalsIgnoreCase("lastModified")){
         values[i] = makeDate("");
       }
       else{
-        values[i] = "'"+values[i]+"'";
+        values[i] = "'"+values[i].toString()+"'";
       }
   
-      sql += values[i];
+      sql += values[i].toString();
       if(packageFields.length>1 && i<packageFields.length - 1){
         sql += ",";
       }

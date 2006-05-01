@@ -18,7 +18,7 @@ public interface ListPanel{
    * Cut selected database records to the clipboard
    * as a string.
    */
-  //public void cut();
+  public void cut();
   /**
    * If possible: paste the database records currently on the clipboard
    * into the currently selected table.

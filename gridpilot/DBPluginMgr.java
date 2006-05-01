@@ -1,10 +1,12 @@
 package gridpilot;
 
 import java.awt.Color;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.DataFormatException;
 
 import javax.swing.JComponent;
 import javax.swing.JOptionPane;
@@ -1133,12 +1135,12 @@ public class DBPluginMgr implements Database, PanelUtil{
 
   // Here, in contrast to updateJobDef (in DBPluginMgr), because it is not needed by other
   // classes and it needs to update display.
-  public DBRecord createJobDef(String [] fields, Object [] values) throws Exception {
+  public DBRecord createJobDef(String [] fields, Object [] values) throws Exception{
     
     String [] jobDefFieldNames = getFieldNames("jobDefinition");
     
     if(fields.length!=values.length){
-      throw new Exception("The number of fields and values do not agree, "+
+      throw new DataFormatException("The number of fields and values do not agree, "+
           fields.length+"!="+values.length);
     }
     if(fields.length>jobDefFieldNames.length){
@@ -1169,11 +1171,11 @@ public class DBPluginMgr implements Database, PanelUtil{
       return jobDef;
     }
     else{
-      throw new Exception("ERROR: createJobDefinition failed");
+      throw new IOException("ERROR: createJobDefinition failed");
     }
   }
 
-  public synchronized boolean createTransformation(final String [] values){
+  public synchronized boolean createTransformation(final Object [] values){
     
     MyThread t = new MyThread(){
       boolean res = false;
@@ -1198,7 +1200,7 @@ public class DBPluginMgr implements Database, PanelUtil{
       return false;
   }
 
-  public synchronized boolean createPackage(final String [] values){
+  public synchronized boolean createPackage(final Object [] values){
     
     MyThread t = new MyThread(){
       boolean res = false;
@@ -1224,7 +1226,7 @@ public class DBPluginMgr implements Database, PanelUtil{
   }
 
   public synchronized boolean createDataset(final String targetTable,
-      final String [] fields, final String [] values){
+      final String [] fields, final Object [] values){
     MyThread t = new MyThread(){
       boolean res = false;
       public void run(){

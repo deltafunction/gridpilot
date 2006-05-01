@@ -747,8 +747,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   public void copy(){
   }
-  /*public void cut(){
-  }*/
+  public void cut(){
+  }
   public void paste(){
   }
 }
