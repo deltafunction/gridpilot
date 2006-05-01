@@ -35,7 +35,7 @@ public class HSQLDBDatabase implements Database{
   private String [] jobDefFields = null;
   private String [] datasetFields = null;
   private String [] runInfoFields = null;
-  private String [] packageFields = null;
+  private String [] runtimeEnvironmentFields = null;
 
   public HSQLDBDatabase(
       String _driver, String _database, String _user, String _passwd){
@@ -85,8 +85,8 @@ public class HSQLDBDatabase implements Database{
     if(transformationFields==null || transformationFields.length<1){
       makeTable("transformation");
     }
-    if(packageFields==null || packageFields.length<1){
-      makeTable("package");
+    if(runtimeEnvironmentFields==null || runtimeEnvironmentFields.length<1){
+      makeTable("runtimeEnvironment");
     }
     if(runInfoFields==null || runInfoFields.length<1){
       makeTable("runInfo");
@@ -128,7 +128,7 @@ public class HSQLDBDatabase implements Database{
     transformationFields = getFieldNames("transformation");
     // only used for checking
     runInfoFields = getFieldNames("runInfo");
-    packageFields = getFieldNames("package");
+    runtimeEnvironmentFields = getFieldNames("runtimeEnvironment");
   }
 
   private boolean makeTable(String table){
@@ -291,20 +291,24 @@ public class HSQLDBDatabase implements Database{
     return "";
   }
 
-  public synchronized String [] getTransformationPackages(int jobDefID){
+  public synchronized String [] getTransformationRTEnvironments(int jobDefID){
     String transformationID = getTransformationID(jobDefID);
     getTransformation(Integer.parseInt(transformationID)).getValue("uses");
     // nothing for now
     return new String [] {""};
   }
 
-  public synchronized String [] getTransformationSignature(int jobDefID){
+  public synchronized String [] getTransformationArguments(int jobDefID){
     String transformationID = "";
     transformationID = getTransformationID(jobDefID);
     // TODO: finish
     getTransformation(Integer.parseInt(transformationID)).getValue("uses");
     // nothing for now
     return new String [] {""};
+  }
+
+  public synchronized String getTransformationRuntimeEnvironment(int transformationID){
+    return  getTransformation(transformationID).getValue("runtimeEnvironment").toString();
   }
 
   public synchronized String getJobDefUser(int jobDefinitionID){
@@ -558,51 +562,51 @@ public class HSQLDBDatabase implements Database{
     return getDataset(datasetID).getValue("runNumber").toString();
   }
 
-  public synchronized DBRecord getPackage(int packageID){
+  public synchronized DBRecord getRuntimeEnvironment(int runtimeEnvironmentID){
     
     DBRecord pack = null;
-    String req = "SELECT "+packageFields[0];
-    if(packageFields.length>1){
-      for(int i=1; i<packageFields.length; ++i){
-        req += ", "+packageFields[i];
+    String req = "SELECT "+runtimeEnvironmentFields[0];
+    if(runtimeEnvironmentFields.length>1){
+      for(int i=1; i<runtimeEnvironmentFields.length; ++i){
+        req += ", "+runtimeEnvironmentFields[i];
       }
     }
-    req += " FROM package";
-    req += " WHERE identifier = '"+ packageID+"'";
+    req += " FROM runtimeEnvironment";
+    req += " WHERE identifier = '"+ runtimeEnvironmentID+"'";
     try{
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
-      Vector packageVector = new Vector();
-      String [] jt = new String[packageFields.length];
+      Vector runtimeEnvironmentVector = new Vector();
+      String [] jt = new String[runtimeEnvironmentFields.length];
       int i = 0;
       while(rset.next()){
-        jt = new String[packageFields.length];
-        for(int j=0; j<packageFields.length; ++j){
+        jt = new String[runtimeEnvironmentFields.length];
+        for(int j=0; j<runtimeEnvironmentFields.length; ++j){
           try{
             jt[j] = rset.getString(j+1);
           }
           catch(Exception e){
             Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
-                packageFields[j]+". "+e.getMessage(),1);
+                runtimeEnvironmentFields[j]+". "+e.getMessage(),1);
           }
         }
         Debug.debug("Adding value "+jt[0], 3);
-        packageVector.add(new DBRecord(packageFields, jt));
-        Debug.debug("Added value "+((DBRecord) packageVector.get(i)).getAt(0), 3);
+        runtimeEnvironmentVector.add(new DBRecord(runtimeEnvironmentFields, jt));
+        Debug.debug("Added value "+((DBRecord) runtimeEnvironmentVector.get(i)).getAt(0), 3);
         ++i;
       }
       if(i==0){
-        Debug.debug("ERROR: No package found with id "+packageID, 1);
+        Debug.debug("ERROR: No runtime environment found with id "+runtimeEnvironmentID, 1);
       }
       else{
-        pack = ((DBRecord) packageVector.get(0));
+        pack = ((DBRecord) runtimeEnvironmentVector.get(0));
       }
       if(i>1){
-        Debug.debug("WARNING: More than one ("+rset.getRow()+") package found with id "+packageID, 1);
+        Debug.debug("WARNING: More than one ("+rset.getRow()+") runtime environment found with id "+runtimeEnvironmentID, 1);
       }
     }
     catch(SQLException e){
-      Debug.debug("WARNING: No package with id "+packageID+". "+e.getMessage(), 1);
+      Debug.debug("WARNING: No runtime environment with id "+runtimeEnvironmentID+". "+e.getMessage(), 1);
     }
      return pack;
   }
@@ -662,52 +666,52 @@ public class HSQLDBDatabase implements Database{
   }
 
   /*
-   * Find package records
+   * Find runtimeEnvironment records
    */
-  private synchronized DBRecord [] getPackageRecords(){
+  private synchronized DBRecord [] getRuntimeEnvironmentRecords(){
     
     ResultSet rset = null;
     String req = "";
-    DBRecord [] allPackageRecords = null;   
+    DBRecord [] allRuntimeEnvironmentRecords = null;   
     try{      
-      req = "SELECT "+packageFields[0];
-      if(packageFields.length>1){
-        for(int i=1; i<packageFields.length; ++i){
-          req += ", "+packageFields[i];
+      req = "SELECT "+runtimeEnvironmentFields[0];
+      if(runtimeEnvironmentFields.length>1){
+        for(int i=1; i<runtimeEnvironmentFields.length; ++i){
+          req += ", "+runtimeEnvironmentFields[i];
         }
       }
-      req += " FROM package";
+      req += " FROM runtimeEnvironment";
       Debug.debug(req, 3);
       rset = conn.createStatement().executeQuery(req);
-      Vector packageVector = new Vector();
-      String [] jt = new String[packageFields.length];
+      Vector runtimeEnvironmentVector = new Vector();
+      String [] jt = new String[runtimeEnvironmentFields.length];
       int i = 0;
       while(rset.next()){
-        jt = new String[packageFields.length];
-        for(int j=0; j<packageFields.length; ++j){
+        jt = new String[runtimeEnvironmentFields.length];
+        for(int j=0; j<runtimeEnvironmentFields.length; ++j){
           try{
             jt[j] = rset.getString(j+1);
           }
           catch(Exception e){
             Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
-                packageFields[j]+". "+e.getMessage(),1);
+                runtimeEnvironmentFields[j]+". "+e.getMessage(),1);
           }
         }
         Debug.debug("Adding value "+jt[0], 3);
-        packageVector.add(new DBRecord(packageFields, jt));
-        Debug.debug("Added value "+((DBRecord) packageVector.get(i)).getAt(0), 3);
+        runtimeEnvironmentVector.add(new DBRecord(runtimeEnvironmentFields, jt));
+        Debug.debug("Added value "+((DBRecord) runtimeEnvironmentVector.get(i)).getAt(0), 3);
         ++i;
       }
-      allPackageRecords = new DBRecord[i];
+      allRuntimeEnvironmentRecords = new DBRecord[i];
       for(int j=0; j<i; ++j){
-        allPackageRecords[j] = ((DBRecord) packageVector.get(j));
-        Debug.debug("Added value "+allPackageRecords[j].getAt(0), 3);
+        allRuntimeEnvironmentRecords[j] = ((DBRecord) runtimeEnvironmentVector.get(j));
+        Debug.debug("Added value "+allRuntimeEnvironmentRecords[j].getAt(0), 3);
       }
     }
     catch(SQLException e){
-      Debug.debug("WARNING: No packages found. "+e.getMessage(), 1);
+      Debug.debug("WARNING: No runtime environments found. "+e.getMessage(), 1);
     }
-    return allPackageRecords;
+    return allRuntimeEnvironmentRecords;
   }
 
   /*
@@ -867,12 +871,12 @@ public class HSQLDBDatabase implements Database{
     return defs;
   }
     
-  public synchronized DBResult getPackages(){
-    DBRecord jt [] = getPackageRecords();
-    DBResult res = new DBResult(packageFields.length, jt.length);
-    res.fields = packageFields;
+  public synchronized DBResult getRuntimeEnvironments(){
+    DBRecord jt [] = getRuntimeEnvironmentRecords();
+    DBResult res = new DBResult(runtimeEnvironmentFields.length, jt.length);
+    res.fields = runtimeEnvironmentFields;
     for(int i=0; i<jt.length; ++i){
-      for(int j=0; j<packageFields.length; ++j){
+      for(int j=0; j<runtimeEnvironmentFields.length; ++j){
         res.values[i][j] = jt[i].values[j];
       }
     }
@@ -1092,21 +1096,21 @@ public class HSQLDBDatabase implements Database{
     return execok;
   }
 
-  public synchronized boolean createPackage(Object [] values){
+  public synchronized boolean createRuntimeEnvironment(Object [] values){
   
-    String sql = "INSERT INTO package (";
-    for(int i=1; i<packageFields.length; ++i){
-      sql += packageFields[i];
-      if(packageFields.length>2 && i<packageFields.length - 1){
+    String sql = "INSERT INTO runtimeEnvironment (";
+    for(int i=1; i<runtimeEnvironmentFields.length; ++i){
+      sql += runtimeEnvironmentFields[i];
+      if(runtimeEnvironmentFields.length>2 && i<runtimeEnvironmentFields.length - 1){
         sql += ",";
       }
     }
     sql += ") VALUES (";
-    for(int i=1; i<packageFields.length; ++i){
-      if(packageFields[i].equalsIgnoreCase("created")){
+    for(int i=1; i<runtimeEnvironmentFields.length; ++i){
+      if(runtimeEnvironmentFields[i].equalsIgnoreCase("created")){
         values[i] = makeDate(values[i].toString());
       }
-      else if(packageFields[i].equalsIgnoreCase("lastModified")){
+      else if(runtimeEnvironmentFields[i].equalsIgnoreCase("lastModified")){
         values[i] = makeDate("");
       }
       else{
@@ -1114,7 +1118,7 @@ public class HSQLDBDatabase implements Database{
       }
   
       sql += values[i].toString();
-      if(packageFields.length>1 && i<packageFields.length - 1){
+      if(runtimeEnvironmentFields.length>1 && i<runtimeEnvironmentFields.length - 1){
         sql += ",";
       }
     }
@@ -1372,7 +1376,7 @@ public class HSQLDBDatabase implements Database{
     return execok;
   }
 
-  public synchronized boolean updatePackage(int packageID, String [] fields,
+  public synchronized boolean updateRuntimeEnvironment(int runtimeEnvironmentID, String [] fields,
       String [] values){
     
     if(fields.length!=values.length){
@@ -1382,24 +1386,24 @@ public class HSQLDBDatabase implements Database{
          fields.length+"!="+values.length;
       return false;
     }
-    if(fields.length>packageFields.length){
+    if(fields.length>runtimeEnvironmentFields.length){
       Debug.debug("The number of fields is too large, "+
-          fields.length+">"+packageFields.length, 1);
+          fields.length+">"+runtimeEnvironmentFields.length, 1);
       error = "The number of fields is too large, "+
-         fields.length+">"+packageFields.length;
+         fields.length+">"+runtimeEnvironmentFields.length;
     }
   
-    String sql = "UPDATE package SET ";
+    String sql = "UPDATE runtimeEnvironment SET ";
     int addedFields = 0;
-    for(int i = 0; i<packageFields.length; ++i){
-      if(!packageFields[i].equalsIgnoreCase("identifier")){
+    for(int i = 0; i<runtimeEnvironmentFields.length; ++i){
+      if(!runtimeEnvironmentFields[i].equalsIgnoreCase("identifier")){
         for(int j=0; j<fields.length; ++j){
-          // only add if present in packageFields
-          if(packageFields[i].equalsIgnoreCase(fields[j])){
-            if(packageFields[i].equalsIgnoreCase("created")){
+          // only add if present in runtimeEnvironmentFields
+          if(runtimeEnvironmentFields[i].equalsIgnoreCase(fields[j])){
+            if(runtimeEnvironmentFields[i].equalsIgnoreCase("created")){
               values[i] = makeDate(values[i]);
             }
-            else if(packageFields[i].equalsIgnoreCase("lastModified")){
+            else if(runtimeEnvironmentFields[i].equalsIgnoreCase("lastModified")){
               values[i] = makeDate("");
             }
             else{
@@ -1418,7 +1422,7 @@ public class HSQLDBDatabase implements Database{
         }
       }
     }
-    sql += " WHERE identifier="+packageID;
+    sql += " WHERE identifier="+runtimeEnvironmentID;
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
@@ -1508,11 +1512,11 @@ public class HSQLDBDatabase implements Database{
       return ok;
     }
       
-    public synchronized boolean deletePackage(int packageID){
+    public synchronized boolean deleteRuntimeEnvironment(int runtimeEnvironmentID){
       boolean ok = true;
       try{
-        String sql = "DELETE FROM package WHERE identifier = '"+
-        packageID+"'";
+        String sql = "DELETE FROM runtimeEnvironment WHERE identifier = '"+
+        runtimeEnvironmentID+"'";
         Statement stmt = conn.createStatement();
         stmt.executeUpdate(sql);
       }
@@ -1578,9 +1582,10 @@ public class HSQLDBDatabase implements Database{
         dateString = df.format(Calendar.getInstance().getTime());
       }
       else{
+        df = new SimpleDateFormat("yyyy-MM-dd");
         java.util.Date date = df.parse(dateInput);
         dateString = df.format(date);
-     }
+      }
       return "'"+dateString+"'";
     }
     catch(Throwable e){

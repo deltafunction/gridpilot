@@ -499,12 +499,12 @@ public class DBPluginMgr implements Database, PanelUtil{
       return null;
   }
 
-  public synchronized String [] getTransformationPackages(final int jobDefinitionID){
+  public synchronized String [] getTransformationRTEnvironments(final int jobDefinitionID){
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getTransformationPackages(jobDefinitionID);
+          res = db.getTransformationRTEnvironments(jobDefinitionID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -517,18 +517,18 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformationPackages"))
+    if(waitForThread(t, dbName, dbTimeOut, "getTransformationRTEnvironments"))
       return t.getString2Res();
     else
       return null;
   }
 
-  public synchronized String [] getTransformationSignature(final int jobDefinitionID){
+  public synchronized String [] getTransformationArguments(final int jobDefinitionID){
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getTransformationSignature(jobDefinitionID);
+          res = db.getTransformationArguments(jobDefinitionID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -543,6 +543,30 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     if(waitForThread(t, dbName, dbTimeOut, "getTransformationSignature"))
       return t.getString2Res();
+    else
+      return null;
+  }
+
+  public synchronized String getTransformationRuntimeEnvironment(final int transformationID){
+    MyThread t = new MyThread(){
+      String res = null;
+      public void run(){
+        try{
+          res = db.getTransformationRuntimeEnvironment(transformationID);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             transformationID, t);
+        }
+      }
+      public String getStringRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getTransformationRuntimeEnvironment"))
+      return t.getStringRes();
     else
       return null;
   }
@@ -1200,13 +1224,13 @@ public class DBPluginMgr implements Database, PanelUtil{
       return false;
   }
 
-  public synchronized boolean createPackage(final Object [] values){
+  public synchronized boolean createRuntimeEnvironment(final Object [] values){
     
     MyThread t = new MyThread(){
       boolean res = false;
       public void run(){
         try{
-          res = db.createPackage(values);
+          res = db.createRuntimeEnvironment(values);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1219,7 +1243,7 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "createPackage"))
+    if(waitForThread(t, dbName, dbTimeOut, "createRuntimeEnvironment"))
       return t.getBoolRes();
     else
       return false;
@@ -1429,19 +1453,19 @@ public class DBPluginMgr implements Database, PanelUtil{
         return false;
     }
 
-  public synchronized boolean updatePackage(final int packageID,
+  public synchronized boolean updateRuntimeEnvironment(final int runtimeEnvironmentID,
     final String [] fields, final String [] values){
   
     MyThread t = new MyThread(){
       boolean res = false;
       public void run(){
         try{
-          res = db.updatePackage(packageID, fields, values);
+          res = db.updateRuntimeEnvironment(runtimeEnvironmentID, fields, values);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             packageID, t);
+                             runtimeEnvironmentID, t);
         }
       }
       public boolean getBoolRes(){return res;}
@@ -1449,7 +1473,7 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "updatePackage"))
+    if(waitForThread(t, dbName, dbTimeOut, "updateRuntimeEnvironment"))
       return t.getBoolRes();
     else
       return false;
@@ -1530,18 +1554,18 @@ public class DBPluginMgr implements Database, PanelUtil{
         return false;
     }
 
-  public synchronized boolean deletePackage(final int packageID){
+  public synchronized boolean deleteRuntimeEnvironment(final int runtimeEnvironmentID){
     
       MyThread t = new MyThread(){
         boolean res = false;
         public void run(){
           try{
-            res = db.deletePackage(packageID);
+            res = db.deleteRuntimeEnvironment(runtimeEnvironmentID);
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
-                               packageID, t);
+                               runtimeEnvironmentID, t);
           }
         }
         public boolean getBoolRes(){return res;}
@@ -1549,7 +1573,7 @@ public class DBPluginMgr implements Database, PanelUtil{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "deletePackage"))
+      if(waitForThread(t, dbName, dbTimeOut, "deleteRuntimeEnvironment"))
         return t.getBoolRes();
       else
         return false;
@@ -1630,13 +1654,13 @@ public class DBPluginMgr implements Database, PanelUtil{
       return null;
   }
 
-  public synchronized DBResult getPackages(){
+  public synchronized DBResult getRuntimeEnvironments(){
     
     MyThread t = new MyThread(){
       DBResult res = null;
       public void run(){
         try{
-          res = db.getPackages();
+          res = db.getRuntimeEnvironments();
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1648,7 +1672,7 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getPackages"))
+    if(waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironments"))
       return t.getDB2Res();
     else
       return null;
@@ -1703,18 +1727,18 @@ public class DBPluginMgr implements Database, PanelUtil{
         return null;
     }
 
-  public synchronized DBRecord getPackage(final int packageID){
+  public synchronized DBRecord getRuntimeEnvironment(final int runtimeEnvironmentID){
     
       MyThread t = new MyThread(){
         DBRecord res = null;
         public void run(){
           try{
-            res = db.getPackage(packageID);
+            res = db.getRuntimeEnvironment(runtimeEnvironmentID);
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
-                               packageID, t);
+                               runtimeEnvironmentID, t);
           }
         }
         public DBRecord getDBRes(){return res;}
@@ -1722,7 +1746,7 @@ public class DBPluginMgr implements Database, PanelUtil{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "getPackage"))
+      if(waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironment"))
         return t.getDBRes();
       else
         return null;
@@ -2239,7 +2263,7 @@ public class DBPluginMgr implements Database, PanelUtil{
    * If the obtained prefix doesn't end by '/', a '/' is added between
    * <code>file</code> and the prefix.
    */
-  public String getURL(String file, int packageID){
+  /*public String getURL(String file, int packageID){
     if(file.startsWith("/")){
       return file;
     }
@@ -2262,9 +2286,9 @@ public class DBPluginMgr implements Database, PanelUtil{
       }
       return prefix + file;
     }
-  }
+  }*/
   
-  public String getUrlFromTransformation(String file, int transformationID){
+  /*public String getUrlFromTransformation(String file, int transformationID){
     if(file.startsWith("/")){
       return file;
     }
@@ -2283,9 +2307,9 @@ public class DBPluginMgr implements Database, PanelUtil{
       return file;
     }
     return getURL(file, Integer.parseInt(packageFK));
-  }
+  }*/
 
-  public String getUrlFromDS(String file, int datasetID){
+  /*public String getUrlFromDS(String file, int datasetID){
     if(file.startsWith("/")){
       return file;
     }
@@ -2325,5 +2349,5 @@ public class DBPluginMgr implements Database, PanelUtil{
       return file;
     }
     return getURL(file, Integer.parseInt(packageFK));
-  }
+  }*/
 }

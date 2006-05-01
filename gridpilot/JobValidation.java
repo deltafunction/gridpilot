@@ -124,14 +124,9 @@ public class JobValidation{
             GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
           GridPilot.getClassMgr().getStatusBar().setLabel("Validating " + job.getName() + " ... " +
               "(" + (toValidateJobs.size() + waitingJobs.size())+ " jobs in the queue )");
-          String validationScriptShortPath = 
-            dbPluginMgr.getTransformationValue(
-                    job.getJobDefId(), "validationScript");
-          String validationScriptFile = (new File(validationScriptShortPath)).getName();
-          
-          String validationScriptUrl = dbPluginMgr.getUrlFromDS(
-              dbPluginMgr.getExtractScript(job.getJobDefId()),
-              dbPluginMgr.getJobDefDatasetID(job.getJobDefId()));
+          String validationScriptUrl = dbPluginMgr.getTransformationValue(job.getJobDefId(), "validationScript");
+          String validationScriptShortPath = validationScriptUrl.substring(validationScriptUrl.lastIndexOf("/")+1);
+          String validationScriptFile = (new File(validationScriptShortPath)).getName();          
           String validationScript = null;
           // If url is given, the file will already have been downloaded to the
           // working directory. Currently NG is the only plugin supporting this

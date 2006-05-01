@@ -79,7 +79,7 @@ public class GlobalFrame extends JFrame{
 
     if(GridPilot.getDBs().length>0){
       try{
-        addPanel(new DBPanel(GridPilot.getDBs()[0], "package"));
+        addPanel(new DBPanel(GridPilot.getDBs()[0], "runtimeEnvironment"));
         addPanel(new DBPanel(GridPilot.getDBs()[0], "transformation"));
         addPanel(new DBPanel(GridPilot.getDBs()[0], "dataset"));
         addPanel(new DBPanel(GridPilot.getDBs()[0], "jobDefinition"));
@@ -312,16 +312,16 @@ public class GlobalFrame extends JFrame{
     menuCS.add(miCsReconnect);
     menuGridPilot.add(menuCS);
 
-    JMenu miNewPackageTab = new JMenu("package");
-    JMenuItem [] miNewPackageTabs = new JMenuItem[GridPilot.getDBs().length];
-    menuNewTab.add(miNewPackageTab);
+    JMenu miNewRuntimeEnvironmentTab = new JMenu("runtimeEnvironment");
+    JMenuItem [] miNewRuntimeEnvironmentTabs = new JMenuItem[GridPilot.getDBs().length];
+    menuNewTab.add(miNewRuntimeEnvironmentTab);
     for(i=0; i<GridPilot.getDBs().length; ++i){
-      miNewPackageTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
-      miNewPackageTabs[i].addActionListener(new ActionListener(){
+      miNewRuntimeEnvironmentTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
+      miNewRuntimeEnvironmentTabs[i].addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           try{
             addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(), "package"), "transformation");          
+                ((JMenuItem)e.getSource()).getText(), "runtimeEnvironment"), "transformation");          
           }
           catch(Exception ex){
             Debug.debug("Could not add panel ", 1);
@@ -330,7 +330,7 @@ public class GlobalFrame extends JFrame{
           selectedPanel = tabbedPane.getSelectedIndex();
         }
       });
-      miNewPackageTab.add(miNewPackageTabs[i]);
+      miNewRuntimeEnvironmentTab.add(miNewRuntimeEnvironmentTabs[i]);
     }
 
     JMenu miNewTransformationTab = new JMenu("transformation");

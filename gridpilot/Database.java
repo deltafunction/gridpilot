@@ -21,16 +21,17 @@ public interface Database{
   // The last returned column must be the identifier.
   public DBResult select(String selectRequest, String identifier);
   
-  // ####### Package table
-  public DBResult getPackages();
-  public DBRecord getPackage(int packageID);
-  public boolean createPackage(Object [] values);
-  public boolean updatePackage(int packageID, String [] fields, String [] values);
-  public boolean deletePackage(int packageID);
+  // ####### RuntimeEnvironment table
+  public DBResult getRuntimeEnvironments();
+  public DBRecord getRuntimeEnvironment(int runtimeEnvironmentID);
+  public boolean createRuntimeEnvironment(Object [] values);
+  public boolean updateRuntimeEnvironment(int runtimeEnvironmentID, String [] fields, String [] values);
+  public boolean deleteRuntimeEnvironment(int runtimeEnvironmentID);
 
   // ####### Transformation table
   public DBResult getTransformations();
   public DBRecord getTransformation(int transformationID);
+  public String getTransformationRuntimeEnvironment(int transformationID);
   public boolean createTransformation(Object [] values);
   public boolean updateTransformation(int transformatinID, String [] fields, String [] values);
   public boolean deleteTransformation(int transformationID);
@@ -67,8 +68,8 @@ public interface Database{
   // ####### Job execution
   public boolean reserveJobDefinition(int jobDefID, String UserName);
   public boolean dereserveJobDefinition(int jobDefID);
-  public String [] getTransformationPackages(int jobDefID);
-  public String [] getTransformationSignature(int jobDefID);
+  public String [] getTransformationRTEnvironments(int jobDefID);
+  public String [] getTransformationArguments(int jobDefID);
   public String [] getJobDefTransPars(int jobDefID);
   public String [] getOutputs(int jobDefID);
   public String [] getInputs(int jobDefID);

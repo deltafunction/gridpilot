@@ -7,7 +7,6 @@ import javax.swing.event.HyperlinkListener;
 
 import java.awt.*;
 import java.io.File;
-import java.net.URL;
 import java.util.*;
 
 import javax.swing.text.*;
@@ -33,13 +32,12 @@ public class TransformationCreationPanel extends CreateEditPanel{
   private boolean reuseTextFields = true;
   private Vector tcConstant = new Vector(); // contains all text components
   private DBPanel panel = null;
-  private JPanel pPackage = new JPanel();
-  private String packageName = "";
-  private JComboBox cbPackageSelection;
+  private JPanel pRuntimeEnvironment = new JPanel();
+  private String runtimeEnvironmentName = "";
+  private JComboBox cbRuntimeEnvironmentSelection;
   private GridBagConstraints ct = new GridBagConstraints();
   private Database.DBRecord transformation = null;
-  private String packageFK = "-1";
-  Database.DBResult packages = null;
+  Database.DBResult runtimeEnvironments = null;
   private String [] transformationFields = null;
 
   public JTextComponent [] tcCstAttributes;
@@ -57,10 +55,10 @@ public class TransformationCreationPanel extends CreateEditPanel{
     transformationIdentifier = "identifier";
     transformationFields = dbPluginMgr.getFieldNames("transformation");
     cstAttributesNames = dbPluginMgr.getFieldNames("transformation");    
-    packages = dbPluginMgr.getPackages();
+    runtimeEnvironments = dbPluginMgr.getRuntimeEnvironments();
     Debug.debug("Got field names: "+Util.arrayToString(cstAttributesNames),3);
-    Debug.debug("Number of packages found: "+packages.values.length+
-        "; "+Util.arrayToString(packages.fields),3);
+    Debug.debug("Number of runtimeEnvironments found: "+runtimeEnvironments.values.length+
+        "; "+Util.arrayToString(runtimeEnvironments.fields),3);
     cstAttr = new String[cstAttributesNames.length];
     // Find transformation ID from table
     if(table.getSelectedRow()>-1 && editing){
@@ -112,7 +110,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     setLayout(new GridBagLayout());
     removeAll();
 
-    initPackagePanel(Integer.parseInt(transformationID));
+    initRuntimeEnvironmentPanel(Integer.parseInt(transformationID));
 
     initAttributePanel();
     
@@ -141,6 +139,10 @@ public class TransformationCreationPanel extends CreateEditPanel{
       for(int i =0; i<cstAttributesNames.length; ++i){
         if(cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier)){
           Util.setJEditable(tcCstAttributes[i], false);
+        }
+        else if(runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("") &&
+            cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironment")){
+          Util.setJText(tcCstAttributes[i], runtimeEnvironmentName);
         }
       }
     }
@@ -180,12 +182,8 @@ public class TransformationCreationPanel extends CreateEditPanel{
       public void hyperlinkUpdate(HyperlinkEvent e){
         if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
           Debug.debug("URL: "+e.getURL().toExternalForm(), 3);
-          Debug.debug("PackID: "+packageFK, 3);
-          String baseUrl = dbPluginMgr.getURL("", Integer.parseInt(packageFK));
-          Debug.debug("Base URL: "+baseUrl, 3);
           if(e.getURL().toExternalForm().equals("http://check/")){
-            String httpScript =
-              dbPluginMgr.getURL(jt.getText(), Integer.parseInt(packageFK));
+            String httpScript = jt.getText();
             String url = null;
             try{
               if(httpScript.startsWith("/")){
@@ -210,7 +208,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
             Debug.debug("URL: "+url, 3);
             setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             final String finUrl = url;
-            final String finBaseUrl = baseUrl;
+            final String finBaseUrl = "";//url;
             MyThread t = new MyThread(){
               public void run(){
                 WebBox wb = null;
@@ -221,31 +219,20 @@ public class TransformationCreationPanel extends CreateEditPanel{
                                   finBaseUrl,
                                   true);
                 }
-                catch(Exception ee){
-                  Debug.debug("Could not open URL "+finUrl+". "+ee.getMessage(), 1);
-                  GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finUrl);
+                catch(Exception eee){
+                  Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
+                  GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
+                  ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
                   try{
-                    wb = new WebBox(GridPilot.getClassMgr().getGlobalFrame(),
-                                    "Choose script",
-                                    (new URL(finBaseUrl)).toExternalForm(),
-                                    finBaseUrl,
-                                    true);
+                    confirmBox.getConfirm("URL not found",
+                                         "The URL "+finBaseUrl+" was not found. "+eee.getMessage(),
+                                      new Object[] {"OK"});
                   }
-                  catch(Exception eee){
-                    Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
-                    GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
-                    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
-                    try{
-                      confirmBox.getConfirm("URL not found",
-                                           "The URL "+finBaseUrl+" was not found.",
-                                        new Object[] {"OK"});
-                    }
-                    catch(Exception eeee){
-                      Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
-                    }
+                  catch(Exception eeee){
+                    Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
                   }
                 }
-                if(wb.lastURL!=null &&
+                if(wb!=null && wb.lastURL!=null &&
                     wb.lastURL.startsWith(finBaseUrl)){
                   // Set the text: the URL browsed to with case URL removed
                   jt.setText(wb.lastURL.substring(
@@ -254,7 +241,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
                 }
                 else{
                   // Don't do anything if we cannot get a URL
-                  Debug.debug("ERROR: Could not open URL "+finBaseUrl+". "+wb.lastURL, 1);
+                  Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
                 }
                 setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
                 statusBar.setLabel("");
@@ -268,21 +255,21 @@ public class TransformationCreationPanel extends CreateEditPanel{
     return checkPanel;
   }
   
-  private String[] getPackageNames(){
-    String [] ret = new String[packages.values.length];
-    for(int i=0; i<packages.values.length; ++i){
-      ret[i] = packages.getValue(i, "name").toString(); 
+  private String[] getRuntimeEnvironmentNames(){
+    String [] ret = new String[runtimeEnvironments.values.length];
+    for(int i=0; i<runtimeEnvironments.values.length; ++i){
+      ret[i] = runtimeEnvironments.getValue(i, "name").toString(); 
       Debug.debug("name is "+ret[i], 3);
     }
     // This is to ensure only unique elements
     // TODO: for some reason this doesn't seam to work
     Arrays.sort(ret);
     Vector vec = new Vector();
-    if(packages.values.length>0){
+    if(runtimeEnvironments.values.length>0){
       vec.add(ret[0]);
     }
-    if(packages.values.length>1){
-      for(int i=1; i<packages.values.length; ++i){
+    if(runtimeEnvironments.values.length>1){
+      for(int i=1; i<runtimeEnvironments.values.length; ++i){
         //Debug.debug("Comparing "+ret[i]+" <-> "+ret[i-1],3);
         if(!ret[i].equalsIgnoreCase(ret[i-1])){
           Debug.debug("Adding "+ret[i],3);
@@ -297,32 +284,32 @@ public class TransformationCreationPanel extends CreateEditPanel{
     return arr;
   }
 
-  private void initPackagePanel(int datasetID){
+  private void initRuntimeEnvironmentPanel(int datasetID){
     
-    pPackage.removeAll();
-    pPackage.setLayout(new FlowLayout());
+    pRuntimeEnvironment.removeAll();
+    pRuntimeEnvironment.setLayout(new FlowLayout());
 
-    String [] packageNames = getPackageNames();
+    String [] runtimeEnvironmentNames = getRuntimeEnvironmentNames();
 
-    if(packageNames.length==0){
-      pPackage.add(new JLabel("No packages found."));
+    if(runtimeEnvironmentNames.length==0){
+      pRuntimeEnvironment.add(new JLabel("No runtime environments found."));
     }
-    else if(packageNames.length==1){
-      packageName = packageNames[0];
-      pPackage.add(new JLabel("Package: " + packageName));
+    else if(runtimeEnvironmentNames.length==1){
+      runtimeEnvironmentName = runtimeEnvironmentNames[0];
+      pRuntimeEnvironment.add(new JLabel("Runtime environment : " + runtimeEnvironmentName));
     }
     else{
-      cbPackageSelection = new JComboBox();
-      for(int i=0; i<packageNames.length; ++i){
-          cbPackageSelection.addItem(packageNames[i]);
+      cbRuntimeEnvironmentSelection = new JComboBox();
+      for(int i=0; i<runtimeEnvironmentNames.length; ++i){
+          cbRuntimeEnvironmentSelection.addItem(runtimeEnvironmentNames[i]);
       }
-      pPackage.add(new JLabel("Package: "), null);
-      pPackage.add(cbPackageSelection, null);
+      pRuntimeEnvironment.add(new JLabel("Runtime environment: "), null);
+      pRuntimeEnvironment.add(cbRuntimeEnvironmentSelection, null);
 
-      cbPackageSelection.addActionListener(
+      cbRuntimeEnvironmentSelection.addActionListener(
         new java.awt.event.ActionListener(){
           public void actionPerformed(java.awt.event.ActionEvent e){
-            cbPackageSelection_actionPerformed();
+            cbRuntimeSelection_actionPerformed();
           }
         }
       );
@@ -332,27 +319,20 @@ public class TransformationCreationPanel extends CreateEditPanel{
     ct.gridy = 0;
     ct.gridwidth=1;
     ct.gridheight=1;
-    add(pPackage, ct);
+    add(pRuntimeEnvironment, ct);
 
     updateUI();
   }
 
-  private void cbPackageSelection_actionPerformed(){
-    if(cbPackageSelection.getSelectedItem()==null){
+  private void cbRuntimeSelection_actionPerformed(){
+    if(cbRuntimeEnvironmentSelection.getSelectedItem()==null){
         return;
     }
     else{
-        packageName = cbPackageSelection.getSelectedItem().toString();
-    }
-    for(int j=0; j<packages.values.length; ++j){
-      if(packages.getValue(j, "name").toString().equalsIgnoreCase(packageName)){
-        packageFK = packages.getValue(j, transformationIdentifier).toString();
-        Debug.debug("Setting package FK: "+packageFK, 3);
-        break;
-      }
+        runtimeEnvironmentName = cbRuntimeEnvironmentSelection.getSelectedItem().toString();
     }
     editTransformation(Integer.parseInt(transformationID),
-        packageName);
+        runtimeEnvironmentName);
   }
   
   private void initAttributePanel(){
@@ -365,9 +345,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     //// Constants attributes
     for(int i = 0; i<cstAttributesNames.length; ++i, ++row){
       if(cstAttributesNames[i].equalsIgnoreCase("definition") ||
-         cstAttributesNames[i].equalsIgnoreCase("valScript") ||
-         cstAttributesNames[i].equalsIgnoreCase("xtractScript") ||
-         cstAttributesNames[i].equalsIgnoreCase("code") ||
+          cstAttributesNames[i].equalsIgnoreCase("code") ||
          cstAttributesNames[i].equalsIgnoreCase("script") ||
          cstAttributesNames[i].equalsIgnoreCase("validationScript") ||
          cstAttributesNames[i].equalsIgnoreCase("extractionScript")){
@@ -389,7 +367,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
       if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled()){
         tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
       }
-      if(cstAttributesNames[i].equalsIgnoreCase("packageFK")){
+      if(cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironment")){
         Util.setJEditable(tcCstAttributes[i], false);
       }
       pAttributes.add(tcCstAttributes[i],
@@ -404,7 +382,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
    *  Edit a transformation
    */
   public void editTransformation(int transformationID,
-      String packageName){
+      String runtimeEnvironmentName){
 
     //// Constants attributes
     for(int i =0; i<tcCstAttributes.length; ++i){
@@ -447,9 +425,9 @@ public class TransformationCreationPanel extends CreateEditPanel{
           }
         }
       }
-      else if(packageFK!=null && Integer.parseInt(packageFK)>-1 &&
-          cstAttributesNames[i].equalsIgnoreCase("packageFK")){
-        Util.setJText(tcCstAttributes[i], packageFK);
+      else if(runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("") &&
+          cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironment")){
+        Util.setJText(tcCstAttributes[i], runtimeEnvironmentName);
       }
     }
   }

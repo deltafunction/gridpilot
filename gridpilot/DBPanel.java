@@ -549,31 +549,31 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       bDeleteRecord.setEnabled(false);
       updateUI();
     }    
-    else if(tableName.equalsIgnoreCase("package")){
+    else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
       
       tableResults.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent e){
           if(e.getClickCount()==2){
-            editPackage();
+            editRuntimeEnvironment();
           }
         }
       });
       
       bCreateRecords.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          createPackage();
+          createRuntimeEnvironment();
         }
       });
 
       bEditRecord.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          editPackage();
+          editRuntimeEnvironment();
         }
       });
 
       bDeleteRecord.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          deletePackages();
+          deleteRuntimeEnvironments();
         }
       });
       
@@ -815,7 +815,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
           makeTransformationMenu();
         }
-        else if(tableName.equalsIgnoreCase("package")){
+        else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
           tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
           tableResults.addListSelectionListener(new ListSelectionListener(){
             public void valueChanged(ListSelectionEvent e){
@@ -831,7 +831,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             }
           });
 
-          makePackageMenu();
+          makeRuntimeEnvironmentMenu();
         }
         
         GridPilot.getClassMgr().getGlobalFrame().menuEdit.updateUI();
@@ -909,18 +909,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     tableResults.addMenuItem(miDelete);
     tableResults.addMenuItem(miEdit);
   }
-  public void makePackageMenu(){
-    Debug.debug("Making package menu", 3);
+  public void makeRuntimeEnvironmentMenu(){
+    Debug.debug("Making runtime environment menu", 3);
     JMenuItem miDelete = new JMenuItem("Delete");
     miEdit = new JMenuItem("Edit");
     miDelete.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        deletePackages();
+        deleteRuntimeEnvironments();
       }
     });
     miEdit.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        editPackage();
+        editRuntimeEnvironment();
       }
     });
     miDelete.setEnabled(true);
@@ -1190,7 +1190,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     }
     GridPilot.getClassMgr().getStatusBar().setLabel(
-    "Deleting package(s) done.");
+    "Deleting runtime environment(s) done.");
     refresh();
     if(datasetIdentifiers.length>1){
       statusBar.setLabel(deleted.size()+" of "+
@@ -1223,11 +1223,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     pDialog.setTitle(tableName);
   }
   /**
-   * Open dialog with package creation panel
+   * Open dialog with runtime environment creation panel
    */ 
-  private void createPackage(){
+  private void createRuntimeEnvironment(){
     CreateEditDialog pDialog = new CreateEditDialog(
-       new PackageCreationPanel(dbPluginMgr, this, false),
+       new RuntimeCreationPanel(dbPluginMgr, this, false),
        false);
     pDialog.setTitle(tableName);
   }
@@ -1239,9 +1239,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     pDialog.setTitle(tableName);
   }
   
-  private void editPackage(){
+  private void editRuntimeEnvironment(){
     CreateEditDialog pDialog = new CreateEditDialog(
-       new PackageCreationPanel(dbPluginMgr, this, true),
+       new RuntimeCreationPanel(dbPluginMgr, this, true),
        true);
     pDialog.setTitle(tableName);
   }
@@ -1300,8 +1300,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     };
     workThread.start();
   }
-  private void deletePackages(){
-    String msg = "Are you sure you want to delete package record";
+  private void deleteRuntimeEnvironments(){
+    String msg = "Are you sure you want to delete runtime environment record";
     if(getSelectedIdentifiers().length>1){
       msg += "s";
     }
@@ -1329,13 +1329,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         Debug.debug("Deleting "+ids.length+" rows", 2);
         if(ids.length != 0){
           GridPilot.getClassMgr().getStatusBar().setLabel(
-             "Deleting package(s). Please wait ...");
+             "Deleting runtime environment(s). Please wait ...");
           JProgressBar pb = new JProgressBar();
           pb.setMaximum(ids.length);
           for(int i = ids.length-1; i>=0; i--){
-            boolean success = dbPluginMgr.deletePackage(ids[i]);
+            boolean success = dbPluginMgr.deleteRuntimeEnvironment(ids[i]);
             if(!success){
-              String msg = "Deleting package "+ids[i]+" failed";
+              String msg = "Deleting runtime environment "+ids[i]+" failed";
               Debug.debug(msg, 1);
               GridPilot.getClassMgr().getStatusBar().setLabel(msg);
               GridPilot.getClassMgr().getLogFile().addMessage(msg);
@@ -1346,7 +1346,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             tableResults.tableModel.fireTableDataChanged();
           }
           GridPilot.getClassMgr().getStatusBar().setLabel(
-             "Deleting package(s) done.");
+             "Deleting runtime environment(s) done.");
         }
         stopWorking();
         refresh();
@@ -1548,13 +1548,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         throw e;
       }
     }
-    else if(tableName.equalsIgnoreCase("package")){
+    else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
       try{
-        record = sourceMgr.getPackage(id);
-        insertPackage(record, targetMgr);
+        record = sourceMgr.getRuntimeEnvironment(id);
+        insertRuntimeEnvironment(record, targetMgr);
       }
       catch(Exception e){
-        String msg = "ERROR: package "+id+" could not be created, "+sourceDB+
+        String msg = "ERROR: runtime environment "+id+" could not be created, "+sourceDB+
         "."+sourceTable+"->"+targetDB+"."+targetTable+". "+e.getMessage();
         Debug.debug(msg, 1);
         statusBar.setLabel(msg);
@@ -1605,17 +1605,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   
   public boolean insertTransformation(DBRecord transformation, DBPluginMgr dbMgr) throws Exception{
     try{
-      // Check if referenced package exists
+      // Check if referenced runtime environment exists
       String targetTransformationIdentifier = dbMgr.getIdentifier(dbName, "transformation");
-      String targetPackageIdentifier = dbMgr.getIdentifier(dbName, "package");
-      String targetPackId = dbMgr.getPackage(
-          Integer.parseInt(transformation.getValue(targetTransformationIdentifier).toString())
-          ).getValue(targetPackageIdentifier).toString();
-      if(targetPackId!=null && Integer.parseInt(targetPackId)>-1){
+      String targetRuntimeEnvironmentName = dbMgr.getName(dbName, "runtimeEnvironment");
+      String targetRuntime = dbMgr.getTransformationRuntimeEnvironment(
+          Integer.parseInt(transformation.getValue(targetTransformationIdentifier).toString()));
+      DBResult targetRuntimes = dbMgr.getRuntimeEnvironments();
+      Vector runtimeNames = new Vector();
+      for(int i=0; i<targetRuntimes.values.length; ++i){
+        runtimeNames.add(targetRuntimes.getValue(i, targetRuntimeEnvironmentName).toString());
+      }
+      if(targetRuntime!=null && runtimeNames!=null && runtimeNames.contains(targetRuntime)){
         dbMgr.createTransformation(transformation.values);
       }
       else{
-        throw(new Exception("ERROR: Package for transformation "+
+        throw(new Exception("ERROR: runtime environment for transformation "+
             transformation.getValue(targetTransformationIdentifier)+" does not exist."));
       }
     }
@@ -1625,9 +1629,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return true;
   }
   
-  public boolean insertPackage(DBRecord pack, DBPluginMgr dbMgr) throws Exception{
+  public boolean insertRuntimeEnvironment(DBRecord pack, DBPluginMgr dbMgr) throws Exception{
     try{
-      dbMgr.createPackage(pack.values);
+      dbMgr.createRuntimeEnvironment(pack.values);
     }
     catch(Exception e){
       throw e;
@@ -1678,12 +1682,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         throw e;
       }
     }
-    else if(tableName.equalsIgnoreCase("package")){
+    else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
       try{
-        sourceMgr.deletePackage(id);
+        sourceMgr.deleteRuntimeEnvironment(id);
       }
       catch(Exception e){
-        String msg = "ERROR: package "+id+" could not be deleted from, "+sourceDB+
+        String msg = "ERROR: runtime environment "+id+" could not be deleted from, "+sourceDB+
         "."+sourceTable;
         Debug.debug(msg, 1);
         statusBar.setLabel(msg);
