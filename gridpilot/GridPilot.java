@@ -26,6 +26,7 @@ public class GridPilot extends JApplet{
   public static String[] statusFields;
   public static String resourcesPath = "";
   public static String [] csNames = null;
+  public static String [] tabs = null;
   public static Splash splash;
   public static int proxyTimeLeftLimit = 43200;
   public static int proxyTimeValid = 129600;
@@ -98,6 +99,7 @@ public class GridPilot extends JApplet{
       if(csNames == null || csNames.length == 0){
         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("Computing systems", "systems"));
       }
+      tabs = getClassMgr().getConfigFile().getValues("GridPilot", "initial panels");
       proxyTimeLeftLimit = Integer.parseInt(
         getClassMgr().getConfigFile().getValue("GridPilot", "proxy time left limit"));
       proxyTimeValid = Integer.parseInt(

@@ -79,10 +79,9 @@ public class GlobalFrame extends JFrame{
 
     if(GridPilot.getDBs().length>0){
       try{
-        addPanel(new DBPanel(GridPilot.getDBs()[0], "runtimeEnvironment"));
-        addPanel(new DBPanel(GridPilot.getDBs()[0], "transformation"));
-        addPanel(new DBPanel(GridPilot.getDBs()[0], "dataset"));
-        addPanel(new DBPanel(GridPilot.getDBs()[0], "jobDefinition"));
+        for(int i=0; i<GridPilot.tabs.length; ++i){
+          addPanel(new DBPanel(GridPilot.getDBs()[0], GridPilot.tabs[i]));
+        }
       }
       catch(Exception e){
         Debug.debug("ERROR: could not load database panel for "+
