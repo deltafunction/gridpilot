@@ -33,7 +33,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
   private Vector tcConstant = new Vector(); // contains all text components
   private DBPanel panel = null;
   private JPanel pRuntimeEnvironment = new JPanel();
-  private String runtimeEnvironmentName = "";
+  private String runtimeEnvironmentName = null;
   private JComboBox cbRuntimeEnvironmentSelection;
   private GridBagConstraints ct = new GridBagConstraints();
   private Database.DBRecord transformation = null;
@@ -137,7 +137,9 @@ public class TransformationCreationPanel extends CreateEditPanel{
       // Disable identifier field when creating
       Debug.debug("Disabling identifier field", 3);
       for(int i =0; i<cstAttributesNames.length; ++i){
-        if(cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier)){
+        if(cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier) ||
+            cstAttributesNames[i].equalsIgnoreCase("created") ||
+            cstAttributesNames[i].equalsIgnoreCase("lastModified")){
           Util.setJEditable(tcCstAttributes[i], false);
         }
         else if(runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("") &&
@@ -312,7 +314,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
             cbRuntimeSelection_actionPerformed();
           }
         }
-      );
+      ); 
     }
     
     ct.gridx = 0;
@@ -413,7 +415,9 @@ public class TransformationCreationPanel extends CreateEditPanel{
           break;
         }
       }
-      if((cstAttributesNames[i].equalsIgnoreCase("identifier"))){
+      if(cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier) ||
+          cstAttributesNames[i].equalsIgnoreCase("created") ||
+          cstAttributesNames[i].equalsIgnoreCase("lastModified")){
         Util.setJEditable(tcCstAttributes[i], false);
         if(!editing){
           try{
@@ -428,6 +432,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
       else if(runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("") &&
           cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironment")){
         Util.setJText(tcCstAttributes[i], runtimeEnvironmentName);
+        cbRuntimeEnvironmentSelection.setSelectedItem(runtimeEnvironmentName);
       }
     }
   }
