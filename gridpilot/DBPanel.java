@@ -765,7 +765,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
               bViewJobDefinitions.setEnabled(!lsm.isSelectionEmpty());
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
-              bEditRecord.setEnabled(!lsm.isSelectionEmpty());
+              bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
+                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+              miEdit.setEnabled(!lsm.isSelectionEmpty() &&
+                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
               menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
               menuEditCut.setEnabled(!lsm.isSelectionEmpty());
               menuEditPaste.setEnabled(clipboardOwned);
@@ -798,7 +801,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           makeJobDefMenu();
         }
         else if(tableName.equalsIgnoreCase("transformation")){
-          tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+          tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
           tableResults.addListSelectionListener(new ListSelectionListener(){
             public void valueChanged(ListSelectionEvent e){
               if (e.getValueIsAdjusting()) return;
@@ -806,7 +809,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               //Debug.debug("lsm indices: "+
               //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
-              bEditRecord.setEnabled(!lsm.isSelectionEmpty());
+              bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
+                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+              miEdit.setEnabled(!lsm.isSelectionEmpty() &&
+                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
               menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
               menuEditCut.setEnabled(!lsm.isSelectionEmpty());
               menuEditPaste.setEnabled(clipboardOwned);
@@ -816,7 +822,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           makeTransformationMenu();
         }
         else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
-          tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+          tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
           tableResults.addListSelectionListener(new ListSelectionListener(){
             public void valueChanged(ListSelectionEvent e){
               if (e.getValueIsAdjusting()) return;
@@ -824,7 +830,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               //Debug.debug("lsm indices: "+
               //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
-              bEditRecord.setEnabled(!lsm.isSelectionEmpty());
+              bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
+                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+              miEdit.setEnabled(!lsm.isSelectionEmpty() &&
+                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
               menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
               menuEditCut.setEnabled(!lsm.isSelectionEmpty());
               menuEditPaste.setEnabled(clipboardOwned);
@@ -1203,14 +1212,17 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Refresh search results.
    */ 
   public void refresh(){
-    if(tableResults==null || tableResults.getRowCount()==0){
-      return;
-    }
     Debug.debug("Refreshing search results", 3);
-    DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
-    int sortColumn = tableModel.getColumnSort();
-    boolean isAscending = tableModel.isSortAscending();
-    searchRequest(sortColumn, isAscending);
+    if(tableResults==null /*|| tableResults.getRowCount()==0*/){
+      searchRequest();
+      //return;
+    }
+    else{
+      DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
+      int sortColumn = tableModel.getColumnSort();
+      boolean isAscending = tableModel.isSortAscending();
+      searchRequest(sortColumn, isAscending);
+    }
   }
   
   /**
@@ -1537,7 +1549,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     else if(tableName.equalsIgnoreCase("transformation")){
       try{
         record = sourceMgr.getTransformation(id);
-        insertTransformation(record, targetMgr);
+        insertTransformation(record, sourceMgr, targetMgr);
       }
       catch(Exception e){
         String msg = "ERROR: transformation "+id+" could not be created, "+sourceDB+
@@ -1603,20 +1615,24 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return true;
   }
   
-  public boolean insertTransformation(DBRecord transformation, DBPluginMgr dbMgr) throws Exception{
+  public boolean insertTransformation(DBRecord transformation, DBPluginMgr sourceMgr,
+      DBPluginMgr targetMgr) throws Exception{
     try{
       // Check if referenced runtime environment exists
-      String targetTransformationIdentifier = dbMgr.getIdentifier(dbName, "transformation");
-      String targetRuntimeEnvironmentName = dbMgr.getName(dbName, "runtimeEnvironment");
-      String targetRuntime = dbMgr.getTransformationRuntimeEnvironment(
-          Integer.parseInt(transformation.getValue(targetTransformationIdentifier).toString()));
-      DBResult targetRuntimes = dbMgr.getRuntimeEnvironments();
+      String sourceTransformationIdentifier = sourceMgr.getIdentifier(dbName, "transformation");
+      String targetTransformationIdentifier = targetMgr.getIdentifier(dbName, "transformation");
+      String targetRuntimeEnvironmentName = targetMgr.getName(dbName, "runtimeEnvironment");
+      String runtimeEnvironment = sourceMgr.getTransformationRuntimeEnvironment(
+          Integer.parseInt(transformation.getValue(
+              sourceTransformationIdentifier).toString()));
+      DBResult targetRuntimes = targetMgr.getRuntimeEnvironments();
       Vector runtimeNames = new Vector();
       for(int i=0; i<targetRuntimes.values.length; ++i){
         runtimeNames.add(targetRuntimes.getValue(i, targetRuntimeEnvironmentName).toString());
       }
-      if(targetRuntime!=null && runtimeNames!=null && runtimeNames.contains(targetRuntime)){
-        dbMgr.createTransformation(transformation.values);
+      if(runtimeEnvironment!=null && runtimeNames!=null &&
+          runtimeNames.contains(runtimeEnvironment)){
+        targetMgr.createTransformation(transformation.values);
       }
       else{
         throw(new Exception("ERROR: runtime environment for transformation "+
