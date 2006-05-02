@@ -1023,7 +1023,12 @@ public class HSQLDBDatabase implements Database{
           values[i] = nonMatchedStr;
         }
         if(datasetFields[i].equalsIgnoreCase("created")){
-          values[i] = makeDate(values[i].toString());
+          try{
+            values[i] = makeDate(values[i].toString());
+          }
+          catch(Exception e){
+            values[i] = makeDate("");
+          }
         }
         else if(datasetFields[i].equalsIgnoreCase("lastModified")){
           values[i] = makeDate("");
@@ -1066,7 +1071,12 @@ public class HSQLDBDatabase implements Database{
     sql += ") VALUES (";
     for(int i=1; i<transformationFields.length; ++i){
       if(transformationFields[i].equalsIgnoreCase("created")){
-        values[i] = makeDate(values[i].toString());
+        try{
+          values[i] = makeDate(values[i].toString());
+        }
+        catch(Exception e){
+          values[i] = makeDate("");
+        }
       }
       else if(transformationFields[i].equalsIgnoreCase("lastModified")){
         values[i] = makeDate("");
@@ -1108,7 +1118,12 @@ public class HSQLDBDatabase implements Database{
     sql += ") VALUES (";
     for(int i=1; i<runtimeEnvironmentFields.length; ++i){
       if(runtimeEnvironmentFields[i].equalsIgnoreCase("created")){
-        values[i] = makeDate(values[i].toString());
+        try{
+          values[i] = makeDate(values[i].toString());
+        }
+        catch(Exception e){
+          values[i] = makeDate("");
+        }
       }
       else if(runtimeEnvironmentFields[i].equalsIgnoreCase("lastModified")){
         values[i] = makeDate("");
