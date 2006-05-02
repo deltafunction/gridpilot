@@ -134,8 +134,10 @@ public class RuntimeCreationPanel extends CreateEditPanel{
       Debug.debug("Disabling identifier field", 3);
       // Disable identifier field when creating
       for(int i =0; i<cstAttributesNames.length; ++i){
-        if(cstAttributesNames[i].equalsIgnoreCase(packIdentifier)){
-          tcCstAttributes[i].setEnabled(false);
+        if(cstAttributesNames[i].equalsIgnoreCase(packIdentifier) ||
+           cstAttributesNames[i].equalsIgnoreCase("created") ||
+           cstAttributesNames[i].equalsIgnoreCase("lastModified")){
+          Util.setJEditable(tcCstAttributes[i], false);
         }
       }
     }
@@ -340,7 +342,9 @@ public class RuntimeCreationPanel extends CreateEditPanel{
           break;
         }
       }
-      if((cstAttributesNames[i].equalsIgnoreCase("identifier"))){
+      if(cstAttributesNames[i].equalsIgnoreCase(packIdentifier) ||
+          cstAttributesNames[i].equalsIgnoreCase("created") ||
+          cstAttributesNames[i].equalsIgnoreCase("lastModified")){
         Util.setJEditable(tcCstAttributes[i], false);
         Debug.debug("Disabling identifier "+cstAttributesNames[i],3);
         if(!editing){
@@ -348,7 +352,9 @@ public class RuntimeCreationPanel extends CreateEditPanel{
             Debug.debug("Clearing identifier",3);
             tcCstAttributes[i].setText("");
           }
-          catch(java.lang.Exception e){Debug.debug("Attribute not found, "+e.getMessage(),1);}
+          catch(java.lang.Exception e){
+            Debug.debug("Attribute not found, "+e.getMessage(),1);
+          }
         }
       }
     }
