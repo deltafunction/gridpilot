@@ -345,8 +345,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     ct.gridy = 0;         
     ct.gridwidth=1;
     ct.gridheight=1;  
-    ct.gridx = 0;
-    ct.gridy = 0;   
     ct.ipady = 100;
     this.add(panelSelectPanel,ct);
     ct.weightx = 0.0;
