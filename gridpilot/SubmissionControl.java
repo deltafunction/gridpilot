@@ -159,7 +159,7 @@ public class SubmissionControl{
       }
       statusBar.setLabel("Submitting. Please wait...");
       statusBar.animateProgressBar();
-      String jobDefIdentifier = dbPluginMgr.getIdentifier(dbPluginMgr.getDBName(),
+      String jobDefIdentifier = dbPluginMgr.getIdentifierField(dbPluginMgr.getDBName(),
       "jobDefinition");
       for(int i=0; i<selectedJobs.size(); ++i){
         //JobDefinition jobDef = ((JobDefinition) selectedJobs.get(i));

@@ -72,7 +72,12 @@ public class MySQLDatabase implements Database{
         break;
       }
     }
-    setFieldNames();
+    try{
+      setFieldNames();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
     if(datasetFields==null || datasetFields.length<1){
       makeTable("dataset");
     }
@@ -220,7 +225,7 @@ public class MySQLDatabase implements Database{
 
   public synchronized String [] getOutputs(int jobDefID){
     String transformationID = "";
-    transformationID = getTransformationID(jobDefID);
+    transformationID = getJobDefTransformationID(jobDefID);
     // TODO: finish
     getTransformation(Integer.parseInt(transformationID)).getValue("outputs");
     // nothing for now
@@ -283,7 +288,7 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized String [] getTransformationRTEnvironments(int jobDefID){
-    String transformationID = getTransformationID(jobDefID);
+    String transformationID = getJobDefTransformationID(jobDefID);
     getTransformation(Integer.parseInt(transformationID)).getValue("uses");
     // nothing for now
     return new String [] {""};
@@ -291,7 +296,7 @@ public class MySQLDatabase implements Database{
 
   public synchronized String [] getTransformationArguments(int jobDefID){
     String transformationID = "";
-    transformationID = getTransformationID(jobDefID);
+    transformationID = getJobDefTransformationID(jobDefID);
     // TODO: finish
     getTransformation(Integer.parseInt(transformationID)).getValue("uses");
     // nothing for now
@@ -330,7 +335,7 @@ public class MySQLDatabase implements Database{
     return "";
   }
 
-  public synchronized String getTransformationID(int jobDefinitionID){
+  public synchronized String getJobDefTransformationID(int jobDefinitionID){
     DBRecord dataset = getDataset(getJobDefDatasetID(jobDefinitionID));
     String transformation = dataset.getValue("transformation").toString();
     String version = dataset.getValue("transVersion").toString();
@@ -544,6 +549,14 @@ public class MySQLDatabase implements Database{
       return task;
     }
      return task;
+  }
+  
+  public String getDatasetTransformationName(int datasetID){
+    return getDataset(datasetID).getValue("transformationName").toString();
+  }
+  
+  public String getDatasetTransformationVersion(int datasetID){
+    return getDataset(datasetID).getValue("transformationVersion").toString();
   }
   
   public synchronized String getDatasetName(int datasetID){

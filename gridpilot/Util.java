@@ -18,22 +18,30 @@ import javax.swing.text.JTextComponent;
 
 public class Util{
 
-  public static String [] split(String s) {
+  public static String [] split(String s){
     StringTokenizer tok = new StringTokenizer(s);
     int len = tok.countTokens();
     String [] res = new String[len];
-    for (int i = 0 ; i < len ; i++) {
+    for (int i=0; i<len ; i++){
       res[i] = tok.nextToken();
+      /* remove leading whitespace */
+      res[i] = res[i].replaceAll("^\\s+", "");
+      /* remove trailing whitespace */
+      res[i] = res[i].replaceAll("\\s+$", "");
     }
     return res ;
   }
   
-  public static String [] split(String s, String delim) {
+  public static String [] split(String s, String delim){
     StringTokenizer tok = new StringTokenizer(s, delim);
     int len = tok.countTokens();
     String [] res = new String[len];
-    for (int i = 0 ; i < len ; i++) {
+    for (int i=0 ; i<len ; i++){
       res[i] = tok.nextToken();
+      /* remove leading whitespace */
+      res[i] = res[i].replaceAll("^\\s+", "");
+      /* remove trailing whitespace */
+      res[i] = res[i].replaceAll("\\s+$", "");
     }
     return res ;
   }

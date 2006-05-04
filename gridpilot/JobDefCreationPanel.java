@@ -89,10 +89,10 @@ public class JobDefCreationPanel extends CreateEditPanel{
     }
 
     
-    transformationIdentifier = dbPluginMgr.getIdentifier(dbPluginMgr.getDBName(),
+    transformationIdentifier = dbPluginMgr.getIdentifierField(dbPluginMgr.getDBName(),
         "transformation");
 
-    jobDefIdentifier = dbPluginMgr.getIdentifier(dbPluginMgr.getDBName(),
+    jobDefIdentifier = dbPluginMgr.getIdentifierField(dbPluginMgr.getDBName(),
         "jobDefinition");
 
     cstAttributesNames = dbPluginMgr.getFieldNames("jobDefinition");
@@ -119,7 +119,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
         Debug.debug("ERROR: could not find jobDefinitionID in table!", 1);
       }
       // Find jobTransFK from db
-      jobTransFK = dbPluginMgr.getTransformationID(Integer.parseInt(jobDefinitionID));
+      jobTransFK = dbPluginMgr.getJobDefTransformationID(Integer.parseInt(jobDefinitionID));
       Debug.debug("Set jobTransFK from db: "+jobTransFK, 2);
       // Get job definition from db
       DBRecord jobDef = dbPluginMgr.getJobDefinition(Integer.parseInt(jobDefinitionID));

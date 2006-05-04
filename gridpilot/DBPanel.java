@@ -120,8 +120,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
      statusBar = GridPilot.getClassMgr().getStatusBar();
      
-     identifier = dbPluginMgr.getIdentifier(dbName, tableName);
-     jobDefIdentifier = dbPluginMgr.getIdentifier(dbName, "jobDefinition");
+     identifier = dbPluginMgr.getIdentifierField(dbName, tableName);
+     jobDefIdentifier = dbPluginMgr.getIdentifierField(dbName, "jobDefinition");
           
      ct.fill = GridBagConstraints.HORIZONTAL;
      ct.anchor = GridBagConstraints.NORTH;
@@ -309,7 +309,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     panelSelectPanel.add(pButtonSelectPanel, new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0
         ,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
 
-    selectPanel.setConstraint(dbPluginMgr.getName(dbName,
+    selectPanel.setConstraint(dbPluginMgr.getNameField(dbName,
         tableName), "", 1);
     
     // Listen for enter key in text field
@@ -695,7 +695,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     selectPanel.setDisplayFieldValue(values);
     selectPanel.resetConstraintList(tableName);
-    selectPanel.setConstraint(dbPluginMgr.getName(dbName,
+    selectPanel.setConstraint(dbPluginMgr.getNameField(dbName,
         tableName), "", 1);
     selectPanel.updateUI();
   }
@@ -1533,7 +1533,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         tableName.equalsIgnoreCase("task")){
       try{
         record = sourceMgr.getDataset(id);
-        insertDataset(record, targetMgr);
+        insertDataset(record, sourceMgr, targetMgr);
       }
       catch(Exception e){
         String msg = "ERROR: dataset "+id+" could not be created, "+sourceDB+
@@ -1577,7 +1577,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   public boolean insertJobDefinition(DBRecord jobDef, DBPluginMgr dbMgr) throws Exception{  
     try{
       // Check if parent dataset exists
-      String targetJobDefIdentifier = dbMgr.getIdentifier(dbName, "jobDefinition");
+      String targetJobDefIdentifier = dbMgr.getIdentifierField(dbName, "jobDefinition");
       int targetDsId = dbMgr.getJobDefDatasetID(Integer.parseInt(jobDef.getValue(targetJobDefIdentifier).toString()));
       if(targetDsId>-1){
         dbMgr.createJobDef(jobDef.fields, jobDef.values);
@@ -1593,18 +1593,49 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return true;
   }
   
-  public boolean insertDataset(DBRecord dataset, DBPluginMgr dbMgr) throws Exception{
+  public boolean insertDataset(DBRecord dataset, DBPluginMgr sourceMgr,
+      DBPluginMgr targetMgr) throws Exception{
     try{
-      // Check if referenced transformation exists
-      String targetDatasetIdentifier = dbMgr.getIdentifier(dbName, "dataset");
-      String targetTransId = dbMgr.getTransformationID(
-          Integer.parseInt(dataset.getValue(targetDatasetIdentifier).toString()));
-      if(targetTransId!=null && Integer.parseInt(targetTransId)>-1){
-        dbMgr.createDataset("dataset", dataset.fields, dataset.values);
+      boolean ok = false;
+      try{
+        // Check if referenced transformation exists
+        
+        String sourceTransName = sourceMgr.getDatasetTransformationName(
+            Integer.parseInt(dataset.getValue(sourceMgr.getIdentifierField(
+                sourceMgr.getDBName(), "dataset")).toString()));
+        String sourceTransVersion = sourceMgr.getDatasetTransformationVersion(
+            Integer.parseInt(dataset.getValue(sourceMgr.getIdentifierField(
+                sourceMgr.getDBName(), "dataset")).toString()));  
+        
+        DBResult targetTransformations = targetMgr.getTransformations();
+        Vector transVec = new Vector();
+        for(int i=0; i<targetTransformations.values.length; ++i){
+          if(targetTransformations.getValue(i, targetMgr.getNameField(
+              targetMgr.getDBName(), "transformation")).toString(
+              ).equalsIgnoreCase(sourceTransName)){
+            transVec.add(targetTransformations.getRow(i));
+          }
+        }
+        for(int i=0; i<transVec.size(); ++i){
+          // TODO: consider adding method like getVersionField
+          if(((DBRecord) transVec.get(i)).getValue(targetMgr.getVersionField(
+              targetMgr.getDBName(), "transformation")
+              ).toString().equalsIgnoreCase(sourceTransVersion)){
+            ok = true;
+            break;
+          }
+        }
+      }
+      catch(Exception ee){
+        ee.printStackTrace();
+      }
+      if(ok){
+        Debug.debug("Creating dataset: " + Util.arrayToString(dataset.fields, ":") + " ---> " +
+            Util.arrayToString(dataset.values, ":"), 3);
+        targetMgr.createDataset("dataset", dataset.fields, dataset.values);
       }
       else{
-        throw(new Exception("ERROR: Transformation for dataset "+
-            dataset.getValue(targetDatasetIdentifier)+" does not exist."));
+        throw(new Exception("ERROR: Transformation for dataset does not exist."));
       }
     }
     catch(Exception e){
@@ -1617,9 +1648,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       DBPluginMgr targetMgr) throws Exception{
     try{
       // Check if referenced runtime environment exists
-      String sourceTransformationIdentifier = sourceMgr.getIdentifier(dbName, "transformation");
-      String targetTransformationIdentifier = targetMgr.getIdentifier(dbName, "transformation");
-      String targetRuntimeEnvironmentName = targetMgr.getName(dbName, "runtimeEnvironment");
+      String sourceTransformationIdentifier = sourceMgr.getIdentifierField(dbName, "transformation");
+      String targetTransformationIdentifier = targetMgr.getIdentifierField(dbName, "transformation");
+      String targetRuntimeEnvironmentName = targetMgr.getNameField(dbName, "runtimeEnvironment");
       String runtimeEnvironment = sourceMgr.getTransformationRuntimeEnvironment(
           Integer.parseInt(transformation.getValue(
               sourceTransformationIdentifier).toString()));

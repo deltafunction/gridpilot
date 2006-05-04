@@ -3,6 +3,7 @@ package gridpilot.dbplugins.hsqldb;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,6 +37,7 @@ public class HSQLDBDatabase implements Database{
   private String [] datasetFields = null;
   private String [] runInfoFields = null;
   private String [] runtimeEnvironmentFields = null;
+  private HashMap datasetFieldTypes = new HashMap();    
 
   public HSQLDBDatabase(
       String _driver, String _database, String _user, String _passwd){
@@ -75,7 +77,13 @@ public class HSQLDBDatabase implements Database{
       catch(Exception e){
       }
     }
-    setFieldNames();
+    try{
+      setFieldNames();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    
     if(datasetFields==null || datasetFields.length<1){
       makeTable("dataset");
     }
@@ -123,7 +131,12 @@ public class HSQLDBDatabase implements Database{
   }
   
   private void setFieldNames(){
+    ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/hsqldb/tables.conf");
     datasetFields = getFieldNames("dataset");
+    String [] dsFieldTypes = Util.split(tablesConfig.getValue("tables", "dataset field types"), ",");
+    for(int i=0; i<datasetFields.length; ++i){
+      datasetFieldTypes.put(datasetFields[i], dsFieldTypes[i]);
+    }
     jobDefFields = getFieldNames("jobDefinition");
     transformationFields = getFieldNames("transformation");
     // only used for checking
@@ -132,6 +145,7 @@ public class HSQLDBDatabase implements Database{
   }
 
   private boolean makeTable(String table){
+    Debug.debug("Creating table "+table, 3);
     ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/hsqldb/tables.conf");
     String [] fields = Util.split(tablesConfig.getValue("tables", table+" field names"), ",");
     String [] fieldTypes = Util.split(tablesConfig.getValue("tables", table+" field types"), ",");
@@ -153,11 +167,18 @@ public class HSQLDBDatabase implements Database{
       }
     }
     Debug.debug(sql, 2);
+    String sql1 = "";
+    if(table.equalsIgnoreCase("dataset")){
+      sql1 = "ALTER TABLE "+table+" ADD CONSTRAINT UNIQUE name";
+    }
     boolean execok = true;
     try{
       Debug.debug("Creating table. "+sql, 1);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
+      Debug.debug("Altering table. "+sql1, 1);
+      stmt = conn.createStatement();
+      stmt.executeUpdate(sql1);
     }
     catch(Exception e){
       execok = false;
@@ -229,7 +250,7 @@ public class HSQLDBDatabase implements Database{
 
   public synchronized String [] getOutputs(int jobDefID){
     String transformationID = "";
-    transformationID = getTransformationID(jobDefID);
+    transformationID = getJobDefTransformationID(jobDefID);
     // TODO: finish
     getTransformation(Integer.parseInt(transformationID)).getValue("outputs");
     // nothing for now
@@ -292,7 +313,7 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized String [] getTransformationRTEnvironments(int jobDefID){
-    String transformationID = getTransformationID(jobDefID);
+    String transformationID = getJobDefTransformationID(jobDefID);
     getTransformation(Integer.parseInt(transformationID)).getValue("uses");
     // nothing for now
     return new String [] {""};
@@ -300,7 +321,7 @@ public class HSQLDBDatabase implements Database{
 
   public synchronized String [] getTransformationArguments(int jobDefID){
     String transformationID = "";
-    transformationID = getTransformationID(jobDefID);
+    transformationID = getJobDefTransformationID(jobDefID);
     // TODO: finish
     getTransformation(Integer.parseInt(transformationID)).getValue("uses");
     // nothing for now
@@ -339,7 +360,7 @@ public class HSQLDBDatabase implements Database{
     return "";
   }
 
-  public synchronized String getTransformationID(int jobDefinitionID){
+  public synchronized String getJobDefTransformationID(int jobDefinitionID){
     DBRecord dataset = getDataset(getJobDefDatasetID(jobDefinitionID));
     String transformation = dataset.getValue("transformation").toString();
     String version = dataset.getValue("transVersion").toString();
@@ -554,6 +575,14 @@ public class HSQLDBDatabase implements Database{
      return task;
   }
   
+  public String getDatasetTransformationName(int datasetID){
+    return getDataset(datasetID).getValue("transformationName").toString();
+  }
+  
+  public String getDatasetTransformationVersion(int datasetID){
+    return getDataset(datasetID).getValue("transformationVersion").toString();
+  }
+
   public synchronized String getDatasetName(int datasetID){
     return getDataset(datasetID).getValue("name").toString();
   }
@@ -1016,6 +1045,12 @@ public class HSQLDBDatabase implements Database{
       }
     }
     sql += ") VALUES (";
+    Debug.debug("Checking fields. "+
+        datasetFieldTypes.keySet().size()+"\n"+
+        Util.arrayToString(datasetFieldTypes.keySet().toArray())+"\n"+
+        Util.arrayToString(datasetFieldTypes.values().toArray())+"\n"+
+        Util.arrayToString(datasetFields)+"\n"+
+        Util.arrayToString(fields), 3);
     for(int i=1; i<datasetFields.length; ++i){
       if(!nonMatchedFields.contains(new Integer(i))){
         if(!nonMatchedStr.equals("") &&
@@ -1036,6 +1071,24 @@ public class HSQLDBDatabase implements Database{
         else{
           values[i] = values[i].toString().replaceAll("\n","\\\\n");
           values[i] = "'"+values[i].toString()+"'";
+        }
+        // Set empty numeric fields to 0.
+        // Empty fields should not be allowed in central dataset catalogs,
+        // but here, locally, it should be ok.
+        Debug.debug("Value of  "+datasetFields[i]+": "+values[i], 3);
+        try{
+          if(fields[i]!=null && values[i].toString().equals("''") && 
+              (datasetFieldTypes.get(datasetFields[i]).toString().toLowerCase().startsWith("int") ||
+               datasetFieldTypes.get(datasetFields[i]).toString().toLowerCase().startsWith("bigint") ||
+               datasetFieldTypes.get(datasetFields[i]).toString().toLowerCase().startsWith("tinyint") ||
+               datasetFieldTypes.get(datasetFields[i]).toString().toLowerCase().startsWith("float"))){
+            Debug.debug("Fixing "+datasetFields[i]+":"+values[i]+
+                " - "+datasetFieldTypes.get(datasetFields[i]).toString().toLowerCase(), 3);
+            values[i] = "'0'";
+          }
+        }
+        catch(Exception e){
+          e.printStackTrace();
         }
         sql += values[i].toString();
         if(datasetFields.length>0 && i<datasetFields.length-1){

@@ -46,6 +46,8 @@ public interface Database{
   public boolean updateDataset(int datasetID, String [] fields, String [] values);
   public boolean deleteDataset(int datasetID, boolean cleanup);
   public DBRecord getDataset(int datasetID);
+  public String getDatasetTransformationName(int datasetID);
+  public String getDatasetTransformationVersion(int datasetID);
 
   // ####### Job definition table
   public DBRecord getJobDefinition(int jobDefID);
@@ -60,7 +62,7 @@ public interface Database{
   public String getJobDefUser(int jobDefID);
   public String getJobDefName(int jobDefID);
   public int getJobDefDatasetID(int jobDefID);
-  public String getTransformationID(int jobDefID);
+  public String getJobDefTransformationID(int jobDefID);
   public String getExtractScript(int jobDefID);
   public String getValidationScript(int jobDefID);
   public String getTransformationScript(int jobDefID);
@@ -137,7 +139,7 @@ public interface Database{
     public String[]    fields ;
     public Object[][]  values ;
   
-    public DBResult(int nrFields, int nrValues) {
+    public DBResult(int nrFields, int nrValues){
       fields = new String [nrFields];
       values = new String [nrValues][nrFields];
     }
@@ -147,7 +149,7 @@ public interface Database{
       values = _values ;
     }
   
-    public DBResult() {
+    public DBResult(){
       String [] f = {};
       String [] [] v = {};
       fields = f;
@@ -160,17 +162,25 @@ public interface Database{
       return values[row][column];
     }
 
-   public Object getValue(int row, String col) {
+   public Object getValue(int row, String col){
       if (row>values.length-1) return "no such row";
-      for (int i = 0 ; i < fields.length ; i++) {
+      for (int i=0 ; i<fields.length ; i++){
         if (col.equalsIgnoreCase(fields[i])) return values[row][i] ;
       }
       return "no such field" ;
     }
 
-   public boolean setValue(int row, String col, String value) {
+   public DBRecord getRow(int row){
+     DBRecord ret = new DBRecord();
+     if (row>values.length-1) return ret;
+     ret.fields = this.fields;
+     ret.values = this.values[row];
+     return ret;
+   }
+
+   public boolean setValue(int row, String col, String value){
      if (row>values.length-1) return false;
-     for (int i = 0 ; i < fields.length ; i++) {
+     for (int i=0 ; i<fields.length ; i++) {
        if (col.equalsIgnoreCase(fields[i])){
          values[row][i] = value;
          return true;

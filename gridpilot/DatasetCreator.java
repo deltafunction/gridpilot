@@ -57,11 +57,14 @@ public class DatasetCreator{
     if(targetDB!=null){   
       // this set is used to keep track of which fields were set to ""
       HashSet clearAttrs = new HashSet();
-      String transformationID = "";
+      String transformationName = "";
+      String transformationVersion = "";
       for(int j=0; j<cstAttrNames.length; ++j){
-        if(cstAttrNames[j].equalsIgnoreCase("transformationFK") ||
-            cstAttrNames[j].equalsIgnoreCase("transFK")){
-          transformationID = cstAttr[j];
+        if(cstAttrNames[j].equalsIgnoreCase("transformationName")){
+          transformationName = cstAttr[j];
+        }
+        else if(cstAttrNames[j].equalsIgnoreCase("transformationVersion")){
+          transformationVersion = cstAttr[j];
         }
       }
       for(int i=0; i<datasetIDs.length; ++i){     
@@ -77,7 +80,7 @@ public class DatasetCreator{
               resCstAttr[j] = dbPluginMgr.getTargetDatasetName(
                   targetDB,
                   dbPluginMgr.getDatasetName(datasetIDs[i]),
-                  transformationID);
+                  transformationName, transformationVersion);
             }
             else if(cstAttrNames[j].equalsIgnoreCase("runNumber")){
               resCstAttr[j] = dbPluginMgr.getRunNumber(datasetIDs[i]);

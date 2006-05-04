@@ -202,18 +202,9 @@ public class DBPluginMgr implements Database, PanelUtil{
    * from an input dataset.
    */ 
   public String getTargetDatasetName(String targetDB, String sourceDatasetName,
-      String transformationID){
+      String transformationName, String transformationVersion){
     Debug.debug("finding target dataset for "+sourceDatasetName+" in "+targetDB, 3);
-    
-    String version = "";
-    try{
-      version = getTransformation(Integer.parseInt(
-        transformationID)).getValue("version").toString();
-    }
-    catch(Exception e){
-      e.printStackTrace();
-    }
-    
+        
     String findString = "";
     String replaceString = "";
     Pattern p = null;
@@ -265,14 +256,14 @@ public class DBPluginMgr implements Database, PanelUtil{
 
     boolean matched = false;
     String ret1 = ret;
-    if(version!=null && !version.equals("")){
+    if(transformationVersion!=null && !transformationVersion.equals("")){
       // Change the version to match the transformation version
       s = "\\.v\\w*\\.\\w*$";
       p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
       m = p.matcher(ret);
       if(!matched){
         Debug.debug("replacing version", 3);
-        ret1 = m.replaceAll("."+version);
+        ret1 = m.replaceAll("."+transformationVersion);
         if(!ret.equals(ret1)){
           matched = true;
         }
@@ -282,7 +273,7 @@ public class DBPluginMgr implements Database, PanelUtil{
       m = p.matcher(ret);
       if(!matched){
         Debug.debug("replacing version", 3);
-        ret1 = m.replaceAll("."+version);
+        ret1 = m.replaceAll("."+transformationVersion);
         if(!ret.equals(ret1)){
           matched = true;
         }
@@ -292,7 +283,7 @@ public class DBPluginMgr implements Database, PanelUtil{
       m = p.matcher(ret);
       if(!matched){
         Debug.debug("replacing version", 3);
-        ret1 = m.replaceAll("."+version);
+        ret1 = m.replaceAll("."+transformationVersion);
         if(!ret.equals(ret1)){
           matched = true;
         }
@@ -810,12 +801,12 @@ public class DBPluginMgr implements Database, PanelUtil{
       return null;
   }
 
-  public synchronized String getTransformationID(final int jobDefID){
+  public synchronized String getJobDefTransformationID(final int jobDefID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
         try{
-          res = db.getTransformationID(jobDefID);
+          res = db.getJobDefTransformationID(jobDefID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -834,13 +825,61 @@ public class DBPluginMgr implements Database, PanelUtil{
       return null;
   }
 
+  public synchronized String getDatasetTransformationName(final int datasetID){
+    MyThread t = new MyThread(){
+      String res = null;
+      public void run(){
+        try{
+          res = db.getDatasetTransformationName(datasetID);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             datasetID, t);
+        }
+      }
+      public String getStringRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getDatasetTransformationName"))
+      return t.getStringRes();
+    else
+      return null;
+  }
+
+  public synchronized String getDatasetTransformationVersion(final int datasetID){
+    MyThread t = new MyThread(){
+      String res = null;
+      public void run(){
+        try{
+          res = db.getDatasetTransformationVersion(datasetID);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             datasetID, t);
+        }
+      }
+      public String getStringRes(){return res;}
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getDatasetTransformationVersion"))
+      return t.getStringRes();
+    else
+      return null;
+  }
+
   public synchronized String getTransformationValue(final int jobDefID, final String key){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
         try{
           res = db.getTransformation(
-              Integer.parseInt(db.getTransformationID(jobDefID))
+              Integer.parseInt(db.getJobDefTransformationID(jobDefID))
               ).getValue(key).toString();
         }
         catch(Throwable t){
@@ -1176,7 +1215,7 @@ public class DBPluginMgr implements Database, PanelUtil{
       vals[i] = "";
       for(int j=0; i<fields.length; ++j){
         if(fields[j].equalsIgnoreCase(jobDefFieldNames[i]) &&
-            !fields[j].equalsIgnoreCase(getIdentifier(dbName, "jobDefinition"))){
+            !fields[j].equalsIgnoreCase(getIdentifierField(dbName, "jobDefinition"))){
           vals[i] = values[j].toString();
           break;
         }
@@ -2032,7 +2071,7 @@ public class DBPluginMgr implements Database, PanelUtil{
     }
   }
   
-  public synchronized String getIdentifier(String dbName, String table){
+  public synchronized String getIdentifierField(String dbName, String table){
     String ret = configFile.getValue(dbName,
       table+" identifier");
     if(ret==null || ret.equals("")){
@@ -2045,13 +2084,26 @@ public class DBPluginMgr implements Database, PanelUtil{
   /**
    * Get the name of the column holding the name.
    */
-  public synchronized String getName(String dbName, String table){
+  public synchronized String getNameField(String dbName, String table){
     String ret = configFile.getValue(dbName,
       table+" name");
     if(ret==null || ret.equals("")){
       ret = "name";
     }
     Debug.debug("Name for "+dbName+" - "+table+" : "+ret, 2);
+    return ret;
+  }
+
+  /**
+   * Get the name of the column holding the version.
+   */
+  public synchronized String getVersionField(String dbName, String table){
+    String ret = configFile.getValue(dbName,
+      table+" version");
+    if(ret==null || ret.equals("")){
+      ret = "version";
+    }
+    Debug.debug("Version for "+dbName+" - "+table+" : "+ret, 2);
     return ret;
   }
 

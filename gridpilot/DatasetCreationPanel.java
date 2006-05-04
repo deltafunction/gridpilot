@@ -20,7 +20,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private JScrollPane spAttributes = new JScrollPane();
   private String datasetID = "-1";
   private String datasetIdentifier = "identifier";
-  private String transformationIdentifier = "identifier";
   private DBPanel panel;
   private Table table;
   private String [] cstAttributesNames;
@@ -31,9 +30,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private boolean editing = false;
   private DBPluginMgr dbPluginMgr = null;
   private static int TEXTFIELDWIDTH = 32;
-  private String transformation = "";
-  private String transformationFK = "-1";
-  private String version = "";
+  private String transformationName = "";
+  private String transformationVersion = "";
   private int [] datasetIDs = new int [] {-1};
   private JPanel pTransformation = new JPanel();
   private JPanel pTargetDBs = new JPanel();
@@ -58,10 +56,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
     table = panel.getTable();
     cstAttributesNames = dbPluginMgr.getFieldNames("dataset");
     cstAttr = new String[cstAttributesNames.length];
-    datasetIdentifier = dbPluginMgr.getIdentifier(
+    datasetIdentifier = dbPluginMgr.getIdentifierField(
        dbPluginMgr.getDBName(), "dataset");
-    transformationIdentifier = dbPluginMgr.getIdentifier(
-        dbPluginMgr.getDBName(), "transformation");
     transformations = dbPluginMgr.getTransformations();
     
     // Find identifier index
@@ -186,11 +182,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
         }
         Util.setJText(tcCstAttributes[i], cstAttr[i]);
       }
-      // when creating, zap loaded dataset id
       else{
-        if(cstAttr[i]!=null){
-          Util.setJText(tcCstAttributes[i], cstAttr[i]);
-        }
         if(!editing && !reuseTextFields ||
             tcCstAttributes[i]==null){
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
@@ -208,18 +200,30 @@ public class DatasetCreationPanel extends CreateEditPanel{
       Debug.debug("Adding cstAttributesNames["+i+"], "+cstAttributesNames[i]+
           " "+tcCstAttributes[i].getClass().toString(), 3);
       pAttributes.add(tcCstAttributes[i], cl);//,
+
+      // when creating, zap loaded dataset id
+      if(!editing && cstAttributesNames[i].equalsIgnoreCase(datasetIdentifier)){
+        Util.setJText((JComponent) tcCstAttributes[i], "");
+        Util.setJEditable(tcCstAttributes[i], false);
+      }
     }
-    if(!editing){
-      for(int i =0; i<tcCstAttributes.length; ++i){
-        if(cstAttributesNames[i].equalsIgnoreCase(datasetIdentifier) ||
-            cstAttributesNames[i].equalsIgnoreCase("transFK") ||
-            cstAttributesNames[i].equalsIgnoreCase("transformationFK")){
-          Util.setJText((JComponent) tcCstAttributes[i],"");
-          Util.setJEditable(tcCstAttributes[i], false);
+    
+    editDataset(Integer.parseInt(datasetID), transformationName, transformationVersion);
+    
+    for(int i =0; i<cstAttributesNames.length; ++i){
+      if(cstAttributesNames[i].equalsIgnoreCase("transformationName")){
+        Util.setJEditable(tcCstAttributes[i], false);
+        if(transformationName!=null && transformationName!=null){
+          cbTransformationSelection.setSelectedItem(transformationName);
+        }
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("transformationVersion")){
+        Util.setJEditable(tcCstAttributes[i], false);
+        if(transformationVersion!=null && cbTransVersionSelection!=null){
+          cbTransVersionSelection.setSelectedItem(transformationVersion);
         }
       }
     }
-    editDataset(Integer.parseInt(datasetID), transformation, version);
   }
 
   /*
@@ -228,8 +232,15 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private void setValuesInAttributePanel(String transformation,
       String version){
     
-    Debug.debug("Setting values...", 3);
+    Debug.debug("Setting values "+transformation+":"+version+":"+transformationName+":"+transformationVersion, 3);
 
+    if(transformation!=null && !transformation.equals("")){
+      transformationName = transformation;
+    }
+    if(version!=null && !version.equals("")){
+      transformationVersion = version;
+    }
+    
     for(int i =0; i<cstAttributesNames.length; ++i){
       if(cstAttributesNames[i].equalsIgnoreCase("jobXML") /*&& editing*/){
           tcCstAttributes[i].removeAll();
@@ -242,21 +253,13 @@ public class DatasetCreationPanel extends CreateEditPanel{
           cv.gridx = 0;
           cv.gridy = 0;
       }
-      else if(cstAttributesNames[i].equalsIgnoreCase("transFK")){
-        for(int j=0; j<transformations.values.length; ++j){
-          if(transformations.getValue(j, "name").toString().equalsIgnoreCase(transformation) &&
-              transformations.getValue(j, "version").toString().equalsIgnoreCase(version)){
-            Debug.debug("Setting transformation FK: "+
-                transformations.getValue(j, transformationIdentifier)+" "+
-                tcCstAttributes[i].getClass().toString(), 3);
-            Util.setJText(tcCstAttributes[i],
-                transformations.getValue(j, transformationIdentifier).toString());
-            break;
-          }
-        }
+      else if(transformationName!=null && !transformationName.equals("") &&
+          cstAttributesNames[i].equalsIgnoreCase("transformationName")){
+        Util.setJText(tcCstAttributes[i], transformationName);
       }
-      else if(cstAttributesNames[i].equalsIgnoreCase("transformationFK")){
-        Util.setJText(tcCstAttributes[i], transformationFK);
+      else if(transformationVersion!=null && !transformationVersion.equals("") &&
+          cstAttributesNames[i].equalsIgnoreCase("transformationVersion")){
+        Util.setJText(tcCstAttributes[i], transformationVersion);
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("targetDatabase")){
         // TODO
@@ -364,6 +367,14 @@ public class DatasetCreationPanel extends CreateEditPanel{
                 Debug.debug(cstAttributesNames[i].toString()+"="+dataset.fields[j]+". Setting to "+
                     dataset.values[j].toString(),3);
                 Util.setJText(tcCstAttributes[i], dataset.values[j].toString());
+                
+                if(cstAttributesNames[i].equalsIgnoreCase("transformationName")){
+                  transformationName = dataset.values[j].toString();
+                }
+                else if(cstAttributesNames[i].equalsIgnoreCase("transformationVersion")){
+                  transformationVersion = dataset.values[j].toString();
+                }
+
               }
               catch(java.lang.Exception e){
                 Debug.debug("Field not found or set, "+e.getMessage(),1);
@@ -373,8 +384,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
         }
         // make identifier and transformation foreign key inactive
         if(cstAttributesNames[i].equalsIgnoreCase(datasetIdentifier) ||
-              cstAttributesNames[i].equalsIgnoreCase("transFK") ||
-              cstAttributesNames[i].equalsIgnoreCase("transformationFK")){          
+              cstAttributesNames[i].equalsIgnoreCase("transformationName") ||
+              cstAttributesNames[i].equalsIgnoreCase("transformationVersion")){          
           if(!cstAttributesNames[i].equalsIgnoreCase(datasetIdentifier) ||
               datasetID!=-1){
             Util.setJEditable(tcCstAttributes[i], false);
@@ -440,9 +451,9 @@ public class DatasetCreationPanel extends CreateEditPanel{
       pTransformation.add(new JLabel("No transformations found."));
     }
     else if(transformations.length==1){
-      transformation = transformations[0];
-      pTransformation.add(new JLabel("Transformation:" + transformation));
-      initTransVersionPanel(datasetID, transformation);
+      transformationName = transformations[0];
+      pTransformation.add(new JLabel("Transformation:" + transformationName));
+      initTransVersionPanel(datasetID, transformationName);
     }
     else{
       cbTransformationSelection = new JComboBox();
@@ -484,9 +495,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
       pVersion.add(new JLabel("No versions found."));
     }
     else if(versions.length==1){
-      version = versions[0];
-      pVersion.add(new JLabel("Version:" + version));
-      editDataset(datasetID, transformation, version);
+      transformationVersion = versions[0];
+      pVersion.add(new JLabel(/*"Version : " +*/ transformationVersion));
+      //editDataset(datasetID, transformation, transformationVersion);
+      setValuesInAttributePanel(transformation, transformationVersion);
     }
     else{
       cbTransVersionSelection = new JComboBox();
@@ -496,7 +508,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
         cbTransVersionSelection.addItem(versions[i]);
       }
 
-      pVersion.add(new JLabel("Version:"), null);
+      //pVersion.add(new JLabel("Version : "), null);
       pVersion.add(cbTransVersionSelection, null);
 
       cbTransVersionSelection.addActionListener(
@@ -522,9 +534,9 @@ public class DatasetCreationPanel extends CreateEditPanel{
         return;
     }
     else{
-        transformation = cbTransformationSelection.getSelectedItem().toString();
+        transformationName = cbTransformationSelection.getSelectedItem().toString();
     }
-    initTransVersionPanel(Integer.parseInt(datasetID), transformation);
+    initTransVersionPanel(Integer.parseInt(datasetID), transformationName);
   }
 
   private void cbTransVersionSelection_actionPerformed(){
@@ -532,17 +544,9 @@ public class DatasetCreationPanel extends CreateEditPanel{
       return;
     }
     else{
-      version = cbTransVersionSelection.getSelectedItem().toString();
-      for(int j=0; j<transformations.values.length; ++j){
-        if(transformations.getValue(j, "name").toString().equalsIgnoreCase(transformation) &&
-            transformations.getValue(j, "version").toString().equalsIgnoreCase(version)){
-          transformationFK = transformations.getValue(j, transformationIdentifier).toString();
-          Debug.debug("Setting transformation FK: "+transformationFK, 3);
-          break;
-        }
-      }
+      transformationVersion = cbTransVersionSelection.getSelectedItem().toString();
     }
-    editDataset(Integer.parseInt(datasetID), transformation, version);
+    editDataset(Integer.parseInt(datasetID), transformationName, transformationVersion);
   }
 
   private Vector getFields(){
@@ -649,16 +653,16 @@ public class DatasetCreationPanel extends CreateEditPanel{
         }
       }
       // Get values from source dataset in question, excluding
-      // transformationFK and any other filled-in values.
+      // transformationName and any other filled-in values.
       // Construct name for new target dataset.
-      if(targetFields[j].equalsIgnoreCase("transformationFK") ||
-          targetFields[j].equalsIgnoreCase("transFK")){
+      if(targetFields[j].equalsIgnoreCase("transformationName") ||
+          targetFields[j].equalsIgnoreCase("transformationVersion")){
       }
       else if(targetFields[j].equalsIgnoreCase(
-          dbPluginMgr.getName(targetDB, "dataset"))){
+          dbPluginMgr.getNameField(targetDB, "dataset"))){
         targetAttr[j] = dbPluginMgr.getTargetDatasetName(
             targetDB, dbPluginMgr.getDatasetName(datasetIDs[0]),
-            transformationFK);
+            transformationName, transformationVersion);
       }
       //else if(targetFields[j].equalsIgnoreCase("runNumber")){
       //  targetAttr[j] = dbPluginMgr.getRunNumber(datasetIDs[0]);
@@ -718,8 +722,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
       if((cstAttributesNames[i].equalsIgnoreCase("runNumber") ||
           cstAttributesNames[i].equalsIgnoreCase("InputDataset") ||
           cstAttributesNames[i].equalsIgnoreCase("InputDB") ||
-          cstAttributesNames[i].equalsIgnoreCase("transformationFK") ||
-          cstAttributesNames[i].equalsIgnoreCase("transFK"))){         
+          cstAttributesNames[i].equalsIgnoreCase("transformationName") ||
+          cstAttributesNames[i].equalsIgnoreCase("transVersion"))){         
         try{
           Util.setJEditable(tcCstAttributes[i], false);
         }
