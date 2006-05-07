@@ -47,7 +47,8 @@ public class StatusBar extends JPanel {
     try{
       imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "wait.png");
       waitingIcon = new ImageIcon(imgURL);
-    }catch(Exception e){
+    }
+    catch(Exception e){
       Debug.debug("Could not find image "+ GridPilot.resourcesPath + "wait.png", 3);
       waitingIcon = new ImageIcon();
     }

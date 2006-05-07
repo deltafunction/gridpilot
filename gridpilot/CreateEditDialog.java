@@ -4,7 +4,7 @@ import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
 
-public class CreateEditDialog extends JFrame{
+public class CreateEditDialog extends GPFrame{
 
   private static final long serialVersionUID = 1L;
   private final int BCLOSE = 0;

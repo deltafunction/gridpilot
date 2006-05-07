@@ -222,6 +222,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
                                   "Choose script",
                                   finUrl,
                                   finBaseUrl,
+                                  true,
                                   true);
                 }
                 catch(Exception eee){

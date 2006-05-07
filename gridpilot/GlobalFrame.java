@@ -21,7 +21,7 @@ import gridpilot.IconProxy;
  * This frame contains tab, more can be added dynamically.
  */
 
-public class GlobalFrame extends JFrame{
+public class GlobalFrame extends GPFrame{
 
   private static final long serialVersionUID = 1L;
   private Vector allPanels;
@@ -44,20 +44,9 @@ public class GlobalFrame extends JFrame{
   public GlobalFrame() throws Exception{
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     allPanels = new Vector();
-    ImageIcon icon = null;
-    URL imgURL = null;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "Aviateur.png");
-      icon = new ImageIcon(imgURL);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "Aviateur.png", 3);
-      icon = new ImageIcon();
-    }
-    setIconImage(icon.getImage());
   }
 
-  /**
+/**
    * GUI initialisation
    */
 
@@ -65,7 +54,7 @@ public class GlobalFrame extends JFrame{
     /**
      * Called by : this.GlobalFrame();
      */
-    
+
     container.setLayout(new BorderLayout());
     
     GridPilot.getClassMgr().setStatusBar(new StatusBar());
@@ -224,7 +213,7 @@ public class GlobalFrame extends JFrame{
       return;
     } 
     try{
-      new WebBox(this, "About", aboutURL.toExternalForm(), "", false);
+      new WebBox(this, "About", aboutURL.toExternalForm(), "", false, false);
     }
     catch(Exception e){
       Debug.debug("WARNING: could not create WebBox", 1);

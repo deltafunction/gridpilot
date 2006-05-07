@@ -7,7 +7,6 @@ import javax.swing.event.HyperlinkListener;
 
 import java.awt.*;
 import java.io.File;
-import java.net.URL;
 import java.util.*;
 
 import javax.swing.text.*;
@@ -95,19 +94,6 @@ public class RuntimeCreationPanel extends CreateEditPanel{
     
     spAttributes.setPreferredSize(new Dimension(600, 500));
     spAttributes.setMinimumSize(new Dimension(600, 500));
-    
-    ImageIcon icon = null;
-    URL imgURL = null;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "Aviateur.png");
-      icon = new ImageIcon(imgURL);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "Aviateur.png", 3);
-      icon = new ImageIcon();
-    }   
-    Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
-    frame.setIconImage(icon.getImage());
     
     setLayout(new GridBagLayout());
     removeAll();
@@ -218,6 +204,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
                        "Choose script",
                        finUrl,
                        finBaseUrl,
+                       true,
                        true);
                 }
                 catch(Exception ee){
