@@ -203,7 +203,8 @@ public class DBPluginMgr implements Database, PanelUtil{
    */ 
   public String getTargetDatasetName(String targetDB, String sourceDatasetName,
       String transformationName, String transformationVersion){
-    Debug.debug("finding target dataset for "+sourceDatasetName+" in "+targetDB, 3);
+    Debug.debug("finding target dataset name for "+sourceDatasetName+" in "+targetDB+
+        " with tranformation "+transformationName, 3);
         
     String findString = "";
     String replaceString = "";
@@ -211,23 +212,23 @@ public class DBPluginMgr implements Database, PanelUtil{
     Matcher m = null;
     String s = "";
     String ret = "";
-    if(targetDB!=null){
+    if(transformationName!=null){
       // TODO: make these patterns configurable
-      s = ".*simulation.*";
+      s = ".*g4sim.*";
       p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
-      m = p.matcher(targetDB);
+      m = p.matcher(transformationName);
       if(m.matches()){
         replaceString = "SimProd";
       }
-      s = ".*digitization.*";
+      s = ".*g4digit.*";
       p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
-      m = p.matcher(targetDB);
+      m = p.matcher(transformationName);
       if(m.matches()){
         replaceString = "DigitProd";
       }
       s = ".*reconstruction.*";
       p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
-      m = p.matcher(targetDB);
+      m = p.matcher(transformationName);
       if(m.matches()){
         replaceString = "ReconProd";
       }
@@ -238,11 +239,13 @@ public class DBPluginMgr implements Database, PanelUtil{
       
       findString = "DigitProd"; 
       Debug.debug("replacing "+findString+" -> "+replaceString, 3);
-      ret = sourceDatasetName.replaceFirst(findString, replaceString);
+      ret = ret.replaceFirst(findString, replaceString);
       
       findString = "ReconProd";  
       Debug.debug("replacing "+findString+" -> "+replaceString, 3);
-      ret = sourceDatasetName.replaceFirst(findString, replaceString);
+      ret = ret.replaceFirst(findString, replaceString);
+      
+      Debug.debug("String now "+ret, 3);
     }
     else{
       ret = sourceDatasetName;
@@ -2114,6 +2117,28 @@ public class DBPluginMgr implements Database, PanelUtil{
       ret = new String [] {"name", "datasetName"};
     }
     Debug.debug("jobDef dataset reference for "+dbName
+        +" : "+Util.arrayToString(ret), 2);
+    return ret;
+  }
+
+  public synchronized String [] getDatasetTransformationReference(String dbName){
+    String [] ret = configFile.getValues(dbName,
+      "dataset transformation reference");
+    if(ret==null || ret.length<2){
+      ret = new String [] {"name", "transformationName"};
+    }
+    Debug.debug("dataset transformation reference for "+dbName
+        +" : "+Util.arrayToString(ret), 2);
+    return ret;
+  }
+
+  public synchronized String [] getDatasetTransformationVersionReference(String dbName){
+    String [] ret = configFile.getValues(dbName,
+      "dataset transformation version reference");
+    if(ret==null || ret.length<2){
+      ret = new String [] {"version", "transformationVersion"};
+    }
+    Debug.debug("dataset transformation version reference for "+dbName
         +" : "+Util.arrayToString(ret), 2);
     return ret;
   }
