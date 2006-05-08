@@ -160,31 +160,34 @@ public class HSQLDBDatabase implements Database{
       sql += " "+fieldTypes[i];
     }
     sql += ")";
-    for(int i=0; i<fields.length; ++i){
-      if(fields[i].equalsIgnoreCase("name")){
-        sql += ", UNIQUE (name)";
-        break;
-      }
-    }
     Debug.debug(sql, 2);
-    String sql1 = "";
-    if(table.equalsIgnoreCase("dataset")){
-      sql1 = "ALTER TABLE "+table+" ADD CONSTRAINT UNIQUE name";
-    }
     boolean execok = true;
     try{
       Debug.debug("Creating table. "+sql, 1);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
-      Debug.debug("Altering table. "+sql1, 1);
-      stmt = conn.createStatement();
-      stmt.executeUpdate(sql1);
     }
     catch(Exception e){
       execok = false;
       Debug.debug(e.getMessage(), 2);
       e.printStackTrace();
       error = e.getMessage();
+    }
+    String sql1 = "";
+    if(table.equalsIgnoreCase("dataset")){
+      sql1 = "ALTER TABLE "+table+" ADD UNIQUE (name)";
+      try{
+        Statement stmt = conn.createStatement();
+        Debug.debug("Altering table. "+sql1, 1);
+        stmt = conn.createStatement();
+        stmt.executeUpdate(sql1);
+      }
+      catch(Exception e){
+        execok = false;
+        Debug.debug(e.getMessage(), 2);
+        e.printStackTrace();
+        error = e.getMessage();
+      }
     }
     return execok;
   }
@@ -465,7 +468,7 @@ public class HSQLDBDatabase implements Database{
       ResultSet rset = stmt.executeQuery(req);
       ResultSetMetaData md = rset.getMetaData();
       String[] fields = new String[md.getColumnCount()];
-      //find out how many rows..
+      //find out how many rows
       int i=0;
       while(rset.next()){
         i++;
@@ -522,8 +525,6 @@ public class HSQLDBDatabase implements Database{
       return new DBResult();
     }
   }
-
-////////////////////////////////////////////////////////////
   
   public synchronized DBRecord getDataset(int datasetID){
     
@@ -552,7 +553,7 @@ public class HSQLDBDatabase implements Database{
           else{
             values[i] = rset.getString(datasetFields[i]);
           }
-          Debug.debug(datasetFields[i]+"-->"+values[i], 2);
+          Debug.debug(datasetFields[i]+"-->"+values[i], 3);
         }
         DBRecord jobd = new DBRecord(datasetFields, values);
         taskVector.add(jobd);
@@ -974,12 +975,16 @@ public class HSQLDBDatabase implements Database{
         sql += ",";
       }
     }
-    //sql += ",lastAttempt";
     sql += ") VALUES (";
     for(int i = 1; i < jobDefFields.length; ++i){
       
       if(jobDefFields[i].equalsIgnoreCase("created")){
-        values[i] = makeDate(values[i]);
+        try{
+          values[i] = makeDate(values[i].toString());
+        }
+        catch(Exception e){
+          values[i] = makeDate("");
+        }
       }
       else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
         values[i] = makeDate("");
@@ -1015,7 +1020,11 @@ public class HSQLDBDatabase implements Database{
   }
   
   public synchronized boolean createDataset(String table,
-      String [] fields, Object [] values){
+      String [] fields, Object [] _values){
+    Object [] values = new Object [_values.length];
+    for(int i=0; i<values.length; ++i){
+      values[i] = _values[i];
+    }
     String nonMatchedStr = "";
     Vector nonMatchedFields = new Vector();
     boolean match = false;
@@ -1279,7 +1288,12 @@ public class HSQLDBDatabase implements Database{
           // only add if present in transformationFields
           if(jobDefFields[i].equalsIgnoreCase(fields[j])){
             if(jobDefFields[i].equalsIgnoreCase("created")){
-              values[i] = makeDate(values[i]);
+              try{
+                values[i] = makeDate(values[i].toString());
+              }
+              catch(Exception e){
+                values[i] = makeDate("");
+              }
             }
             else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
               values[i] = makeDate("");
@@ -1345,7 +1359,12 @@ public class HSQLDBDatabase implements Database{
           // only add if present in datasetFields
           if(datasetFields[i].equalsIgnoreCase(fields[j])){
             if(datasetFields[i].equalsIgnoreCase("created")){
-              values[i] = makeDate(values[i]);
+              try{
+                values[i] = makeDate(values[i].toString());
+              }
+              catch(Exception e){
+                values[i] = makeDate("");
+              }
             }
             else if(datasetFields[i].equalsIgnoreCase("lastModified")){
               values[i] = makeDate("");
@@ -1407,7 +1426,12 @@ public class HSQLDBDatabase implements Database{
           // only add if present in transformationFields
           if(transformationFields[i].equalsIgnoreCase(fields[j])){
             if(transformationFields[i].equalsIgnoreCase("created")){
-              values[i] = makeDate(values[i]);
+              try{
+                values[i] = makeDate(values[i].toString());
+              }
+              catch(Exception e){
+                values[i] = makeDate("");
+              }
             }
             else if(transformationFields[i].equalsIgnoreCase("lastModified")){
               values[i] = makeDate("");
@@ -1469,7 +1493,12 @@ public class HSQLDBDatabase implements Database{
           // only add if present in runtimeEnvironmentFields
           if(runtimeEnvironmentFields[i].equalsIgnoreCase(fields[j])){
             if(runtimeEnvironmentFields[i].equalsIgnoreCase("created")){
-              values[i] = makeDate(values[i]);
+              try{
+                values[i] = makeDate(values[i].toString());
+              }
+              catch(Exception e){
+                values[i] = makeDate("");
+              }
             }
             else if(runtimeEnvironmentFields[i].equalsIgnoreCase("lastModified")){
               values[i] = makeDate("");
@@ -1509,8 +1538,6 @@ public class HSQLDBDatabase implements Database{
   public synchronized boolean deleteJobDefinition(int jobDefId){
     boolean ok = true;
     try{
-      //String idstr = jobDef.jobDefinitionID;
-      //Integer jobid = Integer.valueOf(idstr);
       String sql = "DELETE FROM jobDefinition WHERE identifier = '"+
       jobDefId+"'";
       Statement stmt = conn.createStatement();
@@ -1646,11 +1673,10 @@ public class HSQLDBDatabase implements Database{
     try{
       SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
       String dateString = "";
-      if(dateInput == null || dateInput.equals("")){
+      if(dateInput == null || dateInput.equals("") || dateInput.equals("''")){
         dateString = df.format(Calendar.getInstance().getTime());
       }
       else{
-        df = new SimpleDateFormat("yyyy-MM-dd");
         java.util.Date date = df.parse(dateInput);
         dateString = df.format(date);
       }
