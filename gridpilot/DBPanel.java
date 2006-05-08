@@ -78,7 +78,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private SubmissionControl submissionControl;
   
   private boolean clipboardOwned = false;
-  private boolean cutting = false;
   
   private JMenuItem menuEditCopy = null;
   private JMenuItem menuEditCut = null;
@@ -1452,13 +1451,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     clipboard.setContents(stringSelection, this);
     clipboardOwned = true;
     menuEditPaste.setEnabled(true);
-    cutting = false;
+    GridPilot.getClassMgr().getGlobalFrame().cutting = false;
   }
   
   public void cut(){
     Debug.debug("Cutting!", 3);
     copy();
-    cutting = true;
+    GridPilot.getClassMgr().getGlobalFrame().cutting = true;
+    GridPilot.getClassMgr().getGlobalFrame().cutPanel = this;
   }
   
   public void paste(){
@@ -1482,7 +1482,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     // If records were inserted in target table and we're cutting,
     // delete source records
-    if(cutting){
+    if(GridPilot.getClassMgr().getGlobalFrame().cutting){
       Debug.debug("Deleting "+(records.length-2)+" rows", 2);
       GridPilot.getClassMgr().getStatusBar().setLabel(
       "Deleting job definition(s). Please wait ...");
@@ -1494,7 +1494,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               Integer.parseInt(records[i]));
         }
         catch(Exception e){
-          String msg = "Deleting record "+(i-2)+" failed";
+          String msg = "Deleting record "+(i-2)+" failed. "+
+             GridPilot.getClassMgr().getDBPluginMgr(records[0]).getError();
           Debug.debug(msg, 1);
           GridPilot.getClassMgr().getStatusBar().setLabel(msg);
           GridPilot.getClassMgr().getLogFile().addMessage(msg);
@@ -1505,8 +1506,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       GridPilot.getClassMgr().getStatusBar().setLabel(
          "Deleting job definition(s) done.");
     }
-    cutting = false;
+    GridPilot.getClassMgr().getGlobalFrame().cutting = false;
     refresh();
+    try{
+      ((DBPanel) GridPilot.getClassMgr().getGlobalFrame().cutPanel).refresh();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
   }
   
   public void insertRecord(String sourceDB, String sourceTable,
@@ -1600,6 +1607,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       DBPluginMgr targetMgr) throws Exception{
     try{
       boolean ok = false;
+      boolean success = true;
       try{
         // Check if referenced transformation exists
         
@@ -1635,7 +1643,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       if(ok){
         Debug.debug("Creating dataset: " + Util.arrayToString(dataset.fields, ":") + " ---> " +
             Util.arrayToString(dataset.values, ":"), 3);
-        targetMgr.createDataset("dataset", dataset.fields, dataset.values);
+        success = targetMgr.createDataset("dataset", dataset.fields, dataset.values);
+        if(!success){
+          throw(new Exception("ERROR: "+targetMgr.getError()));
+        }
       }
       else{
         throw(new Exception("ERROR: Transformation for dataset does not exist."));

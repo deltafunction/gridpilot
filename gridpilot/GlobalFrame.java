@@ -36,6 +36,9 @@ public class GlobalFrame extends GPFrame{
   public JMenuItem menuEditCopy = new JMenuItem("Copy (ctrl c)");
   public JMenuItem menuEditCut = new JMenuItem("Cut (ctrl x)");
   public JMenuItem menuEditPaste = new JMenuItem("Paste (ctrl v)");
+  // keep track of whether or not we are cutting on the sub-panels
+  public boolean cutting = false;
+  public ListPanel cutPanel = null;
 
   
   /**
@@ -85,7 +88,7 @@ public class GlobalFrame extends GPFrame{
     */
    tabbedPane.addMouseListener(new MouseAdapter(){
      public void mouseReleased(MouseEvent evt){
-       if (tabbedPane.getTabCount() == 0 || tabbedPane.getSelectedIndex() < 0){
+       if (tabbedPane.getTabCount()==0 || tabbedPane.getSelectedIndex()<0){
          return;
        }
 
