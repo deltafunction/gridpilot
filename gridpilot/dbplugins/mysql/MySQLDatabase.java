@@ -21,8 +21,6 @@ import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.JobInfo;
 import gridpilot.Util;
-//import gridpilot.Database.DBRecord;
-//import gridpilot.Database.DBResult;
 
 public class MySQLDatabase implements Database{
   
@@ -499,8 +497,6 @@ public class MySQLDatabase implements Database{
       return new DBResult();
     }
   }
-
-////////////////////////////////////////////////////////////
   
   public synchronized DBRecord getDataset(int datasetID){
     
@@ -937,44 +933,37 @@ public class MySQLDatabase implements Database{
   
   public synchronized boolean createJobDefinition(String [] values){
     
-    String [] fields = getFieldNames("jobDefintion");
-    
-    if(fields.length!=values.length){
+    if(jobDefFields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
-          fields.length+"!="+values.length, 1);
+          jobDefFields.length+"!="+values.length, 1);
       return false;
     }
 
     String sql = "INSERT INTO jobDefinition (";
-    for(int i = 1; i < fields.length; ++i){
-      sql += fields[i];
-      if(fields.length > 2 && i < fields.length - 1){
+    for(int i=1; i<jobDefFields.length; ++i){
+      sql += jobDefFields[i];
+      if(jobDefFields.length>2 && i<jobDefFields.length-1){
         sql += ",";
       }
     }
-    //sql += ",lastAttempt";
     sql += ") VALUES (";
-    for(int i = 1; i < fields.length; ++i){
-      
-      if(fields[i].equalsIgnoreCase("creationTime") ||
-          fields[i].equalsIgnoreCase("modificationTime")){
+    for(int i=1; i<jobDefFields.length; ++i){     
+      if(jobDefFields[i].equalsIgnoreCase("created")){
         try{
-          SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-          java.util.Date date = df.parse(values[i]);
-          String dateString = df.format(date);
-          values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
+          values[i] = makeDate(values[i].toString());
         }
-        catch(Throwable e){
-          Debug.debug("Could not set date. "+e.getMessage(), 1);
-          e.printStackTrace();
+        catch(Exception e){
+          values[i] = makeDate("");
         }
+      }
+      else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
+        values[i] = makeDate("");
       }
       else{
         values[i] = "'"+values[i]+"'";
-      }
-      
+      }     
       sql += values[i];
-      if(fields.length > 1 && i < fields.length - 1){
+      if(jobDefFields.length>1 && i<jobDefFields.length-1){
         sql += ",";
       }
     }
@@ -999,7 +988,11 @@ public class MySQLDatabase implements Database{
   }
   
   public synchronized boolean createDataset(String table,
-      String [] fields, Object [] values){ 
+      String [] fields, Object [] _values){ 
+    Object [] values = new Object [_values.length];
+    for(int i=0; i<values.length; ++i){
+      values[i] = _values[i];
+    }
     String nonMatchedStr = "";
     Vector nonMatchedFields = new Vector();
     boolean match = false;
@@ -1035,18 +1028,16 @@ public class MySQLDatabase implements Database{
             datasetFields[i].equalsIgnoreCase("comment")){
           values[i] = nonMatchedStr;
         }
-        if(datasetFields[i].equalsIgnoreCase("creationTime") ||
-            datasetFields[i].equalsIgnoreCase("modificationTime")){
+        if(datasetFields[i].equalsIgnoreCase("created")){
           try{
-            SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            java.util.Date date = df.parse(values[i].toString());
-            String dateString = df.format(date);
-            values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
+            values[i] = makeDate(values[i].toString());
           }
-          catch(Throwable e){
-            Debug.debug("Could not set date. "+e.getMessage(), 1);
-            e.printStackTrace();
+          catch(Exception e){
+            values[i] = makeDate("");
           }
+        }
+        else if(datasetFields[i].equalsIgnoreCase("lastModified")){
+          values[i] = makeDate("");
         }
         else{
           values[i] = values[i].toString().replaceAll("\n","\\\\n");
@@ -1084,19 +1075,16 @@ public class MySQLDatabase implements Database{
     }
     sql += ") VALUES (";
     for(int i=1; i<transformationFields.length; ++i){
-      
-      if(transformationFields[i].equalsIgnoreCase("creationTime") ||
-          transformationFields[i].equalsIgnoreCase("modificationTime")){
+      if(transformationFields[i].equalsIgnoreCase("created")){
         try{
-          SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-          java.util.Date date = df.parse(values[i].toString());
-          String dateString = df.format(date);
-          values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
+          values[i] = makeDate(values[i].toString());
         }
-        catch(Throwable e){
-          Debug.debug("Could not set date. "+e.getMessage(), 1);
-          e.printStackTrace();
+        catch(Exception e){
+          values[i] = makeDate("");
         }
+      }
+      else if(transformationFields[i].equalsIgnoreCase("lastModified")){
+        values[i] = makeDate("");
       }
       else{
         values[i] = "'"+values[i].toString()+"'";
@@ -1133,19 +1121,16 @@ public class MySQLDatabase implements Database{
       }
       sql += ") VALUES (";
       for(int i=1; i<runtimeEnvironmentFields.length; ++i){
-        
-        if(runtimeEnvironmentFields[i].equalsIgnoreCase("creationTime") ||
-            runtimeEnvironmentFields[i].equalsIgnoreCase("modificationTime")){
+        if(runtimeEnvironmentFields[i].equalsIgnoreCase("created")){
           try{
-            SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            java.util.Date date = df.parse(values[i].toString());
-            String dateString = df.format(date);
-            values[i] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
+            values[i] = makeDate(values[i].toString());
           }
-          catch(Throwable e){
-            Debug.debug("Could not set date. "+e.getMessage(), 1);
-            e.printStackTrace();
+          catch(Exception e){
+            values[i] = makeDate("");
           }
+        }
+        else if(runtimeEnvironmentFields[i].equalsIgnoreCase("lastModified")){
+          values[i] = makeDate("");
         }
         else{
           values[i] = "'"+values[i].toString()+"'";
@@ -1242,25 +1227,16 @@ public class MySQLDatabase implements Database{
         for(int j=0; j<fields.length; ++j){
           // only add if present in transformationFields
           if(jobDefFields[i].equalsIgnoreCase(fields[j])){
-
-            if(jobDefFields[i].equalsIgnoreCase("creationTime") ||
-                jobDefFields[i].equalsIgnoreCase("modificationTime")){
+            if(jobDefFields[i].equalsIgnoreCase("created")){
               try{
-                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                String dateString = null;
-                if(jobDefFields[i].equalsIgnoreCase("modificationTime")){
-                  dateString = df.format(Calendar.getInstance().getTime());
-                }
-                if(jobDefFields[i].equalsIgnoreCase("creationTime")){
-                  java.util.Date date = df.parse(values[j]);
-                  dateString = df.format(date);
-                }
-                values[j] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
+                values[j] = makeDate(values[j].toString());
               }
-              catch(Throwable e){
-                Debug.debug("Could not set date. "+e.getMessage(), 1);
-                e.printStackTrace();
+              catch(Exception e){
+                values[j] = makeDate("");
               }
+            }
+            else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
+              values[j] = makeDate("");
             }
             else{
               values[j] = "'"+values[j]+"'";
@@ -1321,19 +1297,16 @@ public class MySQLDatabase implements Database{
         for(int j=0; j<fields.length; ++j){
           // only add if present in datasetFields
           if(datasetFields[i].equalsIgnoreCase(fields[j])){
-            
-            if(datasetFields[i].equalsIgnoreCase("creationTime") ||
-                datasetFields[i].equalsIgnoreCase("modificationTime")){
+            if(datasetFields[i].equalsIgnoreCase("created")){
               try{
-                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                java.util.Date date = df.parse(values[j]);
-                String dateString = df.format(date);
-                values[j] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
+                values[j] = makeDate(values[j].toString());
               }
-              catch(Throwable e){
-                Debug.debug("Could not set date. "+e.getMessage(), 1);
-                e.printStackTrace();
+              catch(Exception e){
+                values[j] = makeDate("");
               }
+            }
+            else if(datasetFields[i].equalsIgnoreCase("lastModified")){
+              values[j] = makeDate("");
             }
             else{
               values[j] = "'"+values[j]+"'";
@@ -1391,19 +1364,16 @@ public class MySQLDatabase implements Database{
         for(int j=0; j<fields.length; ++j){
           // only add if present in transformationFields
           if(transformationFields[i].equalsIgnoreCase(fields[j])){
-            
-            if(transformationFields[i].equalsIgnoreCase("creationTime") ||
-                transformationFields[i].equalsIgnoreCase("modificationTime")){
+            if(transformationFields[i].equalsIgnoreCase("created")){
               try{
-                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                java.util.Date date = df.parse(values[j]);
-                String dateString = df.format(date);
-                values[j] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
+                values[j] = makeDate(values[j].toString());
               }
-              catch(Throwable e){
-                Debug.debug("Could not set date. "+e.getMessage(), 1);
-                e.printStackTrace();
+              catch(Exception e){
+                values[j] = makeDate("");
               }
+            }
+            else if(transformationFields[i].equalsIgnoreCase("lastModified")){
+              values[j] = makeDate("");
             }
             else{
               values[j] = "'"+values[j]+"'";
@@ -1461,19 +1431,16 @@ public class MySQLDatabase implements Database{
         for(int j=0; j<fields.length; ++j){
           // only add if present in runtimeEnvironmentFields
           if(runtimeEnvironmentFields[i].equalsIgnoreCase(fields[j])){
-            
-            if(runtimeEnvironmentFields[i].equalsIgnoreCase("creationTime") ||
-                runtimeEnvironmentFields[i].equalsIgnoreCase("modificationTime")){
+            if(runtimeEnvironmentFields[i].equalsIgnoreCase("created")){
               try{
-                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                java.util.Date date = df.parse(values[j]);
-                String dateString = df.format(date);
-                values[j] = "TO_DATE('"+dateString+"', 'YYYY-MM-DD HH24:MI:SS')";
+                values[j] = makeDate(values[j].toString());
               }
-              catch(Throwable e){
-                Debug.debug("Could not set date. "+e.getMessage(), 1);
-                e.printStackTrace();
+              catch(Exception e){
+                values[j] = makeDate("");
               }
+            }
+            else if(runtimeEnvironmentFields[i].equalsIgnoreCase("lastModified")){
+              values[j] = makeDate("");
             }
             else{
               values[j] = "'"+values[j]+"'";
@@ -1510,8 +1477,6 @@ public class MySQLDatabase implements Database{
   public synchronized boolean deleteJobDefinition(int jobDefId){
     boolean ok = true;
     try{
-      //String idstr = jobDef.jobDefinitionID;
-      //Integer jobid = Integer.valueOf(idstr);
       String sql = "DELETE FROM jobDefinition WHERE identifier = '"+
       jobDefId+"'";
       Statement stmt = conn.createStatement();
@@ -1641,6 +1606,26 @@ public class MySQLDatabase implements Database{
 
     public synchronized String getError(){
       return error;
+    }
+
+    private String makeDate(String dateInput){
+      try{
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String dateString = "";
+        if(dateInput == null || dateInput.equals("") || dateInput.equals("''")){
+          dateString = df.format(Calendar.getInstance().getTime());
+        }
+        else{
+          java.util.Date date = df.parse(dateInput);
+          dateString = df.format(date);
+        }
+        return "'"+dateString+"'";
+      }
+      catch(Throwable e){
+        Debug.debug("Could not set date. "+e.getMessage(), 1);
+        e.printStackTrace();
+        return dateInput;
+      }
     }
 
 }
