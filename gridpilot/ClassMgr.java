@@ -21,7 +21,7 @@ public class ClassMgr{
   private int debugLevel = 3;
   private HashMap dbMgts = new HashMap();
   private CSPluginMgr csPluginMgr;
-  private HashMap taskMgrs = new HashMap();
+  private HashMap datasetMgrs = new HashMap();
   private Vector submittedJobs = new Vector();
   private SubmissionControl submissionControl;
 
@@ -101,25 +101,25 @@ public class ClassMgr{
   // This method creates a new DatasetMgr if there is
   // none in the HashMap with keys dbName, taskID
   public DatasetMgr getDatasetMgr(String dbName, int taskID){
-    if(taskMgrs==null){
-      Debug.debug("taskMgrs null", 3);
+    if(datasetMgrs==null){
+      Debug.debug("datasetMgrs null", 3);
     }
-    if(!taskMgrs.keySet().contains(dbName)){
-      taskMgrs.put(dbName, new HashMap());
+    if(!datasetMgrs.keySet().contains(dbName)){
+      datasetMgrs.put(dbName, new HashMap());
     }
-    if(!((HashMap) taskMgrs.get(dbName)).keySet().contains(Integer.toString(taskID))){
+    if(!((HashMap) datasetMgrs.get(dbName)).keySet().contains(Integer.toString(taskID))){
       Debug.debug("Creating new DatasetMgr, "+taskID+", in "+dbName, 3);
       addTaskMgr(new DatasetMgr(dbName, taskID));
     }
-    return (DatasetMgr) ((HashMap) taskMgrs.get(dbName)).get(Integer.toString(taskID));
+    return (DatasetMgr) ((HashMap) datasetMgrs.get(dbName)).get(Integer.toString(taskID));
   }
   
   public Vector getDatasetMgrs(){
-    if(taskMgrs==null){
-      Debug.debug("taskMgrs null", 3);
+    if(datasetMgrs==null){
+      Debug.debug("datasetMgrs null", 3);
     }
     Vector allTaskMgrs = new Vector();
-    for(Iterator it=taskMgrs.values().iterator(); it.hasNext();){
+    for(Iterator it=datasetMgrs.values().iterator(); it.hasNext();){
       allTaskMgrs.addAll(((HashMap) it.next()).values());
     }
     return allTaskMgrs;
@@ -127,14 +127,14 @@ public class ClassMgr{
   
   // The HashMap of HashMaps of tasks is kept here
   public void addTaskMgr(DatasetMgr taskMgr){
-    if(taskMgrs==null){
-      Debug.debug("taskMgrs null", 3);
+    if(datasetMgrs==null){
+      Debug.debug("datasetMgrs null", 3);
       new Exception().printStackTrace();
     }
-    if(!taskMgrs.keySet().contains(taskMgr.dbName)){
-      taskMgrs.put(taskMgr.dbName, new HashMap());
+    if(!datasetMgrs.keySet().contains(taskMgr.dbName)){
+      datasetMgrs.put(taskMgr.dbName, new HashMap());
     }
-    ((HashMap) taskMgrs.get(taskMgr.dbName)
+    ((HashMap) datasetMgrs.get(taskMgr.dbName)
         ).put(Integer.toString(taskMgr.getDatasetID()), taskMgr);
   }
 
