@@ -2107,13 +2107,14 @@ public class DBPluginMgr implements Database, PanelUtil{
     return ret;
   }
 
-  public synchronized String getJobDefDatasetFK(String dbName){
-    String ret = configFile.getValue(dbName,
-      "jobDefinition dataset FK");
-    if(ret==null || ret.equals("")){
-      ret = "datasetFK";
+  public synchronized String [] getJobDefDatasetReference(String dbName){
+    String [] ret = configFile.getValues(dbName,
+      "jobDefinition dataset reference");
+    if(ret==null || ret.length<2){
+      ret = new String [] {"name", "datasetName"};
     }
-    Debug.debug("jobDef dataset FK for "+dbName+" : "+ret, 2);
+    Debug.debug("jobDef dataset reference for "+dbName
+        +" : "+Util.arrayToString(ret), 2);
     return ret;
   }
 

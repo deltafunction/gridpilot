@@ -1377,9 +1377,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             int id = getSelectedIdentifier();
             DBPanel dbPanel = new DBPanel("jobDefinition",
                 dbPluginMgr, id);
-            dbPanel.selectPanel.setConstraint(
-                dbPluginMgr.getJobDefDatasetFK(dbName),
-                Integer.toString(id), 0);
+            String [] jobDefDatasetReference =
+              dbPluginMgr.getJobDefDatasetReference(dbName);
+            dbPanel.selectPanel.setConstraint(jobDefDatasetReference[1],
+                dbPluginMgr.getDataset(id).getValue(
+                    jobDefDatasetReference[0]).toString(),
+                0);
             dbPanel.searchRequest();           
             GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                   
           }
