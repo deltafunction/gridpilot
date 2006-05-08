@@ -427,11 +427,11 @@ public class MySQLDatabase implements Database{
       }
     }
     
-    patt = Pattern.compile("CONTAINS (\\w+)", Pattern.CASE_INSENSITIVE);
+    patt = Pattern.compile("CONTAINS (\\S+)", Pattern.CASE_INSENSITIVE);
     matcher = patt.matcher(req);
     req = matcher.replaceAll("LIKE '%$1%'");
     
-    patt = Pattern.compile("([<>=]) (\\w+)", Pattern.CASE_INSENSITIVE);
+    patt = Pattern.compile("([<>=]) (\\S+)", Pattern.CASE_INSENSITIVE);
     matcher = patt.matcher(req);
     req = matcher.replaceAll("$1 '$2'");
     
