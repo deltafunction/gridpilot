@@ -177,6 +177,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
   private JEditorPane createCheckPanel(
       final String name, final JTextComponent jt,
       final DBPluginMgr dbPluginMgr){
+    final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
     String markup = "<b>"+name+" : </b><br>"+
       "<a href=\"http://check/\">check</a>";
     JEditorPane checkPanel = new JEditorPane("text/html", markup);
@@ -218,7 +219,8 @@ public class TransformationCreationPanel extends CreateEditPanel{
               public void run(){
                 WebBox wb = null;
                 try{
-                  wb = new WebBox(GridPilot.getClassMgr().getGlobalFrame(),
+                  wb = new WebBox(//GridPilot.getClassMgr().getGlobalFrame(),
+                                  frame,
                                   "Choose script",
                                   finUrl,
                                   finBaseUrl,
