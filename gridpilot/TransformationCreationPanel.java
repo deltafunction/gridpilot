@@ -232,8 +232,8 @@ public class TransformationCreationPanel extends CreateEditPanel{
                   GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
                   ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
                   try{
-                    confirmBox.getConfirm("URL not found",
-                                         "The URL "+finBaseUrl+" was not found. "+eee.getMessage(),
+                    confirmBox.getConfirm("URL could not be opened",
+                                         "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
                                       new Object[] {"OK"});
                   }
                   catch(Exception eeee){
