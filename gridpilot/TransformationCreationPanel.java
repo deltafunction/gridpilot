@@ -225,7 +225,8 @@ public class TransformationCreationPanel extends CreateEditPanel{
                                   finUrl,
                                   finBaseUrl,
                                   true,
-                                  true);
+                                  true,
+                                  false);
                 }
                 catch(Exception eee){
                   Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
