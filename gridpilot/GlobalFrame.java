@@ -216,7 +216,8 @@ public class GlobalFrame extends GPFrame{
       return;
     } 
     try{
-      new WebBox(this, "About", aboutURL.toExternalForm(), "", false, false);
+      WebBox wb = new WebBox(this, "About", aboutURL.toExternalForm(), "", false, false, false);
+      wb.bCancel.setEnabled(false);
     }
     catch(Exception e){
       Debug.debug("WARNING: could not create WebBox", 1);
@@ -245,7 +246,7 @@ public class GlobalFrame extends GPFrame{
     }
   }
 
-  public JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show job monitor");
+  public JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Job monitor");
   /**
    * Creates the menu in the main menu bar.
    */
@@ -255,8 +256,8 @@ public class GlobalFrame extends GPFrame{
 
     // gridpilot
     
-    JMenu menuGridPilot = new JMenu("File");
-    JMenu menuNewTab = new JMenu("New tab");
+    JMenu menuFile = new JMenu("File");
+    JMenu menuView = new JMenu("View");
     
     JMenuItem miReloadValues = new JMenuItem("Reload values from config file");
     miReloadValues.addActionListener(new ActionListener()  {
@@ -264,7 +265,7 @@ public class GlobalFrame extends GPFrame{
         GridPilot.reloadValues();
       }
     });
-    menuGridPilot.add(miReloadValues);
+    menuFile.add(miReloadValues);
    
     //DB
     JMenu menuDB = new JMenu("Databases");
@@ -288,7 +289,7 @@ public class GlobalFrame extends GPFrame{
 
     menuDB.add(miDbClearCaches);
     menuDB.add(miDbReconnect);
-    menuGridPilot.add(menuDB);
+    menuFile.add(menuDB);
 
     //CS
     JMenu menuCS = new JMenu("Computing systems");
@@ -301,11 +302,42 @@ public class GlobalFrame extends GPFrame{
     });
 
     menuCS.add(miCsReconnect);
-    menuGridPilot.add(menuCS);
+    menuFile.add(menuCS);
+    
+    if(!GridPilot.isApplet()){
+      menuFile.addSeparator();
+      JMenuItem miExit = new JMenuItem("Exit");
+      miExit.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          GridPilot.exit(0);
+        }
+      });
+      menuFile.add(miExit);
+    }
+
+    menuView.add(cbMonitor);
+    
+    menuView.addSeparator();
+
+    JMenuItem miBrowser = new JMenuItem("File browser");
+    miBrowser.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        try{
+          new WebBox(GridPilot.getClassMgr().getGlobalFrame(), "GridPilot File Browser", "", "", false, true, true);
+        }
+        catch(Exception ex){
+          Debug.debug("WARNING: could not create WebBox", 1);
+          ex.printStackTrace();
+        }
+      }
+    });
+    menuView.add(miBrowser);
+    
+    menuView.addSeparator();
 
     JMenu miNewRuntimeEnvironmentTab = new JMenu("runtimeEnvironment");
     JMenuItem [] miNewRuntimeEnvironmentTabs = new JMenuItem[GridPilot.getDBs().length];
-    menuNewTab.add(miNewRuntimeEnvironmentTab);
+    menuView.add(miNewRuntimeEnvironmentTab);
     for(i=0; i<GridPilot.getDBs().length; ++i){
       miNewRuntimeEnvironmentTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
       miNewRuntimeEnvironmentTabs[i].addActionListener(new ActionListener(){
@@ -326,7 +358,7 @@ public class GlobalFrame extends GPFrame{
 
     JMenu miNewTransformationTab = new JMenu("transformation");
     JMenuItem [] miNewTransformationTabTabs = new JMenuItem[GridPilot.getDBs().length];
-    menuNewTab.add(miNewTransformationTab);
+    menuView.add(miNewTransformationTab);
     for(i=0; i<GridPilot.getDBs().length; ++i){
       miNewTransformationTabTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
       miNewTransformationTabTabs[i].addActionListener(new ActionListener(){
@@ -347,7 +379,7 @@ public class GlobalFrame extends GPFrame{
 
     JMenu miNewTaskTab = new JMenu("dataset");
     JMenuItem [] miNewTaskTabs = new JMenuItem[GridPilot.getDBs().length];
-    menuNewTab.add(miNewTaskTab);
+    menuView.add(miNewTaskTab);
     for(i=0; i<GridPilot.getDBs().length; ++i){
       miNewTaskTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
       miNewTaskTabs[i].addActionListener(new ActionListener(){
@@ -368,7 +400,7 @@ public class GlobalFrame extends GPFrame{
     
     JMenu miNewJobDefTab = new JMenu("jobDefinition");
     JMenuItem [] miNewJobDefTabs = new JMenuItem[GridPilot.getDBs().length];
-    menuNewTab.add(miNewJobDefTab);
+    menuView.add(miNewJobDefTab);
     for(i=0; i<GridPilot.getDBs().length; ++i){
       miNewJobDefTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
       miNewJobDefTabs[i].addActionListener(new ActionListener(){
@@ -386,9 +418,7 @@ public class GlobalFrame extends GPFrame{
       });
       miNewJobDefTab.add(miNewJobDefTabs[i]);
     }
-    
-    menuGridPilot.add(menuNewTab);
-    
+        
     cbMonitor.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         try{
@@ -411,19 +441,6 @@ public class GlobalFrame extends GPFrame{
       }
     });    
     
-    menuGridPilot.add(cbMonitor);
-
-    if(!GridPilot.isApplet()){
-      menuGridPilot.addSeparator();
-      JMenuItem miExit = new JMenuItem("Exit");
-      miExit.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          GridPilot.exit(0);
-        }
-      });
-      menuGridPilot.add(miExit);
-    }
-
     menuEditCopy.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         menuEditCopy_actionPerformed();
@@ -454,8 +471,9 @@ public class GlobalFrame extends GPFrame{
 
     menuHelp.add(menuHelpAbout);
     
-    menuBar.add(menuGridPilot);
+    menuBar.add(menuFile);
     menuBar.add(menuEdit);
+    menuBar.add(menuView);
     menuBar.add(menuHelp);
     
     return menuBar;
