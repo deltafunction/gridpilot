@@ -63,7 +63,6 @@ public class GlobalFrame extends GPFrame{
     GridPilot.getClassMgr().setStatusBar(new StatusBar());
     statusBar = GridPilot.getClassMgr().getStatusBar();
     container.add(statusBar, BorderLayout.SOUTH);
-    container.add(tabbedPane,  BorderLayout.CENTER);
 
     statusBar.setLabel("GridPilot welcomes you!", 20);
     
@@ -82,6 +81,24 @@ public class GlobalFrame extends GPFrame{
       }
     }
     selectedPanel = tabbedPane.getSelectedIndex();
+
+    // Listen for enter key in text field
+    tabbedPane.addKeyListener(new KeyAdapter(){
+      public void keyPressed(KeyEvent e){
+        if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("o")){
+          if(e.isControlDown()){
+            try{
+              new WebBox(GridPilot.getClassMgr().getGlobalFrame(), "GridPilot File Browser", "", "", false, true, true);
+            }
+            catch(Exception ex){
+              Debug.debug("WARNING: could not create WebBox", 1);
+              ex.printStackTrace();
+            }
+          }
+        }
+
+      }
+    });
 
     /*
     Detect click over X in tab
@@ -319,7 +336,7 @@ public class GlobalFrame extends GPFrame{
     
     menuView.addSeparator();
 
-    JMenuItem miBrowser = new JMenuItem("File browser");
+    JMenuItem miBrowser = new JMenuItem("File browser (ctrl o)");
     miBrowser.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         try{
