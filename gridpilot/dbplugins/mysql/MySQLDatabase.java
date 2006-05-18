@@ -216,7 +216,8 @@ public class MySQLDatabase implements Database{
     }
   }
 
-  public synchronized String [] getTransJobParameters(int transformationID){
+  public synchronized String [] getTransJobParameters(String transformationName,
+      String transformationVersion){
     // nothing for now
     return new String [] {""};
   }
@@ -1602,6 +1603,38 @@ public class MySQLDatabase implements Database{
         ret[i] = vec1.get(i).toString();
       }
       return ret;
+    }
+
+    public synchronized String [] getTransOutputs(String transName, String transVersion){
+      String sql ="SELECT outputFiles FROM transformation WHERE name ='"+
+         transName+"' AND version='"+transVersion+"'";
+      Debug.debug(sql, 2);
+      Vector vec = new Vector();
+      try{
+        Statement stmt = conn.createStatement();
+        ResultSet rset = stmt.executeQuery(sql);
+        while(rset.next()){
+          String out = rset.getString("outputFiles");
+          if(out!=null){
+            Debug.debug("Adding outputs "+out, 3);
+            vec.add(out);
+          }
+          else{
+            Debug.debug("WARNING: no outputs for transformation "+
+                transName+", "+transVersion, 1);
+          }
+        }
+        rset.close();  
+      }
+      catch(Exception e){
+        Debug.debug(e.getMessage(), 2);
+        error = e.getMessage();
+      }
+      if(vec.size()>1){
+        Debug.debug("WARNING: more than one transformation/version: "+
+            transName+"/"+transVersion, 1);
+      }
+      return Util.split(vec.get(0).toString()) ;  
     }
 
     public synchronized String getError(){

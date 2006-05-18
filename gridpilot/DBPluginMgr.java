@@ -87,15 +87,10 @@ public class DBPluginMgr implements Database, PanelUtil{
    * Initializes a JobDefCreationPanel
    */
   public void initJobDefCreationPanel(JobDefCreationPanel panel) throws Throwable{
-    
     String puClass = getPanelUtilClass();
-
     Class [] puArgsType = {JobDefCreationPanel.class};
-    
     Object [] puArgs = {panel};
-
     pu = (PanelUtil) loadClass(puClass, puArgsType, puArgs);
-    
   }
   
   /**
@@ -315,15 +310,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                               table, t);
         }
       }
-      public String [] getString2Res(){return res;}
+      public String [] getString2Res(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getFieldNames"))
+    if(waitForThread(t, dbName, dbTimeOut, "getFieldNames")){
       return t.getString2Res();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getPackInitText(final String pack, final String cluster){
@@ -339,15 +338,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              pack + " " + cluster, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getPackInitText"))
+    if(waitForThread(t, dbName, dbTimeOut, "getPackInitText")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getStdOutFinalDest(final int jobDefinitionID){
@@ -363,15 +366,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getStdOutFinalDest"))
+    if(waitForThread(t, dbName, dbTimeOut, "getStdOutFinalDest")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getStdErrFinalDest(final int jobDefinitionID){
@@ -387,15 +394,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getStdErrFinalDest"))
+    if(waitForThread(t, dbName, dbTimeOut, "getStdErrFinalDest")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getError(){
@@ -410,15 +421,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              " from plugin " + dbName, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getError"))
+    if(waitForThread(t, dbName, dbTimeOut, "getError")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getExtractScript(final int jobDefinitionID){
@@ -434,15 +449,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getExtractScript"))
+    if(waitForThread(t, dbName, dbTimeOut, "getExtractScript")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getValidationScript(final int jobDefinitionID){
@@ -458,15 +477,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getValidationScript"))
+    if(waitForThread(t, dbName, dbTimeOut, "getValidationScript")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getTransformationScript(final int jobDefinitionID){
@@ -482,15 +505,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformationScript"))
+    if(waitForThread(t, dbName, dbTimeOut, "getTransformationScript")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String [] getTransformationRTEnvironments(final int jobDefinitionID){
@@ -506,15 +533,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public String [] getString2Res(){return res;}
+      public String [] getString2Res(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformationRTEnvironments"))
+    if(waitForThread(t, dbName, dbTimeOut, "getTransformationRTEnvironments")){
       return t.getString2Res();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String [] getTransformationArguments(final int jobDefinitionID){
@@ -530,15 +561,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public String [] getString2Res(){return res;}
+      public String [] getString2Res(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformationSignature"))
+    if(waitForThread(t, dbName, dbTimeOut, "getTransformationSignature")){
       return t.getString2Res();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getTransformationRuntimeEnvironment(final int transformationID){
@@ -554,15 +589,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              transformationID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformationRuntimeEnvironment"))
+    if(waitForThread(t, dbName, dbTimeOut, "getTransformationRuntimeEnvironment")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getJobDefUser(final int jobDefinitionID){
@@ -578,15 +617,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefUser"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJobDefUser")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getJobDefName(final int jobDefinitionID){
@@ -602,15 +645,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefName"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJobDefName")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getDatasetName(final int datasetID){
@@ -626,15 +673,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              datasetID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getDatasetName"))
+    if(waitForThread(t, dbName, dbTimeOut, "getDatasetName")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getRunNumber(final int datasetID){
@@ -650,15 +701,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              datasetID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getRunNumber"))
+    if(waitForThread(t, dbName, dbTimeOut, "getRunNumber")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized int getJobDefDatasetID(final int jobDefinitionID){
@@ -674,15 +729,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public int getIntRes(){return res;}
+      public int getIntRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefDatasetID"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJobDefDatasetID")){
       return t.getIntRes();
-    else
+    }
+    else{
       return -1;
+    }
   }
 
   public synchronized String getJobStatus(final int jobDefinitionID){
@@ -698,15 +757,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobStatus"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJobStatus")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
  public synchronized String getJobRunUser(final int jobDefinitionID){
@@ -722,15 +785,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobRunUser"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJobRunUser")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getJobDefValue(final int jobDefID, final String key){
@@ -746,15 +813,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefValue"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJobDefValue")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getJobRunValue(final int jobDefID, final String key){
@@ -770,15 +841,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobRunValue"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJobRunValue")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getUserLabel(){
@@ -793,15 +868,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              " from plugin " + dbName, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getUserLabel"))
+    if(waitForThread(t, dbName, dbTimeOut, "getUserLabel")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getJobDefTransformationID(final int jobDefID){
@@ -817,15 +896,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformationID"))
+    if(waitForThread(t, dbName, dbTimeOut, "getTransformationID")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getDatasetTransformationName(final int datasetID){
@@ -841,15 +924,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              datasetID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getDatasetTransformationName"))
+    if(waitForThread(t, dbName, dbTimeOut, "getDatasetTransformationName")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getDatasetTransformationVersion(final int datasetID){
@@ -865,15 +952,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              datasetID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getDatasetTransformationVersion"))
+    if(waitForThread(t, dbName, dbTimeOut, "getDatasetTransformationVersion")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getTransformationValue(final int jobDefID, final String key){
@@ -891,15 +982,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformationValue"))
+    if(waitForThread(t, dbName, dbTimeOut, "getTransformationValue")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String [] getOutputs(final int jobDefID){
@@ -916,15 +1011,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefID, t);
         }
       }
-      public String [] getString2Res(){return res;}
+      public String [] getString2Res(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getOutputs"))
+    if(waitForThread(t, dbName, dbTimeOut, "getOutputs")){
       return t.getString2Res();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String [] getInputs(final int jobDefID){
@@ -941,15 +1040,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                                jobDefID, t);
           }
         }
-        public String [] getString2Res(){return res;}
+        public String [] getString2Res(){
+          return res;
+        }
       };
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "getInputs"))
+      if(waitForThread(t, dbName, dbTimeOut, "getInputs")){
         return t.getString2Res();
-      else
+      }
+      else{
         return null;
+      }
     }
 
   public synchronized String [] getJobDefTransPars(final int jobDefID){
@@ -966,15 +1069,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                                jobDefID, t);
           }
         }
-        public String [] getString2Res(){return res;}
+        public String [] getString2Res(){
+          return res;
+        }
       };
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "getJobDefTransPars"))
+      if(waitForThread(t, dbName, dbTimeOut, "getJobDefTransPars")){
         return t.getString2Res();
-      else
+      }
+      else{
         return null;
+      }
     }
 
   public synchronized String getJobDefOutLocalName(final int jobDefID, final String outpar){
@@ -990,15 +1097,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefOutLocalName"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJobDefOutLocalName")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getJobDefInLocalName(final int jobDefID, final String outpar){
@@ -1014,15 +1125,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefInLocalName"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJobDefInLocalName")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getJobDefOutRemoteName(final int jobDefinitionID, final String outpar){
@@ -1038,15 +1153,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefOutRemoteName"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJobDefOutRemoteName")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String getJobDefInRemoteName(final int jobDefinitionID, final String outpar){
@@ -1062,15 +1181,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefInRemoteName"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJobDefInRemoteName")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized String [] getDefVals(final int datasetID, final String user){
@@ -1087,40 +1210,79 @@ public class DBPluginMgr implements Database, PanelUtil{
                              datasetID, t);
         }
       }
-      public String [] getString2Res(){return res;}
+      public String [] getString2Res(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getDefVals"))
+    if(waitForThread(t, dbName, dbTimeOut, "getDefVals")){
       return t.getString2Res();
-    else
+    }
+    else{
       return null;
+    }
   }
 
-  public synchronized String [] getTransJobParameters(final int transformationID){
+  public synchronized String [] getTransJobParameters(final String transformationName,
+      final String transformationVersion){
   
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getTransJobParameters(transformationID);
+          res = db.getTransJobParameters(transformationName, transformationVersion);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             transformationID, t);
+                             transformationName + " " + transformationVersion, t);
         }
       }
-      public String [] getString2Res(){return res;}
+      public String [] getString2Res(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobParameters"))
+    if(waitForThread(t, dbName, dbTimeOut, "getTransJobParameters")){
       return t.getString2Res();
-    else
+    }
+    else{
       return null;
+    }
+  }
+
+  public synchronized String [] getTransOutputs(final String transformationName,
+      final String transformationVersion){
+  
+    MyThread t = new MyThread(){
+      String [] res = null;
+      public void run(){
+        try{
+          res = db.getTransOutputs(transformationName, transformationVersion);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             transformationName + " " + transformationVersion, t);
+        }
+      }
+      public String [] getString2Res(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getTransOutputs")){
+      return t.getString2Res();
+    }
+    else{
+      return null;
+    }
   }
 
   public synchronized boolean saveDefVals(final int datasetID,
@@ -1138,15 +1300,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              datasetID, t);
         }
       }
-      public boolean getBoolRes(){return res;}
+      public boolean getBoolRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "saveDefVals"))
+    if(waitForThread(t, dbName, dbTimeOut, "saveDefVals")){
       return t.getBoolRes();
-    else
+    }
+    else{
       return false;
+    }
   }
 
   public synchronized boolean createJobDefinition(final String [] values){
@@ -1163,15 +1329,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              values.toString(), t);
         }
       }
-      public boolean getBoolRes(){return res;}
+      public boolean getBoolRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "createJobDefinition"))
+    if(waitForThread(t, dbName, dbTimeOut, "createJobDefinition")){
       return t.getBoolRes();
-    else
+    }
+    else{
       return false;
+    }
   }
 
   public synchronized boolean createRunInfo(final JobInfo jobInfo){
@@ -1188,15 +1358,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                                jobInfo.toString(), t);
           }
         }
-        public boolean getBoolRes(){return res;}
+        public boolean getBoolRes(){
+          return res;
+        }
       };
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "createRunInfo"))
+      if(waitForThread(t, dbName, dbTimeOut, "createRunInfo")){
         return t.getBoolRes();
-      else
+      }
+      else{
         return false;
+      }
     }
 
   // Here, in contrast to updateJobDef (in DBPluginMgr), because it is not needed by other
@@ -1255,15 +1429,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              values.toString(), t);
         }
       }
-      public boolean getBoolRes(){return res;}
+      public boolean getBoolRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "createTransformation"))
+    if(waitForThread(t, dbName, dbTimeOut, "createTransformation")){
       return t.getBoolRes();
-    else
+    }
+    else{
       return false;
+    }
   }
 
   public synchronized boolean createRuntimeEnvironment(final Object [] values){
@@ -1280,15 +1458,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              values.toString(), t);
         }
       }
-      public boolean getBoolRes(){return res;}
+      public boolean getBoolRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "createRuntimeEnvironment"))
+    if(waitForThread(t, dbName, dbTimeOut, "createRuntimeEnvironment")){
       return t.getBoolRes();
-    else
+    }
+    else{
       return false;
+    }
   }
 
   public synchronized boolean createDataset(final String targetTable,
@@ -1305,15 +1487,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              values.toString(), t);
         }
       }
-      public boolean getBoolRes(){return res;}
+      public boolean getBoolRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "createDataset"))
+    if(waitForThread(t, dbName, dbTimeOut, "createDataset")){
       return t.getBoolRes();
-    else
+    }
+    else{
       return false;
+    }
   }
 
   public synchronized boolean setJobDefsField(final int [] identifiers,
@@ -1330,15 +1516,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              field, t);
         }
       }
-      public boolean getBoolRes(){return res;}
+      public boolean getBoolRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "setJobDefinitionField"))
+    if(waitForThread(t, dbName, dbTimeOut, "setJobDefinitionField")){
       return t.getBoolRes();
-    else
+    }
+    else{
       return false;
+    }
   }
 
   public synchronized boolean updateJobDefinition(final int jobDefID,
@@ -1355,15 +1545,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefID, t);
         }
       }
-      public boolean getBoolRes(){return res;}
+      public boolean getBoolRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "updateJobDefinition"))
+    if(waitForThread(t, dbName, dbTimeOut, "updateJobDefinition")){
       return t.getBoolRes();
-    else
+    }
+    else{
       return false;
+    }
   }
 
   public synchronized boolean updateJobDefinition(final int jobDefID,
@@ -1381,15 +1575,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefID, t);
         }
       }
-      public boolean getBoolRes(){return res;}
+      public boolean getBoolRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "updateJobDefinition"))
+    if(waitForThread(t, dbName, dbTimeOut, "updateJobDefinition")){
       return t.getBoolRes();
-    else
+    }
+    else{
       return false;
+    }
   }
 
   public synchronized boolean updateJobDefStatus(final int jobDefID,
@@ -1407,15 +1605,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefID, t);
         }
       }
-      public boolean getBoolRes(){return res;}
+      public boolean getBoolRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "updateJobDefStatus"))
+    if(waitForThread(t, dbName, dbTimeOut, "updateJobDefStatus")){
       return t.getBoolRes();
-    else
+    }
+    else{
       return false;
+    }
   }
 
   public synchronized boolean updateRunInfo(final JobInfo jobInfo){
@@ -1432,15 +1634,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                                jobInfo.toString(), t);
           }
         }
-        public boolean getBoolRes(){return res;}
+        public boolean getBoolRes(){
+          return res;
+        }
       };
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "updateRunInfo"))
+      if(waitForThread(t, dbName, dbTimeOut, "updateRunInfo")){
         return t.getBoolRes();
-      else
+      }
+      else{
         return false;
+      }
     }
 
   public synchronized boolean updateDataset(final int taskID,
@@ -1458,15 +1664,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                                taskID, t);
           }
         }
-        public boolean getBoolRes(){return res;}
+        public boolean getBoolRes(){
+          return res;
+        }
       };
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "updateDataset"))
+      if(waitForThread(t, dbName, dbTimeOut, "updateDataset")){
         return t.getBoolRes();
-      else
+      }
+      else{
         return false;
+      }
     }
 
   public synchronized boolean updateTransformation(final int transformationID,
@@ -1484,15 +1694,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                                transformationID, t);
           }
         }
-        public boolean getBoolRes(){return res;}
+        public boolean getBoolRes(){
+          return res;
+        }
       };
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "updateTransformation"))
+      if(waitForThread(t, dbName, dbTimeOut, "updateTransformation")){
         return t.getBoolRes();
-      else
+      }
+      else{
         return false;
+      }
     }
 
   public synchronized boolean updateRuntimeEnvironment(final int runtimeEnvironmentID,
@@ -1510,15 +1724,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              runtimeEnvironmentID, t);
         }
       }
-      public boolean getBoolRes(){return res;}
+      public boolean getBoolRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "updateRuntimeEnvironment"))
+    if(waitForThread(t, dbName, dbTimeOut, "updateRuntimeEnvironment")){
       return t.getBoolRes();
-    else
+    }
+    else{
       return false;
+    }
   }
 
   public synchronized boolean deleteJobDefinition(final int jobDefID){
@@ -1535,15 +1753,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                                jobDefID, t);
           }
         }
-        public boolean getBoolRes(){return res;}
+        public boolean getBoolRes(){
+          return res;
+        }
       };
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "deleteJobDefinition"))
+      if(waitForThread(t, dbName, dbTimeOut, "deleteJobDefinition")){
         return t.getBoolRes();
-      else
+      }
+      else{
         return false;
+      }
     }
 
   public synchronized boolean deleteDataset(final int taskID, final boolean cleanup){
@@ -1560,15 +1782,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                                taskID, t);
           }
         }
-        public boolean getBoolRes(){return res;}
+        public boolean getBoolRes(){
+          return res;
+        }
       };
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "deleteDataset"))
+      if(waitForThread(t, dbName, dbTimeOut, "deleteDataset")){
         return t.getBoolRes();
-      else
+      }
+      else{
         return false;
+      }
     }
 
   public synchronized boolean deleteTransformation(final int transformationID){
@@ -1585,15 +1811,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                                transformationID, t);
           }
         }
-        public boolean getBoolRes(){return res;}
+        public boolean getBoolRes(){
+          return res;
+        }
       };
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "deleteTransformation"))
+      if(waitForThread(t, dbName, dbTimeOut, "deleteTransformation")){
         return t.getBoolRes();
-      else
+      }
+      else{
         return false;
+      }
     }
 
   public synchronized boolean deleteRuntimeEnvironment(final int runtimeEnvironmentID){
@@ -1610,15 +1840,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                                runtimeEnvironmentID, t);
           }
         }
-        public boolean getBoolRes(){return res;}
+        public boolean getBoolRes(){
+          return res;
+        }
       };
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "deleteRuntimeEnvironment"))
+      if(waitForThread(t, dbName, dbTimeOut, "deleteRuntimeEnvironment")){
         return t.getBoolRes();
-      else
+      }
+      else{
         return false;
+      }
     }
 
   public synchronized boolean reserveJobDefinition(final int jobDefID, final String userName){
@@ -1635,15 +1869,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefID, t);
         }
       }
-      public boolean getBoolRes(){return res;}
+      public boolean getBoolRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "reserveJobDefinition"))
+    if(waitForThread(t, dbName, dbTimeOut, "reserveJobDefinition")){
       return t.getBoolRes();
-    else
+    }
+    else{
       return false;
+    }
   }
 
   public synchronized boolean dereserveJobDefinition(final int jobDefID){
@@ -1660,15 +1898,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefID, t);
         }
       }
-      public boolean getBoolRes(){return res;}
+      public boolean getBoolRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "jobDefID"))
+    if(waitForThread(t, dbName, dbTimeOut, "jobDefID")){
       return t.getBoolRes();
-    else
+    }
+    else{
       return false;
+    }
   }
 
   public synchronized DBResult select(final String selectQuery, final String identifier){
@@ -1685,15 +1927,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                               selectQuery, t);
         }
       }
-      public DBResult getDB2Res(){return res;}
+      public DBResult getDB2Res(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "select"))
+    if(waitForThread(t, dbName, dbTimeOut, "select")){
       return t.getDB2Res();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized DBResult getRuntimeEnvironments(){
@@ -1709,15 +1955,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              " from plugin " + dbName, t);
         }
       }
-      public DBResult getDB2Res(){return res;}
+      public DBResult getDB2Res(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironments"))
+    if(waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironments")){
       return t.getDB2Res();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized DBResult getTransformations(){
@@ -1733,15 +1983,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              " from plugin " + dbName, t);
         }
       }
-      public DBResult getDB2Res(){return res;}
+      public DBResult getDB2Res(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformations"))
+    if(waitForThread(t, dbName, dbTimeOut, "getTransformations")){
       return t.getDB2Res();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized DBRecord getDataset(final int datasetID){
@@ -1758,15 +2012,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                                datasetID, t);
           }
         }
-        public DBRecord getDBRes(){return res;}
+        public DBRecord getDBRes(){
+          return res;
+        }
       };
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "getDataset"))
+      if(waitForThread(t, dbName, dbTimeOut, "getDataset")){
         return t.getDBRes();
-      else
+      }
+      else{
         return null;
+      }
     }
 
   public synchronized DBRecord getRuntimeEnvironment(final int runtimeEnvironmentID){
@@ -1783,15 +2041,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                                runtimeEnvironmentID, t);
           }
         }
-        public DBRecord getDBRes(){return res;}
+        public DBRecord getDBRes(){
+          return res;
+        }
       };
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironment"))
+      if(waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironment")){
         return t.getDBRes();
-      else
+      }
+      else{
         return null;
+      }
     }
 
   public synchronized DBRecord getTransformation(final int transformationID){
@@ -1808,15 +2070,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                                transformationID, t);
           }
         }
-        public DBRecord getDBRes(){return res;}
+        public DBRecord getDBRes(){
+          return res;
+        }
       };
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "getTransformation"))
+      if(waitForThread(t, dbName, dbTimeOut, "getTransformation")){
         return t.getDBRes();
-      else
+      }
+      else{
         return null;
+      }
     }
 
   public synchronized DBRecord getRunInfo(final int jobDefID){
@@ -1833,15 +2099,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                                jobDefID, t);
           }
         }
-        public DBRecord getDBRes(){return res;}
+        public DBRecord getDBRes(){
+          return res;
+        }
       };
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "getRunInfo"))
+      if(waitForThread(t, dbName, dbTimeOut, "getRunInfo")){
         return t.getDBRes();
-      else
+      }
+      else{
         return null;
+      }
     }
 
   public synchronized DBResult getJobDefinitions(final int datasetID, final String [] fieldNames){
@@ -1858,15 +2128,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              datasetID, t);
         }
       }
-      public DBResult getDB2Res(){return res;}
+      public DBResult getDB2Res(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefinitions"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJobDefinitions")){
       return t.getDB2Res();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public synchronized DBRecord getJobDefinition(final int jobDefinitionID){
@@ -1883,15 +2157,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              jobDefinitionID, t);
         }
       }
-      public DBRecord getDBRes(){return res;}
+      public DBRecord getDBRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefinition"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJobDefinition")){
       return t.getDBRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public String connect(){
@@ -1907,15 +2185,19 @@ public class DBPluginMgr implements Database, PanelUtil{
                              " from plugin " + dbName, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "connect"))
+    if(waitForThread(t, dbName, dbTimeOut, "connect")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
   public void disconnect(){
@@ -1934,10 +2216,12 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "disconnect"))
+    if(waitForThread(t, dbName, dbTimeOut, "disconnect")){
       return;
-    else
+    }
+    else{
       return;
+    }
   }
 
   public synchronized void clearCaches(){
@@ -1956,10 +2240,12 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "clearCaches"))
+    if(waitForThread(t, dbName, dbTimeOut, "clearCaches")){
       return;
-    else
+    }
+    else{
       return;
+    }
   }
 
   /**
@@ -1980,7 +2266,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       }
       else
         break;
-    }while(true);
+    }
+    while(true);
     return true;
   }
 
@@ -2178,10 +2465,12 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getVersions"))
+    if(waitForThread(t, dbName, dbTimeOut, "getVersions")){
       return t.getString2Res();
-    else
+    }
+    else{
       return new String [] {};
+    }
   }
 
   public synchronized void clearPanel(final String [] cstAttributesNames,
@@ -2203,10 +2492,12 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "clearPanel"))
+    if(waitForThread(t, dbName, dbTimeOut, "clearPanel")){
       return;
-    else
+    }
+    else{
       return;
+    }
   }
 
   public synchronized void initAttributePanel(
@@ -2230,10 +2521,12 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "initAttributePanel"))
+    if(waitForThread(t, dbName, dbTimeOut, "initAttributePanel")){
       return;
-    else
+    }
+    else{
       return;
+    }
   }
 
   public synchronized void setEnabledAttributes(final boolean enabled,
@@ -2253,10 +2546,12 @@ public class DBPluginMgr implements Database, PanelUtil{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "setEnabledAttributes"))
+    if(waitForThread(t, dbName, dbTimeOut, "setEnabledAttributes")){
       return;
-    else
+    }
+    else{
       return;
+    }
   }
 
   public synchronized void setValuesInAttributePanel(final String [] cstAttributesNames,
@@ -2277,10 +2572,12 @@ public class DBPluginMgr implements Database, PanelUtil{
 
     t.start();
 
-    if(waitForThread(t, dbName, dbTimeOut, "setValuesInAttributePanel"))
+    if(waitForThread(t, dbName, dbTimeOut, "setValuesInAttributePanel")){
       return;
-    else
+    }
+    else{
       return;
+    }
   }
   
   public String getJTextOrEmptyString(final String attr, final JComponent comp,
@@ -2296,24 +2593,28 @@ public class DBPluginMgr implements Database, PanelUtil{
                              " from plugin " + dbName, t);
         }
       }
-      public String getStringRes(){return res;}
+      public String getStringRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJTextOrEmptyString"))
+    if(waitForThread(t, dbName, dbTimeOut, "getJTextOrEmptyString")){
       return t.getStringRes();
-    else
+    }
+    else{
       return null;
+    }
   }
 
-  public Vector getNonIdTextFields(final String [] cstAttributesNames,
+  public Vector getNonAutomaticFields(final String [] cstAttributesNames,
      final JComponent [] tcCstAttributes, final Vector tcConstant){
     MyThread t = new MyThread(){
       Vector res = null;
       public void run(){
         try{
-          res = pu.getNonIdTextFields(cstAttributesNames, tcCstAttributes,
+          res = pu.getNonAutomaticFields(cstAttributesNames, tcCstAttributes,
               tcConstant);
         }
         catch(Throwable t){
@@ -2321,111 +2622,45 @@ public class DBPluginMgr implements Database, PanelUtil{
                              " from plugin " + dbName, t);
         }
       }
-      public Vector getVectorRes(){return res;}
+      public Vector getVectorRes(){
+        return res;
+      }
     };
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getNonIdTextFields"))
+    if(waitForThread(t, dbName, dbTimeOut, "getNonIdTextFields")){
       return t.getVectorRes();
-    else
-      return null;    
-  }
-
-  /**
-   * Converts a local path (<code>file</code>) into a absolute path (URL)
-   * by prepending the "prefix" attribute of the repository of the package
-   * of the transformation of the  <code>file</code>. <br>
-   * If the file name begins by '/' or the prefix is not defined, nothing
-   * is prepended. <br>
-   * If the obtained prefix doesn't end by '/', a '/' is added between
-   * <code>file</code> and the prefix.
-   */
-  /*public String getURL(String file, int packageID){
-    if(file.startsWith("/")){
-      return file;
-    }
-    String prefix = null;
-    Database.DBRecord pack = getPackage(packageID);
-    try{
-      prefix =
-        pack.getValue("scriptRepository").toString();
-    }
-    catch(Exception e){
-    }
-    if(prefix==null){
-      // E.g. proddb will not have this defined, so we just assume
-      // fully qualified file names...
-      return file;
     }
     else{
-      if(!prefix.endsWith("/")){
-        prefix = prefix+"/";
-      }
-      return prefix + file;
+      return null;
     }
-  }*/
+  }
   
-  /*public String getUrlFromTransformation(String file, int transformationID){
-    if(file.startsWith("/")){
-      return file;
-    }
-    Database.DBRecord transformation = 
-      getTransformation(transformationID);
-    String packageFK = null;
-    try{
-      packageFK =
-        transformation.getValue("packageFK").toString();
-    }
-    catch(Exception e){
-    }
-    if(packageFK==null){
-      Debug.debug("Could not find package FK of transformation "+
-          transformationID, 3);
-      return file;
-    }
-    return getURL(file, Integer.parseInt(packageFK));
-  }*/
-
-  /*public String getUrlFromDS(String file, int datasetID){
-    if(file.startsWith("/")){
-      return file;
-    }
-    Database.DBRecord dataset = getDataset(datasetID);
-    String transformationFK = null;
-    try{
-      transformationFK =
-      dataset.getValue("transformationFK").toString();
-    }
-    catch(Exception e){
-    }
-    if(transformationFK==null){
-      try{
-        transformationFK =
-           dataset.getValue("transFK").toString();
-      }
-      catch(Exception e){
-      }
-    }
-    if(transformationFK==null){
-      Debug.debug("Could not find transformation FK of dataset "+
-          datasetID, 3);
-      return file;
-    }
-    Database.DBRecord transformation = 
-      getTransformation(Integer.parseInt(transformationFK));
-    String packageFK = null;
-    try{
-      packageFK =
-        transformation.getValue("packageFK").toString();
-    }
-    catch(Exception e){
-    }
-    if(packageFK==null){
-      Debug.debug("Could not find package FK of transformation "+
-          transformationFK, 3);
-      return file;
-    }
-    return getURL(file, Integer.parseInt(packageFK));
-  }*/
+  public String [] getConstantJobAttributes(){
+     MyThread t = new MyThread(){
+       String [] res = null;
+       public void run(){
+         try{
+           res = pu.getConstantJobAttributes();
+         }
+         catch(Throwable t){
+           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                              " from plugin " + dbName, t);
+         }
+       }
+       public String [] getString2Res(){
+         return res;
+       }
+     };
+   
+     t.start();
+   
+     if(waitForThread(t, dbName, dbTimeOut, "getConstantJobAttributes")){
+       return t.getString2Res();
+     }
+     else{
+       return null;
+     }
+   }
 }

@@ -31,12 +31,13 @@ public interface Database{
   // ####### Transformation table
   public DBResult getTransformations();
   public DBRecord getTransformation(int transformationID);
-  public String getTransformationRuntimeEnvironment(int transformationID);
   public boolean createTransformation(Object [] values);
   public boolean updateTransformation(int transformatinID, String [] fields, String [] values);
   public boolean deleteTransformation(int transformationID);
   public String [] getVersions(String transformationName);
-  public String [] getTransJobParameters(int transformationID);
+  public String getTransformationRuntimeEnvironment(int transformationID);
+  public String [] getTransJobParameters(String transformationName, String transformationVersion);
+  public String [] getTransOutputs(String transformationName, String transformationVersion);
 
   // ####### Dataset table
   public DBResult getJobDefinitions(int datasetID, String [] fieldNames);

@@ -51,6 +51,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bSearch = new JButton("Search");
   private JButton bClear = new JButton("Clear");
   private JButton bViewJobDefinitions = new JButton("Show jobDefinitions");
+  private JButton bDefineJobDefinitions = new JButton("Define jobDefinitions");
   private JMenuItem miEdit = null;
   
   private int [] identifiers;
@@ -416,6 +417,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       );
       
+      bDefineJobDefinitions.addActionListener(new java.awt.event.ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          defineJobDefinitions();
+        }
+      }
+      );
+      
       bCreateRecords.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           createDatasets();
@@ -435,12 +443,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       });
       
       addButtonResultsPanel(bViewJobDefinitions);
+      addButtonResultsPanel(bDefineJobDefinitions);
       addButtonResultsPanel(bCreateRecords);
       addButtonResultsPanel(bEditRecord);
       addButtonResultsPanel(bDeleteRecord);
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
       bViewJobDefinitions.setEnabled(false);
+      bDefineJobDefinitions.setEnabled(false);
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
       updateUI();
@@ -542,6 +552,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
       bViewJobDefinitions.setEnabled(false);
+      bDefineJobDefinitions.setEnabled(false);
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
       updateUI();
@@ -580,6 +591,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
       bViewJobDefinitions.setEnabled(false);
+      bDefineJobDefinitions.setEnabled(false);
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
       menuEditCopy.setEnabled(false);
@@ -725,6 +737,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         res = dbPluginMgr.select(selectRequest, identifier);
 
         bViewJobDefinitions.setEnabled(false);
+        bDefineJobDefinitions.setEnabled(false);
         bEditRecord.setEnabled(false);
         bDeleteRecord.setEnabled(false);
         bSubmit.setEnabled(false);
@@ -760,7 +773,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               ListSelectionModel lsm = (ListSelectionModel)e.getSource();
               //Debug.debug("lsm indices: "+
               //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
-              bViewJobDefinitions.setEnabled(!lsm.isSelectionEmpty());
+              bViewJobDefinitions.setEnabled(!lsm.isSelectionEmpty() &&
+                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+              bDefineJobDefinitions.setEnabled(!lsm.isSelectionEmpty());
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
               bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
@@ -1013,6 +1028,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Open dialog with jobDefintion creation panel
    */ 
   private void createJobDefs(){
+    Debug.debug("Creating job definitions, "+getSelectedIdentifiers().length, 3);
     DatasetMgr datasetMgr = null;
     try{
       datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName, parentId);
@@ -1368,7 +1384,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Open new pane with list of jobDefinitions.
    */
   private void viewJobDefinitions(){
-    if(getSelectedIdentifier() != -1){
+    if(getSelectedIdentifier()!=-1){
       new Thread(){
         public void run(){
           try{
@@ -1387,6 +1403,27 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           catch(Exception e){
             Debug.debug("Couldn't create panel for dataset " + "\n" +
+                               "\tException\t : " + e.getMessage(), 2);
+            e.printStackTrace();
+          }
+        }
+      }.start();
+    }
+  }
+ 
+  /**
+   * Open job definition window.
+   */
+  private void defineJobDefinitions(){
+    Debug.debug("defining job definitions, "+getSelectedIdentifiers().length, 3);
+    if(getSelectedIdentifiers()!=null && getSelectedIdentifiers().length!=0){
+      new Thread(){
+        public void run(){
+          try{
+            createJobDefs();
+          }
+          catch(Exception e){
+            Debug.debug("Couldn't create job definition window " + "\n" +
                                "\tException\t : " + e.getMessage(), 2);
             e.printStackTrace();
           }

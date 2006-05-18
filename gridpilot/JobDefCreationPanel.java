@@ -63,7 +63,9 @@ public class JobDefCreationPanel extends CreateEditPanel{
   public static String oldJobTransFK = "-1";
   public String jobDefIdentifier;
   
-  public JobDefCreationPanel(/*this is in case DBPanel was opened from the menu and_taskMgr is null*/String _dbName,
+  public JobDefCreationPanel(
+      /*this is in case DBPanel was opened from the menu and_taskMgr is null*/
+      String _dbName,
       DatasetMgr _taskMgr, DBPanel _panel,
       boolean _editing){
     
