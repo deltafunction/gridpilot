@@ -1,13 +1,20 @@
 package gridpilot;
 
 import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Frame;
+import java.io.File;
 import java.util.StringTokenizer;
 
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JEditorPane;
+import javax.swing.JOptionPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
 import javax.swing.plaf.UIResource;
 import javax.swing.text.JTextComponent;
 
@@ -221,4 +228,94 @@ public class Util{
     }
   }
  
+  public static JEditorPane createCheckPanel(
+      final Frame frame, 
+      final String name, final JTextComponent jt,
+      final DBPluginMgr dbPluginMgr){
+    //final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
+    String markup = "<b>"+name+" : </b><br>"+
+      "<a href=\"http://check/\">check</a>";
+    JEditorPane checkPanel = new JEditorPane("text/html", markup);
+    checkPanel.setEditable(false);
+    checkPanel.setOpaque(false);
+    checkPanel.addHyperlinkListener(
+      new HyperlinkListener(){
+      public void hyperlinkUpdate(HyperlinkEvent e){
+        if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
+          Debug.debug("URL: "+e.getURL().toExternalForm(), 3);
+          if(e.getURL().toExternalForm().equals("http://check/")){
+            String httpScript = jt.getText();
+            String url = null;
+            try{
+              if(httpScript.startsWith("/")){
+                url = (new File(httpScript)).toURL().toExternalForm();
+              }
+              else if(httpScript.startsWith("file://")){
+                url = (new File(httpScript.substring(6))).toURL().toExternalForm();
+              }
+              else if(httpScript.startsWith("file://")){
+                url = (new File(httpScript.substring(5))).toURL().toExternalForm();
+              }
+              else{
+                url = httpScript;
+              }
+            }
+            catch(Exception ee){
+              Debug.debug("Could not open URL "+httpScript+". "+ee.getMessage(), 1);
+              ee.printStackTrace();
+              GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+httpScript);
+              return;
+            }
+            Debug.debug("URL: "+url, 3);
+            frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            final String finUrl = url;
+            final String finBaseUrl = "";//url;
+            MyThread t = new MyThread(){
+              public void run(){
+                WebBox wb = null;
+                try{
+                  wb = new WebBox(//GridPilot.getClassMgr().getGlobalFrame(),
+                                  frame,
+                                  "Choose file",
+                                  finUrl,
+                                  finBaseUrl,
+                                  true,
+                                  true,
+                                  false);
+                }
+                catch(Exception eee){
+                  Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
+                  GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
+                  ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+                  try{
+                    confirmBox.getConfirm("URL could not be opened",
+                                         "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
+                                      new Object[] {"OK"});
+                  }
+                  catch(Exception eeee){
+                    Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
+                  }
+                }
+                if(wb!=null && wb.lastURL!=null &&
+                    wb.lastURL.startsWith(finBaseUrl)){
+                  // Set the text: the URL browsed to with case URL removed
+                  jt.setText(wb.lastURL.substring(
+                      finBaseUrl.length()));
+                  GridPilot.getClassMgr().getStatusBar().setLabel("");
+                }
+                else{
+                  // Don't do anything if we cannot get a URL
+                  Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
+                }
+                frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+                GridPilot.getClassMgr().getStatusBar().setLabel("");
+              }
+            };
+            t.start();
+          }
+        }
+      }
+    });
+    return checkPanel;
+  }
 }

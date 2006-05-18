@@ -2,14 +2,9 @@ package gridpilot;
 
 import javax.swing.*;
 import javax.swing.border.*;
-import javax.swing.event.HyperlinkEvent;
-import javax.swing.event.HyperlinkListener;
-
-import java.awt.*;
-import java.io.File;
-import java.util.*;
-
 import javax.swing.text.*;
+import java.awt.*;
+import java.util.*;
 
 /**
  * This panel creates records in the DB table. It's shown inside the CreateEditDialog.
@@ -18,7 +13,6 @@ public class RuntimeCreationPanel extends CreateEditPanel{
 
   private static final long serialVersionUID = 1L;
   private DBPluginMgr dbPluginMgr;
-  private StatusBar statusBar;
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
   private boolean editing = false;
@@ -44,7 +38,6 @@ public class RuntimeCreationPanel extends CreateEditPanel{
     editing = _editing;
     panel = _panel;
     table = panel.getTable();
-    statusBar = GridPilot.getClassMgr().getStatusBar();
     packIdentifier = "identifier";
     cstAttributesNames = dbPluginMgr.getFieldNames("runtimeEnvironment");
     Debug.debug("Got field names: "+Util.arrayToString(cstAttributesNames),3);
@@ -150,95 +143,6 @@ public class RuntimeCreationPanel extends CreateEditPanel{
     initAttributePanel();
     
   }
-
-  private JEditorPane createCheckPanel(
-      final String name, final JTextComponent jt,
-      final DBPluginMgr dbPluginMgr, final int packID){
-    final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
-    String markup = "<b>"+name+" : </b><br>"+
-      "<a href=\"http://check/\">check</a>";
-    JEditorPane checkPanel = new JEditorPane("text/html", markup);
-    checkPanel.setEditable(false);
-    checkPanel.setOpaque(false);
-    checkPanel.addHyperlinkListener(
-      new HyperlinkListener(){
-      public void hyperlinkUpdate(HyperlinkEvent e){
-        if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
-          Debug.debug("URL: "+e.getURL().toExternalForm(), 3);
-          String baseUrl = "";
-          Debug.debug("Base URL: "+baseUrl, 3);
-          if(e.getURL().toExternalForm().equals("http://check/")){
-            String httpScript = jt.getText();
-            String url = null;
-            try{
-              if(httpScript.startsWith("/")){
-                url = (new File(httpScript)).toURL().toExternalForm();
-              }
-              else if(httpScript.startsWith("file://")){
-                url = (new File(httpScript.substring(6))).toURL().toExternalForm();
-              }
-              else if(httpScript.startsWith("file://")){
-                url = (new File(httpScript.substring(5))).toURL().toExternalForm();
-              }
-              else{
-                url = httpScript;
-              }
-            }
-            catch(Exception ee){
-              Debug.debug("Could not open URL "+httpScript+". "+ee.getMessage(), 1);
-              ee.printStackTrace();
-              GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+httpScript);
-              return;
-            }
-            Debug.debug("URL: "+url, 3);
-            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-            final String finUrl = url;
-            final String finBaseUrl = url;
-            MyThread t = new MyThread(){
-              public void run(){
-                WebBox wb = null;
-                try{
-                  wb = new WebBox(
-                       //GridPilot.getClassMgr().getGlobalFrame(),
-                       frame,
-                       "Choose script",
-                       finUrl,
-                       finBaseUrl,
-                       true,
-                       true,
-                       false);
-                }
-                catch(Exception ee){
-                  Debug.debug("Could not open URL "+finUrl+". "+ee.getMessage(), 1);
-                  ee.printStackTrace();
-                  GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finUrl);
-                  setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-                  return;
-                }
-                if(wb.lastURL!=null /*&&
-                    GridPilot.lastURL.startsWith(finBaseUrl)*/){
-                  // Set the text: the URL browsed to with base URL removed
-                  // TODO: remove base url only for transformations.
-                  Debug.debug("Setting URL "+finBaseUrl+" : "+wb.lastURL, 2);
-                  //jt.setText(GridPilot.lastURL.substring(
-                      //finBaseUrl.length()));
-                  jt.setText(wb.lastURL);
-                }
-                else{
-                  // Don't do anything if we cannot get a URL
-                  Debug.debug("ERROR: Could not open URL "+finBaseUrl+". "+wb.lastURL, 1);
-                }
-                setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-                statusBar.setLabel("");
-              }
-            };
-            t.start();
-          }
-        }
-      }
-    });
-    return checkPanel;
-  }
   
   private void initAttributePanel(){
 
@@ -252,10 +156,11 @@ public class RuntimeCreationPanel extends CreateEditPanel{
     for(int i = 0; i<cstAttributesNames.length; ++i, ++row){
       
       if(cstAttributesNames[i].equalsIgnoreCase("scriptRepository")){
-           pAttributes.add(createCheckPanel(
+           pAttributes.add(Util.createCheckPanel(
+               (Frame) SwingUtilities.getWindowAncestor(getRootPane()),
                cstAttributesNames[i], tcCstAttributes[i],
-               dbPluginMgr,
-               Integer.parseInt(packID)),
+               dbPluginMgr/*,
+               Integer.parseInt(packID)*/),
                new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                    GridBagConstraints.CENTER,
                    GridBagConstraints.BOTH,
