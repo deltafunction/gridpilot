@@ -3,6 +3,8 @@ package gridpilot.dbplugins.mysql;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
+import java.util.TimeZone;
 import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -163,16 +165,26 @@ public class MySQLDatabase implements Database{
   }
 
   public String getPanelUtilClass(){
-    return "MySQLPanelUtil";
+    return null;
   }
 
   public synchronized void clearCaches(){
     // nothing for now
   }
 
-  public synchronized boolean dereserveJobDefinition(int partID){
-    // nothing for now
-    return false;
+  public synchronized boolean cleanRunInfo(int jobDefID){
+    String sql = "delete from runInfo where jobDefinitionName = '"+
+    getJobDefName(jobDefID)+"'";
+    boolean ok = true;
+    try{
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+    }
+    catch(Exception e){
+      error = e.getMessage();
+      ok = false;
+    }
+    return ok;
   }
 
   public void disconnect(){
@@ -256,9 +268,18 @@ public class MySQLDatabase implements Database{
     return "";
   }
 
-  public synchronized String getJobDefOutRemoteName(int jobDefinitionID, String par){
-    // nothing for now
-    return "";
+  public synchronized String getJobDefOutRemoteName(int jobDefID, String outpar){
+    int transID = Integer.parseInt(getJobDefTransformationID(jobDefID));
+    String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
+    String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
+    String[] map = Util.split(maps);
+    String name = "";
+    for(int i=0; i<fouts.length; i++){
+      if(outpar.equals(fouts[i])){
+        name = map[i*2+1];
+      }
+    }
+    return name;
   }
 
   public synchronized String getStdOutFinalDest(int jobDefinitionID){
@@ -558,6 +579,38 @@ public class MySQLDatabase implements Database{
   
   public synchronized String getDatasetName(int datasetID){
     return getDataset(datasetID).getValue("name").toString();
+  }
+
+  public synchronized int getDatasetID(String datasetName){
+    String req = "SELECT identifier from dataset where name = '"+datasetName + "'";
+    String id = null;
+    Vector vec = new Vector();
+    try{
+      Statement stmt = conn.createStatement();
+      ResultSet rset = stmt.executeQuery(req);
+      while(rset.next()){
+        id = rset.getString("identifier");
+        if(id!=null){
+          Debug.debug("Adding id "+id, 3);
+          vec.add(id);
+        }
+        else{
+          Debug.debug("WARNING: identifier null for name "+
+              datasetName, 1);
+        }
+      }
+      rset.close();  
+    }
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 1);
+      error = e.getMessage();
+      return -1;
+    }
+    if(vec.size()>1){
+      Debug.debug("WARNING: More than one ("+vec.size()+
+          ") dataset found with name "+datasetName, 1);
+    }
+    return Integer.parseInt(vec.get(0).toString());
   }
 
   public synchronized String getRunNumber(int datasetID){
@@ -983,6 +1036,68 @@ public class MySQLDatabase implements Database{
     return execok;
   }
   
+  public synchronized boolean createJobDefinition(
+      String datasetName,
+      String [] cstAttrNames,
+      String [] resCstAttr,
+      String [] trpars,
+      String [] [] ofmap,
+      String odest,
+      String edest){
+    
+    error = "";
+    String ofmapstr = "" ;
+    String trparsstr = "" ;
+    trparsstr = Util.webEncode(trpars);
+    for (int i=0 ; i<ofmap.length ; i++){  
+      ofmapstr += ofmap[i] [0] + " " + ofmap[i] [1] + " ";
+    }
+    clearCaches();
+    // Update DB with "request" and return success/failure
+    // Fetch current date and time
+    SimpleDateFormat dateFormat = new SimpleDateFormat(GridPilot.dateFormatString);
+    dateFormat.setTimeZone(TimeZone.getDefault());
+    String dateString = dateFormat.format(new Date());
+    // NOTICE: there must be a field jobDefinition.status
+    String arg = "INSERT INTO jobDefinition (datasetName, status, ";
+    for(int i=0; i<cstAttrNames.length; ++i){
+      arg += cstAttrNames[i]+", ";
+    }
+    arg += "transPars, outFileMapping, stdoutDest," +
+            "stderrDest, created, lastModified";
+    arg += ") values ('"+datasetName+"', 'Defined', ";
+    for(int i=0; i<resCstAttr.length; ++i){
+      arg += "'"+resCstAttr[i]+"', ";
+    }
+
+    arg += "'"
+              +trparsstr+"', '"
+              +ofmapstr+"', '"
+              +odest+"', '"
+              +edest+"', '"
+              +dateString+"', '"
+              +dateString+
+          "')";
+    if(datasetName!=null && !datasetName.equals("")){
+      boolean execok = true;
+      try{
+        Statement stmt = conn.createStatement();
+        stmt.executeUpdate(arg);
+        conn.commit();
+      }
+      catch(Exception e){
+        execok = false;
+        Debug.debug(e.getMessage(), 2);
+        error = e.getMessage();
+      }
+      return execok;
+    }
+    else{
+      Debug.debug("ERROR: Could not get dataset of job definition", 1);
+      return false;
+    }
+  }
+
   public synchronized boolean createRunInfo(JobInfo jobInfo){
     // TODO: implement
     return true;
@@ -1643,7 +1758,7 @@ public class MySQLDatabase implements Database{
 
     private String makeDate(String dateInput){
       try{
-        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
         String dateString = "";
         if(dateInput == null || dateInput.equals("") || dateInput.equals("''")){
           dateString = df.format(Calendar.getInstance().getTime());

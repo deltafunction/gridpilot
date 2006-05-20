@@ -86,9 +86,9 @@ public class DBPluginMgr implements Database, PanelUtil{
   /**
    * Initializes a JobDefCreationPanel
    */
-  public void initJobDefCreationPanel(JobDefCreationPanel panel) throws Throwable{
+  public void initJobDefCreationPanel(CreateEditPanel panel) throws Throwable{
     String puClass = getPanelUtilClass();
-    Class [] puArgsType = {JobDefCreationPanel.class};
+    Class [] puArgsType = {panel.getClass()};
     Object [] puArgs = {panel};
     pu = (PanelUtil) loadClass(puClass, puArgsType, puArgs);
   }
@@ -713,6 +713,34 @@ public class DBPluginMgr implements Database, PanelUtil{
     }
     else{
       return null;
+    }
+  }
+
+  public synchronized int getDatasetID(final String datasetName){
+    MyThread t = new MyThread(){
+      int res = -1;
+      public void run(){
+        try{
+          res = db.getDatasetID(datasetName);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             datasetName, t);
+        }
+      }
+      public int getIntRes(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getDatasetID")){
+      return t.getIntRes();
+    }
+    else{
+      return -1;
     }
   }
 
@@ -1344,6 +1372,43 @@ public class DBPluginMgr implements Database, PanelUtil{
     }
   }
 
+  public synchronized boolean createJobDefinition(
+      final String datasetName,
+      final String [] cstAttrNames,
+      final String [] resCstAttr,
+      final String [] trpars,
+      final String [] [] ofmap,
+      final String odest,
+      final String edest){
+    
+    MyThread t = new MyThread(){
+      boolean res = false;
+      public void run(){
+        try{
+          res = db.createJobDefinition(datasetName, cstAttrNames, resCstAttr,
+              trpars, ofmap, odest, edest);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             datasetName, t);
+        }
+      }
+      public boolean getBoolRes(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "createJobDefinition")){
+      return t.getBoolRes();
+    }
+    else{
+      return false;
+    }
+  }
+
   public synchronized boolean createRunInfo(final JobInfo jobInfo){
     
       MyThread t = new MyThread(){
@@ -1884,13 +1949,13 @@ public class DBPluginMgr implements Database, PanelUtil{
     }
   }
 
-  public synchronized boolean dereserveJobDefinition(final int jobDefID){
+  public synchronized boolean cleanRunInfo(final int jobDefID){
   
     MyThread t = new MyThread(){
       boolean res = false;
       public void run(){
         try{
-          res = db.dereserveJobDefinition(jobDefID);
+          res = db.cleanRunInfo(jobDefID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -2663,4 +2728,59 @@ public class DBPluginMgr implements Database, PanelUtil{
        return null;
      }
    }
+  
+  /** 
+   * Split events over multiple logicalFiles for
+   * a dataset by consulting
+   * dataset.totalEvents and dataset.totalFiles.
+   * Returns a list of
+   * {logicalFileEventMin,logicalFileEventMax} dublets.
+   */
+  public int [][] getEventSplits(int dataset, String db){
+    String arg = "";
+    DBResult res = null;
+    // totalEvents is the total number of events.
+    // nrEvents is events per file.
+    int nrEvents = 0;
+    int totalEvents = 0;
+    int totalFiles = 0;
+    int [][] splits = {{0,0}};
+    String debug = "";
+    
+    arg = "select totalEvents, totalFiles from dataset where identifier='"+
+    dataset+"'";
+    res = this.select(arg, db);
+    if(res.values.length>0){
+      try{
+        totalEvents = Integer.parseInt(res.values[0][0].toString());
+        totalFiles = Integer.parseInt(res.values[0][1].toString());
+      }
+      catch(Exception e){
+        Debug.debug(e.getStackTrace().toString(), 2);
+      }
+    }
+    if(totalFiles>0 && totalEvents>0){
+      Debug.debug("Found totalFiles: "+totalFiles+", totalEvents: "+totalEvents, 2);
+      nrEvents = (totalEvents-(totalEvents%totalFiles))/totalFiles;
+      if((totalEvents%nrEvents)>0){
+        splits = new int [totalFiles+1][2];
+      }
+      else{
+        splits = new int [totalFiles][2];
+      }
+      for(int i=0; i<totalFiles; ++i){
+        splits[i][0] = i*nrEvents+1;
+        splits[i][1] = (i+1)*nrEvents;
+        debug += "{"+splits[i][0]+","+splits[i][1]+"}";
+      }
+      if((totalEvents%nrEvents)>0){
+        splits[totalFiles][0] = totalFiles*nrEvents+1;
+        splits[totalFiles][1] = totalFiles*nrEvents+totalEvents%nrEvents;
+        debug += "{"+splits[totalFiles][0]+","+splits[totalFiles][1]+"}";
+      }
+    }
+    Debug.debug("Splitting according to "+debug, 2);
+    return splits;
+  }
+
 }

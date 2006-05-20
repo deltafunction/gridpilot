@@ -33,6 +33,7 @@ public class GridPilot extends JApplet{
   public static String keyFile = "~/.globus/userkey.pem";
   public static String certFile = "~/.globus/usercert.pem";
   public static String keyPassword = null;
+  public static String dateFormatString = "yyyy-MM-dd HH:mm:ss";
   
   /**
    * Constructor

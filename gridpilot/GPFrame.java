@@ -1,5 +1,6 @@
 package gridpilot;
 
+import java.awt.BorderLayout;
 import java.net.URL;
 import javax.swing.*;
 import gridpilot.StatusBar;
@@ -9,7 +10,6 @@ import gridpilot.GridPilot;
 /**
  * Parent class for GridPilot frames.
  */
-
 public class GPFrame extends JFrame{
 
   private static final long serialVersionUID=1L;
@@ -38,6 +38,7 @@ public class GPFrame extends JFrame{
 
     setIconImage(icon.getImage());
     statusBar = new StatusBar();
+    this.getContentPane().add(statusBar, BorderLayout.SOUTH);
   }
 
 }

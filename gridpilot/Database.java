@@ -42,6 +42,7 @@ public interface Database{
   // ####### Dataset table
   public DBResult getJobDefinitions(int datasetID, String [] fieldNames);
   public String getDatasetName(int datasetID);
+  public int getDatasetID(String datasetName);
   public String getRunNumber(int datasetID);
   public boolean createDataset(String targetTable, String[] fields, Object [] values);
   public boolean updateDataset(int datasetID, String [] fields, String [] values);
@@ -53,6 +54,9 @@ public interface Database{
   // ####### Job definition table
   public DBRecord getJobDefinition(int jobDefID);
   public boolean createJobDefinition(String [] values);
+  public boolean createJobDefinition(String datasetName, String [] cstAttrNames,
+      String [] resCstAttr, String [] trpars, String [] [] ofmap, String odest,
+      String edest);
   public boolean deleteJobDefinition(int jobDefID);
   public boolean updateJobDefinition(int jobDefID, String [] fields, String [] values);
   // Here the following fields are assumed:
@@ -70,7 +74,7 @@ public interface Database{
   
   // ####### Job execution
   public boolean reserveJobDefinition(int jobDefID, String UserName);
-  public boolean dereserveJobDefinition(int jobDefID);
+  public boolean cleanRunInfo(int jobDefID);
   public String [] getTransformationRTEnvironments(int jobDefID);
   public String [] getTransformationArguments(int jobDefID);
   public String [] getJobDefTransPars(int jobDefID);

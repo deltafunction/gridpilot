@@ -221,7 +221,33 @@ public class Util{
     return retStrArray;
   }
   
-  public static void setBackgroundColor(JComponent c){
+  public static String webEncode(String [] strs) {
+    String tmp = "";
+    String alltmp = "";
+    for (int i=0 ; i<strs.length ; i++) {
+      // encode % into %25
+      // encode spaces into %20
+      tmp = strs[i].replaceAll("%","%25");
+      tmp = tmp.replaceAll(" ","%20");
+      alltmp += tmp + " ";
+    }
+    return alltmp ;
+  }
+  
+  public static String [] decode(String s) {
+    //split on spaces and replace "\0" by " "
+    StringTokenizer tok = new StringTokenizer(s);
+    int len = tok.countTokens();
+    String [] res = new String[len];
+    for (int i = 0 ; i < len ; i++) {
+      res[i] = tok.nextToken().replaceAll("\0"," ");
+      res[i] = res[i].replaceAll("%20"," ");
+      res[i] = res[i].replaceAll("%25","%");
+    }
+    return res ;
+  }
+
+ public static void setBackgroundColor(JComponent c){
     Color background = c.getBackground();
     if (background instanceof UIResource){
       c.setBackground(UIManager.getColor("TextField.inactiveBackground"));

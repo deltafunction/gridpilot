@@ -15,10 +15,11 @@ import javax.swing.text.*;
 import java.util.*;
 
 /**
- * This panel creates records in the DB table. It's shown inside the CreateEditDialog.
+ * This panel creates records in the DB table.
+ * It is shown inside a CreateEditDialog.
  *
  */
-public class JobDefCreationPanel extends CreateEditPanel{
+public class JobDefCreationPanel extends CreateEditPanel implements PanelUtil{
 
   private static final long serialVersionUID = 1L;
   private DatasetMgr taskMgr;
@@ -66,7 +67,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
   public JobDefCreationPanel(
       /*this is in case DBPanel was opened from the menu and_taskMgr is null*/
       String _dbName,
-      DatasetMgr _taskMgr, DBPanel _panel,
+      DatasetMgr _taskMgr,
+      DBPanel _panel,
       boolean _editing){
     
     editing = _editing;
@@ -90,7 +92,6 @@ public class JobDefCreationPanel extends CreateEditPanel{
       datasetName = "";
     }
 
-    
     transformationIdentifier = dbPluginMgr.getIdentifierField(dbPluginMgr.getDBName(),
         "transformation");
 
@@ -815,4 +816,248 @@ public class JobDefCreationPanel extends CreateEditPanel{
         tcConstant
         );
   }
+
+
+///////////////////////////////////////////////////////////////////////////////
+  
+  // TODO: this is copy-pasted from ProdDBPanelUtil and stripped down - fit HSQLDB and MySQL!
+  
+  // these two variables must either both be static or not
+  private static int TEXTFIELDWIDTH = 32;
+   
+  // TODO: check and use this
+  public String [] getConstantJobAttributes(){
+    return new String [] {"JobNumber", "LFN",
+     "EventMin", "EventMax", "InputFile"};
+  }
+
+  public void initAttributePanel(
+      String [] cstAttributesNames,
+      String [] cstAttr,
+      JComponent [] tcCstAttributes,
+      JPanel pAttributes,
+      JPanel jobXmlContainer){
+    
+    GridBagConstraints cl = new GridBagConstraints();
+    cl.fill = GridBagConstraints.VERTICAL;
+    cl.gridx = 1;
+    cl.gridy = 0;         
+    cl.anchor = GridBagConstraints.NORTHWEST;
+  
+    pAttributes.setLayout(new GridBagLayout());
+    pAttributes.removeAll();
+      
+    if(oldTcCstAttributes != null &&
+        tcCstAttributes.length==oldTcCstAttributes.length){
+      for(int i=0; i<tcCstAttributes.length; ++i){
+        tcCstAttributes[i] = oldTcCstAttributes[i];
+      }
+    }
+  
+    if(!editing && oldJobTransFK!=null && Integer.parseInt(oldJobTransFK)>-1){
+      jobTransFK = oldJobTransFK;
+    }
+  
+    for(int i =0; i<cstAttributesNames.length; ++i){
+      
+      if(cstAttributesNames[i].equalsIgnoreCase("jobTransFK")){
+        cl.gridx=0;
+        cl.gridy=i;
+        pAttributes.add(new JLabel("jobTransFK" + " : "), cl);
+        if(!reuseTextFields || tcCstAttributes[i] == null)
+          tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
+        
+        ((JTextComponent) tcCstAttributes[i]).setEnabled(false);
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("ipConnectivity")){
+        cl.gridx=0;
+        cl.gridy=i;
+        pAttributes.add(new JLabel("ipConnectivity" + " : "), cl);
+        tcCstAttributes[i] = new JComboBox();
+        ((JComboBox) tcCstAttributes[i]).addItem("yes");
+        ((JComboBox) tcCstAttributes[i]).addItem("no");
+        if(!editing){
+          ((JComboBox) tcCstAttributes[i]).setSelectedItem("no");
+        }
+        if(editing || cstAttr[i]!=null){
+          Util.setJText(tcCstAttributes[i], cstAttr[i]);
+        }
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("ramUnit")){
+        cl.gridx=0;
+        cl.gridy=i;
+        pAttributes.add(new JLabel("ramUnit" + " : "), cl);
+        tcCstAttributes[i] = new JComboBox();
+        ((JComboBox) tcCstAttributes[i]).addItem("MB");
+        ((JComboBox) tcCstAttributes[i]).addItem("GB");
+        if(!editing){
+          ((JComboBox) tcCstAttributes[i]).setSelectedItem("MB");
+        }
+        if(editing || cstAttr[i]!=null){
+          Util.setJText(tcCstAttributes[i], cstAttr[i]);
+        }
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("diskUnit")){
+        cl.gridx=0;
+        cl.gridy=i;
+        pAttributes.add(new JLabel("diskUnit" + " : "), cl);
+        tcCstAttributes[i] = new JComboBox();
+        ((JComboBox) tcCstAttributes[i]).addItem("MB");
+        ((JComboBox) tcCstAttributes[i]).addItem("GB");
+        if(!editing){
+          ((JComboBox) tcCstAttributes[i]).setSelectedItem("GB");
+        }
+        if(editing || cstAttr[i]!=null){
+          Util.setJText(tcCstAttributes[i], cstAttr[i]);
+        }
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("currentState")){
+        cl.gridx=0;
+        cl.gridy=i;
+        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
+        if(!reuseTextFields || tcCstAttributes[i] == null)
+          tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
+        
+        Util.setJText(tcCstAttributes[i], cstAttr[i]);
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("taskFK")){
+        cl.gridx=0;
+        cl.gridy=i;
+        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
+        if(!reuseTextFields || tcCstAttributes[i] == null)
+          tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
+        
+        Util.setJText(tcCstAttributes[i], Integer.toString(taskID));
+        tcCstAttributes[i].setEnabled(false);
+      }
+      else{
+        cl.gridx=0;
+        cl.gridy=i;
+        if(cstAttributesNames[i].equalsIgnoreCase("jobPars") ||
+            cstAttributesNames[i].equalsIgnoreCase("jobOutputs") ||
+            cstAttributesNames[i].equalsIgnoreCase("jobLogs")){
+          pAttributes.add(new JLabel(""), cl);
+        }
+        else{
+          pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
+        }
+        if(!reuseTextFields || tcCstAttributes[i] == null)
+          tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
+        
+        if(cstAttr[i]!=null && !cstAttr[i].equals("")){
+          Debug.debug("Setting cstAttr["+i+"]: "+cstAttr[i], 3);
+          Util.setJText(tcCstAttributes[i], cstAttr[i]);
+        }
+      }      
+      cl.gridx=1;
+      cl.gridy=i;
+      if( !cstAttributesNames[i].equalsIgnoreCase("jobPars") &&
+          !cstAttributesNames[i].equalsIgnoreCase("jobOutputs") &&
+          !cstAttributesNames[i].equalsIgnoreCase("jobLogs")){
+        pAttributes.add(tcCstAttributes[i], cl);
+      }
+      if(cstAttributesNames[i].equalsIgnoreCase(jobDefIdentifier)){
+        // when creating, zap loaded jobDefinitionID
+        if(!editing){
+          Util.setJText((JComponent) tcCstAttributes[i],"");
+        }
+        ((JTextComponent) tcCstAttributes[i]).setEnabled(false);
+      }
+    }
+  }
+
+  public void setEnabledAttributes(boolean enabled,
+      String [] cstAttributesNames,
+      JComponent [] tcCstAttributes){
+    
+    if(cstAttributesNames.length!=tcCstAttributes.length){
+      Debug.debug(cstAttributesNames.length+"!="+tcCstAttributes.length, 1);
+      return;
+    }
+    Debug.debug(cstAttributesNames.length+"=="+tcCstAttributes.length, 3);
+    
+    for(int i =0; i<cstAttributesNames.length; ++i){
+      if(cstAttributesNames[i].equalsIgnoreCase("jobXML")){
+      }
+      else if(!cstAttributesNames[i].equalsIgnoreCase("jobTransFK") &&
+              !cstAttributesNames[i].equalsIgnoreCase(jobDefIdentifier) &&
+              (!cstAttributesNames[i].equalsIgnoreCase("taskFK") ||
+                  taskID==-1) &&
+              tcCstAttributes[i]!=null){
+        tcCstAttributes[i].setEnabled(enabled);
+      }
+    }
+
+    // the create/update button on the CreateEditDialog panel
+    ((JButton) ((JPanel) getParent().getComponent(1)).getComponent(3)).setEnabled(enabled);
+    updateUI();
+  }
+
+  public Vector getNonAutomaticFields(String [] cstAttributesNames,
+      JComponent [] tcCstAttributes, Vector tcConstant){
+    
+    Vector v = new Vector();
+    v.addAll(tcConstant);
+    for(int i=0; i<tcCstAttributes.length; ++i){
+      if(!cstAttributesNames[i].equalsIgnoreCase(jobDefIdentifier) &&
+          !cstAttributesNames[i].equalsIgnoreCase("jobTransFK") &&
+          !cstAttributesNames[i].equalsIgnoreCase("taskFK")){
+        v.add(tcCstAttributes[i]);
+      }
+    }
+    return v;
+  }
+
+  public String getJTextOrEmptyString(String attr, JComponent comp,
+     boolean editing){
+    if(comp==null){
+      Debug.debug("WARNING: JComponent is null", 3);
+      return "";
+    }
+    
+    String text = "";
+    if(comp.getClass().isInstance(new JTextArea())||
+        comp.getClass().isInstance(new JTextField())){
+      text =  ((JTextComponent) comp).getText();
+    }
+    else if(comp.getClass().isInstance(new JComboBox())){
+      if(((JComboBox) comp).getSelectedItem()==null){
+        text = "";
+      }
+      else{
+        text = ((JComboBox) comp).getSelectedItem().toString();
+      }
+    }
+    else{
+      Debug.debug("WARNING: unsupported component type "+comp.getClass().toString(), 1);
+    }
+    return text;
+  }
+
+  public void clearPanel(String [] cstAttributesNames,
+      JComponent [] tcCstAttributes,
+      JPanel jobXmlContainer,
+      Vector tcConstant){
+      
+    Vector textFields = getNonAutomaticFields(cstAttributesNames,
+        tcCstAttributes, tcConstant);
+  
+    for(int i =0; i<textFields.size(); ++i){
+      Util.setJText((JComponent) textFields.get(i),"");
+    }  
+  }
+
+  public void setValuesInAttributePanel(String [] cstAttributesNames,
+      String [] cstAttr, JComponent [] tcCstAttributes){
+    
+    Debug.debug("Setting values...", 3);
+
+    for(int i =0; i<cstAttributesNames.length; ++i){     
+      if(cstAttributesNames[i].equalsIgnoreCase("jobTransFK")){
+        ((JTextComponent) tcCstAttributes[i]).setEnabled(false);
+        Util.setJText(tcCstAttributes[i], jobTransFK);
+      }
+    }
+  }
+
 }

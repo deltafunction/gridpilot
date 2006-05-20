@@ -1029,15 +1029,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */ 
   private void createJobDefs(){
     Debug.debug("Creating job definitions, "+getSelectedIdentifiers().length, 3);
-    DatasetMgr datasetMgr = null;
+    /*DatasetMgr datasetMgr = null;
     try{
       datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName, parentId);
     }
     catch(Throwable e){
       Debug.debug("ERROR: could not create DatasetMgr. "+e.getMessage(), 1);
       e.printStackTrace();
-    }
-    JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, this, false);
+    }*/
+    //JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, this, false);
+    JobCreationPanel panel = new JobCreationPanel(dbName);
     try{
       dbPluginMgr.initJobDefCreationPanel(panel);
     }
@@ -1073,6 +1074,83 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     CreateEditDialog pDialog = new CreateEditDialog(panel, true);
     pDialog.setTitle(tableName);
     //pDialog.setVisible(true);
+  }
+
+  // From AtCom1
+  // TODO: try if not better than deleteJobDefs
+  /**
+   * Deletes selected job definitions from the database. 
+   * Returns list of successfully deleted job definitions.
+   */
+  public synchronized HashSet deleteJobdefinitions(boolean showResults) {
+  // TODO: Delete job definitions only if not running.
+  
+  boolean skipAll = false;
+  boolean skip = false;
+
+  boolean showThis;
+  int choice = 3;
+  HashSet deleted = new HashSet();
+  int [] selectedJobDefs = getSelectedIdentifiers();
+  JProgressBar pb = new JProgressBar();
+  pb.setMaximum(pb.getMaximum()+selectedJobDefs.length);
+  statusBar.setProgressBar(pb);
+  showThis = showResults;
+  Debug.debug("Deleting "+selectedJobDefs.length+" logical files",2);
+  JCheckBox cbCleanup = null;
+  
+  for(int i=selectedJobDefs.length-1; i>=0 && !skipAll; --i){
+    
+    if(skipAll){
+      break;
+    }
+    
+    if(showThis && !skipAll){
+        
+      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()); 
+      cbCleanup = new JCheckBox("Cleanup runtime info", true);
+      try{
+        if(i>0){
+          choice = confirmBox.getConfirm("Confirm delete",
+             "Really delete logical file # "+selectedJobDefs[i]+"?",
+             new Object[] {"OK", "Skip", "OK for all", "Skip all", cbCleanup});
+        }
+        else{
+          choice = confirmBox.getConfirm("Confirm delete",
+           "Really delete logical file # "+selectedJobDefs[i]+"?",
+           new Object[] {"OK",  "Skip", cbCleanup});        
+        }
+      }
+      catch(java.lang.Exception e){Debug.debug("Could not get confirmation, "+e.getMessage(),1);}
+        switch(choice){
+          case 0  : skip = false;  break;  // OK
+          case 1  : skip = true;   break; // Skip
+          case 2  : skip = false;  showThis = false ; break;   //OK for all
+          case 3  : skip = true;   showThis = false ; skipAll = true; break;// Skip all
+          default : skip = true;   skipAll = true; break;// other (closing the dialog). Same action as "Skip all"
+        }
+      }
+      if(!skipAll && !skip){
+        Debug.debug("deleting logical file # " + selectedJobDefs[i], 2);
+        pb.setValue(pb.getValue()+1);
+        if(cbCleanup.isSelected()){
+          if(!dbPluginMgr.cleanRunInfo(selectedJobDefs[i])){
+            GridPilot.getClassMgr().getLogFile().addMessage(
+                "WARNING: Deleting runtime record for logicalFile # "+selectedJobDefs[i]+
+                " failed."+"Please clean up by hand."+dbPluginMgr.getError());
+          }
+        }
+        if(dbPluginMgr.deleteJobDefinition(selectedJobDefs[i])){
+          deleted.add(Integer.toString(selectedJobDefs[i]));
+          statusBar.setLabel("Job definition # " + selectedJobDefs[i] + " deleted.");
+        }
+        else{
+          statusBar.setLabel("Job definition # " + selectedJobDefs[i] + " NOT deleted.");
+          Debug.debug("WARNING: Job definition "+selectedJobDefs[i]+" could not be deleted",1);
+        }   
+      }
+    }
+    return deleted;
   }
 
   private void deleteJobDefs(){
