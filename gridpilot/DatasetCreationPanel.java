@@ -261,7 +261,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
     for(int i =0; i<cstAttributesNames.length; ++i){
       if(cstAttributesNames[i].equalsIgnoreCase(datasetTransformationReference[1])){
         Util.setJEditable(tcCstAttributes[i], false);
-        if(transformationName!=null && transformationName!=null){
+        if(cbTransformationSelection!=null &&
+            transformationName!=null && transformationName!=null){
           cbTransformationSelection.setSelectedItem(transformationName);
         }
       }
@@ -459,9 +460,13 @@ public class DatasetCreationPanel extends CreateEditPanel{
 
   private String[] getTransNames(){
     String [] ret = new String[transformations.values.length];
+    Debug.debug("number of transformations: "+transformations.values.length, 3);
+    Debug.debug("fields: "+Util.arrayToString(transformations.fields), 3);
     for(int i=0; i<transformations.values.length; ++i){
+      Debug.debug("#"+i, 3);
+      Debug.debug("name: "+transformations.getValue(i, "name"), 3);
+      Debug.debug("values: "+Util.arrayToString(transformations.values[i]), 3);
       ret[i] = transformations.getValue(i, "name").toString(); 
-      Debug.debug("name is "+ret[i], 3);
     }
     // This is to ensure only unique elements
     // TODO: for some reason this doesn't seam to work
@@ -493,20 +498,20 @@ public class DatasetCreationPanel extends CreateEditPanel{
     pTransformation.removeAll();
     pTransformation.setLayout(new FlowLayout());
 
-    String [] transformations = getTransNames();
+    String [] transNames = getTransNames();
 
-    if(transformations.length==0){
+    if(transNames.length==0){
       pTransformation.add(new JLabel("No transformations found."));
     }
-    else if(transformations.length==1){
-      transformationName = transformations[0];
+    else if(transNames.length==1){
+      transformationName = transNames[0];
       pTransformation.add(new JLabel("Transformation:" + transformationName));
       initTransVersionPanel(datasetID, transformationName);
     }
     else{
       cbTransformationSelection = new JComboBox();
-      for(int i=0; i<transformations.length; ++i){
-          cbTransformationSelection.addItem(transformations[i]);
+      for(int i=0; i<transNames.length; ++i){
+          cbTransformationSelection.addItem(transNames[i]);
       }
       pTransformation.add(new JLabel("Transformation:"), null);
       pTransformation.add(cbTransformationSelection, null);
@@ -537,8 +542,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
     else if(versions.length==1){
       transformationVersion = versions[0];
       pVersion.add(new JLabel(/*"Version : " +*/ transformationVersion));
-      //editDataset(datasetID, transformation, transformationVersion);
-      setValuesInAttributePanel(transformation, transformationVersion);
     }
     else{
       cbTransVersionSelection = new JComboBox();
@@ -564,12 +567,13 @@ public class DatasetCreationPanel extends CreateEditPanel{
     ct.gridwidth=1;
     ct.gridheight=1;
     if(cbTargetDBSelection!=null){
-      ct.gridx=2;
+      ct.gridx = 2;
     }
     else{
-      ct.gridx=1;
+      ct.gridx = 1;
     }
     add(pVersion, ct);
+    ct.gridx = ct.gridx-1;
     
     updateUI();
   }
