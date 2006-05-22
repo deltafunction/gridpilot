@@ -168,11 +168,17 @@ public interface Database{
     }
 
    public Object getValue(int row, String col){
-      if (row>values.length-1) return "no such row";
-      for (int i=0 ; i<fields.length ; i++){
-        if (col.equalsIgnoreCase(fields[i])) return values[row][i] ;
+      if(row>values.length-1){
+        return "no such row";
       }
-      return "no such field" ;
+      Debug.debug("fields: "+Util.arrayToString(fields), 3);
+      for(int i=0 ; i<fields.length ; i++){
+        Debug.debug("checking value "+values[row][i], 3);
+        if(col.equalsIgnoreCase(fields[i])){
+          return values[row][i];
+        }
+      }
+      return "no such field";
     }
 
    public DBRecord getRow(int row){
