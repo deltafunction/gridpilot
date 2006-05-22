@@ -943,7 +943,7 @@ public class MySQLDatabase implements Database{
     DBResult res = new DBResult(transformationFields.length, jt.length);
     res.fields = transformationFields;
     for(int i=0; i<jt.length; ++i){
-      for(int j=0; j<jt.length; ++j){
+      for(int j=0; j<transformationFields.length; ++j){
         res.values[i][j] = jt[i].values[j];
       }
     }

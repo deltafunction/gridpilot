@@ -830,15 +830,14 @@ public class HSQLDBDatabase implements Database{
                 transformationFields[j]+". "+e.getMessage(),1);
           }
         }
-        Debug.debug("Adding value "+jt[0], 3);
         transformationVector.add(new DBRecord(transformationFields, jt));
-        Debug.debug("Added value "+((DBRecord) transformationVector.get(i)).getAt(0), 3);
         ++i;
       }
       allTransformationRecords = new DBRecord[i];
       for(int j=0; j<i; ++j){
         allTransformationRecords[j] = ((DBRecord) transformationVector.get(j));
-        Debug.debug("Added value "+allTransformationRecords[j].getAt(0), 3);
+        Debug.debug("Added values "+
+            Util.arrayToString(allTransformationRecords[j].values, " : "), 3);
       }
     }
     catch(SQLException e){
@@ -972,7 +971,7 @@ public class HSQLDBDatabase implements Database{
     DBResult res = new DBResult(transformationFields.length, jt.length);
     res.fields = transformationFields;
     for(int i=0; i<jt.length; ++i){
-      for(int j=0; j<jt.length; ++j){
+      for(int j=0; j<transformationFields.length; ++j){
         res.values[i][j] = jt[i].values[j];
       }
     }
