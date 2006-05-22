@@ -340,7 +340,8 @@ public class TransformationCreationPanel extends CreateEditPanel{
           }
         }
       }
-      else if(runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("") &&
+      else if(cbRuntimeEnvironmentSelection !=null &&
+          runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("") &&
           cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironment")){
         Util.setJText(tcCstAttributes[i], runtimeEnvironmentName);
         Debug.debug("Setting selection to "+runtimeEnvironmentName, 3);
