@@ -28,7 +28,6 @@ import java.io.*;
  * This panel contains one SelectPanel.
  *
  */
-
 public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
   private static final long serialVersionUID = 1L;
@@ -51,7 +50,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bSearch = new JButton("Search");
   private JButton bClear = new JButton("Clear");
   private JButton bViewJobDefinitions = new JButton("Show jobDefinitions");
-  private JButton bDefineJobDefinitions = new JButton("Define jobDefinitions");
+  private JButton bDefineJobDefinitions = new JButton("Create jobDefinitions");
   private JMenuItem miEdit = null;
   
   private int [] identifiers;
@@ -1032,7 +1031,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     //JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, this, false);
     JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, this);
     CreateEditDialog pDialog = new CreateEditDialog(panel, false);
-    pDialog.setTitle(tableName);
+    pDialog.setTitle("jobDefinition");
   }
 
   private void editJobDef(){
