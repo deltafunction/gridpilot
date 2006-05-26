@@ -344,4 +344,48 @@ public class Util{
     });
     return checkPanel;
   }
+  
+  /**
+   * Loads class.
+   * @throws Throwable if an exception or an error occurs during loading
+   */
+  public static Object loadClass(String dbClass, Class [] argTypes,
+     Object [] args) throws Throwable{
+    Debug.debug("Loading plugin: "+" : "+dbClass, 2);
+    // Arguments and class name for <DatabaseName>Database
+    boolean loadfailed = false;
+    Object ret = null;
+    Debug.debug("argument types: "+Util.arrayToString(argTypes), 3);
+    Debug.debug("arguments: "+Util.arrayToString(args), 3);
+    try{
+      //Class newClass = this.getClass().getClassLoader().loadClass(dbClass);
+      Class newClass = (new MyClassLoader()).loadClass(dbClass);
+      ret = (newClass.getConstructor(argTypes).newInstance(args));
+      Debug.debug("plugin " + "(" + dbClass + ") loaded, "+ret.getClass(), 2);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      loadfailed = true;
+      //do nothing, will try with MyClassLoader.
+    }
+    if(loadfailed){
+      try{
+        // loading of this plug-in
+       MyClassLoader mcl = new MyClassLoader();
+       ret = (mcl.findClass(dbClass).getConstructor(argTypes).newInstance(args)); 
+       Debug.debug("plugin " + "(" + dbClass + ") loaded", 2);
+      }
+      catch(IllegalArgumentException iae){
+        GridPilot.getClassMgr().getLogFile().addMessage("Cannot load class " + dbClass + ".\nThe plugin constructor " +
+                          "must have one parameter (String)", iae);
+        throw iae;
+      }
+      catch(Exception e){
+        GridPilot.getClassMgr().getLogFile().addMessage("Cannot load class " + dbClass, e);
+        throw e;
+      }
+    }
+    return ret;
+  }
+
 }

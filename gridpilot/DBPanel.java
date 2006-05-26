@@ -1029,22 +1029,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */ 
   private void createJobDefs(){
     Debug.debug("Creating job definitions, "+getSelectedIdentifiers().length, 3);
-    /*DatasetMgr datasetMgr = null;
-    try{
-      datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName, parentId);
-    }
-    catch(Throwable e){
-      Debug.debug("ERROR: could not create DatasetMgr. "+e.getMessage(), 1);
-      e.printStackTrace();
-    }*/
     //JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, this, false);
-    JobCreationPanel panel = new JobCreationPanel(dbName);
-    try{
-      dbPluginMgr.initJobDefCreationPanel(panel);
-    }
-    catch(Throwable e){
-      Debug.debug("Could not initialize panel "+dbName+". "+e.getMessage(), 1);
-    }
+    JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, this);
     CreateEditDialog pDialog = new CreateEditDialog(panel, false);
     pDialog.setTitle(tableName);
   }
@@ -1064,12 +1050,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       e.printStackTrace();
       return;
     }
-    JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, this, true);
+    // Try to load the job definition panel defined by the db plugin
+    String panelClass = dbPluginMgr.getJobDefCreationPanelClass();
+    Class [] argTypes = new Class []
+       {String.class, DatasetMgr.class, DBPanel.class, Boolean.class};
+    Object [] args = new Object [] {dbName, datasetMgr, this, new Boolean(true)};
+    JobDefCreationPanel panel = null;
     try{
-      dbPluginMgr.initJobDefCreationPanel(panel);
+      panel = (JobDefCreationPanel) Util.loadClass(
+          panelClass, argTypes, args);
     }
     catch(Throwable e){
-      Debug.debug("Could not initialize panel "+dbName+". "+e.getMessage(), 1);
+      Debug.debug("Could not load job definition creation panel class for " +
+          "this db plugin, loading default panel", 1);
+      panel = new JobDefCreationPanel(dbName, datasetMgr, this,
+          new Boolean(true));
     }
     CreateEditDialog pDialog = new CreateEditDialog(panel, true);
     pDialog.setTitle(tableName);

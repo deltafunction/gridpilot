@@ -3,14 +3,11 @@ package gridpilot;
 import java.awt.Color;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 
-import javax.swing.JComponent;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
 
 import gridpilot.GridPilot;
 import gridpilot.ConfigFile;
@@ -18,19 +15,17 @@ import gridpilot.Debug;
 import gridpilot.LogFile;
 import gridpilot.Database;
 import gridpilot.MyThread;
-import gridpilot.MyClassLoader;
 
 /**
  * This class manages access to databases.
  *
  */
-public class DBPluginMgr implements Database, PanelUtil{
+public class DBPluginMgr implements Database{
 
   private ConfigFile configFile;
   private LogFile logFile;
   private Database db;
   private String dbName;
-  private PanelUtil pu;
   
   // TODO: cache here??
   //private HashMap partInfoCacheId = null ;
@@ -79,60 +74,8 @@ public class DBPluginMgr implements Database, PanelUtil{
       dbArgs[i] = configFile.getValue(dbName, parameters[i]);
     }
 
-    db = (Database) loadClass(dbClass, dbArgsType, dbArgs);
+    db = (Database) Util.loadClass(dbClass, dbArgsType, dbArgs);
 
-  }
-
-  /**
-   * Initializes a JobDefCreationPanel
-   */
-  public void initJobDefCreationPanel(CreateEditPanel panel) throws Throwable{
-    String puClass = getPanelUtilClass();
-    Class [] puArgsType = {panel.getClass()};
-    Object [] puArgs = {panel};
-    pu = (PanelUtil) loadClass(puClass, puArgsType, puArgs);
-  }
-  
-  /**
-   * Loads plug-in.
-   * @throws Throwable if an exception or an error occurs during plug-in loading
-   */
-  public Object loadClass(String dbClass, Class [] dbArgsType,
-     Object [] dbArgs) throws Throwable{
-    Debug.debug("Loading plugin: "+dbName+" : "+dbClass, 2);
-    // Arguments and class name for <DatabaseName>Database
-    boolean loadfailed = false;
-    Object ret = null;
-    Debug.debug("argument types: "+Util.arrayToString(dbArgsType), 3);
-    Debug.debug("arguments: "+Util.arrayToString(dbArgs), 3);
-    try{
-      Class newClass = this.getClass().getClassLoader().loadClass(dbClass);
-      ret = (newClass.getConstructor(dbArgsType).newInstance(dbArgs));
-      Debug.debug("plugin " + dbName + "(" + dbClass + ") loaded, "+ret.getClass(), 2);
-    }
-    catch(Exception e){
-      e.printStackTrace();
-      loadfailed = true;
-      //do nothing, will try with MyClassLoader.
-    }
-    if(loadfailed){
-      try{
-        // loading of this plug-in
-       MyClassLoader mcl = new MyClassLoader();
-       ret = (mcl.findClass(dbClass).getConstructor(dbArgsType).newInstance(dbArgs)); 
-       Debug.debug("plugin " + dbName + "(" + dbClass + ") loaded", 2);
-      }
-      catch(IllegalArgumentException iae){
-        logFile.addMessage("Cannot load class for " + dbName + ".\nThe plugin constructor " +
-                          "must have one parameter (String)", iae);
-        throw iae;
-      }
-      catch(Exception e){
-        logFile.addMessage("Cannot load class for " + dbName, e);
-        //throw e;
-      }
-    }
-    return ret;
   }
 
   /**
@@ -291,8 +234,8 @@ public class DBPluginMgr implements Database, PanelUtil{
     return ret1;
   }
 
-  public synchronized String getPanelUtilClass(){
-    return db.getPanelUtilClass();
+  public synchronized String getJobDefCreationPanelClass(){
+    return db.getJobDefCreationPanelClass();
   }
 
   public synchronized String [] getFieldNames(final String table){
@@ -2538,197 +2481,6 @@ public class DBPluginMgr implements Database, PanelUtil{
     }
   }
 
-  public synchronized void clearPanel(final String [] cstAttributesNames,
-     final JComponent [] tcCstAttributes,
-     final JPanel jobXmlContainer,
-     final Vector tcConstant){    
-    MyThread t = new MyThread(){
-      public void run(){
-        try{
-           pu.clearPanel(cstAttributesNames, tcCstAttributes, jobXmlContainer,
-               tcConstant);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName, t);
-        }
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "clearPanel")){
-      return;
-    }
-    else{
-      return;
-    }
-  }
-
-  public synchronized void initAttributePanel(
-     final String [] cstAttributesNames,
-     final String [] cstAttr,
-     final JComponent [] tcCstAttributes,
-     final JPanel pAttributes,
-     final JPanel jobXmlContainer){
-    MyThread t = new MyThread(){
-      public void run(){
-        try{
-           pu.initAttributePanel(cstAttributesNames, cstAttr, tcCstAttributes,
-               pAttributes, jobXmlContainer);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName, t);
-        }
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "initAttributePanel")){
-      return;
-    }
-    else{
-      return;
-    }
-  }
-
-  public synchronized void setEnabledAttributes(final boolean enabled,
-     final String [] cstAttributesNames,
-     final JComponent [] tcCstAttributes){
-    MyThread t = new MyThread(){
-      public void run(){
-        try{
-           pu.setEnabledAttributes(enabled, cstAttributesNames, tcCstAttributes);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName, t);
-        }
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "setEnabledAttributes")){
-      return;
-    }
-    else{
-      return;
-    }
-  }
-
-  public synchronized void setValuesInAttributePanel(final String [] cstAttributesNames,
-     final String [] cstAttr,
-    final JComponent [] tcCstAttributes){    
-    MyThread t = new MyThread(){
-      public void run(){
-        try{
-          pu.setValuesInAttributePanel(cstAttributesNames, cstAttr, tcCstAttributes);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName, t);
-          t.printStackTrace();
-        }
-      }
-    };
-
-    t.start();
-
-    if(waitForThread(t, dbName, dbTimeOut, "setValuesInAttributePanel")){
-      return;
-    }
-    else{
-      return;
-    }
-  }
-  
-  public String getJTextOrEmptyString(final String attr, final JComponent comp,
-     final boolean editing){    
-    MyThread t = new MyThread(){
-      String res = null;
-      public void run(){
-        try{
-          res = pu.getJTextOrEmptyString(attr, comp, editing);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName, t);
-        }
-      }
-      public String getStringRes(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "getJTextOrEmptyString")){
-      return t.getStringRes();
-    }
-    else{
-      return null;
-    }
-  }
-
-  public Vector getNonAutomaticFields(final String [] cstAttributesNames,
-     final JComponent [] tcCstAttributes, final Vector tcConstant){
-    MyThread t = new MyThread(){
-      Vector res = null;
-      public void run(){
-        try{
-          res = pu.getNonAutomaticFields(cstAttributesNames, tcCstAttributes,
-              tcConstant);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName, t);
-        }
-      }
-      public Vector getVectorRes(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "getNonIdTextFields")){
-      return t.getVectorRes();
-    }
-    else{
-      return null;
-    }
-  }
-  
-  public String [] getConstantJobAttributes(){
-     MyThread t = new MyThread(){
-       String [] res = null;
-       public void run(){
-         try{
-           res = pu.getConstantJobAttributes();
-         }
-         catch(Throwable t){
-           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                              " from plugin " + dbName, t);
-         }
-       }
-       public String [] getString2Res(){
-         return res;
-       }
-     };
-   
-     t.start();
-   
-     if(waitForThread(t, dbName, dbTimeOut, "getConstantJobAttributes")){
-       return t.getString2Res();
-     }
-     else{
-       return null;
-     }
-   }
-  
   /** 
    * Split events over multiple logicalFiles for
    * a dataset by consulting

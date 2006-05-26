@@ -164,7 +164,7 @@ public class MySQLDatabase implements Database{
     return execok;
   }
 
-  public String getPanelUtilClass(){
+  public String getJobDefCreationPanelClass(){
     return null;
   }
 

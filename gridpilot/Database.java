@@ -99,7 +99,7 @@ public interface Database{
   public String [] getFieldNames(String table);
   public String getPackInitText (String pack, String cluster);
   // The class providing the panel for job creation
-  public String getPanelUtilClass();
+  public String getJobDefCreationPanelClass();
   // The last database error reported
   public String getError();
 
