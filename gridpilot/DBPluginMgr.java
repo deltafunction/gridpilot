@@ -659,6 +659,34 @@ public class DBPluginMgr implements Database{
     }
   }
 
+  public synchronized int getTransformationID(final String transName, final String transVersion){
+    MyThread t = new MyThread(){
+      int res = -1;
+      public void run(){
+        try{
+          res = db.getTransformationID(transName, transVersion);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             transName+":"+transVersion, t);
+        }
+      }
+      public int getIntRes(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getTransformationID")){
+      return t.getIntRes();
+    }
+    else{
+      return -1;
+    }
+  }
+
   public synchronized int getDatasetID(final String datasetName){
     MyThread t = new MyThread(){
       int res = -1;
@@ -1196,19 +1224,18 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized String [] getTransJobParameters(final String transformationName,
-      final String transformationVersion){
+  public synchronized String [] getTransJobParameters(final int transformationID){
   
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getTransJobParameters(transformationName, transformationVersion);
+          res = db.getTransJobParameters(transformationID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             transformationName + " " + transformationVersion, t);
+                             transformationID, t);
         }
       }
       public String [] getString2Res(){
@@ -1226,19 +1253,18 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized String [] getTransOutputs(final String transformationName,
-      final String transformationVersion){
+  public synchronized String [] getTransOutputs(final int transformationID){
   
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getTransOutputs(transformationName, transformationVersion);
+          res = db.getTransOutputs(transformationID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             transformationName + " " + transformationVersion, t);
+                             transformationID, t);
         }
       }
       public String [] getString2Res(){

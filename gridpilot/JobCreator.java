@@ -12,6 +12,8 @@ import java.awt.*;
  */
 public class JobCreator extends GPFrame{
 
+  private static final long serialVersionUID=1L;
+  
   private int [] datasetIdentifiers;
   private boolean showResults;
   private Vector constants;
@@ -481,8 +483,9 @@ public class JobCreator extends GPFrame{
     DBPluginMgr dbMgr = GridPilot.getClassMgr().getDBPluginMgr(
         db);
     outputFileNameStr = dbMgr.getTransOutputs(
+        dbPluginMgr.getTransformationID(
         dbPluginMgr.getDatasetTransformationName(datasetID),
-        dbPluginMgr.getDatasetTransformationVersion(datasetID)).toString();
+        dbPluginMgr.getDatasetTransformationVersion(datasetID))).toString();
     return Util.split(outputFileNameStr)[0];
   }
 

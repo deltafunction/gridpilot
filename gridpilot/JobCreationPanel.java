@@ -17,7 +17,6 @@ public class JobCreationPanel extends CreateEditPanel{
   private static final long serialVersionUID = 1L;
   private DBPluginMgr dbPluginMgr = null;
   private int [] datasetIDs = new int [] {-1};
-  protected int partitionIdentifier;
   private JPanel pDataset = new JPanel();
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
@@ -29,8 +28,6 @@ public class JobCreationPanel extends CreateEditPanel{
   private JTextComponent [][] tcOutputMap;
   private JTextComponent [] tcStdOutput;
   private boolean reuseTextFields = true;
-  private boolean versionChosen = false;
-  private boolean reconNameChosen = false;
   private Vector tcConstant = new Vector(); // contains all text components
   private String dbName = null;
   // TODO: make this configurable?
@@ -142,15 +139,14 @@ public class JobCreationPanel extends CreateEditPanel{
 
   private void initAttributePanel(){
     
-    cstAttributesNames = GridPilot.fixedJobAttributes;
-    
-    jobParamNames = dbPluginMgr.getTransJobParameters(
+    cstAttributesNames = GridPilot.fixedJobAttributes; 
+    int transformationID = dbPluginMgr.getTransformationID(
         dbPluginMgr.getDatasetTransformationName(datasetIDs[0]),
         dbPluginMgr.getDatasetTransformationVersion(datasetIDs[0]));
-    outputMapNames = dbPluginMgr.getTransOutputs(
-        dbPluginMgr.getDatasetTransformationName(datasetIDs[0]),
-        dbPluginMgr.getDatasetTransformationVersion(datasetIDs[0]));
+    jobParamNames = dbPluginMgr.getTransJobParameters(transformationID);
+    outputMapNames = dbPluginMgr.getTransOutputs(transformationID);
 
+    Debug.debug("Fixed job attributes: "+Util.arrayToString(cstAttributesNames), 3);
     if(!reuseTextFields || tcCstAttributes == null || tcCstAttributes.length != cstAttributesNames.length)
       tcCstAttributes = new JTextComponent[cstAttributesNames.length];
 
@@ -169,6 +165,13 @@ public class JobCreationPanel extends CreateEditPanel{
     int row = 0;
 
     // Constant attributes
+    Debug.debug("Job attributes: "+Util.arrayToString(cstAttributesNames), 3);
+    pAttributes.add(new JLabel("Fixed job parameters"),
+        new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
+            GridBagConstraints.CENTER,
+            GridBagConstraints.BOTH, new Insets(5, 5, 5, 5), 0, 0));
+    ++row;
+    
     for(int i =0; i<cstAttributesNames.length; ++i, ++row){
       pAttributes.add(new JLabel(cstAttributesNames[i] + " : "),
           new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
@@ -178,20 +181,11 @@ public class JobCreationPanel extends CreateEditPanel{
       if(!reuseTextFields || tcCstAttributes[i] == null)
         tcCstAttributes[i] = createTextComponent();
       
-      // These will be set by JobCreator
-      if(cstAttributesNames[i].equalsIgnoreCase("eventMin") ||
-         cstAttributesNames[i].equalsIgnoreCase("eventMax")||
-         cstAttributesNames[i].equalsIgnoreCase("inputFileName")){
-        tcCstAttributes[i].setEnabled(false);
-        tcCstAttributes[i].setText("");
-      }
-      else if(cstAttributesNames[i].equalsIgnoreCase(dbPluginMgr.getNameField(dbName, "jobDefinition"))){
+      if(cstAttributesNames[i].equalsIgnoreCase("JobName")){
          tcCstAttributes[i].setEnabled(false);
          tcCstAttributes[i].setText("$n.${i:5}");
        }
-      else if(cstAttributesNames[i].equalsIgnoreCase("number") ||
-          // TODO: fill in what proddb uses for this.
-          cstAttributesNames[i].equalsIgnoreCase("number")){
+      else if(cstAttributesNames[i].equalsIgnoreCase("JobNumber")){
         tcCstAttributes[i].setEnabled(false);
         tcCstAttributes[i].setText("${i:5}");
       }
@@ -201,14 +195,13 @@ public class JobCreationPanel extends CreateEditPanel{
     }
     
     // Job parameters
-    pAttributes.add(new JLabel("Job parameters"),
+    pAttributes.add(new JLabel("Transformation job parameters"),
         new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
             GridBagConstraints.CENTER,
             GridBagConstraints.BOTH, new Insets(5, 5, 5, 5), 0, 0));
     ++row;
 
-
-    for(int i =0; i<jobParamNames.length; ++i, ++row){
+    for(int i=0; i<jobParamNames.length; ++i, ++row){
       pAttributes.add(new JLabel(jobParamNames[i] + " : "),
           new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
               GridBagConstraints.CENTER,
@@ -221,7 +214,10 @@ public class JobCreationPanel extends CreateEditPanel{
       if(jobParamNames[i].equalsIgnoreCase("NumEvents") ||
           jobParamNames[i].equalsIgnoreCase("StartAtEvent") ||
           jobParamNames[i].equalsIgnoreCase("evtNum") ||
-          jobParamNames[i].equalsIgnoreCase("evtNumber")){
+          jobParamNames[i].equalsIgnoreCase("evtNumber") ||
+          jobParamNames[i].equalsIgnoreCase("eventMin") ||
+          jobParamNames[i].equalsIgnoreCase("eventMax") ||
+          jobParamNames[i].equalsIgnoreCase("inputFileName")){
         tcJobParam[i].setEnabled(false);
         tcJobParam[i].setText("");
       }
@@ -344,29 +340,24 @@ public class JobCreationPanel extends CreateEditPanel{
   }
 
   public void clear(){
-    /**
-     * Called by : JobDefinition.button_ActionPerformed()
-     */
-
-    if(!versionChosen && !reconNameChosen)
-      return;
-
     Vector textFields = getTextFields();
-
-    for(int i =0; i<textFields.size(); ++i)
+    for(int i =0; i<textFields.size(); ++i){
       ((JTextComponent) textFields.get(i)).setText("");
+    }
   }
 
 
-  /**
-   * Called when button Create is clicked in JobDefinition
-   */
-  public void createPartitions(final boolean showResults) {
+  public void create(final boolean showResults, boolean editing) {
 
-    if(!versionChosen && !reconNameChosen)
+    if(editing){
+      Debug.debug("edit job definition", 1);
+    }
+    else{
+      Debug.debug("create job definition", 1);
+    }
+    if(editing){
       return;
-
-    Debug.debug("createPartition",  1);
+    }
 
     final String [] cstAttr = new String[tcCstAttributes.length];
     final String [] jobParam = new String[tcJobParam.length];
@@ -374,17 +365,17 @@ public class JobCreationPanel extends CreateEditPanel{
     final String [] stdOut = new String[tcStdOutput.length];
 
 
-    for(int i=0; i< cstAttr.length; ++i){
+    for(int i=0; i<cstAttr.length; ++i){
       cstAttr[i] = tcCstAttributes[i].getText();
     }
-    for(int i=0; i< jobParam.length; ++i){
+    for(int i=0; i<jobParam.length; ++i){
       jobParam[i] = tcJobParam[i].getText();
     }
-    for(int i=0; i< outMap.length; ++i){
+    for(int i=0; i<outMap.length; ++i){
       outMap[i][0] = tcOutputMap[i][0].getText();
       outMap[i][1] = tcOutputMap[i][1].getText();
     }
-    for(int i=0; i< stdOut.length; ++i){
+    for(int i=0; i<stdOut.length; ++i){
       stdOut[i] = tcStdOutput[i].getText();
     }
           
@@ -400,10 +391,6 @@ public class JobCreationPanel extends CreateEditPanel{
                    jobParamNames,
                    outputMapNames,
                    stdOutputNames);
-  }
-
-  public int getPartitionIdentifier(){
-    return partitionIdentifier;
   }
 
   private Vector getTextFields(){

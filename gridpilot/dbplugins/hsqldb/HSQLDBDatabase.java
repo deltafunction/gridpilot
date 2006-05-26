@@ -258,10 +258,42 @@ public class HSQLDBDatabase implements Database{
     }
   }
 
-  public synchronized String [] getTransJobParameters(String transformationName,
-      String transformationVersion){
-    // nothing for now
-    return new String [] {""};
+  public synchronized int getTransformationID(String transName, String transVersion){
+    String req = "SELECT identifier from transformation where name = '"+transName + "'"+
+    " AND version = '"+transVersion+"'";
+    String id = null;
+    Vector vec = new Vector();
+    try{
+      Statement stmt = conn.createStatement();
+      ResultSet rset = stmt.executeQuery(req);
+      while(rset.next()){
+        id = rset.getString("identifier");
+        if(id!=null){
+          Debug.debug("Adding id "+id, 3);
+          vec.add(id);
+        }
+        else{
+          Debug.debug("WARNING: identifier null for name "+
+              transName, 1);
+        }
+      }
+      rset.close();  
+    }
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 1);
+      error = e.getMessage();
+      return -1;
+    }
+    if(vec.size()>1){
+      Debug.debug("WARNING: More than one ("+vec.size()+
+          ") transformation found with name:version "+transName+":"+transVersion, 1);
+    }
+    return Integer.parseInt(vec.get(0).toString());
+  }
+
+  public synchronized String [] getTransJobParameters(int transformationID){
+    String res =  getTransformation(transformationID).getValue("arguments").toString(); 
+    return Util.split(res);
   }
 
   public synchronized String [] getOutputs(int jobDefID){
@@ -1780,9 +1812,9 @@ public class HSQLDBDatabase implements Database{
     return ret;
   }
   
-  public synchronized String [] getTransOutputs(String transName, String transVersion){
-    String sql ="SELECT outputFiles FROM transformation WHERE name ='"+
-       transName+"' AND version='"+transVersion+"'";
+  public synchronized String [] getTransOutputs(int transformationID){
+    String sql ="SELECT outputFiles FROM transformation WHERE identifier ='"+
+    transformationID+"'";
     Debug.debug(sql, 2);
     Vector vec = new Vector();
     try{
@@ -1796,7 +1828,7 @@ public class HSQLDBDatabase implements Database{
         }
         else{
           Debug.debug("WARNING: no outputs for transformation "+
-              transName+", "+transVersion, 1);
+              transformationID, 1);
         }
       }
       rset.close();  
@@ -1806,8 +1838,8 @@ public class HSQLDBDatabase implements Database{
       error = e.getMessage();
     }
     if(vec.size()>1){
-      Debug.debug("WARNING: more than one transformation/version: "+
-          transName+"/"+transVersion, 1);
+      Debug.debug("WARNING: more than one transformation "+
+          transformationID, 1);
     }
     return Util.split(vec.get(0).toString()) ;  
   }
