@@ -67,8 +67,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
     datasetTransformationVersionReference =
       dbPluginMgr.getDatasetTransformationVersionReference(dbPluginMgr.getDBName());
 
-
-    
     // Find identifier index
     int identifierIndex = -1;
     for(int i=0; i<table.getColumnNames().length; ++i){
@@ -353,10 +351,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
   public void create(final boolean showResults, final boolean editing){
 
     if(editing){
-      Debug.debug("edit dataset",  1);
+      Debug.debug("edit dataset", 1);
     }
     else{
-      Debug.debug("create dataset",  1);
+      Debug.debug("create dataset", 1);
     }
     
     final String [] cstAttr = new String[tcCstAttributes.length];
@@ -364,7 +362,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     if(editing){
       for(int i=0; i<cstAttr.length; ++i){
         cstAttr[i] = Util.getJTextOrEmptyString(tcCstAttributes[i]);
-        Debug.debug("createDataset: cstAttr["+i+"]: "+cstAttr[i],  3);
+        Debug.debug("createDataset: cstAttr["+i+"]: "+cstAttr[i], 3);
       }
       new DatasetUpdater(
           dbPluginMgr,
@@ -383,7 +381,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       }
       for(int i=0; i<cstAttr.length; ++i){
         cstAttr[i] = Util.getJTextOrEmptyString(tcCstAttributes[i]);
-        Debug.debug("createDataset: cstAttr["+i+"]: "+cstAttr[i],  3);
+        Debug.debug("createDataset: cstAttr["+i+"]: "+cstAttr[i], 3);
       }
       new DatasetCreator(
           dbPluginMgr,
@@ -418,7 +416,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           if(dataset.fields[j].toString().equalsIgnoreCase(cstAttributesNames[i].toString())){
               try{
                 Debug.debug(cstAttributesNames[i].toString()+"="+dataset.fields[j]+". Setting to "+
-                    dataset.values[j].toString(),3);
+                    dataset.values[j].toString(), 3);
                 Util.setJText(tcCstAttributes[i], dataset.values[j].toString());
                 
                 if(cstAttributesNames[i].equalsIgnoreCase(datasetTransformationReference[1])){
@@ -430,7 +428,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
 
               }
               catch(java.lang.Exception e){
-                Debug.debug("Field not found or set, "+e.getMessage(),1);
+                Debug.debug("Field not found or set, "+e.getMessage(), 1);
               }
             break;
           }
@@ -441,13 +439,13 @@ public class DatasetCreationPanel extends CreateEditPanel{
               cstAttributesNames[i].equalsIgnoreCase(datasetTransformationVersionReference[1])){          
           try{
             if(datasetID==-1){
-              Debug.debug("Clearing identifier",3);
+              Debug.debug("Clearing identifier", 3);
               Util.setJText(tcCstAttributes[i], "");
             }
             Util.setJEditable(tcCstAttributes[i], true);
           }
           catch(java.lang.Exception e){
-            Debug.debug("Field not found, "+e.getMessage(),1);
+            Debug.debug("Field not found, "+e.getMessage(), 1);
           }
         }
         else{
@@ -479,7 +477,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       for(int i=1; i<transformations.values.length; ++i){
         //Debug.debug("Comparing "+ret[i]+" <-> "+ret[i-1],3);
         if(!ret[i].equals(ret[i-1])){
-          Debug.debug("Adding "+ret[i],3);
+          Debug.debug("Adding "+ret[i], 3);
             vec.add(ret[i]);
         }
       }
@@ -493,7 +491,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   
   private void initTransformationPanel(int datasetID){
     
-    Debug.debug("Finding transformations...",3);
+    Debug.debug("Finding transformations...", 3);
 
     pTransformation.removeAll();
     pTransformation.setLayout(new FlowLayout());
@@ -505,7 +503,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     else if(transNames.length==1){
       transformationName = transNames[0];
-      pTransformation.add(new JLabel("Transformation:" + transformationName));
+      pTransformation.add(new JLabel("Transformation: " + transformationName));
       initTransVersionPanel(datasetID, transformationName);
     }
     else{
@@ -528,26 +526,26 @@ public class DatasetCreationPanel extends CreateEditPanel{
 
   private void initTransVersionPanel(int datasetID, String transformation){
 
-    Debug.debug("Finding versions...",3);
+    Debug.debug("Finding versions...", 3);
 
     pVersion.removeAll();
     pVersion.setLayout(new FlowLayout());
 
     String [] versions = dbPluginMgr.getVersions(transformation);
-    Debug.debug("Number of versions found: "+versions.length,3);
+    Debug.debug("Number of versions found: "+versions.length, 3);
 
     if(versions.length==0){
       pVersion.add(new JLabel("No versions found."));
     }
     else if(versions.length==1){
       transformationVersion = versions[0];
-      pVersion.add(new JLabel(/*"Version : " +*/ transformationVersion));
+      pVersion.add(new JLabel("Version : " + transformationVersion));
     }
     else{
       cbTransVersionSelection = new JComboBox();
 
       for(int i=0; i<versions.length; ++i){
-        Debug.debug("Adding version "+versions[i],3);
+        Debug.debug("Adding version "+versions[i], 3);
         cbTransVersionSelection.addItem(versions[i]);
       }
 
