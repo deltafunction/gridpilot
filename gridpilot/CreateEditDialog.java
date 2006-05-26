@@ -100,6 +100,8 @@ public class CreateEditDialog extends GPFrame{
 
     // Initialize CreateEditPanel
     createEditPanel.initGUI();
+    
+    pack();
   }
 
   /**
