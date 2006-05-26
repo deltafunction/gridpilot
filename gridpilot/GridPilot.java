@@ -34,6 +34,8 @@ public class GridPilot extends JApplet{
   public static String certFile = "~/.globus/usercert.pem";
   public static String keyPassword = null;
   public static String dateFormatString = "yyyy-MM-dd HH:mm:ss";
+  public static String [] fixedJobAttributes = {"JobNumber", "Name",
+    "EventMin", "EventMax", "InputFile"};
   
   /**
    * Constructor
@@ -111,6 +113,8 @@ public class GridPilot extends JApplet{
       "certificate file");
       keyPassword = getClassMgr().getConfigFile().getValue("GridPilot",
       "key password");
+      fixedJobAttributes = getClassMgr().getConfigFile().getValues("GridPilot",
+      "job attributes");
     }
     catch(Throwable e){
       if(e instanceof Error)
