@@ -34,8 +34,7 @@ public class GridPilot extends JApplet{
   public static String certFile = "~/.globus/usercert.pem";
   public static String keyPassword = null;
   public static String dateFormatString = "yyyy-MM-dd HH:mm:ss";
-  public static String [] fixedJobAttributes = {"JobNumber", "Name",
-    "EventMin", "EventMax", "InputFile"};
+  public static String [] fixedJobAttributes = {"JobNumber", "JobName"};
   
   /**
    * Constructor
@@ -99,7 +98,7 @@ public class GridPilot extends JApplet{
           " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "user"};
 
       csNames = getClassMgr().getConfigFile().getValues("Computing systems", "systems");
-      if(csNames == null || csNames.length == 0){
+      if(csNames==null || csNames.length==0){
         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("Computing systems", "systems"));
       }
       tabs = getClassMgr().getConfigFile().getValues("GridPilot", "initial panels");
@@ -113,8 +112,18 @@ public class GridPilot extends JApplet{
       "certificate file");
       keyPassword = getClassMgr().getConfigFile().getValue("GridPilot",
       "key password");
-      fixedJobAttributes = getClassMgr().getConfigFile().getValues("GridPilot",
+      String [] _fixedJobAttributes = getClassMgr().getConfigFile().getValues("GridPilot",
       "job attributes");
+      if(_fixedJobAttributes==null || _fixedJobAttributes.length==0){
+        getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("GridPilot", "job attributes"));
+      }
+      else{
+        fixedJobAttributes = _fixedJobAttributes;
+        Debug.debug("Job attributes: "+Util.arrayToString(fixedJobAttributes)+" "+
+            fixedJobAttributes.length, 2);
+      }
+      Debug.debug("Job attributes: "+Util.arrayToString(fixedJobAttributes)+" "+
+          fixedJobAttributes.length, 2);
     }
     catch(Throwable e){
       if(e instanceof Error)
