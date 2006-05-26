@@ -143,13 +143,13 @@ public class ConfigFile{
 
     Vector l = new Vector();
     String res;
-    if(!openFile())
+    if(!openFile()){
       return null;
-
+    }
     if(searchSection(section)){
       do{
         res = searchAttribute(attribute);
-        if(res == null){
+        if(res==null){
           break;
         }
         StringTokenizer st = new StringTokenizer(res);
