@@ -117,7 +117,7 @@ public class ConfigFile{
       file.close();
     }
     catch(IOException ioe){
-      System.err.println("cannot close "+ configFileName);
+      Debug.debug("cannot close "+ configFileName, 1);
     }
     if(result!=null && result.equals("\"\"")){
       Debug.debug("WARNING: Empty config value!", 2);
@@ -177,7 +177,7 @@ public class ConfigFile{
       file = new RandomAccessFile((File) GridPilot.tmpConfFile.get(configFileName), "r");
     }
     catch(FileNotFoundException e){
-      System.err.println("cannot find file "+ configFileName+". "+e.getMessage());
+      Debug.debug("cannot find file "+ configFileName+". "+e.getMessage(), 1);
       return false;
     }
     return true;
@@ -217,8 +217,8 @@ public class ConfigFile{
 
     }
     catch(IOException ioe){
-      System.err.println("cannot read "+ configFileName);
-      System.err.println(ioe.getMessage());
+      Debug.debug("cannot read "+ configFileName+". "+ioe.getMessage(), 1);
+      ioe.printStackTrace();
       return false;
     }
     return true;
@@ -257,7 +257,7 @@ public class ConfigFile{
       }
     }
     catch(IOException ioe){
-      System.err.println("cannot read "+ configFileName);
+      Debug.debug("cannot read "+ configFileName, 1);
       res = null;
     }
 
