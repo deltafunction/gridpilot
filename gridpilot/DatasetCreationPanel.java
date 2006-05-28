@@ -5,6 +5,7 @@ import gridpilot.Database.DBRecord;
 
 import javax.swing.*;
 import javax.swing.border.*;
+import javax.swing.text.JTextComponent;
 
 import java.awt.*;
 import java.util.*;
@@ -23,7 +24,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private DBPanel panel;
   private Table table;
   private String [] cstAttributesNames;
-  private JComponent [] tcCstAttributes;
+  private JTextComponent [] tcCstAttributes;
   private boolean reuseTextFields = true;
   private Vector tcConstant = new Vector(); // contains all text components
   private String [] cstAttr = null;
@@ -166,8 +167,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
         Color.white,new Color(165, 163, 151)), title));
     
-    spAttributes.setPreferredSize(new Dimension(550, 500));
-    spAttributes.setMinimumSize(new Dimension(550, 500));
+    spAttributes.setPreferredSize(new Dimension(560, 500));
+    spAttributes.setMinimumSize(new Dimension(300, 300));
     
     initTransformationPanel(Integer.parseInt(datasetID));
     
@@ -206,15 +207,13 @@ public class DatasetCreationPanel extends CreateEditPanel{
     spAttributes.getViewport().add(pAttributes, cl);
     
     if(!reuseTextFields || tcCstAttributes==null ||
-        tcCstAttributes.length != cstAttributesNames.length){
-      Debug.debug("Creating new tcCstAttributes, "+
-          tcCstAttributes+", "+(tcCstAttributes==null ? "":Integer.toString(tcCstAttributes.length)),
+        tcCstAttributes.length!=cstAttributesNames.length){
+      Debug.debug("Creating new tcCstAttributes, "+tcCstAttributes+", "+
+          (tcCstAttributes==null ? "":Integer.toString(tcCstAttributes.length)),
               3);
-      tcCstAttributes = new JComponent[cstAttributesNames.length];
+      tcCstAttributes = new JTextComponent[cstAttributesNames.length];
     }
-    
     for(int i =0; i<cstAttributesNames.length; ++i){
-      
       if(cstAttributesNames[i].equalsIgnoreCase("actualPars") ||
           cstAttributesNames[i].equalsIgnoreCase("transFormalPars")){
         cl.gridx=0;
@@ -229,8 +228,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
         Util.setJText(tcCstAttributes[i], cstAttr[i]);
       }
       else{
-        if(!editing && !reuseTextFields ||
-            tcCstAttributes[i]==null){
+        if(!editing && !reuseTextFields || tcCstAttributes[i]==null){
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
         }
         if(cstAttr[i]!=null && !cstAttr[i].equals("")){
@@ -238,15 +236,28 @@ public class DatasetCreationPanel extends CreateEditPanel{
           Util.setJText(tcCstAttributes[i], cstAttr[i]);
         }
       }      
-      cl.gridx=0;
-      cl.gridy=i;
-      pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
-      cl.gridx=1;
-      cl.gridy=i;
       Debug.debug("Adding cstAttributesNames["+i+"], "+cstAttributesNames[i]+
           " "+tcCstAttributes[i].getClass().toString(), 3);
-      pAttributes.add(tcCstAttributes[i], cl);//,
-
+      if(cstAttributesNames[i].equalsIgnoreCase("outputLocation")){
+        pAttributes.add(Util.createCheckPanel(
+            (Frame) SwingUtilities.getWindowAncestor(getRootPane()),
+            cstAttributesNames[i], tcCstAttributes[i],
+            dbPluginMgr), new GridBagConstraints(0, i, 1, 1, 0.0, 0.0,
+                GridBagConstraints.LINE_START, GridBagConstraints.HORIZONTAL,
+                new Insets(0, 0, 0, 0), 0, 0));
+        pAttributes.add(tcCstAttributes[i], new GridBagConstraints(1, i, 3, 1, 0.0, 0.0,
+            GridBagConstraints.LINE_START,
+            GridBagConstraints.HORIZONTAL,
+            new Insets(0, 0, 0, 0), 0, 0));
+      }
+      else{
+        cl.gridx=0;
+        cl.gridy=i;
+        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
+        cl.gridx=1;
+        cl.gridy=i;
+        pAttributes.add(tcCstAttributes[i], cl);
+      }
       // when creating, zap loaded dataset id
       if(!editing && cstAttributesNames[i].equalsIgnoreCase(datasetIdentifier)){
         Util.setJText((JComponent) tcCstAttributes[i], "");
