@@ -850,13 +850,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               menuEditPaste.setEnabled(clipboardOwned);
             }
           });
-
           makeRuntimeEnvironmentMenu();
         }
         
         GridPilot.getClassMgr().getGlobalFrame().menuEdit.updateUI();
         
-        GridPilot.getClassMgr().getStatusBar().setLabel("Records found: "+tableResults.getRowCount(), 20);
+        statusBar.setLabel("Records found: "+tableResults.getRowCount(), 20);
         
         if(sortColumn>-1){
           Debug.debug("Sorting: "+sortColumn+":"+isAscending, 3);
@@ -1030,7 +1029,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     Debug.debug("Creating job definitions, "+getSelectedIdentifiers().length, 3);
     //JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, this, false);
     JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, this);
-    CreateEditDialog pDialog = new CreateEditDialog(panel, false);
+    CreateEditDialog pDialog = new CreateEditDialog(panel, false, true);
     pDialog.setTitle("jobDefinition");
   }
 
@@ -1065,7 +1064,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       panel = new JobDefCreationPanel(dbName, datasetMgr, this,
           new Boolean(true));
     }
-    CreateEditDialog pDialog = new CreateEditDialog(panel, true);
+    CreateEditDialog pDialog = new CreateEditDialog(panel, true, false);
     pDialog.setTitle(tableName);
     //pDialog.setVisible(true);
   }
@@ -1207,7 +1206,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */ 
   private void createDatasets(){
     CreateEditDialog pDialog = new CreateEditDialog(
-        new DatasetCreationPanel(dbPluginMgr, this, false), false);
+        new DatasetCreationPanel(dbPluginMgr, this, false), false, false);
     pDialog.setTitle(tableName);
  }
   
@@ -1216,7 +1215,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */ 
  private void editDataset(){
    CreateEditDialog pDialog = new CreateEditDialog(
-     new DatasetCreationPanel(dbPluginMgr, this, true), true);
+     new DatasetCreationPanel(dbPluginMgr, this, true), true, false);
    pDialog.setTitle(tableName);
  }
 
@@ -1231,7 +1230,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     HashSet deleted = new HashSet();
     JCheckBox cbCleanup = null;
     int [] datasetIdentifiers = getSelectedIdentifiers();
-    GridPilot.getClassMgr().getStatusBar().setLabel(
+    statusBar.setLabel(
     "Deleting dataset(s).");
     for(int i=datasetIdentifiers.length-1; i>=0; --i){
       if(datasetIdentifiers[i]!=-1){
@@ -1283,7 +1282,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         Debug.debug("WARNING: dataset undefined and could not be deleted",1);
       }
     }
-    GridPilot.getClassMgr().getStatusBar().setLabel(
+    statusBar.setLabel(
     "Deleting runtime environment(s) done.");
     refresh();
     if(datasetIdentifiers.length>1){
@@ -1316,7 +1315,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void createTransformation(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new TransformationCreationPanel(dbPluginMgr, this, false),
-       false);
+       false, false);
     pDialog.setTitle(tableName);
   }
   /**
@@ -1325,21 +1324,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void createRuntimeEnvironment(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new RuntimeCreationPanel(dbPluginMgr, this, false),
-       false);
+       false, false);
     pDialog.setTitle(tableName);
   }
 
   private void editTransformation(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new TransformationCreationPanel(dbPluginMgr, this, true),
-       true);
+       true, false);
     pDialog.setTitle(tableName);
   }
   
   private void editRuntimeEnvironment(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new RuntimeCreationPanel(dbPluginMgr, this, true),
-       true);
+       true, false);
     pDialog.setTitle(tableName);
   }
 
@@ -1593,7 +1592,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     // delete source records
     if(GridPilot.getClassMgr().getGlobalFrame().cutting){
       Debug.debug("Deleting "+(records.length-2)+" rows", 2);
-      GridPilot.getClassMgr().getStatusBar().setLabel(
+      statusBar.setLabel(
       "Deleting job definition(s). Please wait ...");
       JProgressBar pb = new JProgressBar();
       pb.setMaximum((records.length-2));
@@ -1606,13 +1605,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           String msg = "Deleting record "+(i-2)+" failed. "+
              GridPilot.getClassMgr().getDBPluginMgr(records[0]).getError();
           Debug.debug(msg, 1);
-          GridPilot.getClassMgr().getStatusBar().setLabel(msg);
+          statusBar.setLabel(msg);
           GridPilot.getClassMgr().getLogFile().addMessage(msg);
           continue;
         }
         pb.setValue(pb.getValue()+1);
       }
-      GridPilot.getClassMgr().getStatusBar().setLabel(
+      statusBar.setLabel(
          "Deleting job definition(s) done.");
     }
     GridPilot.getClassMgr().getGlobalFrame().cutting = false;

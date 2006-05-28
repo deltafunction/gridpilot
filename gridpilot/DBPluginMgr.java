@@ -238,6 +238,14 @@ public class DBPluginMgr implements Database{
     return db.getJobDefCreationPanelClass();
   }
 
+  public synchronized String [] getFieldnames(final String table){
+    String [] tmpFieldNames = getFieldNames(table);
+    for(int i=0; i<tmpFieldNames.length; ++i){
+      tmpFieldNames[i] = tmpFieldNames[i].toLowerCase();
+    }
+    return tmpFieldNames;
+  }
+  
   public synchronized String [] getFieldNames(final String table){
     Debug.debug("Getting field names for table "+table, 3);
    
@@ -2514,7 +2522,7 @@ public class DBPluginMgr implements Database{
    * Returns a list of
    * {logicalFileEventMin,logicalFileEventMax} dublets.
    */
-  public int [][] getEventSplits(int dataset, String db){
+  public int [][] getEventSplits(int dataset){
     String arg = "";
     DBResult res = null;
     // totalEvents is the total number of events.
@@ -2527,14 +2535,15 @@ public class DBPluginMgr implements Database{
     
     arg = "select totalEvents, totalFiles from dataset where identifier='"+
     dataset+"'";
-    res = this.select(arg, db);
+    res = select(arg, getIdentifierField(dbName, "dataset"));
     if(res.values.length>0){
       try{
         totalEvents = Integer.parseInt(res.values[0][0].toString());
         totalFiles = Integer.parseInt(res.values[0][1].toString());
       }
       catch(Exception e){
-        Debug.debug(e.getStackTrace().toString(), 2);
+        Debug.debug("ERROR: could not split. "+e.getMessage(), 2);
+        e.printStackTrace();
       }
     }
     if(totalFiles>0 && totalEvents>0){

@@ -1,6 +1,7 @@
 package gridpilot;
 
 import java.util.*;
+
 import javax.swing.*;
 
 import gridpilot.Database.DBResult;
@@ -10,7 +11,7 @@ import java.awt.*;
 /**
  * Creates the job definitions
  */
-public class JobCreator extends GPFrame{
+public class JobCreator{
 
   private static final long serialVersionUID=1L;
   
@@ -21,7 +22,6 @@ public class JobCreator extends GPFrame{
   private String [] jobParam;
   private String [][] outMap;
   private String [] stdOut;
-  private StatusBar statusBar;
   private String [] resCstAttr;
   private String [] resJobParam;
   private String [][] resOutMap;
@@ -36,13 +36,15 @@ public class JobCreator extends GPFrame{
   private Vector vOutMap = new Vector();
   private Vector vStdOut = new Vector();
   private JProgressBar pb = new JProgressBar();
-  private Object semaphoreAMICreation = new Object();
+  private Object semaphoreDBCreate = new Object();
   private DBPluginMgr dbPluginMgr = null;
   private Object[] showResultsOptions = {"OK", "Skip", "OK for all", "Skip all"};
   private Object[] showResultsOptions1 = {"OK", "Skip"};
   private String dbName;
+  private StatusBar statusBar;
 
-  public JobCreator(String _dbName,
+  public JobCreator(StatusBar _statusBar,
+                    String _dbName,
                     int [] _datasetIdentifiers,
                     boolean _showResults,
                     Vector _constants,
@@ -54,8 +56,11 @@ public class JobCreator extends GPFrame{
                     String [] _jobParamNames,
                     String [] _outMapNames,
                     String [] _stdOutNames){
+    
+    super();
 
-	  dbName = _dbName;
+    statusBar = _statusBar;
+	dbName = _dbName;
     datasetIdentifiers = _datasetIdentifiers;
     showResults = _showResults;
     constants = _constants;
@@ -75,15 +80,14 @@ public class JobCreator extends GPFrame{
     resStdOut  = new String[stdOut.length];
     dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
 
-    createPartitions();
+    createJobDefs();
   }
 
-  private void createPartitions(){
-    Debug.debug("createPartition", 1);
+  private void createJobDefs(){
     try{
       removeConstants();
-    }catch(SyntaxException se){
-
+    }
+    catch(SyntaxException se){
       String msg = "Syntax error  : \n" + se.getMessage() + "\nCannot create job definition";
       String title = "Syntax error";
       MessagePane.showMessage(msg, title);
@@ -117,12 +121,13 @@ public class JobCreator extends GPFrame{
       // present in dataset. If they are not, automatic splitting will not be done,
       // that is, the fields eventMin, eventMax and nEvents will not be set in the
       // jobDefinition record.
-      eventSplits = dbPluginMgr.getEventSplits(datasetIdentifiers[currentDataset], dbName);
+      eventSplits = dbPluginMgr.getEventSplits(datasetIdentifiers[currentDataset]);
       if(eventSplits!=null && eventSplits.length>1){
         lastPartition = firstPartition+eventSplits.length-1;
       }
       else{
       	Debug.debug("ERROR: Could not get event splitting.", 1);
+        statusBar.setLabel("ERROR: Could not get event splitting.");
       	return;
       }
 
@@ -159,7 +164,8 @@ public class JobCreator extends GPFrame{
               title = "Syntax error";
             }
             else{ // should not happen
-              msg = "Unexpected " + ex.getClass().getName() + " : " + ex.getMessage();
+              msg = "Unexpected " + ex.getClass().getName() + " : " + ex.getMessage() +
+              "\n\nDo you want to continue job definition creation ?";
               title = "Unexpected exception";
               ex.printStackTrace();
               GridPilot.getClassMgr().getLogFile().addMessage("Job definition creation", ex);
@@ -224,70 +230,70 @@ public class JobCreator extends GPFrame{
 
         pb.setMaximum(pb.getMaximum()+partitionCount);
         statusBar.setProgressBar(pb);
-
         try{
-          createAMIPartitions(currentDataset);
-        }catch(java.lang.Exception e){Debug.debug("Failed creating partition from "+
+          createDBJobDefinitions(currentDataset);
+        }
+        catch(java.lang.Exception e){Debug.debug("Failed creating partition from "+
             currentDataset+" : "+e.getMessage(),3);}
-
         statusBar.removeProgressBar(pb);
         //statusBar.removeLabel();
       }
     }
   }
 
-  private void createAMIPartitions(int idNum) throws Exception{
+  private void createDBJobDefinitions(int idNum) throws Exception{
     String transName = null;
     String transVersion = null;
     int id = -1;
     
-    synchronized(semaphoreAMICreation){
-        while(!vPartition.isEmpty()){
-          int part = ((Integer) vPartition.remove(0)).intValue();
-          resCstAttr = (String [] ) vCstAttr.remove(0);
-          resJobParam = (String [] ) vJobParam.remove(0);
-          resOutMap = (String [][]) vOutMap.remove(0);
-          resStdOut  = (String []) vStdOut.remove(0);
-  
-          statusBar.setLabel("Creating job definition # " + part + " ...");
-          pb.setValue(pb.getValue()+1);
-  
-          transName = dbPluginMgr.getDatasetTransformationName(datasetIdentifiers[idNum]);
-          transVersion = dbPluginMgr.getDatasetTransformationVersion(datasetIdentifiers[idNum]);
-          id = datasetIdentifiers[idNum];
-          Debug.debug("Got transformation: "+transName+":"+transVersion+" <-- "+
-              datasetIdentifiers[idNum], 3);
-          Debug.debug("stdout/stderr length "+resStdOut.length, 2);
-          
-          if(!dbPluginMgr.createJobDefinition(
-                                dbPluginMgr.getDatasetName(id),
-                                cstAttrNames,
-                                resCstAttr,
-                                resJobParam,
-                                resOutMap,
-                                resStdOut!=null && resStdOut.length>0 && resStdOut[0]!=null ? resStdOut[0] : "",
-                                resStdOut!=null && resStdOut.length>1 && resStdOut[1]!=null ? resStdOut[1] : ""
-                                )){
-            if(!dbPluginMgr.getError().equals("")){
-              Runnable showModalDialog = new Runnable(){
-                public void run(){
-                  JFrame frame = new JFrame("Message");
-                  JLabel label = new JLabel(dbPluginMgr.getError());
-                  frame.getContentPane().add(label);
-                  frame.pack();
-                  frame.setVisible(true);
-                }
-              };
-              SwingUtilities.invokeLater(showModalDialog);
-             }
-            if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "Job definition " + part +
-                " cannot be created. ", "", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.CANCEL_OPTION){
-            }
-            statusBar.setLabel("Job definition # " + part + " : "+Integer.toString(idNum+1)+" NOT created.");
+    synchronized(semaphoreDBCreate){
+      while(!vPartition.isEmpty()){
+        int part = ((Integer) vPartition.remove(0)).intValue();
+        resCstAttr = (String [] ) vCstAttr.remove(0);
+        resJobParam = (String [] ) vJobParam.remove(0);
+        resOutMap = (String [][]) vOutMap.remove(0);
+        resStdOut  = (String []) vStdOut.remove(0);
+
+        statusBar.setLabel("Creating job definition # " + part + " ...");
+        pb.setValue(pb.getValue()+1);
+
+        transName = dbPluginMgr.getDatasetTransformationName(datasetIdentifiers[idNum]);
+        transVersion = dbPluginMgr.getDatasetTransformationVersion(datasetIdentifiers[idNum]);
+        id = datasetIdentifiers[idNum];
+        Debug.debug("Got transformation: "+transName+":"+transVersion+" <-- "+
+            datasetIdentifiers[idNum], 3);
+        Debug.debug("stdout/stderr length "+resStdOut.length, 2);
+        
+        if(!dbPluginMgr.createJobDefinition(
+                              dbPluginMgr.getDatasetName(id),
+                              cstAttrNames,
+                              resCstAttr,
+                              resJobParam,
+                              resOutMap,
+                              resStdOut!=null && resStdOut.length>0 && resStdOut[0]!=null ? resStdOut[0] : "",
+                              resStdOut!=null && resStdOut.length>1 && resStdOut[1]!=null ? resStdOut[1] : ""
+                              )){
+          if(!dbPluginMgr.getError().equals("")){
+            Runnable showModalDialog = new Runnable(){
+              public void run(){
+                JFrame frame = new JFrame("Message");
+                JLabel label = new JLabel(dbPluginMgr.getError());
+                frame.getContentPane().add(label);
+                frame.pack();
+                frame.setVisible(true);
+              }
+            };
+            SwingUtilities.invokeLater(showModalDialog);
           }
-          else{
-            statusBar.setLabel("Job definition # " + part + " : "+Integer.toString(idNum+1)+" created.");
+          if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "Job definition " + part +
+              " cannot be created.\n\nClick Cancel to stop or OK to continue creating job definitions.", "", JOptionPane.OK_CANCEL_OPTION)==JOptionPane.CANCEL_OPTION){
+            break;
           }
+          statusBar.setLabel("Job definition # " + part + " : "+Integer.toString(idNum+1)+" NOT created.");
+        }
+        else{
+          statusBar.setLabel("Job definition # " + part + " : "+Integer.toString(idNum+1)+" created.");
+        }
       }
     }
   }
@@ -296,54 +302,56 @@ public class JobCreator extends GPFrame{
       String energy, String particle, String outputDest) throws ArithmeticException, SyntaxException {
     // expression format : ${<arithmExpr>[:length]}
     // arithmExpr : operator priority : (*,/,%), (+,-), left associative
+    Debug.debug("parsing, "+ss+" : "+var+" : "+name+" : "+number+" : "+energy+" : "+particle+" : "+outputDest, 3);
 
-    int pos=-1;
-    int pos1=-1;
-    int pos2=-1;
-    int pos3=-1;
-    int pos4=-1;
-    int pos5=-1;
-    int totPos=-5;
+    int pos = -1;
+    int pos1 = -1;
+    int pos2 = -1;
+    int pos3 = -1;
+    int pos4 = -1;
+    int pos5 = -1;
+    int totPos = -5;
     StringBuffer sss = new StringBuffer(ss);
+    int counter = 0;
     while(true){
-
+      ++counter;
       // Parse datasetName and runNumber
       pos1 = sss.indexOf("$n");
       if(pos1>=0){
-        sss.replace(pos1,pos1+2,name);
+        sss.replace(pos1, pos1+2,name);
       }
       pos2 = sss.indexOf("$r");
-      if(pos2>=0 && Integer.parseInt(number)>0){
-        sss.replace(pos2,pos2+2,number);
+      if(pos2>=0){
+        sss.replace(pos2, pos2+2, number);
       }
       pos3 = sss.indexOf("$e");
-      if(pos3>=0 && Integer.parseInt(number)>0){
-        sss.replace(pos3,pos3+2,energy);
+      if(pos3>=0){
+        sss.replace(pos3, pos3+2,energy);
       }
       pos4 = sss.indexOf("$p");
-      if(pos4>=0 && Integer.parseInt(number)>0){
-        sss.replace(pos4,pos4+2,particle);
+      if(pos4>=0){
+        sss.replace(pos4, pos4+2,particle);
       }
       pos5 = sss.indexOf("$o");
-      if(pos5>=0 && Integer.parseInt(number)>0){
-      	if(sss.substring(pos5+2, pos5+3).equals("/")){
-        	if(outputDest.substring(outputDest.length()-1,
-        			outputDest.length()).equals("/")){
-            sss.replace(pos5,pos5+2,outputDest.substring(0,
-            		outputDest.length()-1));
-        	}
-        	else{
-            sss.replace(pos5,pos5+2,outputDest);
-        	}
+      if(pos5>=0){
+      	if(sss.substring(pos5+2, pos5+3).equals("/") && outputDest.length()>0){
+          if(outputDest.substring(outputDest.length()-1,
+              outputDest.length()).equals("/")){
+            sss.replace(pos5, pos5+2,outputDest.substring(0,
+                outputDest.length()-1));    
+          }
+          else{
+            sss.replace(pos5, pos5+2, outputDest);
+          }
       	}
       	else{
-        	if(outputDest.substring(outputDest.length()-1,
-        			outputDest.length()).equals("/")){
-            sss.replace(pos5,pos5+2,outputDest);
-        	}
-        	else{
-            sss.replace(pos5,pos5+2,outputDest+"/");
-        	}
+          if(outputDest.length()>0 && outputDest.substring(outputDest.length()-1,
+              outputDest.length()).equals("/")){       
+            sss.replace(pos5, pos5+2, outputDest);
+          }
+          else{
+            sss.replace(pos5, pos5+2, outputDest+"/");
+          }
       	}
       }
       
@@ -351,7 +359,7 @@ public class JobCreator extends GPFrame{
       pos = sss.indexOf("$1") + sss.indexOf("$2")+ sss.indexOf("$3") +
             sss.indexOf("$4") + sss.indexOf("$5") + sss.indexOf("$6") +
             sss.indexOf("$7") + sss.indexOf("$8") + sss.indexOf("$9");
-      if(pos > -9){
+      if(pos>-9){
         String rep = "";
         String val = "";
         String [] fields = new String [] {};
@@ -377,8 +385,8 @@ public class JobCreator extends GPFrame{
         }
       }
       totPos = pos1+pos2+pos3+pos4+pos5+pos;
-      Debug.debug("evaluating, "+totPos, 3);
-      if(pos1+pos2+pos3+pos4+pos5+pos<-13){
+      Debug.debug("evaluating, "+totPos+": "+sss, 3);
+      if(pos1+pos2+pos3+pos4+pos5+pos<-13 || counter>10){
         break;
       }
     }        
@@ -505,10 +513,11 @@ public class JobCreator extends GPFrame{
     int inputDatasetID = -1;
     DBResult inputJobDefRecords = null;
     String inputJobDefOutputFileName = null;
-    String inputDBIdentifierField = dbPluginMgr.getIdentifierField(inputDB, "jobDefinition");
+    // Construct input file names
     try{
       inputDB = dbPluginMgr.getDataset(
           datasetIdentifiers[currentDataset]).getValue("inputDB").toString();
+      String inputDBIdentifierField = dbPluginMgr.getIdentifierField(inputDB, "jobDefinition");
       inputDataset = dbPluginMgr.getDataset(
           datasetIdentifiers[currentDataset]).getValue("inputDataset").toString();
       if(inputDataset!=null && !inputDataset.equals("") &&
@@ -604,7 +613,7 @@ public class JobCreator extends GPFrame{
         inputs += inArr[j];
       }
     }
-    
+    // jobDefinition fields
     for(int i=0; i<resCstAttr.length; ++i){
       Debug.debug("parameter #"+i+":"+resCstAttr.length+":"+cstAttrNames[i], 3);
       Debug.debug("eventSplits: "+eventSplits.length, 3);
@@ -630,22 +639,31 @@ public class JobCreator extends GPFrame{
             energy, particle, outputDest);
       }
     }
+    // Job parameters
+    ArrayList jobDefinitionFields = new ArrayList(Arrays.asList(dbPluginMgr.getFieldNames("jobDefinition")));    
     for(int i=0; i<resJobParam.length; ++i){
       Debug.debug("param #"+i, 3);
-      if(jobParamNames[i].equalsIgnoreCase("StartAtEvent") &&
+      if((jobParamNames[i].equalsIgnoreCase("StartAtEvent") ||
+          jobParamNames[i].equalsIgnoreCase("eventMin")) &&
           eventSplits!=null && eventSplits.length>1){
         resJobParam[i] = Integer.toString(eventSplits[currentPartition-1][0]);
       }
       else if((jobParamNames[i].equalsIgnoreCase("NumEvents") ||
           jobParamNames[i].equalsIgnoreCase("evtNum") ||
-          jobParamNames[i].equalsIgnoreCase("evtNumber")) &&
+          jobParamNames[i].equalsIgnoreCase("evtNumber") ||
+          jobParamNames[i].equalsIgnoreCase("nEvents")) &&
           eventSplits!=null && eventSplits.length>1){
         resJobParam[i] = Integer.toString(eventSplits[currentPartition-1][1]-
             eventSplits[currentPartition-1][0]+1);
       }
-      else if(jobParamNames[i].equalsIgnoreCase("inFileName") &&
+      else if((jobParamNames[i].equalsIgnoreCase("inFileName") ||
+          jobParamNames[i].equalsIgnoreCase("inputFileName")) &&
           eventSplits!=null && eventSplits.length>1){
         resJobParam[i] = inputs;
+      }
+      // Fill in if it matches one of the jobDefinition fields
+      else if(jobDefinitionFields.contains(jobParamNames[i])){
+        resJobParam[i] = resCstAttr[jobDefinitionFields.indexOf(jobParamNames[i])];
       }
       else{
         resJobParam[i] = evaluate(jobParam[i], currentPartition, name, number,
@@ -667,8 +685,8 @@ public class JobCreator extends GPFrame{
   }
 
   /**
-   * Removes constants in every String
-   * @throws SyntaxException if a constant is not defined
+   * Removes constants in every String.
+   * @throws SyntaxException if a constant is not defined.
    */
   private void removeConstants() throws SyntaxException{
     for(int i=0; i< resCstAttr.length; ++i)
@@ -686,7 +704,7 @@ public class JobCreator extends GPFrame{
   /**
    * Creates a String which contains the String s, in which each constant ($A, $B, etc)
    * has been replaced by the value of this constant.
-   * @throws SyntaxException if a constant has been found but is not defined
+   * @throws SyntaxException if a constant has been found but is not defined.
    */
   private String removeConstants(String s) throws SyntaxException{
     int begin = 0;
@@ -737,8 +755,15 @@ public class JobCreator extends GPFrame{
     JPanel pResult = new JPanel(new GridBagLayout());
     int row = 0;
 
-    for(int i =0; i<cstAttr.length; ++i, ++row){
-      
+    // Fixed parameters
+    pResult.add(new JLabel("Fixed job parameters"),
+        new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
+            GridBagConstraints.CENTER,
+            GridBagConstraints.BOTH, new Insets(5, 5, 5, 5), 0, 0));
+    ++row;
+
+    for(int i=0; i<cstAttr.length; ++i, ++row){
+
       pResult.add(new JLabel(cstAttrNames[i] + " : "),
           new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
               GridBagConstraints.CENTER,
@@ -751,13 +776,13 @@ public class JobCreator extends GPFrame{
     }
 
     // Job parameters
-    pResult.add(new JLabel("Job parameters"),
+    pResult.add(new JLabel("Transformation job parameters"),
         new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
             GridBagConstraints.CENTER,
             GridBagConstraints.BOTH, new Insets(5, 5, 5, 5), 0, 0));
     ++row;
 
-    for(int i =0; i<jobParam.length; ++i, ++row){
+    for(int i=0; i<jobParam.length; ++i, ++row){
       
       pResult.add(new JLabel(jobParamNames[i] + " : "),
           new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
@@ -777,7 +802,7 @@ public class JobCreator extends GPFrame{
             GridBagConstraints.BOTH, new Insets(5, 5, 5, 5), 0, 0));
     ++row;
 
-    for(int i =0; i<outMap.length; ++i, ++row){
+    for(int i=0; i<outMap.length; ++i, ++row){
       
       pResult.add(new JLabel(outMapNames[i] + " : Local name : "),
           new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
@@ -808,7 +833,7 @@ public class JobCreator extends GPFrame{
       ++row;
     }
 
-    for(int i =0; i<stdOut.length; ++i, ++row){
+    for(int i=0; i<stdOut.length; ++i, ++row){
       pResult.add(new JLabel(stdOutNames[i] + " : "),
           new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
               GridBagConstraints.CENTER,
@@ -839,11 +864,11 @@ public class JobCreator extends GPFrame{
 
     Object selectedValue = op.getValue();
 
-    if(selectedValue == null){
+    if(selectedValue==null){
       return JOptionPane.CLOSED_OPTION;
     }
-    for (int i = 0; i < showResultsOptions.length; ++i){
-      if(showResultsOptions[i] == selectedValue){
+    for (int i=0; i<showResultsOptions.length; ++i){
+      if(showResultsOptions[i]==selectedValue){
         return i;
       }
     }

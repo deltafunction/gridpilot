@@ -17,13 +17,18 @@ public class CreateEditDialog extends GPFrame{
   private JButton bCreateUpdate = null;
   private JButton bClear = new JButton("Clear");
   private JCheckBox cbShowResults = new JCheckBox("Show before writing to DB", true);
+  private boolean showDetailsCheckBox = false;
+  private JCheckBox cbShowDetails = null;
 
   public JPanel buttonPanel = new JPanel();
 
-  public CreateEditDialog(CreateEditPanel _panel, boolean _editing){
+  public CreateEditDialog(CreateEditPanel _panel, boolean _editing, boolean _showDetailsCheckBox){
     
     super();
     
+    _panel.statusBar = this.statusBar;
+    
+    showDetailsCheckBox = _showDetailsCheckBox;
     createEditPanel = _panel;
     editing = _editing;
     
@@ -32,7 +37,7 @@ public class CreateEditDialog extends GPFrame{
       public void windowClosing(WindowEvent we){
         createEditPanel.windowClosing();
         we.getWindow().setVisible(false);
-        //Debug.debug("Thwarted user attempt to close window.", 3);
+        Debug.debug("Thwarted user attempt to close window.", 3);
       }
     });
     
@@ -44,7 +49,8 @@ public class CreateEditDialog extends GPFrame{
     }
 
     try{
-      setContentPane(pCreateEdit);
+      //setContentPane(pCreateEdit);
+      this.getContentPane().add(pCreateEdit, BorderLayout.CENTER);
       initGUI();
       pack();
       requestFocusInWindow();
@@ -83,7 +89,22 @@ public class CreateEditDialog extends GPFrame{
       }
     });
 
-
+    if(showDetailsCheckBox){
+      cbShowDetails = new JCheckBox("Show Details", false);
+      cbShowDetails.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          try{
+            createEditPanel.showDetails(cbShowDetails.isSelected());
+            pack();
+          }
+          catch(Exception ex){
+            Debug.debug("Could not show details", 2);
+            ex.printStackTrace();
+          }
+        }
+      });    
+      buttonPanel.add(cbShowDetails);
+    }
     buttonPanel.add(cbShowResults);
     buttonPanel.add(bClose);
     buttonPanel.add(bClear);

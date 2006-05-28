@@ -7,6 +7,8 @@ import javax.swing.JPanel;
  *
  */
 public abstract class CreateEditPanel extends JPanel{
+  
+  public StatusBar statusBar;
 
   public void clearPanel(){
   }
@@ -15,6 +17,9 @@ public abstract class CreateEditPanel extends JPanel{
   }
 
   public void initGUI(){
+  }
+
+  public void showDetails(boolean show){
   }
 
   public void windowClosing(){
