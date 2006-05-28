@@ -1142,6 +1142,7 @@ public class HSQLDBDatabase implements Database{
               +dateString+
           "')";
     if(datasetName!=null && !datasetName.equals("")){
+      Debug.debug(arg, 3);
       boolean execok = true;
       try{
         Statement stmt = conn.createStatement();
