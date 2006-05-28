@@ -337,7 +337,7 @@ public class JobCreationPanel extends CreateEditPanel{
         tcOutputMap[i][0] = createTextComponent();
       }
       tcOutputMap[i][0].setText(outputMapNames[i]);
-      detailFields.add(tcOutputMap[i][0]);
+      tcOutputMap[i][0].setEnabled(false);
       
       fullNameStrings = Util.split(outputMapNames[i], ".");
       if(fullNameStrings.length>0){
@@ -358,7 +358,7 @@ public class JobCreationPanel extends CreateEditPanel{
         tcOutputMap[i][1] = createTextComponent();
 
       tcOutputMap[i][1].setText("$o/$n.${i:5}"+extension);
-      detailFields.add(tcOutputMap[i][1]);
+      tcOutputMap[i][1].setEnabled(false);
 
       pAttributes.add(tcOutputMap[i][1],
           new GridBagConstraints(3, row, 1, 1, 1.0, 0.0,
@@ -385,7 +385,7 @@ public class JobCreationPanel extends CreateEditPanel{
         tcStdOutput[i] = createTextComponent();
 
       tcStdOutput[i].setText("$o/$n.${i:5}."+stdOutputNames[i]);
-      detailFields.add(tcStdOutput[i]);
+      tcStdOutput[i].setEnabled(false);
 
       pAttributes.add(tcStdOutput[i],
           new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
