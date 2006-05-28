@@ -372,8 +372,8 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized int getJobDefDatasetID(int jobDefinitionID){
-    int datasetID = Integer.parseInt(
-        getJobDefinition(jobDefinitionID).getValue("dataset").toString());
+    String datasetName = getJobDefinition(jobDefinitionID).getValue("datasetName").toString();
+    int datasetID = getDatasetID(datasetName);
     return Integer.parseInt(getDataset(datasetID).getValue("identifier").toString());
   }
 

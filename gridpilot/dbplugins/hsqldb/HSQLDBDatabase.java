@@ -402,8 +402,8 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized int getJobDefDatasetID(int jobDefinitionID){
-    int datasetID = Integer.parseInt(
-        getJobDefinition(jobDefinitionID).getValue("dataset").toString());
+    String datasetName = getJobDefinition(jobDefinitionID).getValue("datasetName").toString();
+    int datasetID = getDatasetID(datasetName);
     return Integer.parseInt(getDataset(datasetID).getValue("identifier").toString());
   }
 
@@ -607,7 +607,7 @@ public class HSQLDBDatabase implements Database{
           else{
             values[i] = rset.getString(datasetFields[i]);
           }
-          Debug.debug(datasetFields[i]+"-->"+values[i], 3);
+          //Debug.debug(datasetFields[i]+"-->"+values[i], 3);
         }
         DBRecord jobd = new DBRecord(datasetFields, values);
         taskVector.add(jobd);
@@ -908,7 +908,7 @@ public class HSQLDBDatabase implements Database{
             val = "";
           }
           values[i] = val;
-          Debug.debug(fieldname+"-->"+val, 2);
+          //Debug.debug(fieldname+"-->"+val, 3);
         }
         DBRecord jobd = new DBRecord(jobDefFields, values);
         jobdefv.add(jobd);
