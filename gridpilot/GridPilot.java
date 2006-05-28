@@ -34,7 +34,7 @@ public class GridPilot extends JApplet{
   public static String certFile = "~/.globus/usercert.pem";
   public static String keyPassword = null;
   public static String dateFormatString = "yyyy-MM-dd HH:mm:ss";
-  public static String [] fixedJobAttributes = {"JobNumber", "JobName"};
+  public static String [] fixedJobAttributes = {"number", "name"};
   
   /**
    * Constructor
