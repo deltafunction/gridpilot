@@ -58,7 +58,7 @@ public class DatasetUpdater{
       JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
           "ERROR: dataset cannot be updated.\n"+
           dbPluginMgr.getError(),
-          "", JOptionPane.PLAIN_MESSAGE);
+          "", JOptionPane.ERROR_MESSAGE);
       statusBar.setLabel("Updated NOT succeeded.");
     }
     else{

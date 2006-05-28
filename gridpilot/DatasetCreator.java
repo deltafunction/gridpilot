@@ -196,7 +196,7 @@ public class DatasetCreator{
             JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
                "ERROR: dataset cannot be created.\n"+
                dbPluginMgr.getError(),
-               "", JOptionPane.PLAIN_MESSAGE);
+               "", JOptionPane.ERROR_MESSAGE);
             statusBar.setLabel("Dataset NOT created.");
             return false;
           }
