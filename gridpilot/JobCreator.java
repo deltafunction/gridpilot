@@ -135,16 +135,16 @@ public class JobCreator{
 
         showThis = showResults;
         // NOTICE: here we assume that the following fields are present in dataset:
-        // beam_energy, beam_particle, OutputLocation.
+        // beamEnergy, beamParticle, outputLocation.
         // If they are not, the automatic generation of the names will not include
         // this information.
         try{
           evaluateAll(currentDataset, currentPartition,
               dbPluginMgr.getDatasetName(datasetIdentifiers[currentDataset]),
               dbPluginMgr.getRunNumber(datasetIdentifiers[currentDataset]),
-              dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("beam_energy").toString(),
-              dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("beam_particle").toString(),
-              dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("OutputLocation").toString(),
+              dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("beamEnergy").toString(),
+              dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("beamParticle").toString(),
+              dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("outputLocation").toString(),
                  eventSplits);
         }
         catch(Exception ex){
@@ -318,7 +318,7 @@ public class JobCreator{
       // Parse datasetName and runNumber
       pos1 = sss.indexOf("$n");
       if(pos1>=0){
-        sss.replace(pos1, pos1+2,name);
+        sss.replace(pos1, pos1+2, name);
       }
       pos2 = sss.indexOf("$r");
       if(pos2>=0){
@@ -326,11 +326,11 @@ public class JobCreator{
       }
       pos3 = sss.indexOf("$e");
       if(pos3>=0){
-        sss.replace(pos3, pos3+2,energy);
+        sss.replace(pos3, pos3+2, energy);
       }
       pos4 = sss.indexOf("$p");
       if(pos4>=0){
-        sss.replace(pos4, pos4+2,particle);
+        sss.replace(pos4, pos4+2, particle);
       }
       pos5 = sss.indexOf("$o");
       if(pos5>=0){
@@ -614,6 +614,53 @@ public class JobCreator{
       }
     }
     // jobDefinition fields
+    
+    // Add eventMin, eventMax and inputFileName if they are
+    // present in the fields of jobDefinition, but not in the fixed
+    // attributes.
+    String [] jobDefFields = dbPluginMgr.getFieldNames("jobDefinition");
+    for(int i=0; i<jobDefFields.length; ++i){
+      jobDefFields[i] = jobDefFields[i].toLowerCase();
+    }
+    ArrayList jobdefinitionfields = new ArrayList(Arrays.asList(jobDefFields));    
+    ArrayList jobattributenames = new ArrayList(Arrays.asList(cstAttrNames));
+    ArrayList jobAttributeNames = new ArrayList(Arrays.asList(cstAttrNames));
+    ArrayList jobAttributes = new ArrayList(Arrays.asList(cstAttr));
+    for(int i=0; i<jobattributenames.size(); ++i){
+      jobattributenames.set(i, jobattributenames.get(i).toString().toLowerCase());
+    }
+    if(!jobattributenames.contains("eventmin") &&
+        jobdefinitionfields.contains("eventmin")){
+      jobAttributeNames.add("eventMin");
+      jobAttributes.add("0");
+    }
+    if(!jobattributenames.contains("eventmax") &&
+        jobdefinitionfields.contains("eventmax")){
+      jobAttributeNames.add("eventMax");
+      jobAttributes.add("0");
+    }
+    if(!jobattributenames.contains("nevents") &&
+        jobdefinitionfields.contains("nevents")){
+      jobAttributeNames.add("nEvents");
+      jobAttributes.add("0");
+    }
+    if(!jobattributenames.contains("inputfilename") &&
+        jobdefinitionfields.contains("inputfilename")){
+      jobAttributeNames.add("inputFileName");
+      jobAttributes.add("");
+    }
+    cstAttrNames = new String [jobAttributeNames.size()];
+    for(int i=0; i<jobAttributeNames.size(); ++i){
+      cstAttrNames[i] = jobAttributeNames.get(i).toString();
+    }
+    cstAttr = new String [jobAttributes.size()];
+    for(int i=0; i<jobAttributes.size(); ++i){
+      Debug.debug("Setting attribute "+jobAttributes.get(i), 3);
+      if(jobAttributes.get(i)!=null){
+        cstAttr[i] = jobAttributes.get(i).toString();
+      }
+    }
+    resCstAttr = new String[cstAttr.length];
     for(int i=0; i<resCstAttr.length; ++i){
       Debug.debug("parameter #"+i+":"+resCstAttr.length+":"+cstAttrNames[i], 3);
       Debug.debug("eventSplits: "+eventSplits.length, 3);
@@ -626,6 +673,12 @@ public class JobCreator{
           eventSplits!=null && eventSplits.length>1){
         Debug.debug("setting event maximum", 3);
         resCstAttr[i] = Integer.toString(eventSplits[currentPartition-1][1]);
+      }
+      else if(cstAttrNames[i].equalsIgnoreCase("nevents") &&
+          eventSplits!=null && eventSplits.length>1){
+        Debug.debug("setting event number", 3);
+        resCstAttr[i] = Integer.toString(eventSplits[currentPartition-1][1]-
+                                         eventSplits[currentPartition-1][0]+1);
       }
       else if(cstAttrNames[i].equalsIgnoreCase("inputFileName") &&
           eventSplits!=null && eventSplits.length>1){
@@ -640,30 +693,27 @@ public class JobCreator{
       }
     }
     // Job parameters
-    ArrayList jobDefinitionFields = new ArrayList(Arrays.asList(dbPluginMgr.getFieldNames("jobDefinition")));    
     for(int i=0; i<resJobParam.length; ++i){
       Debug.debug("param #"+i, 3);
-      if((jobParamNames[i].equalsIgnoreCase("StartAtEvent") ||
-          jobParamNames[i].equalsIgnoreCase("eventMin")) &&
+      if((jobParamNames[i].equalsIgnoreCase("eventMin")) &&
           eventSplits!=null && eventSplits.length>1){
         resJobParam[i] = Integer.toString(eventSplits[currentPartition-1][0]);
       }
-      else if((jobParamNames[i].equalsIgnoreCase("NumEvents") ||
-          jobParamNames[i].equalsIgnoreCase("evtNum") ||
-          jobParamNames[i].equalsIgnoreCase("evtNumber") ||
-          jobParamNames[i].equalsIgnoreCase("nEvents")) &&
+      else if((jobParamNames[i].equalsIgnoreCase("nEvents")) &&
           eventSplits!=null && eventSplits.length>1){
         resJobParam[i] = Integer.toString(eventSplits[currentPartition-1][1]-
             eventSplits[currentPartition-1][0]+1);
       }
-      else if((jobParamNames[i].equalsIgnoreCase("inFileName") ||
-          jobParamNames[i].equalsIgnoreCase("inputFileName")) &&
+      else if((jobParamNames[i].equalsIgnoreCase("inputFileName")) &&
           eventSplits!=null && eventSplits.length>1){
         resJobParam[i] = inputs;
       }
       // Fill in if it matches one of the jobDefinition fields
-      else if(jobDefinitionFields.contains(jobParamNames[i])){
-        resJobParam[i] = resCstAttr[jobDefinitionFields.indexOf(jobParamNames[i])];
+      else if(jobdefinitionfields.contains(jobParamNames[i].toLowerCase())){
+        if(resCstAttr[jobdefinitionfields.indexOf(jobParamNames[i].toLowerCase())]==null ||
+            resCstAttr[jobdefinitionfields.indexOf(jobParamNames[i].toLowerCase())].equals("")){
+          resCstAttr[jobdefinitionfields.indexOf(jobParamNames[i].toLowerCase())] = resJobParam[i];
+        }
       }
       else{
         resJobParam[i] = evaluate(jobParam[i], currentPartition, name, number,

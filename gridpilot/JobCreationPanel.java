@@ -116,10 +116,10 @@ public class JobCreationPanel extends CreateEditPanel{
     pDataset.setLayout(new GridBagLayout());
     pDataset.removeAll();
     String instructionLabelString = "dataset name: $n";
-    if(datasetFields.contains("runnumber") || datasetFields.contains("runnum")){
+    if(datasetFields.contains("runnumber")){
       instructionLabelString += ", run number: $r";
     }
-    if(datasetFields.contains("energy") || datasetFields.contains("beamenergy")){
+    if(datasetFields.contains("beamenergy")){
       instructionLabelString += ", energy: $e";
     }
     if(datasetFields.contains("outputlocation")){
@@ -258,19 +258,9 @@ public class JobCreationPanel extends CreateEditPanel{
       // Other fields that match dataset fields will be set to
       // $0, $1, ... according to their place in the schema
       // and these variables will be parsed accordingly by JobCreator.
-      if(jobParamNames[i].equalsIgnoreCase("NumEvents") ||
-          jobParamNames[i].equalsIgnoreCase("StartAtEvent") ||
-          jobParamNames[i].equalsIgnoreCase("nEvents") ||
-          jobParamNames[i].equalsIgnoreCase("evtNum") ||
-          jobParamNames[i].equalsIgnoreCase("evtNumber") ||
+      if(jobParamNames[i].equalsIgnoreCase("nEvents") ||
           jobParamNames[i].equalsIgnoreCase("eventMin") ||
           jobParamNames[i].equalsIgnoreCase("eventMax") ||
-          jobParamNames[i].equalsIgnoreCase("inputFileName")){
-        detailFields.add(jobAttributeLabels[i]);
-        detailFields.add(tcJobParam[i]);
-        tcJobParam[i].setText("");
-      }
-      else if(jobParamNames[i].equalsIgnoreCase("inFileName") ||
           jobParamNames[i].equalsIgnoreCase("inputFileName")){
         detailFields.add(jobAttributeLabels[i]);
         detailFields.add(tcJobParam[i]);
@@ -288,33 +278,34 @@ public class JobCreationPanel extends CreateEditPanel{
         detailFields.add(tcJobParam[i]);
         tcJobParam[i].setText("${i:5}");
       }
-      else if(jobParamNames[i].equalsIgnoreCase("outFileName") ||
-          jobParamNames[i].equalsIgnoreCase("outputFileName")){
+      else if(jobParamNames[i].equalsIgnoreCase("outputFileName")){
         detailFields.add(jobAttributeLabels[i]);
         detailFields.add(tcJobParam[i]);
         tcJobParam[i].setText("$n.${i:5}.root");
       }
-      else if(jobParamNames[i].equalsIgnoreCase("runNum") ||
-            jobParamNames[i].equalsIgnoreCase("runNumber")){
+      else if(jobParamNames[i].equalsIgnoreCase("runNumber")){
       // get from dataset
       detailFields.add(jobAttributeLabels[i]);
       detailFields.add(tcJobParam[i]);
       tcJobParam[i].setText("$r"); 
       }
-      else if(jobParamNames[i].equalsIgnoreCase("energy") ||
-          jobParamNames[i].equalsIgnoreCase("beamEnergy")){
+      else if(jobParamNames[i].equalsIgnoreCase("beamEnergy")){
         // get from dataset
         detailFields.add(jobAttributeLabels[i]);
         detailFields.add(tcJobParam[i]);
         tcJobParam[i].setText("$e");
       }
-      else if(jobParamNames[i].equalsIgnoreCase("particle") ||
-          jobParamNames[i].equalsIgnoreCase("beamParticle")){
+      else if(jobParamNames[i].equalsIgnoreCase("beamParticle")){
         // get from dataset
         detailFields.add(jobAttributeLabels[i]);
         detailFields.add(tcJobParam[i]);
         tcJobParam[i].setText("$p");
       }
+      else if( cstAttributesNames[i].equalsIgnoreCase("created") ||
+          cstAttributesNames[i].equalsIgnoreCase("lastModified")){
+        Util.setJEditable(tcCstAttributes[i], false);
+      }
+      // TODO: disable also fields filled out by GridPilot and runtime fields
       else if(datasetFields.contains(cstAttributesNames[i].toLowerCase())){
         detailFields.add(tcCstAttributes[i]);
         detailFields.add(constantAttributeLabels[i]);
@@ -346,7 +337,7 @@ public class JobCreationPanel extends CreateEditPanel{
         tcOutputMap[i][0] = createTextComponent();
       }
       tcOutputMap[i][0].setText(outputMapNames[i]);
-      tcOutputMap[i][0].setEnabled(false);
+      detailFields.add(tcOutputMap[i][0]);
       
       fullNameStrings = Util.split(outputMapNames[i], ".");
       if(fullNameStrings.length>0){
@@ -367,7 +358,7 @@ public class JobCreationPanel extends CreateEditPanel{
         tcOutputMap[i][1] = createTextComponent();
 
       tcOutputMap[i][1].setText("$o/$n.${i:5}"+extension);
-      tcOutputMap[i][1].setEnabled(false);
+      detailFields.add(tcOutputMap[i][1]);
 
       pAttributes.add(tcOutputMap[i][1],
           new GridBagConstraints(3, row, 1, 1, 1.0, 0.0,
@@ -394,7 +385,7 @@ public class JobCreationPanel extends CreateEditPanel{
         tcStdOutput[i] = createTextComponent();
 
       tcStdOutput[i].setText("$o/$n.${i:5}."+stdOutputNames[i]);
-      tcStdOutput[i].setEnabled(false);
+      detailFields.add(tcStdOutput[i]);
 
       pAttributes.add(tcStdOutput[i],
           new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
