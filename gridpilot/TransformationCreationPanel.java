@@ -160,8 +160,10 @@ public class TransformationCreationPanel extends CreateEditPanel{
 
     spAttributes.getViewport().add(pAttributes, null);
 
-    add(spAttributes,   new GridBagConstraints(0, 3, 3, 1, 0.9, 0.9
-        ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+    add(spAttributes,
+        new GridBagConstraints(0, 3, 3, 1, 0.9, 0.9,
+            GridBagConstraints.CENTER,
+            GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
 
     initAttributePanel();
     
@@ -251,10 +253,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     
     if(!reuseTextFields || tcCstAttributes==null || tcCstAttributes.length!=cstAttributesNames.length)
       tcCstAttributes = new JTextComponent[cstAttributesNames.length];
-
     int row = 0;
-    
-    //// Constants attributes
     for(int i = 0; i<cstAttributesNames.length; ++i, ++row){
       if(cstAttributesNames[i].equalsIgnoreCase("definition") ||
           cstAttributesNames[i].equalsIgnoreCase("code") ||
@@ -296,8 +295,6 @@ public class TransformationCreationPanel extends CreateEditPanel{
    */
   public void editTransformation(int transformationID,
       String runtimeEnvironmentName){
-
-    //// Constants attributes
     for(int i =0; i<tcCstAttributes.length; ++i){
       for(int j=0; j<transformationFields.length;++j){
         if(transformationFields[j].toString().equalsIgnoreCase(

@@ -148,13 +148,8 @@ public class RuntimeCreationPanel extends CreateEditPanel{
 
     if(!reuseTextFields || tcCstAttributes==null || tcCstAttributes.length != cstAttributesNames.length)
       tcCstAttributes = new JTextComponent[cstAttributesNames.length];
-
     int row = 0;
-    
-    //// Constants attributes
-
     for(int i = 0; i<cstAttributesNames.length; ++i, ++row){
-      
       if(cstAttributesNames[i].equalsIgnoreCase("scriptRepository")){
            pAttributes.add(Util.createCheckPanel(
                (Frame) SwingUtilities.getWindowAncestor(getRootPane()),
@@ -203,8 +198,6 @@ public class RuntimeCreationPanel extends CreateEditPanel{
    *  Edit a runtime environment
    */
   public void editPack(int packID){
-
-    //// Constants attributes
     for(int i =0; i<tcCstAttributes.length; ++i){
       Debug.debug("Length of res: "+
           pack.fields.length+":"+tcCstAttributes.length, 3);
