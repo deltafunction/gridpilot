@@ -551,6 +551,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     else if(versions.length==1){
       transformationVersion = versions[0];
       pVersion.add(new JLabel("Version : " + transformationVersion));
+      editDataset(datasetID, transformationName, transformationVersion);
     }
     else{
       cbTransVersionSelection = new JComboBox();
