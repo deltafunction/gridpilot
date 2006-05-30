@@ -36,7 +36,6 @@ public class MySQLDatabase implements Database{
   private String [] transformationFields = null;
   private String [] jobDefFields = null;
   private String [] datasetFields = null;
-  private String [] runInfoFields = null;
   private String [] runtimeEnvironmentFields = null;
 
   public MySQLDatabase(
@@ -90,9 +89,6 @@ public class MySQLDatabase implements Database{
     if(runtimeEnvironmentFields==null || runtimeEnvironmentFields.length<1){
       makeTable("runtimeEnvironment");
     }
-    if(runInfoFields==null || runInfoFields.length<1){
-      makeTable("runInfo");
-    }
     setFieldNames();
   }
   
@@ -128,7 +124,6 @@ public class MySQLDatabase implements Database{
     jobDefFields = getFieldNames("jobDefinition");
     transformationFields = getFieldNames("transformation");
     // only used for checking
-    runInfoFields = getFieldNames("runInfo");
     runtimeEnvironmentFields = getFieldNames("runtimeEnvironment");
   }
 
@@ -173,8 +168,10 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized boolean cleanRunInfo(int jobDefID){
-    String sql = "delete from runInfo where jobDefinitionName = '"+
-    getJobDefName(jobDefID)+"'";
+    String sql = "UPDATE jobDefinition SET jobID = ''," +
+        "outTmp = '', errTmp = '', valOut = '',  valErr = '' " +
+        "WHERE identifier = '"+
+    jobDefID+"'";
     boolean ok = true;
     try{
       Statement stmt = conn.createStatement();
@@ -377,11 +374,6 @@ public class MySQLDatabase implements Database{
     return Integer.parseInt(getDataset(datasetID).getValue("identifier").toString());
   }
 
-  public synchronized String getJobRunUser(int jobDefinitionID){
-    // nothing for now
-    return "";
-  }
-
  public synchronized String getPackInitText(String pack, String cluster){
     // nothing for now
     return "";
@@ -434,9 +426,14 @@ public class MySQLDatabase implements Database{
     return new String [] {""};
   }
 
-  public synchronized boolean reserveJobDefinition(int jobDefinitionID, String userName){
-    // nothing for now
-    return false;
+  public synchronized boolean reserveJobDefinition(int jobDefID, String userInfo){
+    boolean ret = updateJobDefinition(
+        jobDefID,
+        new String [] {"status", "userInfo"},
+        new String [] {"Submitted", userInfo}
+        );
+    clearCaches();
+    return ret;
   }
 
   public synchronized boolean saveDefVals(int datasetID, String[] defvals, String user){

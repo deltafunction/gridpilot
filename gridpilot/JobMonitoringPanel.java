@@ -18,8 +18,8 @@ import javax.swing.event.*;
 public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   private static final long serialVersionUID = 1L;
-  private Table statusTable;
-  private StatusBar statusBar;
+  private Table statusTable = null;
+  private StatusBar statusBar = null;
 
   Timer timerRefresh = new Timer(0, new ActionListener (){
     public void actionPerformed(ActionEvent e) {

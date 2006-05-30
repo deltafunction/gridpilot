@@ -517,7 +517,8 @@ public class JobCreator{
     try{
       inputDB = dbPluginMgr.getDataset(
           datasetIdentifiers[currentDataset]).getValue("inputDB").toString();
-      String inputDBIdentifierField = dbPluginMgr.getIdentifierField(inputDB, "jobDefinition");
+      String inputDBIdentifierField = GridPilot.getClassMgr().getDBPluginMgr(inputDB
+          ).getIdentifierField("jobDefinition");
       inputDataset = dbPluginMgr.getDataset(
           datasetIdentifiers[currentDataset]).getValue("inputDataset").toString();
       if(inputDataset!=null && !inputDataset.equals("") &&
@@ -539,7 +540,7 @@ public class JobCreator{
     catch(Exception e){
       Debug.debug("No input dataset for "+datasetIdentifiers[currentDataset], 2);
       e.printStackTrace();
-      return;
+      //return;
     }
     if(inputJobDefIds.length>0 &&
         Integer.parseInt(inputJobDefRecords.getValue(

@@ -214,8 +214,7 @@ public class JobDefCreator{
 
         if(editing){
           String jobDefIdentifier =
-            datasetMgr.getDBPluginMgr().getIdentifierField(dbPluginMgr.getDBName(),
-            "jobDefinition");
+            datasetMgr.getDBPluginMgr().getIdentifierField("jobDefinition");
           int id = -1;
           for(int i=0; i<cstAttrNames.length; ++i){
             if(cstAttrNames[i].toString().equalsIgnoreCase(

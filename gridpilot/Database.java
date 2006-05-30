@@ -87,7 +87,6 @@ public interface Database{
   public String getJobDefOutLocalName(int jobDefID, String par);
   public String getStdOutFinalDest(int jobDefID);
   public String getStdErrFinalDest(int jobDefID);
-  public String getJobRunUser(int jobDefID);
   public DBRecord getRunInfo(int jobDefID);
   
   // ####### Misc

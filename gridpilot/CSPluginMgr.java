@@ -168,8 +168,9 @@ public class CSPluginMgr implements ComputingSystem{
 
   void reconnect(){
     for(int i=0; i<csNames.length ; ++i){
-      if(shellMgr.get(csNames[i]) instanceof SecureShellMgr)
+      if(shellMgr.get(csNames[i]) instanceof SecureShellMgr){
         ((SecureShellMgr) shellMgr.get(csNames[i])).reconnect();
+      }
     }
   }
 
@@ -290,10 +291,12 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(waitForThread(t, job.getCSName(), submissionTimeOut, "submit"))
+    if(waitForThread(t, job.getCSName(), submissionTimeOut, "submit")){
       return t.getBooleanRes();
-    else
+    }
+    else{
       return false;
+    }
   }
 
   /**
@@ -444,7 +447,6 @@ public class CSPluginMgr implements ComputingSystem{
    * Gets the full status of the specified job on its ComputingSystem
    * @see ComputingSystem#getFullStatus(JobInfo)
    */
-
   public String getFullStatus(final JobInfo job) {
     final String csName = job.getCSName();
     if(csName==null || csName.equals("")){
@@ -527,8 +529,9 @@ public class CSPluginMgr implements ComputingSystem{
     if(choice==JOptionPane.YES_OPTION){
       return true;
     }
-    else
+    else{
       return false;
+    }
   }
 
   /**
@@ -604,6 +607,72 @@ public class CSPluginMgr implements ComputingSystem{
     }
   }
 
+  /**
+   * @see ComputingSystem#getUserInfo()
+   */
+  public String getUserInfo(final String csName) {
+    if(csName==null || csName.equals("")){
+      return null;
+    }
 
+    MyThread t = new MyThread(){
+      String res = null;
+      public void run(){
+        try{
+          res = ((ComputingSystem) cs.get(csName)).getUserInfo(csName);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + csName +
+                             " for getUserInfo", t);
+          res = null;
+        }
+      }
+      public String getStringRes(){
+        return res;
+      }
+    };
 
+    t.start();
+
+    if(waitForThread(t, csName, defaultTimeOut, "getUserInfo")){
+      return t.getStringRes();
+    }
+    else{
+      return "No response";
+    }
+  }
+
+  /**
+   * @see ComputingSystem#copyFile(JobInfo)
+   */
+  public boolean copyFile(final String csName, final String src, final String dest) {
+
+    MyThread t = new MyThread(){
+      boolean res = false;
+      public void run(){
+        try{
+          res = ((ComputingSystem) cs.get(csName)).copyFile(csName, src, dest);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + csName +
+                             " during copyFile", t);
+          res = false;
+        }
+      }
+      public boolean getBooleanRes(){
+        return res;
+      }
+    };
+
+    t.start();
+
+    if(waitForThread(t, csName, defaultTimeOut, "copyFile")){
+      return t.getBooleanRes();
+    }
+    else{
+      return false;
+    }
+  }
 }

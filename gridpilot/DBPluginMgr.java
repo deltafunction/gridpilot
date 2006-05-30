@@ -779,34 +779,6 @@ public class DBPluginMgr implements Database{
     }
   }
 
- public synchronized String getJobRunUser(final int jobDefinitionID){
-    MyThread t = new MyThread(){
-      String res = null;
-      public void run(){
-        try{
-          res = db.getJobRunUser(jobDefinitionID);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             jobDefinitionID, t);
-        }
-      }
-      public String getStringRes(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "getJobRunUser")){
-      return t.getStringRes();
-    }
-    else{
-      return null;
-    }
-  }
-
   public synchronized String getJobDefValue(final int jobDefID, final String key){
     MyThread t = new MyThread(){
       String res = null;
@@ -1434,7 +1406,7 @@ public class DBPluginMgr implements Database{
       vals[i] = "";
       for(int j=0; i<fields.length; ++j){
         if(fields[j].equalsIgnoreCase(jobDefFieldNames[i]) &&
-            !fields[j].equalsIgnoreCase(getIdentifierField(dbName, "jobDefinition"))){
+            !fields[j].equalsIgnoreCase(getIdentifierField("jobDefinition"))){
           vals[i] = values[j].toString();
           break;
         }
@@ -2388,7 +2360,7 @@ public class DBPluginMgr implements Database{
     return res;
   }
     
-  public synchronized String [] getDBDefFields(String dbName, String tableName){
+  public synchronized String [] getDBDefFields(String tableName){
     HashMap dbDefFields = new HashMap();
     String [] ret;
     try{
@@ -2403,7 +2375,7 @@ public class DBPluginMgr implements Database{
     }
   }
   
-  public synchronized String getIdentifierField(String dbName, String table){
+  public String getIdentifierField(String table){
     String ret = configFile.getValue(dbName,
       table+" identifier");
     if(ret==null || ret.equals("")){
@@ -2416,7 +2388,7 @@ public class DBPluginMgr implements Database{
   /**
    * Get the name of the column holding the name.
    */
-  public synchronized String getNameField(String dbName, String table){
+  public String getNameField(String table){
     String ret = configFile.getValue(dbName,
       table+" name");
     if(ret==null || ret.equals("")){
@@ -2429,7 +2401,7 @@ public class DBPluginMgr implements Database{
   /**
    * Get the name of the column holding the version.
    */
-  public synchronized String getVersionField(String dbName, String table){
+  public synchronized String getVersionField(String table){
     String ret = configFile.getValue(dbName,
       table+" version");
     if(ret==null || ret.equals("")){
@@ -2439,7 +2411,7 @@ public class DBPluginMgr implements Database{
     return ret;
   }
 
-  public synchronized String [] getJobDefDatasetReference(String dbName){
+  public synchronized String [] getJobDefDatasetReference(){
     String [] ret = configFile.getValues(dbName,
       "jobDefinition dataset reference");
     if(ret==null || ret.length<2){
@@ -2450,7 +2422,7 @@ public class DBPluginMgr implements Database{
     return ret;
   }
 
-  public synchronized String [] getDatasetTransformationReference(String dbName){
+  public synchronized String [] getDatasetTransformationReference(){
     String [] ret = configFile.getValues(dbName,
       "dataset transformation reference");
     if(ret==null || ret.length<2){
@@ -2461,7 +2433,7 @@ public class DBPluginMgr implements Database{
     return ret;
   }
 
-  public synchronized String [] getDatasetTransformationVersionReference(String dbName){
+  public synchronized String [] getDatasetTransformationVersionReference(){
     String [] ret = configFile.getValues(dbName,
       "dataset transformation version reference");
     if(ret==null || ret.length<2){
@@ -2472,7 +2444,7 @@ public class DBPluginMgr implements Database{
     return ret;
   }
 
-  public synchronized String [] getDBHiddenFields(String dbName, String tableName){
+  public synchronized String [] getDBHiddenFields(String tableName){
     HashMap dbDefFields = new HashMap();
     String [] ret;
     try{
@@ -2535,7 +2507,7 @@ public class DBPluginMgr implements Database{
     
     arg = "select totalEvents, totalFiles from dataset where identifier='"+
     dataset+"'";
-    res = select(arg, getIdentifierField(dbName, "dataset"));
+    res = select(arg, getIdentifierField("dataset"));
     if(res.values.length>0){
       try{
         totalEvents = Integer.parseInt(res.values[0][0].toString());

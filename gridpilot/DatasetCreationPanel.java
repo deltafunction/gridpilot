@@ -59,14 +59,13 @@ public class DatasetCreationPanel extends CreateEditPanel{
     table = panel.getTable();
     cstAttributesNames = dbPluginMgr.getFieldNames("dataset");
     cstAttr = new String[cstAttributesNames.length];
-    datasetIdentifier = dbPluginMgr.getIdentifierField(
-       dbPluginMgr.getDBName(), "dataset");
+    datasetIdentifier = dbPluginMgr.getIdentifierField("dataset");
     transformations = dbPluginMgr.getTransformations();
     
     datasetTransformationReference =
-      dbPluginMgr.getDatasetTransformationReference(dbPluginMgr.getDBName());
+      dbPluginMgr.getDatasetTransformationReference();
     datasetTransformationVersionReference =
-      dbPluginMgr.getDatasetTransformationVersionReference(dbPluginMgr.getDBName());
+      dbPluginMgr.getDatasetTransformationVersionReference();
 
     // Find identifier index
     int identifierIndex = -1;
@@ -267,18 +266,20 @@ public class DatasetCreationPanel extends CreateEditPanel{
     
     editDataset(Integer.parseInt(datasetID), transformationName, transformationVersion);
     
-    for(int i =0; i<cstAttributesNames.length; ++i){
+    for(int i=0; i<cstAttributesNames.length; ++i){
       if(cstAttributesNames[i].equalsIgnoreCase(datasetTransformationReference[1])){
         Util.setJEditable(tcCstAttributes[i], false);
         if(cbTransformationSelection!=null &&
             transformationName!=null && transformationName!=null){
           cbTransformationSelection.setSelectedItem(transformationName);
+          Util.setJEditable(tcCstAttributes[i], false);
         }
       }
       else if(cstAttributesNames[i].equalsIgnoreCase(datasetTransformationVersionReference[1])){
         Util.setJEditable(tcCstAttributes[i], false);
         if(transformationVersion!=null && cbTransVersionSelection!=null){
           cbTransVersionSelection.setSelectedItem(transformationVersion);
+          Util.setJEditable(tcCstAttributes[i], false);
         }
       }
       else if( cstAttributesNames[i].equalsIgnoreCase("created") ||
@@ -447,13 +448,15 @@ public class DatasetCreationPanel extends CreateEditPanel{
         // make identifier and transformation foreign key inactive
         if(cstAttributesNames[i].equalsIgnoreCase(datasetIdentifier) ||
               cstAttributesNames[i].equalsIgnoreCase(datasetTransformationReference[1]) ||
-              cstAttributesNames[i].equalsIgnoreCase(datasetTransformationVersionReference[1])){          
+              cstAttributesNames[i].equalsIgnoreCase(datasetTransformationVersionReference[1]) ||
+              cstAttributesNames[i].equalsIgnoreCase("created") ||
+              cstAttributesNames[i].equalsIgnoreCase("lastModified")){          
           try{
             if(datasetID==-1){
               Debug.debug("Clearing identifier", 3);
               Util.setJText(tcCstAttributes[i], "");
             }
-            Util.setJEditable(tcCstAttributes[i], true);
+            Util.setJEditable(tcCstAttributes[i], false);
           }
           catch(java.lang.Exception e){
             Debug.debug("Field not found, "+e.getMessage(), 1);
@@ -699,7 +702,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           targetFields[j].equalsIgnoreCase(datasetTransformationVersionReference[1])){
       }
       else if(targetFields[j].equalsIgnoreCase(
-          dbPluginMgr.getNameField(targetDB, "dataset"))){
+        GridPilot.getClassMgr().getDBPluginMgr(targetDB).getNameField("dataset"))){
         targetAttr[j] = dbPluginMgr.getTargetDatasetName(
             targetDB, dbPluginMgr.getDatasetName(datasetIDs[0]),
             transformationName, transformationVersion);

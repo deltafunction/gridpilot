@@ -17,7 +17,7 @@ import java.util.Vector;
  *
  */
 
-public class Table extends JTable {
+public class Table extends JTable{
   
   private static final long serialVersionUID = 1L;
   private ListSelectionListener lsl;

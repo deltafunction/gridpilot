@@ -3,15 +3,21 @@ package gridpilot;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Frame;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.io.File;
 import java.util.StringTokenizer;
 
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JEditorPane;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JTextPane;
 import javax.swing.UIManager;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
@@ -388,4 +394,44 @@ public class Util{
     return ret;
   }
 
+  public static String getFileName(String str){
+    return getFileName("Enter file name", str);
+  }
+  
+  public static String getFileName(String message, String str){
+
+    JPanel panel = new JPanel(new GridBagLayout());
+    JTextPane tp = new JTextPane();
+    tp.setText("");
+    tp.setEditable(false);
+    tp.setOpaque(false);
+    tp.setBorder(null);
+
+    JTextField tf = new JTextField(str, 24);
+
+    panel.add(tp, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
+        GridBagConstraints.CENTER,
+        GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        0, 0));
+    panel.add(new JLabel(message),
+        new GridBagConstraints(0, 1, 1, 1, 1.0, 1.0,
+            GridBagConstraints.CENTER,
+            GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        0, 0));
+    panel.add(tf, new GridBagConstraints(0, 2, 1, 1, 1.0, 1.0,
+        GridBagConstraints.CENTER,
+        GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        0, 0));
+
+    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
+        "Enter file name", JOptionPane.OK_CANCEL_OPTION);
+
+    if(choice!=JOptionPane.OK_OPTION){
+      return null;
+    }
+    else{
+      return tf.getText();
+    }
+    
+  }
 }

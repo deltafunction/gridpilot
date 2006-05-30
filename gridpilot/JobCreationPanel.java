@@ -45,7 +45,7 @@ public class JobCreationPanel extends CreateEditPanel{
     dbName = dbPluginMgr.getDBName();
     Table table = panel.getTable();
     String jobDefinitionIdentifier = dbPluginMgr.getIdentifierField(
-        dbPluginMgr.getDBName(), "jobDefinition");
+        "jobDefinition");
     datasetFields = new ArrayList(Arrays.asList(dbPluginMgr.getFieldnames("dataset")));        
     // Find identifier index
     int identifierIndex = -1;

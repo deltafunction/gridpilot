@@ -119,8 +119,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
      statusBar = GridPilot.getClassMgr().getStatusBar();
      
-     identifier = dbPluginMgr.getIdentifierField(dbName, tableName);
-     jobDefIdentifier = dbPluginMgr.getIdentifierField(dbName, "jobDefinition");
+     identifier = dbPluginMgr.getIdentifierField(tableName);
+     jobDefIdentifier = dbPluginMgr.getIdentifierField("jobDefinition");
           
      ct.fill = GridBagConstraints.HORIZONTAL;
      ct.anchor = GridBagConstraints.NORTH;
@@ -132,12 +132,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      ct.gridy = 1;   
      ct.ipady = 250;
 
-     defaultFields = dbPluginMgr.getDBDefFields(dbName, tableName);
+     defaultFields = dbPluginMgr.getDBDefFields(tableName);
      Debug.debug("Default fields "+defaultFields.length, 3);
 
     fieldNames = dbPluginMgr.getFieldNames(tableName);
     
-    hiddenFields = dbPluginMgr.getDBHiddenFields(dbName, tableName);
+    hiddenFields = dbPluginMgr.getDBHiddenFields(tableName);
     Debug.debug("Hidden fields "+Util.arrayToString(hiddenFields), 3);
     
     
@@ -308,8 +308,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     panelSelectPanel.add(pButtonSelectPanel, new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0
         ,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
 
-    selectPanel.setConstraint(dbPluginMgr.getNameField(dbName,
-        tableName), "", 1);
+    selectPanel.setConstraint(dbPluginMgr.getNameField(tableName), "", 1);
     
     // Listen for enter key in text field
     this.selectPanel.spcp.tfConstraintValue.addKeyListener(new KeyAdapter(){
@@ -705,8 +704,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     selectPanel.setDisplayFieldValue(values);
     selectPanel.resetConstraintList(tableName);
-    selectPanel.setConstraint(dbPluginMgr.getNameField(dbName,
-        tableName), "", 1);
+    selectPanel.setConstraint(dbPluginMgr.getNameField(tableName), "", 1);
     selectPanel.updateUI();
   }
 
@@ -1464,7 +1462,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             DBPanel dbPanel = new DBPanel("jobDefinition",
                 dbPluginMgr, id);
             String [] jobDefDatasetReference =
-              dbPluginMgr.getJobDefDatasetReference(dbName);
+              dbPluginMgr.getJobDefDatasetReference();
             dbPanel.selectPanel.setConstraint(jobDefDatasetReference[1],
                 dbPluginMgr.getDataset(id).getValue(
                     jobDefDatasetReference[0]).toString(),
@@ -1540,14 +1538,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Submits all selected logicalFiles (partitions) in computing system chosen in the popupMenu
    */
   private void submit(ActionEvent e){
-    int[] selectedJobIdentifiers = getSelectedIdentifiers();
+    int[] selectedJobDefIdentifiers = getSelectedIdentifiers();
     Vector selectedJobDefinitions = new Vector();
-    for(int i=0; i<selectedJobIdentifiers.length; ++i){
-      selectedJobDefinitions.add(dbPluginMgr.getJobDefinition(i));
+    for(int i=0; i<selectedJobDefIdentifiers.length; ++i){
+      selectedJobDefinitions.add(dbPluginMgr.getJobDefinition(selectedJobDefIdentifiers[i]));
     }
     String csName = ((JMenuItem)e.getSource()).getText();
     // submit the jobs
-    submissionControl.submitJobDefinitions(selectedJobDefinitions, csName);
+    submissionControl.submitJobDefinitions(selectedJobDefinitions, csName, dbPluginMgr);
   }
   
   public void copy(){
@@ -1580,9 +1578,23 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       return;
     }
     try{
+      String prefix = "";
       for(int i=2; i<records.length; ++i){
+        // Check if record is a dataset and already there and
+        // ask for prefix if this is the case.
+        // Only datasets have unique names.
+        try{
+          if(tableName.equalsIgnoreCase("dataset") &&
+              GridPilot.getClassMgr().getDBPluginMgr(dbName).getDatasetID(
+                  GridPilot.getClassMgr().getDBPluginMgr(records[0]).getDatasetName(
+                      Integer.parseInt(records[i])))>-1){
+            prefix = Util.getFileName("Cannot overwrite, please give prefix", "new-");
+          }
+        }
+        catch(Exception e){
+        }
         insertRecord(records[0], records[1], dbName, tableName,
-            Integer.parseInt(records[i]));
+            Integer.parseInt(records[i]), prefix);
       }
     }
     catch(Exception e){
@@ -1625,7 +1637,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   public void insertRecord(String sourceDB, String sourceTable,
-      String targetDB, String targetTable, int id) throws Exception{
+      String targetDB, String targetTable, int id, String prefix) throws Exception{
     
     DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(sourceDB);
     DBPluginMgr targetMgr = GridPilot.getClassMgr().getDBPluginMgr(targetDB);
@@ -1651,7 +1663,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         tableName.equalsIgnoreCase("task")){
       try{
         record = sourceMgr.getDataset(id);
-        insertDataset(record, sourceMgr, targetMgr);
+        insertDataset(record, sourceMgr, targetMgr, prefix);
       }
       catch(Exception e){
         String msg = "ERROR: dataset "+id+" could not be created, "+sourceDB+
@@ -1695,7 +1707,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   public boolean insertJobDefinition(DBRecord jobDef, DBPluginMgr dbMgr) throws Exception{  
     try{
       // Check if parent dataset exists
-      String targetJobDefIdentifier = dbMgr.getIdentifierField(dbName, "jobDefinition");
+      String targetJobDefIdentifier = dbMgr.getIdentifierField("jobDefinition");
       int targetDsId = dbMgr.getJobDefDatasetID(Integer.parseInt(jobDef.getValue(targetJobDefIdentifier).toString()));
       if(targetDsId>-1){
         dbMgr.createJobDef(jobDef.fields, jobDef.values);
@@ -1712,7 +1724,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   public boolean insertDataset(DBRecord dataset, DBPluginMgr sourceMgr,
-      DBPluginMgr targetMgr) throws Exception{
+      DBPluginMgr targetMgr, String prefix) throws Exception{
     try{
       boolean ok = false;
       boolean success = true;
@@ -1721,16 +1733,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         
         String sourceTransName = sourceMgr.getDatasetTransformationName(
             Integer.parseInt(dataset.getValue(sourceMgr.getIdentifierField(
-                sourceMgr.getDBName(), "dataset")).toString()));
+                "dataset")).toString()));
         String sourceTransVersion = sourceMgr.getDatasetTransformationVersion(
             Integer.parseInt(dataset.getValue(sourceMgr.getIdentifierField(
-                sourceMgr.getDBName(), "dataset")).toString()));  
+                "dataset")).toString()));  
         
         DBResult targetTransformations = targetMgr.getTransformations();
         Vector transVec = new Vector();
         for(int i=0; i<targetTransformations.values.length; ++i){
           if(targetTransformations.getValue(i, targetMgr.getNameField(
-              targetMgr.getDBName(), "transformation")).toString(
+              "transformation")).toString(
               ).equalsIgnoreCase(sourceTransName)){
             transVec.add(targetTransformations.getRow(i));
           }
@@ -1738,7 +1750,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         for(int i=0; i<transVec.size(); ++i){
           // TODO: consider adding method like getVersionField
           if(((DBRecord) transVec.get(i)).getValue(targetMgr.getVersionField(
-              targetMgr.getDBName(), "transformation")
+              "transformation")
               ).toString().equalsIgnoreCase(sourceTransVersion)){
             ok = true;
             break;
@@ -1751,6 +1763,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       if(ok){
         Debug.debug("Creating dataset: " + Util.arrayToString(dataset.fields, ":") + " ---> " +
             Util.arrayToString(dataset.values, ":"), 3);
+        try{
+          // try adding prefix
+          dataset.setValue(sourceMgr.getNameField("dataset"),
+              prefix+dataset.getValue(sourceMgr.getNameField("dataset")));
+        }
+        catch(Exception e){
+          Debug.debug("WARNING: Could not add prefix", 3);
+          e.printStackTrace();
+        }
         success = targetMgr.createDataset("dataset", dataset.fields, dataset.values);
         if(!success){
           throw(new Exception("ERROR: "+targetMgr.getError()));
@@ -1770,9 +1791,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       DBPluginMgr targetMgr) throws Exception{
     try{
       // Check if referenced runtime environment exists
-      String sourceTransformationIdentifier = sourceMgr.getIdentifierField(dbName, "transformation");
-      String targetTransformationIdentifier = targetMgr.getIdentifierField(dbName, "transformation");
-      String targetRuntimeEnvironmentName = targetMgr.getNameField(dbName, "runtimeEnvironment");
+      String sourceTransformationIdentifier = sourceMgr.getIdentifierField("transformation");
+      String targetTransformationIdentifier = targetMgr.getIdentifierField("transformation");
+      String targetRuntimeEnvironmentName = targetMgr.getNameField("runtimeEnvironment");
       String runtimeEnvironment = sourceMgr.getTransformationRuntimeEnvironment(
           Integer.parseInt(transformation.getValue(
               sourceTransformationIdentifier).toString()));

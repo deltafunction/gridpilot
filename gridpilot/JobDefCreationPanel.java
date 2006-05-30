@@ -74,8 +74,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
       datasetName = "";
     }
 
-    jobDefIdentifier = dbPluginMgr.getIdentifierField(dbPluginMgr.getDBName(),
-        "jobDefinition");
+    jobDefIdentifier = dbPluginMgr.getIdentifierField("jobDefinition");
     cstAttributesNames = dbPluginMgr.getFieldNames("jobDefinition");
     Debug.debug("cstAttributesNames: "+Util.arrayToString(cstAttributesNames), 3);
     cstAttr = new String[cstAttributesNames.length];

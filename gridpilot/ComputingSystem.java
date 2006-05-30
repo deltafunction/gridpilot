@@ -162,4 +162,19 @@ public interface ComputingSystem{
    */
   public String [] getCurrentOutputs(JobInfo job);
 
+  /**
+   * Used for copying stdout to final destination.
+   * 
+   * @return true or false for success or failure
+   */  
+  public boolean copyFile(String csName, String src, String dest);
+
+  /**
+   * Returns user information from the credentials used by this plugin
+   * for submitting jobs.
+   * Usually this would be the subject of the grid certificate.
+   * 
+   * @return a String which contains some information about 'user'
+   */
+  public String getUserInfo(String csName);
 }
