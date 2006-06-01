@@ -63,7 +63,7 @@ public interface Database{
   // Here the following fields are assumed:
   // "jobDefID", "jobName", "stdOut", "stdErr"
   public boolean updateJobDefinition(int jobDefID, String [] values);
-  public boolean updateJobDefStatus(int jobDefID, String status);
+  //public boolean updateJobDefStatus(int jobDefID, String status);
   public String getJobStatus(int jobDefID);
   public String getJobDefUser(int jobDefID);
   public String getJobDefName(int jobDefID);

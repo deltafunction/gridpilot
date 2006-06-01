@@ -1604,7 +1604,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized boolean updateJobDefStatus(final int jobDefID,
+  /*public synchronized boolean updateJobDefStatus(final int jobDefID,
       final String status){
   
     MyThread t = new MyThread(){
@@ -1632,7 +1632,7 @@ public class DBPluginMgr implements Database{
     else{
       return false;
     }
-  }
+  }*/
 
   public synchronized boolean updateRunInfo(final JobInfo jobInfo){
     
