@@ -12,7 +12,7 @@ import java.util.Vector;
  * <li>create a section ['systemName'], with minimum these attributes :
  * <ul>
  *  <li> class = Name.of.the.class
- *  <li> working path = 'path'
+ *  <li> working directory = 'path'
  *  and optionaly
  *  <li> max jobs by update = 'number'
  * </ul>
@@ -20,7 +20,7 @@ import java.util.Vector;
  *
  * An object of this class will be created for each system defined in [Computing systems],
  * using the constructor with one parameter (String).
- * StdOut and StdErr for a job will be created by AtCom in directory 'working path'
+ * StdOut and StdErr for a job will be created in directory 'working directory'
  * (AtCom creates names, not files)
  * 'max jobs by update' denotes the maximum size of JobVector that the function 'updateStatus'
  * will be receive
