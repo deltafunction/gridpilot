@@ -43,6 +43,10 @@ public class CSPluginMgr implements ComputingSystem{
   private int clearTimeOut;
   /** time out in ms for <code>getFullStatus</code> method */
   private int fullStatusTimeOut;
+  /** time out in ms for <code>getUserInfoTimeOut</code> method */
+  private int getUserInfoTimeOut;
+  /** time out in ms for <code>copyFileTimeOut</code> method */
+  private int copyFileTimeOut;
   /** time out in ms used if neither the specific time out nor "default timeout" is
    * defined in configFile */
   private int defaultTimeOut = 60*1000;
@@ -86,8 +90,8 @@ public class CSPluginMgr implements ComputingSystem{
   }
 
   /**
-   * Loads all plug-ins which names are given by csNames.
-   * @throws Throwable if an exception or an error occurs during plug-in load
+   * Loads all plug-ins whose names are given by csNames.
+   * @throws Throwable if an exception or an error occurs during plug-in loading.
    */
   public void loadClasses() throws Throwable{
 
@@ -99,15 +103,18 @@ public class CSPluginMgr implements ComputingSystem{
         // if we cannot show text on splash, just silently ignore
       }
       String host = configFile.getValue(csNames[i], "host");
-      if(host != null){
+      if(host!=null && !host.endsWith("localhost")){
         String user = configFile.getValue(csNames[i], "user");
         String password = configFile.getValue(csNames[i], "password");
-        String remoteHome = configFile.getValue(csNames[i], "home directory");
+        String remoteHome = configFile.getValue(csNames[i], "working directory");
         shellMgr.put(csNames[i],
            new SecureShellMgr(host, user, password, remoteHome));
       }
-      else{
+      else if(host.endsWith("localhost")){
         shellMgr.put(csNames[i], new LocalShellMgr());
+      }
+      else{
+        // no shell used by this plugin
       }
 
       // Arguments and class name for <ComputingSystemName>ComputingSystem
@@ -226,6 +233,7 @@ public class CSPluginMgr implements ComputingSystem{
     if(tmp!=null){
       try{
         defaultTimeOut = new Integer(tmp).intValue();
+        defaultTimeOut = 1000*defaultTimeOut;
       }
       catch(NumberFormatException nfa){
         logFile.addMessage("value of default timeout (" + tmp +") is not an integer");
@@ -236,7 +244,7 @@ public class CSPluginMgr implements ComputingSystem{
      * method timeouts
      */
     String timeOutNames [] = {"submit", "updateStatus", "exit", "killJob", "getCurrentOutputs",
-      "clearOutputMapping", "getFullStatus"};
+      "clearOutputMapping", "getFullStatus", "getUserInfo", "copyFile"};
     int values [] = new int[timeOutNames.length];
 
     for(int i=0; i<timeOutNames.length; ++i){
@@ -264,6 +272,8 @@ public class CSPluginMgr implements ComputingSystem{
     currentOutputTimeOut = values[4] * 1000;
     clearTimeOut  = values[5] * 1000;
     fullStatusTimeOut = values[6] * 1000;
+    getUserInfoTimeOut = values[7] * 1000;
+    copyFileTimeOut = values[8] * 1000;
 
   }
 
@@ -635,7 +645,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(waitForThread(t, csName, defaultTimeOut, "getUserInfo")){
+    if(waitForThread(t, csName, getUserInfoTimeOut, "getUserInfo")){
       return t.getStringRes();
     }
     else{
@@ -668,7 +678,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(waitForThread(t, csName, defaultTimeOut, "copyFile")){
+    if(waitForThread(t, csName, copyFileTimeOut, "copyFile")){
       return t.getBooleanRes();
     }
     else{
