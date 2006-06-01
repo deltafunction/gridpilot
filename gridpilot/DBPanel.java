@@ -951,8 +951,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     JMenuItem miDelete = new JMenuItem("Delete");
     miEdit = new JMenuItem("Edit");
     jmSetFieldValue = new JMenu("Set field value");
-    JMenu jmSubmit = new JMenu("Submit job()");
-    JMenu miMonitor = new JMenu("Monitor job()");
+    JMenu jmSubmit = new JMenu("Submit job(s)");
+    JMenuItem miMonitor = new JMenuItem("Monitor job(s)");
     String [] fieldNames = tableResults.getColumnNames();
     JMenuItem [] miSetFields = new JMenuItem[fieldNames.length];
     for(int i=0; i<fieldNames.length; ++i){

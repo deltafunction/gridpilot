@@ -79,6 +79,8 @@ public class JobCreator{
     resOutMap = new String [outMap.length][2];
     resStdOut  = new String[stdOut.length];
     dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
+    
+    pb.setMaximum(0);
 
     createJobDefs();
   }
@@ -227,7 +229,6 @@ public class JobCreator{
 
 
       if(!skipAll){
-
         pb.setMaximum(pb.getMaximum()+partitionCount);
         statusBar.setProgressBar(pb);
         try{
