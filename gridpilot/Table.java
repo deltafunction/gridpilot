@@ -206,12 +206,13 @@ public class Table extends JTable{
    * nothing is changed
    */
   synchronized public void setTable(Object [][] values, String [] columnNames){
-    Debug.debug("setTable",1);
+    Debug.debug("setTable", 2);
     tableModel.setTable(values, columnNames);
-
+    Debug.debug("setTable", 2);
     createMenu();
-
+    Debug.debug("setTable", 2);
     updateUI();
+    Debug.debug("setTable", 2);
   }
 
   /**

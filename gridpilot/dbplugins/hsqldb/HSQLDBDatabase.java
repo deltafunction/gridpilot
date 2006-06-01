@@ -296,10 +296,9 @@ public class HSQLDBDatabase implements Database{
   public synchronized String [] getOutputs(int jobDefID){
     String transformationID = "";
     transformationID = getJobDefTransformationID(jobDefID);
-    // TODO: finish
-    getTransformation(Integer.parseInt(transformationID)).getValue("outputs");
-    // nothing for now
-    return new String [] {""};
+    String outputs = getTransformation(
+        Integer.parseInt(transformationID)).getValue("outputFiles").toString();
+    return Util.split(outputs);
   }
 
   public synchronized String [] getInputs(int transformationID){
@@ -331,13 +330,17 @@ public class HSQLDBDatabase implements Database{
     int transID = Integer.parseInt(getJobDefTransformationID(jobDefID));
     String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
     String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
+    Debug.debug("output file mapping: "+maps+" : "+Util.arrayToString(fouts), 3);
     String[] map = Util.split(maps);
     String name = "";
     for(int i=0; i<fouts.length; i++){
+      Debug.debug("checking: "+outpar+"<->"+fouts[i]+" : "+map[i*2+1], 3);
       if(outpar.equals(fouts[i])){
         name = map[i*2+1];
+        break;
       }
     }
+    Debug.debug("output file: "+name, 3);
     return name;
   }
   
@@ -368,9 +371,9 @@ public class HSQLDBDatabase implements Database{
 
   public synchronized String [] getTransformationRTEnvironments(int jobDefID){
     String transformationID = getJobDefTransformationID(jobDefID);
-    getTransformation(Integer.parseInt(transformationID)).getValue("uses");
-    // nothing for now
-    return new String [] {""};
+    String rts = getTransformation(
+        Integer.parseInt(transformationID)).getValue("runtimeEnvironmentName").toString();
+    return Util.split(rts);
   }
 
   public synchronized String [] getTransformationArguments(int jobDefID){
@@ -383,7 +386,7 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized String getTransformationRuntimeEnvironment(int transformationID){
-    return  getTransformation(transformationID).getValue("runtimeEnvironment").toString();
+    return  getTransformation(transformationID).getValue("runtimeEnvironmentName").toString();
   }
 
   public synchronized String getJobDefUser(int jobDefinitionID){
@@ -411,8 +414,8 @@ public class HSQLDBDatabase implements Database{
 
   public synchronized String getJobDefTransformationID(int jobDefinitionID){
     DBRecord dataset = getDataset(getJobDefDatasetID(jobDefinitionID));
-    String transformation = dataset.getValue("transformation").toString();
-    String version = dataset.getValue("transVersion").toString();
+    String transformation = dataset.getValue("transformationName").toString();
+    String version = dataset.getValue("transformationVersion").toString();
     String transID = null;
     String req = "SELECT identifier FROM "+
     "transformation WHERE name = '"+transformation+"' AND version = '"+version+"'";
@@ -1403,7 +1406,7 @@ public class HSQLDBDatabase implements Database{
       String [] values){
     return updateJobDefinition(
         jobDefID,
-        new String [] {"jobDefID", "jobName"/*, "stdOut", "stdErr"*/},
+        new String [] {"identifier", "name"/*, "stdOut", "stdErr"*/},
         new String [] {values[0], values[1]}
         );
   }
@@ -1445,8 +1448,7 @@ public class HSQLDBDatabase implements Database{
             }
             else{
               values[j] = "'"+values[j]+"'";
-            }
-            
+            }            
             sql += fields[j];
             sql += "=";
             sql += values[j];
@@ -1454,7 +1456,7 @@ public class HSQLDBDatabase implements Database{
             break;
           }
         }
-        if(addedFields>=0 && addedFields<fields.length-1){
+        if(addedFields>0 && addedFields<fields.length){
           sql += ",";
         }
       }

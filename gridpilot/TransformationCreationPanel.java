@@ -56,6 +56,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     // Find transformation ID from table
     if(table.getSelectedRow()>-1 && editing){
       Debug.debug("Editing...", 3);
+      String [] runtimeReference = dbPluginMgr.getTransformationRuntimeReference();
       for(int i=0; i<table.getColumnNames().length; ++i){
         Object fieldVal = table.getUnsortedValueAt(table.getSelectedRow(),i);
         Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
@@ -75,7 +76,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
           Debug.debug("filling " + cstAttributesNames[i],  3);
           if(transformation.getValue(cstAttributesNames[i])!=null){
             cstAttr[i] = transformation.getValue(cstAttributesNames[i]).toString();
-            if(cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironment")){
+            if(cstAttributesNames[i].equalsIgnoreCase(runtimeReference[1])){
               runtimeEnvironmentName = cstAttr[i];
             }
           }
@@ -108,7 +109,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
 
     initRuntimeEnvironmentPanel(Integer.parseInt(transformationID));
 
-    initAttributePanel();
+    //initAttributePanel();
     
     ct.fill = GridBagConstraints.VERTICAL;
     ct.insets = new Insets(2,2,2,2);
@@ -139,7 +140,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
           Util.setJEditable(tcCstAttributes[i], false);
         }
         else if(runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("") &&
-            cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironment")){
+            cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironmentName")){
           Util.setJText(tcCstAttributes[i], runtimeEnvironmentName);
         }
       }
@@ -251,10 +252,12 @@ public class TransformationCreationPanel extends CreateEditPanel{
   
   private void initAttributePanel(){
     
-    if(!reuseTextFields || tcCstAttributes==null || tcCstAttributes.length!=cstAttributesNames.length)
+    if(!reuseTextFields || tcCstAttributes==null ||
+        tcCstAttributes.length!=cstAttributesNames.length){
       tcCstAttributes = new JTextComponent[cstAttributesNames.length];
+    }
     int row = 0;
-    for(int i = 0; i<cstAttributesNames.length; ++i, ++row){
+    for(int i=0; i<cstAttributesNames.length; ++i, ++row){
       if(cstAttributesNames[i].equalsIgnoreCase("definition") ||
           cstAttributesNames[i].equalsIgnoreCase("code") ||
          cstAttributesNames[i].equalsIgnoreCase("script") ||
@@ -275,11 +278,16 @@ public class TransformationCreationPanel extends CreateEditPanel{
             GridBagConstraints.BOTH,
             new Insets(5, 25, 5, 5), 0, 0));
       }
-      
       if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled()){
         tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
       }
-      if(cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironment")){
+      if(cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironmentName")){
+        Debug.debug("Setting selection to "+runtimeEnvironmentName, 3);
+        if(cbRuntimeEnvironmentSelection!=null &&
+            runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("")){
+           cbRuntimeEnvironmentSelection.setSelectedItem(runtimeEnvironmentName);
+          cbRuntimeEnvironmentSelection.updateUI();
+        }
         Util.setJEditable(tcCstAttributes[i], false);
       }
       pAttributes.add(tcCstAttributes[i],
@@ -337,13 +345,10 @@ public class TransformationCreationPanel extends CreateEditPanel{
           }
         }
       }
-      else if(cbRuntimeEnvironmentSelection !=null &&
+      else if(cbRuntimeEnvironmentSelection!=null &&
           runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("") &&
-          cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironment")){
+          cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironmentName")){
         Util.setJText(tcCstAttributes[i], runtimeEnvironmentName);
-        Debug.debug("Setting selection to "+runtimeEnvironmentName, 3);
-        cbRuntimeEnvironmentSelection.setSelectedItem(runtimeEnvironmentName);
-        cbRuntimeEnvironmentSelection.updateUI();
       }
     }
   }

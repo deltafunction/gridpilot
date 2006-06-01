@@ -2444,6 +2444,17 @@ public class DBPluginMgr implements Database{
     return ret;
   }
 
+  public synchronized String [] getTransformationRuntimeReference(){
+    String [] ret = configFile.getValues(dbName,
+      "transformation runtime environment reference");
+    if(ret==null || ret.length<2){
+      ret = new String [] {"name", "runtimeEnvironmentName"};
+    }
+    Debug.debug("transformation runtime environment reference for "+dbName
+        +" : "+Util.arrayToString(ret), 2);
+    return ret;
+  }
+
   public synchronized String [] getDBHiddenFields(String tableName){
     HashMap dbDefFields = new HashMap();
     String [] ret;

@@ -201,13 +201,15 @@ public class JobValidation{
    * Called by {@link #newValidation()}
    */
   private int validate(JobInfo job, String validationScript){
-
     long beginTime = new Date().getTime();
-
-    ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
-
+    ShellMgr shell = null;
+    try{
+      shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+    }
+    catch(Exception e){
+      Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
+    }
     Debug.debug("is going to validate ("+currentSimultaneousValidation + ") " + job.getName() + "..." , 2);
-
     try{
       //    if(! new File(validationScript).exists()){
       if(!shell.existsFile(validationScript)){
@@ -222,8 +224,6 @@ public class JobValidation{
       logFile.addMessage("ERROR checking for validation script: "+e.getMessage());
       //throw e;
     }
-
-
     int exitValue;
     String cmd = "";
     try{

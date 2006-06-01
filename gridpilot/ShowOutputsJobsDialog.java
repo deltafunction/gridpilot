@@ -30,16 +30,16 @@ public class ShowOutputsJobsDialog extends JOptionPane{
   public static int[] show(Component parent, Vector jobs, String[] options) {
 
     JCheckBox cbForAll;
-    if (jobs.size() > 1)
+    if (jobs.size()>1){
       cbForAll = new JCheckBox("Apply my choice for all jobs");
-    else
+    }
+    else{
       cbForAll = null;
-
+    }
     int[] choices = new int[jobs.size()];
+    for (int i=0; i<jobs.size(); ++i){
 
-    for (int i = 0; i < jobs.size(); ++i) {
-
-//      choices [i] = show(parent, jobs.get(i), options, cbForAll, withValidation);
+      //choices [i] = show(parent, jobs.get(i), options, cbForAll, withValidation);
       String[] files;
       Vector vFiles = new Vector();
       JobInfo job = (JobInfo) jobs.get(i);
@@ -56,9 +56,17 @@ public class ShowOutputsJobsDialog extends JOptionPane{
       files = new String[vFiles.size()];
       for (int k = 0; k < files.length; ++k)
         files[k] = vFiles.get(k).toString();
+      
+      ShellMgr shell = null;
+      try{
+        shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+      }
+      catch(Exception e){
+        Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
+      }
 
       choices[i] = showFilesTabs(parent, "Job " + job.getName(),
-         GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job),
+         shell,
          files, options, cbForAll);
 
       if (cbForAll != null && cbForAll.isSelected()) {

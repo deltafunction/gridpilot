@@ -25,7 +25,7 @@ import java.util.Vector;
  * 'max jobs by update' denotes the maximum size of JobVector that the function 'updateStatus'
  * will be receive
  * <p>
- * This interface defines some status ; these values are used by job.AtComStatus.
+ * This interface defines some status ; these values are used by job.internalStatus.
  * Each plugin has to match status from his system to these status :
  * <dl><ul>
  * <li><dt><code>STATUS_WAIT</code><dd>First state, until this jobs find a cpu;
@@ -45,7 +45,7 @@ import java.util.Vector;
  * <li>{@link #submit(atcom.jobcontrol.JobInfo) submit}(<code>JobInfo</code> job)
  *  <dd>Submits this job, initializes job.jobId
  * <li>{@link #updateStatus(atcom.jobcontrol.JobVector) updateStatus}(<code>JobVector</code> jobs)
- *  <dd>Updates status for all jobs in jobs ; set AtComStatus to the correspondig value
+ *  <dd>Updates status for all jobs in jobs ; set internalStatus to the correspondig value
  * <li>{@link #killJob(atcom.jobcontrol.JobInfo) killJob}(<code>JobInfo</code> job)
  *  <dd>Kills this job
  * <li>{@link #clearOutputMapping(atcom.jobcontrol.JobInfo) clearOutputMapping}(<code>JobInfo</code> job)
@@ -116,7 +116,7 @@ public interface ComputingSystem{
    * In configuration file, this plugin section contain an attribute "max jobs by update" giving
    * the vector maximum size. If this value is not defined, this vector contains always only one
    * job. <p>
-   * JobStatus an optionnaly host should be initialized (or updated), and AtComStatus has to be
+   * JobStatus an optionnaly host should be initialized (or updated), and internalStatus has to be
    * set to one of theses values : STATUS_WAIT, STATUS_RUNNING, STATUS_DONE, STATUS_ERROR or
    * STATUS_FAILED (cf above)
    *

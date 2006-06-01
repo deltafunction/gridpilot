@@ -516,10 +516,14 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         job.setOutputs(dbPluginMgr.getStdOutFinalDest(job.getJobDefId()),
                        dbPluginMgr.getStdErrFinalDest(job.getJobDefId()));
       }
-
-      ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+      ShellMgr shell = null;
+      try{
+        shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+      }
+      catch(Exception e){
+        Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
+      }
       String [] files;
-      
       if(job.getStdOut() == null){
         Debug.debug("No stdout, trying to get...", 2);
         final Thread t = new Thread(){
@@ -536,7 +540,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
               // Save the obtained stdout
               try{
                 GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job).writeFile(job.getStdOut(), outs[0], false);
-              }catch(Exception e){
+              }
+              catch(Exception e){
                 Debug.debug("WARNING: Could not save. "+e.getMessage(), 1);
               }
             }
@@ -545,7 +550,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
               try{
                 GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job).writeFile(job.getStdOut(), outs[0], false);
                 GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job).writeFile(job.getStdErr(), outs[1], false);
-              }catch(Exception e){
+              }
+              catch(Exception e){
                 Debug.debug("WARNING: Could not save. "+e.getMessage(), 1);
               }
             }
@@ -610,11 +616,14 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    */
   private void showFiles(){
     JobInfo job = DatasetMgr.getJobAtRow(statusTable.getSelectedRow());
-
-    ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
-
+    ShellMgr shell = null;
+    try{
+      shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+    }
+    catch(Exception e){
+      Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
+    }
     // looks for the directory
-
     String dir = job.getStdOut();
     if(dir ==null){
       GridPilot.getClassMgr().getLogFile().addMessage("Stdout is null", job);
@@ -622,25 +631,20 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     }
     dir = dir.substring(0, dir.lastIndexOf("/")+1);
-
     // asks all files in this directory
-
     String[] files = shell.listFiles(dir);
     // checks if dir was a directory
-
     if(files == null){
       GridPilot.getClassMgr().getLogFile().addMessage("This directory (" + dir +
                                                   ") doesn't exist");
       return;
     }
     // replaces directories by null (won't be shown)
-
     for(int i=0; i<files.length ; ++i){
       Debug.debug("file : " + files[i], 2);
       if(shell.isDirectory(files[i]))
         files[i] = null;
     }
-
     // shows the window
     ShowOutputsJobsDialog.showFilesTabs(JOptionPane.getRootFrame(),
                                         "Files of job " + job.getName(),
@@ -649,7 +653,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   private void showScripts(){
     JobInfo job = DatasetMgr.getJobAtRow(statusTable.getSelectedRow());
-    ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+    ShellMgr shell = null;
+    try{
+      shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+    }
+    catch(Exception e){
+      Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
+    }
     DatasetMgr datasetMgr;
     datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
         GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(

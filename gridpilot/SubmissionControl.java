@@ -165,7 +165,7 @@ public class SubmissionControl{
             job.setTableRow(submittedJobs.size());
             submittedJobs.add(job);
             job.setDBStatus(DBPluginMgr.SUBMITTED);
-            job.setName(dbPluginMgr.getJobDefinition(jobDefID).getValue("jobName").toString());
+            job.setName(dbPluginMgr.getJobDefinition(jobDefID).getValue("name").toString());
             Debug.debug("Setting job user :"+jobUser+":", 3);
             job.setUser(jobUser);
             job.setCSName(csName);
@@ -286,7 +286,13 @@ public class SubmissionControl{
     for(int i=0; i < jobs.size() ; ++i){
 
       JobInfo job = (JobInfo) jobs.get(i);
-      ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+      ShellMgr shell = null;
+      try{
+        shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+      }
+      catch(Exception e){
+        Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
+      }
 
       if(job.getDBStatus() != DBPluginMgr.FAILED &&
           job.getDBStatus() != DBPluginMgr.UNEXPECTED){
@@ -545,8 +551,13 @@ public class SubmissionControl{
    * If stderrDest is not defined in DB, stdErr = null. <p>
    */
   private boolean createOutputs(JobInfo job){
-
-    ShellMgr shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+    ShellMgr shell = null;
+    try{
+      shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+    }
+    catch(Exception e){
+      Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
+    }
     String workingPath = configFile.getValue(job.getCSName(),
                                              "working path");
     if(workingPath==null){

@@ -193,7 +193,7 @@ public class CSPluginMgr implements ComputingSystem{
   /**
    * Return the Shell Manager for this job
    */
-  public ShellMgr getShellMgr(JobInfo job){
+  public ShellMgr getShellMgr(JobInfo job) throws Exception{
     String csName = job.getCSName();
     if(csName==null || csName.equals("")){
       return askWhichShell(job);
@@ -203,11 +203,11 @@ public class CSPluginMgr implements ComputingSystem{
     }
   }
 
-  public ShellMgr getShellMgr(String csName){
+  public ShellMgr getShellMgr(String csName) throws Exception{
     ShellMgr smgr = (ShellMgr) shellMgr.get(csName);
     if(smgr==null){
       Debug.debug("No computing system "+csName, 3);
-      return null;
+      throw new Exception("No computing system "+csName);
     }
     else{
       return smgr;

@@ -24,7 +24,7 @@ import gridpilot.Database.DBRecord;
  * his computing system (an integer on LSF, https://... on European Datagrid, gsiftp://... on NorduGrid, ...
  * - String JobStatus
  *      Status of this job on his system
- * - int  AtComStatus
+ * - int  internalStatus
  *      Status used by AtCom (defined in ComputingSystem :STATUS_WAIT, STATUS_RUNNING,
  *     STATUS_DONE, STATUS_ERROR, STATUS_FAILED)
  * - int DBStatus
@@ -55,17 +55,17 @@ public class JobInfo extends DBRecord{
   private String jobID="";
   private String jobStatus="";
   private String newStatus="";
-  private int atComStatus;
+  private int internalStatus;
   private int dbStatus = gridpilot.DBPluginMgr.DEFINED;
   private String host="";
   private boolean needUpdate;
   private int tableRow = -1;
   public static String [] Fields= new String [] {
       /*These are the fields of the runtime DB table*/
-      "jobName", "jobDefID", "cs", "user", "db", "outTmp", "errTmp",
+      "name", "identifier", "cs", "userInfo", "db", "outTmp", "errTmp",
       "outVal", "errVal",
       /*----*/
-      "jobId", "jobStatus", "newStatus", "atComStatus", "dbStatus",
+      "jobId", "jobStatus", "newStatus", "internalStatus", "dbStatus",
       "host", "needUpdate"};
   
   public static String Identifier = "jobId";
@@ -86,7 +86,7 @@ public class JobInfo extends DBRecord{
     values = new String [] {
         jobName, Integer.toString(jobDefID), cs, user, db, outTmp, errTmp,
         outVal, errVal,
-        jobID, jobStatus, newStatus, Integer.toString(atComStatus), Integer.toString(dbStatus),
+        jobID, jobStatus, newStatus, Integer.toString(internalStatus), Integer.toString(dbStatus),
         host, Boolean.toString(needUpdate)};
   }
 
@@ -96,27 +96,57 @@ public class JobInfo extends DBRecord{
    * Properties
    */
 
-  public String getName() {return jobName;}
-  public int getJobDefId(){return jobDefID;}
-  public String getCSName(){return cs;}
-  public String getDBName(){return db;}
+  public String getName(){
+    return jobName;
+  }
+  public int getJobDefId(){
+    return jobDefID;
+  }
+  public String getCSName(){
+    return cs;
+  }
+  public String getDBName(){
+    return db;
+  }
 
-  public String getStdOut() {return outTmp;}
-  public String getStdErr() {return errTmp;}
-  public String getValidationStdOut(){ return outVal;}
-  public String getValidationStdErr(){ return errVal;}
+  public String getStdOut(){
+    return outTmp;
+  }
+  public String getStdErr(){
+    return errTmp;
+  }
+  public String getValidationStdOut(){
+    return outVal;
+  }
+  public String getValidationStdErr(){
+    return errVal;
+  }
 
 
-  public String getJobId(){ return jobID;}
-  public String getJobStatus(){ return jobStatus;}
-  public String getHost(){ return host;}
-  public String getUser(){ return user;}
+  public String getJobId(){
+    return jobID;
+  }
+  public String getJobStatus(){
+    return jobStatus;
+  }
+  public String getHost(){
+    return host;
+  }
+  public String getUser(){
+    return user;
+  }
   
-  public boolean needToBeRefreshed() { return needUpdate;}
+  public boolean needToBeRefreshed(){
+    return needUpdate;
+  }
 
-  public int getDBStatus() {return dbStatus;}
+  public int getDBStatus(){
+    return dbStatus;
+  }
 
-  public int getAtComStatus(){ return atComStatus;}
+  public int getInternalStatus(){
+    return internalStatus;
+  }
 
   /**
    * Operations
@@ -196,8 +226,8 @@ public class JobInfo extends DBRecord{
     setValues();
   }
 
-  public void setLocalStatus(int _atComStatus){
-    atComStatus = _atComStatus;
+  public void setLocalStatus(int _internalStatus){
+    internalStatus = _internalStatus;
     setValues();
   }
 
@@ -213,7 +243,7 @@ public class JobInfo extends DBRecord{
         "  Host \t: " + getHost() + "\n" +
         "  Status DB \t: " + gridpilot.DBPluginMgr.getStatusName(getDBStatus()) + "\n" +
         "  Status \t: " + getJobStatus() + "\n" +
-        "  Status AtCom \t: "+ getAtComStatus() + "\n" +
+        "  Status AtCom \t: "+ getInternalStatus() + "\n" +
         "  StdOut \t: " + getStdOut() + "\n" +
         "  StdErr \t: " + getStdErr() + "\n" +
         "  Val sdtOut \t: " + getValidationStdOut() +"\n"+
