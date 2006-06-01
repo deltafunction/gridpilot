@@ -294,8 +294,7 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized String [] getOutputs(int jobDefID){
-    String transformationID = "";
-    transformationID = getJobDefTransformationID(jobDefID);
+    String transformationID = getJobDefTransformationID(jobDefID);
     String outputs = getTransformation(
         Integer.parseInt(transformationID)).getValue("outputFiles").toString();
     return Util.split(outputs);
@@ -307,13 +306,22 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized String [] getJobDefTransPars(int transformationID){
-    // nothing for now
-    return new String [] {""};
+    String args =  getJobDefinition(transformationID).getValue("transPars").toString();
+    return Util.split(args);
   }
 
-  public synchronized String getJobDefOutLocalName(int jobDefinitionID, String par){
-    // nothing for now
-    return "";
+  public synchronized String getJobDefOutLocalName(int jobDefID, String par){
+    int transID = Integer.parseInt(getJobDefTransformationID(jobDefID));
+    String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
+    String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
+    String[] map = Util.split(maps);
+    String name = "";
+    for(int i=0; i<fouts.length; i++){
+      if(par.equals(fouts[i])){
+        name = map[i*2];
+      }
+    }
+    return name;
   }
 
   public synchronized String getJobDefInRemoteName(int jobDefinitionID, String par){
@@ -326,7 +334,7 @@ public class HSQLDBDatabase implements Database{
     return "";
   }
 
-  public synchronized String getJobDefOutRemoteName(int jobDefID, String outpar){
+  public synchronized String getJobDefOutRemoteName(int jobDefID, String par){
     int transID = Integer.parseInt(getJobDefTransformationID(jobDefID));
     String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
     String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
@@ -334,8 +342,8 @@ public class HSQLDBDatabase implements Database{
     String[] map = Util.split(maps);
     String name = "";
     for(int i=0; i<fouts.length; i++){
-      Debug.debug("checking: "+outpar+"<->"+fouts[i]+" : "+map[i*2+1], 3);
-      if(outpar.equals(fouts[i])){
+      Debug.debug("checking: "+par+"<->"+fouts[i]+" : "+map[i*2+1], 3);
+      if(par.equals(fouts[i])){
         name = map[i*2+1];
         break;
       }
@@ -364,9 +372,11 @@ public class HSQLDBDatabase implements Database{
     return "";
   }
 
-  public synchronized String getTransformationScript(int jobDefinitionID){
-    // nothing for now
-    return "";
+  public synchronized String getTransformationScript(int jobDefID){
+    String transformationID = getJobDefTransformationID(jobDefID);
+    String script = getTransformation(
+        Integer.parseInt(transformationID)).getValue("script").toString();
+    return script;
   }
 
   public synchronized String [] getTransformationRTEnvironments(int jobDefID){
@@ -377,12 +387,9 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized String [] getTransformationArguments(int jobDefID){
-    String transformationID = "";
-    transformationID = getJobDefTransformationID(jobDefID);
-    // TODO: finish
-    getTransformation(Integer.parseInt(transformationID)).getValue("uses");
-    // nothing for now
-    return new String [] {""};
+    String transformationID = getJobDefTransformationID(jobDefID);
+    String args =  getTransformation(Integer.parseInt(transformationID)).getValue("arguments").toString();
+    return Util.split(args);
   }
 
   public synchronized String getTransformationRuntimeEnvironment(int transformationID){
@@ -1393,14 +1400,14 @@ public class HSQLDBDatabase implements Database{
     return execok;
   }
   
-  public synchronized boolean updateJobDefStatus(int jobDefID,
+  /*public synchronized boolean updateJobDefStatus(int jobDefID,
       String status){
     return updateJobDefinition(
         jobDefID,
         new String [] {"status"},
         new String [] {status}
         );
-  }
+  }*/
   
   public synchronized boolean updateJobDefinition(int jobDefID,
       String [] values){
@@ -1449,15 +1456,15 @@ public class HSQLDBDatabase implements Database{
             else{
               values[j] = "'"+values[j]+"'";
             }            
+            if(addedFields>0){
+              sql += ",";
+            }
             sql += fields[j];
             sql += "=";
             sql += values[j];
             ++addedFields;
             break;
           }
-        }
-        if(addedFields>0 && addedFields<fields.length){
-          sql += ",";
         }
       }
     }
@@ -1687,6 +1694,7 @@ public class HSQLDBDatabase implements Database{
     try{
       String sql = "DELETE FROM jobDefinition WHERE identifier = '"+
       jobDefId+"'";
+      Debug.debug(sql, 3);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
     }

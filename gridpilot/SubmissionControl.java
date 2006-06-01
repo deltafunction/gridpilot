@@ -96,14 +96,18 @@ public class SubmissionControl{
     if(tmp != null){
       try{
         timeBetweenSubmission = Integer.parseInt(tmp);
-      }catch(NumberFormatException nfe){
+      }
+      catch(NumberFormatException nfe){
         logFile.addMessage("Value of \"time between submission\" is not"+
                                     " an integer in configuration file", nfe);
       }
     }
-    else
+    else{
       logFile.addMessage(configFile.getMissingMessage("GridPilot", "time between submissions") + "\n" +
                               "Default value = " + timeBetweenSubmission);
+    }
+    Debug.debug("Setting time between submissions "+timeBetweenSubmission, 3);
+    timer.setInitialDelay(0);
     timer.setDelay(timeBetweenSubmission);
   }
 
@@ -117,7 +121,6 @@ public class SubmissionControl{
       String csName, DBPluginMgr dbPluginMgr){
     synchronized(submittedJobs){
       Vector newJobs = new Vector();
-      statusBar.setLabel("Reserving jobs ...");
       // This label is not shown because this function is not called in a Thread.
       // It seems to be quite dangereous to call this function in a thread, because
       // if one does it, you can "load job from db" during reservation (when jobs
@@ -133,7 +136,7 @@ public class SubmissionControl{
           resourcesPath = resourcesPath + "/";
         }
       }
-      statusBar.setLabel("Submitting. Please wait...");
+      statusBar.setLabel("Reserving. Please wait...");
       statusBar.animateProgressBar();
       String jobDefIdentifier = dbPluginMgr.getIdentifierField("jobDefinition");
       for(int i=0; i<selectedJobs.size(); ++i){
@@ -157,7 +160,6 @@ public class SubmissionControl{
           if(isjobMonitored==false){ // this job doesn't exist yet
             job = new JobInfo(
                 jobDefID,
-                // TODO: Change this to whatever we end up with
                 dbPluginMgr.getJobDefName(jobDefID),
                 csName,
                 dbPluginMgr.getDBName()
@@ -184,9 +186,12 @@ public class SubmissionControl{
           Debug.debug("job " + jobDefID + " cannot be reserved", 1);
         }
       }
-      statusBar.setLabel("Submitting done.");
-      statusBar.removeLabel();
+      statusBar.setLabel("Reserving done.");
+      //statusBar.removeLabel();
+      statusBar.stopAnimation();
       if(!newJobs.isEmpty()){
+        statusBar.setLabel("Monitoring. Please wait...");
+        statusBar.animateProgressBar();
         // new rows in table
         statusTable.createRows(submittedJobs.size());
         //jobControl.initChanges();
@@ -194,6 +199,8 @@ public class SubmissionControl{
           ((DatasetMgr) it.next()).initChanges();
         }
         // jobControl.updateJobsByStatus();
+        statusBar.setLabel("Monitoring done.");
+        statusBar.stopAnimation();
         submit(newJobs);
       }
     }
@@ -248,6 +255,8 @@ public class SubmissionControl{
         cancelSubmission();
       }
     });
+    statusBar.setLabel("Adding to submission queue. Please wait...");
+    statusBar.animateProgressBar();
     pbSubmission.setToolTipText("Click here to cancel submission");
     if(!isProgressBarSet){
       statusBar.setProgressBar(pbSubmission);
@@ -259,6 +268,8 @@ public class SubmissionControl{
     if(!timer.isRunning()){
       timer.restart();
     }
+    statusBar.setLabel("Adding done.");
+    statusBar.stopAnimation();
   }
 
   /**
@@ -451,23 +462,20 @@ public class SubmissionControl{
   * Checks if there are not too many active Threads (for submission), and there are
   * waiting jobs. If there are any, creates new submission threads
   */
-
   private synchronized void trigSubmission(){
-
-    if(submittingJobs.size() < maxSimultaneousSubmission && !toSubmitJobs.isEmpty()){
+    if(submittingJobs.size()<maxSimultaneousSubmission && !toSubmitJobs.isEmpty()){
       // transferts job from toSubmitJobs to submittingJobs
       final JobInfo job = (JobInfo) toSubmitJobs.remove(0);
-
       submittingJobs.add(job);
-
       new Thread(){
         public void run(){
           submit(job);
         }
       }.start();
     }
-    else
+    else{
       timer.stop();
+    }
   }
 
 
@@ -514,8 +522,12 @@ public class SubmissionControl{
           DatasetMgr.FIELD_JOBID);
       job.setLocalStatus(ComputingSystem.STATUS_FAILED);
       job.setNeedToBeRefreshed(false);
-      if(dbPluginMgr.updateJobDefStatus(job.getJobDefId(),
-         Integer.toString(DBPluginMgr.FAILED))){
+      DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
+          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
+              job.getJobDefId()));
+      if(/*dbPluginMgr.updateJobDefStatus(job.getJobDefId(),
+         Integer.toString(DBPluginMgr.FAILED)*/
+          datasetMgr.updateDBStatus(job, DBPluginMgr.FAILED)){
         job.setDBStatus(DBPluginMgr.FAILED);
       }
       else{
@@ -542,12 +554,13 @@ public class SubmissionControl{
       isProgressBarSet = false;
       pbSubmission.setMaximum(0);
       pbSubmission.setValue(0);
+      statusBar.setLabel("Submission done.");
     }
   }
 
   /**
    * Create fields stdOut and (possibly) stdErr in this job. <br>
-   * These names are &lt;working path&gt;/&lt;logicalFile (partition) LFN&gt;.&lt;rand&gt/stdout and /stderr <br>
+   * These names are &lt;working directory&gt;/&lt;job name&gt;.&lt;rand&gt/stdout and /stderr <br>
    * If stderrDest is not defined in DB, stdErr = null. <p>
    */
   private boolean createOutputs(JobInfo job){
@@ -559,7 +572,7 @@ public class SubmissionControl{
       Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
     }
     String workingPath = configFile.getValue(job.getCSName(),
-                                             "working path");
+                                             "working directory");
     if(workingPath==null){
       workingPath = job.getCSName();
     }
@@ -570,7 +583,7 @@ public class SubmissionControl{
     try{
       // Temp dir, assuming seconds since 1970 is unique from submission
       // to submission.
-      prefix = workingPath+"/"+job.getName()+"."+
+      prefix = workingPath+job.getName()+"."+
         new Date().getTime();
       shell.mkdirs(prefix);
     }
@@ -612,9 +625,13 @@ public class SubmissionControl{
       statusTable.setValueAt(job.getName(), job.getTableRow(), DatasetMgr.FIELD_JOBNAME);
       job.setLocalStatus(ComputingSystem.STATUS_FAILED);
       job.setNeedToBeRefreshed(false);
-      DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-      if(dbPluginMgr.updateJobDefStatus(job.getJobDefId(),
-         Integer.toString(DBPluginMgr.FAILED))){
+      //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+      DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
+          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
+              job.getJobDefId()));
+      if(datasetMgr.updateDBStatus(job, DBPluginMgr.FAILED)
+          /*dbPluginMgr.updateJobDefStatus(job.getJobDefId(),
+         Integer.toString(DBPluginMgr.FAILED))*/){
         job.setDBStatus(DBPluginMgr.FAILED);
       }
       else{
