@@ -432,6 +432,15 @@ public class Util{
     else{
       return tf.getText();
     }
-    
   }
+  
+  public static String clearFile(String _line){
+    String line = _line;
+    line = line.replaceFirst("^file:///", "/");
+    line = line.replaceFirst("^file://", "/");
+    line = line.replaceFirst("^file:/", "/");
+    line = line.replaceFirst("^file:", "");
+    return line;
+  }
+
 }
