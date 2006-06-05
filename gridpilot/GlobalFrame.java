@@ -438,9 +438,13 @@ public class GlobalFrame extends GPFrame{
       public void actionPerformed(ActionEvent e){
         try{
           if(pDialog==null){
-            pDialog = new CreateEditDialog(jobMonitoringPanel, false, false);
-             pDialog.setTitle("Job Monitoring");
-             pDialog.remove(pDialog.buttonPanel);
+            Debug.debug("Creating new job monitoring dialog", 2);
+             pDialog = new CreateEditDialog(jobMonitoringPanel, false, false);
+             pDialog.setTitle("Job Monitor");
+             pDialog.buttonPanel.setVisible(false);
+             pDialog.pack();
+             pDialog.setVisible(true);
+             return;
           }
           if(pDialog.isShowing()){
             pDialog.setVisible(false);

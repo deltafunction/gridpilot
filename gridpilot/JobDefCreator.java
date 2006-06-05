@@ -467,11 +467,11 @@ public class JobDefCreator{
     int width = (int)pResult.getPreferredSize().getWidth() +
     (int)sp.getVerticalScrollBar().getPreferredSize().getWidth() + 5;
     Dimension screenSize = new Dimension(Toolkit.getDefaultToolkit().getScreenSize());
-    if (height>screenSize.height){
+    if(height>screenSize.height){
       height = 700;
       Debug.debug("Screen height exceeded, setting "+height, 2);
     }
-    if (width>screenSize.width){
+    if(width>screenSize.width){
       width = 550;
       Debug.debug("Screen width exceeded, setting "+width, 2);
     }

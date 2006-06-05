@@ -949,8 +949,8 @@ public class HSQLDBDatabase implements Database{
       }
       req += " "+fieldNames[i];
     }
-    req += " FROM jobDefinition where datasetFK = '"+
-    datasetID + "'";
+    req += " FROM jobDefinition where datasetName = '"+
+    getDatasetName(datasetID) + "'";
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{

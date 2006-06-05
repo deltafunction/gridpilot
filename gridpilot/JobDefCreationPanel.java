@@ -541,7 +541,12 @@ public class JobDefCreationPanel extends CreateEditPanel{
         Util.setJEditable(tcCstAttributes[i], false);
       }
       else if( cstAttributesNames[i].equalsIgnoreCase("created") ||
-          cstAttributesNames[i].equalsIgnoreCase("lastModified")){
+          cstAttributesNames[i].equalsIgnoreCase("lastModified") ||
+          cstAttributesNames[i].equalsIgnoreCase("outTmp") ||
+          cstAttributesNames[i].equalsIgnoreCase("errtmp") ||
+          cstAttributesNames[i].equalsIgnoreCase("valOut") ||
+          cstAttributesNames[i].equalsIgnoreCase("valErr") ||
+          cstAttributesNames[i].equalsIgnoreCase("jobID")){
         Util.setJEditable(tcCstAttributes[i], false);
       }
       // TODO: disable also fields filled out by GridPilot and runtime fields

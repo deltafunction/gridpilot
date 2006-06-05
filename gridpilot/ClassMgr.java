@@ -100,18 +100,18 @@ public class ClassMgr{
 
   // This method creates a new DatasetMgr if there is
   // none in the HashMap with keys dbName, taskID
-  public DatasetMgr getDatasetMgr(String dbName, int taskID){
+  public DatasetMgr getDatasetMgr(String dbName, int datasetID){
     if(datasetMgrs==null){
       Debug.debug("datasetMgrs null", 3);
     }
     if(!datasetMgrs.keySet().contains(dbName)){
       datasetMgrs.put(dbName, new HashMap());
     }
-    if(!((HashMap) datasetMgrs.get(dbName)).keySet().contains(Integer.toString(taskID))){
-      Debug.debug("Creating new DatasetMgr, "+taskID+", in "+dbName, 3);
-      addTaskMgr(new DatasetMgr(dbName, taskID));
+    if(!((HashMap) datasetMgrs.get(dbName)).keySet().contains(Integer.toString(datasetID))){
+      Debug.debug("Creating new DatasetMgr, "+datasetID+", in "+dbName, 3);
+      addTaskMgr(new DatasetMgr(dbName, datasetID));
     }
-    return (DatasetMgr) ((HashMap) datasetMgrs.get(dbName)).get(Integer.toString(taskID));
+    return (DatasetMgr) ((HashMap) datasetMgrs.get(dbName)).get(Integer.toString(datasetID));
   }
   
   public Vector getDatasetMgrs(){
@@ -210,9 +210,16 @@ public class ClassMgr{
 
   public Vector getSubmittedJobs(){
     if(submittedJobs==null){
-      Debug.debug("statusTable null", 3);
+      Debug.debug("submittedJobs null", 3);
     }
     return submittedJobs;
+  }
+
+  public void clearSubmittedJobs(){
+    if(submittedJobs==null){
+      Debug.debug("submittedJobs null", 3);
+    }
+    submittedJobs.removeAllElements();
   }
 
   public GlobalFrame getGlobalFrame(){

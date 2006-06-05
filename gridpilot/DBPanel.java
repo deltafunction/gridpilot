@@ -396,9 +396,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     });
     
-    if(tableName.equalsIgnoreCase("dataset") ||
-        // support external schema on proddb
-        tableName.equalsIgnoreCase("task")){
+    if(tableName.equalsIgnoreCase("dataset")){
       
       tableResults.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent e){
@@ -1509,11 +1507,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       public void run(){        
         DBRecord jobDef;
         int[] selectedJobIdentifiers = getSelectedIdentifiers();
+        String idField = dbPluginMgr.getIdentifierField("jobDefintition");
         for(int i=0; i<selectedJobIdentifiers.length; ++i){
           jobDef = dbPluginMgr.getJobDefinition(
               selectedJobIdentifiers[i]);
           DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName,
-              Integer.parseInt(jobDef.getValue("datasetFK").toString()));
+              dbPluginMgr.getJobDefDatasetID(Integer.parseInt(
+                  jobDef.getValue(idField).toString())));
           datasetMgr.addJobs(new int [] {selectedJobIdentifiers[i]});
         }
       }
@@ -1658,9 +1658,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         throw e;
       }
     }
-    else if(tableName.equalsIgnoreCase("dataset") ||
-        // support external schema on proddb
-        tableName.equalsIgnoreCase("task")){
+    else if(tableName.equalsIgnoreCase("dataset")){
       try{
         record = sourceMgr.getDataset(id);
         insertDataset(record, sourceMgr, targetMgr, prefix);
@@ -1842,9 +1840,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         throw e;
       }
     }
-    else if(tableName.equalsIgnoreCase("dataset") ||
-        // support external schema on proddb
-        tableName.equalsIgnoreCase("task")){
+    else if(tableName.equalsIgnoreCase("dataset")){
       try{
         sourceMgr.deleteDataset(id, true);
       }

@@ -407,7 +407,7 @@ public class Table extends JTable{
    * Hides the specified row.
    * Also saves the id in a map for further "undeletion".
    */
-  public void hideRow(int row, int partId){
+  public void hideRow(int row){
 
     //setRowHeight(tableModel.getRow(row), 1);
     Debug.debug("row nr:"+row, 2);

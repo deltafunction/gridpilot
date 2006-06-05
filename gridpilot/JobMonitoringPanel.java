@@ -3,23 +3,28 @@ package gridpilot;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.Vector;
 
 import javax.swing.event.*;
 
 /**
- * Third panel of the main frame. <br>
- *
  * Shows a table with informations about runnings jobs
  *
  * <p><a href="JobMonitoringPanel.java.html">see sources</a>
  */
-
 public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   private static final long serialVersionUID = 1L;
   private Table statusTable = null;
   private StatusBar statusBar = null;
+  
+  private final int ALL_JOBS = 0;
+  private final int ONLY_RUNNING_JOBS = 1;
+  private final int ONLY_DONE_JOBS = 2;
+
+  private int showRows = ALL_JOBS;
 
   Timer timerRefresh = new Timer(0, new ActionListener (){
     public void actionPerformed(ActionEvent e) {
@@ -27,28 +32,34 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     }
   });
 
-  //// Central panel
+  // Central panel
   private JTabbedPane tpStatLog = new JTabbedPane();
-
   private JScrollPane spStatusTable = new JScrollPane();
   private JScrollPane spLogView = new JScrollPane();
-
   public static StatisticsPanel statisticPanel = new StatisticsPanel();;
-
-  //// Buttons panel
+  // Options panel
+  private JPanel pOptions = new JPanel();
+  // view options
+  private ButtonGroup bgView = new ButtonGroup();
+  private JRadioButton rbAllJobs = new JRadioButton("View all jobs", true);
+  private JRadioButton rbRunningJobs = new JRadioButton("View only running jobs");
+  private JRadioButton rbDoneJobs = new JRadioButton("View only done jobs");
+  // jobs loading
+  private JButton bLoadJobs = new JButton("Load all jobs");
+  private JButton bLoadMyJobs = new JButton("Load my jobs");
+  private JButton bClearTable = new JButton("Clear");
+  // Buttons panel
   private JPanel pButtons = new JPanel();
-
   private JButton bDecide = new JButton("Decide");
   private JButton bKill = new JButton("Kill");
   private JButton bRefresh = new JButton("Refresh");
-
   // auto refresh
   private JCheckBox cbAutoRefresh = new JCheckBox("Refresh each");
   private JSpinner sAutoRefresh = new JSpinner();
   private JComboBox cbRefreshUnits = new JComboBox(new Object []{"sec", "min"});
   private int SEC = 0;
 
-//  private JMenu menu = new JMenu("Job options");
+  //private JMenu menu = new JMenu("Job options");
 
   private JMenuItem miKill = new JMenuItem("Kill");
   private JMenuItem miDecide = new JMenuItem("Decide");
@@ -64,13 +75,12 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JMenuItem miShowScripts = new JMenuItem("Scripts");
 
   private JMenuItem miStopUpdate = new JMenuItem("Stop update");
-
   private JMenuItem miRevalidate = new JMenuItem("Revalidate");
   //private JMenuItem miResetChanges = new JMenuItem("Reset changes");
   private JMenu mDB = new JMenu("Set DB Status");
 
   private LogViewerPanel logViewerPanel = new LogViewerPanel();
-  
+
   public StatusUpdateControl statusUpdateControl;
   private SubmissionControl submissionControl;
 
@@ -85,27 +95,21 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     
     statusUpdateControl = new StatusUpdateControl();
     submissionControl = GridPilot.getClassMgr().getSubmissionControl();
-   
-    initGUI();
+
   }
   
   public String getTitle(){
     return "Job Monitor";
   }
 
-  /**
-   * GUI initialisation
-   */
-
   public void initGUI(){
     
     this.setLayout(new GridBagLayout());
 
-
-    //// central panel
-
-    this.add(tpStatLog, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
-        ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+    // central panel
+    this.add(tpStatLog, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
+        GridBagConstraints.CENTER,
+        GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
 
     tpStatLog.setTabPlacement(JTabbedPane.BOTTOM);
 
@@ -116,45 +120,124 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     spStatusTable.getViewport().add(statusTable);
     statusTable.addListSelectionListener(new ListSelectionListener(){
-      public void valueChanged(ListSelectionEvent e) {
+      public void valueChanged(ListSelectionEvent e){
         selectionEvent(e);
       }
     });
 
     makeMenu();
 
-    //// Buttons panel
+    //// options panel
+
+    pOptions.setLayout(new GridBagLayout());
+
+    this.add(pOptions, new GridBagConstraints(1, 0, 1, 1, 0.1, 0.1
+    ,GridBagConstraints.NORTH, GridBagConstraints.VERTICAL, new Insets(30, 10, 0, 0), 0, 0));
+
+    // view
+    pOptions.add(rbAllJobs, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0
+    ,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(0, 10, 0, 0), 0, 0));
+    pOptions.add(rbRunningJobs, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0
+    ,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(0, 10, 0, 0), 0, 0));
+    pOptions.add(rbDoneJobs, new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0
+    ,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(0, 10, 0, 0), 0, 0));
+
+    bgView.add(rbAllJobs);
+    bgView.add(rbRunningJobs);
+    bgView.add(rbDoneJobs);
+
+    rbAllJobs.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        onlyJobsSelected();
+      }
+    });
+
+    rbRunningJobs.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        onlyJobsSelected();
+      }
+    });
+
+    rbDoneJobs.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        onlyJobsSelected();
+      }
+    });
+
+    rbAllJobs.setMnemonic(ALL_JOBS);
+    rbRunningJobs.setMnemonic(ONLY_RUNNING_JOBS);
+    rbDoneJobs.setMnemonic(ONLY_DONE_JOBS);
+
+    pOptions.add(bLoadJobs, new GridBagConstraints(0, 3, 1, 1, 0.0, 0.0,
+        GridBagConstraints.WEST,
+        GridBagConstraints.NONE,
+        new Insets(30, 10, 0, 0), 0, 0));
+
+    pOptions.add(bLoadMyJobs, new GridBagConstraints(0, 4, 1, 1, 0.0, 0.0,
+        GridBagConstraints.WEST,
+        GridBagConstraints.NONE,
+        new Insets(10, 10, 0, 0), 0, 0));
+
+
+    bLoadJobs.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        loadDBJobs(true);
+      }
+    });
+
+    bLoadMyJobs.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        loadDBJobs(false);
+      }
+    });
+
+    pOptions.add(bClearTable, new GridBagConstraints(0, 5, 1, 1, 0.0, 0.0,
+        GridBagConstraints.CENTER,
+        GridBagConstraints.NONE,
+        new Insets(10, 10, 0, 0), 0, 0));
+
+    bClearTable.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        clearTable();
+      }
+    });
+
+    pOptions.add(statisticPanel, new GridBagConstraints(0, 6, 1, 1, 0.1, 0.1,
+        GridBagConstraints.WEST,
+        GridBagConstraints.BOTH,
+        new Insets(30, 5, 0, 5), 0, 0));
+
+    // Buttons panel
 
     bDecide.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e) {
+      public void actionPerformed(ActionEvent e){
         decide();
       }
     });
     bDecide.setEnabled(false);
 
-    bKill.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent e) {
+    bKill.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
         kill();
       }
     });
     bKill.setEnabled(false);
 
-    bRefresh.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent e) {
+    bRefresh.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
         refresh();
       }
     });
-    cbAutoRefresh.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent e) {
+    cbAutoRefresh.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
         cbAutoRefresh_clicked();
       }
     });
 
-
     sAutoRefresh.setPreferredSize(new Dimension(50, 21));
     sAutoRefresh.setModel(new SpinnerNumberModel(30, 1, 9999, 1));
-    sAutoRefresh.addChangeListener(new ChangeListener() {
-      public void stateChanged(ChangeEvent e) {
+    sAutoRefresh.addChangeListener(new ChangeListener(){
+      public void stateChanged(ChangeEvent e){
         delayChanged();
       }
     });
@@ -165,9 +248,9 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
 
-
-    this.add(pButtons,  new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0
-        ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+    this.add(pButtons,  new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+        GridBagConstraints.CENTER,
+        GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
 
     pButtons.add(bDecide);
     pButtons.add(bKill);
@@ -179,6 +262,9 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     bDecide.setToolTipText("Shows the outputs of the selected jobs");
     bKill.setToolTipText("Kills the selected jobs");
     bRefresh.setToolTipText("Refresh all jobs");
+    
+    this.setPreferredSize(new Dimension(600, 400));
+    
   }
 
   public void windowClosing(){
@@ -189,7 +275,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    * Makes the menu shown when the user right-clicks on the status table
    */
   private void makeMenu(){
-    // menu items
 
     miKill.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -256,7 +341,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     JMenuItem miDBAborted = new JMenuItem("Aborted");
     JMenuItem miDBDefined = new JMenuItem("Defined");
 
-
     miDBAborted.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         setDBStatus(DBPluginMgr.ABORTED);
@@ -281,14 +365,11 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
 
-
-
     miStopUpdate.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         statusUpdateControl.reset();
       }
     });
-
 
     String [] csNames = GridPilot.getClassMgr().getCSPluginMgr().getCSNames();
     for(int i=0; i<csNames.length; ++i){
@@ -310,7 +391,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });*/
 
-
     miKill.setEnabled(false);
     miDecide.setEnabled(false);
     mSubmit.setEnabled(false);
@@ -318,9 +398,9 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     mShow.setEnabled(false);
 
-//    miShowOutput.setEnabled(false);
-//    miShowFullStatus.setEnabled(false);
-//    miShowInfo.setEnabled(false);
+    //miShowOutput.setEnabled(false);
+    //miShowFullStatus.setEnabled(false);
+    //miShowInfo.setEnabled(false);
     miRevalidate.setEnabled(false);
     mDB.setEnabled(false);
 
@@ -355,10 +435,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   }
 
   /**
-   * public methods
-   */
-
-  /**
    * Called when this panel is shown.
    */
   public void panelShown(){
@@ -373,10 +449,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     Debug.debug("panelHidden", 1);
     statusBar.removeLabel();
   }
-
-  /**
-   * Action Events
-   */
 
   /**
    * Called when timeout on timer occurs or the user clicks on "Refresh"
@@ -435,7 +507,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         DBPluginMgr.getStatusName(options[3])
     };
 
-
     int choices [] = ShowOutputsJobsDialog.show(JOptionPane.getRootFrame(), jobs, sOptions);
     int dbChoices [] = new int[choices.length];
 
@@ -448,13 +519,11 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     //jobControl.undecidedChoices(jobs, dbChoices);
 
-    DatasetMgr datasetMgr;
+    DatasetMgr datasetMgr = null;
     for(int i = 0; i < jobs.size(); ++i){
       JobInfo job = (JobInfo) jobs.get(i);
       if(job.getDBStatus()!=dbChoices[i]){
-        datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
-            GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
-                job.getJobDefId()));
+        datasetMgr = getDatasetMgr(job);
         datasetMgr.updateDBStatus(job, dbChoices[i]);
       }
     }
@@ -660,15 +729,40 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     catch(Exception e){
       Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
     }
-    DatasetMgr datasetMgr;
-    datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
-        GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
-            job.getJobDefId()));
     ShowOutputsJobsDialog.showFilesTabs(JOptionPane.getRootFrame(),
         "Scripts for job " + job.getName(),
         shell,
-        datasetMgr.getScripts(statusTable.getSelectedRow())            
+        getDatasetMgr(job).getScripts(statusTable.getSelectedRow())            
         );
+  }
+
+  /**
+   * Load jobs from database.
+   */
+  private void loadDBJobs(final boolean allJobs){
+    new Thread(){
+  public void run(){
+    statusBar.setLabel("Waiting for AMI Server ...");
+    statusBar.animateProgressBar();
+    bLoadJobs.setEnabled(false);
+    bLoadMyJobs.setEnabled(false);
+    statusTable.clearSelection();
+    DatasetMgr mgr = null;
+    try{
+      for(Iterator it = GridPilot.getClassMgr().getDatasetMgrs().iterator(); it.hasNext();){
+        mgr = ((DatasetMgr) it.next());
+        mgr.loadJobDefs(new int [] {ONLY_RUNNING_JOBS});
+      }
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: failed to load jobs from "+mgr.dbName, 1);
+      e.printStackTrace();
+    }
+    statusBar.stopAnimation();
+    bLoadJobs.setEnabled(true);
+    bLoadMyJobs.setEnabled(true);
+  }
+    }.start();
   }
 
   /**
@@ -746,13 +840,99 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         DatasetMgr datasetMgr;
         for(int i=0; i<jobs.size(); ++i){
           job = (JobInfo) jobs.get(i);
-          datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
-              GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
-                  job.getJobDefId()));
+          datasetMgr = getDatasetMgr(job);
           datasetMgr.setDBStatus(new int [] {statusTable.getSelectedRows()[i]}, dbStatus);
         }
       }
     }.start();
+  }
+
+  /**
+   * Called when user selectes one of the radio button (view all jobs,
+   * view only running jobs, ...).
+   */
+  private void onlyJobsSelected(){
+    int choice = bgView.getSelection().getMnemonic();
+    switch(choice){
+      case ALL_JOBS:
+        statusTable.showAllRows();
+        break;
+      case ONLY_RUNNING_JOBS:
+      case ONLY_DONE_JOBS:
+        showOnlyRows();
+        break;
+      default:
+        Debug.debug("WARNING: Selection choice doesn't exist : " + choice, 1);
+      break;
+    }
+  }
+  
+  /**
+   * Shows/Hides rows according to the user's choice.
+   */
+  private void showOnlyRows(){
+    Vector submittedJobs = GridPilot.getClassMgr().getSubmittedJobs();
+    Enumeration e =  submittedJobs.elements();
+    while(e.hasMoreElements()){
+      JobInfo job = (JobInfo) e.nextElement();
+      if(DatasetMgr.isRunning(job)){
+        if(showRows==ONLY_RUNNING_JOBS){
+          statusTable.showRow(job.getTableRow());
+        }
+        else{
+          statusTable.hideRow(job.getTableRow());
+        }
+      }
+      else{
+        if(showRows==ONLY_RUNNING_JOBS){
+          statusTable.hideRow(job.getTableRow());
+        }
+        else{
+          statusTable.showRow(job.getTableRow());
+        }
+      }
+    }
+  }
+
+  /**
+   * Removes all jobs from this status table.
+   */
+  public boolean clearTable(){
+    if(submissionControl.isSubmitting()){
+      Debug.debug("cannot clear table during submission", 3);
+      return false;
+    }
+    if(GridPilot.getClassMgr().getJobValidation().isValidating()){
+      Debug.debug("cannot clear table during validation", 3);
+      return false;
+    }
+
+    statusUpdateControl.reset();
+
+    boolean ret = true;
+    GridPilot.getClassMgr().clearSubmittedJobs();
+    statusTable.createRows(0);
+    DatasetMgr mgr = null;
+    try{
+      for(Iterator it = GridPilot.getClassMgr().getDatasetMgrs().iterator(); it.hasNext();){
+        mgr = ((DatasetMgr) it.next());
+        mgr.initChanges();
+        mgr.updateJobsByStatus();
+      }
+    }
+    catch(Exception e){
+      ret = false;
+      e.printStackTrace();
+      Debug.debug("WARNING: failed to clear jobs from "+mgr.dbName, 1);
+    }
+    
+    return ret;
+  }
+  
+  DatasetMgr getDatasetMgr(JobInfo job){
+    return GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
+        GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
+            job.getJobDefId()));
   }
 
   public void copy(){
