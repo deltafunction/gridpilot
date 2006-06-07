@@ -62,7 +62,7 @@ public class JobInfo extends DBRecord{
   private int tableRow = -1;
   public static String [] Fields= new String [] {
       /*These are the fields of the runtime DB table*/
-      "name", "identifier", "cs", "userInfo", "db", "outTmp", "errTmp",
+      "name", "identifier", "computingResource", "userInfo", "db", "outTmp", "errTmp",
       "outVal", "errVal",
       /*----*/
       "jobId", "jobStatus", "newStatus", "internalStatus", "dbStatus",

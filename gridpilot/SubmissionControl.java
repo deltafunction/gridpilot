@@ -145,7 +145,7 @@ public class SubmissionControl{
             jobDef.getValue(jobDefIdentifier).toString());
         String jobUser = csPluginMgr.getUserInfo(csName);
         Debug.debug("User: "+jobUser, 3);
-        if(jobUser!=null && dbPluginMgr.reserveJobDefinition(jobDefID, jobUser)){
+        if(jobUser!=null && dbPluginMgr.reserveJobDefinition(jobDefID, jobUser, csName)){
           // checks if this partition has not been monitored (and is Submitted,
           // otherwise reservation doesn't work)
           JobInfo job = null;
@@ -216,7 +216,7 @@ public class SubmissionControl{
         JobInfo job = (JobInfo) jobs.get(i);
         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
         String jobUser = csPluginMgr.getUserInfo(csName);
-        if(jobUser != null && dbPluginMgr.reserveJobDefinition(job.getJobDefId(), jobUser)){
+        if(jobUser != null && dbPluginMgr.reserveJobDefinition(job.getJobDefId(), jobUser, csName)){
           job.setCSName(csName);
           newJobs.add(job);
           job.setDBStatus(DBPluginMgr.SUBMITTED);

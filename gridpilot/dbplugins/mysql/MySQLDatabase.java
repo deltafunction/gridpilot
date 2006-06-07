@@ -362,7 +362,7 @@ public class MySQLDatabase implements Database{
     return  getTransformation(transformationID).getValue("runtimeEnvironmentName").toString();
   }
 
-  public synchronized String getJobDefUser(int jobDefinitionID){
+  public synchronized String getJobDefUserInfo(int jobDefinitionID){
     return getJobDefinition(jobDefinitionID).getValue("userInfo").toString();
   }
 
@@ -432,11 +432,11 @@ public class MySQLDatabase implements Database{
     return new String [] {""};
   }
 
-  public synchronized boolean reserveJobDefinition(int jobDefID, String userInfo){
+  public synchronized boolean reserveJobDefinition(int jobDefID, String userInfo, String cs){
     boolean ret = updateJobDefinition(
         jobDefID,
-        new String [] {"status", "userInfo"},
-        new String [] {"Submitted", userInfo}
+        new String [] {"status", "userInfo", "computingResource"},
+        new String [] {"Submitted", userInfo, cs}
         );
     clearCaches();
     return ret;
@@ -751,8 +751,17 @@ public class MySQLDatabase implements Database{
   }
   
   public synchronized DBRecord getRunInfo(int jobDefID){
-    // TODO: implement
-    return new DBRecord();
+    DBRecord jobDef = getJobDefinition(jobDefID);
+    String [] values = new String [JobInfo.Fields.length];
+    for(int i=0; i<JobInfo.Fields.length; ++i){
+      try{
+        values[i] = jobDef.getValue(JobInfo.Fields[i]).toString();
+      }
+      catch(Exception e){
+        values[i] =  "";
+      }
+    }
+    return new DBRecord(JobInfo.Fields, values);
   }
 
   /*

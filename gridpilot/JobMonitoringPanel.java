@@ -263,7 +263,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     bKill.setToolTipText("Kills the selected jobs");
     bRefresh.setToolTipText("Refresh all jobs");
     
-    this.setPreferredSize(new Dimension(600, 400));
+    this.setPreferredSize(new Dimension(700, 500));
     
   }
 

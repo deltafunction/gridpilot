@@ -555,12 +555,12 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized String getJobDefUser(final int jobDefinitionID){
+  public synchronized String getJobDefUserInfo(final int jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
         try{
-          res = db.getJobDefUser(jobDefinitionID);
+          res = db.getJobDefUserInfo(jobDefinitionID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -818,6 +818,7 @@ public class DBPluginMgr implements Database{
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
+          res = "";
         }
       }
       public String getStringRes(){
@@ -1869,13 +1870,14 @@ public class DBPluginMgr implements Database{
       }
     }
 
-  public synchronized boolean reserveJobDefinition(final int jobDefID, final String userName){
+  public synchronized boolean reserveJobDefinition(final int jobDefID, final String userName,
+      final String cs){
   
     MyThread t = new MyThread(){
       boolean res = false;
       public void run(){
         try{
-          res = db.reserveJobDefinition(jobDefID, userName);
+          res = db.reserveJobDefinition(jobDefID, userName, cs);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +

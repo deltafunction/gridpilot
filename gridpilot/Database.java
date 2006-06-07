@@ -65,7 +65,7 @@ public interface Database{
   public boolean updateJobDefinition(int jobDefID, String [] values);
   //public boolean updateJobDefStatus(int jobDefID, String status);
   public String getJobStatus(int jobDefID);
-  public String getJobDefUser(int jobDefID);
+  public String getJobDefUserInfo(int jobDefID);
   public String getJobDefName(int jobDefID);
   public int getJobDefDatasetID(int jobDefID);
   public String getJobDefTransformationID(int jobDefID);
@@ -74,7 +74,7 @@ public interface Database{
   public String getTransformationScript(int jobDefID);
   
   // ####### Job execution
-  public boolean reserveJobDefinition(int jobDefID, String UserName);
+  public boolean reserveJobDefinition(int jobDefID, String UserName, String cs);
   public boolean cleanRunInfo(int jobDefID);
   public String [] getTransformationRTEnvironments(int jobDefID);
   public String [] getTransformationArguments(int jobDefID);
@@ -111,6 +111,7 @@ public interface Database{
     public DBRecord(){
       fields = new String [] {""};
     }
+    
     public DBRecord(String [] _fields, Object [] _values){
       fields = _fields;
       values = _values;
@@ -118,31 +119,36 @@ public interface Database{
     public Object getAt(int i){
       return values[i];  
     }
+    
     public Object getValue(String col){
-      for (int i = 0 ; i < fields.length ; i++) {
-        if (col.equalsIgnoreCase(fields[i])) return values[i] ;
+      for (int i = 0; i < fields.length; i++){
+        if (col.equalsIgnoreCase(fields[i])){
+          return values[i];
+        }
       }
-      return "no such field "+col ;
+      //return "no such field "+col;
+      return "";
     }
+    
     public void setValue(String col, String val) throws Exception{
-       for (int i = 0 ; i < fields.length ; i++) {
+       for (int i=0; i<fields.length; i++){
         if (col.equalsIgnoreCase(fields[i])){
           values[i] = val;
           //Debug.debug("Set field "+fields[i]+" to value "+values[i],3);
           // TODO: Should set field to value. Seems not to work
           //DBRecord.class.getField(col).set(this,val);
-           return;
+          return;
         }
       }
-        throw new Exception("no such field "+col);
+      throw new Exception("no such field "+col);
     }
   }
   
   
   public static class DBResult{
   
-    public String[]    fields ;
-    public Object[][]  values ;
+    public String[]    fields;
+    public Object[][]  values;
   
     public DBResult(int nrFields, int nrValues){
       fields = new String [nrFields];
@@ -150,29 +156,33 @@ public interface Database{
     }
   
     public DBResult(String[] _fields, String[][] _values) {
-      fields = _fields ;
-      values = _values ;
+      fields = _fields;
+      values = _values;
     }
   
     public DBResult(){
       String [] f = {};
       String [] [] v = {};
       fields = f;
-      values = v ;
+      values = v;
     }
   
     public Object getAt(int row, int column){
-      if (row>values.length-1) return "no such row";
-      if (column>values[0].length-1) return "no such column";
+      if (row>values.length-1){
+        return "no such row";
+      }
+      if(column>values[0].length-1){
+        return "no such column";
+      }
       return values[row][column];
     }
 
-   public Object getValue(int row, String col){
+    public Object getValue(int row, String col){
       if(row>values.length-1){
         return "no such row";
       }
       Debug.debug("fields: "+Util.arrayToString(fields), 3);
-      for(int i=0 ; i<fields.length ; i++){
+      for(int i=0; i<fields.length; i++){
         Debug.debug("checking value "+values[row][i], 3);
         if(col.equalsIgnoreCase(fields[i])){
           return values[row][i];
@@ -181,23 +191,27 @@ public interface Database{
       return "no such field";
     }
 
-   public DBRecord getRow(int row){
-     DBRecord ret = new DBRecord();
-     if (row>values.length-1) return ret;
-     ret.fields = this.fields;
-     ret.values = this.values[row];
-     return ret;
-   }
+    public DBRecord getRow(int row){
+      DBRecord ret = new DBRecord();
+      if(row>values.length-1){
+        return ret;
+      }
+      ret.fields = this.fields;
+      ret.values = this.values[row];
+      return ret;
+    }
 
-   public boolean setValue(int row, String col, String value){
-     if (row>values.length-1) return false;
-     for (int i=0 ; i<fields.length ; i++) {
-       if (col.equalsIgnoreCase(fields[i])){
-         values[row][i] = value;
-         return true;
-       }
-     }
-     return false;
-   }
-}
+    public boolean setValue(int row, String col, String value){
+      if(row>values.length-1){
+        return false;
+      }
+      for(int i=0; i<fields.length; i++){
+        if(col.equalsIgnoreCase(fields[i])){
+          values[row][i] = value;
+          return true;
+        }
+      }
+      return false;
+    }
+  }
 }

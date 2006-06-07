@@ -28,6 +28,8 @@ public class StatisticsPanel extends JPanel{
   public StatisticsPanel(){
     
     colors = DBPluginMgr.getStatusColors();
+    statusNames = DBPluginMgr.getDBStatusNames();
+    values = new int[statusNames.length];
     
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED), "Jobs statistics"));
 
@@ -57,36 +59,34 @@ public class StatisticsPanel extends JPanel{
 
   }
 
-  public void update(int taskID){
-    Vector taskMgrs = GridPilot.getClassMgr().getDatasetMgrs();
+  public void update(int datasetID){
+    Vector datasetMgrs = GridPilot.getClassMgr().getDatasetMgrs();
     if(style<painters.size()){
-      for(int i=0; i<taskMgrs.size(); ++i){
-        if(((DatasetMgr) taskMgrs.get(i)).getDatasetID()==taskID){
+      for(int i=0; i<datasetMgrs.size(); ++i){
+        if(((DatasetMgr) datasetMgrs.get(i)).getDatasetID()==datasetID){
           //values = ((DatasetMgr) taskMgrs.get(i)).getJobsByDBStatus();
-          valuesTable.put(new Integer(taskID),
-              ((DatasetMgr) taskMgrs.get(i)).getJobsByDBStatus());
+          valuesTable.put(new Integer(datasetID),
+              ((DatasetMgr) datasetMgrs.get(i)).getJobsByDBStatus());
           for(Iterator it=valuesTable.values().iterator(); it.hasNext();){
             for(int j=0; j<values.length; ++j){
               values[j] += ((int []) valuesTable.get(((Integer) it.next())))[j];
             }
           }
-          statusNames = DBPluginMgr.getDBStatusNames();
           break;
         }
       }
     }
     else{
-      for(int i=0; i<taskMgrs.size(); ++i){
-        if(((DatasetMgr) taskMgrs.get(i)).getDatasetID()==taskID){
+      for(int i=0; i<datasetMgrs.size(); ++i){
+        if(((DatasetMgr) datasetMgrs.get(i)).getDatasetID()==datasetID){
           //values = ((DatasetMgr) taskMgrs.get(i)).getJobsByStatus();
-          valuesTable.put(new Integer(taskID),
-              ((DatasetMgr) taskMgrs.get(i)).getJobsByStatus());
+          valuesTable.put(new Integer(datasetID),
+              ((DatasetMgr) datasetMgrs.get(i)).getJobsByStatus());
           for(Iterator it=valuesTable.values().iterator(); it.hasNext();){
             for(int j=0; j<values.length; ++j){
               values[j] += ((int []) valuesTable.get(((Integer) it.next())))[j];
             }
           }
-          statusNames = DBPluginMgr.getStatusNames();
           break;
         }
       }
@@ -97,9 +97,10 @@ public class StatisticsPanel extends JPanel{
 
   public void paint(Graphics g){
     super.paint(g);
-    if(values == null)
+    if(values==null){
       //update();
-    ((painter) painters.get(style%painters.size())).paint((Graphics2D)g);
+      ((painter) painters.get(style%painters.size())).paint((Graphics2D)g);
+    }
   }
 
   private void paintPieChart(Graphics2D g){
@@ -110,13 +111,13 @@ public class StatisticsPanel extends JPanel{
 
     FontMetrics metrics = new Canvas().getFontMetrics(g.getFont());
     float maxWidth = 0;
-    for(int i=0; i<statusNames.length; ++i)
+    for(int i=0; i<statusNames.length; ++i){
       maxWidth = Math.max(maxWidth, metrics.stringWidth(values[i] + " " +statusNames[i]));
-
+    }
     int nbColumn = 2;//(int) ((getWidth() - 2*horMargin) / maxWidth );
-    if(nbColumn > statusNames.length)
+    if(nbColumn>statusNames.length){
       nbColumn = statusNames.length;
-
+    }
 
     float ratio =  ((getWidth() - 2*horMargin)/nbColumn) / maxWidth;
     if(ratio <1){
@@ -132,9 +133,10 @@ public class StatisticsPanel extends JPanel{
     int rigth = horMargin + (getWidth() - 2* horMargin - size)/2;
 
     double total = 0;
-    for(int i=0; i<values.length; ++i)
+    for(int i=0; i<values.length; ++i){
       total+=values[i];
-
+    }
+    
     double begin= 90;
 
     int col=0;
@@ -151,9 +153,9 @@ public class StatisticsPanel extends JPanel{
         ++col;
         row = 0;
       }
-
-
+      
       double angle = (values[i] * 360.0 )/ total;
+      
       g.fillArc(rigth, top, size, size,
                 (int) begin, -(int) Math.ceil(angle));
       begin -=angle;
@@ -184,9 +186,9 @@ public class StatisticsPanel extends JPanel{
       int valueWitdh = metrics.stringWidth(value);
 
       g.setColor(numberColors[i%numberColors.length]);
-//      g.setFont(g.getFont());
+      //g.setFont(g.getFont());
       g.drawString(value, horMargin + i*columnWitdh + (columnWitdh - valueWitdh)/2, bottom-5);
-//      Debug.debug(i + ", " + );
+      //Debug.debug(i + ", " + );
 
       g.setColor(Color.white);
 
