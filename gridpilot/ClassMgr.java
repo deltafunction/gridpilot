@@ -172,10 +172,9 @@ public class ClassMgr{
 
   public JobValidation getJobValidation(){
     if(jobValidation==null){
-      Debug.debug("jobValidation null", 3);
-      new Exception().printStackTrace();
+      Debug.debug("jobValidation null, creating new", 3);
+      setJobValidation(new JobValidation());
     }
-
     return jobValidation;
   }
 

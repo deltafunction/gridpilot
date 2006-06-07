@@ -18,8 +18,7 @@ public class StatisticsPanel extends JPanel{
   }
 
   private String [] statusNames;
-  private HashMap valuesTable; 
-  private int [] values; 
+  private int [] values = null; 
   private Color [] colors;
   private Color [] numberColors = {Color.white};
   private int style =0;
@@ -28,8 +27,6 @@ public class StatisticsPanel extends JPanel{
   public StatisticsPanel(){
     
     colors = DBPluginMgr.getStatusColors();
-    statusNames = DBPluginMgr.getDBStatusNames();
-    values = new int[statusNames.length];
     
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED), "Jobs statistics"));
 
@@ -39,7 +36,7 @@ public class StatisticsPanel extends JPanel{
           style = (style+1) % (painters.size()*2);
         else
           style = (style == 0 ? painters.size()*2-1 : style -1);
-        //update();
+        update();
         repaint();
       }
     });
@@ -59,35 +56,35 @@ public class StatisticsPanel extends JPanel{
 
   }
 
-  public void update(int datasetID){
+  public void update(){
     Vector datasetMgrs = GridPilot.getClassMgr().getDatasetMgrs();
     if(style<painters.size()){
+      statusNames = DBPluginMgr.getDBStatusNames();
+      // Set the number of jobs in each state to 0
+      values = new int[statusNames.length];
+      for(int i=0; i<values.length; ++i){
+        values[i]= 0;
+      }
+      int [] theseValues = new int [values.length];
       for(int i=0; i<datasetMgrs.size(); ++i){
-        if(((DatasetMgr) datasetMgrs.get(i)).getDatasetID()==datasetID){
-          //values = ((DatasetMgr) taskMgrs.get(i)).getJobsByDBStatus();
-          valuesTable.put(new Integer(datasetID),
-              ((DatasetMgr) datasetMgrs.get(i)).getJobsByDBStatus());
-          for(Iterator it=valuesTable.values().iterator(); it.hasNext();){
-            for(int j=0; j<values.length; ++j){
-              values[j] += ((int []) valuesTable.get(((Integer) it.next())))[j];
-            }
-          }
-          break;
+        theseValues = ((DatasetMgr) datasetMgrs.get(i)).getJobsByDBStatus();
+        for(int j=0; j<values.length; ++j){
+          values[j] += theseValues[j];
         }
       }
     }
     else{
+      statusNames = DBPluginMgr.getStatusNames();
+      // Set the number of jobs in each state to 0
+      values = new int[statusNames.length];
+      for(int i=0; i<values.length; ++i){
+        values[i]= 0;
+      }
+      int [] theseValues = new int [values.length];
       for(int i=0; i<datasetMgrs.size(); ++i){
-        if(((DatasetMgr) datasetMgrs.get(i)).getDatasetID()==datasetID){
-          //values = ((DatasetMgr) taskMgrs.get(i)).getJobsByStatus();
-          valuesTable.put(new Integer(datasetID),
-              ((DatasetMgr) datasetMgrs.get(i)).getJobsByStatus());
-          for(Iterator it=valuesTable.values().iterator(); it.hasNext();){
-            for(int j=0; j<values.length; ++j){
-              values[j] += ((int []) valuesTable.get(((Integer) it.next())))[j];
-            }
-          }
-          break;
+        theseValues = ((DatasetMgr) datasetMgrs.get(i)).getJobsByStatus();
+        for(int j=0; j<values.length; ++j){
+          values[j] += theseValues[j];
         }
       }
     }
@@ -96,11 +93,12 @@ public class StatisticsPanel extends JPanel{
 
 
   public void paint(Graphics g){
+    Debug.debug("painting stastistics panel", 3);
     super.paint(g);
     if(values==null){
-      //update();
-      ((painter) painters.get(style%painters.size())).paint((Graphics2D)g);
+      update();
     }
+    ((painter) painters.get(style%painters.size())).paint((Graphics2D)g);
   }
 
   private void paintPieChart(Graphics2D g){
@@ -119,8 +117,8 @@ public class StatisticsPanel extends JPanel{
       nbColumn = statusNames.length;
     }
 
-    float ratio =  ((getWidth() - 2*horMargin)/nbColumn) / maxWidth;
-    if(ratio <1){
+    float ratio = ((getWidth() - 2*horMargin)/nbColumn) / maxWidth;
+    if(ratio<1){
       g.setFont(g.getFont().deriveFont(g.getFont().getSize() * ratio ));
       maxWidth *=ratio;
     }
@@ -200,7 +198,7 @@ public class StatisticsPanel extends JPanel{
       g.rotate(-Math.PI/2.0);
 
 
-      g.drawString(statusNames[i],0,0);
+      g.drawString(statusNames[i], 0, 0);
 
       g.rotate(Math.PI/2.0);
 
@@ -211,9 +209,12 @@ public class StatisticsPanel extends JPanel{
 
   private int maxValues(){
     int max = values[0];
-    for(int i=1; i<values.length; ++i)
-      if(values[i] > max)
+    for(int i=1; i<values.length; ++i){
+      if(values[i]>max){
         max = values[i];
+        break;
+      }
+    }
     return max;
   }
 }

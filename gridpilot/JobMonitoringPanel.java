@@ -95,7 +95,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     
     statusUpdateControl = new StatusUpdateControl();
     submissionControl = GridPilot.getClassMgr().getSubmissionControl();
-
   }
   
   public String getTitle(){
