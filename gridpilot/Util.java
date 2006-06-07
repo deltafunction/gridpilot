@@ -387,7 +387,7 @@ public class Util{
         throw iae;
       }
       catch(Exception e){
-        GridPilot.getClassMgr().getLogFile().addMessage("Cannot load class " + dbClass, e);
+        //GridPilot.getClassMgr().getLogFile().addMessage("Cannot load class " + dbClass, e);
         throw e;
       }
     }

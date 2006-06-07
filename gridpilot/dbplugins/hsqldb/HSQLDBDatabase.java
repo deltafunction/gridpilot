@@ -397,7 +397,13 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized String getJobDefUserInfo(int jobDefinitionID){
-    return getJobDefinition(jobDefinitionID).getValue("userInfo").toString();
+    Object userInfo = getJobDefinition(jobDefinitionID).getValue("userInfo");
+    if(userInfo==null){
+      return "";
+    }
+    else{
+      return userInfo.toString();
+    }
   }
 
   public synchronized String getJobStatus(int jobDefinitionID){
@@ -1461,6 +1467,11 @@ public class HSQLDBDatabase implements Database{
             }
             else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
               values[i] = makeDate("");
+            }
+            else if((jobDefFields[i].equalsIgnoreCase("outputFileSize") ||
+                jobDefFields[i].equalsIgnoreCase("CPU")) &&
+                (values[j]==null || values[j].equals(""))){
+              values[j] = "'0'";
             }
             else{
               values[j] = "'"+values[j]+"'";

@@ -363,7 +363,13 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized String getJobDefUserInfo(int jobDefinitionID){
-    return getJobDefinition(jobDefinitionID).getValue("userInfo").toString();
+    Object userInfo = getJobDefinition(jobDefinitionID).getValue("userInfo");
+    if(userInfo==null){
+      return "";
+    }
+    else{
+      return userInfo.toString();
+    }
   }
 
   public synchronized String getJobStatus(int jobDefinitionID){

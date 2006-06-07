@@ -3,7 +3,6 @@ package gridpilot;
 import javax.swing.*;
 
 import java.awt.event.*;
-import java.util.Date;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Random;
@@ -119,6 +118,7 @@ public class SubmissionControl{
    */
   public void submitJobDefinitions(/*vector of JobDefinitions*/Vector selectedJobs,
       String csName, DBPluginMgr dbPluginMgr){
+    GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel();
     synchronized(submittedJobs){
       Vector newJobs = new Vector();
       // This label is not shown because this function is not called in a Thread.
@@ -171,6 +171,8 @@ public class SubmissionControl{
             Debug.debug("Setting job user :"+jobUser+":", 3);
             job.setUser(jobUser);
             job.setCSName(csName);
+            //job.setOutputs(prefix + "stdout", withStdErr ? prefix + "stderr" : null);
+            // Some validation scripts assume stderr to be present...
           }
           else{
             // this job exists, get its computingSystem, keeps its row number,
@@ -494,7 +496,7 @@ public class SubmissionControl{
     //Debug.debug("jobName : " + job.getName(), 3);
     statusTable.setValueAt(iconSubmitting, job.getTableRow(),
         DatasetMgr.FIELD_CONTROL);
-    if(createOutputs(job) && csPluginMgr.submit(job)){
+    if(csPluginMgr.submit(job)){
       Debug.debug("Job " + job.getName() + " submitted : \n" +
                   "\tCSJobId = " + job.getJobId() + "\n" +
                   "\tStdOut = " + job.getStdOut() + "\n" +
@@ -556,55 +558,6 @@ public class SubmissionControl{
       pbSubmission.setValue(0);
       statusBar.setLabel("Submission done.");
     }
-  }
-
-  /**
-   * Create fields stdOut and (possibly) stdErr in this job. <br>
-   * These names are &lt;working directory&gt;/&lt;job name&gt;.&lt;rand&gt/stdout and /stderr <br>
-   * If stderrDest is not defined in DB, stdErr = null. <p>
-   */
-  private boolean createOutputs(JobInfo job){
-    ShellMgr shell = null;
-    try{
-      shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
-    }
-    catch(Exception e){
-      Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
-    }
-    String workingPath = configFile.getValue(job.getCSName(),
-                                             "working directory");
-    if(workingPath==null){
-      workingPath = job.getCSName();
-    }
-    if(!workingPath.endsWith("/")){
-      workingPath += "/";
-    }
-    String prefix = null;
-    try{
-      // Temp dir, assuming seconds since 1970 is unique from submission
-      // to submission.
-      prefix = workingPath+job.getName()+"."+
-        new Date().getTime();
-      shell.mkdirs(prefix);
-    }
-    catch(Exception e){
-      prefix = null;
-      Debug.debug("ERROR checking for stdout: "+e.getMessage(), 2);
-      logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
-      //throw e;
-    }
-    if(prefix==null){ // if dir cannot be created
-      logFile.addMessage("Temp dir cannot be created with prefix " + job.getName()+
-                         ". in the directory " + workingPath, job);
-      return false;
-    }
-    if(!prefix.endsWith("/")){
-      prefix += "/";
-    }
-    //job.setOutputs(prefix + "stdout", withStdErr ? prefix + "stderr" : null);
-    // Some validation scripts assume stderr to be present...
-    job.setOutputs(prefix + "stdout", prefix + "stderr");
-    return true;
   }
 
   public boolean isSubmitting(){

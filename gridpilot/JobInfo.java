@@ -181,7 +181,7 @@ public class JobInfo extends DBRecord{
   }
 
   public void setOutputs(String _stdOut, String _stdErr){
-    errTmp = _stdOut;
+    outTmp = _stdOut;
     errTmp = _stdErr;
     setValues();
   }

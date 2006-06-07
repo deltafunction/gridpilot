@@ -16,6 +16,7 @@ public class LocalShellMgr implements ShellMgr{
    *
    */
   public boolean copyFile(String src, String dest){
+    Debug.debug("copying file "+src+"->"+dest, 3);
     if (src.equals(dest)){
       return true;
     }
@@ -113,6 +114,7 @@ public class LocalShellMgr implements ShellMgr{
       IOException {
     cmd = Util.arrayToString(convert(Util.split(cmd)));
     int exitValue;
+    Debug.debug("executing "+cmd, 3);
     Process p = Runtime.getRuntime().exec(cmd, env,
                                           (workingDirectory==null ? null : new File(workingDirectory)));
 
@@ -163,13 +165,16 @@ public class LocalShellMgr implements ShellMgr{
 
     byte[] b = new byte[256];
     int nbRead;
-    if (stdOut!=null)
-      while ( (nbRead = p.getInputStream().read(b))!=-1)
+    if(stdOut!=null){
+      while((nbRead=p.getInputStream().read(b))!=-1){
         stdOut.insert(0, new String(b, 0, nbRead));
-
-    if (stdErr!=null)
-      while ( (nbRead = p.getErrorStream().read(b))!=-1)
+      }
+    }
+    if(stdErr!=null){
+      while((nbRead=p.getErrorStream().read(b))!=-1){
         stdErr.insert(0, new String(b, 0, nbRead));
+      }
+    }
   }
 
 
@@ -202,14 +207,17 @@ public class LocalShellMgr implements ShellMgr{
   }
 
   public boolean mkdirs(String dir){
+    Debug.debug("making dirs "+dir, 3);
     return new File(dir).mkdirs();
   }
 
   public boolean deleteFile(String path){
+    Debug.debug("deleting file "+path, 3);
     return new File(path).delete();
   }
 
   public boolean moveFile(String src, String dest){
+    Debug.debug("moving file "+src+"->"+dest, 3);
     File destFile = new File(dest);
     if(destFile.getParent()!=null &&  !destFile.getParentFile().exists())
       if(!destFile.getParentFile().mkdirs()){

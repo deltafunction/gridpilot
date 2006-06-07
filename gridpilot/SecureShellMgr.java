@@ -169,8 +169,9 @@ public class SecureShellMgr implements ShellMgr{
   }
 
   private String getFullPath(String name){
-    if(!name.startsWith("/") && !name.startsWith("~"))
+    if(!name.startsWith("/") && !name.startsWith("~")){
       name = remoteHome + (remoteHome.endsWith("/") ? "" : "/") + name;
+    }
     if(name.startsWith("~")){
       StringBuffer stdOut = new StringBuffer();
       StringBuffer stdErr = new StringBuffer();

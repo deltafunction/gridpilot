@@ -433,30 +433,10 @@ public class GlobalFrame extends GPFrame{
       });
       miNewJobDefTab.add(miNewJobDefTabs[i]);
     }
-        
+    
     cbMonitor.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        try{
-          if(pDialog==null){
-            Debug.debug("Creating new job monitoring dialog", 2);
-             pDialog = new CreateEditDialog(jobMonitoringPanel, false, false);
-             pDialog.setTitle("Job Monitor");
-             pDialog.buttonPanel.setVisible(false);
-             pDialog.pack();
-             pDialog.setVisible(true);
-             return;
-          }
-          if(pDialog.isShowing()){
-            pDialog.setVisible(false);
-          }
-          else{
-            pDialog.setVisible(true);
-          }
-        }
-        catch(Exception ex){
-          Debug.debug("Could not create panel ", 1);
-          ex.printStackTrace();
-        }
+        toggleMonitoringPanel();
       }
     });    
     
@@ -497,6 +477,49 @@ public class GlobalFrame extends GPFrame{
     
     return menuBar;
 
+  }
+
+  public void toggleMonitoringPanel(){
+    try{
+      if(pDialog==null){
+        Debug.debug("Creating new job monitoring dialog", 2);
+         pDialog = new CreateEditDialog(jobMonitoringPanel, false, false);
+         pDialog.setTitle("Job Monitor");
+         pDialog.buttonPanel.setVisible(false);
+         pDialog.pack();
+         pDialog.setVisible(true);
+         return;
+      }
+      if(pDialog.isShowing()){
+        pDialog.setVisible(false);
+      }
+      else{
+        pDialog.setVisible(true);
+      }
+    }
+    catch(Exception ex){
+      Debug.debug("Could not create panel ", 1);
+      ex.printStackTrace();
+    }
+  }
+
+  public void showMonitoringPanel(){
+    try{
+      if(pDialog==null){
+        Debug.debug("Creating new job monitoring dialog", 2);
+         pDialog = new CreateEditDialog(jobMonitoringPanel, false, false);
+         pDialog.setTitle("Job Monitor");
+         pDialog.buttonPanel.setVisible(false);
+         pDialog.pack();
+         pDialog.setVisible(true);
+         return;
+      }
+      pDialog.setVisible(true);
+    }
+    catch(Exception ex){
+      Debug.debug("Could not create panel ", 1);
+      ex.printStackTrace();
+    }
   }
 
 }

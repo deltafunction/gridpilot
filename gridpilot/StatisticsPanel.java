@@ -93,7 +93,7 @@ public class StatisticsPanel extends JPanel{
 
 
   public void paint(Graphics g){
-    Debug.debug("painting stastistics panel", 3);
+    //Debug.debug("painting stastistics panel", 3);
     super.paint(g);
     if(values==null){
       update();

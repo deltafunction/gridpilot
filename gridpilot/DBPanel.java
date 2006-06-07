@@ -1503,6 +1503,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Called when mouse is pressed on Monitor button
    */
   private void monitor(){
+    GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel();
     new Thread(){
       public void run(){        
         DBRecord jobDef;
