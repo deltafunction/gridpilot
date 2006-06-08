@@ -116,7 +116,7 @@ public class LocalShellMgr implements ShellMgr{
     int exitValue;
     Debug.debug("executing "+cmd, 3);
     Process p = Runtime.getRuntime().exec(cmd, env,
-                                          (workingDirectory==null ? null : new File(workingDirectory)));
+       (workingDirectory==null ? null : new File(workingDirectory)));
 
     waitOutputs(p, stdOut, stdErr);
 
@@ -253,4 +253,97 @@ public class LocalShellMgr implements ShellMgr{
   }
   
   public void exit(){}
+  
+
+  /**
+   * Executes in the shell the command 'cmd', in the directory 'workingDirecory'. <br>
+   * Standard output is written to the file stdOutFile.
+   * Standard error is written to the file stdErrFile.
+   * <p>
+   * All elements of cmd can be <code>null</code>, or contain several tokens ;
+   * if an element of cmd contains spaces, all "words" are used like as much as
+   * differents parameters.
+   *
+   * @return hash code of the started process
+   * @throws IOException
+   */
+  public Process submit(final String [] cmd, final String workingDirectory,
+                  final String stdOutFile, final String stdErrFile) throws Exception {
+    Debug.debug("executing "+Util.arrayToString(cmd), 3);
+
+    final Process proc = Runtime.getRuntime().exec(cmd, null, 
+        (workingDirectory==null ? null : new File(workingDirectory)));
+    
+    Thread runThread = new Thread(){
+      public void run(){
+        try{     
+          FileOutputStream fos = new FileOutputStream(stdOutFile);
+          StreamGobbler outputGobbler = new StreamGobbler(proc.getInputStream(), "OUTPUT", fos);
+            
+          FileOutputStream fes = new FileOutputStream(stdOutFile);
+          StreamGobbler errorGobbler = new StreamGobbler(proc.getErrorStream(), "ERROR", fes);            
+
+          errorGobbler.start();
+          outputGobbler.start();
+                                
+          proc.waitFor();
+
+          fos.flush();
+          fos.close(); 
+          fes.flush();
+          fes.close();
+        }
+        catch(Exception ie){
+          GridPilot.getClassMgr().getLogFile().addMessage("Exception in LocalShellMgr.exec : " +
+                             "\tCommand : " + cmd + "\n" +
+                             "\tException : " + ie.getMessage(), ie);
+          ie.printStackTrace();
+          interrupt();
+        }
+      }
+    };
+    runThread.run();
+
+    return proc;
+  }
+  
+  class StreamGobbler extends Thread{
+    InputStream is;
+    String type;
+    OutputStream os;
+    
+    StreamGobbler(InputStream is, String type){
+        this(is, type, null);
+    }
+    StreamGobbler(InputStream is, String type, OutputStream redirect){
+        this.is = is;
+        this.type = type;
+        this.os = redirect;
+    }     
+      
+    public void run(){
+      try{
+        PrintWriter pwo = null;
+        if(os!=null){
+          pwo = new PrintWriter(os);
+        }
+        InputStreamReader isr = new InputStreamReader(is);
+        BufferedReader br = new BufferedReader(isr);
+        String line=null;
+        while((line = br.readLine())!=null){
+          if(pwo!=null){
+            pwo.println(line);
+          }
+          System.out.println(type + ">" + line);    
+        }
+        if(pwo!=null){
+          pwo.flush();
+        }
+      }
+      catch (IOException ioe){
+        ioe.printStackTrace();  
+      }
+    }
+  }
+  
 }
