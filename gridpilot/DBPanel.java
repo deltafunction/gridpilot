@@ -1167,6 +1167,23 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           return;
         }
         int [] ids = getSelectedIdentifiers();
+
+        // Update job monitoring display
+        for(int i=ids.length-1; i>=0; --i){
+          int currentDatasetID = dbPluginMgr.getJobDefDatasetID(ids[i]);
+          Debug.debug("Got dbPluginMgr:"+dbPluginMgr+":"+parentId, 1);
+          DatasetMgr datasetMgr = null;
+          try{
+            datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName, currentDatasetID);
+          }
+          catch(Throwable e){
+            Debug.debug("ERROR: could not get DatasetMgr. "+e.getMessage(), 1);
+            e.printStackTrace();
+            return;
+          }
+          datasetMgr.removeRow(ids[i]);
+        }
+        
         int [] rows = tableResults.getSelectedRows();
         Debug.debug("Deleting "+ids.length+" rows", 2);
         if(ids.length != 0){

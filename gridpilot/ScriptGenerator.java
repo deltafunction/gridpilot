@@ -19,18 +19,14 @@ import java.io.*;
  *
  * <p><a href="ScriptGenerator.java.html">see sources</a>
  */
-
-
-
 abstract public class ScriptGenerator{
   protected ConfigFile configFile;
   protected String csName;
   protected LogFile logFile;
-
-
-  /**
-   * Constructors
-   */
+  
+  public final static int TYPE_SECTION = 0;
+  public final static int TYPE_SUBSECTION = 1;
+  public final static int TYPE_COMMENT = 2;
 
   public ScriptGenerator(String _csName) {
     csName = _csName;
@@ -39,36 +35,34 @@ abstract public class ScriptGenerator{
 
   }
 
-  /**
-   * protected methods
-   */
-
-  // TODO: These two methods are duplicated in JobControl.java. FIX!
-  
   private String getLine(String s){return s + "\n";}
 
   private String getBloc(String []s, int type){
-    String bloc=null;
+    String bloc = null;
+    String commentStart = "#";
+    if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
+      commentStart = "REM ";
+    }
     switch(type){
-      case 0:
-        bloc = "###########################################################################\n";
+      case TYPE_SECTION:
+        bloc = commentStart+"##########################################################################\n";
         for(int i = 0; i<s.length ; ++i)
-          bloc += "#          " + s[i]+"\n";
-        bloc +="###########################################################################\n";
+          bloc += commentStart+"          " + s[i]+"\n";
+        bloc += commentStart+"##########################################################################\n";
         break;
 
-      case 1:
-        bloc = "#--------------------------------------------------------------------------\n";
+      case TYPE_SUBSECTION:
+        bloc = commentStart+"--------------------------------------------------------------------------\n";
         for(int i = 0; i<s.length ; ++i)
-          bloc += "#          " + s[i]+"\n";
-        bloc +="#--------------------------------------------------------------------------\n";
+          bloc += commentStart+"          " + s[i]+"\n";
+        bloc += commentStart+"--------------------------------------------------------------------------\n";
         break;
 
-      case 2:
-        bloc = "#-------------------\n";
+      case TYPE_COMMENT:
+        bloc = commentStart+"-------------------\n";
         for(int i = 0; i<s.length ; ++i)
-          bloc += "#      " + s[i]+"\n";
-        bloc +="#-------------------\n";
+          bloc += commentStart+"      " + s[i]+"\n";
+        bloc += commentStart+"-------------------\n";
         break;
     }
     return bloc;

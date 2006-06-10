@@ -511,10 +511,9 @@ public class GlobalFrame extends GPFrame{
          pDialog.setTitle("Job Monitor");
          pDialog.buttonPanel.setVisible(false);
          pDialog.pack();
-         pDialog.setVisible(true);
-         return;
       }
       pDialog.setVisible(true);
+      cbMonitor.setSelected(true);
     }
     catch(Exception ex){
       Debug.debug("Could not create panel ", 1);

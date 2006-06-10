@@ -288,6 +288,39 @@ public class HSQLDBDatabase implements Database{
     return Integer.parseInt(vec.get(0).toString());
   }
 
+  public synchronized int getRuntimeEnvironmentID(String name, String cs){
+    String req = "SELECT identifier from runtimeEnvironment where name = '"+name + "'"+
+    " AND computingResource = '"+cs+"'";
+    String id = null;
+    Vector vec = new Vector();
+    try{
+      Statement stmt = conn.createStatement();
+      ResultSet rset = stmt.executeQuery(req);
+      while(rset.next()){
+        id = rset.getString("identifier");
+        if(id!=null){
+          Debug.debug("Adding id "+id, 3);
+          vec.add(id);
+        }
+        else{
+          Debug.debug("WARNING: identifier null for name "+
+              name, 1);
+        }
+      }
+      rset.close();  
+    }
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 1);
+      error = e.getMessage();
+      return -1;
+    }
+    if(vec.size()>1){
+      Debug.debug("WARNING: More than one ("+vec.size()+
+          ") runtimeEnvironment found with name:cs "+name+":"+cs, 1);
+    }
+    return Integer.parseInt(vec.get(0).toString());
+  }
+
   public synchronized String [] getTransJobParameters(int transformationID){
     String res =  getTransformation(transformationID).getValue("arguments").toString(); 
     return Util.split(res);
@@ -379,7 +412,7 @@ public class HSQLDBDatabase implements Database{
     return script;
   }
 
-  public synchronized String [] getTransformationRTEnvironments(int jobDefID){
+  public synchronized String [] getRuntimeEnvironments(int jobDefID){
     String transformationID = getJobDefTransformationID(jobDefID);
     String rts = getTransformation(
         Integer.parseInt(transformationID)).getValue("runtimeEnvironmentName").toString();

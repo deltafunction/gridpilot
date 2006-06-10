@@ -471,12 +471,12 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized String [] getTransformationRTEnvironments(final int jobDefinitionID){
+  public synchronized String [] getRuntimeEnvironments(final int jobDefinitionID){
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getTransformationRTEnvironments(jobDefinitionID);
+          res = db.getRuntimeEnvironments(jobDefinitionID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -664,6 +664,34 @@ public class DBPluginMgr implements Database{
     }
     else{
       return null;
+    }
+  }
+
+  public synchronized int getRuntimeEnvironmentID(final String name, final String cs){
+    MyThread t = new MyThread(){
+      int res = -1;
+      public void run(){
+        try{
+          res = db.getRuntimeEnvironmentID(name, cs);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             name+":"+cs, t);
+        }
+      }
+      public int getIntRes(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironmentID")){
+      return t.getIntRes();
+    }
+    else{
+      return -1;
     }
   }
 

@@ -76,7 +76,8 @@ public interface Database{
   // ####### Job execution
   public boolean reserveJobDefinition(int jobDefID, String UserName, String cs);
   public boolean cleanRunInfo(int jobDefID);
-  public String [] getTransformationRTEnvironments(int jobDefID);
+  public String [] getRuntimeEnvironments(int jobDefID);
+  public int getRuntimeEnvironmentID(String name, String cs);
   public String [] getTransformationArguments(int jobDefID);
   public String [] getJobDefTransPars(int jobDefID);
   public String [] getOutputs(int jobDefID);
