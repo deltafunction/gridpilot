@@ -301,12 +301,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
     spSelectPanel.getViewport().add(selectPanel);
 
-    panelSelectPanel.add(spSelectPanel, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
-        ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
-    panelSelectPanel.add(new JLabel(dbName), new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0
-        ,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
-    panelSelectPanel.add(pButtonSelectPanel, new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0
-        ,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
+    panelSelectPanel.add(spSelectPanel,
+        new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
+            GridBagConstraints.CENTER,
+            GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+    panelSelectPanel.add(new JLabel(dbName),
+        new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0,
+            GridBagConstraints.WEST,
+            GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
+    panelSelectPanel.add(pButtonSelectPanel,
+        new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0,
+            GridBagConstraints.EAST,
+            GridBagConstraints.NONE,new Insets(10, 10, 10, 10), 0, 0));
 
     selectPanel.setConstraint(dbPluginMgr.getNameField(tableName), "", 1);
     
@@ -328,12 +334,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     });
 
-//// panel table results
-
-    panelTableResults.add(spTableResults,  new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
-        ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
-    panelTableResults.add(pButtonTableResults,    new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0
-        ,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
+    // panel table results
+    panelTableResults.add(spTableResults,
+        new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
+            GridBagConstraints.CENTER,
+            GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+    panelTableResults.add(pButtonTableResults,
+        new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+            GridBagConstraints.EAST,
+            GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
 
     ct.fill = GridBagConstraints.HORIZONTAL;
     ct.anchor = GridBagConstraints.NORTH;
@@ -379,11 +388,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       }
     });
-
     
     //// buttons
     // Costumized for each type of table
-    
     bSearch.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         search();
@@ -487,7 +494,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
       bCreateRecords.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          createJobDefs();
+          createJobDefinitions();
         }
       });
       
@@ -512,6 +519,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonSelectPanel(bSearch);
       bSubmit.setEnabled(false);
       bMonitor.setEnabled(false);
+      bEditRecord.setEnabled(false);
+      bDeleteRecord.setEnabled(false);
       updateUI();
     }
     else if(tableName.equalsIgnoreCase("transformation")){
@@ -1019,13 +1028,20 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
     
    /**
-   * Open dialog with jobDefintion creation panel
+   * Open dialog with jobDefintion creation panel (from datasets)
    */ 
   private void createJobDefs(){
     Debug.debug("Creating job definitions, "+getSelectedIdentifiers().length, 3);
     //JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, this, false);
     JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, this);
     CreateEditDialog pDialog = new CreateEditDialog(panel, false, true);
+    pDialog.setTitle("jobDefinition");
+  }
+
+  private void createJobDefinitions(){
+    Debug.debug("Creating job definitions, "+getSelectedIdentifiers().length, 3);
+    JobDefCreationPanel panel = new JobDefCreationPanel(dbName, null, this, new Boolean(false));
+    CreateEditDialog pDialog = new CreateEditDialog(panel, false, false);
     pDialog.setTitle("jobDefinition");
   }
 

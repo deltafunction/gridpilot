@@ -396,6 +396,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
         Debug.debug("createDataset: cstAttr["+i+"]: "+cstAttr[i], 3);
       }
       new DatasetCreator(
+          statusBar,
           dbPluginMgr,
           showResults,
           cstAttr,

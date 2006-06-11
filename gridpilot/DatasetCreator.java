@@ -26,7 +26,7 @@ public class DatasetCreator{
   private Object[] showResultsOptions = {"OK", "Skip", "OK for all", "Skip all"};
   private Object[] showResultsOptions1 = {"OK", "Skip"};
 
-  public DatasetCreator(  
+  public DatasetCreator(  StatusBar _statusBar,
                           DBPluginMgr _dbPluginMgr,
                           boolean _showResults,
                           String [] _cstAttr,
@@ -34,15 +34,13 @@ public class DatasetCreator{
                           int [] _datasetIDs,
                           String _targetDB
                           ){
-
+    statusBar = _statusBar;
     showResults = _showResults;
     cstAttr = _cstAttr;
     cstAttrNames =  _cstAttrNames;
     resCstAttr = _cstAttr;
     datasetIDs =  _datasetIDs;
     targetDB = _targetDB;
-    
-    statusBar = GridPilot.getClassMgr().getStatusBar();
     dbPluginMgr = _dbPluginMgr;
     
     datasetTransformationReference =

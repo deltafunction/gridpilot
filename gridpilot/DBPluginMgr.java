@@ -1433,7 +1433,7 @@ public class DBPluginMgr implements Database{
     String [] vals = new String[jobDefFieldNames.length];
     for(int i=0; i<jobDefFieldNames.length; ++i){
       vals[i] = "";
-      for(int j=0; i<fields.length; ++j){
+      for(int j=0; j<fields.length; ++j){
         if(fields[j].equalsIgnoreCase(jobDefFieldNames[i]) &&
             !fields[j].equalsIgnoreCase(getIdentifierField("jobDefinition"))){
           vals[i] = values[j].toString();

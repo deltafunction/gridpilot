@@ -6,9 +6,7 @@ import gridpilot.Database.DBRecord;
 
 import javax.swing.*;
 import javax.swing.border.*;
-import javax.swing.event.*;
 import java.awt.*;
-import java.awt.event.*;
 import javax.swing.text.*;
 
 import java.util.*;
@@ -22,14 +20,9 @@ public class JobDefCreationPanel extends CreateEditPanel{
 
   private static final long serialVersionUID = 1L;
   protected DatasetMgr datasetMgr;
-  protected JPanel pCounter = new JPanel();
-  protected JPanel pConstants = new JPanel();
   protected JScrollPane spAttributes = new JScrollPane();
-  protected JPanel pButtons = new JPanel();
   protected String jobDefinitionID = "-1";
   protected Table table;
-  protected JSpinner sFrom = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
-  protected JSpinner sTo = new JSpinner(new SpinnerNumberModel(1, 1, 999999, 1));
   protected String dbName;
   protected DBPluginMgr dbPluginMgr = null;
   protected int datasetID = -1;
@@ -107,21 +100,6 @@ public class JobDefCreationPanel extends CreateEditPanel{
         Debug.debug("to " + cstAttr[i],  3);
       }
     }
-
-    sFrom.addChangeListener(new ChangeListener(){
-      public void stateChanged(ChangeEvent e){
-        if(((Integer)sTo.getValue()).intValue() < ((Integer)sFrom.getValue()).intValue())
-          sTo.setValue(sFrom.getValue());
-      }
-    });
-
-    sTo.addChangeListener(new ChangeListener(){
-
-      public void stateChanged(ChangeEvent e){
-        if(((Integer)sTo.getValue()).intValue() < ((Integer)sFrom.getValue()).intValue())
-          sFrom.setValue(sTo.getValue());
-      }
-    });
   }
 
   public void initGUI(){
@@ -160,29 +138,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
     ct.gridheight=1;
     
     if(!editing){
-      initArithmeticPanel();
       ct.gridx = 0;
-      ct.gridy = 0;         
-      ct.gridwidth=1;
-      ct.gridheight=2;
-      add(pButtons,ct);
-      
-      ct.gridx = 0;
-      ct.gridy = 1;
-      ct.gridwidth=2;
-      ct.gridheight=1;
-      add(pCounter,ct);
-
-      ct.gridx = 0;
-      ct.gridy = 2;
-      ct.gridwidth=3;
-      ct.gridheight=1;
-      pConstants.setLayout(new GridBagLayout());
-      pConstants.setMinimumSize(new Dimension(550, 50));
-      add(pConstants,ct);    
-            
-      ct.gridx = 0;
-      ct.gridy = 4;
+      ct.gridy = 0;
       ct.gridwidth=3;
       add(spAttributes, ct);
     }
@@ -197,81 +154,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
         cstAttr,
         tcCstAttributes);
     
-    if(!editing){
-      setEnabledAttributes(false,
-          cstAttributesNames,
-          tcCstAttributes);
-    }
-    
     updateUI();
     
-  }
-
-  protected void initArithmeticPanel(){
-
-    // Panel counter
-    pCounter.setLayout(new GridBagLayout());
-    pCounter.removeAll();
-    if(!reuseTextFields){
-      sFrom.setValue(new Integer(1));
-    }
-    if(!reuseTextFields){
-      sTo.setValue(new Integer(1));
-    }
-    pCounter.add(new JLabel("for i = "));
-    pCounter.add(sFrom);
-    pCounter.add(new JLabel("  to "));
-    pCounter.add(sTo);
-
-
-    // Panel Constants
-    if(!reuseTextFields || tcConstant.size() == 0){
-      pConstants.removeAll();
-      tcConstant.removeAllElements();
-      for(int i=0; i<4; ++i){
-        addConstant();
-      }
-    }
-
-    // panel Button
-    JButton bLoad = new JButton("Load");
-    JButton bSave = new JButton("Save");
-    JButton bAddConstant = new JButton("New Constant");
-    
-    bLoad.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        load();
-      }
-    });
-
-    bSave.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        save();
-      }
-    });
-
-    bAddConstant.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        addConstant();
-      }
-    });
-
-    pButtons.setLayout(new GridBagLayout());
-
-    GridBagConstraints cb = new GridBagConstraints();
-    cb.fill = GridBagConstraints.VERTICAL;
-    cb.anchor = GridBagConstraints.NORTHWEST;
-    cb.gridx = 0;
-    cb.gridy = 0;         
-    pButtons.add(bLoad, cb);
-    bLoad.setEnabled(false);
-    cb.gridx = 0;
-    cb.gridy = 1;         
-    pButtons.add(bSave, cb);
-    bSave.setEnabled(false);
-    cb.gridx = 0;
-    cb.gridy = 2;         
-    pButtons.add(bAddConstant, cb);
   }
 
   /**
@@ -307,8 +191,6 @@ public class JobDefCreationPanel extends CreateEditPanel{
     Debug.debug("creating new JobDefCreator", 3);  
     new JobDefCreator(dbName,
                       datasetMgr,
-                      ((Integer)(sFrom.getValue())).intValue(),
-                      ((Integer)(sTo.getValue())).intValue(),
                       showResults,
                       tcConstant,
                       cstAttr,
@@ -318,82 +200,6 @@ public class JobDefCreationPanel extends CreateEditPanel{
 
     panel.refresh();
     
-  }
-
-  protected void addConstant(){
-    if(tcConstant.size() == 26)
-      return;
-    
-    JTextField tf = new JTextField(CFIELDWIDTH);
-    char name = (char) ('A' + (char)tcConstant.size());
-    int cstByRow = 4;
-
-    int row = tcConstant.size() / cstByRow;
-    int col = tcConstant.size() % cstByRow;
-    
-    tcConstant.add(tf);
-    
-    GridBagConstraints cc = new GridBagConstraints();
-
-    cc.gridx = col*2;
-    cc.gridy = row;   
-    pConstants.add(new JLabel("  " + new String(new char[]{name}) + " : "),cc);
-    
-    cc.gridx = col*2+1;
-    cc.gridy = row;   
-    pConstants.add(tf,cc);
-    
-    pConstants.updateUI();
-  }
-
-  protected boolean save(){
-    Vector v = getTextFields();
-    String [] values = new String[v.size()+1];
-
-    values[0] = ""+tcConstant.size();
-
-    for(int i=1; i<values.length; ++i){
-      values[i] = ((JTextComponent) v.get(i-1)).getText();
-      if(values[i].length() == 0)
-        values[i] = " ";
-    }
-    String user = dbPluginMgr.getUserLabel();
-    if(!dbPluginMgr.saveDefVals(datasetID, values, user)){
-      Debug.debug("ERROR: Could not save values: "+values, 1);
-      return false;
-    }
-    return true;
-  }
-
-  protected void load(){
-    
-    String user = dbPluginMgr.getUserLabel();
-
-    String [] defValues = dbPluginMgr.getDefVals(datasetID, user);
-
-    if(defValues ==null || defValues.length == 0)
-      return;
-
-    try{
-      int nbConst = new Integer(defValues[0]).intValue();
-      if(nbConst != tcConstant.size()){
-        tcConstant.removeAllElements();
-        pConstants.removeAll();
-        for(int i=0; i<nbConst; ++i)
-          addConstant();
-      }
-    }catch(NumberFormatException nfe){
-      nfe.printStackTrace();
-    }
-
-    Enumeration tfs = getTextFields().elements();
-
-    int i=1;
-    while(tfs.hasMoreElements() && i<defValues.length){
-      JTextComponent tf = (JTextComponent) tfs.nextElement();
-      Util.setJText(tf, defValues[i].trim());
-      ++i;
-    }
   }
 
   protected Vector getTextFields(){

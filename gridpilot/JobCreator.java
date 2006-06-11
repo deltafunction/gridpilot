@@ -60,7 +60,7 @@ public class JobCreator{
     super();
 
     statusBar = _statusBar;
-	dbName = _dbName;
+	  dbName = _dbName;
     datasetIdentifiers = _datasetIdentifiers;
     showResults = _showResults;
     constants = _constants;

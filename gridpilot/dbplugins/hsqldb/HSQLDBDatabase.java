@@ -18,6 +18,8 @@ import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
+import org.hsqldb.Server;
+
 import gridpilot.ConfigFile;
 import gridpilot.Database;
 import gridpilot.Debug;
@@ -101,7 +103,6 @@ public class HSQLDBDatabase implements Database{
   }
   
   public String connect(){
-
     try{
       Class.forName(driver).newInstance();
     }
@@ -111,8 +112,25 @@ public class HSQLDBDatabase implements Database{
       return null;
     }
     try{
-      conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
-         user, passwd);
+      if(database.startsWith("file:")){
+        // in-memory database
+        conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
+           user, passwd);
+      }
+      else if(database.startsWith("hsql:")){
+        // database server
+        if(database.startsWith("hsql://localhost/")){
+          // if on localhost we start the server here
+          String dbName = null;
+          Server server = new Server();
+          server.setDatabasePath(0, database.substring(15));
+          dbName =  database.substring(database.lastIndexOf("/"));
+          server.setDatabaseName(0, dbName);
+          database = "hsql://localhost/"+dbName;
+        }
+        conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
+           user, passwd);
+      }
     }
     catch(Exception e){
       Debug.debug("Could not connect to db "+database+
@@ -216,6 +234,14 @@ public class HSQLDBDatabase implements Database{
 
   public void disconnect(){
     try{
+      try{
+        Statement stmt = conn.createStatement();
+        stmt.executeUpdate("SHUTDOWN COMPACT");
+      }
+      catch(Exception e){
+        Debug.debug("Compacting database failed. "+
+            e.getCause().toString()+"\n"+e.getMessage(),1);
+      }
       conn.close();
     }
     catch(SQLException e){
@@ -1461,9 +1487,9 @@ public class HSQLDBDatabase implements Database{
       String [] values){
     return updateJobDefinition(
         jobDefID,
-        new String [] {"identifier", "name"/*, "stdOut", "stdErr"*/},
-        new String [] {values[0], values[1]}
-        );
+        new String [] {"jobID", "name", "outTmp", "errTmp"},
+        values
+    );
   }
   
   public synchronized boolean updateJobDefinition(int jobDefID, String [] fields,
