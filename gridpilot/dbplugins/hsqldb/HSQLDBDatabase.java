@@ -35,7 +35,7 @@ public class HSQLDBDatabase implements Database{
   private String passwd = "";
   private Connection conn = null;
   private String error = "";
-  
+  private Server server = null;
   private String [] transformationFields = null;
   private String [] jobDefFields = null;
   private String [] datasetFields = null;
@@ -121,11 +121,14 @@ public class HSQLDBDatabase implements Database{
         // database server
         if(database.startsWith("hsql://localhost/")){
           // if on localhost we start the server here
-          String dbName = null;
-          Server server = new Server();
-          server.setDatabasePath(0, database.substring(15));
-          dbName =  database.substring(database.lastIndexOf("/"));
+          server = new Server();
+          String dbPath = database.substring(16);
+          server.setDatabasePath(0, dbPath);
+          String dbName =  database.substring(database.lastIndexOf("/")+1);
           server.setDatabaseName(0, dbName);
+          Debug.debug("Starting database server, "+dbName+":"+
+              dbPath, 1);
+          server.start();
           database = "hsql://localhost/"+dbName;
         }
         conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
@@ -234,15 +237,29 @@ public class HSQLDBDatabase implements Database{
 
   public void disconnect(){
     try{
-      try{
-        Statement stmt = conn.createStatement();
-        stmt.executeUpdate("SHUTDOWN COMPACT");
+      if(server!=null){
+        try{
+          Statement stmt = conn.createStatement();
+          stmt.executeUpdate("SHUTDOWN");
+        }
+        catch(Exception e){
+          Debug.debug("Shutting down server failed. "+
+              e.getCause().toString()+"\n"+e.getMessage(),1);
+        }
+        conn.close();
+        server.stop();
       }
-      catch(Exception e){
-        Debug.debug("Compacting database failed. "+
-            e.getCause().toString()+"\n"+e.getMessage(),1);
+      else{
+        try{
+          Statement stmt = conn.createStatement();
+          stmt.executeUpdate("SHUTDOWN COMPACT");
+        }
+        catch(Exception e){
+          Debug.debug("Compacting database failed. "+
+              e.getCause().toString()+"\n"+e.getMessage(),1);
+        }
+        conn.close();
       }
-      conn.close();
     }
     catch(SQLException e){
       Debug.debug("Closing connection failed. "+

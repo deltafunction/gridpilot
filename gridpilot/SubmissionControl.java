@@ -83,7 +83,8 @@ public class SubmissionControl{
     if(tmp != null){
       try{
         maxSimultaneousSubmission = Integer.parseInt(tmp);
-      }catch(NumberFormatException nfe){
+      }
+      catch(NumberFormatException nfe){
         logFile.addMessage("Value of \"maximum simultaneoud submission\" "+
                                     "is not an integer in configuration file", nfe);
       }

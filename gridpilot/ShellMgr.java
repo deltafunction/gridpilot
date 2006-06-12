@@ -31,7 +31,7 @@ public interface ShellMgr{
    * @return exit value of the command
    * @throws IOException
    */
-  public int exec(String cmd, String workingDirectory,
+  public int exec(String cmd, String [] env, String workingDirectory,
                   StringBuffer stdOut, StringBuffer stdErr) throws IOException;
 
 

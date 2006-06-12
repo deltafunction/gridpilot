@@ -538,13 +538,12 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     Debug.debug("show outputs", 1);
 
     final int selectedRow = statusTable.getSelectedRow();
-    if(selectedRow == -1)
+    if(selectedRow==-1){
       return;
-
+    }
     if(DatasetMgr.isRunning(selectedRow)){
       statusBar.setLabel("Waiting for outputs ...");
       statusBar.animateProgressBar();
-
 
       final Thread t = new Thread(){
         public void run(){

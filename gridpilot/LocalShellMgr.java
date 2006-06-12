@@ -267,20 +267,32 @@ public class LocalShellMgr implements ShellMgr{
    * @return hash code of the started process
    * @throws IOException
    */
-  public Process submit(final String [] cmd, final String workingDirectory,
-                  final String stdOutFile, final String stdErrFile) throws Exception {
-    Debug.debug("executing "+Util.arrayToString(cmd), 3);
+  public HashMap processes = new HashMap();
+  
+  public Process getProcess(String cmd){
+    return (Process) processes.get(cmd);
+  }
 
-    final Process proc = Runtime.getRuntime().exec(cmd, null, 
-        (workingDirectory==null ? null : new File(workingDirectory)));
-    
+  public void setProcess(String cmd, Process process){
+    processes.put(cmd, process);
+  }
+
+  public Process submit(final String cmd, final String workingDirectory,
+                  final String stdOutFile, final String stdErrFile) throws Exception {
+    Debug.debug("executing "+cmd, 3);
+
     Thread runThread = new Thread(){
       public void run(){
-        try{     
+        try{
+          Process proc = Runtime.getRuntime().exec(cmd, null, 
+              (workingDirectory==null ? null : new File(workingDirectory)));
+          
+          setProcess(cmd, proc);
+          
           FileOutputStream fos = new FileOutputStream(stdOutFile);
           StreamGobbler outputGobbler = new StreamGobbler(proc.getInputStream(), "OUTPUT", fos);
             
-          FileOutputStream fes = new FileOutputStream(stdOutFile);
+          FileOutputStream fes = new FileOutputStream(stdErrFile);
           StreamGobbler errorGobbler = new StreamGobbler(proc.getErrorStream(), "ERROR", fes);            
 
           errorGobbler.start();
@@ -302,9 +314,14 @@ public class LocalShellMgr implements ShellMgr{
         }
       }
     };
-    runThread.run();
-
-    return proc;
+    
+    Debug.debug("Running job: "+cmd, 2);
+    runThread.start();
+    
+    Thread.sleep(5000);
+    
+    Debug.debug("Returning job: "+getProcess(cmd).hashCode(), 2);
+    return getProcess(cmd);
   }
   
   class StreamGobbler extends Thread{

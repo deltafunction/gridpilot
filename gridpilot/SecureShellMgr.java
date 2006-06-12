@@ -81,10 +81,10 @@ public class SecureShellMgr implements ShellMgr{
    }
 
   public int exec(String cmd, StringBuffer stdOut, StringBuffer stdErr) throws IOException {
-    return exec(cmd, null, stdOut, stdErr);
+    return exec(cmd, null, null, stdOut, stdErr);
   }
 
-  public int exec(String cmd, String workingDirectory,
+  public int exec(String cmd, String [] env, String workingDirectory,
       StringBuffer stdOut, StringBuffer stdErr) throws IOException{
     Debug.debug(cmd, 1);
     ChannelExec channel = getChannel();
@@ -122,6 +122,38 @@ public class SecureShellMgr implements ShellMgr{
         return(exitStatus);
       }
     }
+    
+    // Environment
+    if(env!=null){
+      ((ChannelExec) channel).setCommand(Util.arrayToString(env, "; "));
+      while(true){
+        while(in.available()>0){
+          int i=in.read(tmp, 0, 1024);
+          if(i<0) break;
+          stdOut.append(new String(tmp, 0, i));
+        }
+        while(err.available()>0){
+          int j=err.read(tmp1, 0, 1024);
+          if(j<0)break;
+          stdErr.append(new String(tmp1, 0, j));
+        }
+        if(channel.isClosed()){
+          break;
+        }
+      }
+      int exitStatus = channel.getExitStatus();
+      if(exitStatus!=0 || stdErr!=null){
+        Debug.debug("Environment (" + Util.arrayToString(env, "; ") + ") cannot be used " +
+            " for exec " + cmd + " : " +
+            stdErr, 2);
+        logFile.addMessage("Environment (" + Util.arrayToString(env, "; ") + ") cannot be used " +
+                           " for exec " + cmd + " : " +
+                           stdErr);
+        channel.disconnect();
+        return(exitStatus);
+      }
+    }
+
     ((ChannelExec) channel).setCommand(cmd);
     while(true){
       while(in.available()>0){

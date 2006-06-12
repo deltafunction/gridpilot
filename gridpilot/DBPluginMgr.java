@@ -95,44 +95,7 @@ public class DBPluginMgr implements Database{
   }
 
   public boolean updateJobStdoutErr(int jobDefID, String stdOut, String stdErr){
-    return updateRunInf(jobDefID, new String [] {"outVal", "errVal"}, new String [] {stdOut, stdErr});
-  }
-  
-  public boolean updateRunInf(int jobDefID, String [] fields, String [] values){
-    if(fields.length!=values.length){
-      Debug.debug("The number of fields and values do not agree, "+
-          fields.length+"!="+values.length, 1);
-      return false;
-    }
-    if(fields.length>JobInfo.Fields.length){
-      Debug.debug("The number of fields is too large, "+
-          fields.length+">"+JobInfo.Fields.length, 1);
-    }
-    String [] vals = new String[JobInfo.Fields.length];
-    for(int i=0; i<JobInfo.Fields.length; ++i){
-      vals[i] = "";
-      for(int j=0; i<fields.length; ++j){
-        if(fields[j].equalsIgnoreCase(JobInfo.Fields[i])){
-          vals[i] = values[j];
-          break;
-        }
-        if(fields[j].equalsIgnoreCase(JobInfo.Identifier)){
-          vals[i] = Integer.toString(jobDefID);
-          break;
-        }
-      }
-    }
-    JobInfo job = (JobInfo) GridPilot.getClassMgr().getDBPluginMgr(dbName).getRunInfo(jobDefID);
-
-    for(int i=0; i<fields.length; ++i){
-      try{
-        job.setValue(fields[i], values[i]);
-      }
-      catch(Throwable e){
-        Debug.debug("Could not set "+fields[i]+" to "+values[i], 1);
-      }
-    }
-    return GridPilot.getClassMgr().getDBPluginMgr(dbName).updateRunInfo(job);
+    return updateJobDefinition(jobDefID, new String [] {"outVal", "errVal"}, new String [] {stdOut, stdErr});
   }
 
   /** 
@@ -2298,7 +2261,10 @@ public class DBPluginMgr implements Database{
    */
   private boolean waitForThread(MyThread t, String dbName, int timeOut, String function){
     do{
-      try{t.join(timeOut);}catch(InterruptedException ie){}
+      try{
+        t.join(timeOut);
+      }
+      catch(InterruptedException ie){}
   
       if(t.isAlive()){
         if(!askBeforeInterrupt || askForInterrupt(dbName, function)){
