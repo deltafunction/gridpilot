@@ -27,7 +27,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private int showRows = ALL_JOBS;
 
   Timer timerRefresh = new Timer(0, new ActionListener (){
-    public void actionPerformed(ActionEvent e) {
+    public void actionPerformed(ActionEvent e){
       refresh();
     }
   });
@@ -57,9 +57,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JCheckBox cbAutoRefresh = new JCheckBox("Refresh each");
   private JSpinner sAutoRefresh = new JSpinner();
   private JComboBox cbRefreshUnits = new JComboBox(new Object []{"sec", "min"});
-  private int SEC = 0;
-
-  //private JMenu menu = new JMenu("Job options");
+  //private int SEC = 0;
+  private int MIN = 1;
 
   private JMenuItem miKill = new JMenuItem("Kill");
   private JMenuItem miDecide = new JMenuItem("Decide");
@@ -71,7 +70,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JMenuItem miShowOutput = new JMenuItem("Outputs");
   private JMenuItem miShowFullStatus = new JMenuItem("Full status");
   private JMenuItem miShowInfo = new JMenuItem("Infos");
-  private JMenuItem miShowFiles = new JMenuItem("Files");
   private JMenuItem miShowScripts = new JMenuItem("Scripts");
 
   private JMenuItem miStopUpdate = new JMenuItem("Stop update");
@@ -83,7 +81,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   public StatusUpdateControl statusUpdateControl;
   private SubmissionControl submissionControl;
-
 
   /**
    * Constructor
@@ -126,7 +123,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     makeMenu();
 
-    //// options panel
+    //options panel
 
     pOptions.setLayout(new GridBagLayout());
 
@@ -234,7 +231,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     });
 
     sAutoRefresh.setPreferredSize(new Dimension(50, 21));
-    sAutoRefresh.setModel(new SpinnerNumberModel(30, 1, 9999, 1));
+    sAutoRefresh.setModel(new SpinnerNumberModel(5, 1, 9999, 1));
     sAutoRefresh.addChangeListener(new ChangeListener(){
       public void stateChanged(ChangeEvent e){
         delayChanged();
@@ -314,12 +311,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     miShowInfo.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         showInfo();
-      }
-    });
-
-    miShowFiles.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        showFiles();
       }
     });
 
@@ -412,7 +403,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     mShow.add(miShowOutput);
     mShow.add(miShowFullStatus);
     mShow.add(miShowInfo);
-    mShow.add(miShowFiles);
     mShow.add(miShowScripts);
 
 
@@ -460,30 +450,33 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   /**
    * Called when check box for auto refresh is selected
    */
-  void cbAutoRefresh_clicked() {
+  void cbAutoRefresh_clicked(){
     if(cbAutoRefresh.isSelected()){
       delayChanged();
       timerRefresh.restart();
     }
-    else
+    else{
       timerRefresh.stop();
+    }
   }
 
   /**
    * Called when either the spinner valuer is changed or combo box "sec/min" is changed
    */
-  void delayChanged() {
+  void delayChanged(){
     int delay = ((Integer) (sAutoRefresh.getValue())).intValue();
-    if(cbRefreshUnits.getSelectedIndex() == SEC)
+    if(cbRefreshUnits.getSelectedIndex()==MIN){
       timerRefresh.setDelay(delay * 1000);
-    else
+    }
+    else{
       timerRefresh.setDelay(delay * 1000 * 60);
+    }
   }
 
   /**
    * Called when button or menu item "Kill" is selected
    */
-  void kill() {
+  void kill(){
     DatasetMgr.killJobs(statusTable.getSelectedRows());
   }
 
@@ -547,22 +540,20 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
       final Thread t = new Thread(){
         public void run(){
-          String [] outs = GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(
-              DatasetMgr.getJobAtRow(selectedRow));
-
           JobInfo job = DatasetMgr.getJobAtRow(selectedRow);
-          String path[] = job.getStdErr() == null ?
-              new String[]{job.getStdOut()} :
-              new String[]{job.getStdOut(), job.getStdErr()};
-          if (job.getStdErr() == null)
-            outs = new String[] {
-                outs[0]};
+          String [] outNames = new String [] {"stdout", "stderr"};
+          String [] outs = GridPilot.getClassMgr().getCSPluginMgr(
+              ).getCurrentOutputs(job);
+          if(job.getStdErr()==null){
+            outNames = new String [] {"stdout"};
+            outs = new String[] {outs[0]};
+          }
           statusBar.removeLabel();
           statusBar.stopAnimation();
 
-          ShowOutputsJobsDialog.showFilesTabs(JOptionPane.getRootFrame(),
+          ShowOutputsJobsDialog.showTabs(JOptionPane.getRootFrame(),
                                               "Current outputs of job " + job.getName(),
-                                              path,
+                                              outNames,
                                               outs);
         }
       };
@@ -575,86 +566,21 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       t.start();
     }
     else{
-      //jobControl.setFinalDest(selectedRow);
       JobInfo job = DatasetMgr.getJobAtRow(selectedRow);
-      if((job.getStdOut() == null || job.getStdOut().equals("")) &&
-         (job.getStdErr() == null || job.getStdErr().equals(""))){
-        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-        job.setOutputs(dbPluginMgr.getStdOutFinalDest(job.getJobDefId()),
-                       dbPluginMgr.getStdErrFinalDest(job.getJobDefId()));
-      }
-      ShellMgr shell = null;
-      try{
-        shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
-      }
-      catch(Exception e){
-        Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
-      }
       String [] files;
-      if(job.getStdOut() == null){
-        Debug.debug("No stdout, trying to get...", 2);
-        final Thread t = new Thread(){
-          public void run(){
-            String [] outs = GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(
-                  DatasetMgr.getJobAtRow(selectedRow));
-
-            JobInfo job = DatasetMgr.getJobAtRow(selectedRow);
-            String path[] = job.getStdErr() == null ?
-                new String[]{job.getStdOut()} :
-                new String[]{job.getStdOut(), job.getStdErr()};
-            if (job.getStdErr() == null){
-              outs = new String[] {outs[0]};
-              // Save the obtained stdout
-              try{
-                GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job).writeFile(job.getStdOut(), outs[0], false);
-              }
-              catch(Exception e){
-                Debug.debug("WARNING: Could not save. "+e.getMessage(), 1);
-              }
-            }
-            else{
-              // Save the obtained stdout/stderr
-              try{
-                GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job).writeFile(job.getStdOut(), outs[0], false);
-                GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job).writeFile(job.getStdErr(), outs[1], false);
-              }
-              catch(Exception e){
-                Debug.debug("WARNING: Could not save. "+e.getMessage(), 1);
-              }
-            }
-            statusBar.removeLabel();
-            statusBar.stopAnimation();
-            
-
-            ShowOutputsJobsDialog.showFilesTabs(JOptionPane.getRootFrame(),
-                                                "Current outputs of job " + job.getName(),
-                                                path,
-                                                outs);
-          }
-        };
-        statusBar.setIndeterminateProgressBarToolTip("click here to stop");
-        statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
-          public void mouseClicked(MouseEvent me){
-            t.interrupt();
-          }
-        });
-        t.start();
+      if(job.getStdErr()==null){
+        Debug.debug("No stderr", 3);
+        files = new String [] {job.getStdOut()};
       }
       else{
-        if(job.getStdErr() == null){
-          Debug.debug("No stderr", 3);
-          files = new String [] {job.getStdOut()};
-        }
-        else{
-          files = new String [] {job.getStdOut(), job.getStdErr()};
-        }
-        ShowOutputsJobsDialog.showFilesTabs(this,
-            "Final outputs of job " + job.getName(),
-            shell,
-            files);
+        files = new String [] {job.getStdOut(), job.getStdErr()};
+      }
+      ShowOutputsJobsDialog.showTabs(this,
+          "Final outputs of job " + job.getName(),
+          job.getCSName(),
+          files);
       }
     }
-  }
 
   /**
    * Shows full status of the job at the selected row. <p>
@@ -676,60 +602,11 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     MessagePane.showMessage(info, "Job Infos");
   }
 
-  /**
-   * Shows a window with as many tabs as the number of files in the same
-   * directory than job.getStdOut (for the first selected job). <p>
-   * In each tab, a file is shown.
-   */
-  private void showFiles(){
-    JobInfo job = DatasetMgr.getJobAtRow(statusTable.getSelectedRow());
-    ShellMgr shell = null;
-    try{
-      shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
-    }
-    catch(Exception e){
-      Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
-    }
-    // looks for the directory
-    String dir = job.getStdOut();
-    if(dir ==null){
-      GridPilot.getClassMgr().getLogFile().addMessage("Stdout is null", job);
-      return;
-
-    }
-    dir = dir.substring(0, dir.lastIndexOf("/")+1);
-    // asks all files in this directory
-    String[] files = shell.listFiles(dir);
-    // checks if dir was a directory
-    if(files == null){
-      GridPilot.getClassMgr().getLogFile().addMessage("This directory (" + dir +
-                                                  ") doesn't exist");
-      return;
-    }
-    // replaces directories by null (won't be shown)
-    for(int i=0; i<files.length ; ++i){
-      Debug.debug("file : " + files[i], 2);
-      if(shell.isDirectory(files[i]))
-        files[i] = null;
-    }
-    // shows the window
-    ShowOutputsJobsDialog.showFilesTabs(JOptionPane.getRootFrame(),
-                                        "Files of job " + job.getName(),
-                                        shell, files);
-  }
-
   private void showScripts(){
     JobInfo job = DatasetMgr.getJobAtRow(statusTable.getSelectedRow());
-    ShellMgr shell = null;
-    try{
-      shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
-    }
-    catch(Exception e){
-      Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
-    }
-    ShowOutputsJobsDialog.showFilesTabs(JOptionPane.getRootFrame(),
+    ShowOutputsJobsDialog.showTabs(JOptionPane.getRootFrame(),
         "Scripts for job " + job.getName(),
-        shell,
+        job.getCSName(),
         getDatasetMgr(job).getScripts(statusTable.getSelectedRow())            
         );
   }
@@ -831,7 +708,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   private void setDBStatus(final int dbStatus){
     new Thread(){
-      public void run() {
+      public void run(){
         //jobControl.setDBStatus(statusTable.getSelectedRows(), dbStatus);
         Vector jobs = DatasetMgr.getJobsAtRows(statusTable.getSelectedRows());
         JobInfo job;

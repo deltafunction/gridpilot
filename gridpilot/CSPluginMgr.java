@@ -654,9 +654,9 @@ public class CSPluginMgr implements ComputingSystem{
   }
 
   /**
-   * @see ComputingSystem#copyFile(JobInfo)
+   * @see ComputingSystem#copyFile(String, String, String)
    */
-  public boolean copyFile(final String csName, final String src, final String dest) {
+  public boolean copyFile(final String csName, final String src, final String dest){
 
     MyThread t = new MyThread(){
       boolean res = false;
@@ -685,4 +685,38 @@ public class CSPluginMgr implements ComputingSystem{
       return false;
     }
   }
+  
+  /**
+   * @see ComputingSystem#deleteFile(String, String)
+   */
+  public boolean deleteFile(final String csName, final String src){
+
+    MyThread t = new MyThread(){
+      boolean res = false;
+      public void run(){
+        try{
+          res = ((ComputingSystem) cs.get(csName)).deleteFile(csName, src);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + csName +
+                             " during deleteFile", t);
+          res = false;
+        }
+      }
+      public boolean getBooleanRes(){
+        return res;
+      }
+    };
+
+    t.start();
+
+    if(waitForThread(t, csName, copyFileTimeOut, "deleteFile")){
+      return t.getBooleanRes();
+    }
+    else{
+      return false;
+    }
+  }
+
 }

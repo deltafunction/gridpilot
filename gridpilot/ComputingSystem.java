@@ -170,6 +170,12 @@ public interface ComputingSystem{
   public boolean copyFile(String csName, String src, String dest);
 
   /**
+   * Used for cleaning up after job has run.
+   * 
+   * @return true or false for success or failure
+   */  
+  public boolean deleteFile(String csName, String src);
+  /**
    * Returns user information from the credentials used by this plugin
    * for submitting jobs.
    * Usually this would be the subject of the grid certificate.

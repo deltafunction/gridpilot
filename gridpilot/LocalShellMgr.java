@@ -180,10 +180,8 @@ public class LocalShellMgr implements ShellMgr{
 
   public String readFile(String path) throws FileNotFoundException, IOException {
     RandomAccessFile f = new RandomAccessFile(path, "r");
-
     byte [] b  = new byte [(int)f.length()];
     f.readFully(b);
-
     String res = new String(b);
     f.close();
     return res;
@@ -270,11 +268,22 @@ public class LocalShellMgr implements ShellMgr{
   public HashMap processes = new HashMap();
   
   public Process getProcess(String cmd){
-    return (Process) processes.get(cmd);
+    Process ret = null;
+    try{
+      ret = (Process) processes.get(cmd);
+    }
+    catch(Exception e){
+      Debug.debug("Could not get process for "+cmd, 2);
+    }
+    return ret;
   }
 
-  public void setProcess(String cmd, Process process){
+  public void addProcess(String cmd, Process process){
     processes.put(cmd, process);
+  }
+
+  public void removeProcess(String cmd){
+    processes.remove(cmd);
   }
 
   public Process submit(final String cmd, final String workingDirectory,
@@ -284,10 +293,9 @@ public class LocalShellMgr implements ShellMgr{
     Thread runThread = new Thread(){
       public void run(){
         try{
-          Process proc = Runtime.getRuntime().exec(cmd, null, 
-              (workingDirectory==null ? null : new File(workingDirectory)));
           
-          setProcess(cmd, proc);
+          final Process proc = Runtime.getRuntime().exec(cmd, null, 
+              (workingDirectory==null ? null : new File(workingDirectory)));
           
           FileOutputStream fos = new FileOutputStream(stdOutFile);
           StreamGobbler outputGobbler = new StreamGobbler(proc.getInputStream(), "OUTPUT", fos);
@@ -298,12 +306,16 @@ public class LocalShellMgr implements ShellMgr{
           errorGobbler.start();
           outputGobbler.start();
                                 
+          addProcess(cmd, proc);
+
           proc.waitFor();
 
           fos.flush();
           fos.close(); 
           fes.flush();
           fes.close();
+          
+          removeProcess(cmd);
         }
         catch(Exception ie){
           GridPilot.getClassMgr().getLogFile().addMessage("Exception in LocalShellMgr.exec : " +
@@ -318,10 +330,15 @@ public class LocalShellMgr implements ShellMgr{
     Debug.debug("Running job: "+cmd, 2);
     runThread.start();
     
-    Thread.sleep(5000);
-    
-    Debug.debug("Returning job: "+getProcess(cmd).hashCode(), 2);
-    return getProcess(cmd);
+    for(int rep=0; rep<10; ++rep){
+      Debug.debug("Sleeping 3 seconds...", 2);
+      Thread.sleep(3000);
+      if(getProcess(cmd)!=null){
+        Debug.debug("Returning job: "+getProcess(cmd).hashCode(), 2);
+        return getProcess(cmd);
+      }
+    }
+    return null;
   }
   
   class StreamGobbler extends Thread{

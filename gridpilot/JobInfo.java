@@ -115,14 +115,8 @@ public class JobInfo extends DBRecord{
   public String getStdErr(){
     return errTmp;
   }
-  public String getValidationStdOut(){
-    return outVal;
-  }
-  public String getValidationStdErr(){
-    return errVal;
-  }
 
-
+  
   public String getJobId(){
     return jobID;
   }
@@ -186,21 +180,6 @@ public class JobInfo extends DBRecord{
     setValues();
   }
 
-  void setValidationStdOut(String _validationStdout){
-    outVal = _validationStdout;
-    setValues();
-  }
-  void setValidationStdErr(String _validationStdErr){
-    errVal = _validationStdErr;
-    setValues();
-  }
-
-  void setValidationOutputs(String _validationStdOut, String _validationStdErr){
-    outVal = _validationStdOut;
-    errVal = _validationStdErr;
-    setValues();
-  }
-
   public void setJobId( String _jobID){
     jobID =  _jobID;
       setValues();
@@ -245,9 +224,7 @@ public class JobInfo extends DBRecord{
         "  Status \t: " + getJobStatus() + "\n" +
         "  Status AtCom \t: "+ getInternalStatus() + "\n" +
         "  StdOut \t: " + getStdOut() + "\n" +
-        "  StdErr \t: " + getStdErr() + "\n" +
-        "  Val sdtOut \t: " + getValidationStdOut() +"\n"+
-        "  Val stdErr \t: " + getValidationStdErr() + "\n" ;
+        "  StdErr \t: " + getStdErr() + "\n";
   }
 
   public int getTableRow(){ return tableRow;}

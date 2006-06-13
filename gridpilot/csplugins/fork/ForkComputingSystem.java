@@ -3,6 +3,7 @@ package gridpilot.csplugins.fork;
 import java.io.File;
 import java.io.IOException;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.Vector;
 
 import gridpilot.ComputingSystem;
@@ -49,6 +50,10 @@ public class ForkComputingSystem implements ComputingSystem{
     }
   }
 
+  private String runDir(JobInfo job){
+    return workingDir +"/"+job.getName();
+  }
+  
   /**
    * Script :
    *  params : partId stdOut stdErr
@@ -57,18 +62,23 @@ public class ForkComputingSystem implements ComputingSystem{
    */
   public boolean submit(final JobInfo job){
     
-    final String stdoutFile = workingDir +"/"+job.getName()+ ".stdout";
-    final String stderrFile = workingDir +"/"+job.getName()+ ".stderr";
-    final String cmd = workingDir+"/"+job.getName()+commandSuffix;
+    // create the run directory
+    if(!shellMgr.existsFile(runDir(job))){
+      shellMgr.mkdirs(runDir(job));
+    }
+    
+    final String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
+    final String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";
+    final String cmd = runDir(job)+"/"+job.getName()+commandSuffix;
     Debug.debug("Executing "+cmd, 2);
     job.setOutputs(stdoutFile, stderrFile);
     ForkScriptGenerator scriptGenerator =
-      new ForkScriptGenerator(systemName, workingDir);
+      new ForkScriptGenerator(systemName, runDir(job));
 
     scriptGenerator.createWrapper(job, job.getName()+commandSuffix);
     
     try{
-      Process proc = ((LocalShellMgr) shellMgr).submit(cmd, workingDir, stdoutFile, stderrFile);
+      Process proc = ((LocalShellMgr) shellMgr).submit(cmd, runDir(job), stdoutFile, stderrFile);
       job.setJobId(Integer.toString(proc.hashCode()));   
     }
     catch(Exception ioe){
@@ -100,37 +110,20 @@ public class ForkComputingSystem implements ComputingSystem{
     job.setHost("localhost");
 
     // Status. Either running or not. 
-    // Get a list of all processes and see if there is one with the
-    // name of the job.
-    String cmd = null;
-    if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
-      cmd = "tasklist";
+    boolean jobRunning = false;
+    Process proc = null;
+    Iterator it = ((LocalShellMgr) shellMgr).processes.values().iterator();
+    while(it.hasNext()){
+      proc = ((Process) it.next());
+       if(proc!=null &&
+          Integer.parseInt(job.getJobId())==proc.hashCode()){
+        jobRunning = true;
+        break;
+      }
     }
-    else{
-      cmd = "ps auxw";
-    }
-    int retValue;
-    StringBuffer stdOut = new StringBuffer();
-    StringBuffer stdErr = new StringBuffer();
-    try{
-      retValue = shellMgr.exec(cmd, env, null, stdOut, stdErr);
-    }
-    catch(IOException ioe){
-      logFile.addMessage("IOException during job " + job.getName() + " update : \n" +
-                                  "\tCommand\t: " + cmd + "\n" +
-                                  "\tException\t: " + ioe.getMessage(), ioe);
-      job.setLocalStatus(ComputingSystem.STATUS_ERROR);
-      return;
-    }
-    Debug.debug("job " + job.getName() + " updateStatus : " + retValue+" : "+
-        stdOut, 3);
-    if(stdErr.length()!=0){
-      logFile.addMessage("Error during job "+ job.getName() + " update :\n" +
-                              "Command : " + cmd + "\n"+
-                              "StdOut : " + stdOut + "\n"+
-                              "StdErr : " + stdErr );
-    }
-    if(stdOut.length()!=0 && stdOut.indexOf(job.getName()+commandSuffix)>-1){
+    if(jobRunning/*stdOut.length()!=0 &&
+        stdOut.indexOf(job.getName())>-1*/
+        ){
       job.setJobStatus("Running");
       job.setLocalStatus(ComputingSystem.STATUS_RUNNING);
     }
@@ -158,7 +151,7 @@ public class ForkComputingSystem implements ComputingSystem{
       String remoteName = null;
       for(int i=0; i<outputMapping.length; ++i){
         try{
-          localName = workingDir +"/"+dbPluginMgr.getJobDefOutLocalName(jobDefID,
+          localName = runDir(job) +"/"+dbPluginMgr.getJobDefOutLocalName(jobDefID,
               outputMapping[i]);
           localName = Util.clearFile(localName);
           remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputMapping[i]);
@@ -182,46 +175,47 @@ public class ForkComputingSystem implements ComputingSystem{
    *  param : jobId
    */
   public void killJobs(Vector jobsToKill){
-
-    //String cmd = "killall -9 ";
-    
+    Process proc = null;
     String cmd = null;
-    if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
-      cmd = "taskkill /IM ";
-    }
-    else{
-      cmd = "killall -9 ";
-    }
-
-
     for(Enumeration en=jobsToKill.elements(); en.hasMoreElements();){
-      cmd += " "+((JobInfo) en.nextElement()).getName()+commandSuffix;
-    }
-    try{
-      StringBuffer stdErr = new StringBuffer();
-      shellMgr.exec(cmd, null, stdErr);
-      if(stdErr.length()!=0)
-        logFile.addMessage("Error during killing of job " +
-                                " on " + systemName +" : \n" +
-                                "\tCommand\t: " + cmd +"\n" +
-                                "\tMessage\t: " + stdErr);
-    }
-    catch(IOException ioe){
-      logFile.addMessage("IOException during job killing :\n" +
-                                  "\tCommand\t: " + cmd +"\n" +
-                                  "\tException\t: " + ioe.getMessage(), ioe);
+      try{
+        Iterator it = ((LocalShellMgr) shellMgr).processes.keySet().iterator();
+        while(it.hasNext()){
+          cmd = (String) it.next();
+          proc = (Process) ((LocalShellMgr) shellMgr).processes.get(
+              (cmd));
+          if(proc!=null &&
+              Integer.parseInt(((JobInfo) en.nextElement()).getJobId())==
+                proc.hashCode()){
+            Debug.debug("killing job #"+proc.hashCode()+" : "+cmd, 2);
+            proc.destroy();
+            // should not be necessary
+            try{
+              ((LocalShellMgr) shellMgr).removeProcess(cmd);
+            }
+            catch(Exception ee){
+            }
+            return;
+          }
+        }
+      }
+      catch(Exception e){
+        logFile.addMessage("Exception during job killing :\n" +
+                                    "\tJob#\t: " + cmd +"\n" +
+                                    "\tException\t: " + e.getMessage(), e);
+      }
     }
   }
 
-
   public void clearOutputMapping(JobInfo job){
-    String cmd = "rm "+job.getName()+commandSuffix;
     try{
-      (new File(workingDir+"/"+job.getName()+commandSuffix)).delete();
+      (new File(runDir(job)+"/"+job.getName()+commandSuffix)).delete();
+      (new File(runDir(job)+"/"+job.getName()+"stdout")).delete();
+      (new File(runDir(job)+"/"+job.getName()+"stderr")).delete();
+      (new File(runDir(job))).delete();
     }
     catch(Exception ioe){
       logFile.addMessage("Exception during clearOutputMapping of job " + job.getName()+ "\n" +
-                                  "\tCommand\t: " + cmd +"\n" +
                                   "\tException\t: " + ioe.getMessage(), ioe);
     }
   }
@@ -231,44 +225,24 @@ public class ForkComputingSystem implements ComputingSystem{
   }
 
   public String getFullStatus(JobInfo job){
-
-    String cmd = null;
-    if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
-      cmd = "tasklist";
-    }
-    else{
-      cmd = "ps auxw";
-    }
-
-    try{
-      StringBuffer stdErr = new StringBuffer();
-      StringBuffer stdOut = new StringBuffer();
-      shellMgr.exec(cmd, stdOut, stdErr);
-      //return stdOut.toString() + (stdErr.length()!=0 ? "(" + stdErr + ")" : "");
-      String [] stdOutArray = Util.split(stdOut.toString(), "\n");
-      for(int i=0; i<stdOutArray.length; ++i){
-        if(stdOutArray[i].toString().toLowerCase().indexOf(
-            job.getName().toLowerCase())>-1){
-          return stdOutArray[0]+"\n"+stdOutArray[i];
-        }
+    Process proc = null;
+    Iterator it = ((LocalShellMgr) shellMgr).processes.values().iterator();
+    while(it.hasNext()){
+      proc = ((Process) it.next());
+       if(proc!=null &&
+          Integer.parseInt(job.getJobId())==proc.hashCode()){
+        return "Job #"+job.getJobId()+" is running.";
       }
-      return "job not found";
     }
-    catch(IOException ioe){
-      logFile.addMessage("IOException during getFullStatus of job " + job.getName()+ "\n" +
-                                  "\tCommand\t: " + cmd +"\n" +
-                                  "\tException\t: " + ioe.getMessage(), ioe);
-      return "job not found";
-    }
+    return "";
   }
 
   public String[] getCurrentOutputs(JobInfo job){
-
     try{
-      String stdOutText = shellMgr.readFile(workingDir+"/"+job.getName()+"stdout");
+      String stdOutText = shellMgr.readFile(job.getStdOut());
       String stdErrText = "";
-      if(shellMgr.existsFile(workingDir+"/"+job.getName()+"stderr")){
-        stdErrText = shellMgr.readFile(workingDir+"/"+job.getName()+"stderr");
+      if(shellMgr.existsFile(job.getStdErr())){
+        stdErrText = shellMgr.readFile(job.getStdErr());
       }
       return new String [] {stdOutText, stdErrText};
     }
@@ -294,14 +268,23 @@ public class ForkComputingSystem implements ComputingSystem{
     }
   }
   
+  public boolean deleteFile(String csName, String src){
+    try{
+      return shellMgr.deleteFile(src);
+    }
+    catch(Exception ioe){
+      logFile.addMessage("IOException during copying of file " +
+          csName + " : \n" +
+          "\tSource\t: " + src + "\n" +
+          "\tException\t: " + ioe.getMessage(), ioe);
+      Debug.debug("IOException during copying of file " +ioe.getMessage(), 3);
+      return false;
+    }
+  }
+  
   public String getUserInfo(String csName){
     String user = null;
-    //String cmd = "whoami";
     try{
-      //StringBuffer stdErr = new StringBuffer();
-      //StringBuffer stdOut = new StringBuffer();
-      //shellMgr.exec(cmd, stdOut, stdErr);
-      //user = stdOut.toString();
       user = System.getProperty("user.name");
       /* remove leading whitespace */
       user = user.replaceAll("^\\s+", "");
@@ -309,9 +292,8 @@ public class ForkComputingSystem implements ComputingSystem{
       user = user.replaceAll("\\s+$", "");      
     }
     catch(Exception ioe){
-      /*logFile.addMessage("Exception during getUserInfo\n" +
-                                  "\tCommands\t: " + cmd +"\n" +
-                                 "\tException\t: " + ioe.getMessage(), ioe);*/
+      logFile.addMessage("Exception during getUserInfo\n" +
+                                 "\tException\t: " + ioe.getMessage(), ioe);
     }
     if(user==null){
       Debug.debug("Job user null, getting from config file", 3);
