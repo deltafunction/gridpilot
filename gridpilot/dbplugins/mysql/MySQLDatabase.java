@@ -169,7 +169,7 @@ public class MySQLDatabase implements Database{
 
   public synchronized boolean cleanRunInfo(int jobDefID){
     String sql = "UPDATE jobDefinition SET jobID = ''," +
-        "outTmp = '', errTmp = '', valOut = '',  valErr = '' " +
+        "outTmp = '', errTmp = '', validationResult = '' " +
         "WHERE identifier = '"+
     jobDefID+"'";
     boolean ok = true;
@@ -1131,7 +1131,8 @@ public class MySQLDatabase implements Database{
     error = "";
     String ofmapstr = "" ;
     String trparsstr = "" ;
-    trparsstr = Util.webEncode(trpars);
+    //trparsstr = Util.webEncode(trpars);
+    trparsstr = Util.arrayToString(trpars);
     for (int i=0 ; i<ofmap.length ; i++){  
       ofmapstr += ofmap[i] [0] + " " + ofmap[i] [1] + " ";
     }
@@ -1424,7 +1425,7 @@ public class MySQLDatabase implements Database{
     for(int i=0; i<jobDefFields.length; ++i){
       if(!jobDefFields[i].equals("identifier")){
         for(int j=0; j<fields.length; ++j){
-          // only add if present in transformationFields
+          // only add if present in jobDefFields
           if(jobDefFields[i].equalsIgnoreCase(fields[j])){
             if(jobDefFields[i].equalsIgnoreCase("created")){
               try{

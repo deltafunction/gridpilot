@@ -306,21 +306,17 @@ public class JobValidation{
       ++ lineNr;
       String line = st.nextToken();
       int indexIs = line.indexOf("=");
-      if(line.startsWith("GRIDPILOT METADATA:") && indexIs==-1){
-        logFile.addMessage(" !!! Results of extraction script for job "
-                           + job.getName() + " : = expected at line " + lineNr + " : \n" +
-                           " Outputs : " + stdOut +
-                           "    --> DB update not done");
-        return false;
+      if(!line.startsWith("GRIDPILOT METADATA:") || indexIs==-1){
+        continue;
       }
       String attr = line.substring(19, indexIs).trim();
       String val = line.substring(indexIs+1);
       if(attr.length()==0 || val.length()==0){
-        logFile.addMessage(" !!! Results of extraction script inconsistent for job "
+        logFile.addMessage("ERROR: results of extraction inconsistent for job "
                            + job.getName() + " at line " + lineNr + " : \n" +
                            " Outputs : " + stdOut +
-                           "    --> AMI update not done");
-        return false;
+                           "    --> DB update not done");
+        continue;
       }
       attributes.add(attr);
       values.add(val);

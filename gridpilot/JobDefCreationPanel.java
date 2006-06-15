@@ -350,8 +350,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
           cstAttributesNames[i].equalsIgnoreCase("lastModified") ||
           cstAttributesNames[i].equalsIgnoreCase("outTmp") ||
           cstAttributesNames[i].equalsIgnoreCase("errtmp") ||
-          cstAttributesNames[i].equalsIgnoreCase("valOut") ||
-          cstAttributesNames[i].equalsIgnoreCase("valErr") ||
+          cstAttributesNames[i].equalsIgnoreCase("validationResult") ||
           cstAttributesNames[i].equalsIgnoreCase("jobID")){
         Util.setJEditable(tcCstAttributes[i], false);
       }

@@ -52,7 +52,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JPanel pButtons = new JPanel();
   private JButton bDecide = new JButton("Decide");
   private JButton bKill = new JButton("Kill");
-  private JButton bRefresh = new JButton("Refresh");
+  private JButton bRefresh = new JButton("Refresh all");
   // auto refresh
   private JCheckBox cbAutoRefresh = new JCheckBox("Refresh each");
   private JSpinner sAutoRefresh = new JSpinner();
