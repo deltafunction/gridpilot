@@ -49,8 +49,7 @@ public class JobInfo extends DBRecord{
   private String db="";
   private String outTmp="";
   private String errTmp="";
-  private String outVal="";
-  private String errVal="";
+  private String validationResult="";
  
   private String jobID="";
   private String jobStatus="";
@@ -63,7 +62,7 @@ public class JobInfo extends DBRecord{
   public static String [] Fields= new String [] {
       /*These are the fields of the runtime DB table*/
       "name", "identifier", "computingResource", "userInfo", "db", "outTmp", "errTmp",
-      "outVal", "errVal",
+      "validationResult",
       /*----*/
       "jobId", "jobStatus", "newStatus", "internalStatus", "dbStatus",
       "host", "needUpdate"};
@@ -85,7 +84,7 @@ public class JobInfo extends DBRecord{
   private void setValues(){
     values = new String [] {
         jobName, Integer.toString(jobDefID), cs, user, db, outTmp, errTmp,
-        outVal, errVal,
+        validationResult,
         jobID, jobStatus, newStatus, Integer.toString(internalStatus), Integer.toString(dbStatus),
         host, Boolean.toString(needUpdate)};
   }
@@ -112,11 +111,15 @@ public class JobInfo extends DBRecord{
   public String getStdOut(){
     return outTmp;
   }
+  
   public String getStdErr(){
     return errTmp;
   }
-
   
+  public String getValidationResult(){
+    return validationResult;
+  }
+
   public String getJobId(){
     return jobID;
   }
@@ -169,6 +172,7 @@ public class JobInfo extends DBRecord{
     outTmp = _stdOut;
     setValues();
   }
+  
   public void setStdErr(String _stdErr){
     errTmp = _stdErr;
     setValues();
@@ -177,6 +181,11 @@ public class JobInfo extends DBRecord{
   public void setOutputs(String _stdOut, String _stdErr){
     outTmp = _stdOut;
     errTmp = _stdErr;
+    setValues();
+  }
+  
+  public void setValidationResult(String _result){
+    validationResult = _result;
     setValues();
   }
 

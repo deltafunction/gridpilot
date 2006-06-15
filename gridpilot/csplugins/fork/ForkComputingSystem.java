@@ -253,17 +253,33 @@ public class ForkComputingSystem implements ComputingSystem{
     }
   }
   
+  public String[] getScripts(JobInfo job){
+    String jobScriptFile = runDir(job)+"/"+job.getName()+commandSuffix;
+    try{
+      String jobScriptText = "No file "+jobScriptFile;
+      if(shellMgr.existsFile(jobScriptFile)){
+        jobScriptText = shellMgr.readFile(jobScriptFile);
+      }
+      return new String [] {jobScriptText};
+    }
+    catch(IOException ioe){
+      logFile.addMessage("IOException during getScripts of job " + job.getName()+ "\n" +
+                                  "\tException\t: " + ioe.getMessage(), ioe);
+      return null;
+    }
+  }
+  
   public boolean copyFile(String csName, String src, String dest){
     try{
       return shellMgr.copyFile(src, dest);
     }
     catch(Exception ioe){
-      logFile.addMessage("IOException during copying of file " +
+      logFile.addMessage("Exception during copying of file " +
           csName + " : \n" +
           "\tSource\t: " + src + "\n" +
           "\tDestination\t: " + dest + "\n" +
           "\tException\t: " + ioe.getMessage(), ioe);
-      Debug.debug("IOException during copying of file " +ioe.getMessage(), 3);
+      Debug.debug("Exception during copying of file " +ioe.getMessage(), 3);
       return false;
     }
   }
@@ -273,11 +289,25 @@ public class ForkComputingSystem implements ComputingSystem{
       return shellMgr.deleteFile(src);
     }
     catch(Exception ioe){
-      logFile.addMessage("IOException during copying of file " +
+      logFile.addMessage("Exception during deleting of file " +
           csName + " : \n" +
           "\tSource\t: " + src + "\n" +
           "\tException\t: " + ioe.getMessage(), ioe);
-      Debug.debug("IOException during copying of file " +ioe.getMessage(), 3);
+      Debug.debug("Exception during deleting of file " +ioe.getMessage(), 3);
+      return false;
+    }
+  }
+  
+  public boolean existsFile(String csName, String src){
+    try{
+      return shellMgr.existsFile(src);
+    }
+    catch(Exception ioe){
+      logFile.addMessage("Exception during checking of file " +
+          csName + " : \n" +
+          "\tSource\t: " + src + "\n" +
+          "\tException\t: " + ioe.getMessage(), ioe);
+      Debug.debug("Exception during checking of file " +ioe.getMessage(), 3);
       return false;
     }
   }

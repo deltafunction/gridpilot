@@ -534,53 +534,43 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     if(selectedRow==-1){
       return;
     }
-    if(DatasetMgr.isRunning(selectedRow)){
-      statusBar.setLabel("Waiting for outputs ...");
-      statusBar.animateProgressBar();
+    statusBar.setLabel("Waiting for outputs ...");
+    statusBar.animateProgressBar();
 
-      final Thread t = new Thread(){
-        public void run(){
-          JobInfo job = DatasetMgr.getJobAtRow(selectedRow);
-          String [] outNames = new String [] {"stdout", "stderr"};
-          String [] outs = GridPilot.getClassMgr().getCSPluginMgr(
-              ).getCurrentOutputs(job);
-          if(job.getStdErr()==null){
-            outNames = new String [] {"stdout"};
-            outs = new String[] {outs[0]};
-          }
-          statusBar.removeLabel();
-          statusBar.stopAnimation();
+    final Thread t = new Thread(){
+      public void run(){
+        JobInfo job = DatasetMgr.getJobAtRow(selectedRow);
+        String [] outNames = new String [] {"stdout", "stderr"};
+        String [] outs = GridPilot.getClassMgr().getCSPluginMgr(
+            ).getCurrentOutputs(job);
+        if(job.getStdErr()==null){
+          outNames = new String [] {"stdout"};
+          outs = new String[] {outs[0]};
+        }
+        statusBar.removeLabel();
+        statusBar.stopAnimation();
 
-          ShowOutputsJobsDialog.showTabs(JOptionPane.getRootFrame(),
-                                              "Current outputs of job " + job.getName(),
-                                              outNames,
-                                              outs);
+        String message = "";
+        if(DatasetMgr.isRunning(selectedRow)){
+          message = "Current outputs of job";
         }
-      };
-      statusBar.setIndeterminateProgressBarToolTip("click here to stop");
-      statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
-        public void mouseClicked(MouseEvent me){
-          t.interrupt();
+        else{
+          message = "Final outputs of job";
         }
-      });
-      t.start();
-    }
-    else{
-      JobInfo job = DatasetMgr.getJobAtRow(selectedRow);
-      String [] files;
-      if(job.getStdErr()==null){
-        Debug.debug("No stderr", 3);
-        files = new String [] {job.getStdOut()};
+        ShowOutputsJobsDialog.showTabs(JOptionPane.getRootFrame(),
+            message + " " + job.getName(),
+            outNames,
+            outs);
       }
-      else{
-        files = new String [] {job.getStdOut(), job.getStdErr()};
+    };
+    statusBar.setIndeterminateProgressBarToolTip("click here to stop");
+    statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
+      public void mouseClicked(MouseEvent me){
+        t.interrupt();
       }
-      ShowOutputsJobsDialog.showTabs(this,
-          "Final outputs of job " + job.getName(),
-          job.getCSName(),
-          files);
-      }
-    }
+    });
+    t.start();
+  }
 
   /**
    * Shows full status of the job at the selected row. <p>
@@ -607,7 +597,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     ShowOutputsJobsDialog.showTabs(JOptionPane.getRootFrame(),
         "Scripts for job " + job.getName(),
         job.getCSName(),
-        getDatasetMgr(job).getScripts(statusTable.getSelectedRow())            
+        GridPilot.getClassMgr().getCSPluginMgr().getScripts(job)            
         );
   }
 

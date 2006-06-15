@@ -495,7 +495,7 @@ public class CSPluginMgr implements ComputingSystem{
    * Gets the current outputs of the specified job on its ComputingSystem.
    * @see ComputingSystem#getCurrentOutputs(JobInfo)
    */
-  public String[] getCurrentOutputs(final JobInfo job) {
+  public String[] getCurrentOutputs(final JobInfo job){
     final String csName = job.getCSName();
     if(csName==null || csName.equals("")){
       return null;
@@ -521,10 +521,50 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(waitForThread(t, csName, currentOutputTimeOut, "getCurrentOutputs"))
+    if(waitForThread(t, csName, currentOutputTimeOut, "getCurrentOutputs")){
       return t.getString2Res();
-    else
+    }
+    else{
       return new String [] {null, "No response"};
+    }
+  }
+
+  /**
+   * Gets the current outputs of the specified job on its ComputingSystem.
+   * @see ComputingSystem#getCurrentOutputs(JobInfo)
+   */
+  public String[] getScripts(final JobInfo job) {
+    final String csName = job.getCSName();
+    if(csName==null || csName.equals("")){
+      return null;
+    }
+
+    MyThread t = new MyThread(){
+      String [] res = new String[]{null,null};
+      public void run(){
+        try{
+          res = ((ComputingSystem) cs.get(csName)).getScripts(job);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + csName +
+                             " during job " + job.getName() + " getScripts", job, t);
+          res = new String[]{null, null};
+        }
+      }
+      public String [] getString2Res(){
+        return res;
+      }
+    };
+
+    t.start();
+
+    if(waitForThread(t, csName, currentOutputTimeOut, "getScripts")){
+      return t.getString2Res();
+    }
+    else{
+      return new String [] {null, "No response"};
+    }
   }
 
   /**
@@ -712,6 +752,39 @@ public class CSPluginMgr implements ComputingSystem{
     t.start();
 
     if(waitForThread(t, csName, copyFileTimeOut, "deleteFile")){
+      return t.getBooleanRes();
+    }
+    else{
+      return false;
+    }
+  }
+
+  /**
+   * @see ComputingSystem#existsFile(String, String)
+   */
+  public boolean existsFile(final String csName, final String src){
+
+    MyThread t = new MyThread(){
+      boolean res = false;
+      public void run(){
+        try{
+          res = ((ComputingSystem) cs.get(csName)).existsFile(csName, src);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + csName +
+                             " during existsFile", t);
+          res = false;
+        }
+      }
+      public boolean getBooleanRes(){
+        return res;
+      }
+    };
+
+    t.start();
+
+    if(waitForThread(t, csName, copyFileTimeOut, "existsFile")){
       return t.getBooleanRes();
     }
     else{

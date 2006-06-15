@@ -163,11 +163,26 @@ public interface ComputingSystem{
   public String [] getCurrentOutputs(JobInfo job);
 
   /**
+   * Gets scripts used for running this job.
+   * Return values are output, and not path of this outputs.
+   *
+   * @return String [] {'job' script, 'job' grid job description file}
+   */
+  public String [] getScripts(JobInfo job);
+
+  /**
    * Used for copying stdout to final destination.
    * 
    * @return true or false for success or failure
    */  
   public boolean copyFile(String csName, String src, String dest);
+
+  /**
+   * Used for cchecking if stdout/stderr exist before validation.
+   * 
+   * @return true or false for success or failure
+   */  
+  public boolean existsFile(String csName, String src);
 
   /**
    * Used for cleaning up after job has run.

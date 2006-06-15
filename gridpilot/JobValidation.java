@@ -1,19 +1,9 @@
 package gridpilot;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.*;
 
 /**
- * Executes the validation script on all done jobs. <p>
- * The validation script is run with arguments parameters job.StdOut and job.StdErr.<br>
- * This script is run with the following variables in its environment:  <ul>
- * <li>GRIDPILOT_VALIDATED
- * <li>GRIDPILOT_UNDECIDED
- * <li>GRIDPILOT_FAILED
- * <li>GRIDPILOT_UNEXPECTED
- * </ul>
- * One of these values should be returned. <br>
+ * Executes validation on all done jobs. <p>
  * When JobControl asks for a job validation, this job is appended to the queue
  * <code>toValidatesJobs</code> after <code>delayBeforeValidation</code>.
  * After this delay, and if there is not too many validation threads, a new thread
@@ -139,9 +129,9 @@ public class JobValidation{
    */
   private void endOfValidation(JobInfo job, int dbStatus){
     if(!GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).updateJobStdoutErr(
-        job.getJobDefId(), job.getValidationStdOut(), job.getValidationStdErr())){
-      logFile.addMessage("DB updatePartJob(" + job.getJobDefId() + ", " +
-                         job.getValidationStdOut() + ", " + job.getValidationStdErr() +
+        job.getJobDefId(), job.getValidationResult())){
+      logFile.addMessage("DB updateJobStdoutErr(" + job.getJobDefId() + ", " +
+                         job.getValidationResult() +
                          ") failed", job);
     }
     if(dbStatus!=job.getDBStatus()){
@@ -162,90 +152,98 @@ public class JobValidation{
     newValidation();
   }
 
+  /**
+   * Takes as parameter the array {String <stdout>[, String <stderr>]}.
+   * Returns {String <error lines in stdout>[, String <error lines in stderr>]}.
+   **/
+  private String validate(String [] outs){
+    String [] outArray = Util.split(outs[0], "[\\n\\r]");
+    Vector outErrArray = new Vector();
+    boolean foundError = false;
+    for(int i=0; i<outArray.length; ++i){
+      for(int j=0; j<errorPatterns.length; ++j){
+        foundError = false;
+        if(outArray[i].contains(errorPatterns[j])){
+          foundError = true;
+          for(int k=0; k<errorAntiPatterns.length; ++k){
+            if(outArray[i].contains(errorAntiPatterns[k])){
+              foundError = false;
+              break;
+            }
+          }
+        }
+        if(foundError){
+          outErrArray.add(outArray[i]);
+          break;
+        }
+      }
+    }
+    String [] errArray = new String [] {};
+    if(outs.length==2 && outs[1]!=null){
+      errArray = Util.split(outs[1], "[\\n\\r]");
+    }
+    Vector errErrArray = new Vector();
+    for(int i=0; i<errArray.length; ++i){
+      foundError = true;
+      for(int k=0; k<errorAntiPatterns.length; ++k){
+        if(errArray[i].contains(errorAntiPatterns[k])){
+          foundError = false;
+          break;
+        }
+      }
+      if(foundError){
+        errErrArray.add(errArray[i]);
+      }
+    }
+    return Util.arrayToString(outErrArray.toArray(), "\n")+
+           Util.arrayToString(errErrArray.toArray(), "\n");
+  }
 
   /**
    * Starts the validation and sets this job DBStatus corresponding to the exit value. <p>
    * Called by {@link #newValidation()}
    */
   private int doValidate(JobInfo job){
-    ShellMgr shell = null;
-    long beginTime = new Date().getTime();
-    try{
-      shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
-    }
-    catch(Exception e){
-      Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
-      return DBPluginMgr.UNDECIDED;
-    }
-    Debug.debug("is going to validate ("+currentSimultaneousValidation + ") " + job.getName() + "..." , 2);
     int exitValue;
-    String cmd = "";
+    String [] outs = null;
+    long beginTime = new Date().getTime();
+    Debug.debug("is going to validate ("+currentSimultaneousValidation + ") " + job.getName() + "..." , 2);
     try{
       if((job.getStdOut()==null || job.getStdOut().length()==0) &&
          (job.getStdErr()==null || job.getStdErr().length()==0)){
          logFile.addMessage("Validation script for job " + job.getName()  +
              ") cannot be run : this job doesn't have any outputs", job);
-         job.setValidationOutputs(null, null);
          return DBPluginMgr.UNDECIDED;
       }
-
-      //    if( ! new File(job.getStdOut()).exists() && ! new File(job.getStdErr()).exists()){
-      if(!shell.existsFile(job.getStdOut()) && !shell.existsFile(job.getStdErr())){
-        logFile.addMessage("Validation script for job " + job.getName() + " (" +
-                           validationScript + ") cannot be run : stdout and stderr do not exist", job);
-        job.setValidationOutputs(null, null);
+      if(!GridPilot.getClassMgr().getCSPluginMgr().existsFile(
+              job.getCSName(), job.getStdOut()) &&
+          !GridPilot.getClassMgr().getCSPluginMgr().existsFile(
+              job.getCSName(), job.getStdErr())){
+        logFile.addMessage("Validation script for job " + job.getName() + 
+         " cannot be run : stdout or stderr do not exist", job);
         return DBPluginMgr.UNDECIDED;
       }
-   /* }
-    catch(IOException e){
-      Debug.debug("ERROR checking for stdout: "+e.getMessage(), 2);
-      logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
-      //throw e;
-    }*/
 
-      /** -> not necessary anymore -> if job.getStdOut exists, its parents exists
-      File f = new File(job.getStdOut());
-      if(!f.getParentFile().exists()){
-        logFile.addMessage("the parent directory of the output file doesn't exist ; " +
-                           "this directory is re-created");
-        f.getParentFile().mkdirs();
+      outs = GridPilot.getClassMgr().getCSPluginMgr(
+          ).getCurrentOutputs(job);
+      if(job.getStdErr()==null){
+        outs = new String[] {outs[0]};
       }
-  */
-  
-      String parent = job.getStdOut().substring(0, job.getStdOut().lastIndexOf('/') + 1);
-      String validationStdOut = parent + "validationStdOut";
-      String validationStdErr = parent + "validationStdErr";
-  
-  
-      cmd = validationScript+" "+job.getStdOut()+" "+job.getStdErr();
 
-    //try{
-      StringBuffer stdOut = new StringBuffer();
-      StringBuffer stdErr = new StringBuffer();
-      Debug.debug("exec ... (" + cmd +")", 2);
-      exitValue = shell.exec(cmd, env, null, stdOut, stdErr);
-      Debug.debug("validation script ended with exit value : " + exitValue, 2);
-
-      if(stdOut.length()!=0){
-        shell.writeFile(validationStdOut, stdOut.toString(), false);
-        job.setValidationStdOut(validationStdOut);
+      String errorMatches = validate(outs);
+      Debug.debug("validation script ended with : " + errorMatches, 3);
+      job.setValidationResult(errorMatches);
+      if(errorMatches.length()==0){
+        exitValue = EXIT_VALIDATED;
       }
       else{
-        job.setValidationStdOut(null);
-      }
-      if(stdErr.length() !=0){
-        shell.writeFile(validationStdErr, stdErr.toString(), false);
-        job.setValidationStdErr(validationStdErr);
         exitValue = EXIT_UNDECIDED;
       }
-      else
-        job.setValidationStdErr(null);
 
     }
-    catch(IOException ioe){
+    catch(Exception ioe){
       exitValue = ERROR;
       logFile.addMessage("IOException during job " + job.getName() + " validation :\n" +
-                         "\tCommand\t: " + cmd +"\n" +
                          "\tException\t: " + ioe.getMessage(), ioe);
     }
 
@@ -254,6 +252,7 @@ public class JobValidation{
       case EXIT_VALIDATED :
         Debug.debug("Validation : exit validated", 2);
         dbStatus = DBPluginMgr.VALIDATED;
+        extractInfo(job, outs[0]);
         break;
       case EXIT_UNDECIDED :
         Debug.debug("job " + job.getName() + " Validation : exit undecided", 2);
@@ -273,11 +272,9 @@ public class JobValidation{
         break;
       default :
         Debug.debug("exit ? : " + exitValue, 3);
-        logFile.addMessage("Validation script (" +validationScript + ") returns a wrong value\n" +
-                           " Command : " + cmd);
+        logFile.addMessage("Validation returned a wrong value\n");
         dbStatus = DBPluginMgr.UNDECIDED;
-
-      break;
+        break;
     }
 
     Debug.debug("Validation of job " + job.getName() + " took " +
@@ -289,4 +286,61 @@ public class JobValidation{
                 "(Wrong value)") , 3);
    return dbStatus;
   }
+  
+  /**
+   * Extracts some information from stdout of this job and tries to fill
+   * in db fields. <br>
+   * Recognized lines are lines of the form
+   * GRIDPILOT METADATA: <attribute> = <value>
+   * 
+   * @return <code>true</code> if the extraction went ok, <code>false</code> otherwise.
+   * 
+   * (from AtCom1)
+   */
+  private boolean extractInfo(JobInfo job, String stdOut){
+    StringTokenizer st = new StringTokenizer(stdOut.toString(), "\n");
+    Vector attributes = new Vector();
+    Vector values = new Vector();
+    int lineNr = 0;
+    while(st.hasMoreTokens()){
+      ++ lineNr;
+      String line = st.nextToken();
+      int indexIs = line.indexOf("=");
+      if(line.startsWith("GRIDPILOT METADATA:") && indexIs==-1){
+        logFile.addMessage(" !!! Results of extraction script for job "
+                           + job.getName() + " : = expected at line " + lineNr + " : \n" +
+                           " Outputs : " + stdOut +
+                           "    --> DB update not done");
+        return false;
+      }
+      String attr = line.substring(19, indexIs).trim();
+      String val = line.substring(indexIs+1);
+      if(attr.length()==0 || val.length()==0){
+        logFile.addMessage(" !!! Results of extraction script inconsistent for job "
+                           + job.getName() + " at line " + lineNr + " : \n" +
+                           " Outputs : " + stdOut +
+                           "    --> AMI update not done");
+        return false;
+      }
+      attributes.add(attr);
+      values.add(val);
+    }
+
+    Debug.debug("attr : "+ attributes.toString() + "\nvalues : "+ values.toString(), 2);
+    String [] attrArray = new String[attributes.size()];
+    String [] valuesArray = new String[values.size()];
+    for(int i=0; i< attrArray.length ; ++i){
+      attrArray[i] = attributes.get(i).toString();
+      valuesArray[i] = values.get(i).toString();
+    }
+
+    if(!GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).updateJobDefinition(job.getJobDefId(), attrArray, valuesArray)){
+      logFile.addMessage("Unable to update DB for job " + job.getName() + "\n"+
+                         "attributes : " + Util.arrayToString(attrArray) + "\n" +
+                         "values : " + Util.arrayToString(valuesArray), job);
+      return false;
+    }
+    return true;
+  }
+
 }

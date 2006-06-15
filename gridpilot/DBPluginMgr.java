@@ -94,8 +94,8 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public boolean updateJobStdoutErr(int jobDefID, String stdOut, String stdErr){
-    return updateJobDefinition(jobDefID, new String [] {"outVal", "errVal"}, new String [] {stdOut, stdErr});
+  public boolean updateJobStdoutErr(int jobDefID, String result){
+    return updateJobDefinition(jobDefID, new String [] {"validationResult"}, new String [] {result});
   }
 
   /** 
