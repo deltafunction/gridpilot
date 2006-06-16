@@ -381,8 +381,8 @@ public class HSQLDBDatabase implements Database{
     return new String [] {""};
   }
 
-  public synchronized String [] getJobDefTransPars(int transformationID){
-    String args =  getJobDefinition(transformationID).getValue("transPars").toString();
+  public synchronized String [] getJobDefTransPars(int jobDefID){
+    String args = getJobDefinition(jobDefID).getValue("transPars").toString();
     return Util.split(args);
   }
 
@@ -428,14 +428,12 @@ public class HSQLDBDatabase implements Database{
     return name;
   }
   
-  public synchronized String getStdOutFinalDest(int jobDefinitionID){
-    // nothing for now
-    return "";
+  public synchronized String getStdOutFinalDest(int jobDefID){
+    return getJobDefinition(jobDefID).getValue("stdoutDest").toString();
   }
 
-  public synchronized String getStdErrFinalDest(int jobDefinitionID){
-    // nothing for now
-    return "";
+  public synchronized String getStdErrFinalDest(int jobDefID){
+    return getJobDefinition(jobDefID).getValue("stderrDest").toString();
   }
 
   public synchronized String getExtractScript(int jobDefinitionID){
@@ -994,7 +992,8 @@ public class HSQLDBDatabase implements Database{
           String val = "";
           for(int j=0; j<jobDefFields.length; ++j){
             if(fieldname.equalsIgnoreCase(jobDefFields[j])){
-              if(fieldname.endsWith("FK") || fieldname.endsWith("ID")){
+              if((fieldname.endsWith("FK") || fieldname.endsWith("ID")) &&
+                  !fieldname.equalsIgnoreCase("jobid")){
                 int tmp = rset.getInt(fieldname);
                 val = Integer.toString(tmp);
               }

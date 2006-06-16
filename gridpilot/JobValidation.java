@@ -330,7 +330,8 @@ public class JobValidation{
       valuesArray[i] = values.get(i).toString();
     }
 
-    if(!GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).updateJobDefinition(job.getJobDefId(), attrArray, valuesArray)){
+    if(attrArray.length>0 &&
+        !GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).updateJobDefinition(job.getJobDefId(), attrArray, valuesArray)){
       logFile.addMessage("Unable to update DB for job " + job.getName() + "\n"+
                          "attributes : " + Util.arrayToString(attrArray) + "\n" +
                          "values : " + Util.arrayToString(valuesArray), job);

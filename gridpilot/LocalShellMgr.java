@@ -15,9 +15,11 @@ public class LocalShellMgr implements ShellMgr{
    *          <code>false</code> otherwise
    *
    */
-  public boolean copyFile(String src, String dest){
+  public boolean copyFile(String _src, String _dest){
+    String src = Util.clearFile(_src);
+    String dest = Util.clearFile(_dest);
     Debug.debug("copying file "+src+"->"+dest, 3);
-    if (src.equals(dest)){
+    if(src.equals(dest)){
       return true;
     }
 
@@ -178,7 +180,9 @@ public class LocalShellMgr implements ShellMgr{
   }
 
 
-  public String readFile(String path) throws FileNotFoundException, IOException {
+  public String readFile(String _path) throws FileNotFoundException, IOException {
+    String path = Util.clearFile(_path);
+    Debug.debug("Reading file "+path, 2);
     RandomAccessFile f = new RandomAccessFile(path, "r");
     byte [] b  = new byte [(int)f.length()];
     f.readFully(b);
@@ -187,12 +191,13 @@ public class LocalShellMgr implements ShellMgr{
     return res;
   }
 
-  public void writeFile(String name, String content, boolean append) throws IOException {
+  public void writeFile(String _name, String content, boolean append) throws IOException {
+    String name = Util.clearFile(_name);
     Debug.debug("name : " + name + "\nappend : " + append + "\ncontent : \n" + content, 1);
     File parent = new File(name).getParentFile();
-    if(parent!=null && !parent.exists())
+    if(parent!=null && !parent.exists()){
       parent.mkdirs();
-
+    }
     RandomAccessFile of = new RandomAccessFile(name, "rw");
     if(!append)
       of.setLength(0);
@@ -204,17 +209,45 @@ public class LocalShellMgr implements ShellMgr{
     return new File(name).exists();
   }
 
-  public boolean mkdirs(String dir){
+  public boolean mkdirs(String _dir){
+    String dir = Util.clearFile(_dir);
     Debug.debug("making dirs "+dir, 3);
     return new File(dir).mkdirs();
   }
 
-  public boolean deleteFile(String path){
-    Debug.debug("deleting file "+path, 3);
-    return new File(path).delete();
+  
+  // Deletes all files and subdirectories under dir.
+  // Returns true if all deletions were successful.
+  // If a deletion fails, the method stops attempting to delete and returns false.
+  public static boolean deleteDir(File dir){
+    if(dir.isDirectory()){
+      String[] children = dir.list();
+      for(int i=0; i<children.length; i++){
+        boolean success = deleteDir(new File(dir, children[i]));
+        if(!success){
+          return false;
+        }
+      }
+    }
+    // The directory is now empty so delete it
+    return dir.delete();
   }
 
-  public boolean moveFile(String src, String dest){
+  public boolean deleteFile(String _path){
+    String path = Util.clearFile(_path);
+    Debug.debug("deleting file "+path, 3);
+    File dirOrFile = new File(path);
+    if(dirOrFile.isDirectory()){
+      return deleteDir(dirOrFile);
+    }
+    else{
+      return dirOrFile.delete();
+    }
+  }
+
+  public boolean moveFile(String _src, String _dest){
+    String src = Util.clearFile(_src);
+    String dest = Util.clearFile(_dest);
     Debug.debug("moving file "+src+"->"+dest, 3);
     File destFile = new File(dest);
     if(destFile.getParent()!=null &&  !destFile.getParentFile().exists())

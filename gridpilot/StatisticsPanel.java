@@ -65,7 +65,7 @@ public class StatisticsPanel extends JPanel{
       for(int i=0; i<values.length; ++i){
         values[i]= 0;
       }
-      int [] theseValues = new int [values.length];
+      int [] theseValues = new int[values.length];
       for(int i=0; i<datasetMgrs.size(); ++i){
         theseValues = ((DatasetMgr) datasetMgrs.get(i)).getJobsByDBStatus();
         for(int j=0; j<values.length; ++j){

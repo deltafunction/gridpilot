@@ -408,28 +408,18 @@ public class Table extends JTable{
    * Also saves the id in a map for further "undeletion".
    */
   public void hideRow(int row){
-
-    //setRowHeight(tableModel.getRow(row), 1);
     Debug.debug("row nr:"+row, 2);
     Debug.debug("tableModel.getValueAt(row,1):"+tableModel.getValueAt(row,1), 2);
     Debug.debug("tableModel.getRow(row):"+tableModel.getRow(row), 2);
     Debug.debug("--> tableModel.getUnsortedValueAt(row,1):"+tableModel.getUnsortedValueAt(row,1), 2);
-    
-    // agora eh questao de guardar akela "linha" em qq lado e depois apagar. Agora para repor eh igual... Com a chamada
-    // equivalmente ao 4o system.out, podemos obter o verda... nao podemos nada pq a linha foi apagada... Talvez fazer
-    // do lado do tableModel uma funcao getUndeletedValueAt (??)?? Ou entao "alguem" guarda o 'row' que tinha quando
-    // foi apagado (alem dos restantes valores a incluir).. parece-me que funcionara..... (tipo 'hash' em que 'row' eh
-    // indicador para o resto dos valores...
-    // A questao eh saber se o 'row' q tinha nao dara stress... O MELHOR eh mesmo hideRow nao receber 'row' mas algo
-    // melhorzinho, especifico independentemente dos dados actuais da tabela....
-    
+    setRowHeight(tableModel.getRow(row), 1);
   }
 
   /**
    * Shows the specified job given the partition id.
    */
   public void showRow(int row){
-    //setRowHeight(tableModel.getRow(row), getRowHeight());
+    setRowHeight(tableModel.getRow(row), getRowHeight());
   }
 
   /**

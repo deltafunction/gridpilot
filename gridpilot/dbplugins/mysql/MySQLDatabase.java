@@ -919,7 +919,8 @@ public class MySQLDatabase implements Database{
           String val = "";
           for(int j=0; j<jobDefFields.length; ++j){
             if(fieldname.equalsIgnoreCase(jobDefFields[j])){
-              if(fieldname.endsWith("FK") || fieldname.endsWith("ID")){
+              if((fieldname.endsWith("FK") || fieldname.endsWith("ID")) &&
+                  !fieldname.equalsIgnoreCase("jobid")){
                 int tmp = rset.getInt(fieldname);
                 val = Integer.toString(tmp);
               }

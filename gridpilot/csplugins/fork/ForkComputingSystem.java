@@ -208,11 +208,16 @@ public class ForkComputingSystem implements ComputingSystem{
   }
 
   public void clearOutputMapping(JobInfo job){
+    String runDir = runDir(job);
+    String scriptFile = runDir+"/"+job.getName()+commandSuffix;
+    String stdoutFile = runDir+"/"+job.getName()+".stdout";
+    String stderrFile = runDir+"/"+job.getName()+".stderr";
     try{
-      (new File(runDir(job)+"/"+job.getName()+commandSuffix)).delete();
-      (new File(runDir(job)+"/"+job.getName()+"stdout")).delete();
-      (new File(runDir(job)+"/"+job.getName()+"stderr")).delete();
-      (new File(runDir(job))).delete();
+      Debug.debug("Clearing "+runDir, 2);
+      shellMgr.deleteFile(scriptFile);
+      shellMgr.deleteFile(stderrFile);
+      shellMgr.deleteFile(stdoutFile);
+      shellMgr.deleteFile(runDir);
     }
     catch(Exception ioe){
       logFile.addMessage("Exception during clearOutputMapping of job " + job.getName()+ "\n" +
@@ -234,7 +239,7 @@ public class ForkComputingSystem implements ComputingSystem{
         return "Job #"+job.getJobId()+" is running.";
       }
     }
-    return "";
+    return "Job #"+job.getJobId()+" is not running.";
   }
 
   public String[] getCurrentOutputs(JobInfo job){
@@ -255,18 +260,18 @@ public class ForkComputingSystem implements ComputingSystem{
   
   public String[] getScripts(JobInfo job){
     String jobScriptFile = runDir(job)+"/"+job.getName()+commandSuffix;
-    try{
+    /*try{
       String jobScriptText = "No file "+jobScriptFile;
       if(shellMgr.existsFile(jobScriptFile)){
         jobScriptText = shellMgr.readFile(jobScriptFile);
-      }
-      return new String [] {jobScriptText};
-    }
-    catch(IOException ioe){
+      }*/
+      return new String [] {jobScriptFile/*jobScriptText*/};
+    //}
+    /*catch(IOException ioe){
       logFile.addMessage("IOException during getScripts of job " + job.getName()+ "\n" +
                                   "\tException\t: " + ioe.getMessage(), ioe);
       return null;
-    }
+    }*/
   }
   
   public boolean copyFile(String csName, String src, String dest){

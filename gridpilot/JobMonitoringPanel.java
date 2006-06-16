@@ -28,7 +28,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   Timer timerRefresh = new Timer(0, new ActionListener (){
     public void actionPerformed(ActionEvent e){
-      refresh();
+      statusUpdateControl.updateStatus(null);
     }
   });
 
@@ -36,7 +36,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JTabbedPane tpStatLog = new JTabbedPane();
   private JScrollPane spStatusTable = new JScrollPane();
   private JScrollPane spLogView = new JScrollPane();
-  public static StatisticsPanel statisticPanel = new StatisticsPanel();;
+  public static StatisticsPanel statisticsPanel =
+    GridPilot.getClassMgr().getStatisticsPanel();
   // Options panel
   private JPanel pOptions = new JPanel();
   // view options
@@ -131,12 +132,15 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     ,GridBagConstraints.NORTH, GridBagConstraints.VERTICAL, new Insets(30, 10, 0, 0), 0, 0));
 
     // view
-    pOptions.add(rbAllJobs, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0
-    ,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(0, 10, 0, 0), 0, 0));
-    pOptions.add(rbRunningJobs, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0
-    ,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(0, 10, 0, 0), 0, 0));
-    pOptions.add(rbDoneJobs, new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0
-    ,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(0, 10, 0, 0), 0, 0));
+    pOptions.add(rbAllJobs, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+        GridBagConstraints.WEST, GridBagConstraints.NONE,
+        new Insets(0, 10, 0, 0), 0, 0));
+    pOptions.add(rbRunningJobs, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+        GridBagConstraints.WEST,
+        GridBagConstraints.NONE, new Insets(0, 10, 0, 0), 0, 0));
+    pOptions.add(rbDoneJobs, new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
+        GridBagConstraints.WEST,
+        GridBagConstraints.NONE, new Insets(0, 10, 0, 0), 0, 0));
 
     bgView.add(rbAllJobs);
     bgView.add(rbRunningJobs);
@@ -198,7 +202,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
 
-    pOptions.add(statisticPanel, new GridBagConstraints(0, 6, 1, 1, 0.1, 0.1,
+    pOptions.add(statisticsPanel, new GridBagConstraints(0, 6, 1, 1, 0.1, 0.1,
         GridBagConstraints.WEST,
         GridBagConstraints.BOTH,
         new Insets(30, 5, 0, 5), 0, 0));
@@ -221,7 +225,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     bRefresh.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        refresh();
+        statusUpdateControl.updateStatus(null);
       }
     });
     cbAutoRefresh.addActionListener(new ActionListener(){
@@ -238,6 +242,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
 
+    cbRefreshUnits.setSelectedIndex(MIN);
     cbRefreshUnits.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         delayChanged();
@@ -286,7 +291,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     miRefresh.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        statusUpdateControl.updateStatus();
+        statusUpdateControl.updateStatus(statusTable.getSelectedRows());
       }
     });
 
@@ -439,13 +444,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     statusBar.removeLabel();
   }
 
-  /**
-   * Called when timeout on timer occurs or the user clicks on "Refresh"
-   */
-  private void refresh(){
-    Debug.debug("Refresh", 1);
-    statusUpdateControl.updateStatus();
-  }
 
   /**
    * Called when check box for auto refresh is selected
@@ -717,8 +715,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    * view only running jobs, ...).
    */
   private void onlyJobsSelected(){
-    int choice = bgView.getSelection().getMnemonic();
-    switch(choice){
+    showRows = bgView.getSelection().getMnemonic();
+    switch(showRows){
       case ALL_JOBS:
         statusTable.showAllRows();
         break;
@@ -727,7 +725,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         showOnlyRows();
         break;
       default:
-        Debug.debug("WARNING: Selection choice doesn't exist : " + choice, 1);
+        Debug.debug("WARNING: Selection choice doesn't exist : " + showRows, 1);
       break;
     }
   }
@@ -757,6 +755,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         }
       }
     }
+    statusTable.updateUI();
   }
 
   /**
