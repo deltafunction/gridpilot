@@ -37,15 +37,17 @@ public class MySQLDatabase implements Database{
   private String [] jobDefFields = null;
   private String [] datasetFields = null;
   private String [] runtimeEnvironmentFields = null;
+  private String dbName = null;
 
-  public MySQLDatabase(
+  public MySQLDatabase(String _dbName,
       String _driver, String _database,
       String _user, String _passwd){
     driver = _driver;
     database = _database;
     user = _user;
     passwd = _passwd;
-        
+    dbName = _dbName;
+
     boolean showDialog = true;
     // if csNames is set, this is a reload
     if(GridPilot.csNames==null){
@@ -128,9 +130,11 @@ public class MySQLDatabase implements Database{
   }
 
   private boolean makeTable(String table){
-    ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/mysql/tables.conf");
-    String [] fields = Util.split(tablesConfig.getValue("tables", table+" field names"), ",");
-    String [] fieldTypes = Util.split(tablesConfig.getValue("tables", table+" field types"), ",");
+    //ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/mysql/tables.conf");
+    ConfigFile tablesConfig = GridPilot.getClassMgr().getConfigFile();
+    //String [] fields = Util.split(tablesConfig.getValue("tables", table+" field names"), ",");
+    String [] fields = Util.split(tablesConfig.getValue(dbName, table+" field names"), ",");
+    String [] fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
     String sql = "CREATE TABLE "+table+"(";
     for(int i=0; i<fields.length; ++i){
       if(i>0){
@@ -296,16 +300,16 @@ public class MySQLDatabase implements Database{
     return Util.split(res);
   }
 
-  public synchronized String [] getOutputs(int jobDefID){
-    String transformationID = getJobDefTransformationID(jobDefID);
+  public synchronized String [] getOutputMapping(int jobDefID){
+    int transformationID = getJobDefTransformationID(jobDefID);
     String outputs = getTransformation(
-        Integer.parseInt(transformationID)).getValue("outputFiles").toString();
+        transformationID).getValue("outputFiles").toString();
     return Util.split(outputs);
   }
 
-  public synchronized String [] getInputs(int transformationID){
-    // nothing for now
-    return new String [] {""};
+  public synchronized String [] getInputs(int jobDefID){
+    String inputs = getJobDefinition(jobDefID).getValue("inputFileNames").toString();
+    return Util.split(inputs);
   }
 
   public synchronized String [] getJobDefTransPars(int transformationID){
@@ -314,7 +318,7 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized String getJobDefOutLocalName(int jobDefID, String par){
-    int transID = Integer.parseInt(getJobDefTransformationID(jobDefID));
+    int transID = getJobDefTransformationID(jobDefID);
     String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
     String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
     String[] map = Util.split(maps);
@@ -338,7 +342,7 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized String getJobDefOutRemoteName(int jobDefID, String par){
-    int transID = Integer.parseInt(getJobDefTransformationID(jobDefID));
+    int transID = getJobDefTransformationID(jobDefID);
     String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
     String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
     String[] map = Util.split(maps);
@@ -372,22 +376,22 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized String getTransformationScript(int jobDefID){
-    String transformationID = getJobDefTransformationID(jobDefID);
+    int transformationID = getJobDefTransformationID(jobDefID);
     String script = getTransformation(
-        Integer.parseInt(transformationID)).getValue("script").toString();
+        transformationID).getValue("script").toString();
     return script;
   }
 
   public synchronized String [] getRuntimeEnvironments(int jobDefID){
-    String transformationID = getJobDefTransformationID(jobDefID);
+    int transformationID = getJobDefTransformationID(jobDefID);
     String rts = getTransformation(
-        Integer.parseInt(transformationID)).getValue("runtimeEnvironmentName").toString();
+        transformationID).getValue("runtimeEnvironmentName").toString();
     return Util.split(rts);
   }
 
   public synchronized String [] getTransformationArguments(int jobDefID){
-    String transformationID = getJobDefTransformationID(jobDefID);
-    String args =  getTransformation(Integer.parseInt(transformationID)).getValue("arguments").toString();
+    int transformationID = getJobDefTransformationID(jobDefID);
+    String args =  getTransformation(transformationID).getValue("arguments").toString();
     return Util.split(args);
   }
 
@@ -424,7 +428,7 @@ public class MySQLDatabase implements Database{
     return "";
   }
 
-  public synchronized String getJobDefTransformationID(int jobDefinitionID){
+  public synchronized int getJobDefTransformationID(int jobDefinitionID){
     DBRecord dataset = getDataset(getJobDefDatasetID(jobDefinitionID));
     String transformation = dataset.getValue("transformationName").toString();
     String version = dataset.getValue("transformationVersion").toString();
@@ -456,7 +460,7 @@ public class MySQLDatabase implements Database{
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
     }
-    return transID;
+    return Integer.parseInt(transID);
   }
 
   public synchronized String getUserLabel(){
@@ -1386,22 +1390,13 @@ public class MySQLDatabase implements Database{
     return execok;
   }
   
-  /*public synchronized boolean updateJobDefStatus(int jobDefID,
-      String status){
-    return updateJobDefinition(
-        jobDefID,
-        new String [] {"status"},
-        new String [] {status}
-        );
-  }*/
-  
   public synchronized boolean updateJobDefinition(int jobDefID,
       String [] values){
     return updateJobDefinition(
         jobDefID,
-        new String [] {"identifier", "name"/*, "stdOut", "stdErr"*/},
-        new String [] {values[0], values[1]}
-        );
+        new String [] {"jobID", "name", "outTmp", "errTmp"},
+        values
+    );
   }
   
   public synchronized boolean updateJobDefinition(int jobDefID, String [] fields,
@@ -1805,36 +1800,14 @@ public class MySQLDatabase implements Database{
       return ret;
     }
 
-    public synchronized String [] getTransOutputs(int transformationID){
-      String sql ="SELECT outputFiles FROM transformation WHERE identifier ='"+
-      transformationID+"'";
-      Debug.debug(sql, 2);
-      Vector vec = new Vector();
-      try{
-        Statement stmt = conn.createStatement();
-        ResultSet rset = stmt.executeQuery(sql);
-        while(rset.next()){
-          String out = rset.getString("outputFiles");
-          if(out!=null){
-            Debug.debug("Adding outputs "+out, 3);
-            vec.add(out);
-          }
-          else{
-            Debug.debug("WARNING: no outputs for transformation "+
-                transformationID, 1);
-          }
-        }
-        rset.close();  
-      }
-      catch(Exception e){
-        Debug.debug(e.getMessage(), 2);
-        error = e.getMessage();
-      }
-      if(vec.size()>1){
-        Debug.debug("WARNING: more than one transformation "+
-            transformationID, 1);
-      }
-      return Util.split(vec.get(0).toString()) ;  
+    public synchronized String [] getTransOutputs(int transformationID){    
+      String outputs = getTransformation(transformationID).getValue("outputFiles").toString();
+      return Util.split(outputs);
+    }
+
+    public synchronized String [] getTransInputs(int transformationID){    
+      String inputs = getTransformation(transformationID).getValue("inputFiles").toString();
+      return Util.split(inputs);
     }
 
     public synchronized String getError(){

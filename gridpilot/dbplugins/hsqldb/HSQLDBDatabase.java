@@ -40,14 +40,21 @@ public class HSQLDBDatabase implements Database{
   private String [] jobDefFields = null;
   private String [] datasetFields = null;
   private String [] runtimeEnvironmentFields = null;
-  private HashMap datasetFieldTypes = new HashMap();    
+  private HashMap datasetFieldTypes = new HashMap();
+  private String databaseName = null;
+  private String dbName = null;
+  ConfigFile configFile = null;
 
-  public HSQLDBDatabase(
+  public HSQLDBDatabase(String _dbName,
       String _driver, String _database, String _user, String _passwd){
     driver = _driver;
     database = _database;
     user = _user;
     passwd = _passwd;
+    dbName = _dbName;
+    
+    configFile = GridPilot.getClassMgr().getConfigFile();
+
     
     boolean showDialog = true;
     // if csNames is set, this is a reload
@@ -124,12 +131,12 @@ public class HSQLDBDatabase implements Database{
           server = new Server();
           String dbPath = database.substring(16);
           server.setDatabasePath(0, dbPath);
-          String dbName =  database.substring(database.lastIndexOf("/")+1);
-          server.setDatabaseName(0, dbName);
-          Debug.debug("Starting database server, "+dbName+":"+
+          databaseName = database.substring(database.lastIndexOf("/")+1);
+          server.setDatabaseName(0, databaseName);
+          Debug.debug("Starting database server, "+databaseName+":"+
               dbPath, 1);
           server.start();
-          database = "hsql://localhost/"+dbName;
+          database = "hsql://localhost/"+databaseName;
         }
         conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
            user, passwd);
@@ -150,9 +157,11 @@ public class HSQLDBDatabase implements Database{
   }
   
   private void setFieldNames(){
-    ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/hsqldb/tables.conf");
+    //ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/hsqldb/tables.conf");
+    configFile = GridPilot.getClassMgr().getConfigFile();
     datasetFields = getFieldNames("dataset");
-    String [] dsFieldTypes = Util.split(tablesConfig.getValue("tables", "dataset field types"), ",");
+    //String [] dsFieldTypes = Util.split(tablesConfig.getValue("tables", "dataset field types"), ",");
+    String [] dsFieldTypes = Util.split(configFile.getValue(dbName, "dataset field types"), ",");
     for(int i=0; i<datasetFields.length; ++i){
       datasetFieldTypes.put(datasetFields[i], dsFieldTypes[i]);
     }
@@ -164,9 +173,9 @@ public class HSQLDBDatabase implements Database{
 
   private boolean makeTable(String table){
     Debug.debug("Creating table "+table, 3);
-    ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/hsqldb/tables.conf");
-    String [] fields = Util.split(tablesConfig.getValue("tables", table+" field names"), ",");
-    String [] fieldTypes = Util.split(tablesConfig.getValue("tables", table+" field types"), ",");
+    //ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/hsqldb/tables.conf");
+    String [] fields = Util.split(configFile.getValue(dbName, table+" field names"), ",");
+    String [] fieldTypes = Util.split(configFile.getValue(dbName, table+" field types"), ",");
     String sql = "CREATE TABLE "+table+"(";
     for(int i=0; i<fields.length; ++i){
       if(i>0){
@@ -369,16 +378,14 @@ public class HSQLDBDatabase implements Database{
     return Util.split(res);
   }
 
-  public synchronized String [] getOutputs(int jobDefID){
-    String transformationID = getJobDefTransformationID(jobDefID);
-    String outputs = getTransformation(
-        Integer.parseInt(transformationID)).getValue("outputFiles").toString();
-    return Util.split(outputs);
+  public synchronized String [] getOutputMapping(int jobDefID){
+    String outMap = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
+    return Util.split(outMap);
   }
 
-  public synchronized String [] getInputs(int transformationID){
-    // nothing for now
-    return new String [] {""};
+  public synchronized String [] getInputs(int jobDefID){
+    String inputs = getJobDefinition(jobDefID).getValue("inputFileNames").toString();
+    return Util.split(inputs);
   }
 
   public synchronized String [] getJobDefTransPars(int jobDefID){
@@ -387,7 +394,7 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized String getJobDefOutLocalName(int jobDefID, String par){
-    int transID = Integer.parseInt(getJobDefTransformationID(jobDefID));
+    int transID = getJobDefTransformationID(jobDefID);
     String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
     String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
     String[] map = Util.split(maps);
@@ -411,7 +418,7 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized String getJobDefOutRemoteName(int jobDefID, String par){
-    int transID = Integer.parseInt(getJobDefTransformationID(jobDefID));
+    int transID = getJobDefTransformationID(jobDefID);
     String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
     String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
     Debug.debug("output file mapping: "+maps+" : "+Util.arrayToString(fouts), 3);
@@ -447,22 +454,21 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized String getTransformationScript(int jobDefID){
-    String transformationID = getJobDefTransformationID(jobDefID);
+    int transformationID = getJobDefTransformationID(jobDefID);
     String script = getTransformation(
-        Integer.parseInt(transformationID)).getValue("script").toString();
+        transformationID).getValue("script").toString();
     return script;
   }
 
   public synchronized String [] getRuntimeEnvironments(int jobDefID){
-    String transformationID = getJobDefTransformationID(jobDefID);
-    String rts = getTransformation(
-        Integer.parseInt(transformationID)).getValue("runtimeEnvironmentName").toString();
+    int transformationID = getJobDefTransformationID(jobDefID);
+    String rts = getTransformation(transformationID).getValue("runtimeEnvironmentName").toString();
     return Util.split(rts);
   }
 
   public synchronized String [] getTransformationArguments(int jobDefID){
-    String transformationID = getJobDefTransformationID(jobDefID);
-    String args =  getTransformation(Integer.parseInt(transformationID)).getValue("arguments").toString();
+    int transformationID = getJobDefTransformationID(jobDefID);
+    String args =  getTransformation(transformationID).getValue("arguments").toString();
     return Util.split(args);
   }
 
@@ -499,7 +505,7 @@ public class HSQLDBDatabase implements Database{
     return "";
   }
 
-  public synchronized String getJobDefTransformationID(int jobDefinitionID){
+  public synchronized int getJobDefTransformationID(int jobDefinitionID){
     DBRecord dataset = getDataset(getJobDefDatasetID(jobDefinitionID));
     String transformation = dataset.getValue("transformationName").toString();
     String version = dataset.getValue("transformationVersion").toString();
@@ -531,7 +537,7 @@ public class HSQLDBDatabase implements Database{
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
     }
-    return transID;
+    return Integer.parseInt(transID);
   }
 
   public synchronized String getUserLabel(){
@@ -1491,15 +1497,6 @@ public class HSQLDBDatabase implements Database{
     return execok;
   }
   
-  /*public synchronized boolean updateJobDefStatus(int jobDefID,
-      String status){
-    return updateJobDefinition(
-        jobDefID,
-        new String [] {"status"},
-        new String [] {status}
-        );
-  }*/
-  
   public synchronized boolean updateJobDefinition(int jobDefID,
       String [] values){
     return updateJobDefinition(
@@ -1916,36 +1913,14 @@ public class HSQLDBDatabase implements Database{
     return ret;
   }
   
-  public synchronized String [] getTransOutputs(int transformationID){
-    String sql ="SELECT outputFiles FROM transformation WHERE identifier ='"+
-    transformationID+"'";
-    Debug.debug(sql, 2);
-    Vector vec = new Vector();
-    try{
-      Statement stmt = conn.createStatement();
-      ResultSet rset = stmt.executeQuery(sql);
-      while(rset.next()){
-        String out = rset.getString("outputFiles");
-        if(out!=null){
-          Debug.debug("Adding outputs "+out, 3);
-          vec.add(out);
-        }
-        else{
-          Debug.debug("WARNING: no outputs for transformation "+
-              transformationID, 1);
-        }
-      }
-      rset.close();  
-    }
-    catch(Exception e){
-      Debug.debug(e.getMessage(), 2);
-      error = e.getMessage();
-    }
-    if(vec.size()>1){
-      Debug.debug("WARNING: more than one transformation "+
-          transformationID, 1);
-    }
-    return Util.split(vec.get(0).toString()) ;  
+  public synchronized String [] getTransOutputs(int transformationID){    
+    String outputs = getTransformation(transformationID).getValue("outputFiles").toString();
+    return Util.split(outputs);
+  }
+
+  public synchronized String [] getTransInputs(int transformationID){    
+    String inputs = getTransformation(transformationID).getValue("inputFiles").toString();
+    return Util.split(inputs);
   }
 
   public synchronized String getError(){
