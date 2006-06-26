@@ -22,7 +22,7 @@ import java.util.Vector;
  * using the constructor with one parameter (String).
  * StdOut and StdErr for a job will be created in directory 'working directory'
  * (AtCom creates names, not files)
- * 'max jobs by update' denotes the maximum size of JobVector that the function 'updateStatus'
+ * 'max jobs by update' denotes the maximum size of the job vector that the function 'updateStatus'
  * will be receive
  * <p>
  * This interface defines some status ; these values are used by job.internalStatus.
@@ -44,7 +44,7 @@ import java.util.Vector;
  * <dl><ul>
  * <li>{@link #submit(atcom.jobcontrol.JobInfo) submit}(<code>JobInfo</code> job)
  *  <dd>Submits this job, initializes job.jobId
- * <li>{@link #updateStatus(atcom.jobcontrol.JobVector) updateStatus}(<code>JobVector</code> jobs)
+ * <li>{@link #updateStatus(Vector) updateStatus}(<code>job vector</code> jobs)
  *  <dd>Updates status for all jobs in jobs ; set internalStatus to the correspondig value
  * <li>{@link #killJob(atcom.jobcontrol.JobInfo) killJob}(<code>JobInfo</code> job)
  *  <dd>Kills this job
@@ -112,7 +112,7 @@ public interface ComputingSystem{
   public boolean submit(JobInfo job);
 
   /**
-   * Updates status of all jobs in JobVector jobs. <p>
+   * Updates status of all jobs in job vector jobs. <p>
    * In configuration file, this plugin section contain an attribute "max jobs by update" giving
    * the vector maximum size. If this value is not defined, this vector contains always only one
    * job. <p>
@@ -198,4 +198,26 @@ public interface ComputingSystem{
    * @return a String which contains some information about 'user'
    */
   public String getUserInfo(String csName);
+  
+  /**
+   * Operations done after a job is Validated. <br>
+   * Theses operations contain emcompasses two stages :
+   * <ul>
+   * <li>Moving of outputs in their final destination
+   * <li>Extraction of some informations from outputs
+   * </ul> <p>
+   *
+   * @return <code>true</code> if postprocessing went ok, <code>false</code> otherwise
+   * 
+   */
+  public boolean postProcess(JobInfo job);
+
+  /**
+   * Operations done (by GridPilot) before a job is run. <br>
+   *
+   * @return <code>true</code> if postprocessing went ok, <code>false</code> otherwise
+   * 
+   */
+  public boolean preProcess(JobInfo job);
+
 }
