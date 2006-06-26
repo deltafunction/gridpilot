@@ -223,7 +223,7 @@ public class SubmissionControl{
           job.setCSName(csName);
           newJobs.add(job);
           job.setDBStatus(DBPluginMgr.SUBMITTED);
-          job.setLocalStatus(ComputingSystem.STATUS_WAIT);
+          job.setInternalStatus(ComputingSystem.STATUS_WAIT);
           job.setUser(jobUser);
           job.setJobId(null);
           job.setHost(null);
@@ -497,7 +497,7 @@ public class SubmissionControl{
     //Debug.debug("jobName : " + job.getName(), 3);
     statusTable.setValueAt(iconSubmitting, job.getTableRow(),
         DatasetMgr.FIELD_CONTROL);
-    if(csPluginMgr.submit(job)){
+    if(csPluginMgr.preProcess(job) && csPluginMgr.submit(job)){
       Debug.debug("Job " + job.getName() + " submitted : \n" +
                   "\tCSJobId = " + job.getJobId() + "\n" +
                   "\tStdOut = " + job.getStdOut() + "\n" +
@@ -518,12 +518,12 @@ public class SubmissionControl{
           DatasetMgr.FIELD_USER);
       statusTable.updateSelection();
       job.setNeedToBeRefreshed(true);
-      job.setLocalStatus(ComputingSystem.STATUS_WAIT);
+      job.setInternalStatus(ComputingSystem.STATUS_WAIT);
     }
     else{
       statusTable.setValueAt("Not submitted !", job.getTableRow(),
           DatasetMgr.FIELD_JOBID);
-      job.setLocalStatus(ComputingSystem.STATUS_FAILED);
+      job.setInternalStatus(ComputingSystem.STATUS_FAILED);
       job.setNeedToBeRefreshed(false);
       DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
           GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
@@ -577,7 +577,7 @@ public class SubmissionControl{
       JobInfo job = (JobInfo) e.nextElement();
       statusTable.setValueAt("Not submitted (Cancelled)!", job.getTableRow(), DatasetMgr.FIELD_JOBID);
       statusTable.setValueAt(job.getName(), job.getTableRow(), DatasetMgr.FIELD_JOBNAME);
-      job.setLocalStatus(ComputingSystem.STATUS_FAILED);
+      job.setInternalStatus(ComputingSystem.STATUS_FAILED);
       job.setNeedToBeRefreshed(false);
       //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
       DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),

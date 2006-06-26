@@ -13,6 +13,7 @@ import gridpilot.JobInfo;
 import gridpilot.LocalShellMgr;
 import gridpilot.LogFile;
 import gridpilot.GridPilot;
+import gridpilot.ShellMgr;
 import gridpilot.Util;
 
 public class ForkComputingSystem implements ComputingSystem{
@@ -41,7 +42,7 @@ public class ForkComputingSystem implements ComputingSystem{
     if(workingDir.startsWith("~")){
       workingDir = System.getProperty("user.home")+workingDir.substring(1);
     }
-    if(workingDir.endsWith("/")){
+    if(workingDir.endsWith("/") || workingDir.endsWith("\\")){
       workingDir = workingDir.substring(0, workingDir.length()-1);
     }
     commandSuffix = ".sh";
@@ -125,28 +126,28 @@ public class ForkComputingSystem implements ComputingSystem{
         stdOut.indexOf(job.getName())>-1*/
         ){
       job.setJobStatus("Running");
-      job.setLocalStatus(ComputingSystem.STATUS_RUNNING);
+      job.setInternalStatus(ComputingSystem.STATUS_RUNNING);
     }
     else{
       File stdErrFile = new File(job.getStdErr());
       File stdOutFile = new File(job.getStdOut());
       if(stdErrFile.exists() && stdErrFile.length()>0){
         job.setJobStatus("Done with errors");
-        job.setLocalStatus(ComputingSystem.STATUS_DONE);
+        job.setInternalStatus(ComputingSystem.STATUS_DONE);
       }
       else if(stdOutFile.exists()){
         job.setJobStatus("Done");
-        job.setLocalStatus(ComputingSystem.STATUS_DONE);
+        job.setInternalStatus(ComputingSystem.STATUS_DONE);
       }
       else{
         job.setJobStatus("Error");
-        job.setLocalStatus(ComputingSystem.STATUS_ERROR);
+        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
       }
       // Output file copy.
       // Try copying file(s) to output destination
       int jobDefID = job.getJobDefId();
       DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-      String[] outputMapping = dbPluginMgr.getOutputs(jobDefID);
+      String[] outputMapping = dbPluginMgr.getOutputMapping(jobDefID);
       String localName = null;
       String remoteName = null;
       for(int i=0; i<outputMapping.length; ++i){
@@ -161,7 +162,7 @@ public class ForkComputingSystem implements ComputingSystem{
         }
         catch(Exception e){
           job.setJobStatus("Error");
-          job.setLocalStatus(ComputingSystem.STATUS_ERROR);          
+          job.setInternalStatus(ComputingSystem.STATUS_ERROR);          
           logFile.addMessage("Exception during copying of output file(s) for job : " + job.getName() + "\n" +
               "\tCommand\t: " + localName + ": -> " + remoteName +"\n" +
               "\tException\t: " + e.getMessage(), e);
@@ -275,6 +276,7 @@ public class ForkComputingSystem implements ComputingSystem{
   }
   
   public boolean copyFile(String csName, String src, String dest){
+    //todo: support gsiftp and http
     try{
       return shellMgr.copyFile(src, dest);
     }
@@ -336,4 +338,186 @@ public class ForkComputingSystem implements ComputingSystem{
     }
     return user;
   }
+  
+  /**
+   * Operations done after a job is Validated. <br>
+   * Theses operations contain emcompasses two stages :
+   * <ul>
+   * <li>Moving of outputs in their final destination
+   * <li>Extraction of some informations from outputs
+   * </ul> <p>
+   *
+   * @return <code>true</code> if postprocessing went ok, <code>false</code> otherwise
+   * 
+   * (from AtCom1)
+   */
+  public boolean postProcess(JobInfo job){
+    return copyToFinalDest(job);
+  }
+
+  /**
+   * Operations done (by GridPilot) before a job is run. <br>
+   *
+   * @return <code>true</code> if postprocessing went ok, <code>false</code> otherwise
+   * 
+   * (from AtCom1)
+   */
+  public boolean preProcess(JobInfo job){
+    return getInputFiles(job);
+  }
+
+  /**
+   * Copies input files to run directory.
+   * Assumes job.stdout points to a file in the run directory.
+   */
+  private boolean getInputFiles(JobInfo job){
+    Debug.debug("Getting input files for job " + job.getName(), 2);
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    String [] inputFiles = dbPluginMgr.getInputs(job.getJobDefId());
+    ShellMgr shell = null;
+    try{
+      shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+    }
+    catch(Exception e){
+      Debug.debug("ERROR: could not copy stdout. "+e.getMessage(), 3);
+      logFile.addMessage("WARNING could not copy files "+
+          Util.arrayToString(inputFiles)+". ");
+      // No shell available
+      return false;
+      //throw e;
+    }
+    for(int i=0; i<inputFiles.length; ++i){
+      if(inputFiles[i]!=null && inputFiles[i].trim().length()!=0){
+        try{
+          if(!shell.existsFile(inputFiles[i])){
+            logFile.addMessage("File " + job.getStdOut() + " doesn't exist");
+            return false;
+          }
+        }
+        catch(Throwable e){
+          Debug.debug("ERROR getting input file: "+e.getMessage(), 2);
+          logFile.addMessage("ERROR getting input file: "+e.getMessage());
+          //throw e;
+        }
+        Debug.debug("Post processing : Getting " + inputFiles[i], 2);
+        String fileName = inputFiles[i];
+        int lastSlash = fileName.lastIndexOf("/");
+        if(lastSlash>-1){
+          fileName = fileName.substring(lastSlash + 1);
+        }
+        try{
+          if(!shell.copyFile(inputFiles[i], runDir(job)+"/"+fileName)){
+            logFile.addMessage("Pre-processing : Cannot get " +
+                inputFiles[i]);
+            return false;
+          }
+        }
+        catch(Throwable e){
+          Debug.debug("ERROR getting input file: "+e.getMessage(), 2);
+          logFile.addMessage("ERROR getting input file: "+e.getMessage());
+          //throw e;
+        }
+      }
+    }
+    return true;
+  }
+  
+  /**
+   * Moves job.StdOut and job.StdErr to final destination specified in the DB. <p>
+   * job.StdOut and job.StdErr are then set to these final values. <p>
+   * @return <code>true</code> if the move went ok, <code>false</code> otherwise.
+   * (from AtCom1)
+   */
+  private boolean copyToFinalDest(JobInfo job){
+    // Will only run if there is a shell available for the computing system
+    // in question - and if the destination is accessible from this shell.
+    // For grids, stdout and stderr should be taken care of by the xrsl or jdsl
+    // (*ScriptGenerator)
+    Debug.debug("PostProcessing for job " + job.getName(), 2);
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+    // TODO: should we support destinations like gsiftp:// and http://?
+    // For grid systems they should already have been taken care of by
+    // the job description.
+    ShellMgr shell = null;
+    try{
+      shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+    }
+    catch(Exception e){
+      Debug.debug("ERROR: could not copy stdout. " +e.getMessage(), 3);
+      logFile.addMessage("WARNING could not copy stdout to "+finalStdOut);
+      // No shell available
+      return false;
+      //throw e;
+    }
+    /**
+     * move temp StdOut -> finalStdOut
+     */
+    if(finalStdOut!=null && finalStdOut.trim().length()!=0){
+      try{
+        if(!shell.existsFile(job.getStdOut())){
+          logFile.addMessage("Post processing : File " + job.getStdOut() + " doesn't exist");
+          return false;
+        }
+      }
+      catch(Throwable e){
+        Debug.debug("ERROR checking for stdout: "+e.getMessage(), 2);
+        logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
+        //throw e;
+      }
+      Debug.debug("Post processing : Renaming " + job.getStdOut() + " in " + finalStdOut, 2);
+      // if(!shell.moveFile(job.getStdOut(), finalStdOut)){
+      try{
+        if(!shell.copyFile(job.getStdOut(), finalStdOut)){
+          logFile.addMessage("Post processing : Cannot move \n\t" +
+                             job.getStdOut() +
+                             "\n into \n\t" + finalStdOut);
+          return false;
+        }
+      }
+      catch(Throwable e){
+        Debug.debug("ERROR copying stdout: "+e.getMessage(), 2);
+        logFile.addMessage("ERROR copying stdout: "+e.getMessage());
+        //throw e;
+      }
+      job.setStdOut(finalStdOut);
+    }
+
+    /**
+     * move temp StdErr -> finalStdErr
+     */
+
+    if(finalStdErr!=null && finalStdErr.trim().length()!=0){
+      try{
+        if(!shell.existsFile(job.getStdErr())){
+          logFile.addMessage("Post processing : File " + job.getStdErr() + " doesn't exist");
+          return false;
+        }
+      }
+      catch(Throwable e){
+        Debug.debug("ERROR checking for stderr: "+e.getMessage(), 2);
+        logFile.addMessage("ERROR checking for stderr: "+e.getMessage());
+        //throw e;
+      }
+      Debug.debug("Post processing : Renaming " + job.getStdErr() + " in " + finalStdErr,2);
+      //shell.moveFile(job.getStdOut(), finalStdOutName);
+      try{
+        if(!shell.copyFile(job.getStdErr(), finalStdErr)){
+          logFile.addMessage("Post processing : Cannot move \n\t" +
+                             job.getStdErr() +
+                             "\n into \n\t" + finalStdErr);
+          return false;
+        }
+      }
+      catch(Throwable e){
+        Debug.debug("ERROR copying stderr: "+e.getMessage(), 2);
+        logFile.addMessage("ERROR copying stderr: "+e.getMessage());
+        //throw e;
+      }
+      job.setStdErr(finalStdErr);
+    }
+    return true;
+  }
+
 }

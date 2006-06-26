@@ -144,7 +144,7 @@ public class JobValidation{
       logFile.addMessage("update DB status failed after validation ; " +
                          "this job is set back updatable, and will be revalidated later " +
                          "(after redetection of this job end", job);
-      job.setLocalStatus(ComputingSystem.STATUS_ERROR);
+      job.setInternalStatus(ComputingSystem.STATUS_ERROR);
       job.setNeedToBeRefreshed(true);
     }
 

@@ -67,11 +67,13 @@ public class DBPluginMgr implements Database{
     }
 
     String [] parameters = configFile.getValues(dbName, "parameters");
-    Class [] dbArgsType = new Class [parameters.length];
-    Object [] dbArgs = new String [parameters.length];
+    Class [] dbArgsType = new Class[parameters.length+1];
+    Object [] dbArgs = new String[parameters.length+1];
+    dbArgsType[0] = String.class;
+    dbArgs[0] = dbName;
     for(int i=0; i<parameters.length; ++i){
-      dbArgsType[i] = String.class;
-      dbArgs[i] = configFile.getValue(dbName, parameters[i]);
+      dbArgsType[i+1] = String.class;
+      dbArgs[i+1] = configFile.getValue(dbName, parameters[i]);
     }
 
     db = (Database) Util.loadClass(dbClass, dbArgsType, dbArgs);
@@ -854,9 +856,9 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized String getJobDefTransformationID(final int jobDefID){
+  public synchronized int getJobDefTransformationID(final int jobDefID){
     MyThread t = new MyThread(){
-      String res = null;
+      int res = -1;
       public void run(){
         try{
           res = db.getJobDefTransformationID(jobDefID);
@@ -867,7 +869,7 @@ public class DBPluginMgr implements Database{
                              jobDefID, t);
         }
       }
-      public String getStringRes(){
+      public int getIntRes(){
         return res;
       }
     };
@@ -875,10 +877,10 @@ public class DBPluginMgr implements Database{
     t.start();
   
     if(waitForThread(t, dbName, dbTimeOut, "getTransformationID")){
-      return t.getStringRes();
+      return t.getIntRes();
     }
     else{
-      return null;
+      return -1;
     }
   }
 
@@ -944,8 +946,7 @@ public class DBPluginMgr implements Database{
       public void run(){
         try{
           res = db.getTransformation(
-              Integer.parseInt(db.getJobDefTransformationID(jobDefID))
-              ).getValue(key).toString();
+              db.getJobDefTransformationID(jobDefID)).getValue(key).toString();
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -968,13 +969,13 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized String [] getOutputs(final int jobDefID){
+  public synchronized String [] getOutputMapping(final int jobDefID){
   
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getOutputs(jobDefID);
+          res = db.getOutputMapping(jobDefID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1247,6 +1248,35 @@ public class DBPluginMgr implements Database{
     t.start();
   
     if(waitForThread(t, dbName, dbTimeOut, "getTransOutputs")){
+      return t.getString2Res();
+    }
+    else{
+      return null;
+    }
+  }
+
+  public synchronized String [] getTransInputs(final int transformationID){
+    
+    MyThread t = new MyThread(){
+      String [] res = null;
+      public void run(){
+        try{
+          res = db.getTransInputs(transformationID);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             transformationID, t);
+        }
+      }
+      public String [] getString2Res(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getTransInputs")){
       return t.getString2Res();
     }
     else{

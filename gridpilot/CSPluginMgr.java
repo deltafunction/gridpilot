@@ -281,7 +281,7 @@ public class CSPluginMgr implements ComputingSystem{
    * Submits this job on the computing system specified by job.ComputingSystem
    * @see ComputingSystem#submit(JobInfo)
    */
-  public boolean submit(final JobInfo job) {
+  public boolean submit(final JobInfo job){
 
     MyThread t = new MyThread(){
       boolean res = false;
@@ -719,6 +719,72 @@ public class CSPluginMgr implements ComputingSystem{
     t.start();
 
     if(waitForThread(t, csName, copyFileTimeOut, "copyFile")){
+      return t.getBooleanRes();
+    }
+    else{
+      return false;
+    }
+  }
+  
+  /**
+   * @see ComputingSystem#postProcess(JobInfo)
+   */
+  public boolean postProcess(final JobInfo job){
+
+    MyThread t = new MyThread(){
+      boolean res = false;
+      public void run(){
+        try{
+          res = ((ComputingSystem) cs.get(job.getCSName())).postProcess(job);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + job.getCSName() +
+                             " during postProcessing", t);
+          res = false;
+        }
+      }
+      public boolean getBooleanRes(){
+        return res;
+      }
+    };
+
+    t.start();
+
+    if(waitForThread(t, job.getCSName(), copyFileTimeOut, "postProcessing")){
+      return t.getBooleanRes();
+    }
+    else{
+      return false;
+    }
+  }
+  
+  /**
+   * @see ComputingSystem#preProcess(JobInfo)
+   */
+  public boolean preProcess(final JobInfo job){
+
+    MyThread t = new MyThread(){
+      boolean res = false;
+      public void run(){
+        try{
+          res = ((ComputingSystem) cs.get(job.getCSName())).preProcess(job);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + job.getCSName() +
+                             " during preProcessing", t);
+          res = false;
+        }
+      }
+      public boolean getBooleanRes(){
+        return res;
+      }
+    };
+
+    t.start();
+
+    if(waitForThread(t, job.getCSName(), copyFileTimeOut, "preProcessing")){
       return t.getBooleanRes();
     }
     else{

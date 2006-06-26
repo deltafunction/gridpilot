@@ -617,7 +617,7 @@ public class JobCreator{
     }
     // jobDefinition fields
     
-    // Add eventMin, eventMax and inputFileName if they are
+    // Add eventMin, eventMax and inputFileNames if they are
     // present in the fields of jobDefinition, but not in the fixed
     // attributes.
     String [] jobDefFields = dbPluginMgr.getFieldNames("jobDefinition");
@@ -646,9 +646,9 @@ public class JobCreator{
       jobAttributeNames.add("nEvents");
       jobAttributes.add("0");
     }
-    if(!jobattributenames.contains("inputfilename") &&
-        jobdefinitionfields.contains("inputfilename")){
-      jobAttributeNames.add("inputFileName");
+    if(!jobattributenames.contains("inputfilenames") &&
+        jobdefinitionfields.contains("inputfilenames")){
+      jobAttributeNames.add("inputFileNames");
       jobAttributes.add("");
     }
     cstAttrNames = new String [jobAttributeNames.size()];
@@ -682,7 +682,7 @@ public class JobCreator{
         resCstAttr[i] = Integer.toString(eventSplits[currentPartition-1][1]-
                                          eventSplits[currentPartition-1][0]+1);
       }
-      else if(cstAttrNames[i].equalsIgnoreCase("inputFileName") &&
+      else if(cstAttrNames[i].equalsIgnoreCase("inputFileNames") &&
           eventSplits!=null && eventSplits.length>1){
         // all files from input dataset containing the needed events
         Debug.debug("setting input files "+inputFiles, 3);
@@ -706,7 +706,7 @@ public class JobCreator{
         resJobParam[i] = Integer.toString(eventSplits[currentPartition-1][1]-
             eventSplits[currentPartition-1][0]+1);
       }
-      else if((jobParamNames[i].equalsIgnoreCase("inputFileName")) &&
+      else if((jobParamNames[i].equalsIgnoreCase("inputFileNames")) &&
           eventSplits!=null && eventSplits.length>1){
         resJobParam[i] = inputs;
       }

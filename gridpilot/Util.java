@@ -266,7 +266,7 @@ public class Util{
       final DBPluginMgr dbPluginMgr){
     //final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
     String markup = "<b>"+name+" : </b><br>"+
-      "<a href=\"http://check/\">check</a>";
+      "<a href=\"http://check/\">Select</a>";
     JEditorPane checkPanel = new JEditorPane("text/html", markup);
     checkPanel.setEditable(false);
     checkPanel.setOpaque(false);
@@ -440,6 +440,12 @@ public class Util{
     line = line.replaceFirst("^file://", "/");
     line = line.replaceFirst("^file:/", "/");
     line = line.replaceFirst("^file:", "");
+    return line;
+  }
+
+  public static String addFile(String _line){
+    String line = _line;
+    line = line.replaceFirst("^/", "file:///");
     return line;
   }
 

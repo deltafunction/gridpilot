@@ -214,7 +214,7 @@ public class JobInfo extends DBRecord{
     setValues();
   }
 
-  public void setLocalStatus(int _internalStatus){
+  public void setInternalStatus(int _internalStatus){
     internalStatus = _internalStatus;
     setValues();
   }

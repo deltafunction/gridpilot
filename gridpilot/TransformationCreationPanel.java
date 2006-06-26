@@ -259,7 +259,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     int row = 0;
     for(int i=0; i<cstAttributesNames.length; ++i, ++row){
       if(cstAttributesNames[i].equalsIgnoreCase("definition") ||
-          cstAttributesNames[i].equalsIgnoreCase("code") ||
+          cstAttributesNames[i].equalsIgnoreCase("inputFiles") ||
          cstAttributesNames[i].equalsIgnoreCase("script") ||
          cstAttributesNames[i].equalsIgnoreCase("validationScript") ||
          cstAttributesNames[i].equalsIgnoreCase("extractionScript")){

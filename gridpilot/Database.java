@@ -38,7 +38,18 @@ public interface Database{
   public String [] getVersions(String transformationName);
   public String getTransformationRuntimeEnvironment(int transformationID);
   public String [] getTransJobParameters(int transformationID);
+  /**
+   * the input file of a job script are defined by the fields
+   * transformation.inputFiles (fully qualified names),
+   * jobDefinition.inputFileNames (fully qualified names)
+   * - generated using dataset.inputDataset, dataset.inputDB).
+   * 
+   * the output files of a job script are defined by the fields
+   * jobDefinition.outFileMapping,
+   * - generated using transformation.outputFiles, dataset.outputLocation
+   */
   public String [] getTransOutputs(int transformationID);
+  public String [] getTransInputs(int transformationID);
 
   // ####### Dataset table
   public DBResult getJobDefinitions(int datasetID, String [] fieldNames);
@@ -68,7 +79,7 @@ public interface Database{
   public String getJobDefUserInfo(int jobDefID);
   public String getJobDefName(int jobDefID);
   public int getJobDefDatasetID(int jobDefID);
-  public String getJobDefTransformationID(int jobDefID);
+  public int getJobDefTransformationID(int jobDefID);
   public String getExtractScript(int jobDefID);
   public String getValidationScript(int jobDefID);
   public String getTransformationScript(int jobDefID);
@@ -80,7 +91,7 @@ public interface Database{
   public int getRuntimeEnvironmentID(String name, String cs);
   public String [] getTransformationArguments(int jobDefID);
   public String [] getJobDefTransPars(int jobDefID);
-  public String [] getOutputs(int jobDefID);
+  public String [] getOutputMapping(int jobDefID);
   public String [] getInputs(int jobDefID);
   public String getJobDefInRemoteName(int jobDefID, String par);
   public String getJobDefInLocalName(int jobDefID, String par);
