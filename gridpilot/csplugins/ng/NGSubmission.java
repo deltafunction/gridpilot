@@ -1,6 +1,13 @@
 package gridpilot.csplugins.ng;
 
 import java.io.*;
+import java.net.URL;
+
+import org.globus.gsi.GlobusCredential;
+import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
+import org.ietf.jgss.GSSCredential;
+import org.nordugrid.gridftp.ARCGridFTPJob;
+import org.nordugrid.gridftp.ARCGridFTPJobException;
 
 import gridpilot.ConfigFile;
 import gridpilot.DBPluginMgr;
@@ -19,33 +26,25 @@ public class NGSubmission{
  
   private ConfigFile configFile;
   private LogFile logFile;
-  private String systemName;
-  private String submissionCmd;
-  private String submissionParams;
+  private String csName;
+  private String submissionHosts;
+  private String workingDir;
 
-  public NGSubmission(String _systemName){
+  public NGSubmission(String _csName, String _workingDir){
     Debug.debug("Loading class NGSubmission", 3);
+    workingDir = _workingDir;
     configFile = GridPilot.getClassMgr().getConfigFile();
     logFile = GridPilot.getClassMgr().getLogFile();
-    systemName = _systemName;
-    
-    submissionCmd = configFile.getValue(systemName, "Submission command");
-    if(submissionCmd == null){
-      logFile.addMessage(configFile.getMissingMessage(systemName, "Submission command"));
-      return;
-    }
-    
-    submissionParams = configFile.getValue(systemName, "Submission parameters");
-    
-    Debug.debug("cmd : " + submissionCmd, 3);
-    Debug.debug("params : " + submissionParams, 3);
-
+    csName = _csName;
+    submissionHosts = configFile.getValue(csName, "Submission hosts");
+    Debug.debug("hosts : " + submissionHosts, 3);
   }
 
   public boolean submit(JobInfo job){
 
-    NGScriptGenerator scriptGenerator =  new NGScriptGenerator(systemName);
+    NGScriptGenerator scriptGenerator =  new NGScriptGenerator(csName);
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    
     String finalStdErr = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdOut = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
     // The default is now to create both stderr if either
@@ -54,40 +53,20 @@ public class NGSubmission{
     boolean withStdErr = finalStdErr!=null && finalStdErr.trim().length()>0 ||
        (finalStdErr==null || finalStdErr.equals("")) &&
        (finalStdOut==null || finalStdOut.equals(""));
-
     Debug.debug("stdout/err: "+finalStdOut+":"+finalStdErr, 3);
 
-    String wrapperPath;
-    if(job.getStdOut()!=null){
-      wrapperPath = new File(job.getStdOut()).getParentFile().getAbsolutePath() + "/";
-      // If running on Windows...
-      if(wrapperPath.startsWith("C:\\")){
-        //wrapperPath = wrapperPath.substring(0, 2);
-        wrapperPath = wrapperPath.replaceAll(new String("C:\\\\"), new String("/"));
-        wrapperPath = wrapperPath.replaceAll(new String("\\\\"), new String("/"));
-      }
-    }
-    else{
-      wrapperPath = "./";
-    }
-    
-    Debug.debug("Submitting in "+wrapperPath, 3);
+    Debug.debug("Submitting in "+ workingDir, 3);
 
-    String xrslName = wrapperPath +  job.getName() + ".xrsl";
-    String scriptName = wrapperPath +  job.getName() + ".job";
-    //job.setName(xrslName);
+    String xrslName = workingDir + "/" + job.getName() + ".xrsl";
+    String scriptName = workingDir + "/" + job.getName() + ".job";
 
     if(!scriptGenerator.createXRSL(job, scriptName, xrslName, !withStdErr)){
       logFile.addMessage("Cannot create scripts for job " + job.getName() +
-                              " on " + systemName);
+                              " on " + csName);
       return false;
     }
 
-
-    //File workingDirectory = new File(wrapperPath);
-
-    String NGJobId = submit(xrslName, wrapperPath/*workingDirectory*/);
-    //String NGJobId = submit(xrslName, systemName);
+    String NGJobId = submit(xrslName);
     if(NGJobId==null){
       job.setJobStatus(NGComputingSystem.NG_STATUS_ERROR);
       return false;
@@ -99,65 +78,46 @@ public class NGSubmission{
 
   }
 
-  private String submit(String xrslName, String workingDirectory){
-  // private static String submit(String xrslName, String systemName){
-
-   String [] cmd = {submissionCmd, "-f", xrslName, submissionParams};
+  private String submit(String xrslFileName){
 
    String NGJobId;
-   // execution of ngsub
-    try{
-      StringBuffer stdOut = new StringBuffer();
-      StringBuffer stdErr = new StringBuffer();
-
-      GridPilot.getClassMgr().getJobControl().getShellMgr(systemName).exec(cmd, workingDirectory.toString(), stdOut, stdErr);
-
-      if(stdErr.length()!=0 || stdOut.length() ==0 || stdOut.indexOf("gsiftp://") == -1){
-        logFile.addMessage("Error when submitting job "+ xrslName + " :\n" +
-                           "\tCommand\t: " + Util.arrayToString(cmd) + "\n" +
-                           "\tStdOut\t: " + stdOut + "\n"+
-                           "\tStdErr\t: " + stdErr + "\n"+
-                           "\tWorkDir\t: " + workingDirectory.toString());
-      //job.setStatus(NGComputingSystem.NG_STATUS_ERROR);
-      }
-      if(stdOut.length()!= 0){
-
-        Debug.debug("Output : \n" + stdOut, 2);
-
-        int begin = stdOut.indexOf("gsiftp://");
-        if(begin == -1){
-          logFile.addMessage("Job Id not found in output : \n" +
-                                  "\tCommand\t:" + Util.arrayToString(cmd) + "\n" +
-                                  "\tOutput\t:" + stdOut + "\n" +
-                                  "\tError\t:" + stdErr);
-          return null;
-        }
-        int end = stdOut.indexOf("\n", begin);
-        if(end == -1)
-          end = stdOut.length();
-
-
-        NGJobId = stdOut.substring(begin, end);
-        Debug.debug("NGJobId : " + NGJobId, 3);
-
-        //job.setComputingSystemJobId(NGJobId);
-        //job.setStatus(ComputingSystem.STATUS_SUBMITTED);
-      }
-      else{
-        return null;
-      }
-      // Update in AMI -> will be done by  LSFComputingSystem
-
+   try{
+     Debug.debug("Reading file "+xrslFileName, 3);
+     BufferedReader in = new BufferedReader(
+       new InputStreamReader((new URL("file:"+xrslFileName)).openStream()));
+     String xrsl = "";
+     String line;
+     int lineNumber = 0;
+     while((line=in.readLine())!=null){
+       ++lineNumber;
+       xrsl += line+"\n";
+     }
+     in.close();
+     
+     // TODO: use all hosts from submissionHosts
+     String submissionHost = Util.split(submissionHosts)[0];
+     ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost);
+     GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+     GlobusCredential globusCred = null;
+     if(credential instanceof GlobusGSSCredentialImpl){
+       globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+     }
+     gridJob.addProxy(globusCred);
+     gridJob.submit(xrsl);
+     NGJobId = gridJob.getGlobalId();
+     Debug.debug("NGJobId : " + NGJobId, 3);
     }
-    catch(IOException ioe){
-      logFile.addMessage("IOException during job " + xrslName + " submission :\n" +
-                         "\tCommand\t: " + Util.arrayToString(cmd) +"\n" +
-                         "\tException\t: " + ioe.getMessage(), ioe);
-      //job.setStatus(NGComputingSystem.NG_STATUS_ERROR);
+    catch(ARCGridFTPJobException ae){
+      logFile.addMessage("ARCGridFTPJobException during submission of " + xrslFileName + ":\n" +
+                         "\tException\t: " + ae.getMessage(), ae);
+      ae.printStackTrace();
       return null;
     }
-
+    catch(IOException ioe){
+      logFile.addMessage("IOException during submission of " + xrslFileName + ":\n" +
+                         "\tException\t: " + ioe.getMessage(), ioe);
+      return null;
+    }
     return NGJobId;
   }
-
 }

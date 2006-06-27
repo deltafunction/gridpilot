@@ -52,16 +52,16 @@ public class NGComputingSystem implements ComputingSystem{
   });
   protected LocalShellMgr shell;
   private static ConfigFile configFile;
-  private static String systemName;
+  private static String csName;
   private static LogFile logFile;
   private String workingDir;
 
-  public NGComputingSystem(String _systemName) {
-    systemName = _systemName;
-    scriptGenerator = new NGScriptGenerator(systemName);
-    ngSubmission = new NGSubmission(systemName);
-    ngUpdateStatus = new NGUpdateStatus(systemName);
-    workingDir = GridPilot.getClassMgr().getConfigFile().getValue(systemName, "working directory");
+  public NGComputingSystem(String _systemName){
+    csName = _systemName;
+    scriptGenerator = new NGScriptGenerator(csName);
+    ngSubmission = new NGSubmission(csName, workingDir);
+    ngUpdateStatus = new NGUpdateStatus(csName);
+    workingDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "working directory");
     if(workingDir==null || workingDir.equals("")){
       workingDir = "~";
     }
@@ -80,24 +80,13 @@ public class NGComputingSystem implements ComputingSystem{
   /*
    * Local directory to keep xrsl, shell script and temporary copies of stdin/stdout
    */
-  private String runDir(JobInfo job){
+  protected String runDir(JobInfo job){
     return workingDir +"/"+job.getName();
   }
 
   public boolean submit(JobInfo job) {
-    
     Debug.debug("submitting..."+gridProxyInitialized, 3);
-
-    synchronized(gridProxyInitialized){
-      // avoids that dozens of popup open if
-      // you submit dozen of jobs and proxy not initialized
-      String reason = needInitProxy();
-      if(reason != null)
-        initGridProxy(reason);
-    }
-    Debug.debug("Using NGSubmission "+ngSubmission.toString(), 3);
     return ngSubmission.submit(job);
-
   }
 
 
@@ -108,16 +97,6 @@ public class NGComputingSystem implements ComputingSystem{
   }
 
   private int updateStatus(JobInfo job){
-    
-    synchronized(gridProxyInitialized){
-      // avoids that dozen of popup open if
-      // you submit dozen of jobs and proxy not initialized
-      String reason = needInitProxy();
-      if(reason != null){
-        initGridProxy(reason);
-      }
-    }
-    
     if(ngUpdateStatus.updateStatus(job)){
       Debug.debug("Updating status of job "+job.getName(), 2);
       if(job.getJobStatus()==null){
@@ -155,9 +134,9 @@ public class NGComputingSystem implements ComputingSystem{
   }
 
   public void killJobs(Vector jobsToKill){
-    String killCommand = configFile.getValue(systemName, "Kill command");
+    String killCommand = configFile.getValue(csName, "Kill command");
     if(killCommand == null){
-      logFile.addMessage("Could not kill job : " + configFile.getMissingMessage(systemName, "kill command"));
+      logFile.addMessage("Could not kill job : " + configFile.getMissingMessage(csName, "kill command"));
       return;
     }
 
@@ -225,7 +204,7 @@ public class NGComputingSystem implements ComputingSystem{
       }
     }
     String [][] cmd = new String [2][];
-    cmd[0] = new String [] {configFile.getValue(systemName, "clean command"),  job.getJobId()};
+    cmd[0] = new String [] {configFile.getValue(csName, "clean command"),  job.getJobId()};
     String dirName = runDir(job);
     if(dirName.startsWith("C:\\")){
       dirName = dirName.replaceAll(new String("C:\\\\"), new String("/"));
@@ -267,10 +246,10 @@ public class NGComputingSystem implements ComputingSystem{
     String dirName = runDir(job);
     
     Debug.debug("getOutput : " + job.getName() + " ("+job.getStdOut() + ")", 3);
-    String cmdName = configFile.getValue(systemName, "getoutput command");
+    String cmdName = configFile.getValue(csName, "getoutput command");
     if(cmdName==null){
       logFile.addMessage("Cannot get output for job " + job.getName() + " : \n" +
-                              configFile.getMissingMessage(systemName, "getoutput command"));
+                              configFile.getMissingMessage(csName, "getoutput command"));
       return false;
     }
     // After a crash some unfinished downloads may be around.
@@ -362,9 +341,9 @@ public class NGComputingSystem implements ComputingSystem{
   }
 
   public String getFullStatus(JobInfo job){
-    String checkingCommand = configFile.getValue(systemName, "Checking command");
+    String checkingCommand = configFile.getValue(csName, "Checking command");
     if(checkingCommand == null){
-      logFile.addMessage(configFile.getMissingMessage(systemName, "Checking command"));
+      logFile.addMessage(configFile.getMissingMessage(csName, "Checking command"));
       return "Error : no checking command defined in configuration file";
     }
 
@@ -406,9 +385,9 @@ public class NGComputingSystem implements ComputingSystem{
 
     String [] res = new String[2];
 
-    String catCommand = configFile.getValue(systemName, "output command");
+    String catCommand = configFile.getValue(csName, "output command");
     if(catCommand == null){
-      logFile.addMessage(configFile.getMissingMessage(systemName, "output command"));
+      logFile.addMessage(configFile.getMissingMessage(csName, "output command"));
       res[0] = res[1] = null;
       return res;
     }
@@ -470,140 +449,6 @@ public class NGComputingSystem implements ComputingSystem{
 
     return res;
   }
-
-  /**
-   * @return
-   * <li>null if grid-proxy-init is not required
-   * <li>a string which contains reason is grid-proxy-init is required
-   */
-  public String needInitProxy(){
-    if(gridProxyInitialized.booleanValue()){
-      return null;
-    }
-    String timeLimit = configFile.getValue(systemName, "timeleft limit");
-    if(timeLimit==null){
-      logFile.addMessage(configFile.getMissingMessage(systemName, "timeleft limit"));
-      timeLimit = "0";
-      //return configFile.getMissingMessage(systemName, "timeleft limit");
-    }
-    String proxyTimeLeft = configFile.getValue(systemName, "proxy timeleft");
-    if(proxyTimeLeft == null){
-      logFile.addMessage(configFile.getMissingMessage(systemName, "proxy timeleft"));
-      return configFile.getMissingMessage(systemName, "proxy timeleft");
-    }
-
-    String [] cmd = {proxyTimeLeft};
-
-    try{
-      StringBuffer stdOut = new StringBuffer();
-      StringBuffer stdErr = new StringBuffer();
-
-      shell.exec(cmd, stdOut, stdErr);
-      if(stdOut.toString().trim().length() != 0){
-        int intTimeLimit = new Integer(timeLimit).intValue();
-        if(stdOut.toString().endsWith("\n"))
-          stdOut.deleteCharAt(stdOut.length()-1);
-
-        int intTimeLeft = new Integer(stdOut.toString()).intValue();
-        if(intTimeLeft <=0)
-          return "Proxy expired";
-
-        Debug.debug("Timeleft : " + intTimeLeft + ", time limit : " + intTimeLimit, 3);
-        if(intTimeLimit<intTimeLeft){
-          timerProxy.setInitialDelay((intTimeLeft - intTimeLimit) * 1000);
-          timerProxy.start();
-          gridProxyInitialized = Boolean.TRUE;
-          return null;
-        }
-        else{
-          return "Timeleft = " + intTimeLeft + " >= " + "time limit : " + intTimeLimit;
-        }
-      }
-      else{
-        return stdErr.toString();
-      }
-
-    }
-    catch(Exception e){
-      logFile.addMessage("Exception during evaluation of timeleft proxy :\n" +
-                         "\tCommand\t: " +Util.arrayToString(cmd) + "\n" +
-                         "\tException\t: " + e.getMessage(), e);
-      return e.getMessage()==null ? e.getClass().getName() : e.getMessage();
-    }
-  }
-
-  
-  private void initGridProxy(String reason){
-    
-    int rep = 0;
-    boolean success = false;
-    
-    do{
-      success = askForGridProxyPassword(reason);
-      ++rep;
-      if(success){
-        Debug.debug("grid init done", 2);
-        gridProxyInitialized = Boolean.TRUE;
-      }
-    }   
-    while(!success && rep<4);
-    
-  }
-
-  private boolean askForGridProxyPassword(String reason){
-
-    JPanel panel = new JPanel(new GridBagLayout());
-    JTextPane tp = new JTextPane();
-    tp.setText(reason);
-    tp.setEditable(false);
-    tp.setOpaque(false);
-    tp.setBorder(null);
-
-    JPasswordField pwf = new JPasswordField();
-
-    panel.add(tp, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
-        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
-        0, 0));
-    panel.add(new JLabel("Please enter your grid password:"),
-        new GridBagConstraints(0, 1, 1, 1, 1.0, 1.0,
-        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
-        0, 0));
-    panel.add(pwf, new GridBagConstraints(0, 2, 1, 1, 1.0, 1.0,
-        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
-        0, 0));
-
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
-        "Enter Grid Password", JOptionPane.OK_CANCEL_OPTION);
-
-    if(choice != JOptionPane.OK_OPTION){
-      return false;
-    }
-
-    String gridProxyInit = configFile.getValue(systemName, "proxy init");
-    if(gridProxyInit == null){
-      configFile.missingMessage(systemName, "proxy init");
-      return false;
-    }
-
-    String [] cmd  = {"echo \""+new String(pwf.getPassword())+"\" | "+gridProxyInit+" -pwstdin"};
-
-    StringBuffer stdOut = new StringBuffer();
-    StringBuffer stdErr = new StringBuffer();
-    try{
-      shell.exec(cmd, stdOut, stdErr);
-      Debug.debug("grid init :\n" +
-                  "\tStdOut = " + stdOut + "\n" +
-                  "\tStdErr = " + stdErr, 2);
-
-    }catch(Exception e){
-      Debug.debug("Cannot init grid proxy : \n" +
-                         "\tCommand\t: " + Util.arrayToString(cmd) + "\n"+
-                         "\tException\t: " + e.getMessage(), 1);
-      return false;
-    }
-
-    return stdErr.length()==0;
-  }
   
   public boolean copyFile(JobInfo job, String src, String dest){
     Debug.debug("Copying file "+ src + "->" + dest, 3);
@@ -642,7 +487,7 @@ public class NGComputingSystem implements ComputingSystem{
       }
       else{
         Debug.debug("Using cp" + dest, 3);
-        return AtCom.getClassMgr().getShellMgr(systemName).copyFile(src, dest);
+        return AtCom.getClassMgr().getShellMgr(csName).copyFile(src, dest);
       }
     }
     catch(IOException ioe){

@@ -1,8 +1,14 @@
 package gridpilot;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
+
+import javax.swing.Timer;
+
+import org.ietf.jgss.GSSCredential;
 
 /**
  * This class allows access to all global objects in gridpilot.
@@ -24,7 +30,16 @@ public class ClassMgr{
   private HashMap datasetMgrs = new HashMap();
   private Vector submittedJobs = new Vector();
   private SubmissionControl submissionControl;
+  private GSSCredential credential = null;
+  private Boolean gridProxyInitialized = Boolean.FALSE;
+  private Timer timerProxy = new Timer(0, new ActionListener(){
+    public void actionPerformed(ActionEvent e){
+      Debug.debug("actionPerformed timeProxy", 3);
+      gridProxyInitialized = Boolean.FALSE;
+    }
+  });
 
+  
   public void setConfigFile(ConfigFile _configFile){
     configFile = _configFile;
   }
@@ -248,6 +263,33 @@ public class ClassMgr{
       setSubmissionControl(new SubmissionControl());
     }
     return submissionControl;
+  }
+  
+  public GSSCredential getGridCredential(){
+    if(gridProxyInitialized.booleanValue()){
+      return credential;
+    }
+    synchronized(gridProxyInitialized){
+      // avoids that dozens of popup open if
+      // you submit dozen of jobs and proxy not initialized
+      try{
+        if(credential==null || credential.getRemainingLifetime()<GridPilot.proxyTimeLeftLimit){
+          Debug.debug("Initialzing credential", 3);
+          credential = Util.initGridProxy();
+          gridProxyInitialized = Boolean.TRUE;
+        }
+        else{
+          timerProxy.setInitialDelay((credential.getRemainingLifetime() - GridPilot.proxyTimeLeftLimit) * 1000);
+          timerProxy.start();
+          gridProxyInitialized = Boolean.TRUE;
+        }
+      }
+      catch(Exception e){
+        Debug.debug("ERROR: could not get grid credential", 1);
+        e.printStackTrace();
+      }
+    }
+    return credential;
   }
 
 }

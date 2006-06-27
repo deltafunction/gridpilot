@@ -7,6 +7,12 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.security.InvalidKeyException;
+import java.security.cert.X509Certificate;
 import java.util.StringTokenizer;
 
 import javax.swing.JComboBox;
@@ -15,6 +21,7 @@ import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPasswordField;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
@@ -23,6 +30,19 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.plaf.UIResource;
 import javax.swing.text.JTextComponent;
+
+import org.globus.gsi.CertUtil;
+import org.globus.gsi.GSIConstants;
+import org.globus.gsi.GlobusCredential;
+import org.globus.gsi.OpenSSLKey;
+import org.globus.gsi.X509ExtensionSet;
+import org.globus.gsi.bc.BouncyCastleCertProcessingFactory;
+import org.globus.gsi.bc.BouncyCastleOpenSSLKey;
+import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
+import org.gridforum.jgss.ExtendedGSSCredential;
+import org.gridforum.jgss.ExtendedGSSManager;
+import org.ietf.jgss.GSSCredential;
+import org.ietf.jgss.GSSException;
 
 /**
  * @author Frederik.Orellana@cern.ch
@@ -447,6 +467,183 @@ public class Util{
     String line = _line;
     line = line.replaceFirst("^/", "file:///");
     return line;
+  }
+
+  public static String [] getGridPassword(String keyFile, String certFile, String password){
+    
+    JPanel panel = new JPanel(new GridBagLayout());
+    JTextPane tp = new JTextPane();
+    tp.setText("");
+    tp.setEditable(false);
+    tp.setOpaque(false);
+    tp.setBorder(null);
+    
+    if(keyFile.startsWith("~")){
+      try{
+        keyFile =  System.getProperty("user.home") + keyFile.substring(1);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    if(certFile.startsWith("~")){
+      try{
+        certFile =  System.getProperty("user.home") + certFile.substring(1);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+
+    JPasswordField passwordField = new JPasswordField(password, 24);
+    JTextField keyField = new JTextField(keyFile, 24);
+    JTextField certField = new JTextField(certFile, 24);
+
+    panel.add(tp, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
+        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        0, 0));
+    panel.add(new JLabel("Password:"),
+        new GridBagConstraints(0, 1, 1, 1, 1.0, 1.0,
+            GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        0, 0));
+    panel.add(passwordField, new GridBagConstraints(1, 1, 1, 1, 1.0, 1.0,
+        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        0, 0));
+
+    panel.add(new JLabel("Key file:"),
+        new GridBagConstraints(0, 2, 1, 1, 1.0, 1.0,
+        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        0, 0));
+    panel.add(keyField, new GridBagConstraints(1, 2, 1, 1, 1.0, 1.0,
+        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        0, 0));
+
+    panel.add(new JLabel("Cert file:"),
+        new GridBagConstraints(0, 3, 1, 1, 1.0, 1.0,
+        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        0, 0));
+    panel.add(certField, new GridBagConstraints(1, 3, 1, 1, 1.0, 1.0,
+        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        0, 0));
+
+    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
+        "Enter grid password", JOptionPane.OK_CANCEL_OPTION);
+
+    if(choice!=JOptionPane.OK_OPTION){
+      throw new IllegalArgumentException("Cancelling");
+    }
+    else{
+      return new String [] {
+          new String(passwordField.getPassword()),
+          keyField.getText(), certField.getText()
+          };
+    }
+  }
+
+  public static GlobusCredential createProxy(
+      String userKeyFilename,
+      String userCertFilename,
+      String password,
+      int lifetime,
+      int strength)throws IOException, GeneralSecurityException{
+    OpenSSLKey key;
+
+    key = new BouncyCastleOpenSSLKey(userKeyFilename);
+
+   // get user certificate
+    X509Certificate userCert = CertUtil.loadCertificate(userCertFilename);
+    return createProxy(key, userCert, password, lifetime, strength);
+
+  }
+
+  public static GlobusCredential createProxy(OpenSSLKey key,
+     X509Certificate userCert, String password, int lifetime, int strength)
+     throws InvalidKeyException, GeneralSecurityException{
+
+    // decrypt the password
+    if(key.isEncrypted()){
+        key.decrypt(password);
+      }
+
+    // type of proxy. Hardcoded, as it's the only thing we'll use.
+    int proxyType = GSIConstants.DELEGATION_FULL;
+
+    // factory for proxy generation
+    BouncyCastleCertProcessingFactory factory = BouncyCastleCertProcessingFactory.getDefault();
+
+    GlobusCredential myCredentials = factory.createCredential(new X509Certificate[] { userCert }, key.getPrivateKey(), strength, lifetime,
+            proxyType, (X509ExtensionSet) null);
+    return myCredentials;
+  }
+
+  public static GSSCredential initGridProxy() throws IOException, GSSException{
+    
+    ExtendedGSSManager manager = (ExtendedGSSManager) ExtendedGSSManager.getInstance();
+    String proxyFile = "/tmp/x509up_u501";
+    File proxy = new File(proxyFile);
+    GSSCredential credential = null;
+    
+    // first just try and load file from default UNIX location
+    try{
+      byte [] data = new byte[(int) proxy.length()];
+      FileInputStream in = new FileInputStream(proxy);
+      in.read(data);
+      in.close();
+      
+      credential = 
+          manager.createCredential(data,
+                                   ExtendedGSSCredential.IMPEXP_OPAQUE,
+                                               GSSCredential.DEFAULT_LIFETIME,
+                                               // TODO: set proxy life time
+                                               //GridPilot.proxyTimeValid,
+                                               null, // use default mechanism - GSI
+                                               GSSCredential.INITIATE_AND_ACCEPT);
+    }
+    catch(Exception e){
+    }
+    
+    // if credential ok, return
+    if(credential!=null && credential.getRemainingLifetime()>=GridPilot.proxyTimeLeftLimit){
+      return credential;
+    }
+    // if no valid proxy, init
+    else{
+      // Create new proxy
+      String [] password = null;
+      GlobusCredential cred = null;
+      FileOutputStream out = null;
+      for(int i=0; i<=3; ++i){
+        try{
+          password = Util.getGridPassword(GridPilot.keyFile, GridPilot.certFile,
+              GridPilot.keyPassword);
+        }
+        catch(IllegalArgumentException e){
+          // cancelling
+          break;
+        }
+        try{
+          cred = createProxy(password[1], password[2],
+             password[0], GridPilot.proxyTimeValid, 512);
+          credential = new GlobusGSSCredentialImpl(cred, GSSCredential.INITIATE_AND_ACCEPT) ;
+        }
+        catch(Exception e){
+          continue;
+        }
+        try{
+          // if we managed to create proxy, save it to default location
+          out = new FileOutputStream(proxy);
+          cred.save(out);
+          out.close();
+          return credential;
+        }
+        catch(Exception e){
+          Debug.debug("ERROR: problem saving proxy. "+e.getMessage(), 3);
+          e.printStackTrace();
+          break;
+        }          
+      }
+      throw new IOException("ERROR: could not initialize grid proxy");
+    }
   }
 
 }
