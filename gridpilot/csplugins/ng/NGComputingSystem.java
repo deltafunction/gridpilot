@@ -113,33 +113,27 @@ public class NGComputingSystem implements ComputingSystem{
       }
       if(job.getJobStatus().equals(NG_STATUS_FAILURE)){
         //getOutput(job);
-        return ComputingSystem.STATUS_FAILED;
+        job.setInternalStatus(ComputingSystem.STATUS_FAILED);
       }
       if(job.getJobStatus().equals(NG_STATUS_ERROR)){
         getOutput(job);
-        return ComputingSystem.STATUS_ERROR;
+        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
       }
       if(job.getJobStatus().equals(NG_STATUS_DELETED)){
-        return ComputingSystem.STATUS_ERROR;
+        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
       }
       if(job.getJobStatus().equals(NG_STATUS_FAILED)){
-        return ComputingSystem.STATUS_ERROR;
+        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
       }
       if(job.getJobStatus().equals(NG_STATUS_INLRMSR)){
-        return ComputingSystem.STATUS_RUNNING;
+        job.setInternalStatus(ComputingSystem.STATUS_RUNNING);
       }
-      return ComputingSystem.STATUS_WAIT;
+      job.setInternalStatus(ComputingSystem.STATUS_WAIT);
     }
-      return job.getInternalStatus();
+    return job.getInternalStatus();
   }
 
   public void killJobs(Vector jobsToKill){
-    String killCommand = configFile.getValue(csName, "Kill command");
-    if(killCommand == null){
-      logFile.addMessage("Could not kill job : " + configFile.getMissingMessage(csName, "kill command"));
-      return;
-    }
-
     Vector cmds = new Vector();
     cmds.add(killCommand);
 
