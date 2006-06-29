@@ -175,9 +175,10 @@ public class ForkComputingSystem implements ComputingSystem{
    * Script :
    *  param : jobId
    */
-  public void killJobs(Vector jobsToKill){
+  public boolean killJobs(Vector jobsToKill){
     Process proc = null;
     String cmd = null;
+    Vector errors = new Vector();
     for(Enumeration en=jobsToKill.elements(); en.hasMoreElements();){
       try{
         Iterator it = ((LocalShellMgr) shellMgr).processes.keySet().iterator();
@@ -196,15 +197,21 @@ public class ForkComputingSystem implements ComputingSystem{
             }
             catch(Exception ee){
             }
-            return;
           }
         }
       }
       catch(Exception e){
+        errors.add(e.getMessage());
         logFile.addMessage("Exception during job killing :\n" +
                                     "\tJob#\t: " + cmd +"\n" +
                                     "\tException\t: " + e.getMessage(), e);
       }
+    }
+    if(errors.size()!=0){
+      return false;
+    }
+    else{
+      return true;
     }
   }
 
@@ -261,18 +268,7 @@ public class ForkComputingSystem implements ComputingSystem{
   
   public String[] getScripts(JobInfo job){
     String jobScriptFile = runDir(job)+"/"+job.getName()+commandSuffix;
-    /*try{
-      String jobScriptText = "No file "+jobScriptFile;
-      if(shellMgr.existsFile(jobScriptFile)){
-        jobScriptText = shellMgr.readFile(jobScriptFile);
-      }*/
-      return new String [] {jobScriptFile/*jobScriptText*/};
-    //}
-    /*catch(IOException ioe){
-      logFile.addMessage("IOException during getScripts of job " + job.getName()+ "\n" +
-                                  "\tException\t: " + ioe.getMessage(), ioe);
-      return null;
-    }*/
+      return new String [] {jobScriptFile};
   }
   
   public boolean copyFile(String csName, String src, String dest){
@@ -339,29 +335,10 @@ public class ForkComputingSystem implements ComputingSystem{
     return user;
   }
   
-  /**
-   * Operations done after a job is Validated. <br>
-   * Theses operations contain emcompasses two stages :
-   * <ul>
-   * <li>Moving of outputs in their final destination
-   * <li>Extraction of some informations from outputs
-   * </ul> <p>
-   *
-   * @return <code>true</code> if postprocessing went ok, <code>false</code> otherwise
-   * 
-   * (from AtCom1)
-   */
   public boolean postProcess(JobInfo job){
     return copyToFinalDest(job);
   }
 
-  /**
-   * Operations done (by GridPilot) before a job is run. <br>
-   *
-   * @return <code>true</code> if postprocessing went ok, <code>false</code> otherwise
-   * 
-   * (from AtCom1)
-   */
   public boolean preProcess(JobInfo job){
     return getInputFiles(job);
   }

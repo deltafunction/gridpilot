@@ -128,7 +128,7 @@ public interface ComputingSystem{
    * Shouldn't change anything in 'jobs' ; all changed will be done by the next update.
    *
    */
-  public void killJobs(Vector jobs);
+  public boolean killJobs(Vector jobs);
 
   /**
    * Called when job 'job' failed, in order to delete all "garbages" made by job.
@@ -164,7 +164,7 @@ public interface ComputingSystem{
 
   /**
    * Gets scripts used for running this job.
-   * Return values are output, and not path of this outputs.
+   * Return values are paths to local copies of the scripts.
    *
    * @return String [] {'job' script, 'job' grid job description file}
    */
