@@ -1,10 +1,10 @@
 package gridpilot.csplugins.ng;
 
 import java.io.*;
-import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Enumeration;
+import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.Vector;
 
@@ -14,9 +14,7 @@ import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.ietf.jgss.GSSCredential;
 import org.nordugrid.gridftp.ARCGridFTPJob;
-import org.nordugrid.gridftp.ARCGridFTPJobException;
 
-import java.awt.*;
 import java.awt.event.*;
 
 import gridpilot.ComputingSystem;
@@ -27,7 +25,7 @@ import gridpilot.LocalShellMgr;
 import gridpilot.LogFile;
 import gridpilot.GridPilot;
 import gridpilot.Util;
-import gridpilot.ConfigFile;
+import gridpilot.fsplugins.gridftp.GridFTPFileSystem;
 
 /**
  * Main class for the NorduGrid plugin. <br>
@@ -51,9 +49,7 @@ public class NGComputingSystem implements ComputingSystem{
   public static final String NG_STATUS_FAILED = "FAILED";
   public static final String NG_STATUS_ERROR = "ERROR";
 
-  private NGScriptGenerator scriptGenerator;
   private NGSubmission ngSubmission;
-  private NGUpdateStatus ngUpdateStatus;
   private Boolean gridProxyInitialized = Boolean.FALSE;
   private Timer timerProxy = new Timer(0, new ActionListener(){
     public void actionPerformed(ActionEvent e){
@@ -61,16 +57,14 @@ public class NGComputingSystem implements ComputingSystem{
       gridProxyInitialized = Boolean.FALSE;
     }
   });
-  protected LocalShellMgr shell;
   private static String csName;
   private static LogFile logFile;
   private String workingDir;
+  private GridFTPFileSystem gridftpFileSystem;
 
   public NGComputingSystem(String _csName){
     csName = _csName;
-    scriptGenerator = new NGScriptGenerator(csName);
     ngSubmission = new NGSubmission(csName, workingDir);
-    ngUpdateStatus = new NGUpdateStatus(csName);
     workingDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "working directory");
     if(workingDir==null || workingDir.equals("")){
       workingDir = "~";
@@ -83,7 +77,8 @@ public class NGComputingSystem implements ComputingSystem{
     }
     logFile = GridPilot.getClassMgr().getLogFile();
     timerProxy.setRepeats(false);
-    shell = new LocalShellMgr();
+    
+    gridftpFileSystem = GridPilot.getClassMgr().getGridFTPFileSystem();
   }
   
   /*
@@ -95,7 +90,9 @@ public class NGComputingSystem implements ComputingSystem{
 
   public boolean submit(JobInfo job) {
     Debug.debug("submitting..."+gridProxyInitialized, 3);
-    return ngSubmission.submit(job);
+    String scriptName = workingDir + "/" + job.getName() + ".job";
+    String xrslName = workingDir + "/" + job.getName() + ".xrsl";
+    return ngSubmission.submit(job, scriptName,  xrslName);
   }
 
 
@@ -106,7 +103,21 @@ public class NGComputingSystem implements ComputingSystem{
   }
 
   private int updateStatus(JobInfo job){
-    if(ngUpdateStatus.updateStatus(job)){
+    
+    boolean ok = false;
+    String jobId = job.getJobId();
+    if(jobId!=null){ // job already submitted
+      String statusLine;
+      statusLine = getFullStatus(job);
+      if(statusLine!=null){
+        ok = extractStatus(job, statusLine);
+      }
+      else{
+        ok = true;
+      }
+    }
+
+    if(ok){
       Debug.debug("Updating status of job "+job.getName(), 2);
       if(job.getJobStatus()==null){
         Debug.debug("No status found for job "+job.getName(), 2);
@@ -190,20 +201,31 @@ public class NGComputingSystem implements ComputingSystem{
     String fileName;
     for(int i=0; i<outputMapping.length; ++i){
       fileName = Util.addFile(outputMapping[2*i+1]);
-      deleteFile(csName, fileName);
+      try{
+        gridftpFileSystem.delete(fileName);
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: could not delete "+fileName+". "+e.getMessage(), 2);
+      }
     }
 
     // Delete stdout/err that may have been copied to final destination
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
-      if(!deleteFile(csName, finalStdOut)){
-        logFile.addMessage("Cannot remove log " + finalStdOut, job);
+      try{
+        gridftpFileSystem.delete(finalStdOut);
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: could not delete "+finalStdOut+". "+e.getMessage(), 2);
       }
     }
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
-      if(!deleteFile(csName, finalStdErr)){
-        logFile.addMessage("Cannot remove log " + finalStdErr, job);
+      try{
+        gridftpFileSystem.delete(finalStdErr);
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: could not delete "+finalStdErr+". "+e.getMessage(), 2);
       }
     }
     
@@ -211,7 +233,7 @@ public class NGComputingSystem implements ComputingSystem{
     String runDir = runDir(job);
     try{
       Debug.debug("Clearing "+runDir, 2);
-      deleteFile(csName, runDir);
+      LocalShellMgr.deleteDir(new File(runDir));
     }
     catch(Exception ioe){
       logFile.addMessage("Exception during clearOutputMapping of job " + job.getName()+ "\n" +
@@ -252,7 +274,7 @@ public class NGComputingSystem implements ComputingSystem{
     if(lastSlash>-1){
       jobID = job.getJobId().substring(lastSlash + 1);
     }
-    String dirName =  runDir(job)+File.pathSeparatorChar+jobID;
+    String dirName = runDir(job)+File.pathSeparatorChar+jobID;
     
     // After a crash some unfinished downloads may be around.
     // Move away before downloading.
@@ -261,7 +283,7 @@ public class NGComputingSystem implements ComputingSystem{
       SimpleDateFormat dateFormat = new SimpleDateFormat(GridPilot.dateFormatString);
       dateFormat.setTimeZone(TimeZone.getDefault());
       String dateString = dateFormat.format(new Date());
-      shell.moveFile(dirName, dirName+"."+dateString);
+      LocalShellMgr.moveFile(dirName, dirName+"."+dateString);
     }
     catch(Exception ioe){
       logFile.addMessage("IOException during job " + job.getName() + " get output :\n" +
@@ -292,7 +314,7 @@ public class NGComputingSystem implements ComputingSystem{
     // and move them one level up
     if(job.getStdOut()!=null && !job.getStdOut().equals("")){      
       try{
-        shell.copyFile(dirName+File.pathSeparator+"stdout", job.getStdOut());
+        LocalShellMgr.copyFile(dirName+File.pathSeparator+"stdout", job.getStdOut());
       } 
       catch(Exception ioe){
         logFile.addMessage("IOException during job " + job.getName() + " getFullStatus :\n" +
@@ -302,7 +324,7 @@ public class NGComputingSystem implements ComputingSystem{
     }
     if(job.getStdErr() != null && !job.getStdErr().equals("")){
       try{
-        shell.copyFile(dirName+File.pathSeparator, job.getStdErr());
+        LocalShellMgr.copyFile(dirName+File.pathSeparator, job.getStdErr());
       }
       catch(Exception ioe){
         logFile.addMessage("IOException during job " + job.getName() + " getOutput :\n" +
@@ -330,6 +352,7 @@ public class NGComputingSystem implements ComputingSystem{
         globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
       }
       gridJob.addProxy(globusCred);
+      // TODO: use information system
       state = gridJob.state();
     }
     catch(Exception ioe){
@@ -341,15 +364,48 @@ public class NGComputingSystem implements ComputingSystem{
   }
 
   public String [] getCurrentOutputs(JobInfo job){
+    
+    String stdOutFile = job.getStdOut();
+    String stdErrFile = job.getStdErr();
 
+    if(stdOutFile!=null && !stdOutFile.equals("") &&
+        LocalShellMgr.existsFile(stdOutFile)){
+      LocalShellMgr.moveFile(stdOutFile, stdOutFile+".bk");
+    }
+    if(stdErrFile!=null && !stdErrFile.equals("") &&
+        LocalShellMgr.existsFile(stdErrFile)){
+      LocalShellMgr.moveFile(stdErrFile, stdErrFile+".bk");
+    }
+    
+    if(!syncCurrentOutputs(job)){
+      try{
+        LocalShellMgr.deleteFile(stdOutFile);
+      }
+      catch(Exception e){
+      }
+      try{
+        LocalShellMgr.deleteFile(stdErrFile);
+      }
+      catch(Exception e){
+      }
+      try{
+        LocalShellMgr.moveFile(stdOutFile+".bk", stdOutFile);
+      }
+      catch(Exception e){
+      }
+      try{
+        LocalShellMgr.moveFile(stdErrFile+".bk", stdErrFile);
+      }
+      catch(Exception e){
+      }
+    }
+    
     String [] res = new String[2];
 
-    if(job.getStdOut()!=null){
+    if(stdOutFile!=null && !stdOutFile.equals("")){
       // get stdout
       try{
-        Debug.debug("Getting stdout of: " + job.getName() + ":" + job.getJobId(), 3);
-        copyFile(csName, job.getJobId()+"/stdout", job.getStdOut());
-        res[0] = shell.readFile(job.getStdOut());
+        res[0] = LocalShellMgr.readFile(stdOutFile);
        }
        catch(Exception ae){
          logFile.addMessage("Exception during get stdout of " + job.getName() + ":" + job.getJobId() + ":\n" +
@@ -358,119 +414,46 @@ public class NGComputingSystem implements ComputingSystem{
          res[0] = "";
        }
     }
-    // get stderr
+    if(stdErrFile!=null && !stdErrFile.equals("")){
+      // get stderr
+      try{
+        res[1] = LocalShellMgr.readFile(stdErrFile);
+       }
+       catch(Exception ae){
+         logFile.addMessage("Exception during get stderr of " + job.getName() + ":" + job.getJobId() + ":\n" +
+                            "\tException\t: " + ae.getMessage(), ae);
+         ae.printStackTrace();
+         res[1] = "";
+       }
+    }
+    return res;
+  }
+  
+  // Copy stdout+stderr to local files
+  public boolean syncCurrentOutputs(JobInfo job){
+    String dirName = runDir(job)+File.pathSeparatorChar+job.getJobId();
     try{
+      Debug.debug("Getting : " + job.getName() + ":" + job.getJobId(), 3);
+      String submissionHost = job.getHost();
+      ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost, job.getJobId());
+      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+      GlobusCredential globusCred = null;
+      if(credential instanceof GlobusGSSCredentialImpl){
+        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+      }
+      gridJob.addProxy(globusCred);
+      Debug.debug("Getting stdout of: " + job.getName() + ":" + job.getJobId(), 3);
+      gridJob.getOutputFile("stdout", dirName);
       Debug.debug("Getting stderr of: " + job.getName() + ":" + job.getJobId(), 3);
-      copyFile(csName, job.getJobId()+"/stderr", job.getStdErr());
-      res[1] = shell.readFile(job.getStdErr());
-     }
-     catch(Exception ae){
-       logFile.addMessage("Exception during get stderr of " + job.getName() + ":" + job.getJobId() + ":\n" +
-                          "\tException\t: " + ae.getMessage(), ae);
-       ae.printStackTrace();
-       res[1] = "";
-     }
-     return res;
-  }
-  
-  public boolean copyFile(String csName, String src, String dest){
-    Debug.debug("Copying file "+ src + "->" + dest, 3);
-    try{
-      if(dest.startsWith("gsiftp://") || src.startsWith("gsiftp://") ||
-          dest.startsWith("http://") || src.startsWith("http://")){
-        Debug.debug("Using gridftp" + dest, 3);
-        if(src.startsWith("/")){
-          src = "file://"+src;
-        }
-        try{
-          GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-          GlobusCredential globusCred = null;
-          if(credential instanceof GlobusGSSCredentialImpl){
-            globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-          }
-        }
-        catch(Exception ioe){
-          logFile.addMessage("Exception during copyFile :\n" +
-                                      "\tException\t: " + ioe.getMessage(), ioe);
-          return false;
-        }
-      }
-      else{
-        Debug.debug("Using cp" + dest, 3);
-        return AtCom.getClassMgr().getShellMgr(csName).copyFile(src, dest);
-      }
+      gridJob.getOutputFile("stderr", dirName);
     }
-    catch(IOException ioe){
-      logFile.addMessage("IOException during copying of file " +
-          src + "->" + dest +" : \n" +
-          "\tSource\t: " + src + "\n" +
-          "\tDestination\t: " + dest + "\n" +
-          "\tException\t: " + ioe.getMessage(), ioe);
-      Debug.debug("IOException during copying of file " +ioe.getMessage(), 3);
+    catch(Exception ae){
+      logFile.addMessage("Exception during get stdout of " + job.getName() + ":" + job.getJobId() + ":\n" +
+                         "\tException\t: " + ae.getMessage(), ae);
+      ae.printStackTrace();
       return false;
     }
-  }
-
-  public boolean deleteFile(String csName, String dest){
-    Debug.debug("Deleting file "+ dest, 3);
-    try{
-      if(dest.startsWith("gsiftp://")){
-        Debug.debug("Using gridftp" + dest, 3);
-        if(dest.startsWith("/")){
-          dest = "file://"+dest;
-        }
-        String [] cmd = {"ngremove", dest};
-
-        try{
-          StringBuffer stdOut = new StringBuffer();
-          StringBuffer stdErr = new StringBuffer();
-
-          shell.exec(cmd, stdOut, stdErr);
-
-          if(stdErr.length()!=0){
-            logFile.addMessage("Could not delete " + dest +
-                                    "\tCommand\t: " + Util.arrayToString(cmd) +
-                                    "\tError\t: " + stdErr);
-            return false;
-          }
-          else{
-            return true;
-          }
-
-        }
-        catch(IOException ioe){
-          logFile.addMessage("Could not delete " + dest +
-                                      "\tCommand\t: " + Util.arrayToString(cmd) +"\n" +
-                                      "\tException\t: " + ioe.getMessage(), ioe);
-          return false;
-        }
-      }
-      else{
-        Debug.debug("Using rm" + dest, 3);
-        return shell.deleteFile(dest);
-      }
-    }
-    catch(Exception ioe){
-      logFile.addMessage("IOException during deletion of file : \n" +
-          "\tDestination\t: " + dest + "\n" +
-          "\tException\t: " + ioe.getMessage(), ioe);
-      Debug.debug("IOException during deletion of file " +ioe.getMessage(), 3);
-      return false;
-    }
-  }
-  
-  public boolean existsFile(String csName, String src){
-    try{
-      return shellMgr.existsFile(src);
-    }
-    catch(Exception ioe){
-      logFile.addMessage("Exception during checking of file " +
-          csName + " : \n" +
-          "\tSource\t: " + src + "\n" +
-          "\tException\t: " + ioe.getMessage(), ioe);
-      Debug.debug("Exception during checking of file " +ioe.getMessage(), 3);
-      return false;
-    }
+    return true;
   }
 
   public String getUserInfo(String csName){
@@ -493,7 +476,14 @@ public class NGComputingSystem implements ComputingSystem{
     return user;
   }
 
+  public String[] getScripts(JobInfo job){
+    String scriptName = workingDir + "/" + job.getName() + ".job";
+    String xrslName = workingDir + "/" + job.getName() + ".xrsl";
+    return new String [] {xrslName, scriptName};
+  }
+
   public boolean postProcess(JobInfo job){
+    Debug.debug("PostProcessing for job " + job.getName(), 2);
     return copyToFinalDest(job);
   }
 
@@ -501,10 +491,138 @@ public class NGComputingSystem implements ComputingSystem{
     // input files are already there
     return true;
   }
+  
+  /**
+   * Moves job.StdOut and job.StdErr to final destination specified in the DB. <p>
+   * job.StdOut and job.StdErr are then set to these final values. <p>
+   * @return <code>true</code> if the move went ok, <code>false</code> otherwise.
+   * (from AtCom1)
+   */
+  private boolean copyToFinalDest(JobInfo job){
+    // Will only run if there is a shell available for the computing system
+    // in question - and if the destination is accessible from this shell.
+    // For grids, stdout and stderr should be taken care of by the xrsl or jdsl
+    // (*ScriptGenerator)
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+    /**
+     * move temp StdOut -> finalStdOut
+     */
+    if(finalStdOut!=null && finalStdOut.trim().length()!=0){
+      try{
+        syncCurrentOutputs(job);
+        if(!LocalShellMgr.existsFile(job.getStdOut())){
+          logFile.addMessage("Post processing : File " + job.getStdOut() + " doesn't exist");
+          return false;
+        }
+      }
+      catch(Throwable e){
+        Debug.debug("ERROR checking for stdout: "+e.getMessage(), 2);
+        logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
+        //throw e;
+      }
+      Debug.debug("Post processing : Renaming " + job.getStdOut() + " in " + finalStdOut, 2);
+      // if(!shell.moveFile(job.getStdOut(), finalStdOut)){
+      try{
+        gridftpFileSystem.put(new File(job.getStdOut()), finalStdOut);
+      }
+      catch(Throwable e){
+        Debug.debug("ERROR copying stdout: "+e.getMessage(), 2);
+        logFile.addMessage("ERROR copying stdout: "+e.getMessage());
+        //throw e;
+      }
+      job.setStdOut(finalStdOut);
+    }
 
-  public String[] getScripts(JobInfo job){
-    String jobScriptFile = runDir(job)+"/"+job.getName()+commandSuffix;
-      return new String [] {jobScriptFile};
+    /**
+     * move temp StdErr -> finalStdErr
+     */
+
+    if(finalStdErr!=null && finalStdErr.trim().length()!=0){
+      try{
+        if(!LocalShellMgr.existsFile(job.getStdErr())){
+          logFile.addMessage("Post processing : File " + job.getStdErr() + " doesn't exist");
+          return false;
+        }
+      }
+      catch(Throwable e){
+        Debug.debug("ERROR checking for stderr: "+e.getMessage(), 2);
+        logFile.addMessage("ERROR checking for stderr: "+e.getMessage());
+        //throw e;
+      }
+      Debug.debug("Post processing : Renaming " + job.getStdErr() + " in " + finalStdErr,2);
+      //shell.moveFile(job.getStdOut(), finalStdOutName);
+      try{
+        gridftpFileSystem.put(new File(job.getStdErr()), finalStdErr);
+      }
+      catch(Throwable e){
+        Debug.debug("ERROR copying stderr: "+e.getMessage(), 2);
+        logFile.addMessage("ERROR copying stderr: "+e.getMessage());
+        //throw e;
+      }
+      job.setStdErr(finalStdErr);
+    }
+    return true;
+  }
+  
+  private static boolean extractStatus(JobInfo job, String line) {
+
+    // host
+    if(job.getHost()==null){
+      //String host = getValueOf("Cluster", line);
+      String host = getValueOf("Execution nodes", line);
+      Debug.debug("Job Destination : " + host, 2);
+      if(host != null){
+        job.setHost(host);
+      }
+    }
+
+    // status
+    String status = getValueOf("Status", line);
+    Debug.debug("Got Status: "+status, 2);
+    if(status == null){
+      job.setJobStatus(NGComputingSystem.NG_STATUS_ERROR);
+      GridPilot.getClassMgr().getLogFile().addMessage(
+          "Status not found for job " + job.getName() +" : \n" + line);
+      return true;
+    }
+    else{
+      //if(status.equals(NGComputingSystem.NG_STATUS_FINISHED)){
+      if(status.startsWith(NGComputingSystem.NG_STATUS_FINISHED)){
+        int errorBegin =line.indexOf("Error:");
+        if(errorBegin != -1){
+          GridPilot.getClassMgr().getLogFile().addMessage("Error at end of job " +
+              job.getName() + " :\n" +
+              line.substring(errorBegin, line.indexOf("\n", errorBegin)));
+          job.setJobStatus(NGComputingSystem.NG_STATUS_FAILURE);
+          return true;
+        }
+      }
+      if(job.getJobStatus() != null && job.getJobStatus().equals(status))
+        return false;
+      else{
+        job.setJobStatus(status);
+        return true;
+      }
+    }
+  }
+
+  private static String getValueOf(String attribute, String out){
+    Debug.debug("getValueOf : " + attribute + "\n" + out, 1);
+
+    int index = out.indexOf(attribute);
+    if(index == -1)
+      return null;
+
+    StringTokenizer st = new StringTokenizer(out.substring(index+attribute.length()+1,
+        out.length()));
+
+    String res = st.nextToken();
+    if(res.endsWith(":"))
+      res += " "+st.nextToken();
+
+    return res;
   }
 
 }

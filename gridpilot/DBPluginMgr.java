@@ -61,7 +61,7 @@ public class DBPluginMgr implements Database{
     loadValues();
 
     String dbClass = configFile.getValue(dbName, "class");
-    if(dbClass == null){
+    if(dbClass==null){
       throw new Exception("Cannot load class for system " + dbName + " : \n"+
                           configFile.getMissingMessage(dbName, "class"));
     }

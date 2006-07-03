@@ -3,7 +3,7 @@ package gridpilot;
 import java.io.*;
 import java.util.*;
 
-public class LocalShellMgr implements ShellMgr{
+public class LocalShellMgr{
 
   public LocalShellMgr(){
   }
@@ -15,7 +15,7 @@ public class LocalShellMgr implements ShellMgr{
    *          <code>false</code> otherwise
    *
    */
-  public boolean copyFile(String _src, String _dest){
+  public static boolean copyFile(String _src, String _dest){
     String src = Util.clearFile(_src);
     String dest = Util.clearFile(_dest);
     Debug.debug("copying file "+src+"->"+dest, 3);
@@ -74,7 +74,7 @@ public class LocalShellMgr implements ShellMgr{
    * @return exit value of the command
    * @throws IOException
    */
-  public int exec(String cmd, StringBuffer stdOut, StringBuffer stdErr) throws
+  public static int exec(String cmd, StringBuffer stdOut, StringBuffer stdErr) throws
       IOException {
     return exec(cmd, null, null, stdOut, stdErr);
   }
@@ -92,7 +92,7 @@ public class LocalShellMgr implements ShellMgr{
    * @return exit value of the command
    * @throws IOException
    */
-  public int exec(String cmd, String workingDirectory,
+  public static int exec(String cmd, String workingDirectory,
                          StringBuffer stdOut, StringBuffer stdErr) throws
       IOException {
     return exec(cmd, null, workingDirectory, stdOut, stdErr);
@@ -111,7 +111,7 @@ public class LocalShellMgr implements ShellMgr{
    * @return exit value of the command
    * @throws IOException
    */
-  public int exec(String cmd, String[] env, String workingDirectory,
+  public static int exec(String cmd, String[] env, String workingDirectory,
                          StringBuffer stdOut, StringBuffer stdErr) throws
       IOException {
     cmd = Util.arrayToString(convert(Util.split(cmd)));
@@ -179,8 +179,7 @@ public class LocalShellMgr implements ShellMgr{
     }
   }
 
-
-  public String readFile(String _path) throws FileNotFoundException, IOException {
+  public static String readFile(String _path) throws FileNotFoundException, IOException {
     String path = Util.clearFile(_path);
     Debug.debug("Reading file "+path, 2);
     RandomAccessFile f = new RandomAccessFile(path, "r");
@@ -191,7 +190,7 @@ public class LocalShellMgr implements ShellMgr{
     return res;
   }
 
-  public void writeFile(String _name, String content, boolean append) throws IOException {
+  public static void writeFile(String _name, String content, boolean append) throws IOException {
     String name = Util.clearFile(_name);
     Debug.debug("name : " + name + "\nappend : " + append + "\ncontent : \n" + content, 1);
     File parent = new File(name).getParentFile();
@@ -199,17 +198,18 @@ public class LocalShellMgr implements ShellMgr{
       parent.mkdirs();
     }
     RandomAccessFile of = new RandomAccessFile(name, "rw");
-    if(!append)
+    if(!append){
       of.setLength(0);
+    }
     of.writeBytes(content);
     of.close();
   }
 
-  public boolean existsFile(String name){
+  public static boolean existsFile(String name){
     return new File(name).exists();
   }
 
-  public boolean mkdirs(String _dir){
+  public static boolean mkdirs(String _dir){
     String dir = Util.clearFile(_dir);
     Debug.debug("making dirs "+dir, 3);
     return new File(dir).mkdirs();
@@ -233,7 +233,7 @@ public class LocalShellMgr implements ShellMgr{
     return dir.delete();
   }
 
-  public boolean deleteFile(String _path){
+  public static boolean deleteFile(String _path){
     String path = Util.clearFile(_path);
     Debug.debug("deleting file "+path, 3);
     File dirOrFile = new File(path);
@@ -245,7 +245,7 @@ public class LocalShellMgr implements ShellMgr{
     }
   }
 
-  public boolean moveFile(String _src, String _dest){
+  public static boolean moveFile(String _src, String _dest){
     String src = Util.clearFile(_src);
     String dest = Util.clearFile(_dest);
     Debug.debug("moving file "+src+"->"+dest, 3);
@@ -258,7 +258,7 @@ public class LocalShellMgr implements ShellMgr{
     return new File(src).renameTo(destFile);
   }
 
-  public String[] listFiles(String dir){
+  public static String[] listFiles(String dir){
     File fdir = new File(dir);
     File [] fres = fdir.listFiles();
     if(fres==null){
@@ -275,17 +275,10 @@ public class LocalShellMgr implements ShellMgr{
     return sres;
   }
 
-  public boolean isDirectory(String dir){
+  public static boolean isDirectory(String dir){
     return new File(dir).isDirectory();
   }
   
-  public boolean isLocal(){
-    return true;
-  }
-  
-  public void exit(){}
-  
-
   /**
    * Executes in the shell the command 'cmd', in the directory 'workingDirecory'. <br>
    * Standard output is written to the file stdOutFile.

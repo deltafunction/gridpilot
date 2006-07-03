@@ -4,7 +4,6 @@ import javax.swing.JOptionPane;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -78,22 +77,9 @@ public class ShowOutputsJobsDialog extends JOptionPane{
   }
 
   public static void showTabs(Component parent, String header,
-                                   final ShellMgr shell,
-                                   final String[] filesPaths){
-    showTabs(parent, header, shell, filesPaths, null, null);
-  }
-
-  public static void showTabs(Component parent, String header,
-      final String cs,
+      final JobInfo job,
       final String[] filesPaths){
-    showTabs(parent, header, cs, filesPaths, null, null);
-  }
-
-  public static int showTabs(Component parent, String header,
-                                  final ShellMgr shell,
-                                  final String[] filesPaths,
-                                  String[] options){
-    return showTabs(parent, header, shell, filesPaths, options, null);
+    showTabs(parent, header, job, filesPaths, null, null);
   }
 
   public static int showTabs(Component parent, String header,
@@ -189,7 +175,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
   }
 
   public static int showTabs(Component parent, String header,
-      final String cs,
+      final JobInfo job,
       final String[] filesPaths,
       String[] options,
       JCheckBox cb){
@@ -224,15 +210,12 @@ public class ShowOutputsJobsDialog extends JOptionPane{
             panel.add(pb, BorderLayout.NORTH);
             String content;
             try{
-              File tmpFile = File.createTempFile("gridpilot", "txt");
-              GridPilot.getClassMgr().getCSPluginMgr().copyFile(cs, filesPaths[finalI],
-                      tmpFile.getAbsolutePath());
-              RandomAccessFile f = new RandomAccessFile(tmpFile.getAbsolutePath(), "r");
+              GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(job);
+              RandomAccessFile f = new RandomAccessFile(filesPaths[finalI], "r");
               byte [] b  = new byte [(int)f.length()];
               f.readFully(b);
               content = new String(b);
               f.close();
-              tmpFile.delete();
             }
             catch (FileNotFoundException e){
               content = "This file (" + filesPaths[finalI] + ") doesn't exist";

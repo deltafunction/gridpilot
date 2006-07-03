@@ -156,7 +156,7 @@ public interface ComputingSystem{
    * job.StdOut and job.StdErr;
    * This return value is an String array, where the first String is StdOut, and the second one
    * is StdErr.
-   * Return values are output, and not path of this outputs.
+   * Return values are output, and not paths.
    *
    * @return String [] {'job' StdOut, 'job' StdErr}
    */
@@ -170,26 +170,6 @@ public interface ComputingSystem{
    */
   public String [] getScripts(JobInfo job);
 
-  /**
-   * Used for copying stdout to final destination.
-   * 
-   * @return true or false for success or failure
-   */  
-  public boolean copyFile(String csName, String src, String dest);
-
-  /**
-   * Used for cchecking if stdout/stderr exist before validation.
-   * 
-   * @return true or false for success or failure
-   */  
-  public boolean existsFile(String csName, String src);
-
-  /**
-   * Used for cleaning up after job has run.
-   * 
-   * @return true or false for success or failure
-   */  
-  public boolean deleteFile(String csName, String src);
   /**
    * Returns user information from the credentials used by this plugin
    * for submitting jobs.

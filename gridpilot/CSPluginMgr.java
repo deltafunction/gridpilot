@@ -7,17 +7,17 @@ import java.util.Vector;
 import javax.swing.*;
 
 /**
- * The purpose of this class is to protect AtCom from plugin errors, exceptions, abnormal behaviours. <p>
+ * The purpose of this class is to protect GridPilot from plugin errors, exceptions, abnormal behaviours. <p>
  *
  * The class <code>CSPluginMgr</code> defines the same methods as <code>ComputingSystem</code>,
  * and some others. <br>
- * For all methods from <code>ComputingSystem</code>, this class chooses the good plug-in,
- * calls it catching all exceptions, and controls the duration of the function.<br>
+ * For all methods from <code>ComputingSystem</code>, this class chooses the right plug-in,
+ * calls it, catching all exceptions, and controls the duration of the function.<br>
  * For all methods from plug-in, an attribute &lt;method name&gt; timeout in seconds is defined
- * in configuration file ; If one of them is not defined in this file, AtCom uses
- * "default timeout", and if this one is not defined either, AtCom uses
- * <code>defaultTimeOut</code>. <p>
- * If the time out delay is elapsed before the end of a method, the user is asked for
+ * in configuration file ; If one of them is not defined in this file,
+ * "default timeout" is used, and if this one is not defined either,
+ * <code>defaultTimeOut</code> is used. <p>
+ * If the time out delay is elapsed before the end of a method, the user is asked to
  * interrupt the plug-in (if <code>askBeforeInterrupt==true</code>)
  *
  * <p><a href="CSPluginMgr.java.html">see sources</a>
@@ -86,7 +86,6 @@ public class CSPluginMgr implements ComputingSystem{
       e.printStackTrace();
     }
     loadValues();
-
   }
 
   /**
@@ -345,7 +344,7 @@ public class CSPluginMgr implements ComputingSystem{
    * Kills these jobs
    * @see ComputingSystem#killJobs(Vector)
    */
-  public void killJobs(final Vector jobs){
+  public boolean killJobs(final Vector jobs){
     
     StatusBar statusBar = GridPilot.getClassMgr().getStatusBar();
     statusBar.setLabel("Killing jobs ...");
@@ -391,12 +390,24 @@ public class CSPluginMgr implements ComputingSystem{
 
       threads[killThreadIndex].start();
 
-      waitForThread(threads[killThreadIndex],
-          ((JobInfo) csJobsArray[killThreadIndex].get(0)).getCSName(),
-          killTimeOut, "killJobs");
+    }
+    // When killing jobs from several CSs, we wait the timeout of
+    // the first one for the first jobs and then just move with
+    // timeout 0 to kill the others
+    waitForThread(threads[0],
+        ((JobInfo) csJobsArray[0].get(0)).getCSName(),
+        killTimeOut, "killJobs");
+    if(csNames.length>1){
+      for(killThreadIndex=1; killThreadIndex<csNames.length;
+      ++killThreadIndex){
+        waitForThread(threads[killThreadIndex],
+            ((JobInfo) csJobsArray[killThreadIndex].get(0)).getCSName(),
+            0, "killJobs");
+      }
     }
     statusBar.stopAnimation();
     statusBar.setLabel("Killing jobs done.");
+    return true;
   }
 
   public void clearOutputMapping(final JobInfo job) {
@@ -694,39 +705,6 @@ public class CSPluginMgr implements ComputingSystem{
   }
 
   /**
-   * @see ComputingSystem#copyFile(String, String, String)
-   */
-  public boolean copyFile(final String csName, final String src, final String dest){
-
-    MyThread t = new MyThread(){
-      boolean res = false;
-      public void run(){
-        try{
-          res = ((ComputingSystem) cs.get(csName)).copyFile(csName, src, dest);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + csName +
-                             " during copyFile", t);
-          res = false;
-        }
-      }
-      public boolean getBooleanRes(){
-        return res;
-      }
-    };
-
-    t.start();
-
-    if(waitForThread(t, csName, copyFileTimeOut, "copyFile")){
-      return t.getBooleanRes();
-    }
-    else{
-      return false;
-    }
-  }
-  
-  /**
    * @see ComputingSystem#postProcess(JobInfo)
    */
   public boolean postProcess(final JobInfo job){
@@ -792,70 +770,4 @@ public class CSPluginMgr implements ComputingSystem{
     }
   }
   
-  /**
-   * @see ComputingSystem#deleteFile(String, String)
-   */
-  public boolean deleteFile(final String csName, final String src){
-
-    MyThread t = new MyThread(){
-      boolean res = false;
-      public void run(){
-        try{
-          res = ((ComputingSystem) cs.get(csName)).deleteFile(csName, src);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + csName +
-                             " during deleteFile", t);
-          res = false;
-        }
-      }
-      public boolean getBooleanRes(){
-        return res;
-      }
-    };
-
-    t.start();
-
-    if(waitForThread(t, csName, copyFileTimeOut, "deleteFile")){
-      return t.getBooleanRes();
-    }
-    else{
-      return false;
-    }
-  }
-
-  /**
-   * @see ComputingSystem#existsFile(String, String)
-   */
-  public boolean existsFile(final String csName, final String src){
-
-    MyThread t = new MyThread(){
-      boolean res = false;
-      public void run(){
-        try{
-          res = ((ComputingSystem) cs.get(csName)).existsFile(csName, src);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + csName +
-                             " during existsFile", t);
-          res = false;
-        }
-      }
-      public boolean getBooleanRes(){
-        return res;
-      }
-    };
-
-    t.start();
-
-    if(waitForThread(t, csName, copyFileTimeOut, "existsFile")){
-      return t.getBooleanRes();
-    }
-    else{
-      return false;
-    }
-  }
-
 }

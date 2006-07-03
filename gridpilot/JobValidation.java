@@ -215,12 +215,11 @@ public class JobValidation{
              ") cannot be run : this job doesn't have any outputs", job);
          return DBPluginMgr.UNDECIDED;
       }
-      if(!GridPilot.getClassMgr().getCSPluginMgr().existsFile(
-              job.getCSName(), job.getStdOut()) &&
-          !GridPilot.getClassMgr().getCSPluginMgr().existsFile(
-              job.getCSName(), job.getStdErr())){
-        logFile.addMessage("Validation script for job " + job.getName() + 
-         " cannot be run : stdout or stderr do not exist", job);
+      GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(job);
+      if(!LocalShellMgr.existsFile(job.getStdOut()) &&
+          !LocalShellMgr.existsFile(job.getStdErr())){
+        logFile.addMessage("Validation for job " + job.getName() + 
+         " cannot be run : stdout or stderr does not exist", job);
         return DBPluginMgr.UNDECIDED;
       }
 

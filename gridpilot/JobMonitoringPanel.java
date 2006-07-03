@@ -594,7 +594,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     JobInfo job = DatasetMgr.getJobAtRow(statusTable.getSelectedRow());
     ShowOutputsJobsDialog.showTabs(JOptionPane.getRootFrame(),
         "Scripts for job " + job.getName(),
-        job.getCSName(),
+        job,
         GridPilot.getClassMgr().getCSPluginMgr().getScripts(job)            
         );
   }

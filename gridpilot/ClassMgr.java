@@ -10,6 +10,8 @@ import javax.swing.Timer;
 
 import org.ietf.jgss.GSSCredential;
 
+import gridpilot.fsplugins.gridftp.GridFTPFileSystem;
+
 /**
  * This class allows access to all global objects in gridpilot.
  */
@@ -38,6 +40,7 @@ public class ClassMgr{
       gridProxyInitialized = Boolean.FALSE;
     }
   });
+  private GridFTPFileSystem gridFTPFileSystem;
 
   
   public void setConfigFile(ConfigFile _configFile){
@@ -290,6 +293,14 @@ public class ClassMgr{
       }
     }
     return credential;
+  }
+
+  public GridFTPFileSystem getGridFTPFileSystem(){
+    if(gridFTPFileSystem==null){
+      Debug.debug("gridFTPFileSystem null", 3);
+      gridFTPFileSystem = new GridFTPFileSystem();
+    }
+    return gridFTPFileSystem;
   }
 
 }

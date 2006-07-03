@@ -40,7 +40,7 @@ public class NGSubmission{
     Debug.debug("hosts : " + submissionHosts, 3);
   }
 
-  public boolean submit(JobInfo job){
+  public boolean submit(JobInfo job, String scriptName, String xrslName){
 
     NGScriptGenerator scriptGenerator =  new NGScriptGenerator(csName);
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
@@ -56,9 +56,6 @@ public class NGSubmission{
     Debug.debug("stdout/err: "+finalStdOut+":"+finalStdErr, 3);
 
     Debug.debug("Submitting in "+ workingDir, 3);
-
-    String xrslName = workingDir + "/" + job.getName() + ".xrsl";
-    String scriptName = workingDir + "/" + job.getName() + ".job";
 
     if(!scriptGenerator.createXRSL(job, scriptName, xrslName, !withStdErr)){
       logFile.addMessage("Cannot create scripts for job " + job.getName() +
