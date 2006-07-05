@@ -38,8 +38,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
   private JScrollPane spTableResults = new JScrollPane();
   private Table tableResults = null;
-  private JPanel pButtonTableResults = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-  private JPanel panelTableResults = new JPanel(new GridBagLayout());
+  private JPanel pButtonTableResults = new JPanel(new FlowLayout(FlowLayout.CENTER));
   
   private JButton bCreateRecords = new JButton("Define new record(s)");
   private JButton bEditRecord = new JButton("Edit record");
@@ -69,9 +68,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JMenu jmSetFieldValue = null;
   
   private StatusBar statusBar = null;
-  
-  private GridBagConstraints ct = new GridBagConstraints();
-  
+    
   private DBPluginMgr dbPluginMgr = null;
   private int parentId = -1;
 
@@ -100,15 +97,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     working = false;
   }
   
-
-  /**
-   * Constructor
-   */
-
   /**
    * Create a new DBPanel from scratch.
    */
-
    public DBPanel(/*name of database*/
                   String _dbName,
                   /*name of tables for the select*/
@@ -121,61 +112,50 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      
      identifier = dbPluginMgr.getIdentifierField(tableName);
      jobDefIdentifier = dbPluginMgr.getIdentifierField("jobDefinition");
-          
-     ct.fill = GridBagConstraints.HORIZONTAL;
-     ct.anchor = GridBagConstraints.NORTH;
-     ct.insets = new Insets(0,0,0,0);
-     ct.gridwidth=1;
-     ct.gridheight=1;  
-     ct.weightx = 0.0;
-     ct.gridx = 0;
-     ct.gridy = 1;   
-     ct.ipady = 250;
 
      defaultFields = dbPluginMgr.getDBDefFields(tableName);
      Debug.debug("Default fields "+defaultFields.length, 3);
 
-    fieldNames = dbPluginMgr.getFieldNames(tableName);
-    
-    hiddenFields = dbPluginMgr.getDBHiddenFields(tableName);
-    Debug.debug("Hidden fields "+Util.arrayToString(hiddenFields), 3);
-    
-    
-    // Pass on only non-hidden fields to
-    // Table. Perhaps rethink: - Table hides fields...
-    Vector fieldSet = new Vector();
-    boolean ok;
-    for(int i=0; i<fieldNames.length; ++i){
-      ok = true;
-      for(int j=0; j<hiddenFields.length; ++j){
-        //Debug.debug("Checking fields for hiding: "+fieldNames[i]+"<->"+hiddenFields[j], 3);
-        if(fieldNames[i].equalsIgnoreCase(hiddenFields[j])){
-          ok = false;
-          break;
-        }
-      }
-      if(ok){
-        fieldSet.add(fieldNames[i]);
-      }
-    }
-    
-    fieldNames = new String[fieldSet.size()];
-    for(int i=0; i<fieldSet.size(); ++i){
-      fieldNames[i] = fieldSet.get(i).toString();
-    }
-    
-    tableResults = new Table(hiddenFields, fieldNames,
-        GridPilot.colorMapping);
-    
-    submissionControl = GridPilot.getClassMgr().getSubmissionControl();
-    
-    setFieldArrays();
-    
-    menuEditCopy = GridPilot.getClassMgr().getGlobalFrame().menuEditCopy;
-    menuEditCut = GridPilot.getClassMgr().getGlobalFrame().menuEditCut;
-    menuEditPaste = GridPilot.getClassMgr().getGlobalFrame().menuEditPaste;
-    
-    initGUI();
+     fieldNames = dbPluginMgr.getFieldNames(tableName);
+     
+     hiddenFields = dbPluginMgr.getDBHiddenFields(tableName);
+     Debug.debug("Hidden fields "+Util.arrayToString(hiddenFields), 3);
+     
+     
+     // Pass on only non-hidden fields to
+     // Table. Perhaps rethink: - Table hides fields...
+     Vector fieldSet = new Vector();
+     boolean ok;
+     for(int i=0; i<fieldNames.length; ++i){
+       ok = true;
+       for(int j=0; j<hiddenFields.length; ++j){
+         //Debug.debug("Checking fields for hiding: "+fieldNames[i]+"<->"+hiddenFields[j], 3);
+         if(fieldNames[i].equalsIgnoreCase(hiddenFields[j])){
+           ok = false;
+           break;
+         }
+       }
+       if(ok){
+         fieldSet.add(fieldNames[i]);
+       }
+     }
+     
+     fieldNames = new String[fieldSet.size()];
+     for(int i=0; i<fieldSet.size(); ++i){
+       fieldNames[i] = fieldSet.get(i).toString();
+     }
+     
+     tableResults = new Table(hiddenFields, fieldNames,
+         GridPilot.colorMapping);
+     
+     submissionControl = GridPilot.getClassMgr().getSubmissionControl();
+     
+     setFieldArrays();
+     
+     menuEditCopy = GridPilot.getClassMgr().getGlobalFrame().menuEditCopy;
+     menuEditCut = GridPilot.getClassMgr().getGlobalFrame().menuEditCut;
+     menuEditPaste = GridPilot.getClassMgr().getGlobalFrame().menuEditPaste;
+     initGUI();
   }
    
    public Table getTable(){
@@ -290,15 +270,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   */
 
   private void initGUI() throws Exception{
+    
+    this.setLayout(new BorderLayout());
 
-//// SelectPanel
-
+    // SelectPanel
     selectPanel = new SelectPanel(tableName, fieldNames);
     selectPanel.initGUI();
     clear();
 
-    this.setLayout(new GridBagLayout());
-
+    spSelectPanel.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
     spSelectPanel.getViewport().add(selectPanel);
 
     panelSelectPanel.add(spSelectPanel,
@@ -313,6 +293,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0,
             GridBagConstraints.EAST,
             GridBagConstraints.NONE,new Insets(10, 10, 10, 10), 0, 0));
+    panelSelectPanel.validate();
 
     selectPanel.setConstraint(dbPluginMgr.getNameField(tableName), "", 1);
     
@@ -333,34 +314,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
       }
     });
-
-    // panel table results
-    panelTableResults.add(spTableResults,
-        new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
-            GridBagConstraints.CENTER,
-            GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
-    panelTableResults.add(pButtonTableResults,
-        new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
-            GridBagConstraints.EAST,
-            GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
-
-    ct.fill = GridBagConstraints.HORIZONTAL;
-    ct.anchor = GridBagConstraints.NORTH;
-    ct.insets = new Insets(0,0,0,0);
-    ct.weightx = 0.5;
-    ct.gridx = 0;
-    ct.gridy = 0;         
-    ct.gridwidth=1;
-    ct.gridheight=1;  
-    ct.ipady = 100;
-    this.add(panelSelectPanel,ct);
-    ct.weightx = 0.0;
-    ct.gridx = 0;
-    ct.gridy = 1;   
-    ct.ipady = 250;
-    this.add(panelTableResults,ct);
-    this.updateUI();
     
+    tableResults.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+    spTableResults.getViewport().add(tableResults);
+
+    panelSelectPanel.setPreferredSize(new Dimension(0, 180));
+    
+    this.add(panelSelectPanel, BorderLayout.PAGE_START);
+    this.add(spTableResults, BorderLayout.CENTER);
+    this.add(pButtonTableResults, BorderLayout.PAGE_END);
+
     // Disable clipboard handling inherited from JPanel
     TransferHandler th = new TransferHandler(null);
     tableResults.setTransferHandler(th);
@@ -402,6 +365,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         clear();
       }
     });
+    
+    // This is to pad with empty space and keep the table results
+    // full width
+    GridBagConstraints ct = new GridBagConstraints();
+    ct.fill = GridBagConstraints.HORIZONTAL;
+    pButtonTableResults.add(new JLabel(), ct);
     
     if(tableName.equalsIgnoreCase("dataset")){
       
@@ -686,8 +655,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       boolean isAscending = tableModel.isSortAscending();
       searchRequest(sortColumn, isAscending);
     }
-    remove(panelTableResults);
-    add(panelTableResults, ct);
+    /*remove(panelTableResults);
+    add(panelTableResults, ct);*/
     updateUI();
   }
 
@@ -751,7 +720,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         menuEditPaste.setEnabled(clipboardOwned);
         
         tableResults.setTable(res.values, res.fields);
-        spTableResults.getViewport().add(tableResults);
         
         identifiers = new int[tableResults.getRowCount()];
         // 'col' is the column with the jobDefinition identifier
