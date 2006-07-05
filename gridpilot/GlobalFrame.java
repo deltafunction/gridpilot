@@ -64,7 +64,9 @@ public class GlobalFrame extends GPFrame{
 
     statusBar.setLabel("GridPilot welcomes you!", 20);
     
-    container.add(tabbedPane,  BorderLayout.CENTER);
+    container.add(tabbedPane, BorderLayout.CENTER);
+    
+    container.validate();
 
     if(GridPilot.getDBs().length>0){
       try{
@@ -143,6 +145,8 @@ public class GlobalFrame extends GPFrame{
   public void addPanel(ListPanel newPanel, String title){
     Debug.debug("Adding panel "+newPanel.getTitle(), 3);
     addPanel(newPanel);
+    this.pack();
+    this.setVisible(true);
   }
 
   public void addPanel(ListPanel newPanel){

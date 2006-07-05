@@ -24,6 +24,7 @@ public class GPFrame extends JFrame{
    */
   public GPFrame(){
     
+    JFrame.setDefaultLookAndFeelDecorated(true);
     ImageIcon icon = null;
     URL imgURL = null;
     
