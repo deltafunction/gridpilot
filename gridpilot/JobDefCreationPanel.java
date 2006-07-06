@@ -7,6 +7,7 @@ import gridpilot.Database.DBRecord;
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
+
 import javax.swing.text.*;
 
 import java.util.*;
@@ -110,7 +111,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
     spAttributes.setPreferredSize(new Dimension(550, 500));
     spAttributes.setMinimumSize(new Dimension(550, 500));
     
-    setLayout(new GridBagLayout());
+    setLayout(new BorderLayout());
     removeAll();
     
     if(!reuseTextFields || tcCstAttributes == null ||
@@ -128,27 +129,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
         jobXmlContainer);
     spAttributes.getViewport().add(pAttributes, null);
     
-    GridBagConstraints ct = new GridBagConstraints();
-    ct.fill = GridBagConstraints.VERTICAL;
-    ct.insets = new Insets(2,2,2,2);
-    
-    ct.gridx = 0;
-    ct.gridy = 0;   
-    ct.gridwidth=1;
-    ct.gridheight=1;
-    
-    if(!editing){
-      ct.gridx = 0;
-      ct.gridy = 0;
-      ct.gridwidth=3;
-      add(spAttributes, ct);
-    }
-    else{
-      ct.gridx = 0;
-      ct.gridy = 0;
-      ct.gridwidth=2;
-      add(spAttributes,ct);
-    }
+    add(spAttributes);
 
     setValuesInAttributePanel(cstAttributesNames,
         cstAttr,
@@ -234,11 +215,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
       JPanel pAttributes,
       JPanel jobXmlContainer){
     
-    GridBagConstraints cl = new GridBagConstraints();
-    cl.fill = GridBagConstraints.VERTICAL;
-    cl.gridx = 1;
-    cl.gridy = 0;         
-    cl.anchor = GridBagConstraints.NORTHWEST;
+    GridBagConstraints cl = null;
   
     pAttributes.setLayout(new GridBagLayout());
     pAttributes.removeAll();
@@ -250,11 +227,14 @@ public class JobDefCreationPanel extends CreateEditPanel{
       }
     }
   
-    for(int i =0; i<cstAttributesNames.length; ++i){
+    for(int i=0; i<cstAttributesNames.length; ++i){
+      
+      cl = new GridBagConstraints(0, i, 1, 1, 0.0, 0.0,
+          GridBagConstraints.CENTER,
+          GridBagConstraints.BOTH,
+          new Insets(5, 25, 5, 5), 0, 0);
       
       if(cstAttributesNames[i].equalsIgnoreCase("ipConnectivity")){
-        cl.gridx=0;
-        cl.gridy=i;
         pAttributes.add(new JLabel("ipConnectivity" + " : "), cl);
         tcCstAttributes[i] = new JComboBox();
         ((JComboBox) tcCstAttributes[i]).addItem("yes");
@@ -267,8 +247,6 @@ public class JobDefCreationPanel extends CreateEditPanel{
         }
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("ramUnit")){
-        cl.gridx=0;
-        cl.gridy=i;
         pAttributes.add(new JLabel("ramUnit" + " : "), cl);
         tcCstAttributes[i] = new JComboBox();
         ((JComboBox) tcCstAttributes[i]).addItem("MB");
@@ -281,8 +259,6 @@ public class JobDefCreationPanel extends CreateEditPanel{
         }
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("diskUnit")){
-        cl.gridx=0;
-        cl.gridy=i;
         pAttributes.add(new JLabel("diskUnit" + " : "), cl);
         tcCstAttributes[i] = new JComboBox();
         ((JComboBox) tcCstAttributes[i]).addItem("MB");
@@ -295,8 +271,6 @@ public class JobDefCreationPanel extends CreateEditPanel{
         }
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("currentState")){
-        cl.gridx=0;
-        cl.gridy=i;
         pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
         if(!reuseTextFields || tcCstAttributes[i] == null)
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
@@ -304,8 +278,6 @@ public class JobDefCreationPanel extends CreateEditPanel{
         Util.setJText(tcCstAttributes[i], cstAttr[i]);
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("taskFK")){
-        cl.gridx=0;
-        cl.gridy=i;
         pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
         if(!reuseTextFields || tcCstAttributes[i] == null)
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
@@ -314,8 +286,6 @@ public class JobDefCreationPanel extends CreateEditPanel{
         tcCstAttributes[i].setEnabled(false);
       }
       else{
-        cl.gridx=0;
-        cl.gridy=i;
         if(cstAttributesNames[i].equalsIgnoreCase("jobPars") ||
             cstAttributesNames[i].equalsIgnoreCase("jobOutputs") ||
             cstAttributesNames[i].equalsIgnoreCase("jobLogs")){
@@ -332,8 +302,11 @@ public class JobDefCreationPanel extends CreateEditPanel{
           Util.setJText(tcCstAttributes[i], cstAttr[i]);
         }
       }      
-      cl.gridx=1;
-      cl.gridy=i;
+      cl = new GridBagConstraints(
+          1, i/*row*/, 3, 1, 1.0, 0.0,
+          GridBagConstraints.CENTER,
+          GridBagConstraints.HORIZONTAL,
+          new Insets(5, 5, 5, 5), 0, 0);
       if( !cstAttributesNames[i].equalsIgnoreCase("jobPars") &&
           !cstAttributesNames[i].equalsIgnoreCase("jobOutputs") &&
           !cstAttributesNames[i].equalsIgnoreCase("jobLogs")){

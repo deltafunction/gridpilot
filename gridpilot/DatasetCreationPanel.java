@@ -34,6 +34,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private String transformationName = "";
   private String transformationVersion = "";
   private int [] datasetIDs = new int [] {-1};
+  private JPanel pTop = new JPanel();
   private JPanel pTransformation = new JPanel();
   private JPanel pTargetDBs = new JPanel();
   private JLabel jlTargetDBSelection = null;
@@ -43,7 +44,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private JComboBox cbTransVersionSelection;
   private String targetDB = null;
   private DBRecord dataset = null;
-  private GridBagConstraints ct = new GridBagConstraints();
   private Database.DBResult transformations = null;
   private String [] datasetTransformationReference;
   private String [] datasetTransformationVersionReference;
@@ -114,14 +114,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
    * GUI initialisation
    */
   public void initGUI(){
-    setLayout(new GridBagLayout());
-    removeAll();
+    setLayout(new BorderLayout());
+    pTop.setLayout(new FlowLayout());
+     removeAll();
     
-    ct.gridx = 0;
-    ct.gridy = 0;
-    ct.gridwidth=1;
-    ct.gridheight=1;
-
     String title = "";
     if(editing){
       String datasetName = "";
@@ -158,52 +154,33 @@ public class DatasetCreationPanel extends CreateEditPanel{
         }
       }
       initTargetDBsPanel();
-      add(pTargetDBs, ct);
-      ct.gridx = 1;
-      ct.gridy = 0;
+      pTop.add(pTargetDBs);
     }
 
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
-        Color.white,new Color(165, 163, 151)), title));
+        Color.white, new Color(165, 163, 151)), title));
     
-    spAttributes.setPreferredSize(new Dimension(560, 500));
+    spAttributes.setPreferredSize(new Dimension(590, 500));
     spAttributes.setMinimumSize(new Dimension(300, 300));
     
     initTransformationPanel(Integer.parseInt(datasetID));
     
-    add(pTransformation, ct);
+    pTop.add(pTransformation);
 
     initAttributePanel();
     
-    ct.fill = GridBagConstraints.VERTICAL;
-    ct.insets = new Insets(2,2,2,2);
-    
-    ct.gridx = 0;
-    ct.gridy = 1;
-    ct.gridheight=1;
-    if(cbTargetDBSelection!=null){
-      ct.gridwidth=3;
-    }
-    else{
-      ct.gridwidth=2;
-    }
-    add(spAttributes,ct);
+    add(pTop, BorderLayout.NORTH);
+    add(spAttributes, BorderLayout.CENTER);
     
     updateUI();
   }
 
   private void initAttributePanel(){
     
-    GridBagConstraints cl = new GridBagConstraints();
-    cl.fill = GridBagConstraints.VERTICAL;
-    cl.gridx = 1;
-    cl.gridy = 0;         
-    cl.anchor = GridBagConstraints.NORTHWEST;
-
     pAttributes.setLayout(new GridBagLayout());
     pAttributes.removeAll();
 
-    spAttributes.getViewport().add(pAttributes, cl);
+    spAttributes.getViewport().add(pAttributes);
     
     if(!reuseTextFields || tcCstAttributes==null ||
         tcCstAttributes.length!=cstAttributesNames.length){
@@ -215,8 +192,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
     for(int i =0; i<cstAttributesNames.length; ++i){
       if(cstAttributesNames[i].equalsIgnoreCase("actualPars") ||
           cstAttributesNames[i].equalsIgnoreCase("transFormalPars")){
-        cl.gridx=0;
-        cl.gridy=i;
         JTextArea textArea = new JTextArea(10, TEXTFIELDWIDTH);
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
@@ -243,19 +218,25 @@ public class DatasetCreationPanel extends CreateEditPanel{
             cstAttributesNames[i], tcCstAttributes[i],
             dbPluginMgr), new GridBagConstraints(0, i, 1, 1, 0.0, 0.0,
                 GridBagConstraints.LINE_START, GridBagConstraints.HORIZONTAL,
-                new Insets(0, 0, 0, 0), 0, 0));
-        pAttributes.add(tcCstAttributes[i], new GridBagConstraints(1, i, 3, 1, 0.0, 0.0,
-            GridBagConstraints.LINE_START,
+                new Insets(5, 5, 5, 5), 0, 0));
+        pAttributes.add(tcCstAttributes[i],
+            new GridBagConstraints(1, i, 3, 1, 0.0, 0.0,
+            GridBagConstraints.CENTER,
             GridBagConstraints.HORIZONTAL,
-            new Insets(0, 0, 0, 0), 0, 0));
+            new Insets(5, 5, 5, 5), 0, 0));
       }
       else{
-        cl.gridx=0;
-        cl.gridy=i;
-        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
-        cl.gridx=1;
-        cl.gridy=i;
-        pAttributes.add(tcCstAttributes[i], cl);
+        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "),
+            new GridBagConstraints(0, i, 1, 1, 0.0, 0.0,
+                GridBagConstraints.CENTER,
+                GridBagConstraints.BOTH,
+                new Insets(5, 25, 5, 5), 0, 0));
+        pAttributes.add(tcCstAttributes[i],
+            new GridBagConstraints(
+                1, i/*row*/, 3, 1, 1.0, 0.0,
+                GridBagConstraints.CENTER,
+                GridBagConstraints.HORIZONTAL,
+                new Insets(5, 5, 5, 5), 0, 0));
       }
       // when creating, zap loaded dataset id
       if(!editing && cstAttributesNames[i].equalsIgnoreCase(datasetIdentifier)){
@@ -577,17 +558,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       );
     }
 
-    ct.gridy = 0;
-    ct.gridwidth=1;
-    ct.gridheight=1;
-    if(cbTargetDBSelection!=null){
-      ct.gridx = 2;
-    }
-    else{
-      ct.gridx = 1;
-    }
-    add(pVersion, ct);
-    ct.gridx = ct.gridx-1;
+    pTop.add(pVersion);
     
     updateUI();
   }

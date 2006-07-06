@@ -85,8 +85,8 @@ public class RuntimeCreationPanel extends CreateEditPanel{
         Color.white, new Color(165, 163, 151)),
         (packID.equals("-1")?"new runtime environment":"runtimeEnvironment "+packID)));
     
-    spAttributes.setPreferredSize(new Dimension(600, 500));
-    spAttributes.setMinimumSize(new Dimension(600, 500));
+    //spAttributes.setPreferredSize(new Dimension(600, 500));
+    //spAttributes.setMinimumSize(new Dimension(600, 500));
     
     setLayout(new GridBagLayout());
     removeAll();
@@ -101,7 +101,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
     ct.gridy = 1;
     ct.gridwidth=2;
     ct.gridheight=1;
-    add(spAttributes,ct);
+    add(spAttributes, ct);
 
     Debug.debug("Initializing panel", 3);
     initPackCreationPanel();

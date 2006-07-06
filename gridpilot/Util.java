@@ -286,7 +286,7 @@ public class Util{
       final DBPluginMgr dbPluginMgr){
     //final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
     String markup = "<b>"+name+" : </b><br>"+
-      "<a href=\"http://check/\">Browse</a>";
+      "<a href=\"http://check/\">browse</a>";
     JEditorPane checkPanel = new JEditorPane("text/html", markup);
     checkPanel.setEditable(false);
     checkPanel.setOpaque(false);

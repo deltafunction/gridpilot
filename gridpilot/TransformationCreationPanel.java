@@ -101,8 +101,8 @@ public class TransformationCreationPanel extends CreateEditPanel{
         Color.white,new Color(165, 163, 151)), 
         (transformationID.equals("-1")?"new transformation":"transformation "+transformationID)));
     
-    spAttributes.setPreferredSize(new Dimension(650, 500));
-    spAttributes.setMinimumSize(new Dimension(650, 500));
+    //spAttributes.setPreferredSize(new Dimension(650, 500));
+    //spAttributes.setMinimumSize(new Dimension(650, 500));
     
     setLayout(new GridBagLayout());
     removeAll();

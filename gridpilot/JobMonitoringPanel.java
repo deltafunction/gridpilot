@@ -1,6 +1,7 @@
 package gridpilot;
 
 import javax.swing.*;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.util.Enumeration;
@@ -101,35 +102,25 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   public void initGUI(){
     
-    this.setLayout(new GridBagLayout());
+    this.setLayout(new BorderLayout());
 
     // central panel
-    this.add(tpStatLog, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
-        GridBagConstraints.CENTER,
-        GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
-
     tpStatLog.setTabPlacement(JTabbedPane.BOTTOM);
-
-    tpStatLog.add("Monitor", spStatusTable);
-    tpStatLog.add("Logs", spLogView);
-
+    
     spLogView.getViewport().add(logViewerPanel);
-
-    spStatusTable.getViewport().add(statusTable);
     statusTable.addListSelectionListener(new ListSelectionListener(){
       public void valueChanged(ListSelectionEvent e){
         selectionEvent(e);
       }
     });
+    spStatusTable.getViewport().add(statusTable);
+    tpStatLog.addTab("Monitor", spStatusTable);
+    tpStatLog.addTab("Logs", spLogView);
 
     makeMenu();
 
     //options panel
-
     pOptions.setLayout(new GridBagLayout());
-
-    this.add(pOptions, new GridBagConstraints(1, 0, 1, 1, 0.1, 0.1
-    ,GridBagConstraints.NORTH, GridBagConstraints.VERTICAL, new Insets(30, 10, 0, 0), 0, 0));
 
     // view
     pOptions.add(rbAllJobs, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
@@ -208,7 +199,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         new Insets(30, 5, 0, 5), 0, 0));
 
     // Buttons panel
-
     bDecide.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         decide();
@@ -249,10 +239,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
 
-    this.add(pButtons,  new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
-        GridBagConstraints.CENTER,
-        GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
-
     pButtons.add(bDecide);
     pButtons.add(bKill);
     pButtons.add(bRefresh);
@@ -263,8 +249,12 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     bDecide.setToolTipText("Shows the outputs of the selected jobs");
     bKill.setToolTipText("Kills the selected jobs");
     bRefresh.setToolTipText("Refresh all jobs");
+
+    this.getTopLevelAncestor().add(tpStatLog, BorderLayout.CENTER);
+    this.getTopLevelAncestor().add(pOptions, BorderLayout.EAST);
+    this.getTopLevelAncestor().add(pButtons, BorderLayout.SOUTH);
     
-    this.setPreferredSize(new Dimension(700, 500));
+    //this.setPreferredSize(new Dimension(700, 500));
     
   }
 
@@ -500,17 +490,19 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     int choices [] = ShowOutputsJobsDialog.show(JOptionPane.getRootFrame(), jobs, sOptions);
     int dbChoices [] = new int[choices.length];
 
-    for(int i = 0; i< jobs.size() ; ++i){
-      if(choices[i] == -1)
+    for(int i=0; i<jobs.size(); ++i){
+      if(choices[i]==-1){
         dbChoices[i] = DBPluginMgr.UNDECIDED;
-      else
+      }
+      else{
         dbChoices[i]  = options[choices[i]];
+      }
     }
 
     //jobControl.undecidedChoices(jobs, dbChoices);
 
     DatasetMgr datasetMgr = null;
-    for(int i = 0; i < jobs.size(); ++i){
+    for(int i=0; i<jobs.size(); ++i){
       JobInfo job = (JobInfo) jobs.get(i);
       if(job.getDBStatus()!=dbChoices[i]){
         datasetMgr = getDatasetMgr(job);

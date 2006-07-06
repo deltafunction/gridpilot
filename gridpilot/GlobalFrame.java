@@ -52,11 +52,9 @@ public class GlobalFrame extends GPFrame{
    */
 
   public void initGUI(Container container) throws Exception{
-    /**
-     * Called by : this.GlobalFrame();
-     */
-
+    
     container.setLayout(new BorderLayout());
+    container.setPreferredSize(new Dimension(800, 600));
     
     GridPilot.getClassMgr().setStatusBar(new StatusBar());
     statusBar = GridPilot.getClassMgr().getStatusBar();
@@ -145,13 +143,15 @@ public class GlobalFrame extends GPFrame{
   public void addPanel(ListPanel newPanel, String title){
     Debug.debug("Adding panel "+newPanel.getTitle(), 3);
     addPanel(newPanel);
-    this.pack();
-    this.setVisible(true);
+    this.setTitle("GridPilot - "+title);
+    //this.pack();
+    //this.setVisible(true);
   }
 
   public void addPanel(ListPanel newPanel){
     
-    URL imgURL=null;
+    URL imgURL = null;
+    Dimension size = this.getSize();
     ImageIcon closeIcon = null;
     try{
       imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "close.png");
@@ -182,6 +182,7 @@ public class GlobalFrame extends GPFrame{
     Debug.debug("Setting selected index "+newSelIndex, 3);
     tabbedPane.setSelectedIndex(newSelIndex);
     setTitle("GridPilot - "+title);
+    setSize(size);
   }
 
  /*
@@ -487,9 +488,8 @@ public class GlobalFrame extends GPFrame{
     try{
       if(pDialog==null){
         Debug.debug("Creating new job monitoring dialog", 2);
-         pDialog = new CreateEditDialog(jobMonitoringPanel, false, false);
+         pDialog = new CreateEditDialog(jobMonitoringPanel, false, false, false);
          pDialog.setTitle("Job Monitor");
-         pDialog.buttonPanel.setVisible(false);
          pDialog.pack();
          pDialog.setVisible(true);
          return;
@@ -511,9 +511,8 @@ public class GlobalFrame extends GPFrame{
     try{
       if(pDialog==null){
         Debug.debug("Creating new job monitoring dialog", 2);
-         pDialog = new CreateEditDialog(jobMonitoringPanel, false, false);
+         pDialog = new CreateEditDialog(jobMonitoringPanel, false, false, false);
          pDialog.setTitle("Job Monitor");
-         pDialog.buttonPanel.setVisible(false);
          pDialog.pack();
       }
       pDialog.setVisible(true);

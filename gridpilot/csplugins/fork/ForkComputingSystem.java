@@ -420,7 +420,6 @@ public class ForkComputingSystem implements ComputingSystem{
     /**
      * move temp StdErr -> finalStdErr
      */
-
     if(finalStdErr!=null && finalStdErr.trim().length()!=0){
       try{
         if(!shell.existsFile(job.getStdErr())){

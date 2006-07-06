@@ -183,10 +183,12 @@ public class GridPilot extends JApplet{
 
       //Validate frames that have preset sizes.
       //Pack frames that have useful preferred size info, e.g. from their layout.
-      if(packFrame)
+      if(packFrame){
         frame.pack();
-      else
+      }
+      else{
         frame.validate();
+      }
 
       frame.setSize(new Dimension(800, 600));
 

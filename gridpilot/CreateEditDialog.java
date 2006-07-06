@@ -4,7 +4,7 @@ import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
 
-public class CreateEditDialog extends GPFrame{
+public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
 
   private static final long serialVersionUID = 1L;
   private final int BCLOSE = 0;
@@ -18,17 +18,19 @@ public class CreateEditDialog extends GPFrame{
   private JButton bClear = new JButton("Clear");
   private JCheckBox cbShowResults = new JCheckBox("Show before writing to DB", true);
   private boolean showDetailsCheckBox = false;
+  private boolean showButtons = false;
   private JCheckBox cbShowDetails = null;
+  private JPanel buttonPanel = new JPanel();
 
-  public JPanel buttonPanel = new JPanel();
-
-  public CreateEditDialog(CreateEditPanel _panel, boolean _editing, boolean _showDetailsCheckBox){
+  public CreateEditDialog(CreateEditPanel _panel, boolean _editing,
+      boolean _showDetailsCheckBox, boolean _showButtons){
     
     super();
     
     _panel.statusBar = this.statusBar;
     
     showDetailsCheckBox = _showDetailsCheckBox;
+    showButtons = _showButtons;
     createEditPanel = _panel;
     editing = _editing;
     
@@ -63,11 +65,31 @@ public class CreateEditDialog extends GPFrame{
     }
   }
   
+  /*public void componentResized(ComponentEvent e){
+    pCreateEdit.remove(createEditPanel);
+    pCreateEdit.add(createEditPanel, BorderLayout.CENTER);
+    pCreateEdit.validate();
+    pCreateEdit.setVisible(true);
+    Debug.debug("componentResized event from "
+         + e.getComponent().getClass().getName(), 3);
+  }
+
+  public void componentHidden(ComponentEvent e) {
+  }
+   
+  public void componentMoved(ComponentEvent e) {    
+  }
+      
+  public void componentShown(ComponentEvent e){ 
+  }*/
+  
   public void initGUI(){
     //buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
+    
+    /*this.addComponentListener(this);
+    createEditPanel.addComponentListener(this);*/
 
     // buttons initialisation
-
     bClose.setMnemonic(BCLOSE);
     bClose.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -89,29 +111,32 @@ public class CreateEditDialog extends GPFrame{
       }
     });
 
-    if(showDetailsCheckBox){
-      cbShowDetails = new JCheckBox("Show Details", false);
-      cbShowDetails.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          try{
-            createEditPanel.showDetails(cbShowDetails.isSelected());
-            pack();
-          }
-          catch(Exception ex){
-            Debug.debug("Could not show details", 2);
-            ex.printStackTrace();
-          }
-        }
-      });    
-      buttonPanel.add(cbShowDetails);
-    }
-    buttonPanel.add(cbShowResults);
-    buttonPanel.add(bClose);
-    buttonPanel.add(bClear);
-    buttonPanel.add(bCreateUpdate);
+    pCreateEdit.add(createEditPanel, BorderLayout.CENTER);
 
-    pCreateEdit.add(createEditPanel, BorderLayout.NORTH);
-    pCreateEdit.add(buttonPanel, BorderLayout.SOUTH);
+    if(showButtons){
+      if(showDetailsCheckBox){
+        cbShowDetails = new JCheckBox("Show Details", false);
+        cbShowDetails.addActionListener(new ActionListener(){
+          public void actionPerformed(ActionEvent e){
+            try{
+              createEditPanel.showDetails(cbShowDetails.isSelected());
+              pack();
+            }
+            catch(Exception ex){
+              Debug.debug("Could not show details", 2);
+              ex.printStackTrace();
+            }
+          }
+        });    
+        buttonPanel.add(cbShowDetails);
+      }
+      buttonPanel.add(cbShowResults);
+      buttonPanel.add(bClose);
+      buttonPanel.add(bClear);
+      buttonPanel.add(bCreateUpdate);
+
+      pCreateEdit.add(buttonPanel, BorderLayout.SOUTH);
+    }
 
     // center in window
     //
