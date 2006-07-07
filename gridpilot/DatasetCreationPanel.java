@@ -8,6 +8,7 @@ import javax.swing.border.*;
 import javax.swing.text.JTextComponent;
 
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.util.*;
 
 /**
@@ -47,6 +48,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private Database.DBResult transformations = null;
   private String [] datasetTransformationReference;
   private String [] datasetTransformationVersionReference;
+  private JButton jbEditTrans = new JButton("view");
 
   /**
    * Constructor
@@ -171,6 +173,13 @@ public class DatasetCreationPanel extends CreateEditPanel{
     
     add(pTop, BorderLayout.NORTH);
     add(spAttributes, BorderLayout.CENTER);
+    
+    jbEditTrans.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        viewTransformation();
+      }
+    }
+    );
     
     updateUI();
   }
@@ -522,6 +531,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
 
   private void initTransVersionPanel(int datasetID, String transformation){
 
+    pTop.add(pVersion);
+
     Debug.debug("Finding versions...", 3);
 
     pVersion.removeAll();
@@ -537,6 +548,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       transformationVersion = versions[0];
       pVersion.add(new JLabel("Version : " + transformationVersion));
       editDataset(datasetID, transformationName, transformationVersion);
+      pTop.add(jbEditTrans);
     }
     else{
       cbTransVersionSelection = new JComboBox();
@@ -557,10 +569,43 @@ public class DatasetCreationPanel extends CreateEditPanel{
         }
       );
     }
+    pTop.updateUI();
+  }
 
-    pTop.add(pVersion);
-    
-    updateUI();
+  /**
+   * Open new pane with corresponding runtime environments.
+   */
+  private void viewTransformation(){
+    if(transformationName==null || transformationName.equals("") ||
+        transformationVersion==null || transformationVersion.equals("")){
+      return;
+    }
+    GridPilot.getClassMgr().getGlobalFrame().requestFocusInWindow();
+    GridPilot.getClassMgr().getGlobalFrame().setVisible(true);
+    Thread t = new Thread(){
+      public void run(){
+        try{
+          // Create new panel with jobDefinitions.         
+          DBPanel dbPanel = new DBPanel(dbPluginMgr.getDBName(),
+              "transformation");
+          String idField =
+            dbPluginMgr.getIdentifierField("transformation");
+          int id = dbPluginMgr.getTransformationID(transformationName,
+              transformationVersion);
+          dbPanel.selectPanel.setConstraint(idField,
+              Integer.toString(id), 0);
+          dbPanel.searchRequest();           
+          GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);
+        }
+        catch(Exception e){
+          Debug.debug("Couldn't create panel for dataset " + "\n" +
+                             "\tException\t : " + e.getMessage(), 2);
+          e.printStackTrace();
+        }
+      }
+    };
+    //SwingUtilities.invokeLater(t);
+    t.run();
   }
 
   private void cbTransformationSelection_actionPerformed(){
@@ -569,6 +614,11 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     else{
         transformationName = cbTransformationSelection.getSelectedItem().toString();
+    }
+    try{
+      pTop.remove(jbEditTrans);
+    }
+    catch(Exception e){
     }
     initTransVersionPanel(Integer.parseInt(datasetID), transformationName);
   }
@@ -580,7 +630,14 @@ public class DatasetCreationPanel extends CreateEditPanel{
     else{
       transformationVersion = cbTransVersionSelection.getSelectedItem().toString();
     }
+    try{
+      pTop.remove(jbEditTrans);
+    }
+    catch(Exception e){
+    }
     editDataset(Integer.parseInt(datasetID), transformationName, transformationVersion);
+    pTop.add(jbEditTrans);
+    pTop.validate();
   }
 
   private Vector getFields(){

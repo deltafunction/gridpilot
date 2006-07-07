@@ -411,7 +411,7 @@ public class SelectPanel extends JPanel{
       return;
     }
     Component[] parts = spcp.cbConstraintAttribute.getComponents();
-    if((parts != null) && (parts.length > 0)){
+    if((parts!=null) && (parts.length>0)){
       for(int i=0; i<fieldNames.length; ++i){
         if(fieldNames[i].equalsIgnoreCase(key)){
           spcp.cbConstraintAttribute.setSelectedIndex(i);

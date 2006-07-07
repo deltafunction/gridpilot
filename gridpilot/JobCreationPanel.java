@@ -157,18 +157,18 @@ public class JobCreationPanel extends CreateEditPanel{
     outputMapNames = dbPluginMgr.getTransOutputs(transformationID);
 
     Debug.debug("Fixed job attributes: "+Util.arrayToString(cstAttributesNames), 3);
-    if(!reuseTextFields || tcCstAttributes == null ||
+    if(!reuseTextFields || tcCstAttributes==null ||
         tcCstAttributes.length != cstAttributesNames.length){
       tcCstAttributes = new JTextComponent[cstAttributesNames.length];
     }
-    if(!reuseTextFields || tcJobParam == null || tcJobParam.length  != jobParamNames.length){
+    if(!reuseTextFields || tcJobParam==null || tcJobParam.length!=jobParamNames.length){
       tcJobParam = new JTextComponent[jobParamNames.length];
     }
-    if(!reuseTextFields || tcStdOutput == null ||
+    if(!reuseTextFields || tcStdOutput==null ||
         tcStdOutput.length!=stdOutputNames.length){
       tcStdOutput = new JTextComponent[stdOutputNames.length];
     }
-    if(!reuseTextFields || tcOutputMap == null || tcOutputMap.length != outputMapNames.length){
+    if(!reuseTextFields || tcOutputMap==null || tcOutputMap.length!=outputMapNames.length){
       tcOutputMap = new JTextComponent[outputMapNames.length] [2] ;
     }
 
@@ -225,6 +225,17 @@ public class JobCreationPanel extends CreateEditPanel{
         detailFields.add(constantAttributeLabels[i]);
         tcCstAttributes[i].setText("$"+datasetFields.indexOf(cstAttributesNames[i].toLowerCase()));
       }
+      else if(cstAttributesNames[i].equalsIgnoreCase("created") ||
+          cstAttributesNames[i].equalsIgnoreCase("lastModified")){
+        Util.setJEditable(tcCstAttributes[i], false);
+      }
+      // TODO: disable also fields filled out by GridPilot and runtime fields
+      else if(datasetFields.contains(cstAttributesNames[i].toLowerCase())){
+        detailFields.add(tcCstAttributes[i]);
+        detailFields.add(constantAttributeLabels[i]);
+        tcCstAttributes[i].setText("$"+datasetFields.indexOf(cstAttributesNames[i].toLowerCase()));
+      }
+
       pAttributes.add(tcCstAttributes[i], new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
           GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
           new Insets(5, 5, 5, 5), 0, 0));
@@ -300,16 +311,6 @@ public class JobCreationPanel extends CreateEditPanel{
         detailFields.add(jobAttributeLabels[i]);
         detailFields.add(tcJobParam[i]);
         tcJobParam[i].setText("$p");
-      }
-      else if( cstAttributesNames[i].equalsIgnoreCase("created") ||
-          cstAttributesNames[i].equalsIgnoreCase("lastModified")){
-        Util.setJEditable(tcCstAttributes[i], false);
-      }
-      // TODO: disable also fields filled out by GridPilot and runtime fields
-      else if(datasetFields.contains(cstAttributesNames[i].toLowerCase())){
-        detailFields.add(tcCstAttributes[i]);
-        detailFields.add(constantAttributeLabels[i]);
-        tcCstAttributes[i].setText("$"+datasetFields.indexOf(cstAttributesNames[i].toLowerCase()));
       }
 
       pAttributes.add(tcJobParam[i],

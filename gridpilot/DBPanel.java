@@ -32,7 +32,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
   private static final long serialVersionUID = 1L;
   private JScrollPane spSelectPanel = new JScrollPane();
-  private SelectPanel selectPanel;
+  public SelectPanel selectPanel;
   private JPanel pButtonSelectPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
   public JPanel panelSelectPanel = new JPanel(new GridBagLayout());
 

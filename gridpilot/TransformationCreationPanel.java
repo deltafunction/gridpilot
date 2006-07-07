@@ -4,6 +4,7 @@ import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.text.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.util.*;
 
 /**
@@ -229,16 +230,61 @@ public class TransformationCreationPanel extends CreateEditPanel{
         }
       ); 
     }
-    
     ct.gridx = 0;
     ct.gridy = 0;
     ct.gridwidth=1;
     ct.gridheight=1;
     add(pRuntimeEnvironment, ct);
+    
+    JButton jbEditTrans = new JButton("view");
+    jbEditTrans.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        viewRuntimeEnvironments();
+      }
+    }
+    );
+    ct.gridx = 1;
+    ct.gridy = 0;
+    ct.gridwidth=1;
+    ct.gridheight=1;
+    add(jbEditTrans, ct);
 
     updateUI();
   }
 
+  /**
+   * Open new pane with corresponding runtime environments.
+   */
+  private void viewRuntimeEnvironments(){
+    if(runtimeEnvironmentName==null || runtimeEnvironmentName.equals("")){
+      return;
+    }
+    GridPilot.getClassMgr().getGlobalFrame().requestFocusInWindow();
+    GridPilot.getClassMgr().getGlobalFrame().setVisible(true);
+    Thread t = new Thread(){
+      public void run(){
+        try{
+          // Create new panel with jobDefinitions.         
+          DBPanel dbPanel = new DBPanel(dbPluginMgr.getDBName(),
+              "runtimeEnvironment");
+          String nameField =
+            dbPluginMgr.getNameField("runtimeEnvironment");
+          dbPanel.selectPanel.setConstraint(nameField,
+              runtimeEnvironmentName, 0);
+          dbPanel.searchRequest();           
+          GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);
+        }
+        catch(Exception e){
+          Debug.debug("Couldn't create panel for dataset " + "\n" +
+                             "\tException\t : " + e.getMessage(), 2);
+          e.printStackTrace();
+        }
+      }
+    };
+    //SwingUtilities.invokeLater(t);
+    t.run();
+  }
+  
   private void cbRuntimeSelection_actionPerformed(){
     if(cbRuntimeEnvironmentSelection.getSelectedItem()==null){
         return;
