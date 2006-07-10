@@ -37,11 +37,19 @@ abstract public class ScriptGenerator{
 
   private String getLine(String s){return s + "\n";}
 
-  private String getBloc(String []s, int type){
+  private String getBloc(String []s, int type, String _commentStart){
     String bloc = null;
-    String commentStart = "#";
-    if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
-      commentStart = "REM ";
+    String commentStart = "";
+    if(_commentStart==null){
+      if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
+        commentStart = "REM ";
+      }
+      else{
+        commentStart = "#";
+      }
+    }
+    else{
+      commentStart = _commentStart;
     }
     switch(type){
       case TYPE_SECTION:
@@ -72,24 +80,34 @@ abstract public class ScriptGenerator{
     out.writeBytes(getLine(s));
   }
 
-  protected void writeBloc(RandomAccessFile out, String [] s, int type) throws IOException{
-    writeLine(out, getBloc(s, type));
+  protected void writeBloc(RandomAccessFile out, String [] s, int type, String commentStart) throws IOException{
+    writeLine(out, getBloc(s, type, commentStart));
   }
 
-  protected void writeBloc(RandomAccessFile out, String s, int type)throws IOException{
+  protected void writeBloc(RandomAccessFile out, String s, int type,
+      String commentStart) throws IOException{
     String [] s2 = {s};
-    writeBloc(out, s2, type);
+    writeBloc(out, s2, type, commentStart);
   }
 
   public void writeLine(StringBuffer buf, String s){
     buf.append(getLine(s));
   }
 
+  protected void writeBloc(StringBuffer buf, String [] s, int type, String commentStart){
+    buf.append(getBloc(s, type, commentStart));
+  }
+
+  protected void writeBloc(StringBuffer buf, String s, int type, String commentStart){
+    writeBloc(buf, new String[]{s}, type, commentStart);
+  }
+  
   protected void writeBloc(StringBuffer buf, String [] s, int type){
-    buf.append(getBloc(s,type));
+    buf.append(getBloc(s, type, null));
   }
 
   protected void writeBloc(StringBuffer buf, String s, int type){
-    writeBloc(buf, new String[]{s}, type);
+    writeBloc(buf, new String[]{s}, type, null);
   }
+
 }

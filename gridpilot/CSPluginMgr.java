@@ -109,7 +109,7 @@ public class CSPluginMgr implements ComputingSystem{
         shellMgr.put(csNames[i],
            new SecureShellMgr(host, user, password, remoteHome));
       }
-      else if(host.endsWith("localhost")){
+      else if(host!=null && host.endsWith("localhost")){
         shellMgr.put(csNames[i], new LocalShellMgr());
       }
       else{

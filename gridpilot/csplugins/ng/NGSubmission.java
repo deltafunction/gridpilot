@@ -87,12 +87,20 @@ public class NGSubmission{
      int lineNumber = 0;
      while((line=in.readLine())!=null){
        ++lineNumber;
-       xrsl += line+"\n";
+       line = line.replaceAll("\\r", "");
+       line = line.replaceAll("\\n", "");
+       xrsl += line;
      }
      in.close();
      
+     Debug.debug("XRSL: "+xrsl, 3);
+     
      // TODO: use all hosts from submissionHosts
      String submissionHost = Util.split(submissionHosts)[0];
+     // add gsiftp:// if not there
+     if(!submissionHost.startsWith("gsiftp://")){
+       submissionHost = "gsiftp://"+submissionHost+"/jobs";
+     }
      ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost);
      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
      GlobusCredential globusCred = null;
@@ -100,6 +108,13 @@ public class NGSubmission{
        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
      }
      gridJob.addProxy(globusCred);
+     gridJob.connect();
+     
+     String testXrsl = "&(executable=/bin/echo)(jobName=\"Jarclib test submission \")" +
+     "(action=request)(arguments=\"/bin/echo\" \"Test\")"+
+     "(join=yes)(stdout=out.txt)(outputfiles=(\"test\" \"\"))(queue=\"" +
+      "short" + "\")";
+     
      gridJob.submit(xrsl);
      NGJobId = gridJob.getGlobalId();
      Debug.debug("NGJobId : " + NGJobId, 3);

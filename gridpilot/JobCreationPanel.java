@@ -290,9 +290,16 @@ public class JobCreationPanel extends CreateEditPanel{
         tcJobParam[i].setText("${i:5}");
       }
       else if(jobParamNames[i].equalsIgnoreCase("outputFileName")){
+        String extension = ".root";
+        if(outputMapNames!=null && !outputMapNames.equals("")){
+          String [] fullNameStrings = Util.split(outputMapNames[0], ".");
+          if(fullNameStrings.length>0){
+            extension = "."+fullNameStrings[fullNameStrings.length-1];
+          }
+        }
         detailFields.add(jobAttributeLabels[i]);
         detailFields.add(tcJobParam[i]);
-        tcJobParam[i].setText("$n.${i:5}.root");
+        tcJobParam[i].setText("$n.${i:5}"+extension);
       }
       else if(jobParamNames[i].equalsIgnoreCase("runNumber")){
       // get from dataset

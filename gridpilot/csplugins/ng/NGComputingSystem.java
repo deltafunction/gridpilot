@@ -168,7 +168,7 @@ public class NGComputingSystem implements ComputingSystem{
           jobID = job.getJobId().substring(lastSlash + 1);
         }
         Debug.debug("Killing : " + job.getName() + ":" + job.getJobId(), 3);
-        submissionHost = job.getHost();
+        submissionHost = "gsiftp://"+job.getHost();
         ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost, jobID);
         GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
         GlobusCredential globusCred = null;
@@ -176,6 +176,7 @@ public class NGComputingSystem implements ComputingSystem{
           globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
         }
         gridJob.addProxy(globusCred);
+        gridJob.connect();
         gridJob.cancel();
        }
        catch(Exception ae){
@@ -247,7 +248,7 @@ public class NGComputingSystem implements ComputingSystem{
       if(lastSlash>-1){
         jobID = job.getJobId().substring(lastSlash + 1);
       }
-      String submissionHost = job.getHost();
+      String submissionHost = "gsiftp://"+job.getHost();
       ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost, jobID);
       GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
       GlobusCredential globusCred = null;
@@ -255,6 +256,7 @@ public class NGComputingSystem implements ComputingSystem{
         globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
       }
       gridJob.addProxy(globusCred);
+      gridJob.connect();
       gridJob.cancel();
       gridJob.clean();
     }
@@ -294,7 +296,7 @@ public class NGComputingSystem implements ComputingSystem{
     // Get the outputs
     try{
       Debug.debug("Getting : " + job.getName() + ":" + job.getJobId(), 3);
-      String submissionHost = job.getHost();
+      String submissionHost = "gsiftp://"+job.getHost();
       ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost, jobID);
       GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
       GlobusCredential globusCred = null;
@@ -302,6 +304,7 @@ public class NGComputingSystem implements ComputingSystem{
         globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
       }
       gridJob.addProxy(globusCred);
+      gridJob.connect();
       gridJob.get(dirName);
      }
      catch(Exception ae){
@@ -344,7 +347,7 @@ public class NGComputingSystem implements ComputingSystem{
         jobID = job.getJobId().substring(lastSlash + 1);
       }
       Debug.debug("Getting : " + job.getName() + ":" + job.getJobId(), 3);
-      String submissionHost = job.getHost();
+      String submissionHost = "gsiftp://"+job.getHost();
       ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost, jobID);
       GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
       GlobusCredential globusCred = null;
@@ -352,6 +355,7 @@ public class NGComputingSystem implements ComputingSystem{
         globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
       }
       gridJob.addProxy(globusCred);
+      gridJob.connect();
       // TODO: use information system
       state = gridJob.state();
     }
@@ -434,7 +438,7 @@ public class NGComputingSystem implements ComputingSystem{
     String dirName = runDir(job)+File.pathSeparatorChar+job.getJobId();
     try{
       Debug.debug("Getting : " + job.getName() + ":" + job.getJobId(), 3);
-      String submissionHost = job.getHost();
+      String submissionHost = "gsiftp://"+job.getHost();
       ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost, job.getJobId());
       GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
       GlobusCredential globusCred = null;
@@ -442,6 +446,7 @@ public class NGComputingSystem implements ComputingSystem{
         globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
       }
       gridJob.addProxy(globusCred);
+      gridJob.connect();
       Debug.debug("Getting stdout of: " + job.getName() + ":" + job.getJobId(), 3);
       gridJob.getOutputFile("stdout", dirName);
       Debug.debug("Getting stderr of: " + job.getName() + ":" + job.getJobId(), 3);
@@ -573,7 +578,7 @@ public class NGComputingSystem implements ComputingSystem{
       //String host = getValueOf("Cluster", line);
       String host = getValueOf("Execution nodes", line);
       Debug.debug("Job Destination : " + host, 2);
-      if(host != null){
+      if(host!=null){
         job.setHost(host);
       }
     }
