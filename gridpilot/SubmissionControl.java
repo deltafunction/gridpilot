@@ -10,7 +10,6 @@ import java.util.Vector;
 
 import gridpilot.Database.DBRecord;
 
-
 /**
  * Controls the job submission. <p>
  * When submitting some jobs (giving logical file id or jobs already created),
@@ -41,6 +40,7 @@ public class SubmissionControl{
   /** Delay between the begin of two submission threads */
   private int timeBetweenSubmission = 1000;
   private Random rand = new Random();
+  private String isRand = null;
 
   public SubmissionControl(){
     submittedJobs = GridPilot.getClassMgr().getSubmittedJobs();
@@ -58,18 +58,8 @@ public class SubmissionControl{
     });
     loadValues();
     pbSubmission = new JProgressBar(0,0);
-    String resourcesPath = configFile.getValue("GridPilot", "resources");
-    if(resourcesPath != null && !resourcesPath.endsWith("/"))
-      resourcesPath += "/";
-    try{
-      iconSubmitting = new ImageIcon(resourcesPath + "submitting.png");
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ resourcesPath + "submitting.png", 3);
-      iconSubmitting = new ImageIcon();
-    }
   }
-
+  
   /**
    * Reloads some values from configuration file. <p>
    * Theses values are : <ul>
@@ -109,6 +99,18 @@ public class SubmissionControl{
     Debug.debug("Setting time between submissions "+timeBetweenSubmission, 3);
     timer.setInitialDelay(0);
     timer.setDelay(timeBetweenSubmission);
+    String resourcesPath = configFile.getValue("GridPilot", "resources");
+    if(resourcesPath != null && !resourcesPath.endsWith("/"))
+      resourcesPath += "/";
+    try{
+      iconSubmitting = new ImageIcon(resourcesPath + "submitting.png");
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ resourcesPath + "submitting.png", 3);
+      iconSubmitting = new ImageIcon();
+    }
+    isRand = configFile.getValue("GridPilot", "randomized submission");
+    Debug.debug("isRand = " + isRand, 2);
   }
 
   /**
@@ -126,17 +128,6 @@ public class SubmissionControl{
       // It seems to be quite dangereous to call this function in a thread, because
       // if one does it, you can "load job from db" during reservation (when jobs
       // are not yet put in toSubmitJobs).
-      String resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "resources");
-      if(resourcesPath==null){
-        GridPilot.getClassMgr().getLogFile().addMessage(
-            GridPilot.getClassMgr().getConfigFile().getMissingMessage("GridPilot", "resources"));
-        resourcesPath = ".";
-      }
-      else{
-        if(!resourcesPath.endsWith("/")){
-          resourcesPath = resourcesPath + "/";
-        }
-      }
       statusBar.setLabel("Reserving. Please wait...");
       statusBar.animateProgressBar();
       String jobDefIdentifier = dbPluginMgr.getIdentifierField("jobDefinition");
@@ -144,14 +135,12 @@ public class SubmissionControl{
         DBRecord jobDef = ((DBRecord) selectedJobs.get(i));
         int jobDefID = Integer.parseInt(
             jobDef.getValue(jobDefIdentifier).toString());
-        String jobUser = csPluginMgr.getUserInfo(csName);
-        Debug.debug("User: "+jobUser, 3);
-        if(jobUser!=null && dbPluginMgr.reserveJobDefinition(jobDefID, jobUser, csName)){
+        if(dbPluginMgr.reserveJobDefinition(jobDefID, "", csName)){
           // checks if this partition has not been monitored (and is Submitted,
           // otherwise reservation doesn't work)
           JobInfo job = null;
           boolean isjobMonitored = false;
-          for(Iterator it = submittedJobs.iterator(); it.hasNext();){
+          for(Iterator it=submittedJobs.iterator(); it.hasNext();){
             job = ((JobInfo) it.next());
             if(job.getJobDefId()==jobDefID){
               isjobMonitored = true;
@@ -169,11 +158,7 @@ public class SubmissionControl{
             submittedJobs.add(job);
             job.setDBStatus(DBPluginMgr.SUBMITTED);
             job.setName(dbPluginMgr.getJobDefinition(jobDefID).getValue("name").toString());
-            Debug.debug("Setting job user :"+jobUser+":", 3);
-            job.setUser(jobUser);
             job.setCSName(csName);
-            //job.setOutputs(prefix + "stdout", withStdErr ? prefix + "stderr" : null);
-            // Some validation scripts assume stderr to be present...
           }
           else{
             // this job exists, get its computingSystem, keeps its row number,
@@ -215,16 +200,14 @@ public class SubmissionControl{
   public void submitJobs(Vector jobs, String csName){
     synchronized(submittedJobs){
       Vector newJobs = new Vector();
-      for(int i=0; i< jobs.size(); ++i){
+      for(int i=0; i<jobs.size(); ++i){
         JobInfo job = (JobInfo) jobs.get(i);
         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-        String jobUser = csPluginMgr.getUserInfo(csName);
-        if(jobUser != null && dbPluginMgr.reserveJobDefinition(job.getJobDefId(), jobUser, csName)){
+        if(dbPluginMgr.reserveJobDefinition(job.getJobDefId(), "", csName)){
           job.setCSName(csName);
           newJobs.add(job);
           job.setDBStatus(DBPluginMgr.SUBMITTED);
           job.setInternalStatus(ComputingSystem.STATUS_WAIT);
-          job.setUser(jobUser);
           job.setJobId(null);
           job.setHost(null);
           job.setJobStatus(null);
@@ -247,9 +230,7 @@ public class SubmissionControl{
    * Theses job are put in {@link #toSubmitJobs}. <p>
    */
   private void submit(Vector jobs){
-    String isRand = configFile.getValue("GridPilot", "randomized submission");
-    Debug.debug("isRand = " + isRand, 2);
-    if(isRand != null && isRand.equalsIgnoreCase("yes")){
+    if(isRand!=null && isRand.equalsIgnoreCase("yes")){
       jobs = shuffle(jobs);
     }
     pbSubmission.setMaximum(pbSubmission.getMaximum() + jobs.size());
@@ -281,8 +262,9 @@ public class SubmissionControl{
    */
   private Vector shuffle(Vector v){
     Vector w = new Vector();
-    while(v.size() > 0)
+    while(v.size()>0){
       w.add(v.remove(rand.nextInt(v.size())));
+    }
     return w;
   }
 
@@ -302,7 +284,7 @@ public class SubmissionControl{
       JobInfo job = (JobInfo) jobs.get(i);
       ShellMgr shell = null;
       try{
-        shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+        shell = csPluginMgr.getShellMgr(job);
       }
       catch(Exception e){
         Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
@@ -467,7 +449,7 @@ public class SubmissionControl{
   */
   private synchronized void trigSubmission(){
     if(submittingJobs.size()<maxSimultaneousSubmission && !toSubmitJobs.isEmpty()){
-      // transferts job from toSubmitJobs to submittingJobs
+      // transfers job from toSubmitJobs to submittingJobs
       final JobInfo job = (JobInfo) toSubmitJobs.remove(0);
       submittingJobs.add(job);
       new Thread(){
@@ -513,6 +495,10 @@ public class SubmissionControl{
       }
       statusTable.setValueAt(job.getJobId(), job.getTableRow(),
           DatasetMgr.FIELD_JOBID);
+      String jobUser = csPluginMgr.getUserInfo(job.getCSName());
+      Debug.debug("User: "+jobUser, 3);
+      Debug.debug("Setting job user :"+jobUser+":", 3);
+      job.setUser(jobUser);
       Debug.debug("Setting job user "+job.getUser(), 3);
       statusTable.setValueAt(job.getUser(), job.getTableRow(),
           DatasetMgr.FIELD_USER);
@@ -521,16 +507,14 @@ public class SubmissionControl{
       job.setInternalStatus(ComputingSystem.STATUS_WAIT);
     }
     else{
-      statusTable.setValueAt("Not submitted !", job.getTableRow(),
+      statusTable.setValueAt("Not submitted!", job.getTableRow(),
           DatasetMgr.FIELD_JOBID);
       job.setInternalStatus(ComputingSystem.STATUS_FAILED);
       job.setNeedToBeRefreshed(false);
       DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
           GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
               job.getJobDefId()));
-      if(/*dbPluginMgr.updateJobDefStatus(job.getJobDefId(),
-         Integer.toString(DBPluginMgr.FAILED)*/
-          datasetMgr.updateDBStatus(job, DBPluginMgr.FAILED)){
+      if(datasetMgr.updateDBStatus(job, DBPluginMgr.FAILED)){
         job.setDBStatus(DBPluginMgr.FAILED);
       }
       else{
@@ -579,13 +563,10 @@ public class SubmissionControl{
       statusTable.setValueAt(job.getName(), job.getTableRow(), DatasetMgr.FIELD_JOBNAME);
       job.setInternalStatus(ComputingSystem.STATUS_FAILED);
       job.setNeedToBeRefreshed(false);
-      //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
       DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
           GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
               job.getJobDefId()));
-      if(datasetMgr.updateDBStatus(job, DBPluginMgr.FAILED)
-          /*dbPluginMgr.updateJobDefStatus(job.getJobDefId(),
-         Integer.toString(DBPluginMgr.FAILED))*/){
+      if(datasetMgr.updateDBStatus(job, DBPluginMgr.FAILED)){
         job.setDBStatus(DBPluginMgr.FAILED);
       }
       else{

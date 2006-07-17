@@ -1,6 +1,5 @@
 package gridpilot;
 
-import java.awt.Window;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
@@ -262,7 +261,7 @@ public class ClassMgr{
     return submissionControl;
   }
   
-  public /*synchronized*/ GSSCredential getGridCredential(Window window){
+  public /*synchronized*/ GSSCredential getGridCredential(){
     if(gridProxyInitialized.booleanValue()){
       return credential;
     }
@@ -272,7 +271,7 @@ public class ClassMgr{
       try{
         if(credential==null || credential.getRemainingLifetime()<GridPilot.proxyTimeLeftLimit){
           Debug.debug("Initializing credential", 3);
-          credential = Util.initGridProxy(window);
+          credential = Util.initGridProxy();
           Debug.debug("Initialized credential", 3);
           gridProxyInitialized = Boolean.TRUE;
           if(credential!=null){
@@ -292,10 +291,10 @@ public class ClassMgr{
     return credential;
   }
 
-  public GridFTPFileSystem getGridFTPFileSystem(Window window){
+  public GridFTPFileSystem getGridFTPFileSystem(){
     if(gridFTPFileSystem==null){
       Debug.debug("gridFTPFileSystem null", 3);
-      gridFTPFileSystem = new GridFTPFileSystem(window);
+      gridFTPFileSystem = new GridFTPFileSystem();
     }
     return gridFTPFileSystem;
   }

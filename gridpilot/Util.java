@@ -2,7 +2,6 @@ package gridpilot;
 
 import java.awt.Color;
 import java.awt.Cursor;
-import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -18,6 +17,7 @@ import java.util.StringTokenizer;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JEditorPane;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -50,7 +50,7 @@ import org.ietf.jgss.GSSException;
  */
 
 public class Util{
-
+  
   public static String [] split(String s){
     StringTokenizer tok = new StringTokenizer(s);
     int len = tok.countTokens();
@@ -281,7 +281,7 @@ public class Util{
   }
  
   public static JEditorPane createCheckPanel(
-      final Frame frame, 
+      final JFrame frame, 
       final String name, final JTextComponent jt,
       final DBPluginMgr dbPluginMgr){
     //final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
@@ -480,7 +480,8 @@ public class Util{
     
     if(keyFile.startsWith("~")){
       try{
-        keyFile =  System.getProperty("user.home") + keyFile.substring(1);
+        keyFile =  System.getProperty("user.home") + File.separator +
+        keyFile.substring(1);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -488,7 +489,8 @@ public class Util{
     }
     if(certFile.startsWith("~")){
       try{
-        certFile =  System.getProperty("user.home") + certFile.substring(1);
+        certFile =  System.getProperty("user.home") + File.separator +
+        certFile.substring(1);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -525,10 +527,12 @@ public class Util{
     panel.add(certField, new GridBagConstraints(1, 3, 1, 1, 1.0, 1.0,
         GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
         0, 0));
-
+    Debug.debug("showing dialog", 3);
+    
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
         "Enter grid password", JOptionPane.OK_CANCEL_OPTION);
-
+    Debug.debug("showing dialog done", 3);
+    
     if(choice!=JOptionPane.OK_OPTION){
       throw new IllegalArgumentException("Cancelling");
     }
@@ -579,18 +583,20 @@ public class Util{
   public static GSSCredential initGridProxy() throws IOException, GSSException{
     
     ExtendedGSSManager manager = (ExtendedGSSManager) ExtendedGSSManager.getInstance();
-    String proxyFile = "/tmp/x509up_u501";
+    //String proxyFile = "/tmp/x509up_u501";
+    String proxyFile = "/tmp/x509up_"+System.getProperty("user.name");
     File proxy = new File(proxyFile);
     GSSCredential credential = null;
     
     // first just try and load file from default UNIX location
     try{
-      byte [] data = new byte[(int) proxy.length()];
-      FileInputStream in = new FileInputStream(proxy);
-      in.read(data);
-      in.close();
-      
-      credential = 
+      if(proxy.exists()){
+        byte [] data = new byte[(int) proxy.length()];
+        FileInputStream in = new FileInputStream(proxy);
+        Debug.debug("reading proxy", 3);
+        in.read(data);
+        in.close();
+        credential = 
           manager.createCredential(data,
                                    ExtendedGSSCredential.IMPEXP_OPAQUE,
                                                GSSCredential.DEFAULT_LIFETIME,
@@ -598,23 +604,27 @@ public class Util{
                                                //GridPilot.proxyTimeValid,
                                                null, // use default mechanism - GSI
                                                GSSCredential.INITIATE_AND_ACCEPT);
+      }
     }
     catch(Exception e){
+      e.printStackTrace();
     }
     
     // if credential ok, return
     if(credential!=null && credential.getRemainingLifetime()>=GridPilot.proxyTimeLeftLimit){
+      Debug.debug("proxy ok", 3);
       return credential;
     }
     // if no valid proxy, init
     else{
       // Create new proxy
+      Debug.debug("creating new proxy", 3);
       String [] password = null;
       GlobusCredential cred = null;
       FileOutputStream out = null;
       for(int i=0; i<=3; ++i){
         try{
-          password = Util.getGridPassword(GridPilot.keyFile, GridPilot.certFile,
+          password = getGridPassword(GridPilot.keyFile, GridPilot.certFile,
               GridPilot.keyPassword);
         }
         catch(IllegalArgumentException e){
