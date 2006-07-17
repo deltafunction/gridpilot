@@ -32,14 +32,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
   private static final long serialVersionUID = 1L;
   private JScrollPane spSelectPanel = new JScrollPane();
-  public SelectPanel selectPanel;
   private JPanel pButtonSelectPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-  public JPanel panelSelectPanel = new JPanel(new GridBagLayout());
-
   private JScrollPane spTableResults = new JScrollPane();
   private Table tableResults = null;
   private JPanel pButtonTableResults = new JPanel(new FlowLayout(FlowLayout.CENTER));
-  
   private JButton bCreateRecords = new JButton("Define new record(s)");
   private JButton bEditRecord = new JButton("Edit record");
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
@@ -51,12 +47,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bViewJobDefinitions = new JButton("Show jobDefinitions");
   private JButton bDefineJobDefinitions = new JButton("Create jobDefinitions");
   private JMenuItem miEdit = null;
-  
   private int [] identifiers;
   // lists of field names with table name as key
   private String [] fieldNames = null;
   private String dbName = null;
-  
   private String tableName;
   private String identifier = null;
   private String jobDefIdentifier = null;
@@ -64,29 +58,27 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private String [] hiddenFields = null;
   private String [] shownFields = null;
   private String [] selectFields = null;
-
   private JMenu jmSetFieldValue = null;
-  
   private StatusBar statusBar = null;
-    
   private DBPluginMgr dbPluginMgr = null;
   private int parentId = -1;
-
-  private SubmissionControl submissionControl;
-  
   private boolean clipboardOwned = false;
-  
   private JMenuItem menuEditCopy = null;
   private JMenuItem menuEditCut = null;
   private JMenuItem menuEditPaste = null;
-
   private Thread workThread;
   // WORKING THREAD SEMAPHORE
+  // The idea is to ignore new requests when working on a request
   private boolean working = false;
-  // the following semaphore assumes correct usage
+  private SubmissionControl submissionControl = null;
+  
+  public JPanel panelSelectPanel = new JPanel(new GridBagLayout());
+  
+  public SelectPanel selectPanel;
+
   // try grabbing the semaphore
   private synchronized boolean getWorking(){
-    if (!working){
+    if(!working){
       working = true;
       return true;
     }
@@ -121,6 +113,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      hiddenFields = dbPluginMgr.getDBHiddenFields(tableName);
      Debug.debug("Hidden fields "+Util.arrayToString(hiddenFields), 3);
      
+     submissionControl = GridPilot.getClassMgr().getSubmissionControl();
      
      // Pass on only non-hidden fields to
      // Table. Perhaps rethink: - Table hides fields...
@@ -148,15 +141,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      tableResults = new Table(hiddenFields, fieldNames,
          GridPilot.colorMapping);
      
-     submissionControl = GridPilot.getClassMgr().getSubmissionControl();
-     
      setFieldArrays();
      
      menuEditCopy = GridPilot.getClassMgr().getGlobalFrame().menuEditCopy;
      menuEditCut = GridPilot.getClassMgr().getGlobalFrame().menuEditCut;
      menuEditPaste = GridPilot.getClassMgr().getGlobalFrame().menuEditPaste;
      initGUI();
-  }
+   }
    
    public Table getTable(){
      return tableResults;
@@ -253,7 +244,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    /**
     * Create a new DBPanel from a parent panel.
     */
-
   public DBPanel(/*name of tables for the select*/
                  String _tableName,
                  /*pointer to the db in use for this panel*/
@@ -467,9 +457,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       });
       
-      String [] csNames = GridPilot.getClassMgr().getCSPluginMgr().getCSNames();
-      for(int i=0; i< csNames.length ; ++i){
-        JMenuItem mi = new JMenuItem(csNames[i]);
+      for(int i=0; i<GridPilot.csNames.length ; ++i){
+        JMenuItem mi = new JMenuItem(GridPilot.csNames[i]);
         //mi.setMnemonic(i);
         mi.addActionListener(new ActionListener(){
           public void actionPerformed(final ActionEvent e){
@@ -952,9 +941,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
            jmSetFieldValue.add(miSetFields[i]);
       }
     }
-    String [] csNames = GridPilot.getClassMgr().getCSPluginMgr().getCSNames();
-    for(int i=0; i<csNames.length; ++i){
-      JMenuItem mi = new JMenuItem(csNames[i]);
+    for(int i=0; i<GridPilot.csNames.length; ++i){
+      JMenuItem mi = new JMenuItem(GridPilot.csNames[i]);
       mi.addActionListener(new ActionListener(){
         public void actionPerformed(final ActionEvent e){
               submit(e);
@@ -1055,8 +1043,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Deletes selected job definitions from the database. 
    * Returns list of successfully deleted job definitions.
    */
-  public synchronized HashSet deleteJobdefinitions(boolean showResults) {
-  // TODO: Delete job definitions only if not running.
+  /*public synchronized HashSet deleteJobdefinitions(boolean showResults) {
+  // TODO: Delete job definitions only if jobs not running.
   
   boolean skipAll = false;
   boolean skip = false;
@@ -1124,7 +1112,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     }
     return deleted;
-  }
+  }*/
 
   private void deleteJobDefs(){
     String msg = "Are you sure you want to delete jobDefinition";
@@ -1142,7 +1130,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
         msg, "Delete?",
         JOptionPane.YES_NO_OPTION);
-    if(choice == JOptionPane.NO_OPTION){
+    if(choice==JOptionPane.NO_OPTION){
       return;
     }
     workThread = new Thread(){
@@ -1220,73 +1208,81 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    *  Delete datasets. Returns HashSet of identifier strings.
    *  From AtCom1.
    */
-  public HashSet deleteDatasets(){
-    boolean skip = false;
-    boolean okAll = false;
-    int choice = 3;
-    HashSet deleted = new HashSet();
-    JCheckBox cbCleanup = null;
-    int [] datasetIdentifiers = getSelectedIdentifiers();
-    statusBar.setLabel(
-    "Deleting dataset(s).");
-    for(int i=datasetIdentifiers.length-1; i>=0; --i){
-      if(datasetIdentifiers[i]!=-1){
-        if(!okAll){
-          ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
-          cbCleanup = new JCheckBox("Delete child records", true);    
-          if(i<1){
-            try{
-              choice = confirmBox.getConfirm("Confirm delete",
-                                   "Really delete dataset # "+datasetIdentifiers[i]+"?",
-                                new Object[] {"OK", "Skip", cbCleanup});
-            }
-            catch(java.lang.Exception e){
-              Debug.debug("Could not get confirmation, "+e.getMessage(),1);
-            }
-          }
-          else{
-            try{
-              choice = confirmBox.getConfirm("Confirm delete",
-                                   "Really delete dataset # "+datasetIdentifiers[i]+"?",
-                                new Object[] {"OK", "Skip", "OK for all", "Skip all", cbCleanup});
+  public void deleteDatasets(){
+    statusBar.setLabel("Deleting dataset(s).");
+    final HashSet deleted = new HashSet();
+    workThread = new Thread(){
+      public void run(){
+        if(!getWorking()){
+          return;
+        }
+        boolean skip = false;
+        boolean okAll = false;
+        int choice = 3;
+        JCheckBox cbCleanup = null;
+        int [] datasetIdentifiers = getSelectedIdentifiers();
+        for(int i=datasetIdentifiers.length-1; i>=0; --i){
+          if(datasetIdentifiers[i]!=-1){
+            if(!okAll){
+              ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+              cbCleanup = new JCheckBox("Delete child records", true);    
+              if(i<1){
+                try{
+                  choice = confirmBox.getConfirm("Confirm delete",
+                                       "Really delete dataset # "+datasetIdentifiers[i]+"?",
+                                    new Object[] {"OK", "Skip", cbCleanup});
+                }
+                catch(java.lang.Exception e){
+                  Debug.debug("Could not get confirmation, "+e.getMessage(),1);
+                }
               }
-            catch(java.lang.Exception e){
-              Debug.debug("Could not get confirmation, "+e.getMessage(),1);
+              else{
+                try{
+                  choice = confirmBox.getConfirm("Confirm delete",
+                                       "Really delete dataset # "+datasetIdentifiers[i]+"?",
+                                    new Object[] {"OK", "Skip", "OK for all", "Skip all", cbCleanup});
+                  }
+                catch(java.lang.Exception e){
+                  Debug.debug("Could not get confirmation, "+e.getMessage(),1);
+                }
+              }
+        
+              switch(choice){
+              case 0  : skip = false;break;  // OK
+              case 1  : skip = true ; break;  // Skip
+              case 2  : skip = false; okAll = true ;break;  // OK for all
+              case 3  : skip = true ; return; // Skip all
+              default : skip = true;    // other (closing the dialog). Same action as "Skip"
+              }
+            }
+            if(!skip || okAll){
+              Debug.debug("deleting dataset # " + datasetIdentifiers[i], 2);
+              if(dbPluginMgr.deleteDataset(datasetIdentifiers[i], cbCleanup.isSelected())){
+                deleted.add(Integer.toString(datasetIdentifiers[i]));
+                statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " deleted.");
+              }
+              else{
+                Debug.debug("WARNING: dataset "+datasetIdentifiers[i]+" could not be deleted",1);
+                statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " NOT deleted.");
+              }
             }
           }
-    
-          switch(choice){
-          case 0  : skip = false; break;  // OK
-          case 1  : skip = true ; break;  // Skip
-          case 2  : skip = false; okAll = true ;break;  // OK for all
-          case 3  : skip = true ; return deleted; // Skip all
-          default : skip = true;    // other (closing the dialog). Same action as "Skip"
-          }
-        }
-        if(!skip || okAll){
-          Debug.debug("deleting dataset # " + datasetIdentifiers[i], 2);
-          if(dbPluginMgr.deleteDataset(datasetIdentifiers[i], cbCleanup.isSelected())){
-            deleted.add(Integer.toString(datasetIdentifiers[i]));
-            statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " deleted.");
-          }
           else{
-            Debug.debug("WARNING: dataset "+datasetIdentifiers[i]+" could not be deleted",1);
-            statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " NOT deleted.");
+            Debug.debug("WARNING: dataset undefined and could not be deleted",1);
           }
         }
+        statusBar.setLabel(
+        "Deleting runtime environment(s) done.");
+        refresh();
+        if(datasetIdentifiers.length>1){
+          statusBar.setLabel(deleted.size()+" of "+
+              datasetIdentifiers.length+" datasets deleted.");
+        }
+        stopWorking();
       }
-      else{
-        Debug.debug("WARNING: dataset undefined and could not be deleted",1);
-      }
-    }
-    statusBar.setLabel(
-    "Deleting runtime environment(s) done.");
-    refresh();
-    if(datasetIdentifiers.length>1){
-      statusBar.setLabel(deleted.size()+" of "+
-          datasetIdentifiers.length+" datasets deleted.");
-    }
-    return deleted;
+    };
+    workThread.start();
+    //return deleted;
   }
   
   /**
@@ -1355,7 +1351,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
         msg, "Delete?",
         JOptionPane.YES_NO_OPTION);
-    if(choice == JOptionPane.NO_OPTION){
+    if(choice==JOptionPane.NO_OPTION){
       return;
     }
     workThread = new Thread(){
@@ -1409,7 +1405,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
         msg, "Delete?",
         JOptionPane.YES_NO_OPTION);
-    if(choice == JOptionPane.NO_OPTION){
+    if(choice==JOptionPane.NO_OPTION){
       return;
     }
     workThread = new Thread(){
