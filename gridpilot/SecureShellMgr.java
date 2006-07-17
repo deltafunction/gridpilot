@@ -19,6 +19,7 @@ public class SecureShellMgr implements ShellMgr{
   private Session session;
   private int channels;
   private int channelInUse;
+  private int channelsNum = 1;
 
   public SecureShellMgr(String _host, String _user,
       String _password, String _remoteHome){
@@ -46,11 +47,10 @@ public class SecureShellMgr implements ShellMgr{
         session.setPassword(password);
       }
       else{
-        UserInfo ui=new MyUserInfo();
+        UserInfo ui = new MyUserInfo();
         session.setUserInfo(ui);
       }
       session.connect();
-      int channelsNum = 1;
       try{
         channelsNum = Integer.parseInt(
             configFile.getValue("GridPilot", "maximum simultaneous submission"))+
@@ -62,7 +62,7 @@ public class SecureShellMgr implements ShellMgr{
       catch(Exception e){
         Debug.debug("WARNING: could not construct number of channels. "+
             e.getMessage(), 1);
-      }
+      }      
       sshs = new Channel[channelsNum];
       //remoteHome = getFullPath(remoteHome);
     }
@@ -444,7 +444,7 @@ public class SecureShellMgr implements ShellMgr{
     }
     public boolean promptYesNo(String str){
       Object[] options={"yes", "no"};
-      int foo=JOptionPane.showOptionDialog(null, 
+      int foo = JOptionPane.showOptionDialog(null, 
              str,
              "Warning", 
              JOptionPane.DEFAULT_OPTION, 
