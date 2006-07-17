@@ -20,6 +20,7 @@ public class GridPilot extends JApplet{
   private static String confFileName = "gridpilot.conf";
   private static ClassMgr classMgr = new ClassMgr();
   private static boolean applet = true;  
+  private static String debugLevel = "0";
   public static HashMap tmpConfFile = new HashMap();
   public static String [] dbs;
   public static String [] colorMapping;
@@ -44,9 +45,10 @@ public class GridPilot extends JApplet{
     try{
       getClassMgr().setLogFile(new LogFile(logFileName));
       getClassMgr().setConfigFile(new ConfigFile(confFileName));
-      initDebug();
       loadConfigValues();
+      initDebug();
       initGUI();
+      getClassMgr().setSubmissionControl(new SubmissionControl());
       splash.stopSplash();
       getClassMgr().getLogFile().addInfo("GridPilot loaded");
     }
@@ -63,6 +65,7 @@ public class GridPilot extends JApplet{
 
   public static void loadConfigValues(){
     try{
+      debugLevel = getClassMgr().getConfigFile().getValue("GridPilot", "debug");
       resourcesPath =  getClassMgr().getConfigFile().getValue("GridPilot", "resources");
       if(resourcesPath == null){
         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("GridPilot", "resources"));
@@ -217,27 +220,29 @@ public class GridPilot extends JApplet{
     catch(Exception e){
     }
     /*
-    Disconnect DBs
+    Disconnect DBs and CSs
     */
-   for(int i=0; i<dbs.length; ++i){
-     getClassMgr().getDBPluginMgr(dbs[i]).disconnect();
-     Debug.debug("Disconnecting "+dbs[i], 2);
-   }
-   Debug.debug("Disconnecting computing systems...", 2);
-   getClassMgr().getCSPluginMgr().disconnect();
-   Debug.debug("All systems disconnected.", 2);
-   if(!applet){
-     System.exit(exitCode);
-   }
-   else{
-     try{
-       Debug.debug("NAME: "+getClassMgr().getGridPilot(), 2);
-       getClassMgr().getGlobalFrame().dispose();
-     }
-     catch(Exception e){
-       Debug.debug(e.getMessage(), 1);
-     }
-   }
+    for(int i=0; i<dbs.length; ++i){
+      getClassMgr().getDBPluginMgr(dbs[i]).disconnect();
+      Debug.debug("Disconnecting "+dbs[i], 2);
+    }
+    Debug.debug("Disconnecting computing systems...", 2);
+    if(getClassMgr().csPluginMgr!=null){
+      getClassMgr().getCSPluginMgr().disconnect();
+    }
+    Debug.debug("All systems disconnected.", 2);
+    if(!applet){
+      System.exit(exitCode);
+    }
+    else{
+      try{
+        Debug.debug("NAME: "+getClassMgr().getGridPilot(), 2);
+        getClassMgr().getGlobalFrame().dispose();
+      }
+      catch(Exception e){
+        Debug.debug(e.getMessage(), 1);
+      }
+    }
   }
   
   public static String [] userPwd(String _user, String _passwd, String _database){
@@ -337,7 +342,7 @@ public class GridPilot extends JApplet{
    * Reloads values from configuration file.
    * Called when user chooses "Reload values" in gridpilot menu
    */
-  public static void reloadValues(){
+  public static void reloadConfigValues(){
     try{
       for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext(); ){
         ((File) tmpConfFile.get(it.next())).delete();
@@ -351,7 +356,6 @@ public class GridPilot extends JApplet{
     getClassMgr().getSubmissionControl().loadValues();
     getClassMgr().getGlobalFrame().jobMonitoringPanel.statusUpdateControl.loadValues();
     getClassMgr().getCSPluginMgr().loadValues();
-    dbs = getClassMgr().getConfigFile().getValues("GridPilot", "Databases");
     for(int i=0; i<dbs.length; ++i){
       getClassMgr().getDBPluginMgr(dbs[i]).loadValues();
     }
@@ -362,21 +366,19 @@ public class GridPilot extends JApplet{
    * Reads in configuration file the debug level.
    */
   private static void initDebug(){
-    
-    String debugLevel = getClassMgr().getConfigFile().getValue("GridPilot", "debug");
-    if(debugLevel == null){
+        if(debugLevel==null){
       getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("GridPilot", "debug"));
-      getClassMgr().setDebugLevel(3);
+      getClassMgr().setDebugLevel(0);
     }
-
-    try{
-      getClassMgr().setDebugLevel(new Integer(debugLevel).intValue());
+    else{
+      try{
+        getClassMgr().setDebugLevel(new Integer(debugLevel).intValue());
+      }
+      catch(NumberFormatException nfe){
+        getClassMgr().getLogFile().addMessage("Debug is not an integer in configFile, section [gridpilot]");
+        getClassMgr().setDebugLevel(3);
+      }
     }
-    catch(NumberFormatException nfe){
-      getClassMgr().getLogFile().addMessage("Debug is not an integer in configFile, section [gridpilot]");
-      getClassMgr().setDebugLevel(3);
-    }
-    
   }
 
 
@@ -423,7 +425,6 @@ public class GridPilot extends JApplet{
     /*
      Reconnect CSs
      */
-    dbs = getClassMgr().getConfigFile().getValues("GridPilot", "Computing systems");
     try{
       getClassMgr().getCSPluginMgr().reconnect();
       // TODO: reload panels?
