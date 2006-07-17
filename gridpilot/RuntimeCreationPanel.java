@@ -152,7 +152,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
     for(int i = 0; i<cstAttributesNames.length; ++i, ++row){
       if(cstAttributesNames[i].equalsIgnoreCase("scriptRepository")){
            pAttributes.add(Util.createCheckPanel(
-               (Frame) SwingUtilities.getWindowAncestor(getRootPane()),
+               (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
                cstAttributesNames[i], tcCstAttributes[i],
                dbPluginMgr/*,
                Integer.parseInt(packID)*/),
