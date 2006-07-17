@@ -124,10 +124,10 @@ public class DatasetUpdater{
 
     Object selectedValue = op.getValue();
 
-    if (selectedValue==null){
+    if(selectedValue==null){
       return JOptionPane.CLOSED_OPTION;
     }
-    for (int i=0; i<showResultsOptions.length; ++i){
+    for(int i=0; i<showResultsOptions.length; ++i){
       if (showResultsOptions[i]==selectedValue){
         return i;
       }
