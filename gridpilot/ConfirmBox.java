@@ -13,12 +13,12 @@ public class ConfirmBox extends JDialog implements ActionListener {
   private JButton bOk = new JButton();
   private JButton bCancel = new JButton();
 
-  public ConfirmBox(Frame parent/*, String title, String text*/) {
+  public ConfirmBox(Frame parent/*, String title, String text*/){
     super(parent);
    enableEvents(AWTEvent.WINDOW_EVENT_MASK);
   }
 
-  public int getConfirm(String title, String text,Object[] showResultsOptions ) throws Exception  {
+  public int getConfirm(String title, String text, Object[] showResultsOptions ) throws Exception {
     //Label jText = new JLabel(text);
     JOptionPane op = new JOptionPane(
          //jText,
@@ -37,8 +37,9 @@ public class ConfirmBox extends JDialog implements ActionListener {
     
     Object selectedValue = op.getValue();
 
-    if (selectedValue == null)
-    return JOptionPane.CLOSED_OPTION;
+    if (selectedValue==null){
+      return JOptionPane.CLOSED_OPTION;
+    }
     for(int i=0; i<showResultsOptions.length; ++i){
       if(showResultsOptions[i]==selectedValue){
         return i;
@@ -48,8 +49,8 @@ public class ConfirmBox extends JDialog implements ActionListener {
   }
 
   //Overridden so we can exit when window is closed
-  protected void processWindowEvent(WindowEvent e) {
-    if (e.getID() == WindowEvent.WINDOW_CLOSING) {
+  protected void processWindowEvent(WindowEvent e){
+    if(e.getID()==WindowEvent.WINDOW_CLOSING){
       cancel();
     }
     super.processWindowEvent(e);
@@ -61,11 +62,11 @@ public class ConfirmBox extends JDialog implements ActionListener {
   }
   
   //Close the dialog on a button event
-  public void actionPerformed(ActionEvent e) {
-    if (e.getSource() == bOk) {
+  public void actionPerformed(ActionEvent e){
+    if (e.getSource()==bOk){
       cancel();
     }
-    if (e.getSource() == bCancel) {
+    if (e.getSource()==bCancel){
       cancel();
     }
   }
