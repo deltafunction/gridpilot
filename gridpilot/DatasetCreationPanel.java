@@ -223,7 +223,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           " "+tcCstAttributes[i].getClass().toString(), 3);
       if(cstAttributesNames[i].equalsIgnoreCase("outputLocation")){
         pAttributes.add(Util.createCheckPanel(
-            (Frame) SwingUtilities.getWindowAncestor(getRootPane()),
+            (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
             cstAttributesNames[i], tcCstAttributes[i],
             dbPluginMgr), new GridBagConstraints(0, i, 1, 1, 0.0, 0.0,
                 GridBagConstraints.LINE_START, GridBagConstraints.HORIZONTAL,
