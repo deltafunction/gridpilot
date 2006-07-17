@@ -275,7 +275,7 @@ public class JobCreator{
                               resStdOut!=null && resStdOut.length>1 && resStdOut[1]!=null ? resStdOut[1] : ""
                               )){
           if(!dbPluginMgr.getError().equals("")){
-            Runnable showModalDialog = new Runnable(){
+            Runnable showDialog = new Runnable(){
               public void run(){
                 JFrame frame = new JFrame("Message");
                 JLabel label = new JLabel(dbPluginMgr.getError());
@@ -284,7 +284,7 @@ public class JobCreator{
                 frame.setVisible(true);
               }
             };
-            SwingUtilities.invokeLater(showModalDialog);
+            SwingUtilities.invokeLater(showDialog);
           }
           if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "Job definition " + part +
               " cannot be created.\n\nClick Cancel to stop or OK to continue creating job definitions.", "", JOptionPane.OK_CANCEL_OPTION)==JOptionPane.CANCEL_OPTION){

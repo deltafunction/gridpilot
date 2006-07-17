@@ -21,19 +21,15 @@ public class JobValidation{
   static final int EXIT_UNEXPECTED = 4;
   static final int ERROR = -1;
 
-  LogFile logFile;
-  ConfigFile configFile;
-
+  private LogFile logFile;
+  private ConfigFile configFile;
   private int maxSimultaneaousValidation = 3;
   private int currentSimultaneousValidation = 0;
-
   private Vector toValidateJobs = new Vector();
   private Vector waitingJobs = new Vector();
-
   /** Delay (minimum) between the moment when AtCom finds out job is done, and the validation*/
   private int delayBeforeValidation = 5000;
   private java.util.Timer timer = new java.util.Timer();
-  
   private String [] errorPatterns = null;
   private String [] errorAntiPatterns = null;
   
