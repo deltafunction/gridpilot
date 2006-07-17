@@ -90,7 +90,7 @@ public class ConfigFile{
    *
    * @return A String corresponding to this request, null if a such value cannot be found
    */
-  public synchronized String getValue(String section, String attribute){
+  public String getValue(String section, String attribute){
 
     if(this.isFake()){
       return null;
@@ -139,7 +139,7 @@ public class ConfigFile{
    * @return an array of String which contains all values matching this request
    */
 
-  public synchronized String [] getValues(String section, String attribute){
+  public String [] getValues(String section, String attribute){
 
     Vector l = new Vector();
     String res;
@@ -172,7 +172,7 @@ public class ConfigFile{
    * Opens the file named configFileName.
    * @return true if opening was ok, false otherwise
    */
-  private synchronized boolean openFile(){
+  private boolean openFile(){
     try{
       file = new RandomAccessFile((File) GridPilot.tmpConfFile.get(configFileName), "r");
     }
@@ -196,7 +196,7 @@ public class ConfigFile{
    * @return true if this section exist, false if this section doesn't exist or an
    * IOException occured
    */
-  private synchronized  boolean searchSection(String section){
+  private boolean searchSection(String section){
     String line;
     try{
       int begin;
@@ -233,7 +233,7 @@ public class ConfigFile{
    * - this.getValue
    * - this.getValues
    */
-  private synchronized String searchAttribute(String attribute){
+  private String searchAttribute(String attribute){
 
     String line;
     String res;
