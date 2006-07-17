@@ -2,20 +2,20 @@ package gridpilot.csplugins.ng;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.Vector;
 
-import javax.swing.*;
-
 import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.ietf.jgss.GSSCredential;
 import org.nordugrid.gridftp.ARCGridFTPJob;
-
-import java.awt.event.*;
+import org.nordugrid.gridftp.ARCGridFTPJobException;
+import org.nordugrid.is.ARCDiscovery;
+import org.nordugrid.multithread.TaskResult;
 
 import gridpilot.ComputingSystem;
 import gridpilot.DBPluginMgr;
@@ -24,6 +24,7 @@ import gridpilot.JobInfo;
 import gridpilot.LocalShellMgr;
 import gridpilot.LogFile;
 import gridpilot.GridPilot;
+import gridpilot.StatusBar;
 import gridpilot.Util;
 import gridpilot.fsplugins.gridftp.GridFTPFileSystem;
 
@@ -51,23 +52,21 @@ public class NGComputingSystem implements ComputingSystem{
 
   private NGSubmission ngSubmission;
   private Boolean gridProxyInitialized = Boolean.FALSE;
-  private Timer timerProxy = new Timer(0, new ActionListener(){
-    public void actionPerformed(ActionEvent e){
-      Debug.debug("actionPerformed timeProxy", 3);
-      gridProxyInitialized = Boolean.FALSE;
-    }
-  });
   private static String csName;
   private static LogFile logFile;
   private String workingDir;
-  private GridFTPFileSystem gridftpFileSystem;
+  private ARCDiscovery arcDiscover;
+  private String defaultUser;
 
   public NGComputingSystem(String _csName){
     csName = _csName;
-    ngSubmission = new NGSubmission(csName, workingDir);
     workingDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "working directory");
     if(workingDir==null || workingDir.equals("")){
       workingDir = "~";
+    }
+    else if(!workingDir.toLowerCase().startsWith("c:") &&
+        !workingDir.startsWith("/") && !workingDir.startsWith("~")){
+      workingDir = "~"+File.separator+workingDir;
     }
     if(workingDir.startsWith("~")){
       workingDir = System.getProperty("user.home")+workingDir.substring(1);
@@ -75,24 +74,36 @@ public class NGComputingSystem implements ComputingSystem{
     if(workingDir.endsWith("/") || workingDir.endsWith("\\")){
       workingDir = workingDir.substring(0, workingDir.length()-1);
     }
+    Debug.debug("Working dir: "+workingDir, 2);
+    ngSubmission = new NGSubmission(csName);
     logFile = GridPilot.getClassMgr().getLogFile();
-    timerProxy.setRepeats(false);
-    
-    gridftpFileSystem = GridPilot.getClassMgr().getGridFTPFileSystem();
+       
+    // Information system
+    arcDiscover = new ARCDiscovery("ldap://index4.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+    arcDiscover.addGIIS("ldap://index1.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+    arcDiscover.addGIIS("ldap://index2.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+    arcDiscover.addGIIS("ldap://index3.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");    
+    defaultUser = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "user");
   }
   
   /*
    * Local directory to keep xrsl, shell script and temporary copies of stdin/stdout
    */
   protected String runDir(JobInfo job){
-    return workingDir +"/"+job.getName();
+    return workingDir+File.separator+job.getName();
   }
 
   public boolean submit(JobInfo job) {
     Debug.debug("submitting..."+gridProxyInitialized, 3);
-    String scriptName = workingDir + "/" + job.getName() + ".job";
-    String xrslName = workingDir + "/" + job.getName() + ".xrsl";
-    return ngSubmission.submit(job, scriptName,  xrslName);
+    String scriptName = runDir(job) + File.separator + job.getName() + ".job";
+    String xrslName = runDir(job) + File.separator + job.getName() + ".xrsl";
+    try{
+      return ngSubmission.submit(job, scriptName, xrslName);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return false;
+    }
   }
 
 
@@ -152,31 +163,34 @@ public class NGComputingSystem implements ComputingSystem{
     }
     return job.getInternalStatus();
   }
-
+  
+  private ARCGridFTPJob getGridJob(JobInfo job) throws ARCGridFTPJobException{
+    
+    String submissionHost = "gsiftp://"+job.getHost();
+    String jobID = job.getJobId().substring(job.getJobId().lastIndexOf("/"));
+    int lastSlash = job.getJobId().lastIndexOf("/");
+    if(lastSlash>-1){
+      jobID = job.getJobId().substring(lastSlash + 1);
+    }
+    ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost, jobID);
+    GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+    GlobusCredential globusCred = null;
+    if(credential instanceof GlobusGSSCredentialImpl){
+      globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+    }
+    gridJob.addProxy(globusCred);
+    gridJob.connect();
+    return gridJob;
+  }
+  
   public boolean killJobs(Vector jobsToKill){
     JobInfo job = null;
-    String jobID = null;
-    int lastSlash = -1;
-    String submissionHost = null;
     Vector errors = new Vector();
     for(Enumeration en=jobsToKill.elements(); en.hasMoreElements();){
       try{
         job = (JobInfo) en.nextElement();
-        jobID = job.getJobId().substring(job.getJobId().lastIndexOf("/"));
-        lastSlash = job.getJobId().lastIndexOf("/");
-        if(lastSlash>-1){
-          jobID = job.getJobId().substring(lastSlash + 1);
-        }
         Debug.debug("Killing : " + job.getName() + ":" + job.getJobId(), 3);
-        submissionHost = "gsiftp://"+job.getHost();
-        ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost, jobID);
-        GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-        GlobusCredential globusCred = null;
-        if(credential instanceof GlobusGSSCredentialImpl){
-          globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-        }
-        gridJob.addProxy(globusCred);
-        gridJob.connect();
+        ARCGridFTPJob gridJob = getGridJob(job);
         gridJob.cancel();
        }
        catch(Exception ae){
@@ -195,6 +209,8 @@ public class NGComputingSystem implements ComputingSystem{
   }
 
   public void clearOutputMapping(JobInfo job){
+    
+    GridFTPFileSystem gridftpFileSystem = GridPilot.getClassMgr().getGridFTPFileSystem();
     
     // Delete files that may have been copied to storage elements
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
@@ -243,20 +259,7 @@ public class NGComputingSystem implements ComputingSystem{
 
     // Kill the job and clean up
     try{
-      String jobID = null;
-      int lastSlash = job.getJobId().lastIndexOf("/");
-      if(lastSlash>-1){
-        jobID = job.getJobId().substring(lastSlash + 1);
-      }
-      String submissionHost = "gsiftp://"+job.getHost();
-      ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost, jobID);
-      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-      GlobusCredential globusCred = null;
-      if(credential instanceof GlobusGSSCredentialImpl){
-        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-      }
-      gridJob.addProxy(globusCred);
-      gridJob.connect();
+      ARCGridFTPJob gridJob = getGridJob(job);
       gridJob.cancel();
       gridJob.clean();
     }
@@ -276,7 +279,7 @@ public class NGComputingSystem implements ComputingSystem{
     if(lastSlash>-1){
       jobID = job.getJobId().substring(lastSlash + 1);
     }
-    String dirName = runDir(job)+File.pathSeparatorChar+jobID;
+    String dirName = runDir(job)+File.separator+jobID;
     
     // After a crash some unfinished downloads may be around.
     // Move away before downloading.
@@ -296,15 +299,7 @@ public class NGComputingSystem implements ComputingSystem{
     // Get the outputs
     try{
       Debug.debug("Getting : " + job.getName() + ":" + job.getJobId(), 3);
-      String submissionHost = "gsiftp://"+job.getHost();
-      ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost, jobID);
-      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-      GlobusCredential globusCred = null;
-      if(credential instanceof GlobusGSSCredentialImpl){
-        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-      }
-      gridJob.addProxy(globusCred);
-      gridJob.connect();
+      ARCGridFTPJob gridJob = getGridJob(job);
       gridJob.get(dirName);
      }
      catch(Exception ae){
@@ -317,7 +312,7 @@ public class NGComputingSystem implements ComputingSystem{
     // and move them one level up
     if(job.getStdOut()!=null && !job.getStdOut().equals("")){      
       try{
-        LocalShellMgr.copyFile(dirName+File.pathSeparator+"stdout", job.getStdOut());
+        LocalShellMgr.copyFile(dirName+File.separator+"stdout", job.getStdOut());
       } 
       catch(Exception ioe){
         logFile.addMessage("IOException during job " + job.getName() + " getFullStatus :\n" +
@@ -327,7 +322,7 @@ public class NGComputingSystem implements ComputingSystem{
     }
     if(job.getStdErr() != null && !job.getStdErr().equals("")){
       try{
-        LocalShellMgr.copyFile(dirName+File.pathSeparator, job.getStdErr());
+        LocalShellMgr.copyFile(dirName+File.separator, job.getStdErr());
       }
       catch(Exception ioe){
         logFile.addMessage("IOException during job " + job.getName() + " getOutput :\n" +
@@ -341,21 +336,8 @@ public class NGComputingSystem implements ComputingSystem{
   public String getFullStatus(JobInfo job){
     String state = "";
     try{
-      String jobID = null;
-      int lastSlash = job.getJobId().lastIndexOf("/");
-      if(lastSlash>-1){
-        jobID = job.getJobId().substring(lastSlash + 1);
-      }
-      Debug.debug("Getting : " + job.getName() + ":" + job.getJobId(), 3);
-      String submissionHost = "gsiftp://"+job.getHost();
-      ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost, jobID);
-      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-      GlobusCredential globusCred = null;
-      if(credential instanceof GlobusGSSCredentialImpl){
-        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-      }
-      gridJob.addProxy(globusCred);
-      gridJob.connect();
+      Debug.debug("Getting " + job.getJobId(), 3);
+      ARCGridFTPJob gridJob = getGridJob(job);
       // TODO: use information system
       state = gridJob.state();
     }
@@ -435,18 +417,45 @@ public class NGComputingSystem implements ComputingSystem{
   
   // Copy stdout+stderr to local files
   public boolean syncCurrentOutputs(JobInfo job){
-    String dirName = runDir(job)+File.pathSeparatorChar+job.getJobId();
+    
+    StatusBar statusBar = GridPilot.getClassMgr().getStatusBar();
+
+    if(arcDiscover.getClusters()==null || arcDiscover.getClusters().size()==0){
+      statusBar.setLabel("Discovering resources, please wait...");
+      arcDiscover.discoverAll();
+      statusBar.setLabel("Discovering resources done");
+    }
+    long start = System.currentTimeMillis();
+    long limit = 10000;
+    long offset = 2000; // some +- coefficient
+    Collection foundResources = null;
+    try{
+      statusBar.setLabel("Finding jobs, please wait...");
+      foundResources = arcDiscover.findUserJobs(
+          job.getUser(), 20, limit);
+      statusBar.setLabel("Finding jobs done");
+    }
+    catch(InterruptedException e){
+      Debug.debug("User interrupt of job checking!", 2);
+      return false;
+    }
+    long end = System.currentTimeMillis();
+    if((end - start) < limit + offset){
+      Debug.debug("WARNING: failed to stay within time limit of "+limit/1000+" seconds.", 1);
+    }
+    if(foundResources.size()==0){
+      statusBar.setLabel("Failed to find authorized queues!");
+      Debug.debug("WARNING: failed to find authorized queues.", 1);
+      logFile.addMessage("WARNING: failed to find authorized queues. :\n" +
+          "\tDN\t: " + job.getUser());
+      return true;
+    }
+    
+    String dirName = runDir(job)+File.separator+job.getJobId();
     try{
       Debug.debug("Getting : " + job.getName() + ":" + job.getJobId(), 3);
-      String submissionHost = "gsiftp://"+job.getHost();
-      ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost, job.getJobId());
-      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-      GlobusCredential globusCred = null;
-      if(credential instanceof GlobusGSSCredentialImpl){
-        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-      }
-      gridJob.addProxy(globusCred);
-      gridJob.connect();
+      Debug.debug("Description : " + ((TaskResult) foundResources.toArray()[0]).getWorkDescription(), 3);
+      ARCGridFTPJob gridJob = getGridJob(job);
       Debug.debug("Getting stdout of: " + job.getName() + ":" + job.getJobId(), 3);
       gridJob.getOutputFile("stdout", dirName);
       Debug.debug("Getting stderr of: " + job.getName() + ":" + job.getJobId(), 3);
@@ -464,7 +473,14 @@ public class NGComputingSystem implements ComputingSystem{
   public String getUserInfo(String csName){
     String user = null;
     try{
-      user = System.getProperty("user.name");
+      Debug.debug("getting credential", 3);
+      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+      GlobusCredential globusCred = null;
+      if(credential instanceof GlobusGSSCredentialImpl){
+        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+      }
+      Debug.debug("getting identity", 3);
+      user = globusCred.getIdentity();
       /* remove leading whitespace */
       user = user.replaceAll("^\\s+", "");
       /* remove trailing whitespace */
@@ -474,16 +490,16 @@ public class NGComputingSystem implements ComputingSystem{
       logFile.addMessage("Exception during getUserInfo\n" +
                                  "\tException\t: " + ioe.getMessage(), ioe);
     }
-    if(user==null){
+    if(user==null && defaultUser!=null){
       Debug.debug("Job user null, getting from config file", 3);
-       user = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "user");
+      user = defaultUser;
     }
     return user;
   }
 
   public String[] getScripts(JobInfo job){
-    String scriptName = workingDir + "/" + job.getName() + ".job";
-    String xrslName = workingDir + "/" + job.getName() + ".xrsl";
+    String scriptName = runDir(job) + File.separator + job.getName() + ".job";
+    String xrslName = runDir(job) + File.separator + job.getName() + ".xrsl";
     return new String [] {xrslName, scriptName};
   }
 
@@ -493,6 +509,9 @@ public class NGComputingSystem implements ComputingSystem{
   }
 
   public boolean preProcess(JobInfo job){
+    final String stdoutFile = runDir(job) + File.separator + job.getName() + ".stdout";
+    final String stderrFile = runDir(job) + File.separator + job.getName() + ".stderr";
+    job.setOutputs(stdoutFile, stderrFile);
     // input files are already there
     return true;
   }
@@ -511,6 +530,9 @@ public class NGComputingSystem implements ComputingSystem{
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+    
+    GridFTPFileSystem gridftpFileSystem = GridPilot.getClassMgr().getGridFTPFileSystem();
+
     /**
      * move temp StdOut -> finalStdOut
      */
