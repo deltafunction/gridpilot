@@ -1,12 +1,9 @@
 package gridpilot;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.Window;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
-
-import javax.swing.Timer;
 
 import org.ietf.jgss.GSSCredential;
 
@@ -28,19 +25,14 @@ public class ClassMgr{
   private GridPilot prodCom;
   private int debugLevel = 3;
   private HashMap dbMgts = new HashMap();
-  private CSPluginMgr csPluginMgr;
   private HashMap datasetMgrs = new HashMap();
   private Vector submittedJobs = new Vector();
   private SubmissionControl submissionControl;
   private GSSCredential credential = null;
   private Boolean gridProxyInitialized = Boolean.FALSE;
-  private Timer timerProxy = new Timer(0, new ActionListener(){
-    public void actionPerformed(ActionEvent e){
-      Debug.debug("actionPerformed timeProxy", 3);
-      gridProxyInitialized = Boolean.FALSE;
-    }
-  });
   private GridFTPFileSystem gridFTPFileSystem;
+  // only accessed directly by GridPilot.exit()
+  public CSPluginMgr csPluginMgr;
 
   
   public void setConfigFile(ConfigFile _configFile){
@@ -160,14 +152,15 @@ public class ClassMgr{
   // Different model here: the HashMap of CS objects is kept in csPluginMgr.
   // We don't use a setCsPluginMgr method because we don't want to load
   // the classes and make the connections until it is necessary.
-  public CSPluginMgr getCSPluginMgr(){
+  public synchronized CSPluginMgr getCSPluginMgr(){
     if(csPluginMgr==null){
+      Debug.debug("csPluginMgr null, creating new", 3);
       try{
         csPluginMgr = new CSPluginMgr();
-        csPluginMgr.init();
+        Debug.debug("csPluginMgr: "+csPluginMgr, 3);
       }
       catch(Throwable e){
-        Debug.debug("Could not load plugin. "+e.getMessage(), 3);
+        Debug.debug("Could not load plugins. "+e.getMessage(), 3);
         e.printStackTrace();
       }
     }
@@ -192,6 +185,7 @@ public class ClassMgr{
     if(jobValidation==null){
       Debug.debug("jobValidation null, creating new", 3);
       setJobValidation(new JobValidation());
+      Debug.debug("jobValidation: "+jobValidation, 3);
     }
     return jobValidation;
   }
@@ -262,28 +256,31 @@ public class ClassMgr{
   
   public SubmissionControl getSubmissionControl(){
     if(submissionControl==null){
-      Debug.debug("submissionControl null, creating new", 3);
-      setSubmissionControl(new SubmissionControl());
+      Debug.debug("ERROR: submissionControl null", 1);
+      return null;
     }
     return submissionControl;
   }
   
-  public GSSCredential getGridCredential(){
+  public /*synchronized*/ GSSCredential getGridCredential(Window window){
     if(gridProxyInitialized.booleanValue()){
       return credential;
     }
     synchronized(gridProxyInitialized){
-      // avoids that dozens of popup open if
+      // avoids that dozens of popups open if
       // you submit dozen of jobs and proxy not initialized
       try{
         if(credential==null || credential.getRemainingLifetime()<GridPilot.proxyTimeLeftLimit){
-          Debug.debug("Initialzing credential", 3);
-          credential = Util.initGridProxy();
+          Debug.debug("Initializing credential", 3);
+          credential = Util.initGridProxy(window);
+          Debug.debug("Initialized credential", 3);
           gridProxyInitialized = Boolean.TRUE;
+          if(credential!=null){
+            Debug.debug("Initialized credential"+credential.getRemainingLifetime()+
+                ":"+GridPilot.proxyTimeLeftLimit, 3);
+          }
         }
         else{
-          timerProxy.setInitialDelay((credential.getRemainingLifetime() - GridPilot.proxyTimeLeftLimit) * 1000);
-          timerProxy.start();
           gridProxyInitialized = Boolean.TRUE;
         }
       }
@@ -295,10 +292,10 @@ public class ClassMgr{
     return credential;
   }
 
-  public GridFTPFileSystem getGridFTPFileSystem(){
+  public GridFTPFileSystem getGridFTPFileSystem(Window window){
     if(gridFTPFileSystem==null){
       Debug.debug("gridFTPFileSystem null", 3);
-      gridFTPFileSystem = new GridFTPFileSystem();
+      gridFTPFileSystem = new GridFTPFileSystem(window);
     }
     return gridFTPFileSystem;
   }
