@@ -167,7 +167,7 @@ public class MySQLDatabase implements Database{
     return null;
   }
 
-  public synchronized void clearCaches(){
+  public void clearCaches(){
     // nothing for now
   }
 
@@ -198,12 +198,12 @@ public class MySQLDatabase implements Database{
     }
   }
 
-  public synchronized DBResult getAllPartJobInfo(int partID){
+  public DBResult getAllPartJobInfo(int partID){
     // nothing for now
     return new DBResult();
   }
 
-  public synchronized String [] getDefVals(int datasetID, String user){
+  public String [] getDefVals(int datasetID, String user){
     // nothing for now
     return new String [] {""};
   }
@@ -295,29 +295,29 @@ public class MySQLDatabase implements Database{
     return Integer.parseInt(vec.get(0).toString());
   }
 
-  public synchronized String [] getTransJobParameters(int transformationID){
+  public String [] getTransJobParameters(int transformationID){
     String res =  getTransformation(transformationID).getValue("arguments").toString(); 
     return Util.split(res);
   }
 
-  public synchronized String [] getOutputMapping(int jobDefID){
+  public String [] getOutputMapping(int jobDefID){
     int transformationID = getJobDefTransformationID(jobDefID);
     String outputs = getTransformation(
         transformationID).getValue("outputFiles").toString();
     return Util.split(outputs);
   }
 
-  public synchronized String [] getInputs(int jobDefID){
+  public String [] getInputs(int jobDefID){
     String inputs = getJobDefinition(jobDefID).getValue("inputFileNames").toString();
     return Util.split(inputs);
   }
 
-  public synchronized String [] getJobDefTransPars(int transformationID){
+  public String [] getJobDefTransPars(int transformationID){
     String args =  getJobDefinition(transformationID).getValue("transPars").toString();
     return Util.split(args);
   }
 
-  public synchronized String getJobDefOutLocalName(int jobDefID, String par){
+  public String getJobDefOutLocalName(int jobDefID, String par){
     int transID = getJobDefTransformationID(jobDefID);
     String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
     String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
@@ -331,17 +331,17 @@ public class MySQLDatabase implements Database{
     return name;
   }
 
-  public synchronized String getJobDefInRemoteName(int jobDefinitionID, String par){
+  public String getJobDefInRemoteName(int jobDefinitionID, String par){
     // nothing for now
     return "";
   }
 
-  public synchronized String getJobDefInLocalName(int jobDefinitionID, String par){
+  public String getJobDefInLocalName(int jobDefinitionID, String par){
     // nothing for now
     return "";
   }
 
-  public synchronized String getJobDefOutRemoteName(int jobDefID, String par){
+  public String getJobDefOutRemoteName(int jobDefID, String par){
     int transID = getJobDefTransformationID(jobDefID);
     String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
     String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
@@ -355,51 +355,51 @@ public class MySQLDatabase implements Database{
     return name;
   }
 
-  public synchronized String getStdOutFinalDest(int jobDefinitionID){
+  public String getStdOutFinalDest(int jobDefinitionID){
     // nothing for now
     return "";
   }
 
-  public synchronized String getStdErrFinalDest(int jobDefinitionID){
+  public String getStdErrFinalDest(int jobDefinitionID){
     // nothing for now
     return "";
   }
 
-  public synchronized String getExtractScript(int jobDefinitionID){
+  public String getExtractScript(int jobDefinitionID){
     // nothing for now
     return "";
   }
 
-  public synchronized String getValidationScript(int jobDefinitionID){
+  public String getValidationScript(int jobDefinitionID){
     // nothing for now
     return "";
   }
 
-  public synchronized String getTransformationScript(int jobDefID){
+  public String getTransformationScript(int jobDefID){
     int transformationID = getJobDefTransformationID(jobDefID);
     String script = getTransformation(
         transformationID).getValue("script").toString();
     return script;
   }
 
-  public synchronized String [] getRuntimeEnvironments(int jobDefID){
+  public String [] getRuntimeEnvironments(int jobDefID){
     int transformationID = getJobDefTransformationID(jobDefID);
     String rts = getTransformation(
         transformationID).getValue("runtimeEnvironmentName").toString();
     return Util.split(rts);
   }
 
-  public synchronized String [] getTransformationArguments(int jobDefID){
+  public String [] getTransformationArguments(int jobDefID){
     int transformationID = getJobDefTransformationID(jobDefID);
     String args =  getTransformation(transformationID).getValue("arguments").toString();
     return Util.split(args);
   }
 
-  public synchronized String getTransformationRuntimeEnvironment(int transformationID){
-    return  getTransformation(transformationID).getValue("runtimeEnvironmentName").toString();
+  public String getTransformationRuntimeEnvironment(int transformationID){
+    return getTransformation(transformationID).getValue("runtimeEnvironmentName").toString();
   }
 
-  public synchronized String getJobDefUserInfo(int jobDefinitionID){
+  public String getJobDefUserInfo(int jobDefinitionID){
     Object userInfo = getJobDefinition(jobDefinitionID).getValue("userInfo");
     if(userInfo==null){
       return "";
@@ -409,21 +409,21 @@ public class MySQLDatabase implements Database{
     }
   }
 
-  public synchronized String getJobStatus(int jobDefinitionID){
+  public String getJobStatus(int jobDefinitionID){
     return getJobDefinition(jobDefinitionID).getValue("status").toString();
   }
 
-  public synchronized String getJobDefName(int jobDefinitionID){
+  public String getJobDefName(int jobDefinitionID){
     return getJobDefinition(jobDefinitionID).getValue("name").toString();
   }
 
-  public synchronized int getJobDefDatasetID(int jobDefinitionID){
+  public int getJobDefDatasetID(int jobDefinitionID){
     String datasetName = getJobDefinition(jobDefinitionID).getValue("datasetName").toString();
     int datasetID = getDatasetID(datasetName);
     return Integer.parseInt(getDataset(datasetID).getValue("identifier").toString());
   }
 
- public synchronized String getPackInitText(String pack, String cluster){
+ public String getPackInitText(String pack, String cluster){
     // nothing for now
     return "";
   }
@@ -463,19 +463,19 @@ public class MySQLDatabase implements Database{
     return Integer.parseInt(transID);
   }
 
-  public synchronized String getUserLabel(){
+  public String getUserLabel(){
     // nothing for now
     return "";
   }
 
   // panel creation methods
   
-  public synchronized String [] getTransformationVersions(int datasetIdentifier){
+  public String [] getTransformationVersions(int datasetIdentifier){
     // nothing for now
     return new String [] {""};
   }
 
-  public synchronized boolean reserveJobDefinition(int jobDefID, String userInfo, String cs){
+  public boolean reserveJobDefinition(int jobDefID, String userInfo, String cs){
     boolean ret = updateJobDefinition(
         jobDefID,
         new String [] {"status", "userInfo", "computingResource"},
@@ -485,7 +485,7 @@ public class MySQLDatabase implements Database{
     return ret;
   }
 
-  public synchronized boolean saveDefVals(int datasetID, String[] defvals, String user){
+  public boolean saveDefVals(int datasetID, String[] defvals, String user){
     // nothing for now
     return false;
   }
@@ -655,7 +655,7 @@ public class MySQLDatabase implements Database{
     return getDataset(datasetID).getValue("transformationVersion").toString();
   }
   
-  public synchronized String getDatasetName(int datasetID){
+  public String getDatasetName(int datasetID){
     return getDataset(datasetID).getValue("name").toString();
   }
 
@@ -691,7 +691,7 @@ public class MySQLDatabase implements Database{
     return Integer.parseInt(vec.get(0).toString());
   }
 
-  public synchronized String getRunNumber(int datasetID){
+  public String getRunNumber(int datasetID){
     return getDataset(datasetID).getValue("runNumber").toString();
   }
 
@@ -793,7 +793,7 @@ public class MySQLDatabase implements Database{
      return transformation;
   }
   
-  public synchronized DBRecord getRunInfo(int jobDefID){
+  public DBRecord getRunInfo(int jobDefID){
     DBRecord jobDef = getJobDefinition(jobDefID);
     String [] values = new String [JobInfo.Fields.length];
     for(int i=0; i<JobInfo.Fields.length; ++i){
@@ -1014,7 +1014,7 @@ public class MySQLDatabase implements Database{
     return defs;
   }
     
-  public synchronized DBResult getRuntimeEnvironments(){
+  public DBResult getRuntimeEnvironments(){
     DBRecord jt [] = getRuntimeEnvironmentRecords();
     DBResult res = new DBResult(runtimeEnvironmentFields.length, jt.length);
     res.fields = runtimeEnvironmentFields;
@@ -1026,7 +1026,7 @@ public class MySQLDatabase implements Database{
     return res;
   }
   
-  public synchronized DBResult getTransformations(){
+  public DBResult getTransformations(){
     DBRecord jt [] = getTransformationRecords();
     DBResult res = new DBResult(transformationFields.length, jt.length);
     res.fields = transformationFields;
@@ -1038,7 +1038,7 @@ public class MySQLDatabase implements Database{
     return res;
   }
   
-  public synchronized DBResult getJobDefinitions(int datasetID, String [] fieldNames){
+  public DBResult getJobDefinitions(int datasetID, String [] fieldNames){
     
     DBRecord jt [] = selectJobDefinitions(datasetID, fieldNames);
     DBResult res = new DBResult(fieldNames.length, jt.length);
@@ -1187,7 +1187,7 @@ public class MySQLDatabase implements Database{
     }
   }
 
-  public synchronized boolean createRunInfo(JobInfo jobInfo){
+  public boolean createRunInfo(JobInfo jobInfo){
     // TODO: implement
     return true;
   }
@@ -1390,7 +1390,7 @@ public class MySQLDatabase implements Database{
     return execok;
   }
   
-  public synchronized boolean updateJobDefinition(int jobDefID,
+  public boolean updateJobDefinition(int jobDefID,
       String [] values){
     return updateJobDefinition(
         jobDefID,
@@ -1466,7 +1466,7 @@ public class MySQLDatabase implements Database{
     return execok;
   }
   
-  public synchronized boolean updateRunInfo(JobInfo jobInfo){
+  public boolean updateRunInfo(JobInfo jobInfo){
     // TODO: implement
     return true;
   }
@@ -1800,17 +1800,17 @@ public class MySQLDatabase implements Database{
       return ret;
     }
 
-    public synchronized String [] getTransOutputs(int transformationID){    
+    public String [] getTransOutputs(int transformationID){    
       String outputs = getTransformation(transformationID).getValue("outputFiles").toString();
       return Util.split(outputs);
     }
 
-    public synchronized String [] getTransInputs(int transformationID){    
+    public String [] getTransInputs(int transformationID){    
       String inputs = getTransformation(transformationID).getValue("inputFiles").toString();
       return Util.split(inputs);
     }
 
-    public synchronized String getError(){
+    public String getError(){
       return error;
     }
 
