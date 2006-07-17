@@ -30,6 +30,7 @@ public class ForkComputingSystem implements ComputingSystem{
   private LocalShellMgr shellMgr;
   private String workingDir;
   private String commandSuffix;
+  private String defaultUser;
 
   public ForkComputingSystem(String _systemName){
     systemName = _systemName;
@@ -40,7 +41,7 @@ public class ForkComputingSystem implements ComputingSystem{
       workingDir = "~";
     }
     if(workingDir.startsWith("~")){
-      workingDir = System.getProperty("user.home")+workingDir.substring(1);
+      workingDir = System.getProperty("defaultUser.home")+workingDir.substring(1);
     }
     if(workingDir.endsWith("/") || workingDir.endsWith("\\")){
       workingDir = workingDir.substring(0, workingDir.length()-1);
@@ -49,6 +50,7 @@ public class ForkComputingSystem implements ComputingSystem{
     if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
       commandSuffix = ".bat";
     }
+    defaultUser = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "defaultUser");
   }
 
   private String runDir(JobInfo job){
@@ -274,7 +276,7 @@ public class ForkComputingSystem implements ComputingSystem{
   public String getUserInfo(String csName){
     String user = null;
     try{
-      user = System.getProperty("user.name");
+      user = System.getProperty("defaultUser.name");
       /* remove leading whitespace */
       user = user.replaceAll("^\\s+", "");
       /* remove trailing whitespace */
@@ -284,9 +286,12 @@ public class ForkComputingSystem implements ComputingSystem{
       logFile.addMessage("Exception during getUserInfo\n" +
                                  "\tException\t: " + ioe.getMessage(), ioe);
     }
-    if(user==null){
-      Debug.debug("Job user null, getting from config file", 3);
-       user = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "user");
+    if(user==null && defaultUser!=null){
+      Debug.debug("Job defaultUser null, using value from config file", 3);
+      user = defaultUser;
+    }
+    else{
+      Debug.debug("ERROR: no defaultUser defined!", 1);
     }
     return user;
   }

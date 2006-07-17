@@ -18,9 +18,12 @@ import gridpilot.Util;
 public class NGScriptGenerator extends ScriptGenerator{
 
   private String systemName = null;
+  String cpuTime = null;
+  
   public NGScriptGenerator(String _systemName){
     super(_systemName);
     systemName = _systemName;
+    cpuTime = configFile.getValue(csName, "CPU time");
   }
 
   public boolean createXRSL(JobInfo job, String exeFileName, String xrslFileName, boolean join){
@@ -40,8 +43,6 @@ public class NGScriptGenerator extends ScriptGenerator{
     if(lastSlash>-1){
       scriptname = scriptname.substring(lastSlash + 1);
     }
-
-    String cpuTime = configFile.getValue(csName, "CPU time");
 
     //create xrsl file
     String shortExeFileName = new File(exeFileName).getName();
