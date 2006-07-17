@@ -310,7 +310,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
          cstAttributesNames[i].equalsIgnoreCase("validationScript") ||
          cstAttributesNames[i].equalsIgnoreCase("extractionScript")){
         pAttributes.add(Util.createCheckPanel(
-            (Frame) SwingUtilities.getWindowAncestor(getRootPane()),
+            (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
             cstAttributesNames[i], tcCstAttributes[i],
             dbPluginMgr),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
