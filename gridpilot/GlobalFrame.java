@@ -123,8 +123,6 @@ public class GlobalFrame extends GPFrame{
       }
     });
 
-    jobMonitoringPanel = new JobMonitoringPanel();
-
     menuEditCopy.setEnabled(false);
     menuEditCut.setEnabled(false);
     menuEditPaste.setEnabled(false);
@@ -282,7 +280,7 @@ public class GlobalFrame extends GPFrame{
     JMenuItem miReloadValues = new JMenuItem("Reload values from config file");
     miReloadValues.addActionListener(new ActionListener()  {
       public void actionPerformed(ActionEvent e){
-        GridPilot.reloadValues();
+        GridPilot.reloadConfigValues();
       }
     });
     menuFile.add(miReloadValues);
@@ -486,13 +484,16 @@ public class GlobalFrame extends GPFrame{
 
   public void toggleMonitoringPanel(){
     try{
+      if(jobMonitoringPanel==null){
+        jobMonitoringPanel = new JobMonitoringPanel();
+      }
       if(pDialog==null){
         Debug.debug("Creating new job monitoring dialog", 2);
-         pDialog = new CreateEditDialog(jobMonitoringPanel, false, false, false);
-         pDialog.setTitle("Job Monitor");
-         pDialog.pack();
-         pDialog.setVisible(true);
-         return;
+        pDialog = new CreateEditDialog(jobMonitoringPanel, false, false, false);
+        pDialog.setTitle("Job Monitor");
+        pDialog.pack();
+        pDialog.setVisible(true);
+        return;
       }
       if(pDialog.isShowing()){
         pDialog.setVisible(false);
@@ -509,11 +510,14 @@ public class GlobalFrame extends GPFrame{
 
   public void showMonitoringPanel(){
     try{
+      if(jobMonitoringPanel==null){
+        jobMonitoringPanel = new JobMonitoringPanel();
+      }
       if(pDialog==null){
         Debug.debug("Creating new job monitoring dialog", 2);
-         pDialog = new CreateEditDialog(jobMonitoringPanel, false, false, false);
-         pDialog.setTitle("Job Monitor");
-         pDialog.pack();
+        pDialog = new CreateEditDialog(jobMonitoringPanel, false, false, false);
+        pDialog.setTitle("Job Monitor");
+        pDialog.pack();
       }
       pDialog.setVisible(true);
       cbMonitor.setSelected(true);
