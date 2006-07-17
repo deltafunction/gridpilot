@@ -57,7 +57,9 @@ public class CSPluginMgr implements ComputingSystem{
   private HashMap cs ;
   private HashMap shellMgr;
 
-  public CSPluginMgr(){}
+  public CSPluginMgr() throws Throwable{
+    init();
+  }
   /**
    * Constructs a <code>CSPluginMgr</code>. <p>
    * Looks after plug-in names and class in configFile, load them, and read time out values.
@@ -97,6 +99,7 @@ public class CSPluginMgr implements ComputingSystem{
     for(int i=0; i<csNames.length; ++i){
       try{
         GridPilot.splash.show("Connecting to "+csNames[i]+"...");
+        //GridPilot.getClassMgr().getStatusBar().setLabel("Connecting to "+csNames[i]+"...");
       }
       catch(Exception e){
         // if we cannot show text on splash, just silently ignore
@@ -186,14 +189,6 @@ public class CSPluginMgr implements ComputingSystem{
         ((SecureShellMgr) shellMgr.get(csNames[i])).exit();
       }
     }
-  }
-
-  /**
-   * Returns the names of all computing system
-   * @return a String array with the names of all computing system
-   */
-  public String [] getCSNames(){
-    return csNames;
   }
 
   /**
