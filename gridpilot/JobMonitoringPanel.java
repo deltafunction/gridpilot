@@ -20,19 +20,10 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private static final long serialVersionUID = 1L;
   private Table statusTable = null;
   private StatusBar statusBar = null;
-  
   private final int ALL_JOBS = 0;
   private final int ONLY_RUNNING_JOBS = 1;
   private final int ONLY_DONE_JOBS = 2;
-
   private int showRows = ALL_JOBS;
-
-  Timer timerRefresh = new Timer(0, new ActionListener (){
-    public void actionPerformed(ActionEvent e){
-      statusUpdateControl.updateStatus(null);
-    }
-  });
-
   // Central panel
   private JTabbedPane tpStatLog = new JTabbedPane();
   private JScrollPane spStatusTable = new JScrollPane();
@@ -61,28 +52,29 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JComboBox cbRefreshUnits = new JComboBox(new Object []{"sec", "min"});
   //private int SEC = 0;
   private int MIN = 1;
-
   private JMenuItem miKill = new JMenuItem("Kill");
   private JMenuItem miDecide = new JMenuItem("Decide");
   private JMenuItem miRefresh = new JMenuItem("Refresh");
   private JMenu mSubmit = new JMenu("Submit");
   private JMenuItem miResubmit = new JMenuItem("Resubmit");
-
   private JMenu mShow = new JMenu("Show");
   private JMenuItem miShowOutput = new JMenuItem("Outputs");
   private JMenuItem miShowFullStatus = new JMenuItem("Full status");
   private JMenuItem miShowInfo = new JMenuItem("Infos");
   private JMenuItem miShowScripts = new JMenuItem("Scripts");
-
   private JMenuItem miStopUpdate = new JMenuItem("Stop update");
   private JMenuItem miRevalidate = new JMenuItem("Revalidate");
   //private JMenuItem miResetChanges = new JMenuItem("Reset changes");
   private JMenu mDB = new JMenu("Set DB Status");
-
   private LogViewerPanel logViewerPanel = new LogViewerPanel();
-
   public StatusUpdateControl statusUpdateControl;
   private SubmissionControl submissionControl;
+  Timer timerRefresh = new Timer(0, new ActionListener (){
+    public void actionPerformed(ActionEvent e){
+      statusUpdateControl.updateStatus(null);
+    }
+  });
+
 
   /**
    * Constructor
@@ -356,9 +348,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
 
-    String [] csNames = GridPilot.getClassMgr().getCSPluginMgr().getCSNames();
-    for(int i=0; i<csNames.length; ++i){
-      JMenuItem mi = new JMenuItem(csNames[i], i);
+    for(int i=0; i<GridPilot.csNames.length; ++i){
+      JMenuItem mi = new JMenuItem(GridPilot.csNames[i], i);
       mi.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           submissionControl.submitJobs((Vector) DatasetMgr.getJobsAtRows(statusTable.getSelectedRows()),
