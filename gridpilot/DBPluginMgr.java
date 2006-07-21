@@ -801,17 +801,16 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getJobRunValue(final int jobDefID, final String key){
+  public String getRunInfo(final int jobDefID, final String key){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
         try{
-          res = db.getRunInfo(jobDefID).getValue(key).toString();
+          res = db.getRunInfo(jobDefID, key).toString();
         }
         catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             jobDefID, t);
+          Debug.debug((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName , 2);
           res = "";
         }
       }
@@ -822,7 +821,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobRunValue")){
+    if(waitForThread(t, dbName, dbTimeOut, "getRunInfo")){
       return t.getStringRes();
     }
     else{
@@ -2123,35 +2122,6 @@ public class DBPluginMgr implements Database{
       }
     }
 
-  public DBRecord getRunInfo(final int jobDefID){
-    
-      MyThread t = new MyThread(){
-        DBRecord res = null;
-        public void run(){
-          try{
-            res = db.getRunInfo(jobDefID);
-          }
-          catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               jobDefID, t);
-          }
-        }
-        public DBRecord getDBRes(){
-          return res;
-        }
-      };
-    
-      t.start();
-    
-      if(waitForThread(t, dbName, dbTimeOut, "getRunInfo")){
-        return t.getDBRes();
-      }
-      else{
-        return null;
-      }
-    }
-
   public DBResult getJobDefinitions(final int datasetID, final String [] fieldNames){
   
     MyThread t = new MyThread(){
@@ -2375,7 +2345,7 @@ public class DBPluginMgr implements Database{
 
   public static int getStatusId(String status){
     for(int i=1; i<=7 ; ++i){
-      if(status.compareToIgnoreCase(getStatusName(i)) == 0)
+      if(status.compareToIgnoreCase(getStatusName(i))==0)
         return i;
     }
     Debug.debug("ERROR: the status "+status+" does not correspond to any known status ID", 1);
