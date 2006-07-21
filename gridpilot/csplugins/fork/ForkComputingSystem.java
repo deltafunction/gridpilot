@@ -31,6 +31,7 @@ public class ForkComputingSystem implements ComputingSystem{
   private String workingDir;
   private String commandSuffix;
   private String defaultUser;
+  private String error = "";
 
   public ForkComputingSystem(String _systemName){
     systemName = _systemName;
@@ -86,9 +87,10 @@ public class ForkComputingSystem implements ComputingSystem{
     }
     catch(Exception ioe){
       ioe.printStackTrace();
-      logFile.addMessage("Exception during job " + job.getName() + " submission : \n" +
-                         "\tCommand\t: " + cmd +"\n" +
-                         "\tException\t: " + ioe.getMessage(), ioe);
+      error = "Exception during job " + job.getName() + " submission : \n" +
+      "\tCommand\t: " + cmd +"\n" +
+      "\tException\t: " + ioe.getMessage();
+      logFile.addMessage(error, ioe);
       return false;
     }
     return true;
@@ -164,10 +166,11 @@ public class ForkComputingSystem implements ComputingSystem{
         }
         catch(Exception e){
           job.setJobStatus("Error");
-          job.setInternalStatus(ComputingSystem.STATUS_ERROR);          
-          logFile.addMessage("Exception during copying of output file(s) for job : " + job.getName() + "\n" +
-              "\tCommand\t: " + localName + ": -> " + remoteName +"\n" +
-              "\tException\t: " + e.getMessage(), e);
+          job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+          error = "Exception during copying of output file(s) for job : " + job.getName() + "\n" +
+          "\tCommand\t: " + localName + ": -> " + remoteName +"\n" +
+          "\tException\t: " + e.getMessage();
+          logFile.addMessage(error, e);
         }
       }
     }
@@ -210,6 +213,7 @@ public class ForkComputingSystem implements ComputingSystem{
       }
     }
     if(errors.size()!=0){
+      error = Util.arrayToString(errors.toArray());
       return false;
     }
     else{
@@ -219,19 +223,32 @@ public class ForkComputingSystem implements ComputingSystem{
 
   public void clearOutputMapping(JobInfo job){
     String runDir = runDir(job);
-    String scriptFile = runDir+"/"+job.getName()+commandSuffix;
-    String stdoutFile = runDir+"/"+job.getName()+".stdout";
-    String stderrFile = runDir+"/"+job.getName()+".stderr";
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
     try{
-      Debug.debug("Clearing "+runDir, 2);
-      LocalShellMgr.deleteFile(scriptFile);
-      LocalShellMgr.deleteFile(stderrFile);
-      LocalShellMgr.deleteFile(stdoutFile);
-      LocalShellMgr.deleteFile(runDir);
+      LocalShellMgr.deleteFile(finalStdOut);
     }
     catch(Exception ioe){
-      logFile.addMessage("Exception during clearOutputMapping of job " + job.getName()+ "\n" +
-                                  "\tException\t: " + ioe.getMessage(), ioe);
+      error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
+      "\tException\t: " + ioe.getMessage();
+      logFile.addMessage(error, ioe);
+    }
+    try{
+      LocalShellMgr.deleteFile(finalStdErr);
+    }
+    catch(Exception ioe){
+      error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
+      "\tException\t: " + ioe.getMessage();
+      logFile.addMessage(error, ioe);
+    }
+    try{
+      LocalShellMgr.deleteDir(new File(runDir));
+    }
+    catch(Exception ioe){
+      error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
+      "\tException\t: " + ioe.getMessage();
+      logFile.addMessage(error, ioe);
     }
   }
 
@@ -262,8 +279,9 @@ public class ForkComputingSystem implements ComputingSystem{
       return new String [] {stdOutText, stdErrText};
     }
     catch(IOException ioe){
-      logFile.addMessage("IOException during getFullStatus of job " + job.getName()+ "\n" +
-                                  "\tException\t: " + ioe.getMessage(), ioe);
+      error = "IOException during getFullStatus of job " + job.getName()+ "\n" +
+      "\tException\t: " + ioe.getMessage();
+      logFile.addMessage(error, ioe);
       return null;
     }
   }
@@ -283,8 +301,9 @@ public class ForkComputingSystem implements ComputingSystem{
       user = user.replaceAll("\\s+$", "");      
     }
     catch(Exception ioe){
-      logFile.addMessage("Exception during getUserInfo\n" +
-                                 "\tException\t: " + ioe.getMessage(), ioe);
+      error = "Exception during getUserInfo\n" +
+      "\tException\t: " + ioe.getMessage();
+      logFile.addMessage(error, ioe);
     }
     if(user==null && defaultUser!=null){
       Debug.debug("Job defaultUser null, using value from config file", 3);
@@ -298,7 +317,22 @@ public class ForkComputingSystem implements ComputingSystem{
   
   public boolean postProcess(JobInfo job){
     Debug.debug("PostProcessing for job " + job.getName(), 2);
-    return copyToFinalDest(job);
+    String runDir = runDir(job);
+    if(copyToFinalDest(job)){
+      try{
+        LocalShellMgr.deleteDir(new File(runDir));
+      }
+      catch(Exception e){
+        error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
+        "\tException\t: " + e.getMessage();
+        logFile.addMessage(error, e);
+        return false;
+      }
+      return true;
+    }
+    else{
+      return false;
+    }
   }
 
   public boolean preProcess(JobInfo job){
@@ -319,8 +353,9 @@ public class ForkComputingSystem implements ComputingSystem{
     }
     catch(Exception e){
       Debug.debug("ERROR: could not copy stdout. "+e.getMessage(), 3);
-      logFile.addMessage("WARNING could not copy files "+
-          Util.arrayToString(inputFiles)+". ");
+      error = "WARNING could not copy files "+
+      Util.arrayToString(inputFiles);
+      logFile.addMessage(error);
       // No shell available
       return false;
       //throw e;
@@ -334,8 +369,9 @@ public class ForkComputingSystem implements ComputingSystem{
           }
         }
         catch(Throwable e){
-          Debug.debug("ERROR getting input file: "+e.getMessage(), 2);
-          logFile.addMessage("ERROR getting input file: "+e.getMessage());
+          error = "ERROR getting input file: "+e.getMessage();
+          Debug.debug(error, 2);
+          logFile.addMessage(error);
           //throw e;
         }
         Debug.debug("Post processing : Getting " + inputFiles[i], 2);
@@ -352,8 +388,9 @@ public class ForkComputingSystem implements ComputingSystem{
           }
         }
         catch(Throwable e){
-          Debug.debug("ERROR getting input file: "+e.getMessage(), 2);
-          logFile.addMessage("ERROR getting input file: "+e.getMessage());
+          error = "ERROR getting input file: "+e.getMessage();
+          Debug.debug(error, 2);
+          logFile.addMessage(error);
           //throw e;
         }
       }
@@ -383,8 +420,10 @@ public class ForkComputingSystem implements ComputingSystem{
       shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
     }
     catch(Exception e){
-      Debug.debug("ERROR: could not copy stdout. " +e.getMessage(), 3);
-      logFile.addMessage("WARNING could not copy stdout to "+finalStdOut);
+      error = "ERROR: could not copy stdout to "+finalStdOut+"\n"+
+      e.getMessage();
+      Debug.debug(error, 3);
+      logFile.addMessage(error);
       // No shell available
       return false;
       //throw e;
@@ -395,28 +434,32 @@ public class ForkComputingSystem implements ComputingSystem{
     if(finalStdOut!=null && finalStdOut.trim().length()!=0){
       try{
         if(!shell.existsFile(job.getStdOut())){
-          logFile.addMessage("Post processing : File " + job.getStdOut() + " doesn't exist");
+          error = "Post processing : File " + job.getStdOut() + " doesn't exist";
+          logFile.addMessage(error);
           return false;
         }
       }
       catch(Throwable e){
-        Debug.debug("ERROR checking for stdout: "+e.getMessage(), 2);
-        logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
+        error = "ERROR checking for stdout: "+e.getMessage();
+        Debug.debug(error, 2);
+        logFile.addMessage(error);
         //throw e;
       }
       Debug.debug("Post processing : Renaming " + job.getStdOut() + " in " + finalStdOut, 2);
       // if(!shell.moveFile(job.getStdOut(), finalStdOut)){
       try{
         if(!shell.copyFile(job.getStdOut(), finalStdOut)){
-          logFile.addMessage("Post processing : Cannot move \n\t" +
-                             job.getStdOut() +
-                             "\n into \n\t" + finalStdOut);
+          error = "Post processing : Cannot move \n\t" +
+          job.getStdOut() +
+          "\n into \n\t" + finalStdOut;
+          logFile.addMessage(error);
           return false;
         }
       }
       catch(Throwable e){
-        Debug.debug("ERROR copying stdout: "+e.getMessage(), 2);
-        logFile.addMessage("ERROR copying stdout: "+e.getMessage());
+        error = "ERROR copying stdout: "+e.getMessage();
+        Debug.debug(error, 2);
+        logFile.addMessage(error);
         //throw e;
       }
       job.setStdOut(finalStdOut);
@@ -433,8 +476,9 @@ public class ForkComputingSystem implements ComputingSystem{
         }
       }
       catch(Throwable e){
-        Debug.debug("ERROR checking for stderr: "+e.getMessage(), 2);
-        logFile.addMessage("ERROR checking for stderr: "+e.getMessage());
+        error = "ERROR checking for stderr: "+e.getMessage();
+        Debug.debug(error, 2);
+        logFile.addMessage(error);
         //throw e;
       }
       Debug.debug("Post processing : Renaming " + job.getStdErr() + " in " + finalStdErr,2);
@@ -448,13 +492,18 @@ public class ForkComputingSystem implements ComputingSystem{
         }
       }
       catch(Throwable e){
-        Debug.debug("ERROR copying stderr: "+e.getMessage(), 2);
-        logFile.addMessage("ERROR copying stderr: "+e.getMessage());
+        error = "ERROR copying stderr: "+e.getMessage();
+        Debug.debug(error, 2);
+        logFile.addMessage(error);
         //throw e;
       }
       job.setStdErr(finalStdErr);
     }
     return true;
+  }
+  
+  public String getError(String csName){
+    return error;
   }
 
 }
