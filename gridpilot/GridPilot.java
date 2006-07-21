@@ -212,12 +212,16 @@ public class GridPilot extends JApplet{
    }
 
   public static void exit(int exitCode){
+    File delFile = null;
     try{
       for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext(); ){
-        ((File) tmpConfFile.get(it.next())).delete();
+        delFile = ((File) tmpConfFile.get(it.next()));
+        Debug.debug("Cleaning up: deleting "+delFile.getAbsolutePath(), 2);
+        delFile.delete();
       }
     }
     catch(Exception e){
+      e.printStackTrace();
     }
     /*
     Disconnect DBs and CSs
