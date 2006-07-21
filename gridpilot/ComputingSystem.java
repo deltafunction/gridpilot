@@ -200,4 +200,12 @@ public interface ComputingSystem{
    */
   public boolean preProcess(JobInfo job);
 
+  /**
+   * Get the last error reported by the plugin. <br>
+   *
+   * @return error String
+   * 
+   */
+  public String getError(String csName);
+
 }
