@@ -53,19 +53,26 @@ public class JobInfo extends DBRecord{
  
   private String jobID="";
   private String jobStatus="";
-  private String newStatus="";
+  //private String newStatus="";
   private int internalStatus;
   private int dbStatus = gridpilot.DBPluginMgr.DEFINED;
   private String host="";
   private boolean needUpdate;
   private int tableRow = -1;
-  public static String [] Fields= new String [] {
-      /*These are the fields of the runtime DB table*/
-      "name", "identifier", "computingResource", "hostMachine", "userInfo", "db", "outTmp", "errTmp",
-      "validationResult",
-      /*----*/
+  /**
+   * These are the fields of the runtime DB table
+   * The method getRunInfo of the db plugin must fill in values
+   * for these fields as it best can, and return them as an array.
+   */
+  /*public static String [] Fields= new String [] {
+      "name", "identifier", "computingResource",
+      // worker node, filled in when checking
+      "hostMachine",
+      "userInfo", "db", "outTmp", "errTmp", "validationResult",
+      // ----
       "jobId", "jobStatus", "newStatus", "internalStatus", "dbStatus",
-      "host", "needUpdate"};
+      // gate keeper, filled in when submitting
+      "host", "needUpdate"};*/
   
   public static String Identifier = "jobId";
 
@@ -76,18 +83,18 @@ public class JobInfo extends DBRecord{
     cs = _cs;
     db = _db;
     
-    fields = Fields;
+    //fields = Fields;
     
-    setValues();
+    //setValues();
   }
   
-  private void setValues(){
+  /*private void setValues(){
     values = new String [] {
-        jobName, Integer.toString(jobDefID), cs, user, db, outTmp, errTmp,
+        jobName, Integer.toString(jobDefID), cs, host, user, db, outTmp, errTmp,
         validationResult,
         jobID, jobStatus, newStatus, Integer.toString(internalStatus), Integer.toString(dbStatus),
         host, Boolean.toString(needUpdate)};
-  }
+  }*/
 
   public JobInfo(){}
 
@@ -155,68 +162,68 @@ public class JobInfo extends DBRecord{
 
   void setJobDefId(int _jobDefId){
     jobDefID = _jobDefId;
-    setValues();
+    //setValues();
   }
 
   void setCSName(String _computingSystem){
     cs = _computingSystem;
-    setValues();
+    //setValues();
   }
 
   void setDBName(String _database){
     db = _database;
-    setValues();
+    //setValues();
   }
 
   public void setStdOut(String _stdOut){
     outTmp = _stdOut;
-    setValues();
+    //setValues();
   }
   
   public void setStdErr(String _stdErr){
     errTmp = _stdErr;
-    setValues();
+    //setValues();
   }
 
   public void setOutputs(String _stdOut, String _stdErr){
     outTmp = _stdOut;
     errTmp = _stdErr;
-    setValues();
+    //setValues();
   }
   
   public void setValidationResult(String _result){
     validationResult = _result;
-    setValues();
+    //setValues();
   }
 
   public void setJobId( String _jobID){
-    jobID =  _jobID;
-      setValues();
+    jobID = _jobID;
+    //setValues();
   }
   
   public void setJobStatus(String _jobStatus){
     jobStatus = _jobStatus;
-    setValues();
+    //setValues();
   }
   
   public void setHost(String _host){
     host = _host;
-    setValues();
+    //setValues();
   }
 
   public void setUser(String _user){
     user = _user;
-    setValues();
+    //setValues();
   }
 
   void setDBStatus(int _dbStatus){
     dbStatus = _dbStatus;
-    setValues();
+    //setValues();
   }
 
   public void setInternalStatus(int _internalStatus){
     internalStatus = _internalStatus;
-    setValues();
+    //setValues();
   }
 
   void setNeedToBeRefreshed(boolean _needUpdate){

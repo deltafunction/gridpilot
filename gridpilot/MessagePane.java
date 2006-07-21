@@ -13,8 +13,8 @@ public class MessagePane {
     JTextPane ta = new JTextPane();
     ta.setText(message);
 
-//    ta.setLineWrap(true);
-//    ta.setWrapStyleWord(true);
+    //ta.setLineWrap(true);
+    //ta.setWrapStyleWord(true);
     ta.setOpaque(false);
     ta.setEditable(false);
 
@@ -22,7 +22,7 @@ public class MessagePane {
 
     JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), title);
     dialog.setResizable(true);
-    ta.getPreferredSize(); // without this line, this dialog is too small !!! ???????
+    //ta.getPreferredSize(); // without this line, this dialog is too small !!! ???????
     dialog.pack();
     dialog.validate();
     dialog.setVisible(true);
