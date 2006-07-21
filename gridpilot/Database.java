@@ -99,7 +99,7 @@ public interface Database{
   public String getJobDefOutLocalName(int jobDefID, String par);
   public String getStdOutFinalDest(int jobDefID);
   public String getStdErrFinalDest(int jobDefID);
-  public DBRecord getRunInfo(int jobDefID);
+  public String getRunInfo(int jobDefID, String key);
   
   // ####### Misc
   public boolean createRunInfo(JobInfo jobInfo);
