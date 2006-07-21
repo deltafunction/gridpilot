@@ -19,6 +19,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   private static final long serialVersionUID = 1L;
   private Table statusTable = null;
+  // use status bar on main window
   private StatusBar statusBar = null;
   private final int ALL_JOBS = 0;
   private final int ONLY_RUNNING_JOBS = 1;
@@ -82,6 +83,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   public JobMonitoringPanel() throws Exception{
     
     statusBar = GridPilot.getClassMgr().getStatusBar();
+    // TODO: get animation of progress bar to work
+    statusBar.setProgressBar(new JProgressBar());
     statusTable = GridPilot.getClassMgr().getStatusTable();
     
     statusUpdateControl = new StatusUpdateControl();
@@ -456,7 +459,11 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    * Called when button or menu item "Kill" is selected
    */
   void kill(){
-    DatasetMgr.killJobs(statusTable.getSelectedRows());
+    (new Thread(){
+      public void run(){
+        DatasetMgr.killJobs(statusTable.getSelectedRows());
+      }
+    }).start();
   }
 
   /**
@@ -559,9 +566,23 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    * @see atcom.jobcontrol.JobControl#getFullStatus(int)
    */
   private void showFullStatus(){
-    JobInfo job = DatasetMgr.getJobAtRow(statusTable.getSelectedRow());
-    String status = GridPilot.getClassMgr().getCSPluginMgr().getFullStatus(job);
-    MessagePane.showMessage(status, "Job status");
+    final Thread t = new Thread(){
+      public void run(){
+        JobInfo job = DatasetMgr.getJobAtRow(statusTable.getSelectedRow());
+        String status = GridPilot.getClassMgr().getCSPluginMgr().getFullStatus(job);
+        MessagePane.showMessage(status, "Job status");
+        statusBar.removeLabel();
+        statusBar.stopAnimation();
+      }
+    };
+    statusBar.setLabel("Getting full status...");
+    statusBar.setIndeterminateProgressBarToolTip("click here to stop");
+    statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
+      public void mouseClicked(MouseEvent me){
+        t.interrupt();
+      }
+    });
+    t.start();
   }
 
   /**
@@ -587,27 +608,27 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    */
   private void loadDBJobs(final boolean allJobs){
     new Thread(){
-  public void run(){
-    statusBar.setLabel("Waiting for AMI Server ...");
-    statusBar.animateProgressBar();
-    bLoadJobs.setEnabled(false);
-    bLoadMyJobs.setEnabled(false);
-    statusTable.clearSelection();
-    DatasetMgr mgr = null;
-    try{
-      for(Iterator it = GridPilot.getClassMgr().getDatasetMgrs().iterator(); it.hasNext();){
-        mgr = ((DatasetMgr) it.next());
-        mgr.loadJobDefs(new int [] {ONLY_RUNNING_JOBS});
+      public void run(){
+        statusBar.setLabel("Waiting for DB Server ...");
+        statusBar.animateProgressBar();
+        bLoadJobs.setEnabled(false);
+        bLoadMyJobs.setEnabled(false);
+        statusTable.clearSelection();
+        DatasetMgr mgr = null;
+        try{
+          for(Iterator it = GridPilot.getClassMgr().getDatasetMgrs().iterator(); it.hasNext();){
+            mgr = ((DatasetMgr) it.next());
+            mgr.loadJobDefs(new int [] {ONLY_RUNNING_JOBS});
+          }
+        }
+        catch(Exception e){
+          Debug.debug("WARNING: failed to load jobs from "+mgr.dbName, 1);
+          e.printStackTrace();
+        }
+        statusBar.stopAnimation();
+        bLoadJobs.setEnabled(true);
+        bLoadMyJobs.setEnabled(true);
       }
-    }
-    catch(Exception e){
-      Debug.debug("WARNING: failed to load jobs from "+mgr.dbName, 1);
-      e.printStackTrace();
-    }
-    statusBar.stopAnimation();
-    bLoadJobs.setEnabled(true);
-    bLoadMyJobs.setEnabled(true);
-  }
     }.start();
   }
 
