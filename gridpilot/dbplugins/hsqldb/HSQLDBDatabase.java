@@ -869,18 +869,10 @@ public class HSQLDBDatabase implements Database{
      return transformation;
   }
   
-  public DBRecord getRunInfo(int jobDefID){
+  public String getRunInfo(int jobDefID, String key){
     DBRecord jobDef = getJobDefinition(jobDefID);
-    String [] values = new String [JobInfo.Fields.length];
-    for(int i=0; i<JobInfo.Fields.length; ++i){
-      try{
-        values[i] = jobDef.getValue(JobInfo.Fields[i]).toString();
-      }
-      catch(Exception e){
-        values[i] =  "";
-      }
-    }
-    return new DBRecord(JobInfo.Fields, values);
+    Debug.debug("Getting value for key "+key, 3);
+    return jobDef.getValue(key).toString();
   }
 
   /*

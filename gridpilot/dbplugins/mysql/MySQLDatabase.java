@@ -793,18 +793,9 @@ public class MySQLDatabase implements Database{
      return transformation;
   }
   
-  public DBRecord getRunInfo(int jobDefID){
+  public String getRunInfo(int jobDefID, String key){
     DBRecord jobDef = getJobDefinition(jobDefID);
-    String [] values = new String [JobInfo.Fields.length];
-    for(int i=0; i<JobInfo.Fields.length; ++i){
-      try{
-        values[i] = jobDef.getValue(JobInfo.Fields[i]).toString();
-      }
-      catch(Exception e){
-        values[i] =  "";
-      }
-    }
-    return new DBRecord(JobInfo.Fields, values);
+    return jobDef.getValue(key).toString();
   }
 
   /*
