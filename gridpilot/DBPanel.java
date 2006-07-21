@@ -1178,6 +1178,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           GridPilot.getClassMgr().getStatusBar().setLabel(
              "Deleting job definition(s) done.");
+          tableResults.updateUI();
         }
         refresh();
         stopWorking();
@@ -1507,8 +1508,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         int[] selectedJobIdentifiers = getSelectedIdentifiers();
         String idField = dbPluginMgr.getIdentifierField("jobDefintition");
         for(int i=0; i<selectedJobIdentifiers.length; ++i){
-          jobDef = dbPluginMgr.getJobDefinition(
-              selectedJobIdentifiers[i]);
+          jobDef = dbPluginMgr.getJobDefinition(selectedJobIdentifiers[i]);
           DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName,
               dbPluginMgr.getJobDefDatasetID(Integer.parseInt(
                   jobDef.getValue(idField).toString())));
@@ -1522,6 +1522,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Called when mouse is pressed on Submit button
    */
   private void bSubmit_mousePressed(){
+    // check if selected jobs are submittable
+    int[] selectedJobIdentifiers = getSelectedIdentifiers();
+    for(int i=0; i<selectedJobIdentifiers.length; ++i){
+      if(DBPluginMgr.getStatusId(
+          dbPluginMgr.getJobStatus(selectedJobIdentifiers[i]))!=DBPluginMgr.DEFINED){
+        statusBar.setLabel("ERROR: all selected jobs must be submittable.");
+        return;
+      }
+    }
     // if a partition is selected, shows the menu with computing systems
     if(getSelectedIdentifiers().length != 0){
       pmSubmitMenu.show(this, 0, 0); // without this, pmSubmitMenu.getWidth == 0
