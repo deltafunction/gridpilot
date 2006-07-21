@@ -48,14 +48,14 @@ public class LocalShellMgr{
       out.close();
       }
       catch(IOException e){
-        GridPilot.getClassMgr().getLogFile().addMessage(
-            "FileNotFoundException during copy : \n", e);
+        Debug.debug(
+            "FileNotFoundException during copy : \n", 1);
         return false;
       }
     }
     catch(FileNotFoundException e){
-      GridPilot.getClassMgr().getLogFile().addMessage(
-          "FileNotFoundException during copy : \n", e);
+      Debug.debug(
+          "FileNotFoundException during copy : \n", 2);
       return false;
     }
     return true;    
