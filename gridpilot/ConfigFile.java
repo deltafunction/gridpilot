@@ -159,6 +159,13 @@ public class ConfigFile{
       }
       while(true);
     }
+    
+    try{
+      file.close();
+    }
+    catch(IOException ioe){
+      Debug.debug("cannot close "+ configFileName, 1);
+    }
 
     String [] stringRes = new String[l.size()];
     for(int i=0; i<l.size(); ++i){
