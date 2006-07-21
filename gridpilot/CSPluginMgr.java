@@ -332,9 +332,6 @@ public class CSPluginMgr implements ComputingSystem{
 
 
   private int killThreadIndex = 0;
-  private int getKillThreadIndex(){
-    return killThreadIndex;
-  }
   /**
    * Kills these jobs
    * @see ComputingSystem#killJobs(Vector)
@@ -354,12 +351,18 @@ public class CSPluginMgr implements ComputingSystem{
           ).add(jobs.get(i));
     }
     
-    final Vector [] csJobsArray = (Vector []) csJobs.values().toArray();
+    //final Vector [] csJobsArray = (Vector []) csJobs.values().toArray();
+    final Vector [] csJobsArray = new Vector[csNames.length];
+    for(int i=0; i<csNames.length; ++i){
+      csJobsArray[i] = (Vector) csJobs.get(csNames[i]);
+    }
     
     MyThread [] threads = new MyThread[csNames.length];
     for(killThreadIndex=0; killThreadIndex<csNames.length;
        ++killThreadIndex){
  
+      Debug.debug("Killing thread "+csJobsArray.length+":"+killThreadIndex, 3);
+      
       if(csJobsArray==null || csJobsArray[killThreadIndex]==null ||
           csJobsArray[killThreadIndex].size()==0 ||
           ((JobInfo) csJobsArray[killThreadIndex].get(0)).getCSName()==null){
@@ -368,24 +371,26 @@ public class CSPluginMgr implements ComputingSystem{
             
       threads[killThreadIndex] = new MyThread(){
         public void run(){
-          int i = getKillThreadIndex();
           try{
-            ((ComputingSystem) cs.get(((JobInfo) csJobsArray[i].get(0)).getCSName())
-                ).killJobs(csJobsArray[i]);
+            Debug.debug("Killing thread "+csJobsArray.length+":"+killThreadIndex, 3);
+
+            ((ComputingSystem) cs.get(((JobInfo) csJobsArray[killThreadIndex].get(0)).getCSName())
+                ).killJobs(csJobsArray[killThreadIndex]);
           }
-          catch(Throwable t){
+          catch(Exception t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + i +
-                               " during job " + ((JobInfo) csJobsArray[i].get(0)).getCSName() + " killing",
-                               (JobInfo) csJobsArray[i].get(0),
-                               t);
+                               " during kill job ", t);
           }
+          ++killThreadIndex;
         }
       };
 
-      threads[killThreadIndex].start();
-
     }
+    killThreadIndex = 0;
+    for(int i=0; i<csNames.length; ++i){
+      threads[i].start();
+    }
+
     // When killing jobs from several CSs, we wait the timeout of
     // the first one for the first jobs and then just move with
     // timeout 0 to kill the others
@@ -692,6 +697,42 @@ public class CSPluginMgr implements ComputingSystem{
     t.start();
 
     if(waitForThread(t, csName, getUserInfoTimeOut, "getUserInfo")){
+      return t.getStringRes();
+    }
+    else{
+      return "No response";
+    }
+  }
+
+  /**
+   * @see ComputingSystem#getError()
+   */
+  public String getError(final String csName) {
+    if(csName==null || csName.equals("")){
+      return null;
+    }
+
+    MyThread t = new MyThread(){
+      String res = null;
+      public void run(){
+        try{
+          res = ((ComputingSystem) cs.get(csName)).getError(csName);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + csName +
+                             " for getError", t);
+          res = null;
+        }
+      }
+      public String getStringRes(){
+        return res;
+      }
+    };
+
+    t.start();
+
+    if(waitForThread(t, csName, defaultTimeOut, "getError")){
       return t.getStringRes();
     }
     else{
