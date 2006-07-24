@@ -7,7 +7,7 @@ import javax.swing.*;
  * (Try to) avoid(s) that with a big message, the box is greater than the screen.
  *
  */
-public class MessagePane {
+public class MessagePane{
 
   public static void showMessage(String message, String title){
     JTextPane ta = new JTextPane();
