@@ -6,6 +6,9 @@ import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.Vector;
@@ -17,9 +20,12 @@ import org.ietf.jgss.GSSCredential;
 import org.nordugrid.gridftp.ARCGridFTPJob;
 import org.nordugrid.gridftp.ARCGridFTPJobException;
 import org.nordugrid.is.ARCDiscovery;
+import org.nordugrid.model.ARCJob;
+import org.nordugrid.model.ARCResource;
 import org.nordugrid.multithread.TaskResult;
 
 import gridpilot.ComputingSystem;
+import gridpilot.ConfigFile;
 import gridpilot.DBPluginMgr;
 import gridpilot.Debug;
 import gridpilot.JobInfo;
@@ -57,13 +63,17 @@ public class NGComputingSystem implements ComputingSystem{
   private static String csName;
   private static LogFile logFile;
   private String workingDir;
-  private ARCDiscovery arcDiscover;
+  private ARCDiscovery arcDiscovery;
   private String defaultUser;
   private String error = "";
+  private boolean useInfoSystem = false;
+  private String [] clusters;
+  private ARCResource [] resources;
 
   public NGComputingSystem(String _csName){
+    ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     csName = _csName;
-    workingDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "working directory");
+    workingDir = configFile.getValue(csName, "working directory");
     if(workingDir==null || workingDir.equals("")){
       workingDir = "~";
     }
@@ -78,15 +88,50 @@ public class NGComputingSystem implements ComputingSystem{
       workingDir = workingDir.substring(0, workingDir.length()-1);
     }
     Debug.debug("Working dir: "+workingDir, 2);
-    ngSubmission = new NGSubmission(csName);
-    logFile = GridPilot.getClassMgr().getLogFile();
+
+    logFile = GridPilot.getClassMgr().getLogFile();  
+    
+    defaultUser = configFile.getValue("GridPilot", "user");
+    String useInfoSys = configFile.getValue(csName, "use information system");
+    useInfoSystem = useInfoSys.equalsIgnoreCase("true") || useInfoSys.equalsIgnoreCase("yes");
+    clusters = configFile.getValues(csName, "clusters");
        
-    // Information system
-    arcDiscover = new ARCDiscovery("ldap://index4.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
-    arcDiscover.addGIIS("ldap://index1.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
-    arcDiscover.addGIIS("ldap://index2.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
-    arcDiscover.addGIIS("ldap://index3.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");    
-    defaultUser = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "user");
+    arcDiscovery = new ARCDiscovery();
+
+    // restrict to these clusters
+    if(clusters!=null && clusters.length!=0){
+      Set clusterSet = new HashSet();
+      for(int i=0; i<clusters.length; ++i){
+        Debug.debug("Adding cluster "+clusters[i], 3);
+        clusterSet.add(clusters[i]);
+      }
+      arcDiscovery.setClusters(clusterSet);
+    }
+    
+    if(useInfoSystem){
+      // Use information system
+      // Use information system to find clusters
+      arcDiscovery.addGIIS("ldap://index4.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+      arcDiscovery.addGIIS("ldap://index1.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+      arcDiscovery.addGIIS("ldap://index2.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+      arcDiscovery.addGIIS("ldap://index3.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+      GridPilot.splash.show("Discovering NG ARC resources...");
+      arcDiscovery.discoverAll();
+      Set clusterSet = arcDiscovery.getClusters();
+      clusters = new String[clusterSet.size()];
+      for(int i=0; i<clusterSet.size(); ++i){
+        clusters[i]= clusterSet.toArray()[i].toString();
+      }
+      GridPilot.splash.show("Finding authorized NG ARC resources...");
+      resources = findAuthorizedResourcesFromIS();
+      ngSubmission = new NGSubmission(csName, resources);
+    }
+    else{
+      ngSubmission = new NGSubmission(csName, clusters);
+    }
+    
+    Debug.debug("Clusters: "+Util.arrayToString(clusters), 2);
+
   }
   
   /*
@@ -344,88 +389,115 @@ public class NGComputingSystem implements ComputingSystem{
   }
 
   public String getFullStatus(JobInfo job){
-    // TODO: use information system
-    ARCGridFTPJob gridJob;
-    try{
-      Debug.debug("Getting " + job.getJobId(), 3);
-      gridJob = getGridJob(job);
-
-    }
-    catch(Exception ioe){
-      error = "Exception during job " + job.getName() + " getFullStatus :\n" +
-      "\tException\t: " + ioe.getMessage();
-      logFile.addMessage(error, ioe);
-      return ioe.getMessage();
-    }
+    
+    String comment = "";
+    String queue = "";
+    String queueRank = "";
+    String submissionTime = "";
+    String completionTime = "";
+    String proxyExpirationTime = "";
     
     String status = "";
-    try{
-      //status = gridJob.state();
-      status = gridJob.getOutputFile("log/status");
-      /* remove leading whitespace */
-      status = status.replaceAll("^\\s+", "");
-      /* remove trailing whitespace */
-      status = status.replaceAll("\\s+$", "");      
-
-    }
-    catch(Exception ioe){
-      error = "Exception during job " + job.getName() + " getFullStatus :\n" +
-      "\tException\t: " + ioe.getMessage();
-      Debug.debug(error, 2);
-      status = "";
-    }
-    
     String input = "";
-    try{
-      input = gridJob.getOutputFile("log/input");
-      input = input.replaceAll("^\\s+", "");
-      input = input.replaceAll("\\s+$", "");      
-      input = input.replaceAll("\\n", " ");
-    }
-    catch(Exception ioe){
-      error = "Exception during job " + job.getName() + " getFullStatus :\n" +
-      "\tException\t: " + ioe.getMessage();
-      Debug.debug(error, 2);
-      input = "";
-    }
-    
     String output = "";
-    try{
-      output = gridJob.getOutputFile("log/output");
-      output = output.replaceAll("^\\s+", "");
-      output = output.replaceAll("\\s+$", "");      
-      output = output.replaceAll("\\n", " ");
-    }
-    catch(Exception ioe){
-      error = "Exception during job " + job.getName() + " getFullStatus :\n" +
-      "\tException\t: " + ioe.getMessage();
-      Debug.debug(error, 2);
-      output = "";
-    }
-    
     String errors = "";
-    try{
-      errors = gridJob.getOutputFile("log/failed");
+    String lrmsStatus = "";
+    
+    if(useInfoSystem){
+      Debug.debug("Using information system", 3);
+      try{
+        ARCJob arcJob = getJobFromIS(job);
+        status = arcJob.getStatus();
+        queue = arcJob.getQueue();
+        queueRank = Integer.toString(arcJob.getQueueRank());
+        comment = arcJob.getComment();
+        errors = arcJob.getErrors();
+        submissionTime = arcJob.getSubmissionTime();
+        completionTime = arcJob.getCompletionTime();
+        proxyExpirationTime = arcJob.getProxyExpirationTime();
+      }
+      catch(ARCGridFTPJobException e){
+        e.printStackTrace();
+      }
     }
-    catch(Exception ioe){
-      error = "Exception during job " + job.getName() + " getFullStatus :\n" +
-      "\tException\t: " + ioe.getMessage();
-      Debug.debug(error, 2);
-      errors = "";
+    else{
+      ARCGridFTPJob gridJob;
+      try{
+        Debug.debug("Getting " + job.getJobId(), 3);
+        gridJob = getGridJob(job);
+
+      }
+      catch(Exception ioe){
+        error = "Exception during job " + job.getName() + " getFullStatus :\n" +
+        "\tException\t: " + ioe.getMessage();
+        logFile.addMessage(error, ioe);
+        return ioe.getMessage();
+      }
+      
+      try{
+        //status = gridJob.state();
+        status = gridJob.getOutputFile("log/status");
+        /* remove leading whitespace */
+        status = status.replaceAll("^\\s+", "");
+        /* remove trailing whitespace */
+        status = status.replaceAll("\\s+$", "");      
+
+      }
+      catch(Exception ioe){
+        error = "Exception during job " + job.getName() + " getFullStatus :\n" +
+        "\tException\t: " + ioe.getMessage();
+        Debug.debug(error, 2);
+        status = "";
+      }
+      
+      try{
+        input = gridJob.getOutputFile("log/input");
+        input = input.replaceAll("^\\s+", "");
+        input = input.replaceAll("\\s+$", "");      
+        input = input.replaceAll("\\n", " ");
+      }
+      catch(Exception ioe){
+        error = "Exception during job " + job.getName() + " getFullStatus :\n" +
+        "\tException\t: " + ioe.getMessage();
+        Debug.debug(error, 2);
+        input = "";
+      }
+      
+      try{
+        output = gridJob.getOutputFile("log/output");
+        output = output.replaceAll("^\\s+", "");
+        output = output.replaceAll("\\s+$", "");      
+        output = output.replaceAll("\\n", " ");
+      }
+      catch(Exception ioe){
+        error = "Exception during job " + job.getName() + " getFullStatus :\n" +
+        "\tException\t: " + ioe.getMessage();
+        Debug.debug(error, 2);
+        output = "";
+      }
+      
+      try{
+        errors = gridJob.getOutputFile("log/failed");
+      }
+      catch(Exception ioe){
+        error = "Exception during job " + job.getName() + " getFullStatus :\n" +
+        "\tException\t: " + ioe.getMessage();
+        Debug.debug(error, 2);
+        errors = "";
+      }
+      
+      try{
+        lrmsStatus = gridJob.getOutputFile("log/local");
+        lrmsStatus = lrmsStatus.replaceAll("=", ": ");
+      }
+      catch(Exception ioe){
+        error = "Exception during job " + job.getName() + " getFullStatus :\n" +
+        "\tException\t: " + ioe.getMessage();
+        Debug.debug(error, 3);
+        lrmsStatus = "";
+      }
     }
     
-    String lrmsStatus = "";
-    try{
-      lrmsStatus = gridJob.getOutputFile("log/local");
-      lrmsStatus = lrmsStatus.replaceAll("=", ": ");
-    }
-    catch(Exception ioe){
-      error = "Exception during job " + job.getName() + " getFullStatus :\n" +
-      "\tException\t: " + ioe.getMessage();
-      Debug.debug(error, 3);
-      lrmsStatus = "";
-    }
-
     String result = "";
     
     if(status!=null && !status.equals("")){
@@ -443,6 +515,26 @@ public class NGComputingSystem implements ComputingSystem{
     if(lrmsStatus!=null && !lrmsStatus.equals("")){
       result += lrmsStatus;
     }
+    
+    if(comment!=null && !comment.equals("")){
+      result += "Comment: "+comment+"\n";
+    }
+    if(queue!=null && !queue.equals("")){
+      result += "Queue: "+queue+"\n";
+    }
+    if(queueRank!=null && !queueRank.equals("")){
+      result += "Queue rank: "+queueRank+"\n";
+    }
+    if(submissionTime!=null && !submissionTime.equals("")){
+      result += "Submission time: "+submissionTime+"\n";
+    }
+    if(completionTime!=null && !completionTime.equals("")){
+      result += "Completion time: "+completionTime+"\n";
+    }
+    if(proxyExpirationTime!=null && !proxyExpirationTime.equals("")){
+      result += "Proxy expiration time: "+proxyExpirationTime+"\n";
+    }
+
     return result;
   }
 
@@ -451,6 +543,7 @@ public class NGComputingSystem implements ComputingSystem{
     String stdOutFile = job.getStdOut();
     String stdErrFile = job.getStdErr();
 
+    // move existing files out of the way
     if(stdOutFile!=null && !stdOutFile.equals("") &&
         LocalShellMgr.existsFile(stdOutFile)){
       LocalShellMgr.moveFile(stdOutFile, stdOutFile+".bk");
@@ -460,6 +553,7 @@ public class NGComputingSystem implements ComputingSystem{
       LocalShellMgr.moveFile(stdErrFile, stdErrFile+".bk");
     }
     
+    // if retrieval of files fails, move old files back in place
     if(!syncCurrentOutputs(job)){
       try{
         LocalShellMgr.deleteFile(stdOutFile);
@@ -486,7 +580,7 @@ public class NGComputingSystem implements ComputingSystem{
     String [] res = new String[2];
 
     if(stdOutFile!=null && !stdOutFile.equals("")){
-      // get stdout
+      // read stdout
       try{
         res[0] = LocalShellMgr.readFile(stdOutFile);
        }
@@ -499,7 +593,7 @@ public class NGComputingSystem implements ComputingSystem{
        }
     }
     if(stdErrFile!=null && !stdErrFile.equals("")){
-      // get stderr
+      // read stderr
       try{
         res[1] = LocalShellMgr.readFile(stdErrFile);
        }
@@ -514,50 +608,158 @@ public class NGComputingSystem implements ComputingSystem{
     return res;
   }
   
-  // Copy stdout+stderr to local files
-  public boolean syncCurrentOutputs(JobInfo job){
-    
+  public ARCJob getJobFromIS(JobInfo job) throws ARCGridFTPJobException{
+    Set tmpClusters = arcDiscovery.getClusters();
+    Set jobClusters = new HashSet();
+    String submissionHost;
+    try{
+      submissionHost = (new GlobusURL(job.getJobId())).getHost();
+    }
+    catch(MalformedURLException e){
+      error = "ERROR: host could not be parsed from "+job.getJobId();
+      Debug.debug(error, 1);
+      e.printStackTrace();
+      throw new ARCGridFTPJobException(error);
+    }
+    if(!submissionHost.startsWith("ldap://")){
+      jobClusters.add("ldap://"+submissionHost+
+          ":2135/nordugrid-cluster-name="+submissionHost+",Mds-Vo-name=local,o=grid");
+    }
+    else{
+      jobClusters.add(submissionHost);
+    }
+    arcDiscovery.setClusters(jobClusters);
+    ARCJob [] allJobs = findCurrentJobsFromIS();
+    HashSet allJobIds = new HashSet();
+    arcDiscovery.setClusters(tmpClusters);
+    for(int i=0; i<allJobs.length; ++i){
+      Debug.debug("found job "+allJobs[i].getGlobalId(), 3);
+      if(allJobs[i].getGlobalId().equalsIgnoreCase(job.getJobId())){
+        return allJobs[i];
+      }
+      allJobIds.add(allJobs[i].getGlobalId());
+    }
+    throw new ARCGridFTPJobException("No job found matching "+job.getJobId()+
+        " The following jobs found: "+Util.arrayToString(allJobIds.toArray()));
+  }
+  
+  public ARCJob [] findCurrentJobsFromIS(){
     StatusBar statusBar = GridPilot.getClassMgr().getStatusBar();
 
-    if(arcDiscover.getClusters()==null || arcDiscover.getClusters().size()==0){
-      statusBar.setLabel("Discovering resources, please wait...");
-      arcDiscover.discoverAll();
-      statusBar.setLabel("Discovering resources done");
-    }
     long start = System.currentTimeMillis();
     long limit = 10000;
     long offset = 2000; // some +- coefficient
-    Collection foundResources = null;
+    Collection foundJobs = null;
+    HashSet foundJobIDs = new HashSet();
     try{
-      statusBar.setLabel("Finding jobs, please wait...");
-      foundResources = arcDiscover.findUserJobs(
-          job.getUser(), 20, limit);
+      statusBar.setLabel("Finding jobs for "+getUserInfo(csName)+ ", please wait...");
+      Debug.debug("Finding jobs for "+getUserInfo(csName)+ ", please wait...", 3);
+      foundJobs = arcDiscovery.findUserJobs(getUserInfo(csName), 20, limit);
+      HashSet result = null;
+      Object itObj = null;
+      for(Iterator it=foundJobs.iterator(); it.hasNext(); ){
+        itObj = it.next();
+        if(((TaskResult) itObj).getResult()==null){
+          continue;
+        }
+        if(((TaskResult) itObj).getResult().getClass()==String.class){
+          // Failed to connect to server message. Just ignore.
+          continue;
+        }
+        result = (HashSet) ((TaskResult) itObj).getResult();
+        foundJobIDs.addAll(result);
+      }
       statusBar.setLabel("Finding jobs done");
     }
     catch(InterruptedException e){
       Debug.debug("User interrupt of job checking!", 2);
-      return false;
+    }
+    long end = System.currentTimeMillis();
+    if((end - start) < limit + offset){
+      Debug.debug("WARNING: failed to stay within time limit of "+limit/1000+" seconds. "+
+          (end - start)/1000, 1);
+    }
+    if(foundJobs.size()==0){
+      error = "WARNING: failed to find authorized queues.";
+      statusBar.setLabel(error);
+      Debug.debug(error, 1);
+      logFile.addMessage(error + "\n\tDN\t: " + getUserInfo(csName));
+    }
+    ARCJob [] returnArray = new ARCJob [foundJobIDs.size()];
+    int i = 0;
+    Object itObj;
+    for(Iterator it=foundJobIDs.iterator(); it.hasNext(); ){
+      itObj = it.next();
+      returnArray[i] = ((ARCJob) itObj);
+      ++i;
+    }
+    return returnArray;
+  }
+  
+  public ARCResource [] findAuthorizedResourcesFromIS(){
+    StatusBar statusBar = GridPilot.getClassMgr().getStatusBar();
+    long start = System.currentTimeMillis();
+    long limit = 10000;
+    long offset = 2000; // some +- coefficient
+    Collection foundResources = null;
+    ARCResource [] resourcesArray = null;
+    try{
+      statusBar.setLabel("Finding resources, please wait...");
+      foundResources = arcDiscovery.findAuthorizedResources(
+          getUserInfo(csName), 20, limit);
+      Object itObj = null;
+      HashSet tmpRes = null;
+      HashSet resourcesSet = new HashSet();
+      for(Iterator it=foundResources.iterator(); it.hasNext(); ){
+        itObj = it.next();
+        if((((TaskResult) itObj).getResult())!=null &&
+            (((TaskResult) itObj).getResult()).getClass().equals(HashSet.class)){
+          tmpRes = (HashSet) ((TaskResult) itObj).getResult();
+          if(tmpRes.size()>0){
+            Debug.debug("Found resource : " +
+                ((TaskResult) itObj).getWorkDescription() +
+                ((TaskResult) itObj).getComment() +
+                (((TaskResult) itObj).getResult()).getClass(), 3);
+            resourcesSet.add(tmpRes);
+            Debug.debug("resource: "+Util.arrayToString(tmpRes.toArray()), 3);
+          }
+        }
+      }
+      resourcesArray = new ARCResource[resourcesSet.size()];
+      int i = 0;
+      for(Iterator it=resourcesSet.iterator(); it.hasNext(); ){
+        // TODO: construct ARCResource from HashSet
+        //resourcesArray[i] = (ARCResource) it.next();
+        ++i;
+      }
+      statusBar.setLabel("Finding resources done");
+    }
+    catch(InterruptedException e){
+      Debug.debug("User interrupt of resource checking!", 2);
     }
     long end = System.currentTimeMillis();
     if((end - start) < limit + offset){
       Debug.debug("WARNING: failed to stay within time limit of "+limit/1000+" seconds.", 1);
     }
     if(foundResources.size()==0){
-      statusBar.setLabel("Failed to find authorized queues!");
+      error = "WARNING: failed to find authorized queues.";
+      statusBar.setLabel(error);
       Debug.debug("WARNING: failed to find authorized queues.", 1);
-      logFile.addMessage("WARNING: failed to find authorized queues. :\n" +
-          "\tDN\t: " + job.getUser());
-      return true;
+      logFile.addMessage(error + "\n\tDN\t: "+getUserInfo(csName));
     }
-    
-    String dirName = runDir(job)+File.separator+job.getJobId();
+    return resourcesArray;
+  }
+
+  // Copy stdout+stderr to local files
+  public boolean syncCurrentOutputs(JobInfo job){
+        
     try{
       Debug.debug("Getting : " + job.getName() + ":" + job.getJobId(), 3);
-      Debug.debug("Description : " + ((TaskResult) foundResources.toArray()[0]).getWorkDescription(), 3);
       ARCGridFTPJob gridJob = getGridJob(job);
-      Debug.debug("Getting stdout of: " + job.getName() + ":" + job.getJobId(), 3);
+      String dirName = runDir(job);
+      Debug.debug("Downloading stdout/err of: " + job.getName() + ":" + job.getJobId()+
+          " to " + dirName, 3);
       gridJob.getOutputFile("stdout", dirName);
-      Debug.debug("Getting stderr of: " + job.getName() + ":" + job.getJobId(), 3);
       gridJob.getOutputFile("stderr", dirName);
     }
     catch(Exception ae){
