@@ -210,7 +210,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
             panel.add(pb, BorderLayout.NORTH);
             String content;
             try{
-              GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(job);
+              //GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(job);
               RandomAccessFile f = new RandomAccessFile(filesPaths[finalI], "r");
               byte [] b  = new byte [(int)f.length()];
               f.readFully(b);
