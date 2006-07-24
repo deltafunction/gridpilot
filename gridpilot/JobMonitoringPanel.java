@@ -83,8 +83,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   public JobMonitoringPanel() throws Exception{
     
     statusBar = GridPilot.getClassMgr().getStatusBar();
-    // TODO: get animation of progress bar to work
-    statusBar.setProgressBar(new JProgressBar());
     statusTable = GridPilot.getClassMgr().getStatusTable();
     
     statusUpdateControl = new StatusUpdateControl();
@@ -389,9 +387,9 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     mDB.add(miDBFailed);
     mDB.add(miDBAborted);
 
-    mShow.add(miShowOutput);
     mShow.add(miShowFullStatus);
     mShow.add(miShowInfo);
+    mShow.add(miShowOutput);
     mShow.add(miShowScripts);
 
 
@@ -570,12 +568,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       public void run(){
         JobInfo job = DatasetMgr.getJobAtRow(statusTable.getSelectedRow());
         String status = GridPilot.getClassMgr().getCSPluginMgr().getFullStatus(job);
-        MessagePane.showMessage(status, "Job status");
         statusBar.removeLabel();
         statusBar.stopAnimation();
+        MessagePane.showMessage(status, "Job status");
       }
     };
     statusBar.setLabel("Getting full status...");
+    statusBar.animateProgressBar();
     statusBar.setIndeterminateProgressBarToolTip("click here to stop");
     statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
