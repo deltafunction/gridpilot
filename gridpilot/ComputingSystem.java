@@ -208,4 +208,10 @@ public interface ComputingSystem{
    */
   public String getError(String csName);
 
+  /**
+   * Write entries in the runtimeEnviroments table and
+   * do necessary setup. <br>
+   */
+  public void setupRuntimeEnvironments(String csName);
+
 }
