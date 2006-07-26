@@ -24,7 +24,6 @@ import gridpilot.ConfigFile;
 import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
-import gridpilot.JobInfo;
 import gridpilot.Util;
 
 public class HSQLDBDatabase implements Database{
@@ -281,11 +280,6 @@ public class HSQLDBDatabase implements Database{
     return new DBResult();
   }
 
-  public String [] getDefVals(int datasetID, String user){
-    // nothing for now
-    return new String [] {""};
-  }
- 
   public synchronized String [] getFieldNames(String table){
     try{
       Debug.debug("getFieldNames for table "+table, 3);
@@ -373,7 +367,7 @@ public class HSQLDBDatabase implements Database{
     return Integer.parseInt(vec.get(0).toString());
   }
 
-  public String [] getTransJobParameters(int transformationID){
+  public String [] getTransformationJobParameters(int transformationID){
     String res = getTransformation(transformationID).getValue("arguments").toString(); 
     return Util.split(res);
   }
@@ -383,7 +377,7 @@ public class HSQLDBDatabase implements Database{
     return Util.split(outMap);
   }
 
-  public String [] getInputs(int jobDefID){
+  public String [] getJobDefInputFiles(int jobDefID){
     String inputs = getJobDefinition(jobDefID).getValue("inputFileNames").toString();
     return Util.split(inputs);
   }
@@ -405,16 +399,6 @@ public class HSQLDBDatabase implements Database{
       }
     }
     return name;
-  }
-
-  public String getJobDefInRemoteName(int jobDefinitionID, String par){
-    // nothing for now
-    return "";
-  }
-
-  public String getJobDefInLocalName(int jobDefinitionID, String par){
-    // nothing for now
-    return "";
   }
 
   public String getJobDefOutRemoteName(int jobDefID, String par){
@@ -441,16 +425,6 @@ public class HSQLDBDatabase implements Database{
 
   public String getStdErrFinalDest(int jobDefID){
     return getJobDefinition(jobDefID).getValue("stderrDest").toString();
-  }
-
-  public String getExtractScript(int jobDefinitionID){
-    // nothing for now
-    return "";
-  }
-
-  public String getValidationScript(int jobDefinitionID){
-    // nothing for now
-    return "";
   }
 
   public String getTransformationScript(int jobDefID){
@@ -486,7 +460,7 @@ public class HSQLDBDatabase implements Database{
     }
   }
 
-  public String getJobStatus(int jobDefinitionID){
+  public String getJobDefStatus(int jobDefinitionID){
     return getJobDefinition(jobDefinitionID).getValue("status").toString();
   }
 
@@ -500,9 +474,11 @@ public class HSQLDBDatabase implements Database{
     return Integer.parseInt(getDataset(datasetID).getValue("identifier").toString());
   }
 
- public String getPackInitText(String pack, String cluster){
-    // nothing for now
-    return "";
+ public String getRuntimeInitText(String runTimeEnvironmentName, String csName){
+    String initTxt = getRuntimeEnvironment(
+         getRuntimeEnvironmentID(runTimeEnvironmentName, csName)
+      ).getValue("initLines").toString();
+    return initTxt;
   }
 
   public synchronized int getJobDefTransformationID(int jobDefinitionID){
@@ -540,18 +516,6 @@ public class HSQLDBDatabase implements Database{
     return Integer.parseInt(transID);
   }
 
-  public String getUserLabel(){
-    // nothing for now
-    return "";
-  }
-
-  // panel creation methods
-  
-  public String [] getTransformationVersions(int datasetIdentifier){
-    // nothing for now
-    return new String [] {""};
-  }
-
   public boolean reserveJobDefinition(int jobDefID, String userInfo, String cs){
     boolean ret = updateJobDefinition(
         jobDefID,
@@ -560,11 +524,6 @@ public class HSQLDBDatabase implements Database{
         );
     clearCaches();
     return ret;
-  }
-
-  public boolean saveDefVals(int datasetID, String[] defvals, String user){
-    // nothing for now
-    return false;
   }
 
   public synchronized DBResult select(String selectRequest, String identifier){
@@ -1258,11 +1217,6 @@ public class HSQLDBDatabase implements Database{
     }
   }
   
-  public boolean createRunInfo(JobInfo jobInfo){
-    // TODO: implement
-    return true;
-  }
-  
   public synchronized boolean createDataset(String table,
       String [] fields, Object [] _values){
     Object [] values = new Object [_values.length];
@@ -1568,11 +1522,6 @@ public class HSQLDBDatabase implements Database{
     }
     Debug.debug("update exec: "+execok, 2);
     return execok;
-  }
-  
-  public boolean updateRunInfo(JobInfo jobInfo){
-    // TODO: implement
-    return true;
   }
   
   public synchronized boolean updateDataset(int datasetID, String [] fields,
@@ -1905,12 +1854,12 @@ public class HSQLDBDatabase implements Database{
     return ret;
   }
   
-  public String [] getTransOutputs(int transformationID){    
+  public String [] getTransformationOutputs(int transformationID){    
     String outputs = getTransformation(transformationID).getValue("outputFiles").toString();
     return Util.split(outputs);
   }
 
-  public String [] getTransInputs(int transformationID){    
+  public String [] getTransformationInputs(int transformationID){    
     String inputs = getTransformation(transformationID).getValue("inputFiles").toString();
     return Util.split(inputs);
   }

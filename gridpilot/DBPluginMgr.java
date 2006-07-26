@@ -242,12 +242,12 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getPackInitText(final String pack, final String cluster){
+  public String getRuntimeInitText(final String pack, final String cluster){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
         try{
-          res = db.getPackInitText(pack, cluster);
+          res = db.getRuntimeInitText(pack, cluster);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -346,62 +346,6 @@ public class DBPluginMgr implements Database{
     t.start();
   
     if(waitForThread(t, dbName, dbTimeOut, "getError")){
-      return t.getStringRes();
-    }
-    else{
-      return null;
-    }
-  }
-
-  public String getExtractScript(final int jobDefinitionID){
-    MyThread t = new MyThread(){
-      String res = null;
-      public void run(){
-        try{
-          res = db.getExtractScript(jobDefinitionID);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             jobDefinitionID, t);
-        }
-      }
-      public String getStringRes(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "getExtractScript")){
-      return t.getStringRes();
-    }
-    else{
-      return null;
-    }
-  }
-
-  public String getValidationScript(final int jobDefinitionID){
-    MyThread t = new MyThread(){
-      String res = null;
-      public void run(){
-        try{
-          res = db.getValidationScript(jobDefinitionID);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             jobDefinitionID, t);
-        }
-      }
-      public String getStringRes(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "getValidationScript")){
       return t.getStringRes();
     }
     else{
@@ -745,12 +689,12 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getJobStatus(final int jobDefinitionID){
+  public String getJobDefStatus(final int jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
         try{
-          res = db.getJobStatus(jobDefinitionID);
+          res = db.getJobDefStatus(jobDefinitionID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -822,33 +766,6 @@ public class DBPluginMgr implements Database{
     t.start();
   
     if(waitForThread(t, dbName, dbTimeOut, "getRunInfo")){
-      return t.getStringRes();
-    }
-    else{
-      return null;
-    }
-  }
-
-  public String getUserLabel(){
-    MyThread t = new MyThread(){
-      String res = null;
-      public void run(){
-        try{
-          res = db.getUserLabel();
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName, t);
-        }
-      }
-      public String getStringRes(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "getUserLabel")){
       return t.getStringRes();
     }
     else{
@@ -998,13 +915,13 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String [] getInputs(final int jobDefID){
+  public String [] getJobDefInputFiles(final int jobDefID){
     
       MyThread t = new MyThread(){
         String [] res = null;
         public void run(){
           try{
-            res = db.getInputs(jobDefID);
+            res = db.getJobDefInputFiles(jobDefID);
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1084,34 +1001,6 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getJobDefInLocalName(final int jobDefID, final String outpar){
-    MyThread t = new MyThread(){
-      String res = null;
-      public void run(){
-        try{
-          res = db.getJobDefInLocalName(jobDefID, outpar);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             jobDefID, t);
-        }
-      }
-      public String getStringRes(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefInLocalName")){
-      return t.getStringRes();
-    }
-    else{
-      return null;
-    }
-  }
-
   public String getJobDefOutRemoteName(final int jobDefinitionID, final String outpar){
     MyThread t = new MyThread(){
       String res = null;
@@ -1140,70 +1029,13 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getJobDefInRemoteName(final int jobDefinitionID, final String outpar){
-    MyThread t = new MyThread(){
-      String res = null;
-      public void run(){
-        try{
-          res = db.getJobDefInRemoteName(jobDefinitionID, outpar);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             jobDefinitionID, t);
-        }
-      }
-      public String getStringRes(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefInRemoteName")){
-      return t.getStringRes();
-    }
-    else{
-      return null;
-    }
-  }
-
-  public String [] getDefVals(final int datasetID, final String user){
+  public String [] getTransformationJobParameters(final int transformationID){
   
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getDefVals(datasetID, user);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             datasetID, t);
-        }
-      }
-      public String [] getString2Res(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "getDefVals")){
-      return t.getString2Res();
-    }
-    else{
-      return null;
-    }
-  }
-
-  public String [] getTransJobParameters(final int transformationID){
-  
-    MyThread t = new MyThread(){
-      String [] res = null;
-      public void run(){
-        try{
-          res = db.getTransJobParameters(transformationID);
+          res = db.getTransformationJobParameters(transformationID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1226,13 +1058,13 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String [] getTransOutputs(final int transformationID){
+  public String [] getTransformationOutputs(final int transformationID){
   
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getTransOutputs(transformationID);
+          res = db.getTransformationOutputs(transformationID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1255,13 +1087,13 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String [] getTransInputs(final int transformationID){
+  public String [] getTransformationInputs(final int transformationID){
     
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getTransInputs(transformationID);
+          res = db.getTransformationInputs(transformationID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1281,36 +1113,6 @@ public class DBPluginMgr implements Database{
     }
     else{
       return null;
-    }
-  }
-
-  public synchronized boolean saveDefVals(final int datasetID,
-      final String[] defvals, final String user){
-  
-    MyThread t = new MyThread(){
-      boolean res = false;
-      public void run(){
-        try{
-          res = db.saveDefVals(datasetID, defvals, user);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             datasetID, t);
-        }
-      }
-      public boolean getBoolRes(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "saveDefVals")){
-      return t.getBoolRes();
-    }
-    else{
-      return false;
     }
   }
 
@@ -1379,35 +1181,6 @@ public class DBPluginMgr implements Database{
       return false;
     }
   }
-
-  public synchronized boolean createRunInfo(final JobInfo jobInfo){
-    
-      MyThread t = new MyThread(){
-        boolean res = false;
-        public void run(){
-          try{
-            res = db.createRunInfo(jobInfo);
-          }
-          catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               jobInfo.toString(), t);
-          }
-        }
-        public boolean getBoolRes(){
-          return res;
-        }
-      };
-    
-      t.start();
-    
-      if(waitForThread(t, dbName, dbTimeOut, "createRunInfo")){
-        return t.getBoolRes();
-      }
-      else{
-        return false;
-      }
-    }
 
   // Here, in contrast to updateJobDef (in DBPluginMgr), because it is not needed by other
   // classes and it needs to update display.
@@ -1625,65 +1398,6 @@ public class DBPluginMgr implements Database{
       return false;
     }
   }
-
-  /*public synchronized boolean updateJobDefStatus(final int jobDefID,
-      final String status){
-  
-    MyThread t = new MyThread(){
-      boolean res = false;
-      public void run(){
-        try{
-          res = db.updateJobDefStatus(jobDefID, status);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             jobDefID, t);
-        }
-      }
-      public boolean getBoolRes(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(waitForThread(t, dbName, dbTimeOut, "updateJobDefStatus")){
-      return t.getBoolRes();
-    }
-    else{
-      return false;
-    }
-  }*/
-
-  public synchronized boolean updateRunInfo(final JobInfo jobInfo){
-    
-      MyThread t = new MyThread(){
-        boolean res = false;
-        public void run(){
-          try{
-            res = db.updateRunInfo(jobInfo);
-          }
-          catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               jobInfo.toString(), t);
-          }
-        }
-        public boolean getBoolRes(){
-          return res;
-        }
-      };
-    
-      t.start();
-    
-      if(waitForThread(t, dbName, dbTimeOut, "updateRunInfo")){
-        return t.getBoolRes();
-      }
-      else{
-        return false;
-      }
-    }
 
   public synchronized boolean updateDataset(final int taskID,
       final String [] fields, final String [] values){

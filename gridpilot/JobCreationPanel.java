@@ -153,8 +153,8 @@ public class JobCreationPanel extends CreateEditPanel{
     int transformationID = dbPluginMgr.getTransformationID(
         dbPluginMgr.getDatasetTransformationName(datasetIDs[0]),
         dbPluginMgr.getDatasetTransformationVersion(datasetIDs[0]));
-    jobParamNames = dbPluginMgr.getTransJobParameters(transformationID);
-    outputMapNames = dbPluginMgr.getTransOutputs(transformationID);
+    jobParamNames = dbPluginMgr.getTransformationJobParameters(transformationID);
+    outputMapNames = dbPluginMgr.getTransformationOutputs(transformationID);
 
     Debug.debug("Fixed job attributes: "+Util.arrayToString(cstAttributesNames), 3);
     if(!reuseTextFields || tcCstAttributes==null ||

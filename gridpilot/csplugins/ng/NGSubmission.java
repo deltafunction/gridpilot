@@ -72,7 +72,13 @@ public class NGSubmission{
                               " on " + csName);
       return false;
     }
-    String ngJobId = submit(job, xrslName);
+    String ngJobId = null;
+    try{
+      ngJobId = submit(job, xrslName);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
     if(ngJobId==null){
       job.setJobStatus(NGComputingSystem.NG_STATUS_ERROR);
       return false;
@@ -84,7 +90,7 @@ public class NGSubmission{
   }
 
   private String submit(final JobInfo job, final String xrslFileName) throws ARCDiscoveryException,
-  MalformedURLException{
+  MalformedURLException, ARCGridFTPJobException, IOException{
     String ngJobId = null;
     String xrsl = "";
     BufferedReader in = null;
@@ -96,7 +102,7 @@ public class NGSubmission{
     catch(IOException ioe){
       logFile.addMessage("IOException during submission of " + xrslFileName + ":\n" +
                          "\tException\t: " + ioe.getMessage(), ioe);
-      return null;
+      throw ioe;
     }
     try{
       String line;
@@ -113,12 +119,12 @@ public class NGSubmission{
     catch(IOException ioe){
       logFile.addMessage("IOException during submission of " + xrslFileName + ":\n" +
                          "\tException\t: " + ioe.getMessage(), ioe);
-      return null;
+      throw ioe;
     }
     String submissionHost = null;
     if(resources==null){
       // No information system.
-      // extremely simple brokering, but without the information system
+      // Extremely simple brokering, but without the information system
       // and only a list of hosts we cannot do much else.
       submissionHost = clusters[clusterIndex];
       if(clusterIndex>clusters.length-1){
@@ -139,6 +145,66 @@ public class NGSubmission{
       if(!submissionHost.startsWith("gsiftp://")){
         submissionHost = "gsiftp://"+submissionHost+":2811/jobs";
       }
+    }
+    else{
+      // Use information system
+      Matcher matcher = new SimpleMatcher();
+      for(int i=0; i<resources.length; ++i){
+        try{
+          // Very simple brokering.
+          // If resource is suitable and has free slots, the job
+          // is submitted, otherwise try next resource.
+          // If no free slots are found, submit to the resource
+          // with highest number of CPUs
+          if(matcher.isResourceSuitable(xrsl, resources[resourceIndex]) &&
+              resources[resourceIndex].getFreejobs()>0){
+            submissionHost = resources[resourceIndex].getClusterName();
+            break;
+          }
+          else{
+            if(resourceIndex>resources.length-1){
+              resourceIndex = 0;
+            }
+            else{
+              ++resourceIndex;
+            }
+          }
+        }
+        catch(ARCGridFTPJobException ae){
+          logFile.addMessage("ARCGridFTPJobException during submission of " + xrslFileName + ":\n" +
+              "\tException\t: " + ae.getMessage(), ae);
+          throw ae;
+        }
+      }
+      if(submissionHost==null){
+        // no free slots found, take best bet
+        ARCResource resource = null;
+        for(int i=0; i<resources.length; ++i){
+          if(matcher.isResourceSuitable(xrsl, resources[resourceIndex]) &&
+             (resource==null ||
+             resources[i].getMaxjobs()>resource.getMaxjobs() &&
+             resources[i].getTotalQueueCPUs()>resource.getTotalQueueCPUs())){
+            resource = resources[i];
+          }
+        }
+        submissionHost = resource.getClusterName();
+      }
+      if(submissionHost==null){
+        throw new ARCDiscoveryException("No suitable clusters found.");
+      }
+      // add gsiftp:// if not there
+      if(submissionHost.startsWith("ldap://")){
+        try{
+          submissionHost =(new GlobusURL(submissionHost)).getHost();
+        }
+        catch(MalformedURLException e){
+          throw new MalformedURLException("ERROR: host could not be parsed from "+submissionHost);
+        }
+      }
+      if(!submissionHost.startsWith("gsiftp://")){
+        submissionHost = "gsiftp://"+submissionHost+":2811/jobs";
+      }
+      Debug.debug("Submitting to "+ submissionHost, 2);
       try{
         ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost);
         GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
@@ -160,40 +226,8 @@ public class NGSubmission{
       }
       catch(ARCGridFTPJobException ae){
         logFile.addMessage("ARCGridFTPJobException during submission of " + xrslFileName + ":\n" +
-                           "\tException\t: " + ae.getMessage(), ae);
-        ae.printStackTrace();
-      }
-    }
-    else{
-      // Use information system
-      Matcher matcher = new SimpleMatcher();
-      try{
-        if(matcher.isResourceSuitable(xrsl, resources[resourceIndex])){
-          submissionHost = resources[resourceIndex].getClusterName();
-          if(resourceIndex>resources.length-1){
-            resourceIndex = 0;
-          }
-          else{
-            ++resourceIndex;
-          }
-          Debug.debug("Submitting to "+ submissionHost, 2);
-          ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost);
-          GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-          GlobusCredential globusCred = null;
-          if(credential instanceof GlobusGSSCredentialImpl){
-            globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-          }
-          gridJob.addProxy(globusCred);
-          gridJob.connect();
-          gridJob.submit(xrsl);
-          ngJobId = gridJob.getGlobalId();
-          Debug.debug("NGJobId: " + ngJobId, 3);
-        }
-      }
-      catch(ARCGridFTPJobException ae){
-        logFile.addMessage("ARCGridFTPJobException during submission of " + xrslFileName + ":\n" +
             "\tException\t: " + ae.getMessage(), ae);
-        ae.printStackTrace();
+        throw ae;
       }
     }
     return ngJobId;

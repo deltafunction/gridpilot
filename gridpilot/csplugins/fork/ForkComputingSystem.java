@@ -346,7 +346,7 @@ public class ForkComputingSystem implements ComputingSystem{
   private boolean getInputFiles(JobInfo job){
     Debug.debug("Getting input files for job " + job.getName(), 2);
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    String [] inputFiles = dbPluginMgr.getInputs(job.getJobDefId());
+    String [] inputFiles = dbPluginMgr.getJobDefInputFiles(job.getJobDefId());
     ShellMgr shell = null;
     try{
       shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);

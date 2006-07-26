@@ -1,7 +1,5 @@
 package gridpilot;
 
-//import java.util.HashMap;
-
 public interface Database{
     
   public static final int DEFINED = 1;
@@ -22,8 +20,11 @@ public interface Database{
   public DBResult select(String selectRequest, String identifier);
   
   // ####### RuntimeEnvironment table
+  public String [] getRuntimeEnvironments(int jobDefID);
   public DBResult getRuntimeEnvironments();
+  public int getRuntimeEnvironmentID(String name, String cs);
   public DBRecord getRuntimeEnvironment(int runtimeEnvironmentID);
+  public String getRuntimeInitText(String pack, String cluster);
   public boolean createRuntimeEnvironment(Object [] values);
   public boolean updateRuntimeEnvironment(int runtimeEnvironmentID, String [] fields, String [] values);
   public boolean deleteRuntimeEnvironment(int runtimeEnvironmentID);
@@ -37,7 +38,7 @@ public interface Database{
   public boolean deleteTransformation(int transformationID);
   public String [] getVersions(String transformationName);
   public String getTransformationRuntimeEnvironment(int transformationID);
-  public String [] getTransJobParameters(int transformationID);
+  public String [] getTransformationJobParameters(int transformationID);
   /**
    * the input file of a job script are defined by the fields
    * transformation.inputFiles (fully qualified names),
@@ -48,11 +49,10 @@ public interface Database{
    * jobDefinition.outFileMapping,
    * - generated using transformation.outputFiles, dataset.outputLocation
    */
-  public String [] getTransOutputs(int transformationID);
-  public String [] getTransInputs(int transformationID);
+  public String [] getTransformationOutputs(int transformationID);
+  public String [] getTransformationInputs(int transformationID);
 
   // ####### Dataset table
-  public DBResult getJobDefinitions(int datasetID, String [] fieldNames);
   public String getDatasetName(int datasetID);
   public int getDatasetID(String datasetName);
   public String getRunNumber(int datasetID);
@@ -64,6 +64,7 @@ public interface Database{
   public String getDatasetTransformationVersion(int datasetID);
 
   // ####### Job definition table
+  public DBResult getJobDefinitions(int datasetID, String [] fieldNames);
   public DBRecord getJobDefinition(int jobDefID);
   public boolean createJobDefinition(String [] values);
   public boolean createJobDefinition(String datasetName, String [] cstAttrNames,
@@ -74,47 +75,37 @@ public interface Database{
   // Here the following fields are assumed:
   // "jobDefID", "jobName", "stdOut", "stdErr"
   public boolean updateJobDefinition(int jobDefID, String [] values);
-  //public boolean updateJobDefStatus(int jobDefID, String status);
-  public String getJobStatus(int jobDefID);
+  public String getJobDefStatus(int jobDefID);
   public String getJobDefUserInfo(int jobDefID);
   public String getJobDefName(int jobDefID);
   public int getJobDefDatasetID(int jobDefID);
   public int getJobDefTransformationID(int jobDefID);
-  public String getExtractScript(int jobDefID);
-  public String getValidationScript(int jobDefID);
   public String getTransformationScript(int jobDefID);
   
   // ####### Job execution
-  public boolean reserveJobDefinition(int jobDefID, String UserName, String cs);
+  public String getRunInfo(int jobDefID, String key);
   public boolean cleanRunInfo(int jobDefID);
-  public String [] getRuntimeEnvironments(int jobDefID);
-  public int getRuntimeEnvironmentID(String name, String cs);
-  public String [] getTransformationArguments(int jobDefID);
-  public String [] getJobDefTransPars(int jobDefID);
+  public boolean reserveJobDefinition(int jobDefID, String UserName, String cs);
   public String [] getOutputMapping(int jobDefID);
-  public String [] getInputs(int jobDefID);
-  public String getJobDefInRemoteName(int jobDefID, String par);
-  public String getJobDefInLocalName(int jobDefID, String par);
+  public String [] getJobDefInputFiles(int jobDefID);
   public String getJobDefOutRemoteName(int jobDefID, String par);
   public String getJobDefOutLocalName(int jobDefID, String par);
   public String getStdOutFinalDest(int jobDefID);
   public String getStdErrFinalDest(int jobDefID);
-  public String getRunInfo(int jobDefID, String key);
+  public String [] getTransformationArguments(int jobDefID);
+  public String [] getJobDefTransPars(int jobDefID);
   
   // ####### Misc
-  public boolean createRunInfo(JobInfo jobInfo);
-  public boolean updateRunInfo(JobInfo jobInfo);
   public boolean setJobDefsField(int [] identifiers, String field, String value);
-  public String getUserLabel();
-  public boolean saveDefVals(int datasetID, String[] defvals, String user);
-  public String [] getDefVals(int datasetID, String user);
   public String [] getFieldNames(String table);
-  public String getPackInitText (String pack, String cluster);
   // The class providing the panel for job creation
   public String getJobDefCreationPanelClass();
   // The last database error reported
   public String getError();
 
+  
+  //-------------------------------------------------------------
+  //-------------------------------------------------------------
   
   public class DBRecord{
     public String [] fields = null;

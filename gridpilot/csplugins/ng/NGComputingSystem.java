@@ -69,6 +69,8 @@ public class NGComputingSystem implements ComputingSystem{
   private boolean useInfoSystem = false;
   private String [] clusters;
   private ARCResource [] resources;
+  
+  // TODO: fill in runtimeEnvironments automatically (and delete)
 
   public NGComputingSystem(String _csName){
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
@@ -417,7 +419,8 @@ public class NGComputingSystem implements ComputingSystem{
         proxyExpirationTime = arcJob.getProxyExpirationTime();
       }
       catch(ARCGridFTPJobException e){
-        e.printStackTrace();
+        //e.printStackTrace();
+        return e.getMessage();
       }
     }
     else{
@@ -639,8 +642,9 @@ public class NGComputingSystem implements ComputingSystem{
       }
       allJobIds.add(allJobs[i].getGlobalId());
     }
-    throw new ARCGridFTPJobException("No job found matching "+job.getJobId()+
-        " The following jobs found: "+Util.arrayToString(allJobIds.toArray()));
+    Debug.debug("No job found matching "+job.getJobId()+
+        " The following jobs found: "+Util.arrayToString(allJobIds.toArray()), 1);
+    throw new ARCGridFTPJobException("No job found matching "+job.getJobId());
   }
   
   public ARCJob [] findCurrentJobsFromIS(){
@@ -705,6 +709,7 @@ public class NGComputingSystem implements ComputingSystem{
     ARCResource [] resourcesArray = null;
     try{
       statusBar.setLabel("Finding resources, please wait...");
+      // a Collection of HashSets
       foundResources = arcDiscovery.findAuthorizedResources(
           getUserInfo(csName), 20, limit);
       Object itObj = null;
@@ -718,18 +723,18 @@ public class NGComputingSystem implements ComputingSystem{
           if(tmpRes.size()>0){
             Debug.debug("Found resource : " +
                 ((TaskResult) itObj).getWorkDescription() +
-                ((TaskResult) itObj).getComment() +
-                (((TaskResult) itObj).getResult()).getClass(), 3);
-            resourcesSet.add(tmpRes);
+                ((TaskResult) itObj).getComment(), 3);
+            // tmpRes is a set of ARCResources
+            // of length 1.
             Debug.debug("resource: "+Util.arrayToString(tmpRes.toArray()), 3);
+            resourcesSet.addAll(tmpRes);
           }
         }
       }
       resourcesArray = new ARCResource[resourcesSet.size()];
       int i = 0;
       for(Iterator it=resourcesSet.iterator(); it.hasNext(); ){
-        // TODO: construct ARCResource from HashSet
-        //resourcesArray[i] = (ARCResource) it.next();
+        resourcesArray[i] = (ARCResource) it.next();
         ++i;
       }
       statusBar.setLabel("Finding resources done");

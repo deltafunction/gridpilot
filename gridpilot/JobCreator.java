@@ -491,7 +491,7 @@ public class JobCreator{
     String outputFileNameStr = null;
     DBPluginMgr dbMgr = GridPilot.getClassMgr().getDBPluginMgr(
         db);
-    outputFileNameStr = dbMgr.getTransOutputs(
+    outputFileNameStr = dbMgr.getTransformationOutputs(
         dbPluginMgr.getTransformationID(
         dbPluginMgr.getDatasetTransformationName(datasetID),
         dbPluginMgr.getDatasetTransformationVersion(datasetID))).toString();
