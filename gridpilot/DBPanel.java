@@ -1526,7 +1526,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     int[] selectedJobIdentifiers = getSelectedIdentifiers();
     for(int i=0; i<selectedJobIdentifiers.length; ++i){
       if(DBPluginMgr.getStatusId(
-          dbPluginMgr.getJobStatus(selectedJobIdentifiers[i]))!=DBPluginMgr.DEFINED){
+          dbPluginMgr.getJobDefStatus(selectedJobIdentifiers[i]))!=DBPluginMgr.DEFINED){
         statusBar.setLabel("ERROR: all selected jobs must be submittable.");
         return;
       }
