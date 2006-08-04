@@ -20,6 +20,7 @@ import gridpilot.Debug;
 import gridpilot.JobInfo;
 import gridpilot.LogFile;
 import gridpilot.GridPilot;
+import gridpilot.Util;
 
 /**
  * Submission class for the NorduGrid plugin.
@@ -78,6 +79,8 @@ public class NGSubmission{
     }
     catch(Exception e){
       e.printStackTrace();
+      logFile.addMessage("Cannot submit job " + job.getName() +
+          " to " + csName, e);
     }
     if(ngJobId==null){
       job.setJobStatus(NGComputingSystem.NG_STATUS_ERROR);
@@ -112,7 +115,7 @@ public class NGSubmission{
         line = line.replaceAll("\\r", "");
         line = line.replaceAll("\\n", "");
         xrsl += line;
-        Debug.debug("XRSL: "+xrsl, 3);
+        Debug.debug("XRSL: "+line, 3);
       }
       in.close();
     }
@@ -180,14 +183,18 @@ public class NGSubmission{
         // no free slots found, take best bet
         ARCResource resource = null;
         for(int i=0; i<resources.length; ++i){
-          if(matcher.isResourceSuitable(xrsl, resources[resourceIndex]) &&
+          Debug.debug("Checking resource "+resources[i].getClusterName()+
+              " : "+Util.arrayToString(resources[i].getRuntimeenvironment().toArray()), 2);
+          if(matcher.isResourceSuitable(xrsl, resources[i]) &&
              (resource==null ||
              resources[i].getMaxjobs()>resource.getMaxjobs() &&
              resources[i].getTotalQueueCPUs()>resource.getTotalQueueCPUs())){
             resource = resources[i];
           }
         }
-        submissionHost = resource.getClusterName();
+        if(resource!=null){
+          submissionHost = resource.getClusterName();
+        }
       }
       if(submissionHost==null){
         throw new ARCDiscoveryException("No suitable clusters found.");
