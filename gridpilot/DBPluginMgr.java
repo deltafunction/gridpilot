@@ -242,17 +242,17 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getRuntimeInitText(final String pack, final String cluster){
+  public String getRuntimeInitText(final String runtimeEnvName, final String csName){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
         try{
-          res = db.getRuntimeInitText(pack, cluster);
+          res = db.getRuntimeInitText(runtimeEnvName, csName);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             pack + " " + cluster, t);
+                             runtimeEnvName + " " + csName, t);
         }
       }
       public String getStringRes(){
@@ -1182,8 +1182,6 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  // Here, in contrast to updateJobDef (in DBPluginMgr), because it is not needed by other
-  // classes and it needs to update display.
   public DBRecord createJobDef(String [] fields, Object [] values) throws Exception{
     
     String [] jobDefFieldNames = getFieldNames("jobDefinition");
