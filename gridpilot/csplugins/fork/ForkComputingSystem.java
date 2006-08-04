@@ -2,7 +2,9 @@ package gridpilot.csplugins.fork;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -10,7 +12,7 @@ import gridpilot.ComputingSystem;
 import gridpilot.DBPluginMgr;
 import gridpilot.Debug;
 import gridpilot.JobInfo;
-import gridpilot.LocalShellMgr;
+import gridpilot.LocalStaticShellMgr;
 import gridpilot.LogFile;
 import gridpilot.GridPilot;
 import gridpilot.ShellMgr;
@@ -26,18 +28,23 @@ public class ForkComputingSystem implements ComputingSystem{
     "STATUS_FAILED="+ComputingSystem.STATUS_FAILED};
 
   private LogFile logFile;
-  private String systemName;
-  private LocalShellMgr shellMgr;
+  private String csName;
+  private LocalStaticShellMgr shellMgr;
   private String workingDir;
   private String commandSuffix;
   private String defaultUser;
   private String error = "";
+  private String runtimeDirectory = null;
+  private String publicCertificate = null;
+  private String remoteDB = null;
+  private HashSet finalRuntimesLocal = null;
+  private HashSet finalRuntimesRemote = null;
 
-  public ForkComputingSystem(String _systemName){
-    systemName = _systemName;
+  public ForkComputingSystem(String _csName){
+    csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
-    shellMgr = new LocalShellMgr();
-    workingDir = GridPilot.getClassMgr().getConfigFile().getValue(systemName, "working directory");
+    shellMgr = new LocalStaticShellMgr();
+    workingDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "working directory");
     if(workingDir==null || workingDir.equals("")){
       workingDir = "~";
     }
@@ -51,11 +58,167 @@ public class ForkComputingSystem implements ComputingSystem{
     if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
       commandSuffix = ".bat";
     }
-    defaultUser = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "defaultUser");
+    defaultUser = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "default user");
+    runtimeDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
+        csName, "runtime directory");
+    publicCertificate = GridPilot.getClassMgr().getConfigFile().getValue(
+        csName, "public certificate");
+    remoteDB = GridPilot.getClassMgr().getConfigFile().getValue(
+        csName, "remote database");
+    
+    setupRuntimeEnvironments(csName);
   }
 
   private String runDir(JobInfo job){
     return workingDir +"/"+job.getName();
+  }
+  
+  /**
+   * By convention the runtime environments are defined by the
+   * scripts in the directory specified in the config file (runtime directory).
+   */
+  public void setupRuntimeEnvironments(String csName){
+    finalRuntimesLocal = new HashSet();
+    finalRuntimesRemote = new HashSet();
+    HashSet runtimes = LocalStaticShellMgr.listFilesRecursively(runtimeDirectory);
+    if(runtimes!=null && runtimes.size()>0){
+      File fil = null;
+      String hostName = null;
+      
+      String name = null;
+      String cert = null;
+      String url = null;
+      
+      DBPluginMgr localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
+        "HSQLDB");
+      
+      String [] runtimeEnvironmentFields =
+        localDBMgr.getFieldNames("runtimeEnvironment");
+      String [] rtVals = new String [runtimeEnvironmentFields.length];
+
+      for(Iterator it=runtimes.iterator(); it.hasNext();){
+        
+        name = null;
+        cert = null;
+        url = null;
+
+        fil = (File) it.next();
+        
+        // Get the name
+        Debug.debug("File found: "+fil.getName()+":"+fil.getAbsolutePath(), 3);
+        name = fil.getAbsolutePath().substring(
+            (new File(runtimeDirectory)).getAbsolutePath().length()+1).replaceAll(
+                "\\\\", "/");
+        
+        // Get the URL.
+        // The URL is only for allowing the submitter to
+        // download stdout/stderr
+        try{
+          hostName = InetAddress.getLocalHost().getCanonicalHostName();
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        // unqualified names are of no use
+        if(hostName.indexOf(".")<0){
+          hostName = null;
+        }
+        if(hostName==null){
+          try{
+            hostName = InetAddress.getLocalHost().getHostAddress();
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+        }
+        if(hostName==null){
+          try{
+            hostName = Util.getIPNumber();
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+        }
+        // if we cannot get the host name, try to get the IP address
+        if(hostName==null){
+          try{
+            hostName = Util.getIPAddress();
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+        }
+        if(hostName!=null){
+          url = "gsiftp://"+hostName+"/";
+        }
+        Debug.debug("url: "+url, 3);
+        
+        // get the certificate
+        try{
+          cert = LocalStaticShellMgr.readFile(publicCertificate);
+          // TODO: check if certificate includes private key
+          // and discard the key if so
+        }
+        catch(Exception e){
+          //e.printStackTrace();
+        }
+
+        if(name!=null && name.length()>0 &&
+            url!=null && url.length()>0){
+          // Write the entry in the local DB
+          for(int i=0; i<runtimeEnvironmentFields.length; ++i){
+            if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
+              rtVals[i] = name;
+            }
+            else if(runtimeEnvironmentFields[i].equalsIgnoreCase("url")){
+              rtVals[i] = url;
+            }
+            else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
+              rtVals[i] = csName;
+            }
+            else{
+              rtVals[i] = "";
+            }
+          }
+          try{
+            if(localDBMgr.createRuntimeEnvironment(rtVals)){
+              finalRuntimesLocal.add(name);
+            }
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+          if(cert!=null && cert.length()>0){
+            // Write the entry in the remote DB
+            for(int i=0; i<runtimeEnvironmentFields.length; ++i){
+              if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
+                rtVals[i] = "GPSS";
+              }
+              else if(runtimeEnvironmentFields[i].equalsIgnoreCase("certificate")){
+                rtVals[i] = cert;
+              }
+              else{
+                rtVals[i] = "";
+              }
+            }
+            try{
+              DBPluginMgr remoteDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
+                  remoteDB);
+              if(remoteDBMgr.createRuntimeEnvironment(rtVals)){
+                finalRuntimesRemote.add(name);
+              }
+            }
+            catch(Exception e){
+              Debug.debug("WARNING: could not access "+remoteDB+". Disabling" +
+                  "remote registration of runtime environments", 1);
+            }
+          }
+        }
+      }
+    }
+    else{
+      Debug.debug("WARNING: no runtime environment scripts found", 1);
+    }
   }
   
   /**
@@ -67,8 +230,8 @@ public class ForkComputingSystem implements ComputingSystem{
   public boolean submit(final JobInfo job){
     
     // create the run directory
-    if(!LocalShellMgr.existsFile(runDir(job))){
-      LocalShellMgr.mkdirs(runDir(job));
+    if(!LocalStaticShellMgr.existsFile(runDir(job))){
+      LocalStaticShellMgr.mkdirs(runDir(job));
     }
     
     final String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
@@ -77,7 +240,7 @@ public class ForkComputingSystem implements ComputingSystem{
     Debug.debug("Executing "+cmd, 2);
     job.setOutputs(stdoutFile, stderrFile);
     ForkScriptGenerator scriptGenerator =
-      new ForkScriptGenerator(systemName, runDir(job));
+      new ForkScriptGenerator(job.getCSName(), runDir(job));
 
     scriptGenerator.createWrapper(job, job.getName()+commandSuffix);
     
@@ -162,7 +325,7 @@ public class ForkComputingSystem implements ComputingSystem{
           remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputMapping[i]);
           remoteName = Util.clearFile(remoteName);
           Debug.debug(localName + ": -> " + remoteName, 2);
-          LocalShellMgr.copyFile(localName, remoteName);
+          LocalStaticShellMgr.copyFile(localName, remoteName);
         }
         catch(Exception e){
           job.setJobStatus("Error");
@@ -227,7 +390,7 @@ public class ForkComputingSystem implements ComputingSystem{
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
     try{
-      LocalShellMgr.deleteFile(finalStdOut);
+      LocalStaticShellMgr.deleteFile(finalStdOut);
     }
     catch(Exception ioe){
       error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
@@ -235,7 +398,7 @@ public class ForkComputingSystem implements ComputingSystem{
       logFile.addMessage(error, ioe);
     }
     try{
-      LocalShellMgr.deleteFile(finalStdErr);
+      LocalStaticShellMgr.deleteFile(finalStdErr);
     }
     catch(Exception ioe){
       error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
@@ -243,7 +406,7 @@ public class ForkComputingSystem implements ComputingSystem{
       logFile.addMessage(error, ioe);
     }
     try{
-      LocalShellMgr.deleteDir(new File(runDir));
+      LocalStaticShellMgr.deleteDir(new File(runDir));
     }
     catch(Exception ioe){
       error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
@@ -253,7 +416,63 @@ public class ForkComputingSystem implements ComputingSystem{
   }
 
   public void exit(){
-    return;
+    String runtimeName = null;
+    String initText = null;
+    int id = -1;
+    boolean ok = true;
+    DBPluginMgr localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
+       "HSQLDB");
+    for(Iterator it=finalRuntimesLocal.iterator(); it.hasNext();){
+      ok = true;
+      runtimeName = (String )it.next();
+      // Don't delete records with a non-empty initText.
+      // These can only have been created by hand.
+      initText = localDBMgr.getRuntimeInitText(runtimeName, csName);
+      if(initText!=null && !initText.equals("")){
+        continue;
+      }
+      id = localDBMgr.getRuntimeEnvironmentID(runtimeName, csName);
+      if(id>-1){
+        ok = localDBMgr.deleteRuntimeEnvironment(id);
+      }
+      else{
+        ok = false;
+      }
+      if(!ok){
+        Debug.debug("WARNING: could not delete runtime environment " +
+            runtimeName+
+            " from database "+
+            localDBMgr.getDBName(), 1);
+      }
+    }
+    if(remoteDB==null){
+      return;
+    }
+    DBPluginMgr remoteDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
+        remoteDB);
+    for(Iterator it=finalRuntimesRemote.iterator(); it.hasNext();){
+      ok = true;
+      runtimeName = (String )it.next();
+      // Don't delete records with a non-empty initText.
+      // These can only have been created by hand.
+      initText = remoteDBMgr.getRuntimeInitText(runtimeName, csName);
+      if(initText!=null && !initText.equals("")){
+        continue;
+      }
+      id = remoteDBMgr.getRuntimeEnvironmentID(runtimeName, csName);
+      if(id>-1){
+        ok = remoteDBMgr.deleteRuntimeEnvironment(id);
+      }
+      else{
+        ok = false;
+      }
+      if(!ok){
+        Debug.debug("WARNING: could not delete runtime environment " +
+            runtimeName+
+            " from database "+
+            remoteDBMgr.getDBName(), 1);
+      }
+    }
   }
 
   public String getFullStatus(JobInfo job){
@@ -271,10 +490,10 @@ public class ForkComputingSystem implements ComputingSystem{
 
   public String[] getCurrentOutputs(JobInfo job){
     try{
-      String stdOutText = LocalShellMgr.readFile(job.getStdOut());
+      String stdOutText = LocalStaticShellMgr.readFile(job.getStdOut());
       String stdErrText = "";
-      if(LocalShellMgr.existsFile(job.getStdErr())){
-        stdErrText = LocalShellMgr.readFile(job.getStdErr());
+      if(LocalStaticShellMgr.existsFile(job.getStdErr())){
+        stdErrText = LocalStaticShellMgr.readFile(job.getStdErr());
       }
       return new String [] {stdOutText, stdErrText};
     }
@@ -320,7 +539,7 @@ public class ForkComputingSystem implements ComputingSystem{
     String runDir = runDir(job);
     if(copyToFinalDest(job)){
       try{
-        LocalShellMgr.deleteDir(new File(runDir));
+        LocalStaticShellMgr.deleteDir(new File(runDir));
       }
       catch(Exception e){
         error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
