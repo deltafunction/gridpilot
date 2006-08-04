@@ -1,6 +1,6 @@
 package gridpilot;
 
-import gridpilot.Database.DBRecord;
+import gridpilot.DBRecord;
 
 /**
  * Each object of this represents a submitted job.
@@ -65,7 +65,7 @@ public class JobInfo extends DBRecord{
    * for these fields as it best can, and return them as an array.
    */
   /*public static String [] Fields= new String [] {
-      "name", "identifier", "computingResource",
+      "name", "identifier", "computingSystem",
       // worker node, filled in when checking
       "hostMachine",
       "userInfo", "db", "outTmp", "errTmp", "validationResult",
