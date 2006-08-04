@@ -29,7 +29,7 @@ import gridpilot.ConfigFile;
 import gridpilot.DBPluginMgr;
 import gridpilot.Debug;
 import gridpilot.JobInfo;
-import gridpilot.LocalShellMgr;
+import gridpilot.LocalStaticShellMgr;
 import gridpilot.LogFile;
 import gridpilot.GridPilot;
 import gridpilot.StatusBar;
@@ -69,9 +69,9 @@ public class NGComputingSystem implements ComputingSystem{
   private boolean useInfoSystem = false;
   private String [] clusters;
   private ARCResource [] resources;
+  private String runtimeDB = null;
+  private HashSet finalRuntimes = null;
   
-  // TODO: fill in runtimeEnvironments automatically (and delete)
-
   public NGComputingSystem(String _csName){
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     csName = _csName;
@@ -102,27 +102,43 @@ public class NGComputingSystem implements ComputingSystem{
 
     // restrict to these clusters
     if(clusters!=null && clusters.length!=0){
+      String cluster = null;
       Set clusterSet = new HashSet();
       for(int i=0; i<clusters.length; ++i){
-        Debug.debug("Adding cluster "+clusters[i], 3);
-        clusterSet.add(clusters[i]);
+        if(!clusters[i].startsWith("ldap://")){
+          cluster = "ldap://"+clusters[i]+
+          ":2135/nordugrid-cluster-name="+clusters[i]+",Mds-Vo-name=local,o=grid";
+        }
+        else{
+          cluster = clusters[i];
+        }
+        clusterSet.add(cluster);
+        Debug.debug("Adding cluster "+cluster, 3);
       }
       arcDiscovery.setClusters(clusterSet);
+    }
+    else{
+      // Use information system to find clusters
+      arcDiscovery.addGIIS("ldap://index4.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+      //arcDiscovery.addGIIS("ldap://index1.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+      //arcDiscovery.addGIIS("ldap://index2.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+      //arcDiscovery.addGIIS("ldap://index3.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
     }
     
     if(useInfoSystem){
       // Use information system
-      // Use information system to find clusters
-      arcDiscovery.addGIIS("ldap://index4.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
-      arcDiscovery.addGIIS("ldap://index1.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
-      arcDiscovery.addGIIS("ldap://index2.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
-      arcDiscovery.addGIIS("ldap://index3.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
       GridPilot.splash.show("Discovering NG ARC resources...");
       arcDiscovery.discoverAll();
       Set clusterSet = arcDiscovery.getClusters();
       clusters = new String[clusterSet.size()];
       for(int i=0; i<clusterSet.size(); ++i){
-        clusters[i]= clusterSet.toArray()[i].toString();
+        try{
+          clusters[i]= (new GlobusURL(clusterSet.toArray()[i].toString())).getHost();
+          Debug.debug("Added cluster "+clusters[i], 2);
+        }
+        catch(MalformedURLException mue){
+          mue.printStackTrace();
+        }
       }
       GridPilot.splash.show("Finding authorized NG ARC resources...");
       resources = findAuthorizedResourcesFromIS();
@@ -133,10 +149,79 @@ public class NGComputingSystem implements ComputingSystem{
     }
     
     Debug.debug("Clusters: "+Util.arrayToString(clusters), 2);
-
+    
+    try{
+      runtimeDB = GridPilot.getClassMgr().getConfigFile().getValue(
+          csName, "runtime database");
+    }
+    catch(Exception e){
+      Debug.debug("ERROR getting runtime database: "+e.getMessage(), 1);
+    }
+    if(runtimeDB==null || runtimeDB.equals("")){
+      runtimeDB = "HSQLDB";
+    }
+    
+    setupRuntimeEnvironments(csName);
+    
   }
   
-  /*
+  /**
+   * The runtime environments are simply found from the
+   * information system.
+   */
+  public void setupRuntimeEnvironments(String csName){
+    HashSet runtimes = null;
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(
+        runtimeDB);
+    finalRuntimes = new HashSet();
+    if(useInfoSystem){
+      Object rte = null;
+      for(int i=0; i<resources.length; ++i){
+        try{
+          runtimes = resources[i].getRuntimeenvironment();
+          for(Iterator it=runtimes.iterator(); it.hasNext();){
+            rte = it.next();
+            Debug.debug("Adding runtime environment: "+rte.toString()+":"+rte.getClass(), 3);
+            finalRuntimes.add(rte);
+          }
+        }
+        catch(Exception ae){
+          ae.printStackTrace();
+        }
+      }
+      String [] runtimeEnvironmentFields =
+        dbPluginMgr.getFieldNames("runtimeEnvironment");
+      String [] rtVals = new String [runtimeEnvironmentFields.length];
+      String name = null;
+      for(Iterator it=finalRuntimes.iterator(); it.hasNext();){       
+        name = (String) it.next();
+        for(int i=0; i<runtimeEnvironmentFields.length; ++i){
+          if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
+            rtVals[i] = name;
+          }
+          else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
+            rtVals[i] = csName;
+          }
+          else{
+            rtVals[i] = "";
+          }
+        }
+        try{
+          if(!dbPluginMgr.createRuntimeEnvironment(rtVals)){
+            finalRuntimes.remove(name);
+          }
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+      }
+    }
+    else{
+      // Can't do anything. The user will have to set up runtime environments by hand.
+    }
+  }
+
+    /*
    * Local directory to keep xrsl, shell script and temporary copies of stdin/stdout
    */
   protected String runDir(JobInfo job){
@@ -153,6 +238,8 @@ public class NGComputingSystem implements ComputingSystem{
     catch(Exception e){
       error = e.getMessage();
       e.printStackTrace();
+      logFile.addMessage("Exception during submission of " + job.getName() + ":\n" +
+          "\tException\t: " + e.getMessage(), e);
       return false;
     }
   }
@@ -280,17 +367,37 @@ public class NGComputingSystem implements ComputingSystem{
     
     GridFTPFileSystem gridftpFileSystem = GridPilot.getClassMgr().getGridFTPFileSystem();
     
+    // Clean job off grid. - just in case...
+    try{
+      ARCGridFTPJob gridJob = getGridJob(job);
+      gridJob.cancel();
+    }
+    catch(Exception e){
+      Debug.debug("Could not cancel job. Probably finished. "+
+          job.getName()+". "+e.getMessage(), 3);
+      e.printStackTrace();
+    }
+    try{
+      ARCGridFTPJob gridJob = getGridJob(job);
+      gridJob.clean();
+    }
+    catch(Exception e){
+      Debug.debug("Could not clean job. Probably already deleted. "+
+          job.getName()+". "+e.getMessage(), 3);
+      e.printStackTrace();
+    }
+    
     // Delete files that may have been copied to storage elements
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String[] outputMapping = dbPluginMgr.getOutputMapping(job.getJobDefId());
     String fileName;
-    for(int i=0; i<outputMapping.length; ++i){
-      fileName = Util.addFile(outputMapping[2*i+1]);
+    for(int i=0; i<outputMapping.length/2-1; ++i){
       try{
+        fileName = Util.addFile(outputMapping[2*i+1]);
         gridftpFileSystem.delete(fileName);
       }
       catch(Exception e){
-        error = "WARNING: could not delete "+fileName+". "+e.getMessage();
+        error = "WARNING: could not delete output file. "+e.getMessage();
         Debug.debug(error, 2);
       }
     }
@@ -318,11 +425,40 @@ public class NGComputingSystem implements ComputingSystem{
     
     // Delete the local run directory
     String runDir = runDir(job);
-    LocalShellMgr.deleteDir(new File(runDir));
+    LocalStaticShellMgr.deleteDir(new File(runDir));
 
   }
 
   public void exit(){
+    String runtimeName = null;
+    String initText = null;
+    int id = -1;
+    boolean ok = true;
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(
+        runtimeDB);
+    for(Iterator it=finalRuntimes.iterator(); it.hasNext();){
+      ok = true;
+      runtimeName = (String )it.next();
+      // Don't delete records with a non-empty initText.
+      // These can only have been created by hand.
+      initText = dbPluginMgr.getRuntimeInitText(runtimeName, csName);
+      if(initText!=null && !initText.equals("")){
+        continue;
+      }
+      id = dbPluginMgr.getRuntimeEnvironmentID(runtimeName, csName);
+      if(id>-1){
+        ok = dbPluginMgr.deleteRuntimeEnvironment(id);
+      }
+      else{
+        ok = false;
+      }
+      if(!ok){
+        Debug.debug("WARNING: could not delete runtime environment " +
+            runtimeName+
+            " from database "+
+            dbPluginMgr.getDBName(), 1);
+      }
+    }
   }
   
   private boolean getOutput(JobInfo job){
@@ -341,7 +477,7 @@ public class NGComputingSystem implements ComputingSystem{
       SimpleDateFormat dateFormat = new SimpleDateFormat(GridPilot.dateFormatString);
       dateFormat.setTimeZone(TimeZone.getDefault());
       String dateString = dateFormat.format(new Date());
-      LocalShellMgr.moveFile(dirName, dirName+"."+dateString);
+      LocalStaticShellMgr.moveFile(dirName, dirName+"."+dateString);
     }
     catch(Exception ioe){
       error = "Exception during job " + job.getName() + " get output :\n" +
@@ -367,7 +503,7 @@ public class NGComputingSystem implements ComputingSystem{
     // and move them one level up
     if(job.getStdOut()!=null && !job.getStdOut().equals("")){      
       try{
-        LocalShellMgr.copyFile(dirName+File.separator+"stdout", job.getStdOut());
+        LocalStaticShellMgr.copyFile(dirName+File.separator+"stdout", job.getStdOut());
       } 
       catch(Exception ioe){
         error = "Exception during job " + job.getName() + " getFullStatus :\n" +
@@ -378,7 +514,7 @@ public class NGComputingSystem implements ComputingSystem{
     }
     if(job.getStdErr() != null && !job.getStdErr().equals("")){
       try{
-        LocalShellMgr.copyFile(dirName+File.separator, job.getStdErr());
+        LocalStaticShellMgr.copyFile(dirName+File.separator, job.getStdErr());
       }
       catch(Exception ioe){
         error = "Exception during job " + job.getName() + " getOutput :\n" +
@@ -541,40 +677,40 @@ public class NGComputingSystem implements ComputingSystem{
     return result;
   }
 
-  public String [] getCurrentOutputs(JobInfo job){
+  public String [] getCurrentOutputs(JobInfo job) throws IOException{
     
     String stdOutFile = job.getStdOut();
     String stdErrFile = job.getStdErr();
 
     // move existing files out of the way
     if(stdOutFile!=null && !stdOutFile.equals("") &&
-        LocalShellMgr.existsFile(stdOutFile)){
-      LocalShellMgr.moveFile(stdOutFile, stdOutFile+".bk");
+        LocalStaticShellMgr.existsFile(stdOutFile)){
+      LocalStaticShellMgr.moveFile(stdOutFile, stdOutFile+".bk");
     }
     if(stdErrFile!=null && !stdErrFile.equals("") &&
-        LocalShellMgr.existsFile(stdErrFile)){
-      LocalShellMgr.moveFile(stdErrFile, stdErrFile+".bk");
+        LocalStaticShellMgr.existsFile(stdErrFile)){
+      LocalStaticShellMgr.moveFile(stdErrFile, stdErrFile+".bk");
     }
     
     // if retrieval of files fails, move old files back in place
     if(!syncCurrentOutputs(job)){
       try{
-        LocalShellMgr.deleteFile(stdOutFile);
+        LocalStaticShellMgr.deleteFile(stdOutFile);
       }
       catch(Exception e){
       }
       try{
-        LocalShellMgr.deleteFile(stdErrFile);
+        LocalStaticShellMgr.deleteFile(stdErrFile);
       }
       catch(Exception e){
       }
       try{
-        LocalShellMgr.moveFile(stdOutFile+".bk", stdOutFile);
+        LocalStaticShellMgr.moveFile(stdOutFile+".bk", stdOutFile);
       }
       catch(Exception e){
       }
       try{
-        LocalShellMgr.moveFile(stdErrFile+".bk", stdErrFile);
+        LocalStaticShellMgr.moveFile(stdErrFile+".bk", stdErrFile);
       }
       catch(Exception e){
       }
@@ -585,27 +721,28 @@ public class NGComputingSystem implements ComputingSystem{
     if(stdOutFile!=null && !stdOutFile.equals("")){
       // read stdout
       try{
-        res[0] = LocalShellMgr.readFile(stdOutFile);
+        res[0] = LocalStaticShellMgr.readFile(stdOutFile);
        }
-       catch(Exception ae){
-         error = "Exception during get stdout of " + job.getName() + ":" + job.getJobId() + ":\n" +
-         "\tException\t: " + ae.getMessage();
+       catch(IOException ae){
+         error = "Exception during getCurrentOutputs (stdout) for " + job.getName() + ":" + job.getJobId() + ":\n" +
+         "\nException: " + ae.getMessage();
+         res[0] = error;
+         GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: "+ae.getMessage());
          logFile.addMessage(error, ae);
-         ae.printStackTrace();
-         res[0] = "";
+         //throw ae;
        }
     }
     if(stdErrFile!=null && !stdErrFile.equals("")){
       // read stderr
       try{
-        res[1] = LocalShellMgr.readFile(stdErrFile);
+        res[1] = LocalStaticShellMgr.readFile(stdErrFile);
        }
        catch(Exception ae){
-         error = "Exception during get stderr of " + job.getName() + ":" + job.getJobId() + ":\n" +
-         "\tException\t: " + ae.getMessage();
-         logFile.addMessage(error, ae);
-         ae.printStackTrace();
-         res[1] = "";
+         error = "Exception during getCurrentOutputs (stderr) for " + job.getName() + ":" + job.getJobId() + ":\n" +
+         "\nException: " + ae.getMessage();
+         //logFile.addMessage(error, ae);
+         //ae.printStackTrace();
+         res[1] = error;
        }
     }
     return res;
@@ -631,9 +768,11 @@ public class NGComputingSystem implements ComputingSystem{
     else{
       jobClusters.add(submissionHost);
     }
+    // restrict to the one cluster holding the job
     arcDiscovery.setClusters(jobClusters);
     ARCJob [] allJobs = findCurrentJobsFromIS();
     HashSet allJobIds = new HashSet();
+    // return to including all clusters
     arcDiscovery.setClusters(tmpClusters);
     for(int i=0; i<allJobs.length; ++i){
       Debug.debug("found job "+allJobs[i].getGlobalId(), 3);
@@ -715,6 +854,7 @@ public class NGComputingSystem implements ComputingSystem{
       Object itObj = null;
       HashSet tmpRes = null;
       HashSet resourcesSet = new HashSet();
+      boolean clusterOK = false;
       for(Iterator it=foundResources.iterator(); it.hasNext(); ){
         itObj = it.next();
         if((((TaskResult) itObj).getResult())!=null &&
@@ -722,12 +862,27 @@ public class NGComputingSystem implements ComputingSystem{
           tmpRes = (HashSet) ((TaskResult) itObj).getResult();
           if(tmpRes.size()>0){
             Debug.debug("Found resource : " +
-                ((TaskResult) itObj).getWorkDescription() +
+                ((TaskResult) itObj).getWorkDescription() + " : " +
                 ((TaskResult) itObj).getComment(), 3);
             // tmpRes is a set of ARCResources
-            // of length 1.
-            Debug.debug("resource: "+Util.arrayToString(tmpRes.toArray()), 3);
-            resourcesSet.addAll(tmpRes);
+            ARCResource res = null;
+            for(Iterator ita=tmpRes.iterator(); ita.hasNext();){
+              res = (ARCResource) ita.next();
+              Debug.debug("resource: "+res, 3);
+              clusterOK = false;
+              for(int cl=0; cl<clusters.length; ++cl){
+                if(res.getClusterName().equalsIgnoreCase(clusters[cl])){
+                  clusterOK = true;
+                  break;
+                }
+              }
+              if(clusterOK){
+                resourcesSet.add(res);
+                for(Iterator ite=res.getRuntimeenvironment().iterator(); ite.hasNext();){
+                  Debug.debug("runtime environment: "+ite.next(), 3);
+                }
+              }
+            }
           }
         }
       }
@@ -770,8 +925,8 @@ public class NGComputingSystem implements ComputingSystem{
     catch(Exception ae){
       error = "Exception during get stdout of " + job.getName() + ":" + job.getJobId() + ":\n" +
       "\tException\t: " + ae.getMessage();
-      logFile.addMessage(error, ae);
-      ae.printStackTrace();
+      //logFile.addMessage(error, ae);
+      //ae.printStackTrace();
       return false;
     }
     return true;
@@ -817,7 +972,7 @@ public class NGComputingSystem implements ComputingSystem{
       try{
         // Delete the local run directory
         String runDir = runDir(job);
-        LocalShellMgr.deleteDir(new File(runDir));
+        LocalStaticShellMgr.deleteDir(new File(runDir));
       }
       catch(Exception e){
         error = e.getMessage();
@@ -861,7 +1016,7 @@ public class NGComputingSystem implements ComputingSystem{
     if(finalStdOut!=null && finalStdOut.trim().length()!=0){
       try{
         syncCurrentOutputs(job);
-        if(!LocalShellMgr.existsFile(job.getStdOut())){
+        if(!LocalStaticShellMgr.existsFile(job.getStdOut())){
           logFile.addMessage("Post processing : File " + job.getStdOut() + " doesn't exist");
           return false;
         }
@@ -892,7 +1047,7 @@ public class NGComputingSystem implements ComputingSystem{
 
     if(finalStdErr!=null && finalStdErr.trim().length()!=0){
       try{
-        if(!LocalShellMgr.existsFile(job.getStdErr())){
+        if(!LocalStaticShellMgr.existsFile(job.getStdErr())){
           logFile.addMessage("Post processing : File " + job.getStdErr() + " doesn't exist");
           return false;
         }
