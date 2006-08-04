@@ -47,6 +47,8 @@ public class CSPluginMgr implements ComputingSystem{
   private int getUserInfoTimeOut;
   /** time out in ms for <code>copyFileTimeOut</code> method */
   private int copyFileTimeOut;
+  /** time out in ms for <code>setupRuntimeEnvironments</code> method */
+  private int setupTimeOut;
   /** time out in ms used if neither the specific time out nor "default timeout" is
    * defined in configFile */
   private int defaultTimeOut = 60*1000;
@@ -113,7 +115,7 @@ public class CSPluginMgr implements ComputingSystem{
            new SecureShellMgr(host, user, password, remoteHome));
       }
       else if(host!=null && host.endsWith("localhost")){
-        shellMgr.put(csNames[i], new LocalShellMgr());
+        shellMgr.put(csNames[i], new LocalStaticShellMgr());
       }
       else{
         // no shell used by this plugin
@@ -447,7 +449,8 @@ public class CSPluginMgr implements ComputingSystem{
           try{
             ((ComputingSystem) cs.get(csNames[k])).exit();
             // TODO: is this necessary?
-            ((ShellMgr) shellMgr.get(csNames[k])).exit();
+            //    - No (already done by disconnect), and it causes exception on exit.
+            //((ShellMgr) shellMgr.get(csNames[k])).exit();
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -471,7 +474,17 @@ public class CSPluginMgr implements ComputingSystem{
   public String getFullStatus(final JobInfo job) {
     final String csName = job.getCSName();
     if(csName==null || csName.equals("")){
-      return null;
+      return "ERROR: no computing system";
+    }
+    boolean csFound = false;
+    for(int i=0; i<GridPilot.csNames.length; ++i){
+      if(GridPilot.csNames[i].equalsIgnoreCase(csName)){
+        csFound = true;
+        break;
+      }
+    }
+    if(!csFound){
+      return "Computing system "+csName+" not found. Try loading it.";
     }
 
     MyThread t = new MyThread(){
@@ -642,7 +655,7 @@ public class CSPluginMgr implements ComputingSystem{
       if(shellMgr.get(csNames[i]) instanceof SecureShellMgr){
         type = " (remote)";
       }
-      if(shellMgr.get(csNames[i]) instanceof LocalShellMgr){
+      if(shellMgr.get(csNames[i]) instanceof LocalStaticShellMgr){
         type = " (local)";
       }
       cb.addItem(csNames[i] + type);
@@ -683,9 +696,11 @@ public class CSPluginMgr implements ComputingSystem{
           res = ((ComputingSystem) cs.get(csName)).getUserInfo(csName);
         }
         catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+          /*logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + csName +
-                             " for getUserInfo", t);
+                             " for getUserInfo", t);*/
+          Debug.debug("Could not get user info. "+t.getMessage(), 1);
+          t.printStackTrace();
           res = null;
         }
       }
@@ -806,4 +821,30 @@ public class CSPluginMgr implements ComputingSystem{
     }
   }
   
+  /**
+   * Update the status of this job on the computing system specified by job.ComputingSystem
+   * @see ComputingSystem#updateStatus(Vector)
+   */
+  public void setupRuntimeEnvironments(final String csName){
+    if(csName==null || csName.equals("")){
+      return;
+    }
+    MyThread t = new MyThread(){
+      public void run(){
+        try{
+          ((ComputingSystem) cs.get(csName)).setupRuntimeEnvironments(csName);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + csName +
+                             " during setupRuntimeEnvironments", t);
+        }
+      }
+    };
+
+    t.start();
+
+    waitForThread(t, csName, setupTimeOut, "setupRuntimeEnvironments");
+  }
+
 }
