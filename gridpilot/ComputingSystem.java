@@ -1,5 +1,6 @@
 package gridpilot;
 
+import java.io.IOException;
 import java.util.Vector;
 
 /**
@@ -160,7 +161,7 @@ public interface ComputingSystem{
    *
    * @return String [] {'job' StdOut, 'job' StdErr}
    */
-  public String [] getCurrentOutputs(JobInfo job);
+  public String [] getCurrentOutputs(JobInfo job) throws IOException;
 
   /**
    * Gets scripts used for running this job.
