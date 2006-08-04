@@ -55,12 +55,13 @@ public class GlobalFrame extends GPFrame{
     
     container.setLayout(new BorderLayout());
     container.setPreferredSize(new Dimension(800, 600));
-    
+        
     GridPilot.getClassMgr().setStatusBar(new StatusBar());
     statusBar = GridPilot.getClassMgr().getStatusBar();
     container.add(statusBar, BorderLayout.SOUTH);
-
     statusBar.setLabel("GridPilot welcomes you!", 20);
+    
+    jobMonitoringPanel = new JobMonitoringPanel();
     
     container.add(tabbedPane, BorderLayout.CENTER);
     
@@ -484,9 +485,6 @@ public class GlobalFrame extends GPFrame{
 
   public void toggleMonitoringPanel(){
     try{
-      if(jobMonitoringPanel==null){
-        jobMonitoringPanel = new JobMonitoringPanel();
-      }
       if(pDialog==null){
         Debug.debug("Creating new job monitoring dialog", 2);
         pDialog = new CreateEditDialog(jobMonitoringPanel, false, false, false);
@@ -510,9 +508,6 @@ public class GlobalFrame extends GPFrame{
 
   public void showMonitoringPanel(){
     try{
-      if(jobMonitoringPanel==null){
-        jobMonitoringPanel = new JobMonitoringPanel();
-      }
       if(pDialog==null){
         Debug.debug("Creating new job monitoring dialog", 2);
         pDialog = new CreateEditDialog(jobMonitoringPanel, false, false, false);
