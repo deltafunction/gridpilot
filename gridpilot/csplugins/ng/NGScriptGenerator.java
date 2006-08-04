@@ -5,7 +5,7 @@ import java.io.*;
 import gridpilot.DBPluginMgr;
 import gridpilot.Debug;
 import gridpilot.JobInfo;
-import gridpilot.LocalShellMgr;
+import gridpilot.LocalStaticShellMgr;
 import gridpilot.GridPilot;
 import gridpilot.ScriptGenerator;
 import gridpilot.Util;
@@ -169,7 +169,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       // TODO: maxCPUTime maxDisk ftpThreads MinMemory
 
       try{
-        LocalShellMgr.writeFile(xrslFileName, bufXRSL.toString(), false);
+        LocalStaticShellMgr.writeFile(xrslFileName, bufXRSL.toString(), false);
       }
       catch(Exception fnfe) {
         System.err.print(fnfe.getMessage());
@@ -228,7 +228,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       writeLine(bufScript, "");
 
       try{
-        LocalShellMgr.writeFile(exeFileName, bufScript.toString(), false);
+        LocalStaticShellMgr.writeFile(exeFileName, bufScript.toString(), false);
       }
       catch(FileNotFoundException fnfe){
         System.err.print(fnfe.getMessage());
