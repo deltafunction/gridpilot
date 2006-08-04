@@ -1,8 +1,8 @@
 package gridpilot;
 
 import gridpilot.Table;
-import gridpilot.Database.DBResult;
-import gridpilot.Database.DBRecord;
+import gridpilot.DBResult;
+import gridpilot.DBRecord;
 import gridpilot.SelectPanel.SPanel;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
@@ -1124,6 +1124,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       if(i>0){
         msg += ",";
       }
+      if(i>7){
+        msg += "...";
+        break;
+      }
       msg += " " + ids[i];
     }
     msg += "?";
@@ -1346,6 +1350,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       if(i>0){
         msg += ",";
       }
+      if(i>7){
+        msg += "...";
+        break;
+      }
       msg += " " + ids[i];
     }
     msg += "?";
@@ -1399,6 +1407,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     for(int i=0; i<getSelectedIdentifiers().length; ++i){
       if(i>0){
         msg += ",";
+      }
+      if(i>7){
+        msg += "...";
+        break;
       }
       msg += " " + ids[i];
     }
