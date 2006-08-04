@@ -25,7 +25,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
   private Vector tcConstant = new Vector(); // contains all text components
   private static int TEXTFIELDWIDTH = 32;
   private DBPanel panel = null;
-  private Database.DBRecord pack = null;
+  private DBRecord pack = null;
   
   public JTextComponent [] tcCstAttributes;
   

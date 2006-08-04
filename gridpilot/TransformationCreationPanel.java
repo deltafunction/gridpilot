@@ -31,8 +31,8 @@ public class TransformationCreationPanel extends CreateEditPanel{
   private String runtimeEnvironmentName = null;
   private JComboBox cbRuntimeEnvironmentSelection;
   private GridBagConstraints ct = new GridBagConstraints();
-  private Database.DBRecord transformation = null;
-  Database.DBResult runtimeEnvironments = null;
+  private DBRecord transformation = null;
+  private DBResult runtimeEnvironments = null;
   private String [] transformationFields = null;
 
   public JTextComponent [] tcCstAttributes;

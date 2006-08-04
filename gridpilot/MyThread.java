@@ -2,8 +2,8 @@ package gridpilot;
 
 import java.util.Vector;
 
-import gridpilot.Database.DBResult;
-import gridpilot.Database.DBRecord;
+import gridpilot.DBResult;
+import gridpilot.DBRecord;
 
 class MyThread extends Thread{
 

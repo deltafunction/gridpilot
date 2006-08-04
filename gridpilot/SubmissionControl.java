@@ -8,7 +8,7 @@ import java.util.Iterator;
 import java.util.Random;
 import java.util.Vector;
 
-import gridpilot.Database.DBRecord;
+import gridpilot.DBRecord;
 
 /**
  * Controls the job submission. <p>
@@ -484,9 +484,12 @@ public class SubmissionControl{
                   "\tCSJobId = " + job.getJobId() + "\n" +
                   "\tStdOut = " + job.getStdOut() + "\n" +
                   "\tStdErr = " + job.getStdErr(), 2);
+      String jobUser = csPluginMgr.getUserInfo(job.getCSName());
+      Debug.debug("Setting job user :"+jobUser+":", 3);
+      job.setUser(jobUser);
       if(!dbPluginMgr.updateJobDefinition(
               job.getJobDefId(),
-              new String []{job.getJobId(), job.getName(),
+              new String []{jobUser, job.getJobId(), job.getName(),
               job.getStdOut(), job.getStdErr()})){
         logFile.addMessage("DB update(" + job.getJobDefId() + ", " +
                            job.getJobId() + ", " + job.getName() + ", " +
@@ -495,11 +498,6 @@ public class SubmissionControl{
       }
       statusTable.setValueAt(job.getJobId(), job.getTableRow(),
           DatasetMgr.FIELD_JOBID);
-      String jobUser = csPluginMgr.getUserInfo(job.getCSName());
-      Debug.debug("User: "+jobUser, 3);
-      Debug.debug("Setting job user :"+jobUser+":", 3);
-      job.setUser(jobUser);
-      Debug.debug("Setting job user "+job.getUser(), 3);
       statusTable.setValueAt(job.getUser(), job.getTableRow(),
           DatasetMgr.FIELD_USER);
       statusTable.updateSelection();
