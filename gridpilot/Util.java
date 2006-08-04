@@ -9,9 +9,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+//import java.net.Socket;
+//import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
 import java.security.cert.X509Certificate;
+import java.util.Enumeration;
 import java.util.StringTokenizer;
 
 import javax.swing.JComboBox;
@@ -593,7 +598,7 @@ public class Util{
       if(proxy.exists()){
         byte [] data = new byte[(int) proxy.length()];
         FileInputStream in = new FileInputStream(proxy);
-        Debug.debug("reading proxy", 3);
+        Debug.debug("reading proxy "+proxy.getAbsolutePath(), 3);
         in.read(data);
         in.close();
         credential = 
@@ -617,6 +622,8 @@ public class Util{
     }
     // if no valid proxy, init
     else{
+      Debug.debug("proxy not ok: "+credential+": "+
+          credential.getRemainingLifetime()+"<-->"+GridPilot.proxyTimeLeftLimit, 3);
       // Create new proxy
       Debug.debug("creating new proxy", 3);
       String [] password = null;
@@ -655,5 +662,49 @@ public class Util{
       throw new IOException("ERROR: could not initialize grid proxy");
     }
   }
+  
+  public static String getIPNumber(){ 
+    long [] localip = null; 
+    try{
+      Enumeration e = NetworkInterface.getNetworkInterfaces();
+      while(e.hasMoreElements()){ 
+        NetworkInterface netface = (NetworkInterface) e.nextElement(); 
+        Enumeration e2 = netface.getInetAddresses();
+        while (e2.hasMoreElements()){
+          InetAddress ip = (InetAddress) e2.nextElement(); 
+          if(!ip.isLoopbackAddress() && ip.getHostAddress().indexOf(":")==-1){ 
+            byte[] ipAddr = ip.getAddress();
+            localip[0]=(ipAddr[0]&0xFF);
+            localip[1]=(ipAddr[1]&0xFF);
+            localip[2]=(ipAddr[2]&0xFF);
+            localip[3]=(ipAddr[3]&0xFF);      
+          }
+        }
+      }
+    } 
+    catch (Exception e){
+      Debug.debug("ERROR: Could not get IP address", 1);
+    }
+    return Long.toString(localip[0])+"."+Long.toString(localip[1])+"."+
+      Long.toString(localip[2])+"."+Long.toString(localip[3]);
+  }  
+
+  public static String getIPAddress(){ 
+    // this should work from an applet.
+    String host = GridPilot.getClassMgr().getGridPilot().getDocumentBase().getHost();
+    /*String ipAddress = null;
+    int port = GridPilot.getClassMgr().getGridPilot().getDocumentBase().getPort();
+     try{
+       ipAddress = (new Socket(host, port)).getLocalAddress().getHostAddress();
+    }
+    catch(UnknownHostException e){
+      Debug.debug("ERROR: Could not get IP address. Unknown host. "+e.getMessage(), 1);
+    }
+    catch(IOException e){
+      Debug.debug("ERROR: Could not get IP address. "+e.getMessage(), 1);
+    }*/
+    return host;
+    //return ipAddress;
+  }  
 
 }
