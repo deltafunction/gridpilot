@@ -3,7 +3,7 @@ package gridpilot;
 import java.util.Vector;
 
 //import gridpilot.DBVector;
-import gridpilot.Database.DBRecord;
+import gridpilot.DBRecord;
 
 import javax.swing.JLabel;
 import javax.swing.table.AbstractTableModel;

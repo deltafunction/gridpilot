@@ -4,7 +4,7 @@ import java.util.*;
 
 import javax.swing.*;
 
-import gridpilot.Database.DBResult;
+import gridpilot.DBResult;
 
 import java.awt.*;
 

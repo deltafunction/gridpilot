@@ -1,8 +1,8 @@
 package gridpilot;
 
 import gridpilot.Debug;
-import gridpilot.DatasetMgr;
-import gridpilot.Database.DBRecord;
+//import gridpilot.DatasetMgr;
+import gridpilot.DBRecord;
 
 import javax.swing.*;
 import javax.swing.border.*;
@@ -52,7 +52,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
       Boolean bEditing){
     
     editing = bEditing.booleanValue();
-    datasetMgr=_datasetMgr;
+    datasetMgr = _datasetMgr;
     dbName = _dbName;
     panel = _panel;
     table = panel.getTable();
@@ -106,7 +106,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
   public void initGUI(){
 
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
-        Color.white,new Color(165, 163, 151)),datasetName));
+        Color.white, new Color(165, 163, 151)), datasetName));
     
     spAttributes.setPreferredSize(new Dimension(550, 500));
     spAttributes.setMinimumSize(new Dimension(550, 500));
@@ -171,7 +171,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
     
     Debug.debug("creating new JobDefCreator", 3);  
     new JobDefCreator(dbName,
-                      datasetMgr,
+                      //datasetMgr,
                       showResults,
                       tcConstant,
                       cstAttr,
