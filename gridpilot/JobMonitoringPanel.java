@@ -10,6 +10,9 @@ import java.util.Vector;
 
 import javax.swing.event.*;
 
+import gridpilot.DBRecord;
+import gridpilot.DBResult;
+
 /**
  * Shows a table with informations about runnings jobs
  *
@@ -515,25 +518,36 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    */
   private void showOutput(){
     Debug.debug("show outputs", 1);
-
+    
     final int selectedRow = statusTable.getSelectedRow();
     if(selectedRow==-1){
       return;
     }
     statusBar.setLabel("Waiting for outputs ...");
     statusBar.animateProgressBar();
+    ((JFrame) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
+        Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
     final Thread t = new Thread(){
       public void run(){
         JobInfo job = DatasetMgr.getJobAtRow(selectedRow);
         String [] outNames = new String [] {"stdout", "stderr"};
-        String [] outs = GridPilot.getClassMgr().getCSPluginMgr(
-            ).getCurrentOutputs(job);
+        String [] outs = null;
+        try{
+          outs = GridPilot.getClassMgr().getCSPluginMgr(
+          ).getCurrentOutputs(job);
+        }
+        catch(Exception e){
+          outs = new String [] {"Could not read stdout "+e.getMessage(),
+              "Could not read stdout "+e.getMessage()};
+        }
         if(job.getStdErr()==null){
           outNames = new String [] {"stdout"};
           outs = new String[] {outs[0]};
         }
-        statusBar.removeLabel();
+        //statusBar.removeLabel();
+        ((JFrame) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
+            Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         statusBar.stopAnimation();
 
         String message = "";
@@ -612,23 +626,118 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         statusBar.animateProgressBar();
         bLoadJobs.setEnabled(false);
         bLoadMyJobs.setEnabled(false);
-        statusTable.clearSelection();
-        DatasetMgr mgr = null;
+        if(statusTable.getRowCount()>0){
+          statusTable.selectAll();
+          statusTable.clearSelection();
+        }
+        //DatasetMgr mgr = null;
         try{
-          for(Iterator it = GridPilot.getClassMgr().getDatasetMgrs().iterator(); it.hasNext();){
-            mgr = ((DatasetMgr) it.next());
-            mgr.loadJobDefs(new int [] {ONLY_RUNNING_JOBS});
+          /*Vector datasetMgrs = GridPilot.getClassMgr().getDatasetMgrs();
+          if(datasetMgrs!=null && datasetMgrs.size()>0){
+            for(Iterator it = datasetMgrs.iterator(); it.hasNext();){
+              Debug.debug("getting DatasetMgr...", 3);
+              //mgr = ((DatasetMgr) it.next());
+              Debug.debug("loading jobs...", 3);
+              loadJobs(allJobs, new int [] {Database.SUBMITTED, Database.UNDECIDED,
+                  Database.UNEXPECTED, Database.FAILED});
+              showRows = bgView.getSelection().getMnemonic();
+              switch(showRows){
+                case ALL_JOBS:
+                  statusTable.showAllRows();
+                  break;
+                case ONLY_RUNNING_JOBS:
+                case ONLY_DONE_JOBS:
+                  showOnlyRows();
+                  break;
+                default:
+                  Debug.debug("WARNING: Selection choice doesn't exist : " + showRows, 1);
+                break;
+              }
+            }
+          }
+          else{
+            statusBar.setLabel("");
+          }*/
+          Debug.debug("loading jobs...", 3);
+          loadJobs(allJobs, new int [] {Database.SUBMITTED, Database.UNDECIDED,
+              Database.UNEXPECTED, Database.FAILED});
+          showRows = bgView.getSelection().getMnemonic();
+          switch(showRows){
+            case ALL_JOBS:
+              statusTable.showAllRows();
+              break;
+            case ONLY_RUNNING_JOBS:
+            case ONLY_DONE_JOBS:
+              showOnlyRows();
+              break;
+            default:
+              Debug.debug("WARNING: Selection choice doesn't exist : " + showRows, 1);
+            break;
           }
         }
         catch(Exception e){
-          Debug.debug("WARNING: failed to load jobs from "+mgr.dbName, 1);
+          Debug.debug("WARNING: failed to load jobs. "+e.getMessage(), 1);
           e.printStackTrace();
         }
         statusBar.stopAnimation();
+        statusBar.setLabel("");
         bLoadJobs.setEnabled(true);
         bLoadMyJobs.setEnabled(true);
       }
     }.start();
+  }
+
+  // Display jobs of a status from statusList on monitoring panel.
+  public static void loadJobs(boolean allJobs, int [] statusList){
+    
+    DBPluginMgr dbPluginMgr;
+    String [] shownFields;
+    String jobStatus = null;
+    String user = "";
+    String csName = "";
+    for(int ii=0; ii<GridPilot.dbs.length; ++ii){
+      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[ii]);
+      shownFields = dbPluginMgr.getFieldnames("jobDefinition");//dbPluginMgr.getDBDefFields("jobDefinition");
+      DBResult allJobDefinitions = 
+        dbPluginMgr.getJobDefinitions(
+            /*datasetID*/-1, shownFields);
+      for (int i=0; i<allJobDefinitions.fields.length; ++i){
+        Debug.debug(allJobDefinitions.fields[i] + " = " +
+            allJobDefinitions.getValue(0, allJobDefinitions.fields[i]), 3);
+      }
+      Debug.debug ("number of jobs for "+GridPilot.dbs[ii]+
+          ": "+allJobDefinitions.values.length, 2);
+
+      for(int i=0; i<allJobDefinitions.values.length; ++i){
+        user = null;
+        DBRecord job = new DBRecord(allJobDefinitions.fields,
+            allJobDefinitions.values[i]);
+        String idField = dbPluginMgr.getIdentifierField("jobDefinition");
+        Debug.debug("Checking:"+Util.arrayToString(job.values), 3);
+        int id = Integer.parseInt(job.getValue(idField).toString());
+        // if not showing all jobs and job not submitted by me, continue
+        csName = job.getValue("computingSystem").toString();
+        if(csName!=null){
+          user = GridPilot.getClassMgr().getCSPluginMgr().getUserInfo(csName);
+          Debug.debug("user: "+user, 3);
+          Debug.debug("userInfo: "+job.getValue("userInfo"), 3);
+        }
+        if(!allJobs &&
+            (user==null || !job.getValue("userInfo").toString().equalsIgnoreCase(user))){
+          continue;
+        }
+        // if status ok, add the job
+        for(int j=0; j<statusList.length; ++j){
+          Debug.debug("Getting status: "+idField+":"+id, 3);
+          jobStatus = dbPluginMgr.getJobDefStatus(id);
+          if(statusList[j]==DBPluginMgr.getStatusId(jobStatus)){
+            DatasetMgr mgr = GridPilot.getClassMgr().getDatasetMgr(GridPilot.dbs[ii], id);
+            mgr.addJobs(new int [] {id});
+            break;
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -700,7 +809,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private void setDBStatus(final int dbStatus){
     new Thread(){
       public void run(){
-        //jobControl.setDBStatus(statusTable.getSelectedRows(), dbStatus);
         Vector jobs = DatasetMgr.getJobsAtRows(statusTable.getSelectedRows());
         JobInfo job;
         DatasetMgr datasetMgr;
@@ -765,7 +873,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    * Removes all jobs from this status table.
    */
   public boolean clearTable(){
-    if(submissionControl.isSubmitting()){
+    if(submissionControl!=null && submissionControl.isSubmitting()){
       Debug.debug("cannot clear table during submission", 3);
       return false;
     }
