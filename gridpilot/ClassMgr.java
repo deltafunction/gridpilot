@@ -108,7 +108,7 @@ public class ClassMgr{
   }
 
   // This method creates a new DatasetMgr if there is
-  // none in the HashMap with keys dbName, taskID
+  // none in the HashMap with keys dbName, datasetID
   public DatasetMgr getDatasetMgr(String dbName, int datasetID){
     if(datasetMgrs==null){
       Debug.debug("datasetMgrs null", 3);
@@ -118,24 +118,27 @@ public class ClassMgr{
     }
     if(!((HashMap) datasetMgrs.get(dbName)).keySet().contains(Integer.toString(datasetID))){
       Debug.debug("Creating new DatasetMgr, "+datasetID+", in "+dbName, 3);
-      addTaskMgr(new DatasetMgr(dbName, datasetID));
+      addDatasetMgr(new DatasetMgr(dbName, datasetID));
     }
     return (DatasetMgr) ((HashMap) datasetMgrs.get(dbName)).get(Integer.toString(datasetID));
   }
   
   public Vector getDatasetMgrs(){
-    if(datasetMgrs==null){
-      Debug.debug("datasetMgrs null", 3);
+    Vector allDatasetMgrs = new Vector();
+    if(datasetMgrs==null || datasetMgrs.size()==0){
+      Debug.debug("NO datasetMgrs", 3);
     }
-    Vector allTaskMgrs = new Vector();
-    for(Iterator it=datasetMgrs.values().iterator(); it.hasNext();){
-      allTaskMgrs.addAll(((HashMap) it.next()).values());
+    else{
+      Debug.debug("getting datasetMgrs, "+datasetMgrs.size(), 3);
+      for(Iterator it=datasetMgrs.values().iterator(); it.hasNext();){
+        allDatasetMgrs.addAll(((HashMap) it.next()).values());
+      }
     }
-    return allTaskMgrs;
+    return allDatasetMgrs;
   }
   
   // The HashMap of HashMaps of tasks is kept here
-  public void addTaskMgr(DatasetMgr taskMgr){
+  public void addDatasetMgr(DatasetMgr taskMgr){
     if(datasetMgrs==null){
       Debug.debug("datasetMgrs null", 3);
       new Exception().printStackTrace();
@@ -175,7 +178,7 @@ public class ClassMgr{
   public LogFile getLogFile(){
     if(logFile==null){
       Debug.debug("logFile null", 3);
-      return new LogFile("");
+      setLogFile(new LogFile(""));
     }
     return logFile;
   }
@@ -255,7 +258,8 @@ public class ClassMgr{
   
   public SubmissionControl getSubmissionControl(){
     if(submissionControl==null){
-      Debug.debug("ERROR: submissionControl null", 1);
+      Debug.debug("submissionControl null, creating new", 1);
+      setSubmissionControl(new SubmissionControl());
       return null;
     }
     return submissionControl;
