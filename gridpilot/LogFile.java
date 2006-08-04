@@ -211,6 +211,8 @@ public class LogFile {
       MessagePane.showMessage(s, getMessageTypeName(type));
 
     Enumeration e = actionsOnMessages.elements();
+    Debug.debug("Adding message " +s+
+        " to "+Util.arrayToString(actionsOnMessages.toArray()), 3);
     while(e.hasMoreElements()){
       ((ActionOnMessage)e.nextElement()).newMessage(header, s,
           type!=INFORMATION_MESSAGE);
@@ -255,7 +257,10 @@ public class LogFile {
   }
 
   public void addActionOnMessage(ActionOnMessage aom){
-  if (this.isFake()) return;
+  if (this.isFake()){
+    Debug.debug("Fake log file, not adding "+aom.getClass(), 3);
+    return;
+  }
     actionsOnMessages.add(aom);
   }
 }

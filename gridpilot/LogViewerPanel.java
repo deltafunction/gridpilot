@@ -17,10 +17,12 @@ public class LogViewerPanel extends JTextPane{
   DefaultStyledDocument doc;
 
   public LogViewerPanel() {
+    Debug.debug("New LogViewerPanel", 3);
     doc = new DefaultStyledDocument();
     setDocument(doc);
     GridPilot.getClassMgr().getLogFile().addActionOnMessage(new ActionOnMessage() {
       public void newMessage(String head, String cont, boolean isError) {
+        Debug.debug("Adding message: "+cont, 3);
         addLogMessage(head, cont, isError);
       }
     });
