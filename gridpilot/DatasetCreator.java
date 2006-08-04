@@ -74,7 +74,7 @@ public class DatasetCreator{
       String datasetNameField = dbPluginMgr.getNameField("dataset");
       for(int i=0; i<datasetIDs.length; ++i){
         Debug.debug("Creating #"+datasetIDs[i], 2);
-        Database.DBRecord res = dbPluginMgr.getDataset(datasetIDs[i]);
+        DBRecord res = dbPluginMgr.getDataset(datasetIDs[i]);
         Debug.debug("Input records "+Util.arrayToString(res.fields), 2);
         Debug.debug("Input values "+Util.arrayToString(res.values), 2);
         clearAttrs.clear();        

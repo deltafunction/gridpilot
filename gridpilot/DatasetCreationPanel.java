@@ -1,7 +1,8 @@
 package gridpilot;
 
 import gridpilot.Debug;
-import gridpilot.Database.DBRecord;
+import gridpilot.DBRecord;
+import gridpilot.DBResult;
 
 import javax.swing.*;
 import javax.swing.border.*;
@@ -45,7 +46,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private JComboBox cbTransVersionSelection;
   private String targetDB = null;
   private DBRecord dataset = null;
-  private Database.DBResult transformations = null;
+  private DBResult transformations = null;
   private String [] datasetTransformationReference;
   private String [] datasetTransformationVersionReference;
   private JButton jbEditTrans = new JButton("view");
