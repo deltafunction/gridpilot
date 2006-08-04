@@ -22,6 +22,8 @@ import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.Util;
+import gridpilot.DBResult;
+import gridpilot.DBRecord;
 
 public class MySQLDatabase implements Database{
   
@@ -263,7 +265,7 @@ public class MySQLDatabase implements Database{
 
   public synchronized int getRuntimeEnvironmentID(String name, String cs){
     String req = "SELECT identifier from runtimeEnvironment where name = '"+name + "'"+
-    " AND computingResource = '"+cs+"'";
+    " AND computingSystem = '"+cs+"'";
     String id = null;
     Vector vec = new Vector();
     try{
@@ -447,7 +449,7 @@ public class MySQLDatabase implements Database{
   public boolean reserveJobDefinition(int jobDefID, String userInfo, String cs){
     boolean ret = updateJobDefinition(
         jobDefID,
-        new String [] {"status", "userInfo", "computingResource"},
+        new String [] {"status", "userInfo", "computingSystem"},
         new String [] {"Submitted", userInfo, cs}
         );
     clearCaches();
@@ -930,8 +932,10 @@ public class MySQLDatabase implements Database{
       }
       req += " "+fieldNames[i];
     }
-    req += " FROM jobDefinition where datasetName = '"+
-    getDatasetName(datasetID) + "'";
+    req += " FROM jobDefinition";
+    if(datasetID>-1){
+      req += " where datasetName = '"+getDatasetName(datasetID) + "'";
+    }
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{
@@ -944,7 +948,8 @@ public class MySQLDatabase implements Database{
           String val = "";
           for(int j=0; j<fieldNames.length; ++j){
             if(fieldname.equalsIgnoreCase(fieldNames[j])){
-              if(fieldname.endsWith("FK") || fieldname.endsWith("ID")){
+              if(fieldname.endsWith("FK") || fieldname.endsWith("ID") &&
+                  !fieldname.equalsIgnoreCase("jobID")){
                 int tmp = rset.getInt(fieldname);
                 val = Integer.toString(tmp);
               }
@@ -1349,7 +1354,7 @@ public class MySQLDatabase implements Database{
       String [] values){
     return updateJobDefinition(
         jobDefID,
-        new String [] {"jobID", "name", "outTmp", "errTmp"},
+        new String [] {"userInfo", "jobID", "name", "outTmp", "errTmp"},
         values
     );
   }
