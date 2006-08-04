@@ -1,9 +1,10 @@
 package gridpilot;
 
-import gridpilot.DatasetMgr;
+//import gridpilot.DatasetMgr;
 import java.util.*;
 import javax.swing.*;
 import java.awt.*;
+
 import gridpilot.dbplugins.proddb.ProdDBXmlNode;
 
 /**
@@ -13,7 +14,7 @@ import gridpilot.dbplugins.proddb.ProdDBXmlNode;
  */
 public class JobDefCreator{
 
-  private DatasetMgr datasetMgr;
+  //private DatasetMgr datasetMgr;
   private DBPluginMgr dbPluginMgr;
   private boolean showResults;
   private String [] cstAttr;
@@ -23,7 +24,7 @@ public class JobDefCreator{
   private Object[] showResultsOptions = {"OK", "Skip"};
 
   public JobDefCreator(String _dbName,
-                       DatasetMgr _datasetMgr,
+                       //DatasetMgr _datasetMgr,
                        boolean _showResults,
                        Vector _constants,
                        String [] _cstAttr,
@@ -31,15 +32,16 @@ public class JobDefCreator{
                        boolean _editing
                        ){
 
-    datasetMgr = _datasetMgr;
+    //datasetMgr = _datasetMgr;
     dbName = _dbName;
     
-    if(datasetMgr!=null){
+    /*if(datasetMgr!=null){
       dbPluginMgr = datasetMgr.getDBPluginMgr();
     }
     else{
       dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
-    }
+    }*/
+    dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
     
     showResults = _showResults;
     cstAttr = _cstAttr;
@@ -79,8 +81,7 @@ public class JobDefCreator{
     Debug.debug(this.getClass().getName() + " is calling DB", 2);
 
     if(editing){
-      String jobDefIdentifier =
-        datasetMgr.getDBPluginMgr().getIdentifierField("jobDefinition");
+      String jobDefIdentifier = dbPluginMgr.getIdentifierField("jobDefinition");
       int id = -1;
       for(int i=0; i<cstAttrNames.length; ++i){
         if(cstAttrNames[i].toString().equalsIgnoreCase(
@@ -90,7 +91,7 @@ public class JobDefCreator{
         }
       }
       Debug.debug("Updating..."+cstAttrNames.length+" : "+cstAttr.length, 3);
-      if(!datasetMgr.getDBPluginMgr().updateJobDefinition(id, cstAttrNames, cstAttr)){
+      if(!dbPluginMgr.updateJobDefinition(id, cstAttrNames, cstAttr)){
         if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDefinition " +
             " cannot be updated", "",
             JOptionPane.OK_CANCEL_OPTION)==JOptionPane.CANCEL_OPTION){
@@ -100,26 +101,16 @@ public class JobDefCreator{
     }
     else{
       Debug.debug("Creating..."+cstAttrNames.length+" : "+cstAttr.length, 3);
-      if(datasetMgr!=null){
-        if(!datasetMgr.createJobDef(cstAttrNames, cstAttr)){
-          if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDefinition" +
-              " cannot be created. "+datasetMgr.getDBPluginMgr().getError(), "",
-              JOptionPane.PLAIN_MESSAGE)==JOptionPane.CANCEL_OPTION){
-          //cancel creation
-          }
-        }
+      try{
+        dbPluginMgr.createJobDef(cstAttrNames, cstAttr);
       }
-      else{
-        try{
-          dbPluginMgr.createJobDef(cstAttrNames, cstAttr);
-        }
-        catch(Exception e){
-          Debug.debug(e.getMessage(), 1);
-          e.printStackTrace();
-          if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDefinition" +
-              " cannot be created. "+e.getMessage()+". "+dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE)==JOptionPane.CANCEL_OPTION){
-            //cancel creation
-          }
+      catch(Exception e){
+        Debug.debug(e.getMessage(), 1);
+        e.printStackTrace();
+        if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDefinition" +
+            " cannot be created. "+e.getMessage()+". "+dbPluginMgr.getError(), "",
+            JOptionPane.PLAIN_MESSAGE)==JOptionPane.CANCEL_OPTION){
+          //cancel creation
         }
       }
     }
