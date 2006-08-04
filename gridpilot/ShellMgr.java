@@ -1,6 +1,7 @@
 package gridpilot;
 
 import java.io.*;
+import java.util.HashSet;
 
 public interface ShellMgr{
 
@@ -93,6 +94,12 @@ public interface ShellMgr{
    */
   public String [] listFiles(String dir);
 
+  /**
+   * Returns a HashSet of all files found, starting from
+   * the specified file or directory
+   */
+  public HashSet listFilesRecursively(String fileOrDir);
+  
   /**
    * Tests whether the file denoted by this abstract pathname is a
    * directory.

@@ -4,6 +4,9 @@ import java.io.IOException;
 import com.jcraft.jsch.*;
 import javax.swing.*;
 import java.io.*;
+import java.util.Arrays;
+import java.util.HashSet;
+
 import org.apache.log4j.*;
 
 public class SecureShellMgr implements ShellMgr{
@@ -482,5 +485,25 @@ public class SecureShellMgr implements ShellMgr{
   public boolean isLocal(){
     return false;
   }
+  
+  private static int MAX_DEPTH = 10;
     
+  private HashSet listFilesRecursively(String fileOrDir, HashSet files, int depth){
+    if(!isDirectory(fileOrDir)){
+      files.add(fileOrDir);
+    }
+    else if(depth<=MAX_DEPTH){
+      String [] dirContents = listFiles(fileOrDir); // List of files/dirs.
+      Arrays.sort(dirContents);
+      for(int i=0; i<dirContents.length; ++i){
+          listFilesRecursively(dirContents[i], files, depth+1); // Recursively list.
+      }
+    }
+    return files;
+  }
+  
+  public HashSet listFilesRecursively(String fileOrDir){
+    return listFilesRecursively(fileOrDir, new HashSet(), 10);
+  }
+  
 }
