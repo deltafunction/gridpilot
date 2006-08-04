@@ -48,7 +48,6 @@ public class GridPilot extends JApplet{
       loadConfigValues();
       initDebug();
       initGUI();
-      getClassMgr().setSubmissionControl(new SubmissionControl());
       splash.stopSplash();
       getClassMgr().getLogFile().addInfo("GridPilot loaded");
     }
@@ -118,7 +117,8 @@ public class GridPilot extends JApplet{
       String [] _fixedJobAttributes = getClassMgr().getConfigFile().getValues("GridPilot",
       "job attributes");
       if(_fixedJobAttributes==null || _fixedJobAttributes.length==0){
-        getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("GridPilot", "job attributes"));
+        Debug.debug(getClassMgr().getConfigFile().getMissingMessage(
+            "GridPilot", "job attributes"), 1);
       }
       else{
         fixedJobAttributes = _fixedJobAttributes;
@@ -142,7 +142,7 @@ public class GridPilot extends JApplet{
    * "Class distributor"
    */
   public static ClassMgr getClassMgr(){
-    if(classMgr == null){
+    if(classMgr==null){
       Debug.debug("classMgr == null", 3);
     }
     return classMgr;
@@ -226,13 +226,14 @@ public class GridPilot extends JApplet{
     /*
     Disconnect DBs and CSs
     */
-    for(int i=0; i<dbs.length; ++i){
-      getClassMgr().getDBPluginMgr(dbs[i]).disconnect();
-      Debug.debug("Disconnecting "+dbs[i], 2);
-    }
     Debug.debug("Disconnecting computing systems...", 2);
     if(getClassMgr().csPluginMgr!=null){
       getClassMgr().getCSPluginMgr().disconnect();
+      getClassMgr().getCSPluginMgr().exit();
+    }
+    for(int i=0; i<dbs.length; ++i){
+      getClassMgr().getDBPluginMgr(dbs[i]).disconnect();
+      Debug.debug("Disconnecting "+dbs[i], 2);
     }
     Debug.debug("All systems disconnected.", 2);
     if(!applet){
@@ -302,10 +303,10 @@ public class GridPilot extends JApplet{
    */
   public static void main(String[] args) {
     applet = false;
-    if(args != null){
+    if(args!=null){
       for(int i=0; i<args.length; ++i){
-        if(args[i] != null && (args[i].equals("-c") || args[i].equals("-conf"))){
-          if(i+1 >= args.length){
+        if(args[i]!=null && (args[i].equals("-c") || args[i].equals("-conf"))){
+          if(i+1>=args.length){
             badUsage("Configuration file missing after " + args[i]);
             break;
           }
@@ -315,8 +316,8 @@ public class GridPilot extends JApplet{
           }
         }
         else{
-          if(args[i] != null && (args[i].equals("-l") || args[i].equals("-log"))){
-            if(i+1 >= args.length){
+          if(args[i]!=null && (args[i].equals("-l") || args[i].equals("-log"))){
+            if(i+1>=args.length){
               badUsage("log file missing after " + args[i]);
               break;
             }
