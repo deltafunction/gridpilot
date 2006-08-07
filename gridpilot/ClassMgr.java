@@ -129,7 +129,7 @@ public class ClassMgr{
       Debug.debug("NO datasetMgrs", 3);
     }
     else{
-      Debug.debug("getting datasetMgrs, "+datasetMgrs.size(), 3);
+      //Debug.debug("getting datasetMgrs, "+datasetMgrs.size(), 3);
       for(Iterator it=datasetMgrs.values().iterator(); it.hasNext();){
         allDatasetMgrs.addAll(((HashMap) it.next()).values());
       }
@@ -137,17 +137,17 @@ public class ClassMgr{
     return allDatasetMgrs;
   }
   
-  // The HashMap of HashMaps of tasks is kept here
-  public void addDatasetMgr(DatasetMgr taskMgr){
+  // The HashMap of HashMaps of datasets is kept here
+  public void addDatasetMgr(DatasetMgr datasetMgr){
     if(datasetMgrs==null){
       Debug.debug("datasetMgrs null", 3);
       new Exception().printStackTrace();
     }
-    if(!datasetMgrs.keySet().contains(taskMgr.dbName)){
-      datasetMgrs.put(taskMgr.dbName, new HashMap());
+    if(!datasetMgrs.keySet().contains(datasetMgr.dbName)){
+      datasetMgrs.put(datasetMgr.dbName, new HashMap());
     }
-    ((HashMap) datasetMgrs.get(taskMgr.dbName)
-        ).put(Integer.toString(taskMgr.getDatasetID()), taskMgr);
+    ((HashMap) datasetMgrs.get(datasetMgr.dbName)
+        ).put(Integer.toString(datasetMgr.getDatasetID()), datasetMgr);
   }
 
 
