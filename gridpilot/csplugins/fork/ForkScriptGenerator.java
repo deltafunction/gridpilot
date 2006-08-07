@@ -47,7 +47,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     for(int i=0; i<rtes.length; ++i){
       writeBloc(buf, "runtime environment: " + rtes[i], ScriptGenerator.TYPE_COMMENT);
       String initTxt = dbPluginMgr.getRuntimeInitText(rtes[i], csName).toString();
-      writeLine(buf, initTxt.replace('\r', ' ')); // get rid of Windows' <ctrl>M
+      writeLine(buf, Util.dos2unix(initTxt)); // get rid of Windows' <ctrl>M
       writeLine(buf, "");
     }
 
