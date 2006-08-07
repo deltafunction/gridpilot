@@ -32,15 +32,16 @@ public class StatisticsPanel extends JPanel{
 
     addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent e){
-        if(e.getButton() == MouseEvent.BUTTON1)
+        if(e.getButton()==MouseEvent.BUTTON1){
           style = (style+1) % (painters.size()*2);
-        else
+        }
+        else{
           style = (style == 0 ? painters.size()*2-1 : style -1);
+        }
         update();
-        repaint();
+        //repaint();
       }
     });
-
 
     painters.add(new painter(){
       public void paint(Graphics2D g){
@@ -58,6 +59,7 @@ public class StatisticsPanel extends JPanel{
 
   public void update(){
     Vector datasetMgrs = GridPilot.getClassMgr().getDatasetMgrs();
+    //Debug.debug("datasetMgrs: "+datasetMgrs.size(), 3);
     if(style<painters.size()){
       statusNames = DBPluginMgr.getDBStatusNames();
       // Set the number of jobs in each state to 0
@@ -66,9 +68,11 @@ public class StatisticsPanel extends JPanel{
         values[i]= 0;
       }
       int [] theseValues = new int[values.length];
+      //Debug.debug("DatasetMgrs: "+datasetMgrs.size(), 3);
       for(int i=0; i<datasetMgrs.size(); ++i){
         theseValues = ((DatasetMgr) datasetMgrs.get(i)).getJobsByDBStatus();
         for(int j=0; j<values.length; ++j){
+          //Debug.debug("Increasing value "+j+" from "+values[j]+" with "+theseValues[j], 3);
           values[j] += theseValues[j];
         }
       }
@@ -77,6 +81,8 @@ public class StatisticsPanel extends JPanel{
       statusNames = DBPluginMgr.getStatusNames();
       // Set the number of jobs in each state to 0
       values = new int[statusNames.length];
+      Debug.debug("resetting number of jobs for each status, "+
+          Util.arrayToString(statusNames), 3);
       for(int i=0; i<values.length; ++i){
         values[i]= 0;
       }
