@@ -2050,7 +2050,7 @@ public class DBPluginMgr implements Database{
       case FAILED : return "Failed";
       case UNDECIDED : return "Undecided";
       case ABORTED : return "Aborted";
-      case UNEXPECTED : return "UnexpectedErrors";
+      case UNEXPECTED : return "Unexpected";
       default : return "status not found";
     }
   }
