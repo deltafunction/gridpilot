@@ -1,6 +1,8 @@
 package gridpilot.csplugins.ng;
 
 import java.io.*;
+import java.util.List;
+import java.util.Vector;
 
 import gridpilot.DBPluginMgr;
 import gridpilot.Debug;
@@ -18,6 +20,7 @@ import gridpilot.Util;
 public class NGScriptGenerator extends ScriptGenerator{
 
   String cpuTime = null;
+  List inputFilesList = null;
   
   public NGScriptGenerator(String _csName){
     super(_csName);
@@ -25,8 +28,10 @@ public class NGScriptGenerator extends ScriptGenerator{
     cpuTime = configFile.getValue(csName, "CPU time");
   }
 
-  public boolean createXRSL(JobInfo job, String exeFileName, String xrslFileName, boolean join){
+  // Returns List of input files, needed for ARCGridFTPJob.submit()
+  public List createXRSL(JobInfo job, String exeFileName, String xrslFileName, boolean join){
 
+    inputFilesList = new Vector();
     StringBuffer bufXRSL = new StringBuffer();
     StringBuffer bufScript = new StringBuffer();
     String line = "";
@@ -45,6 +50,7 @@ public class NGScriptGenerator extends ScriptGenerator{
 
     //create xrsl file
     String shortExeFileName = new File(exeFileName).getName();
+    String xrslExeFileName = exeFileName;
     Debug.debug("shortName : " + shortExeFileName, 3);
     String inputFileName = null;
     String inputFileURL = null;
@@ -53,13 +59,16 @@ public class NGScriptGenerator extends ScriptGenerator{
       writeLine(bufXRSL,"&");
       
       // grid-manager stuff
+      writeLine(bufXRSL,"(*action=\"request\"*)");
+      writeLine(bufXRSL,"(*queue=\"_submitqueue_\"*)");
+
       writeLine(bufXRSL,"(gmlog=\"log\")");
-      writeLine(bufXRSL,"(action=\"request\")");
-      writeLine(bufXRSL,"(queue=\"short\")");
       writeLine(bufXRSL,"(reRun=\"1\")");
       writeLine(bufXRSL,"(jobname=\""+shortExeFileName+"\")");
-      writeLine(bufXRSL,"(arguments=\"\")");
-
+      //writeLine(bufXRSL,"(arguments=\"\")");
+      // This hack seems to be necessary, as the executable is there,
+      // but logged as not found.
+      writeLine(bufXRSL,"(arguments=\""+shortExeFileName+"\")");
       writeLine(bufXRSL,"(executable=\""+shortExeFileName+"\")");
       //writeLine(bufXRSL,"(stdlog=stdlog)");
       writeLine(bufXRSL,"(stdout=stdout)");
@@ -69,15 +78,40 @@ public class NGScriptGenerator extends ScriptGenerator{
       else{
         writeLine(bufXRSL,"(stderr=stderr)");
       }
-      writeLine(bufXRSL,"(executables="+shortExeFileName+" "+scriptname+
-          ")");
+      writeLine(bufXRSL,"(executables=\""+shortExeFileName+"\" \""+scriptname+"\")");
       if(cpuTime!=null && !cpuTime.equals("")){
-        writeLine(bufXRSL,"(cpuTime=\""+cpuTime+"\")");
+        writeLine(bufXRSL,"(cpuTime=\""+cpuTime+"\")(*endCpu*)");
       }
-      // input files
+      // Input files: scripts
       writeLine(bufXRSL,"(inputFiles=");
-      writeLine(bufXRSL,"(\""+shortExeFileName+"\" \""+shortExeFileName/*exeFileName*/+"\")");
-      writeLine(bufXRSL,"(\""+scriptname+"\" \""+httpscript+"\")");       
+      if(exeFileName.indexOf(":/")==-1){
+        inputFilesList.add(exeFileName);
+        writeLine(bufXRSL,"(\""+shortExeFileName+"\" \"\")");
+      }
+      else if(exeFileName.startsWith("file:/")){
+        inputFilesList.add(exeFileName.substring(5));
+        writeLine(bufXRSL,"(\""+shortExeFileName+"\" \"\")");
+      }
+      else{
+        //xrslExeFileName = exeFileName.replaceAll("C:\\\\","");
+        //xrslExeFileName = xrslExeFileName.replaceAll("\\\\","\\\\\\\\");
+        writeLine(bufXRSL,"(\""+shortExeFileName+"\" \""+xrslExeFileName+"\")");
+      }
+      
+      if(httpscript.indexOf(":/")==-1){
+        inputFilesList.add(httpscript);
+        writeLine(bufXRSL,"(\""+scriptname+"\" \"\")");
+      }
+      else if(httpscript.startsWith("file:/")){
+        inputFilesList.add(httpscript.substring(5));
+        writeLine(bufXRSL,"(\""+scriptname+"\" \"\")");
+      }
+      else{
+        //httpscript = httpscript.replaceAll("C:\\\\","");
+        //httpscript = httpscript.replaceAll("\\\\","\\\\\\\\");
+        writeLine(bufXRSL,"(\""+scriptname+"\" \""+httpscript+"\")");
+      }
+      
       // Input files.
       String[] inputFiles1 = new String [] {};
       String [] inputs = dbPluginMgr.getJobDefInputFiles(jobDefID);
@@ -96,7 +130,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       String [] inputFiles = new String[inputFiles1.length+inputFiles2.length];
       System.arraycopy(inputFiles1, 0, inputFiles, 0, inputFiles1.length);
       System.arraycopy(inputFiles2, 0, inputFiles, inputFiles1.length, inputFiles2.length);
-      
+            
       for(int i=0; i<inputFiles.length; ++i){
         // Find unqualified name of input file and use this for destination
         lastSlash = inputFiles[i].lastIndexOf("/");
@@ -123,13 +157,21 @@ public class NGScriptGenerator extends ScriptGenerator{
           // Construct URL using full path of input file
           inputFileURL = inputFiles[i];
         }
-        if(inputFileURL.length()>0){
-          writeLine(bufXRSL,"(\""+inputFileName+"\" \""+inputFileURL+"\")");       
+        
+        // Add local files to the return value
+        if(inputFileURL.indexOf(":/")==-1 || httpscript.startsWith("file:/")){
+          inputFilesList.add(inputFileURL);
         }
-        // If url is not defined in config file, read from file system
         else{
-          writeLine(bufXRSL,"(\""+inputFileName+"\" \""+inputFiles[i]+"\")");
+          if(inputFileURL.length()>0){
+            writeLine(bufXRSL,"(\""+inputFileName+"\" \""+inputFileURL+"\")");       
+          }
+          // If url is not defined in config file, read from file system
+          else{
+            writeLine(bufXRSL,"(\""+inputFileName+"\" \""+inputFiles[i]+"\")");
+          }
         }
+
       }
       writeLine(bufXRSL,")");
 
@@ -157,7 +199,8 @@ public class NGScriptGenerator extends ScriptGenerator{
       for(int i=0; i<uses.length; ++i){
         if(uses!=null && uses.length>0 && uses[0]!=null){
           for(int j=0; j<uses.length; ++j){
-            writeLine(bufXRSL, "(runTimeEnvironment="+uses[i].replace('\r',' ')+")");
+            writeLine(bufXRSL, "(runTimeEnvironment="+
+                Util.dos2unix(uses[i])+")");
             writeLine(bufXRSL, "");
           }
         }
@@ -174,7 +217,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       catch(Exception fnfe) {
         System.err.print(fnfe.getMessage());
         Debug.debug("Could not write file. "+fnfe.getMessage(), 1);
-        return false;
+        return null;
       }
 
       //create job script
@@ -189,7 +232,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       for(int i=0; i<uses.length; ++i){
         writeBloc(bufScript, "use "+ uses[i], 2, "# ");
         String initTxt = dbPluginMgr.getRuntimeInitText(uses[i], csName).toString();
-        writeLine(bufScript, initTxt.replace('\r',' '));
+        writeLine(bufScript, Util.dos2unix(initTxt));
         writeLine(bufScript, "");
       }
 
@@ -228,24 +271,30 @@ public class NGScriptGenerator extends ScriptGenerator{
       writeLine(bufScript, "");
 
       try{
-        LocalStaticShellMgr.writeFile(exeFileName, bufScript.toString(), false);
+        LocalStaticShellMgr.writeFile(exeFileName,
+            bufScript.toString(), false);
+        Util.dos2unix(new File(exeFileName));
+        /*Util.dos2unixConvert(new File(exeFileName),
+            new File(exeFileName+".unix"));
+        LocalStaticShellMgr.deleteFile(exeFileName);
+        LocalStaticShellMgr.moveFile(exeFileName+".unix", exeFileName);*/
       }
       catch(FileNotFoundException fnfe){
         System.err.print(fnfe.getMessage());
         Debug.debug("Could not write file. "+fnfe.getMessage(), 1);
-        return false;
+        return null;
       }
       catch(Exception ioe){
         System.out.println(ioe.getMessage());
         ioe.printStackTrace();
-        return false;
+        return null;
       }
-      return true;
+      return inputFilesList;
     }
     catch(Exception ioe){
       logFile.addMessage("ERROR: could not write script", ioe);
       ioe.printStackTrace();
-      return false;
+      return null;
     }
 
   }
