@@ -165,7 +165,7 @@ public class GlobalFrame extends GPFrame{
     String title = newPanel.getTitle();
     String smallTitle = null;
     if(title.length()>20){
-      smallTitle = title.substring(0,20) + "...";
+      smallTitle = title.substring(0, 20) + "...";
     }
     else{
       smallTitle = title;
