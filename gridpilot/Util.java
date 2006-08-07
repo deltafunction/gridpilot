@@ -333,9 +333,9 @@ public class Util{
             final String finBaseUrl = "";//url;
             MyThread t = new MyThread(){
               public void run(){
-                WebBox wb = null;
+                BrowserPanel wb = null;
                 try{
-                  wb = new WebBox(//GridPilot.getClassMgr().getGlobalFrame(),
+                  wb = new BrowserPanel(//GridPilot.getClassMgr().getGlobalFrame(),
                                   frame,
                                   "Choose file",
                                   finUrl,

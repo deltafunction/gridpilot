@@ -87,10 +87,10 @@ public class GlobalFrame extends GPFrame{
         if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("o")){
           if(e.isControlDown()){
             try{
-              new WebBox(GridPilot.getClassMgr().getGlobalFrame(), "GridPilot File Browser", "", "", false, true, true);
+              new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(), "GridPilot File Browser", "", "", false, true, true);
             }
             catch(Exception ex){
-              Debug.debug("WARNING: could not create WebBox", 1);
+              Debug.debug("WARNING: could not create BrowserPanel", 1);
               ex.printStackTrace();
             }
           }
@@ -235,11 +235,11 @@ public class GlobalFrame extends GPFrame{
       return;
     } 
     try{
-      WebBox wb = new WebBox(this, "About", aboutURL.toExternalForm(), "", false, false, false);
+      BrowserPanel wb = new BrowserPanel(this, "About", aboutURL.toExternalForm(), "", false, false, false);
       wb.bCancel.setEnabled(false);
     }
     catch(Exception e){
-      Debug.debug("WARNING: could not create WebBox", 1);
+      Debug.debug("WARNING: could not create BrowserPanel", 1);
       e.printStackTrace();
     }
   }
@@ -342,10 +342,10 @@ public class GlobalFrame extends GPFrame{
     miBrowser.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         try{
-          new WebBox(GridPilot.getClassMgr().getGlobalFrame(), "GridPilot File Browser", "", "", false, true, true);
+          new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(), "GridPilot File Browser", "", "", false, true, true);
         }
         catch(Exception ex){
-          Debug.debug("WARNING: could not create WebBox", 1);
+          Debug.debug("WARNING: could not create BrowserPanel", 1);
           ex.printStackTrace();
         }
       }
