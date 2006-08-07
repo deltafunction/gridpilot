@@ -273,10 +273,15 @@ public class NGComputingSystem implements ComputingSystem{
         job.setInternalStatus(ComputingSystem.STATUS_ERROR);
       }
       else if(job.getJobStatus().equals(NG_STATUS_FINISHED)){
-        if(getOutput(job)){
-          job.setInternalStatus(ComputingSystem.STATUS_DONE);
+        try{
+          if(getOutput(job)){
+            job.setInternalStatus(ComputingSystem.STATUS_DONE);
+          }
+          else{
+            job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+          }
         }
-        else{
+        catch(Exception e){
           job.setInternalStatus(ComputingSystem.STATUS_ERROR);
         }
       }
@@ -286,7 +291,7 @@ public class NGComputingSystem implements ComputingSystem{
       }
       else if(job.getJobStatus().equals(NG_STATUS_ERROR)){
         // try to clean up, just in case...
-        getOutput(job);
+        //getOutput(job);
         job.setInternalStatus(ComputingSystem.STATUS_ERROR);
       }
       else if(job.getJobStatus().equals(NG_STATUS_DELETED)){
@@ -412,6 +417,10 @@ public class NGComputingSystem implements ComputingSystem{
         error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
         Debug.debug(error, 2);
       }
+      catch(Throwable e){
+        error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
+        Debug.debug(error, 2);
+      }
     }
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
       try{
@@ -421,11 +430,22 @@ public class NGComputingSystem implements ComputingSystem{
         error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
         Debug.debug(error, 2);
       }
+      catch(Throwable e){
+        error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
+        Debug.debug(error, 2);
+      }
     }
     
     // Delete the local run directory
     String runDir = runDir(job);
-    LocalStaticShellMgr.deleteDir(new File(runDir));
+    try{
+      Debug.debug("Deleting runtime directory "+runDir, 2);
+      LocalStaticShellMgr.deleteDir(new File(runDir));
+    }
+    catch(Exception e){
+      error = "WARNING: could not delete "+runDir+". "+e.getMessage();
+      Debug.debug(error, 2);
+    }
 
   }
 
@@ -715,6 +735,16 @@ public class NGComputingSystem implements ComputingSystem{
       catch(Exception e){
       }
     }
+    // delete backup files
+    else{
+      try{
+        LocalStaticShellMgr.deleteFile(stdOutFile+".bk");
+        LocalStaticShellMgr.deleteFile(stdErrFile+".bk");
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
     
     String [] res = new String[2];
 
@@ -921,6 +951,10 @@ public class NGComputingSystem implements ComputingSystem{
           " to " + dirName, 3);
       gridJob.getOutputFile("stdout", dirName);
       gridJob.getOutputFile("stderr", dirName);
+      LocalStaticShellMgr.moveFile((new File(dirName, "stdout")).getAbsolutePath(),
+          job.getStdOut());
+      LocalStaticShellMgr.moveFile((new File(dirName, "stderr")).getAbsolutePath(),
+          job.getStdErr());
     }
     catch(Exception ae){
       error = "Exception during get stdout of " + job.getName() + ":" + job.getJobId() + ":\n" +

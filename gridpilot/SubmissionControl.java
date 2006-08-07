@@ -279,7 +279,7 @@ public class SubmissionControl{
 
     boolean askSave = false;
     boolean deleteFiles = false;
-    for(int i=0; i < jobs.size() ; ++i){
+    for(int i=0; i<jobs.size() ; ++i){
 
       JobInfo job = (JobInfo) jobs.get(i);
       ShellMgr shell = null;
@@ -290,8 +290,9 @@ public class SubmissionControl{
         Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
       }
 
-      if(job.getDBStatus() != DBPluginMgr.FAILED &&
-          job.getDBStatus() != DBPluginMgr.UNEXPECTED){
+      if(job.getDBStatus()!=DBPluginMgr.FAILED &&
+          job.getDBStatus()!=DBPluginMgr.UNEXPECTED &&
+          job.getDBStatus()!=DBPluginMgr.ABORTED){
         java.awt.Frame frame = javax.swing.JOptionPane.getRootFrame();
         javax.swing.JOptionPane.showMessageDialog(frame, "Cannot resubmit job " +
                                                   job.getName() +
@@ -418,14 +419,19 @@ public class SubmissionControl{
       }
     }
     Vector submitables = new Vector();
-    while (jobs.size() > 0){
+    while(jobs.size()>0){
       JobInfo job = (JobInfo) jobs.remove(0);
       //jobControl.updateDBStatus(job, DBPluginMgr.SUBMITTED);
       DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
           GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
               job.getJobDefId()));
+      // first clean up old job
+      datasetMgr.getDBPluginMgr().cleanRunInfo(job.getJobDefId());
+      GridPilot.getClassMgr().getCSPluginMgr().clearOutputMapping(job);
+      // then set the status to Submitted
+      // (this will not cause a cleanup, as setting the status to Defined would)
       datasetMgr.updateDBStatus(job, DBPluginMgr.SUBMITTED);
-      if(job.getDBStatus() != DBPluginMgr.SUBMITTED){
+      if(job.getDBStatus()!=DBPluginMgr.SUBMITTED){
         // updateDBStatus didn't work
         logFile.addMessage(
             "This job cannot be set Submitted -> this job cannot be resubmited",
@@ -440,6 +446,7 @@ public class SubmissionControl{
       }
     }
     DatasetMgr.updateJobCells(submitables, statusTable);
+    // if all went well we can now submit
     submit(submitables);
   }
 
@@ -479,6 +486,9 @@ public class SubmissionControl{
     //Debug.debug("jobName : " + job.getName(), 3);
     statusTable.setValueAt(iconSubmitting, job.getTableRow(),
         DatasetMgr.FIELD_CONTROL);
+    DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
+        GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
+            job.getJobDefId()));
     if(csPluginMgr.preProcess(job) && csPluginMgr.submit(job)){
       Debug.debug("Job " + job.getName() + " submitted : \n" +
                   "\tCSJobId = " + job.getJobId() + "\n" +
@@ -509,9 +519,6 @@ public class SubmissionControl{
           DatasetMgr.FIELD_JOBID);
       job.setInternalStatus(ComputingSystem.STATUS_FAILED);
       job.setNeedToBeRefreshed(false);
-      DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
-          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
-              job.getJobDefId()));
       if(datasetMgr.updateDBStatus(job, DBPluginMgr.FAILED)){
         job.setDBStatus(DBPluginMgr.FAILED);
       }

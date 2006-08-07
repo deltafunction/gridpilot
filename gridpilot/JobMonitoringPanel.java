@@ -283,7 +283,9 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     miResubmit.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        submissionControl.resubmit(DatasetMgr.getJobsAtRows(statusTable.getSelectedRows()));
+        submissionControl = GridPilot.getClassMgr().getSubmissionControl();
+        submissionControl.resubmit(
+            DatasetMgr.getJobsAtRows(statusTable.getSelectedRows()));
       }
     });
 
@@ -317,7 +319,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
 
-    JMenuItem miDBUnexpected = new JMenuItem("UnexpectedErrors");
+    JMenuItem miDBUnexpected = new JMenuItem("Unexpected");
     JMenuItem miDBFailed = new JMenuItem("Failed");
     JMenuItem miDBAborted = new JMenuItem("Aborted");
     JMenuItem miDBDefined = new JMenuItem("Defined");
@@ -356,6 +358,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       JMenuItem mi = new JMenuItem(GridPilot.csNames[i], i);
       mi.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
+          submissionControl = GridPilot.getClassMgr().getSubmissionControl();
           submissionControl.submitJobs((Vector) DatasetMgr.getJobsAtRows(statusTable.getSelectedRows()),
               /*computingSystem*/
               /*((JMenuItem) e.getSource()).getMnemonic()*/
@@ -549,6 +552,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         ((JFrame) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
             Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         statusBar.stopAnimation();
+        statusBar.setLabel("");
 
         String message = "";
         if(DatasetMgr.isRunning(selectedRow)){
@@ -690,18 +694,18 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   // Display jobs of a status from statusList on monitoring panel.
   public static void loadJobs(boolean allJobs, int [] statusList){
     
-    DBPluginMgr dbPluginMgr;
-    String [] shownFields;
+    DBPluginMgr dbPluginMgr = null;
+    String [] shownFields = null;
     String jobStatus = null;
     String user = "";
     String csName = "";
+    DBResult allJobDefinitions = null;
     for(int ii=0; ii<GridPilot.dbs.length; ++ii){
       dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[ii]);
       shownFields = dbPluginMgr.getFieldnames("jobDefinition");//dbPluginMgr.getDBDefFields("jobDefinition");
-      DBResult allJobDefinitions = 
-        dbPluginMgr.getJobDefinitions(
+      allJobDefinitions = dbPluginMgr.getJobDefinitions(
             /*datasetID*/-1, shownFields);
-      for (int i=0; i<allJobDefinitions.fields.length; ++i){
+      for(int i=0; i<allJobDefinitions.fields.length; ++i){
         Debug.debug(allJobDefinitions.fields[i] + " = " +
             allJobDefinitions.getValue(0, allJobDefinitions.fields[i]), 3);
       }
@@ -731,7 +735,9 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           Debug.debug("Getting status: "+idField+":"+id, 3);
           jobStatus = dbPluginMgr.getJobDefStatus(id);
           if(statusList[j]==DBPluginMgr.getStatusId(jobStatus)){
-            DatasetMgr mgr = GridPilot.getClassMgr().getDatasetMgr(GridPilot.dbs[ii], id);
+            DatasetMgr mgr = GridPilot.getClassMgr().getDatasetMgr(GridPilot.dbs[ii],
+                dbPluginMgr.getJobDefDatasetID(id));
+            Debug.debug("Adding job #"+id, 3);
             mgr.addJobs(new int [] {id});
             break;
           }
@@ -873,6 +879,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    * Removes all jobs from this status table.
    */
   public boolean clearTable(){
+    submissionControl = GridPilot.getClassMgr().getSubmissionControl();
     if(submissionControl!=null && submissionControl.isSubmitting()){
       Debug.debug("cannot clear table during submission", 3);
       return false;
