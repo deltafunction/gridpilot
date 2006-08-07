@@ -5,9 +5,13 @@ import java.awt.Cursor;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -420,10 +424,10 @@ public class Util{
   }
 
   public static String getFileName(String str){
-    return getFileName("Enter file name", str);
+    return getName("Enter file name", str);
   }
   
-  public static String getFileName(String message, String str){
+  public static String getName(String message, String str){
 
     JPanel panel = new JPanel(new GridBagLayout());
     JTextPane tp = new JTextPane();
@@ -705,6 +709,35 @@ public class Util{
     }*/
     return host;
     //return ipAddress;
-  }  
+  }
+  
+  public static String dos2unix(String s){
+    return s.replaceAll("\\r\\n","\n");
+    //return s.replace('\r', ' ');
+  }
+  
+  public static void dos2unix(File file) throws IOException{
+    try{
+      File tempFile = new File(file.getAbsolutePath() + ".tmp");
+      BufferedReader in = new BufferedReader(new FileReader(file));
+      BufferedWriter out = new BufferedWriter(new FileWriter(tempFile));
+      int c;
 
+      while((c = in.read()) != -1)
+        {
+          if(c != '\r')
+            out.write(c);
+        }
+
+      in.close();
+      out.close();
+
+      file.delete();
+      tempFile.renameTo(file);
+    }
+    catch(IOException e){
+      throw e;
+    }
+  }
+  
 }
