@@ -3,6 +3,9 @@ package gridpilot.csplugins.ng;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Vector;
 
 import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
@@ -68,14 +71,23 @@ public class NGSubmission{
        (finalStdOut==null || finalStdOut.equals(""));
     Debug.debug("stdout/err: "+finalStdOut+":"+finalStdErr, 3);
 
-    if(!scriptGenerator.createXRSL(job, scriptName, xrslName, !withStdErr)){
+    List files = scriptGenerator.createXRSL(job, scriptName, xrslName, !withStdErr);
+    // Now the short file names
+    List fileNames = new Vector();
+    String file;
+    for(Iterator it=files.iterator(); it.hasNext();){
+      file = (new File(it.next().toString())).getName();
+      fileNames.add(file);
+    }
+    
+    if(files==null){
       logFile.addMessage("Cannot create scripts for job " + job.getName() +
                               " on " + csName);
       return false;
     }
     String ngJobId = null;
     try{
-      ngJobId = submit(job, xrslName);
+      ngJobId = submit(job, xrslName, files, fileNames);
     }
     catch(Exception e){
       e.printStackTrace();
@@ -92,8 +104,10 @@ public class NGSubmission{
     }
   }
 
-  private String submit(final JobInfo job, final String xrslFileName) throws ARCDiscoveryException,
+  private String submit(final JobInfo job, final String xrslFileName,
+      final List files, final List fileNames) throws ARCDiscoveryException,
   MalformedURLException, ARCGridFTPJobException, IOException{
+    
     String ngJobId = null;
     String xrsl = "";
     BufferedReader in = null;
@@ -125,6 +139,7 @@ public class NGSubmission{
       throw ioe;
     }
     String submissionHost = null;
+    String queue = null;
     if(resources==null){
       // No information system.
       // Extremely simple brokering, but without the information system
@@ -148,6 +163,8 @@ public class NGSubmission{
       if(!submissionHost.startsWith("gsiftp://")){
         submissionHost = "gsiftp://"+submissionHost+":2811/jobs";
       }
+      // TODO: don't know if this will work
+      queue = "";
     }
     else{
       // Use information system
@@ -162,6 +179,7 @@ public class NGSubmission{
           if(matcher.isResourceSuitable(xrsl, resources[resourceIndex]) &&
               resources[resourceIndex].getFreejobs()>0){
             submissionHost = resources[resourceIndex].getClusterName();
+            queue = resources[resourceIndex].getQueueName();
             break;
           }
           else{
@@ -227,7 +245,16 @@ public class NGSubmission{
         "(join=yes)(stdout=out.txt)(outputfiles=(\"test\" \"\"))(queue=\"" +
          "short" + "\")";*/
         
-        gridJob.submit(xrsl);
+        xrsl = xrsl.replaceFirst("\\(\\*(?i)queue=\"_submitqueue_\"\\*\\)",
+            "(queue=\""+
+            "verylong"/*queue*/
+            /*replace once SimpleMatcher returns the correct queue*/+"\")");
+        xrsl = xrsl.replaceFirst("\\(\\*(?i)action=\"request\"\\*\\)",
+            "(action=\"request\")");
+        // Since cpuTime has been used to find queue, we no longer need it
+        xrsl = xrsl.replaceFirst("\\((?i)cputime=.*\\)\\(\\*endCpu\\*\\)", "");
+          
+        gridJob.submit(xrsl, files, fileNames);
         ngJobId = gridJob.getGlobalId();
         Debug.debug("NGJobId: " + ngJobId, 3);
       }
