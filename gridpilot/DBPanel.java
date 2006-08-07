@@ -1597,23 +1597,25 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       return;
     }
     try{
-      String prefix = "";
+      String name = null;
       for(int i=2; i<records.length; ++i){
         // Check if record is a dataset and already there and
         // ask for prefix if this is the case.
         // Only datasets have unique names.
         try{
-          if(tableName.equalsIgnoreCase("dataset") &&
-              GridPilot.getClassMgr().getDBPluginMgr(dbName).getDatasetID(
-                  GridPilot.getClassMgr().getDBPluginMgr(records[0]).getDatasetName(
-                      Integer.parseInt(records[i])))>-1){
-            prefix = Util.getFileName("Cannot overwrite, please give prefix", "new-");
+          if(tableName.equalsIgnoreCase("dataset")){
+            name = GridPilot.getClassMgr().getDBPluginMgr(records[0]).getDatasetName(
+                Integer.parseInt(records[i]));
+            if(GridPilot.getClassMgr().getDBPluginMgr(dbName).getDatasetID(name)>-1){            
+              name = Util.getName("Cannot overwrite, please give new name",
+                "new-"+name);
+            }
           }
         }
         catch(Exception e){
         }
         insertRecord(records[0], records[1], dbName, tableName,
-            Integer.parseInt(records[i]), prefix);
+            Integer.parseInt(records[i]), name);
       }
     }
     catch(Exception e){
@@ -1648,7 +1650,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     GridPilot.getClassMgr().getGlobalFrame().cutting = false;
     refresh();
     try{
-      ((DBPanel) GridPilot.getClassMgr().getGlobalFrame().cutPanel).refresh();
+      if(GridPilot.getClassMgr().getGlobalFrame().cutPanel!=null){
+        ((DBPanel) GridPilot.getClassMgr().getGlobalFrame().cutPanel).refresh();
+      }
     }
     catch(Exception e){
       e.printStackTrace();
@@ -1656,7 +1660,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   public void insertRecord(String sourceDB, String sourceTable,
-      String targetDB, String targetTable, int id, String prefix) throws Exception{
+      String targetDB, String targetTable, int id, String name) throws Exception{
     
     DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(sourceDB);
     DBPluginMgr targetMgr = GridPilot.getClassMgr().getDBPluginMgr(targetDB);
@@ -1680,7 +1684,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     else if(tableName.equalsIgnoreCase("dataset")){
       try{
         record = sourceMgr.getDataset(id);
-        insertDataset(record, sourceMgr, targetMgr, prefix);
+        insertDataset(record, sourceMgr, targetMgr, name);
       }
       catch(Exception e){
         String msg = "ERROR: dataset "+id+" could not be created, "+sourceDB+
@@ -1741,7 +1745,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   public boolean insertDataset(DBRecord dataset, DBPluginMgr sourceMgr,
-      DBPluginMgr targetMgr, String prefix) throws Exception{
+      DBPluginMgr targetMgr, String name) throws Exception{
     try{
       boolean ok = false;
       boolean success = true;
@@ -1781,9 +1785,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         Debug.debug("Creating dataset: " + Util.arrayToString(dataset.fields, ":") + " ---> " +
             Util.arrayToString(dataset.values, ":"), 3);
         try{
-          // try adding prefix
-          dataset.setValue(sourceMgr.getNameField("dataset"),
-              prefix+dataset.getValue(sourceMgr.getNameField("dataset")));
+          // if name specified, use it
+          if(name!=null && !name.equals("")){
+            dataset.setValue(sourceMgr.getNameField("dataset"),
+                name);
+          }
+          else{
+            dataset.setValue(sourceMgr.getNameField("dataset"),
+                dataset.getValue(sourceMgr.getNameField("dataset")).toString());
+          }
         }
         catch(Exception e){
           Debug.debug("WARNING: Could not add prefix", 3);
