@@ -246,9 +246,7 @@ public class NGSubmission{
          "short" + "\")";*/
         
         xrsl = xrsl.replaceFirst("\\(\\*(?i)queue=\"_submitqueue_\"\\*\\)",
-            "(queue=\""+
-            "verylong"/*queue*/
-            /*replace once SimpleMatcher returns the correct queue*/+"\")");
+            "(queue=\""+queue+"\")");
         xrsl = xrsl.replaceFirst("\\(\\*(?i)action=\"request\"\\*\\)",
             "(action=\"request\")");
         // Since cpuTime has been used to find queue, we no longer need it

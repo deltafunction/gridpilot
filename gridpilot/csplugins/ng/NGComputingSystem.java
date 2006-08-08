@@ -170,7 +170,7 @@ public class NGComputingSystem implements ComputingSystem{
    * information system.
    */
   public void setupRuntimeEnvironments(String csName){
-    HashSet runtimes = null;
+    Set runtimes = null;
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(
         runtimeDB);
     finalRuntimes = new HashSet();
