@@ -700,6 +700,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
           throw new IOException("File is empty");
         }
         ep.setText("File found");
+        Debug.debug("Setting thisUrl, "+url, 3);
+        thisUrl = url;
+        setUrl(thisUrl);
       }
       catch(Exception e){
         e.printStackTrace();
