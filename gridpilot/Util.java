@@ -13,14 +13,19 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.net.URL;
 //import java.net.Socket;
 //import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
 import java.security.cert.X509Certificate;
 import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.StringTokenizer;
 
 import javax.swing.JComboBox;
@@ -40,6 +45,7 @@ import javax.swing.event.HyperlinkListener;
 import javax.swing.plaf.UIResource;
 import javax.swing.text.JTextComponent;
 
+import org.globus.common.CoGProperties;
 import org.globus.gsi.CertUtil;
 import org.globus.gsi.GSIConstants;
 import org.globus.gsi.GlobusCredential;
@@ -59,6 +65,8 @@ import org.ietf.jgss.GSSException;
  */
 
 public class Util{
+  
+  public static String caCertsTmpDir = null;
   
   public static String [] split(String s){
     StringTokenizer tok = new StringTokenizer(s);
@@ -589,6 +597,69 @@ public class Util{
     return myCredentials;
   }
 
+  public static void setupDefaultCACertificates(CoGProperties prop) throws IOException {
+    try{
+      // get a temp name
+      File tmpFile = File.createTempFile(/*prefix*/"certificates", /*suffix*/"");
+      caCertsTmpDir = tmpFile.getAbsolutePath();
+      tmpFile.delete();
+      LocalStaticShellMgr.mkdirs(caCertsTmpDir);
+      // hack to have the diretory deleted on exit
+      GridPilot.tmpConfFile.put(caCertsTmpDir, new File(caCertsTmpDir));
+      // fill the directory with certificates from resources/certificates
+      Debug.debug("Reading list of files from "+
+          GridPilot.resourcesPath+"ca_certs_list.txt", 3);
+      URL fileURL = GridPilot.class.getResource(
+          GridPilot.resourcesPath+"ca_certs_list.txt");
+      HashSet certFilesList = new HashSet();
+      BufferedReader in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
+      String line;
+      while((line = in.readLine())!=null){
+        certFilesList.add(line);
+      }
+      in.close();
+      String fileName;
+      PrintWriter out = null;
+      for(Iterator it=certFilesList.iterator(); it.hasNext();){
+        fileName = it.next().toString();
+        try{
+          fileURL = GridPilot.class.getResource(
+              GridPilot.resourcesPath+"certificates/"+fileName);
+          in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
+          out = new PrintWriter(
+              new FileWriter(new File(caCertsTmpDir, fileName))); 
+          while((line = in.readLine())!=null){
+            out.println(line);
+          }
+          in.close();
+          out.close();
+        }
+        catch(IOException e){
+          Debug.debug("WARNING: Could not read CA certificate "+fileName+
+              ". Skipping.", 2);
+        }
+        finally{
+          try{
+            in.close();
+            out.close();
+          }
+          catch(Exception ee){
+          }
+        }
+      }
+      // this adds all certificates in the dir to globus authentication procedures
+      prop.setCaCertLocations(caCertsTmpDir);
+      CoGProperties.setDefault(prop);
+    }
+    catch(IOException e){
+      GridPilot.getClassMgr().getLogFile().addMessage(
+          "ERROR: could not setup ca certificates. " +
+          "Grid authentication will not work.", e);
+      //e.printStackTrace();
+      throw e;
+    }
+  }
+    
   public static GSSCredential initGridProxy() throws IOException, GSSException{
     
     ExtendedGSSManager manager = (ExtendedGSSManager) ExtendedGSSManager.getInstance();
@@ -597,7 +668,17 @@ public class Util{
     File proxy = new File(proxyFile);
     GSSCredential credential = null;
     
-    // first just try and load file from default UNIX location
+    // set the directory for trusted CA certificates
+    CoGProperties prop = new CoGProperties();
+    if(GridPilot.caCerts==null || GridPilot.caCerts.equals("")){
+      setupDefaultCACertificates(prop);
+    }
+    else{
+      prop.setCaCertLocations(GridPilot.caCerts);
+      CoGProperties.setDefault(prop);
+    }
+    
+    // first just try and load proxy file from default UNIX location
     try{
       if(proxy.exists()){
         byte [] data = new byte[(int) proxy.length()];

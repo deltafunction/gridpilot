@@ -34,6 +34,7 @@ public class GridPilot extends JApplet{
   public static String keyFile = "~/.globus/userkey.pem";
   public static String certFile = "~/.globus/usercert.pem";
   public static String keyPassword = null;
+  public static String caCerts = null;
   public static String dateFormatString = "yyyy-MM-dd HH:mm:ss";
   public static String [] fixedJobAttributes = {"number", "name"};
   
@@ -66,7 +67,7 @@ public class GridPilot extends JApplet{
     try{
       debugLevel = getClassMgr().getConfigFile().getValue("GridPilot", "debug");
       resourcesPath =  getClassMgr().getConfigFile().getValue("GridPilot", "resources");
-      if(resourcesPath == null){
+      if(resourcesPath==null){
         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("GridPilot", "resources"));
         resourcesPath = "./";
       }
@@ -114,11 +115,20 @@ public class GridPilot extends JApplet{
       "certificate file");
       keyPassword = getClassMgr().getConfigFile().getValue("GridPilot",
       "key password");
+      caCerts = getClassMgr().getConfigFile().getValue("GridPilot",
+      "ca certificates");
+      if(caCerts==null){
+        getClassMgr().getConfigFile().missingMessage(
+            "GridPilot", "ca certificates");
+        getClassMgr().getLogFile().addMessage(
+            "WARNING: you have not specified any ca certificates. " +
+            "A default set will be used.");
+      }
       String [] _fixedJobAttributes = getClassMgr().getConfigFile().getValues("GridPilot",
       "job attributes");
       if(_fixedJobAttributes==null || _fixedJobAttributes.length==0){
-        Debug.debug(getClassMgr().getConfigFile().getMissingMessage(
-            "GridPilot", "job attributes"), 1);
+        getClassMgr().getConfigFile().missingMessage(
+            "GridPilot", "job attributes");
       }
       else{
         fixedJobAttributes = _fixedJobAttributes;
@@ -217,7 +227,12 @@ public class GridPilot extends JApplet{
       for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext(); ){
         delFile = ((File) tmpConfFile.get(it.next()));
         Debug.debug("Cleaning up: deleting "+delFile.getAbsolutePath(), 2);
-        delFile.delete();
+        if(delFile.isDirectory()){
+          LocalStaticShellMgr.deleteDir(delFile);
+        }
+        else{
+          delFile.delete();
+        }
       }
     }
     catch(Exception e){
