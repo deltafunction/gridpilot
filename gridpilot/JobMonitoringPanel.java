@@ -634,34 +634,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           statusTable.selectAll();
           statusTable.clearSelection();
         }
-        //DatasetMgr mgr = null;
         try{
-          /*Vector datasetMgrs = GridPilot.getClassMgr().getDatasetMgrs();
-          if(datasetMgrs!=null && datasetMgrs.size()>0){
-            for(Iterator it = datasetMgrs.iterator(); it.hasNext();){
-              Debug.debug("getting DatasetMgr...", 3);
-              //mgr = ((DatasetMgr) it.next());
-              Debug.debug("loading jobs...", 3);
-              loadJobs(allJobs, new int [] {Database.SUBMITTED, Database.UNDECIDED,
-                  Database.UNEXPECTED, Database.FAILED});
-              showRows = bgView.getSelection().getMnemonic();
-              switch(showRows){
-                case ALL_JOBS:
-                  statusTable.showAllRows();
-                  break;
-                case ONLY_RUNNING_JOBS:
-                case ONLY_DONE_JOBS:
-                  showOnlyRows();
-                  break;
-                default:
-                  Debug.debug("WARNING: Selection choice doesn't exist : " + showRows, 1);
-                break;
-              }
-            }
-          }
-          else{
-            statusBar.setLabel("");
-          }*/
           Debug.debug("loading jobs...", 3);
           loadJobs(allJobs, new int [] {Database.SUBMITTED, Database.UNDECIDED,
               Database.UNEXPECTED, Database.FAILED});
