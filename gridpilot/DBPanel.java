@@ -341,7 +341,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       }
     });
-    
+        
     //// buttons
     // Costumized for each type of table
     bSearch.addActionListener(new java.awt.event.ActionListener(){
@@ -642,7 +642,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
       int sortColumn = tableModel.getColumnSort();
       boolean isAscending = tableModel.isSortAscending();
-      searchRequest(sortColumn, isAscending);
+      String [] columnNames = tableModel.getColumnNames();
+      int [] columnWidths = new int [columnNames.length];
+      for(int i=0; i<columnNames.length; ++i){
+        columnWidths[i] = tableResults.getColumn(columnNames[i]).getPreferredWidth();
+      }
+      searchRequest(sortColumn, isAscending, columnWidths);
     }
     /*remove(panelTableResults);
     add(panelTableResults, ct);*/
@@ -679,7 +684,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * all the GUI during this action.
    * Called when button "Search" is clicked
    */
-  public void searchRequest(final int sortColumn, final boolean isAscending){
+  public void searchRequest(final int sortColumn, final boolean isAscending,
+      final int [] columnWidths){
         
    // TODO: why does it not work as thread when
    // not in it's own pane?
@@ -823,6 +829,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           Debug.debug("Sorting: "+sortColumn+":"+isAscending, 3);
           ((DBVectorTableModel) tableResults.getModel()).sort(sortColumn, isAscending);
         }
+        
+        if(columnWidths!=null){
+          String [] columnNames = ((DBVectorTableModel) tableResults.getModel()).getColumnNames();
+          for(int i=0; i<columnNames.length; ++i){
+            tableResults.getColumn(columnNames[i]).setPreferredWidth(
+                columnWidths[i]);
+          }
+        }
         //stopWorking();
       //}
     //};
@@ -831,7 +845,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   public void searchRequest(){
-    searchRequest(-1, true);
+    DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
+    tableModel.ascending = true;
+    searchRequest(-1, tableModel.ascending, null);
   }
  
   /**
@@ -1303,7 +1319,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
       int sortColumn = tableModel.getColumnSort();
       boolean isAscending = tableModel.isSortAscending();
-      searchRequest(sortColumn, isAscending);
+      String [] columnNames = tableModel.getColumnNames();
+      int [] columnWidths = new int [columnNames.length];
+      for(int i=0; i<columnNames.length; ++i){
+        columnWidths[i] = tableResults.getColumn(columnNames[i]).getPreferredWidth();
+      }
+      searchRequest(sortColumn, isAscending, columnWidths);
     }
   }
   
