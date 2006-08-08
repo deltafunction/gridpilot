@@ -259,7 +259,7 @@ public class ConfigFile{
       }
       else{
         res = line.substring(isIndex+1).trim();
-        if (res.length() == 0)
+        if (res.length()==0)
           res = null; // case 'attribute = '
       }
     }
@@ -302,7 +302,7 @@ public class ConfigFile{
    * Prints a message (getMissingMessage(section, attribute));
    */
   public void missingMessage(String section, String attribute){
-    System.err.println(getMissingMessage(section, attribute));
+    Debug.debug(getMissingMessage(section, attribute), 2);
   }
 
   /**
