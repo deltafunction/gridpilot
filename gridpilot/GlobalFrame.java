@@ -81,24 +81,6 @@ public class GlobalFrame extends GPFrame{
     }
     selectedPanel = tabbedPane.getSelectedIndex();
 
-    // Listen for enter key in text field
-    tabbedPane.addKeyListener(new KeyAdapter(){
-      public void keyPressed(KeyEvent e){
-        if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("o")){
-          if(e.isControlDown()){
-            try{
-              new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(), "GridPilot File Browser", "", "", false, true, true);
-            }
-            catch(Exception ex){
-              Debug.debug("WARNING: could not create BrowserPanel", 1);
-              ex.printStackTrace();
-            }
-          }
-        }
-
-      }
-    });
-
     /*
     Detect click over X in tab
     */
@@ -117,6 +99,48 @@ public class GlobalFrame extends GPFrame{
        }
      }
    });
+   
+   // Keyboard shortcuts
+   KeyboardFocusManager.getCurrentKeyboardFocusManager(
+       ).addKeyEventDispatcher(
+           new KeyEventDispatcher(){
+      public boolean dispatchKeyEvent(KeyEvent e){
+        if(!e.isControlDown()){
+          return false;
+        }
+        if(e.getID()==KeyEvent.KEY_PRESSED){
+          if(e.getKeyCode()==KeyEvent.VK_O){
+            try{
+              new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(),
+                  "GridPilot File Browser", "", "", false, true, true);
+            }
+            catch(Exception ex){
+              Debug.debug("WARNING: could not create BrowserPanel.", 1);
+              ex.printStackTrace();
+            }
+          }
+        }
+        else if(e.getKeyCode()==KeyEvent.VK_Q){
+          try{
+            GridPilot.exit(0);
+          }
+          catch(Exception ex){
+            Debug.debug("WARNING: could not exit!!", 1);
+            ex.printStackTrace();
+          }
+        }
+        else if(e.getKeyCode()==KeyEvent.VK_M){
+          try{
+            toggleMonitoringPanel();
+          }
+          catch(Exception ex){
+            Debug.debug("WARNING: could not open monitor panel.", 1);
+            ex.printStackTrace();
+          }
+        }
+        return false;
+      }
+    });
 
     tabbedPane.addChangeListener(new ChangeListener(){
       public void stateChanged(ChangeEvent e){
@@ -127,18 +151,16 @@ public class GlobalFrame extends GPFrame{
     menuEditCopy.setEnabled(false);
     menuEditCut.setEnabled(false);
     menuEditPaste.setEnabled(false);
-
+    
   }
 
   /**
-   * ActionEvent
+   * ActionEvents
    */
-
 
   /*
   Add a new panel.
   */
-
   public void addPanel(ListPanel newPanel, String title){
     Debug.debug("Adding panel "+newPanel.getTitle(), 3);
     addPanel(newPanel);
@@ -265,7 +287,7 @@ public class GlobalFrame extends GPFrame{
     }
   }
 
-  public JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Job monitor");
+  public JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Job monitor (ctrl m)");
   /**
    * Creates the menu in the main menu bar.
    */
@@ -325,7 +347,7 @@ public class GlobalFrame extends GPFrame{
     
     if(!GridPilot.isApplet()){
       menuFile.addSeparator();
-      JMenuItem miExit = new JMenuItem("Exit");
+      JMenuItem miExit = new JMenuItem("Quit (ctrl q)");
       miExit.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           GridPilot.exit(0);
