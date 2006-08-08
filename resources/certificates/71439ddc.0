@@ -1,0 +1,66 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 0 (0x0)
+        Signature Algorithm: md5WithRSAEncryption
+        Issuer: C=CH, ST=Ticino, L=Manno, O=CSCS, OU=CSCSGRID, CN=CA of the LCG Grid project at the CSCS/Email=Frederik.Orellana@cern.ch
+        Validity
+            Not Before: Aug 29 09:37:06 2003 GMT
+            Not After : Aug 26 09:37:06 2013 GMT
+        Subject: C=CH, ST=Ticino, L=Manno, O=CSCS, OU=CSCSGRID, CN=CA of the LCG Grid project at the CSCS/Email=Frederik.Orellana@cern.ch
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+            RSA Public Key: (1024 bit)
+                Modulus (1024 bit):
+                    00:d0:17:3d:a5:59:2d:ac:6c:0f:15:3e:46:86:d8:
+                    53:f5:0d:ce:9b:ab:6c:79:b7:13:3b:95:f8:52:0e:
+                    5b:9d:0a:14:d0:58:d7:68:71:a0:4e:d7:1d:66:c0:
+                    d3:f2:4d:d7:c2:cf:7a:2b:31:32:82:13:eb:0f:38:
+                    ca:a6:41:6b:75:9b:2c:eb:8a:09:89:0e:65:93:a6:
+                    a4:50:b8:31:d6:87:8f:22:09:ba:55:85:15:04:25:
+                    82:9c:45:93:03:38:ac:f6:06:3f:01:b1:2d:f4:ad:
+                    17:49:3e:a6:63:58:e6:e8:e2:1f:26:d3:37:0f:61:
+                    c1:77:ce:34:25:fd:e3:38:93
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Subject Key Identifier: 
+                48:E6:B8:9E:84:3F:A2:23:3D:3E:D7:52:59:8C:B4:40:9C:A4:E5:A7
+            X509v3 Authority Key Identifier: 
+                keyid:48:E6:B8:9E:84:3F:A2:23:3D:3E:D7:52:59:8C:B4:40:9C:A4:E5:A7
+                DirName:/C=CH/ST=Ticino/L=Manno/O=CSCS/OU=CSCSGRID/CN=CA of the LCG Grid project at the CSCS/Email=Frederik.Orellana@cern.ch
+                serial:00
+
+            X509v3 Basic Constraints: 
+                CA:TRUE
+    Signature Algorithm: md5WithRSAEncryption
+        6b:a3:2f:2d:a5:ec:59:e0:cc:b9:b4:02:47:99:95:9e:cb:39:
+        c8:a5:11:8a:ee:e9:f5:9b:62:04:67:12:b8:09:3e:f2:91:01:
+        9d:6e:36:00:73:44:8c:fb:4a:f6:c9:e8:6b:51:ce:f1:d8:54:
+        77:c2:14:98:66:c3:e7:f4:16:7d:69:62:1d:f7:37:e6:6f:78:
+        87:86:47:af:b6:c8:f3:9e:92:ac:67:3b:78:b1:ed:aa:d3:2b:
+        73:82:9c:cf:f2:cc:f1:33:d4:11:d6:56:ea:24:9a:6b:40:d7:
+        29:79:02:c3:f4:d1:70:f4:f9:1b:c6:52:25:63:bb:e1:1b:ec:
+        41:c0
+-----BEGIN CERTIFICATE-----
+MIID3DCCA0WgAwIBAgIBADANBgkqhkiG9w0BAQQFADCBqzELMAkGA1UEBhMCQ0gx
+DzANBgNVBAgTBlRpY2lubzEOMAwGA1UEBxMFTWFubm8xDTALBgNVBAoTBENTQ1Mx
+ETAPBgNVBAsTCENTQ1NHUklEMS8wLQYDVQQDEyZDQSBvZiB0aGUgTENHIEdyaWQg
+cHJvamVjdCBhdCB0aGUgQ1NDUzEoMCYGCSqGSIb3DQEJARYZRnJlZGVyaWsuT3Jl
+bGxhbmFAY2Vybi5jaDAeFw0wMzA4MjkwOTM3MDZaFw0xMzA4MjYwOTM3MDZaMIGr
+MQswCQYDVQQGEwJDSDEPMA0GA1UECBMGVGljaW5vMQ4wDAYDVQQHEwVNYW5ubzEN
+MAsGA1UEChMEQ1NDUzERMA8GA1UECxMIQ1NDU0dSSUQxLzAtBgNVBAMTJkNBIG9m
+IHRoZSBMQ0cgR3JpZCBwcm9qZWN0IGF0IHRoZSBDU0NTMSgwJgYJKoZIhvcNAQkB
+FhlGcmVkZXJpay5PcmVsbGFuYUBjZXJuLmNoMIGfMA0GCSqGSIb3DQEBAQUAA4GN
+ADCBiQKBgQDQFz2lWS2sbA8VPkaG2FP1Dc6bq2x5txM7lfhSDludChTQWNdocaBO
+1x1mwNPyTdfCz3orMTKCE+sPOMqmQWt1myzrigmJDmWTpqRQuDHWh48iCbpVhRUE
+JYKcRZMDOKz2Bj8BsS30rRdJPqZjWObo4h8m0zcPYcF3zjQl/eM4kwIDAQABo4IB
+DDCCAQgwHQYDVR0OBBYEFEjmuJ6EP6IjPT7XUlmMtECcpOWnMIHYBgNVHSMEgdAw
+gc2AFEjmuJ6EP6IjPT7XUlmMtECcpOWnoYGxpIGuMIGrMQswCQYDVQQGEwJDSDEP
+MA0GA1UECBMGVGljaW5vMQ4wDAYDVQQHEwVNYW5ubzENMAsGA1UEChMEQ1NDUzER
+MA8GA1UECxMIQ1NDU0dSSUQxLzAtBgNVBAMTJkNBIG9mIHRoZSBMQ0cgR3JpZCBw
+cm9qZWN0IGF0IHRoZSBDU0NTMSgwJgYJKoZIhvcNAQkBFhlGcmVkZXJpay5PcmVs
+bGFuYUBjZXJuLmNoggEAMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEEBQADgYEA
+a6MvLaXsWeDMubQCR5mVnss5yKURiu7p9ZtiBGcSuAk+8pEBnW42AHNEjPtK9sno
+a1HO8dhUd8IUmGbD5/QWfWliHfc35m94h4ZHr7bI856SrGc7eLHtqtMrc4Kcz/LM
+8TPUEdZW6iSaa0DXKXkCw/TRcPT5G8ZSJWO74RvsQcA=
+-----END CERTIFICATE-----
