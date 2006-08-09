@@ -595,7 +595,7 @@ public class MySQLDatabase implements Database{
           else{
             values[i] = rset.getString(datasetFields[i]);
           }
-          Debug.debug(datasetFields[i]+"-->"+values[i], 2);
+          //Debug.debug(datasetFields[i]+"-->"+values[i], 2);
         }
         DBRecord jobd = new DBRecord(datasetFields, values);
         taskVector.add(jobd);
