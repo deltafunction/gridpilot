@@ -2,7 +2,6 @@ package gridpilot;
 
 import javax.swing.*;
 import java.awt.*;
-import gridpilot.dbplugins.proddb.ProdDBXmlNode;
 
 /**
  * Creates the transformation records with data given by TransformationCreationPanel.
@@ -79,7 +78,6 @@ public class TransformationCreator{
 
     JPanel pResult = new JPanel(new GridBagLayout());
     int row = 0;
-    ProdDBXmlNode xmlNode = null;
 
     for(int i =0; i<cstAttr.length; ++i, ++row){
       pResult.add(new JLabel(cstAttrNames[i] + " : "), new GridBagConstraints(0, row, 1, 1, 0.0, 0.0
@@ -87,20 +85,7 @@ public class TransformationCreator{
       JComponent jval;
       JTextArea textArea = new JTextArea("");
       if(cstAttrNames[i].equalsIgnoreCase("formalPars")){
-        try{
-          if(cstAttr[i]!=null && !cstAttr[i].equals("null") &&
-              !cstAttr[i].equals("")){
-            xmlNode = ProdDBXmlNode.parseString(cstAttr[i], 0);
-            xmlNode.fillText();
-          }
-        }
-        catch(Exception e){
-          textArea = new JTextArea(cstAttr[i]);
-        }
-
-        if(xmlNode!=null && xmlNode.parsedText!=null){
-          textArea = new JTextArea(xmlNode.parsedText);
-        }
+        textArea = new JTextArea(cstAttr[i]);
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
         textArea.setEditable(false);

@@ -1,11 +1,8 @@
 package gridpilot;
 
-//import gridpilot.DatasetMgr;
 import java.util.*;
 import javax.swing.*;
 import java.awt.*;
-
-import gridpilot.dbplugins.proddb.ProdDBXmlNode;
 
 /**
  * Creates the job definitions with datas given by JobDefCreationPanel.
@@ -32,17 +29,8 @@ public class JobDefCreator{
                        boolean _editing
                        ){
 
-    //datasetMgr = _datasetMgr;
     dbName = _dbName;
-    
-    /*if(datasetMgr!=null){
-      dbPluginMgr = datasetMgr.getDBPluginMgr();
-    }
-    else{
-      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
-    }*/
-    dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
-    
+    dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName); 
     showResults = _showResults;
     cstAttr = _cstAttr;
     cstAttrNames =  _cstAttrNames;
@@ -120,7 +108,6 @@ public class JobDefCreator{
 
     JPanel pResult = new JPanel(new GridBagLayout());
     int row = 0;
-    ProdDBXmlNode xmlNode = null;
 
     for(int i=0; i<cstAttr.length; ++i, ++row){
       pResult.add(new JLabel(cstAttrNames[i] + " : "),
@@ -134,21 +121,8 @@ public class JobDefCreator{
          cstAttrNames[i].equalsIgnoreCase("jobOutputs") ||
          cstAttrNames[i].equalsIgnoreCase("jobLogs") ||
          cstAttrNames[i].equalsIgnoreCase("jobInputs")){
-        try{
-          // Just give it a try with the proddb schema...
-          if(resCstAttr[i]!=null && !resCstAttr[i].equals("null") &&
-              !resCstAttr[i].equals("")){
-            xmlNode = ProdDBXmlNode.parseString(resCstAttr[i], 0);
-            xmlNode.fillText();
-          }
-          textArea = new JTextArea(xmlNode.parsedText);
-        }
-        catch(Exception e){
-          Debug.debug("Could not parse XML. "+e.getMessage(), 2);
-          e.printStackTrace();
-          // If it doesn't work, show raw XML
-          textArea = new JTextArea(resCstAttr[i]);
-        }
+        // Just show raw XML
+        textArea = new JTextArea(resCstAttr[i]);
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
         textArea.setEditable(false);
