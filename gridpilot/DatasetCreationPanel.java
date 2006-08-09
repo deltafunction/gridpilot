@@ -79,7 +79,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
         break;
       }
     }
-    if(identifierIndex ==-1){
+    if(identifierIndex==-1){
       Debug.debug("ERROR: could not find index of dataset, "+datasetIdentifier, 1);
     }
     
@@ -103,13 +103,9 @@ public class DatasetCreationPanel extends CreateEditPanel{
     // Dataset(s) selected and not editing - creating with input dataset(s)
     if(table.getSelectedRows().length>0 && !editing){
       // Find input datasets
-      int [] selectedIDs = panel.getSelectedIdentifiers();
-      datasetIDs = new int [selectedIDs.length];
-      Debug.debug("Creating with input datasets "+Util.arrayToString(datasetIDs), 3);
-      for(int i=0; i<selectedIDs.length; ++i){
-        datasetIDs[i] = Integer.parseInt(
-            table.getUnsortedValueAt(i, identifierIndex).toString());
-      }
+      datasetIDs = panel.getSelectedIdentifiers();
+      Debug.debug("Creating with input datasets "+identifierIndex+":"+datasetID+": "+
+          Util.arrayToString(datasetIDs), 3);
     } 
   }
 
@@ -704,7 +700,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
       return;
     }
     // only do anything if there are input dataset(s) selected
-    if(datasetIDs[0]>0){
+    Debug.debug("datasetIDs[0]="+datasetIDs[0], 3);
+    if(datasetIDs[0]<0){
       return;
     }
     String [] sourceFields = cstAttributesNames;
@@ -720,7 +717,9 @@ public class DatasetCreationPanel extends CreateEditPanel{
       targetAttr[j] = "";
       //Do the mapping.
       for(int k=0; k<sourceFields.length; ++k){
-        if(sourceFields[k].equalsIgnoreCase(targetFields[j])){
+        if(!sourceFields[k].equalsIgnoreCase("inputDataset") &&
+            !sourceFields[k].equalsIgnoreCase("inputDB") &&
+            sourceFields[k].equalsIgnoreCase(targetFields[j])){
           targetAttr[j] = sourceAttr[k];
           break;
         }
