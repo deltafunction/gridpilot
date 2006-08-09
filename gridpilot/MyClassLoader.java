@@ -17,13 +17,13 @@ class MyClassLoader extends ClassLoader{
 
     try{
       URL classUrl = ClassLoader.getSystemResource(name.replace('.', '/').concat(".class"));
-      if(classUrl == null)
+      if(classUrl==null){
         throw new ClassNotFoundException();
-
+      }
       Debug.debug(classUrl.toString(), 2);
       File d = new File(classUrl.getFile()).getParentFile();
       File [] files = d.listFiles();
-      if(files != null){
+      if(files!=null){
         for(int i=0; i<files.length; ++i){
           Debug.debug("tmp:"+files[i].getName(), 2);
           if(files[i].getName().endsWith(".class")){
