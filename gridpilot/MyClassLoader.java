@@ -29,11 +29,12 @@ class MyClassLoader extends ClassLoader{
           if(files[i].getName().endsWith(".class")){
             String className = name.substring(0, name.lastIndexOf(".")) + "." +
                   files[i].getName().substring(0, files[i].getName().indexOf(".class"));
-//          Debug.debug("name : " + className, 3);
+            Debug.debug("name : " + className, 3);
             if(!className.equals(name)){
               try{
                 loadClass(files[i].toURL(), className);
-                }catch(Throwable t){}
+              }
+              catch(Throwable t){}
             }
           }
         }
