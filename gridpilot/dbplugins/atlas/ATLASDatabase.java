@@ -6,7 +6,13 @@ import gridpilot.Database;
 
 public class ATLASDatabase implements Database {
 
-  public String connect(){
+  public ATLASDatabase(String _dbName,
+      String _driver, String _database,
+      String _user, String _passwd){
+    // TODO
+  }
+
+    public String connect(){
     // TODO Auto-generated method stub
     return null;
   }
