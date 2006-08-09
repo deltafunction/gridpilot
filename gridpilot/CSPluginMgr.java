@@ -142,6 +142,7 @@ public class CSPluginMgr implements ComputingSystem{
       }
       catch(Exception e){
         loadfailed = true;
+        e.printStackTrace();
         //do nothing, will try with MyClassLoader.
       }
       if(loadfailed){
