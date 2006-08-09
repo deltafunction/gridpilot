@@ -708,7 +708,8 @@ public class Util{
     // if no valid proxy, init
     else{
       Debug.debug("proxy not ok: "+credential+": "+
-          credential.getRemainingLifetime()+"<-->"+GridPilot.proxyTimeLeftLimit, 3);
+          (credential!=null ? credential.getRemainingLifetime() : 0)+"<-->"+
+          GridPilot.proxyTimeLeftLimit, 3);
       // Create new proxy
       Debug.debug("creating new proxy", 3);
       String [] password = null;
