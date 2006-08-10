@@ -85,7 +85,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     this.getContentPane().setLayout(new BorderLayout());
  
     Debug.debug("Creating BrowserPanel with baseUrl "+baseUrl, 3);
-
+    
     requestFocusInWindow();
     this.setTitle(title);
     
@@ -269,6 +269,43 @@ public class BrowserPanel extends JDialog implements ActionListener{
     setSize(panel.getPreferredSize());
     setVisible(true);
     
+    // Close window with ctrl+w
+    jtFilter.addKeyListener(new KeyAdapter(){
+      public void keyPressed(KeyEvent e){
+        if(!e.isControlDown()){
+          return;
+        }
+        switch(e.getKeyCode()){
+          case KeyEvent.VK_W:
+            exit();
+        }
+      }
+    });
+    
+    currentUrlTextField.addKeyListener(new KeyAdapter(){
+      public void keyPressed(KeyEvent e){
+        if(!e.isControlDown()){
+          return;
+        }
+        switch(e.getKeyCode()){
+          case KeyEvent.VK_W:
+            exit();
+        }
+      }
+    });
+    
+    ep.addKeyListener(new KeyAdapter(){
+      public void keyPressed(KeyEvent e){
+        if(!e.isControlDown()){
+          return;
+        }
+        switch(e.getKeyCode()){
+          case KeyEvent.VK_W:
+            exit();
+        }
+      }
+    });
+
   }
   
   /**
@@ -408,7 +445,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       port = "2811";
     }
     localPath = hostAndPath.substring(hostAndPort.length(), hostAndPath.length());
-    localPath = localPath.replaceAll("/[^\\/]*/\\.\\.", "");
+    localPath = localPath.replaceFirst("/[^\\/]*/\\.\\.", "");
     int lastSlash = localPath.lastIndexOf("/");
     if(lastSlash>0){
       localDir = localPath.substring(0, lastSlash);
@@ -680,7 +717,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       port = "2811";
     }
     localPath = hostAndPath.substring(hostAndPort.length(), hostAndPath.length());
-    localPath = localPath.replaceAll("/[^\\/]*/\\.\\.", "");
+    localPath = localPath.replaceFirst("/[^\\/]*/\\.\\.", "");
     int lastSlash = localPath.lastIndexOf("/");
     if(lastSlash>0){
       localDir = localPath.substring(0, lastSlash);
@@ -736,12 +773,16 @@ public class BrowserPanel extends JDialog implements ActionListener{
     /*else if(fsPath.startsWith("file:")){
       localPath = fsPath.substring(4);
     }*/
+    else if(fsPath.toLowerCase().startsWith("c:\\")){
+      localPath = fsPath.substring(2);
+    }
     else{
       localPath = fsPath;
     }
-    localPath = localPath.replaceAll("/[^\\/]*/\\.\\.", "");
-    localPath = localPath.replaceAll("^/(\\w):", "$1:");
-    localPath = localPath.replaceAll("^file:(\\w):", "$1:");
+    localPath = localPath.replaceFirst("/[^\\/]*/\\.\\.", "");
+    localPath = localPath.replaceFirst("^/(\\w):", "$1:");
+    localPath = localPath.replaceFirst("^file:(\\w):", "$1:");
+    localPath = localPath.replaceFirst("^/(\\w):", "$1:");
     Debug.debug("setLocalDirDisplay "+localPath, 3);
     try{
       bSave.setEnabled(false);
@@ -749,62 +790,63 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bDelete.setEnabled(true);
       bUpload.setEnabled(true);
       bDownload.setEnabled(true);
-      // Try with each available shell manager to access the directory.
-      ShellMgr shMgr;
       String htmlText = "";
-      for(int i=0; i<GridPilot.csNames.length;++i){
-        shMgr = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(GridPilot.csNames[i]);
-        try{
-          String [] text = shMgr.listFiles(localPath);
-          
-          Vector textVector = new Vector();
-          filter = jtFilter.getText();
-          if(filter==null || filter.equals("")){
-            filter = "*";
-          }
-          statusBar.setLabel("Filtering...");
-          filter = filter.replaceAll("\\.", "\\\\.");
-          filter = filter.replaceAll("\\*", ".*");
-          Debug.debug("Filtering with "+filter, 3);
-          
-          for(int j=0; j<text.length; ++j){
-            if(text[j].substring(localPath.length()).matches(filter)){
-              textVector.add("<a href=file:"+text[j]+">"+
-                  text[j].substring(localPath.length())+"</a>");
+      try{
+        String [] text = LocalStaticShellMgr.listFiles(localPath);
+        int directories = 0;
+        int files = 0;
+        Vector textVector = new Vector();
+        filter = jtFilter.getText();
+        if(filter==null || filter.equals("")){
+          filter = "*";
+        }
+        statusBar.setLabel("Filtering...");
+        filter = filter.replaceAll("\\.", "\\\\.");
+        filter = filter.replaceAll("\\*", ".*");
+        Debug.debug("Filtering with "+filter, 3);
+        
+        for(int j=0; j<text.length; ++j){
+          if(text[j].substring(localPath.length()).matches(filter)){
+            if(LocalStaticShellMgr.isDirectory(text[j])){
+              ++directories;
             }
+            else{
+              ++files;
+            }
+            textVector.add("<a href=file:"+text[j]+">" + 
+                (((text[j].toLowerCase().startsWith("c:\\") ||
+                    text[j].toLowerCase().startsWith("c:/")) &&
+                    !localPath.toLowerCase().startsWith("c:\\") &&
+                    !localPath.toLowerCase().startsWith("c:/")) ? 
+                    text[j].substring(localPath.length()+2) :
+                      text[j].substring(localPath.length())) +  "</a>");
           }
-          ep.setContentType("text/html");
-          htmlText = "<html>\n";
-          if(!localPath.equals("/")){
-            htmlText += "<a href=file:"+localPath+"../>"/*+localPath*/+"../</a><br>\n";
-          }
-          htmlText += Util.arrayToString(textVector.toArray(), "<br>\n");
-          htmlText += "\n</html>";
-          ep.setText(htmlText);
-          ep.setEditable(false);
-          // if we don't get an exception, the directory got read...
-          Debug.debug("Directory "+localPath+" read with shell manager for "+GridPilot.csNames[i], 2);
-          Debug.debug("Setting thisUrl, "+localPath, 3);
-          thisUrl = (new File(localPath)).toURL().toExternalForm();
-          setUrl(thisUrl);
-          statusBar.setLabel("Done.");
-          return;
         }
-        catch(Exception e){
-          e.printStackTrace();
-          Debug.debug("Could not read "+localPath+" with shell manager for "+GridPilot.csNames[i], 1);
-          continue;
+        ep.setContentType("text/html");
+        htmlText = "<html>\n";
+        if(!localPath.equals("/")){
+          htmlText += "<a href=file:"+localPath+"../>"/*+localPath*/+"../</a><br>\n";
         }
+        htmlText += Util.arrayToString(textVector.toArray(), "<br>\n");
+        htmlText += "\n</html>";
+        ep.setText(htmlText);
+        ep.setEditable(false);
+        // if we don't get an exception, the directory got read...
+        Debug.debug("Directory "+localPath, 2);
+        Debug.debug("Setting thisUrl, "+localPath, 3);
+        thisUrl = (new File(localPath)).toURL().toExternalForm();
+        setUrl(thisUrl);
+        statusBar.setLabel(directories+" directories, "+files+" files");
+        return;
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        Debug.debug("Could not read "+localPath, 1);
       }
       // if we got here we did not read the directory
       bSave.setEnabled(false);
       bOk.setEnabled(false);
-      if(GridPilot.csNames==null || GridPilot.csNames.length==0){
-        ep.setText("ERROR: No shell managers found.");
-      }
-      else{
-        ep.setText("ERROR!\n\nThe directory "+localPath+" could not be read.");
-      }
+      ep.setText("ERROR!\n\nThe directory "+localPath+" could not be read.");
       pButton.updateUI();
     }
     catch(Exception e){
@@ -849,8 +891,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       port = "2811";
     }
     localPath = hostAndPath.substring(hostAndPort.length(), hostAndPath.length());
-    localPath = localPath.replaceAll("/[^\\/]*/\\.\\.", "");
-    url = url.replaceAll("/[^\\/]*/\\.\\.", "");
+    localPath = localPath.replaceFirst("/[^\\/]*/\\.\\.", "");
+    url = url.replaceFirst("/[^\\/]*/\\.\\.", "");
     Debug.debug("Host: "+host, 3);
     Debug.debug("Port: "+port, 3);
     Debug.debug("Path: "+localPath, 3);
@@ -907,6 +949,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       String [] entryArr = null;
       String line = null;
       String fileName = null;
+      int directories = 0;
+      int files = 0;
       filter = jtFilter.getText();
       if(filter==null || filter.equals("")){
         filter = "*";
@@ -924,10 +968,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
         if(fileName.matches(filter)){
           if(line.matches("d[rwxsS-]* .*")){
             textVector.add(fileName+"/");
+            ++directories;
             continue;
           }
           else if(line.matches("-[rwxsS-]* .*")){
             textVector.add(fileName);
+            ++files;
             continue;
           }
           try{
@@ -937,13 +983,16 @@ public class BrowserPanel extends JDialog implements ActionListener{
             gridFtpClient.changeDir(fileName);
             gridFtpClient.goUpDir();
             textVector.add(fileName+"/");
+            ++directories;
           }
           catch(Exception e){
             textVector.add(fileName);
+            ++files;
           }
         }
       }
       String text = "";
+      // TODO: reconsider max entries and why listing more is so slow...
       // display max 500 entries
       int maxEntries = 500;
       int length = textVector.size()<maxEntries ? textVector.size() : maxEntries;
@@ -976,7 +1025,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       //thisUrl = (new File(localPath)).toURL().toExternalForm();
       thisUrl = url;
       setUrl(thisUrl);
-      statusBar.setLabel("Done.");
+      statusBar.setLabel(directories+" directories, "+files+" files");
     }
     catch(Exception e){
       bSave.setEnabled(false);
@@ -1076,37 +1125,24 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Write file or directory fsPath in local file system containing text.
    */
   private void localWriteFile(String fsPath, String text){
-    // Try with each available shell manager to access the file.
-    ShellMgr shMgr = null;
-    for(int i=0;i<GridPilot.csNames.length;++i){
-      try{
-        shMgr = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(GridPilot.csNames[i]);
+    try{
+      if(fsPath.endsWith("/") && (text==null || text.equals(""))){
+        fsPath = fsPath.substring(0, fsPath.length()-1);
+        LocalStaticShellMgr.mkdirs(fsPath);
       }
-      catch(Exception e){
+      else if(!fsPath.endsWith("/")){
+        LocalStaticShellMgr.writeFile(fsPath, text, false);
       }
-      if(shMgr==null || !shMgr.isLocal()){
-        continue;
+      else{
+        throw new IOException("ERROR: Cannot write text to a directory.");
       }
-      try{
-        if(fsPath.endsWith("/") && (text==null || text.equals(""))){
-          fsPath = fsPath.substring(0, fsPath.length()-1);
-          shMgr.mkdirs(fsPath);
-        }
-        else if(!fsPath.endsWith("/")){
-          shMgr.writeFile(fsPath, text, false);
-        }
-        else{
-          throw new IOException("ERROR: Cannot write text to a directory.");
-        }
-        // if we don't get an exception, the file got written...
-        statusBar.setLabel(fsPath+" written.");
-        Debug.debug("File or directory "+fsPath+" written with shell manager for "+GridPilot.csNames[i], 2);
-        return;
-      }
-      catch(Exception e){
-        Debug.debug("Could not write "+fsPath+" with shell manager for "+GridPilot.csNames[i], 1);
-        continue;
-      }
+      // if we don't get an exception, the file got written...
+      statusBar.setLabel(fsPath+" written.");
+      Debug.debug("File or directory "+fsPath+" written", 2);
+      return;
+    }
+    catch(Exception e){
+      Debug.debug("Could not write "+fsPath, 1);
     }
     // if we got here we did not save the file
     ep.setText("ERROR!\n\nThe file "+fsPath+" could not be saved.\n\n" +
@@ -1117,27 +1153,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Delete file or directory fsPath in local file system.
    */
   private void localDeleteFile(String fsPath){
-    // Try with each available shell manager to access the file.
-    ShellMgr shMgr = null;
-    for(int i=0;i<GridPilot.csNames.length;++i){
-      try{
-        shMgr = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(GridPilot.csNames[i]);
-      }
-      catch(Exception e){
-      }
-      if(shMgr==null || !shMgr.isLocal()){
-        continue;
-      }
-      try{
-        shMgr.deleteFile(fsPath);
-        // if we don't get an exception, the file got written...
-        Debug.debug("File or directory "+fsPath+" deleted with shell manager for "+GridPilot.csNames[i], 2);
-        return;
-      }
-      catch(Exception e){
-        Debug.debug("Could not delete "+fsPath+" with shell manager for "+GridPilot.csNames[i], 1);
-        continue;
-      }
+    try{
+      LocalStaticShellMgr.deleteFile(fsPath);
+      // if we don't get an exception, the file got written...
+      Debug.debug("File or directory "+fsPath+" deleted", 2);
+      return;
+    }
+    catch(Exception e){
+      Debug.debug("Could not delete "+fsPath, 1);
     }
     // if we got here we did not delete the file
     ep.setText("ERROR!\n\nThe file "+fsPath+" could not be deleted.\n\n" +
@@ -1151,38 +1174,25 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(!fsPath.endsWith("/")){
       fsPath = fsPath+"/";
     }
-    // Try with each available shell manager to access the file.
-    ShellMgr shMgr = null;
     // TODO: implement wildcard *
-    for(int i=0;i<GridPilot.csNames.length;++i){
-      try{
-        shMgr = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(GridPilot.csNames[i]);
+    try{
+      String fileName = file.getName();
+      int lastSlash = fileName.lastIndexOf("/");
+      if(lastSlash>-1){
+        fileName = fileName.substring(lastSlash + 1);
       }
-      catch(Exception e){
+      if(!LocalStaticShellMgr.isDirectory(fsPath)){
+        throw new IOException("ERROR: "+fsPath+" is not a directory.");
       }
-      if(shMgr==null || !shMgr.isLocal()){
-        continue;
-      }
-      try{
-        String fileName = file.getName();
-        int lastSlash = fileName.lastIndexOf("/");
-        if(lastSlash>-1){
-          fileName = fileName.substring(lastSlash + 1);
-        }
-        if(!shMgr.isDirectory(fsPath)){
-          throw new IOException("ERROR: "+fsPath+" is not a directory.");
-        }
-        shMgr.copyFile(file.getAbsolutePath(),
-            fsPath+fileName);
-        // if we don't get an exception, the file got written...
-        Debug.debug("File "+file.getAbsolutePath()+" written to " +
-            fsPath+fileName+" with shell manager for "+GridPilot.csNames[i], 2);
-        return;
-      }
-      catch(Exception e){
-        Debug.debug("Could not write "+fsPath+" with shell manager for "+GridPilot.csNames[i], 1);
-        continue;
-      }
+      LocalStaticShellMgr.copyFile(file.getAbsolutePath(),
+          fsPath+fileName);
+      // if we don't get an exception, the file got written...
+      Debug.debug("File "+file.getAbsolutePath()+" written to " +
+          fsPath+fileName, 2);
+      return;
+    }
+    catch(Exception e){
+      Debug.debug("Could not write "+fsPath, 1);
     }
     // if we got here we did not save the file
     ep.setText("ERROR!\n\nThe file "+fsPath+" could not be saved.\n\n" +
@@ -1219,9 +1229,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       URL url = ep.getPage();
       String rootUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
       String fsPath = rootUrl;
-      fsPath = fsPath.replaceAll("^file://", "/");
-      fsPath = fsPath.replaceAll("^file:/", "/");
-      fsPath = fsPath.replaceAll("^file:", "");
+      fsPath = fsPath.replaceFirst("^file://", "/");
+      fsPath = fsPath.replaceFirst("^file:/", "/");
+      fsPath = fsPath.replaceFirst("^file:", "");
       Debug.debug("Deleting file in "+fsPath, 3);
       if(fsPath==null || fileName==null){
         return;
@@ -1286,9 +1296,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       if(thisUrl.startsWith("file:")){
         String rootUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
         String fsPath = rootUrl;
-        fsPath = fsPath.replaceAll("^file://", "/");
-        fsPath = fsPath.replaceAll("^file:/", "/");
-        fsPath = fsPath.replaceAll("^file:", "");
+        fsPath = fsPath.replaceFirst("^file://", "/");
+        fsPath = fsPath.replaceFirst("^file:/", "/");
+        fsPath = fsPath.replaceFirst("^file:", "");
         Debug.debug("Uploading file to "+fsPath, 3);        
         if(fsPath==null || file==null){
           return;
@@ -1355,9 +1365,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       if(thisUrl.startsWith("file:")){
         String rootUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
         String fsPath = rootUrl;
-        fsPath = fsPath.replaceAll("^file://", "/");
-        fsPath = fsPath.replaceAll("^file:/", "/");
-        fsPath = fsPath.replaceAll("^file:", "");
+        fsPath = fsPath.replaceFirst("^file://", "/");
+        fsPath = fsPath.replaceFirst("^file:/", "/");
+        fsPath = fsPath.replaceFirst("^file:", "");
         Debug.debug("Downloading file to "+dir.getAbsolutePath(), 3);        
         if(fsPath==null || dir==null){
           throw new IOException("ERROR: source or destination directory not given. "+
@@ -1470,11 +1480,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
       Debug.debug("Creating file in "+thisUrl, 3);
       // local directory
       if(thisUrl.startsWith("file:")){
-        String rootUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
-        String fsPath = rootUrl;
-        fsPath = fsPath.replaceAll("^file://", "/");
-        fsPath = fsPath.replaceAll("^file:/", "/");
-        fsPath = fsPath.replaceAll("^file:", "");
+        //String rootUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
+        String fsPath = thisUrl;//rootUrl;
+        fsPath = fsPath.replaceFirst("^file://", "/");
+        fsPath = fsPath.replaceFirst("^file:/", "/");
+        fsPath = fsPath.replaceFirst("^file:", "");
         Debug.debug("Creating file in "+fsPath, 3);
         localCreate(fsPath);
         ep.getDocument().putProperty(
@@ -1511,9 +1521,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       else if(e.getSource()==bSave){
         if(thisUrl.startsWith("file:") || thisUrl.startsWith("/")){
           String fsPath = ep.getPage().toExternalForm();
-          fsPath = fsPath.replaceAll("^file://", "/");
-          fsPath = fsPath.replaceAll("^file:/", "/");
-          fsPath = fsPath.replaceAll("^file:", "");
+          fsPath = fsPath.replaceFirst("^file://", "/");
+          fsPath = fsPath.replaceFirst("^file:/", "/");
+          fsPath = fsPath.replaceFirst("^file:", "");
           String text = ep.getText();
           localWriteFile(fsPath, text);
         }
