@@ -2,6 +2,7 @@ package gridpilot;
 
 import java.awt.*;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.HashMap;
 import java.util.Iterator;
 
@@ -46,11 +47,18 @@ public class GridPilot extends JApplet{
     
     try{
       getClassMgr().setLogFile(new LogFile(logFileName));
-      // First try and get ~/.gridpilot
+      // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
+      if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
+        userConfFileName = confFileName;
+      }
       ConfigFile confFile = null;
       try{
         File exConfFile = new File(System.getProperty("user.home") + File.separator +
             userConfFileName);
+        if(!exConfFile.exists()){
+          throw new FileNotFoundException("WARNING: Configuration file "+
+              exConfFile.getAbsolutePath()+" not found.");
+        }
         System.out.println("Trying to load configuration file "+exConfFile);
         confFile = new ConfigFile(exConfFile);
       }
@@ -223,10 +231,10 @@ public class GridPilot extends JApplet{
       //Center the window
       Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
       Dimension frameSize = frame.getSize();
-      if (frameSize.height > screenSize.height) {
+      if(frameSize.height>screenSize.height){
         frameSize.height = screenSize.height;
       }
-      if (frameSize.width > screenSize.width) {
+      if(frameSize.width>screenSize.width){
         frameSize.width = screenSize.width;
       }
       requestFocusInWindow();
