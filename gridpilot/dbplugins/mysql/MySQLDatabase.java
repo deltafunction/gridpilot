@@ -73,6 +73,9 @@ public class MySQLDatabase implements Database{
       if(connect()!=null){
         break;
       }
+      else{
+        passwd = null;
+      }
     }
     try{
       setFieldNames();
@@ -113,7 +116,7 @@ public class MySQLDatabase implements Database{
           ", "+user+", "+passwd+" : "+e, 3);
       return null;
     }  
-    try {
+    try{
       conn.setAutoCommit(true);
     }
     catch(Exception e){
