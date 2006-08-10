@@ -406,6 +406,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       
       addButtonResultsPanel(bViewJobDefinitions);
       addButtonResultsPanel(bDefineJobDefinitions);
+      addButtonResultsPanel(new JLabel("|"));
       addButtonResultsPanel(bCreateRecords);
       addButtonResultsPanel(bEditRecord);
       addButtonResultsPanel(bDeleteRecord);
@@ -470,6 +471,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       
       addButtonResultsPanel(bSubmit);
       addButtonResultsPanel(bMonitor);
+      addButtonResultsPanel(new JLabel("|"));
       addButtonResultsPanel(bCreateRecords);
       addButtonResultsPanel(bEditRecord);
       addButtonResultsPanel(bDeleteRecord);
@@ -620,7 +622,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   /**
    * Adds a button on the left of the buttons shown when the panel with results is shown.
    */
-  public void addButtonResultsPanel(JButton b){
+  public void addButtonResultsPanel(JComponent b){
     pButtonTableResults.add(b);
   }
 
