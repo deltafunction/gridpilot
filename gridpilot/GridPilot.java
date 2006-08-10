@@ -18,6 +18,7 @@ public class GridPilot extends JApplet{
   private GlobalFrame frame;
   private static String logFileName = "gridpilot.log";
   private static String confFileName = "gridpilot.conf";
+  private static String userConfFileName = ".gridpilot";
   private static ClassMgr classMgr = new ClassMgr();
   private static boolean applet = true;  
   private static String debugLevel = "0";
@@ -45,7 +46,21 @@ public class GridPilot extends JApplet{
     
     try{
       getClassMgr().setLogFile(new LogFile(logFileName));
-      getClassMgr().setConfigFile(new ConfigFile(confFileName));
+      // First try and get ~/.gridpilot
+      ConfigFile confFile = null;
+      try{
+        File exConfFile = new File(System.getProperty("user.home") + File.separator +
+            userConfFileName);
+        System.out.println("Trying to load configuration file "+exConfFile);
+        confFile = new ConfigFile(exConfFile);
+      }
+      catch(Exception ee){
+        System.out.println("WARNING: could not load external configuration file, " +
+                "using default config file.");
+        ee.printStackTrace();
+        confFile = new ConfigFile(confFileName);
+      }
+      getClassMgr().setConfigFile(confFile);
       loadConfigValues();
       initDebug();
       initGUI();

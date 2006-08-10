@@ -17,17 +17,26 @@ import java.util.*;
 public class ConfigFile{
   private String configFileName;
   private RandomAccessFile file;
+  private boolean inJar = false;
 
   /**
-   * Constructor. Initalizes this configuration file manager with the file 'confiFileName'
+   * Constructor. Initalizes this configuration file manager with the file 'configFile'
    */
+  public ConfigFile(File configFile){
+    this.configFileName = configFile.getAbsolutePath();
+    inJar = false;
+  }
 
+  /**
+   * Constructor. Initalizes this configuration file manager with the file of name 'configFileName'
+   */
   public ConfigFile(String configFileName){
     this.configFileName = configFileName;
     if(!GridPilot.tmpConfFile.containsKey(configFileName) ||
         GridPilot.tmpConfFile.get(configFileName)==null){
       makeTmpConfigFile();
     }
+    inJar = true;
   }
   
   public void makeTmpConfigFile(){
@@ -180,12 +189,26 @@ public class ConfigFile{
    * @return true if opening was ok, false otherwise
    */
   private boolean openFile(){
-    try{
-      file = new RandomAccessFile((File) GridPilot.tmpConfFile.get(configFileName), "r");
+    if(!inJar){
+      // ~/.gridpilot
+      try{
+        file = new RandomAccessFile(configFileName, "r");
+      }
+      catch(FileNotFoundException e){
+        // if not available, try and see if a tmp file has been saved
+        Debug.debug("cannot find file "+ configFileName+". "+e.getMessage(), 1);
+        return false;
+      }
     }
-    catch(FileNotFoundException e){
-      Debug.debug("cannot find file "+ configFileName+". "+e.getMessage(), 1);
-      return false;
+    else{
+      // see if a tmp file has been saved
+      try{
+        file = new RandomAccessFile((File) GridPilot.tmpConfFile.get(configFileName), "r");
+      }
+      catch(FileNotFoundException ee){
+        Debug.debug("cannot find file "+ configFileName+". "+ee.getMessage(), 1);
+        return false;
+      }
     }
     return true;
   }
