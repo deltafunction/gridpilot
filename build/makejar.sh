@@ -1,13 +1,14 @@
 cp -r ../resources ./
 cp -r ../gridpilot ./
-cp ../manifest ./
 cp ../gridpilot.conf ./
 cp ../readme.txt ./
 ls resources/certificates > resources/ca_certs_list.txt
 sed -e "s/.*date.*/\<\!--date--\>`date`/" resources/about.htm > tmpAbout.htm
 mv -f tmpAbout.htm resources/about.htm
 
-#sh compile.sh
+# cd ..
+# sh compile.sh
+# cd build
 
 rm -f gridpilot.*jar *signed.jar
 
@@ -17,14 +18,11 @@ for name in ${jarFiles[@]}
   jar -xvf $name
 done
 
-find . -name \*.class > jars
-find resources -type f | grep -v CVS >> jars
-echo gridpilot.conf >> jars
-echo readme.txt >> jars
+find . -type f | grep -v CVS | grep -v META-INF | grep -v suresh | grep -v 'gridpilot\.jar' | grep -v '\.sh' > jars
 
 echo Creating an unsigned applet
 
-first=1800
+first=2000
 len=`cat jars | wc -l`
 echo Length: $len
 ((rest = $len - $first))
@@ -44,4 +42,4 @@ jarsigner -storepass "dummy###" -signedjar gridpilot.signed.jar -keystore suresh
 
 rm -rf oracle javax com COM cryptix hsqlServlet.class LICENSE.txt log4j.properties META-INF netscape org xjava LDAP*
 rm -f ~/.globus/tmp.p12
-rm -rf jars gridpilot resources tmp* manifest
+rm -rf jars gridpilot resources tmp* gridpilot.conf readme.txt gridpilot.log
