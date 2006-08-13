@@ -68,6 +68,7 @@ public class NGComputingSystem implements ComputingSystem{
   private String error = "";
   private boolean useInfoSystem = false;
   private String [] clusters;
+  private String [] giises;
   private ARCResource [] resources;
   private String runtimeDB = null;
   private HashSet finalRuntimes = null;
@@ -97,6 +98,7 @@ public class NGComputingSystem implements ComputingSystem{
     String useInfoSys = configFile.getValue(csName, "use information system");
     useInfoSystem = useInfoSys.equalsIgnoreCase("true") || useInfoSys.equalsIgnoreCase("yes");
     clusters = configFile.getValues(csName, "clusters");
+    giises = configFile.getValues(csName, "giises");
        
     arcDiscovery = new ARCDiscovery();
 
@@ -118,11 +120,27 @@ public class NGComputingSystem implements ComputingSystem{
       arcDiscovery.setClusters(clusterSet);
     }
     else{
-      // Use information system to find clusters
+      if(giises!=null && giises.length!=0){
+        // If GIISes given, use them
+        String giis = null;
+        for(int i=0; i<giises.length; ++i){
+          if(!giises[i].startsWith("ldap://")){
+            giis = "ldap://"+giises[i]+":2135/Mds-Vo-Name=NorduGrid,O=Grid";
+          }
+          else{
+            giis = giises[i];
+          }
+          Debug.debug("Adding GIIS "+giis, 3);
+          arcDiscovery.addGIIS(giis);
+        }
+      }
+      else{
+      // Use default set of GIISes
       arcDiscovery.addGIIS("ldap://index4.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
       //arcDiscovery.addGIIS("ldap://index1.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
       //arcDiscovery.addGIIS("ldap://index2.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
       //arcDiscovery.addGIIS("ldap://index3.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+      }
     }
     
     if(useInfoSystem){
