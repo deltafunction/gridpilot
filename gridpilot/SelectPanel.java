@@ -75,7 +75,7 @@ public class SelectPanel extends JPanel{
    * Reads the selection panel and returns a representation of the selection in
    * basic SQL
    */
-  public String getRequest(){
+  /*public String getRequest(){
     String ret = "SELECT ";
     for(int i = 0; i<sPanel.spDisplayList.getComponentCount(); ++i){
       SPanel.DisplayPanel cb = ((SPanel.DisplayPanel) sPanel.spDisplayList.getComponent(i));
@@ -102,7 +102,7 @@ public class SelectPanel extends JPanel{
     }
     Debug.debug("Search request: " + ret, 3);
     return ret;
-  }
+  }*/
 
   /**
    * Reads the selection panel and returns a representation of the selection in
