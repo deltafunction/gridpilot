@@ -199,10 +199,6 @@ public class DBPluginMgr implements Database{
     return ret1;
   }
 
-  public String getJobDefCreationPanelClass(){
-    return db.getJobDefCreationPanelClass();
-  }
-
   //NOTICE: lower case: getFieldnames != getFieldNames
   public String [] getFieldnames(final String table){
     String [] tmpFieldNames = getFieldNames(table);

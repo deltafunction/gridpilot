@@ -316,11 +316,6 @@ public class ATLASDatabase implements Database {
     return null;
   }
 
-  public String getJobDefCreationPanelClass(){
-    // TODO Auto-generated method stub
-    return null;
-  }
-
   public String getError(){
     // TODO Auto-generated method stub
     return null;

@@ -100,8 +100,6 @@ public interface Database{
   // ####### Misc
   public boolean setJobDefsField(int [] identifiers, String field, String value);
   public String [] getFieldNames(String table);
-  // The class providing the panel for job creation
-  public String getJobDefCreationPanelClass();
   // The last database error reported
   public String getError();
   
