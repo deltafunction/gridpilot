@@ -220,10 +220,6 @@ public class HSQLDBDatabase implements Database{
     return execok;
   }
     
-  public String getJobDefCreationPanelClass(){
-    return null;
-  }
-
   public synchronized void clearCaches(){
     // nothing for now
   }
@@ -285,6 +281,9 @@ public class HSQLDBDatabase implements Database{
   public synchronized String [] getFieldNames(String table){
     try{
       Debug.debug("getFieldNames for table "+table, 3);
+      if(table.equalsIgnoreCase("file")){
+        return new String [] {"datasetName", "name", "url"};
+      }
       Statement stmt = conn.createStatement();
       // TODO: Do we need to execute a query to get the metadata?
       ResultSet rset = stmt.executeQuery("SELECT LIMIT 0 1 * FROM "+table);
@@ -533,6 +532,8 @@ public class HSQLDBDatabase implements Database{
     String req = selectRequest;
     boolean withStar = false;
     int identifierColumn = -1;
+    boolean fileTable = false;
+    int urlColumn = -1;
     Pattern patt;
     Matcher matcher;
 
@@ -552,7 +553,6 @@ public class HSQLDBDatabase implements Database{
       patt = Pattern.compile(", "+identifier+" ", Pattern.CASE_INSENSITIVE);
       matcher = patt.matcher(req);
       req = matcher.replaceAll(" ");
-      
       patt = Pattern.compile("SELECT "+identifier+" FROM", Pattern.CASE_INSENSITIVE);
       if(!patt.matcher(req).find()){
         patt = Pattern.compile(" FROM (\\w+)", Pattern.CASE_INSENSITIVE);
@@ -561,6 +561,26 @@ public class HSQLDBDatabase implements Database{
       }
     }
     
+    // The "file" table is a pseudo table constructed from "jobDefinitions".
+    // We replace "url" with "outFileMapping" and parse the values of
+    // outFileMapping later.
+    if(req.matches("SELECT (.+) url\\, (.+) FROM file (.+)")){
+      patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
+      matcher = patt.matcher(req);
+      req = matcher.replaceAll("SELECT $1 outFileMapping, $2 FROM file $3");
+    }
+    if(req.matches("SELECT (.+) url FROM file (.+)")){
+      patt = Pattern.compile("SELECT (.+) url FROM file (.+)", Pattern.CASE_INSENSITIVE);
+      matcher = patt.matcher(req);
+      req = matcher.replaceAll("SELECT $1 outFileMapping FROM file $2");
+    }
+    if(req.matches("SELECT (.+) FROM file (.+)")){
+      fileTable = true;
+      patt = Pattern.compile("SELECT (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
+      matcher = patt.matcher(req);
+      req = matcher.replaceAll("SELECT $1 FROM jobDefinition $2");
+    }
+
     patt = Pattern.compile("CONTAINS (\\S+)", Pattern.CASE_INSENSITIVE);
     matcher = patt.matcher(req);
     req = matcher.replaceAll("LIKE '%$1%'");
@@ -590,6 +610,13 @@ public class HSQLDBDatabase implements Database{
             j!=md.getColumnCount()-1){
           identifierColumn = j;
         }
+        // Find the outFileMapping column number
+        if(fileTable && fields[j].equalsIgnoreCase("outFileMapping")  && 
+            j!=md.getColumnCount()-1){
+          urlColumn = j;
+          // replace "outFileMapping" with "url" in the Table.
+          fields[j] = "URL";
+        }
       }
       if(withStar && identifierColumn>-1){
         fields[identifierColumn] = md.getColumnName(md.getColumnCount());
@@ -618,8 +645,22 @@ public class HSQLDBDatabase implements Database{
               values[i][j] = foo;
             }
           }
+          else if(fileTable && urlColumn>-1 && j==urlColumn){
+            // The first output file specified in outFileMapping
+            // is be convention *the* output file.
+            String [] foos = Util.split(rset.getString(j+1));
+            String foo = "";
+            if(foos.length>1){
+              foo = foos[1];
+            }
+            else{
+              Debug.debug("WARNING: no output file found!", 1);
+            }
+            Debug.debug("values "+i+" "+foo, 2);
+            values[i][j] = foo;
+          }
           else{
-            String foo =  rset.getString(j+1);
+            String foo = rset.getString(j+1);
             Debug.debug("values "+i+" "+foo, 2);
             values[i][j] = foo;
           }

@@ -38,6 +38,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JPanel pButtonTableResults = new JPanel(new FlowLayout(FlowLayout.CENTER));
   private JButton bCreateRecords = new JButton("Define new record(s)");
   private JButton bEditRecord = new JButton("Edit record");
+  private JButton bDownload = new JButton("Download file(s)");
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
   private JButton bSubmit = new JButton("Submit job(s)");
   private JButton bMonitor = new JButton("Monitor job(s)");
@@ -45,6 +46,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bSearch = new JButton("Search");
   private JButton bClear = new JButton("Clear");
   private JButton bViewJobDefinitions = new JButton("Show jobDefinitions");
+  private JButton bViewFiles = new JButton("Show files");
   private JButton bDefineJobDefinitions = new JButton("Create jobDefinitions");
   private JMenuItem miEdit = null;
   private int [] identifiers;
@@ -71,9 +73,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   // The idea is to ignore new requests when working on a request
   private boolean working = false;
   private SubmissionControl submissionControl = null;
+  private boolean jobDefTableExist;
   
   public JPanel panelSelectPanel = new JPanel(new GridBagLayout());
-  
   public SelectPanel selectPanel;
 
   // try grabbing the semaphore
@@ -102,8 +104,22 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
      statusBar = GridPilot.getClassMgr().getStatusBar();
      
+     jobDefTableExist = false;
+     if(tableName.equalsIgnoreCase("dataset")){
+       // Check if there is a jobDefinition table in this database
+       try{
+         jobDefTableExist = (dbPluginMgr.getFieldNames("jobDefinition")!=null);
+       }
+       catch(Exception e){
+         jobDefTableExist = false;
+       }
+     }
+     
      identifier = dbPluginMgr.getIdentifierField(tableName);
-     jobDefIdentifier = dbPluginMgr.getIdentifierField("jobDefinition");
+     
+     if(tableName.equalsIgnoreCase("jobDefinition")){
+       jobDefIdentifier = dbPluginMgr.getIdentifierField("jobDefinition");
+     }
 
      defaultFields = dbPluginMgr.getDBDefFields(tableName);
      Debug.debug("Default fields "+defaultFields.length, 3);
@@ -379,6 +395,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       );
       
+      bViewFiles.addActionListener(new java.awt.event.ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          viewFiles();
+        }
+      }
+      );
+
       bDefineJobDefinitions.addActionListener(new java.awt.event.ActionListener(){
         public void actionPerformed(ActionEvent e){
           defineJobDefinitions();
@@ -404,6 +427,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       });
       
+      addButtonResultsPanel(bViewFiles);
       addButtonResultsPanel(bViewJobDefinitions);
       addButtonResultsPanel(bDefineJobDefinitions);
       addButtonResultsPanel(new JLabel("|"));
@@ -412,10 +436,43 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonResultsPanel(bDeleteRecord);
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
+      bViewFiles.setEnabled(false);
       bViewJobDefinitions.setEnabled(false);
       bDefineJobDefinitions.setEnabled(false);
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
+      updateUI();
+    }
+    else if(tableName.equalsIgnoreCase("file")){
+      
+      bEditRecord.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          //editFileInfo();
+        }
+      });
+
+      bDeleteRecord.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          //deleteFileInfo();
+        }
+      });
+
+      bDownload.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          download();
+        }
+      });
+      
+      addButtonResultsPanel(bDownload);
+      addButtonResultsPanel(new JLabel("|"));
+      addButtonResultsPanel(bEditRecord);
+      //addButtonResultsPanel(bCreateRecords);
+      addButtonResultsPanel(bDeleteRecord);
+      addButtonSelectPanel(bClear);
+      addButtonSelectPanel(bSearch);
+      bEditRecord.setEnabled(false);
+      bDeleteRecord.setEnabled(false);
+      bDownload.setEnabled(false);
       updateUI();
     }
     else if(tableName.equalsIgnoreCase("jobDefinition")){
@@ -516,6 +573,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonResultsPanel(bDeleteRecord);
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
+      bViewFiles.setEnabled(false);
       bViewJobDefinitions.setEnabled(false);
       bDefineJobDefinitions.setEnabled(false);
       bEditRecord.setEnabled(false);
@@ -555,6 +613,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonResultsPanel(bDeleteRecord);
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
+      bViewFiles.setEnabled(false);
       bViewJobDefinitions.setEnabled(false);
       bDefineJobDefinitions.setEnabled(false);
       bEditRecord.setEnabled(false);
@@ -706,6 +765,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         DBResult res = null;
         res = dbPluginMgr.select(selectRequest, identifier);
 
+        bViewFiles.setEnabled(false);
         bViewJobDefinitions.setEnabled(false);
         bDefineJobDefinitions.setEnabled(false);
         bEditRecord.setEnabled(false);
@@ -742,9 +802,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               ListSelectionModel lsm = (ListSelectionModel)e.getSource();
               //Debug.debug("lsm indices: "+
               //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
-              bViewJobDefinitions.setEnabled(!lsm.isSelectionEmpty() &&
+              bViewFiles.setEnabled(!lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              bDefineJobDefinitions.setEnabled(!lsm.isSelectionEmpty());
+              bViewJobDefinitions.setEnabled(jobDefTableExist && !lsm.isSelectionEmpty() &&
+                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+              bDefineJobDefinitions.setEnabled(jobDefTableExist && !lsm.isSelectionEmpty());
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
               bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
@@ -864,6 +926,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         viewJobDefinitions();
       }
     });
+    JMenuItem miViewFiles = new JMenuItem("Show files");
+    miViewJobDefinitions.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        viewFiles();
+      }
+    });
     JMenuItem miDelete = new JMenuItem("Delete");
     miEdit = new JMenuItem("Edit");
     miDelete.addActionListener(new ActionListener(){
@@ -876,16 +944,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         editDataset();
       }
     });
+    miViewFiles.setEnabled(true);
     miViewJobDefinitions.setEnabled(true);
     miDelete.setEnabled(true);
     miEdit.setEnabled(true);
     tableResults.addMenuSeparator();
+    tableResults.addMenuItem(miViewFiles);
     tableResults.addMenuItem(miViewJobDefinitions);
     tableResults.addMenuSeparator();
-    tableResults.addMenuSeparator();
-    tableResults.addMenuItem(miDelete);
-    tableResults.addMenuSeparator();
     tableResults.addMenuItem(miEdit);
+    tableResults.addMenuItem(miDelete);
   }
 
   public void makeTransformationMenu(){
@@ -905,8 +973,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     miDelete.setEnabled(true);
     miEdit.setEnabled(true);
     tableResults.addMenuSeparator();
-    tableResults.addMenuItem(miDelete);
     tableResults.addMenuItem(miEdit);
+    tableResults.addMenuItem(miDelete);
   }
   public void makeRuntimeEnvironmentMenu(){
     Debug.debug("Making runtime environment menu", 3);
@@ -925,8 +993,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     miDelete.setEnabled(true);
     miEdit.setEnabled(true);
     tableResults.addMenuSeparator();
-    tableResults.addMenuItem(miDelete);
     tableResults.addMenuItem(miEdit);
+    tableResults.addMenuItem(miDelete);
   }
 
   public void makeJobDefMenu(){
@@ -987,13 +1055,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     miMonitor.setEnabled(true);
     tableResults.addMenuItem(jmSetFieldValue);
     tableResults.addMenuSeparator();
-    tableResults.addMenuItem(miEdit);
-    tableResults.addMenuSeparator();
-    tableResults.addMenuItem(miDelete);
-    tableResults.addMenuSeparator();
     tableResults.addMenuItem(miMonitor);
-    tableResults.addMenuSeparator();
     tableResults.addMenuItem(jmSubmit);
+    tableResults.addMenuSeparator();
+    tableResults.addMenuItem(miEdit);
+    tableResults.addMenuItem(miDelete);
   }
   
   private void setFieldValues(String field, String value){
@@ -1034,22 +1100,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       e.printStackTrace();
       return;
     }
-    // Try to load the job definition panel defined by the db plugin
-    String panelClass = dbPluginMgr.getJobDefCreationPanelClass();
-    Class [] argTypes = new Class []
-       {String.class, DatasetMgr.class, DBPanel.class, Boolean.class};
-    Object [] args = new Object [] {dbName, datasetMgr, this, new Boolean(true)};
     JobDefCreationPanel panel = null;
-    try{
-      panel = (JobDefCreationPanel) Util.loadClass(
-          panelClass, argTypes, args);
-    }
-    catch(Throwable e){
-      Debug.debug("Could not load job definition creation panel class for " +
-          "this db plugin, loading default panel", 1);
-      panel = new JobDefCreationPanel(dbName, datasetMgr, this,
-          new Boolean(true));
-    }
+    panel = new JobDefCreationPanel(dbName, datasetMgr, this,
+        new Boolean(true));
     CreateEditDialog pDialog = new CreateEditDialog(panel, true, false, true);
     pDialog.setTitle(tableName);
     //pDialog.setVisible(true);
@@ -1481,6 +1534,37 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   /**
+   * Open new pane with list of files.
+   */
+  private void viewFiles(){
+    if(getSelectedIdentifier()!=-1){
+      new Thread(){
+        public void run(){
+          try{
+            // Create new panel with jobDefinitions.         
+            int id = getSelectedIdentifier();
+            DBPanel dbPanel = new DBPanel("file",
+                dbPluginMgr, id);
+            String [] jobDefDatasetReference =
+              dbPluginMgr.getJobDefDatasetReference();
+            dbPanel.selectPanel.setConstraint(jobDefDatasetReference[1],
+                dbPluginMgr.getDataset(id).getValue(
+                    jobDefDatasetReference[0]).toString(),
+                0);
+            dbPanel.searchRequest();           
+            GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                   
+          }
+          catch(Exception e){
+            Debug.debug("Couldn't create panel for dataset " + "\n" +
+                               "\tException\t : " + e.getMessage(), 2);
+            e.printStackTrace();
+          }
+        }
+      }.start();
+    }
+  }
+ 
+  /**
    * Open new pane with list of jobDefinitions.
    */
   private void viewJobDefinitions(){
@@ -1533,7 +1617,22 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
  
   /**
-   * Called when mouse is pressed on Monitor button
+   * Called when mouse is pressed on the Download button
+   */
+  private void download(){
+    new Thread(){
+      public void run(){        
+        DBRecord jobDef;
+        int[] selectedFileIdentifiers = getSelectedIdentifiers();
+        String idField = dbPluginMgr.getIdentifierField("file");
+        for(int i=0; i<selectedFileIdentifiers.length; ++i){
+        }
+      }
+    }.start();
+  }
+
+  /**
+   * Called when mouse is pressed on the Monitor button
    */
   private void monitor(){
     GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel();
