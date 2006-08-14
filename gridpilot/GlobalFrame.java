@@ -442,7 +442,20 @@ public class GlobalFrame extends GPFrame{
     JMenu miNewJobDefTab = new JMenu("jobDefinition");
     JMenuItem [] miNewJobDefTabs = new JMenuItem[GridPilot.getDBs().length];
     menuView.add(miNewJobDefTab);
+    
+    boolean jobDefTableExist = false;   
     for(i=0; i<GridPilot.getDBs().length; ++i){
+      // Check if there is a jobDefinition table in this database
+      try{
+        jobDefTableExist = (GridPilot.getClassMgr().getDBPluginMgr(
+            GridPilot.getDBs()[i]).getFieldNames("jobDefinition")!=null);
+      }
+      catch(Exception e){
+        continue;
+      }
+      if(!jobDefTableExist){
+        continue;
+      }
       miNewJobDefTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
       miNewJobDefTabs[i].addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
