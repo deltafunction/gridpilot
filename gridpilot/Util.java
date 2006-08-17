@@ -497,7 +497,7 @@ public class Util{
     
     if(keyFile.startsWith("~")){
       try{
-        keyFile =  System.getProperty("user.home") + File.separator +
+        keyFile = System.getProperty("user.home") + File.separator +
         keyFile.substring(1);
       }
       catch(Exception e){
@@ -506,7 +506,7 @@ public class Util{
     }
     if(certFile.startsWith("~")){
       try{
-        certFile =  System.getProperty("user.home") + File.separator +
+        certFile = System.getProperty("user.home") + File.separator +
         certFile.substring(1);
       }
       catch(Exception e){
