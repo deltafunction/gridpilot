@@ -8,6 +8,7 @@ import java.beans.PropertyChangeListener;
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicEditorPaneUI;
 import javax.swing.text.Document;
+import javax.swing.text.JTextComponent;
 import javax.swing.text.html.*;
 import javax.swing.border.EtchedBorder;
 import javax.swing.border.TitledBorder;
@@ -17,11 +18,14 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ListIterator;
 import java.util.Vector;
 
 import org.globus.ftp.Buffer;
 import org.globus.ftp.DataSink;
 import org.globus.ftp.GridFTPClient;
+import org.globus.ftp.exception.FTPException;
+import org.globus.util.GlobusURL;
 
 import gridpilot.fsplugins.gridftp.GridFTPFileSystem;
 
@@ -53,8 +57,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private boolean withNavigation = false;
   protected String lastURL = null;
   private String currentUrlString = "";
-  private JTextField currentUrlTextField = new JTextField("", 32);
+  private JComboBox currentUrlBox = null;
   private GridFTPFileSystem gridftpFileSystem = null;
+  private boolean ok = true;
+  private boolean saveUrlHistory = false;
+  
+  public static int HISTORY_SIZE = 15;
 
   public BrowserPanel(JFrame _parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
@@ -69,6 +77,68 @@ public class BrowserPanel extends JDialog implements ActionListener{
     
     gridftpFileSystem = new GridFTPFileSystem();
     
+    String urlHistory = null;
+    Debug.debug("browser history file: "+GridPilot.browserHistoryFile, 2);
+    if(GridPilot.browserHistoryFile!=null && !GridPilot.browserHistoryFile.equals("")){
+      if(GridPilot.browserHistoryFile.startsWith("~")){
+        GridPilot.browserHistoryFile = System.getProperty("user.home") + File.separator +
+        GridPilot.browserHistoryFile.substring(1);
+      }
+      try{
+        if(!LocalStaticShellMgr.existsFile(GridPilot.browserHistoryFile)){
+          Debug.debug("trying to create file", 2);
+          LocalStaticShellMgr.writeFile(GridPilot.browserHistoryFile, "", false);
+        }
+        urlHistory = LocalStaticShellMgr.readFile(GridPilot.browserHistoryFile);
+        saveUrlHistory = true;
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: could not use "+GridPilot.browserHistoryFile+
+            " as history file.", 1);
+        GridPilot.browserHistoryFile = null;
+        urlHistory = null;
+      }
+    }
+    
+    if(urlHistory!=null && !urlHistory.equals("")){
+      BufferedReader in = null;
+      try{
+        Debug.debug("Reading file "+GridPilot.browserHistoryFile, 3);
+        in = new BufferedReader(
+          new InputStreamReader((new URL("file:"+GridPilot.browserHistoryFile)).openStream()));
+      }
+      catch(IOException ioe){
+        Debug.debug("WARNING: could not use "+GridPilot.browserHistoryFile+
+            " as history file.", 1);
+        GridPilot.browserHistoryFile = null;
+        urlHistory = null;
+      }
+      try{
+        String line;
+        int lineNumber = 0;
+        while((line=in.readLine())!=null){
+          ++lineNumber;
+          line = line.replaceAll("\\r", "");
+          line = line.replaceAll("\\n", "");
+          GridPilot.getClassMgr().addUrl(line);
+          Debug.debug("URL: "+line, 3);
+        }
+        in.close();
+      }
+      catch(IOException ioe){
+        Debug.debug("WARNING: could not use "+GridPilot.browserHistoryFile+
+            " as history file.", 1);
+        GridPilot.browserHistoryFile = null;
+        urlHistory = null;
+      }
+    }
+
+    currentUrlBox = new JExtendedComboBox();
+    currentUrlBox.setEditable(true);
+    Dimension d = currentUrlBox.getPreferredSize();
+    currentUrlBox.setPreferredSize(new Dimension(320, d.height));
+    setUrl(url);
+    
     try{
       initGUI(title, url);
     }
@@ -76,6 +146,80 @@ public class BrowserPanel extends JDialog implements ActionListener{
       //e.printStackTrace();
       throw e;
     }
+  }
+  
+  public void okSetEnabled(boolean _ok){
+    ok = _ok;
+    bOk.setEnabled(ok);
+  }
+  
+  private void addUrlKeyListener(){
+    // Listen for enter key in text field
+    JTextComponent editor = (JTextComponent) currentUrlBox.getEditor().getEditorComponent();
+    editor.addKeyListener(new KeyAdapter(){
+      public void keyPressed(KeyEvent e){
+        switch(e.getKeyCode()){
+          case KeyEvent.VK_ENTER:
+            Debug.debug("Detected ENTER", 3);
+            if(currentUrlBox.getEditor().getItem()!=null &&
+                !currentUrlBox.getEditor().getItem().toString().equals("") ||
+                currentUrlBox.getSelectedItem()!=null && 
+                !currentUrlBox.getSelectedItem().toString().equals("")){
+              statusBar.setLabel("Opening URL...");
+              ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+              MyThread t = (new MyThread(){
+                public void run(){
+                  try{
+                    setDisplay(currentUrlBox.getSelectedItem().toString());
+                  }
+                  catch(Exception ee){
+                    statusBar.setLabel("ERROR: could not open "+currentUrlBox.getSelectedItem().toString()+
+                        ". "+ee.getMessage());
+                    Debug.debug("ERROR: could not open "+currentUrlBox.getSelectedItem().toString()+
+                        ". "+ee.getMessage(), 1);
+                    ee.printStackTrace();
+                  }
+                }
+              });     
+              SwingUtilities.invokeLater(t);
+            }
+        }
+      }
+    });
+  }
+  
+  private void addFilterKeyListener(){
+    // Listen for enter key in text field
+    jtFilter.addKeyListener(new KeyAdapter(){
+      public void keyPressed(KeyEvent e){
+        if(!getUrl().endsWith("/")){
+          return;
+        }
+        switch(e.getKeyCode()){
+          case KeyEvent.VK_ENTER:
+            if(!currentUrlBox.getSelectedItem().toString().equals("")){
+              Debug.debug("Detected ENTER", 3);
+              statusBar.setLabel("Opening URL...");
+              ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+              MyThread t = (new MyThread(){
+                public void run(){
+                  try{
+                    setDisplay(getUrl());
+                  }
+                  catch(Exception ee){
+                    statusBar.setLabel("ERROR: could not filter "+currentUrlBox.getSelectedItem().toString()+
+                        ". "+ee.getMessage());
+                    Debug.debug("ERROR: could not filter "+currentUrlBox.getSelectedItem().toString()+
+                        ". "+ee.getMessage(), 1);
+                    ee.printStackTrace();
+                  }
+                }
+              });
+              SwingUtilities.invokeLater(t);
+            }
+        }
+      }
+    });
   }
   
   //Component initialization
@@ -141,31 +285,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(withNavigation){
       JPanel jpNavigation = new JPanel(new GridBagLayout());
       jpNavigation.add(new JLabel("URL: "));
-      jpNavigation.add(currentUrlTextField);
-      topPanel.add(jpNavigation, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
-          ,GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(0, 5, 0, 5),
-          0, 0));
-      // Listen for enter key in text field
-      currentUrlTextField.addKeyListener(new KeyAdapter(){
-        public void keyPressed(KeyEvent e){
-          switch(e.getKeyCode()){
-            case KeyEvent.VK_ENTER:
-              try{
-                if(!currentUrlTextField.getText().equals("")){
-                  statusBar.setLabel("Opening URL...");
-                }
-                setDisplay(currentUrlTextField.getText());
-              }
-              catch(/*IO*/Exception ee){
-                statusBar.setLabel("ERROR: could not open "+currentUrlTextField.getText()+
-                    ". "+ee.getMessage());
-                Debug.debug("ERROR: could not open "+currentUrlTextField.getText()+
-                    ". "+ee.getMessage(), 1);
-                ee.printStackTrace();
-              }
-          }
-        }
-      });
+      jpNavigation.add(currentUrlBox);
+      topPanel.add(jpNavigation, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
+          GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL,
+          new Insets(0, 5, 0, 5), 0, 0));
+      GridPilot.getClassMgr().addUrl("");
+      addUrlKeyListener();
     }
     
     if(withFilter){
@@ -177,40 +302,20 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       jpFilter.add(new JLabel("Filter: "));
       jpFilter.add(jtFilter);
-      topPanel.add(jpFilter, new GridBagConstraints(0, 1, 1, 1, 1.0, 1.0
-          ,GridBagConstraints.WEST, GridBagConstraints.BOTH, new Insets(0, 5, 0, 5),
-          0, 0));
+      topPanel.add(jpFilter, new GridBagConstraints(0, 1, 1, 1, 1.0, 1.0,
+          GridBagConstraints.WEST, GridBagConstraints.BOTH,
+          new Insets(0, 5, 0, 5), 0, 0));
       topPanel.setPreferredSize(new Dimension(520, 56));
                 
       panel.add(topPanel, BorderLayout.NORTH);
 
-      // Listen for enter key in text field
-      jtFilter.addKeyListener(new KeyAdapter(){
-        public void keyPressed(KeyEvent e){
-          if(!getUrl().endsWith("/")){
-            return;
-          }
-          switch(e.getKeyCode()){
-            case KeyEvent.VK_ENTER:
-              try{
-                setDisplay(getUrl());
-              }
-              catch(/*IO*/Exception ee){
-                Debug.debug("ERROR: could not filter. "+ee.getMessage(), 1);
-                ee.printStackTrace();
-              }
-          }
-        }
-      });
-      
+      addFilterKeyListener();
     }  
     
     if(withNavigation || withFilter){
       panel.add(topPanel, BorderLayout.NORTH);
     }
-    
-    setUrl(url);
-    
+        
     //HTMLDocument d = new HTMLDocument();
     ep.addHyperlinkListener(new HyperlinkListener(){
       public void hyperlinkUpdate(final HyperlinkEvent e){
@@ -220,7 +325,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
                (HTMLFrameHyperlinkEvent) e);
           }
           else{
-            setUrl(e.getDescription());
+            //setUrl(e.getDescription());
             ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             statusBar.setLabel("Opening URL...");
             (new MyThread(){
@@ -247,7 +352,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     this.getContentPane().add(statusBar, BorderLayout.SOUTH);  
     setDisplay(url);    
     if(withNavigation){
-      statusBar.setLabel("Type in URL and hit return.");
+      statusBar.setLabel("Type in URL and hit return");
     }
     
     ep.addPropertyChangeListener(new PropertyChangeListener(){
@@ -277,19 +382,19 @@ public class BrowserPanel extends JDialog implements ActionListener{
         }
         switch(e.getKeyCode()){
           case KeyEvent.VK_W:
-            exit();
+            cancel();
         }
       }
     });
     
-    currentUrlTextField.addKeyListener(new KeyAdapter(){
+    currentUrlBox.addKeyListener(new KeyAdapter(){
       public void keyPressed(KeyEvent e){
         if(!e.isControlDown()){
           return;
         }
         switch(e.getKeyCode()){
           case KeyEvent.VK_W:
-            exit();
+            cancel();
         }
       }
     });
@@ -301,10 +406,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
         }
         switch(e.getKeyCode()){
           case KeyEvent.VK_W:
-            exit();
+            cancel();
         }
       }
     });
+
+    if(url!=null && !url.equals("")){
+      setUrl(url);
+    }
 
   }
   
@@ -312,9 +421,36 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Set the text of the navigation label or input field
    */
   private void setUrl(String url){
+    String newUrl = url;
+    GridPilot.getClassMgr().removeUrl("");
+    Vector urlList = GridPilot.getClassMgr().getUrlList();
+    /* remove leading whitespace */
+    newUrl = newUrl.replaceAll("^\\s+", "");
+    /* remove trailing whitespace */
+    newUrl = newUrl.replaceAll("\\s+$", "");
+    newUrl = newUrl.replaceAll("\\\\", "/");
+    newUrl = newUrl.replaceAll("file:C", "file:/C");
+    Debug.debug("Adding URL to history: "+newUrl, 3);
+    // check if url is already in history and add if not
+    if(!urlList.contains(newUrl)){
+      if(urlList.size()>HISTORY_SIZE){
+        Debug.debug("History size exceeded, removing first, "+
+            urlList.size()+">"+HISTORY_SIZE, 3);
+        GridPilot.getClassMgr().removeUrl(urlList.iterator().next().toString());
+      }
+      GridPilot.getClassMgr().addUrl(newUrl);
+      Debug.debug("urlSet is now: "+Util.arrayToString(
+          urlList.toArray(), " : "), 3);
+      currentUrlBox.removeAllItems();
+      for(ListIterator it=urlList.listIterator(urlList.size()-1); it.hasPrevious();){
+        currentUrlBox.addItem(it.previous().toString());
+      }
+      currentUrlBox.updateUI();
+    }
+    addUrlKeyListener();
     currentUrlString = url;
     if(withNavigation){
-      currentUrlTextField.setText(url);
+      currentUrlBox.setSelectedItem(url);
     }
     else{
       currentUrlLabel.setText(url);
@@ -332,7 +468,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Displays the URL, using the method corresponding to
    * the protocol of the URL.
    */
-  private void setDisplay(String url) throws /*IO*/Exception{
+  private void setDisplay(String url) throws Exception{
     try{
       Debug.debug("Checking URL, "+url, 3);
       // browse remote web directory
@@ -379,7 +515,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
          !url.endsWith("html") &&
          !url.endsWith("/") &&
          (url.startsWith("http://") || url.startsWith("https://"))){
-        setHttpTextDisplay(url);
+        try{
+          setHttpTextDisplay(url);
+        }
+        catch(Exception e){
+          setHttpDirDisplay(url);
+        }
       }
       // text document on disk
       else if(!url.endsWith("htm") &&
@@ -396,15 +537,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
       else{
         throw(new IOException("Unknown protocol for "+url));
       }
-      // reset cursor to default when not editing
+      // reset cursor to default
       if(url.endsWith("/")){
         ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       }
     }
-    catch(/*IO*/Exception e){
+    catch(Exception e){
       ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       Debug.debug("Could not initialize panel with URL "+url+". "+e.getMessage(), 1);
-      //return;
       throw e;
     }
   }
@@ -413,7 +553,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Set the EditorPane to display the text page file url.
    * The page can then be edited and saved (when clicking bSave).
    */
-  private void setGsiftpTextEdit(String url) throws IOException{
+  private void setGsiftpTextEdit(String url) throws IOException,
+     FTPException{
     Debug.debug("setGsiftpTextEdit "+url, 3);
     jtFilter.setEnabled(false);
     
@@ -457,32 +598,34 @@ public class BrowserPanel extends JDialog implements ActionListener{
     Debug.debug("Port: "+port, 3);
     Debug.debug("Path: "+localPath, 3);
     Debug.debug("Directory: "+localDir, 3);
-    tmpFile = File.createTempFile("gridpilot", "txt");
+    tmpFile = File.createTempFile("gridpilot-", ".txt");
     Debug.debug("Created temp file "+tmpFile, 3);
+    GridFTPClient gridFtpClient = null;
     try{
-      GridFTPClient gridFtpClient = gridftpFileSystem.connect(host, Integer.parseInt(port));
-      try{
-        gridFtpClient.changeDir(localDir);
-        if(gridFtpClient.getSize(localPath)>500000){
-          throw new IOException("File too big");
-        }
-        gridFtpClient.get(localPath, tmpFile);
-      }
-      catch(Exception e){
-        e.printStackTrace();
-        Debug.debug("Could not read "+localPath, 1);
-        ep.setText("ERROR!\n\nThe file "+localPath+" could not be read. "+
-            e.getMessage());
-        throw e;
-      }
-      pButton.updateUI();
+      gridFtpClient = gridftpFileSystem.connect(host, Integer.parseInt(port));
     }
     catch(Exception e){
-      Debug.debug("Could not set file display of "+localPath+". "+
+      Debug.debug("Could not connect. "+
          e.getMessage(), 1);
       e.printStackTrace();
       throw new IOException(e.getMessage());
     }
+    try{
+      gridFtpClient.changeDir(localDir);
+      if(gridFtpClient.getSize(localPath)>500000){
+        throw new IOException("File too big");
+      }
+      gridFtpClient.get(localPath, tmpFile);
+    }
+    catch(FTPException e){
+      e.printStackTrace();
+      Debug.debug("Could not read "+localPath, 1);
+      ep.setText("ERROR!\n\nThe file "+localPath+" could not be read. "+
+          "\n\nIf it is a directory, please end with a /\n\n"+
+          e.getMessage());
+      throw e;
+    }
+    pButton.updateUI();
     try{
       Debug.debug("Reading temp file "+tmpFile.getAbsolutePath(), 3);
       BufferedReader in = new BufferedReader(
@@ -500,13 +643,15 @@ public class BrowserPanel extends JDialog implements ActionListener{
       ep.setContentType("text/plain");
       ep.setText(text);
       ep.setEditable(true);
+      //With this cursor, the caret doesn't blink...
       //ep.setCursor(new Cursor(Cursor.TEXT_CURSOR));
+      ep.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
       ep.getCaret().setBlinkRate(500);
       ep.updateUI();
       pButton.updateUI();
       
       bSave.setEnabled(true);
-      bOk.setEnabled(true);
+      bOk.setEnabled(ok);
       bNew.setEnabled(false);
       bDelete.setEnabled(false);
       bUpload.setEnabled(false);
@@ -554,12 +699,15 @@ public class BrowserPanel extends JDialog implements ActionListener{
       ep.setPage(url);
       ep.setText(text);
       ep.setEditable(true);
+      // With this cursor, the caret doesn't blink...
       //ep.setCursor(new Cursor(Cursor.TEXT_CURSOR));
+      ep.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
       ep.getCaret().setBlinkRate(500);
       ep.updateUI();
       pButton.updateUI();
       Debug.debug("Setting thisUrl, "+url, 3);
       thisUrl = url;
+      setUrl(thisUrl);
     }
     catch(IOException e){
       Debug.debug("Could not set text editor for url "+url+". "+
@@ -576,7 +724,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     Debug.debug("setHttpTextDisplay "+url, 3);
     jtFilter.setEnabled(false);
     try{
-      ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       bSave.setEnabled(false);
       bNew.setEnabled(false);
       bDelete.setEnabled(false);
@@ -601,6 +748,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       pButton.updateUI();
       Debug.debug("Setting thisUrl, "+url, 3);
       thisUrl = url;
+      setUrl(thisUrl);
+      ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     }
     catch(IOException e){
       Debug.debug("Could not set text editor for url "+url+". "+
@@ -626,6 +775,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       pButton.updateUI();
       Debug.debug("Setting thisUrl, "+thisUrl, 3);
       thisUrl = url;
+      setUrl(thisUrl);
     }
     catch(IOException e){
       Debug.debug("Could not set html display of url "+url+". "+
@@ -813,7 +963,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
             else{
               ++files;
             }
-            textVector.add("<a href=file:"+text[j]+">" + 
+            textVector.add("<a href=\"file:"+text[j]+"\">" + 
                 (((text[j].toLowerCase().startsWith("c:\\") ||
                     text[j].toLowerCase().startsWith("c:/")) &&
                     !localPath.toLowerCase().startsWith("c:\\") &&
@@ -825,7 +975,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         ep.setContentType("text/html");
         htmlText = "<html>\n";
         if(!localPath.equals("/")){
-          htmlText += "<a href=file:"+localPath+"../>"/*+localPath*/+"../</a><br>\n";
+          htmlText += "<a href=\"file:"+localPath+"../\">"/*+localPath*/+"../</a><br>\n";
         }
         htmlText += Util.arrayToString(textVector.toArray(), "<br>\n");
         htmlText += "\n</html>";
@@ -861,7 +1011,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Set the EditorPane to display a directory listing
    * of the URL url.
    */
-  private void setGsiftpDirDisplay(String url) throws /*IO*/Exception{
+  private void setGsiftpDirDisplay(String url) throws Exception{
     Debug.debug("setGsiftpDirDisplay "+url, 3);
     jtFilter.setEnabled(true);
     
@@ -940,7 +1090,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           gridFtpClient.list("", "", dataSink);
           textArr = Util.split(received2.toString(), "\n");
         }
-        catch(/*FTP*/Exception e){
+        catch(Exception e){
           Debug.debug("oops, failed listing!", 2);
           throw e;
         }
@@ -997,7 +1147,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       int maxEntries = 500;
       int length = textVector.size()<maxEntries ? textVector.size() : maxEntries;
       for(int i=0; i<length; ++i){
-        text += "<a href=gsiftp://"+host+":"+port+localPath+textVector.get(i)+">"+
+        text += "<a href=\"gsiftp://"+host+":"+port+localPath+textVector.get(i)+"\">"+
         /*"gsiftp://"+host+":"+port+localPath+*/textVector.get(i)+"</a>";
         if(i<length-1){
           text += "<br>\n";
@@ -1008,7 +1158,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       htmlText = "<html>\n";
       
       if(!localPath.equals("/")){
-        htmlText += "<a href=gsiftp://"+host+":"+port+localPath+"../>"+/*"gsiftp://"+host+":"+port+localPath+*/"../</a><br>\n";
+        htmlText += "<a href=\"gsiftp://"+host+":"+port+localPath+"../\">"+/*"gsiftp://"+host+":"+port+localPath+*/"../</a><br>\n";
       }
       Debug.debug("running arrayToString...", 3);
       htmlText += text;
@@ -1069,6 +1219,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       pButton.updateUI();
       Debug.debug("Setting thisUrl, "+thisUrl, 3);
       thisUrl = url;
+      setUrl(thisUrl);
     }
     catch(IOException e){
       Debug.debug("Could not set directory display of url "+url+". "+
@@ -1077,7 +1228,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
   }
 
-    public Dimension getPreferredSize(){
+  public Dimension getPreferredSize(){
     return panel.getPreferredSize();
   }
 
@@ -1096,16 +1247,18 @@ public class BrowserPanel extends JDialog implements ActionListener{
   //Close the dialog
   void cancel(){
     if(thisUrl==null || thisUrl.endsWith("/")){
+      saveHistory();
       dispose();
       lastURL = origUrl;
     }
     else{
       try{
         String newUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/")+1);
-        setUrl(newUrl);
+        //thisUrl = newUrl;
+        //setUrl(thisUrl);
         setDisplay(newUrl);
       }
-      catch(/*IO*/Exception ioe){
+      catch(Exception ioe){
         ioe.printStackTrace();
         dispose();
         lastURL = origUrl;
@@ -1118,59 +1271,57 @@ public class BrowserPanel extends JDialog implements ActionListener{
     //GridPilot.lastURL = ep.getPage();
     Debug.debug("Setting lastURL, "+thisUrl, 3);
     lastURL = thisUrl;
+    saveHistory();
     dispose();
+  }
+  
+  void saveHistory(){
+    Debug.debug("Saving history", 3);
+    if(saveUrlHistory){
+      try{
+        LocalStaticShellMgr.writeFile(GridPilot.browserHistoryFile,
+           Util.arrayToString(GridPilot.getClassMgr().getUrlList().toArray(),"\n"), false);
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: could not write history file. "+e.getMessage(), 1);
+        e.printStackTrace();
+      }
+    }
   }
 
   /**
    * Write file or directory fsPath in local file system containing text.
    */
-  private void localWriteFile(String fsPath, String text){
-    try{
-      if(fsPath.endsWith("/") && (text==null || text.equals(""))){
-        fsPath = fsPath.substring(0, fsPath.length()-1);
-        LocalStaticShellMgr.mkdirs(fsPath);
+  private void localWriteFile(String fsPath, String text) throws IOException {
+    if(fsPath.endsWith("/") && (text==null || text.equals(""))){
+      fsPath = fsPath.substring(0, fsPath.length()-1);
+      if(!LocalStaticShellMgr.mkdirs(fsPath)){
+        throw new IOException("Could not make directory "+fsPath);
       }
-      else if(!fsPath.endsWith("/")){
-        LocalStaticShellMgr.writeFile(fsPath, text, false);
-      }
-      else{
-        throw new IOException("ERROR: Cannot write text to a directory.");
-      }
-      // if we don't get an exception, the file got written...
-      statusBar.setLabel(fsPath+" written.");
-      Debug.debug("File or directory "+fsPath+" written", 2);
-      return;
     }
-    catch(Exception e){
-      Debug.debug("Could not write "+fsPath, 1);
+    else if(!fsPath.endsWith("/")){
+      LocalStaticShellMgr.writeFile(fsPath, text, false);
     }
-    // if we got here we did not save the file
-    ep.setText("ERROR!\n\nThe file "+fsPath+" could not be saved.\n\n" +
-        "Check if a shell manager is available.");
+    else{
+      throw new IOException("ERROR: Cannot write text to a directory.");
+    }
+    Debug.debug("File or directory "+fsPath+" written", 2);
   }
 
   /**
    * Delete file or directory fsPath in local file system.
    */
-  private void localDeleteFile(String fsPath){
-    try{
-      LocalStaticShellMgr.deleteFile(fsPath);
-      // if we don't get an exception, the file got written...
-      Debug.debug("File or directory "+fsPath+" deleted", 2);
-      return;
+  private void localDeleteFile(String fsPath) throws IOException{
+    if(!LocalStaticShellMgr.deleteFile(fsPath)){
+      throw new IOException(fsPath+" could not be deleted.");
     }
-    catch(Exception e){
-      Debug.debug("Could not delete "+fsPath, 1);
-    }
-    // if we got here we did not delete the file
-    ep.setText("ERROR!\n\nThe file "+fsPath+" could not be deleted.\n\n" +
-        "Check if a shell manager is available.");
+    Debug.debug("File or directory "+fsPath+" deleted", 2);
   }
 
   /**
    * Copy file to directory fsPath.
    */
-  private void localCopy(String fsPath, File file){
+  private void localCopy(String fsPath, File file) throws IOException{
     if(!fsPath.endsWith("/")){
       fsPath = fsPath+"/";
     }
@@ -1184,19 +1335,20 @@ public class BrowserPanel extends JDialog implements ActionListener{
       if(!LocalStaticShellMgr.isDirectory(fsPath)){
         throw new IOException("ERROR: "+fsPath+" is not a directory.");
       }
-      LocalStaticShellMgr.copyFile(file.getAbsolutePath(),
-          fsPath+fileName);
+      if(!LocalStaticShellMgr.copyFile(file.getAbsolutePath(),
+          fsPath+fileName)){
+        throw new IOException(file.getAbsolutePath()+
+            " could not be copied to "+fsPath+fileName);
+      }
       // if we don't get an exception, the file got written...
       Debug.debug("File "+file.getAbsolutePath()+" written to " +
           fsPath+fileName, 2);
       return;
     }
-    catch(Exception e){
+    catch(IOException e){
       Debug.debug("Could not write "+fsPath, 1);
+      throw e;
     }
-    // if we got here we did not save the file
-    ep.setText("ERROR!\n\nThe file "+fsPath+" could not be saved.\n\n" +
-        "Check if a shell manager is available.");
   }
   
   /**
@@ -1205,7 +1357,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * If a name ending with a / is typed in, a directory is created.
    * (this path must match the URL url).
    */
-  private void localCreate(String fsPath){
+  private void localCreate(String fsPath) throws IOException {
     String fileName = Util.getName("File name (end with a / to create a directory)", "");   
     if(fsPath==null || fileName==null){
       return;
@@ -1239,38 +1391,61 @@ public class BrowserPanel extends JDialog implements ActionListener{
       if(!fsPath.endsWith("/") && !fileName.startsWith("/")){
         fsPath = fsPath+"/";
       }
-      localDeleteFile(fsPath+fileName);
       try{
-        ep.getDocument().putProperty(
-            Document.StreamDescriptionProperty, null);
-        if(url!=null){
-          setDisplay(url.toExternalForm());
+        localDeleteFile(fsPath+fileName);
+        statusBar.setLabel(fsPath+" deleted");
+        try{
+          ep.getDocument().putProperty(
+              Document.StreamDescriptionProperty, null);
+          if(url!=null){
+            setDisplay(url.toExternalForm());
+          }
+          else{
+            setDisplay((new URL("file:"+fsPath)).toExternalForm());
+          }
         }
-        else{
-          setDisplay((new URL("file:"+fsPath)).toExternalForm());
+        catch(Exception ioe){
+          ioe.printStackTrace();
         }
       }
-      catch(/*IO*/Exception ioe){
-        ioe.printStackTrace();
+      catch(Exception e){
+        Debug.debug("ERROR: could not delete "+fsPath+fileName+". "+e.getMessage(), 1);
+        e.printStackTrace();
+        ep.setText("ERROR!\n\nThe file "+fsPath+fileName+" could not be deleted.\n\n"+
+            //"If it is a directory, delete all files within first.\n\n"+
+            e.getMessage());
+        statusBar.setLabel("ERROR: The file "+fsPath+fileName+" could not be deleted.");
+        //pButton.updateUI();
       }
     }
     else if(thisUrl.startsWith("gsiftp://")){
       String fullName = null;
+      GlobusURL globusUrl = null;
       if(!thisUrl.endsWith("/") && !thisUrl.startsWith("/")){
         fullName = thisUrl+"/"+fileName;
       }
       else{
         fullName = thisUrl+fileName;
       }
-      gridftpFileSystem.delete(fullName);
-      // if we got here we did not delete the file
-      ep.setText("ERROR!\n\nThe file "+fullName+" could not be deleted.");
-      pButton.updateUI();
       try{
-        setDisplay(thisUrl);
+        globusUrl = new GlobusURL(fullName);
+        gridftpFileSystem.deleteFile(globusUrl);
+        statusBar.setLabel(globusUrl.getPath()+" deleted");
+        try{
+          setDisplay(thisUrl);
+        }
+        catch(Exception e){
+          Debug.debug("WARNING: could not display "+thisUrl, 1);
+        }
       }
       catch(Exception e){
-        Debug.debug("WARNING: could not display "+thisUrl, 1);
+        Debug.debug("ERROR: could not delete "+fullName+". "+e.getMessage(), 1);
+        e.printStackTrace();
+        ep.setText("ERROR!\n\nThe file "+fullName+" could not be deleted.\n\n"+
+            //"If it is a directory, delete all files within first.\n\n"+
+            e.getMessage());
+        statusBar.setLabel("ERROR: The file "+fullName+" could not be deleted.");
+        //pButton.updateUI();
       }
     }
     else{
@@ -1282,7 +1457,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Upload file to fsPath.
    * Ask for the file with a FileChooser.
    */
-  private void upload() throws IOException{
+  private void upload() throws IOException, FTPException{
     try{
       
       if(!thisUrl.endsWith("/")){
@@ -1294,8 +1469,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       Debug.debug("Uploading file to "+thisUrl, 3);
       // local directory
       if(thisUrl.startsWith("file:")){
-        String rootUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
-        String fsPath = rootUrl;
+        String fsPath = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
         fsPath = fsPath.replaceFirst("^file://", "/");
         fsPath = fsPath.replaceFirst("^file:/", "/");
         fsPath = fsPath.replaceFirst("^file:", "");
@@ -1314,13 +1488,24 @@ public class BrowserPanel extends JDialog implements ActionListener{
         if(!thisUrl.endsWith("/")){
           throw(new IOException("Upload location must be a directory. "+thisUrl));
         }
-        gridftpFileSystem.put(file, thisUrl+file.getName());
+        GlobusURL globusUrl = new GlobusURL(thisUrl+file.getName());
+        JProgressBar pb = new JProgressBar();
+        statusBar.setProgressBar(pb);
+        gridftpFileSystem.putFile(file, globusUrl,
+            statusBar, new JProgressBar());
+        statusBar.removeProgressBar(pb);
       }
       else{
         throw(new IOException("Unknown protocol for "+thisUrl));
       }
     }
     catch(IOException e){
+      Debug.debug("Could not save to URL "+thisUrl+". "+e.getMessage(), 1);
+      ep.setText("ERROR!\n\nFile could not be copied.\n\n" +
+          e.getMessage());
+      throw e;
+    }
+    catch(FTPException e){
       Debug.debug("Could not save to URL "+thisUrl+". "+e.getMessage(), 1);
       throw e;
     }
@@ -1330,7 +1515,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           Document.StreamDescriptionProperty, null);
       setDisplay(thisUrl);
     }
-    catch(/*IO*/Exception ioe){
+    catch(Exception ioe){
       ioe.printStackTrace();
     }
   }
@@ -1376,7 +1561,16 @@ public class BrowserPanel extends JDialog implements ActionListener{
         if(!fsPath.endsWith("/") && !fileName.startsWith("/")){
           fsPath = fsPath+"/";
         }
-        localCopy(dir.getAbsolutePath(), new File(fsPath+fileName));
+        try{
+          localCopy(dir.getAbsolutePath(), new File(fsPath+fileName));
+          statusBar.setLabel(fsPath+fileName+" copied");
+        }
+        catch(IOException e){
+          Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
+          statusBar.setLabel("ERROR: download failed. "+e.getMessage());
+          e.printStackTrace();
+          return;
+        }
       }
       // remote gsiftp directory
       else if(thisUrl.startsWith("gsiftp://")){
@@ -1392,15 +1586,28 @@ public class BrowserPanel extends JDialog implements ActionListener{
         final String fName = fileName;
         final File dName = dir;
         ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        statusBar.setLabel("Downloading...");
         (new MyThread(){
           public void run(){
             try{
-              gridftpFileSystem.get(thisUrl+fName, dName, statusBar);
+              GlobusURL globusUrl = new GlobusURL(thisUrl+fName);
+              JProgressBar pb = new JProgressBar();
+              statusBar.setProgressBar(pb);
+              gridftpFileSystem.getFile(globusUrl, dName, statusBar,
+                  pb);
+              statusBar.removeProgressBar(pb);
+              statusBar.setLabel(thisUrl+fName+" downloaded");
             }
             catch(IOException e){
-              Debug.debug("File download failed. "+e.getMessage(), 1);
+              Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
+              statusBar.setLabel("ERROR: download failed. "+e.getMessage());
               e.printStackTrace();
+              return;
+            }
+            catch(FTPException e){
+              Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
+              statusBar.setLabel("ERROR: download failed. "+e.getMessage());
+              e.printStackTrace();
+              return;
             }
             finally{
               ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
@@ -1426,7 +1633,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
         final String dName = dirPath;
         // TODO: implement wildcard *
         ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        statusBar.setLabel("Downloading...");
         (new MyThread(){
           public void run(){
             try{
@@ -1441,10 +1647,15 @@ public class BrowserPanel extends JDialog implements ActionListener{
               dis.close();
               is.close();
               os.close();
+              statusBar.setLabel(thisUrl+fName+" downloaded");
             }
             catch(IOException e){
               Debug.debug("File download failed. "+e.getMessage(), 1);
+              statusBar.setLabel("File download failed. "+e.getMessage());
               e.printStackTrace();
+            }
+            finally{
+              ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
             }
           }
         }).run();               
@@ -1464,7 +1675,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           Document.StreamDescriptionProperty, null);
       setDisplay(thisUrl);
     }
-    catch(/*IO*/Exception ioe){
+    catch(Exception ioe){
       ioe.printStackTrace();
     }
   }
@@ -1480,8 +1691,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       Debug.debug("Creating file in "+thisUrl, 3);
       // local directory
       if(thisUrl.startsWith("file:")){
-        //String rootUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
-        String fsPath = thisUrl;//rootUrl;
+        String fsPath = thisUrl;
         fsPath = fsPath.replaceFirst("^file://", "/");
         fsPath = fsPath.replaceFirst("^file:/", "/");
         fsPath = fsPath.replaceFirst("^file:", "");
@@ -1494,7 +1704,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       // remote gsiftp directory
       else if(thisUrl.startsWith("gsiftp://")){
         Debug.debug("Creating file in "+thisUrl, 3);
-        gridftpFileSystem.create(thisUrl);
+        GlobusURL globusUrl = new GlobusURL(thisUrl);
+        gridftpFileSystem.create(globusUrl);
         ep.getDocument().putProperty(
             Document.StreamDescriptionProperty, null);
         setDisplay(thisUrl);
@@ -1528,27 +1739,31 @@ public class BrowserPanel extends JDialog implements ActionListener{
           localWriteFile(fsPath, text);
         }
         else if(thisUrl.startsWith("gsiftp://")){
-          gridftpFileSystem.writeFile(thisUrl, ep.getText());
-          statusBar.setLabel(thisUrl+" written.");
+          GlobusURL globusUrl = new GlobusURL(thisUrl);
+          gridftpFileSystem.write(globusUrl, ep.getText());
         }
         else{
           throw(new IOException("Unknown protocol for "+thisUrl));
         }
+        statusBar.setLabel(thisUrl+" saved");
       }
       else if(e.getSource()==bNew){
         createNew();
+        statusBar.setLabel(thisUrl+" created");
       }
       else if(e.getSource()==bDelete){
         delete();
       }
       else if(e.getSource()==bUpload){
         upload();
+        statusBar.setLabel(thisUrl+" uploaded");
       }
       else if(e.getSource()==bDownload){
         download();
       }
     }
     catch(Exception ex){
+      statusBar.setLabel("ERROR: "+ex.getMessage());
       GridPilot.getClassMgr().getLogFile().addMessage("ERROR: ", ex);
       Debug.debug("ERROR: "+ex.getMessage(), 3);
       ex.printStackTrace();
