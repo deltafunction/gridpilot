@@ -110,14 +110,20 @@ public class GlobalFrame extends GPFrame{
         }
         if(e.getID()==KeyEvent.KEY_PRESSED){
           if(e.getKeyCode()==KeyEvent.VK_O){
-            try{
-              new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(),
-                  "GridPilot File Browser", "", "", false, true, true);
-            }
-            catch(Exception ex){
-              Debug.debug("WARNING: could not create BrowserPanel.", 1);
-              ex.printStackTrace();
-            }
+            MyThread t = (new MyThread(){
+              public void run(){
+                try{
+                  BrowserPanel bp = new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(),
+                      "GridPilot File Browser", "", "", false, true, true);
+                  bp.okSetEnabled(false);
+                }
+                catch(Exception ex){
+                  Debug.debug("WARNING: could not create BrowserPanel.", 1);
+                  ex.printStackTrace();
+                }
+              }
+            });     
+            SwingUtilities.invokeLater(t);
           }
         }
         else if(e.getKeyCode()==KeyEvent.VK_Q){
@@ -363,13 +369,20 @@ public class GlobalFrame extends GPFrame{
     JMenuItem miBrowser = new JMenuItem("File browser (ctrl o)");
     miBrowser.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        try{
-          new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(), "GridPilot File Browser", "", "", false, true, true);
-        }
-        catch(Exception ex){
-          Debug.debug("WARNING: could not create BrowserPanel", 1);
-          ex.printStackTrace();
-        }
+        MyThread t = (new MyThread(){
+          public void run(){
+            try{
+              BrowserPanel bp = new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(),
+                  "GridPilot File Browser", "", "", false, true, true);
+              bp.okSetEnabled(false);
+            }
+            catch(Exception ex){
+              Debug.debug("WARNING: could not create BrowserPanel.", 1);
+              ex.printStackTrace();
+            }
+          }
+        });     
+        SwingUtilities.invokeLater(t);
       }
     });
     menuView.add(miBrowser);
@@ -385,7 +398,7 @@ public class GlobalFrame extends GPFrame{
         public void actionPerformed(ActionEvent e){
           try{
             addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(), "runtimeEnvironment"), "transformation");          
+                ((JMenuItem)e.getSource()).getText(), "runtimeEnvironment"), "runtime environments");          
           }
           catch(Exception ex){
             Debug.debug("Could not add panel ", 1);
@@ -406,7 +419,7 @@ public class GlobalFrame extends GPFrame{
         public void actionPerformed(ActionEvent e){
           try{
             addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(), "transformation"), "transformation");          
+                ((JMenuItem)e.getSource()).getText(), "transformation"), "transformations");          
           }
           catch(Exception ex){
             Debug.debug("Could not add panel ", 1);
@@ -427,7 +440,7 @@ public class GlobalFrame extends GPFrame{
         public void actionPerformed(ActionEvent e){
           try{
             addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(), "dataset"), "dataset");          
+                ((JMenuItem)e.getSource()).getText(), "dataset"), "datasets");          
           }
           catch(Exception ex){
             Debug.debug("Could not add panel ", 1);
@@ -461,7 +474,7 @@ public class GlobalFrame extends GPFrame{
         public void actionPerformed(ActionEvent e){
           try{
             addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(), "jobDefinition"), "job definition");          
+                ((JMenuItem)e.getSource()).getText(), "jobDefinition"), "job definitions");          
           }
           catch(Exception ex){
             Debug.debug("Could not add panel ", 1);
