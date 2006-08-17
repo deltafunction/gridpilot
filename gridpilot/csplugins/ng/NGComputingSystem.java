@@ -135,11 +135,14 @@ public class NGComputingSystem implements ComputingSystem{
         }
       }
       else{
-      // Use default set of GIISes
-      arcDiscovery.addGIIS("ldap://index4.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
-      //arcDiscovery.addGIIS("ldap://index1.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
-      //arcDiscovery.addGIIS("ldap://index2.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
-      //arcDiscovery.addGIIS("ldap://index3.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+        // TODO: implement true hierarchy: query these top-level GIISes and
+        // find all lower-level ones. Try to submit using lowest one.
+        // If no free slots, try higher up, etc.
+        // Use default set of GIISes
+        arcDiscovery.addGIIS("ldap://index4.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+        //arcDiscovery.addGIIS("ldap://index1.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+        //arcDiscovery.addGIIS("ldap://index2.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+        //arcDiscovery.addGIIS("ldap://index3.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
       }
     }
     
@@ -225,8 +228,12 @@ public class NGComputingSystem implements ComputingSystem{
           }
         }
         try{
-          if(!dbPluginMgr.createRuntimeEnvironment(rtVals)){
-            finalRuntimes.remove(name);
+          // only create if there is not already a record with this name
+          // and csName
+          if(dbPluginMgr.getRuntimeEnvironmentID(name, csName)<0){
+            if(!dbPluginMgr.createRuntimeEnvironment(rtVals)){
+              finalRuntimes.remove(name);
+            }
           }
         }
         catch(Exception e){
@@ -417,11 +424,11 @@ public class NGComputingSystem implements ComputingSystem{
     for(int i=0; i<outputMapping.length/2-1; ++i){
       try{
         fileName = Util.addFile(outputMapping[2*i+1]);
-        gridftpFileSystem.delete(fileName);
+        gridftpFileSystem.deleteFile(new GlobusURL(fileName));
       }
       catch(Exception e){
         error = "WARNING: could not delete output file. "+e.getMessage();
-        Debug.debug(error, 2);
+        Debug.debug(error, 3);
       }
     }
     // Delete stdout/stderr that may have been copied to final destination
@@ -429,7 +436,7 @@ public class NGComputingSystem implements ComputingSystem{
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
       try{
-        gridftpFileSystem.delete(finalStdOut);
+        gridftpFileSystem.deleteFile(new GlobusURL(finalStdOut));
       }
       catch(Exception e){
         error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
@@ -442,7 +449,7 @@ public class NGComputingSystem implements ComputingSystem{
     }
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
       try{
-        gridftpFileSystem.delete(finalStdErr);
+        gridftpFileSystem.deleteFile(new GlobusURL(finalStdErr));
       }
       catch(Exception e){
         error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
@@ -1080,9 +1087,13 @@ public class NGComputingSystem implements ComputingSystem{
         //throw e;
       }
       Debug.debug("Post processing : Renaming " + job.getStdOut() + " in " + finalStdOut, 2);
+      // TODO: use DownloadMgr
       // if(!shell.moveFile(job.getStdOut(), finalStdOut)){
       try{
-        gridftpFileSystem.put(new File(job.getStdOut()), finalStdOut);
+        gridftpFileSystem.putFile(new File(job.getStdOut()),
+            new GlobusURL(finalStdOut),
+            GridPilot.getClassMgr().getStatusBar(),
+            null);
       }
       catch(Throwable e){
         error = "ERROR copying stdout: "+e.getMessage();
@@ -1113,7 +1124,10 @@ public class NGComputingSystem implements ComputingSystem{
       Debug.debug("Post processing : Renaming " + job.getStdErr() + " in " + finalStdErr,2);
       //shell.moveFile(job.getStdOut(), finalStdOutName);
       try{
-        gridftpFileSystem.put(new File(job.getStdErr()), finalStdErr);
+        gridftpFileSystem.putFile(new File(job.getStdErr()),
+            new GlobusURL(finalStdErr),
+            GridPilot.getClassMgr().getStatusBar(),
+            null);
       }
       catch(Throwable e){
         error = "ERROR copying stderr: "+e.getMessage();
