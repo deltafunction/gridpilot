@@ -30,6 +30,7 @@ public class ClassMgr{
   private GSSCredential credential = null;
   private Boolean gridProxyInitialized = Boolean.FALSE;
   private GridFTPFileSystem gridFTPFileSystem;
+  private Vector urlList = new Vector();
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
 
@@ -228,11 +229,38 @@ public class ClassMgr{
     return submittedJobs;
   }
 
-  public void clearSubmittedJobs(){
-    if(submittedJobs==null){
-      Debug.debug("submittedJobs null", 3);
+  public Vector getUrlList(){
+    if(urlList==null){
+      Debug.debug("urlList null", 3);
     }
-    submittedJobs.removeAllElements();
+    return urlList;
+  }
+  
+  public synchronized void addUrl(String url){
+    synchronized(urlList){
+      if(urlList==null){
+        Debug.debug("urlList null", 3);
+      }
+      urlList.add(url);
+    }
+  }
+
+  public synchronized void removeUrl(String url){
+    synchronized(urlList){
+      if(urlList==null){
+        Debug.debug("urlList null", 3);
+      }
+      urlList.remove(url);
+    }
+  }
+
+  public synchronized void clearUrls(String url){
+    synchronized(urlList){
+      if(urlList==null){
+        Debug.debug("urlList null", 3);
+      }
+      urlList.removeAllElements();
+    }
   }
 
   public GlobalFrame getGlobalFrame(){
