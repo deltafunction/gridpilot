@@ -865,7 +865,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     statusUpdateControl.reset();
 
     boolean ret = true;
-    GridPilot.getClassMgr().clearSubmittedJobs();
+    GridPilot.getClassMgr().getSubmittedJobs().removeAllElements();
     statusTable.createRows(0);
     DatasetMgr mgr = null;
     try{
