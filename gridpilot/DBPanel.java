@@ -321,7 +321,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     });
     
-    tableResults.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+    //tableResults.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+    tableResults.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
     spTableResults.getViewport().add(tableResults);
 
     panelSelectPanel.setPreferredSize(new Dimension(0, 180));
@@ -447,13 +448,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       
       bEditRecord.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          //editFileInfo();
+          editJobDef();
         }
       });
 
       bDeleteRecord.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          //deleteFileInfo();
+          deleteJobDefs();
         }
       });
 
@@ -525,7 +526,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         pmSubmitMenu.add(mi);
       }
 
-      
       addButtonResultsPanel(bSubmit);
       addButtonResultsPanel(bMonitor);
       addButtonResultsPanel(new JLabel("|"));
@@ -626,7 +626,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   public String getTitle(){
-    return tableName/*+"s"*//*jobTranss looks bad...*/;
+    return tableName+"s"/*jobTranss looks bad...*/;
   }
 
   public void panelShown(){
@@ -820,6 +820,29 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
           makeDatasetMenu();
         }
+        else if(tableName.equalsIgnoreCase("file")){
+          tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+          tableResults.addListSelectionListener(new ListSelectionListener(){
+            public void valueChanged(ListSelectionEvent e){
+              if (e.getValueIsAdjusting()) return;
+              ListSelectionModel lsm = (ListSelectionModel)e.getSource();
+              //Debug.debug("lsm indices: "+
+              //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
+              bDownload.setEnabled(!lsm.isSelectionEmpty());
+              bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
+              bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
+                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+              miEdit.setEnabled(!lsm.isSelectionEmpty() &&
+                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+              // No copy paste on pseudo tables
+              // menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
+              //menuEditCut.setEnabled(!lsm.isSelectionEmpty());
+              //menuEditPaste.setEnabled(clipboardOwned);
+            }
+          });
+
+          makeFileMenu();
+        }
         else if(tableName.equalsIgnoreCase("jobDefinition")){
           tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
           tableResults.addListSelectionListener(new ListSelectionListener(){
@@ -992,6 +1015,36 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     });
     miDelete.setEnabled(true);
     miEdit.setEnabled(true);
+    tableResults.addMenuSeparator();
+    tableResults.addMenuItem(miEdit);
+    tableResults.addMenuItem(miDelete);
+  }
+
+  public void makeFileMenu(){
+    Debug.debug("Making file menu", 3);
+    JMenuItem miDelete = new JMenuItem("Delete");
+    miEdit = new JMenuItem("Edit");
+    JMenuItem miDownload = new JMenuItem("Download file(s)");
+    miDelete.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        deleteJobDefs();
+      }
+    });
+    miEdit.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        editJobDef();
+      }
+    });
+    miDownload.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        download();
+      }
+    });
+    miDelete.setEnabled(true);
+    miEdit.setEnabled(true);
+    miDownload.setEnabled(true);
+    tableResults.addMenuSeparator();
+    tableResults.addMenuItem(miDownload);
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miEdit);
     tableResults.addMenuItem(miDelete);
@@ -1253,7 +1306,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           GridPilot.getClassMgr().getStatusBar().setLabel(
              "Deleting job definition(s) done.");
-          tableResults.updateUI();
         }
         refresh();
         stopWorking();
@@ -1621,7 +1673,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   private void download(){
     new Thread(){
-      public void run(){        
+      public void run(){
         DBRecord jobDef;
         int[] selectedFileIdentifiers = getSelectedIdentifiers();
         String idField = dbPluginMgr.getIdentifierField("file");
