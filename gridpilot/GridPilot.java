@@ -39,7 +39,8 @@ public class GridPilot extends JApplet{
   public static String caCerts = null;
   public static String dateFormatString = "yyyy-MM-dd HH:mm:ss";
   public static String [] fixedJobAttributes = {"number", "name"};
-  
+  public static String browserHistoryFile = null;
+
   /**
    * Constructor
    */
@@ -135,16 +136,16 @@ public class GridPilot extends JApplet{
       keyFile = getClassMgr().getConfigFile().getValue("GridPilot",
           "key file");
       certFile = getClassMgr().getConfigFile().getValue("GridPilot",
-      "certificate file");
+          "certificate file");
       keyPassword = getClassMgr().getConfigFile().getValue("GridPilot",
-      "key password");
+          "key password");
       caCerts = getClassMgr().getConfigFile().getValue("GridPilot",
-      "ca certificates");
+          "ca certificates");
       if(caCerts==null){
         getClassMgr().getConfigFile().missingMessage(
             "GridPilot", "ca certificates");
         getClassMgr().getLogFile().addMessage(
-            "WARNING: you have not specified any ca certificates. " +
+            "WARNING: you have not specified any CA certificates. " +
             "A default set will be used.");
       }
       String [] _fixedJobAttributes = getClassMgr().getConfigFile().getValues("GridPilot",
@@ -160,6 +161,8 @@ public class GridPilot extends JApplet{
       }
       Debug.debug("Job attributes: "+Util.arrayToString(fixedJobAttributes)+" "+
           fixedJobAttributes.length, 2);
+      browserHistoryFile = getClassMgr().getConfigFile().getValue("GridPilot",
+         "browser history file");
     }
     catch(Throwable e){
       if(e instanceof Error)
