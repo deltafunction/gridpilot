@@ -35,7 +35,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private static int TEXTFIELDWIDTH = 32;
   private String transformationName = "";
   private String transformationVersion = "";
-  private int [] datasetIDs = new int [] {-1};
+  private String [] datasetIDs = new String [] {"-1"};
   private JPanel pTop = new JPanel();
   private JPanel pTransformation = new JPanel();
   private JPanel pTargetDBs = new JPanel();
@@ -93,7 +93,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       }
       // Fill cstAttr from db
       Debug.debug("Getting dataset. "+editing, 1);     
-      dataset = dbPluginMgr.getDataset(Integer.parseInt(datasetID));
+      dataset = dbPluginMgr.getDataset(datasetID);
     }
     // Creating; set empty dataset
     else{
@@ -121,7 +121,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     if(editing){
       String datasetName = "";
       try{
-        datasetName = dbPluginMgr.getDatasetName(Integer.parseInt(datasetID));
+        datasetName = dbPluginMgr.getDatasetName(datasetID);
       }
       catch(Exception e){
         // nothing
@@ -130,9 +130,9 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     else if(GridPilot.dbs!=null && GridPilot.dbs.length!=0 &&
         datasetIDs!=null && datasetIDs.length!=0 &&
-        (datasetIDs.length!=1 || datasetIDs[0]!=-1)){
+        (datasetIDs.length!=1 || !datasetIDs[0].equals("-1"))){
       if(datasetIDs.length==1){
-        if(datasetIDs[0]==-1){
+        if(datasetIDs[0].equals("-1")){
           title = "Define new dataset";
         }
         else{
@@ -368,7 +368,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           showResults,
           cstAttr,
           cstAttributesNames,
-          Integer.parseInt(datasetID)
+          datasetID
           );
       panel.refresh();
     }
@@ -587,10 +587,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
               "transformation");
           String idField =
             dbPluginMgr.getIdentifierField("transformation");
-          int id = dbPluginMgr.getTransformationID(transformationName,
+          String id = dbPluginMgr.getTransformationID(transformationName,
               transformationVersion);
           dbPanel.selectPanel.setConstraint(idField,
-              Integer.toString(id), 0);
+              id, 0);
           dbPanel.searchRequest();           
           GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);
         }
@@ -701,7 +701,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     // only do anything if there are input dataset(s) selected
     Debug.debug("datasetIDs[0]="+datasetIDs[0], 3);
-    if(datasetIDs[0]<0){
+    if(datasetIDs[0].equals("-1")){
       return;
     }
     String [] sourceFields = cstAttributesNames;

@@ -133,8 +133,7 @@ public class SubmissionControl{
       String jobDefIdentifier = dbPluginMgr.getIdentifierField("jobDefinition");
       for(int i=0; i<selectedJobs.size(); ++i){
         DBRecord jobDef = ((DBRecord) selectedJobs.get(i));
-        int jobDefID = Integer.parseInt(
-            jobDef.getValue(jobDefIdentifier).toString());
+        String jobDefID = jobDef.getValue(jobDefIdentifier).toString();
         if(dbPluginMgr.reserveJobDefinition(jobDefID, "", csName)){
           // checks if this partition has not been monitored (and is Submitted,
           // otherwise reservation doesn't work)

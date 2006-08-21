@@ -312,7 +312,7 @@ public class ForkComputingSystem implements ComputingSystem{
       }
       // Output file copy.
       // Try copying file(s) to output destination
-      int jobDefID = job.getJobDefId();
+      String jobDefID = job.getJobDefId();
       DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
       String[] outputMapping = dbPluginMgr.getOutputMapping(jobDefID);
       String localName = null;
@@ -418,7 +418,7 @@ public class ForkComputingSystem implements ComputingSystem{
   public void exit(){
     String runtimeName = null;
     String initText = null;
-    int id = -1;
+    String id = "-1";
     boolean ok = true;
     DBPluginMgr localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
        "HSQLDB");
@@ -432,7 +432,7 @@ public class ForkComputingSystem implements ComputingSystem{
         continue;
       }
       id = localDBMgr.getRuntimeEnvironmentID(runtimeName, csName);
-      if(id>-1){
+      if(!id.equals("-1")){
         ok = localDBMgr.deleteRuntimeEnvironment(id);
       }
       else{
@@ -460,7 +460,7 @@ public class ForkComputingSystem implements ComputingSystem{
         continue;
       }
       id = remoteDBMgr.getRuntimeEnvironmentID(runtimeName, csName);
-      if(id>-1){
+      if(!id.equals("-1")){
         ok = remoteDBMgr.deleteRuntimeEnvironment(id);
       }
       else{

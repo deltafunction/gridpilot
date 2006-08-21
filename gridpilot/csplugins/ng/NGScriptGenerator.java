@@ -35,7 +35,7 @@ public class NGScriptGenerator extends ScriptGenerator{
     StringBuffer bufXRSL = new StringBuffer();
     StringBuffer bufScript = new StringBuffer();
     String line = "";
-    int jobDefID = job.getJobDefId();
+    String jobDefID = job.getJobDefId();
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String [] formalParam = dbPluginMgr.getTransformationArguments(jobDefID);
     String [] actualParam = dbPluginMgr.getJobDefTransPars(jobDefID);

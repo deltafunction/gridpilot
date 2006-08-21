@@ -110,18 +110,18 @@ public class ClassMgr{
 
   // This method creates a new DatasetMgr if there is
   // none in the HashMap with keys dbName, datasetID
-  public DatasetMgr getDatasetMgr(String dbName, int datasetID){
+  public DatasetMgr getDatasetMgr(String dbName, String datasetID){
     if(datasetMgrs==null){
       Debug.debug("datasetMgrs null", 3);
     }
     if(!datasetMgrs.keySet().contains(dbName)){
       datasetMgrs.put(dbName, new HashMap());
     }
-    if(!((HashMap) datasetMgrs.get(dbName)).keySet().contains(Integer.toString(datasetID))){
+    if(!((HashMap) datasetMgrs.get(dbName)).keySet().contains(datasetID)){
       Debug.debug("Creating new DatasetMgr, "+datasetID+", in "+dbName, 3);
       addDatasetMgr(new DatasetMgr(dbName, datasetID));
     }
-    return (DatasetMgr) ((HashMap) datasetMgrs.get(dbName)).get(Integer.toString(datasetID));
+    return (DatasetMgr) ((HashMap) datasetMgrs.get(dbName)).get(datasetID);
   }
   
   public Vector getDatasetMgrs(){
@@ -148,7 +148,7 @@ public class ClassMgr{
       datasetMgrs.put(datasetMgr.dbName, new HashMap());
     }
     ((HashMap) datasetMgrs.get(datasetMgr.dbName)
-        ).put(Integer.toString(datasetMgr.getDatasetID()), datasetMgr);
+        ).put(datasetMgr.getDatasetID(), datasetMgr);
   }
 
 

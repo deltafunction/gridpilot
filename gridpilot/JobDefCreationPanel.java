@@ -26,7 +26,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
   protected Table table;
   protected String dbName;
   protected DBPluginMgr dbPluginMgr = null;
-  protected int datasetID = -1;
+  protected String datasetID = "-1";
   protected String datasetName;
   protected DBPanel panel = null;
   
@@ -63,7 +63,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
       datasetName = datasetMgr.getDatasetName();
     }
     else{
-      datasetID = -1;
+      datasetID = "-1";
       dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
       datasetName = "";
     }
@@ -89,7 +89,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
         Debug.debug("ERROR: could not find jobDefinitionID in table!", 1);
       }
       // Get job definition from db
-      DBRecord jobDef = dbPluginMgr.getJobDefinition(Integer.parseInt(jobDefinitionID));
+      DBRecord jobDef = dbPluginMgr.getJobDefinition(jobDefinitionID);
       for(int i=0; i<cstAttributesNames.length; ++i){
         Debug.debug("filling " + cstAttributesNames[i],  3);
         if(jobDef.getValue(cstAttributesNames[i])!=null){
@@ -282,7 +282,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
         if(!reuseTextFields || tcCstAttributes[i] == null)
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
         
-        Util.setJText(tcCstAttributes[i], Integer.toString(datasetID));
+        Util.setJText(tcCstAttributes[i], datasetID);
         tcCstAttributes[i].setEnabled(false);
       }
       else{
@@ -347,7 +347,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
       else if(!cstAttributesNames[i].equalsIgnoreCase("jobTransFK") &&
               !cstAttributesNames[i].equalsIgnoreCase(jobDefIdentifier) &&
               (!cstAttributesNames[i].equalsIgnoreCase("taskFK") ||
-                  datasetID==-1) &&
+                  datasetID.equals("-1")) &&
               tcCstAttributes[i]!=null){
         Util.setJEditable(tcCstAttributes[i], enabled);
       }

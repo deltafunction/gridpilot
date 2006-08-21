@@ -47,12 +47,12 @@ public class RuntimeCreator{
     if(editing){
       String tranformationIdentifier =
         dbPluginMgr.getIdentifierField("runtimeEnvironment");
-      int id = -1;
+      String id = "-1";
       for(int i=0; i<cstAttrNames.length; ++i){
         Debug.debug("Checking name "+tranformationIdentifier+":"+cstAttrNames[i].toString(), 3);
         if(cstAttrNames[i].toString().equalsIgnoreCase(
             tranformationIdentifier)){
-          id = Integer.parseInt(cstAttr[i]);
+          id = cstAttr[i];
           break;
         }
       }

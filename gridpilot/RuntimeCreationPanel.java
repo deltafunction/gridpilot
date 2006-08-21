@@ -59,7 +59,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
         Debug.debug("ERROR: could not find packID in table!", 1);
       }
       // Fill cstAttr from db
-      pack = dbPluginMgr.getRuntimeEnvironment(Integer.parseInt(packID));
+      pack = dbPluginMgr.getRuntimeEnvironment(packID);
       for(int i=0; i <cstAttributesNames.length; ++i){
         if(editing){
           Debug.debug("filling " + cstAttributesNames[i],  3);

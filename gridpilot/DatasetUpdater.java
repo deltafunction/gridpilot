@@ -8,7 +8,7 @@ import java.awt.*;
  */
 public class DatasetUpdater{
 
-  private int identifier;
+  private String identifier;
   private boolean showResults;
   private String [] cstAttr;
   private StatusBar statusBar;
@@ -20,7 +20,7 @@ public class DatasetUpdater{
                           boolean _showResults,
                           String [] _cstAttr,
                           String [] _cstAttrNames,
-                          int _identifier
+                          String _identifier
                           ){
 
     identifier = _identifier;

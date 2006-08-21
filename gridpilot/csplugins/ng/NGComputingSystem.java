@@ -230,7 +230,7 @@ public class NGComputingSystem implements ComputingSystem{
         try{
           // only create if there is not already a record with this name
           // and csName
-          if(dbPluginMgr.getRuntimeEnvironmentID(name, csName)<0){
+          if(dbPluginMgr.getRuntimeEnvironmentID(name, csName).equals("-1")){
             if(!dbPluginMgr.createRuntimeEnvironment(rtVals)){
               finalRuntimes.remove(name);
             }
@@ -477,7 +477,7 @@ public class NGComputingSystem implements ComputingSystem{
   public void exit(){
     String runtimeName = null;
     String initText = null;
-    int id = -1;
+    String id = "-1";
     boolean ok = true;
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(
         runtimeDB);
@@ -491,7 +491,7 @@ public class NGComputingSystem implements ComputingSystem{
         continue;
       }
       id = dbPluginMgr.getRuntimeEnvironmentID(runtimeName, csName);
-      if(id>-1){
+      if(!id.equals("-1")){
         ok = dbPluginMgr.deleteRuntimeEnvironment(id);
       }
       else{

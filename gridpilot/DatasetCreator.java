@@ -15,7 +15,7 @@ public class DatasetCreator{
   private StatusBar statusBar;
   private String [] resCstAttr;
   private String [] cstAttrNames;
-  private int [] datasetIDs;
+  private String [] datasetIDs;
   private String targetDB;
   private static JProgressBar pb = new JProgressBar();
   private static Object semaphoreAMICreation = new Object();
@@ -31,7 +31,7 @@ public class DatasetCreator{
                           boolean _showResults,
                           String [] _cstAttr,
                           String [] _cstAttrNames,
-                          int [] _datasetIDs,
+                          String [] _datasetIDs,
                           String _targetDB
                           ){
     statusBar = _statusBar;
@@ -79,7 +79,7 @@ public class DatasetCreator{
         Debug.debug("Input values "+Util.arrayToString(res.values), 2);
         clearAttrs.clear();        
         for(int j=0; j<cstAttrNames.length; ++j){                   
-          if(datasetIDs[i]>0){
+          if(!datasetIDs[i].equals("-1")){
             // Get values from source dataset in question, excluding
             // transformation, transVersion and any other filled-in values.
             // Construct name for new target dataset.
@@ -205,7 +205,7 @@ public class DatasetCreator{
     return true;
   }
 
-  private int showResult(String [] resCstAttr, int _datasetID, boolean moreThanOne){
+  private int showResult(String [] resCstAttr, String _datasetID, boolean moreThanOne){
 
     JPanel pResult = new JPanel(new GridBagLayout());
     int row = 0;

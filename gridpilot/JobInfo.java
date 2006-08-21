@@ -43,7 +43,7 @@ import gridpilot.DBRecord;
 public class JobInfo extends DBRecord{
 
   private String jobName="";
-  private int jobDefID=-1;
+  private String jobDefID="-1";
   private String cs="";
   private String user="";
   private String db="";
@@ -76,7 +76,7 @@ public class JobInfo extends DBRecord{
   
   public static String Identifier = "jobId";
 
-  public JobInfo(int _jobDefID, String _jobName, String _cs, String _db){
+  public JobInfo(String _jobDefID, String _jobName, String _cs, String _db){
     
     jobName = _jobName;
     jobDefID = _jobDefID;
@@ -105,7 +105,7 @@ public class JobInfo extends DBRecord{
   public String getName(){
     return jobName;
   }
-  public int getJobDefId(){
+  public String getJobDefId(){
     return jobDefID;
   }
   public String getCSName(){
@@ -160,7 +160,7 @@ public class JobInfo extends DBRecord{
     jobName = _jobName;
   }
 
-  void setJobDefId(int _jobDefId){
+  void setJobDefId(String _jobDefId){
     jobDefID = _jobDefId;
     //setValues();
   }

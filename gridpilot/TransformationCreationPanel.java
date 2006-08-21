@@ -71,7 +71,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
         Debug.debug("ERROR: could not find transformationID in table!", 1);
       }
       // Fill cstAttr from db
-      transformation = dbPluginMgr.getTransformation(Integer.parseInt(transformationID));
+      transformation = dbPluginMgr.getTransformation(transformationID);
       for(int i=0; i<cstAttributesNames.length; ++i){
         if(editing){
           Debug.debug("filling " + cstAttributesNames[i],  3);

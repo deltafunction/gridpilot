@@ -677,7 +677,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[ii]);
       shownFields = dbPluginMgr.getFieldnames("jobDefinition");//dbPluginMgr.getDBDefFields("jobDefinition");
       allJobDefinitions = dbPluginMgr.getJobDefinitions(
-            /*datasetID*/-1, shownFields);
+            /*datasetID*/"-1", shownFields);
       for(int i=0; i<allJobDefinitions.fields.length; ++i){
         Debug.debug(allJobDefinitions.fields[i] + " = " +
             allJobDefinitions.getValue(0, allJobDefinitions.fields[i]), 3);
@@ -691,7 +691,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
             allJobDefinitions.values[i]);
         String idField = dbPluginMgr.getIdentifierField("jobDefinition");
         Debug.debug("Checking:"+Util.arrayToString(job.values), 3);
-        int id = Integer.parseInt(job.getValue(idField).toString());
+        String id = job.getValue(idField).toString();
         // if not showing all jobs and job not submitted by me, continue
         csName = job.getValue("computingSystem").toString();
         if(csName!=null){
@@ -711,7 +711,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
             DatasetMgr mgr = GridPilot.getClassMgr().getDatasetMgr(GridPilot.dbs[ii],
                 dbPluginMgr.getJobDefDatasetID(id));
             Debug.debug("Adding job #"+id, 3);
-            mgr.addJobs(new int [] {id});
+            mgr.addJobs(new String [] {id});
             break;
           }
         }

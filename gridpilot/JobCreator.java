@@ -15,7 +15,7 @@ public class JobCreator{
 
   private static final long serialVersionUID=1L;
   
-  private int [] datasetIdentifiers;
+  private String [] datasetIdentifiers;
   private boolean showResults;
   private Vector constants;
   private String [] cstAttr;
@@ -45,7 +45,7 @@ public class JobCreator{
 
   public JobCreator(StatusBar _statusBar,
                     String _dbName,
-                    int [] _datasetIdentifiers,
+                    String [] _datasetIdentifiers,
                     boolean _showResults,
                     Vector _constants,
                     String [] _cstAttr,
@@ -245,7 +245,7 @@ public class JobCreator{
   private void createDBJobDefinitions(int idNum) throws Exception{
     String transName = null;
     String transVersion = null;
-    int id = -1;
+    String id = "-1";
     
     synchronized(semaphoreDBCreate){
       while(!vPartition.isEmpty()){
@@ -487,7 +487,7 @@ public class JobCreator{
    * So, NOTICE: the (root) output file should always be the FIRST in the
    * field 'outputs' in the transformation definition.
    */
-  private String getTransOutFileName(String db, int datasetID){
+  private String getTransOutFileName(String db, String datasetID){
     String outputFileNameStr = null;
     DBPluginMgr dbMgr = GridPilot.getClassMgr().getDBPluginMgr(
         db);
@@ -507,11 +507,11 @@ public class JobCreator{
     int evtMax = eventSplits[currentPartition-1][1];
     int readEvtMin;
     int readEvtMax;
-    int [] inputJobDefIds = new int [] {};
+    String [] inputJobDefIds = new String [] {};
     String inputDB = null;
     String inputDataset = null;
     DBPluginMgr inputMgr = null;
-    int inputDatasetID = -1;
+    String inputDatasetID = "-1";
     DBResult inputJobDefRecords = null;
     String inputJobDefOutputFileName = null;
     // Construct input file names
@@ -529,10 +529,10 @@ public class JobCreator{
         inputDatasetID = inputMgr.getDatasetID(inputDataset);
         inputJobDefRecords = inputMgr.getJobDefinitions(inputDatasetID, 
                 new String [] {inputDBIdentifierField});
-        inputJobDefIds = new int [inputJobDefRecords.values.length];
+        inputJobDefIds = new String [inputJobDefRecords.values.length];
         for(int i=0; i<inputJobDefIds.length; ++i){
-          inputJobDefIds[i] = Integer.parseInt(
-            inputJobDefRecords.getValue(i, inputDBIdentifierField).toString());
+          inputJobDefIds[i] = inputJobDefRecords.getValue(i,
+              inputDBIdentifierField).toString();
         }
         Debug.debug("Input datasets for "+datasetIdentifiers[currentDataset]+
         		":"+inputDataset+":"+inputDB+": "+inputJobDefIds.length, 3);

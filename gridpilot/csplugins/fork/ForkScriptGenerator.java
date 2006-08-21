@@ -27,7 +27,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
 
   public boolean createWrapper(JobInfo job, String fileName){
     
-    int jobDefID = job.getJobDefId();
+    String jobDefID = job.getJobDefId();
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String line; //used as temp working string
     StringBuffer buf = new StringBuffer();

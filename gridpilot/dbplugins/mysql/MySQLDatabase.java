@@ -171,7 +171,7 @@ public class MySQLDatabase implements Database{
     // nothing for now
   }
 
-  public synchronized boolean cleanRunInfo(int jobDefID){
+  public synchronized boolean cleanRunInfo(String jobDefID){
     String sql = "UPDATE jobDefinition SET jobID = ''," +
         "outTmp = '', errTmp = '', validationResult = '' " +
         "WHERE identifier = '"+
@@ -198,12 +198,7 @@ public class MySQLDatabase implements Database{
     }
   }
 
-  public DBResult getAllPartJobInfo(int partID){
-    // nothing for now
-    return new DBResult();
-  }
-
-  public String [] getDefVals(int datasetID, String user){
+  public String [] getDefVals(String datasetID, String user){
     // nothing for now
     return new String [] {""};
   }
@@ -232,7 +227,7 @@ public class MySQLDatabase implements Database{
     }
   }
 
-  public synchronized int getTransformationID(String transName, String transVersion){
+  public synchronized String getTransformationID(String transName, String transVersion){
     String req = "SELECT identifier from transformation where name = '"+transName + "'"+
     " AND version = '"+transVersion+"'";
     String id = null;
@@ -256,16 +251,16 @@ public class MySQLDatabase implements Database{
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
       error = e.getMessage();
-      return -1;
+      return "-1";
     }
     if(vec.size()>1){
       Debug.debug("WARNING: More than one ("+vec.size()+
           ") transformation found with name:version "+transName+":"+transVersion, 1);
     }
-    return Integer.parseInt(vec.get(0).toString());
+    return vec.get(0).toString();
   }
 
-  public synchronized int getRuntimeEnvironmentID(String name, String cs){
+  public synchronized String getRuntimeEnvironmentID(String name, String cs){
     String req = "SELECT identifier from runtimeEnvironment where name = '"+name + "'"+
     " AND computingSystem = '"+cs+"'";
     String id = null;
@@ -289,39 +284,39 @@ public class MySQLDatabase implements Database{
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
       error = e.getMessage();
-      return -1;
+      return "-1";
     }
     if(vec.size()>1){
       Debug.debug("WARNING: More than one ("+vec.size()+
           ") runtimeEnvironment found with name:cs "+name+":"+cs, 1);
     }
-    return Integer.parseInt(vec.get(0).toString());
+    return vec.get(0).toString();
   }
 
-  public String [] getTransformationJobParameters(int transformationID){
+  public String [] getTransformationJobParameters(String transformationID){
     String res =  getTransformation(transformationID).getValue("arguments").toString(); 
     return Util.split(res);
   }
 
-  public String [] getOutputMapping(int jobDefID){
-    int transformationID = getJobDefTransformationID(jobDefID);
+  public String [] getOutputMapping(String jobDefID){
+    String transformationID = getJobDefTransformationID(jobDefID);
     String outputs = getTransformation(
         transformationID).getValue("outputFiles").toString();
     return Util.split(outputs);
   }
 
-  public String [] getJobDefInputFiles(int jobDefID){
+  public String [] getJobDefInputFiles(String jobDefID){
     String inputs = getJobDefinition(jobDefID).getValue("inputFileNames").toString();
     return Util.split(inputs);
   }
 
-  public String [] getJobDefTransPars(int transformationID){
+  public String [] getJobDefTransPars(String transformationID){
     String args =  getJobDefinition(transformationID).getValue("transPars").toString();
     return Util.split(args);
   }
 
-  public String getJobDefOutLocalName(int jobDefID, String par){
-    int transID = getJobDefTransformationID(jobDefID);
+  public String getJobDefOutLocalName(String jobDefID, String par){
+    String transID = getJobDefTransformationID(jobDefID);
     String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
     String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
     String[] map = Util.split(maps);
@@ -334,8 +329,8 @@ public class MySQLDatabase implements Database{
     return name;
   }
 
-  public String getJobDefOutRemoteName(int jobDefID, String par){
-    int transID = getJobDefTransformationID(jobDefID);
+  public String getJobDefOutRemoteName(String jobDefID, String par){
+    String transID = getJobDefTransformationID(jobDefID);
     String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
     String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
     String[] map = Util.split(maps);
@@ -348,41 +343,41 @@ public class MySQLDatabase implements Database{
     return name;
   }
 
-  public String getStdOutFinalDest(int jobDefinitionID){
+  public String getStdOutFinalDest(String jobDefinitionID){
     // nothing for now
     return "";
   }
 
-  public String getStdErrFinalDest(int jobDefinitionID){
+  public String getStdErrFinalDest(String jobDefinitionID){
     // nothing for now
     return "";
   }
 
-  public String getTransformationScript(int jobDefID){
-    int transformationID = getJobDefTransformationID(jobDefID);
+  public String getTransformationScript(String jobDefID){
+    String transformationID = getJobDefTransformationID(jobDefID);
     String script = getTransformation(
         transformationID).getValue("script").toString();
     return script;
   }
 
-  public String [] getRuntimeEnvironments(int jobDefID){
-    int transformationID = getJobDefTransformationID(jobDefID);
+  public String [] getRuntimeEnvironments(String jobDefID){
+    String transformationID = getJobDefTransformationID(jobDefID);
     String rts = getTransformation(
         transformationID).getValue("runtimeEnvironmentName").toString();
     return Util.split(rts);
   }
 
-  public String [] getTransformationArguments(int jobDefID){
-    int transformationID = getJobDefTransformationID(jobDefID);
+  public String [] getTransformationArguments(String jobDefID){
+    String transformationID = getJobDefTransformationID(jobDefID);
     String args =  getTransformation(transformationID).getValue("arguments").toString();
     return Util.split(args);
   }
 
-  public String getTransformationRuntimeEnvironment(int transformationID){
+  public String getTransformationRuntimeEnvironment(String transformationID){
     return getTransformation(transformationID).getValue("runtimeEnvironmentName").toString();
   }
 
-  public String getJobDefUserInfo(int jobDefinitionID){
+  public String getJobDefUserInfo(String jobDefinitionID){
     Object userInfo = getJobDefinition(jobDefinitionID).getValue("userInfo");
     if(userInfo==null){
       return "";
@@ -392,18 +387,18 @@ public class MySQLDatabase implements Database{
     }
   }
 
-  public String getJobDefStatus(int jobDefinitionID){
+  public String getJobDefStatus(String jobDefinitionID){
     return getJobDefinition(jobDefinitionID).getValue("status").toString();
   }
 
-  public String getJobDefName(int jobDefinitionID){
+  public String getJobDefName(String jobDefinitionID){
     return getJobDefinition(jobDefinitionID).getValue("name").toString();
   }
 
-  public int getJobDefDatasetID(int jobDefinitionID){
+  public String getJobDefDatasetID(String jobDefinitionID){
     String datasetName = getJobDefinition(jobDefinitionID).getValue("datasetName").toString();
-    int datasetID = getDatasetID(datasetName);
-    return Integer.parseInt(getDataset(datasetID).getValue("identifier").toString());
+    String datasetID = getDatasetID(datasetName);
+    return getDataset(datasetID).getValue("identifier").toString();
   }
 
   public String getRuntimeInitText(String runTimeEnvironmentName, String csName){
@@ -413,7 +408,7 @@ public class MySQLDatabase implements Database{
     return initTxt;
   }
 
-  public synchronized int getJobDefTransformationID(int jobDefinitionID){
+  public synchronized String getJobDefTransformationID(String jobDefinitionID){
     DBRecord dataset = getDataset(getJobDefDatasetID(jobDefinitionID));
     String transformation = dataset.getValue("transformationName").toString();
     String version = dataset.getValue("transformationVersion").toString();
@@ -445,10 +440,10 @@ public class MySQLDatabase implements Database{
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
     }
-    return Integer.parseInt(transID);
+    return transID;
   }
 
-  public boolean reserveJobDefinition(int jobDefID, String userInfo, String cs){
+  public boolean reserveJobDefinition(String jobDefID, String userInfo, String cs){
     boolean ret = updateJobDefinition(
         jobDefID,
         new String [] {"status", "userInfo", "computingSystem"},
@@ -458,7 +453,7 @@ public class MySQLDatabase implements Database{
     return ret;
   }
 
-  public boolean saveDefVals(int datasetID, String[] defvals, String user){
+  public boolean saveDefVals(String datasetID, String[] defvals, String user){
     // nothing for now
     return false;
   }
@@ -612,7 +607,7 @@ public class MySQLDatabase implements Database{
     }
   }
   
-  public synchronized DBRecord getDataset(int datasetID){
+  public synchronized DBRecord getDataset(String datasetID){
     
     DBRecord task = null;
     String req = "SELECT "+datasetFields[0];
@@ -661,19 +656,19 @@ public class MySQLDatabase implements Database{
      return task;
   }
   
-  public String getDatasetTransformationName(int datasetID){
+  public String getDatasetTransformationName(String datasetID){
     return getDataset(datasetID).getValue("transformationName").toString();
   }
   
-  public String getDatasetTransformationVersion(int datasetID){
+  public String getDatasetTransformationVersion(String datasetID){
     return getDataset(datasetID).getValue("transformationVersion").toString();
   }
   
-  public String getDatasetName(int datasetID){
+  public String getDatasetName(String datasetID){
     return getDataset(datasetID).getValue("name").toString();
   }
 
-  public synchronized int getDatasetID(String datasetName){
+  public synchronized String getDatasetID(String datasetName){
     String req = "SELECT identifier from dataset where name = '"+datasetName + "'";
     String id = null;
     Vector vec = new Vector();
@@ -696,20 +691,20 @@ public class MySQLDatabase implements Database{
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
       error = e.getMessage();
-      return -1;
+      return "-1";
     }
     if(vec.size()>1){
       Debug.debug("WARNING: More than one ("+vec.size()+
           ") dataset found with name "+datasetName, 1);
     }
-    return Integer.parseInt(vec.get(0).toString());
+    return vec.get(0).toString();
   }
 
-  public String getRunNumber(int datasetID){
+  public String getRunNumber(String datasetID){
     return getDataset(datasetID).getValue("runNumber").toString();
   }
 
-  public synchronized DBRecord getRuntimeEnvironment(int runtimeEnvironmentID){
+  public synchronized DBRecord getRuntimeEnvironment(String runtimeEnvironmentID){
     
     DBRecord pack = null;
     String req = "SELECT "+runtimeEnvironmentFields[0];
@@ -758,7 +753,7 @@ public class MySQLDatabase implements Database{
      return pack;
   }
   
-  public synchronized DBRecord getTransformation(int transformationID){
+  public synchronized DBRecord getTransformation(String transformationID){
     
     DBRecord transformation = null;
     String req = "SELECT "+transformationFields[0];
@@ -807,7 +802,7 @@ public class MySQLDatabase implements Database{
      return transformation;
   }
   
-  public String getRunInfo(int jobDefID, String key){
+  public String getRunInfo(String jobDefID, String key){
     DBRecord jobDef = getJobDefinition(jobDefID);
     return jobDef.getValue(key).toString();
   }
@@ -911,7 +906,7 @@ public class MySQLDatabase implements Database{
   }
 
   // Selects only the fields listed in fieldNames. Other fields are set to "".
-  public synchronized DBRecord getJobDefinition(int jobDefinitionID){
+  public synchronized DBRecord getJobDefinition(String jobDefinitionID){
     
     String req = "SELECT *";
     req += " FROM jobDefinition where identifier = '"+
@@ -966,7 +961,7 @@ public class MySQLDatabase implements Database{
   }
 
   // Selects only the fields listed in fieldNames. Other fields are set to "".
-  public synchronized DBRecord [] selectJobDefinitions(int datasetID, String [] fieldNames){
+  public synchronized DBRecord [] selectJobDefinitions(String datasetID, String [] fieldNames){
     
     String req = "SELECT";
     for(int i=0; i<fieldNames.length; ++i){
@@ -976,7 +971,7 @@ public class MySQLDatabase implements Database{
       req += " "+fieldNames[i];
     }
     req += " FROM jobDefinition";
-    if(datasetID>-1){
+    if(!datasetID.equals("-1")){
       req += " where datasetName = '"+getDatasetName(datasetID) + "'";
     }
     Vector jobdefv = new Vector();
@@ -1046,7 +1041,7 @@ public class MySQLDatabase implements Database{
     return res;
   }
   
-  public DBResult getJobDefinitions(int datasetID, String [] fieldNames){
+  public DBResult getJobDefinitions(String datasetID, String [] fieldNames){
     
     DBRecord jt [] = selectJobDefinitions(datasetID, fieldNames);
     DBResult res = new DBResult(fieldNames.length, jt.length);
@@ -1364,7 +1359,7 @@ public class MySQLDatabase implements Database{
       return execok;
     }
     
-  public synchronized boolean setJobDefsField(int [] identifiers,
+  public synchronized boolean setJobDefsField(String [] identifiers,
       String field, String value){
     String sql = "UPDATE jobDefinition SET ";
     sql += field+"='"+value+"' WHERE ";
@@ -1393,7 +1388,7 @@ public class MySQLDatabase implements Database{
     return execok;
   }
   
-  public boolean updateJobDefinition(int jobDefID,
+  public boolean updateJobDefinition(String jobDefID,
       String [] values){
     return updateJobDefinition(
         jobDefID,
@@ -1402,7 +1397,7 @@ public class MySQLDatabase implements Database{
     );
   }
   
-  public synchronized boolean updateJobDefinition(int jobDefID, String [] fields,
+  public synchronized boolean updateJobDefinition(String jobDefID, String [] fields,
       String [] values){
     
     if(fields.length!=values.length){
@@ -1469,7 +1464,7 @@ public class MySQLDatabase implements Database{
     return execok;
   }
   
-  public synchronized boolean updateDataset(int datasetID, String [] fields,
+  public synchronized boolean updateDataset(String datasetID, String [] fields,
       String [] values){
 
     if(fields.length!=values.length){
@@ -1486,7 +1481,7 @@ public class MySQLDatabase implements Database{
 
     String sql = "UPDATE dataset SET ";
     int addedFields = 0;
-    for(int i = 0; i < datasetFields.length; ++i){
+    for(int i=0; i < datasetFields.length; ++i){
       if(!datasetFields[i].equals("identifier")){
         for(int j=0; j<fields.length; ++j){
           // only add if present in datasetFields
@@ -1534,7 +1529,7 @@ public class MySQLDatabase implements Database{
     return execok;
   }
 
-  public synchronized boolean updateTransformation(int transformationID, String [] fields,
+  public synchronized boolean updateTransformation(String transformationID, String [] fields,
       String [] values){
     
     if(fields.length!=values.length){
@@ -1553,7 +1548,7 @@ public class MySQLDatabase implements Database{
 
     String sql = "UPDATE transformation SET ";
     int addedFields = 0;
-    for(int i = 0; i<transformationFields.length; ++i){
+    for(int i=0; i<transformationFields.length; ++i){
       if(!transformationFields[i].equals("identifier")){
         for(int j=0; j<fields.length; ++j){
           // only add if present in transformationFields
@@ -1601,7 +1596,7 @@ public class MySQLDatabase implements Database{
     return execok;
   }
   
-  public synchronized boolean updateRuntimeEnvironment(int runtimeEnvironmentID, String [] fields,
+  public synchronized boolean updateRuntimeEnvironment(String runtimeEnvironmentID, String [] fields,
       String [] values){
     
     if(fields.length!=values.length){
@@ -1620,7 +1615,7 @@ public class MySQLDatabase implements Database{
   
     String sql = "UPDATE runtimeEnvironment SET ";
     int addedFields = 0;
-    for(int i = 0; i<runtimeEnvironmentFields.length; ++i){
+    for(int i=0; i<runtimeEnvironmentFields.length; ++i){
       if(!runtimeEnvironmentFields[i].equals("identifier")){
         for(int j=0; j<fields.length; ++j){
           // only add if present in runtimeEnvironmentFields
@@ -1668,7 +1663,7 @@ public class MySQLDatabase implements Database{
     return execok;
   }
 
-  public synchronized boolean deleteJobDefinition(int jobDefId){
+  public synchronized boolean deleteJobDefinition(String jobDefId){
     boolean ok = true;
     try{
       String sql = "DELETE FROM jobDefinition WHERE identifier = '"+
@@ -1684,7 +1679,7 @@ public class MySQLDatabase implements Database{
     return ok;
   }
   
-    public synchronized boolean deleteDataset(int datasetID, boolean cleanup){
+    public synchronized boolean deleteDataset(String datasetID, boolean cleanup){
       boolean ok = true;
       try{
         String sql = "DELETE FROM dataset WHERE identifier = '"+
@@ -1709,7 +1704,7 @@ public class MySQLDatabase implements Database{
       return ok;
     }
 
-    public synchronized boolean deleteJobDefsFromDataset(int datasetID){
+    public synchronized boolean deleteJobDefsFromDataset(String datasetID){
       boolean ok = true;
       try{
         String sql = "DELETE FROM jobDefinition WHERE dataset = '"+
@@ -1724,7 +1719,7 @@ public class MySQLDatabase implements Database{
       return ok;
     }
       
-    public synchronized boolean deleteTransformation(int transformationID){
+    public synchronized boolean deleteTransformation(String transformationID){
       boolean ok = true;
       try{
         String sql = "DELETE FROM transformation WHERE identifier = '"+
@@ -1740,7 +1735,7 @@ public class MySQLDatabase implements Database{
       return ok;
     }
       
-    public synchronized boolean deleteRuntimeEnvironment(int runtimeEnvironmentID){
+    public synchronized boolean deleteRuntimeEnvironment(String runtimeEnvironmentID){
       boolean ok = true;
       try{
         String sql = "DELETE FROM runtimeEnvironment WHERE identifier = '"+
@@ -1798,14 +1793,19 @@ public class MySQLDatabase implements Database{
       return ret;
     }
 
-    public String [] getTransformationOutputs(int transformationID){    
+    public String [] getTransformationOutputs(String transformationID){    
       String outputs = getTransformation(transformationID).getValue("outputFiles").toString();
       return Util.split(outputs);
     }
 
-    public String [] getTransformationInputs(int transformationID){    
+    public String [] getTransformationInputs(String transformationID){    
       String inputs = getTransformation(transformationID).getValue("inputFiles").toString();
       return Util.split(inputs);
+    }
+    
+    public DBResult getFiles(String datasetID){
+      // TODO
+      return null;
     }
 
     public String getError(){

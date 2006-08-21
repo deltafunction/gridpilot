@@ -70,11 +70,11 @@ public class JobDefCreator{
 
     if(editing){
       String jobDefIdentifier = dbPluginMgr.getIdentifierField("jobDefinition");
-      int id = -1;
+      String id = "-1";
       for(int i=0; i<cstAttrNames.length; ++i){
         if(cstAttrNames[i].toString().equalsIgnoreCase(
             jobDefIdentifier)){
-          id = Integer.parseInt(cstAttr[i]);
+          id = cstAttr[i];
           break;
         }
       }

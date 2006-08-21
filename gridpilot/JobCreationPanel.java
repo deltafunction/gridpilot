@@ -16,7 +16,7 @@ public class JobCreationPanel extends CreateEditPanel{
 
   private static final long serialVersionUID = 1L;
   private DBPluginMgr dbPluginMgr = null;
-  private int [] datasetIDs = new int [] {-1};
+  private String [] datasetIDs = new String [] {"-1"};
   private JPanel pDataset = new JPanel();
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
@@ -72,7 +72,7 @@ public class JobCreationPanel extends CreateEditPanel{
   /**
    * GUI initialisation with dataset ids
    */
-  public void initGUI(int[] _datasetIDs){
+  public void initGUI(String [] _datasetIDs){
     
     datasetIDs = _datasetIDs;
 
@@ -80,7 +80,7 @@ public class JobCreationPanel extends CreateEditPanel{
     removeAll();
     String title="";
     if(datasetIDs.length==1){
-      if(datasetIDs[0]==-1){
+      if(datasetIDs[0].equals("-1")){
         title = "Define new job record";
       }
       else{
@@ -90,7 +90,7 @@ public class JobCreationPanel extends CreateEditPanel{
     else{
       title = "Define job records for datasets ";
     }
-    if(datasetIDs.length>1 || datasetIDs[0] != -1){
+    if(datasetIDs.length>1 || !datasetIDs[0].equals("-1")){
       for(int i=0; i<datasetIDs.length; ++i){
         if(i>0){
           title += " ";
@@ -150,7 +150,7 @@ public class JobCreationPanel extends CreateEditPanel{
     cstAttributesNames = GridPilot.fixedJobAttributes;
     ArrayList jobDefinitionFields = new ArrayList(Arrays.asList(dbPluginMgr.getFieldnames("jobDefinition")));    
     
-    int transformationID = dbPluginMgr.getTransformationID(
+    String transformationID = dbPluginMgr.getTransformationID(
         dbPluginMgr.getDatasetTransformationName(datasetIDs[0]),
         dbPluginMgr.getDatasetTransformationVersion(datasetIDs[0]));
     jobParamNames = dbPluginMgr.getTransformationJobParameters(transformationID);

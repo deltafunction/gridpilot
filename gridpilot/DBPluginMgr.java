@@ -96,7 +96,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public boolean updateJobStdoutErr(int jobDefID, String result){
+  public boolean updateJobStdoutErr(String jobDefID, String result){
     return updateJobDefinition(jobDefID, new String [] {"validationResult"}, new String [] {result});
   }
 
@@ -266,7 +266,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getStdOutFinalDest(final int jobDefinitionID){
+  public String getStdOutFinalDest(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -294,7 +294,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getStdErrFinalDest(final int jobDefinitionID){
+  public String getStdErrFinalDest(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -349,7 +349,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getTransformationScript(final int jobDefinitionID){
+  public String getTransformationScript(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -377,7 +377,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String [] getRuntimeEnvironments(final int jobDefinitionID){
+  public String [] getRuntimeEnvironments(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
@@ -405,7 +405,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String [] getTransformationArguments(final int jobDefinitionID){
+  public String [] getTransformationArguments(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
@@ -433,7 +433,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getTransformationRuntimeEnvironment(final int transformationID){
+  public String getTransformationRuntimeEnvironment(final String transformationID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -461,7 +461,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getJobDefUserInfo(final int jobDefinitionID){
+  public String getJobDefUserInfo(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -489,7 +489,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getJobDefName(final int jobDefinitionID){
+  public String getJobDefName(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -517,7 +517,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getDatasetName(final int datasetID){
+  public String getDatasetName(final String datasetID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -545,7 +545,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getRunNumber(final int datasetID){
+  public String getRunNumber(final String datasetID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -573,9 +573,9 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public int getRuntimeEnvironmentID(final String name, final String cs){
+  public String getRuntimeEnvironmentID(final String name, final String cs){
     MyThread t = new MyThread(){
-      int res = -1;
+      String res = "-1";
       public void run(){
         try{
           res = db.getRuntimeEnvironmentID(name, cs);
@@ -586,7 +586,7 @@ public class DBPluginMgr implements Database{
                              name+":"+cs, t);
         }
       }
-      public int getIntRes(){
+      public String getStringRes(){
         return res;
       }
     };
@@ -594,16 +594,16 @@ public class DBPluginMgr implements Database{
     t.start();
   
     if(waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironmentID")){
-      return t.getIntRes();
+      return t.getStringRes();
     }
     else{
-      return -1;
+      return "-1";
     }
   }
 
-  public int getTransformationID(final String transName, final String transVersion){
+  public String getTransformationID(final String transName, final String transVersion){
     MyThread t = new MyThread(){
-      int res = -1;
+      String res = "-1";
       public void run(){
         try{
           res = db.getTransformationID(transName, transVersion);
@@ -614,7 +614,7 @@ public class DBPluginMgr implements Database{
                              transName+":"+transVersion, t);
         }
       }
-      public int getIntRes(){
+      public String getStringRes(){
         return res;
       }
     };
@@ -622,16 +622,16 @@ public class DBPluginMgr implements Database{
     t.start();
   
     if(waitForThread(t, dbName, dbTimeOut, "getTransformationID")){
-      return t.getIntRes();
+      return t.getStringRes();
     }
     else{
-      return -1;
+      return "-1";
     }
   }
 
-  public int getDatasetID(final String datasetName){
+  public String getDatasetID(final String datasetName){
     MyThread t = new MyThread(){
-      int res = -1;
+      String res = "-1";
       public void run(){
         try{
           res = db.getDatasetID(datasetName);
@@ -642,7 +642,7 @@ public class DBPluginMgr implements Database{
                              datasetName, t);
         }
       }
-      public int getIntRes(){
+      public String getStringRes(){
         return res;
       }
     };
@@ -650,16 +650,16 @@ public class DBPluginMgr implements Database{
     t.start();
   
     if(waitForThread(t, dbName, dbTimeOut, "getDatasetID")){
-      return t.getIntRes();
+      return t.getStringRes();
     }
     else{
-      return -1;
+      return "-1";
     }
   }
 
-  public int getJobDefDatasetID(final int jobDefinitionID){
+  public String getJobDefDatasetID(final String jobDefinitionID){
     MyThread t = new MyThread(){
-      int res = -1;
+      String res = "-1";
       public void run(){
         try{
           res = db.getJobDefDatasetID(jobDefinitionID);
@@ -670,7 +670,7 @@ public class DBPluginMgr implements Database{
                              jobDefinitionID, t);
         }
       }
-      public int getIntRes(){
+      public String getStringRes(){
         return res;
       }
     };
@@ -678,14 +678,14 @@ public class DBPluginMgr implements Database{
     t.start();
   
     if(waitForThread(t, dbName, dbTimeOut, "getJobDefDatasetID")){
-      return t.getIntRes();
+      return t.getStringRes();
     }
     else{
-      return -1;
+      return "-1";
     }
   }
 
-  public String getJobDefStatus(final int jobDefinitionID){
+  public String getJobDefStatus(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -713,7 +713,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getJobDefValue(final int jobDefID, final String key){
+  public String getJobDefValue(final String jobDefID, final String key){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -741,7 +741,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getRunInfo(final int jobDefID, final String key){
+  public String getRunInfo(final String jobDefID, final String key){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -769,9 +769,9 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public int getJobDefTransformationID(final int jobDefID){
+  public String getJobDefTransformationID(final String jobDefID){
     MyThread t = new MyThread(){
-      int res = -1;
+      String res = "-1";
       public void run(){
         try{
           res = db.getJobDefTransformationID(jobDefID);
@@ -782,7 +782,7 @@ public class DBPluginMgr implements Database{
                              jobDefID, t);
         }
       }
-      public int getIntRes(){
+      public String getStringRes(){
         return res;
       }
     };
@@ -790,14 +790,14 @@ public class DBPluginMgr implements Database{
     t.start();
   
     if(waitForThread(t, dbName, dbTimeOut, "getTransformationID")){
-      return t.getIntRes();
+      return t.getStringRes();
     }
     else{
-      return -1;
+      return "-1";
     }
   }
 
-  public String getDatasetTransformationName(final int datasetID){
+  public String getDatasetTransformationName(final String datasetID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -825,7 +825,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getDatasetTransformationVersion(final int datasetID){
+  public String getDatasetTransformationVersion(final String datasetID){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -853,7 +853,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getTransformationValue(final int jobDefID, final String key){
+  public String getTransformationValue(final String jobDefID, final String key){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -882,7 +882,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String [] getOutputMapping(final int jobDefID){
+  public String [] getOutputMapping(final String jobDefID){
   
     MyThread t = new MyThread(){
       String [] res = null;
@@ -911,7 +911,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String [] getJobDefInputFiles(final int jobDefID){
+  public String [] getJobDefInputFiles(final String jobDefID){
     
       MyThread t = new MyThread(){
         String [] res = null;
@@ -940,7 +940,7 @@ public class DBPluginMgr implements Database{
       }
     }
 
-  public String [] getJobDefTransPars(final int jobDefID){
+  public String [] getJobDefTransPars(final String jobDefID){
     
       MyThread t = new MyThread(){
         String [] res = null;
@@ -969,7 +969,7 @@ public class DBPluginMgr implements Database{
       }
     }
 
-  public String getJobDefOutLocalName(final int jobDefID, final String outpar){
+  public String getJobDefOutLocalName(final String jobDefID, final String outpar){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -997,7 +997,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getJobDefOutRemoteName(final int jobDefinitionID, final String outpar){
+  public String getJobDefOutRemoteName(final String jobDefinitionID, final String outpar){
     MyThread t = new MyThread(){
       String res = null;
       public void run(){
@@ -1025,7 +1025,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String [] getTransformationJobParameters(final int transformationID){
+  public String [] getTransformationJobParameters(final String transformationID){
   
     MyThread t = new MyThread(){
       String [] res = null;
@@ -1054,7 +1054,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String [] getTransformationOutputs(final int transformationID){
+  public String [] getTransformationOutputs(final String transformationID){
   
     MyThread t = new MyThread(){
       String [] res = null;
@@ -1083,7 +1083,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String [] getTransformationInputs(final int transformationID){
+  public String [] getTransformationInputs(final String transformationID){
     
     MyThread t = new MyThread(){
       String [] res = null;
@@ -1305,7 +1305,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized boolean setJobDefsField(final int [] identifiers,
+  public synchronized boolean setJobDefsField(final String [] identifiers,
       final String field, final String value){  
     MyThread t = new MyThread(){
       boolean res = false;
@@ -1334,7 +1334,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized boolean updateJobDefinition(final int jobDefID,
+  public synchronized boolean updateJobDefinition(final String jobDefID,
       final String [] fields, final String [] values){
     MyThread t = new MyThread(){
       boolean res = false;
@@ -1363,7 +1363,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized boolean updateJobDefinition(final int jobDefID,
+  public synchronized boolean updateJobDefinition(final String jobDefID,
       final String [] values){
   
     MyThread t = new MyThread(){
@@ -1393,19 +1393,19 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized boolean updateDataset(final int taskID,
+  public synchronized boolean updateDataset(final String datasetID,
       final String [] fields, final String [] values){
     
       MyThread t = new MyThread(){
         boolean res = false;
         public void run(){
           try{
-            res = db.updateDataset(taskID, fields, values);
+            res = db.updateDataset(datasetID, fields, values);
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
-                               taskID, t);
+                               datasetID, t);
           }
         }
         public boolean getBoolRes(){
@@ -1423,7 +1423,7 @@ public class DBPluginMgr implements Database{
       }
     }
 
-  public synchronized boolean updateTransformation(final int transformationID,
+  public synchronized boolean updateTransformation(final String transformationID,
       final String [] fields, final String [] values){
     
       MyThread t = new MyThread(){
@@ -1453,7 +1453,7 @@ public class DBPluginMgr implements Database{
       }
     }
 
-  public synchronized boolean updateRuntimeEnvironment(final int runtimeEnvironmentID,
+  public synchronized boolean updateRuntimeEnvironment(final String runtimeEnvironmentID,
     final String [] fields, final String [] values){
   
     MyThread t = new MyThread(){
@@ -1483,7 +1483,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized boolean deleteJobDefinition(final int jobDefID){
+  public synchronized boolean deleteJobDefinition(final String jobDefID){
     
       MyThread t = new MyThread(){
         boolean res = false;
@@ -1512,18 +1512,18 @@ public class DBPluginMgr implements Database{
       }
     }
 
-  public synchronized boolean deleteDataset(final int taskID, final boolean cleanup){
+  public synchronized boolean deleteDataset(final String datasetID, final boolean cleanup){
     
       MyThread t = new MyThread(){
         boolean res = false;
         public void run(){
           try{
-            res = db.deleteDataset(taskID, cleanup);
+            res = db.deleteDataset(datasetID, cleanup);
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
-                               taskID, t);
+                               datasetID, t);
           }
         }
         public boolean getBoolRes(){
@@ -1541,7 +1541,7 @@ public class DBPluginMgr implements Database{
       }
     }
 
-  public synchronized boolean deleteTransformation(final int transformationID){
+  public synchronized boolean deleteTransformation(final String transformationID){
     
       MyThread t = new MyThread(){
         boolean res = false;
@@ -1570,7 +1570,7 @@ public class DBPluginMgr implements Database{
       }
     }
 
-  public synchronized boolean deleteRuntimeEnvironment(final int runtimeEnvironmentID){
+  public synchronized boolean deleteRuntimeEnvironment(final String runtimeEnvironmentID){
     
       MyThread t = new MyThread(){
         boolean res = false;
@@ -1599,7 +1599,7 @@ public class DBPluginMgr implements Database{
       }
     }
 
-  public synchronized boolean reserveJobDefinition(final int jobDefID, final String userName,
+  public synchronized boolean reserveJobDefinition(final String jobDefID, final String userName,
       final String cs){
   
     MyThread t = new MyThread(){
@@ -1629,7 +1629,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized boolean cleanRunInfo(final int jobDefID){
+  public synchronized boolean cleanRunInfo(final String jobDefID){
   
     MyThread t = new MyThread(){
       boolean res = false;
@@ -1743,7 +1743,7 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public DBRecord getDataset(final int datasetID){
+  public DBRecord getDataset(final String datasetID){
     
       MyThread t = new MyThread(){
         DBRecord res = null;
@@ -1772,7 +1772,7 @@ public class DBPluginMgr implements Database{
       }
     }
 
-  public DBRecord getRuntimeEnvironment(final int runtimeEnvironmentID){
+  public DBRecord getRuntimeEnvironment(final String runtimeEnvironmentID){
     
       MyThread t = new MyThread(){
         DBRecord res = null;
@@ -1801,7 +1801,7 @@ public class DBPluginMgr implements Database{
       }
     }
 
-  public DBRecord getTransformation(final int transformationID){
+  public DBRecord getTransformation(final String transformationID){
     
       MyThread t = new MyThread(){
         DBRecord res = null;
@@ -1830,7 +1830,7 @@ public class DBPluginMgr implements Database{
       }
     }
 
-  public DBResult getJobDefinitions(final int datasetID, final String [] fieldNames){
+  public DBResult getJobDefinitions(final String datasetID, final String [] fieldNames){
   
     MyThread t = new MyThread(){
       DBResult res = null;
@@ -1859,7 +1859,36 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public DBRecord getJobDefinition(final int jobDefinitionID){
+  public DBResult getFiles(final String datasetID){
+    
+    MyThread t = new MyThread(){
+      DBResult res = null;
+      public void run(){
+        try{
+          res = db.getFiles(datasetID);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             datasetID, t);
+        }
+      }
+      public DBResult getDB2Res(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getFiles")){
+      return t.getDB2Res();
+    }
+    else{
+      return null;
+    }
+  }
+
+  public DBRecord getJobDefinition(final String jobDefinitionID){
   
     MyThread t = new MyThread(){
       DBRecord res = null;
@@ -2123,6 +2152,17 @@ public class DBPluginMgr implements Database{
     return ret;
   }
 
+  public String [] getFileDatasetReference(){
+    String [] ret = configFile.getValues(dbName,
+      "file dataset reference");
+    if(ret==null || ret.length<2){
+      ret = new String [] {"name", "datasetName"};
+    }
+    Debug.debug("jobDef dataset reference for "+dbName
+        +" : "+Util.arrayToString(ret), 2);
+    return ret;
+  }
+
   public String [] getDatasetTransformationReference(){
     String [] ret = configFile.getValues(dbName,
       "dataset transformation reference");
@@ -2205,7 +2245,7 @@ public class DBPluginMgr implements Database{
    * Returns a list of
    * {logicalFileEventMin,logicalFileEventMax} dublets.
    */
-  public int [][] getEventSplits(int dataset){
+  public int [][] getEventSplits(String datasetID){
     String arg = "";
     DBResult res = null;
     // totalEvents is the total number of events.
@@ -2217,7 +2257,7 @@ public class DBPluginMgr implements Database{
     String debug = "";
     
     arg = "select totalEvents, totalFiles from dataset where identifier='"+
-    dataset+"'";
+    datasetID+"'";
     res = select(arg, getIdentifierField("dataset"));
     if(res.values.length>0){
       try{
