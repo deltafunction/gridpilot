@@ -83,11 +83,13 @@ public class Util{
   }
   
   public static String [] split(String s, String delim){
-    StringTokenizer tok = new StringTokenizer(s, delim);
-    int len = tok.countTokens();
-    String [] res = new String[len];
+    //StringTokenizer tok = new StringTokenizer(s, delim);
+    //int len = tok.countTokens();
+    //String [] res = new String[len];
+    String [] res = s.split(delim);
+    int len = res.length;
     for (int i=0 ; i<len ; i++){
-      res[i] = tok.nextToken();
+      //res[i] = tok.nextToken();
       /* remove leading whitespace */
       res[i] = res[i].replaceAll("^\\s+", "");
       /* remove trailing whitespace */
@@ -262,32 +264,6 @@ public class Util{
       retStrArray[i] = dbEncode(strArray[i]);
     }
     return retStrArray;
-  }
-  
-  public static String webEncode(String [] strs) {
-    String tmp = "";
-    String alltmp = "";
-    for (int i=0 ; i<strs.length ; i++) {
-      // encode % into %25
-      // encode spaces into %20
-      tmp = strs[i].replaceAll("%","%25");
-      tmp = tmp.replaceAll(" ","%20");
-      alltmp += tmp + " ";
-    }
-    return alltmp ;
-  }
-  
-  public static String [] decode(String s) {
-    //split on spaces and replace "\0" by " "
-    StringTokenizer tok = new StringTokenizer(s);
-    int len = tok.countTokens();
-    String [] res = new String[len];
-    for (int i = 0 ; i < len ; i++) {
-      res[i] = tok.nextToken().replaceAll("\0"," ");
-      res[i] = res[i].replaceAll("%20"," ");
-      res[i] = res[i].replaceAll("%25","%");
-    }
-    return res ;
   }
 
  public static void setBackgroundColor(JComponent c){
@@ -822,4 +798,11 @@ public class Util{
     }
   }
   
+  public static String [] objectToListArray(Object [] arr){
+    String [] res = new String [arr.length];
+    for(int i=0; i<arr.length; ++i){
+      res[i] = arr[i].toString();
+    }
+    return res;
+  }
 }
