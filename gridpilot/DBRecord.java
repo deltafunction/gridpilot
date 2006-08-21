@@ -17,8 +17,8 @@ public class DBRecord{
   }
   
   public Object getValue(String col){
-    for (int i = 0; i < fields.length; i++){
-      if (col.equalsIgnoreCase(fields[i])){
+    for(int i=0; i<fields.length; i++){
+      if(col.equalsIgnoreCase(fields[i])){
         return values[i];
       }
     }
