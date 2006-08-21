@@ -68,15 +68,15 @@ public class GlobalFrame extends GPFrame{
     container.validate();
 
     if(GridPilot.getDBs().length>0){
-      try{
-        for(int i=0; i<GridPilot.tabs.length; ++i){
+      for(int i=0; i<GridPilot.tabs.length; ++i){
+        try{
           addPanel(new DBPanel(GridPilot.getDBs()[0], GridPilot.tabs[i]));
         }
-      }
-      catch(Exception e){
-        Debug.debug("ERROR: could not load database panel for "+
-            GridPilot.getDBs()[0], 1);
-        e.printStackTrace();
+        catch(Exception e){
+          Debug.debug("ERROR: could not load database panel for "+
+              GridPilot.getDBs()[0] + " : " + GridPilot.tabs[i], 1);
+          e.printStackTrace();
+        }
       }
     }
     selectedPanel = tabbedPane.getSelectedIndex();
@@ -393,6 +393,16 @@ public class GlobalFrame extends GPFrame{
     JMenuItem [] miNewRuntimeEnvironmentTabs = new JMenuItem[GridPilot.getDBs().length];
     menuView.add(miNewRuntimeEnvironmentTab);
     for(i=0; i<GridPilot.getDBs().length; ++i){
+      // Check if there is a runtimeEnvironment table in this database
+      try{
+        if((GridPilot.getClassMgr().getDBPluginMgr(
+            GridPilot.getDBs()[i]).getFieldNames("runtimeEnvironment")==null)){
+          continue;
+        };
+      }
+      catch(Exception e){
+        continue;
+      }
       miNewRuntimeEnvironmentTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
       miNewRuntimeEnvironmentTabs[i].addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
@@ -414,6 +424,16 @@ public class GlobalFrame extends GPFrame{
     JMenuItem [] miNewTransformationTabTabs = new JMenuItem[GridPilot.getDBs().length];
     menuView.add(miNewTransformationTab);
     for(i=0; i<GridPilot.getDBs().length; ++i){
+      // Check if there is a transformation table in this database
+      try{
+        if((GridPilot.getClassMgr().getDBPluginMgr(
+            GridPilot.getDBs()[i]).getFieldNames("transformation")==null)){
+          continue;
+        };
+      }
+      catch(Exception e){
+        continue;
+      }
       miNewTransformationTabTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
       miNewTransformationTabTabs[i].addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
@@ -456,17 +476,15 @@ public class GlobalFrame extends GPFrame{
     JMenuItem [] miNewJobDefTabs = new JMenuItem[GridPilot.getDBs().length];
     menuView.add(miNewJobDefTab);
     
-    boolean jobDefTableExist = false;   
     for(i=0; i<GridPilot.getDBs().length; ++i){
       // Check if there is a jobDefinition table in this database
       try{
-        jobDefTableExist = (GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.getDBs()[i]).getFieldNames("jobDefinition")!=null);
+        if((GridPilot.getClassMgr().getDBPluginMgr(
+            GridPilot.getDBs()[i]).getFieldNames("jobDefinition")==null)){
+          continue;
+        };
       }
       catch(Exception e){
-        continue;
-      }
-      if(!jobDefTableExist){
         continue;
       }
       miNewJobDefTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
