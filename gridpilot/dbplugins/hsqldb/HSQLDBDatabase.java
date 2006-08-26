@@ -327,7 +327,12 @@ public class HSQLDBDatabase implements Database{
       Debug.debug("WARNING: More than one ("+vec.size()+
           ") transformation found with name:version "+transName+":"+transVersion, 1);
     }
-    return vec.get(0).toString();
+    if(vec.size()==0){
+      return "-1";
+    }
+    else{
+      return vec.get(0).toString();
+    }
   }
 
   public synchronized String getRuntimeEnvironmentID(String name, String cs){
@@ -360,7 +365,12 @@ public class HSQLDBDatabase implements Database{
       Debug.debug("WARNING: More than one ("+vec.size()+
           ") runtimeEnvironment found with name:cs "+name+":"+cs, 1);
     }
-    return vec.get(0).toString();
+    if(vec.size()==0){
+      return "-1";
+    }
+    else{
+      return vec.get(0).toString();
+    }
   }
 
   public String [] getTransformationJobParameters(String transformationID){
@@ -761,7 +771,12 @@ public class HSQLDBDatabase implements Database{
       Debug.debug("WARNING: More than one ("+vec.size()+
           ") dataset found with name "+datasetName, 1);
     }
-    return vec.get(0).toString();
+    if(vec.size()==0){
+      return "-1";
+    }
+    else{
+      return vec.get(0).toString();
+    }
   }
 
   public String getRunNumber(String datasetID){
