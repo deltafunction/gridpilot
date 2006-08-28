@@ -66,7 +66,8 @@ import org.ietf.jgss.GSSException;
 
 public class Util{
   
-  public static String caCertsTmpDir = null;
+  private static boolean ASK_BEFORE_INTERRUPT = true;
+  public static String CA_CERTS_TMP_DIR = null;
   
   public static String [] split(String s){
     StringTokenizer tok = new StringTokenizer(s);
@@ -346,14 +347,14 @@ public class Util{
                   // Set the text: the URL browsed to with case URL removed
                   jt.setText(wb.lastURL.substring(
                       finBaseUrl.length()));
-                  GridPilot.getClassMgr().getStatusBar().setLabel("");
+                  //GridPilot.getClassMgr().getStatusBar().setLabel("");
                 }
                 else{
                   // Don't do anything if we cannot get a URL
                   Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
                 }
                 frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-                GridPilot.getClassMgr().getStatusBar().setLabel("");
+                //GridPilot.getClassMgr().getStatusBar().setLabel("");
               }
             };
             t.start();
@@ -577,11 +578,11 @@ public class Util{
     try{
       // get a temp name
       File tmpFile = File.createTempFile(/*prefix*/"certificates", /*suffix*/"");
-      caCertsTmpDir = tmpFile.getAbsolutePath();
+      CA_CERTS_TMP_DIR = tmpFile.getAbsolutePath();
       tmpFile.delete();
-      LocalStaticShellMgr.mkdirs(caCertsTmpDir);
+      LocalStaticShellMgr.mkdirs(CA_CERTS_TMP_DIR);
       // hack to have the diretory deleted on exit
-      GridPilot.tmpConfFile.put(caCertsTmpDir, new File(caCertsTmpDir));
+      GridPilot.tmpConfFile.put(CA_CERTS_TMP_DIR, new File(CA_CERTS_TMP_DIR));
       // fill the directory with certificates from resources/certificates
       Debug.debug("Reading list of files from "+
           GridPilot.resourcesPath+"ca_certs_list.txt", 3);
@@ -603,7 +604,7 @@ public class Util{
               GridPilot.resourcesPath+"certificates/"+fileName);
           in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
           out = new PrintWriter(
-              new FileWriter(new File(caCertsTmpDir, fileName))); 
+              new FileWriter(new File(CA_CERTS_TMP_DIR, fileName))); 
           while((line = in.readLine())!=null){
             out.println(line);
           }
@@ -624,7 +625,7 @@ public class Util{
         }
       }
       // this adds all certificates in the dir to globus authentication procedures
-      prop.setCaCertLocations(caCertsTmpDir);
+      prop.setCaCertLocations(CA_CERTS_TMP_DIR);
       CoGProperties.setDefault(prop);
     }
     catch(IOException e){
@@ -636,12 +637,15 @@ public class Util{
     }
   }
     
+  public static File getProxyFile(){
+    return new File("/tmp/x509up_"+System.getProperty("user.name"));
+  }
+  
   public static GSSCredential initGridProxy() throws IOException, GSSException{
     
     ExtendedGSSManager manager = (ExtendedGSSManager) ExtendedGSSManager.getInstance();
     //String proxyFile = "/tmp/x509up_u501";
-    String proxyFile = "/tmp/x509up_"+System.getProperty("user.name");
-    File proxy = new File(proxyFile);
+    File proxy = getProxyFile();
     GSSCredential credential = null;
     
     // set the directory for trusted CA certificates
@@ -804,5 +808,51 @@ public class Util{
       res[i] = arr[i].toString();
     }
     return res;
+  }
+  
+  /**
+   * Asks the user if he wants to interrupt a plug-in
+   */
+  private static boolean askForInterrupt(String csName, String fct){
+    String msg = "No response from plugin " + csName +
+                 " for " + fct + "\n"+
+                 "Do you want to interrupt it ?";
+    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), msg, "No response from plugin",
+        JOptionPane.YES_NO_OPTION);
+    if(choice==JOptionPane.YES_OPTION){
+      return true;
+    }
+    else{
+      return false;
+    }
+  }
+
+  /**
+   * Waits the specified <code>MyThread</code> during maximum <code>timeOut</code> ms.
+   * @return true if <code>t</code> ended normally, false if <code>t</code> has been interrupted
+   */
+  public static boolean waitForThread(MyThread t, String csName, int _timeOut, String function){
+    int timeOut;
+      timeOut = _timeOut;
+    do{
+      try{
+        t.join(timeOut);
+      }
+      catch(InterruptedException ie){}
+
+      if(t.isAlive()){
+        if(!ASK_BEFORE_INTERRUPT || askForInterrupt(csName, function)){
+          GridPilot.getClassMgr().getLogFile().addMessage("No response from plugin " +
+              csName + " for " + function);
+          t.interrupt();
+          return false;
+        }
+      }
+      else{
+        break;
+      }
+    }
+    while(true);
+    return true;
   }
 }

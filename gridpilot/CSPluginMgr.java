@@ -53,8 +53,6 @@ public class CSPluginMgr implements ComputingSystem{
    * defined in configFile */
   private int defaultTimeOut = 60*1000;
 
-  private boolean askBeforeInterrupt = true;
-
   private String [] csNames;
   private HashMap cs ;
   private HashMap shellMgr;
@@ -298,7 +296,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(waitForThread(t, job.getCSName(), submissionTimeOut, "submit")){
+    if(Util.waitForThread(t, job.getCSName(), submissionTimeOut, "submit")){
       return t.getBooleanRes();
     }
     else{
@@ -330,7 +328,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    waitForThread(t, csName, updateTimeOut, "updateStatus");
+    Util.waitForThread(t, csName, updateTimeOut, "updateStatus");
   }
 
 
@@ -397,13 +395,13 @@ public class CSPluginMgr implements ComputingSystem{
     // When killing jobs from several CSs, we wait the timeout of
     // the first one for the first jobs and then just move with
     // timeout 0 to kill the others
-    waitForThread(threads[0],
+    Util.waitForThread(threads[0],
         ((JobInfo) csJobsArray[0].get(0)).getCSName(),
         killTimeOut, "killJobs");
     if(csNames.length>1){
       for(killThreadIndex=1; killThreadIndex<csNames.length;
       ++killThreadIndex){
-        waitForThread(threads[killThreadIndex],
+        Util.waitForThread(threads[killThreadIndex],
             ((JobInfo) csJobsArray[killThreadIndex].get(0)).getCSName(),
             0, "killJobs");
       }
@@ -434,7 +432,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    waitForThread(t, csName, clearTimeOut, "clearOutputMapping");
+    Util.waitForThread(t, csName, clearTimeOut, "clearOutputMapping");
   }
 
 
@@ -463,7 +461,7 @@ public class CSPluginMgr implements ComputingSystem{
 
       t.start();
 
-      waitForThread(t, csNames[k], exitTimeOut, "exit");
+      Util.waitForThread(t, csNames[k], exitTimeOut, "exit");
 
     }
   }
@@ -508,7 +506,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(waitForThread(t, csName, fullStatusTimeOut, "getFullStatus")){
+    if(Util.waitForThread(t, csName, fullStatusTimeOut, "getFullStatus")){
       return t.getStringRes();
     }
     else{
@@ -546,7 +544,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(waitForThread(t, csName, currentOutputTimeOut, "getCurrentOutputs")){
+    if(Util.waitForThread(t, csName, currentOutputTimeOut, "getCurrentOutputs")){
       return t.getString2Res();
     }
     else{
@@ -584,69 +582,13 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(waitForThread(t, csName, currentOutputTimeOut, "getScripts")){
+    if(Util.waitForThread(t, csName, currentOutputTimeOut, "getScripts")){
       return t.getString2Res();
     }
     else{
       return new String [] {null, "No response"};
     }
   }
-
-  /**
-   * Asks the user if he wants to interrupt a plug-in
-   */
-  private boolean askForInterrupt(String csName, String fct){
-    String msg = "No response from plugin " + csName +
-                 " for " + fct + "\n"+
-                 "Do you want to interrupt it ?";
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), msg, "No response from plugin",
-        JOptionPane.YES_NO_OPTION);
-    if(choice==JOptionPane.YES_OPTION){
-      return true;
-    }
-    else{
-      return false;
-    }
-  }
-
-  /**
-   * Waits the specified <code>MyThread</code> during maximum <code>timeOut</code> ms.
-   * @return true if <code>t</code> ended normally, false if <code>t</code> has been interrupted
-   */
-  private boolean waitForThread(MyThread t, String csName, int _timeOut, String function){
-    // TODO: if RemoteShellMgr from AtCom does not work better, replace with
-    // RemoteShellMgr from AtCom1 and reenable this timeOut stuff.
-    //int shellTimeout = RemoteShellMgr.sshOpenChannelRetries;
-    int timeOut;
-    /*if(shellTimeout>_timeOut){
-      Debug.debug("WARNING: increasing thread timeout to "+shellTimeout,1);
-      timeOut = shellTimeout;
-    }
-    else{*/
-      timeOut = _timeOut;
-    //}
-    do{
-      try{
-        t.join(timeOut);
-      }
-      catch(InterruptedException ie){}
-
-      if(t.isAlive()){
-        if(!askBeforeInterrupt || askForInterrupt(csName, function)){
-          logFile.addMessage("No response from plugin " +
-              csName + " for " + function);
-          t.interrupt();
-          return false;
-        }
-      }
-      else{
-        break;
-      }
-    }
-    while(true);
-    return true;
-  }
-
 
   private ShellMgr askWhichShell(JobInfo job){
 
@@ -712,7 +654,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(waitForThread(t, csName, getUserInfoTimeOut, "getUserInfo")){
+    if(Util.waitForThread(t, csName, getUserInfoTimeOut, "getUserInfo")){
       return t.getStringRes();
     }
     else{
@@ -748,7 +690,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(waitForThread(t, csName, defaultTimeOut, "getError")){
+    if(Util.waitForThread(t, csName, defaultTimeOut, "getError")){
       return t.getStringRes();
     }
     else{
@@ -781,7 +723,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(waitForThread(t, job.getCSName(), copyFileTimeOut, "postProcessing")){
+    if(Util.waitForThread(t, job.getCSName(), copyFileTimeOut, "postProcessing")){
       return t.getBooleanRes();
     }
     else{
@@ -814,7 +756,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(waitForThread(t, job.getCSName(), copyFileTimeOut, "preProcessing")){
+    if(Util.waitForThread(t, job.getCSName(), copyFileTimeOut, "preProcessing")){
       return t.getBooleanRes();
     }
     else{
@@ -845,7 +787,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    waitForThread(t, csName, setupTimeOut, "setupRuntimeEnvironments");
+    Util.waitForThread(t, csName, setupTimeOut, "setupRuntimeEnvironments");
   }
 
 }
