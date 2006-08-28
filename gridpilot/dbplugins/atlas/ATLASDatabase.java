@@ -135,11 +135,11 @@ public class ATLASDatabase implements Database{
           vuid = "";
         }
       }
-      get = conditions.replaceFirst("(?i)dsn = (\\S+)", "dsn=$1");
-      get = get.replaceFirst("(?i)vuid = (\\S+)", "vuid=$1");
+      get = conditions.replaceAll("(?i)dsn = (\\S+)", "dsn=$1");
+      get = get.replaceAll("(?i)vuid = (\\S+)", "vuid=$1");
       
-      get = get.replaceFirst("(?i)dsn CONTAINS (\\S+)", "dsn=*$1*");
-      get = get.replaceFirst("(?i)vuid CONTAINS (\\S+)", "vuid=*$1*");
+      get = get.replaceAll("(?i)dsn CONTAINS (\\S+)", "dsn=*$1*");
+      get = get.replaceAll("(?i)vuid CONTAINS (\\S+)", "vuid=*$1*");
       
       get = get.replaceAll(" AND ", "&");
       get = dq2Url+"ws_repository/dataset?version=0&"+get;
@@ -232,7 +232,7 @@ public class ATLASDatabase implements Database{
           // this should work:
           if(vuid!=null && vuid.length()>0){
             record = Util.split(records[i], "'dsn': ");
-            name = record[1].replaceFirst(", 'version': 1\\}", "");
+            name = record[1].replaceFirst(", 'version': \\d+\\}", "");
             name = name.replaceAll("'", "");
             for(int k=0; k<fields.length; ++k){
               if(fields[k].equalsIgnoreCase("dsn")){
@@ -316,10 +316,10 @@ public class ATLASDatabase implements Database{
         Debug.debug("dataset id: "+vuid, 3);
       }
       
-      get = conditions.replaceFirst("(?i)dsn = (\\S+)", "vuid="+vuid);
-      get = get.replaceFirst("(?i)lfn = (\\S+)", "lfn=$1");
-      get = get.replaceFirst("(?i)pfns = (\\S+)", "pfns=$1");
-      get = get.replaceFirst("(?i)guid = (\\S+)", "guid=$1");
+      get = conditions.replaceAll("(?i)dsn = (\\S+)", "vuid="+vuid);
+      get = get.replaceAll("(?i)lfn = (\\S+)", "lfn=$1");
+      get = get.replaceAll("(?i)pfns = (\\S+)", "pfns=$1");
+      get = get.replaceAll("(?i)guid = (\\S+)", "guid=$1");
       
       get = get.replaceAll(" AND ", "&");
       get = dq2Url+"ws_content/files?"+get;
