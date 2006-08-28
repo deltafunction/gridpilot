@@ -32,7 +32,7 @@ public class StatusBar extends JPanel {
 
   private Timer timerLabel = new Timer(0, new ActionListener(){
     public void actionPerformed(ActionEvent e){
-      removeLabel();
+      //removeLabel();
     }
   });
 
