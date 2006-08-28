@@ -40,6 +40,7 @@ public class GridPilot extends JApplet{
   public static String dateFormatString = "yyyy-MM-dd HH:mm:ss";
   public static String [] fixedJobAttributes = {"number", "name"};
   public static String browserHistoryFile = null;
+  public static String globusTcpPortRange = null;
 
   /**
    * Constructor
@@ -163,6 +164,8 @@ public class GridPilot extends JApplet{
           fixedJobAttributes.length, 2);
       browserHistoryFile = getClassMgr().getConfigFile().getValue("GridPilot",
          "browser history file");
+      globusTcpPortRange = getClassMgr().getConfigFile().getValue("Data management",
+      "globus tcp port range");
     }
     catch(Throwable e){
       if(e instanceof Error)
