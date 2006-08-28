@@ -1013,134 +1013,31 @@ public class BrowserPanel extends JDialog implements ActionListener{
    */
   private void setGsiftpDirDisplay(String url) throws Exception{
     Debug.debug("setGsiftpDirDisplay "+url, 3);
-    jtFilter.setEnabled(true);
     
-    String localPath = null;
-    String host = null;
-    String hostAndPath = null;
-    String port = "2811";
-    String hostAndPort = null;
-    if(url.startsWith("gsiftp://")){
-      hostAndPath = url.substring(9);
+    jtFilter.setEnabled(true);
+    String filter = jtFilter.getText();
+    if(filter==null || filter.equals("")){
+      filter = "*";
     }
-    else if(url.startsWith("gsiftp:/")){
-      hostAndPath = url.substring(8);
-    }
-    else{
-      return;
-    }
-    Debug.debug("Host+path: "+hostAndPath, 3);
-    hostAndPort = hostAndPath.substring(0, hostAndPath.indexOf("/"));
-    int colonIndex=hostAndPort.indexOf(":");
-    if(colonIndex>0){
-      host = hostAndPort.substring(0, hostAndPort.indexOf(":"));
-      port = hostAndPort.substring(hostAndPort.indexOf(":")+1);
-    }
-    else{
-      host = hostAndPort;
-      port = "2811";
-    }
-    localPath = hostAndPath.substring(hostAndPort.length(), hostAndPath.length());
-    localPath = localPath.replaceFirst("/[^\\/]*/\\.\\.", "");
-    url = url.replaceFirst("/[^\\/]*/\\.\\.", "");
-    Debug.debug("Host: "+host, 3);
-    Debug.debug("Port: "+port, 3);
-    Debug.debug("Path: "+localPath, 3);
-    bSave.setEnabled(false);
-    bNew.setEnabled(true);
-    bDelete.setEnabled(true);
-    bUpload.setEnabled(true);
-    bDownload.setEnabled(true);
-    String htmlText = "";
-    Object [] textArr = null;
-    GridFTPClient gridFtpClient = null;
-    try{      
-      /*try{
-        // NorduGrid variant
-        gridFtpClient = gsiftpConnect(host, Integer.parseInt(port));
-        gridFtpClient.changeDir(localPath);
-        textArr = gridFtpClient.mlsd().toArray();
-      }
-      catch(FTPException ee){*/
-        //ee.printStackTrace();
-        try{
-          // LCG variant
-          //gridFtpClient.close();         
-          gridFtpClient = gridftpFileSystem.connect(host, Integer.parseInt(port));
+    statusBar.setLabel("Filtering...");
+    filter = filter.replaceAll("\\.", "\\\\.");
+    filter = filter.replaceAll("\\*", ".*");
           
-          if(localPath.length()>1){
-            gridFtpClient.changeDir(localPath.substring(0, localPath.length()-1));
-          }
-          Debug.debug("Current dir: "+gridFtpClient.getCurrentDir(), 3);
-          final ByteArrayOutputStream received2 = new ByteArrayOutputStream(100000);
-          DataSink dataSink = new DataSink(){
-            public void write(Buffer buffer) 
-            throws IOException{
-              Debug.debug("received " + buffer.getLength() +
-                 " bytes of directory listing", 1);
-                 received2.write(buffer.getBuffer(),
-                 0,
-                 buffer.getLength());
-              return;
-            }
-            public void close() throws IOException{
-              Debug.debug("closing", 1);
-            };                
-          };
-          gridFtpClient.list("", "", dataSink);
-          textArr = Util.split(received2.toString(), "\n");
-        }
-        catch(Exception e){
-          Debug.debug("oops, failed listing!", 2);
-          throw e;
-        }
-      //}
-      Vector textVector = new Vector();
-      String [] entryArr = null;
-      String line = null;
-      String fileName = null;
-      int directories = 0;
-      int files = 0;
-      filter = jtFilter.getText();
-      if(filter==null || filter.equals("")){
-        filter = "*";
+    String htmlText = "";
+
+    try{
+      
+      GlobusURL globusUrl = new GlobusURL(url);
+      String localPath = globusUrl.getPath().replaceFirst("/[^\\/]*/\\.\\.", "");;
+      String host = globusUrl.getHost();
+      int port = globusUrl.getPort();
+      if(port<0){
+        port = 2811;
       }
-      statusBar.setLabel("Filtering...");
-      filter = filter.replaceAll("\\.", "\\\\.");
-      filter = filter.replaceAll("\\*", ".*");
-      Debug.debug("Filtering with "+filter, 3);
-      for(int i=0; i<textArr.length; ++i){
-        line = textArr[i].toString();
-        //Debug.debug(line, 3);
-        entryArr = Util.split(line);
-        fileName = entryArr[entryArr.length-1];
-        // If server is nice enough to provide file information, use it
-        if(fileName.matches(filter)){
-          if(line.matches("d[rwxsS-]* .*")){
-            textVector.add(fileName+"/");
-            ++directories;
-            continue;
-          }
-          else if(line.matches("-[rwxsS-]* .*")){
-            textVector.add(fileName);
-            ++files;
-            continue;
-          }
-          try{
-            // File information not provided, we have to do it the slow way...
-            // Check if fileName it is a directory by trying to cd into it
-            Debug.debug("Checking file/directory information the slow way...", 2);
-            gridFtpClient.changeDir(fileName);
-            gridFtpClient.goUpDir();
-            textVector.add(fileName+"/");
-            ++directories;
-          }
-          catch(Exception e){
-            textVector.add(fileName);
-            ++files;
-          }
-        }
-      }
+      
+      Vector textVector = gridftpFileSystem.list(globusUrl, filter,
+          this.statusBar, new JProgressBar());
+
       String text = "";
       // TODO: reconsider max entries and why listing more is so slow...
       // display max 500 entries
@@ -1175,21 +1072,13 @@ public class BrowserPanel extends JDialog implements ActionListener{
       //thisUrl = (new File(localPath)).toURL().toExternalForm();
       thisUrl = url;
       setUrl(thisUrl);
-      statusBar.setLabel(directories+" directories, "+files+" files");
     }
     catch(Exception e){
       bSave.setEnabled(false);
       bOk.setEnabled(false);
-      ep.setText("ERROR!\n\nThe directory "+localPath+" could not be read.");
+      ep.setText("ERROR!\n\nThe directory could not be read.");
       pButton.updateUI();
       throw e;
-    }
-    finally{
-      try{
-        gridFtpClient.close();
-      }
-      catch(Exception e){
-      }
     }
   }
 
