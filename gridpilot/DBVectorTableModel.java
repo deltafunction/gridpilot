@@ -150,7 +150,7 @@ public class DBVectorTableModel extends AbstractTableModel {
         return;
     }
 
-    if(_values == null || _columnNames == null){
+    if(_values==null || _columnNames==null){
       values = new Object[0][];
       columnNames = new String[0];
       theRecords = new Vector();
@@ -166,7 +166,7 @@ public class DBVectorTableModel extends AbstractTableModel {
       indexes = new int [getRowCount()];
       if(values.length !=0  && values[0] !=null){
         resetIndexes();
-        for(int i=0; i< columnClass.length; ++i){
+        for(int i=0; i<columnClass.length; ++i){
           if(values[0][i] == null)
             columnClass[i] = String.class;
           else
