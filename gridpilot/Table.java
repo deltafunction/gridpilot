@@ -23,6 +23,7 @@ public class Table extends JTable{
   private ListSelectionListener lsl;
   private String [] hide;
   private String [] colorMapping;
+  //private int timeOut = 10*1000;
 
   public DBVectorTableModel tableModel;
 
@@ -48,7 +49,7 @@ public class Table extends JTable{
 
     public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
         boolean hasFocus, int row, int column){
-      synchronized (table){
+      synchronized(table){
 
         if(colorMapping!=null  && value!=null && (
             table.getColumnName(column).equalsIgnoreCase("status") ||
@@ -205,14 +206,35 @@ public class Table extends JTable{
    * If length of values and columnNames are incompatibles,
    * nothing is changed
    */
-  synchronized public void setTable(Object [][] values, String [] columnNames){
-    Debug.debug("setTable", 2);
+  /*synchronized*/ public void setTable(Object [][] values, String [] columnNames){
+    Debug.debug("DBVectorTableModel.setTable", 2);
     tableModel.setTable(values, columnNames);
-    Debug.debug("setTable", 2);
+    Debug.debug("creating menu", 2);
     createMenu();
-    Debug.debug("setTable", 2);
+    
+    // createMenu() sometimes freezes the whole UI. Don't know why.
+    // And all seems to work fine without...
+    /*MyThread t = new MyThread(){
+      public void run(){
+        try{
+          createMenu();
+        }
+        catch(Throwable t){
+          Debug.debug(
+              (t instanceof Exception ? "Exception" : "Error") +
+                             " from Table.setTable " +
+                             " during createMenu", 1);
+        }
+      }
+    };
+
+    t.start();
+
+    Util.waitForThread(t, "", timeOut, "createMenu");*/
+    
+    Debug.debug("updateUI", 2);
     updateUI();
-    Debug.debug("setTable", 2);
+    Debug.debug("setTable done", 2);
   }
 
   /**
