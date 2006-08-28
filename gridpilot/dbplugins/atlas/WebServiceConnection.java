@@ -11,6 +11,7 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.util.Properties;
 
+
 /**
  * The WebServiceConnection class implements acces to a webservice via get or post
  * It is an insecure connection
@@ -22,7 +23,7 @@ public class WebServiceConnection {
 	private String host;
 	private int port;
 	private String rootOfRelative; 
-	private final String protocolname="http";
+	protected String protocolname;
 	private HttpURLConnection huc;
 	
 	/**
@@ -33,6 +34,7 @@ public class WebServiceConnection {
 	 */
 	public WebServiceConnection(String host, int port, String rOR)
 	{
+		protocolname="http";
 		if (rOR==null) rOR="";
 		
 		this.host=host;
@@ -109,7 +111,12 @@ public class WebServiceConnection {
 		huc.connect(); 
 
 		StringBuffer result=new StringBuffer(); 
-		InputStream is = huc.getInputStream(); 
+		InputStream is=null;
+		try  {	is = huc.getInputStream(); 	} catch (IOException e)
+		{
+			System.out.println(e.getMessage());
+			is=huc.getErrorStream();
+		}
 		
 		int code = huc.getResponseCode(); 
 		if (code == HttpURLConnection.HTTP_OK) { 
@@ -159,7 +166,13 @@ public class WebServiceConnection {
 	 */
 	private String post(URL theURL, String data) throws IOException
 	{
-		huc = this.getConnectiontoUrl(theURL); 
+		System.out.println(theURL.toString() + " " + data);
+		
+		
+		huc = getConnectiontoUrl(theURL); 
+		
+		System.out.println(huc.toString());
+		
 		huc.setRequestMethod("POST");
 		huc.setDoInput(true);
 		huc.setDoOutput(true);
@@ -172,17 +185,23 @@ public class WebServiceConnection {
 		out.close ();
 
 		StringBuffer result=new StringBuffer(); 
-		InputStream is = huc.getInputStream(); 
-		int code = huc.getResponseCode(); 
-		if (code == HttpURLConnection.HTTP_OK) { 
-			BufferedReader in=null;
-			in = new BufferedReader(new InputStreamReader(is));
-			String line=null;
-			while ((line = in.readLine()) != null) {
-				result.append(line+"\n");
-			}
-			in.close();
+		InputStream is=null;
+		try  {	is = huc.getInputStream(); 	} catch (IOException e)
+		{
+			System.out.println(e.getMessage());
+			is=huc.getErrorStream();
 		}
+
+		//int code = huc.getResponseCode(); 
+
+		BufferedReader in=null;
+		in = new BufferedReader(new InputStreamReader(is));
+		String line=null;
+		while ((line = in.readLine()) != null) {
+			result.append(line+"\n");
+		}
+		in.close();
+
 		return result.toString();
 	
 	}
