@@ -750,14 +750,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   public void searchRequest(final int sortColumn, final boolean isAscending,
       final int [] columnWidths){
         
-   // TODO: why does it not work as thread when
-   // not in it's own pane?
-    //workThread = new Thread(){
-      //public void run(){
-        //if(!getWorking()){
-          //Debug.debug("please wait ...", 2);
-          //return;
-        //}
+    workThread = new Thread(){
+      public void run(){
+        if(!getWorking()){
+          statusBar.setLabel("Busy, please wait ...", 2);
+          return;
+        }
+        statusBar.setLabel("Searching, please wait ...", 2);
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         setFieldArrays();
         String selectRequest;
         selectRequest = selectPanel.getRequest(shownFields);
@@ -922,6 +922,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         GridPilot.getClassMgr().getGlobalFrame().menuEdit.updateUI();
         
         statusBar.setLabel("Records found: "+tableResults.getRowCount(), 20);
+        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         
         if(sortColumn>-1){
           Debug.debug("Sorting: "+sortColumn+":"+isAscending, 3);
@@ -938,10 +939,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             }
           }
         }
-        //stopWorking();
-      //}
-    //};
-    //workThread.start();
+        stopWorking();
+      }
+    };
+    workThread.start();
 
   }
   
@@ -964,7 +965,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     });
     JMenuItem miViewFiles = new JMenuItem("Show files");
-    miViewJobDefinitions.addActionListener(new ActionListener(){
+    miViewFiles.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         viewFiles();
       }
