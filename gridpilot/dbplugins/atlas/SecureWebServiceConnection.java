@@ -101,7 +101,6 @@ public class SecureWebServiceConnection extends WebServiceConnection {
 		
 		ks=KeyStore.getInstance("JKS");
 		ks.load(null,null);
-		
 		GlobusCredential thecreds = new GlobusCredential(pathToFile);
 		X509Certificate[] chain = thecreds.getCertificateChain();
 		PrivateKey mypriv=thecreds.getPrivateKey();
@@ -142,7 +141,7 @@ public class SecureWebServiceConnection extends WebServiceConnection {
 	 * Needed for polymorphism and Code reusability
 	 * @param   theURL   URL to connect to
 	 */	
-	private HttpsURLConnection getConnectiontoUrl(URL url) throws IOException
+	private HttpsURLConnection getConnectiontoUrl(URL url) throws IOException //used by superclass
 	{
 		System.out.println("creating httpsurlconectionsecure");
 		return (HttpsURLConnection)url.openConnection();

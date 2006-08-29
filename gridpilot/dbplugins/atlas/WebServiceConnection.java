@@ -83,8 +83,8 @@ public class WebServiceConnection {
 		for (int a=0; a< keys.length; a++)
 		{
 			if (a!=0) params.append("&"); //don't do the & on first
-			params.append(  URLEncoder.encode(keys[a], "utf8") 
-					+ "=" + URLEncoder.encode(values[a], "utf8"));
+			params.append(  URLEncoder.encode(keys[a], "utf-8") 
+					+ "=" + URLEncoder.encode(values[a], "utf-8"));
 		}
 		return params.toString();	
 	}
