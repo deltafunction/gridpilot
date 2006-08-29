@@ -17,13 +17,13 @@ public class GridPilot extends JApplet{
   private static final long serialVersionUID = 1L;
   private boolean packFrame = false;
   private GlobalFrame frame;
-  private static String logFileName = "gridpilot.log";
   private static String confFileName = "gridpilot.conf";
   private static String userConfFileName = ".gridpilot";
   private static ClassMgr classMgr = new ClassMgr();
   private static boolean applet = true;  
   private static String debugLevel = "0";
   public static HashMap tmpConfFile = new HashMap();
+  public static String logFileName = "gridpilot.log";
   public static String [] dbs;
   public static String [] colorMapping;
   public static String[] statusFields;
