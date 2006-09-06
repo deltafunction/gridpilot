@@ -1,6 +1,8 @@
 package gridpilot.dbplugins.atlas;
 
 import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import gridpilot.GridPilot;
 
@@ -17,7 +19,7 @@ public class DQ2Access {
 	private final String addFilesToDatasetURL="ws_content/dataset";
 	private final String createDatasetURL="ws_repository/dataset";
 	private final String deleteDatasetURL="ws_repository/dataset";
-
+	private final String locationDatasetURL="ws_location/dataset"; 
 	/**
 	 * Instantiates a DQ2Acces object
 	 * @param httpServer insecure DQ2WebServer   
@@ -104,15 +106,69 @@ public class DQ2Access {
 		return true;
 	}
 	
-
+	/**
+	 * registers Dataset in Location
+	 * @param vuid the vuid of the dataset being registered in a site
+	 * @param complete set the complete Status to yes (true) or no(false)
+	 */
+	public boolean registerVuidInLocation(String vuid, boolean complete, String location) throws IOException
+	{
+		String com;
+		if (complete) com = "yes";
+		else com = "no";
+		String keys[]={"complete","vuid","site"};
+		String values[]={com,vuid,location};
+		WSsecure.post(locationDatasetURL, keys, values);
+		return true;
+	}
+	
+	/**
+	 * parses one vuid out of a dq2 output
+	 * @param toParse String output from dq webserice access
+	 */
 	private String parseVuid(String toParse)
 	{
-		return "dfds";
+		toParse=toParse.replaceAll(" ", "");
+		Pattern regex=
+		  Pattern.compile("vuid:'([A-Fa-f0-9]{8}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{12})'");
+		Matcher thematcher= regex.matcher(toParse);
+		thematcher.find();
+		return thematcher.group(1);
 	}
 
+
+	/**
+	 * parses multiple vuids out of a dq2 output
+	 * @param toParse String output from dq webserice access
+	 */
 	private String[] parseVuids(String toParse)
 	{
-		String[] a=null;
-		return a;
+		
+		toParse=toParse.replaceAll(" ", "");
+		//System.out.println(toParse);
+		Pattern regex=Pattern.compile("vuids:\\[(('[A-Fa-f0-9]{8}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{12}'[,]*)+)\\]");
+		Matcher thematcher = regex.matcher(toParse);
+		thematcher.find();
+		String[] res= thematcher.group(1).split(",");
+		for (int q=0; q<res.length;q++)
+		{
+			res[q] = res[q].replaceAll("'","");
+		}
+		return res;
+		
+		
+		
+}
+	
+	public static void main (String[] args)
+	{
+		DQ2Access myacc=new DQ2Access(null,0,null,0);
+		System.out.println(myacc.parseVuid("dsjhfagsdkjhf vuid: '45348fe3-4564-ffee-34ef-aef455678efe' hghkjgj"));
+		String [] fud=myacc.parseVuids("{'acsadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},}");
+		System.out.println(fud.length);
+		for (int q=0; q<fud.length; q++)
+		{
+			System.out.println(fud[q]);
+		}
 	}
 }
