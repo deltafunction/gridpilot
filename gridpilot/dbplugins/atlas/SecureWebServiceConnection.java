@@ -1,6 +1,8 @@
 package gridpilot.dbplugins.atlas;
 
 
+import gridpilot.Debug;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
@@ -143,7 +145,7 @@ public class SecureWebServiceConnection extends WebServiceConnection {
 	 */	
 	private HttpsURLConnection getConnectiontoUrl(URL url) throws IOException //used by superclass
 	{
-		System.out.println("creating httpsurlconectionsecure");
+    Debug.debug("creating httpsurlconectionsecure", 2);
 		return (HttpsURLConnection)url.openConnection();
 	}
 
@@ -177,7 +179,7 @@ public class SecureWebServiceConnection extends WebServiceConnection {
 	{
 		HostnameVerifier hv = new HostnameVerifier() {
 			public boolean verify(String urlHostName, SSLSession session) {
-				System.out.println("Warning: URL Host: "+urlHostName+" vs. "+session.getPeerHost());
+        Debug.debug("WARNING: URL Host: "+urlHostName+" vs. "+session.getPeerHost(), 1);
 				return true;
 			}
 		};
@@ -198,11 +200,11 @@ public class SecureWebServiceConnection extends WebServiceConnection {
 		}
 		catch (Exception e)
 		{
-			System.out.println("Exception");
-			System.out.println(e);
+      Debug.debug("Exception", 1);
+      e.printStackTrace();
 		}
-		System.out.println("test start");
-		System.out.println(thSC.post("ws_repository/dataset", "dsn=cyril-test-java"));
+    Debug.debug("test start", 1);
+    Debug.debug(thSC.post("ws_repository/dataset", "dsn=cyril-test-java"), 1);
 
 
 	}

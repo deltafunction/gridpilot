@@ -1,5 +1,7 @@
 package gridpilot.dbplugins.atlas;
 
+import gridpilot.Debug;
+
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -114,7 +116,7 @@ public class WebServiceConnection {
 		InputStream is=null;
 		try  {	is = huc.getInputStream(); 	} catch (IOException e)
 		{
-			System.out.println(e.getMessage());
+      Debug.debug(e.getMessage(), 2);
 			is=huc.getErrorStream();
 		}
 		
@@ -166,12 +168,12 @@ public class WebServiceConnection {
 	 */
 	private String post(URL theURL, String data) throws IOException
 	{
-		System.out.println(theURL.toString() + " " + data);
+    Debug.debug(theURL.toString() + " " + data, 2);
 		
 		
 		huc = getConnectiontoUrl(theURL); 
 		
-		System.out.println(huc.toString());
+    Debug.debug(huc.toString(), 2);
 		
 		huc.setRequestMethod("POST");
 		huc.setDoInput(true);
@@ -188,7 +190,7 @@ public class WebServiceConnection {
 		InputStream is=null;
 		try  {	is = huc.getInputStream(); 	} catch (IOException e)
 		{
-			System.out.println(e.getMessage());
+      Debug.debug(e.getMessage(), 2);
 			is=huc.getErrorStream();
 		}
 
@@ -245,14 +247,14 @@ public class WebServiceConnection {
 		String[] keys={"SUBJECT","actualid","which_set"};		
 		String[] values={"dafin","55","55"};
 		
-		System.out.println("test2");
-		System.out.println(a.get(null,"SUBJECT=dafin&actualid=55&which_set=62"));
-		System.out.println("test3");
-		System.out.println(a.get(null,keys,values));
-		//System.out.println("test4");
-		//System.out.println(b.post("postecho.php",keys,values));
-		//System.out.println("test5");
-		//System.out.println(b.post("postecho.php","key1=data1&key2=data2"));
+    Debug.debug("test2", 3);
+    Debug.debug(a.get(null,"SUBJECT=dafin&actualid=55&which_set=62"), 3);
+    Debug.debug("test3", 3);
+    Debug.debug(a.get(null,keys,values), 2);
+		//Debug.debug("test4", 3);
+		//Debug.debug(b.post("postecho.php",keys,values), 3);
+		//Debug.debug("test5", 3);
+		//Debug.debug(b.post("postecho.php","key1=data1&key2=data2"), 3);
 
 		
 	}

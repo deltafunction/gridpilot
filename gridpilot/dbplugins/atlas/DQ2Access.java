@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import gridpilot.Debug;
 import gridpilot.GridPilot;
 
 import org.globus.gsi.GlobusCredential;
@@ -145,7 +146,7 @@ public class DQ2Access {
 	{
 		
 		toParse=toParse.replaceAll(" ", "");
-		//System.out.println(toParse);
+		Debug.debug(toParse, 3);
 		Pattern regex=Pattern.compile("vuids:\\[(('[A-Fa-f0-9]{8}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{12}'[,]*)+)\\]");
 		Matcher thematcher = regex.matcher(toParse);
 		thematcher.find();
@@ -163,12 +164,13 @@ public class DQ2Access {
 	public static void main (String[] args)
 	{
 		DQ2Access myacc=new DQ2Access(null,0,null,0);
-		System.out.println(myacc.parseVuid("dsjhfagsdkjhf vuid: '45348fe3-4564-ffee-34ef-aef455678efe' hghkjgj"));
+    Debug.debug(myacc.parseVuid(
+        "dsjhfagsdkjhf vuid: '45348fe3-4564-ffee-34ef-aef455678efe' hghkjgj"), 2);
 		String [] fud=myacc.parseVuids("{'acsadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},}");
-		System.out.println(fud.length);
+    Debug.debug(""+fud.length, 2);
 		for (int q=0; q<fud.length; q++)
 		{
-			System.out.println(fud[q]);
+      Debug.debug(fud[q], 2);
 		}
 	}
 }
