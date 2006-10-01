@@ -37,6 +37,7 @@ public class ForkComputingSystem implements ComputingSystem{
   private String runtimeDirectory = null;
   private String publicCertificate = null;
   private String remoteDB = null;
+  private String localRuntimeDB = null;
   private HashSet finalRuntimesLocal = null;
   private HashSet finalRuntimesRemote = null;
 
@@ -65,6 +66,8 @@ public class ForkComputingSystem implements ComputingSystem{
         csName, "public certificate");
     remoteDB = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "remote database");
+    localRuntimeDB = GridPilot.getClassMgr().getConfigFile().getValue(
+        csName, "runtime database");
     
     setupRuntimeEnvironments(csName);
   }
@@ -89,12 +92,25 @@ public class ForkComputingSystem implements ComputingSystem{
       String cert = null;
       String url = null;
       
-      DBPluginMgr localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
-        "HSQLDB");
+      DBPluginMgr localDBMgr = null;
       
-      String [] runtimeEnvironmentFields =
-        localDBMgr.getFieldNames("runtimeEnvironment");
-      String [] rtVals = new String [runtimeEnvironmentFields.length];
+      try{
+        localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
+          localRuntimeDB);
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: Could not load local runtime DB "+
+            localRuntimeDB+". Runtime environments must be defined by hand. "+
+            e.getMessage(), 1);
+      }
+      
+      String [] runtimeEnvironmentFields =null;
+      String [] rtVals = null;
+      if(localDBMgr!=null){
+        runtimeEnvironmentFields =
+          localDBMgr.getFieldNames("runtimeEnvironment");
+        rtVals = new String [runtimeEnvironmentFields.length];
+      }
 
       for(Iterator it=runtimes.iterator(); it.hasNext();){
         
@@ -164,7 +180,7 @@ public class ForkComputingSystem implements ComputingSystem{
         }
 
         if(name!=null && name.length()>0 &&
-            url!=null && url.length()>0){
+            url!=null && url.length()>0 && runtimeEnvironmentFields!=null){
           // Write the entry in the local DB
           for(int i=0; i<runtimeEnvironmentFields.length; ++i){
             if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
@@ -180,14 +196,18 @@ public class ForkComputingSystem implements ComputingSystem{
               rtVals[i] = "";
             }
           }
-          try{
-            if(localDBMgr.createRuntimeEnvironment(rtVals)){
-              finalRuntimesLocal.add(name);
+          if(localDBMgr!=null){
+            try{
+              if(localDBMgr.createRuntimeEnvironment(rtVals)){
+                finalRuntimesLocal.add(name);
+              }
+            }
+            catch(Exception e){
+              e.printStackTrace();
             }
           }
-          catch(Exception e){
-            e.printStackTrace();
-          }
+          
+          // Register with remote DB
           if(cert!=null && cert.length()>0){
             // Write the entry in the remote DB
             for(int i=0; i<runtimeEnvironmentFields.length; ++i){
@@ -420,57 +440,71 @@ public class ForkComputingSystem implements ComputingSystem{
     String initText = null;
     String id = "-1";
     boolean ok = true;
-    DBPluginMgr localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
-       "HSQLDB");
-    for(Iterator it=finalRuntimesLocal.iterator(); it.hasNext();){
-      ok = true;
-      runtimeName = (String )it.next();
-      // Don't delete records with a non-empty initText.
-      // These can only have been created by hand.
-      initText = localDBMgr.getRuntimeInitText(runtimeName, csName);
-      if(initText!=null && !initText.equals("")){
-        continue;
-      }
-      id = localDBMgr.getRuntimeEnvironmentID(runtimeName, csName);
-      if(!id.equals("-1")){
-        ok = localDBMgr.deleteRuntimeEnvironment(id);
-      }
-      else{
-        ok = false;
-      }
-      if(!ok){
-        Debug.debug("WARNING: could not delete runtime environment " +
-            runtimeName+
-            " from database "+
-            localDBMgr.getDBName(), 1);
+    DBPluginMgr localDBMgr = null;
+    try{
+      localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
+        localRuntimeDB);
+    }
+    catch(Exception e){
+      Debug.debug("Could not load local runtime DB "+localRuntimeDB+"."+e.getMessage(), 1);
+    }
+    if(localDBMgr!=null){
+      for(Iterator it=finalRuntimesLocal.iterator(); it.hasNext();){
+        ok = true;
+        runtimeName = (String )it.next();
+        // Don't delete records with a non-empty initText.
+        // These can only have been created by hand.
+        initText = localDBMgr.getRuntimeInitText(runtimeName, csName);
+        if(initText!=null && !initText.equals("")){
+          continue;
+        }
+        id = localDBMgr.getRuntimeEnvironmentID(runtimeName, csName);
+        if(!id.equals("-1")){
+          ok = localDBMgr.deleteRuntimeEnvironment(id);
+        }
+        else{
+          ok = false;
+        }
+        if(!ok){
+          Debug.debug("WARNING: could not delete runtime environment " +
+              runtimeName+
+              " from database "+
+              localDBMgr.getDBName(), 1);
+        }
       }
     }
-    if(remoteDB==null){
-      return;
-    }
-    DBPluginMgr remoteDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
-        remoteDB);
-    for(Iterator it=finalRuntimesRemote.iterator(); it.hasNext();){
-      ok = true;
-      runtimeName = (String )it.next();
-      // Don't delete records with a non-empty initText.
-      // These can only have been created by hand.
-      initText = remoteDBMgr.getRuntimeInitText(runtimeName, csName);
-      if(initText!=null && !initText.equals("")){
-        continue;
+    if(remoteDB!=null){
+      DBPluginMgr remoteDBMgr = null;
+      try{
+        remoteDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
+          remoteDB);
       }
-      id = remoteDBMgr.getRuntimeEnvironmentID(runtimeName, csName);
-      if(!id.equals("-1")){
-        ok = remoteDBMgr.deleteRuntimeEnvironment(id);
+      catch(Exception e){
       }
-      else{
-        ok = false;
-      }
-      if(!ok){
-        Debug.debug("WARNING: could not delete runtime environment " +
-            runtimeName+
-            " from database "+
-            remoteDBMgr.getDBName(), 1);
+      if(remoteDBMgr!=null){
+        for(Iterator it=finalRuntimesRemote.iterator(); it.hasNext();){
+          ok = true;
+          runtimeName = (String )it.next();
+          // Don't delete records with a non-empty initText.
+          // These can only have been created by hand.
+          initText = remoteDBMgr.getRuntimeInitText(runtimeName, csName);
+          if(initText!=null && !initText.equals("")){
+            continue;
+          }
+          id = remoteDBMgr.getRuntimeEnvironmentID(runtimeName, csName);
+          if(!id.equals("-1")){
+            ok = remoteDBMgr.deleteRuntimeEnvironment(id);
+          }
+          else{
+            ok = false;
+          }
+          if(!ok){
+            Debug.debug("WARNING: could not delete runtime environment " +
+                runtimeName+
+                " from database "+
+                remoteDBMgr.getDBName(), 1);
+          }
+        }
       }
     }
   }

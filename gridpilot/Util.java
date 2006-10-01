@@ -1,6 +1,7 @@
 package gridpilot;
 
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -23,14 +24,19 @@ import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Random;
 import java.util.StringTokenizer;
+import java.util.Vector;
 
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JEditorPane;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -67,7 +73,6 @@ import org.ietf.jgss.GSSException;
 public class Util{
   
   private static boolean ASK_BEFORE_INTERRUPT = true;
-  public static String CA_CERTS_TMP_DIR = null;
   
   public static String [] split(String s){
     StringTokenizer tok = new StringTokenizer(s);
@@ -279,7 +284,7 @@ public class Util{
       final String name, final JTextComponent jt,
       final DBPluginMgr dbPluginMgr){
     //final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
-    String markup = "<b>"+name+" : </b><br>"+
+    String markup = "<font size=-1 face=sans-serif><b>"+name+" : </b></font><br>"+
       "<a href=\"http://check/\">browse</a>";
     JEditorPane checkPanel = new JEditorPane("text/html", markup);
     checkPanel.setEditable(false);
@@ -327,7 +332,8 @@ public class Util{
                                   finBaseUrl,
                                   true,
                                   true,
-                                  false);
+                                  false,
+                                  null);
                 }
                 catch(Exception eee){
                   Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
@@ -344,7 +350,7 @@ public class Util{
                 }
                 if(wb!=null && wb.lastURL!=null &&
                     wb.lastURL.startsWith(finBaseUrl)){
-                  // Set the text: the URL browsed to with case URL removed
+                  // Set the text: the URL browsed to with base URL removed
                   jt.setText(wb.lastURL.substring(
                       finBaseUrl.length()));
                   //GridPilot.getClassMgr().getStatusBar().setLabel("");
@@ -367,11 +373,15 @@ public class Util{
   
   /**
    * Loads class.
+   * @argument className     name of the class
+   * @argument argTypes      class names of the arguments of the class constructor
+   * @argument args          arguments of the class constructor
+   * 
    * @throws Throwable if an exception or an error occurs during loading
    */
-  public static Object loadClass(String dbClass, Class [] argTypes,
+  public static Object loadClass(String className, Class [] argTypes,
      Object [] args) throws Throwable{
-    Debug.debug("Loading plugin: "+" : "+dbClass, 2);
+    Debug.debug("Loading plugin: "+" : "+className, 2);
     // Arguments and class name for <DatabaseName>Database
     boolean loadfailed = false;
     Object ret = null;
@@ -379,24 +389,26 @@ public class Util{
     Debug.debug("arguments: "+Util.arrayToString(args), 3);
     try{
       //Class newClass = this.getClass().getClassLoader().loadClass(dbClass);
-      Class newClass = (new MyClassLoader()).loadClass(dbClass);
+      Class newClass = (new MyClassLoader()).loadClass(className);
       ret = (newClass.getConstructor(argTypes).newInstance(args));
-      Debug.debug("plugin " + "(" + dbClass + ") loaded, "+ret.getClass(), 2);
+      Debug.debug("plugin " + "(" + className + ") loaded, "+ret.getClass(), 2);
     }
     catch(Exception e){
-      e.printStackTrace();
+      //e.printStackTrace();
+      Debug.debug("WARNING: failed to load class with standard method, trying findClass. "+
+          e.getMessage(), 1);
       loadfailed = true;
-      //do nothing, will try with MyClassLoader.
+      //do nothing, will try with findClass.
     }
     if(loadfailed){
       try{
         // loading of this plug-in
        MyClassLoader mcl = new MyClassLoader();
-       ret = (mcl.findClass(dbClass).getConstructor(argTypes).newInstance(args)); 
-       Debug.debug("plugin " + "(" + dbClass + ") loaded", 2);
+       ret = (mcl.findClass(className).getConstructor(argTypes).newInstance(args)); 
+       Debug.debug("plugin " + "(" + className + ") loaded", 2);
       }
       catch(IllegalArgumentException iae){
-        GridPilot.getClassMgr().getLogFile().addMessage("Cannot load class " + dbClass + ".\nThe plugin constructor " +
+        GridPilot.getClassMgr().getLogFile().addMessage("Cannot load class " + className + ".\nThe plugin constructor " +
                           "must have one parameter (String)", iae);
         throw iae;
       }
@@ -438,7 +450,7 @@ public class Util{
         0, 0));
 
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
-        "Enter file name", JOptionPane.OK_CANCEL_OPTION);
+        str, JOptionPane.OK_CANCEL_OPTION);
 
     if(choice!=JOptionPane.OK_OPTION){
       return null;
@@ -475,7 +487,7 @@ public class Util{
     if(keyFile.startsWith("~")){
       try{
         keyFile = System.getProperty("user.home") + File.separator +
-        keyFile.substring(1);
+        keyFile.substring(2);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -484,7 +496,7 @@ public class Util{
     if(certFile.startsWith("~")){
       try{
         certFile = System.getProperty("user.home") + File.separator +
-        certFile.substring(1);
+        certFile.substring(2);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -574,18 +586,19 @@ public class Util{
     return myCredentials;
   }
 
-  public static void setupDefaultCACertificates(CoGProperties prop) throws IOException {
+  public static String setupDefaultCACertificates(CoGProperties prop) throws IOException {
     try{
       // get a temp name
       File tmpFile = File.createTempFile(/*prefix*/"certificates", /*suffix*/"");
-      CA_CERTS_TMP_DIR = tmpFile.getAbsolutePath();
+      String tmpDir = tmpFile.getAbsolutePath();
       tmpFile.delete();
-      LocalStaticShellMgr.mkdirs(CA_CERTS_TMP_DIR);
+      LocalStaticShellMgr.mkdirs(tmpDir);
       // hack to have the diretory deleted on exit
-      GridPilot.tmpConfFile.put(CA_CERTS_TMP_DIR, new File(CA_CERTS_TMP_DIR));
+      GridPilot.tmpConfFile.put(tmpDir, new File(tmpDir));
       // fill the directory with certificates from resources/certificates
       Debug.debug("Reading list of files from "+
           GridPilot.resourcesPath+"ca_certs_list.txt", 3);
+      Debug.debug("will save to "+tmpDir, 3);
       URL fileURL = GridPilot.class.getResource(
           GridPilot.resourcesPath+"ca_certs_list.txt");
       HashSet certFilesList = new HashSet();
@@ -597,16 +610,42 @@ public class Util{
       in.close();
       String fileName;
       PrintWriter out = null;
+      boolean ok = true;
       for(Iterator it=certFilesList.iterator(); it.hasNext();){
         fileName = it.next().toString();
+        Debug.debug("extracting "+fileName, 3);
         try{
           fileURL = GridPilot.class.getResource(
               GridPilot.resourcesPath+"certificates/"+fileName);
           in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
           out = new PrintWriter(
-              new FileWriter(new File(CA_CERTS_TMP_DIR, fileName))); 
+              new FileWriter(new File(tmpDir, fileName)));
+          // if this is an X509 certificate with the
+          // descripion in plain text first, just grab the
+          // certificate part.
+          // It is ridiculous, but to get the generateCertificate
+          // to accept the file it must start with
+          //-----BEGIN CERTIFICATE-----
+          // and end with
+          //-----END CERTIFICATE-----
+          if(fileName.endsWith(".0")){
+            ok = false;
+          }
+          else{
+            ok = true;
+          }
           while((line = in.readLine())!=null){
-            out.println(line);
+            if(fileName.endsWith(".0") &&
+                line.matches(".*BEGIN CERTIFICATE.*")){
+              ok = true;
+            }
+            if(ok){
+              out.println(line);
+            }
+            if(fileName.endsWith(".0") &&
+                line.matches(".*END CERTIFICATE.*")){
+              ok = false;
+            }
           }
           in.close();
           out.close();
@@ -624,9 +663,7 @@ public class Util{
           }
         }
       }
-      // this adds all certificates in the dir to globus authentication procedures
-      prop.setCaCertLocations(CA_CERTS_TMP_DIR);
-      CoGProperties.setDefault(prop);
+      return tmpDir;
     }
     catch(IOException e){
       GridPilot.getClassMgr().getLogFile().addMessage(
@@ -647,17 +684,7 @@ public class Util{
     //String proxyFile = "/tmp/x509up_u501";
     File proxy = getProxyFile();
     GSSCredential credential = null;
-    
-    // set the directory for trusted CA certificates
-    CoGProperties prop = new CoGProperties();
-    if(GridPilot.caCerts==null || GridPilot.caCerts.equals("")){
-      setupDefaultCACertificates(prop);
-    }
-    else{
-      prop.setCaCertLocations(GridPilot.caCerts);
-      CoGProperties.setDefault(prop);
-    }
-    
+        
     // first just try and load proxy file from default UNIX location
     try{
       if(proxy.exists()){
@@ -708,6 +735,9 @@ public class Util{
           cred = createProxy(password[1], password[2],
              password[0], GridPilot.proxyTimeValid, 512);
           credential = new GlobusGSSCredentialImpl(cred, GSSCredential.INITIATE_AND_ACCEPT) ;
+          // Keep password in memory - needed by mysql plugin
+          Debug.debug("Setting grid password to "+password[0], 3);
+          GridPilot.keyPassword = password[0];
         }
         catch(Exception e){
           continue;
@@ -855,4 +885,48 @@ public class Util{
     while(true);
     return true;
   }
+  
+  /**
+   * Returns a Vector which contains all elements from <code>v</code>, but in a
+   * random order. <p>
+   */
+  public static Vector shuffle(Vector v){
+    Vector w = new Vector();
+    Random rand = new Random();
+    while(v.size()>0){
+      w.add(v.remove(rand.nextInt(v.size())));
+    }
+    return w;
+  }
+
+  /**
+   * Returns an array which contains all elements from <code>v</code>, but in a
+   * random order. <p>
+   */
+  public static Object [] shuffle(Object [] arr){
+    ArrayList arl = new ArrayList();
+    Collections.addAll(arl, arr);
+    Collections.shuffle(arl);
+    return arl.toArray();
+  }
+
+  /**
+   * Presents a file browser to select a directory.
+   */
+  public static File getDownloadDir(Component parent){
+    File file = null;
+    JFileChooser fc = new JFileChooser();
+    fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+    fc.setDialogTitle("Choose dowload directory");
+    int returnVal = fc.showOpenDialog(parent);
+    if (returnVal==JFileChooser.APPROVE_OPTION){
+      file = fc.getSelectedFile();
+      Debug.debug("Opening: " + file.getName(), 2);
+    }
+    else{
+      Debug.debug("Not opening file", 3);
+    }
+    return file;
+  }
+
 }

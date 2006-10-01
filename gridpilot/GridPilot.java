@@ -14,6 +14,7 @@ import javax.swing.*;
  */
 
 public class GridPilot extends JApplet{
+  
   private static final long serialVersionUID = 1L;
   private boolean packFrame = false;
   private GlobalFrame frame;
@@ -22,13 +23,14 @@ public class GridPilot extends JApplet{
   private static ClassMgr classMgr = new ClassMgr();
   private static boolean applet = true;  
   private static String debugLevel = "0";
+  
   public static HashMap tmpConfFile = new HashMap();
   public static String logFileName = "gridpilot.log";
-  public static String [] dbs;
-  public static String [] colorMapping;
-  public static String[] statusFields;
+  public static String [] jobColorMapping;
+  public static String [] transferColorMapping;
+  public static String[] jobStatusFields;
+  public static String[] transferStatusFields;
   public static String resourcesPath = "";
-  public static String [] csNames = null;
   public static String [] tabs = null;
   public static Splash splash;
   public static int proxyTimeLeftLimit = 43200;
@@ -41,6 +43,10 @@ public class GridPilot extends JApplet{
   public static String [] fixedJobAttributes = {"number", "name"};
   public static String browserHistoryFile = null;
   public static String globusTcpPortRange = null;
+  public static String [] dbNames;
+  public static String [] ftNames;
+  public static String [] csNames = null;
+  public static String gridftpHomeURL = null;
 
   /**
    * Constructor
@@ -102,28 +108,56 @@ public class GridPilot extends JApplet{
       }
       splash = new Splash(resourcesPath, "splash.png");
       String tmpDb = null;
-      dbs = getClassMgr().getConfigFile().getValues("Databases", "Systems");
-      for(int i=0; i<dbs.length; ++i){
+      dbNames = getClassMgr().getConfigFile().getValues("Databases", "Systems");
+      for(int i=0; i<dbNames.length; ++i){
         try{
-          splash.show("Connecting to "+dbs[i]+"...");
+          splash.show("Connecting to "+dbNames[i]+"...");
         }
         catch(Exception e){
           // if we cannot show text on splash, just silently ignore
         }
         try{
-          tmpDb = getClassMgr().getDBPluginMgr(dbs[i]).getDBName();
+          tmpDb = getClassMgr().getDBPluginMgr(dbNames[i]).getDBName();
         }
         catch(NullPointerException e){
         }
         if(tmpDb==null){
-          Debug.debug("Initializing db "+i+": "+dbs[i],3);
-          getClassMgr().setDBPluginMgr(dbs[i], new DBPluginMgr(dbs[i]));
+          Debug.debug("Initializing db "+i+": "+dbNames[i],3);
+          getClassMgr().setDBPluginMgr(dbNames[i], new DBPluginMgr(dbNames[i]));
         }
       }          
-      colorMapping = getClassMgr().getConfigFile().getValues("GridPilot", "color mapping");  
-      /** Status table header*/
-      statusFields = new String [] {
+      // in case we are reloading, destroy any existing FS objects
+      if(ftNames!=null){
+        for(int i=0; i<ftNames.length; ++i){
+          try{
+            getClassMgr().setFTPlugin(ftNames[i], null);
+          }
+          catch(Exception e){
+            // if we cannot show text on splash, just silently ignore
+          }
+        }
+      }
+      ftNames = getClassMgr().getConfigFile().getValues("File transfer systems", "Systems");
+      for(int i=0; i<ftNames.length; ++i){
+        try{
+          splash.show("Loading file transfer system: "+ftNames[i]);
+        }
+        catch(Exception e){
+          // if we cannot show text on splash, just silently ignore
+        }
+        String fsClass = getClassMgr().getConfigFile().getValue(ftNames[i], "class");
+        getClassMgr().setFTPlugin(ftNames[i],
+            (FileTransfer) Util.loadClass(fsClass, new Class []{}, new Object []{}));
+      }          
+      jobColorMapping = getClassMgr().getConfigFile().getValues("GridPilot", "job color mapping");  
+      /** Job status table header*/
+      jobStatusFields = new String [] {
           " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "user"};
+      transferColorMapping = getClassMgr().getConfigFile().getValues("GridPilot", "transfer color mapping");  
+      /** Job status table header*/
+      /** Transfer status table header*/
+      transferStatusFields = new String [] {
+          " ", "Transfer ID", "Source", "Destination", "User", "Status"};
 
       csNames = getClassMgr().getConfigFile().getValues("Computing systems", "systems");
       if(csNames==null || csNames.length==0){
@@ -164,8 +198,10 @@ public class GridPilot extends JApplet{
           fixedJobAttributes.length, 2);
       browserHistoryFile = getClassMgr().getConfigFile().getValue("GridPilot",
          "browser history file");
-      globusTcpPortRange = getClassMgr().getConfigFile().getValue("Data management",
-      "globus tcp port range");
+      globusTcpPortRange = getClassMgr().getConfigFile().getValue("File transfer systems",
+         "globus tcp port range");
+      gridftpHomeURL = getClassMgr().getConfigFile().getValue("GridPilot",
+         "Gridftp home url");
     }
     catch(Throwable e){
       if(e instanceof Error)
@@ -188,16 +224,16 @@ public class GridPilot extends JApplet{
   }
 
   /**
-  * Return databases specified in the configuration file
-  */
-  public static String [] getDBs(){
-    if(dbs == null || dbs[0] == null){
-      Debug.debug("dbs null", 3);
-    }
-    //Debug.debug("dbs: "+Util.arrayToString(dbs), 3);
-    return dbs;
-  }
- 
+   * Return file transfer systems specified in the configuration file
+   */
+   public static String [] getFTs(){
+     if(ftNames == null || ftNames[0] == null){
+       Debug.debug("ftNames null", 3);
+     }
+     return ftNames;
+   }
+  
+
  /**
  + Are we running as an applet?
  */
@@ -275,9 +311,9 @@ public class GridPilot extends JApplet{
       getClassMgr().getCSPluginMgr().disconnect();
       getClassMgr().getCSPluginMgr().exit();
     }
-    for(int i=0; i<dbs.length; ++i){
-      getClassMgr().getDBPluginMgr(dbs[i]).disconnect();
-      Debug.debug("Disconnecting "+dbs[i], 2);
+    for(int i=0; i<dbNames.length; ++i){
+      getClassMgr().getDBPluginMgr(dbNames[i]).disconnect();
+      Debug.debug("Disconnecting "+dbNames[i], 2);
     }
     Debug.debug("All systems disconnected.", 2);
     if(!applet){
@@ -403,10 +439,11 @@ public class GridPilot extends JApplet{
     loadConfigValues();
     getClassMgr().getJobValidation().loadValues();
     getClassMgr().getSubmissionControl().loadValues();
-    getClassMgr().getGlobalFrame().jobMonitoringPanel.statusUpdateControl.loadValues();
+    getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.statusUpdateControl.loadValues();
+    getClassMgr().getGlobalFrame().monitoringPanel.transferMonitor.statusUpdateControl.loadValues();
     getClassMgr().getCSPluginMgr().loadValues();
-    for(int i=0; i<dbs.length; ++i){
-      getClassMgr().getDBPluginMgr(dbs[i]).loadValues();
+    for(int i=0; i<dbNames.length; ++i){
+      getClassMgr().getDBPluginMgr(dbNames[i]).loadValues();
     }
     initDebug();
   }
@@ -433,23 +470,23 @@ public class GridPilot extends JApplet{
 
   public static void dbReconnect(){
     GridPilot.getClassMgr().getStatusBar().setLabel(
-        "Reconnecting "+dbs.length+" databases. Please wait...");
+        "Reconnecting "+dbNames.length+" databases. Please wait...");
     GridPilot.getClassMgr().getStatusBar().animateProgressBar();
     /*
      Reconnect DBs
      */
-    for(int i=0; i<dbs.length; ++i){
+    for(int i=0; i<dbNames.length; ++i){
       try{
-        Debug.debug("Disconnecting "+dbs[i], 2);
+        Debug.debug("Disconnecting "+dbNames[i], 2);
         GridPilot.getClassMgr().getStatusBar().setLabel(
-            "Disconnecting "+dbs[i]);
+            "Disconnecting "+dbNames[i]);
         GridPilot.getClassMgr().getStatusBar().animateProgressBar();
-        getClassMgr().getDBPluginMgr(dbs[i]).disconnect();
-        Debug.debug("Connecting "+dbs[i], 2);
+        getClassMgr().getDBPluginMgr(dbNames[i]).disconnect();
+        Debug.debug("Connecting "+dbNames[i], 2);
         GridPilot.getClassMgr().getStatusBar().setLabel(
-            "Connecting "+dbs[i]);
+            "Connecting "+dbNames[i]);
         GridPilot.getClassMgr().getStatusBar().animateProgressBar();
-        getClassMgr().getDBPluginMgr(dbs[i]).init();
+        getClassMgr().getDBPluginMgr(dbNames[i]).init();
         Debug.debug("Connection ok.", 2);
         GridPilot.getClassMgr().getStatusBar().setLabel(
             "Connection ok.");
@@ -457,9 +494,9 @@ public class GridPilot extends JApplet{
         // TODO: reload panels?
       }
       catch (Throwable e){
-        Debug.debug("ERROR: Could not load DB " + dbs[i] + ". " + 
+        Debug.debug("ERROR: Could not load DB " + dbNames[i] + ". " + 
             e.getMessage(), 3);
-        GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: Could not load DB " + dbs[i] + ". " + 
+        GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: Could not load DB " + dbNames[i] + ". " + 
             e.getMessage());
         exit(-1);
       }

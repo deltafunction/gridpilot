@@ -282,8 +282,9 @@ public class ConfigFile{
       }
       else{
         res = line.substring(isIndex+1).trim();
-        if (res.length()==0)
+        if(res.length()==0){
           res = null; // case 'attribute = '
+        }
       }
     }
     catch(IOException ioe){

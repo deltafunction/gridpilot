@@ -86,6 +86,9 @@ public interface Database{
   
   // ####### Files table
   public DBResult getFiles(String datasetID);
+  public DBRecord getFile(String fileID);
+  public String [] getFileURLs(String fileID);
+  public void registerFileLocation(String fileID, String url);
   
   // ####### Job execution
   public String getRunInfo(String jobDefID, String key);

@@ -133,14 +133,16 @@ public class CSPluginMgr implements ComputingSystem{
       Debug.debug("argument types: "+Util.arrayToString(csArgsType), 3);
       Debug.debug("arguments: "+Util.arrayToString(csArgs), 3);
       try{
-        Class newClass = this.getClass().getClassLoader().loadClass(csClass);
+        /*Class newClass = this.getClass().getClassLoader().loadClass(csClass);
         cs.put(csNames[i],
-            (newClass.getConstructor(csArgsType).newInstance(csArgs)));
-        Debug.debug("plugin " + csNames[i] + "(" + csClass + ") loaded", 2);
+            (newClass.getConstructor(csArgsType).newInstance(csArgs)));*/
+        // Why doesn't this work?
+        cs.put(csNames[i], Util.loadClass(csClass, csArgsType, csArgs));
       }
       catch(Exception e){
         loadfailed = true;
-        e.printStackTrace();
+        Debug.debug("plugin " + csNames[i] + "(" + csClass + ") loaded", 2);
+        //e.printStackTrace();
         //do nothing, will try with MyClassLoader.
       }
       if(loadfailed){

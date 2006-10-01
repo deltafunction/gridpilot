@@ -1993,6 +1993,30 @@ public class DBPluginMgr implements Database{
     }
   }
 
+  public synchronized void registerFileLocation(final String fileID, final String url){
+    
+    MyThread t = new MyThread(){
+      public void run(){
+        try{
+           db.registerFileLocation(fileID, url);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName, t);
+        }
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "registerFileLocation")){
+      return;
+    }
+    else{
+      return;
+    }
+  }
+
   /**
    * Waits the specified MyThread during maximum timeOut ms.
    * @return true if t ended normally, false if t has been interrupted
@@ -2002,7 +2026,8 @@ public class DBPluginMgr implements Database{
       try{
         t.join(timeOut);
       }
-      catch(InterruptedException ie){}
+      catch(InterruptedException ie){
+      }
   
       if(t.isAlive()){
         if(!askBeforeInterrupt || askForInterrupt(dbName, function)){
@@ -2012,8 +2037,9 @@ public class DBPluginMgr implements Database{
           return false;
         }
       }
-      else
+      else{
         break;
+      }
     }
     while(true);
     return true;
@@ -2293,4 +2319,63 @@ public class DBPluginMgr implements Database{
     return splits;
   }
 
+  public DBRecord getFile(final String fileID){
+    
+    MyThread t = new MyThread(){
+      DBRecord res = null;
+      public void run(){
+        try{
+          res = db.getFile(fileID);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             fileID, t);
+        }
+      }
+      public DBRecord getDBRes(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getFile")){
+      return t.getDBRes();
+    }
+    else{
+      return null;
+    }
+  }
+
+  public String [] getFileURLs(final String fileID){
+    Debug.debug("Getting field names for table "+fileID, 3);
+   
+    MyThread t = new MyThread(){
+      String [] res = null;
+      public void run(){
+        try{
+          res = db.getFileURLs(fileID);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             fileID, t);
+        }
+      }
+      public String [] getString2Res(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(waitForThread(t, dbName, dbTimeOut, "getFileURLs")){
+      return t.getString2Res();
+    }
+    else{
+      return null;
+    }
+  }
+  
 }

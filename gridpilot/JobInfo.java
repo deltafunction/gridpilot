@@ -130,12 +130,15 @@ public class JobInfo extends DBRecord{
   public String getJobId(){
     return jobID;
   }
+  
   public String getJobStatus(){
     return jobStatus;
   }
+  
   public String getHost(){
     return host;
   }
+  
   public String getUser(){
     return user;
   }
@@ -156,21 +159,21 @@ public class JobInfo extends DBRecord{
    * Operations
    */
 
-  void setName(String _jobName){
+  public void setName(String _jobName){
     jobName = _jobName;
   }
 
-  void setJobDefId(String _jobDefId){
+  public void setJobDefId(String _jobDefId){
     jobDefID = _jobDefId;
     //setValues();
   }
 
-  void setCSName(String _computingSystem){
+  public void setCSName(String _computingSystem){
     cs = _computingSystem;
     //setValues();
   }
 
-  void setDBName(String _database){
+  public void setDBName(String _database){
     db = _database;
     //setValues();
   }
@@ -216,7 +219,7 @@ public class JobInfo extends DBRecord{
     //setValues();
   }
 
-  void setDBStatus(int _dbStatus){
+  public void setDBStatus(int _dbStatus){
     dbStatus = _dbStatus;
     //setValues();
   }
@@ -226,7 +229,7 @@ public class JobInfo extends DBRecord{
     //setValues();
   }
 
-  void setNeedToBeRefreshed(boolean _needUpdate){
+  public void setNeedToBeRefreshed(boolean _needUpdate){
     needUpdate = _needUpdate;
   }
 
@@ -243,9 +246,11 @@ public class JobInfo extends DBRecord{
         "  StdErr \t: " + getStdErr() + "\n";
   }
 
-  public int getTableRow(){ return tableRow;}
+  public int getTableRow(){
+    return tableRow;
+  }
 
-  void setTableRow(int _tableRow){
+  public void setTableRow(int _tableRow){
     tableRow = _tableRow;
   }
 }

@@ -1,9 +1,11 @@
 package gridpilot;
 
 public class DBRecord{
+  
   public String [] fields = null;
   public Object [] values = null;
   public static String identifier = null;
+  
   public DBRecord(){
     fields = new String [] {""};
   }
@@ -26,9 +28,9 @@ public class DBRecord{
     return "";
   }
   
-  public void setValue(String col, String val) throws Exception{
-     for (int i=0; i<fields.length; i++){
-      if (col.equalsIgnoreCase(fields[i])){
+  public void setValue(String col, /*Object*/ /*force strings*/String val) throws Exception{
+     for(int i=0; i<fields.length; i++){
+      if(col.equalsIgnoreCase(fields[i])){
         values[i] = val;
         //Debug.debug("Set field "+fields[i]+" to value "+values[i],3);
         // TODO: Should set field to value. Seems not to work

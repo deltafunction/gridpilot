@@ -31,19 +31,14 @@ public class ATLASDatabase implements Database{
     error = "";
   }
 
-    public String connect(){
-    // TODO Auto-generated method stub
+  public String connect(){
     return null;
   }
 
   public void disconnect(){
-    // TODO Auto-generated method stub
-
   }
 
   public void clearCaches(){
-    // TODO Auto-generated method stub
-
   }
 
   public DBResult select(String selectRequest, String identifier){
@@ -53,7 +48,6 @@ public class ATLASDatabase implements Database{
     String [] fields;
     String [][] values;
 
-    // Make sure we have identifier as last column.
     // *, row1, row2 -> *
     if(selectRequest.matches("SELECT \\*\\,.*") ||
         selectRequest.matches("SELECT \\* FROM .+")){
@@ -62,6 +56,7 @@ public class ATLASDatabase implements Database{
       matcher = patt.matcher(req);
       req = matcher.replaceAll("SELECT * FROM");
     }
+    // Make sure we have identifier as last column.
     else{
       patt = Pattern.compile(", "+identifier+" ", Pattern.CASE_INSENSITIVE);
       matcher = patt.matcher(req);
@@ -471,8 +466,8 @@ public class ATLASDatabase implements Database{
   }
     
   public String getDatasetName(String datasetID){
-    // TODO Auto-generated method stub
-    return null;
+    DBRecord dataset = getDataset(datasetID);
+    return dataset.getValue("dsn").toString();
   }
 
   public String getDatasetID(String datasetName){
@@ -480,7 +475,7 @@ public class ATLASDatabase implements Database{
     "vuid");
     if(res!=null && res.values.length>1){
       Debug.debug("WARNING: inconsistent dataset catalog; " +
-          res.values.length + " entries with name "+datasetName, 1);
+          res.values.length + " entries with dsn "+datasetName, 1);
     }
     String ret = "-1";
     try{
@@ -496,6 +491,59 @@ public class ATLASDatabase implements Database{
       return "-1";
     }
     return ret;
+  }
+
+  public DBRecord getDataset(String datasetID){
+    DBResult res = select("SELECT * FROM dataset WHERE vuid = "+datasetID,
+        "vuid");
+    if(res.values.length>1){
+      Debug.debug("WARNING: inconsistent dataset catalog; " +
+          res.values.length + " entries with vuid "+datasetID, 1);
+    }
+    return res.getRow(0);
+  }
+  
+  public String[] getFieldNames(String table){
+    try{
+      Debug.debug("getFieldNames for table "+table, 3);
+      if(table.equalsIgnoreCase("file")){
+        return new String [] {"dsn", "lfn", "pfns", "bytes", "created", "lastModified", "guid"};
+      }
+      else if(table.equalsIgnoreCase("dataset")){
+        return new String [] {"dsn", "vuid"};
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      Debug.debug(e.getMessage(),1);
+    }
+    return null;
+  }
+  
+  public DBRecord getFile(String fileID){
+    DBResult res = select("SELECT * FROM file WHERE guid = "+fileID,
+        "guid");
+    if(res.values.length>1){
+      Debug.debug("WARNING: inconsistent dataset catalog; " +
+          res.values.length + " entries with guid "+fileID, 1);
+    }
+    return res.getRow(0);
+  }
+
+  public String [] getFileURLs(String fileID){
+    String [] ret = null;
+    try{
+      DBRecord file = getFile(fileID);
+      ret = Util.split(file.getValue("pfns").toString());
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
+    }
+    return ret;
+  }
+
+  public void registerFileLocation(String fileID, String url){
+    // TODO Auto-generated method stub
   }
 
   public String getRunNumber(String datasetID){
@@ -519,15 +567,10 @@ public class ATLASDatabase implements Database{
     return false;
   }
 
-  public DBRecord getDataset(String datasetID){
-    DBResult res = select("SELECT * FROM dataset WHERE vuid = "+datasetID,
-        "guid");
-    if(res.values.length>1){
-      Debug.debug("WARNING: inconsistent dataset catalog; " +
-          res.values.length + " entries with vuid "+datasetID, 1);
-    }
-    return res.getRow(0);
-  }
+  // -------------------------------------------------------------------
+  // What's below here is not relevant for this plugin
+  // -------------------------------------------------------------------
+
 
   public String getDatasetTransformationName(String datasetID){
     // TODO Auto-generated method stub
@@ -538,12 +581,6 @@ public class ATLASDatabase implements Database{
     // TODO Auto-generated method stub
     return null;
   }
-  
-  // -------------------------------------------------------------------
-  // What's below here can wait
-  // -------------------------------------------------------------------
-
-
   public String[] getRuntimeEnvironments(String jobDefID){
     // TODO Auto-generated method stub
     return null;
@@ -769,23 +806,6 @@ public class ATLASDatabase implements Database{
     return false;
   }
 
-  public String[] getFieldNames(String table){
-    try{
-      Debug.debug("getFieldNames for table "+table, 3);
-      if(table.equalsIgnoreCase("file")){
-        return new String [] {"dsn", "lfn", "pfns", "bytes", "created", "lastModified", "guid"};
-      }
-      else if(table.equalsIgnoreCase("dataset")){
-        return new String [] {"dsn", "vuid"};
-      }
-    }
-    catch(Exception e){
-      e.printStackTrace();
-      Debug.debug(e.getMessage(),1);
-    }
-    return null;
-  }
-  
   public DBResult getFiles(String datasetID){
     // TODO
     return null;

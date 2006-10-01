@@ -56,7 +56,7 @@ public class SecureShellMgr implements ShellMgr{
       session.connect();
       try{
         channelsNum = Integer.parseInt(
-            configFile.getValue("GridPilot", "maximum simultaneous submission"))+
+            configFile.getValue("GridPilot", "maximum simultaneous submissions"))+
         Integer.parseInt(
             configFile.getValue("GridPilot", "maximum simultaneous checking"))+
             Integer.parseInt(

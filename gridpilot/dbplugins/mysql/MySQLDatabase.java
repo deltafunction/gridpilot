@@ -4,11 +4,21 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.TimeZone;
 import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSetMetaData;
@@ -16,6 +26,21 @@ import java.sql.SQLException;
 
 import java.sql.ResultSet;
 import java.sql.Statement;
+
+import org.globus.gsi.GlobusCredential;
+import org.globus.gsi.bc.BouncyCastleOpenSSLKey;
+import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
+import org.ietf.jgss.GSSCredential;
+import org.ietf.jgss.GSSException;
+
+import java.security.*;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.security.cert.CertificateException;
+
+import jonelo.jacksum.*;
+import jonelo.jacksum.algorithm.*;
 
 import gridpilot.ConfigFile;
 import gridpilot.Database;
@@ -25,6 +50,14 @@ import gridpilot.Util;
 import gridpilot.DBResult;
 import gridpilot.DBRecord;
 
+/**
+ * Plugin to access mysql databases.
+ * If the _database ends with /, the database name
+ * is the grid certificate subject with slash and space
+ * replaced with | and _ respectively.
+ * If _user is "" or null, the user is the cksum of the grid
+ * certificate subject and X509 authentication is used.
+ */
 public class MySQLDatabase implements Database{
   
   private String driver = "";
@@ -39,6 +72,8 @@ public class MySQLDatabase implements Database{
   private String [] datasetFields = null;
   private String [] runtimeEnvironmentFields = null;
   private String dbName = null;
+  private boolean gridAuth;
+  private GlobusCredential globusCred = null;
 
   public MySQLDatabase(String _dbName,
       String _driver, String _database,
@@ -54,12 +89,88 @@ public class MySQLDatabase implements Database{
     if(GridPilot.csNames==null){
       showDialog = false;
     }
-
-    String [] up = null;
     
+    gridAuth = false;
+    if(user==null || user.equals("") ||
+        database!=null && database.endsWith("/")){
+      gridAuth = true;
+      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+      if(credential instanceof GlobusGSSCredentialImpl){
+        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+      }
+      Debug.debug("getting identity", 3);
+      String subject = globusCred.getIdentity();
+      /* remove leading whitespace */
+      subject = subject.replaceAll("^\\s+", "");
+      /* remove trailing whitespace */
+      subject = subject.replaceAll("\\s+$", "");
+      
+      if(user==null || user.equals("")){
+        AbstractChecksum checksum = null;
+        try{
+          checksum = JacksumAPI.getChecksumInstance("cksum");
+          
+          /*
+           * It would be nicer to use the openssl certificate hash instead
+           * of the cksum of the subject, but it seems not possible in
+           * practice.
+           * 
+           * From /openssl/crypto/x509/x509_cmp.c.
+           * Without DES MD5 encoding we will not get the right hash.
+           * The missing method (c++, from openldap):
+           * EVP_Digest(x->bytes->data, x->bytes->length, md, NULL, EVP_md5(), NULL);
+           */
+          /*
+          Debug.debug("Issuer: "+ globusCred.getIssuer(), 3);
+          Debug.debug("Identity: "+globusCred.getIdentity(), 3);
+          Debug.debug("Subject DN: "+
+              globusCred.getIdentityCertificate().getSubjectDN(), 3);         
+          AbstractChecksum cs = JacksumAPI.getChecksumInstance("md5");
+          cs.update(globusCred.getIdentity().getBytes());
+          byte md[] = new byte[16];
+          md = cs.getByteArray();
+          long ret = ( (md[0])|(md[1]<<8L)|
+              (md[2]<<16L)|(md[3]<<24L)
+              )&0xffffffffL;
+          Debug.debug("Hash: "+ret, 3);
+          //Debug.debug("Hash: "+Long.toHexString(Long.parseLong(
+          //    cs.getFormattedValue(), 10)), 2);
+          Debug.debug("Wanted Hash: "+
+              Long.valueOf("806d2203", 16), 3);
+          */
+        }
+        catch(Exception nsae){
+          Debug.debug("ERROR: "+nsae.getMessage(), 1);
+          nsae.printStackTrace();
+          return;
+        }
+        checksum.update(subject.getBytes());
+        user = checksum.getFormattedValue();
+        Debug.debug("Using user name from cksum of grid subject: "+user, 2);
+      }
+      
+      if(database!=null && database.endsWith("/")){
+        String dbName = subject.replaceAll(" ", "_");
+        dbName = dbName.replaceAll("/", "|");
+        dbName = dbName.substring(1);
+        database = database + dbName;
+      }
+    }
+    
+    if(gridAuth){
+      try{
+        activateSsl();
+      }
+      catch(Exception e){
+        Debug.debug("ERROR: "+e.getMessage(), 1);
+        return;
+      }
+    }
+    
+    String [] up = null;
     for(int rep=0; rep<3; ++rep){
       if(showDialog ||
-          user==null || passwd==null || database==null){
+          user==null || (passwd==null && !gridAuth) || database==null){
         up = GridPilot.userPwd(user, passwd, database);
         if(up==null){
           return;
@@ -107,13 +218,20 @@ public class MySQLDatabase implements Database{
       e.printStackTrace();
       return null;
     }
-    try {
-      conn = DriverManager.getConnection(database+
-          "?user="+user+"&password="+passwd);
+    try{
+      if(gridAuth){
+        conn = DriverManager.getConnection(database+
+            "?user="+user+"&password=&useSSL=true");
+      }
+      else{
+        conn = DriverManager.getConnection(database+
+            "?user="+user+"&password="+passwd);
+      }
     }
     catch(Exception e){
       Debug.debug("Could not connect to db "+database+
           ", "+user+", "+passwd+" : "+e, 3);
+      e.printStackTrace();
       return null;
     }  
     try{
@@ -125,6 +243,219 @@ public class MySQLDatabase implements Database{
     return "";
   }
   
+  private void activateSsl() throws KeyStoreException,
+     NoSuchAlgorithmException, CertificateException,
+     IOException, GSSException {
+    
+    String tmpPwd = "whateva";
+    FileInputStream fis = null;
+    CertificateFactory cf = null;
+    Certificate cert = null;
+    
+    // The key store
+    //
+    // We save the keystore to a temporary file.
+    // This seems to be the only way to get connector/j to use it...
+    // get a temp name
+    File tmpFile = File.createTempFile(/*prefix*/"keystore", /*suffix*/"");
+    String keystorePath = tmpFile.getAbsolutePath();
+    // hack to have the diretory deleted on exit
+    GridPilot.tmpConfFile.put(keystorePath, new File(keystorePath));
+    // TODO: drop first (last?) element?
+    X509Certificate [] chain = globusCred.getCertificateChain();
+    X509Certificate [] idChain = new X509Certificate[chain.length-1];
+    Vector idVector = new Vector();
+    for(int i=0; i<chain.length; ++i){
+      Debug.debug(chain[i].getSubjectDN().getName()+"<->"+ globusCred.getSubject(), 3);
+      if(!chain[i].getSubjectDN().getName().equals(globusCred.getSubject())){
+        idVector.add(chain[i]);
+      }
+      else{
+        Debug.debug("Removing proxy certificate from chain", 2);
+      }
+    }
+    for(int i=0; i<idChain.length; ++i){
+      idChain[i] = (X509Certificate) idVector.get(i);
+    }
+    
+    // This does NOT work: the proxy certificate cannot be used for
+    // standard ssl authentication, because the user certificate does
+    // not containg CA privileges.
+    /*
+    KeyStore ks = KeyStore.getInstance("JKS");
+    PrivateKey mypriv = globusCred.getPrivateKey();
+    ks.load(null, null);
+    ks.setKeyEntry("mycert", mypriv, tmpPwd.toCharArray(), chain);
+    FileOutputStream fos = new FileOutputStream(keystorePath);
+    ks.store(fos, tmpPwd.toCharArray());
+    fos.close();
+    */
+    
+    // Instead we use the real certificate/proxy
+    String keyFile = GridPilot.keyFile;
+    if(keyFile.startsWith("~")){
+      try{
+        keyFile = System.getProperty("user.home") + File.separator +
+        keyFile.substring(2);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    try{
+      // Load the private key (in PKCS#8 DER encoding).
+      /*
+      File userKeyFile = new File(keyFile);
+      Debug.debug("loading "+keyFile, 3);
+      byte[] encodedKey = new byte[(int)userKeyFile.length()];
+      fis = new FileInputStream(userKeyFile);
+      fis.read(encodedKey);
+      fis.close();
+      KeyFactory rSAKeyFactory = KeyFactory.getInstance("RSA");
+      PrivateKey privateKey = rSAKeyFactory.generatePrivate(
+         new PKCS8EncodedKeySpec(encodedKey));
+      */
+      
+      // We need the password to decrypt the pricate key.
+      // If the proxy was loaded from a previous session, we have to
+      // ask again.
+      if(GridPilot.keyPassword==null){
+        // delete proxy and reinitialize - this will set GridPilot.keyPassword
+        Debug.debug("reinitializing grid proxy to get password", 3);
+        Util.getProxyFile().delete();
+        GridPilot.getClassMgr().gridProxyInitialized = Boolean.FALSE;
+        GridPilot.getClassMgr().credential = null;
+        GridPilot.getClassMgr().getGridCredential();
+      }
+      Debug.debug("Decrypting private key with password "+GridPilot.keyPassword, 3);
+      BouncyCastleOpenSSLKey key = new BouncyCastleOpenSSLKey(keyFile);
+      key.decrypt(GridPilot.keyPassword);     
+      addToKeyStore(key.getPrivateKey(), GridPilot.keyPassword.toCharArray(), 
+         idChain, keystorePath);
+    }
+    catch(Exception e){
+      Debug.debug("Error adding certificate to keystore\n" + e, 2);
+      e.printStackTrace();
+      try{                   
+        fis.close();
+      }
+      catch(Exception r){
+      }
+      return;
+    }
+    
+    // activate the keystore
+    System.setProperty("javax.net.ssl.keyStore", keystorePath);
+    System.setProperty("javax.net.ssl.keyStorePassword", GridPilot.keyPassword);
+
+    // The trust store
+    //
+    Debug.debug("Reading list of files from "+
+        GridPilot.resourcesPath+"ca_certs_list.txt", 3);
+    URL fileURL = GridPilot.class.getResource(
+        GridPilot.resourcesPath+"ca_certs_list.txt");
+    HashSet certFilesList = new HashSet();
+    BufferedReader in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
+    String line;
+    while((line = in.readLine())!=null){
+      certFilesList.add(line);
+    }
+    in.close();
+    
+    // The truststore will be saved to a temporary file.
+    // This seems to be the only way to get connector/j to use it...
+    // get a temp name
+    tmpFile = File.createTempFile(/*prefix*/"truststore", /*suffix*/"");
+    String truststorePath = tmpFile.getAbsolutePath();
+    // hack to have the diretory deleted on exit
+    GridPilot.tmpConfFile.put(truststorePath, new File(truststorePath));
+
+    String caCertsTmpdir = GridPilot.getClassMgr().getCaCertsTmpDir();
+    String fileName = null;
+    File caCertFile = null;
+    for(Iterator it=certFilesList.iterator(); it.hasNext();){
+      fileName = it.next().toString();
+      if(!fileName.toLowerCase().endsWith(".0")){
+        continue;
+      }
+      caCertFile =  new File(caCertsTmpdir, fileName);
+      Debug.debug("loading "+caCertFile.getCanonicalPath(), 3);
+      try{
+        fis = new FileInputStream(caCertFile);
+        cf = CertificateFactory.getInstance("X.509");
+        cert = (X509Certificate) cf.generateCertificate(fis);
+        String alias = fileName.substring(0, fileName.length()-2);
+        Debug.debug("Adding the cert with alias " + alias, 2);
+        addToTrustStore(tmpPwd.toCharArray(), alias, cert,
+           truststorePath);
+        fis.close();   
+      }
+      catch(Exception e){
+        Debug.debug("Error adding certificate to keystore\n" + e, 2);
+        e.printStackTrace();
+        try{                   
+          fis.close();
+        }
+        catch(Exception r){
+        }
+        return;
+      }        
+    }
+    // activate truststore 
+    System.setProperty("javax.net.ssl.trustStore", truststorePath);
+    System.setProperty("javax.net.ssl.trustStorePassword", tmpPwd);    
+  }
+  
+  private void addToKeyStore(PrivateKey privateKey, char [] password,
+      X509Certificate [] chain, String keyFilePath)
+     throws KeyStoreException, FileNotFoundException,
+     IOException, CertificateException, NoSuchAlgorithmException{
+    KeyStore keystore = KeyStore.getInstance("JKS");
+    // Load the keystore contents
+    Debug.debug("Opening key file", 3);
+    FileInputStream in = new FileInputStream(keyFilePath);
+    Debug.debug("Loading input from "+keyFilePath+" into keystore", 2);
+    Debug.debug("available "+in.available(), 3);
+    if(in.available()==0){ 
+      keystore.load(null, password);
+    }
+    else{ 
+      keystore.load(in, password);
+    }
+    in.close();
+    // Add the key
+    keystore.setKeyEntry("mycert", privateKey, password, chain);
+    // Save the new keystore contents
+    FileOutputStream out = new FileOutputStream(keyFilePath);
+    keystore.store(out, password);
+    out.close();
+  }
+  
+  private void addToTrustStore(char [] password, String alias,
+      Certificate cert, String keyFilePath)
+      throws KeyStoreException, FileNotFoundException,
+      IOException, CertificateException, NoSuchAlgorithmException{
+     KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+     // Load the keystore contents
+     Debug.debug("Opening key file", 3);
+     FileInputStream in = new FileInputStream(keyFilePath);
+     Debug.debug("Loading input from "+keyFilePath+" into keystore", 2);
+     Debug.debug("available "+in.available(), 3);
+     if(in.available()==0){ 
+       keystore.load(null, password);
+     }
+     else{ 
+       keystore.load(in, password);
+     }
+     in.close();
+     // Add the certificate
+     keystore.setCertificateEntry(alias, cert);
+     // Save the new keystore contents
+     FileOutputStream out = new FileOutputStream(keyFilePath);
+     keystore.store(out, password);
+     out.close();
+   }
+   
   private void setFieldNames(){
     datasetFields = getFieldNames("dataset");
     jobDefFields = getFieldNames("jobDefinition");
@@ -973,6 +1304,47 @@ public class MySQLDatabase implements Database{
     DBRecord def = (DBRecord)jobdefv.get(0);
     jobdefv.removeAllElements();
     return def;
+  }
+
+  public DBRecord getFile(String jobDefinitionID){
+    DBRecord jobDef = getJobDefinition(jobDefinitionID);
+    String [] fields = getFieldNames("file");
+    String [] values = new String[fields.length];
+    DBRecord file = new DBRecord(fields, values);
+    for(int i=0; i<fields.length; ++i){
+      try{
+        file.setValue(fields[i], jobDef.getValue(fields[i]).toString());
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
+      }
+    }
+    for(int i=0; i<jobDef.fields.length; ++i){
+      if(jobDef.fields[i].equalsIgnoreCase("outputFileMapping")){
+        String [] map = Util.split(jobDef.getValue(fields[i]).toString());
+        try{
+          file.setValue("url", map[1]);
+        }
+        catch(Exception e){
+          Debug.debug("WARNING: could not set URL. "+e.getMessage(), 2);
+        }
+      }
+    }
+    return file;
+  }
+
+  // This is not really a file catalog: THE output file is
+  // the first in the list of fn -> pfn mappings of outputFileMapping
+  public String [] getFileURLs(String fileID){
+    String ret = null;
+    try{
+      DBRecord file = getFile(fileID);
+      ret = file.getValue("url").toString();
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
+    }
+    return new String [] {ret};
   }
 
   // Selects only the fields listed in fieldNames. Other fields are set to "".
@@ -1846,5 +2218,9 @@ public class MySQLDatabase implements Database{
         return dateInput;
       }
     }
-
+    
+    public void registerFileLocation(String fileID, String url){
+      // not applicable, not a file catalog
+    }
+   
 }

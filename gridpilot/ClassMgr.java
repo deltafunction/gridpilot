@@ -4,9 +4,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
 
+import org.globus.common.CoGProperties;
 import org.ietf.jgss.GSSCredential;
 
-import gridpilot.fsplugins.gridftp.GridFTPFileSystem;
+import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 
 /**
  * This class allows access to all global objects in gridpilot.
@@ -18,22 +19,27 @@ public class ClassMgr{
   private GlobalFrame globalFrame;
   private LogFile logFile;
   private StatusBar statusBar;
-  private Table statusTable;
-  private StatisticsPanel statisticsPanel;
+  private Table jobStatusTable;
+  private Table transferStatusTable;
+  private StatisticsPanel jobStatisticsPanel;
+  private StatisticsPanel transferStatisticsPanel;
   private JobValidation jobValidation;
   private GridPilot prodCom;
   private int debugLevel = 3;
-  private HashMap dbMgts = new HashMap();
+  private HashMap dbMgrs = new HashMap();
+  private HashMap ft = new HashMap();
   private HashMap datasetMgrs = new HashMap();
   private Vector submittedJobs = new Vector();
+  private Vector submittedTransfers = new Vector();
   private SubmissionControl submissionControl;
-  private GSSCredential credential = null;
-  private Boolean gridProxyInitialized = Boolean.FALSE;
-  private GridFTPFileSystem gridFTPFileSystem;
+  private TransferControl transferControl;
+  private GSIFTPFileTransfer gsiftpFileSystem;
   private Vector urlList = new Vector();
+  private static String caCertsTmpdir = null;
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
-
+  public GSSCredential credential = null;
+  public Boolean gridProxyInitialized = Boolean.FALSE;
   
   public void setConfigFile(ConfigFile _configFile){
     configFile = _configFile;
@@ -41,10 +47,10 @@ public class ClassMgr{
 
   public boolean setDBPluginMgr(String dbName, DBPluginMgr dbPluginMgr){
     try{
-      dbMgts.put(dbName, dbPluginMgr);
+      dbMgrs.put(dbName, dbPluginMgr);
     }
     catch(NullPointerException e){
-      dbMgts.put(dbName, new HashMap());
+      dbMgrs.put(dbName, new HashMap());
     }
     try {
       dbPluginMgr.init();
@@ -64,14 +70,14 @@ public class ClassMgr{
     statusBar = _statusBar;
   }
 
-  public void setStatusTable(Table _statusTable){
-     statusTable = _statusTable;
+  public void setJobStatusTable(Table _statusTable){
+     jobStatusTable = _statusTable;
   }
 
-  public void setStatisticsPanel(StatisticsPanel _statisticsPanel){
-      statisticsPanel = _statisticsPanel;
-  }
-  
+  public void setTransferStatusTable(Table _statusTable){
+    transferStatusTable = _statusTable;
+ }
+
   public void setJobValidation(JobValidation _jobValidation){
     jobValidation = _jobValidation;
   }
@@ -92,6 +98,10 @@ public class ClassMgr{
      submissionControl = _submissionControl;
   }
 
+  public void setTransferControl(TransferControl _transferControl){
+    transferControl = _transferControl;
+ }
+
   public ConfigFile getConfigFile(){
     if(configFile==null){
       Debug.debug("configFile null", 3);
@@ -99,13 +109,26 @@ public class ClassMgr{
     return configFile;
   }
 
-  // The HashMap of DB objects, dbMgts, is kept here
+  // The HashMap of DB objects, dbMgrs, is kept here
   public DBPluginMgr getDBPluginMgr(String dbName) throws NullPointerException{
     Debug.debug("Getting DBPluginMgr for db " + dbName, 3);
-    if(dbMgts.get(dbName)==null){
+    if(dbMgrs.get(dbName)==null){
       throw new NullPointerException("DBPluginMgr null for "+dbName);
     }
-    return (DBPluginMgr) dbMgts.get(dbName);
+    return (DBPluginMgr) dbMgrs.get(dbName);
+  }
+
+  // The HashMap of FT objects, ft, is kept here
+  public FileTransfer getFTPlugin(String ftName) throws NullPointerException{
+    Debug.debug("Getting FT plugin for " + ftName, 3);
+    if(ft.get(ftName)==null){
+      throw new NullPointerException("FT plugin null for "+ftName);
+    }
+    return (FileTransfer) ft.get(ftName);
+  }
+  
+  public void setFTPlugin(String ftName, FileTransfer ftObject){
+    ft.put(ftName, ftObject);
   }
 
   // This method creates a new DatasetMgr if there is
@@ -171,7 +194,7 @@ public class ClassMgr{
   }
 
   public void clearDBCaches(){
-    for(Iterator i=dbMgts.values().iterator(); i.hasNext();){
+    for(Iterator i=dbMgrs.values().iterator(); i.hasNext();){
       ((DBPluginMgr) i.next()).clearCaches();
     }
   }
@@ -201,25 +224,33 @@ public class ClassMgr{
     return statusBar;
   }
 
-  public Table getStatusTable(){
-    if(statusTable==null){
-      Debug.debug("statusTable null", 3);
-      String[] fieldNames = GridPilot.statusFields;
+  public Table getJobStatusTable(){
+    if(jobStatusTable==null){
+      Debug.debug("jobStatusTable null", 3);
+      String[] fieldNames = GridPilot.jobStatusFields;
       Debug.debug("Creating new Table with fields "+Util.arrayToString(fieldNames), 3);
-      statusTable = new Table(new String [] {}, fieldNames,
-          GridPilot.colorMapping);
-       GridPilot.getClassMgr().setStatusTable(statusTable);
+      jobStatusTable = new Table(new String [] {}, fieldNames,
+          GridPilot.jobColorMapping);
+       GridPilot.getClassMgr().setJobStatusTable(jobStatusTable);
       //new Exception().printStackTrace();
     }
-    return statusTable;
+    return jobStatusTable;
   }
 
-  public StatisticsPanel getStatisticsPanel(){
-    if(statisticsPanel==null){
-      Debug.debug("statisticsPanel null", 3);
-      statisticsPanel = new StatisticsPanel();
+  public StatisticsPanel getJobStatisticsPanel(){
+    if(jobStatisticsPanel==null){
+      Debug.debug("jobStatisticsPanel null", 3);
+      jobStatisticsPanel = new JobStatisticsPanel("Jobs statistics");
     }
-    return statisticsPanel;
+    return jobStatisticsPanel;
+  }
+
+  public StatisticsPanel getTransferStatisticsPanel(){
+    if(transferStatisticsPanel==null){
+      Debug.debug("transferStatisticsPanel null", 3);
+      transferStatisticsPanel = new TransferStatisticsPanel("Transfers statistics");
+    }
+    return transferStatisticsPanel;
   }
 
   public Vector getSubmittedJobs(){
@@ -227,6 +258,26 @@ public class ClassMgr{
       Debug.debug("submittedJobs null", 3);
     }
     return submittedJobs;
+  }
+
+  public Table getTransferStatusTable(){
+    if(transferStatusTable==null){
+      Debug.debug("transferStatusTable null", 3);
+      String[] fieldNames = GridPilot.transferStatusFields;
+      Debug.debug("Creating new Table with fields "+Util.arrayToString(fieldNames), 3);
+      transferStatusTable = new Table(new String [] {}, fieldNames,
+          GridPilot.transferColorMapping);
+       GridPilot.getClassMgr().setTransferStatusTable(transferStatusTable);
+      //new Exception().printStackTrace();
+    }
+    return transferStatusTable;
+  }
+
+  public Vector getSubmittedTransfers(){
+    if(submittedTransfers==null){
+      Debug.debug("submittedTransfers null", 3);
+    }
+    return submittedTransfers;
   }
 
   public Vector getUrlList(){
@@ -293,6 +344,19 @@ public class ClassMgr{
     return submissionControl;
   }
   
+  public TransferControl getTransferControl(){
+    if(transferControl==null){
+      Debug.debug("transferControl null, creating new", 1);
+      setTransferControl(new TransferControl());
+      return null;
+    }
+    return transferControl;
+  }
+  
+  public String getCaCertsTmpDir(){
+    return caCertsTmpdir;
+  }
+  
   public /*synchronized*/ GSSCredential getGridCredential(){
     if(gridProxyInitialized.booleanValue()){
       return credential;
@@ -314,6 +378,22 @@ public class ClassMgr{
         else{
           gridProxyInitialized = Boolean.TRUE;
         }
+        // set the directory for trusted CA certificates
+        CoGProperties prop = new CoGProperties();
+        if(GridPilot.caCerts==null || GridPilot.caCerts.equals("")){
+          if(caCertsTmpdir==null){
+            caCertsTmpdir = Util.setupDefaultCACertificates(prop);
+            // this adds all certificates in the dir to globus authentication procedures
+          }
+          caCertsTmpdir = caCertsTmpdir.replaceAll("\\\\", "/");
+          prop.setCaCertLocations(caCertsTmpdir);
+        }
+        else{
+          prop.setCaCertLocations(GridPilot.caCerts);
+        }
+        CoGProperties.setDefault(prop);
+        Debug.debug("COG defaults now:\n"+CoGProperties.getDefault(), 3);
+        Debug.debug("COG defaults file:\n"+CoGProperties.configFile, 3);
       }
       catch(Exception e){
         Debug.debug("ERROR: could not get grid credential", 1);
@@ -323,12 +403,12 @@ public class ClassMgr{
     return credential;
   }
 
-  public GridFTPFileSystem getGridFTPFileSystem(){
-    if(gridFTPFileSystem==null){
-      Debug.debug("gridFTPFileSystem null", 3);
-      gridFTPFileSystem = new GridFTPFileSystem();
+  public GSIFTPFileTransfer getGSIFTPFileTransfer(){
+    if(gsiftpFileSystem==null){
+      Debug.debug("gsiftpFileSystem null", 3);
+      gsiftpFileSystem = new GSIFTPFileTransfer();
     }
-    return gridFTPFileSystem;
+    return gsiftpFileSystem;
   }
 
 }

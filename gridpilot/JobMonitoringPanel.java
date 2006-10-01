@@ -21,19 +21,18 @@ import gridpilot.DBResult;
 public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   private static final long serialVersionUID = 1L;
-  private Table statusTable = null;
-  // use status bar on main window
-  private StatusBar statusBar = null;
+  
   private final int ALL_JOBS = 0;
   private final int ONLY_RUNNING_JOBS = 1;
   private final int ONLY_DONE_JOBS = 2;
+  
   private int showRows = ALL_JOBS;
+  private Table statusTable = null;
   // Central panel
-  private JTabbedPane tpStatLog = new JTabbedPane();
+  private JPanel mainPanel = new JPanel();
   private JScrollPane spStatusTable = new JScrollPane();
-  private JScrollPane spLogView = new JScrollPane();
-  public static StatisticsPanel statisticsPanel =
-    GridPilot.getClassMgr().getStatisticsPanel();
+  private StatisticsPanel statisticsPanel =
+    GridPilot.getClassMgr().getJobStatisticsPanel();
   // Options panel
   private JPanel pOptions = new JPanel();
   // view options
@@ -47,14 +46,12 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JButton bClearTable = new JButton("Clear");
   // Buttons panel
   private JPanel pButtons = new JPanel();
-  private JButton bDecide = new JButton("Decide");
   private JButton bKill = new JButton("Kill");
-  private JButton bRefresh = new JButton("Refresh all");
+  private JButton bRefresh = new JButton("Refresh");
   // auto refresh
-  private JCheckBox cbAutoRefresh = new JCheckBox("Refresh each");
+  private JCheckBox cbAutoRefresh = new JCheckBox("each");
   private JSpinner sAutoRefresh = new JSpinner();
   private JComboBox cbRefreshUnits = new JComboBox(new Object []{"sec", "min"});
-  //private int SEC = 0;
   private int MIN = 1;
   private JMenuItem miKill = new JMenuItem("Kill");
   private JMenuItem miDecide = new JMenuItem("Decide");
@@ -64,31 +61,26 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JMenu mShow = new JMenu("Show");
   private JMenuItem miShowOutput = new JMenuItem("Outputs");
   private JMenuItem miShowFullStatus = new JMenuItem("Full status");
-  private JMenuItem miShowInfo = new JMenuItem("Infos");
+  private JMenuItem miShowInfo = new JMenuItem("Information");
   private JMenuItem miShowScripts = new JMenuItem("Scripts");
   private JMenuItem miStopUpdate = new JMenuItem("Stop update");
   private JMenuItem miRevalidate = new JMenuItem("Revalidate");
-  //private JMenuItem miResetChanges = new JMenuItem("Reset changes");
   private JMenu mDB = new JMenu("Set DB Status");
-  private LogViewerPanel logViewerPanel = new LogViewerPanel();
-  public StatusUpdateControl statusUpdateControl;
+  public JobStatusUpdateControl statusUpdateControl;
   private SubmissionControl submissionControl;
-  Timer timerRefresh = new Timer(0, new ActionListener (){
+  
+  private Timer timerRefresh = new Timer(0, new ActionListener (){
     public void actionPerformed(ActionEvent e){
       statusUpdateControl.updateStatus(null);
     }
   });
 
-
   /**
    * Constructor
    */
   public JobMonitoringPanel() throws Exception{
-    
-    statusBar = GridPilot.getClassMgr().getStatusBar();
-    statusTable = GridPilot.getClassMgr().getStatusTable();
-    
-    statusUpdateControl = new StatusUpdateControl();
+    statusTable = GridPilot.getClassMgr().getJobStatusTable();
+    statusUpdateControl = new JobStatusUpdateControl();
     submissionControl = GridPilot.getClassMgr().getSubmissionControl();
   }
   
@@ -97,22 +89,18 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   }
 
   public void initGUI(){
-    
-    this.setLayout(new BorderLayout());
 
-    // central panel
-    tpStatLog.setTabPlacement(JTabbedPane.BOTTOM);
+    statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+    this.setLayout(new BorderLayout());
+    mainPanel.setLayout(new BorderLayout());
     
-    spLogView.getViewport().add(logViewerPanel);
     statusTable.addListSelectionListener(new ListSelectionListener(){
       public void valueChanged(ListSelectionEvent e){
         selectionEvent(e);
       }
     });
     spStatusTable.getViewport().add(statusTable);
-    tpStatLog.addTab("Monitor", spStatusTable);
-    tpStatLog.addTab("Logs", spLogView);
-
+    
     makeMenu();
 
     //options panel
@@ -195,13 +183,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         new Insets(30, 5, 0, 5), 0, 0));
 
     // Buttons panel
-    bDecide.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        decide();
-      }
-    });
-    bDecide.setEnabled(false);
-
     bKill.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         kill();
@@ -234,30 +215,26 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         delayChanged();
       }
     });
-
-    pButtons.add(bDecide);
+    
     pButtons.add(bKill);
+    pButtons.add(new JLabel(" | "));
     pButtons.add(bRefresh);
     pButtons.add(cbAutoRefresh);
     pButtons.add(sAutoRefresh);
     pButtons.add(cbRefreshUnits);
 
-    bDecide.setToolTipText("Shows the outputs of the selected jobs");
     bKill.setToolTipText("Kills the selected jobs");
     bRefresh.setToolTipText("Refresh all jobs");
 
-    this.getTopLevelAncestor().add(tpStatLog, BorderLayout.CENTER);
-    this.getTopLevelAncestor().add(pOptions, BorderLayout.EAST);
-    this.getTopLevelAncestor().add(pButtons, BorderLayout.SOUTH);
+    mainPanel.add(pOptions, BorderLayout.EAST);
+    mainPanel.add(pButtons, BorderLayout.SOUTH);
+    mainPanel.add(spStatusTable);
+    this.add(mainPanel);
     
     //this.setPreferredSize(new Dimension(700, 500));
     
   }
 
-  public void windowClosing(){
-    GridPilot.getClassMgr().getGlobalFrame().cbMonitor.setSelected(false);
-  }
-  
   /**
    * Makes the menu shown when the user right-clicks on the status table
    */
@@ -398,8 +375,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     mShow.add(miShowOutput);
     mShow.add(miShowScripts);
 
-
-
     statusTable.addMenuSeparator();
     statusTable.addMenuItem(miKill);
     statusTable.addMenuItem(miDecide);
@@ -410,8 +385,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     statusTable.addMenuItem(miRevalidate);
     statusTable.addMenuItem(miStopUpdate);
     //statusTable.addMenuItem(miResetChanges);
-
-
     statusTable.addMenuItem(mDB);
 
   }
@@ -431,7 +404,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     Debug.debug("panelHidden", 1);
     statusBar.removeLabel();
   }
-
 
   /**
    * Called when check box for auto refresh is selected
@@ -578,8 +550,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   /**
    * Shows full status of the job at the selected row. <p>
-   * @see atcom.jobcontrol.ComputingSystem#getFullStatus(atcom.jobcontrol.JobInfo)
-   * @see atcom.jobcontrol.JobControl#getFullStatus(int)
    */
   private void showFullStatus(){
     final Thread t = new Thread(){
@@ -604,7 +574,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   /**
    * Shows information about the job at the selected row. <p>
-   * @see atcom.jobcontrol.JobControl#getJobInfo(int)
    */
   private void showInfo(){
     String info = DatasetMgr.getJobInfo(statusTable.getSelectedRow());
@@ -673,16 +642,19 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     String user = "";
     String csName = "";
     DBResult allJobDefinitions = null;
-    for(int ii=0; ii<GridPilot.dbs.length; ++ii){
-      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbs[ii]);
-      shownFields = dbPluginMgr.getFieldnames("jobDefinition");//dbPluginMgr.getDBDefFields("jobDefinition");
+    for(int ii=0; ii<GridPilot.dbNames.length; ++ii){
+      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[ii]);
+      shownFields = null;
+      try{
+        shownFields = dbPluginMgr.getFieldnames("jobDefinition");//dbPluginMgr.getDBDefFields("jobDefinition");
+      }
+      catch(Exception e){
+        Debug.debug("Skipping DB "+dbPluginMgr.getDBName(), 1);
+        continue;
+      }
       allJobDefinitions = dbPluginMgr.getJobDefinitions(
             /*datasetID*/"-1", shownFields);
-      for(int i=0; i<allJobDefinitions.fields.length; ++i){
-        Debug.debug(allJobDefinitions.fields[i] + " = " +
-            allJobDefinitions.getValue(0, allJobDefinitions.fields[i]), 3);
-      }
-      Debug.debug ("number of jobs for "+GridPilot.dbs[ii]+
+      Debug.debug ("number of jobs for "+GridPilot.dbNames[ii]+
           ": "+allJobDefinitions.values.length, 2);
 
       for(int i=0; i<allJobDefinitions.values.length; ++i){
@@ -708,7 +680,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           Debug.debug("Getting status: "+idField+":"+id, 3);
           jobStatus = dbPluginMgr.getJobDefStatus(id);
           if(statusList[j]==DBPluginMgr.getStatusId(jobStatus)){
-            DatasetMgr mgr = GridPilot.getClassMgr().getDatasetMgr(GridPilot.dbs[ii],
+            DatasetMgr mgr = GridPilot.getClassMgr().getDatasetMgr(GridPilot.dbNames[ii],
                 dbPluginMgr.getJobDefDatasetID(id));
             Debug.debug("Adding job #"+id, 3);
             mgr.addJobs(new String [] {id});
@@ -727,32 +699,23 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     if (e.getValueIsAdjusting()) return;
 
     ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-    if (lsm.isSelectionEmpty()){
-
+    if(lsm.isSelectionEmpty()){
       bKill.setEnabled(false);
-
-      bDecide.setEnabled(false);
-
       miKill.setEnabled(false);
       miDecide.setEnabled(false);
       mSubmit.setEnabled(false);
       miResubmit.setEnabled(false);
-
       mShow.setEnabled(false);
       miRevalidate.setEnabled(false);
       mDB.setEnabled(false);
-
     }
     else{
       int [] rows = statusTable.getSelectedRows();
-
       if(DatasetMgr.areDecidables(rows)){
-        bDecide.setEnabled(true);
         miDecide.setEnabled(true);
         miRevalidate.setEnabled(true);
       }
       else{
-        bDecide.setEnabled(false);
         miDecide.setEnabled(false);
         miRevalidate.setEnabled(false);
       }
@@ -766,15 +729,19 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         miKill.setEnabled(false);
       }
 
-      if(DatasetMgr.areResumbitables(rows))
+      if(DatasetMgr.areResumbitables(rows)){
         miResubmit.setEnabled(true);
-      else
+      }
+      else{
         miResubmit.setEnabled(false);
+      }
 
-      if(DatasetMgr.areSubmitables(rows))
+      if(DatasetMgr.areSubmitables(rows)){
         mSubmit.setEnabled(true);
-      else
+      }
+      else{
         mSubmit.setEnabled(false);
+      }
 
       miShowFullStatus.setEnabled(true);
       miShowOutput.setEnabled(true);

@@ -315,13 +315,12 @@ public class TransformationCreationPanel extends CreateEditPanel{
             dbPluginMgr),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                new Insets(5, 25, 5, 5), 0, 0));
+                new Insets(5, 22, 5, 5), 0, 0));
       }
       else{
         pAttributes.add(new JLabel(cstAttributesNames[i] + " : "),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
-            GridBagConstraints.CENTER,
-            GridBagConstraints.BOTH,
+            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
             new Insets(5, 25, 5, 5), 0, 0));
       }
       if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled()){
@@ -338,8 +337,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
       }
       pAttributes.add(tcCstAttributes[i],
           new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
-          GridBagConstraints.CENTER,
-          GridBagConstraints.HORIZONTAL,
+          GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
           new Insets(5, 5, 5, 5), 0, 0));
     }
   }

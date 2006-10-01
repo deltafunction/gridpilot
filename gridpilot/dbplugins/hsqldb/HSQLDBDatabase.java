@@ -44,7 +44,9 @@ public class HSQLDBDatabase implements Database{
   private HashMap datasetFieldTypes = new HashMap();
   private String databaseName = null;
   private String dbName = null;
-  ConfigFile configFile = null;
+  private ConfigFile configFile = null;
+  
+  private static String SERVER_RUNNING = "no";
 
   public HSQLDBDatabase(String _dbName,
       String _driver, String _database, String _user, String _passwd){
@@ -121,31 +123,39 @@ public class HSQLDBDatabase implements Database{
     }
     try{
       if(database.startsWith("file:")){
-        // in-memory database
+        // In-memory database
         conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
            user, passwd);
       }
       else if(database.startsWith("hsql:")){
-        // database server
-        if(database.startsWith("hsql://localhost/")){
-          // if on localhost we start the server here
-          server = new Server();
-          String dbPath = database.substring(16);
-          server.setDatabasePath(0, dbPath);
-          databaseName = database.substring(database.lastIndexOf("/")+1);
-          server.setDatabaseName(0, databaseName);
-          Debug.debug("Starting database server, "+databaseName+":"+
-              dbPath, 1);
-          server.start();
-          database = "hsql://localhost/"+databaseName;
+        synchronized(SERVER_RUNNING){
+          // Database server
+          if(SERVER_RUNNING.equalsIgnoreCase("no") &&
+              database.startsWith("hsql://localhost/")){
+            // If there is not a server running and server
+            // should run on localhost, start one
+            Debug.debug("Starting local database server. "+
+                SERVER_RUNNING, 3);
+            server = new Server();
+            String dbPath = database.substring(16);
+            server.setDatabasePath(0, dbPath);
+            databaseName = database.substring(database.lastIndexOf("/")+1);
+            server.setDatabaseName(0, databaseName);
+            Debug.debug("Starting database server, "+databaseName+":"+
+                dbPath, 1);
+            server.start();
+            database = "hsql://localhost/"+databaseName;
+            SERVER_RUNNING = "yes";
+          }
+          conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
+              user, passwd);
         }
-        conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
-           user, passwd);
       }
     }
     catch(Exception e){
       Debug.debug("Could not connect to db "+database+
           ", "+user+", "+passwd+" : "+e, 3);
+      e.printStackTrace();
       return null;
     }  
     try{
@@ -1039,6 +1049,47 @@ public class HSQLDBDatabase implements Database{
     return def;
   }
 
+  public DBRecord getFile(String jobDefinitionID){
+    DBRecord jobDef = getJobDefinition(jobDefinitionID);
+    String [] fields = getFieldNames("file");
+    String [] values = new String[fields.length];
+    DBRecord file = new DBRecord(fields, values);
+    for(int i=0; i<fields.length; ++i){
+      try{
+        file.setValue(fields[i], jobDef.getValue(fields[i]).toString());
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
+      }
+    }
+    for(int i=0; i<jobDef.fields.length; ++i){
+      if(jobDef.fields[i].equalsIgnoreCase("outputFileMapping")){
+        String [] map = Util.split(jobDef.getValue(fields[i]).toString());
+        try{
+          file.setValue("url", map[1]);
+        }
+        catch(Exception e){
+          Debug.debug("WARNING: could not set URL. "+e.getMessage(), 2);
+        }
+      }
+    }
+    return file;
+  }
+
+  // This is not really a file catalog: THE output file is
+  // the first in the list of fn -> pfn mappings of outputFileMapping
+  public String [] getFileURLs(String fileID){
+    String ret = null;
+    try{
+      DBRecord file = getFile(fileID);
+      ret = file.getValue("url").toString();
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
+    }
+    return new String [] {ret};
+  }
+
   // Selects only the fields listed in fieldNames. Other fields are set to "".
   public synchronized DBRecord [] selectJobDefinitions(String datasetID, String [] fieldNames){
     
@@ -1095,7 +1146,7 @@ public class HSQLDBDatabase implements Database{
     jobdefv.removeAllElements();
     return defs;
   }
-    
+
   public DBResult getRuntimeEnvironments(){
     DBRecord jt [] = getRuntimeEnvironmentRecords();
     DBResult res = new DBResult(runtimeEnvironmentFields.length, jt.length);
@@ -1107,7 +1158,7 @@ public class HSQLDBDatabase implements Database{
     }
     return res;
   }
-  
+    
   public DBResult getTransformations(){
     DBRecord jt [] = getTransformationRecords();
     DBResult res = new DBResult(transformationFields.length, jt.length);
@@ -1360,6 +1411,10 @@ public class HSQLDBDatabase implements Database{
       }
     }
     sql += ")";
+    // When pasting to non-mathing schema, there will be these
+    // if  there are multiple non-matching fields
+    sql = sql.replaceFirst(",\\) VALUES ", ") VALUES ");
+    sql = sql.replaceFirst(",\\)$", ")");
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
@@ -1947,6 +2002,10 @@ public class HSQLDBDatabase implements Database{
       e.printStackTrace();
       return dateInput;
     }
+  }
+
+  public void registerFileLocation(String fileID, String url){
+    // not applicable, not a file catalog
   }
 
 }

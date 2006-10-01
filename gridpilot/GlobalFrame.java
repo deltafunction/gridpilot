@@ -29,7 +29,7 @@ public class GlobalFrame extends GPFrame{
   private CreateEditDialog pDialog;
   
   public JTabbedPane tabbedPane = new JTabbedPane();
-  public JobMonitoringPanel jobMonitoringPanel;
+  public MonitoringPanel monitoringPanel;
   public JMenu menuEdit = new JMenu("Edit");
   public JMenuItem menuEditCopy = new JMenuItem("Copy (ctrl c)");
   public JMenuItem menuEditCut = new JMenuItem("Cut (ctrl x)");
@@ -61,20 +61,20 @@ public class GlobalFrame extends GPFrame{
     container.add(statusBar, BorderLayout.SOUTH);
     statusBar.setLabel("GridPilot welcomes you!", 20);
     
-    jobMonitoringPanel = new JobMonitoringPanel();
+    monitoringPanel = new MonitoringPanel();
     
     container.add(tabbedPane, BorderLayout.CENTER);
     
     container.validate();
 
-    if(GridPilot.getDBs().length>0){
+    if(GridPilot.dbNames.length>0){
       for(int i=0; i<GridPilot.tabs.length; ++i){
         try{
-          addPanel(new DBPanel(GridPilot.getDBs()[0], GridPilot.tabs[i]));
+          addPanel(new DBPanel(GridPilot.dbNames[0], GridPilot.tabs[i]));
         }
         catch(Exception e){
           Debug.debug("ERROR: could not load database panel for "+
-              GridPilot.getDBs()[0] + " : " + GridPilot.tabs[i], 1);
+              GridPilot.dbNames[0] + " : " + GridPilot.tabs[i], 1);
           e.printStackTrace();
         }
       }
@@ -114,7 +114,7 @@ public class GlobalFrame extends GPFrame{
               public void run(){
                 try{
                   BrowserPanel bp = new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(),
-                      "GridPilot File Browser", "", "", false, true, true);
+                      "GridPilot File Browser", "", "", false, true, true, null);
                   bp.okSetEnabled(false);
                 }
                 catch(Exception ex){
@@ -263,7 +263,8 @@ public class GlobalFrame extends GPFrame{
       return;
     } 
     try{
-      BrowserPanel wb = new BrowserPanel(this, "About", aboutURL.toExternalForm(), "", false, false, false);
+      BrowserPanel wb = new BrowserPanel(this, "About",
+          aboutURL.toExternalForm(), "", false, false, false, null);
       wb.bCancel.setEnabled(false);
     }
     catch(Exception e){
@@ -293,7 +294,7 @@ public class GlobalFrame extends GPFrame{
     }
   }
 
-  public JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Job monitor (ctrl m)");
+  public JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show monitor (ctrl m)");
   /**
    * Creates the menu in the main menu bar.
    */
@@ -366,14 +367,14 @@ public class GlobalFrame extends GPFrame{
     
     menuView.addSeparator();
 
-    JMenuItem miBrowser = new JMenuItem("File browser (ctrl o)");
+    JMenuItem miBrowser = new JMenuItem("New browser (ctrl o)");
     miBrowser.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         MyThread t = (new MyThread(){
           public void run(){
             try{
               BrowserPanel bp = new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(),
-                  "GridPilot File Browser", "", "", false, true, true);
+                  "GridPilot File Browser", "", "", false, true, true, null);
               bp.okSetEnabled(false);
             }
             catch(Exception ex){
@@ -388,22 +389,22 @@ public class GlobalFrame extends GPFrame{
     menuView.add(miBrowser);
     
     menuView.addSeparator();
-
+    
     JMenu miNewRuntimeEnvironmentTab = new JMenu("runtimeEnvironment");
-    JMenuItem [] miNewRuntimeEnvironmentTabs = new JMenuItem[GridPilot.getDBs().length];
+    JMenuItem [] miNewRuntimeEnvironmentTabs = new JMenuItem[GridPilot.dbNames.length];
     menuView.add(miNewRuntimeEnvironmentTab);
-    for(i=0; i<GridPilot.getDBs().length; ++i){
+    for(i=0; i<GridPilot.dbNames.length; ++i){
       // Check if there is a runtimeEnvironment table in this database
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.getDBs()[i]).getFieldNames("runtimeEnvironment")==null)){
+            GridPilot.dbNames[i]).getFieldNames("runtimeEnvironment")==null)){
           continue;
-        };
+        }
       }
       catch(Exception e){
         continue;
       }
-      miNewRuntimeEnvironmentTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
+      miNewRuntimeEnvironmentTabs[i] = new JMenuItem(GridPilot.dbNames[i]);
       miNewRuntimeEnvironmentTabs[i].addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           try{
@@ -421,20 +422,20 @@ public class GlobalFrame extends GPFrame{
     }
 
     JMenu miNewTransformationTab = new JMenu("transformation");
-    JMenuItem [] miNewTransformationTabTabs = new JMenuItem[GridPilot.getDBs().length];
+    JMenuItem [] miNewTransformationTabTabs = new JMenuItem[GridPilot.dbNames.length];
     menuView.add(miNewTransformationTab);
-    for(i=0; i<GridPilot.getDBs().length; ++i){
+    for(i=0; i<GridPilot.dbNames.length; ++i){
       // Check if there is a transformation table in this database
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.getDBs()[i]).getFieldNames("transformation")==null)){
+            GridPilot.dbNames[i]).getFieldNames("transformation")==null)){
           continue;
-        };
+        }
       }
       catch(Exception e){
         continue;
       }
-      miNewTransformationTabTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
+      miNewTransformationTabTabs[i] = new JMenuItem(GridPilot.dbNames[i]);
       miNewTransformationTabTabs[i].addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           try{
@@ -452,10 +453,10 @@ public class GlobalFrame extends GPFrame{
     }
 
     JMenu miNewTaskTab = new JMenu("dataset");
-    JMenuItem [] miNewTaskTabs = new JMenuItem[GridPilot.getDBs().length];
+    JMenuItem [] miNewTaskTabs = new JMenuItem[GridPilot.dbNames.length];
     menuView.add(miNewTaskTab);
-    for(i=0; i<GridPilot.getDBs().length; ++i){
-      miNewTaskTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
+    for(i=0; i<GridPilot.dbNames.length; ++i){
+      miNewTaskTabs[i] = new JMenuItem(GridPilot.dbNames[i]);
       miNewTaskTabs[i].addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           try{
@@ -473,21 +474,21 @@ public class GlobalFrame extends GPFrame{
     }
     
     JMenu miNewJobDefTab = new JMenu("jobDefinition");
-    JMenuItem [] miNewJobDefTabs = new JMenuItem[GridPilot.getDBs().length];
+    JMenuItem [] miNewJobDefTabs = new JMenuItem[GridPilot.dbNames.length];
     menuView.add(miNewJobDefTab);
     
-    for(i=0; i<GridPilot.getDBs().length; ++i){
+    for(i=0; i<GridPilot.dbNames.length; ++i){
       // Check if there is a jobDefinition table in this database
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.getDBs()[i]).getFieldNames("jobDefinition")==null)){
+            GridPilot.dbNames[i]).getFieldNames("jobDefinition")==null)){
           continue;
-        };
+        }
       }
       catch(Exception e){
         continue;
       }
-      miNewJobDefTabs[i] = new JMenuItem(GridPilot.getDBs()[i]);
+      miNewJobDefTabs[i] = new JMenuItem(GridPilot.dbNames[i]);
       miNewJobDefTabs[i].addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           try{
@@ -553,7 +554,7 @@ public class GlobalFrame extends GPFrame{
     try{
       if(pDialog==null){
         Debug.debug("Creating new job monitoring dialog", 2);
-        pDialog = new CreateEditDialog(jobMonitoringPanel, false, false, false);
+        pDialog = new CreateEditDialog(monitoringPanel, false, false, false);
         pDialog.setTitle("Job Monitor");
         pDialog.pack();
         pDialog.setVisible(true);
@@ -576,7 +577,7 @@ public class GlobalFrame extends GPFrame{
     try{
       if(pDialog==null){
         Debug.debug("Creating new job monitoring dialog", 2);
-        pDialog = new CreateEditDialog(jobMonitoringPanel, false, false, false);
+        pDialog = new CreateEditDialog(monitoringPanel, false, false, false);
         pDialog.setTitle("Job Monitor");
         pDialog.pack();
       }

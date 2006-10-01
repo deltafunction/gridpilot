@@ -10,6 +10,8 @@ import gridpilot.GridPilot;
 import javax.swing.*;
 import javax.swing.event.*;
 
+import org.globus.util.GlobusURL;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.util.HashSet;
@@ -38,7 +40,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JPanel pButtonTableResults = new JPanel(new FlowLayout(FlowLayout.CENTER));
   private JButton bCreateRecords = new JButton("Define new record(s)");
   private JButton bEditRecord = new JButton("Edit record");
-  private JButton bDownload = new JButton("Download file(s)");
+  private JButton bDownload = new JButton("Replicate file(s)");
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
   private JButton bSubmit = new JButton("Submit job(s)");
   private JButton bMonitor = new JButton("Monitor job(s)");
@@ -155,7 +157,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      }
      
      tableResults = new Table(hiddenFields, fieldNames,
-         GridPilot.colorMapping);
+         GridPilot.jobColorMapping);
      
      setFieldArrays();
      
@@ -496,7 +498,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       
       bMonitor.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          monitor();
+          monitorJobs();
         }
       });
 
@@ -1039,7 +1041,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     Debug.debug("Making file menu", 3);
     JMenuItem miDelete = new JMenuItem("Delete");
     miEdit = new JMenuItem("Edit");
-    JMenuItem miDownload = new JMenuItem("Download file(s)");
+    JMenuItem miDownload = new JMenuItem("Replicate file(s)");
     miDelete.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         deleteFiles();
@@ -1113,7 +1115,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     miMonitor.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        monitor();
+        monitorJobs();
       }
     });
     miDelete.addActionListener(new ActionListener(){
@@ -1717,20 +1719,146 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void download(){
     new Thread(){
       public void run(){
-        DBRecord jobDef;
-        String [] selectedFileIdentifiers = getSelectedIdentifiers();
-        String idField = dbPluginMgr.getIdentifierField("file");
-        for(int i=0; i<selectedFileIdentifiers.length; ++i){
+        String defaultURL = "";
+        // First get download dir or URL.
+        // Default to either home dir on "home gridftp server"
+        // as defined in config file, or system.home
+        if(GridPilot.gridftpHomeURL!=null){
+          defaultURL = GridPilot.gridftpHomeURL;
         }
+        else{
+          defaultURL = "~";
+        }
+        
+        if(defaultURL.startsWith("~")){
+          try{
+            String userHome = System.getProperty("user.home");
+            if(userHome.endsWith(File.separator) || userHome.endsWith("/")){
+              userHome = userHome.substring(0, userHome.length()-1);
+            }
+            defaultURL = userHome + "/" +
+            (defaultURL.length()>1 ? defaultURL.substring(2) : "");
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+        }
+        
+        // if the table jobDefinition is present, we are using
+        // the native tables and only one url/pfn per jobDefinition/file
+        // is allowed, thus no checkbox needed
+        JCheckBox jcb = null;
+        try{
+          if(dbPluginMgr.getFieldNames("jobDefinition")==null){
+            jcb = new JCheckBox("Register new locations ");
+          }
+        }
+        catch(Exception e){
+          jcb = null;
+        }
+
+        String dlUrl = getReplicaURL(defaultURL, jcb);
+        // queue downloads, if checkbox is set, request registering new locations
+        // by passing on dbPluginMgr
+        startDownload(dlUrl, (jcb!=null && jcb.isSelected())?dbPluginMgr:null);
       }
     }.start();
   }
 
+  private String getReplicaURL(String url, JCheckBox jcb){
+    Debug.debug("URL: "+url, 3);
+    JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
+    frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    final String finUrl = url;
+    final String finBaseUrl = "";//url;
+    BrowserPanel wb = null;
+    try{
+      wb = new BrowserPanel(
+                      GridPilot.getClassMgr().getGlobalFrame(),
+                      "Choose file",
+                      finUrl,
+                      finBaseUrl,
+                      true,
+                      false,
+                      true,
+                      jcb);
+    }
+    catch(Exception eee){
+      Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
+      eee.printStackTrace();
+      GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
+      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+      try{
+        confirmBox.getConfirm("URL could not be opened",
+                             "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
+                          new Object[] {"OK"});
+      }
+      catch(Exception eeee){
+        Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
+      }
+    }
+    if(wb!=null && wb.lastURL!=null &&
+        wb.lastURL.startsWith(finBaseUrl)){
+        //GridPilot.getClassMgr().getStatusBar().setLabel("");
+    }
+    else{
+      // Don't do anything if we cannot get a URL
+      Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
+    }
+    frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+    //GridPilot.getClassMgr().getStatusBar().setLabel("");
+    return wb.lastURL.substring(finBaseUrl.length());
+  }
+  
+  private void startDownload(final String dlUrl,
+      final DBPluginMgr regDBPluginMgr){
+    DBRecord file;
+    String [] selectedFileIdentifiers = getSelectedIdentifiers();
+    String nameField = dbPluginMgr.getNameField("file");
+    String [] urls = null;
+    GlobusURL srcUrl = null;
+    GlobusURL destUrl = null;
+    TransferInfo transfer = null;
+    Vector transfers = new Vector();
+    TransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
+    for(int i=0; i<selectedFileIdentifiers.length; ++i){
+      file = dbPluginMgr.getFile(selectedFileIdentifiers[i]);
+      urls = dbPluginMgr.getFileURLs(selectedFileIdentifiers[i]);
+      for(int j=0; j<urls.length; ++j){
+        try{
+          srcUrl = new GlobusURL(urls[j]);
+          destUrl = new GlobusURL(dlUrl);
+          transfer = new TransferInfo(srcUrl, destUrl);
+          transfer.setDBPluginMgr(regDBPluginMgr);
+          transfers.add(transfer);
+        }
+        catch(Exception e){
+          String error = "WARNING: could not download file "+
+             file.getValue(nameField)+". "+e.getMessage();
+          GridPilot.getClassMgr().getLogFile().addMessage(error);
+          Debug.debug(error, 1);
+          e.printStackTrace();
+        }
+        try{
+          transferControl.queue(transfers);
+        }
+        catch(Exception e){
+          String error = "WARNING: could not queue transfers "+
+          ". "+e.getMessage();
+          GridPilot.getClassMgr().getLogFile().addMessage(error);
+          Debug.debug(error, 1);
+        }
+      }
+    }
+  }
+  
   /**
    * Called when mouse is pressed on the Monitor button
+   * on the jobDefinition panel
    */
-  private void monitor(){
+  private void monitorJobs(){
     GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel();
+    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.tpStatLog.setSelectedIndex(0);
     new Thread(){
       public void run(){        
         DBRecord jobDef;
@@ -2162,12 +2290,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         result = (String)contents.getTransferData(DataFlavor.stringFlavor);
       }
       catch(UnsupportedFlavorException ex){
-        //highly unlikely since we are using a standard DataFlavor
-        System.out.println(ex);
+        // highly unlikely since we are using a standard DataFlavor
+        Debug.debug(ex.getMessage(), 1);
         ex.printStackTrace();
       }
-      catch (IOException ex) {
-        System.out.println(ex);
+      catch (IOException ex){
+        Debug.debug(ex.getMessage(), 1);
         ex.printStackTrace();
       }
     }

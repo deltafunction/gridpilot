@@ -52,8 +52,8 @@ public class Table extends JTable{
       synchronized(table){
 
         if(colorMapping!=null  && value!=null && (
-            table.getColumnName(column).equalsIgnoreCase("status") ||
-            table.getColumnName(column).equalsIgnoreCase("currentstate"))){
+            table.getColumnName(column).toLowerCase().endsWith("status") ||
+            table.getColumnName(column).toLowerCase().endsWith("state"))){
           for(int i=0; i<colorMapping.length/2; ++i){
             if(value.toString().equalsIgnoreCase(colorMapping[2*i])){
               JLabel l = new JLabel(value.toString());
@@ -232,8 +232,8 @@ public class Table extends JTable{
 
     Util.waitForThread(t, "", timeOut, "createMenu");*/
     
-    Debug.debug("updateUI", 2);
-    updateUI();
+    //Debug.debug("updateUI", 2);
+    //updateUI();
     Debug.debug("setTable done", 2);
   }
 

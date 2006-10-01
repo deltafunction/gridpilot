@@ -5,7 +5,6 @@ import javax.swing.*;
 import java.awt.event.*;
 import java.util.Enumeration;
 import java.util.Iterator;
-import java.util.Random;
 import java.util.Vector;
 
 import gridpilot.DBRecord;
@@ -13,17 +12,18 @@ import gridpilot.DBRecord;
 /**
  * Controls the job submission. <p>
  * When submitting some jobs (giving logical file id or jobs already created),
- * these jobs are put in a queue (<code>toSubmitJobs</code>). Each <code>timeBetweenSubmission</code>,
- * a Timer checks if there is some jobs in this queue (this timer is stopped when the
- * queue is empty, and re-started when new jobs arrive). <br>
- * If there is any, the first job is removed from <code>toSubmitJobs</code>, put in
- * <code>submittingJobs</code>
+ * these jobs are put in a queue (<code>toSubmitJobs</code>). Each
+ * <code>timeBetweenSubmissions</code>, a Timer checks if there is some jobs in
+ * this queue (this timer is stopped when the queue is empty, and restarted when
+ * new jobs arrive). <br>
+ * If there are any, the first job is removed from <code>toSubmitJobs</code> and
+ * put in <code>submittingJobs</code>
  */
 public class SubmissionControl{
   private Vector submittedJobs;
   private StatusBar statusBar;
   private JProgressBar pbSubmission;
-  private boolean isProgressBarSet=false;
+  private boolean isProgressBarSet = false;
   private ConfigFile configFile;
   private LogFile logFile;
   private Table statusTable;
@@ -36,15 +36,14 @@ public class SubmissionControl{
   private Vector submittingJobs = new Vector();
  /** Maximum number of simulaneous threads for submission. <br>
    * It is not the maximum number of running jobs on the Computing System */
-  private int maxSimultaneousSubmission = 5;
+  private int maxSimultaneousSubmissions = 5;
   /** Delay between the begin of two submission threads */
-  private int timeBetweenSubmission = 1000;
-  private Random rand = new Random();
+  private int timeBetweenSubmissions = 1000;
   private String isRand = null;
 
   public SubmissionControl(){
     submittedJobs = GridPilot.getClassMgr().getSubmittedJobs();
-    statusTable = GridPilot.getClassMgr().getStatusTable();
+    statusTable = GridPilot.getClassMgr().getJobStatusTable();
     csPluginMgr = GridPilot.getClassMgr().getCSPluginMgr();
     
     statusBar = GridPilot.getClassMgr().getStatusBar();
@@ -62,17 +61,17 @@ public class SubmissionControl{
   
   /**
    * Reloads some values from configuration file. <p>
-   * Theses values are : <ul>
+   * These values are : <ul>
    * <li>{@link #defaultUserName}
-   * <li>{@link #maxSimultaneousSubmission}
-   * <li>{@link #timeBetweenSubmission} </ul><p>
+   * <li>{@link #maxSimultaneousSubmissions}
+   * <li>{@link #timeBetweenSubmissions} </ul><p>
    *
    */
   public void loadValues(){
-    String tmp = configFile.getValue("GridPilot", "maximum simultaneous submission");
+    String tmp = configFile.getValue("GridPilot", "maximum simultaneous submissions");
     if(tmp != null){
       try{
-        maxSimultaneousSubmission = Integer.parseInt(tmp);
+        maxSimultaneousSubmissions = Integer.parseInt(tmp);
       }
       catch(NumberFormatException nfe){
         logFile.addMessage("Value of \"maximum simultaneoud submission\" "+
@@ -80,25 +79,25 @@ public class SubmissionControl{
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage("GridPilot", "maximum simultaneous submission") + "\n" +
-                              "Default value = " + maxSimultaneousSubmission);
+      logFile.addMessage(configFile.getMissingMessage("GridPilot", "maximum simultaneous submissions") + "\n" +
+                              "Default value = " + maxSimultaneousSubmissions);
     tmp = configFile.getValue("GridPilot", "time between submissions");
     if(tmp != null){
       try{
-        timeBetweenSubmission = Integer.parseInt(tmp);
+        timeBetweenSubmissions = Integer.parseInt(tmp);
       }
       catch(NumberFormatException nfe){
-        logFile.addMessage("Value of \"time between submission\" is not"+
+        logFile.addMessage("Value of \"time between submissions\" is not"+
                                     " an integer in configuration file", nfe);
       }
     }
     else{
       logFile.addMessage(configFile.getMissingMessage("GridPilot", "time between submissions") + "\n" +
-                              "Default value = " + timeBetweenSubmission);
+                              "Default value = " + timeBetweenSubmissions);
     }
-    Debug.debug("Setting time between submissions "+timeBetweenSubmission, 3);
+    Debug.debug("Setting time between submissions "+timeBetweenSubmissions, 3);
     timer.setInitialDelay(0);
-    timer.setDelay(timeBetweenSubmission);
+    timer.setDelay(timeBetweenSubmissions);
     String resourcesPath = configFile.getValue("GridPilot", "resources");
     if(resourcesPath != null && !resourcesPath.endsWith("/"))
       resourcesPath += "/";
@@ -116,8 +115,8 @@ public class SubmissionControl{
   /**
    * Creates the jobs for the specified job definitions and submits them on the specified
    * computing system. <p>
-   * Each job is reserved, the job is created, a row is added to statusTable,
-   * and {@link #submit(JobInfo)} is called. <p>
+   * Each job is reserved, the job is created, a row is added to statusTable
+   * and submit is called. <p>
    */
   public void submitJobDefinitions(/*vector of JobDefinitions*/Vector selectedJobs,
       String csName, DBPluginMgr dbPluginMgr){
@@ -188,7 +187,7 @@ public class SubmissionControl{
         // jobControl.updateJobsByStatus();
         statusBar.setLabel("Monitoring done.");
         statusBar.stopAnimation();
-        submit(newJobs);
+        queue(newJobs);
       }
     }
   }
@@ -219,18 +218,18 @@ public class SubmissionControl{
       statusBar.removeLabel();
       if(!newJobs.isEmpty()){
         // jobControl.updateJobsByStatus();
-        submit(newJobs);
+        queue(newJobs);
       }
     }
   }
 
   /**
    * Submits the given jobs, on the computing system given by job.getComputingSystem. <p>
-   * Theses job are put in {@link #toSubmitJobs}. <p>
+   * These jobs are put in toSubmitJobs. <p>
    */
-  private void submit(Vector jobs){
+  private void queue(Vector jobs){
     if(isRand!=null && isRand.equalsIgnoreCase("yes")){
-      jobs = shuffle(jobs);
+      jobs = Util.shuffle(jobs);
     }
     pbSubmission.setMaximum(pbSubmission.getMaximum() + jobs.size());
     pbSubmission.addMouseListener(new MouseAdapter(){
@@ -253,18 +252,6 @@ public class SubmissionControl{
     }
     statusBar.setLabel("Adding done.");
     statusBar.stopAnimation();
-  }
-
-  /**
-   * Returns a Vector which contains all jobs from <code>v</code>, but in a
-   * random order. <p>
-   */
-  private Vector shuffle(Vector v){
-    Vector w = new Vector();
-    while(v.size()>0){
-      w.add(v.remove(rand.nextInt(v.size())));
-    }
-    return w;
   }
 
   /**
@@ -446,7 +433,7 @@ public class SubmissionControl{
     }
     DatasetMgr.updateJobCells(submitables, statusTable);
     // if all went well we can now submit
-    submit(submitables);
+    queue(submitables);
   }
 
  /**
@@ -454,7 +441,7 @@ public class SubmissionControl{
   * waiting jobs. If there are any, creates new submission threads
   */
   private synchronized void trigSubmission(){
-    if(submittingJobs.size()<maxSimultaneousSubmission && !toSubmitJobs.isEmpty()){
+    if(submittingJobs.size()<maxSimultaneousSubmissions && !toSubmitJobs.isEmpty()){
       // transfers job from toSubmitJobs to submittingJobs
       final JobInfo job = (JobInfo) toSubmitJobs.remove(0);
       submittingJobs.add(job);
@@ -468,7 +455,6 @@ public class SubmissionControl{
       timer.stop();
     }
   }
-
 
   /**
    * Submits the specified job. <p>
@@ -563,7 +549,7 @@ public class SubmissionControl{
     Enumeration e = toSubmitJobs.elements();
     while(e.hasMoreElements()){
       JobInfo job = (JobInfo) e.nextElement();
-      statusTable.setValueAt("Not submitted (Cancelled)!", job.getTableRow(), DatasetMgr.FIELD_JOBID);
+      statusTable.setValueAt("Not submitted (cancelled)!", job.getTableRow(), DatasetMgr.FIELD_JOBID);
       statusTable.setValueAt(job.getName(), job.getTableRow(), DatasetMgr.FIELD_JOBNAME);
       job.setInternalStatus(ComputingSystem.STATUS_FAILED);
       job.setNeedToBeRefreshed(false);

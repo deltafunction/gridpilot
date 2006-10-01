@@ -34,7 +34,7 @@ import gridpilot.LogFile;
 import gridpilot.GridPilot;
 import gridpilot.StatusBar;
 import gridpilot.Util;
-import gridpilot.fsplugins.gridftp.GridFTPFileSystem;
+import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 
 /**
  * Main class for the NorduGrid plugin. <br>
@@ -178,12 +178,9 @@ public class NGComputingSystem implements ComputingSystem{
     catch(Exception e){
       Debug.debug("ERROR getting runtime database: "+e.getMessage(), 1);
     }
-    if(runtimeDB==null || runtimeDB.equals("")){
-      runtimeDB = "HSQLDB";
-    }
-    
-    setupRuntimeEnvironments(csName);
-    
+    if(runtimeDB!=null && !runtimeDB.equals("")){
+      setupRuntimeEnvironments(csName);
+    }    
   }
   
   /**
@@ -192,8 +189,15 @@ public class NGComputingSystem implements ComputingSystem{
    */
   public void setupRuntimeEnvironments(String csName){
     Set runtimes = null;
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(
-        runtimeDB);
+    DBPluginMgr dbPluginMgr = null;      
+    try{
+      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(
+          runtimeDB);
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: could not load runtime DB "+runtimeDB, 1);
+      return;
+    }
     finalRuntimes = new HashSet();
     if(useInfoSystem){
       Object rte = null;
@@ -287,7 +291,7 @@ public class NGComputingSystem implements ComputingSystem{
         doUpdate = extractStatus(job, statusLine);
       }
       else{
-        doUpdate = true;
+        doUpdate = false;//true;
       }
     }
 
@@ -395,7 +399,7 @@ public class NGComputingSystem implements ComputingSystem{
 
   public void clearOutputMapping(JobInfo job){
     
-    GridFTPFileSystem gridftpFileSystem = GridPilot.getClassMgr().getGridFTPFileSystem();
+    GSIFTPFileTransfer gsiftpFileTransfer = GridPilot.getClassMgr().getGSIFTPFileTransfer();
     
     // Clean job off grid. - just in case...
     try{
@@ -424,7 +428,7 @@ public class NGComputingSystem implements ComputingSystem{
     for(int i=0; i<outputMapping.length/2-1; ++i){
       try{
         fileName = Util.addFile(outputMapping[2*i+1]);
-        gridftpFileSystem.deleteFile(new GlobusURL(fileName));
+        gsiftpFileTransfer.deleteFile(new GlobusURL(fileName));
       }
       catch(Exception e){
         error = "WARNING: could not delete output file. "+e.getMessage();
@@ -436,7 +440,7 @@ public class NGComputingSystem implements ComputingSystem{
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
       try{
-        gridftpFileSystem.deleteFile(new GlobusURL(finalStdOut));
+        gsiftpFileTransfer.deleteFile(new GlobusURL(finalStdOut));
       }
       catch(Exception e){
         error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
@@ -449,7 +453,7 @@ public class NGComputingSystem implements ComputingSystem{
     }
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
       try{
-        gridftpFileSystem.deleteFile(new GlobusURL(finalStdErr));
+        gsiftpFileTransfer.deleteFile(new GlobusURL(finalStdErr));
       }
       catch(Exception e){
         error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
@@ -1067,7 +1071,7 @@ public class NGComputingSystem implements ComputingSystem{
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
     
-    GridFTPFileSystem gridftpFileSystem = GridPilot.getClassMgr().getGridFTPFileSystem();
+    GSIFTPFileTransfer gridftpFileSystem = GridPilot.getClassMgr().getGSIFTPFileTransfer();
 
     /**
      * move temp StdOut -> finalStdOut
@@ -1087,7 +1091,7 @@ public class NGComputingSystem implements ComputingSystem{
         //throw e;
       }
       Debug.debug("Post processing : Renaming " + job.getStdOut() + " in " + finalStdOut, 2);
-      // TODO: use DownloadMgr
+      // TODO: use TransferControl
       // if(!shell.moveFile(job.getStdOut(), finalStdOut)){
       try{
         gridftpFileSystem.putFile(new File(job.getStdOut()),
