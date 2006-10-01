@@ -285,7 +285,7 @@ public class NGScriptGenerator extends ScriptGenerator{
         return null;
       }
       catch(Exception ioe){
-        System.out.println(ioe.getMessage());
+        Debug.debug(ioe.getMessage(), 1);
         ioe.printStackTrace();
         return null;
       }
