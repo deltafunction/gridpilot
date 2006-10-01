@@ -34,7 +34,7 @@ import org.globus.gsi.GlobusCredential;
 public class SecureWebServiceConnection extends WebServiceConnection {
 
 //	private final String protocolname="https"; //read by superclass
-	private HttpsURLConnection huc; //set and used by superclass
+	//private HttpsURLConnection huc; //set and used by superclass
 	private TrustManager [] tm;
 	private KeyManager[] km;
 	private KeyStore ks;
