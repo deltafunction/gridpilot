@@ -114,7 +114,7 @@ public class GlobalFrame extends GPFrame{
               public void run(){
                 try{
                   BrowserPanel bp = new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(),
-                      "GridPilot File Browser", "", "", false, true, true, null);
+                      "GridPilot File Browser", "", "", false, true, true, null, null);
                   bp.okSetEnabled(false);
                 }
                 catch(Exception ex){
@@ -264,7 +264,7 @@ public class GlobalFrame extends GPFrame{
     } 
     try{
       BrowserPanel wb = new BrowserPanel(this, "About",
-          aboutURL.toExternalForm(), "", false, false, false, null);
+          aboutURL.toExternalForm(), "", false, false, false, null, null);
       wb.bCancel.setEnabled(false);
     }
     catch(Exception e){
@@ -374,7 +374,7 @@ public class GlobalFrame extends GPFrame{
           public void run(){
             try{
               BrowserPanel bp = new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(),
-                  "GridPilot File Browser", "", "", false, true, true, null);
+                  "GridPilot File Browser", "", "", false, true, true, null, null);
               bp.okSetEnabled(false);
             }
             catch(Exception ex){
@@ -576,9 +576,9 @@ public class GlobalFrame extends GPFrame{
   public void showMonitoringPanel(){
     try{
       if(pDialog==null){
-        Debug.debug("Creating new job monitoring dialog", 2);
+        Debug.debug("Creating new monitoring dialog", 2);
         pDialog = new CreateEditDialog(monitoringPanel, false, false, false);
-        pDialog.setTitle("Job Monitor");
+        pDialog.setTitle("Monitor");
         pDialog.pack();
       }
       pDialog.setVisible(true);
