@@ -1320,8 +1320,8 @@ public class MySQLDatabase implements Database{
       }
     }
     for(int i=0; i<jobDef.fields.length; ++i){
-      if(jobDef.fields[i].equalsIgnoreCase("outputFileMapping")){
-        String [] map = Util.split(jobDef.getValue(fields[i]).toString());
+      if(jobDef.fields[i].equalsIgnoreCase("outFileMapping")){
+        String [] map = Util.split(jobDef.getValue(jobDef.fields[i]).toString());
         try{
           file.setValue("url", map[1]);
         }
@@ -1334,7 +1334,7 @@ public class MySQLDatabase implements Database{
   }
 
   // This is not really a file catalog: THE output file is
-  // the first in the list of fn -> pfn mappings of outputFileMapping
+  // the first in the list of fn -> pfn mappings of outFileMapping
   public String [] getFileURLs(String fileID){
     String ret = null;
     try{
