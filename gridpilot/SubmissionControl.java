@@ -442,7 +442,7 @@ public class SubmissionControl{
   */
   private synchronized void trigSubmission(){
     if(submittingJobs.size()<maxSimultaneousSubmissions && !toSubmitJobs.isEmpty()){
-      // transfers job from toSubmitJobs to submittingJobs
+      // transfer job from toSubmitJobs to submittingJobs
       final JobInfo job = (JobInfo) toSubmitJobs.remove(0);
       submittingJobs.add(job);
       new Thread(){

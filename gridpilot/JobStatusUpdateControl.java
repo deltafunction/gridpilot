@@ -123,7 +123,7 @@ public class JobStatusUpdateControl{
      * Load of maxSimultaneousChecking
      */
     String tmp = configFile.getValue("GridPilot", "maximum simultaneous checking");
-    if(tmp != null){
+    if(tmp!=null){
       try{
         maxSimultaneousChecking = Integer.parseInt(tmp);
       }
