@@ -65,13 +65,17 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
   public BrowserPanel(JFrame _parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
-      boolean _withNavigation, JCheckBox _jBox) throws Exception{
+      boolean _withNavigation, JCheckBox _jBox, String _filter) throws Exception{
     super(_parent);
     baseUrl = _baseUrl;
     origUrl = url;
     withFilter = _withFilter;
     withNavigation = _withNavigation;
     jBox = _jBox;
+    
+    if(_filter!=null && !_filter.equals("")){
+      jtFilter.setText(_filter);
+    }
     
     setModal(modal);
     
