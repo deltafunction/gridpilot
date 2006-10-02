@@ -25,9 +25,7 @@ public abstract class StatisticsPanel extends JPanel{
   protected Vector painters = new Vector();
 
   public StatisticsPanel(String title){
-    
-    colors = DBPluginMgr.getStatusColors();
-    
+        
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED), title));
 
     addMouseListener(new MouseAdapter(){
@@ -36,7 +34,7 @@ public abstract class StatisticsPanel extends JPanel{
           style = (style+1) % (painters.size()*2);
         }
         else{
-          style = (style == 0 ? painters.size()*2-1 : style -1);
+          style = (style==0 ? painters.size()*2-1 : style-1);
         }
         update();
         //repaint();
