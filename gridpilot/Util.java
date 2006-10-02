@@ -51,7 +51,6 @@ import javax.swing.event.HyperlinkListener;
 import javax.swing.plaf.UIResource;
 import javax.swing.text.JTextComponent;
 
-import org.globus.common.CoGProperties;
 import org.globus.gsi.CertUtil;
 import org.globus.gsi.GSIConstants;
 import org.globus.gsi.GlobusCredential;
@@ -333,6 +332,7 @@ public class Util{
                                   true,
                                   true,
                                   false,
+                                  null,
                                   null);
                 }
                 catch(Exception eee){
@@ -586,7 +586,7 @@ public class Util{
     return myCredentials;
   }
 
-  public static String setupDefaultCACertificates(CoGProperties prop) throws IOException {
+  public static String setupDefaultCACertificates() throws IOException {
     try{
       // get a temp name
       File tmpFile = File.createTempFile(/*prefix*/"certificates", /*suffix*/"");
