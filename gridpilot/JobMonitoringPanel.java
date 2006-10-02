@@ -223,7 +223,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     pButtons.add(sAutoRefresh);
     pButtons.add(cbRefreshUnits);
 
-    bKill.setToolTipText("Kills the selected jobs");
+    bKill.setToolTipText("Kill the selected jobs");
     bRefresh.setToolTipText("Refresh all jobs");
 
     mainPanel.add(pOptions, BorderLayout.EAST);
