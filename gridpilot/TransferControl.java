@@ -63,6 +63,7 @@ public class TransferControl{
       }
     });
     loadValues();
+    pbSubmission = new JProgressBar(0,0);
   }
   
   /**
@@ -82,19 +83,26 @@ public class TransferControl{
     GlobusURL firstSrc = ((TransferInfo) toSubmitTransfers.get(0)).getSource();
     GlobusURL firstDest = ((TransferInfo) toSubmitTransfers.get(0)).getDestination();
     
+    Debug.debug("First transfer: "+((TransferInfo) toSubmitTransfers.get(0)), 3);
+    
     String [] fts = GridPilot.ftNames;
     String pluginName = null;
     Vector transferVector = new Vector();
     GlobusURL [] theseSources = null;
     GlobusURL [] theseDestinations = null;
     TransferInfo [] theseTransfers = null;
+    GlobusURL [] checkSources = null;
+    GlobusURL [] checkDestinations = null;
     
     try{
       // Select first plugin that supports the protocol of the next transfer
       for(int i=0; i<fts.length; ++i){
+        Debug.debug("Checking plugin "+fts[i]+":\n"+firstSrc+
+            "\n"+firstDest, 3);
+        checkSources = new GlobusURL [] {firstSrc};
+        checkDestinations = new GlobusURL [] {firstDest};
         if(GridPilot.getClassMgr().getFTPlugin(
-            fts[i]).checkURLs(new GlobusURL [] {firstSrc},
-                new GlobusURL [] {firstDest})){
+            fts[i]).checkURLs(checkSources, checkDestinations)){
           pluginName = fts[i];
           break;
         };      
@@ -104,10 +112,14 @@ public class TransferControl{
             " plugin initialization " +
             "failed. "+firstSrc+"->"+firstDest);
       }
-            
+      Debug.debug("plugin selected: "+pluginName, 3);
+      
+      // Transfer jobs from toSubmitJobs to submittingJobs.
+      // First construct unigorm batch.
       while(submittingTransfers.size()<maxSimultaneousTransfers &&
           !toSubmitTransfers.isEmpty()){
         
+        // break if next transfer is not uniform with the previous ones (in this batch)
         transferVector.add(((TransferInfo) toSubmitTransfers.get(0)));
         theseSources = new GlobusURL[transferVector.size()];
         theseDestinations = new GlobusURL[transferVector.size()];
@@ -119,14 +131,11 @@ public class TransferControl{
           theseDestinations[i] = tmpTransfer.getDestination();
           theseTransfers[i] = tmpTransfer;
         }
-        // only add job in this batch if it is uniform with the previous jobs (in this batch)
-        if(GridPilot.getClassMgr().getFTPlugin(
+        if(!GridPilot.getClassMgr().getFTPlugin(
             firstSrc.getProtocol()).checkURLs(theseSources, theseDestinations)){
           break;
         }
         
-        // Transfer job from toSubmitJobs to submittingJobs.
-        // Take batches of uniform URLs
         TransferInfo transfer = (TransferInfo) toSubmitTransfers.remove(0);
         statusBar.setLabel("Queueing "+transfer.getSource().getURL()+"->"+
             transfer.getDestination().getURL());
@@ -140,8 +149,6 @@ public class TransferControl{
     }
     
     final TransferInfo [] finalTransfers = theseTransfers;
-    final GlobusURL [] finalSources = theseDestinations;
-    final GlobusURL [] finalDestinations = theseDestinations;
     final String finalPluginName = pluginName;
     
     new Thread(){
@@ -153,9 +160,9 @@ public class TransferControl{
         }
         catch(Exception e){
           statusBar.setLabel("ERROR: starting transfer failed. "+
-              finalSources+"->"+finalDestinations);
-          logFile.addMessage("ERROR: starting transfer failed. "+
-              finalPluginName+" : "+finalSources+" -> "+finalDestinations, e);
+              e.getMessage());
+          logFile.addMessage("ERROR: starting transfer failed.", e);
+          e.printStackTrace();
         }
       }
     }.start();
@@ -315,10 +322,17 @@ public class TransferControl{
     for(int i=0; i<transfers.length; ++i){
       sources[i] = transfers[i].getSource();
       destinations[i] = transfers[i].getDestination();
-      statusTable.setValueAt(transfers[i].getSource(), transfers[i].getTableRow(),
-          TransferInfo.FIELD_SOURCE);
-      statusTable.setValueAt(transfers[i].getDestination(), transfers[i].getTableRow(),
-          TransferInfo.FIELD_DESTINATION);
+      
+      transfers[i].setTableRow(submittedTransfers.size());
+      transfers[i].setInternalStatus(FileTransfer.STATUS_WAIT);
+      submittedTransfers.add(transfers[i]);
+
+      // add to status table
+      statusTable.createRows(submittedTransfers.size());
+      statusTable.setValueAt(transfers[i].getSource().getURL(),
+          transfers[i].getTableRow(), TransferInfo.FIELD_SOURCE);
+      statusTable.setValueAt(transfers[i].getDestination().getURL(),
+          transfers[i].getTableRow(), TransferInfo.FIELD_DESTINATION);
       statusTable.setValueAt(iconSubmitting, transfers[i].getTableRow(),
           TransferInfo.FIELD_CONTROL);
     }
@@ -333,21 +347,24 @@ public class TransferControl{
             ". Don't know what to do; cancelling all.");
       }
 
+      String userInfo = GridPilot.getClassMgr().getFTPlugin(
+          ftPlugin).getUserInfo();
       for(int i=0; i<transfers.length; ++i){
-        statusTable.setValueAt(ids[i], transfers[i].getTableRow(),
-            TransferInfo.FIELD_TRANSFER_ID);
-        statusTable.setValueAt(GridPilot.getClassMgr().getFTPlugin(
-            ftPlugin).getUserInfo(), transfers[i].getTableRow(),
-            TransferInfo.FIELD_USER);
+        
         transfers[i].setNeedToBeRefreshed(true);
-        Debug.debug("Transfer " + transfers[i].getTransferID() + " submitted : \n" +
-            "\tSource = " + transfers[i].getSource() + "\n" +
-            "\tDestination = " + transfers[i].getDestination(), 2);
+        transfers[i].setTransferID(ids[i]);
+        
+        statusTable.setValueAt(transfers[i].getTransferID(), transfers[i].getTableRow(),
+            TransferInfo.FIELD_TRANSFER_ID);
+        statusTable.setValueAt(userInfo, transfers[i].getTableRow(),
+            TransferInfo.FIELD_USER);
+        Debug.debug("Transfer  submitted", 2);
       }
       statusTable.updateSelection();
     }
-    catch(IOException e){
+    catch(Exception e){
       // Cancel all transfers
+      this.cancelQueueing();
       for(int i=0; i<ids.length; ++i){
         try{
           statusTable.setValueAt("Not submitted!", transfers[i].getTableRow(),
@@ -402,7 +419,7 @@ public class TransferControl{
     while(e.hasMoreElements()){
       TransferInfo transfer = (TransferInfo) e.nextElement();
       statusTable.setValueAt("Transfer not queued (cancelled)!",
-          transfer.getTableRow(), DatasetMgr.FIELD_JOBID);
+          transfer.getTableRow(), TransferInfo.FIELD_TRANSFER_ID);
       statusTable.setValueAt(transfer.getSource(), transfer.getTableRow(),
           TransferInfo.FIELD_SOURCE);
       statusTable.setValueAt(transfer.getDestination(), transfer.getTableRow(),
@@ -469,6 +486,7 @@ public class TransferControl{
   public static FileTransfer findFTPlugin(String transferID)
      throws Exception{
     
+    Debug.debug("Finding plugin for transfer "+transferID, 2);
     String ftPluginName = null;
     String [] checkArr = Util.split(transferID, ":");
     // Only if the ID is of the second type will checkArr[0] contain a -.
@@ -506,11 +524,12 @@ public class TransferControl{
         // For copy requests, we just take the plugin name directly form the ID header.
         ftPluginName = arr[0];
       }
+      Debug.debug("Found plugin "+ftPluginName, 2);
     }
     else{
       throw new IOException("ERROR: malformed ID "+transferID);
     }
-    if(ftPluginName == null){
+    if(ftPluginName==null){
       throw new IOException("ERROR: could not get file transfer plugin for "+transferID);
     }
 
@@ -528,26 +547,26 @@ public class TransferControl{
    */
   public static void updateStatus(Vector transfers){
     String status = null;
-    TransferInfo info = null;
+    TransferInfo transfer = null;
     String id = null;
     int internalStatus = -1;
     for(Iterator it=transfers.iterator(); it.hasNext();){
-      info = (TransferInfo) it.next();
+      transfer = (TransferInfo) it.next();
       id = null;
       try{
-        id = info.getTransferID();
+        id = transfer.getTransferID();
       }
       catch(Exception e){
-        Debug.debug("skipping "+info, 3);
+        Debug.debug("skipping "+transfer, 3);
       }
       if(id==null){
         continue;
       }
       try{
         status = getStatus(id);
-        info.setStatus(status);
+        transfer.setStatus(status);
         internalStatus = findFTPlugin(id).getInternalStatus(status);
-        info.setInternalStatus(internalStatus);
+        transfer.setInternalStatus(internalStatus);
       }
       catch(Exception e){
         Debug.debug("WARNING: could not get status of "+id+

@@ -91,11 +91,18 @@ public class GSIFTPFileTransfer implements FileTransfer {
   }
   
   public boolean checkURLs(GlobusURL [] srcUrls, GlobusURL [] destUrls){
-    // We only allow copying one file at a time
-    return (srcUrls.length==destUrls.length && srcUrls.length==1 && (
-        srcUrls[0].getProtocol()=="gsiftp" && destUrls[0].getProtocol()=="file" ||
-        srcUrls[0].getProtocol()=="file" && destUrls[0].getProtocol()=="gsiftp" ||
-        srcUrls[0].getProtocol()=="gsiftp" && destUrls[0].getProtocol()=="gsiftp"
+    Debug.debug("srcUrls.length: "+srcUrls.length, 3);
+    Debug.debug("destUrls.length: "+destUrls.length, 3);
+    Debug.debug("srcUrls[0].getProtocol(): "+srcUrls[0].getProtocol(), 3);
+    Debug.debug("destUrls[0].getProtocol(): "+destUrls[0].getProtocol(), 3);
+    // We only allow copying one file at a time - hmm, why...?
+    return (srcUrls.length==destUrls.length && /*srcUrls.length==1 &&*/ (
+        srcUrls[0].getProtocol().equalsIgnoreCase("gsiftp") &&
+           destUrls[0].getProtocol().equalsIgnoreCase("file") ||
+        srcUrls[0].getProtocol().equalsIgnoreCase("file") &&
+           destUrls[0].getProtocol().equalsIgnoreCase("gsiftp") ||
+        srcUrls[0].getProtocol().equalsIgnoreCase("gsiftp") &&
+           destUrls[0].getProtocol().equalsIgnoreCase("gsiftp")
           ));
   }
 
@@ -871,9 +878,11 @@ public class GSIFTPFileTransfer implements FileTransfer {
   
   public String[] startCopyFiles(GlobusURL[] srcUrls, GlobusURL[] destUrls)
      throws UrlCopyException {
+    Debug.debug("", 2);
     UrlCopyTransferListener urlCopyTransferListener = null;
     String [] ret = new String[srcUrls.length];
     String id = null;
+    Debug.debug("Copying "+srcUrls.length+" files", 2);
     for(int i=0; i<srcUrls.length; ++i){
       try{
         urlCopyTransferListener = new UrlCopyTransferListener();
@@ -886,17 +895,19 @@ public class GSIFTPFileTransfer implements FileTransfer {
         }
         urlCopy.addUrlCopyListener(urlCopyTransferListener);
         // The transfer id is chosen to be "srcUrl destUrl"
-        id = pluginName + "-copy" + srcUrls[i]+" "+destUrls[i];
+        id = pluginName + "-copy:" + srcUrls[i].getURL()+" "+destUrls[i].getURL();
         jobs.put(id, urlCopy);
         urlCopyTransferListeners.put(id, urlCopyTransferListener);
         ret[i] = id;
         Thread t = new Thread(){
           public void run(){
             try{
+              Debug.debug("Starting the actual transfer...", 2);
               urlCopy.copy();
             }
             catch(UrlCopyException ue){
               try{
+                ue.printStackTrace();
                 this.finalize();
               }
               catch(Throwable ee){
@@ -907,6 +918,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
         t.start();
       }
       catch(Exception e){
+        e.printStackTrace();
         // cancel all jobs
         for(int j=0; j<=i; ++j){
           try{
@@ -924,8 +936,16 @@ public class GSIFTPFileTransfer implements FileTransfer {
 
   public String getStatus(String fileTransferID) throws Exception {
     // Wait, Transfer, Error, Done
-    return ((UrlCopyTransferListener) 
+    Debug.debug("Getting status for transfer "+fileTransferID, 2);
+    Debug.debug("urlCopyTransferListeners: "+
+        Util.arrayToString(urlCopyTransferListeners.entrySet().toArray()), 2);
+    String ret = ((UrlCopyTransferListener) 
         urlCopyTransferListeners.get(fileTransferID)).getStatus();
+    Debug.debug("Got status "+ret, 2);
+    if(ret==null){
+      ret = "Error";
+    }
+    return ret;
   }
 
   public int getPercentComplete(String fileTransferID) throws Exception {
@@ -958,6 +978,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
    * FileTransfer.STATUS_RUNNING, FileTransfer.STATUS_WAIT
    */
   public int getInternalStatus(String ftStatus) throws Exception{
+    Debug.debug("Mapping status "+ftStatus, 2);
     int ret = -1;
     if(ftStatus==null || ftStatus.equals("")){
       // TODO: Should this be STATUS_ERROR?

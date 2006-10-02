@@ -7,6 +7,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 
 import javax.swing.*;
+
 import java.awt.event.*;
 
 /**
@@ -43,11 +44,37 @@ public class TransferStatusUpdateControl{
 
   /** counters of jobs ordered by local status
    */
-  private int[] transfersByStatus = new int[TransferInfo.getStatusNames().length];
+  private int[] transfersByStatus = new int[statusNames.length];
  
+  /**
+   * Returns status names for statistics panel.
+   */
+  public static String [] statusNames = new String [] {"Wait", "Run", "Done"};
+
+  /**
+   * DB status names for statistics panel. <p>
+   */
+  public static String [] ftStatusNames = new String [] {
+      "Queued",
+      "Running",
+      "Done",
+      "Failed",
+      "Cancelled"};
+  
+  /*public static String getStatusName(int status){
+  switch(status){
+    case FileTransfer.STATUS_WAIT : return "Queued";
+    case FileTransfer.STATUS_RUNNING : return "Running";
+    case FileTransfer.STATUS_DONE : return "Done";
+    case FileTransfer.STATUS_FAILED : return "Failed";
+    case FileTransfer.STATUS_ERROR : return "Error";
+    default : return "status not found";
+   }
+  }*/
+
   /** counters of jobs ordered by transfer status
    */
-  private int[] transfersByFTStatus = new int[TransferInfo.getFTStatusNames().length];
+  private int[] transfersByFTStatus = new int[ftStatusNames.length];
 
   /**
    * Contains all transfers which should be updated. <p>
@@ -129,7 +156,7 @@ public class TransferStatusUpdateControl{
      * Load of maxSimultaneousChecking
      */
     String tmp = configFile.getValue("GridPilot", "maximum simultaneous checking");
-    if(tmp != null){
+    if(tmp!=null){
       try{
         maxSimultaneousChecking = Integer.parseInt(tmp);
       }
@@ -244,7 +271,7 @@ public class TransferStatusUpdateControl{
    * </ul>
    *
    */
-  private void trigCheck() {
+  private void trigCheck(){
 
     Debug.debug("trigCheck", 1);
 
@@ -273,9 +300,10 @@ public class TransferStatusUpdateControl{
 
     int [] previousInternalStatus = new int [transfers.size()];
     for(int i=0; i<transfers.size(); ++i){
-      Debug.debug("Setting value for transfer "+i, 3);
       statusTable.setValueAt(iconChecking, ((TransferInfo) transfers.get(i)).getTableRow(), TransferInfo.FIELD_CONTROL);
       previousInternalStatus[i] = ((TransferInfo) transfers.get(i)).getInternalStatus();
+      Debug.debug("Setting previousInternalStatus for transfer "+i+" : "+
+          previousInternalStatus[i], 3);
     }
     
     Debug.debug("Updating status of "+transfers.size()+" transfers", 3);
@@ -296,12 +324,14 @@ public class TransferStatusUpdateControl{
           ((TransferInfo) transfers.get(i)).getTableRow(), TransferInfo.FIELD_STATUS);
     }
 
+    // Update the statistics information
     Debug.debug("Updating "+transfers.size()+" transfers by status", 3);
     updateTransfersByStatus();
     
+    // Take actions depending on the change of status
     for(int i=0; i<transfers.size(); ++i){
       TransferInfo transfer = (TransferInfo) transfers.get(i);
-      Debug.debug("Setting computing system status of transfer #"+i+"; "+
+      Debug.debug("Setting file transfer system status of transfer #"+i+"; "+
           transfer.getInternalStatus()+"<->"+previousInternalStatus[i], 3);
       if(transfer.getInternalStatus()!=previousInternalStatus[i]){       
         switch(transfer.getInternalStatus()){
@@ -368,7 +398,7 @@ public class TransferStatusUpdateControl{
   /**
    * Updates the statistics panel
    */
-  private void updateTransfersByStatus(){
+  protected void updateTransfersByStatus(){
     // jobsByDBStatus
     for(int i=0; i<transfersByFTStatus.length;++i){
       transfersByFTStatus[i] = 0;

@@ -60,7 +60,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   
   private Timer timerRefresh = new Timer(0, new ActionListener (){
     public void actionPerformed(ActionEvent e){
-      updateStatus(null);
+      statusUpdateControl.updateStatus(null);
     }
   });
 
@@ -69,6 +69,11 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    */
   public TransferMonitoringPanel() throws Exception{
     statusTable = GridPilot.getClassMgr().getTransferStatusTable();
+    statusTable.addListSelectionListener(new ListSelectionListener(){
+      public void valueChanged(ListSelectionEvent e){
+        selectionEvent(e);
+      }
+    });
     transferControl = new TransferControl();
     statusUpdateControl = new TransferStatusUpdateControl();
   }
@@ -83,11 +88,6 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     this.setLayout(new BorderLayout());
     mainPanel.setLayout(new BorderLayout());
     
-    statusTable.addListSelectionListener(new ListSelectionListener(){
-      public void valueChanged(ListSelectionEvent e){
-        selectionEvent(e);
-      }
-    });
     spStatusTable.getViewport().add(statusTable);
     
     makeMenu();
@@ -158,7 +158,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
 
     bRefresh.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        updateStatus(null);
+        statusUpdateControl.updateStatus(null);
       }
     });
     cbAutoRefresh.addActionListener(new ActionListener(){
@@ -189,8 +189,8 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     pButtons.add(sAutoRefresh);
     pButtons.add(cbRefreshUnits);
 
-    bKill.setToolTipText("Kills the selected jobs");
-    bRefresh.setToolTipText("Refresh all jobs");
+    bKill.setToolTipText("Cancel the selected transfers");
+    bRefresh.setToolTipText("Refresh all transfers");
 
     mainPanel.add(pOptions, BorderLayout.EAST);
     mainPanel.add(pButtons, BorderLayout.SOUTH);
@@ -214,7 +214,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
 
     miRefresh.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        updateStatus(statusTable.getSelectedRows());
+        statusUpdateControl.updateStatus(statusTable.getSelectedRows());
       }
     });
 
@@ -232,7 +232,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
               getTransfersAtRows(statusTable.getSelectedRows()));
         }
         catch(Exception ee){
-          statusBar.setLabel("ERROR: cancel jobs failed.");
+          statusBar.setLabel("ERROR: cancel tranfers failed.");
           return;
         }
         try{
@@ -240,7 +240,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
               getTransfersAtRows(statusTable.getSelectedRows()));
         }
         catch(Exception ee){
-          statusBar.setLabel("ERROR: queueing jobs failed.");
+          statusBar.setLabel("ERROR: queueing transfers failed.");
         }
       }
     });
@@ -253,7 +253,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
 
     miStopUpdate.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        reset();
+        statusUpdateControl.reset();
       }
     });
 
@@ -263,6 +263,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
 
     statusTable.addMenuSeparator();
     statusTable.addMenuItem(miRefresh);
+    statusTable.addMenuItem(miShowInfo);
     statusTable.addMenuItem(miKill);
     statusTable.addMenuItem(miResubmit);
     statusTable.addMenuItem(miStopUpdate);
@@ -275,7 +276,8 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    */
   public void panelShown(){
     Debug.debug("panelShown",1);
-    statusBar.setLabel(GridPilot.getClassMgr().getSubmittedJobs().size() + " job(s) monitored");
+    statusBar.setLabel(GridPilot.getClassMgr().getSubmittedTransfers().size() +
+        " transfer(s) monitored");
   }
 
   /**
@@ -325,23 +327,29 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
               getTransfersAtRows(statusTable.getSelectedRows()));
         }
         catch(Exception ee){
-          statusBar.setLabel("ERROR: cancel jobs failed.");
+          statusBar.setLabel("ERROR: cancel transfers failed.");
         }
       }
     }).start();
   }
 
   /**
-   * Shows information about the job at the selected row. <p>
+   * Shows information about the transfer at the selected row. <p>
    */
   private void showInfo(){
     final Thread t = new Thread(){
       public void run(){
-        JobInfo job = DatasetMgr.getJobAtRow(statusTable.getSelectedRow());
-        String status = GridPilot.getClassMgr().getCSPluginMgr().getFullStatus(job);
+        TransferInfo transfer = getTransferAtRow(statusTable.getSelectedRow());
+        String status = null;
+        try{
+          status = TransferControl.getStatus(transfer.getTransferID());
+        }
+        catch(Exception e){
+          status = "ERROR: could not get status. "+e.getMessage();
+        }
         statusBar.removeLabel();
         statusBar.stopAnimation();
-        MessagePane.showMessage(status, "Job status");
+        MessagePane.showMessage(status, "Transfer status");
       }
     };
     statusBar.setLabel("Getting full status...");
@@ -370,7 +378,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     }
     else{
       int [] rows = statusTable.getSelectedRows();
-      if(DatasetMgr.areKillables(rows)){
+      if(areKillables(rows)){
         bKill.setEnabled(true);
         miKill.setEnabled(true);
       }
@@ -379,7 +387,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
         miKill.setEnabled(false);
       }
 
-      if(DatasetMgr.areResumbitables(rows)){
+      if(areResumbitables(rows)){
         miResubmit.setEnabled(true);
       }
       else{
@@ -391,8 +399,8 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   }
 
   /**
-   * Called when user selectes one of the radio button (view all jobs,
-   * view only running jobs, ...).
+   * Called when user selectes one of the radio button (view all transfers,
+   * view only running transfers, ...).
    */
   private void onlyJobsSelected(){
     showRows = bgView.getSelection().getMnemonic();
@@ -414,47 +422,54 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    * Shows/Hides rows according to the user's choice.
    */
   private void showOnlyRows(){
-    Vector submittedJobs = GridPilot.getClassMgr().getSubmittedJobs();
+    Vector submittedJobs = GridPilot.getClassMgr().getSubmittedTransfers();
     Enumeration e =  submittedJobs.elements();
     while(e.hasMoreElements()){
-      JobInfo job = (JobInfo) e.nextElement();
-      if(DatasetMgr.isRunning(job)){
+      TransferInfo transfer = (TransferInfo) e.nextElement();
+      if(isRunning(transfer)){
         if(showRows==ONLY_RUNNING_JOBS){
-          statusTable.showRow(job.getTableRow());
+          statusTable.showRow(transfer.getTableRow());
         }
         else{
-          statusTable.hideRow(job.getTableRow());
+          statusTable.hideRow(transfer.getTableRow());
         }
       }
       else{
         if(showRows==ONLY_RUNNING_JOBS){
-          statusTable.hideRow(job.getTableRow());
+          statusTable.hideRow(transfer.getTableRow());
         }
         else{
-          statusTable.showRow(job.getTableRow());
+          statusTable.showRow(transfer.getTableRow());
         }
       }
     }
     statusTable.updateUI();
   }
 
-  private void updateStatus(int[] rows){
-    // TODO
-  }
-  
-  private void reset(){
-    // TODO
-  }
-  
   /**
-   * Removes selected jobs from this status table.
+   * Removes selected transfers from this status table.
    */
   public void clear(int[] rows){
-    // TODO: check if running or queueing
+    transferControl = GridPilot.getClassMgr().getTransferControl();
+    if(transferControl.isSubmitting()){
+      Debug.debug("cannot clear table during submission", 3);
+      return;
+    }
+    Vector transferVector = getTransfersAtRows(statusTable.getSelectedRows());
+    TransferInfo transfer = null;
+    for(int i=0; i<transferVector.toArray().length;++i){
+      transfer = (TransferInfo) transferVector.get(i);
+      if(transfer.getInternalStatus()==FileTransfer.STATUS_DONE ||
+         transfer.getInternalStatus()==FileTransfer.STATUS_FAILED ||
+         transfer.getInternalStatus()==FileTransfer.STATUS_ERROR){
+        statusTable.removeRow(i);
+        statusTable.repaint();
+      }
+    }
   }
   
   /**
-   * Removes all jobs from this status table.
+   * Removes all transfers from this status table.
    */
   public boolean clearTable(){
     transferControl = GridPilot.getClassMgr().getTransferControl();
@@ -462,39 +477,25 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
       Debug.debug("cannot clear table during submission", 3);
       return false;
     }
-    if(GridPilot.getClassMgr().getJobValidation().isValidating()){
-      Debug.debug("cannot clear table during validation", 3);
-      return false;
-    }
-
-    reset();
+    
+    statusUpdateControl.reset();
 
     boolean ret = true;
-    GridPilot.getClassMgr().getSubmittedJobs().removeAllElements();
+    GridPilot.getClassMgr().getSubmittedTransfers().removeAllElements();
     statusTable.createRows(0);
-    DatasetMgr mgr = null;
     try{
-      for(Iterator it = GridPilot.getClassMgr().getDatasetMgrs().iterator(); it.hasNext();){
-        mgr = ((DatasetMgr) it.next());
-        mgr.initChanges();
-        mgr.updateJobsByStatus();
-      }
+      //initChanges();
+      statusUpdateControl.updateTransfersByStatus();
     }
     catch(Exception e){
       ret = false;
       e.printStackTrace();
-      Debug.debug("WARNING: failed to clear jobs from "+mgr.dbName, 1);
+      Debug.debug("WARNING: failed to clear transfers."+e.getMessage(), 1);
     }
     
     return ret;
   }
   
-  DatasetMgr getDatasetMgr(JobInfo job){
-    return GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
-        GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
-            job.getJobDefId()));
-  }
-
   /**
    * Returns the transfer at the specified row in the statusTable
    * @see #getTransfersAtRows(int[])
@@ -515,6 +516,41 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
       transfers.add(getTransferAtRow(row[i]));
     }
     return transfers;
+  }
+  
+  private boolean areKillables(int [] rows){
+    Vector transferVector = getTransfersAtRows(rows);
+    for(Iterator it=transferVector.iterator(); it.hasNext();){
+      TransferInfo transfer = (TransferInfo) it.next();
+      if(transfer.getInternalStatus()==FileTransfer.STATUS_DONE ||
+          transfer.getInternalStatus()==FileTransfer.STATUS_ERROR ||
+          transfer.getInternalStatus()==FileTransfer.STATUS_FAILED){
+        return false;
+      }
+    }
+    return true;
+  }
+ 
+  private boolean areResumbitables(int [] rows){
+    Vector transferVector = getTransfersAtRows(rows);
+    for(Iterator it=transferVector.iterator(); it.hasNext();){
+      TransferInfo transfer = (TransferInfo) it.next();
+      if(transfer.getInternalStatus()!=FileTransfer.STATUS_ERROR ||
+          transfer.getInternalStatus()!=FileTransfer.STATUS_FAILED){
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  private boolean isRunning(TransferInfo transfer){
+    if(transfer.getInternalStatus()==FileTransfer.STATUS_WAIT ||
+        transfer.getInternalStatus()==FileTransfer.STATUS_RUNNING){
+      return true;
+    }
+    else{
+      return false;
+    }
   }
 
   public void copy(){

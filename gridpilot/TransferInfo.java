@@ -1,8 +1,5 @@
 package gridpilot;
 
-import java.awt.Color;
-import java.util.HashMap;
-
 import org.globus.util.GlobusURL;
 
 /**
@@ -13,7 +10,6 @@ public class TransferInfo extends DBRecord{
   private String id = null;
   private GlobusURL source = null;
   private GlobusURL destination = null;
-  private HashMap values = null;
   private String status = null;
   private int internalStatus = -1;
   private DBPluginMgr dbPluginMgr = null;
@@ -30,58 +26,10 @@ public class TransferInfo extends DBRecord{
 
   private boolean needUpdate;
   private int tableRow = -1;
-  
-  /**
-   * Returns status names for statistics panel.
-   */
-  public static String [] getStatusNames(){
-    return new String [] {"Wait", "Run", "Done"};
-  }
-
-  /**
-   * Returns colors corresponding to getStatusNames for statistics panel.
-   */
-  public static Color [] getStatusColors(){
-    return new Color [] {Color.black,
-                         Color.blue,
-                         Color.green,
-                         Color.orange,
-                         Color.magenta,
-                         Color.red};
-  }
-
-  /**
-   * DB status names for statistics panel. <p>
-   */
-  private static String [] ftStatusNames = new String [] {
-      "Defined",
-      "Queued",
-      "Running",
-      "Done",
-      "Failed",
-      "Aborted"};
-
-  public static String [] getFTStatusNames(){
-    return ftStatusNames;
-  }
-
-  public static String getFTStatusName(int status){
-    switch(status){
-      case FileTransfer.STATUS_WAIT : return "Queued";
-      case FileTransfer.STATUS_RUNNING : return "Running";
-      case FileTransfer.STATUS_DONE : return "Done";
-      case FileTransfer.STATUS_FAILED : return "Failed";
-      case FileTransfer.STATUS_ERROR : return "Error";
-      default : return "status not found";
-    }
-  }
 
   public TransferInfo(GlobusURL source, GlobusURL destination){
-    for(int i=0; i<GridPilot.transferStatusFields.length; ++i){
-      values.put(GridPilot.transferStatusFields[i], null);
-    }
-    values.put("Source", source);
-    values.put("Destination", destination);
+    setSource(source);
+    setDestination(destination);
   }
   
   public String getTransferID(){
@@ -142,8 +90,8 @@ public class TransferInfo extends DBRecord{
 
   public String toString(){
     return "\nTransfer # " + getTransferID()+ "\n" +
-        "  Source \t: " + values.get("Source") + "\n" +
-        "  Destination \t: " + values.get("Destination");
+        "  Source \t: " + getSource().getURL() + "\n" +
+        "  Destination \t: " + getDestination().getURL();
   }
 
   public boolean needToBeRefreshed(){
