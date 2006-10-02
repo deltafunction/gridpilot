@@ -9,6 +9,8 @@ public class JobStatisticsPanel extends StatisticsPanel{
 
   public JobStatisticsPanel(String title) {
     super(title);
+    colors = DBPluginMgr.getStatusColors();
+    statusNames = DBPluginMgr.getDBStatusNames();
   }
 
   private static final long serialVersionUID = 1L;
