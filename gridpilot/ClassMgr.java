@@ -339,7 +339,6 @@ public class ClassMgr{
     if(submissionControl==null){
       Debug.debug("submissionControl null, creating new", 1);
       setSubmissionControl(new SubmissionControl());
-      return null;
     }
     return submissionControl;
   }
@@ -348,7 +347,6 @@ public class ClassMgr{
     if(transferControl==null){
       Debug.debug("transferControl null, creating new", 1);
       setTransferControl(new TransferControl());
-      return null;
     }
     return transferControl;
   }
@@ -379,10 +377,16 @@ public class ClassMgr{
           gridProxyInitialized = Boolean.TRUE;
         }
         // set the directory for trusted CA certificates
-        CoGProperties prop = new CoGProperties();
+        CoGProperties prop = null;
+        if(CoGProperties.getDefault()==null){
+          prop = new CoGProperties();
+        }
+        else{
+          prop = CoGProperties.getDefault();
+        }
         if(GridPilot.caCerts==null || GridPilot.caCerts.equals("")){
           if(caCertsTmpdir==null){
-            caCertsTmpdir = Util.setupDefaultCACertificates(prop);
+            caCertsTmpdir = Util.setupDefaultCACertificates();
             // this adds all certificates in the dir to globus authentication procedures
           }
           caCertsTmpdir = caCertsTmpdir.replaceAll("\\\\", "/");
@@ -391,6 +395,8 @@ public class ClassMgr{
         else{
           prop.setCaCertLocations(GridPilot.caCerts);
         }
+        // set the proxy default location
+        prop.setProxyFile(Util.getProxyFile().getAbsolutePath());
         CoGProperties.setDefault(prop);
         Debug.debug("COG defaults now:\n"+CoGProperties.getDefault(), 3);
         Debug.debug("COG defaults file:\n"+CoGProperties.configFile, 3);
