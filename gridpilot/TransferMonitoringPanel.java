@@ -294,6 +294,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    */
   void cbAutoRefresh_clicked(){
     if(cbAutoRefresh.isSelected()){
+      Debug.debug("starting auto refresh timer", 3);
       delayChanged();
       timerRefresh.restart();
     }
@@ -308,10 +309,10 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   void delayChanged(){
     int delay = ((Integer) (sAutoRefresh.getValue())).intValue();
     if(cbRefreshUnits.getSelectedIndex()==MIN){
-      timerRefresh.setDelay(delay * 1000);
+      timerRefresh.setDelay(delay * 1000 * 60);
     }
     else{
-      timerRefresh.setDelay(delay * 1000 * 60);
+      timerRefresh.setDelay(delay * 1000);
     }
   }
 
@@ -325,6 +326,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
         try{
           transferControl.cancel(
               getTransfersAtRows(statusTable.getSelectedRows()));
+          statusUpdateControl.updateTransfersByStatus();
         }
         catch(Exception ee){
           statusBar.setLabel("ERROR: cancel transfers failed.");
@@ -339,17 +341,30 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private void showInfo(){
     final Thread t = new Thread(){
       public void run(){
+        String info = "";
         TransferInfo transfer = getTransferAtRow(statusTable.getSelectedRow());
-        String status = null;
+        info += "File transfer system : "+transfer.getFTName()+"\n";
+        try{
+          info += "User information : "+GridPilot.getClassMgr().getFTPlugin(
+              transfer.getFTName()).getUserInfo()+"\n";
+        }
+        catch(Exception e){
+        }
+        info += "File catalog : "+(transfer.getDBPluginMgr()==null?
+            "none":transfer.getDBPluginMgr().getDBName())+"\n";
+        info += transfer+"\n";
+        /*String status = "";
         try{
           status = TransferControl.getStatus(transfer.getTransferID());
         }
         catch(Exception e){
           status = "ERROR: could not get status. "+e.getMessage();
-        }
+        }*/
+        info += "Status : "+transfer.getStatus()+"\n";
+        info += "Internal status : "+transfer.getInternalStatus()+"\n";
         statusBar.removeLabel();
         statusBar.stopAnimation();
-        MessagePane.showMessage(status, "Transfer status");
+        MessagePane.showMessage(info, "Transfer status");
       }
     };
     statusBar.setLabel("Getting full status...");
@@ -510,10 +525,10 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    * Returns the transfers at the specified rows in statusTable
    * @see #getTransferAtRow(int)
    */
-  public static Vector getTransfersAtRows(int[] row){
-    Vector transfers = new Vector(row.length);
-    for(int i=0; i<row.length; ++i){
-      transfers.add(getTransferAtRow(row[i]));
+  public static Vector getTransfersAtRows(int[] rows){
+    Vector transfers = new Vector(rows.length);
+    for(int i=0; i<rows.length; ++i){
+      transfers.add(getTransferAtRow(rows[i]));
     }
     return transfers;
   }

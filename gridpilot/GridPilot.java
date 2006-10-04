@@ -157,7 +157,7 @@ public class GridPilot extends JApplet{
       /** Job status table header*/
       /** Transfer status table header*/
       transferStatusFields = new String [] {
-          " ", "Transfer ID", "Source", "Destination", "User", "Status"};
+          " ", "Transfer ID", "Source", "Destination", "User", "Status", "Transferred"};
 
       csNames = getClassMgr().getConfigFile().getValues("Computing systems", "systems");
       if(csNames==null || csNames.length==0){

@@ -17,7 +17,8 @@ public class TransferStatisticsPanel extends StatisticsPanel{
                          Color.orange,
                          Color.green,
                          Color.red,
-                         Color.magenta};
+                         Color.magenta
+                         };
 
   public TransferStatisticsPanel(String title){
     super(title);

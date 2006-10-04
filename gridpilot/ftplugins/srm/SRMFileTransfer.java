@@ -231,13 +231,13 @@ public class SRMFileTransfer implements FileTransfer {
         status = TransferControl.getPercentComplete(fileTransferID);
       }
       catch(Exception e){
-        Debug.debug("ERROR: could not get getPercentComplete from subsystem for "+
+        Debug.debug("ERROR: could not call getPercentComplete from subsystem for "+
             fileTransferID+". "+e.getMessage(), 1);
       }
     }
     
     if(status>-1){
-      return(status);
+      return status;
     }
     else{
       try{
@@ -257,6 +257,83 @@ public class SRMFileTransfer implements FileTransfer {
       catch(Exception e){
         throw new SRMException("ERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage());
       }
+    }
+  }
+  
+  /**
+   * Get the number of bytes of the file that has been copied.
+   * @param   fileTransferID   the unique ID of this transfer, unique to GridPilot
+   *                           and not to be confused with the request id or the
+   *                           index of the file in question in the array
+   *                           RequestStatus.fileStatuses.
+   */
+  public long getBytesTransferred(String fileTransferID) throws SRMException {
+    String [] idArr = parseFileTransferID(fileTransferID);
+    String requestType = idArr[1];
+
+    long bytes = -1;
+
+    if(requestType.equals("get") || requestType.equals("put")){
+      // get status from GSIFTPFileTransfer (or whichever protocol the SRM uses)
+      try{
+        //status = TransferControl.getStatus(srcTurl+" "+destTurl);
+        bytes = TransferControl.getBytesTransferred(fileTransferID);
+      }
+      catch(Exception e){
+        Debug.debug("ERROR: could not call getBytesTransferred from subsystem for "+
+            fileTransferID+". "+e.getMessage(), 1);
+      }
+    }
+    
+    if(bytes>-1){
+      return(bytes);
+    }
+    else{
+      return 0;
+    }
+  }
+  
+  /**
+   * Get the size of the file in bytes.
+   * Returns a number between 0 and 100.
+   * @param   fileTransferID   the unique ID of this transfer, unique to GridPilot
+   *                           and not to be confused with the request id or the
+   *                           index of the file in question in the array
+   *                           RequestStatus.fileStatuses.
+   */
+  public long getFileBytes(String fileTransferID) throws SRMException {
+    String [] idArr = parseFileTransferID(fileTransferID);
+    String requestType = idArr[1];
+    int requestId = Integer.parseInt(idArr[2]);
+    int statusIndex = Integer.parseInt(idArr[3]);
+    String surl = idArr[6];
+    try{
+      ISRM srm = connect(new GlobusURL(surl));
+      RequestStatus rs = srm.getRequestStatus(requestId);
+      return rs.fileStatuses[statusIndex].size;
+    }
+    catch(Exception e){
+      throw new SRMException("ERROR: SRM problem with "+requestType+" "+fileTransferID+
+          ". "+e.getMessage());
+    }
+  }
+  
+  /**
+   * Get the size of the file in bytes.
+   * Returns a number between 0 and 100.
+   * @param   fileTransferID   the unique ID of this transfer, unique to GridPilot
+   *                           and not to be confused with the request id or the
+   *                           index of the file in question in the array
+   *                           RequestStatus.fileStatuses.
+   */
+  public long getFileBytes(GlobusURL surl) throws SRMException {
+    try{
+      ISRM srm = connect(surl);
+      return srm.getFileMetaData(new String [] {surl.getURL()})[0].size;
+    }
+    catch(Exception e){
+      throw new SRMException("ERROR: SRM problem with getting file size for "+surl.getURL()+
+          ". "+e.getMessage());
     }
   }
   

@@ -130,17 +130,21 @@ public abstract class StatisticsPanel extends JPanel{
   private void paintBarChart(Graphics2D g){
 
     int topMargin = 20;
-    int bottomMargin = 20;
-    int horMargin = 10;
+    int bottomMargin = 5;//20;
+    int horMargin = 5;
     FontMetrics metrics = new Canvas().getFontMetrics(g.getFont());
     int columnWitdh = (getWidth() - 2 * horMargin) / statusNames.length;
     int bottom = getHeight() - bottomMargin; //- metrics.getAscent()-1;
     double step = (double)(bottom - topMargin) / maxValues();
     int inset = columnWitdh/4;
-
+    
+    Debug.debug("max possible value: "+maxValues(), 3);
 
     for(int i=0; i<statusNames.length; ++i){
-
+      Debug.debug("column: "+statusNames.length+":"+i, 3);
+      Debug.debug("y: "+(bottom -(int)(step*values[i])), 3);
+      Debug.debug("value: "+values[i], 3);
+      
       g.setColor(colors[i%colors.length]);
       g.fill3DRect(horMargin + i*columnWitdh + inset/2,
                    bottom -(int)(step*values[i]),
@@ -179,7 +183,8 @@ public abstract class StatisticsPanel extends JPanel{
     for(int i=1; i<values.length; ++i){
       if(values[i]>max){
         max = values[i];
-        break;
+        //break;
+        //max += values[i];
       }
     }
     return max;

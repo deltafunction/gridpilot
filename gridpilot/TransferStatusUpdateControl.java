@@ -58,8 +58,8 @@ public class TransferStatusUpdateControl{
       "Queued",
       "Running",
       "Done",
-      "Failed",
-      "Cancelled"};
+      "Cancelled",
+      "Failed"};
   
   /*public static String getStatusName(int status){
   switch(status){
@@ -240,7 +240,7 @@ public class TransferStatusUpdateControl{
       Enumeration e = transfers.elements();
       while(e.hasMoreElements()){
         TransferInfo transfer = (TransferInfo) e.nextElement();
-        Debug.debug("Checking transfer: "+transfer.getTransferID()+" "+
+        Debug.debug("Adding transfer to toCheckTransfers: "+transfer.getTransferID()+" "+
             transfer.needToBeRefreshed() +" "+ !toCheckTransfers.contains(transfer) +" "+
             !checkingTransfers.contains(transfer), 3);
         if(transfer.needToBeRefreshed() && !toCheckTransfers.contains(transfer) &&
@@ -284,7 +284,7 @@ public class TransferStatusUpdateControl{
 
       int currentTransfer = 0;
       while((transfers.size()<((Integer) maxTransfersByUpdate.get(ftName)).intValue() ||
-          ((Integer) maxTransfersByUpdate.get(ftName)).intValue()==0 )
+          ((Integer) maxTransfersByUpdate.get(ftName)).intValue()==0)
             && currentTransfer<toCheckTransfers.size()){
         Debug.debug("Adding transfer to toCheckTransfers "+currentTransfer, 3);
         if(((TransferInfo) toCheckTransfers.get(
@@ -322,6 +322,8 @@ public class TransferStatusUpdateControl{
           TransferInfo.FIELD_CONTROL);
       statusTable.setValueAt(((TransferInfo) transfers.get(i)).getStatus(),
           ((TransferInfo) transfers.get(i)).getTableRow(), TransferInfo.FIELD_STATUS);
+      statusTable.setValueAt(((TransferInfo) transfers.get(i)).getTransferred(),
+          ((TransferInfo) transfers.get(i)).getTableRow(), TransferInfo.FIELD_TRANSFERRED);
     }
 
     // Update the statistics information
@@ -342,8 +344,10 @@ public class TransferStatusUpdateControl{
           TransferControl.transferDone(transfer);
           break;
         case FileTransfer.STATUS_RUNNING:
-          statusTable.setValueAt(transfer.getSource(), transfer.getTableRow(), TransferInfo.FIELD_SOURCE);
-          statusTable.setValueAt(transfer.getDestination(), transfer.getTableRow(), TransferInfo.FIELD_DESTINATION);
+          statusTable.setValueAt(transfer.getSource().getURL(),
+              transfer.getTableRow(), TransferInfo.FIELD_SOURCE);
+          statusTable.setValueAt(transfer.getDestination().getURL(),
+              transfer.getTableRow(), TransferInfo.FIELD_DESTINATION);
           break;
         case FileTransfer.STATUS_ERROR:
           // Without the line below: leave as refreshable, in case the error is intermittent.

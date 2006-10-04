@@ -11,18 +11,20 @@ public class TransferInfo extends DBRecord{
   private GlobusURL source = null;
   private GlobusURL destination = null;
   private String status = null;
+  private String transferred = null;
   private int internalStatus = -1;
   private DBPluginMgr dbPluginMgr = null;
   
   //       transferStatusFields = new String [] {
-  // " ", "Transfer ID", "Source", "Destination", "User", "Status"};
+  // " ", "Transfer ID", "Source", "Destination", "User", "Status", "Transferred"};
 
   public final static int FIELD_CONTROL = 0;
   public final static int FIELD_TRANSFER_ID = 1;
-  public final static int FIELD_SOURCE= 2;
-  public final static int FIELD_DESTINATION= 3;
-  public final static int FIELD_USER= 4;
-  public final static int FIELD_STATUS= 5;
+  public final static int FIELD_SOURCE = 2;
+  public final static int FIELD_DESTINATION = 3;
+  public final static int FIELD_USER = 4;
+  public final static int FIELD_STATUS = 5;
+  public final static int FIELD_TRANSFERRED = 6;
 
   private boolean needUpdate;
   private int tableRow = -1;
@@ -38,6 +40,10 @@ public class TransferInfo extends DBRecord{
   
   public String getStatus(){
     return status;
+  }
+  
+  public String getTransferred(){
+    return transferred;
   }
   
   public DBPluginMgr getDBPluginMgr(){
@@ -68,6 +74,10 @@ public class TransferInfo extends DBRecord{
     status = _status;
   }
 
+  public void setTransferred(String _transferred){
+    transferred = _transferred;
+  }
+
   public void setInternalStatus(int _status){
     internalStatus = _status;
   }
@@ -84,14 +94,18 @@ public class TransferInfo extends DBRecord{
     destination = _destination;
   }
   
+  /**
+   * If dbPluginMgr is set, it is implicitly assumed that the file should be
+   * registered in the corresponding database upon completion of the transfer.
+   */
   public void setDBPluginMgr(DBPluginMgr _dbPluginMgr){
     dbPluginMgr = _dbPluginMgr;
   }
 
   public String toString(){
-    return "\nTransfer # " + getTransferID()+ "\n" +
-        "  Source \t: " + getSource().getURL() + "\n" +
-        "  Destination \t: " + getDestination().getURL();
+    return "Transfer ID : " + getTransferID()+ "\n" +
+        "Source : " + getSource().getURL() + "\n" +
+        "Destination : " + getDestination().getURL();
   }
 
   public boolean needToBeRefreshed(){

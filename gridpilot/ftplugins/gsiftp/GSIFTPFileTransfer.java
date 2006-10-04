@@ -818,6 +818,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
       String [] entryArr = null;
       String line = null;
       String fileName = null;
+      String bytes = null;
       int directories = 0;
       int files = 0;
       if(filter==null || filter.equals("")){
@@ -831,8 +832,17 @@ public class GSIFTPFileTransfer implements FileTransfer {
       for(int i=0; i<textArr.length; ++i){
         line = textArr[i].toString();
         Debug.debug(line, 3);
-        entryArr = Util.split(line);
-        fileName = entryArr[entryArr.length-1];
+        // Here we are assuming that there are no file names with spaces
+        // on the gridftp server...
+        // TODO: improve
+        if(line.length()==0){
+          continue;
+        }
+        else{
+          entryArr = Util.split(line);
+          fileName = entryArr[entryArr.length-1];
+          bytes = entryArr[entryArr.length-2];
+        }
         // If server is nice enough to provide file information, use it
         if(fileName.matches(filter)){
           if(line.matches("d[rwxsS-]* .*")){
@@ -855,7 +865,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
             ++directories;
           }
           catch(Exception e){
-            textVector.add(fileName);
+            textVector.add(fileName+" "+bytes);
             ++files;
           }
         }
@@ -876,12 +886,18 @@ public class GSIFTPFileTransfer implements FileTransfer {
     }
   }
   
+  public long getFileBytes(GlobusURL url) throws Exception {
+    Vector listVector = list(url, null, null, null);
+    String line = (String) listVector.get(0);
+    String [] entries = Util.split(line);
+    return Long.parseLong(entries[1]);
+  }
+
   public String[] startCopyFiles(GlobusURL[] srcUrls, GlobusURL[] destUrls)
      throws UrlCopyException {
     Debug.debug("", 2);
     UrlCopyTransferListener urlCopyTransferListener = null;
     String [] ret = new String[srcUrls.length];
-    String id = null;
     Debug.debug("Copying "+srcUrls.length+" files", 2);
     for(int i=0; i<srcUrls.length; ++i){
       try{
@@ -895,7 +911,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
         }
         urlCopy.addUrlCopyListener(urlCopyTransferListener);
         // The transfer id is chosen to be "srcUrl destUrl"
-        id = pluginName + "-copy:" + srcUrls[i].getURL()+" "+destUrls[i].getURL();
+        final String id = pluginName + "-copy:" + srcUrls[i].getURL()+" "+destUrls[i].getURL();
         jobs.put(id, urlCopy);
         urlCopyTransferListeners.put(id, urlCopyTransferListener);
         ret[i] = id;
@@ -904,10 +920,14 @@ public class GSIFTPFileTransfer implements FileTransfer {
             try{
               Debug.debug("Starting the actual transfer...", 2);
               urlCopy.copy();
+              ((UrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferCompleted();
             }
             catch(UrlCopyException ue){
               try{
                 ue.printStackTrace();
+                GridPilot.getClassMgr().getLogFile().addMessage((ue instanceof Exception ? "Exception" : "Error") +
+                    " from plugin gsiftp" +
+                    " while starting download", ue);
                 this.finalize();
               }
               catch(Throwable ee){
@@ -954,6 +974,12 @@ public class GSIFTPFileTransfer implements FileTransfer {
     return (int) comp;
   }
 
+  public long getBytesTransferred(String fileTransferID) throws Exception {
+    long comp = ((UrlCopyTransferListener) 
+        urlCopyTransferListeners.get(fileTransferID)).getBytesTransferred();
+    return comp;
+  }
+
   public void cancel(String fileTransferID) throws Exception {
     if(!((UrlCopy) jobs.get(fileTransferID)).isCanceled()){
       ((UrlCopy) jobs.get(fileTransferID)).cancel();
@@ -985,6 +1011,9 @@ public class GSIFTPFileTransfer implements FileTransfer {
       ret = FileTransfer.STATUS_WAIT;
     }
     else if(ftStatus==null || ftStatus.equalsIgnoreCase("Error")){
+      ret = FileTransfer.STATUS_ERROR;
+    }
+    else if(ftStatus==null || ftStatus.equalsIgnoreCase("Cancelled")){
       ret = FileTransfer.STATUS_ERROR;
     }
     else if(ftStatus==null || ftStatus.equalsIgnoreCase("Wait")){

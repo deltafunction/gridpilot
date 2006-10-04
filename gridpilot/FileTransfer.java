@@ -69,6 +69,20 @@ public interface FileTransfer {
   public int getInternalStatus(String ftStatus) throws Exception;
 
   /**
+   * Get the size of the file in bytes.
+   * May return -1 if the information is not available.
+   * @param   fileTransferID   the unique ID of the transfer.
+   */
+  public long getFileBytes(GlobusURL url) throws Exception;
+
+  /**
+   * Get the number of bytes of the file that has been copied.
+   * May return -1 if the information is not available.
+   * @param   fileTransferID   the unique ID of the transfer.
+   */
+  public long getBytesTransferred(String fileTransferID) throws Exception;
+
+  /**
    * Get the percentage of the file that has been copied.
    * Returns a number between 0 and 100. May return -1 if
    * the information is not available.
@@ -93,4 +107,5 @@ public interface FileTransfer {
    * @param   destUrls    list of files to be deleted on the server.
    */
   public void deleteFiles(GlobusURL [] destUrls) throws Exception;
+
 }
