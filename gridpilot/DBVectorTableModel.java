@@ -308,10 +308,12 @@ public class DBVectorTableModel extends AbstractTableModel {
 
     for(int i=begin; i!=end; i+=step){
       int iMin = i;
-      for(int j=i+step; j!=end; j+=step)
-        if(isGreaterThan(getValueAt(iMin, col), getValueAt(j, col)))
+      for(int j=i+step; j!=end; j+=step){
+        if(isGreaterThan(getValueAt(iMin, col), getValueAt(j, col))){
            iMin = j;
-      if(iMin != i) {
+        }
+      }
+      if(iMin!=i){
         swapRows(i, iMin);
         Debug.debug("Record "+theRecords.size()+" : "+i, 3);
         a = (DBRecord) theRecords.get(i);
