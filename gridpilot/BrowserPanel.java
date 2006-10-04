@@ -1045,6 +1045,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
     String htmlText = "";
 
     try{
+      bSave.setEnabled(false);
+      bNew.setEnabled(true);
+      bDelete.setEnabled(true);
+      bUpload.setEnabled(true);
+      bDownload.setEnabled(true);
+
       url = url.replaceFirst("/[^\\/]*/\\.\\.", "");
       GlobusURL globusUrl = new GlobusURL(url);
       Debug.debug("Opening directory on gridftp server\n"+globusUrl.toString(), 3);
@@ -1069,9 +1075,31 @@ public class BrowserPanel extends JDialog implements ActionListener{
       // display max 500 entries
       int maxEntries = 500;
       int length = textVector.size()<maxEntries ? textVector.size() : maxEntries;
+      String name = null;
+      String bytes = null;
+      String longName = null;
+      String [] nameAndBytes = null;
       for(int i=0; i<length; ++i){
-        text += "<a href=\"gsiftp://"+host+":"+port+localPath+textVector.get(i)+"\">"+
-        /*"gsiftp://"+host+":"+port+localPath+*/textVector.get(i)+"</a>";
+        nameAndBytes = null;
+        longName = textVector.get(i).toString();
+        try{
+          nameAndBytes = Util.split(longName);
+        }
+        catch(Exception e){
+        }
+        if(nameAndBytes!=null && nameAndBytes.length>0){
+          name = nameAndBytes[0];
+          if(nameAndBytes.length>1){
+            bytes = nameAndBytes[1];
+          }
+          bytes = "";
+        }
+        else{
+          name = longName;
+          bytes = "";
+        }
+        text += "<a href=\"gsiftp://"+host+":"+port+localPath+name+"\">"+
+        /*"gsiftp://"+host+":"+port+localPath+*/name+"</a> "+bytes;
         if(i<length-1){
           text += "<br>\n";
         }
