@@ -206,9 +206,9 @@ public class JobCreationPanel extends CreateEditPanel{
               GridBagConstraints.CENTER,
               GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
 
-      if(!reuseTextFields || tcCstAttributes[i] == null)
-        tcCstAttributes[i] = createTextComponent();
-      
+      if(!reuseTextFields || tcCstAttributes[i]==null){
+        tcCstAttributes[i] = Util.createTextArea();
+      }
       if(cstAttributesNames[i].equalsIgnoreCase("name")){
         // Set the name of the job description to <dataset name>.<number>
          detailFields.add(tcCstAttributes[i]);
@@ -256,8 +256,8 @@ public class JobCreationPanel extends CreateEditPanel{
           new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
               GridBagConstraints.CENTER,
               GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
-      if(!reuseTextFields || tcJobParam[i] == null){
-        tcJobParam[i] = createTextComponent();
+      if(!reuseTextFields || tcJobParam[i]==null){
+        tcJobParam[i] = Util.createTextArea();
       }
       // The following fields will be set by JobCreator.
       // They are rather specific to HEP, but if they are
@@ -292,7 +292,7 @@ public class JobCreationPanel extends CreateEditPanel{
       else if(jobParamNames[i].equalsIgnoreCase("outputFileName")){
         String extension = ".root";
         if(outputMapNames!=null && !outputMapNames.equals("")){
-          String [] fullNameStrings = Util.split(outputMapNames[0], ".");
+          String [] fullNameStrings = Util.split(outputMapNames[0], "\\.");
           if(fullNameStrings.length>0){
             extension = "."+fullNameStrings[fullNameStrings.length-1];
           }
@@ -341,15 +341,17 @@ public class JobCreationPanel extends CreateEditPanel{
               GridBagConstraints.CENTER,
               GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
 
-      if(!reuseTextFields || tcOutputMap[i][0] == null){
-        tcOutputMap[i][0] = createTextComponent();
+      if(!reuseTextFields || tcOutputMap[i][0]==null){
+        tcOutputMap[i][0] = Util.createTextArea();
       }
       tcOutputMap[i][0].setText(outputMapNames[i]);
       tcOutputMap[i][0].setEnabled(false);
       
-      fullNameStrings = Util.split(outputMapNames[i], ".");
+      Debug.debug("Finding extension from "+outputMapNames[i], 3);
+      fullNameStrings = Util.split(outputMapNames[i], "\\.");
       if(fullNameStrings.length>0){
         extension = "."+fullNameStrings[fullNameStrings.length-1];
+        Debug.debug("Extension: "+extension, 3);
       }
 
       pAttributes.add(tcOutputMap[i][0],
@@ -362,9 +364,10 @@ public class JobCreationPanel extends CreateEditPanel{
               GridBagConstraints.CENTER,
               GridBagConstraints.BOTH, new Insets(5, 5, 5, 5), 0, 0));
 
-      if(!reuseTextFields || tcOutputMap[i][1] == null)
-        tcOutputMap[i][1] = createTextComponent();
-
+      if(!reuseTextFields || tcOutputMap[i][1]==null){
+        tcOutputMap[i][1] = Util.createTextArea();
+      }
+      
       tcOutputMap[i][1].setText("$o/$n.${i:5}"+extension);
       tcOutputMap[i][1].setEnabled(false);
 
@@ -389,8 +392,9 @@ public class JobCreationPanel extends CreateEditPanel{
               GridBagConstraints.CENTER,
               GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
 
-      if(!reuseTextFields || tcStdOutput[i] == null)
-        tcStdOutput[i] = createTextComponent();
+      if(!reuseTextFields || tcStdOutput[i]==null){
+        tcStdOutput[i] = Util.createTextArea();
+      }
 
       tcStdOutput[i].setText("$o/$n.${i:5}."+stdOutputNames[i]);
       tcStdOutput[i].setEnabled(false);
@@ -476,14 +480,6 @@ public class JobCreationPanel extends CreateEditPanel{
     }
     Debug.debug(v.toString(),3);
     return v;
-  }
-
-  private JTextComponent createTextComponent(){
-    JTextArea ta = new JTextArea();
-    ta.setBorder(new JTextField().getBorder());
-    ta.setWrapStyleWord(true);
-    ta.setLineWrap(true);
-    return ta;
   }
   
   public void showDetails(boolean show){
