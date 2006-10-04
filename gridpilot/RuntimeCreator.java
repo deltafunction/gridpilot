@@ -79,11 +79,7 @@ public class RuntimeCreator{
     JComponent jval;
     for(int i =0; i<cstAttr.length; ++i, ++row){
       if(cstAttrNames[i].equalsIgnoreCase("initLines")){
-        jval = new JTextArea(cstAttr[i].toString());
-        ((JTextArea) jval).setLineWrap(true);
-        ((JTextArea) jval).setWrapStyleWord(true);
-        ((JTextArea) jval).setEditable(false);
-        Util.setBackgroundColor(jval);
+        jval = Util.createGrayTextArea(cstAttr[i].toString());
       }
       else{
         jval = new JLabel(cstAttr[i].toString());

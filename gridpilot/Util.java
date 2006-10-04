@@ -242,14 +242,6 @@ public class Util{
     return "\"" + tmp + "\"";
   }
   
-  public static JTextComponent createTextArea(){
-    JTextArea ta = new JTextArea();
-    ta.setBorder(new JTextField().getBorder());
-    ta.setWrapStyleWord(true);
-    ta.setLineWrap(true);
-    return ta;
-  }
-  
   public static String dbEncode(String str){
     if(str==null || str.length()==0){
       return str;
@@ -927,6 +919,23 @@ public class Util{
       Debug.debug("Not opening file", 3);
     }
     return file;
+  }
+
+  public static JTextArea createTextArea(){
+    JTextArea ta = new JTextArea();
+    ta.setBorder(new JTextField().getBorder());
+    ta.setWrapStyleWord(true);
+    ta.setLineWrap(true);
+    return ta;
+  }
+  
+  public static JTextArea createGrayTextArea(String str){
+    JTextArea jval = new JTextArea(str);
+    ((JTextArea) jval).setLineWrap(true);
+    ((JTextArea) jval).setWrapStyleWord(true);
+    ((JTextArea) jval).setEditable(false);
+    setBackgroundColor(jval);
+    return jval;
   }
 
 }
