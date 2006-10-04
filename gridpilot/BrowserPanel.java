@@ -1092,7 +1092,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
           if(nameAndBytes.length>1){
             bytes = nameAndBytes[1];
           }
-          bytes = "";
+          else{
+            bytes = "";
+          }
         }
         else{
           name = longName;

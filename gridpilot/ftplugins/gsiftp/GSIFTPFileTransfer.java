@@ -851,7 +851,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
             continue;
           }
           else if(line.matches("-[rwxsS-]* .*")){
-            textVector.add(fileName);
+            textVector.add(fileName+" "+bytes);
             ++files;
             continue;
           }
