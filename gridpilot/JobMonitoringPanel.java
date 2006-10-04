@@ -424,10 +424,10 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   void delayChanged(){
     int delay = ((Integer) (sAutoRefresh.getValue())).intValue();
     if(cbRefreshUnits.getSelectedIndex()==MIN){
-      timerRefresh.setDelay(delay * 1000);
+      timerRefresh.setDelay(delay * 1000 * 60);
     }
     else{
-      timerRefresh.setDelay(delay * 1000 * 60);
+      timerRefresh.setDelay(delay * 1000);
     }
   }
 
