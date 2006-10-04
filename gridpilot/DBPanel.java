@@ -1834,6 +1834,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     DBRecord file;
     boolean ret = false;
     String [] selectedFileIdentifiers = getSelectedIdentifiers();
+    Debug.debug("Starting download of "+selectedFileIdentifiers.length+" files", 2);
     String nameField = dbPluginMgr.getNameField("file");
     String [] urls = null;
     GlobusURL srcUrl = null;
@@ -1844,20 +1845,19 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     TransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
     // Correct file url not understood by Globus: file:/... -> file://...
     String dlUrlDir = _dlUrl.replaceFirst("^file:/([^/])", "file://$1");
-    // Unfortunately GlobusURL does not accept file://C:/... or file://C:\...
-    // so we are forced to just drop the C:/. This is ok, as / defaults to C:\,
-    // but it means that other drives cannot be used. What a bummer...
+    // GlobusURL does not accept file://C:/... or file://C:\..., but
+    // file:////C:/... or file:////C:\...
     dlUrlDir = dlUrlDir.replaceFirst("\\\\", "/");
-    dlUrlDir = dlUrlDir.replaceFirst("^file://C://", "file://");
-    dlUrlDir = dlUrlDir.replaceFirst("^file://C:/", "file://");
+    dlUrlDir = dlUrlDir.replaceFirst("^file://C://", "file:////C://");
+    dlUrlDir = dlUrlDir.replaceFirst("^file://C:/", "file:////C:/");
     for(int i=0; i<selectedFileIdentifiers.length; ++i){
       file = dbPluginMgr.getFile(selectedFileIdentifiers[i]);
       urls = dbPluginMgr.getFileURLs(selectedFileIdentifiers[i]);
       for(int j=0; j<urls.length; ++j){
         try{
-          dlUrl = dlUrlDir+file.getValue(dbPluginMgr.getNameField("file"));
-          destUrl = new GlobusURL(dlUrl);
           srcUrl = new GlobusURL(urls[j]);
+          dlUrl = dlUrlDir+(new File (srcUrl.getPath())).getName();
+          destUrl = new GlobusURL(dlUrl);
           Debug.debug("Starting download of file "+
               Util.arrayToString(file.values, ":"), 2);
           Debug.debug(srcUrl.getURL()+" ---> "+destUrl.getURL(), 2);
@@ -1874,17 +1874,17 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           continue;
         }
       }
-      if(!transfers.isEmpty()){
-        try{
-          transferControl.queue(transfers);
-          ret = true;
-        }
-        catch(Exception e){
-          String error = "WARNING: could not queue transfers. "+e.getMessage();
-          GridPilot.getClassMgr().getLogFile().addMessage(error);
-          Debug.debug(error, 1);
-          e.printStackTrace();
-        }
+    }
+    if(!transfers.isEmpty()){
+      try{
+        transferControl.queue(transfers);
+        ret = true;
+      }
+      catch(Exception e){
+        String error = "WARNING: could not queue transfers. "+e.getMessage();
+        GridPilot.getClassMgr().getLogFile().addMessage(error);
+        Debug.debug(error, 1);
+        e.printStackTrace();
       }
     }
     return ret;
