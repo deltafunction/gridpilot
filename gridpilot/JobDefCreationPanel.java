@@ -272,18 +272,25 @@ public class JobDefCreationPanel extends CreateEditPanel{
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("currentState")){
         pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
-        if(!reuseTextFields || tcCstAttributes[i] == null)
+        if(!reuseTextFields || tcCstAttributes[i]==null){
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
-        
+        }
         Util.setJText(tcCstAttributes[i], cstAttr[i]);
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("taskFK")){
         pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
-        if(!reuseTextFields || tcCstAttributes[i] == null)
+        if(!reuseTextFields || tcCstAttributes[i]==null){
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
-        
+        }
         Util.setJText(tcCstAttributes[i], datasetID);
         tcCstAttributes[i].setEnabled(false);
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("outFileMapping")){
+        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
+        if(!reuseTextFields || tcCstAttributes[i]==null){
+          tcCstAttributes[i] = Util.createTextArea();
+          Util.setJText(tcCstAttributes[i], cstAttr[i]);
+        }
       }
       else{
         if(cstAttributesNames[i].equalsIgnoreCase("jobPars") ||
@@ -294,9 +301,9 @@ public class JobDefCreationPanel extends CreateEditPanel{
         else{
           pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
         }
-        if(!reuseTextFields || tcCstAttributes[i] == null)
+        if(!reuseTextFields || tcCstAttributes[i]==null){
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
-        
+        }
         if(cstAttr[i]!=null && !cstAttr[i].equals("")){
           Debug.debug("Setting cstAttr["+i+"]: "+cstAttr[i], 3);
           Util.setJText(tcCstAttributes[i], cstAttr[i]);
