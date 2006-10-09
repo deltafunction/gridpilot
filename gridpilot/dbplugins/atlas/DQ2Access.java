@@ -11,10 +11,14 @@ import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.ietf.jgss.GSSCredential;
 
+/**
+ * Methods for manipulating DQ2 database records.
+ * @author  Cyril Topfel
+ */
 public class DQ2Access {
 
-	private WebServiceConnection WSplain;
-	private SecureWebServiceConnection WSsecure;
+	//private WebServiceConnection wsPlain;
+	private SecureWebServiceConnection wsSecure;
 	private final String baseUrl="dq2/";
 
 	private final String addFilesToDatasetURL="ws_content/dataset";
@@ -28,13 +32,18 @@ public class DQ2Access {
 	 * @param httpsServer secure DQ2WebServer
 	 * @param httpsPort secure Server Port
 	 */
-	public DQ2Access(String httpServer, int httpPort, 
-			String httpsServer, int httpsPort)
+  public DQ2Access(/*String httpServer, int httpPort,*/
+      String httpsServer, int httpsPort)
+  {
+    new DQ2Access(httpsServer, httpsPort, baseUrl);
+  }
+	public DQ2Access(/*String httpServer, int httpPort,*/
+			String httpsServer, int httpsPort, String path)
 	{
 		try 
 		{
-			WSplain = new WebServiceConnection(httpServer, httpPort, baseUrl);
-			WSsecure = new SecureWebServiceConnection(httpsServer, httpsPort, baseUrl);
+			//wsPlain = new WebServiceConnection(httpServer, httpPort, baseUrl);
+			wsSecure = new SecureWebServiceConnection(httpsServer, httpsPort, baseUrl);
 
 			GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
 			GlobusCredential globusCred = null;
@@ -43,10 +52,10 @@ public class DQ2Access {
 					((GlobusGSSCredentialImpl)credential).getGlobusCredential();
 			}
 
-			WSsecure.trustWrongHostName();
-			WSsecure.loadGlobusCredentialCertificate(globusCred);
-			WSsecure.trustAllCerts();
-			WSsecure.init();
+			wsSecure.trustWrongHostName();
+			wsSecure.loadGlobusCredentialCertificate(globusCred);
+			wsSecure.trustAllCerts();
+			wsSecure.init();
 		}
 		catch (Exception e)
 		{
@@ -59,11 +68,11 @@ public class DQ2Access {
 	 * @param DataSetName The Name of the DataSet to be created
 	 * returns the vuid of the created Dataset   
 	 */
-	public String createDataset(String DatasetName) throws IOException
+	public String createDataset(String dsn) throws IOException
 	{
 		String keys[]={"dsn"};
-		String values[]={DatasetName};
-		String response=WSsecure.post(createDatasetURL, keys, values);		
+		String values[]={dsn};
+		String response=wsSecure.post(createDatasetURL, keys, values);		
 		return parseVuid(response);
 	}
 
@@ -73,10 +82,10 @@ public class DQ2Access {
 	 * @param guids Grid Unique Identfiers
 	 * @param vuid Version Unique Identifier of the Dataset to add the Files
 	 */
-	public boolean addLFNtoDataset(String[] lfns, String[] guids, String vuid) throws IOException
+	public boolean addLFNsToDataset(String[] lfns, String[] guids, String vuid) throws IOException
 	{	
 		if (lfns.length!=guids.length) 
-			throw new IOException("Number of LFN's must be the same as Number of GUID's. " +
+			throw new IOException("Number of LFNs must be the same as Number of GUIDs. " +
 					"Was "+lfns.length+" vs "+guids.length);
 		
 		StringBuffer data=new StringBuffer("");
@@ -91,19 +100,19 @@ public class DQ2Access {
 		//DQ2Client claims it to be a PUT request, but it is actually a POST request with update=yes
 		//se DQCurl at lxplus: /afs/cern.ch/atlas/offline/external/GRID/ddm/pro02/common/client/DQCurl.py
 		
-		WSsecure.post(addFilesToDatasetURL, keys, values);
+		wsSecure.post(addFilesToDatasetURL, keys, values);
 		return true;
 	}	
 
 	/**
 	 * deletes a Dataset
-	 * @param lfn Logical File Name of the Dataset to erase
+	 * @param lfn Logical Dataset Name of the Dataset to erase
 	 */
-	public boolean deleteDataset(String lfn) throws IOException
+	public boolean deleteDataset(String dsn) throws IOException
 	{
 		String keys[]= {"lfn","delete"};
-		String values[] = {lfn,"yes"};
-		WSsecure.get(deleteDatasetURL, keys, values);
+		String values[] = {dsn,"yes"};
+		wsSecure.get(deleteDatasetURL, keys, values);
 		return true;
 	}
 	
@@ -119,10 +128,49 @@ public class DQ2Access {
 		else com = "no";
 		String keys[]={"complete","vuid","site"};
 		String values[]={com,vuid,location};
-		WSsecure.post(locationDatasetURL, keys, values);
+		wsSecure.post(locationDatasetURL, keys, values);
 		return true;
 	}
 	
+  /**
+   * updates Dataset
+   * @param vuid String            the vuid of the dataset
+   * @param dsn String             the dataset name
+   * @param incomplete String []   list of sites with incomplete replica
+   * @param complete String []     list of sites with complete replica
+   * this method is INSECURE. If complete/incomplete is given (not null),
+   * the dataset is deleted before a new one is created (with the same vuid).
+   * TODO: improve this
+   */
+  public boolean updateDataset(String vuid, String dsn, String [] incomplete, String [] complete)
+     throws IOException
+  {
+    if(dsn==null || dsn.length()==0){
+      throw new IOException("ERROR: empty dataset name");
+    }
+    if(vuid==null || vuid.length()==0){
+      throw new IOException("ERROR: empty vuid");
+    }
+    if(incomplete!=null && complete!=null){
+      if(!deleteDataset(vuid)){
+        throw new IOException("ERROR: could not update dataset "+dsn);
+      }
+    }
+    String keys[]={"vuid","dsn"};
+    String values[]={vuid, dsn};
+    // TODO: does this create a new dataset with this vuid? Check!
+    wsSecure.post(locationDatasetURL, keys, values);
+    if(incomplete!=null && complete!=null){
+      for(int i=0; i<incomplete.length; ++i){
+        registerVuidInLocation(vuid, false, incomplete[i]);
+      }
+      for(int i=0; i<complete.length; ++i){
+        registerVuidInLocation(vuid, true, complete[i]);
+      }
+    }
+    return true;
+  }
+  
 	/**
 	 * parses one vuid out of a dq2 output
 	 * @param toParse String output from dq webserice access
@@ -140,7 +188,7 @@ public class DQ2Access {
 
 	/**
 	 * parses multiple vuids out of a dq2 output
-	 * @param toParse String output from dq webserice access
+	 * @param toParse String output from dq webservice access
 	 */
 	private String[] parseVuids(String toParse)
 	{
@@ -156,21 +204,17 @@ public class DQ2Access {
 			res[q] = res[q].replaceAll("'","");
 		}
 		return res;
-		
-		
-		
-}
-	
-	public static void main (String[] args)
-	{
-		DQ2Access myacc=new DQ2Access(null,0,null,0);
+  }
+  /*
+   DQ2Access myacc=new DQ2Access(null,0,null,0);
     Debug.debug(myacc.parseVuid(
         "dsjhfagsdkjhf vuid: '45348fe3-4564-ffee-34ef-aef455678efe' hghkjgj"), 2);
-		String [] fud=myacc.parseVuids("{'acsadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},}");
+    String [] fud=myacc.parseVuids("{'acsadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},}");
     Debug.debug(""+fud.length, 2);
-		for (int q=0; q<fud.length; q++)
-		{
+    for (int q=0; q<fud.length; q++)
+    {
       Debug.debug(fud[q], 2);
-		}
-	}
+    }
+  */
+	
 }

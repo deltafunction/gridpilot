@@ -360,6 +360,13 @@ public class GSIFTPFileTransfer implements FileTransfer {
   public void deleteFiles(GlobusURL [] globusUrls) throws
      IOException, FTPException{
     
+    for(int i=0; i<globusUrls.length; ++i){
+      if(!globusUrls[i].getHost().equals(globusUrls[0].getHost())){
+        throw new IOException("ERROR: all files to be deleted must be on the same server. "+
+            globusUrls[i]+" <-> "+globusUrls[0]);
+      }
+    }
+    
     Debug.debug("delete "+Util.arrayToString(globusUrls), 3);
     
     for(int i=0; i<globusUrls.length; ++i){

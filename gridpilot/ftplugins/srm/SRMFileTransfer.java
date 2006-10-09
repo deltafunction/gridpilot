@@ -706,12 +706,29 @@ public class SRMFileTransfer implements FileTransfer {
   public void deleteFiles(GlobusURL [] destUrls)
      throws ClientException, ServerException, FTPException, IOException,
      SRMException {
+
+    for(int i=0; i<destUrls.length; ++i){
+      if(!destUrls[i].getHost().equals(destUrls[0].getHost())){
+        throw new IOException("ERROR: all files to be deleted must be on the same server. "+
+            destUrls[i]+" <-> "+destUrls[0]);
+      }
+    }    
+    
     String [] urls = new String [destUrls.length];
     for(int i=0; i<destUrls.length; ++i){
       urls[i] = destUrls[i].getURL();
     }
+
+    ISRM srm = null;
     try{
-      ISRM srm = connect(destUrls[0]);
+      srm = connect(destUrls[0]);
+    }
+    catch(Exception e){
+      throw new SRMException("ERROR: SRM problem deleting files. Could not connect "+
+          Util.arrayToString(urls)+". "+e.getMessage());
+    }
+    
+    try{
       srm.advisoryDelete(urls);
     }
     catch(Exception e){

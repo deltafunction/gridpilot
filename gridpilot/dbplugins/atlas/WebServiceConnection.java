@@ -232,14 +232,12 @@ public class WebServiceConnection {
 		String params = urlencodeArray(keys, values);
 		String physicalAccessName = createFullPath(path);
 		URL postURL = new URL(physicalAccessName);
-		return  post(postURL,params);		
+		return post(postURL,params);		
 
 	}
 
-	
-	public static void main(String[] args) throws IOException
-	{
-		WebServiceConnection a=new WebServiceConnection("www.daf.in",80,"/");
+		/*
+    WebServiceConnection a=new WebServiceConnection("www.daf.in",80,"/");
 		//WebServiceConnection b=new WebServiceConnection("lheppc6.unibe.ch",80,null);
 		//a.setProxy("proxy.unibe.ch", "80");
 		//b.setProxy("proxy.unibe.ch", "80");
@@ -255,8 +253,5 @@ public class WebServiceConnection {
 		//Debug.debug(b.post("postecho.php",keys,values), 3);
 		//Debug.debug("test5", 3);
 		//Debug.debug(b.post("postecho.php","key1=data1&key2=data2"), 3);
-
-		
-	}
-	
+	  */
 }

@@ -7,8 +7,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 
-import javax.swing.JOptionPane;
-
 import gridpilot.GridPilot;
 import gridpilot.ConfigFile;
 import gridpilot.Debug;
@@ -33,8 +31,6 @@ public class DBPluginMgr implements Database{
   // Time out in ms used if neither the specific time out nor "default timeout" is
   // defined in configFile
   private int dbTimeOut = 60*1000;
-  
-  private boolean askBeforeInterrupt = true;
 
   public DBPluginMgr(String _dbName){
     dbName = _dbName;
@@ -230,7 +226,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getFieldNames")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getFieldNames")){
       return t.getString2Res();
     }
     else{
@@ -258,7 +254,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getPackInitText")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getPackInitText")){
       return t.getStringRes();
     }
     else{
@@ -286,7 +282,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getStdOutFinalDest")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getStdOutFinalDest")){
       return t.getStringRes();
     }
     else{
@@ -314,7 +310,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getStdErrFinalDest")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getStdErrFinalDest")){
       return t.getStringRes();
     }
     else{
@@ -341,7 +337,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getError")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getError")){
       return t.getStringRes();
     }
     else{
@@ -369,7 +365,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformationScript")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getTransformationScript")){
       return t.getStringRes();
     }
     else{
@@ -397,7 +393,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformationRTEnvironments")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getTransformationRTEnvironments")){
       return t.getString2Res();
     }
     else{
@@ -425,7 +421,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformationSignature")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getTransformationSignature")){
       return t.getString2Res();
     }
     else{
@@ -453,7 +449,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformationRuntimeEnvironment")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getTransformationRuntimeEnvironment")){
       return t.getStringRes();
     }
     else{
@@ -481,7 +477,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefUser")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getJobDefUser")){
       return t.getStringRes();
     }
     else{
@@ -509,7 +505,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefName")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getJobDefName")){
       return t.getStringRes();
     }
     else{
@@ -537,7 +533,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getDatasetName")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getDatasetName")){
       return t.getStringRes();
     }
     else{
@@ -565,7 +561,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getRunNumber")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getRunNumber")){
       return t.getStringRes();
     }
     else{
@@ -593,7 +589,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironmentID")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironmentID")){
       return t.getStringRes();
     }
     else{
@@ -621,7 +617,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformationID")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getTransformationID")){
       return t.getStringRes();
     }
     else{
@@ -649,7 +645,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getDatasetID")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getDatasetID")){
       return t.getStringRes();
     }
     else{
@@ -677,7 +673,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefDatasetID")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getJobDefDatasetID")){
       return t.getStringRes();
     }
     else{
@@ -705,7 +701,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobStatus")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getJobStatus")){
       return t.getStringRes();
     }
     else{
@@ -733,7 +729,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefValue")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getJobDefValue")){
       return t.getStringRes();
     }
     else{
@@ -761,7 +757,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getRunInfo")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getRunInfo")){
       return t.getStringRes();
     }
     else{
@@ -789,7 +785,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformationID")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getTransformationID")){
       return t.getStringRes();
     }
     else{
@@ -817,7 +813,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getDatasetTransformationName")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getDatasetTransformationName")){
       return t.getStringRes();
     }
     else{
@@ -845,7 +841,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getDatasetTransformationVersion")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getDatasetTransformationVersion")){
       return t.getStringRes();
     }
     else{
@@ -874,7 +870,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformationValue")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getTransformationValue")){
       return t.getStringRes();
     }
     else{
@@ -903,7 +899,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getOutputs")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getOutputs")){
       return t.getString2Res();
     }
     else{
@@ -932,7 +928,7 @@ public class DBPluginMgr implements Database{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "getInputs")){
+      if(Util.waitForThread(t, dbName, dbTimeOut, "getInputs")){
         return t.getString2Res();
       }
       else{
@@ -961,7 +957,7 @@ public class DBPluginMgr implements Database{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "getJobDefTransPars")){
+      if(Util.waitForThread(t, dbName, dbTimeOut, "getJobDefTransPars")){
         return t.getString2Res();
       }
       else{
@@ -989,7 +985,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefOutLocalName")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getJobDefOutLocalName")){
       return t.getStringRes();
     }
     else{
@@ -1017,7 +1013,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefOutRemoteName")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getJobDefOutRemoteName")){
       return t.getStringRes();
     }
     else{
@@ -1046,7 +1042,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransJobParameters")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getTransJobParameters")){
       return t.getString2Res();
     }
     else{
@@ -1075,7 +1071,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransOutputs")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getTransOutputs")){
       return t.getString2Res();
     }
     else{
@@ -1104,7 +1100,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransInputs")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getTransInputs")){
       return t.getString2Res();
     }
     else{
@@ -1133,7 +1129,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "createJobDefinition")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "createJobDefinition")){
       return t.getBoolRes();
     }
     else{
@@ -1170,7 +1166,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "createJobDefinition")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "createJobDefinition")){
       return t.getBoolRes();
     }
     else{
@@ -1239,7 +1235,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "createTransformation")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "createTransformation")){
       return t.getBoolRes();
     }
     else{
@@ -1268,7 +1264,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "createRuntimeEnvironment")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "createRuntimeEnvironment")){
       return t.getBoolRes();
     }
     else{
@@ -1297,7 +1293,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "createDataset")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "createDataset")){
       return t.getBoolRes();
     }
     else{
@@ -1326,7 +1322,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "setJobDefinitionField")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "setJobDefinitionField")){
       return t.getBoolRes();
     }
     else{
@@ -1355,7 +1351,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "updateJobDefinition")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "updateJobDefinition")){
       return t.getBoolRes();
     }
     else{
@@ -1385,7 +1381,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "updateJobDefinition")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "updateJobDefinition")){
       return t.getBoolRes();
     }
     else{
@@ -1415,7 +1411,7 @@ public class DBPluginMgr implements Database{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "updateDataset")){
+      if(Util.waitForThread(t, dbName, dbTimeOut, "updateDataset")){
         return t.getBoolRes();
       }
       else{
@@ -1445,7 +1441,7 @@ public class DBPluginMgr implements Database{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "updateTransformation")){
+      if(Util.waitForThread(t, dbName, dbTimeOut, "updateTransformation")){
         return t.getBoolRes();
       }
       else{
@@ -1475,7 +1471,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "updateRuntimeEnvironment")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "updateRuntimeEnvironment")){
       return t.getBoolRes();
     }
     else{
@@ -1504,13 +1500,43 @@ public class DBPluginMgr implements Database{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "deleteJobDefinition")){
+      if(Util.waitForThread(t, dbName, dbTimeOut, "deleteJobDefinition")){
         return t.getBoolRes();
       }
       else{
         return false;
       }
     }
+
+  public synchronized boolean deleteFiles(final String datasetID,
+      final String [] fileIDs, final boolean cleanup){
+    
+    MyThread t = new MyThread(){
+      boolean res = false;
+      public void run(){
+        try{
+          res = db.deleteFiles(datasetID, fileIDs, cleanup);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             Util.arrayToString(fileIDs), t);
+        }
+      }
+      public boolean getBoolRes(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(Util.waitForThread(t, dbName, dbTimeOut, "deleteFile")){
+      return t.getBoolRes();
+    }
+    else{
+      return false;
+    }
+  }
 
   public synchronized boolean deleteDataset(final String datasetID, final boolean cleanup){
     
@@ -1533,7 +1559,7 @@ public class DBPluginMgr implements Database{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "deleteDataset")){
+      if(Util.waitForThread(t, dbName, dbTimeOut, "deleteDataset")){
         return t.getBoolRes();
       }
       else{
@@ -1562,7 +1588,7 @@ public class DBPluginMgr implements Database{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "deleteTransformation")){
+      if(Util.waitForThread(t, dbName, dbTimeOut, "deleteTransformation")){
         return t.getBoolRes();
       }
       else{
@@ -1591,7 +1617,7 @@ public class DBPluginMgr implements Database{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "deleteRuntimeEnvironment")){
+      if(Util.waitForThread(t, dbName, dbTimeOut, "deleteRuntimeEnvironment")){
         return t.getBoolRes();
       }
       else{
@@ -1621,7 +1647,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "reserveJobDefinition")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "reserveJobDefinition")){
       return t.getBoolRes();
     }
     else{
@@ -1650,7 +1676,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "jobDefID")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "jobDefID")){
       return t.getBoolRes();
     }
     else{
@@ -1658,13 +1684,14 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public DBResult select(final String selectQuery, final String identifier){
+  public DBResult select(final String selectQuery, final String identifier,
+      final boolean findAll){
   
     MyThread t = new MyThread(){
       DBResult res = null;
       public void run(){
         try{
-          res = db.select(selectQuery, identifier);
+          res = db.select(selectQuery, identifier, findAll);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -1679,7 +1706,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "select")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "select")){
       return t.getDB2Res();
     }
     else{
@@ -1707,7 +1734,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironments")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironments")){
       return t.getDB2Res();
     }
     else{
@@ -1735,7 +1762,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getTransformations")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getTransformations")){
       return t.getDB2Res();
     }
     else{
@@ -1764,7 +1791,7 @@ public class DBPluginMgr implements Database{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "getDataset")){
+      if(Util.waitForThread(t, dbName, dbTimeOut, "getDataset")){
         return t.getDBRes();
       }
       else{
@@ -1793,7 +1820,7 @@ public class DBPluginMgr implements Database{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironment")){
+      if(Util.waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironment")){
         return t.getDBRes();
       }
       else{
@@ -1822,7 +1849,7 @@ public class DBPluginMgr implements Database{
     
       t.start();
     
-      if(waitForThread(t, dbName, dbTimeOut, "getTransformation")){
+      if(Util.waitForThread(t, dbName, dbTimeOut, "getTransformation")){
         return t.getDBRes();
       }
       else{
@@ -1851,7 +1878,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefinitions")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getJobDefinitions")){
       return t.getDB2Res();
     }
     else{
@@ -1880,7 +1907,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getFiles")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getFiles")){
       return t.getDB2Res();
     }
     else{
@@ -1909,7 +1936,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getJobDefinition")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getJobDefinition")){
       return t.getDBRes();
     }
     else{
@@ -1937,7 +1964,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "connect")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "connect")){
       return t.getStringRes();
     }
     else{
@@ -1961,7 +1988,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "disconnect")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "disconnect")){
       return;
     }
     else{
@@ -1985,7 +2012,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "clearCaches")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "clearCaches")){
       return;
     }
     else{
@@ -2009,7 +2036,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "registerFileLocation")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "registerFileLocation")){
       return;
     }
     else{
@@ -2017,11 +2044,12 @@ public class DBPluginMgr implements Database{
     }
   }
 
+  //  private boolean askBeforeInterrupt = true;
   /**
    * Waits the specified MyThread during maximum timeOut ms.
    * @return true if t ended normally, false if t has been interrupted
    */
-  private boolean waitForThread(MyThread t, String dbName, int timeOut, String function){
+  /*private boolean waitForThread(MyThread t, String dbName, int timeOut, String function){
     do{
       try{
         t.join(timeOut);
@@ -2043,12 +2071,12 @@ public class DBPluginMgr implements Database{
     }
     while(true);
     return true;
-  }
+  }*/
 
   /**
    * Asks the user if he wants to interrupt a plug-in
    */
-  private boolean askForInterrupt(String csName, String fct){
+  /*private boolean askForInterrupt(String csName, String fct){
     String msg = "No response from plugin " + csName +
                  " for " + fct + "\n"+
                  "Do you want to interrupt it ?";
@@ -2058,7 +2086,7 @@ public class DBPluginMgr implements Database{
       return true;
     else
       return false;
-  }
+  }*/
   
   /**
    * Returns status names for statistics panel.
@@ -2256,7 +2284,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getVersions")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getVersions")){
       return t.getString2Res();
     }
     else{
@@ -2284,7 +2312,7 @@ public class DBPluginMgr implements Database{
     
     arg = "select totalEvents, totalFiles from dataset where identifier='"+
     datasetID+"'";
-    res = select(arg, getIdentifierField("dataset"));
+    res = select(arg, getIdentifierField("dataset"), true);
     if(res.values.length>0){
       try{
         totalEvents = Integer.parseInt(res.values[0][0].toString());
@@ -2340,7 +2368,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getFile")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getFile")){
       return t.getDBRes();
     }
     else{
@@ -2370,7 +2398,7 @@ public class DBPluginMgr implements Database{
   
     t.start();
   
-    if(waitForThread(t, dbName, dbTimeOut, "getFileURLs")){
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getFileURLs")){
       return t.getString2Res();
     }
     else{

@@ -1,7 +1,6 @@
 package gridpilot;
 
 import javax.swing.*;
-import java.awt.*;
 
 /**
  * Creates the transformation records with data given by TransformationCreationPanel.
@@ -13,7 +12,6 @@ public class TransformationCreator{
   private String [] cstAttr;
   private String [] cstAttrNames;
   private boolean editing;
-  private Object[] showResultsOptions = {"OK", "Skip"};
   private DBPluginMgr dbPluginMgr = null;
 
   public TransformationCreator(
@@ -37,7 +35,8 @@ public class TransformationCreator{
   private void createTransformationRecord(){
     int choice = 0;
     if(showResults){
-      choice = showResult();
+      //choice = showResult();
+      choice = Util.showResult(cstAttrNames, cstAttr, "Transformation", 1);
     }
 
     switch(choice){
@@ -72,73 +71,5 @@ public class TransformationCreator{
           dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
       }
     }     
-  }
-
-  private int showResult(){
-
-    JPanel pResult = new JPanel(new GridBagLayout());
-    int row = 0;
-
-    for(int i =0; i<cstAttr.length; ++i, ++row){
-      pResult.add(new JLabel(cstAttrNames[i] + " : "), new GridBagConstraints(0, row, 1, 1, 0.0, 0.0
-      ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
-      JComponent jval;
-      JTextArea textArea = new JTextArea("");
-      if(cstAttrNames[i].equalsIgnoreCase("formalPars")){
-        textArea = new JTextArea(cstAttr[i]);
-        textArea.setLineWrap(true);
-        textArea.setWrapStyleWord(true);
-        textArea.setEditable(false);
-        jval = textArea;
-      }
-      else{
-        jval = new JLabel(cstAttr[i]);
-      }
-      pResult.add(jval, new GridBagConstraints(1, row, 3, 1, 1.0, 0.0
-          ,GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
-    }
-
-    JScrollPane sp = new JScrollPane(pResult);
-    int height = (int)pResult.getPreferredSize().getHeight() +
-    (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5;
-    int width = (int)pResult.getPreferredSize().getWidth() +
-    (int)sp.getVerticalScrollBar().getPreferredSize().getWidth() + 5;
-    Dimension screenSize = new Dimension(Toolkit.getDefaultToolkit().getScreenSize());
-    if (height>screenSize.height){
-      height = 700;
-      Debug.debug("Screen height exceeded, setting "+height, 2);
-    }
-    if (width>screenSize.width){
-      width = 550;
-      Debug.debug("Screen width exceeded, setting "+width, 2);
-    }
-    Debug.debug("Setting size "+width+":"+height, 3);
-    sp.setPreferredSize(new Dimension(width, height));
-
-    JOptionPane op = new JOptionPane(sp,
-                                     JOptionPane.QUESTION_MESSAGE,
-                                     JOptionPane.YES_NO_CANCEL_OPTION,
-                                     null,
-                                     showResultsOptions,
-                                     showResultsOptions[0]);
-    
-
-    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "transformation");    
-    dialog.requestFocusInWindow();    
-    dialog.setResizable(true);
-    dialog.setVisible(true);
-    dialog.dispose();
-
-    Object selectedValue = op.getValue();
-
-    if(selectedValue==null){
-      return JOptionPane.CLOSED_OPTION;
-    }
-    for (int i=0; i<showResultsOptions.length; ++i){
-      if (showResultsOptions[i]==selectedValue){
-        return i;
-      }
-    }
-    return JOptionPane.CLOSED_OPTION;
   }
 }

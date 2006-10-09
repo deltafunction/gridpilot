@@ -434,6 +434,37 @@ public class TransferControl{
   public static long getBytesTransferred(String fileTransferID) throws Exception {
     return findFTPlugin(fileTransferID).getBytesTransferred(fileTransferID);
   }
+  
+  public static void deleteFiles(GlobusURL [] urls) throws Exception {
+    String ftPluginName = null;
+    boolean protocolOK = false;
+    String [] fts = GridPilot.ftNames;
+    
+    // Construct dummy array of file URLs
+    GlobusURL [] srcUrls = new GlobusURL[urls.length];
+    for(int i=0; i<urls.length; ++i){
+      srcUrls[i] = new GlobusURL("file:////dum");
+    }
+    // Select first plugin that supports the protocol of the these transfers
+    for(int i=0; i<fts.length; ++i){
+      Debug.debug("Checking plugin "+fts[i], 3);
+      if(GridPilot.getClassMgr().getFTPlugin(
+          fts[i]).checkURLs(srcUrls, urls)){
+        ftPluginName = fts[i];
+        Debug.debug("Selected plugin "+fts[i], 3);
+        break;
+      };      
+    }
+    if(!protocolOK || ftPluginName==null){
+      throw new IOException("ERROR: protocol not supported or" +
+          " plugin initialization " +
+          "failed. "+Util.arrayToString(srcUrls)+"->"+Util.arrayToString(urls));
+    }
+    
+    // delete the files
+    GridPilot.getClassMgr().getFTPlugin(
+        ftPluginName).deleteFiles(urls);
+  }
 
   /**
    * Stops the submission. <br>

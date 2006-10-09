@@ -693,6 +693,17 @@ public class DatasetCreationPanel extends CreateEditPanel{
     
     cbTargetDBSelection.addItem("");
     for(int i=0; i<GridPilot.dbNames.length; ++i){
+      // If this DB has no job definition table, there's no point in
+      // allowing the creation of datasets with an input dataset in it.
+      try{
+        if((GridPilot.getClassMgr().getDBPluginMgr(
+            GridPilot.dbNames[i]).getFieldNames("jobDefinition")==null)){
+          continue;
+        }
+      }
+      catch(Exception e){
+        continue;
+      }
       cbTargetDBSelection.addItem(GridPilot.dbNames[i]);
     }
 

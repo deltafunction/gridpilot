@@ -43,13 +43,16 @@ public class MonitoringPanel extends CreateEditPanel {
     transferMonitor.initGUI();
     
     spLogView.getViewport().add(logViewerPanel);
+    spLogView.setPreferredSize(new Dimension(700, 500));
     tpStatLog.addTab("Jobs", jobMonitor);
     tpStatLog.addTab("Transfers", transferMonitor);
     tpStatLog.addTab("Logs", spLogView);
 
     this.getTopLevelAncestor().add(tpStatLog, BorderLayout.CENTER);
-    //this.setPreferredSize(new Dimension(700, 500));
+    this.setPreferredSize(new Dimension(700, 500));
     this.getTopLevelAncestor().add(statusBar, BorderLayout.SOUTH);
+    
+    this.validate();
 
   }
 

@@ -65,7 +65,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
   public BrowserPanel(JFrame _parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
-      boolean _withNavigation, JCheckBox _jBox, String _filter) throws Exception{
+      boolean _withNavigation, JComponent _jBox, String _filter) throws Exception{
     super(_parent);
     baseUrl = _baseUrl;
     origUrl = url;
@@ -384,8 +384,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
     sp.validate();
     ep.validate();
     pack();
+    
+    Dimension dim = new Dimension(panel.getPreferredSize().width + (jBox==null?50:300),
+        panel.getPreferredSize().height);
 
-    setSize(panel.getPreferredSize());
+    setSize(dim);
     setVisible(true);
     
     // Close window with ctrl+w

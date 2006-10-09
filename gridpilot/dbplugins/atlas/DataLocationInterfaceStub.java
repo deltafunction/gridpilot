@@ -26,8 +26,8 @@ public class DataLocationInterfaceStub extends
         oper.setReturnType(new javax.xml.namespace.QName("urn:DataLocationInterface", "ArrayOfstring"));
         oper.setReturnClass(java.lang.String[].class);
         oper.setReturnQName(new javax.xml.namespace.QName("", "urlList"));
-        oper.setStyle(org.apache.axis.enum.Style.RPC);
-        oper.setUse(org.apache.axis.enum.Use.ENCODED);
+        //oper.setStyle(org.apache.axis.enum.Style.RPC);
+        //oper.setUse(org.apache.axis.enum.Use.ENCODED);
         _operations[0] = oper;
 
     }
@@ -49,14 +49,14 @@ public class DataLocationInterfaceStub extends
         }
             java.lang.Class cls;
             javax.xml.namespace.QName qName;
-            java.lang.Class beansf = org.apache.axis.encoding.ser.BeanSerializerFactory.class;
-            java.lang.Class beandf = org.apache.axis.encoding.ser.BeanDeserializerFactory.class;
-            java.lang.Class enumsf = org.apache.axis.encoding.ser.EnumSerializerFactory.class;
-            java.lang.Class enumdf = org.apache.axis.encoding.ser.EnumDeserializerFactory.class;
+            //java.lang.Class beansf = org.apache.axis.encoding.ser.BeanSerializerFactory.class;
+            //java.lang.Class beandf = org.apache.axis.encoding.ser.BeanDeserializerFactory.class;
+            //java.lang.Class enumsf = org.apache.axis.encoding.ser.EnumSerializerFactory.class;
+            //java.lang.Class enumdf = org.apache.axis.encoding.ser.EnumDeserializerFactory.class;
             java.lang.Class arraysf = org.apache.axis.encoding.ser.ArraySerializerFactory.class;
             java.lang.Class arraydf = org.apache.axis.encoding.ser.ArrayDeserializerFactory.class;
-            java.lang.Class simplesf = org.apache.axis.encoding.ser.SimpleSerializerFactory.class;
-            java.lang.Class simpledf = org.apache.axis.encoding.ser.SimpleDeserializerFactory.class;
+            //java.lang.Class simplesf = org.apache.axis.encoding.ser.SimpleSerializerFactory.class;
+            //java.lang.Class simpledf = org.apache.axis.encoding.ser.SimpleDeserializerFactory.class;
             qName = new javax.xml.namespace.QName("urn:DataLocationInterface", "ArrayOfstring");
             cachedSerQNames.add(qName);
             cls = java.lang.String[].class;
@@ -122,9 +122,6 @@ public class DataLocationInterfaceStub extends
         }
     }
 
-    // parameters e.g.
-    // "/grid/atlas/dq2/csc11/007062/singlepart_gamma_E50/recon/AOD/v11004103/csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103._00009.pool.root.1"
-    // "lfn"
     public java.lang.String[] listReplicas(java.lang.String inputDataType, java.lang.String inputData) throws java.rmi.RemoteException {
         if (super.cachedEndpoint == null) {
             throw new org.apache.axis.NoEndPointException();

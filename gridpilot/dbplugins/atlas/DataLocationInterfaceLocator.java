@@ -14,6 +14,7 @@ public class DataLocationInterfaceLocator extends
     // gSOAP 2.6.0 generated service definition
 
     //"https://lfc-atlas.cern.ch:8085/", "https://lxb1941.cern.ch:8085"
+    // "http://lfc-atlas-test.cern.ch:8085"
     // Use to get a proxy class for DataLocationInterface
     private final java.lang.String DataLocationInterface_address =
        "http://lfc-atlas-test.cern.ch:8085";

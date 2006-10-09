@@ -40,6 +40,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JPanel pButtonTableResults = new JPanel(new FlowLayout(FlowLayout.CENTER));
   private JButton bCreateRecords = new JButton("Define new record(s)");
   private JButton bEditRecord = new JButton("Edit record");
+  private JCheckBox cbFindAllFiles = new JCheckBox();
   private JButton bDownload = new JButton("Replicate file(s)");
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
   private JButton bSubmit = new JButton("Submit job(s)");
@@ -91,6 +92,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   // release the semaphore
   private synchronized void stopWorking(){
     working = false;
+  }
+  
+  // see if the find all checkbox is checked
+  private boolean findAll(){
+    return cbFindAllFiles.isSelected();
   }
   
   /**
@@ -448,6 +454,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     else if(tableName.equalsIgnoreCase("file")){
       
+      bEditRecord.setText("View record");
+      
+      tableResults.addMouseListener(new MouseAdapter(){
+        public void mouseClicked(MouseEvent e){
+          if(e.getClickCount()==2){
+            editFile();
+          }
+        }
+      });
+
       bEditRecord.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           //editJobDef();
@@ -473,6 +489,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonResultsPanel(bEditRecord);
       //addButtonResultsPanel(bCreateRecords);
       addButtonResultsPanel(bDeleteRecord);
+      // Add tickbox to search panel
+      JPanel pFindAll = new JPanel();
+      pFindAll.add(new JLabel("Find all PFNs"));
+      pFindAll.add(cbFindAllFiles);
+      addButtonSelectPanel(pFindAll);
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
       bEditRecord.setEnabled(false);
@@ -577,9 +598,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonResultsPanel(bDeleteRecord);
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
-      bViewFiles.setEnabled(false);
-      bViewJobDefinitions.setEnabled(false);
-      bDefineJobDefinitions.setEnabled(false);
+      //bViewFiles.setEnabled(false);
+      //bViewJobDefinitions.setEnabled(false);
+      //bDefineJobDefinitions.setEnabled(false);
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
       updateUI();
@@ -617,9 +638,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonResultsPanel(bDeleteRecord);
       addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
-      bViewFiles.setEnabled(false);
-      bViewJobDefinitions.setEnabled(false);
-      bDefineJobDefinitions.setEnabled(false);
+      //bViewFiles.setEnabled(false);
+      //bViewJobDefinitions.setEnabled(false);
+      //bDefineJobDefinitions.setEnabled(false);
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
       menuEditCopy.setEnabled(false);
@@ -692,7 +713,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   /**
    * Adds a button on the select panel.
    */
-  public void addButtonSelectPanel(JButton b){
+  public void addButtonSelectPanel(JComponent b){
     pButtonSelectPanel.add(b);
   }
 
@@ -760,14 +781,23 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         statusBar.setLabel("Searching, please wait ...", 2);
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        statusBar.animateProgressBar();
+        statusBar.setIndeterminateProgressBarToolTip("click here to cancel");
+        statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
+          public void mouseClicked(MouseEvent me){
+            setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+            statusBar.stopAnimation();
+            workThread.interrupt();
+          }
+        });
         setFieldArrays();
         String selectRequest;
         selectRequest = selectPanel.getRequest(shownFields);
-        if(selectRequest == null){
+        if(selectRequest==null){
             return;
         }
         DBResult res = null;
-        res = dbPluginMgr.select(selectRequest, identifier);
+        res = dbPluginMgr.select(selectRequest, identifier, findAll());
 
         bViewFiles.setEnabled(false);
         bViewJobDefinitions.setEnabled(false);
@@ -808,6 +838,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
               bViewFiles.setEnabled(!lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+              // We assume that there are only two kinds of databases:
+              // runtime/transformation/dataset/job catalogs and dataset/file catalogs.
               bViewJobDefinitions.setEnabled(jobDefTableExist && !lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
               bDefineJobDefinitions.setEnabled(jobDefTableExist && !lsm.isSelectionEmpty());
@@ -833,20 +865,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               //Debug.debug("lsm indices: "+
               //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
               bDownload.setEnabled(!lsm.isSelectionEmpty());
-              // This should be safe. Only mysql and hsqldb are directly editable.
-              // TODO: support editing other file catalogs
-              if(jobDefTableExist){
-                bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
-                bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
-                    lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-                miEdit.setEnabled(!lsm.isSelectionEmpty() &&
-                    lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              }
-              else{
-                bDeleteRecord.setEnabled(false);
-                bEditRecord.setEnabled(false);
-                miEdit.setEnabled(false);
-              }
+              bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
+              bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
+                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+              miEdit.setEnabled(!lsm.isSelectionEmpty() &&
+                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
               // No copy paste on pseudo tables
               // menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
               //menuEditCut.setEnabled(!lsm.isSelectionEmpty());
@@ -922,7 +945,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         
         GridPilot.getClassMgr().getGlobalFrame().menuEdit.updateUI();
-        
+        statusBar.stopAnimation();
         statusBar.setLabel("Records found: "+tableResults.getRowCount(), 20);
         setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         
@@ -1057,16 +1080,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         download();
       }
     });
-    // This should be safe. Only mysql and hsqldb are directly editable.
-    // TODO: support editing other file catalogs
-    if(jobDefTableExist){
-      miDelete.setEnabled(true);
-      miEdit.setEnabled(true);
-    }
-    else{
-      miDelete.setEnabled(false);
-      miEdit.setEnabled(false);
-    }
+    miDelete.setEnabled(true);
+    miEdit.setEnabled(true);
     miDownload.setEnabled(true);
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miDownload);
@@ -1187,22 +1202,114 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   private void editFile(){
-    // Should be safe, only mysql and hsqldb contain jobDefinitions
+    // This should be safe. Only mysql and hsqldb contain jobDefinitions and are directly editable.
+    // TODO: support editing other file catalogs
     if(jobDefTableExist){
       editJobDef();
     }
     else{
-      // TODO
+      // Just display the content
+      int i = tableResults.getSelectedRow();
+      String [] values = new String [fieldNames.length];
+      for(int j=0; j<fieldNames.length; ++j){
+        // Not displayed colums are just left empty.
+        values[j] = "--- not displayed ---";
+        for(int k=0; k<tableResults.getColumnCount(); ++k){
+          if(tableResults.getColumnName(k).equalsIgnoreCase(fieldNames[j])){
+            values[j] = tableResults.getValueAt(i, k).toString();
+            break;
+          }
+        }
+        // This would work if the file catalog would support searches on individual files.
+        // DQ2 doesn't
+        /*values[j] = dbPluginMgr.getFile(tableResults.getValueAt(i,
+            // the identifier is the last column
+            tableResults.getColumnCount()-1).toString()).getValue(fieldNames[j]).toString();*/
+      }
+      Util.showResult(fieldNames, values, "file", 0);
     }
   }
   
   private void deleteFiles(){
     // Should be safe, only mysql and hsqldb contain jobDefinitions
     if(jobDefTableExist){
-      deleteFiles();
+      deleteJobDefs();
     }
     else{
-      // TODO
+      String msg = "Are you sure you want to delete file";
+      if(getSelectedIdentifiers().length>1){
+        msg += "s";
+      }
+      String [] ids = getSelectedIdentifiers();
+      for(int i=0; i<getSelectedIdentifiers().length; ++i){
+        if(i>0){
+          msg += ",";
+        }
+        if(i>7){
+          msg += "...";
+          break;
+        }
+        msg += " " + ids[i];
+      }
+      msg += "?";
+      
+      final JCheckBox cbCleanup = new JCheckBox("Delete file catalog entries", true);
+      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+      try{
+        int choice = confirmBox.getConfirm("Confirm delete",
+            msg+"?", new Object[] {"OK", "Cancel", cbCleanup});
+        if(choice==1){
+          return;
+        }
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        return;
+      }
+      workThread = new Thread(){
+        public void run(){
+          if(!getWorking()){
+            return;
+          }
+          String [] ids = getSelectedIdentifiers();
+
+          int [] rows = tableResults.getSelectedRows();
+          Debug.debug("Deleting "+ids.length+" rows", 2);
+          if(ids.length != 0){
+            GridPilot.getClassMgr().getStatusBar().setLabel(
+               "Deleting file(s). Please wait ...");
+            JProgressBar pb = new JProgressBar();
+            pb.setMaximum(ids.length);
+            statusBar.setProgressBar(pb);
+            statusBar.setProgressBar(pb);
+            boolean success = true;
+            try{
+              success = dbPluginMgr.deleteFiles("", ids, cbCleanup.isSelected());
+            }
+            catch(Exception e){
+              e.printStackTrace();
+              success = false;
+            }
+            if(!success){
+              String msg = "Deleting files "+Util.arrayToString(ids)+" failed.";
+              Debug.debug(msg, 1);
+              GridPilot.getClassMgr().getStatusBar().setLabel(msg);
+              GridPilot.getClassMgr().getLogFile().addMessage(msg);
+            }
+            for(int i=ids.length-1; i>=0; i--){
+              pb.setValue(pb.getValue()+1);
+              tableResults.removeRow(rows[i]);
+            }
+            tableResults.tableModel.fireTableDataChanged();
+            GridPilot.getClassMgr().getStatusBar().setLabel(
+               "Deleting job definition(s) done.");
+            statusBar.removeProgressBar(pb);
+          }
+          refresh();
+          stopWorking();
+        }
+      };
+      workThread.start();
     }
   }
   
@@ -1336,6 +1443,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
              "Deleting job definition(s). Please wait ...");
           JProgressBar pb = new JProgressBar();
           pb.setMaximum(ids.length);
+          statusBar.setProgressBar(pb);
+          statusBar.setProgressBar(pb);
           for(int i=ids.length-1; i>=0; i--){
             boolean success = dbPluginMgr.deleteJobDefinition(ids[i]);
             if(!success){
@@ -1351,6 +1460,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           GridPilot.getClassMgr().getStatusBar().setLabel(
              "Deleting job definition(s) done.");
+          statusBar.removeProgressBar(pb);
         }
         refresh();
         stopWorking();
@@ -1548,6 +1658,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           GridPilot.getClassMgr().getStatusBar().setLabel(
              "Deleting transformation(s). Please wait ...");
           JProgressBar pb = new JProgressBar();
+          statusBar.setProgressBar(pb);
           pb.setMaximum(ids.length);
           for(int i = ids.length-1; i>=0; i--){
             boolean success = dbPluginMgr.deleteTransformation(ids[i]);
@@ -1564,6 +1675,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           GridPilot.getClassMgr().getStatusBar().setLabel(
              "Deleting transformation(s) done.");
+          statusBar.removeProgressBar(pb);
         }
         stopWorking();
         refresh();
@@ -1607,6 +1719,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
              "Deleting runtime environment(s). Please wait ...");
           JProgressBar pb = new JProgressBar();
           pb.setMaximum(ids.length);
+          statusBar.setProgressBar(pb);
           for(int i = ids.length-1; i>=0; i--){
             boolean success = dbPluginMgr.deleteRuntimeEnvironment(ids[i]);
             if(!success){
@@ -1622,6 +1735,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           GridPilot.getClassMgr().getStatusBar().setLabel(
              "Deleting runtime environment(s) done.");
+          statusBar.removeProgressBar(pb);
         }
         stopWorking();
         refresh();
@@ -1640,15 +1754,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           try{
             // Create new panel with jobDefinitions.         
             String id = getSelectedIdentifier();
-            DBPanel dbPanel = new DBPanel("file",
-                dbPluginMgr, id);
+            DBPanel dbPanel = new DBPanel("file", dbPluginMgr, id);
             String [] fileDatasetReference =
               dbPluginMgr.getFileDatasetReference();
             dbPanel.selectPanel.setConstraint(fileDatasetReference[1],
                 dbPluginMgr.getDataset(id).getValue(
-                    fileDatasetReference[0]).toString(),
-                0);
-            dbPanel.searchRequest();           
+                    fileDatasetReference[0]).toString(), 0);
+            dbPanel.searchRequest();
+            dbPanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
             GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                   
           }
           catch(Exception e){
@@ -1747,19 +1860,39 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         // if the table jobDefinition is present, we are using
         // the native tables and only one url/pfn per jobDefinition/file
         // is allowed, thus no checkbox needed
-        JCheckBox jcb = null;
+        JPanel pTargetDBs = null;
+        JComboBox cbTargetDBSelection = null;
         try{
-          if(dbPluginMgr.getFieldNames("jobDefinition")==null){
-            jcb = new JCheckBox("Register new locations ");
+          pTargetDBs = new JPanel();
+          cbTargetDBSelection = new JComboBox();           
+          cbTargetDBSelection.addItem("");
+          for(int i=0; i<GridPilot.dbNames.length; ++i){
+            // If this DB has a job definition table, registration should not be done.
+            // Files are defined by the jobDefinition table.
+            try{
+              if(GridPilot.getClassMgr().getDBPluginMgr(
+                  GridPilot.dbNames[i]).getFieldNames("jobDefinition")!=null){
+                continue;
+              }
+            }
+            catch(Exception e){
+            }
+            cbTargetDBSelection.addItem(GridPilot.dbNames[i]);
+          }
+          JLabel jlTargetDBSelection = new JLabel("Register new locations in DB:");
+          pTargetDBs.add(jlTargetDBSelection, null);
+          pTargetDBs.add(cbTargetDBSelection, null);
+          if(cbTargetDBSelection.getItemCount()<2){
+            pTargetDBs = null;
           }
         }
         catch(Exception e){
-          jcb = null;
+          pTargetDBs = null;
         }
 
         String dlUrl = null;
         try{
-          dlUrl = getReplicaURL(defaultURL, jcb);
+          dlUrl = getReplicaURL(defaultURL, pTargetDBs);
         }
         catch(Exception e){
           String error = "ERROR: not a valid directory: "+dlUrl;
@@ -1767,10 +1900,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           GridPilot.getClassMgr().getStatusBar().setLabel(error);
           return;
         }
-        // queue downloads, if checkbox is set, request registering new locations
-        // by passing on dbPluginMgr
-        
-        if(startDownload(dlUrl, (jcb!=null && jcb.isSelected())?dbPluginMgr:null)){
+        // queue downloads, if drop-down of DBs is set, request registering new locations
+        // by passing on corresponding dbPluginMgr
+        if(startDownload(dlUrl, (pTargetDBs!=null && cbTargetDBSelection!=null &&
+            cbTargetDBSelection.getSelectedItem()!=null &&
+            !cbTargetDBSelection.getSelectedItem().toString().equals(""))?
+                GridPilot.getClassMgr().getDBPluginMgr(
+                    cbTargetDBSelection.getSelectedItem().toString()) : null)){
           GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel();
           GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.tpStatLog.setSelectedIndex(1);
         }
@@ -1778,7 +1914,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }.start();
   }
 
-  private String getReplicaURL(String url, JCheckBox jcb) throws IOException{
+  private String getReplicaURL(String url, JComponent jcb) throws IOException{
     Debug.debug("URL: "+url, 3);
     JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
     frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -2012,6 +2148,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       "Deleting job definition(s). Please wait ...");
       JProgressBar pb = new JProgressBar();
       pb.setMaximum((records.length-2));
+      statusBar.setProgressBar(pb);
       for(int i=2; i<records.length; ++i){
         try{
           deleteRecord(records[0], records[1],
@@ -2029,6 +2166,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       statusBar.setLabel(
          "Deleting job definition(s) done.");
+      statusBar.removeProgressBar(pb);
     }
     GridPilot.getClassMgr().getGlobalFrame().cutting = false;
     refresh();

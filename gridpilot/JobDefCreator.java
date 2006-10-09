@@ -2,7 +2,6 @@ package gridpilot;
 
 import java.util.*;
 import javax.swing.*;
-import java.awt.*;
 
 /**
  * Creates the job definitions with datas given by JobDefCreationPanel.
@@ -18,7 +17,6 @@ public class JobDefCreator{
   private String [] cstAttrNames;
   private boolean editing;
   private String dbName;
-  private Object[] showResultsOptions = {"OK", "Skip"};
 
   public JobDefCreator(String _dbName,
                        //DatasetMgr _datasetMgr,
@@ -47,7 +45,8 @@ public class JobDefCreator{
     showThis = showResults;
 
     if(showThis){
-      int choice = showResult(cstAttr);
+      //int choice = showResult(cstAttr);
+      int choice = Util.showResult(cstAttrNames, cstAttr, "Job definition", 1);
       switch(choice){
         case 0  : skip = false;  break;  // OK
         case 1  : skip = true;   break; // Skip
@@ -102,85 +101,5 @@ public class JobDefCreator{
         }
       }
     }
-  }
-  
-  private int showResult(String [] resCstAttr){
-
-    JPanel pResult = new JPanel(new GridBagLayout());
-    int row = 0;
-
-    for(int i=0; i<cstAttr.length; ++i, ++row){
-      pResult.add(new JLabel(cstAttrNames[i] + " : "),
-          new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
-              GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-              new Insets(5, 25, 5, 5), 0, 0));
-      JComponent jval = null;
-      JTextArea textArea = null;
-      if(cstAttrNames[i].equalsIgnoreCase("jobXML") ||
-          cstAttrNames[i].equalsIgnoreCase("jobPars") ||
-         cstAttrNames[i].equalsIgnoreCase("jobOutputs") ||
-         cstAttrNames[i].equalsIgnoreCase("jobLogs") ||
-         cstAttrNames[i].equalsIgnoreCase("jobInputs")){
-        // Just show raw XML
-        textArea = new JTextArea(resCstAttr[i]);
-        textArea.setLineWrap(true);
-        textArea.setWrapStyleWord(true);
-        textArea.setEditable(false);
-        jval = textArea;
-      }
-      else{
-        jval = new JLabel(resCstAttr[i]);
-      }
-      Debug.debug("setting "+cstAttrNames[i]+"->"+resCstAttr[i], 3);
-      pResult.add(jval,
-          new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
-              GridBagConstraints.CENTER,
-              GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
-    }
-
-    JScrollPane sp = new JScrollPane(pResult);
-    int height = (int)pResult.getPreferredSize().getHeight() +
-    (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5;
-    int width = (int)pResult.getPreferredSize().getWidth() +
-    (int)sp.getVerticalScrollBar().getPreferredSize().getWidth() + 5;
-    Dimension screenSize = new Dimension(Toolkit.getDefaultToolkit().getScreenSize());
-    if(height>screenSize.height){
-      height = 700;
-      Debug.debug("Screen height exceeded, setting "+height, 2);
-    }
-    if(width>screenSize.width){
-      width = 550;
-      Debug.debug("Screen width exceeded, setting "+width, 2);
-    }
-    Debug.debug("Setting size "+width+":"+height, 3);
-    sp.setPreferredSize(new Dimension(width, height));
-
-    JOptionPane op = new JOptionPane(sp,
-                                     JOptionPane.QUESTION_MESSAGE,
-                                     JOptionPane.YES_NO_CANCEL_OPTION,
-                                     null,
-                                     showResultsOptions,
-                                     showResultsOptions[0]);
-    
-
-    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "JobDef");
-    
-    dialog.requestFocusInWindow();
-    dialog.setResizable(true);
-    dialog.setVisible(true);
-    dialog.dispose();
-
-
-    Object selectedValue = op.getValue();
-
-    if(selectedValue==null){
-      return JOptionPane.CLOSED_OPTION;
-    }
-    for(int i=0; i<showResultsOptions.length; ++i){
-      if(showResultsOptions[i]==selectedValue){
-        return i;
-      }
-    }
-    return JOptionPane.CLOSED_OPTION;
   }
 }

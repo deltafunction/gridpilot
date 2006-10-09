@@ -553,9 +553,9 @@ public class GlobalFrame extends GPFrame{
   public void toggleMonitoringPanel(){
     try{
       if(pDialog==null){
-        Debug.debug("Creating new job monitoring dialog", 2);
+        Debug.debug("Creating new monitoring dialog", 2);
         pDialog = new CreateEditDialog(monitoringPanel, false, false, false);
-        pDialog.setTitle("Job Monitor");
+        pDialog.setTitle("Monitor");
         pDialog.pack();
         pDialog.setVisible(true);
         return;

@@ -1,5 +1,7 @@
 package gridpilot;
 
+import java.sql.SQLException;
+
 public interface Database{
     
   public static final int DEFINED = 1;
@@ -10,14 +12,17 @@ public interface Database{
   public static final int ABORTED = 6;
   public static final int UNEXPECTED = 7;
   
-  public String connect();
+  public String connect() throws SQLException;
   public void disconnect();
   // TODO: implement in plugins and make menu point active.
   public void clearCaches();
   
   // This is the parser of the select request from SelectPanel.
   // The last returned column must be the identifier.
-  public DBResult select(String selectRequest, String identifier);
+  // The parameter findAll is used only to choose whether or not
+  // to query all file catalogs for PFNs.
+  public DBResult select(String selectRequest, String identifier,
+      boolean findAll);
   
   // ####### RuntimeEnvironment table
   public String [] getRuntimeEnvironments(String jobDefID);
@@ -89,6 +94,7 @@ public interface Database{
   public DBRecord getFile(String fileID);
   public String [] getFileURLs(String fileID);
   public void registerFileLocation(String fileID, String url);
+  public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup);
   
   // ####### Job execution
   public String getRunInfo(String jobDefID, String key);

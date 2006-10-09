@@ -3,13 +3,16 @@ package gridpilot;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Toolkit;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -23,7 +26,17 @@ import java.net.URL;
 //import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -35,6 +48,7 @@ import java.util.Vector;
 
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -42,6 +56,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
+import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
@@ -71,6 +86,7 @@ import org.ietf.jgss.GSSException;
 
 public class Util{
   
+  // Default when interrupting threads. Can be overridden by argument.
   private static boolean ASK_BEFORE_INTERRUPT = true;
   
   public static String [] split(String s){
@@ -835,8 +851,8 @@ public class Util{
   /**
    * Asks the user if he wants to interrupt a plug-in
    */
-  private static boolean askForInterrupt(String csName, String fct){
-    String msg = "No response from plugin " + csName +
+  private static boolean askForInterrupt(String name, String fct){
+    String msg = "No response from " + name +
                  " for " + fct + "\n"+
                  "Do you want to interrupt it ?";
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), msg, "No response from plugin",
@@ -853,9 +869,18 @@ public class Util{
    * Waits the specified <code>MyThread</code> during maximum <code>timeOut</code> ms.
    * @return true if <code>t</code> ended normally, false if <code>t</code> has been interrupted
    */
-  public static boolean waitForThread(MyThread t, String csName, int _timeOut, String function){
-    int timeOut;
-      timeOut = _timeOut;
+  public static boolean waitForThread(MyThread t, String name, int _timeOut,
+      String function){
+    return waitForThread(t, name, _timeOut, function, null);
+  }
+
+  public static boolean waitForThread(MyThread t, String name, int _timeOut,
+      String function, Boolean _askForInterrupt){
+    int timeOut = _timeOut;
+    boolean askForInterrupt = ASK_BEFORE_INTERRUPT;
+    if(_askForInterrupt!=null){
+      askForInterrupt = _askForInterrupt.booleanValue();
+    }
     do{
       try{
         t.join(timeOut);
@@ -863,9 +888,9 @@ public class Util{
       catch(InterruptedException ie){}
 
       if(t.isAlive()){
-        if(!ASK_BEFORE_INTERRUPT || askForInterrupt(csName, function)){
+        if(!askForInterrupt || askForInterrupt(name, function)){
           GridPilot.getClassMgr().getLogFile().addMessage("No response from plugin " +
-              csName + " for " + function);
+              name + " for " + function);
           t.interrupt();
           return false;
         }
@@ -936,6 +961,360 @@ public class Util{
     ((JTextArea) jval).setEditable(false);
     setBackgroundColor(jval);
     return jval;
+  }
+
+  public static void activateSsl(GlobusCredential globusCred) throws KeyStoreException,
+  NoSuchAlgorithmException, CertificateException,
+  IOException, GSSException {
+ 
+    String tmpPwd = "whateva";
+    FileInputStream fis = null;
+    CertificateFactory cf = null;
+    Certificate cert = null;
+    
+    // The key store
+    //
+    // We save the keystore to a temporary file.
+    // This seems to be the only way to get connector/j to use it...
+    // get a temp name
+    File tmpFile = File.createTempFile(/*prefix*/"keystore", /*suffix*/"");
+    String keystorePath = tmpFile.getAbsolutePath();
+    // hack to have the diretory deleted on exit
+    GridPilot.tmpConfFile.put(keystorePath, new File(keystorePath));
+    // TODO: drop first (last?) element?
+    X509Certificate [] chain = globusCred.getCertificateChain();
+    X509Certificate [] idChain = new X509Certificate[chain.length-1];
+    Vector idVector = new Vector();
+    for(int i=0; i<chain.length; ++i){
+      Debug.debug(chain[i].getSubjectDN().getName()+"<->"+ globusCred.getSubject(), 3);
+      if(!chain[i].getSubjectDN().getName().equals(globusCred.getSubject())){
+        idVector.add(chain[i]);
+      }
+      else{
+        Debug.debug("Removing proxy certificate from chain", 2);
+      }
+    }
+    for(int i=0; i<idChain.length; ++i){
+      idChain[i] = (X509Certificate) idVector.get(i);
+    }
+    
+    // This does NOT work: the proxy certificate cannot be used for
+    // standard ssl authentication, because the user certificate does
+    // not containg CA privileges.
+    /*
+    KeyStore ks = KeyStore.getInstance("JKS");
+    PrivateKey mypriv = globusCred.getPrivateKey();
+    ks.load(null, null);
+    ks.setKeyEntry("mycert", mypriv, tmpPwd.toCharArray(), chain);
+    FileOutputStream fos = new FileOutputStream(keystorePath);
+    ks.store(fos, tmpPwd.toCharArray());
+    fos.close();
+    */
+    
+    // Instead we use the real certificate/proxy
+    String keyFile = GridPilot.keyFile;
+    if(keyFile.startsWith("~")){
+      try{
+        keyFile = System.getProperty("user.home") + File.separator +
+        keyFile.substring(2);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    try{
+      // Load the private key (in PKCS#8 DER encoding).
+      /*
+      File userKeyFile = new File(keyFile);
+      Debug.debug("loading "+keyFile, 3);
+      byte[] encodedKey = new byte[(int)userKeyFile.length()];
+      fis = new FileInputStream(userKeyFile);
+      fis.read(encodedKey);
+      fis.close();
+      KeyFactory rSAKeyFactory = KeyFactory.getInstance("RSA");
+      PrivateKey privateKey = rSAKeyFactory.generatePrivate(
+         new PKCS8EncodedKeySpec(encodedKey));
+      */
+      
+      // We need the password to decrypt the pricate key.
+      // If the proxy was loaded from a previous session, we have to
+      // ask again.
+      if(GridPilot.keyPassword==null){
+        // delete proxy and reinitialize - this will set GridPilot.keyPassword
+        Debug.debug("reinitializing grid proxy to get password", 3);
+        Util.getProxyFile().delete();
+        GridPilot.getClassMgr().gridProxyInitialized = Boolean.FALSE;
+        GridPilot.getClassMgr().credential = null;
+        GridPilot.getClassMgr().getGridCredential();
+      }
+      Debug.debug("Decrypting private key with password "+GridPilot.keyPassword, 3);
+      BouncyCastleOpenSSLKey key = new BouncyCastleOpenSSLKey(keyFile);
+      key.decrypt(GridPilot.keyPassword);     
+      addToKeyStore(key.getPrivateKey(), GridPilot.keyPassword.toCharArray(), 
+         idChain, keystorePath);
+    }
+    catch(Exception e){
+      Debug.debug("Error adding certificate to keystore\n" + e, 2);
+      e.printStackTrace();
+      try{                   
+        fis.close();
+      }
+      catch(Exception r){
+      }
+      return;
+    }
+    
+    // activate the keystore
+    System.setProperty("javax.net.ssl.keyStore", keystorePath);
+    System.setProperty("javax.net.ssl.keyStorePassword", GridPilot.keyPassword);
+
+    // The trust store
+    //
+    Debug.debug("Reading list of files from "+
+        GridPilot.resourcesPath+"ca_certs_list.txt", 3);
+    URL fileURL = GridPilot.class.getResource(
+        GridPilot.resourcesPath+"ca_certs_list.txt");
+    HashSet certFilesList = new HashSet();
+    BufferedReader in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
+    String line;
+    while((line = in.readLine())!=null){
+      certFilesList.add(line);
+    }
+    in.close();
+    
+    // The truststore will be saved to a temporary file.
+    // This seems to be the only way to get connector/j to use it...
+    // get a temp name
+    tmpFile = File.createTempFile(/*prefix*/"truststore", /*suffix*/"");
+    String truststorePath = tmpFile.getAbsolutePath();
+    // hack to have the diretory deleted on exit
+    GridPilot.tmpConfFile.put(truststorePath, new File(truststorePath));
+
+    String caCertsTmpdir = GridPilot.getClassMgr().getCaCertsTmpDir();
+    String fileName = null;
+    File caCertFile = null;
+    for(Iterator it=certFilesList.iterator(); it.hasNext();){
+      fileName = it.next().toString();
+      if(!fileName.toLowerCase().endsWith(".0")){
+        continue;
+      }
+      caCertFile =  new File(caCertsTmpdir, fileName);
+      Debug.debug("loading "+caCertFile.getCanonicalPath(), 3);
+      try{
+        fis = new FileInputStream(caCertFile);
+        cf = CertificateFactory.getInstance("X.509");
+        cert = (X509Certificate) cf.generateCertificate(fis);
+        String alias = fileName.substring(0, fileName.length()-2);
+        Debug.debug("Adding the cert with alias " + alias, 2);
+        addToTrustStore(tmpPwd.toCharArray(), alias, cert,
+           truststorePath);
+        fis.close();   
+      }
+      catch(Exception e){
+        Debug.debug("Error adding certificate to keystore\n" + e, 2);
+        e.printStackTrace();
+        try{                   
+          fis.close();
+        }
+        catch(Exception r){
+        }
+        return;
+      }        
+    }
+    // activate truststore 
+    System.setProperty("javax.net.ssl.trustStore", truststorePath);
+    System.setProperty("javax.net.ssl.trustStorePassword", tmpPwd);    
+  }
+
+
+  private static void addToKeyStore(PrivateKey privateKey, char [] password,
+     X509Certificate [] chain, String keyFilePath)
+     throws KeyStoreException, FileNotFoundException,
+     IOException, CertificateException, NoSuchAlgorithmException{
+    KeyStore keystore = KeyStore.getInstance("JKS");
+    // Load the keystore contents
+    Debug.debug("Opening key file", 3);
+    FileInputStream in = new FileInputStream(keyFilePath);
+    Debug.debug("Loading input from "+keyFilePath+" into keystore", 2);
+    Debug.debug("available "+in.available(), 3);
+    if(in.available()==0){ 
+      keystore.load(null, password);
+    }
+    else{ 
+      keystore.load(in, password);
+    }
+    in.close();
+    // Add the key
+    keystore.setKeyEntry("mycert", privateKey, password, chain);
+    // Save the new keystore contents
+    FileOutputStream out = new FileOutputStream(keyFilePath);
+    keystore.store(out, password);
+    out.close();
+  }
+
+  private static void addToTrustStore(char [] password, String alias,
+     Certificate cert, String keyFilePath)
+     throws KeyStoreException, FileNotFoundException,
+     IOException, CertificateException, NoSuchAlgorithmException{
+    KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+    // Load the keystore contents
+    Debug.debug("Opening key file", 3);
+    FileInputStream in = new FileInputStream(keyFilePath);
+    Debug.debug("Loading input from "+keyFilePath+" into keystore", 2);
+    Debug.debug("available "+in.available(), 3);
+    if(in.available()==0){ 
+      keystore.load(null, password);
+    }
+    else{ 
+      keystore.load(in, password);
+    }
+    in.close();
+    // Add the certificate
+    keystore.setCertificateEntry(alias, cert);
+    // Save the new keystore contents
+    FileOutputStream out = new FileOutputStream(keyFilePath);
+    keystore.store(out, password);
+    out.close();
+  }
+
+  public static Connection sqlConnection(String driver, String database,
+      String user, String passwd, boolean gridAuth) throws SQLException{
+    Connection conn = null;
+    try{
+      Class.forName(driver).newInstance();
+    }
+    catch(Exception e){
+      String error = "Could not load the driver "+driver+". ";
+      GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+      Debug.debug(error, 1);
+      e.printStackTrace();
+      throw new SQLException(error);
+    }
+    try{
+      if(gridAuth){
+        conn = DriverManager.getConnection(database+
+            "?user="+user+"&password=&useSSL=true");
+      }
+      else{
+        conn = DriverManager.getConnection(database+
+            "?user="+user+"&password="+passwd);
+      }
+    }
+    catch(Exception e){
+      String error = "Could not connect to database "+database+
+          " with "+user+":"+passwd;
+      e.printStackTrace();
+      throw new SQLException(error);
+    }  
+    try{
+      conn.setAutoCommit(true);
+    }
+    catch(Exception e){
+      Debug.debug("failed setting auto commit to true: "+e.getMessage(), 2);
+    }
+    return conn;
+  }
+  
+  public static int showResult(String [] cstAttrNames, String [] cstAttr, String title,
+      int moreThanOne){
+    
+    Object[] showResultsOptions = null;
+    Object[] showResultsOptions2 = {"OK", "Skip", "OK for all", "Skip all"};
+    Object[] showResultsOptions1 = {"OK", "Skip"};
+    Object[] showResultsOptions0 = {"OK"};
+
+    JPanel pResult = new JPanel(new GridBagLayout());
+    int row = 0;
+    JComponent jval;
+    boolean noTextArea = true;
+    for(int i =0; i<cstAttr.length; ++i, ++row){
+      if(cstAttrNames[i].equalsIgnoreCase("initLines") ||
+          cstAttrNames[i].equalsIgnoreCase("outFileMapping") ||
+          cstAttrNames[i].equalsIgnoreCase("pfns")){
+        jval = Util.createGrayTextArea(cstAttr[i]);
+        noTextArea = false;
+      }
+      else{
+        jval = new JLabel(cstAttr[i].toString());
+      }
+      pResult.add(new JLabel(cstAttrNames[i] + " : "),
+          new GridBagConstraints(0, row, 1, 1, 0.0, 0.0 ,
+              GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+              new Insets(5, 25, 5, 5), 0, 0));
+      pResult.add(jval, new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
+          GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+          new Insets(5, 5, 5, 5), 0, 0));
+    }
+
+    JScrollPane sp = new JScrollPane(pResult);
+    int height = (int)pResult.getPreferredSize().getHeight() +
+      (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5;
+    int width = (int)pResult.getPreferredSize().getWidth() +
+      (int)sp.getVerticalScrollBar().getPreferredSize().getWidth() + 5;
+    Dimension screenSize = new Dimension(Toolkit.getDefaultToolkit().getScreenSize());
+    if(!noTextArea){
+      width += 100;
+    }
+    if(height>screenSize.height){
+      height = 700;
+      Debug.debug("Screen height exceeded, setting "+height, 2);
+    }
+    if(!noTextArea){
+      width += 200;
+    }
+    if(width>screenSize.width){
+      width = 550;
+      Debug.debug("Screen width exceeded, setting "+width, 2);
+    }
+    Debug.debug("Setting size "+width+":"+height, 3);
+    sp.setPreferredSize(new Dimension(width, height));
+
+    JOptionPane op = null;
+    if(moreThanOne==0){
+      showResultsOptions = showResultsOptions0;
+      op = new JOptionPane(sp,
+          JOptionPane.QUESTION_MESSAGE,
+          JOptionPane.OK_OPTION,
+          null,
+          showResultsOptions0,
+          showResultsOptions2[0]);
+     }
+    else if(moreThanOne==1){
+      showResultsOptions = showResultsOptions1;
+      op = new JOptionPane(sp,
+         JOptionPane.QUESTION_MESSAGE,
+         JOptionPane.YES_NO_CANCEL_OPTION,
+         null,
+         showResultsOptions1,
+         showResultsOptions2[0]);
+   }
+   else if(moreThanOne==2){
+     showResultsOptions = showResultsOptions2;
+     op = new JOptionPane(sp,
+         JOptionPane.QUESTION_MESSAGE,
+         JOptionPane.YES_NO_CANCEL_OPTION,
+         null,
+         showResultsOptions2,
+         showResultsOptions2[0]);
+    }
+
+    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), title);    
+    dialog.requestFocusInWindow();    
+    dialog.setResizable(true);
+    dialog.setVisible(true);
+    dialog.dispose();
+
+    Object selectedValue = op.getValue();
+
+    if(selectedValue==null){
+      return JOptionPane.CLOSED_OPTION;
+    }
+    for(int i=0; i<showResultsOptions.length; ++i){
+      if(showResultsOptions[i]==selectedValue){
+        return i;
+      }
+    }
+    return JOptionPane.CLOSED_OPTION;
   }
 
 }

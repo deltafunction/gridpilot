@@ -29,7 +29,6 @@ import org.globus.gsi.GlobusCredential;
  * The SecureWebServiceConnection class implements access to a webservice via get or post
  * It inherits from WebServiceConnection, but makes it secure.
  * @author  Cyril Topfel
- * @version 1.0, August 2006 
  */
 public class SecureWebServiceConnection extends WebServiceConnection {
 

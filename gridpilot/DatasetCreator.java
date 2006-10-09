@@ -1,7 +1,6 @@
 package gridpilot;
 
 import javax.swing.*;
-import java.awt.*;
 import java.util.HashSet;
 import java.util.Iterator;
 
@@ -22,9 +21,6 @@ public class DatasetCreator{
   private DBPluginMgr dbPluginMgr;
   private String [] datasetTransformationReference;
   private String [] datasetTransformationVersionReference;
-
-  private Object[] showResultsOptions = {"OK", "Skip", "OK for all", "Skip all"};
-  private Object[] showResultsOptions1 = {"OK", "Skip"};
 
   public DatasetCreator(  StatusBar _statusBar,
                           DBPluginMgr _dbPluginMgr,
@@ -71,7 +67,7 @@ public class DatasetCreator{
           transformationVersion = cstAttr[j];
         }
       }
-      String datasetNameField = dbPluginMgr.getNameField("dataset");
+      String datasetNameField = dbPluginMgr.getNameField("Dataset");
       for(int i=0; i<datasetIDs.length; ++i){
         Debug.debug("Creating #"+datasetIDs[i], 2);
         DBRecord res = dbPluginMgr.getDataset(datasetIDs[i]);
@@ -130,7 +126,9 @@ public class DatasetCreator{
           }       
         }
         if(showThis && !okAll){
-        int choice = showResult(resCstAttr, datasetIDs[i], i+1<datasetIDs.length);  
+        //int choice = showResult(resCstAttr, /*datasetIDs[i],*/ i+1<datasetIDs.length);  
+        int choice = Util.showResult(cstAttrNames, resCstAttr, "dataset",
+            (i+1<datasetIDs.length ? 2 : 1));  
         switch(choice){
           case 0  : skip = false; break;  // OK
           case 1  : skip = true ; break;  // Skip
@@ -162,7 +160,9 @@ public class DatasetCreator{
         }
 
         if(showThis && !okAll){
-        int choice = showResult(resCstAttr,datasetIDs[i],i+1<datasetIDs.length);  
+        //int choice = showResult(resCstAttr, /*datasetIDs[i],*/ i+1<datasetIDs.length);  
+        int choice = Util.showResult(cstAttrNames, resCstAttr, "dataset",
+            (i+1<datasetIDs.length ? 2 : 1));  
         switch(choice){
           case 0  : skip = false; break;  // OK
           case 1  : skip = true ; break;  // Skip
@@ -203,75 +203,5 @@ public class DatasetCreator{
           }
     }
     return true;
-  }
-
-  private int showResult(String [] resCstAttr, String _datasetID, boolean moreThanOne){
-
-    JPanel pResult = new JPanel(new GridBagLayout());
-    int row = 0;
-
-    for(int i=0; i<cstAttr.length; ++i, ++row){
-      pResult.add(new JLabel(cstAttrNames[i] + " : "),
-          new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
-              GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-         new Insets(5, 25, 5, 5), 0, 0));
-      pResult.add(new JLabel(resCstAttr[i]),
-          new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
-              GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
-              new Insets(5, 5, 5, 5), 0, 0));
-    }
-
-    JScrollPane sp = new JScrollPane(pResult);
-    int height = (int)pResult.getPreferredSize().getHeight() +
-    (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5;
-    int width = (int)pResult.getPreferredSize().getWidth() +
-    (int)sp.getVerticalScrollBar().getPreferredSize().getWidth() + 5;
-    Dimension screenSize = new Dimension(Toolkit.getDefaultToolkit().getScreenSize());
-    if (height>screenSize.height){
-      height = 700;
-      Debug.debug("Screen height exceeded, setting "+height, 2);
-    }
-    if (width>screenSize.width){
-      width = 550;
-      Debug.debug("Screen width exceeded, setting "+width, 2);
-    }
-    Debug.debug("Setting size "+width+":"+height, 3);
-    sp.setPreferredSize(new Dimension(width, height));
-    
-    JOptionPane op;
-    if(moreThanOne){
-       op = new JOptionPane(sp,
-          JOptionPane.QUESTION_MESSAGE,
-          JOptionPane.YES_NO_CANCEL_OPTION,
-          null,
-          showResultsOptions,
-          showResultsOptions[0]);
-    }
-    else{
-      op = new JOptionPane(sp,
-          JOptionPane.QUESTION_MESSAGE,
-          JOptionPane.YES_NO_CANCEL_OPTION,
-          null,
-          showResultsOptions1,
-          showResultsOptions[0]);
-    }
-
-    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "Dataset");
-    dialog.setResizable(true);
-    dialog.setVisible(true);
-    dialog.dispose();
-
-
-    Object selectedValue = op.getValue();
-
-    if(selectedValue==null){
-      return JOptionPane.CLOSED_OPTION;
-    }
-    for(int i=0; i<showResultsOptions.length; ++i){
-      if(showResultsOptions[i]==selectedValue){
-        return i;
-      }
-    }
-    return JOptionPane.CLOSED_OPTION;
   }
 }

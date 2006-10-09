@@ -542,7 +542,8 @@ public class HSQLDBDatabase implements Database{
     return ret;
   }
 
-  public synchronized DBResult select(String selectRequest, String identifier){
+  public synchronized DBResult select(String selectRequest, String identifier,
+      boolean findAll){
     
     String req = selectRequest;
     boolean withStar = false;
@@ -692,7 +693,7 @@ public class HSQLDBDatabase implements Database{
   
   public synchronized DBRecord getDataset(String datasetID){
     
-    DBRecord task = null;
+    DBRecord dataset = null;
     String req = "SELECT "+datasetFields[0];
     if(datasetFields.length>1){
       for(int i=1; i<datasetFields.length; ++i){
@@ -704,7 +705,7 @@ public class HSQLDBDatabase implements Database{
     try{
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
-      Vector taskVector = new Vector();
+      Vector datasetVector = new Vector();
       while(rset.next()){
         String values[] = new String[datasetFields.length];
         for(int i=0; i<datasetFields.length;i++){
@@ -720,24 +721,24 @@ public class HSQLDBDatabase implements Database{
           //Debug.debug(datasetFields[i]+"-->"+values[i], 3);
         }
         DBRecord jobd = new DBRecord(datasetFields, values);
-        taskVector.add(jobd);
+        datasetVector.add(jobd);
       }
       rset.close();
-      if(taskVector.size()==0){
+      if(datasetVector.size()==0){
         Debug.debug("ERROR: No dataset with id "+datasetID, 1);
       }
       else{
-        task = ((DBRecord) taskVector.get(0));
+        dataset = ((DBRecord) datasetVector.get(0));
       }
-      if(taskVector.size()>1){
+      if(datasetVector.size()>1){
         Debug.debug("WARNING: More than one ("+rset.getRow()+") dataset found with id "+datasetID, 1);
       }
     }
     catch(SQLException e){
       Debug.debug("WARNING: No dataset found with id "+datasetID+". "+e.getMessage(), 1);
-      return task;
+      return dataset;
     }
-     return task;
+     return dataset;
   }
   
   public String getDatasetTransformationName(String datasetID){
@@ -1091,7 +1092,7 @@ public class HSQLDBDatabase implements Database{
   }
 
   // Selects only the fields listed in fieldNames. Other fields are set to "".
-  public synchronized DBRecord [] selectJobDefinitions(String datasetID, String [] fieldNames){
+  private synchronized DBRecord [] selectJobDefinitions(String datasetID, String [] fieldNames){
     
     String req = "SELECT";
     for(int i=0; i<fieldNames.length; ++i){
@@ -2006,6 +2007,11 @@ public class HSQLDBDatabase implements Database{
 
   public void registerFileLocation(String fileID, String url){
     // not applicable, not a file catalog
+  }
+  
+  public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) {
+    //  not applicable, not a file catalog
+    return false;
   }
 
 }

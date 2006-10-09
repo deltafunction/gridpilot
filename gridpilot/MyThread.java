@@ -5,7 +5,7 @@ import java.util.Vector;
 import gridpilot.DBResult;
 import gridpilot.DBRecord;
 
-class MyThread extends Thread{
+public class MyThread extends Thread{
 
   public int getIntRes(){throw new UnsupportedOperationException("getIntRes not implemented !");}
   public boolean getBooleanRes(){throw new UnsupportedOperationException("getBooleanRes not implemented !"); }
