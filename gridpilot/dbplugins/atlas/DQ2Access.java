@@ -146,6 +146,25 @@ public class DQ2Access {
 		return thematcher.group(1);
 	}
 
+	/**
+	 * deletes files from dataset by creating a new version returns new vuid
+	 * 
+	 * @param dsn Dataset name
+	 */
+	String createNewDatasetVersion(String dsn) throws IOException
+	{
+		String keys[]= {"dsn","update"};
+		String values[] = {dsn,"yes"};
+		String newvuidmess = wsSecure.post(deleteDatasetURL, keys, values);
+		return	parseVuid(newvuidmess);	
+	}
+	
+	void deleteFromSite(String vuid, String site) throws IOException
+	{
+		String keys[]= {"vuid","site","delete"};
+		String values[] = {vuid,"[\"" + site + "\"]","yes"};
+		wsSecure.get(locationDatasetURL, keys, values);	
+	}
 
 	/**
 	 * parses multiple vuids out of a dq2 output
@@ -166,6 +185,8 @@ public class DQ2Access {
 		}
 		return res;
   }
+	
+	
   /*
    DQ2Access myacc=new DQ2Access(null,0,null,0);
     Debug.debug(myacc.parseVuid(
