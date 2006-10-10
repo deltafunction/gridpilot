@@ -131,46 +131,7 @@ public class DQ2Access {
 		wsSecure.post(locationDatasetURL, keys, values);
 		return true;
 	}
-	
-  /**
-   * updates Dataset
-   * @param vuid String            the vuid of the dataset
-   * @param dsn String             the dataset name
-   * @param incomplete String []   list of sites with incomplete replica
-   * @param complete String []     list of sites with complete replica
-   * this method is INSECURE. If complete/incomplete is given (not null),
-   * the dataset is deleted before a new one is created (with the same vuid).
-   * TODO: improve this
-   */
-  public boolean updateDataset(String vuid, String dsn, String [] incomplete, String [] complete)
-     throws IOException
-  {
-    if(dsn==null || dsn.length()==0){
-      throw new IOException("ERROR: empty dataset name");
-    }
-    if(vuid==null || vuid.length()==0){
-      throw new IOException("ERROR: empty vuid");
-    }
-    if(incomplete!=null && complete!=null){
-      if(!deleteDataset(vuid)){
-        throw new IOException("ERROR: could not update dataset "+dsn);
-      }
-    }
-    String keys[]={"vuid","dsn"};
-    String values[]={vuid, dsn};
-    // TODO: does this create a new dataset with this vuid? Check!
-    wsSecure.post(locationDatasetURL, keys, values);
-    if(incomplete!=null && complete!=null){
-      for(int i=0; i<incomplete.length; ++i){
-        registerVuidInLocation(vuid, false, incomplete[i]);
-      }
-      for(int i=0; i<complete.length; ++i){
-        registerVuidInLocation(vuid, true, complete[i]);
-      }
-    }
-    return true;
-  }
-  
+	  
 	/**
 	 * parses one vuid out of a dq2 output
 	 * @param toParse String output from dq webserice access
