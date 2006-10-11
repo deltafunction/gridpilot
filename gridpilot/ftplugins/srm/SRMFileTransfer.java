@@ -139,6 +139,7 @@ public class SRMFileTransfer implements FileTransfer {
       // get status from GSIFTPFileTransfer (or whichever protocol the SRM uses)
       try{
         //status = TransferControl.getStatus(srcTurl+" "+destTurl);
+        // TODO: strip srm specifics off id
         status = TransferControl.getStatus(fileTransferID);
       }
       catch(Exception e){
@@ -147,7 +148,7 @@ public class SRMFileTransfer implements FileTransfer {
       }
     }
     
-    if(status!=null){
+    if(status!=null && status.length()>0){
       return(status);
     }
     else{
@@ -155,9 +156,6 @@ public class SRMFileTransfer implements FileTransfer {
         ISRM srm = connect(new GlobusURL(surl));
         RequestStatus rs = srm.getRequestStatus(requestId);
         status = rs.fileStatuses[statusIndex].state;
-        status += ";"+rs.estTimeToStart+":"+
-                      rs.fileStatuses[statusIndex].estSecondsToStart+":"+
-                      rs.finishTime;
         return status;
       }
       catch(Exception e){
@@ -166,6 +164,43 @@ public class SRMFileTransfer implements FileTransfer {
     }
   }
   
+  public String getFullStatus(String fileTransferID) throws Exception {
+    String [] idArr = parseFileTransferID(fileTransferID);
+    String requestType = idArr[1];
+    int requestId = Integer.parseInt(idArr[2]);
+    int statusIndex = Integer.parseInt(idArr[3]);
+    String surl = idArr[6];
+
+    String status = "";
+
+    if(requestType.equals("get") || requestType.equals("put")){
+      // get status from GSIFTPFileTransfer (or whichever protocol the SRM uses)
+      try{
+        // TODO: strip srm specifics off id
+        status += "GSIFTP Status: "+TransferControl.getStatus(fileTransferID);
+      }
+      catch(Exception e){
+        Debug.debug("ERROR: could not get status from subsystem for "+
+            fileTransferID+". "+e.getMessage(), 1);
+      }
+    }
+    
+    try{
+      ISRM srm = connect(new GlobusURL(surl));
+      RequestStatus rs = srm.getRequestStatus(requestId);
+      status += "\nSRM Status: "+rs.fileStatuses[statusIndex].state;
+      status += "\nEstimated time to start transfer: "+rs.estTimeToStart;
+      status += "\nEstimated time to start file transfer: "+rs.fileStatuses[statusIndex].estSecondsToStart;
+      status += "\nEstimated transfer finishing time: "+rs.finishTime;
+      status += "\nChecksum type: "+rs.fileStatuses[statusIndex].checksumType;
+      status += "\nChecksum: "+rs.fileStatuses[statusIndex].checksumValue;
+    }
+    catch(Exception e){
+      status += "\nERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage();
+    }
+    return status;
+  }
+
   /**
    * Parse the file transfer ID into
    * {protocol, requestType (get|put|copy), requestId, statusIndex, srcTurl, destTurl, srmSurl}.
@@ -784,8 +819,8 @@ public class SRMFileTransfer implements FileTransfer {
     String host = urls[0].getHost();
     int port = urls[0].getPort();
     if(type ==SRM_URL  || ((type & SUPPORTED_PROTOCOL_URL)==SUPPORTED_PROTOCOL_URL)){
-      if( host==null || host.equals("") || port<0){
-        String error = "illegal source url for multiple sources mode"+
+      if(host==null || host.equals("") || port<0){
+        String error = "illegal source url: "+
         urls[0].getURL();
         Debug.debug(error, 2);
         throw new IllegalArgumentException(error );

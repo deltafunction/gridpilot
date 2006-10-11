@@ -975,6 +975,17 @@ public class GSIFTPFileTransfer implements FileTransfer {
     return ret;
   }
 
+  public String getFullStatus(String fileTransferID) throws Exception {
+    String ret = "Status: "+((UrlCopyTransferListener) 
+        urlCopyTransferListeners.get(fileTransferID)).getStatus();
+    String error = ((UrlCopyTransferListener) 
+        urlCopyTransferListeners.get(fileTransferID)).getError();
+    if(error!=null && error.length()>0){
+      ret += "\nError: "+error;
+    }
+    return ret;
+  }
+
   public int getPercentComplete(String fileTransferID) throws Exception {
     long comp = ((UrlCopyTransferListener) 
         urlCopyTransferListeners.get(fileTransferID)).getPercentComplete();
@@ -1034,4 +1045,5 @@ public class GSIFTPFileTransfer implements FileTransfer {
     }
     return ret;
   }
+
 }
