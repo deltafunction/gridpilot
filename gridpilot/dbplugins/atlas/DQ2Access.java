@@ -1,13 +1,13 @@
 package gridpilot.dbplugins.atlas;
 
 import java.io.IOException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.net.URLDecoder;
 
 import gridpilot.Debug;
 import gridpilot.GridPilot;
+import gridpilot.Util;
 
-import org.globus.gsi.GlobusCredential;
+//import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.ietf.jgss.GSSCredential;
 
@@ -19,7 +19,7 @@ public class DQ2Access {
 
 	//private WebServiceConnection wsPlain;
 	private SecureWebServiceConnection wsSecure;
-	private final String baseUrl="dq2/";
+	private String baseUrl="dq2/";
 
 	private final String addFilesToDatasetURL="ws_content/dataset";
 	private final String createDatasetURL="ws_repository/dataset";
@@ -43,17 +43,19 @@ public class DQ2Access {
 		try 
 		{
 			//wsPlain = new WebServiceConnection(httpServer, httpPort, baseUrl);
-			wsSecure = new SecureWebServiceConnection(httpsServer, httpsPort, baseUrl);
+      Debug.debug("New web service connection: "+httpsServer+" - "+httpsPort+" - "+path, 1);
+			wsSecure = new SecureWebServiceConnection(httpsServer, httpsPort, path);
 
 			GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-			GlobusCredential globusCred = null;
+			//GlobusCredential globusCred = null;
 			if(credential instanceof GlobusGSSCredentialImpl){
-				globusCred =
+				//globusCred =
 					((GlobusGSSCredentialImpl)credential).getGlobusCredential();
 			}
 
+      //wsSecure.loadGlobusCredentialCertificate(globusCred);
+      wsSecure.loadLocalProxyCertificate(Util.getProxyFile().getCanonicalPath());
 			wsSecure.trustWrongHostName();
-			wsSecure.loadGlobusCredentialCertificate(globusCred);
 			wsSecure.trustAllCerts();
 			wsSecure.init();
 		}
@@ -72,8 +74,17 @@ public class DQ2Access {
 	{
 		String keys[]={"dsn"};
 		String values[]={dsn};
-		String response=wsSecure.post(createDatasetURL, keys, values);		
-		return parseVuid(response);
+    Debug.debug("Creating dataset with web service on "+createDatasetURL, 1);
+		String response=wsSecure.post(createDatasetURL, keys, values);
+    String ret = parseVuid(URLDecoder.decode(response, "utf-8"));
+    if(ret.indexOf("DQDatasetExistsException")>-1 && ret.indexOf("'")>-1){
+      throw new IOException("ERROR: Dataset exists");
+    }
+    else if(ret.indexOf("Exception")>-1 && ret.indexOf("'")>-1){
+      throw new IOException("ERROR: exception from DQ2: "+
+          ret.replaceFirst(".*\\W+(\\w*Exception).*", "$1"));
+    }    
+    return ret;
 	}
 
 	/**
@@ -110,8 +121,10 @@ public class DQ2Access {
 	 */
 	public boolean deleteDataset(String dsn) throws IOException
 	{
-		String keys[]= {"lfn","delete"};
+		String keys[]= {"dsn","delete"};
 		String values[] = {dsn,"yes"};
+    Debug.debug("Deleting "+dsn, 2);
+    Debug.debug(" on "+deleteDatasetURL+" : "+wsSecure.protocolname, 2);
 		wsSecure.get(deleteDatasetURL, keys, values);
 		return true;
 	}
@@ -121,13 +134,13 @@ public class DQ2Access {
 	 * @param vuid the vuid of the dataset being registered in a site
 	 * @param complete set the complete Status to yes (true) or no(false)
 	 */
-	public boolean registerVuidInLocation(String vuid, boolean complete, String location) throws IOException
+	public boolean registerLocation(String vuid, String dsn, boolean complete, String location) throws IOException
 	{
 		String com;
-		if (complete) com = "yes";
-		else com = "no";
-		String keys[]={"complete","vuid","site"};
-		String values[]={com,vuid,location};
+		if (complete) com = "1";
+		else com = "0";
+		String keys[]={"complete","vuid","dsn","site"};
+		String values[]={com,vuid,dsn,location};
 		wsSecure.post(locationDatasetURL, keys, values);
 		return true;
 	}
@@ -136,14 +149,14 @@ public class DQ2Access {
 	 * parses one vuid out of a dq2 output
 	 * @param toParse String output from dq webserice access
 	 */
-	private String parseVuid(String toParse)
+	public String parseVuid(String toParse)
 	{
-		toParse=toParse.replaceAll(" ", "");
-		Pattern regex=
-		  Pattern.compile("vuid:'([A-Fa-f0-9]{8}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{12})'");
-		Matcher thematcher= regex.matcher(toParse);
-		thematcher.find();
-		return thematcher.group(1);
+    // We have to parse something like
+    // {'version': 1, 'vuid': '709b2ae9-f827-4800-b577-e3a38a763983', 'duid': 'b98adabc-c7f5-4354-a0ac-7d65d95c2f16'}
+    Debug.debug("Parsing "+toParse, 3);
+    String ret = toParse.replaceFirst(".*vuid:'([^']+)'.*", "$1");
+    Debug.debug("--> "+ret, 3);
+    return(ret);
 	}
 
 	/**
@@ -151,7 +164,7 @@ public class DQ2Access {
 	 * 
 	 * @param dsn Dataset name
 	 */
-	String createNewDatasetVersion(String dsn) throws IOException
+	public String createNewDatasetVersion(String dsn) throws IOException
 	{
 		String keys[]= {"dsn","update"};
 		String values[] = {dsn,"yes"};
@@ -159,44 +172,17 @@ public class DQ2Access {
 		return	parseVuid(newvuidmess);	
 	}
 	
-	void deleteFromSite(String vuid, String site) throws IOException
+  /**
+   * deletes a site registered with a dataset identified by vuid
+   * 
+   * @param vuid    Dataset identifier
+   * @param site    Site name
+   */
+	public void deleteFromSite(String vuid, String site) throws IOException
 	{
 		String keys[]= {"vuid","site","delete"};
 		String values[] = {vuid,"[\"" + site + "\"]","yes"};
 		wsSecure.get(locationDatasetURL, keys, values);	
 	}
 
-	/**
-	 * parses multiple vuids out of a dq2 output
-	 * @param toParse String output from dq webservice access
-	 */
-	private String[] parseVuids(String toParse)
-	{
-		
-		toParse=toParse.replaceAll(" ", "");
-		Debug.debug(toParse, 3);
-		Pattern regex=Pattern.compile("vuids:\\[(('[A-Fa-f0-9]{8}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{4}\\-[A-Fa-f0-9]{12}'[,]*)+)\\]");
-		Matcher thematcher = regex.matcher(toParse);
-		thematcher.find();
-		String[] res= thematcher.group(1).split(",");
-		for (int q=0; q<res.length;q++)
-		{
-			res[q] = res[q].replaceAll("'","");
-		}
-		return res;
-  }
-	
-	
-  /*
-   DQ2Access myacc=new DQ2Access(null,0,null,0);
-    Debug.debug(myacc.parseVuid(
-        "dsjhfagsdkjhf vuid: '45348fe3-4564-ffee-34ef-aef455678efe' hghkjgj"), 2);
-    String [] fud=myacc.parseVuids("{'acsadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},{'csadfwedwed.wefwefwef-wefwrf3234r4':{'duid':'754389ef-bb55-7654-98ef-76549870fe43','vuids':['754389ef-bb55-7654-98ef-76549870fe43','754389ef-bb55-7654-98ef-76549870fe43']},}");
-    Debug.debug(""+fud.length, 2);
-    for (int q=0; q<fud.length; q++)
-    {
-      Debug.debug(fud[q], 2);
-    }
-  */
-	
 }
