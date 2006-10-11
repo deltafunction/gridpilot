@@ -4,8 +4,8 @@ package gridpilot.dbplugins.atlas;
 import gridpilot.Debug;
 
 import java.io.FileInputStream;
-import java.io.IOException;
-import java.net.URL;
+//import java.io.IOException;
+//import java.net.URL;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
@@ -142,11 +142,11 @@ public class SecureWebServiceConnection extends WebServiceConnection {
 	 * Needed for polymorphism and Code reusability
 	 * @param   theURL   URL to connect to
 	 */	
-	private HttpsURLConnection getConnectiontoUrl(URL url) throws IOException //used by superclass
+	/*private HttpsURLConnection getConnectiontoUrl(URL url) throws IOException //used by superclass
 	{
     Debug.debug("creating httpsurlconectionsecure", 2);
 		return (HttpsURLConnection)url.openConnection();
-	}
+	}*/
 
 	/**
 	 * Use this method to allow connections without certificate auhtentication
@@ -185,28 +185,26 @@ public class SecureWebServiceConnection extends WebServiceConnection {
 		HttpsURLConnection.setDefaultHostnameVerifier(hv);
 	}
 
-	public static void main(String args[]) throws IOException
-	{
-		SecureWebServiceConnection thSC 
-		= new SecureWebServiceConnection("atlddmpro.cern.ch",8443,"/dq2");
-		try 
-		{
-			thSC.loadLocalProxyCertificate("/tmp/x509up_u501");
-			thSC.trustWrongHostName();
-			//thSC.loadTrustedKeyStoreFromJKSFile("/Users/ct/Desktop/keytest/mykes.jks");
-			thSC.trustAllCerts();
-			thSC.init();
-		}
-		catch (Exception e)
-		{
+	/*
+    SecureWebServiceConnection thSC 
+    = new SecureWebServiceConnection("atlddmpro.cern.ch",8443,"/dq2");
+    try 
+    {
+      thSC.loadLocalProxyCertificate("/tmp/x509up_u501");
+      thSC.trustWrongHostName();
+      //thSC.loadTrustedKeyStoreFromJKSFile("/Users/ct/Desktop/keytest/mykes.jks");
+      thSC.trustAllCerts();
+      thSC.init();
+    }
+    catch (Exception e)
+    {
       Debug.debug("Exception", 1);
       e.printStackTrace();
-		}
+    }
     Debug.debug("test start", 1);
     Debug.debug(thSC.post("ws_repository/dataset", "dsn=cyril-test-java"), 1);
 
-
-	}
+  */
 
 
 }
