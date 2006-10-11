@@ -170,7 +170,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
     }
     
     Debug.debug("creating new JobDefCreator", 3);  
-    new JobDefCreator(dbName,
+    JobDefCreator jdc = new JobDefCreator(dbName,
                       //datasetMgr,
                       showResults,
                       tcConstant,
@@ -179,7 +179,9 @@ public class JobDefCreationPanel extends CreateEditPanel{
                       editing
                       );
 
-    panel.refresh();
+    if(jdc.anyCreated){
+      panel.refresh();
+    }
     
   }
 

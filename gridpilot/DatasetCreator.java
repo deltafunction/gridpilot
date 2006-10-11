@@ -21,6 +21,7 @@ public class DatasetCreator{
   private DBPluginMgr dbPluginMgr;
   private String [] datasetTransformationReference;
   private String [] datasetTransformationVersionReference;
+  public boolean anyCreated = false;
 
   public DatasetCreator(  StatusBar _statusBar,
                           DBPluginMgr _dbPluginMgr,
@@ -142,6 +143,7 @@ public class DatasetCreator{
           if(!createDataset(GridPilot.getClassMgr().getDBPluginMgr(targetDB), "dataset")){
             return;
           };
+          anyCreated = true;
           //statusBar.removeLabel();
         }
         // Clear attributes that were set to "" on the panel and are thus
@@ -176,6 +178,7 @@ public class DatasetCreator{
           if(!createDataset(dbPluginMgr, "dataset")){
             return;
           };
+          anyCreated = true;
           //statusBar.removeLabel();
         }
       }

@@ -17,6 +17,7 @@ public class JobDefCreator{
   private String [] cstAttrNames;
   private boolean editing;
   private String dbName;
+  public boolean anyCreated = false;
 
   public JobDefCreator(String _dbName,
                        //DatasetMgr _datasetMgr,
@@ -85,11 +86,15 @@ public class JobDefCreator{
           //cancel updating
         }
       }
+      else{
+        anyCreated = true;
+      }
     }
     else{
       Debug.debug("Creating..."+cstAttrNames.length+" : "+cstAttr.length, 3);
       try{
         dbPluginMgr.createJobDef(cstAttrNames, cstAttr);
+        anyCreated = true;
       }
       catch(Exception e){
         Debug.debug(e.getMessage(), 1);

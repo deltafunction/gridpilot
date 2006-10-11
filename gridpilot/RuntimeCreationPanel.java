@@ -265,14 +265,16 @@ public class RuntimeCreationPanel extends CreateEditPanel{
 
     Debug.debug("create runtineEnvironment",  1);
 
-    new RuntimeCreator(
+    RuntimeCreator rtf = new RuntimeCreator(
         dbPluginMgr,
         showResults,
         cstAttr,
         cstAttributesNames,
         editing);
     
-    panel.refresh();
+    if(rtf.anyCreated){
+      panel.refresh();
+    }
   }
 
   private Vector getTextFields(){

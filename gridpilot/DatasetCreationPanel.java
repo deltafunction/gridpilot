@@ -363,14 +363,16 @@ public class DatasetCreationPanel extends CreateEditPanel{
         cstAttr[i] = Util.getJTextOrEmptyString(tcCstAttributes[i]);
         Debug.debug("createDataset: cstAttr["+i+"]: "+cstAttr[i], 3);
       }
-      new DatasetUpdater(
+      DatasetUpdater dsu = new DatasetUpdater(
           dbPluginMgr,
           showResults,
           cstAttr,
           cstAttributesNames,
           datasetID
           );
-      panel.refresh();
+      if(dsu.anyCreated){
+        panel.refresh();
+      }
     }
     else{
       if(cbTargetDBSelection!=null && cbTargetDBSelection.getSelectedItem()!=null &&
@@ -382,7 +384,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
         cstAttr[i] = Util.getJTextOrEmptyString(tcCstAttributes[i]);
         Debug.debug("createDataset: cstAttr["+i+"]: "+cstAttr[i], 3);
       }
-      new DatasetCreator(
+      DatasetCreator dsc = new DatasetCreator(
           statusBar,
           dbPluginMgr,
           showResults,
@@ -391,7 +393,9 @@ public class DatasetCreationPanel extends CreateEditPanel{
           datasetIDs,
           targetDB
           );
-      panel.refresh();
+      if(dsc.anyCreated){
+        panel.refresh();
+      }
     }
   }
 

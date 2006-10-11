@@ -418,14 +418,16 @@ public class TransformationCreationPanel extends CreateEditPanel{
 
   Debug.debug("createTransformation",  1);
 
-    new TransformationCreator(
+  TransformationCreator tc = new TransformationCreator(
         dbPluginMgr,
         showResults,
         cstAttr,
         cstAttributesNames,
         editing);
     
-    panel.refresh();
+    if(tc.anyCreated){
+      panel.refresh();
+    }
   }
 
   private Vector getTextFields(){

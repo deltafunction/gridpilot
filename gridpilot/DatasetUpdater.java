@@ -15,6 +15,7 @@ public class DatasetUpdater{
   private String [] cstAttrNames;
   private DBPluginMgr dbPluginMgr;
   private Object[] showResultsOptions = {"OK",  "Cancel"};
+  public boolean anyCreated = false;
 
   public DatasetUpdater(  DBPluginMgr _dbPluginMgr,
                           boolean _showResults,
@@ -63,6 +64,7 @@ public class DatasetUpdater{
     }
     else{
       statusBar.setLabel("Updated succeeded.");
+      anyCreated = true;
     }
   }
 
@@ -78,14 +80,19 @@ public class DatasetUpdater{
         ta.setWrapStyleWord(true);
         ta.setLineWrap(true);
         ta.setEditable(false);
-        pResult.add(ta, new GridBagConstraints(1, row, 3, 1, 1.0, 0.0
-            ,GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
+        pResult.add(ta, new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
+            GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
         }
       else{
-        pResult.add(new JLabel(cstAttrNames[i] + " : "), new GridBagConstraints(0, row, 1, 1, 0.0, 0.0
-            ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
-            pResult.add(new JLabel(cstAttr[i]), new GridBagConstraints(1, row, 3, 1, 1.0, 0.0
-                ,GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
+        pResult.add(new JLabel(cstAttrNames[i] + " : "),
+            new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
+            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+            new Insets(5, 25, 5, 5), 0, 0));
+        pResult.add(new JLabel(cstAttr[i]),
+            new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
+            GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
       }
     }
 

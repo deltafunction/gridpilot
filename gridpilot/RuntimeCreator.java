@@ -13,6 +13,7 @@ public class RuntimeCreator{
   private String [] cstAttrNames;
   private boolean editing;
   private DBPluginMgr dbPluginMgr = null;
+  public boolean anyCreated = false;
 
   public RuntimeCreator(
                           DBPluginMgr _dbPluginMgr,
@@ -61,6 +62,9 @@ public class RuntimeCreator{
             "Runtime environment cannot be updated.\n"+
           dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
       }
+      else{
+        anyCreated = true;
+      }
     }
     else{
       if(!dbPluginMgr.createRuntimeEnvironment(cstAttr)){
@@ -68,6 +72,9 @@ public class RuntimeCreator{
             "Runtime environment cannot be created.\n"+
           dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
       }
-    }     
+      else{
+        anyCreated = true;
+      }
+    }
   }
 }

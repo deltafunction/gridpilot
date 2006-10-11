@@ -13,6 +13,7 @@ public class TransformationCreator{
   private String [] cstAttrNames;
   private boolean editing;
   private DBPluginMgr dbPluginMgr = null;
+  public boolean anyCreated = false;
 
   public TransformationCreator(
                           DBPluginMgr _dbPluginMgr,
@@ -63,6 +64,9 @@ public class TransformationCreator{
             "Transformation cannot be updated.\n"+
           dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
       }
+      else{
+        anyCreated = true;
+      }
     }
     else{
       if(!dbPluginMgr.createTransformation(cstAttr)){
@@ -70,6 +74,9 @@ public class TransformationCreator{
             "Transformation cannot be created.\n"+
           dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
       }
-    }     
+      else{
+        anyCreated = true;
+      }
+    }
   }
 }
