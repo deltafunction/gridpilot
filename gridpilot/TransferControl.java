@@ -14,6 +14,7 @@ import javax.swing.JProgressBar;
 import javax.swing.Timer;
 
 import org.globus.util.GlobusURL;
+import org.safehaus.uuid.UUIDGenerator;
 
 /**
  * Controls the file downloads. <p>
@@ -427,6 +428,10 @@ public class TransferControl{
     return findFTPlugin(fileTransferID).getStatus(fileTransferID);
   }
 
+  public static String getFullStatus(String fileTransferID) throws Exception {
+    return findFTPlugin(fileTransferID).getFullStatus(fileTransferID);
+  }
+
   public static int getPercentComplete(String fileTransferID) throws Exception {
     return findFTPlugin(fileTransferID).getPercentComplete(fileTransferID);
   }
@@ -673,14 +678,68 @@ public class TransferControl{
    */
   public static void transferDone(TransferInfo transfer){
     if(transfer.getDBPluginMgr()!=null && transfer.getDestination()!=null){
-      String message = "Registering new location "+transfer.getDestination();
-      Debug.debug(message, 2);
-      GridPilot.getClassMgr().getGlobalFrame(
-         ).monitoringPanel.statusBar.setLabel(message);
+      // TODO:
+      // It would be better to get the UUID from SRM, from the file (if it's a ROOT file)
+      // or by using POOL, but we can't, since we have only the file name.
+      // If the file is replicated from a file catalog, the lfn and guid should
+      // be set in TransferInfo transfer and are reused. The same goes for the
+      // dataset name and id.
+      String destination = transfer.getDestination().getURL();
+      String lfn = null;
+      try{
+        lfn= transfer.getLFN();
+      }
+      catch(Exception e){
+      }
+      if(lfn==null || lfn.equals("")){
+        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: LFN not found. "+
+            "This file will be named after the physical file and may not keep its name in the file catalog.");
+        int lastSlash = destination.lastIndexOf("/");
+        lfn = destination;
+        if(lastSlash>-1){
+          lfn = destination.substring(lastSlash + 1);
+        }
+      }
+      String guid = null;
+      try{
+        guid= transfer.getGUID();
+      }
+      catch(Exception e){
+      }
+      if(guid==null || guid.equals("")){
+        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: GUID not found. "+
+            "This file, "+lfn+", will not keep its GUID - a new one will be generated.");
+        String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+        String message = "Registering UUID "+uuid.toString()+" and LFN "+lfn+
+           " for new location "+transfer.getDestination();
+        GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
+        Debug.debug(message, 2);
+        guid = uuid;
+      }
+      String datasetID = null;
+      try{
+        datasetID= transfer.getDatasetID();
+      }
+      catch(Exception e){
+      }
+      if(datasetID==null || datasetID.equals("")){
+        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: no dataset found. "+
+            "This file, "+lfn+", will NOT be registered in dataset catalog, only in file catalog.");
+      }
+      String datasetName = null;
+      try{
+        datasetName= transfer.getDatasetName();
+      }
+      catch(Exception e){
+      }
+      if(datasetName==null || datasetName.equals("")){
+        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: dataset name not found. "+
+            "This file, "+lfn+", may not keep its dataset name.");
+      }
       transfer.getDBPluginMgr().registerFileLocation(
-          transfer.getTransferID(), transfer.getDestination().getURL());
+          datasetID, datasetName, guid, lfn, destination, false);
       GridPilot.getClassMgr().getGlobalFrame(
-         ).monitoringPanel.statusBar.setLabel("Registering done");
+         ).monitoringPanel.statusBar.setLabel("Registration done");
     }
   }
 
