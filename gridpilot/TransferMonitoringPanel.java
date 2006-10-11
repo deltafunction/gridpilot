@@ -353,15 +353,13 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
         info += "File catalog : "+(transfer.getDBPluginMgr()==null?
             "none":transfer.getDBPluginMgr().getDBName())+"\n";
         info += transfer+"\n";
-        /*String status = "";
+        info += "Internal status : "+transfer.getInternalStatus()+"\n";
         try{
-          status = TransferControl.getStatus(transfer.getTransferID());
+          info += TransferControl.getFullStatus(transfer.getTransferID());
         }
         catch(Exception e){
-          status = "ERROR: could not get status. "+e.getMessage();
-        }*/
-        info += "Status : "+transfer.getStatus()+"\n";
-        info += "Internal status : "+transfer.getInternalStatus()+"\n";
+          info += "ERROR: could not get status. "+e.getMessage();
+        }
         statusBar.removeLabel();
         statusBar.stopAnimation();
         MessagePane.showMessage(info, "Transfer status");

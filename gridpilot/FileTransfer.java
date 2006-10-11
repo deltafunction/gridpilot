@@ -56,6 +56,12 @@ public interface FileTransfer {
   public String getUserInfo() throws Exception;
 
   /**
+   * Get the full status of a specific file transfer.
+   * @param   fileTransferID   the unique ID of the transfer.
+   */
+  public String getFullStatus(String fileTransferID) throws Exception;
+
+  /**
    * Get the status of a specific file transfer.
    * @param   fileTransferID   the unique ID of the transfer.
    */
