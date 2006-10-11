@@ -2020,12 +2020,14 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized void registerFileLocation(final String fileID, final String url){
+  public synchronized void registerFileLocation(final String datasetID,
+      final String datasetName, final String fileID, final String lfn,
+      final String url, final boolean datasetComplete){
     
     MyThread t = new MyThread(){
       public void run(){
         try{
-           db.registerFileLocation(fileID, url);
+           db.registerFileLocation(datasetID, datasetName, fileID, lfn, url, datasetComplete);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +

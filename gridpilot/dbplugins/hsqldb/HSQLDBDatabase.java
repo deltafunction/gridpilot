@@ -2005,7 +2005,8 @@ public class HSQLDBDatabase implements Database{
     }
   }
 
-  public void registerFileLocation(String fileID, String url){
+  public void registerFileLocation(String datasetID, String datasetName,
+      String fileID, String lfn, String url, boolean datasetComplete){
     // not applicable, not a file catalog
   }
   

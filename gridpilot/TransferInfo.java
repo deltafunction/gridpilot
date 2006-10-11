@@ -13,7 +13,12 @@ public class TransferInfo extends DBRecord{
   private String status = null;
   private String transferred = null;
   private int internalStatus = -1;
+  // Used for registration on completion
   private DBPluginMgr dbPluginMgr = null;
+  private String datasetName = null;
+  private String datasetID = null;
+  private String lfn = null;
+  private String guid = null;
   
   //       transferStatusFields = new String [] {
   // " ", "Transfer ID", "Source", "Destination", "User", "Status", "Transferred"};
@@ -49,7 +54,23 @@ public class TransferInfo extends DBRecord{
   public DBPluginMgr getDBPluginMgr(){
     return dbPluginMgr;
   }
-  
+
+  public String getDatasetName(){
+    return datasetName;
+  }
+
+  public String getDatasetID(){
+    return datasetID;
+  }
+
+  public String getLFN(){
+    return lfn;
+  }
+
+  public String getGUID(){
+    return guid;
+  }
+
   public int getInternalStatus(){
     return internalStatus;
   }
@@ -100,6 +121,22 @@ public class TransferInfo extends DBRecord{
    */
   public void setDBPluginMgr(DBPluginMgr _dbPluginMgr){
     dbPluginMgr = _dbPluginMgr;
+  }
+
+  public void setDatasetName(String _datasetName){
+    datasetName = _datasetName;
+  }
+
+  public void setDatasetID(String _datasetID){
+    datasetID = _datasetID;
+  }
+
+  public void setLFN(String _lfn){
+    lfn = _lfn;
+  }
+
+  public void setGUID(String _guid){
+    guid = _guid;
   }
 
   public String toString(){

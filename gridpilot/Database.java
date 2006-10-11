@@ -93,7 +93,9 @@ public interface Database{
   public DBResult getFiles(String datasetID);
   public DBRecord getFile(String fileID);
   public String [] getFileURLs(String fileID);
-  public void registerFileLocation(String fileID, String url);
+  // for file catalogs only: register an lfn/pfn pair
+  public void registerFileLocation(String datasetID, String datasetName,
+      String fileID, String lfn, String url, boolean datasetComplete);
   public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup);
   
   // ####### Job execution
