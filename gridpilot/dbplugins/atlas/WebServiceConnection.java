@@ -121,14 +121,16 @@ public class WebServiceConnection {
 		}
 		
 		int code = huc.getResponseCode(); 
-		if (code == HttpURLConnection.HTTP_OK) { 
-			BufferedReader in=null;
-			in = new BufferedReader(new InputStreamReader(is));
-			String line=null;
-			while ((line = in.readLine()) != null) {
-				result.append(line+"\n");
-			}
-			in.close();
+    BufferedReader in=null;
+    in = new BufferedReader(new InputStreamReader(is));
+    String line=null;
+    while ((line = in.readLine()) != null) {
+      result.append(line+"\n");
+    }
+    in.close();
+    huc.disconnect();
+		if (code != HttpURLConnection.HTTP_OK) { 
+      throw new IOException (result.toString());
 		}
 		return result.toString();
 	}
@@ -194,15 +196,20 @@ public class WebServiceConnection {
 			is=huc.getErrorStream();
 		}
 
-		//int code = huc.getResponseCode(); 
-
+		int code = huc.getResponseCode(); 
+    
 		BufferedReader in=null;
 		in = new BufferedReader(new InputStreamReader(is));
 		String line=null;
 		while ((line = in.readLine()) != null) {
 			result.append(line+"\n");
 		}
-		in.close();
+    
+    in.close();
+    huc.disconnect();
+    if (code != HttpURLConnection.HTTP_OK) { 
+      throw new IOException (result.toString());
+    }
 
 		return result.toString();
 	
@@ -231,6 +238,7 @@ public class WebServiceConnection {
 	{
 		String params = urlencodeArray(keys, values);
 		String physicalAccessName = createFullPath(path);
+    Debug.debug("Using post URL "+physicalAccessName, 3);
 		URL postURL = new URL(physicalAccessName);
 		return post(postURL,params);		
 
