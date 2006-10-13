@@ -138,12 +138,12 @@ public abstract class StatisticsPanel extends JPanel{
     double step = (double)(bottom - topMargin) / maxValues();
     int inset = columnWitdh/4;
     
-    Debug.debug("max possible value: "+maxValues(), 3);
+    //Debug.debug("max possible value: "+maxValues(), 3);
 
     for(int i=0; i<statusNames.length; ++i){
-      Debug.debug("column: "+statusNames.length+":"+i, 3);
+      /*Debug.debug("column: "+statusNames.length+":"+i, 3);
       Debug.debug("y: "+(bottom -(int)(step*values[i])), 3);
-      Debug.debug("value: "+values[i], 3);
+      Debug.debug("value: "+values[i], 3);*/
       
       g.setColor(colors[i%colors.length]);
       g.fill3DRect(horMargin + i*columnWitdh + inset/2,
