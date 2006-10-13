@@ -81,8 +81,7 @@ public class TransferStatusUpdateControl{
    * All these transfers should be "needed to be refreshed" (otherwise, they are not
    * put in this transfer vector, and a transfer cannot become "not needed to be refreshed"
    * when it is in this transfer vector) and should belong to submittedTransfers. <br>
-   * Except if the method {@link #reset()} is called, each transfer in toCheckTransfers is
-   * going to be put in {@link #checkingTransfers}
+   * Each transfer in toCheckTransfers is going to be put in {@link #checkingTransfers}
    */
   private Vector toCheckTransfers = new Vector();
 
@@ -373,30 +372,6 @@ public class TransferStatusUpdateControl{
 
     if(!timerChecking.isRunning())
       timerChecking.restart();
-  }
-
-  /**
-   * Stops checking. <p>
-   * Removes all transfers from queue, and waits for the end of the pending threads. <p>
-   * Called by : <ul>
-   */
-  public void reset(){
-    toCheckTransfers.removeAllElements();
-
-    for(int i =0; i<checkingThread.size(); ++i){
-      Thread t = (Thread) checkingThread.get(i);
-      Debug.debug("wait for thread " + i + "...", 2);
-      try{
-        t.join();
-      }
-      catch(InterruptedException ie){
-        ie.printStackTrace();
-      }
-      Debug.debug("joined", 2);
-    }
-    // When selecting "Stop update",
-    // if a large number of threads were running, one could not refresh anymore.
-    checkingThread.removeAllElements();
   }
   
   /**
