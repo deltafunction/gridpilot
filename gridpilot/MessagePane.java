@@ -1,5 +1,7 @@
 package gridpilot;
 
+//import java.awt.Dimension;
+
 import javax.swing.*;
 
 /**
@@ -25,6 +27,8 @@ public class MessagePane{
     //ta.getPreferredSize(); // without this line, this dialog is too small !!! ???????
     dialog.pack();
     dialog.validate();
+    //Dimension dim = dialog.getSize();
+    //dialog.setSize(new Dimension(dim.height+50, dim.width));
     dialog.setVisible(true);
     dialog.dispose();
 
