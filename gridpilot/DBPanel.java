@@ -79,6 +79,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private SubmissionControl submissionControl = null;
   private boolean jobDefTableExist;
   
+  private static String defaultURL;
+  
   public JPanel panelSelectPanel = new JPanel(new GridBagLayout());
   public SelectPanel selectPanel;
 
@@ -1878,14 +1880,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void download(){
     new Thread(){
       public void run(){
-        String defaultURL = "";
         // First get download dir or URL.
         // Default to either home dir on "home gridftp server"
         // as defined in config file, or system.home
-        if(GridPilot.gridftpHomeURL!=null){
+        if((defaultURL==null || defaultURL.equals("")) && GridPilot.gridftpHomeURL!=null){
           defaultURL = GridPilot.gridftpHomeURL;
         }
-        else{
+        else if(defaultURL==null || defaultURL.equals("")){
           defaultURL = "~";
         }
         
@@ -1939,6 +1940,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         String dlUrl = null;
         try{
           dlUrl = getReplicaURL(defaultURL, pTargetDBs);
+          if(dlUrl.startsWith("file:")){
+            defaultURL = dlUrl;
+          }
         }
         catch(Exception e){
           String error = "ERROR: not a valid directory: "+dlUrl;
