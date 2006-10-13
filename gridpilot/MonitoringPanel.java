@@ -13,7 +13,7 @@ public class MonitoringPanel extends CreateEditPanel {
 
   private static final long serialVersionUID = 1L;
   // use status bar on main window
-  protected StatusBar statusBar = null;
+  public StatusBar statusBar = null;
   // Central panel
   public JTabbedPane tpStatLog = new JTabbedPane();
   public JobMonitoringPanel jobMonitor = new JobMonitoringPanel();
