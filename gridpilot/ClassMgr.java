@@ -409,6 +409,8 @@ public class ClassMgr{
     return credential;
   }
 
+  // Sort of breaks the plugin concept.
+  // TODO: improve
   public GSIFTPFileTransfer getGSIFTPFileTransfer(){
     if(gsiftpFileSystem==null){
       Debug.debug("gsiftpFileSystem null", 3);
