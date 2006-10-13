@@ -287,6 +287,10 @@ public class GridPilot extends JApplet{
    }
 
   public static void exit(int exitCode){
+    //  Cancel all transfers
+    Debug.debug("Cancelling all transfers...", 2);
+    TransferControl.exit();
+    //Delete temporary files
     File delFile = null;
     try{
       for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext(); ){
@@ -303,9 +307,7 @@ public class GridPilot extends JApplet{
     catch(Exception e){
       e.printStackTrace();
     }
-    /*
-    Disconnect DBs and CSs
-    */
+    // Disconnect DBs and CSs
     Debug.debug("Disconnecting computing systems...", 2);
     if(getClassMgr().csPluginMgr!=null){
       getClassMgr().getCSPluginMgr().disconnect();
