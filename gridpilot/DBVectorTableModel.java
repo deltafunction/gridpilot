@@ -146,7 +146,10 @@ public class DBVectorTableModel extends AbstractTableModel {
     if(_values!=null && _values.length!=0 && _values[0]!=null && _columnNames!=null &&
        _values[0].length!= _columnNames.length){
         Debug.debug("ERROR: MyTableModel : column count for " +
-            "values and columnNames are different", 1);
+            "values and columnNames are different. "+
+            _values[0].length+"!="+ _columnNames.length+" : "+
+            Util.arrayToString(_columnNames)+" : "+
+            Util.arrayToString(_values[0]), 1);
         return;
     }
 
