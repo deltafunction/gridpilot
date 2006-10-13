@@ -70,9 +70,10 @@ public interface FileTransfer {
   /**
    * Maps the status as returned by getStatus of this plugin of
    * to the corresponding internal status code (FileTransfer.STATUS_*).
+   * @param   fileTransferID   the unique ID of the transfer.
    * @param   ftStatus   status of the transfer.
    */
-  public int getInternalStatus(String ftStatus) throws Exception;
+  public int getInternalStatus(String fileTransferID, String status) throws Exception;
 
   /**
    * Get the size of the file in bytes.
