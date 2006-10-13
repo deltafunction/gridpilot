@@ -38,11 +38,11 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private JRadioButton rbRunningJobs = new JRadioButton("View only running transfers");
   private JRadioButton rbDoneJobs = new JRadioButton("View only done transfers");
   // clear
-  private JButton bClearTable = new JButton("Clear");
+  private JButton bClearTable = new JButton("Clear done/failed");
   // Buttons panel
   private JPanel pButtons = new JPanel();
-  private JButton bKill = new JButton("Kill");
-  private JButton bRefresh = new JButton("Refresh");
+  private JButton bKill = new JButton("Stop transfer(s)");
+  private JButton bRefresh = new JButton("Refresh all");
   // auto refresh
   private JCheckBox cbAutoRefresh = new JCheckBox("each");
   private JSpinner sAutoRefresh = new JSpinner();
@@ -50,11 +50,14 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private int MIN = 1;
   private JMenuItem miShowInfo = new JMenuItem("Show Information");
   private JMenuItem miRefresh = new JMenuItem("Refresh");
-  private JMenuItem miKill = new JMenuItem("Stop transfer");
+  private JMenuItem miKill = new JMenuItem("Stop transfer(s)");
   private JMenuItem miResubmit = new JMenuItem("Retry transfer");
   private JMenuItem miClear = new JMenuItem("Clear");
-  private JMenuItem miStopUpdate = new JMenuItem("Stop update");
   private TransferControl transferControl;
+  
+  
+  // TODO: menu disappears after resubmitting or adding more transfers...
+  
   
   public TransferStatusUpdateControl statusUpdateControl = null;
   
@@ -220,40 +223,19 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
 
     miClear.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        clear(statusTable.getSelectedRows());
+        clear();
       }
     });
 
     miResubmit.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        transferControl = GridPilot.getClassMgr().getTransferControl();
-        try{
-          transferControl.cancel(
-              getTransfersAtRows(statusTable.getSelectedRows()));
-        }
-        catch(Exception ee){
-          statusBar.setLabel("ERROR: cancel tranfers failed.");
-          return;
-        }
-        try{
-          transferControl.queue(
-              getTransfersAtRows(statusTable.getSelectedRows()));
-        }
-        catch(Exception ee){
-          statusBar.setLabel("ERROR: queueing transfers failed.");
-        }
+        resubmit();
       }
     });
 
     miShowInfo.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         showInfo();
-      }
-    });
-
-    miStopUpdate.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        statusUpdateControl.reset();
       }
     });
 
@@ -266,7 +248,6 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     statusTable.addMenuItem(miShowInfo);
     statusTable.addMenuItem(miKill);
     statusTable.addMenuItem(miResubmit);
-    statusTable.addMenuItem(miStopUpdate);
     statusTable.addMenuItem(miClear);
 
   }
@@ -324,7 +305,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
       public void run(){
         transferControl = GridPilot.getClassMgr().getTransferControl();
         try{
-          transferControl.cancel(
+          TransferControl.cancel(
               getTransfersAtRows(statusTable.getSelectedRows()));
           statusUpdateControl.updateTransfersByStatus();
         }
@@ -343,22 +324,28 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
       public void run(){
         String info = "";
         TransferInfo transfer = getTransferAtRow(statusTable.getSelectedRow());
-        info += "File transfer system : "+transfer.getFTName()+"\n";
         try{
-          info += "User information : "+GridPilot.getClassMgr().getFTPlugin(
-              transfer.getFTName()).getUserInfo()+"\n";
+          info += "File transfer system : "+transfer.getFTName()+"\n";
+          try{
+            info += "User information : "+GridPilot.getClassMgr().getFTPlugin(
+                transfer.getFTName()).getUserInfo()+"\n";
+          }
+          catch(Exception e){
+          }
+          info += "File catalog : "+(transfer.getDBPluginMgr()==null?
+              "none":transfer.getDBPluginMgr().getDBName())+"\n";
+          info += transfer+"\n";
+          info += "Status : "+transfer.getStatus()+"\n";
+          info += "Internal status : "+transfer.getInternalStatus()+"\n";
+          try{
+            info += "Plugin "+TransferControl.getFullStatus(transfer.getTransferID());
+          }
+          catch(Exception e){
+            info += "ERROR: could not get status from plugin. "+e.getMessage();
+          }
         }
         catch(Exception e){
-        }
-        info += "File catalog : "+(transfer.getDBPluginMgr()==null?
-            "none":transfer.getDBPluginMgr().getDBName())+"\n";
-        info += transfer+"\n";
-        info += "Internal status : "+transfer.getInternalStatus()+"\n";
-        try{
-          info += TransferControl.getFullStatus(transfer.getTransferID());
-        }
-        catch(Exception e){
-          info += "ERROR: could not get status. "+e.getMessage();
+          info += "ERROR: could not get status from plugin. The transfer may not have started yet.";
         }
         statusBar.removeLabel();
         statusBar.stopAnimation();
@@ -400,7 +387,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
         miKill.setEnabled(false);
       }
 
-      if(areResumbitables(rows)){
+      if(areResubmitables(rows)){
         miResubmit.setEnabled(true);
       }
       else{
@@ -462,7 +449,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   /**
    * Removes selected transfers from this status table.
    */
-  public void clear(int[] rows){
+  public void clear(){
     transferControl = GridPilot.getClassMgr().getTransferControl();
     if(transferControl.isSubmitting()){
       Debug.debug("cannot clear table during submission", 3);
@@ -472,41 +459,81 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     TransferInfo transfer = null;
     for(int i=0; i<transferVector.toArray().length;++i){
       transfer = (TransferInfo) transferVector.get(i);
-      if(transfer.getInternalStatus()==FileTransfer.STATUS_DONE ||
-         transfer.getInternalStatus()==FileTransfer.STATUS_FAILED ||
-         transfer.getInternalStatus()==FileTransfer.STATUS_ERROR){
+      if(!isRunning(transfer)){
         statusTable.removeRow(i);
         statusTable.repaint();
+        // Remove from submittedTransfers
+        GridPilot.getClassMgr().getSubmittedTransfers().remove(transfer);
       }
+      else{
+        Debug.debug("Cannot clear running transfer", 2);
+      }
+    }
+    statusUpdateControl.updateStatus(null);
+    statusUpdateControl.updateTransfersByStatus();
+  }
+  
+  /**
+   * Removes specified transfers from this status table.
+   */
+  public void clear(int row){
+    transferControl = GridPilot.getClassMgr().getTransferControl();
+    if(transferControl.isSubmitting()){
+      Debug.debug("Cannot clear table during submission", 2);
+      return;
+    }
+    TransferInfo transfer = getTransferAtRow(row);
+    if(isRunning(transfer)){
+      Debug.debug("Cannot clear running transfer", 2);
+      return;
+    }
+    Debug.debug("Removing row "+row, 3);
+    statusTable.removeRow(row);
+    statusTable.repaint();
+    // Remove from submittedTransfers
+    GridPilot.getClassMgr().getSubmittedTransfers().remove(transfer);
+    statusUpdateControl.updateStatus(null);
+    statusUpdateControl.updateTransfersByStatus();
+  }
+  
+  /**
+   * Requeues selected transfers.
+   */
+  private void resubmit(){
+    transferControl = GridPilot.getClassMgr().getTransferControl();
+    Vector transfers = getTransfersAtRows(statusTable.getSelectedRows());
+    try{
+      GridPilot.getClassMgr().getTransferControl().resubmit(transfers);
+    }
+    catch(Exception ee){
+      statusBar.setLabel("ERROR: resubmit failed.");
+      return;
     }
   }
   
   /**
    * Removes all transfers from this status table.
    */
-  public boolean clearTable(){
+  public void clearTable(){
     transferControl = GridPilot.getClassMgr().getTransferControl();
     if(transferControl.isSubmitting()){
-      Debug.debug("cannot clear table during submission", 3);
-      return false;
+      String error = "Cannot clear table during submission";
+      statusBar.setLabel(error);
+      Debug.debug(error, 2);
+      return;
     }
     
-    statusUpdateControl.reset();
+    for(int i=0; i<statusTable.getRowCount(); ++i){
+      TransferInfo transfer = getTransferAtRow(i);
+      if(!isRunning(transfer)){
+        clear(i);
+        GridPilot.getClassMgr().getSubmittedTransfers().remove(transfer);
+      }
+    }
+    
+    statusUpdateControl.updateStatus(null);
+    statusUpdateControl.updateTransfersByStatus();
 
-    boolean ret = true;
-    GridPilot.getClassMgr().getSubmittedTransfers().removeAllElements();
-    statusTable.createRows(0);
-    try{
-      //initChanges();
-      statusUpdateControl.updateTransfersByStatus();
-    }
-    catch(Exception e){
-      ret = false;
-      e.printStackTrace();
-      Debug.debug("WARNING: failed to clear transfers."+e.getMessage(), 1);
-    }
-    
-    return ret;
   }
   
   /**
@@ -535,21 +562,23 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     Vector transferVector = getTransfersAtRows(rows);
     for(Iterator it=transferVector.iterator(); it.hasNext();){
       TransferInfo transfer = (TransferInfo) it.next();
-      if(transfer.getInternalStatus()==FileTransfer.STATUS_DONE ||
-          transfer.getInternalStatus()==FileTransfer.STATUS_ERROR ||
-          transfer.getInternalStatus()==FileTransfer.STATUS_FAILED){
+      int internalStatus = transfer.getInternalStatus();
+      if(internalStatus==FileTransfer.STATUS_DONE ||
+          internalStatus==FileTransfer.STATUS_ERROR ||
+          internalStatus==FileTransfer.STATUS_FAILED){
         return false;
       }
     }
     return true;
   }
  
-  private boolean areResumbitables(int [] rows){
+  private boolean areResubmitables(int [] rows){
     Vector transferVector = getTransfersAtRows(rows);
     for(Iterator it=transferVector.iterator(); it.hasNext();){
       TransferInfo transfer = (TransferInfo) it.next();
-      if(transfer.getInternalStatus()!=FileTransfer.STATUS_ERROR ||
-          transfer.getInternalStatus()!=FileTransfer.STATUS_FAILED){
+      int internalStatus = transfer.getInternalStatus();
+      if(internalStatus==FileTransfer.STATUS_WAIT ||
+          internalStatus==FileTransfer.STATUS_RUNNING){
         return false;
       }
     }
@@ -557,8 +586,9 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   }
   
   private boolean isRunning(TransferInfo transfer){
-    if(transfer.getInternalStatus()==FileTransfer.STATUS_WAIT ||
-        transfer.getInternalStatus()==FileTransfer.STATUS_RUNNING){
+    int internalStatus = transfer.getInternalStatus();
+    if(internalStatus==FileTransfer.STATUS_WAIT ||
+        internalStatus==FileTransfer.STATUS_RUNNING){
       return true;
     }
     else{

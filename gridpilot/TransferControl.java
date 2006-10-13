@@ -28,7 +28,6 @@ import org.safehaus.uuid.UUIDGenerator;
  */
 public class TransferControl{
   
-  private Vector submittedTransfers;
   private StatusBar statusBar;
   private JProgressBar pbSubmission;
   private boolean isProgressBarSet = false;
@@ -50,10 +49,9 @@ public class TransferControl{
 
   private static int TRANSFER_SUBMIT_TIMEOUT = 60*1000;
   private static int TRANSFER_CANCEL_TIMEOUT = 60*1000;
-  Object [][] tableValues = new String[0][GridPilot.transferStatusFields.length+1];;
+  Object [][] tableValues = new String[0][GridPilot.transferStatusFields.length];
   
   public TransferControl(){
-    submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
     statusTable = GridPilot.getClassMgr().getTransferStatusTable();    
     configFile = GridPilot.getClassMgr().getConfigFile();
     logFile = GridPilot.getClassMgr().getLogFile();
@@ -97,6 +95,7 @@ public class TransferControl{
         GlobusURL [] checkSources = null;
         GlobusURL [] checkDestinations = null;
         
+        boolean brokenOut = false;
         try{
           // Select first plugin that supports the protocol of the next transfer
           for(int i=0; i<fts.length; ++i){
@@ -134,8 +133,17 @@ public class TransferControl{
               theseDestinations[i] = tmpTransfer.getDestination();
               theseTransfers[i] = tmpTransfer;
             }
-            if(!GridPilot.getClassMgr().getFTPlugin(
-                firstSrc.getProtocol()).checkURLs(theseSources, theseDestinations)){
+            try{
+              if(!GridPilot.getClassMgr().getFTPlugin(
+                  firstSrc.getProtocol()).checkURLs(theseSources, theseDestinations)){
+                brokenOut = true;
+                Debug.debug("Breaking because of non-uniform URLs", 2);
+                break;
+              }
+            }
+            catch(Exception e){
+              brokenOut = true;
+              Debug.debug("Breaking because of non-uniform URLs", 2);
               break;
             }
             
@@ -156,6 +164,14 @@ public class TransferControl{
           return;
         }
         
+        // Remove the wrongly added last transfer from theseTransfers before submitting
+        if(brokenOut && theseTransfers.length>1){
+          TransferInfo [] tmpTransfers = new TransferInfo [theseTransfers.length-1];
+          for(int i=0; i<theseTransfers.length-1; ++i){
+            tmpTransfers[i] = theseTransfers[i];
+          }
+          theseTransfers = tmpTransfers;
+        }
         final TransferInfo [] finalTransfers = theseTransfers;
         final String finalPluginName = pluginName;
         
@@ -236,11 +252,12 @@ public class TransferControl{
   public static String [] startCopyFiles(GlobusURL [] srcUrls, GlobusURL [] destUrls)
      throws Exception {
 
-    Debug.debug("Starting to copy files "+Util.arrayToString(srcUrls)+" -> "+
-        Util.arrayToString(destUrls), 2);
+    for(int i=0; i<srcUrls.length; ++i){
+      Debug.debug("Starting to copy files "+srcUrls[i]+" -> "+
+          destUrls[i], 2);
+    }
     
     String ftPluginName = null;
-    boolean protocolOK = false;
     String [] fts = GridPilot.ftNames;
     String [] ids = null;
     
@@ -254,10 +271,9 @@ public class TransferControl{
         break;
       };      
     }
-    if(!protocolOK || ftPluginName==null){
-      throw new IOException("ERROR: protocol not supported or" +
-          " plugin initialization " +
-          "failed. "+Util.arrayToString(srcUrls)+"->"+Util.arrayToString(destUrls));
+    if(ftPluginName==null){
+      throw new IOException("ERROR: protocol not supported for " +
+          Util.arrayToString(srcUrls)+"->"+Util.arrayToString(destUrls));
     }
     
     // Start the transfers
@@ -331,19 +347,37 @@ public class TransferControl{
     GlobusURL [] destinations = new GlobusURL [transfers.length];
     String [] ids = null;
     
-    Object [][] appendTablevalues = new String [transfers.length][GridPilot.transferStatusFields.length+1];
-    Object [][] newTablevalues = new String [tableValues.length+appendTablevalues.length][GridPilot.transferStatusFields.length+1];
-    int startRow = statusTable.getRowCount();
+    //Object [][] appendTablevalues = new String [transfers.length][GridPilot.transferStatusFields.length+1];
+    //Object [][] newTablevalues = new String [tableValues.length+appendTablevalues.length][GridPilot.transferStatusFields.length+1];
+    //int startRow = statusTable.getRowCount();
     for(int i=0; i<transfers.length; ++i){
+      
       sources[i] = transfers[i].getSource();
       destinations[i] = transfers[i].getDestination();
       
-      transfers[i].setTableRow(submittedTransfers.size());
       transfers[i].setInternalStatus(FileTransfer.STATUS_WAIT);
-      submittedTransfers.add(transfers[i]);
+      
+      boolean resubmit = false;
+      Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
+      for(int j=0; j<submittedTransfers.size(); ++j){
+        try{
+          String id = ((TransferInfo) submittedTransfers.get(j)).getTransferID();
+          if(transfers[i].getTransferID().equals(id)){
+            resubmit = true;
+            break;
+          }
+        }
+        catch(Exception e){
+        }
+      }
 
-      // add to status table
-      statusTable.createRows(submittedTransfers.size());
+      if(!resubmit){
+        transfers[i].setTableRow(GridPilot.getClassMgr().getSubmittedTransfers().size());
+        GridPilot.getClassMgr().getSubmittedTransfers().add(transfers[i]);
+        // add to status table
+        statusTable.createRows(GridPilot.getClassMgr().getSubmittedTransfers().size());
+      }
+
       statusTable.setValueAt(transfers[i].getSource().getURL(),
           transfers[i].getTableRow(), TransferInfo.FIELD_SOURCE);
       statusTable.setValueAt(transfers[i].getDestination().getURL(),
@@ -351,15 +385,15 @@ public class TransferControl{
       statusTable.setValueAt(iconSubmitting, transfers[i].getTableRow(),
           TransferInfo.FIELD_CONTROL);
       
-      for(int j=1; j<GridPilot.transferStatusFields.length; ++j){
+      /*for(int j=1; j<GridPilot.transferStatusFields.length; ++j){
         appendTablevalues[i][j] = statusTable.getValueAt(startRow+i, j);
-      }
+      }*/
     }
     // TODO: check why this does not fix the problem with sorting...
-    System.arraycopy(tableValues, 0, newTablevalues, 0, tableValues.length);
+    /*System.arraycopy(tableValues, 0, newTablevalues, 0, tableValues.length);
     System.arraycopy(appendTablevalues, 0, newTablevalues, tableValues.length, appendTablevalues.length);
     tableValues = newTablevalues;
-    statusTable.setTable(tableValues, GridPilot.transferStatusFields);
+    statusTable.setTable(tableValues, GridPilot.transferStatusFields);*/
 
     try{
       ids = GridPilot.getClassMgr().getFTPlugin(ftPlugin).startCopyFiles(
@@ -484,9 +518,9 @@ public class TransferControl{
       TransferInfo transfer = (TransferInfo) e.nextElement();
       statusTable.setValueAt("Transfer not queued (cancelled)!",
           transfer.getTableRow(), TransferInfo.FIELD_TRANSFER_ID);
-      statusTable.setValueAt(transfer.getSource(), transfer.getTableRow(),
+      statusTable.setValueAt(transfer.getSource().getURL(), transfer.getTableRow(),
           TransferInfo.FIELD_SOURCE);
-      statusTable.setValueAt(transfer.getDestination(), transfer.getTableRow(),
+      statusTable.setValueAt(transfer.getDestination().getURL(), transfer.getTableRow(),
           TransferInfo.FIELD_DESTINATION);
       transfer.setNeedToBeRefreshed(false);
     }
@@ -496,33 +530,55 @@ public class TransferControl{
     pbSubmission.setValue(0);
   }
 
-  public void cancel(final Vector transfers){
+  /**
+   * Just cancels the job with the corresponding plugin
+   */
+  public static void cancel(final String fileTransferID) throws Exception{
+    findFTPlugin(fileTransferID).cancel(fileTransferID);
+  }
+  
+  public static void cancel(final Vector transfers){
     MyThread t = new MyThread(){
-      String res = null;
       TransferInfo transfer = null;
       public void run(){
         // use status bar on monitoring frame
-        statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+        StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
         statusBar.animateProgressBar();
-        if(!isProgressBarSet){
-          statusBar.setProgressBar(pbSubmission);
-          isProgressBarSet = true;
-        }
+        statusBar.setLabel("Cancelling...");
+        Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
         try{
           for(int i=0; i<transfers.size(); ++i){
             try{             
               transfer = (TransferInfo) transfers.get(i);
+              // skip if not running
+              boolean isRunning = false;
+              for(int j=0; j<submittedTransfers.size(); ++j){
+                try{
+                  String id = ((TransferInfo) submittedTransfers.get(j)).getTransferID();
+                  if(transfer.getTransferID().equals(id)){
+                    isRunning = true;
+                    break;
+                  }
+                }
+                catch(Exception e){
+                }
+              }
+              if(!isRunning){
+                continue;
+              }
               Debug.debug("Cancelling transfer "+transfer.getTransferID(), 2);
               FileTransfer ft = findFTPlugin(transfer.getTransferID());
               ft.cancel(transfer.getTransferID());
               String status = "Cancelled";
-              statusTable.setValueAt(status, transfer.getTableRow(),
-                  TransferInfo.FIELD_STATUS);
+              GridPilot.getClassMgr().getTransferStatusTable().setValueAt(
+                  status, transfer.getTableRow(), TransferInfo.FIELD_STATUS);
               transfer.setStatus(status);
               transfer.setInternalStatus(FileTransfer.STATUS_ERROR);
               transfer.setNeedToBeRefreshed(false);
             }
             catch(Exception ee){
+              Debug.debug("WARNING: Could not cancel transfer "+transfer.getTransferID(), 2);
+              ee.printStackTrace();
             }
           }        
         }
@@ -530,18 +586,83 @@ public class TransferControl{
           GridPilot.getClassMgr().getLogFile().addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " +
                              " for download", t);
-          res = null;
         }
         statusBar.stopAnimation();
-      }
-      public String getStringRes(){
-        return res;
+        statusBar.setLabel("Cancelling done.");
       }
     };
 
     t.start();
 
     if(!Util.waitForThread(t, "", TRANSFER_CANCEL_TIMEOUT, "transfer")){
+      StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+      statusBar.stopAnimation();
+      statusBar.setLabel("WARNING: cancel transfers timed out.");
+    }
+  }
+  
+  public void resubmit(final Vector transfers){
+    MyThread t = new MyThread(){
+      TransferInfo transfer = null;
+      public void run(){
+        // use status bar on monitoring frame
+        StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+        statusBar.animateProgressBar();
+        statusBar.setLabel("Cancelling...");
+        Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
+        try{
+          GlobusURL [] srcUrls = new GlobusURL [transfers.size()];
+          GlobusURL [] destUrls = new GlobusURL [transfers.size()];
+          for(int i=0; i<transfers.size(); ++i){
+            try{             
+              transfer = (TransferInfo) transfers.get(i);
+              // abort if a job is running
+              boolean isRunning = false;
+              for(int j=0; j<submittedTransfers.size(); ++j){
+                try{
+                  String id = ((TransferInfo) submittedTransfers.get(j)).getTransferID();
+                  if(transfer.getTransferID().equals(id)){
+                    isRunning = true;
+                    break;
+                  }
+                }
+                catch(Exception e){
+                }
+              }
+              if(isRunning){
+                throw new IOException("Cannot requeue running transfers.");
+              }
+              Debug.debug("Requeueing transfer "+transfer.getTransferID(), 2);
+              String status = "Wait";
+              GridPilot.getClassMgr().getTransferStatusTable().setValueAt(
+                  status, transfer.getTableRow(), TransferInfo.FIELD_STATUS);
+              transfer.setStatus(status);
+              transfer.setInternalStatus(FileTransfer.STATUS_WAIT);
+              transfer.setNeedToBeRefreshed(true);
+              srcUrls[i] = transfer.getSource();
+              destUrls[i] = transfer.getDestination();
+            }
+            catch(Exception ee){
+              Debug.debug("WARNING: Could not cancel transfer "+transfer.getTransferID(), 2);
+              ee.printStackTrace();
+            }
+          }
+          queue(transfers);
+        }
+        catch(Throwable t){
+          GridPilot.getClassMgr().getLogFile().addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " +
+                             " for download", t);
+        }
+        statusBar.stopAnimation();
+        statusBar.setLabel("Resubmitting done.");
+      }
+    };
+
+    t.start();
+
+    if(!Util.waitForThread(t, "", TRANSFER_CANCEL_TIMEOUT, "transfer")){
+      StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
       statusBar.stopAnimation();
       statusBar.setLabel("WARNING: cancel transfers timed out.");
     }
@@ -557,7 +678,33 @@ public class TransferControl{
     
     Debug.debug("Finding plugin for transfer "+transferID, 2);
     String ftPluginName = null;
-    String [] checkArr = Util.split(transferID, ":");
+    String [] checkArr = Util.split(transferID, "::");
+    if(checkArr[0].indexOf("-")>0){
+      String [] arr = Util.split(checkArr[0], "-");
+      ftPluginName = arr[0];
+      Debug.debug("Found plugin "+ftPluginName, 2);
+    }
+    else{
+      throw new IOException("ERROR: malformed ID "+transferID);
+    }
+    if(ftPluginName==null){
+      throw new IOException("ERROR: could not get file transfer plugin for "+transferID);
+    }
+    return GridPilot.getClassMgr().getFTPlugin(ftPluginName);
+  }
+  
+  /**
+   * Find the plugin that's actually carrying out the work. E.g. for srm this will
+   * typically be gsiftp.
+   * @param   transferID    Transfer ID. Format:
+   *                        "protocol-(get|put|copy):...:srcTURL destTURL [SURL]".
+   */
+  /*public static FileTransfer findRealTransferPlugin(String transferID)
+     throws Exception{
+    
+    Debug.debug("Finding plugin for transfer "+transferID, 2);
+    String ftPluginName = null;
+    String [] checkArr = Util.split(transferID, "::");
     // Only if the ID is of the second type will checkArr[0] contain a -.
     // It the ID is of the first type checkArr[0] will be a protocol.
     if(checkArr[0].indexOf("-")>0){
@@ -570,20 +717,20 @@ public class TransferControl{
       // repeat the first matching to find the plugin.
       // gsiftp-get:dadf:asdad:adf:file://afdad gsiftp://adadf srm://dsaadf
       if(type.equalsIgnoreCase("get") || type.equalsIgnoreCase("put")){
-        int startIndex = transferID.indexOf("://");
+        Debug.debug("type: "+type, 3);
         int tmpindex = 0;
         String tmpID = transferID;
         String [] fts = GridPilot.ftNames;
-        while(tmpindex<startIndex){
+        while(tmpID.indexOf("::")>0){
+          tmpindex += tmpID.indexOf("::") + 2;
           tmpID = transferID.substring(tmpindex);
-          tmpindex += tmpID.indexOf(":") + 1;
         }
         turls = Util.split(tmpID);
         for(int i=0; i<fts.length; ++i){
           if(GridPilot.getClassMgr().getFTPlugin(
               fts[i]).checkURLs(
-                  new GlobusURL [] {new GlobusURL(turls[0])},
-                  new GlobusURL [] {new GlobusURL(turls[1])})){
+                  new GlobusURL [] {new GlobusURL(turls[0].replaceAll("'", ""))},
+                  new GlobusURL [] {new GlobusURL(turls[1].replaceAll("'", ""))})){
             ftPluginName = fts[i];
             break;
           };      
@@ -601,13 +748,13 @@ public class TransferControl{
     if(ftPluginName==null){
       throw new IOException("ERROR: could not get file transfer plugin for "+transferID);
     }
-
     return GridPilot.getClassMgr().getFTPlugin(ftPluginName);
-    
-  }
+  }*/
   
   public boolean isSubmitting(){
     //return timer.isRunning();
+    Debug.debug("submittingTransfers: "+submittingTransfers.size(), 3);
+    Debug.debug("toSubmitTransfers: "+toSubmitTransfers.size(), 3);
     return !(submittingTransfers.isEmpty() && toSubmitTransfers.isEmpty());
   }
   
@@ -617,7 +764,7 @@ public class TransferControl{
   public static void updateStatus(Vector transfers){
     String status = null;
     String transferred = null;
-    int transInt = -1;
+    int percentComplete = -1;
     TransferInfo transfer = null;
     String id = null;
     int internalStatus = -1;
@@ -638,28 +785,37 @@ public class TransferControl{
         Debug.debug("Got status: "+status, 2);
         transfer.setStatus(status);
         try{
-          transInt = getPercentComplete(id);
-          transferred = Integer.toString(transInt);
+          percentComplete = getPercentComplete(id);
+          transferred = Integer.toString(percentComplete);
           Debug.debug("Got transferred: "+transferred, 2);
           transfer.setTransferred(transferred+"%");
         }
         catch(Exception e){
         }
-        if(transferred==null || transInt<0){
+        if(transferred==null || percentComplete<0 || percentComplete>100){
+          Debug.debug("Could not understand transferred = "+transferred, 3);
           transferred = Long.toString(getBytesTransferred(id)/1000);
           Debug.debug("Got transferred: "+transferred, 2);
           transfer.setTransferred(transferred+" kB");
         }
         
-        internalStatus = findFTPlugin(id).getInternalStatus(status);
+        internalStatus = getInternalStatus(id, status);
         transfer.setInternalStatus(internalStatus);
       }
       catch(Exception e){
         Debug.debug("WARNING: could not get status of "+id+
             ". skipping. "+e.getMessage(), 3);
+        e.printStackTrace();
         continue;
       }
     }
+  }
+  
+  /**
+   *  Find the GridPilot-specific internal status from the corresponding plugin.
+   */
+  public static int getInternalStatus(String id, String status) throws Exception{
+    return findFTPlugin(id).getInternalStatus(id, status);
   }
   
   /**
@@ -673,17 +829,42 @@ public class TransferControl{
   }
 
   /**
+   * Call plugins to clean up all running transfers. We keep no persistent table of
+   * transfers. So, all get/put transfers will die when we exit and running
+   * transfers should be cancelled before exiting.
+   */
+  public static void exit(){
+    Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
+    for(int i=0; i<submittedTransfers.size(); ++i){
+      try{
+        String id = ((TransferInfo) submittedTransfers.get(i)).getTransferID();
+        Debug.debug("Cancelling "+id, 3);
+        findFTPlugin(id).cancel(id);
+      }
+      catch(Exception e){
+        continue;
+      }
+    }
+  }
+
+    /**
    * Take some action on successful transfer completion,
    * like registering the new location.
    */
   public static void transferDone(TransferInfo transfer){
+    // Do plugin-specific finalization. E.g. for SRM, set the status to Done.
+    String id = null;
+    try{
+      id = transfer.getTransferID();
+      findFTPlugin(transfer.getTransferID()).finalize(transfer.getTransferID());
+    }
+    catch(Exception e){
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: finalize coule not " +
+          "be done for transfer "+id, e);
+    }
+    // If transfer.getDBPluginMgr() is not null, it is the convention that this
+    // DBPluginMgr is used for registering the file.
     if(transfer.getDBPluginMgr()!=null && transfer.getDestination()!=null){
-      // TODO:
-      // It would be better to get the UUID from SRM, from the file (if it's a ROOT file)
-      // or by using POOL, but we can't, since we have only the file name.
-      // If the file is replicated from a file catalog, the lfn and guid should
-      // be set in TransferInfo transfer and are reused. The same goes for the
-      // dataset name and id.
       String destination = transfer.getDestination().getURL();
       String lfn = null;
       try{

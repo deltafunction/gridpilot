@@ -917,8 +917,9 @@ public class GSIFTPFileTransfer implements FileTransfer {
           urlCopy.setUseThirdPartyCopy(true);
         }
         urlCopy.addUrlCopyListener(urlCopyTransferListener);
-        // The transfer id is chosen to be "srcUrl destUrl"
-        final String id = pluginName + "-copy:" + srcUrls[i].getURL()+" "+destUrls[i].getURL();
+        // The transfer id is chosen to be "gsiftp-{get|put|copy}::'srcUrl' 'destUrl'"
+        final String id = pluginName + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
+        Debug.debug("ID: "+id, 3);
         jobs.put(id, urlCopy);
         urlCopyTransferListeners.put(id, urlCopyTransferListener);
         ret[i] = id;
@@ -989,6 +990,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
   public int getPercentComplete(String fileTransferID) throws Exception {
     long comp = ((UrlCopyTransferListener) 
         urlCopyTransferListeners.get(fileTransferID)).getPercentComplete();
+    Debug.debug("Got percent complete "+comp, 3);
     return (int) comp;
   }
 
@@ -1000,6 +1002,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
 
   public void cancel(String fileTransferID) throws Exception {
     if(!((UrlCopy) jobs.get(fileTransferID)).isCanceled()){
+      Debug.debug("Cancelling gsiftp transfer "+fileTransferID, 2);
       ((UrlCopy) jobs.get(fileTransferID)).cancel();
       jobs.remove(fileTransferID);
     }
@@ -1021,7 +1024,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
    * FileTransfer.STATUS_DONE, FileTransfer.STATUS_ERROR, FileTransfer.STATUS_FAILED,
    * FileTransfer.STATUS_RUNNING, FileTransfer.STATUS_WAIT
    */
-  public int getInternalStatus(String ftStatus) throws Exception{
+  public int getInternalStatus(String id, String ftStatus) throws Exception{
     Debug.debug("Mapping status "+ftStatus, 2);
     int ret = -1;
     if(ftStatus==null || ftStatus.equals("")){

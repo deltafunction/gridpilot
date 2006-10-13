@@ -3,9 +3,7 @@ package gridpilot.ftplugins.srm;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.Vector;
 
 import org.globus.ftp.exception.ClientException;
@@ -23,6 +21,7 @@ import diskCacheV111.srm.ISRM;
 import diskCacheV111.srm.RequestStatus;
 
 import gridpilot.Debug;
+import gridpilot.StatusBar;
 import gridpilot.TransferControl;
 import gridpilot.FileTransfer;
 import gridpilot.GridPilot;
@@ -37,8 +36,17 @@ import gridpilot.Util;
 public class SRMFileTransfer implements FileTransfer {
   
   private String error = "";
+  private Vector pendingIDs = new Vector();
+  private String user = null;
+  
+  // Default to trying 5 checks after submitting a transfer
+  private static int checkRetries = 5;
+  // Default to sleeping 10 seconds between each check retry
+  private static long checkRetrySleep = 10000;
+
   private static String copyRetries = "0";
   private static String copyRetryTimeout = "120";
+  
   private static final int SRM_URL = 0x1;
   private static final int FILE_URL = 0x8;
   private static final int SUPPORTED_PROTOCOL_URL = 0x4;
@@ -47,8 +55,6 @@ public class SRMFileTransfer implements FileTransfer {
   private static final int CAN_WRITE_FILE_URL = 0x40;
   private static final int DIRECTORY_URL = 0x80;
   private static final int UNKNOWN_URL = 0x100;
-    
-  private String user = null;
 
   private static String pluginName;
 
@@ -80,6 +86,17 @@ public class SRMFileTransfer implements FileTransfer {
        "copy retries");
     copyRetryTimeout = GridPilot.getClassMgr().getConfigFile().getValue("File transfer systems",
        "copy retry timeout");
+    
+    String maxIterations = GridPilot.getClassMgr().getConfigFile().getValue("SRM",
+    "submit check retries");
+    String sleep = GridPilot.getClassMgr().getConfigFile().getValue("SRM",
+    "submit check sleep");
+    if(maxIterations!=null){
+      checkRetries = Integer.parseInt(maxIterations);
+    };
+    if(sleep!=null){
+      checkRetrySleep = Long.parseLong(sleep);
+    };
   }
   
   public String getUserInfo(){
@@ -122,29 +139,28 @@ public class SRMFileTransfer implements FileTransfer {
    *                           and not to be confused with the request id or the
    *                           index of the file in question in the array
    *                           RequestStatus.fileStatuses.
-   *                           Format: srm-{get|put|copy}:srm request id:transfer index:srcTurl destTurl srmSurl
+   *                           Format: srm-{get|put|copy}::srm request id:transfer index::'srcTurl' 'destTurl' 'srmSurl'
    */
   public String getStatus(String fileTransferID) throws SRMException {
     String [] idArr = parseFileTransferID(fileTransferID);
     String requestType = idArr[1];
     int requestId = Integer.parseInt(idArr[2]);
     int statusIndex = Integer.parseInt(idArr[3]);
-    //String srcTurl = idArr[4];
-    //String destTurl = idArr[5];
     String surl = idArr[6];
+    String shortID = idArr[7];
 
     String status = null;
 
-    if(requestType.equals("get") || requestType.equals("put")){
+    if(!pendingIDs.contains(fileTransferID) && (
+        requestType.equals("get") || requestType.equals("put"))){
       // get status from GSIFTPFileTransfer (or whichever protocol the SRM uses)
       try{
-        //status = TransferControl.getStatus(srcTurl+" "+destTurl);
-        // TODO: strip srm specifics off id
-        status = TransferControl.getStatus(fileTransferID);
+        status = TransferControl.getStatus(shortID);
       }
       catch(Exception e){
-        Debug.debug("ERROR: could not get status from subsystem for "+
-            fileTransferID+". "+e.getMessage(), 1);
+        e.printStackTrace();
+        Debug.debug("WARNING: could not get status from subsystem for "+
+            shortID+". "+e.getMessage(), 1);
       }
     }
     
@@ -170,22 +186,25 @@ public class SRMFileTransfer implements FileTransfer {
     int requestId = Integer.parseInt(idArr[2]);
     int statusIndex = Integer.parseInt(idArr[3]);
     String surl = idArr[6];
+    String shortID = idArr[7];
 
     String status = "";
 
-    if(requestType.equals("get") || requestType.equals("put")){
+    if(!pendingIDs.contains(fileTransferID) && (
+        requestType.equals("get") || requestType.equals("put"))){
       // get status from GSIFTPFileTransfer (or whichever protocol the SRM uses)
+      Debug.debug("Getting status of "+shortID+" from subsystem", 3);
       try{
-        // TODO: strip srm specifics off id
-        status += "GSIFTP Status: "+TransferControl.getStatus(fileTransferID);
+        status += "GSIFTP Status: "+TransferControl.getStatus(shortID);
       }
       catch(Exception e){
-        Debug.debug("ERROR: could not get status from subsystem for "+
+        Debug.debug("WARNING: could not get status from subsystem for "+
             fileTransferID+". "+e.getMessage(), 1);
       }
     }
     
     try{
+      Debug.debug("Getting status of "+shortID+" from SRM server "+surl, 3);
       ISRM srm = connect(new GlobusURL(surl));
       RequestStatus rs = srm.getRequestStatus(requestId);
       status += "\nSRM Status: "+rs.fileStatuses[statusIndex].state;
@@ -203,7 +222,7 @@ public class SRMFileTransfer implements FileTransfer {
 
   /**
    * Parse the file transfer ID into
-   * {protocol, requestType (get|put|copy), requestId, statusIndex, srcTurl, destTurl, srmSurl}.
+   * {protocol, requestType (get|put|copy), requestId, statusIndex, srcTurl, destTurl, srmSurl, shortID}.
    * @param fileTransferID   the unique ID of this transfer.
    */
   private String [] parseFileTransferID(String fileTransferID) throws SRMException {
@@ -215,8 +234,9 @@ public class SRMFileTransfer implements FileTransfer {
     String srcTurl = null;
     String destTurl = null;
     String srmSurl = null;
+    String shortID = null;
 
-    String [] idArr = Util.split(fileTransferID, ":");
+    String [] idArr = Util.split(fileTransferID, "::");
     String [] head = Util.split(idArr[0], "-");
     if(idArr.length<3){
       throw new SRMException("ERROR: malformed ID "+fileTransferID);
@@ -226,18 +246,37 @@ public class SRMFileTransfer implements FileTransfer {
       requestType = head[1];
       requestId = idArr[1];
       statusIndex = idArr[2];
-      String turls = fileTransferID.replaceFirst(idArr[0]+":", "");
-      turls = turls.replaceFirst(idArr[1]+":", "");
-      turls = turls.replaceFirst(idArr[2]+":", "");
-      String [] turlArray = Util.split(turls);
-      srcTurl = turlArray[0];
-      destTurl = turlArray[1];
-      srmSurl = turlArray[2];
+      String turls = fileTransferID.replaceFirst(idArr[0]+"::", "");
+      turls = turls.replaceFirst(idArr[1]+"::", "");
+      turls = turls.replaceFirst(idArr[2]+"::", "");
+      String [] turlArray = Util.split(turls, "' '");
+      srcTurl = turlArray[0].replaceFirst("'", "");
+      destTurl = turlArray[1].replaceFirst("'", "");
+      srmSurl = turlArray[2].replaceFirst("'", "");
     }
     catch(Exception e){
       throw new SRMException("ERROR: could not parse ID "+fileTransferID+". "+e.getMessage());
     }
-    return new String [] {protocol, requestType, requestId, statusIndex, srcTurl, destTurl, srmSurl};
+    try{
+      // First resolve transport protocol
+      GlobusURL url = null;
+      String transportProtocol = null;
+      if(requestType.equals("get")){
+        url = new GlobusURL(srcTurl);
+        transportProtocol = url.getProtocol();
+        shortID = transportProtocol+"-copy"+"::'"+srcTurl+"' '"+destTurl+"'";
+      }
+      else if(requestType.equals("put")){
+        url = new GlobusURL(destTurl);
+        transportProtocol = url.getProtocol();
+        shortID = transportProtocol+"-copy"+"::'"+srcTurl+"' '"+destTurl+"'";
+      }
+      Debug.debug("Found short ID: "+shortID, 3);
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: could not get short ID for "+fileTransferID+"; SRM probably not ready.", 2);
+    }
+    return new String [] {protocol, requestType, requestId, statusIndex, srcTurl, destTurl, srmSurl, shortID};
   }
   
   /**
@@ -252,42 +291,35 @@ public class SRMFileTransfer implements FileTransfer {
     String [] idArr = parseFileTransferID(fileTransferID);
     String requestType = idArr[1];
     int requestId = Integer.parseInt(idArr[2]);
-    //int statusIndex = Integer.parseInt(idArr[3]);
-    //String srcTurl = idArr[4];
-    //String destTurl = idArr[5];
     String surl = idArr[6];
+    String shortID = idArr[7];
 
-    int status = -1;
+    int percentComplete = -1;
 
-    if(requestType.equals("get") || requestType.equals("put")){
+    if(!pendingIDs.contains(fileTransferID) && (
+        requestType.equals("get") || requestType.equals("put"))){
       // get status from GSIFTPFileTransfer (or whichever protocol the SRM uses)
       try{
-        //status = TransferControl.getStatus(srcTurl+" "+destTurl);
-        status = TransferControl.getPercentComplete(fileTransferID);
+        percentComplete = TransferControl.getPercentComplete(shortID);
       }
       catch(Exception e){
-        Debug.debug("ERROR: could not call getPercentComplete from subsystem for "+
+        Debug.debug("WARNING: could not call getPercentComplete from subsystem for "+
             fileTransferID+". "+e.getMessage(), 1);
       }
-    }
-    
-    if(status>-1){
-      return status;
+      return percentComplete;
     }
     else{
       try{
         ISRM srm = connect(new GlobusURL(surl));
         RequestStatus rs = srm.getRequestStatus(requestId);
-        // TODO: use getEstGetTime, getEstPutTime
-        //int tts = rs.estTimeToStart;
-        //int sts = rs.fileStatuses[statusIndex].estSecondsToStart;
         Date finishDate = rs.finishTime;
         Date currentDate = new Date();
         Date startDate = rs.submitTime;
         long total = finishDate.getTime() - startDate.getTime();
         long diff = currentDate.getTime() - startDate.getTime();
         float percents = diff / total;
-        return (int) percents;
+        Debug.debug("Got percent complete "+percents, 3);
+        return (int) (percents*100);
       }
       catch(Exception e){
         throw new SRMException("ERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage());
@@ -305,17 +337,17 @@ public class SRMFileTransfer implements FileTransfer {
   public long getBytesTransferred(String fileTransferID) throws SRMException {
     String [] idArr = parseFileTransferID(fileTransferID);
     String requestType = idArr[1];
-
+    String shortID = idArr[7];
     long bytes = -1;
 
-    if(requestType.equals("get") || requestType.equals("put")){
-      // get status from GSIFTPFileTransfer (or whichever protocol the SRM uses)
+    if(!pendingIDs.contains(fileTransferID) && (
+        requestType.equals("get") || requestType.equals("put"))){
+      // Get status from GSIFTPFileTransfer (or whichever protocol the SRM uses).    
       try{
-        //status = TransferControl.getStatus(srcTurl+" "+destTurl);
-        bytes = TransferControl.getBytesTransferred(fileTransferID);
+        bytes = TransferControl.getBytesTransferred(shortID);
       }
       catch(Exception e){
-        Debug.debug("ERROR: could not call getBytesTransferred from subsystem for "+
+        Debug.debug("WARNING: could not call getBytesTransferred from subsystem for "+
             fileTransferID+". "+e.getMessage(), 1);
       }
     }
@@ -412,6 +444,7 @@ public class SRMFileTransfer implements FileTransfer {
     int requestId = Integer.parseInt(idArr[2]);
     int statusIndex = Integer.parseInt(idArr[3]);
     String surl = idArr[6];
+    String shortID = idArr[7];
 
     try{
       ISRM srm = connect(new GlobusURL(surl));
@@ -421,46 +454,65 @@ public class SRMFileTransfer implements FileTransfer {
     catch(Exception e){
       throw new SRMException("ERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage());
     }
+
+    if(!pendingIDs.contains(fileTransferID) && (
+        requestType.equals("get") || requestType.equals("put"))){
+      // cancel GSIFTPFileTransfer (or whichever protocol the SRM uses)
+      try{
+        Debug.debug("Cancelling "+shortID, 1);
+        TransferControl.cancel(shortID);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        Debug.debug("WARNING: could not cancel "+shortID+". "+e.getMessage(), 1);
+      }
+    }
+
   }
 
   // Wait for all files to be ready on the SRM server before beginning the
   // transfers. This may be reconsidered...
-  private void waitForOK(String [] fileTransferIDs) throws SRMException {
-    Vector ids = new Vector();
-    Collections.addAll(ids, fileTransferIDs);
-    String status = null;
-    String id = null;
-    int i = 0;
-    // This defines a timeout of 10 minutes.
-    // TODO: make this configurable.
-    int maxIterations = 30;
-    long sleepInterval = 20000;
-    while(true){
-      ++i;
-      try{
-        Thread.sleep(sleepInterval);
-      }
-      catch(InterruptedException e){
-        break;
-      }
-      for(Iterator it=ids.iterator(); it.hasNext();){
-        id = (String) it.next();
-        try{
-          status = getStatus(id);
-          if(status.equalsIgnoreCase("Ready")){
-            ids.remove(id);
+  private void waitForOK(Vector _thesePendingIDs) throws SRMException {
+    synchronized(pendingIDs){
+      Vector thesePendingIDs = _thesePendingIDs;
+      String status = null;
+      int i = 0;
+      pendingIDs.addAll(thesePendingIDs);
+      while(true){
+        if(thesePendingIDs.size()==0){
+          break;
+        }
+        ++i;
+        for(int j=0; j<thesePendingIDs.size(); ++j){
+          if(thesePendingIDs.isEmpty()){
+            break;
+          }
+          Debug.debug("Checking status "+i+" - "+j+":"+thesePendingIDs.size(), 3);
+          String id = (String) thesePendingIDs.get(j);
+          Debug.debug("of --> "+id, 3);
+          try{
+            status = getStatus(id);
+            if(status.equalsIgnoreCase("Ready")){
+              pendingIDs.remove(id);
+              thesePendingIDs.remove(id);
+            }
+          }
+          catch(Exception e){
+            Debug.debug("WARNING: could not get status of "+id, 1);
+            e.printStackTrace();
           }
         }
-        catch(Exception e){
-          Debug.debug("WARNING: could not get status of "+id, 1);
+        if(i>checkRetries+1){
+          throw new SRMException("ERROR: file(s) were not ready within "+
+              (checkRetries*checkRetrySleep/1000)+" seconds");
         }
-      }
-      if(ids.size()==0){
-        break;
-      }
-      if(i>maxIterations){
-        throw new SRMException("ERROR: files were not ready within "+
-            (maxIterations*sleepInterval/1000)+" seconds");
+        Debug.debug("Waiting...", 3);
+        try{
+          Thread.sleep(checkRetrySleep);
+        }
+        catch(InterruptedException e){
+          break;
+        }
       }
     }
   }
@@ -486,7 +538,7 @@ public class SRMFileTransfer implements FileTransfer {
   
   /**
    * Initiate transfers and return identifiers:
-   * "srm-{get|put|copy}:srm request id:transfer index:srcTurl destTurl srmSurl"
+   * "srm-{get|put|copy}::srm request id::transfer index::'srcTurl' 'destTurl' 'srmSurl'"
    * @param   srcUrls    the source URLs
    * @param   destUrls   the destination URLs
    */
@@ -513,8 +565,8 @@ public class SRMFileTransfer implements FileTransfer {
       // TODO: make this configurable.
       Arrays.fill(wantPerm, false);
       
-      // TODO: check location and choose protocol
-      String [] protocols = {"http", "gsiftp"};
+      // TODO: check location and choose protocol. Choose among registered FT plugins.
+      String [] protocols = {"gsiftp"};
       
       int fromType = getUrlType(srcUrls[0]);
       checkURLsUniformity(fromType, srcUrls, true);
@@ -546,23 +598,36 @@ public class SRMFileTransfer implements FileTransfer {
         }
         GlobusURL [] turls = new GlobusURL[srcUrls.length];
         String [] ids = new String[srcUrls.length];
+        // First, assign temporary ids (with TURL null) and wait for ready
+        Vector thesePendingIDs = new Vector();
+        for(int i=0; i<srcUrls.length; ++i){
+          thesePendingIDs.add(pluginName+"-get::"+rs.requestId+"::"+i+"::'"+null+"' '"+destUrls[i].getURL()+
+          "' '"+srcUrls[0].getURL()+"'");
+        }
+        try{
+          Debug.debug("Transfer request submitted for get. Waiting for ok.", 2);
+          // show message on status bar on monitoring frame
+          StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+          statusBar.setLabel("Waiting for files to be ready...");
+          waitForOK(thesePendingIDs);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          throw new IOException("ERROR: problem getting transfers ready confirmation" +
+              "from server."+ e.getMessage());
+        }
+        // Now, assign the real ids (with TURL not null)
         try{
           for(int i=0; i<srcUrls.length; ++i){
             turls[i] = new GlobusURL(rs.fileStatuses[i].TURL);
-            ids[i] = pluginName+"-get:"+rs.requestId+":"+i+":"+turls[i]+" "+destUrls[i]+
-            " "+srcUrls[0];
+            ids[i] = pluginName+"-get::"+rs.requestId+"::"+i+"::'"+turls[i].getURL()+"' '"+destUrls[i].getURL()+
+            "' '"+srcUrls[0].getURL()+"'";
           }
         }
         catch(Exception e){
+          e.printStackTrace();
           throw new IOException("ERROR: problem getting TURLS" +
               e.getMessage());
-        }
-        try{
-          waitForOK(ids);
-        }
-        catch(Exception e){
-          throw new IOException("ERROR: problem getting transfers ready confirmation" +
-              "from server."+ e.getMessage());
         }
         // if no exception was thrown, all is ok and we can set files to "Running"
         for(int i=0; i<srcUrls.length; ++i){
@@ -573,6 +638,9 @@ public class SRMFileTransfer implements FileTransfer {
             Debug.debug("WARNING: could not set file to Running. "+turls[i], 3);
           }
         }
+        // show message on status bar on monitoring frame
+        StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+        statusBar.setLabel("Files ready, starting download.");
         try{
           // Now use some other plugin - depending on the TURL returned
           TransferControl.startCopyFiles(turls, destUrls);
@@ -585,6 +653,7 @@ public class SRMFileTransfer implements FileTransfer {
             catch(Exception ee){
             }
           }
+          e.printStackTrace();
           throw new IOException("ERROR: problem queueing transfers "+ e.getMessage());
         }
         return ids;
@@ -599,9 +668,9 @@ public class SRMFileTransfer implements FileTransfer {
         }
         String [] ids = new String[srcUrls.length];
         for(int i=0; i<srcUrls.length; ++i){
-          ids[i] = pluginName+"-copy:"+rs.requestId+":"+i+":"+
-             rs.fileStatuses[i].TURL+" "+destUrls[i]+
-             " "+srcUrls[0];
+          ids[i] = pluginName+"-copy::"+rs.requestId+"::"+i+"::'"+
+             rs.fileStatuses[i].TURL+"' '"+destUrls[i].getURL()+
+             "' '"+srcUrls[0].getURL()+"'";
         }
         Debug.debug("Returning TURLS "+Util.arrayToString(ids), 2);
         return ids;
@@ -634,23 +703,34 @@ public class SRMFileTransfer implements FileTransfer {
         }
         GlobusURL [] turls = new GlobusURL[srcUrls.length];
         String [] ids = new String[srcUrls.length];
+        // First, assign temporary ids (with TURL null) and wait for ready
+        Vector thesePendingIDs = new Vector();
+        for(int i=0; i<srcUrls.length; ++i){
+          thesePendingIDs.add(pluginName+"-get::"+rs.requestId+"::"+i+"::'"+srcUrls[i].getURL()+"' '"+null+
+          "' '"+destUrls[0].getURL()+"'");
+        }
+        try{
+          Debug.debug("Transfer request submitted for put. Waiting for ok.", 2);
+          // show message on status bar on monitoring frame
+          StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+          statusBar.setLabel("Waiting for files to be ready...");
+          waitForOK(thesePendingIDs);
+        }
+        catch(Exception e){
+          throw new IOException("ERROR: problem getting transfers ready confirmation" +
+              "from server."+ e.getMessage());
+        }
+        // Now, assign the real ids (with TURL not null)
         try{
           for(int i=0; i<srcUrls.length; ++i){
             turls[i] = new GlobusURL(rs.fileStatuses[i].TURL);
-            ids[i] = pluginName+"-get:"+rs.requestId+":"+i+":"+srcUrls[i]+" "+turls[i]+
-            " "+destUrls[0];
+            ids[i] = pluginName+"-get::"+rs.requestId+"::"+i+"::'"+srcUrls[i].getURL()+"' '"+turls[i].getURL()+
+            "' '"+destUrls[0].getURL()+"'";
           }
         }
         catch(Exception e){
           throw new IOException("ERROR: problem getting TURLS" +
               e.getMessage());
-        }
-        try{
-          waitForOK(ids);
-        }
-        catch(Exception e){
-          throw new IOException("ERROR: problem getting transfers ready confirmation" +
-              "from server."+ e.getMessage());
         }
         // if no exception was thrown, all is ok and we can set files to "Running"
         for(int i=0; i<srcUrls.length; ++i){
@@ -661,6 +741,9 @@ public class SRMFileTransfer implements FileTransfer {
             Debug.debug("WARNING: could not set file to Running. "+turls[i], 3);
           }
         }
+        // show message on status bar on monitoring frame
+        StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+        statusBar.setLabel("Files ready, starting download.");
         try{
           // Now use some other plugin - depending on the TURL returned
           TransferControl.startCopyFiles(srcUrls, turls);
@@ -688,9 +771,9 @@ public class SRMFileTransfer implements FileTransfer {
         String [] ids = new String[srcUrls.length];
         Arrays.fill(ids, Integer.toString(rs.requestId));
         for(int i=0; i<srcUrls.length; ++i){
-          ids[i] = pluginName+"-copy:"+rs.requestId+":"+i+":"+
-          srcUrls[i]+" "+rs.fileStatuses[i].TURL+
-          " "+destUrls[0];
+          ids[i] = pluginName+"-copy::"+rs.requestId+"::"+i+"::'"+
+          srcUrls[i].getURL()+"' '"+rs.fileStatuses[i].TURL+
+          "' '"+destUrls[0].getURL()+"'";
         }
         return ids;
       }
@@ -707,8 +790,8 @@ public class SRMFileTransfer implements FileTransfer {
         }
         String [] ids = new String[srcUrls.length];
         for(int i=0; i<srcUrls.length; ++i){
-          ids[i] = pluginName+"-copy:"+rs.requestId+":"+i+":"+srcStrs[i]+" "+
-          rs.fileStatuses[i].TURL+" "+destUrls[0];
+          ids[i] = pluginName+"-copy::"+rs.requestId+"::"+i+"::'"+srcStrs[i]+"' '"+
+          rs.fileStatuses[i].TURL+"' '"+destUrls[0].getURL()+"'";
         }
         return ids;
       } 
@@ -723,6 +806,7 @@ public class SRMFileTransfer implements FileTransfer {
       throw e;
     }
     catch(Exception e){
+      e.printStackTrace();
       throw new SRMException(e.getMessage());
     }
     finally{
@@ -909,10 +993,37 @@ public class SRMFileTransfer implements FileTransfer {
    * FileTransfer.STATUS_DONE, FileTransfer.STATUS_ERROR, FileTransfer.STATUS_FAILED,
    * FileTransfer.STATUS_RUNNING, FileTransfer.STATUS_WAIT
    */
-  public int getInternalStatus(String ftStatus) throws Exception{
+  public int getInternalStatus(String fileTransferID, String status) throws Exception{
+    String [] idArr = parseFileTransferID(fileTransferID);
+    String requestType = idArr[1];
+    String shortID = idArr[7];
+
+    int internalStatus = -1;
+
+    if(!pendingIDs.contains(fileTransferID) && (
+        requestType.equals("get") || requestType.equals("put"))){
+      // get status from GSIFTPFileTransfer (or whichever protocol the SRM uses)
+      try{
+        internalStatus = TransferControl.getInternalStatus(shortID, status);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        Debug.debug("WARNING: could not get status from subsystem for "+
+            shortID+". "+e.getMessage(), 1);
+      }
+    }
+
+    if(internalStatus>-1){
+      return internalStatus;
+    }
+    
+    // If transfer has not yet started or this is a srm copy transfer,
+    // use srm to get status.
+    
+    String ftStatus = getStatus(fileTransferID);
     int ret = -1;
     if(ftStatus==null || ftStatus.equals("")){
-      // TODO: should this be STATUS_WAIT
+      // TODO: should this be STATUS_WAIT?
       ret = FileTransfer.STATUS_ERROR;
     }
     else if(ftStatus==null || ftStatus.equalsIgnoreCase("Pending")){
@@ -929,6 +1040,9 @@ public class SRMFileTransfer implements FileTransfer {
     }
     else if(ftStatus==null || ftStatus.equalsIgnoreCase("Failed")){
       ret = FileTransfer.STATUS_FAILED;
+    }
+    else{
+      throw new Exception("ERROR: status "+ftStatus+" not found.");
     }
     return ret;
   }
