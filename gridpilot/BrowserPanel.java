@@ -458,6 +458,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       GridPilot.getClassMgr().addUrl(newUrl);
       Debug.debug("urlSet is now: "+Util.arrayToString(
           urlList.toArray(), " : "), 3);
+    }
+    if(!urlList.contains(newUrl) || currentUrlBox.getItemCount()==0 && urlList.size()>0){
       currentUrlBox.removeAllItems();
       urlList = GridPilot.getClassMgr().getUrlList();
       for(ListIterator it=urlList.listIterator(urlList.size()-1); it.hasPrevious();){
