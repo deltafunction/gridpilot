@@ -58,7 +58,7 @@ public class TransferStatusUpdateControl{
       "Queued",
       "Running",
       "Done",
-      "Cancelled",
+      "Error",
       "Failed"};
   
   /*public static String getStatusName(int status){
@@ -378,12 +378,10 @@ public class TransferStatusUpdateControl{
    * Updates the statistics panel
    */
   protected void updateTransfersByStatus(){
-    // jobsByDBStatus
-    for(int i=0; i<transfersByFTStatus.length;++i){
+    for(int i=0; i<transfersByFTStatus.length; ++i){
       transfersByFTStatus[i] = 0;
     }
-    // transfersByStatus
-    for(int i=0; i<transfersByStatus.length;++i){
+    for(int i=0; i<transfersByStatus.length; ++i){
       transfersByStatus[i] = 0;
     }
     int waitIndex = 0;
