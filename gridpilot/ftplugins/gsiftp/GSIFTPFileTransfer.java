@@ -936,7 +936,8 @@ public class GSIFTPFileTransfer implements FileTransfer {
                 GridPilot.getClassMgr().getLogFile().addMessage((ue instanceof Exception ? "Exception" : "Error") +
                     " from plugin gsiftp" +
                     " while starting download", ue);
-                this.finalize();
+                ((UrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferError(ue);
+                //this.finalize();
               }
               catch(Throwable ee){
               }
@@ -956,7 +957,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
           }
         }
         throw new UrlCopyException("A copy job failed starting, " +
-            "cancelling this batch. "+e.getMessage());
+            "cancelled this batch. "+e.getMessage());
       }
     }
     return ret;
@@ -970,6 +971,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
     String ret = ((UrlCopyTransferListener) 
         urlCopyTransferListeners.get(fileTransferID)).getStatus();
     Debug.debug("Got status "+ret, 2);
+    // TODO: consider returning "Wait" instead of "Error" to avoid the initial "errors".
     if(ret==null){
       ret = "Error";
     }
