@@ -49,7 +49,7 @@ public class TransferControl{
 
   private static int TRANSFER_SUBMIT_TIMEOUT = 60*1000;
   private static int TRANSFER_CANCEL_TIMEOUT = 60*1000;
-  Object [][] tableValues = new String[0][GridPilot.transferStatusFields.length];
+  private Object [][] tableValues = new Object[0][GridPilot.transferStatusFields.length];
   
   public TransferControl(){
     statusTable = GridPilot.getClassMgr().getTransferStatusTable();    
@@ -59,7 +59,6 @@ public class TransferControl{
     timer = new Timer(0, new ActionListener(){
       public void actionPerformed(ActionEvent e){
         trigSubmission();
-        // TODO: update status and progress bars
       }
     });
     loadValues();
@@ -329,6 +328,43 @@ public class TransferControl{
     }
   }
   
+  public void clearTableRows(int [] clearRows){
+    Object [][] newTablevalues = new Object [tableValues.length-clearRows.length][GridPilot.transferStatusFields.length];
+    TransferInfo transfer = null;
+    TransferInfo [] toClearTransfers = new TransferInfo [clearRows.length];
+    int rowNr = 0;
+    int clearNr = 0;
+    for(int i=0; i<tableValues.length; ++i){
+      boolean match = false;
+      for(int j=0; j<clearRows.length; ++j){
+        if(clearRows[j]==i){
+          match = true;
+          break;
+        }
+      }
+      transfer = TransferMonitoringPanel.getTransferAtRow(i);
+      if(!match){
+        for(int k=0; k<GridPilot.transferStatusFields.length; ++k){
+          newTablevalues[rowNr][k] = tableValues[i][k];
+        }
+        transfer.setTableRow(rowNr);
+        ++rowNr;
+      }
+      else{
+        toClearTransfers[clearNr] = transfer;
+        ++clearNr;
+      }
+    }
+
+    for(int i=toClearTransfers.length-1; i>-1; --i){
+      GridPilot.getClassMgr().getSubmittedTransfers().remove(toClearTransfers[i]);
+      statusTable.removeRow(toClearTransfers[i].getTableRow());
+    }
+
+    tableValues = newTablevalues;
+    ((DBVectorTableModel) statusTable.getModel()).setTable(tableValues, GridPilot.transferStatusFields);
+  }
+  
   /**
    * Starts transfers using a given plugin
    * @param   ftPlugin    Name ofthe ft plugin.
@@ -347,9 +383,11 @@ public class TransferControl{
     GlobusURL [] destinations = new GlobusURL [transfers.length];
     String [] ids = null;
     
-    //Object [][] appendTablevalues = new String [transfers.length][GridPilot.transferStatusFields.length+1];
-    //Object [][] newTablevalues = new String [tableValues.length+appendTablevalues.length][GridPilot.transferStatusFields.length+1];
-    //int startRow = statusTable.getRowCount();
+    Object [][] appendTablevalues = new Object [transfers.length][GridPilot.transferStatusFields.length];
+    Object [][] newTablevalues = new Object [tableValues.length+appendTablevalues.length][GridPilot.transferStatusFields.length];
+    int startRow = statusTable.getRowCount();
+    boolean resubmit = false;
+
     for(int i=0; i<transfers.length; ++i){
       
       sources[i] = transfers[i].getSource();
@@ -357,7 +395,6 @@ public class TransferControl{
       
       transfers[i].setInternalStatus(FileTransfer.STATUS_WAIT);
       
-      boolean resubmit = false;
       Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
       for(int j=0; j<submittedTransfers.size(); ++j){
         try{
@@ -376,6 +413,10 @@ public class TransferControl{
         GridPilot.getClassMgr().getSubmittedTransfers().add(transfers[i]);
         // add to status table
         statusTable.createRows(GridPilot.getClassMgr().getSubmittedTransfers().size());
+        
+        for(int j=1; j<GridPilot.transferStatusFields.length; ++j){
+          appendTablevalues[i][j] = statusTable.getValueAt(startRow+i, j);
+        }
       }
 
       statusTable.setValueAt(transfers[i].getSource().getURL(),
@@ -385,15 +426,16 @@ public class TransferControl{
       statusTable.setValueAt(iconSubmitting, transfers[i].getTableRow(),
           TransferInfo.FIELD_CONTROL);
       
-      /*for(int j=1; j<GridPilot.transferStatusFields.length; ++j){
-        appendTablevalues[i][j] = statusTable.getValueAt(startRow+i, j);
-      }*/
     }
-    // TODO: check why this does not fix the problem with sorting...
-    /*System.arraycopy(tableValues, 0, newTablevalues, 0, tableValues.length);
-    System.arraycopy(appendTablevalues, 0, newTablevalues, tableValues.length, appendTablevalues.length);
-    tableValues = newTablevalues;
-    statusTable.setTable(tableValues, GridPilot.transferStatusFields);*/
+    
+    if(!resubmit){
+      // this fixes the problem with sorting
+      System.arraycopy(tableValues, 0, newTablevalues, 0, tableValues.length);
+      System.arraycopy(appendTablevalues, 0, newTablevalues, tableValues.length, appendTablevalues.length);
+      tableValues = newTablevalues;
+      Debug.debug("Setting table", 3);
+      ((DBVectorTableModel) statusTable.getModel()).setTable(tableValues, GridPilot.transferStatusFields);
+    }
 
     try{
       ids = GridPilot.getClassMgr().getFTPlugin(ftPlugin).startCopyFiles(
@@ -622,8 +664,10 @@ public class TransferControl{
                 try{
                   String id = ((TransferInfo) submittedTransfers.get(j)).getTransferID();
                   if(transfer.getTransferID().equals(id)){
-                    isRunning = true;
-                    break;
+                    if(isRunning(transfer)){
+                      isRunning = true;
+                      break;
+                    }
                   }
                 }
                 catch(Exception e){
@@ -921,6 +965,17 @@ public class TransferControl{
           datasetID, datasetName, guid, lfn, destination, false);
       GridPilot.getClassMgr().getGlobalFrame(
          ).monitoringPanel.statusBar.setLabel("Registration done");
+    }
+  }
+  
+  public static boolean isRunning(TransferInfo transfer){
+    int internalStatus = transfer.getInternalStatus();
+    if(internalStatus==FileTransfer.STATUS_WAIT ||
+        internalStatus==FileTransfer.STATUS_RUNNING){
+      return true;
+    }
+    else{
+      return false;
     }
   }
 

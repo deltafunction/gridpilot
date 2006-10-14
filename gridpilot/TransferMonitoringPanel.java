@@ -51,7 +51,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private JMenuItem miShowInfo = new JMenuItem("Show Information");
   private JMenuItem miRefresh = new JMenuItem("Refresh");
   private JMenuItem miKill = new JMenuItem("Stop transfer(s)");
-  private JMenuItem miResubmit = new JMenuItem("Retry transfer");
+  private JMenuItem miResubmit = new JMenuItem("Retry transfer(s)");
   private JMenuItem miClear = new JMenuItem("Clear");
   private TransferControl transferControl;
   
@@ -207,7 +207,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   /**
    * Makes the menu shown when the user right-clicks on the status table
    */
-  private void makeMenu(){
+  protected void makeMenu(){
 
     miKill.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -243,7 +243,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     miResubmit.setEnabled(false);
     miShowInfo.setEnabled(false);
 
-    statusTable.addMenuSeparator();
+    //statusTable.addMenuSeparator();
     statusTable.addMenuItem(miRefresh);
     statusTable.addMenuItem(miShowInfo);
     statusTable.addMenuItem(miKill);
@@ -394,7 +394,8 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
         miResubmit.setEnabled(false);
       }
 
-      miShowInfo.setEnabled(true);
+      miShowInfo.setEnabled(!lsm.isSelectionEmpty() &&
+          lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
     }
   }
 
@@ -426,7 +427,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     Enumeration e =  submittedJobs.elements();
     while(e.hasMoreElements()){
       TransferInfo transfer = (TransferInfo) e.nextElement();
-      if(isRunning(transfer)){
+      if(TransferControl.isRunning(transfer)){
         if(showRows==ONLY_RUNNING_JOBS){
           statusTable.showRow(transfer.getTableRow());
         }
@@ -455,45 +456,32 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
       Debug.debug("cannot clear table during submission", 3);
       return;
     }
-    Vector transferVector = getTransfersAtRows(statusTable.getSelectedRows());
+    int [] selectedRows = statusTable.getSelectedRows();
+    Vector runningRowsVector = new Vector();
+    Vector transferVector = getTransfersAtRows(selectedRows);
     TransferInfo transfer = null;
     for(int i=0; i<transferVector.toArray().length;++i){
       transfer = (TransferInfo) transferVector.get(i);
-      if(!isRunning(transfer)){
+      if(!TransferControl.isRunning(transfer)){
         statusTable.removeRow(i);
         statusTable.repaint();
-        // Remove from submittedTransfers
-        GridPilot.getClassMgr().getSubmittedTransfers().remove(transfer);
+        runningRowsVector.add(new Integer(i));
       }
       else{
         Debug.debug("Cannot clear running transfer", 2);
       }
     }
+
+    int [] runningRows = new int [runningRowsVector.size()];
+    for(int i=0; i<runningRows.length; ++i){
+      runningRows[i] = ((Integer) runningRowsVector.get(i)).intValue();
+    }
+    GridPilot.getClassMgr().getTransferControl().clearTableRows(runningRows);
+
     statusUpdateControl.updateStatus(null);
     statusUpdateControl.updateTransfersByStatus();
-  }
-  
-  /**
-   * Removes specified transfers from this status table.
-   */
-  public void clear(int row){
-    transferControl = GridPilot.getClassMgr().getTransferControl();
-    if(transferControl.isSubmitting()){
-      Debug.debug("Cannot clear table during submission", 2);
-      return;
-    }
-    TransferInfo transfer = getTransferAtRow(row);
-    if(isRunning(transfer)){
-      Debug.debug("Cannot clear running transfer", 2);
-      return;
-    }
-    Debug.debug("Removing row "+row, 3);
-    statusTable.removeRow(row);
-    statusTable.repaint();
-    // Remove from submittedTransfers
-    GridPilot.getClassMgr().getSubmittedTransfers().remove(transfer);
-    statusUpdateControl.updateStatus(null);
-    statusUpdateControl.updateTransfersByStatus();
+    
+    statusTable.tableModel.fireTableDataChanged();
   }
   
   /**
@@ -523,16 +511,25 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
       return;
     }
     
+    Vector runningRowsVector = new Vector();
     for(int i=0; i<statusTable.getRowCount(); ++i){
       TransferInfo transfer = getTransferAtRow(i);
-      if(!isRunning(transfer)){
-        clear(i);
-        GridPilot.getClassMgr().getSubmittedTransfers().remove(transfer);
+      if(!TransferControl.isRunning(transfer)){
+        Debug.debug("Removing row "+i, 3);
+        runningRowsVector.add(new Integer(i));
       }
     }
     
+    int [] runningRows = new int [runningRowsVector.size()];
+    for(int i=0; i<runningRows.length; ++i){
+      runningRows[i] = ((Integer) runningRowsVector.get(i)).intValue();
+    }
+    GridPilot.getClassMgr().getTransferControl().clearTableRows(runningRows);
+    
     statusUpdateControl.updateStatus(null);
     statusUpdateControl.updateTransfersByStatus();
+    
+    statusTable.tableModel.fireTableDataChanged();
 
   }
   
@@ -542,7 +539,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    */
   public static TransferInfo getTransferAtRow(int row){
     Vector submTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
-    //Debug.debug("Got transfers at row "+row+". "+submTransfers(), 3);
+    Debug.debug("Got transfers at row "+row+". "+submTransfers.size(), 3);
     return (TransferInfo) submTransfers.get(row);
   }
 
@@ -585,17 +582,6 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     return true;
   }
   
-  private boolean isRunning(TransferInfo transfer){
-    int internalStatus = transfer.getInternalStatus();
-    if(internalStatus==FileTransfer.STATUS_WAIT ||
-        internalStatus==FileTransfer.STATUS_RUNNING){
-      return true;
-    }
-    else{
-      return false;
-    }
-  }
-
   public void copy(){
   }
   public void cut(){
