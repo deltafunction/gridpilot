@@ -137,8 +137,9 @@ public class DBVectorTableModel extends AbstractTableModel {
 
   synchronized public void setValueAt(Object val, int row, int col){
     values[row][col] = val;
-    if(val != null)
+    if(val!=null){
       columnClass[col] = val.getClass();
+    }
     fireTableCellUpdated(row, col);
   }
 
@@ -178,6 +179,8 @@ public class DBVectorTableModel extends AbstractTableModel {
       }
 
     }
+    Debug.debug("Records now "+theRecords.size()+" : "+
+        getRowCount(), 2);
     fireTableStructureChanged();
   }
 
@@ -291,7 +294,8 @@ public class DBVectorTableModel extends AbstractTableModel {
    * Sorts the table, based on specified column
    */
   synchronized public void sort(int col, boolean _ascending){
-    Debug.debug("sort " + col + ", "+ _ascending, 2);
+    Debug.debug("sort " + col + ", "+ _ascending+" : "+theRecords.size()+" : "+
+        getRowCount(), 2);
     ascending = _ascending;
     sortColumn = col;
     int begin;
@@ -318,7 +322,7 @@ public class DBVectorTableModel extends AbstractTableModel {
       }
       if(iMin!=i){
         swapRows(i, iMin);
-        Debug.debug("Record "+theRecords.size()+" : "+i, 3);
+        //Debug.debug("Record "+theRecords.size()+" : "+i, 3);
         a = (DBRecord) theRecords.get(i);
         b = (DBRecord) theRecords.get(iMin);
         theRecords.setElementAt(b,i);
