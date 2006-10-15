@@ -78,9 +78,12 @@ public class GridPilot extends JApplet{
       }
       getClassMgr().setConfigFile(confFile);
       loadConfigValues();
+      loadDBs();
+      loadFTs();
       initDebug();
       initGUI();
       splash.stopSplash();
+      splash = null;
       getClassMgr().getLogFile().addInfo("GridPilot loaded");
     }
     catch(Throwable e){
@@ -103,52 +106,10 @@ public class GridPilot extends JApplet{
         resourcesPath = "./";
       }
       else{
-        if (!resourcesPath.endsWith("/"))
+        if(!resourcesPath.endsWith("/"))
           resourcesPath = resourcesPath + "/";
       }
       splash = new Splash(resourcesPath, "splash.png");
-      String tmpDb = null;
-      dbNames = getClassMgr().getConfigFile().getValues("Databases", "Systems");
-      for(int i=0; i<dbNames.length; ++i){
-        try{
-          splash.show("Connecting to "+dbNames[i]+"...");
-        }
-        catch(Exception e){
-          // if we cannot show text on splash, just silently ignore
-        }
-        try{
-          tmpDb = getClassMgr().getDBPluginMgr(dbNames[i]).getDBName();
-        }
-        catch(NullPointerException e){
-        }
-        if(tmpDb==null){
-          Debug.debug("Initializing db "+i+": "+dbNames[i],3);
-          getClassMgr().setDBPluginMgr(dbNames[i], new DBPluginMgr(dbNames[i]));
-        }
-      }          
-      // in case we are reloading, destroy any existing FS objects
-      if(ftNames!=null){
-        for(int i=0; i<ftNames.length; ++i){
-          try{
-            getClassMgr().setFTPlugin(ftNames[i], null);
-          }
-          catch(Exception e){
-            // if we cannot show text on splash, just silently ignore
-          }
-        }
-      }
-      ftNames = getClassMgr().getConfigFile().getValues("File transfer systems", "Systems");
-      for(int i=0; i<ftNames.length; ++i){
-        try{
-          splash.show("Loading file transfer system: "+ftNames[i]);
-        }
-        catch(Exception e){
-          // if we cannot show text on splash, just silently ignore
-        }
-        String fsClass = getClassMgr().getConfigFile().getValue(ftNames[i], "class");
-        getClassMgr().setFTPlugin(ftNames[i],
-            (FileTransfer) Util.loadClass(fsClass, new Class []{}, new Object []{}));
-      }          
       jobColorMapping = getClassMgr().getConfigFile().getValues("GridPilot", "job color mapping");  
       /** Job status table header*/
       jobStatusFields = new String [] {
@@ -211,6 +172,54 @@ public class GridPilot extends JApplet{
         System.exit(-1);
       }
     }    
+  }
+  
+  public static void loadDBs() throws Throwable{
+    String tmpDb = null;
+    dbNames = getClassMgr().getConfigFile().getValues("Databases", "Systems");
+    for(int i=0; i<dbNames.length; ++i){
+      try{
+        splashShow("Connecting to "+dbNames[i]+"...");
+      }
+      catch(Exception e){
+        // if we cannot show text on splash, just silently ignore
+      }
+      try{
+        tmpDb = getClassMgr().getDBPluginMgr(dbNames[i]).getDBName();
+      }
+      catch(NullPointerException e){
+      }
+      if(tmpDb==null){
+        Debug.debug("Initializing db "+i+": "+dbNames[i],3);
+        getClassMgr().setDBPluginMgr(dbNames[i], new DBPluginMgr(dbNames[i]));
+      }
+    }          
+  }
+    
+  public static void loadFTs() throws Throwable{
+    // in case we are reloading, destroy any existing FT objects
+    if(ftNames!=null){
+      for(int i=0; i<ftNames.length; ++i){
+        try{
+          getClassMgr().setFTPlugin(ftNames[i], null);
+        }
+        catch(Exception e){
+          // if we cannot show text on splash, just silently ignore
+        }
+      }
+    }
+    ftNames = getClassMgr().getConfigFile().getValues("File transfer systems", "Systems");
+    for(int i=0; i<ftNames.length; ++i){
+      try{
+        splashShow("Loading file transfer system: "+ftNames[i]);
+      }
+      catch(Exception e){
+        // if we cannot show text on splash, just silently ignore
+      }
+      String fsClass = getClassMgr().getConfigFile().getValue(ftNames[i], "class");
+      getClassMgr().setFTPlugin(ftNames[i],
+          (FileTransfer) Util.loadClass(fsClass, new Class []{}, new Object []{}));
+    }          
   }
     
   /**
@@ -283,8 +292,7 @@ public class GridPilot extends JApplet{
       frame.setLocation((screenSize.width - frameSize.width) / 2, (screenSize.height - frameSize.height) / 2);
       frame.setVisible(true);
     }
-          
-   }
+  }
 
   public static void exit(int exitCode){
     //  Cancel all transfers
@@ -335,6 +343,10 @@ public class GridPilot extends JApplet{
   public static String [] userPwd(String _user, String _passwd, String _database){
     // asking for user and password for DBPluginMgr
     
+    if(splash!=null){
+      splash.hide();
+    }
+
     JPanel pUserPwd = new JPanel(new GridBagLayout());
     JTextField tfUser = new JTextField(_user);
     JPasswordField pfPwd = new JPasswordField(_passwd);
@@ -370,6 +382,10 @@ public class GridPilot extends JApplet{
     }
     else{
       results = null;
+    }
+
+    if(splash!=null){
+      splash.show();
     }
 
     return results;
@@ -431,7 +447,7 @@ public class GridPilot extends JApplet{
    */
   public static void reloadConfigValues(){
     try{
-      for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext(); ){
+      for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext();){
         ((File) tmpConfFile.get(it.next())).delete();
       }
     }
@@ -448,6 +464,7 @@ public class GridPilot extends JApplet{
       getClassMgr().getDBPluginMgr(dbNames[i]).loadValues();
     }
     initDebug();
+    splash = null;
   }
 
   /**
@@ -469,6 +486,15 @@ public class GridPilot extends JApplet{
     }
   }
 
+  public static void splashShow(String message){
+    if(splash!=null){
+      splash.show(message);
+    }
+    else{
+      GridPilot.getClassMgr().getStatusBar().setLabel(message);
+    }
+
+  }
 
   public static void dbReconnect(){
     GridPilot.getClassMgr().getStatusBar().setLabel(
@@ -500,7 +526,7 @@ public class GridPilot extends JApplet{
             e.getMessage(), 3);
         GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: Could not load DB " + dbNames[i] + ". " + 
             e.getMessage());
-        exit(-1);
+        //exit(-1);
       }
     }
     GridPilot.getClassMgr().getStatusBar().stopAnimation();
@@ -517,13 +543,14 @@ public class GridPilot extends JApplet{
       getClassMgr().getCSPluginMgr().reconnect();
       // TODO: reload panels?
     }
-    catch (Throwable e){
+    catch(Throwable e){
       Debug.debug("ERROR: Could not reload CSs. " + e.getMessage(), 3);
       GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: Could not reload computing systems. " + 
           e.getMessage());
-      exit(-1);
+      //exit(-1);
     }
     GridPilot.getClassMgr().getStatusBar().stopAnimation();
+    GridPilot.getClassMgr().getStatusBar().setLabel("Connection ok.");
   }
 
 }

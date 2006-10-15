@@ -60,8 +60,8 @@ public class HSQLDBDatabase implements Database{
 
     
     boolean showDialog = true;
-    // if csNames is set, this is a reload
-    if(GridPilot.csNames==null){
+    // if global frame is set, this is a reload
+    if(GridPilot.getClassMgr().getGlobalFrame()==null){
       showDialog = false;
     }
         

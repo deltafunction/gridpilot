@@ -19,7 +19,6 @@ import gridpilot.IconProxy;
  * Main frame of GridPilot application.
  * This frame contains tab, more can be added dynamically.
  */
-
 public class GlobalFrame extends GPFrame{
 
   private static final long serialVersionUID = 1L;
@@ -47,10 +46,9 @@ public class GlobalFrame extends GPFrame{
     allPanels = new Vector();
   }
 
-/**
+  /**
    * GUI initialisation
    */
-
   public void initGUI(Container container) throws Exception{
     
     container.setLayout(new BorderLayout());
@@ -303,7 +301,6 @@ public class GlobalFrame extends GPFrame{
     JMenuBar menuBar = new JMenuBar();
 
     // gridpilot
-    
     JMenu menuFile = new JMenu("File");
     JMenu menuView = new JMenu("View");
     
@@ -346,6 +343,7 @@ public class GlobalFrame extends GPFrame{
       public void actionPerformed(ActionEvent e){
         Debug.debug("Reconnecting CSs", 2);
         GridPilot.csReconnect();
+        Debug.debug("Reconnecting CSs done", 2);
       }
     });
 

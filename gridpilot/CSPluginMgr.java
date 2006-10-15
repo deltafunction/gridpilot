@@ -98,8 +98,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     for(int i=0; i<csNames.length; ++i){
       try{
-        GridPilot.splash.show("Connecting to "+csNames[i]+"...");
-        //GridPilot.getClassMgr().getStatusBar().setLabel("Connecting to "+csNames[i]+"...");
+        GridPilot.splashShow("Connecting to "+csNames[i]+"...");
       }
       catch(Exception e){
         // if we cannot show text on splash, just silently ignore

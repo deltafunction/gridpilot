@@ -148,7 +148,7 @@ public class NGComputingSystem implements ComputingSystem{
     
     if(useInfoSystem){
       // Use information system
-      GridPilot.splash.show("Discovering NG ARC resources...");
+      GridPilot.splashShow("Discovering NG ARC resources...");
       arcDiscovery.discoverAll();
       Set clusterSet = arcDiscovery.getClusters();
       clusters = new String[clusterSet.size()];
@@ -161,7 +161,7 @@ public class NGComputingSystem implements ComputingSystem{
           mue.printStackTrace();
         }
       }
-      GridPilot.splash.show("Finding authorized NG ARC resources...");
+      GridPilot.splashShow("Finding authorized NG ARC resources...");
       resources = findAuthorizedResourcesFromIS();
       ngSubmission = new NGSubmission(csName, resources);
     }

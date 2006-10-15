@@ -71,6 +71,10 @@ public class Splash{
     win.setVisible(true);
   }
 
+  public void show(){
+    win.setVisible(true);
+  }
+
   public void hide(){
     win.setVisible(false);
   }

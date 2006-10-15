@@ -543,9 +543,17 @@ public class Util{
         0, 0));
     Debug.debug("showing dialog", 3);
     
+    if(GridPilot.splash!=null){
+      GridPilot.splash.hide();
+    }
+    
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
         "Enter grid password", JOptionPane.OK_CANCEL_OPTION);
     Debug.debug("showing dialog done", 3);
+    
+    if(GridPilot.splash!=null){
+      GridPilot.splash.show();
+    }
     
     if(choice!=JOptionPane.OK_OPTION){
       throw new IllegalArgumentException("Cancelling");

@@ -315,11 +315,6 @@ public class ClassMgr{
   }
 
   public GlobalFrame getGlobalFrame(){
-    if(globalFrame==null){
-      Debug.debug("globalFrame null", 3);
-      new Exception().printStackTrace();
-    }
-
     return globalFrame;
   }
 
