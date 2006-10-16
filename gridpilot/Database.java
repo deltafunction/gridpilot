@@ -89,11 +89,15 @@ public interface Database{
   public String getJobDefTransformationID(String jobDefID);
   public String getTransformationScript(String jobDefID);
   
-  // ####### Files table
-  public DBResult getFiles(String datasetID);
-  public DBRecord getFile(String fileID);
-  public String [] getFileURLs(String fileID);
-  // for file catalogs only: register an lfn/pfn pair
+  // ####### File table
+  public boolean isFileCatalog();
+  public DBRecord getFile(String datasetName, String fileID);
+  public String getFileID(String datasetName, String fileID);
+  public String [] getFileURLs(String datasetName, String fileID);
+  public String getFileDatasetID(String datasetName, String fileID);
+  // For file catalogs only: register an lfn/pfn pair.
+  // TODO: if fileID/lfn do not exist, create.
+  // datasetComplete is ignored by other than ATLAS
   public void registerFileLocation(String datasetID, String datasetName,
       String fileID, String lfn, String url, boolean datasetComplete);
   public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup);

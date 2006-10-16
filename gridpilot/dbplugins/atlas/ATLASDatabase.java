@@ -143,6 +143,10 @@ public class ATLASDatabase implements Database{
     }
   }
 
+  public boolean isFileCatalog(){
+    return true;
+  }
+
   public String connect(){
     return null;
   }
@@ -486,7 +490,7 @@ public class ATLASDatabase implements Database{
     }
    //---------------------------------------------------------------------
     else if(table.equalsIgnoreCase("file")){
-      // "datasetName", "name", "pfns", "guid" - to save lookups allow also search on vuid
+      // "dsn", "lfn", "pfns", "guid" - to save lookups allow also search on vuid
       String dsn = "";
       String lfn = "";
       String pfns = "";
@@ -877,7 +881,7 @@ public class ATLASDatabase implements Database{
       // Make the connection
       Connection conn = Util.sqlConnection(driver, database, user, passwd, gridAuth);
       // First query the t_lfn table to get the guid
-      String req = "SELECT guid from t_lfn  where lfname ='"+lfn+"'";
+      String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
       ResultSet rset = null;
       String guid = null;
       Vector resultVector = new Vector();
@@ -897,7 +901,7 @@ public class ATLASDatabase implements Database{
       }
       guid = (String) resultVector.get(0);
       // Now query the t_pfn table to get the pfn
-      req = "SELECT pfname from t_pfn  where guid ='"+guid+"'";
+      req = "SELECT pfname FROM t_pfn WHERE guid ='"+guid+"'";
       Debug.debug(">> "+req, 3);
       rset = conn.createStatement().executeQuery(req);
       resultVector = new Vector();
@@ -965,7 +969,7 @@ public class ATLASDatabase implements Database{
       for(int i=0; i<lfns.length; ++i){
         try{
           // First query the t_lfn table to get the guid
-          String req = "SELECT guid from t_lfn  where lfname ='"+lfn+"'";
+          String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
           ResultSet rset = null;
           String guid = null;
           Vector resultVector = new Vector();
@@ -984,21 +988,21 @@ public class ATLASDatabase implements Database{
           }
           guid = (String) resultVector.get(0);
           // Now delete this guid from the t_lfn, t_pfn and t_meta tables
-          req = "DELETE from from t_lfn  where guid ='"+guid+"'";
+          req = "DELETE FROM t_lfn WHERE guid ='"+guid+"'";
           Debug.debug(">> "+req, 3);
           rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+guid+" from t_lfn on "+catalogServer;
             logFile.addMessage(error);
           }
-          req = "DELETE from from t_pfn  where guid ='"+guid+"'";
+          req = "DELETE FROM t_pfn WHERE guid ='"+guid+"'";
           Debug.debug(">> "+req, 3);
           rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+guid+" from t_pfn on "+catalogServer;
             logFile.addMessage(error);
           }
-          req = "DELETE from from t_meta  where guid ='"+guid+"'";
+          req = "DELETE FROM t_meta WHERE guid ='"+guid+"'";
           Debug.debug(">> "+req, 3);
           rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){
@@ -1019,14 +1023,86 @@ public class ATLASDatabase implements Database{
       throw new MalformedURLException(error);
     }
   }
+
+  /**
+   * Flags a set of LFNs to be deleted on a MySQL alias catalog.
+   */
+  private void setDeleteLFNs(String _catalogServer, String [] lfns)
+     throws RemoteException, ServiceException, MalformedURLException, SQLException {
+    // get rid of the :/, which GlobusURL doesn't like
+    String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
+    GlobusURL catalogUrl = new GlobusURL(catalogServer);
+    if(catalogUrl.getProtocol().equals("mysql")){
+      // Set parameters
+      String driver = "org.gjt.mm.mysql.Driver";
+      String port = catalogUrl.getPort()==-1 ? "" : ":"+catalogUrl.getPort();
+      String user = catalogUrl.getUser()==null ? "" : catalogUrl.getUser();
+      String passwd = catalogUrl.getPwd()==null ? "" : catalogUrl.getPwd();
+      String path = catalogUrl.getPath()==null ? "" : "/"+catalogUrl.getPath();
+      String host = catalogUrl.getHost();
+      String database = "jdbc:mysql://"+host+port+path;
+      boolean gridAuth = false;
+      // The (GridPilot) convention is that if no user name is given (in TOA), we use
+      // gridAuth to authenticate
+      if(user.equals("")){
+        gridAuth = true;
+      }
+      // Make the connection
+      Connection conn = Util.sqlConnection(driver, database, user, passwd, gridAuth);
+      String lfn = null;
+      int rowsAffected = 0;
+      for(int i=0; i<lfns.length; ++i){
+        try{
+          // First query the t_lfn table to get the guid
+          String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
+          ResultSet rset = null;
+          String guid = null;
+          Vector resultVector = new Vector();
+          Debug.debug(">> "+req, 3);
+          rset = conn.createStatement().executeQuery(req);
+          while(rset.next()){
+            resultVector.add(rset.getString("guid"));
+          }
+          if(resultVector.size()==0){
+            error = "ERROR: no guid with found for lfn "+lfn;
+            throw new SQLException(error);
+          }
+          else if(resultVector.size()>1){
+            error = "WARNING: More than one ("+resultVector.size()+") guids with found for lfn "+lfn;
+            logFile.addMessage(error);
+          }
+          guid = (String) resultVector.get(0);
+          // Now flag this guid for deletion in t_meta
+          req = "UPDATE t_meta SET sync = 'delete' WHERE guid ='"+guid+"'";
+          Debug.debug(">> "+req, 3);
+          rowsAffected = conn.createStatement().executeUpdate(req);
+          if(rowsAffected==0){
+            error = "WARNING: could flag guid "+guid+" for deletion in t_meta on "+catalogServer;
+            logFile.addMessage(error);
+          }
+        }
+        catch(Exception e){
+          error = "WARNING: problem deleting lfn "+lfns[i]+" on "+catalogServer;
+          logFile.addMessage(error);
+        }
+      }
+      conn.close();
+    }
+    else{
+      error = "ERROR: protocol not supported: "+catalogUrl.getProtocol();
+      Debug.debug(error, 1);
+      throw new MalformedURLException(error);
+    }
+  }
   
   /**
-   * Deletes an array of SURLs for the given file name (lfn).
+   * Registers an array of SURLs for the given file name (lfn).
    * The catalog server string must be of the form
    * mysql://dsdb-reader:dsdb-reader1@db1.usatlas.bnl.gov:3306/localreplicas.
    * LFC is not supported.
    */
-  private void registerLFNs(String _catalogServer, String [] guids, String [] lfns, String [] pfns)
+  private void registerLFNs(String _catalogServer, String [] guids,
+      String [] lfns, String [] pfns, boolean sync)
      throws RemoteException, ServiceException, MalformedURLException, SQLException {
     // get rid of the :/, which GlobusURL doesn't like
     String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
@@ -1075,6 +1151,22 @@ public class ATLASDatabase implements Database{
           logFile.addMessage(error);
           GridPilot.getClassMgr().getStatusBar().setLabel(error);
         }
+        if(sync){
+          try{
+            // Now flag this guid for write in t_meta
+            req = "UPDATE t_meta SET sync = 'write' WHERE guid ='"+guids[i]+"'";
+            Debug.debug(">> "+req, 3);
+            rowsAffected = conn.createStatement().executeUpdate(req);
+            if(rowsAffected==0){
+              error = "WARNING: could flag guid "+guids[i]+" for write in t_meta on "+catalogServer;
+              logFile.addMessage(error);
+            }
+          }
+          catch(Exception e){
+            error = "WARNING: could flag guid "+guids[i]+" for write in t_meta on "+catalogServer;
+            logFile.addMessage(error);
+          }
+        }
       }
       conn.close();
     }
@@ -1084,7 +1176,7 @@ public class ATLASDatabase implements Database{
       throw new MalformedURLException(error);
     }
   }
-  
+
   private String getFileCatalogServer(String name)
      throws MalformedURLException, IOException {
     
@@ -1192,6 +1284,7 @@ public class ATLASDatabase implements Database{
     
     // construct vector of all locations
     Vector locations = new Vector();
+    // make sure homeServer is first in the list
     for(int i=0; i<dqLocations.getComplete().length; ++i){
       if(dqLocations.getComplete()[i].equalsIgnoreCase(homeServer)){
         locations.add(homeServer);
@@ -1333,24 +1426,60 @@ public class ATLASDatabase implements Database{
     return null;
   }
   
-  public DBRecord getFile(String fileID){
+  public String getFileDatasetID(String datasetName, String fileID){
+    DBRecord file = getFile(datasetName, fileID);
+    String dsn = file.getValue("dsn").toString();
+    return getDatasetID(dsn);
+  };
+  
+  public String getFileID(String datasetName, String fileID){
+    DBRecord file = getFile(datasetName, fileID);
+    return file.getValue("guid").toString();
+  };
+  
+  public DBRecord getFile(String dsn, String fileID){
+    // "dsn", "lfn", "pfns", "guid"
+    
     // NOTICE: this query is NOT supported by DQ2. Yak!
-    // TODO: find some solution
-    DBResult res = select("SELECT * FROM file WHERE guid = "+fileID,
+    /*DBResult res = select("SELECT * FROM file WHERE guid = "+fileID,
         "guid", true);
     if(res.values.length>1){
       Debug.debug("WARNING: inconsistent dataset catalog; " +
           res.values.length + " entries with guid "+fileID, 1);
       return null;
     }
-    return res.getRow(0);
+    return res.getRow(0);*/
+    
+    // Alternative, hacky solution
+    
+    String [] fields= getFieldNames("file");
+    
+    String vuid = getDatasetID(dsn);
+    
+    DBResult files = getFiles(vuid);
+    String lfn = null;
+    for(int i=0; i<files.values.length; ++i){
+      if(files.getValue(i, "guid").toString().equals(fileID)){
+        lfn = files.getValue(i, "lfn").toString();
+      };
+    }
+    
+    // Get the pfns
+    Vector pfnVector = new Vector();
+    findPFNs(dsn, lfn, false);
+    for(int j=0; j<getPFNs().length; ++j){
+      pfnVector.add((String) getPFNs()[j]);
+    }
+    String pfns = Util.arrayToString(pfnVector.toArray());
+        
+    return new DBRecord(fields, new String [] {dsn, lfn, pfns, fileID});
+
   }
 
-  public String [] getFileURLs(String fileID){
+  public String [] getFileURLs(String datasetName, String fileID){
     String [] ret = null;
     try{
-      // NOTICE: this does not work; see above.
-      DBRecord file = getFile(fileID);
+      DBRecord file = getFile(datasetName, fileID);
       ret = Util.split(file.getValue("pfns").toString());
     }
     catch(Exception e){
@@ -1369,13 +1498,16 @@ public class ATLASDatabase implements Database{
     String [] toKeepLfns = null;
     String [] toKeepGuids = null;
     String dsn = null;
+    // NOTICE: we are assuming that there is a one-to-one mapping between
+    //         lfns and guids. This is not necessarily the case...
+    // TODO: improve
     try{
       GridPilot.getClassMgr().getStatusBar().setLabel("Finding LFNs...");
       dsn = getDatasetName(datasetID);
       DBResult currentFiles = getFiles(datasetID);
       toDeleteLfns = new String[fileIDs.length];
-      toKeepLfns = new String[currentFiles.values.length-fileIDs.length];
       toKeepGuids = new String[currentFiles.values.length-fileIDs.length];
+      toKeepLfns = new String[currentFiles.values.length-fileIDs.length];
       int count = 0;
       int count1 = 0;
       for(int i=0; i<currentFiles.values.length; ++i){
@@ -1535,10 +1667,17 @@ public class ATLASDatabase implements Database{
       // Remove entries from MySQL catalog
       GridPilot.getClassMgr().getStatusBar().setLabel("Cleaning up home catalog...");
       try{
-        deleteLFNs(homeServerMysqlAlias, toKeepLfns);
+        // if we're using an alias, just flag for deletion
+        if(homeServerMysqlAlias!=null){
+          setDeleteLFNs(homeServerMysqlAlias, toDeleteLfns);
+        }
+        // otherwise, it is assumed that we're using a mysql catalog and we delete
+        else{
+          deleteLFNs(getFileCatalogServer(homeServer), toDeleteLfns);
+        }
       }
       catch(Exception e){
-        logFile.addMessage("WARNING: failed to delete LFNs "+Util.arrayToString(toKeepLfns)+
+        logFile.addMessage("WARNING: failed to delete LFNs "+Util.arrayToString(toDeleteLfns)+
             " on "+homeServerMysqlAlias+". Please delete them by hand.");
       }  
     }
@@ -1564,11 +1703,35 @@ public class ATLASDatabase implements Database{
         catch(Exception e){
         }
       }
+      // Clear the lfns by creating new dataset with the same dsn
       dq2Access.createNewDatasetVersion(dsn);
+      // Add the lfns we don't delete
       dq2Access.addLFNsToDataset(toKeepLfns, toKeepGuids, datasetID);
-      // Register all locations
+      // Re-register all locations
+      for(int i=0; i<locations.getComplete().length; ++i){
+        try{
+          if(locations.getComplete()[i].equalsIgnoreCase(homeServer)){
+            continue;
+          }
+          dq2Access.registerLocation(datasetID, dsn,
+              true, locations.getComplete()[i]);
+        }
+        catch(Exception e){
+        }
+      }
+      for(int i=0; i<locations.getIncomplete().length; ++i){
+        try{
+          if(locations.getIncomplete()[i].equalsIgnoreCase(homeServer)){
+            continue;
+          }
+          dq2Access.registerLocation(datasetID, dsn,
+              false, locations.getIncomplete()[i]);
+        }
+        catch(Exception e){
+        }
+      }
+      // Re-register home location if we failed to delete all files
       if(!ok || toKeepGuids.length>0){
-        // If we failed to delete all files, we to re-register the home location
         try{
           dq2Access.registerLocation(datasetID, dsn,
               (complete && !atLeastOneDeleted), homeServer);
@@ -1601,14 +1764,14 @@ public class ATLASDatabase implements Database{
   public DBResult getFiles(String datasetID){
     boolean oldFindPFNs = findPFNs;
     setFindPFNs(false);
-    DBResult res = select("SELECT * from file WHERE vuid = "+datasetID, "guid", false);
+    DBResult res = select("SELECT * FROM file WHERE vuid = "+datasetID, "guid", false);
     setFindPFNs(oldFindPFNs);
     return res;
   }
 
   public void registerFileLocation(String vuid, String dsn, String guid,
       String lfn, String url, boolean datasetComplete){
-    // Register the new location if possible.
+
     DQ2Access dq2Access = null;
     try{
       dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
@@ -1657,10 +1820,8 @@ public class ATLASDatabase implements Database{
     }
     
     if(datasetExists){
-      String [] guids = new String[1];
-      String [] lfns = new String[1];
-      guids[0] = guid;
-      lfns[0] = lfn;
+      String [] guids = new String[] {guid};
+      String [] lfns = new String[] {guid};
       try{
         GridPilot.getClassMgr().getStatusBar().setLabel("Registering new lfn " +lfn+
           " with DQ2");
@@ -1681,8 +1842,23 @@ public class ATLASDatabase implements Database{
       }
       GridPilot.getClassMgr().getStatusBar().setLabel("Registering new location " +url+
           " in file catalog "+homeServerMysqlAlias);
-      registerLFNs(homeServerMysqlAlias, new String [] {vuid},
-          new String [] {lfn}, new String [] {url});
+      
+      try{
+        // if we're using an alias, write in alias and flag for writing
+        if(homeServerMysqlAlias!=null){
+          registerLFNs(homeServerMysqlAlias, new String [] {vuid},
+              new String [] {lfn}, new String [] {url}, true);
+        }
+        // otherwise, assume that home server is a mysql server and just write there
+        else{
+          registerLFNs(this.getFileCatalogServer(homeServer), new String [] {vuid},
+              new String [] {lfn}, new String [] {url}, false);
+        }
+      }
+      catch(Exception e){
+        logFile.addMessage("WARNING: failed to register LFN "+lfn+
+            " on "+homeServerMysqlAlias+". Please delete them by hand.");
+      }
     }
     catch(Exception e){
       error = "ERROR: cannot register "+url+" in file catalog. "+e.getMessage();
@@ -1691,10 +1867,10 @@ public class ATLASDatabase implements Database{
     }
     
     if(catalogRegOk){
-      // Register new site in DQ2
+      // Register home site in DQ2
       try{
         GridPilot.getClassMgr().getStatusBar().setLabel("Checking if lfn " +lfn+
-           " is registered with DQ2");
+           " is registered with "+homeServer+" in DQ2");
         DQ2Locations [] locations = getLocations("'"+vuid+"'");
         boolean siteRegistered = false;
         String [] incomplete = locations[0].getIncomplete();
@@ -1711,7 +1887,7 @@ public class ATLASDatabase implements Database{
         }
         if(!siteRegistered){
           GridPilot.getClassMgr().getStatusBar().setLabel("Registering new lfn " +lfn+
-          " with DQ2");
+          " with "+homeServer+" in DQ2");
           dq2Access.registerLocation(vuid, dsn, datasetComplete, homeServer);
         }
         else{
@@ -1724,12 +1900,6 @@ public class ATLASDatabase implements Database{
         logFile.addMessage(error);
       }
     }
-
-  }
-
-  public String getRunNumber(String datasetID){
-    // TODO Auto-generated method stub
-    return null;
   }
 
   public boolean createDataset(String table, String[] fields,
@@ -1940,6 +2110,11 @@ public class ATLASDatabase implements Database{
     }
 
     return true;
+  }
+
+  public String getRunNumber(String datasetID){
+    // TODO
+    return null;
   }
 
   // -------------------------------------------------------------------

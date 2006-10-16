@@ -653,6 +653,34 @@ public class DBPluginMgr implements Database{
     }
   }
 
+  public String getFileID(final String datasetName, final String fileName){
+    MyThread t = new MyThread(){
+      String res = "-1";
+      public void run(){
+        try{
+          res = db.getFileID(datasetName, fileName);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             datasetName, t);
+        }
+      }
+      public String getStringRes(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getFileID")){
+      return t.getStringRes();
+    }
+    else{
+      return "-1";
+    }
+  }
+
   public String getJobDefDatasetID(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = "-1";
@@ -674,6 +702,34 @@ public class DBPluginMgr implements Database{
     t.start();
   
     if(Util.waitForThread(t, dbName, dbTimeOut, "getJobDefDatasetID")){
+      return t.getStringRes();
+    }
+    else{
+      return "-1";
+    }
+  }
+
+  public String getFileDatasetID(final String datasetName, final String fileID){
+    MyThread t = new MyThread(){
+      String res = "-1";
+      public void run(){
+        try{
+          res = db.getFileDatasetID(datasetName, fileID);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             fileID, t);
+        }
+      }
+      public String getStringRes(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getFileDatasetID")){
       return t.getStringRes();
     }
     else{
@@ -1108,6 +1164,34 @@ public class DBPluginMgr implements Database{
     }
   }
 
+  public synchronized boolean isFileCatalog(){
+    
+    MyThread t = new MyThread(){
+      boolean res = false;
+      public void run(){
+        try{
+          res = db.isFileCatalog();
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName, t);
+        }
+      }
+      public boolean getBoolRes(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(Util.waitForThread(t, dbName, dbTimeOut, "isFileCatalog")){
+      return t.getBoolRes();
+    }
+    else{
+      return false;
+    }
+  }
+
   public synchronized boolean createJobDefinition(final String [] values){
   
     MyThread t = new MyThread(){
@@ -1212,6 +1296,56 @@ public class DBPluginMgr implements Database{
     else{
       throw new IOException("ERROR: createJobDefinition failed");
     }
+  }
+
+  public DBRecord createFil(DBPluginMgr sourceMgr, String datasetName, String name,
+      String [] fields, Object [] values) throws Exception{
+    
+    String [] fileFieldNames = getFieldNames("file");
+    String [] fileValues = new String [fileFieldNames.length];
+    DBRecord file = new DBRecord(fileFieldNames, fileValues);
+   
+    if(fields.length!=values.length){
+      throw new DataFormatException("The number of fields and values do not agree, "+
+          fields.length+"!="+values.length);
+    }
+    if(fields.length>fileFieldNames.length){
+      Debug.debug("The number of fields is too large, "+
+          fields.length+">"+fileFieldNames.length, 1);
+    }
+    
+    for(int i=0; i<fileFieldNames.length; ++i){
+      for(int j=0; j<fields.length; ++j){
+        if(fields[j].equalsIgnoreCase(fileFieldNames[i])){
+          file.setValue(fileFieldNames[i], values[j].toString());
+        }
+      }
+    }
+    
+    String datasetID = sourceMgr.getDatasetID(datasetName);
+    String fileID = sourceMgr.getFileID(datasetName, name);
+    String [] urls = sourceMgr.getFileURLs(datasetName, fileID);
+    
+    boolean ok = true;
+    boolean finalOk = true;
+    for(int i=0; i<urls.length; ++i){
+      try{
+        registerFileLocation(datasetID, datasetName, fileID, name, urls[i],
+            false);
+        finalOk = finalOk || ok;
+        ok = true;
+      }
+      catch(Exception e){
+        logFile.addMessage("ERROR: could not register "+urls[i]+" for file "+
+            name+" in dataset "+datasetName, e);
+        ok = false;
+      }
+    }
+    if(!finalOk){
+      throw new IOException("ERROR: could not register any files.");
+    }
+    
+    return file;
   }
 
   public synchronized boolean createTransformation(final Object [] values){
@@ -1886,35 +2020,6 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public DBResult getFiles(final String datasetID){
-    
-    MyThread t = new MyThread(){
-      DBResult res = null;
-      public void run(){
-        try{
-          res = db.getFiles(datasetID);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             datasetID, t);
-        }
-      }
-      public DBResult getDB2Res(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(Util.waitForThread(t, dbName, dbTimeOut, "getFiles")){
-      return t.getDB2Res();
-    }
-    else{
-      return null;
-    }
-  }
-
   public DBRecord getJobDefinition(final String jobDefinitionID){
   
     MyThread t = new MyThread(){
@@ -2349,13 +2454,13 @@ public class DBPluginMgr implements Database{
     return splits;
   }
 
-  public DBRecord getFile(final String fileID){
+  public DBRecord getFile(final String datasetName, final String fileID){
     
     MyThread t = new MyThread(){
       DBRecord res = null;
       public void run(){
         try{
-          res = db.getFile(fileID);
+          res = db.getFile(datasetName, fileID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -2378,14 +2483,14 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String [] getFileURLs(final String fileID){
+  public String [] getFileURLs(final String datasetName, final String fileID){
     Debug.debug("Getting field names for table "+fileID, 3);
    
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getFileURLs(fileID);
+          res = db.getFileURLs(datasetName, fileID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +

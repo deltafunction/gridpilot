@@ -52,6 +52,9 @@ public class MySQLDatabase implements Database{
   private String [] jobDefFields = null;
   private String [] datasetFields = null;
   private String [] runtimeEnvironmentFields = null;
+  private String [] t_lfnFields = null;
+  private String [] t_pfnFields = null;
+  private String [] t_metaFields = null;
   private String dbName = null;
   private boolean gridAuth;
   private GlobusCredential globusCred = null;
@@ -189,7 +192,20 @@ public class MySQLDatabase implements Database{
     if(runtimeEnvironmentFields==null || runtimeEnvironmentFields.length<1){
       makeTable("runtimeEnvironment");
     }
+    if(t_lfnFields==null || t_lfnFields.length<1){
+      makeTable("t_lfn");
+    }
+    if(t_pfnFields==null || t_pfnFields.length<1){
+      makeTable("t_pfn");
+    }
+    if(t_metaFields==null || t_metaFields.length<1){
+      makeTable("t_meta");
+    }
     setFieldNames();
+  }
+  
+  public boolean isFileCatalog(){
+    return t_lfnFields!=null && t_lfnFields.length>0;
   }
   
   public String connect() throws SQLException{
@@ -203,6 +219,11 @@ public class MySQLDatabase implements Database{
     transformationFields = getFieldNames("transformation");
     // only used for checking
     runtimeEnvironmentFields = getFieldNames("runtimeEnvironment");
+    // only needed if we need an explicit file catalog where more than one
+    // pfn per lfn can be registered.
+    t_lfnFields = getFieldNames("t_lfn");
+    t_pfnFields = getFieldNames("t_pfn");
+    t_metaFields = getFieldNames("t_meta");
   }
 
   private boolean makeTable(String table){
@@ -278,7 +299,7 @@ public class MySQLDatabase implements Database{
   public synchronized String [] getFieldNames(String table){
     try{
       Debug.debug("getFieldNames for table "+table, 3);
-      if(table.equalsIgnoreCase("file")){
+      if(!isFileCatalog() && table.equalsIgnoreCase("file")){
         return new String [] {"datasetName", "name", "url"};
       }
       Statement stmt = conn.createStatement();
@@ -1048,47 +1069,6 @@ public class MySQLDatabase implements Database{
     return def;
   }
 
-  public DBRecord getFile(String jobDefinitionID){
-    DBRecord jobDef = getJobDefinition(jobDefinitionID);
-    String [] fields = getFieldNames("file");
-    String [] values = new String[fields.length];
-    DBRecord file = new DBRecord(fields, values);
-    for(int i=0; i<fields.length; ++i){
-      try{
-        file.setValue(fields[i], jobDef.getValue(fields[i]).toString());
-      }
-      catch(Exception e){
-        Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
-      }
-    }
-    for(int i=0; i<jobDef.fields.length; ++i){
-      if(jobDef.fields[i].equalsIgnoreCase("outFileMapping")){
-        String [] map = Util.split(jobDef.getValue(jobDef.fields[i]).toString());
-        try{
-          file.setValue("url", map[1]);
-        }
-        catch(Exception e){
-          Debug.debug("WARNING: could not set URL. "+e.getMessage(), 2);
-        }
-      }
-    }
-    return file;
-  }
-
-  // This is not really a file catalog: THE output file is
-  // the first in the list of fn -> pfn mappings of outFileMapping
-  public String [] getFileURLs(String fileID){
-    String ret = null;
-    try{
-      DBRecord file = getFile(fileID);
-      ret = file.getValue("url").toString();
-    }
-    catch(Exception e){
-      Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
-    }
-    return new String [] {ret};
-  }
-
   // Selects only the fields listed in fieldNames. Other fields are set to "".
   public synchronized DBRecord [] selectJobDefinitions(String datasetID, String [] fieldNames){
     
@@ -1808,167 +1788,250 @@ public class MySQLDatabase implements Database{
     return ok;
   }
   
-    public synchronized boolean deleteDataset(String datasetID, boolean cleanup){
-      boolean ok = true;
-      try{
-        String sql = "DELETE FROM dataset WHERE identifier = '"+
-        datasetID+"'";
-        Statement stmt = conn.createStatement();
-        stmt.executeUpdate(sql);
-      }
-      catch(Exception e){
-        Debug.debug(e.getMessage(), 2);
-        error = e.getMessage();
-        ok = false;
-      }
-      if(ok && cleanup){
-        ok = deleteJobDefsFromDataset(datasetID);
-        if(!ok){
-          Debug.debug("ERROR: Deleting job definitions of dataset #"+
-              datasetID+" failed."+" Please clean up by hand.", 1);
-          error = "ERROR: Deleting job definitions of dataset #"+
-             datasetID+" failed."+" Please clean up by hand.";
-        }
-      }
-      return ok;
+  public synchronized boolean deleteDataset(String datasetID, boolean cleanup){
+    boolean ok = true;
+    try{
+      String sql = "DELETE FROM dataset WHERE identifier = '"+
+      datasetID+"'";
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
     }
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+      ok = false;
+    }
+    if(ok && cleanup){
+      ok = deleteJobDefsFromDataset(datasetID);
+      if(!ok){
+        Debug.debug("ERROR: Deleting job definitions of dataset #"+
+            datasetID+" failed."+" Please clean up by hand.", 1);
+        error = "ERROR: Deleting job definitions of dataset #"+
+           datasetID+" failed."+" Please clean up by hand.";
+      }
+    }
+    return ok;
+  }
 
-    public synchronized boolean deleteJobDefsFromDataset(String datasetID){
-      boolean ok = true;
-      try{
-        String sql = "DELETE FROM jobDefinition WHERE dataset = '"+
-        getDataset(datasetID).getValue("name")+"'";
-        Statement stmt = conn.createStatement();
-        stmt.executeUpdate(sql);
-      }
-      catch(Exception e){
-        Debug.debug(e.getMessage(), 1);
-        ok = false;
-      }
-      return ok;
+  public synchronized boolean deleteJobDefsFromDataset(String datasetID){
+    boolean ok = true;
+    try{
+      String sql = "DELETE FROM jobDefinition WHERE dataset = '"+
+      getDataset(datasetID).getValue("name")+"'";
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
     }
-      
-    public synchronized boolean deleteTransformation(String transformationID){
-      boolean ok = true;
-      try{
-        String sql = "DELETE FROM transformation WHERE identifier = '"+
-        transformationID+"'";
-        Statement stmt = conn.createStatement();
-        stmt.executeUpdate(sql);
-      }
-      catch(Exception e){
-        Debug.debug(e.getMessage(), 2);
-        error = e.getMessage();
-        ok = false;
-      }
-      return ok;
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 1);
+      ok = false;
     }
-      
-    public synchronized boolean deleteRuntimeEnvironment(String runtimeEnvironmentID){
-      boolean ok = true;
-      try{
-        String sql = "DELETE FROM runtimeEnvironment WHERE identifier = '"+
-        runtimeEnvironmentID+"'";
-        Statement stmt = conn.createStatement();
-        stmt.executeUpdate(sql);
-      }
-      catch(Exception e){
-        Debug.debug(e.getMessage(), 2);
-        error = e.getMessage();
-        ok = false;
-      }
-      return ok;
-    }
-
-    public synchronized String [] getVersions(String transformation){   
-      String req = "SELECT identifier, version FROM "+
-      "transformation WHERE name = '"+transformation+"'";
-      Vector vec = new Vector();
-      Debug.debug(req, 2);
-      String version;
-      try{
-        Statement stmt = conn.createStatement();
-        ResultSet rset = stmt.executeQuery(req);
-        while(rset.next()){
-          version = rset.getString("version");
-          if(version!=null){
-            Debug.debug("Adding version "+version, 3);
-            vec.add(version);
-          }
-          else{
-            Debug.debug("WARNING: version null for identifier "+
-                rset.getInt("identifier"), 1);
-          }
-        }
-        rset.close();  
-      }
-      catch(Exception e){
-        Debug.debug(e.getMessage(), 1);
-      }
-      Vector vec1 = new Vector();
-      if(vec.size()>0){
-        Collections.sort(vec);
-        vec1.add(vec.get(0));
-      }
-      for(int i=0; i<vec.size(); ++i){
-        if(i>0 && !vec.get(i).toString().equalsIgnoreCase(vec.get(i-1).toString())){
-          vec1.add(vec.get(i));
-        }
-      }
-      String [] ret = new String[vec1.size()];
-      for(int i=0; i<vec1.size(); ++i){
-        ret[i] = vec1.get(i).toString();
-      }
-      return ret;
-    }
-
-    public String [] getTransformationOutputs(String transformationID){    
-      String outputs = getTransformation(transformationID).getValue("outputFiles").toString();
-      return Util.split(outputs);
-    }
-
-    public String [] getTransformationInputs(String transformationID){    
-      String inputs = getTransformation(transformationID).getValue("inputFiles").toString();
-      return Util.split(inputs);
-    }
+    return ok;
+  }
     
-    public DBResult getFiles(String datasetID){
-      // TODO
-      return null;
+  public synchronized boolean deleteTransformation(String transformationID){
+    boolean ok = true;
+    try{
+      String sql = "DELETE FROM transformation WHERE identifier = '"+
+      transformationID+"'";
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
     }
-
-    public String getError(){
-      return error;
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+      ok = false;
     }
+    return ok;
+  }
+    
+  public synchronized boolean deleteRuntimeEnvironment(String runtimeEnvironmentID){
+    boolean ok = true;
+    try{
+      String sql = "DELETE FROM runtimeEnvironment WHERE identifier = '"+
+      runtimeEnvironmentID+"'";
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+    }
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+      ok = false;
+    }
+    return ok;
+  }
 
-    private String makeDate(String dateInput){
-      try{
-        SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
-        String dateString = "";
-        if(dateInput == null || dateInput.equals("") || dateInput.equals("''")){
-          dateString = df.format(Calendar.getInstance().getTime());
+  public synchronized String [] getVersions(String transformation){   
+    String req = "SELECT identifier, version FROM "+
+    "transformation WHERE name = '"+transformation+"'";
+    Vector vec = new Vector();
+    Debug.debug(req, 2);
+    String version;
+    try{
+      Statement stmt = conn.createStatement();
+      ResultSet rset = stmt.executeQuery(req);
+      while(rset.next()){
+        version = rset.getString("version");
+        if(version!=null){
+          Debug.debug("Adding version "+version, 3);
+          vec.add(version);
         }
         else{
-          java.util.Date date = df.parse(dateInput);
-          dateString = df.format(date);
+          Debug.debug("WARNING: version null for identifier "+
+              rset.getInt("identifier"), 1);
         }
-        return "'"+dateString+"'";
       }
-      catch(Throwable e){
-        Debug.debug("Could not set date. "+e.getMessage(), 1);
-        e.printStackTrace();
-        return dateInput;
+      rset.close();  
+    }
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 1);
+    }
+    Vector vec1 = new Vector();
+    if(vec.size()>0){
+      Collections.sort(vec);
+      vec1.add(vec.get(0));
+    }
+    for(int i=0; i<vec.size(); ++i){
+      if(i>0 && !vec.get(i).toString().equalsIgnoreCase(vec.get(i-1).toString())){
+        vec1.add(vec.get(i));
       }
     }
-    
-    public void registerFileLocation(String datasetID, String datasetName,
-        String fileID, String lfn, String url, boolean datasetComplete){
-      // not applicable, not a file catalog
+    String [] ret = new String[vec1.size()];
+    for(int i=0; i<vec1.size(); ++i){
+      ret[i] = vec1.get(i).toString();
     }
-   
-    public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) {
-      //  not applicable, not a file catalog
-      return false;
-    }
+    return ret;
+  }
 
+  public String [] getTransformationOutputs(String transformationID){    
+    String outputs = getTransformation(transformationID).getValue("outputFiles").toString();
+    return Util.split(outputs);
+  }
+
+  public String [] getTransformationInputs(String transformationID){    
+    String inputs = getTransformation(transformationID).getValue("inputFiles").toString();
+    return Util.split(inputs);
+  }
+  
+  public String getError(){
+    return error;
+  }
+
+  private String makeDate(String dateInput){
+    try{
+      SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
+      String dateString = "";
+      if(dateInput == null || dateInput.equals("") || dateInput.equals("''")){
+        dateString = df.format(Calendar.getInstance().getTime());
+      }
+      else{
+        java.util.Date date = df.parse(dateInput);
+        dateString = df.format(date);
+      }
+      return "'"+dateString+"'";
+    }
+    catch(Throwable e){
+      Debug.debug("Could not set date. "+e.getMessage(), 1);
+      e.printStackTrace();
+      return dateInput;
+    }
+  }
+  
+  public DBRecord getFile(String datasetName, String fileID){
+    String [] fields = getFieldNames("file");
+    String [] values = new String[fields.length];
+    DBRecord file = new DBRecord(fields, values);
+    // If the file catalog tables (t_pfn, t_lfn, t_meta) are present,
+    // we use them.
+    if(isFileCatalog()){
+      // "dsn", "lfn", "pfns", "guid"
+      for(int i=0; i<fields.length; ++i){
+        try{
+          if(fields[i].equalsIgnoreCase("dsn")){
+            file.setValue(fields[i], datasetName);
+          }
+          else if(fields[i].equalsIgnoreCase("lfn")){
+            // TODO: we're assuming a on-to-one lfn/guid mapping. Improve.
+            file.setValue(fields[i],
+                Util.getValues(conn, "t_lfn", "guid", fileID, new String [] {"lfname"})[0][0]);
+          }
+          else if(fields[i].equalsIgnoreCase("pfns")){
+            String [][] res = Util.getValues(conn, "t_pfn", "guid", fileID, new String [] {"pfname"});
+            String [] pfns = new String [res.length];
+            for(int j=0; j<res.length; ++j){
+              pfns[j] = res[i][0];
+            }
+            file.setValue(fields[i], Util.arrayToString(pfns));
+          }
+          else if(fields[i].equalsIgnoreCase("guid")){
+            file.setValue(fields[i], fileID);
+          }
+
+        }
+        catch(Exception e){
+          Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
+        }
+      }
+    }
+    // If there are no file catalog tables, we construct a virtual file table
+    // from the jobDefinition table.
+    else{
+      // "datasetName", "name", "url"
+      DBRecord jobDef = getJobDefinition(fileID);
+      for(int i=0; i<fields.length; ++i){
+        try{
+          file.setValue(fields[i], jobDef.getValue(fields[i]).toString());
+        }
+        catch(Exception e){
+          Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
+        }
+      }
+      for(int i=0; i<jobDef.fields.length; ++i){
+        if(jobDef.fields[i].equalsIgnoreCase("outFileMapping")){
+          String [] map = Util.split(jobDef.getValue(jobDef.fields[i]).toString());
+          try{
+            file.setValue("url", map[1]);
+          }
+          catch(Exception e){
+            Debug.debug("WARNING: could not set URL. "+e.getMessage(), 2);
+          }
+        }
+      }
+    }
+    return file;
+  }
+
+  // This is not really a file catalog: THE output file is
+  // the first in the list of fn -> pfn mappings of outFileMapping
+  public String [] getFileURLs(String datasetName, String fileID){
+    // TODO: take different actions depending on existence of file tables
+    String ret = null;
+    try{
+      DBRecord file = getFile(datasetName, fileID);
+      ret = file.getValue("url").toString();
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
+    }
+    return new String [] {ret};
+  }
+
+  public void registerFileLocation(String datasetID, String datasetName,
+      String fileID, String lfn, String url, boolean datasetComplete){
+    // TODO
+  }
+ 
+  public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) {
+    //  TODO
+    return false;
+  }
+
+  public String getFileDatasetID(String datasetName,String fileID){
+    // TODO
+    return null;
+  }
+
+  public String getFileID(String datasetName,String fileID){
+    // TODO
+    return null;
+  }
 }

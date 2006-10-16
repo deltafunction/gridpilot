@@ -5,6 +5,8 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+//import java.util.HashSet;
+//import java.util.Iterator;
 import java.util.TimeZone;
 import java.util.Vector;
 import java.util.regex.Matcher;
@@ -41,6 +43,9 @@ public class HSQLDBDatabase implements Database{
   private String [] jobDefFields = null;
   private String [] datasetFields = null;
   private String [] runtimeEnvironmentFields = null;
+  private String [] t_lfnFields = null;
+  private String [] t_pfnFields = null;
+  private String [] t_metaFields = null;
   private HashMap datasetFieldTypes = new HashMap();
   private String databaseName = null;
   private String dbName = null;
@@ -109,7 +114,20 @@ public class HSQLDBDatabase implements Database{
     if(runtimeEnvironmentFields==null || runtimeEnvironmentFields.length<1){
       makeTable("runtimeEnvironment");
     }
+    if(t_lfnFields==null || t_lfnFields.length<1){
+      makeTable("t_lfn");
+    }
+    if(t_pfnFields==null || t_pfnFields.length<1){
+      makeTable("t_pfn");
+    }
+    if(t_metaFields==null || t_metaFields.length<1){
+      makeTable("t_meta");
+    }
     setFieldNames();
+  }
+  
+  public boolean isFileCatalog(){
+    return t_lfnFields!=null && t_lfnFields.length>0;
   }
   
   public String connect(){
@@ -180,6 +198,11 @@ public class HSQLDBDatabase implements Database{
     transformationFields = getFieldNames("transformation");
     // only used for checking
     runtimeEnvironmentFields = getFieldNames("runtimeEnvironment");
+    // only needed if we need an explicit file catalog where more than one
+    // pfn per lfn can be registered.
+    t_lfnFields = getFieldNames("t_lfn");
+    t_pfnFields = getFieldNames("t_pfn");
+    t_metaFields = getFieldNames("t_meta");
   }
 
   private boolean makeTable(String table){
@@ -214,6 +237,21 @@ public class HSQLDBDatabase implements Database{
     String sql1 = "";
     if(table.equalsIgnoreCase("dataset")){
       sql1 = "ALTER TABLE "+table+" ADD UNIQUE (name)";
+      try{
+        Statement stmt = conn.createStatement();
+        Debug.debug("Altering table. "+sql1, 1);
+        stmt = conn.createStatement();
+        stmt.executeUpdate(sql1);
+      }
+      catch(Exception e){
+        execok = false;
+        Debug.debug(e.getMessage(), 2);
+        e.printStackTrace();
+        error = e.getMessage();
+      }
+    }
+    else if(table.equalsIgnoreCase("t_lfn")){
+      sql1 = "ALTER TABLE "+table+" ADD UNIQUE (lfname)";
       try{
         Statement stmt = conn.createStatement();
         Debug.debug("Altering table. "+sql1, 1);
@@ -286,9 +324,10 @@ public class HSQLDBDatabase implements Database{
   public synchronized String [] getFieldNames(String table){
     try{
       Debug.debug("getFieldNames for table "+table, 3);
-      if(table.equalsIgnoreCase("file")){
+      if(!isFileCatalog() && table.equalsIgnoreCase("file")){
         return new String [] {"datasetName", "name", "url"};
       }
+      //return new String [] {"dsn", "lfn", "pfns", "guid"};
       Statement stmt = conn.createStatement();
       // TODO: Do we need to execute a query to get the metadata?
       ResultSet rset = stmt.executeQuery("SELECT LIMIT 0 1 * FROM "+table);
@@ -577,24 +616,42 @@ public class HSQLDBDatabase implements Database{
       }
     }
     
-    // The "file" table is a pseudo table constructed from "jobDefinitions".
-    // We replace "url" with "outFileMapping" and parse the values of
-    // outFileMapping later.
-    if(req.matches("SELECT (.+) url\\, (.+) FROM file (.+)")){
-      patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
-      matcher = patt.matcher(req);
-      req = matcher.replaceAll("SELECT $1 outFileMapping, $2 FROM file $3");
+    if(isFileCatalog()){
+      // The "file" table is a pseudo table constructed from the tables
+      // t_pfn, t_lfn and t_meta
+      if(req.matches("SELECT (.+) FROM file WHERE (.+)")){
+        patt = Pattern.compile("SELECT (.+) FROM file WHERE (.+)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceAll("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE ($2) AND" +
+                "t_lfn.guid=t_pfn.guid AND t_meta.guid=t_pfn.guid");
+      }
+      if(req.matches("SELECT (.+) FROM file (.+)")){
+        patt = Pattern.compile("SELECT (.+) FROM file", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceAll("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE " +
+                "t_lfn.guid=t_pfn.guid AND t_meta.guid=t_pfn.guid");
+      }
     }
-    if(req.matches("SELECT (.+) url FROM file (.+)")){
-      patt = Pattern.compile("SELECT (.+) url FROM file (.+)", Pattern.CASE_INSENSITIVE);
-      matcher = patt.matcher(req);
-      req = matcher.replaceAll("SELECT $1 outFileMapping FROM file $2");
-    }
-    if(req.matches("SELECT (.+) FROM file (.+)")){
-      fileTable = true;
-      patt = Pattern.compile("SELECT (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
-      matcher = patt.matcher(req);
-      req = matcher.replaceAll("SELECT $1 FROM jobDefinition $2");
+    else{
+      // The "file" table is a pseudo table constructed from "jobDefinitions".
+      // We replace "url" with "outFileMapping" and parse the values of
+      // outFileMapping later.
+      if(req.matches("SELECT (.+) url\\, (.+) FROM file (.+)")){
+        patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceAll("SELECT $1 outFileMapping, $2 FROM file $3");
+      }
+      if(req.matches("SELECT (.+) url FROM file (.+)")){
+        patt = Pattern.compile("SELECT (.+) url FROM file (.+)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceAll("SELECT $1 outFileMapping FROM file $2");
+      }
+      if(req.matches("SELECT (.+) FROM file (.+)")){
+        fileTable = true;
+        patt = Pattern.compile("SELECT (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceAll("SELECT $1 FROM jobDefinition $2");
+      }
     }
 
     patt = Pattern.compile("CONTAINS (\\S+)", Pattern.CASE_INSENSITIVE);
@@ -691,6 +748,7 @@ public class HSQLDBDatabase implements Database{
     }
   }
   
+  // TODO: use getValues
   public synchronized DBRecord getDataset(String datasetID){
     
     DBRecord dataset = null;
@@ -1048,47 +1106,6 @@ public class HSQLDBDatabase implements Database{
     DBRecord def = (DBRecord)jobdefv.get(0);
     jobdefv.removeAllElements();
     return def;
-  }
-
-  public DBRecord getFile(String jobDefinitionID){
-    DBRecord jobDef = getJobDefinition(jobDefinitionID);
-    String [] fields = getFieldNames("file");
-    String [] values = new String[fields.length];
-    DBRecord file = new DBRecord(fields, values);
-    for(int i=0; i<fields.length; ++i){
-      try{
-        file.setValue(fields[i], jobDef.getValue(fields[i]).toString());
-      }
-      catch(Exception e){
-        Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
-      }
-    }
-    for(int i=0; i<jobDef.fields.length; ++i){
-      if(jobDef.fields[i].equalsIgnoreCase("outFileMapping")){
-        String [] map = Util.split(jobDef.getValue(jobDef.fields[i]).toString());
-        try{
-          file.setValue("url", map[1]);
-        }
-        catch(Exception e){
-          Debug.debug("WARNING: could not set URL. "+e.getMessage(), 2);
-        }
-      }
-    }
-    return file;
-  }
-
-  // This is not really a file catalog: THE output file is
-  // the first in the list of fn -> pfn mappings of outFileMapping
-  public String [] getFileURLs(String fileID){
-    String ret = null;
-    try{
-      DBRecord file = getFile(fileID);
-      ret = file.getValue("url").toString();
-    }
-    catch(Exception e){
-      Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
-    }
-    return new String [] {ret};
   }
 
   // Selects only the fields listed in fieldNames. Other fields are set to "".
@@ -1976,11 +1993,6 @@ public class HSQLDBDatabase implements Database{
     return Util.split(inputs);
   }
   
-  public DBResult getFiles(String datasetID){
-    // TODO
-    return null;
-  }
-
   public String getError(){
     return error;
   }
@@ -2004,15 +2016,153 @@ public class HSQLDBDatabase implements Database{
       return dateInput;
     }
   }
+  
+  public DBRecord getFile(String datasetName, String fileID){
+    String [] fields = getFieldNames("file");
+    String [] values = new String[fields.length];
+    DBRecord file = new DBRecord(fields, values);
+    // If the file catalog tables (t_pfn, t_lfn, t_meta) are present,
+    // we use them.
+    if(isFileCatalog()){
+      Vector fieldsVector = new Vector();
+      // first some special fields; we lump all pfname's into the same pfname field
+      for(int i=0; i<fields.length; ++i){
+        try{
+          if(fields[i].equalsIgnoreCase("dsname")){
+            file.setValue(fields[i], datasetName);
+          }
+          else if(fields[i].equalsIgnoreCase("lfn")){
+            // TODO: we're assuming a on-to-one lfn/guid mapping. Improve.
+            file.setValue(fields[i],
+                Util.getValues(conn, "t_lfn", "guid", fileID, new String [] {"lfname"})[0][0]);
+          }
+          else if(fields[i].equalsIgnoreCase("pfname")){
+            String [][] res = Util.getValues(conn, "t_pfn", "guid", fileID, new String [] {"pfname"});
+            String [] pfns = new String [res.length];
+            for(int j=0; j<res.length; ++j){
+              pfns[j] = res[i][0];
+            }
+            file.setValue(fields[i], Util.arrayToString(pfns));
+          }
+          else if(fields[i].equalsIgnoreCase("guid")){
+            file.setValue(fields[i], fileID);
+          }
+          else{
+            fieldsVector.add(fields[i]);
+          }
+        }
+        catch(Exception e){
+          Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
+        }
+      }
+      // get the rest of the values
+      DBResult res = select("SELECT LIMIT 0 1+" +
+          Util.arrayToString(fieldsVector.toArray(), ", ") +
+            " FROM file WHERE guid = "+fileID, "guid", true);
+      for(int i=0; i<fieldsVector.size(); ++i){
+        try{
+          file.setValue(fields[i], res.getValue(0, fields[i]).toString());
+        }
+        catch(Exception e){
+          Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
+        }
+      }
+    }
+    // If there are no file catalog tables, we construct a virtual file table
+    // from the jobDefinition table.
+    else{
+      // "datasetName", "name", "url"
+      DBRecord jobDef = getJobDefinition(fileID);
+      for(int i=0; i<fields.length; ++i){
+        try{
+          file.setValue(fields[i], jobDef.getValue(fields[i]).toString());
+        }
+        catch(Exception e){
+          Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
+        }
+      }
+      for(int i=0; i<jobDef.fields.length; ++i){
+        if(jobDef.fields[i].equalsIgnoreCase("outFileMapping")){
+          String [] map = Util.split(jobDef.getValue(jobDef.fields[i]).toString());
+          try{
+            file.setValue("url", map[1]);
+          }
+          catch(Exception e){
+            Debug.debug("WARNING: could not set URL. "+e.getMessage(), 2);
+          }
+        }
+      }
+    }
+    return file;
+  }
+
+  /*public DBResult getFiles(String datasetID){
+    String datasetName = getDatasetName(datasetID);
+    String identifier = isFileCatalog() ? "guid" : "identifier";
+    // get all unique guid's
+    HashSet uidsSet = new HashSet();
+    DBResult res = select("SELECT * FROM file WHERE vuid = "+datasetID, identifier, true);
+    for(int i=0; i<res.values.length; ++i){
+      uidsSet.add(res.getValue(i, identifier));
+    }
+    String [] fields = getFieldNames("file");
+    String [][] values = new String [uidsSet.size()][fields.length];
+    int i=0;
+    for(Iterator it=uidsSet.iterator(); it.hasNext();){
+      Object [] vals = getFile(datasetName, ((String) it.next())).values;
+      for(int j=0; j<fields.length; ++j){
+        values[i][j] = (String) vals[j];
+      }
+      ++i;
+    }
+    return new DBResult(fields, values);
+  }*/
+
+  // Take different actions depending on whether or not
+  // t_lfn, etc. are present
+  public String [] getFileURLs(String datasetName, String fileID){
+    if(isFileCatalog()){
+      String ret = null;
+      try{
+        DBRecord file = getFile(datasetName, fileID);
+        ret = file.getValue("pfname").toString();
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
+      }
+      return new String [] {ret};
+    }
+    else{
+      String ret = null;
+      try{
+        DBRecord file = getFile(datasetName, fileID);
+        ret = file.getValue("url").toString();
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
+      }
+      return new String [] {ret};
+    }
+  }
 
   public void registerFileLocation(String datasetID, String datasetName,
       String fileID, String lfn, String url, boolean datasetComplete){
-    // not applicable, not a file catalog
+    // TODO
   }
   
   public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) {
-    //  not applicable, not a file catalog
+    //  TODO
     return false;
+  }
+
+  public String getFileDatasetID(String datasetName,String fileID){
+    // TODO
+    return null;
+  }
+
+  public String getFileID(String datasetName,String fileID){
+    // TODO
+    return null;
   }
 
 }

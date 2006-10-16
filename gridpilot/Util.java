@@ -36,6 +36,7 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -1325,4 +1326,52 @@ public class Util{
     return JOptionPane.CLOSED_OPTION;
   }
 
+  public static String [][] getValues(Connection conn, String table, String id,
+      String idValue, String [] fields){
+    String req = "SELECT "+fields[0];
+    String values [] = new String[fields.length];
+    if(fields.length>1){
+      for(int i=1; i<fields.length; ++i){
+        req += ", "+fields[i];
+      }
+    }
+    req += " FROM "+table;
+    req += " WHERE "+id+" = '"+ idValue+"'";
+    Vector resultVector = new Vector();
+    String [][] resultArray = null;
+    try{
+      Debug.debug(">> "+req, 3);
+      ResultSet rset = conn.createStatement().executeQuery(req);
+      while(rset.next()){
+        for(int i=0; i<fields.length;i++){
+          if(fields[i].endsWith("FK") || fields[i].endsWith("ID") &&
+              !fields[i].equalsIgnoreCase("grid") ||
+              fields[i].endsWith("COUNT")){
+            int tmp = rset.getInt(fields[i]);
+            values[i] = Integer.toString(tmp);
+          }
+          else{
+            values[i] = rset.getString(fields[i]);
+          }
+        }
+        resultVector.add(values);
+      }
+      rset.close();
+      if(resultVector.size()==0){
+        Debug.debug("WARNING: No dataset with "+ id +" "+idValue, 2);
+      }
+      resultArray = new String [resultVector.size()][fields.length];
+      for(int i=0; i<resultVector.size(); ++i){
+        for(int j=0; j<fields.length; ++j){
+          resultArray[i][j] = ((String []) resultVector.get(i))[j];
+        }
+      }
+    }
+    catch(SQLException e){
+      Debug.debug("WARNING: No record found with "+ id +" "+idValue+". "+e.getMessage(), 2);
+      return new String [fields.length][0];
+    }
+    return resultArray;
+  }
+  
 }

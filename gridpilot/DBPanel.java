@@ -77,7 +77,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   // The idea is to ignore new requests when working on a request
   private boolean working = false;
   private SubmissionControl submissionControl = null;
-  private boolean jobDefTableExist;
+  private boolean jobDefTableExists;
   
   private static String defaultURL;
   
@@ -115,14 +115,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
      statusBar = GridPilot.getClassMgr().getStatusBar();
      
-     jobDefTableExist = false;
+     jobDefTableExists = false;
      if(tableName.equalsIgnoreCase("dataset")){
        // Check if there is a jobDefinition table in this database
        try{
-         jobDefTableExist = (dbPluginMgr.getFieldNames("jobDefinition")!=null);
+         jobDefTableExists = (dbPluginMgr.getFieldNames("jobDefinition")!=null);
        }
        catch(Exception e){
-         jobDefTableExist = false;
+         jobDefTableExists = false;
        }
      }
      
@@ -859,9 +859,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
               // We assume that there are only two kinds of databases:
               // runtime/transformation/dataset/job catalogs and dataset/file catalogs.
-              bViewJobDefinitions.setEnabled(jobDefTableExist && !lsm.isSelectionEmpty() &&
+              bViewJobDefinitions.setEnabled(jobDefTableExists && !lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              bDefineJobDefinitions.setEnabled(jobDefTableExist && !lsm.isSelectionEmpty());
+              bDefineJobDefinitions.setEnabled(jobDefTableExists && !lsm.isSelectionEmpty());
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
               bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
@@ -889,10 +889,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
               miEdit.setEnabled(!lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              // No copy paste on pseudo tables
-              // menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
-              //menuEditCut.setEnabled(!lsm.isSelectionEmpty());
-              //menuEditPaste.setEnabled(clipboardOwned);
+              menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
+              menuEditCut.setEnabled(!lsm.isSelectionEmpty());
+              menuEditPaste.setEnabled(clipboardOwned);
             }
           });
 
@@ -1223,7 +1222,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void editFile(){
     // This should be safe. Only mysql and hsqldb contain jobDefinitions and are directly editable.
     // TODO: support editing other file catalogs
-    if(jobDefTableExist){
+    if(jobDefTableExists && !dbPluginMgr.isFileCatalog()){
       editJobDef();
     }
     else{
@@ -1251,10 +1250,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   
   private void deleteFiles(){
     // Should be safe, only mysql and hsqldb contain jobDefinitions
-    if(jobDefTableExist){
-      deleteJobDefs();
-    }
-    else{
+    if(dbPluginMgr.isFileCatalog()){
       String msg = "Are you sure you want to delete file";
       if(getSelectedIdentifiers().length>1){
         msg += "s";
@@ -1906,7 +1902,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         
         // if the table jobDefinition is present, we are using
         // the native tables and only one url/pfn per jobDefinition/file
-        // is allowed, thus no checkbox needed
+        // is allowed, thus no db combobox needed
         JPanel pTargetDBs = null;
         JComboBox cbTargetDBSelection = null;
         try{
@@ -1917,8 +1913,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             // If this DB has a job definition table, registration should not be done.
             // Files are defined by the jobDefinition table.
             try{
-              if(GridPilot.getClassMgr().getDBPluginMgr(
-                  GridPilot.dbNames[i]).getFieldNames("jobDefinition")!=null){
+              if(!GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[i]).isFileCatalog()){
                 continue;
               }
             }
@@ -2085,10 +2080,19 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       catch(Exception e){
       }
+      if(urls==null){
+        try{
+          String urlsString = values.get("url").toString();
+          urls = new String [] {urlsString};
+        }
+        catch(Exception e){
+        }
+      }
       DBRecord file = null;
       if(guid==null || name==null || urls==null || datasetName==null){
-        file = dbPluginMgr.getFile(selectedFileIdentifiers[i]);
-        // In the case of DQ2 these will fail and return null
+        file = dbPluginMgr.getFile(datasetName, selectedFileIdentifiers[i]);
+        // In the case of DQ2 these are too slow or will fail and return null.
+        // All information must be in the table...
         if(guid==null){
           guid = file.getValue(idField).toString();
         }
@@ -2096,7 +2100,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           guid = file.getValue(nameField).toString();
         }
         if(urls==null){
-          urls = dbPluginMgr.getFileURLs(selectedFileIdentifiers[i]);
+          urls = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i]);
         }
         if(datasetName==null){
           datasetName = file.getValue(datasetColumn).toString();
@@ -2151,7 +2155,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           try{
             // If the file is in a file catalog, we should reuse the lfn, guid
             // and the dataset name and id if possible.
-            if(!jobDefTableExist){
+            if(dbPluginMgr.isFileCatalog()){
               // This file query may fail (in the case of DQ2).
               transfer.setGUID(guid);
             }
@@ -2258,9 +2262,32 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   
   public void copy(){
     Debug.debug("Copying!", 3);
+    int [] rows = tableResults.getSelectedRows();
     String [] ids = getSelectedIdentifiers();
+    String [] idNames = new String [ids.length];
+    if(tableName.equalsIgnoreCase("file")){
+      String nameField = dbPluginMgr.getNameField("file");
+      String [] datasetNameFields = dbPluginMgr.getFileDatasetReference();
+      String datasetNameField = datasetNameFields[1];
+      int nameIndex = -1;
+      int datasetNameIndex = -1;
+      for(int i=0; i<tableResults.getColumnNames().length; ++i){
+        if(tableResults.getColumnNames()[i].equalsIgnoreCase(nameField)){
+          nameIndex = i;
+        }
+        if(tableResults.getColumnNames()[i].equalsIgnoreCase(datasetNameField)){
+          datasetNameIndex = i;
+        }
+      }
+      for(int i=0; i<ids.length; ++i){
+        idNames[i] = 
+          "'"+tableResults.getValueAt(rows[i], datasetNameIndex).toString()+"'::'"+
+          tableResults.getValueAt(rows[i], nameIndex).toString()+"'::'"+
+          ids[i]+"'";
+      }
+    }
     StringSelection stringSelection = new StringSelection(
-        dbName+" "+tableName+" "+Util.arrayToString(ids));
+        dbName+" "+tableName+" "+Util.arrayToString(idNames));
     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
     clipboard.setContents(stringSelection, this);
     clipboardOwned = true;
@@ -2286,8 +2313,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       return;
     }
     try{
+      String datasetName = null;
       String name = null;
+      String id = null;
       for(int i=2; i<records.length; ++i){
+        name = null;
+        id = null;
         // Check if record is a dataset and already there and
         // ask for prefix if this is the case.
         // Only datasets have unique names.
@@ -2300,11 +2331,27 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                 "new-"+name);
             }
           }
+          if(tableName.equalsIgnoreCase("file")){
+            // Well, once more, because DQ2 cannot lookup files we have
+            // to introduce an ugly hack: we pass both dataset name, file name and id
+            // ('dsname'::'name'::'id') when copy-pasting
+            int index = records[i].indexOf("'::'");
+            datasetName = records[i].substring(1, index);
+            String rest = records[i].substring(index+4);
+            index = rest.indexOf("'::'");
+            name = rest.substring(0, index);
+            id = rest.substring(index+4, rest.length()-1);
+            
+          }
+          insertRecord(records[0], records[1], dbName, tableName,
+              id, name, datasetName);
         }
         catch(Exception e){
+          String error = "ERROR: could not insert record: "+
+          records[0]+", "+records[1]+", "+dbName+", "+tableName+", "+
+          records[i]+", "+name;
+          GridPilot.getClassMgr().getLogFile().addMessage(error);
         }
-        insertRecord(records[0], records[1], dbName, tableName,
-            records[i], name);
       }
     }
     catch(Exception e){
@@ -2350,8 +2397,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
   }
   
+  /**
+   * 
+   * The method called when copy-pasting. Inserts a DB record.
+   * 
+   * @param sourceDB
+   * @param sourceTable
+   * @param targetDB
+   * @param targetTable
+   * @param id
+   * @param name
+   * @throws Exception
+   */
   public void insertRecord(String sourceDB, String sourceTable,
-      String targetDB, String targetTable, String id, String name) throws Exception{
+      String targetDB, String targetTable, String id, String name,
+      String datasetName) throws Exception{
     
     DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(sourceDB);
     DBPluginMgr targetMgr = GridPilot.getClassMgr().getDBPluginMgr(targetDB);
@@ -2414,6 +2474,20 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         throw e;
       }
     }
+    else if(tableName.equalsIgnoreCase("file")){
+      try{
+        record = sourceMgr.getFile(datasetName, id);
+        insertFile(record, dbPluginMgr, targetMgr, name, datasetName);
+      }
+      catch(Exception e){
+        String msg = "ERROR: file "+id+" could not be inserted, "+sourceDB+
+        "."+sourceTable+"->"+targetDB+"."+targetTable+". "+e.getMessage();
+        Debug.debug(msg, 1);
+        statusBar.setLabel(msg);
+        GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
+        throw e;
+      }
+    }
   }
   
   public boolean insertJobDefinition(DBRecord jobDef, DBPluginMgr dbMgr) throws Exception{  
@@ -2427,6 +2501,27 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       else{
         throw(new Exception("ERROR: Parent dataset for job defintion "+
             jobDef.getValue(targetJobDefIdentifier)+" does not exist."));
+      }
+    }
+    catch(Exception e){
+      throw e;
+    }
+    return true;
+  }
+  
+  public boolean insertFile(DBRecord file, DBPluginMgr targetMgr, 
+      DBPluginMgr sourceMgr, String name, String datasetName) throws Exception{  
+    try{
+      // Check if parent dataset exists
+      String targetFileIdentifier = targetMgr.getIdentifierField("file");
+      String targetDsId = targetMgr.getFileDatasetID(datasetName,
+          file.getValue(targetFileIdentifier).toString());
+      if(!targetDsId.equals("-1")){
+        targetMgr.createFil(sourceMgr, datasetName, name, file.fields, file.values);
+      }
+      else{
+        throw(new Exception("ERROR: Parent dataset for job defintion "+
+            file.getValue(targetFileIdentifier)+" does not exist."));
       }
     }
     catch(Exception e){
