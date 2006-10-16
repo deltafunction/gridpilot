@@ -2130,7 +2130,7 @@ public class HSQLDBDatabase implements Database{
       catch(Exception e){
         Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
       }
-      return new String [] {ret};
+      return Util.split(ret);
     }
     else{
       String ret = null;
