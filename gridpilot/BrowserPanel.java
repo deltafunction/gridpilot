@@ -499,7 +499,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         setHttpDirDisplay(url);
       }
       // local directory
-      else if((url.startsWith("/") || url.toLowerCase().startsWith("c:") ||
+      else if((url.startsWith("/") || url.matches("\\w:.*") ||
           url.startsWith("file:")) &&
           url.endsWith("/")){
         setLocalDirDisplay(url);
@@ -944,7 +944,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     /*else if(fsPath.startsWith("file:")){
       localPath = fsPath.substring(4);
     }*/
-    else if(fsPath.toLowerCase().startsWith("c:\\")){
+    else if(fsPath.matches("(\\w:\\\\).*")){
       localPath = fsPath.substring(2);
     }
     else{
@@ -985,10 +985,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
               ++files;
             }
             textVector.add("<a href=\"file:"+text[j]+"\">" + 
-                (((text[j].toLowerCase().startsWith("c:\\") ||
-                    text[j].toLowerCase().startsWith("c:/")) &&
-                    !localPath.toLowerCase().startsWith("c:\\") &&
-                    !localPath.toLowerCase().startsWith("c:/")) ? 
+                (((text[j].matches("(\\w:\\\\).*") ||
+                    text[j].matches("\\w:/.*")) &&
+                    !localPath.matches("(\\w:\\\\).*") &&
+                    !localPath.matches("\\w:/.*")) ? 
                     text[j].substring(localPath.length()+2) :
                       text[j].substring(localPath.length())) +  "</a>");
           }
