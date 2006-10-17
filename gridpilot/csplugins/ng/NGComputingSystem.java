@@ -80,7 +80,7 @@ public class NGComputingSystem implements ComputingSystem{
     if(workingDir==null || workingDir.equals("")){
       workingDir = "~";
     }
-    else if(!workingDir.toLowerCase().startsWith("c:") &&
+    else if(!workingDir.toLowerCase().matches("\\w:.*") &&
         !workingDir.startsWith("/") && !workingDir.startsWith("~")){
       workingDir = "~"+File.separator+workingDir;
     }

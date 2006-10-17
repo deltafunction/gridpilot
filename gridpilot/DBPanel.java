@@ -2029,8 +2029,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     // GlobusURL does not accept file://C:/... or file://C:\..., but
     // file:////C:/... or file:////C:\...
     dlUrlDir = dlUrlDir.replaceFirst("\\\\", "/");
-    dlUrlDir = dlUrlDir.replaceFirst("^file://C://", "file:////C://");
-    dlUrlDir = dlUrlDir.replaceFirst("^file://C:/", "file:////C:/");
+    dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w)://", "file:////$1://");
+    dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w):/", "file:////$1:/");
     for(int i=0; i<selectedFileIdentifiers.length; ++i){
       String [] urls = null;
       String guid = null;

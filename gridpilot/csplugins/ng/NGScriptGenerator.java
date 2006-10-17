@@ -93,7 +93,7 @@ public class NGScriptGenerator extends ScriptGenerator{
         writeLine(bufXRSL,"(\""+shortExeFileName+"\" \"\")");
       }
       else{
-        //xrslExeFileName = exeFileName.replaceAll("C:\\\\","");
+        //xrslExeFileName = exeFileName.replaceAll("\\w:\\\\","");
         //xrslExeFileName = xrslExeFileName.replaceAll("\\\\","\\\\\\\\");
         writeLine(bufXRSL,"(\""+shortExeFileName+"\" \""+xrslExeFileName+"\")");
       }
@@ -107,7 +107,7 @@ public class NGScriptGenerator extends ScriptGenerator{
         writeLine(bufXRSL,"(\""+scriptname+"\" \"\")");
       }
       else{
-        //httpscript = httpscript.replaceAll("C:\\\\","");
+        //httpscript = httpscript.replaceAll("\\w:\\\\","");
         //httpscript = httpscript.replaceAll("\\\\","\\\\\\\\");
         writeLine(bufXRSL,"(\""+scriptname+"\" \""+httpscript+"\")");
       }
