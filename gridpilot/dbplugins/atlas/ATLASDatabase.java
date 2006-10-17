@@ -111,9 +111,22 @@ public class ATLASDatabase implements Database{
     // Get and cache the TOA file
     toa = configFile.getValue(dbName, "tiers of atlas");
     try{
-      URL toaURL = new URL(toa);
+      URL toaURL = null;
       toaFile = File.createTempFile(/*prefix*/"GridPilot-TOA", /*suffix*/"");
       toaFile.delete();
+      toa.replaceFirst("^file:///+", "/");
+      toa.replaceFirst("^file://", "");
+      toa.replaceFirst("^file:", "");
+      if(toa.startsWith("~")){
+        toa = System.getProperty("user.home") + File.separator +
+        toa.substring(1);
+      }
+      if(toa.matches("\\w:.*") || toa.indexOf(":")<0){
+        toaURL = (new File(toa)).toURL();
+      }
+      else{
+        toaURL = new URL(toa);
+      }
       BufferedReader in = new BufferedReader(new InputStreamReader(toaURL.openStream()));
       PrintWriter out = new PrintWriter(
           new FileWriter(toaFile)); 
