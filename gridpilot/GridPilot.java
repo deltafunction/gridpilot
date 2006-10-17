@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Properties;
 
 import javax.swing.*;
 
@@ -23,6 +24,8 @@ public class GridPilot extends JApplet{
   private static ClassMgr classMgr = new ClassMgr();
   private static boolean applet = true;  
   private static String debugLevel = "0";
+  private static String proxyHost = null;
+  private static String proxyPort = null;
   
   public static HashMap tmpConfFile = new HashMap();
   public static String logFileName = "gridpilot.log";
@@ -99,6 +102,22 @@ public class GridPilot extends JApplet{
 
   public static void loadConfigValues(){
     try{
+      
+      proxyHost = getClassMgr().getConfigFile().getValue("GridPilot", "proxy host");
+      proxyPort = getClassMgr().getConfigFile().getValue("GridPilot", "proxy port");
+      if(proxyHost!=null && proxyHost.length()>0){
+        if(proxyPort==null || proxyPort.length()==0){
+          proxyPort = "80";
+        }
+        Properties systemProperties = System.getProperties();
+        systemProperties.put("http.proxySet", "true");
+        systemProperties.put("http.proxyHost", proxyHost);
+        systemProperties.put("http.proxyPort", proxyPort);
+        //systemProperties.put("http.proxyUser", "");
+        //systemProperties.put("http.proxyPassword", "");
+        System.setProperties(systemProperties);
+      }
+      
       debugLevel = getClassMgr().getConfigFile().getValue("GridPilot", "debug");
       resourcesPath =  getClassMgr().getConfigFile().getValue("GridPilot", "resources");
       if(resourcesPath==null){
