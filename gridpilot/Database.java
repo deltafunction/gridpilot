@@ -117,7 +117,7 @@ public interface Database{
   
   // ####### Misc
   public boolean setJobDefsField(String [] identifiers, String field, String value);
-  public String [] getFieldNames(String table);
+  public String [] getFieldNames(String table) throws SQLException;
   // The last database error reported
   public String getError();
   

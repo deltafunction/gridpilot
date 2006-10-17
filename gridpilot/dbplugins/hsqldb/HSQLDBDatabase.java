@@ -50,6 +50,7 @@ public class HSQLDBDatabase implements Database{
   private String databaseName = null;
   private String dbName = null;
   private ConfigFile configFile = null;
+  private boolean fileCatalog = false;
   
   private static String SERVER_RUNNING = "no";
 
@@ -115,19 +116,38 @@ public class HSQLDBDatabase implements Database{
       makeTable("runtimeEnvironment");
     }
     if(t_lfnFields==null || t_lfnFields.length<1){
-      makeTable("t_lfn");
+      try{
+        makeTable("t_lfn");
+      }
+      catch(Exception e){
+      }
     }
     if(t_pfnFields==null || t_pfnFields.length<1){
-      makeTable("t_pfn");
+      try{
+        makeTable("t_pfn");
+      }
+      catch(Exception e){
+      }
     }
     if(t_metaFields==null || t_metaFields.length<1){
-      makeTable("t_meta");
+      try{
+        makeTable("t_meta");
+      }
+      catch(Exception e){
+      }
     }
-    setFieldNames();
+    try{
+      setFieldNames();
+    }
+    catch(Exception e){
+      error = "ERROR: could not set field names. "+e.getMessage();
+      Debug.debug(error, 1);
+      e.printStackTrace();
+    }
   }
   
   public boolean isFileCatalog(){
-    return t_lfnFields!=null && t_lfnFields.length>0;
+    return fileCatalog;
   }
   
   public String connect(){
@@ -185,7 +205,7 @@ public class HSQLDBDatabase implements Database{
     return "";
   }
   
-  private void setFieldNames(){
+  private void setFieldNames() throws SQLException {
     //ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/hsqldb/tables.conf");
     configFile = GridPilot.getClassMgr().getConfigFile();
     datasetFields = getFieldNames("dataset");
@@ -198,11 +218,20 @@ public class HSQLDBDatabase implements Database{
     transformationFields = getFieldNames("transformation");
     // only used for checking
     runtimeEnvironmentFields = getFieldNames("runtimeEnvironment");
+    
     // only needed if we need an explicit file catalog where more than one
     // pfn per lfn can be registered.
-    t_lfnFields = getFieldNames("t_lfn");
-    t_pfnFields = getFieldNames("t_pfn");
-    t_metaFields = getFieldNames("t_meta");
+    try{
+      t_lfnFields = getFieldNames("t_lfn");
+      t_pfnFields = getFieldNames("t_pfn");
+      t_metaFields = getFieldNames("t_meta");
+    }
+    catch(SQLException e){
+    }
+    
+    if(t_lfnFields!=null && t_lfnFields.length>0){
+      fileCatalog = true;
+    }
   }
 
   private boolean makeTable(String table){
@@ -210,6 +239,9 @@ public class HSQLDBDatabase implements Database{
     //ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/hsqldb/tables.conf");
     String [] fields = Util.split(configFile.getValue(dbName, table+" field names"), ",");
     String [] fieldTypes = Util.split(configFile.getValue(dbName, table+" field types"), ",");
+    if(fields==null || fieldTypes==null){
+      return false;
+    }
     String sql = "CREATE TABLE "+table+"(";
     for(int i=0; i<fields.length; ++i){
       if(i>0){
@@ -321,29 +353,23 @@ public class HSQLDBDatabase implements Database{
     }
   }
 
-  public synchronized String [] getFieldNames(String table){
-    try{
-      Debug.debug("getFieldNames for table "+table, 3);
-      if(!isFileCatalog() && table.equalsIgnoreCase("file")){
-        return new String [] {"datasetName", "name", "url"};
-      }
-      //return new String [] {"dsn", "lfn", "pfns", "guid"};
-      Statement stmt = conn.createStatement();
-      // TODO: Do we need to execute a query to get the metadata?
-      ResultSet rset = stmt.executeQuery("SELECT LIMIT 0 1 * FROM "+table);
-      ResultSetMetaData md = rset.getMetaData();
-      String [] res = new String[md.getColumnCount()];
-      for(int i=1; i<=md.getColumnCount(); ++i){
-        res[i-1] = md.getColumnName(i);
-      }
-      Debug.debug("found "+Util.arrayToString(res), 3);
-      return res;
+  public synchronized String [] getFieldNames(String table)
+     throws SQLException {
+    Debug.debug("getFieldNames for table "+table, 3);
+    if(!isFileCatalog() && table.equalsIgnoreCase("file")){
+      return new String [] {"datasetName", "name", "url"};
     }
-    catch(Exception e){
-      e.printStackTrace();
-      Debug.debug(e.getMessage(),1);
-      return null;
+    //return new String [] {"dsn", "lfn", "pfns", "guid"};
+    Statement stmt = conn.createStatement();
+    // TODO: Do we need to execute a query to get the metadata?
+    ResultSet rset = stmt.executeQuery("SELECT LIMIT 0 1 * FROM "+table);
+    ResultSetMetaData md = rset.getMetaData();
+    String [] res = new String[md.getColumnCount()];
+    for(int i=1; i<=md.getColumnCount(); ++i){
+      res[i-1] = md.getColumnName(i);
     }
+    Debug.debug("found "+Util.arrayToString(res), 3);
+    return res;
   }
 
   public synchronized String getTransformationID(String transName, String transVersion){
@@ -2018,7 +2044,14 @@ public class HSQLDBDatabase implements Database{
   }
   
   public DBRecord getFile(String datasetName, String fileID){
-    String [] fields = getFieldNames("file");
+    String [] fields = null;
+    try{
+      fields= getFieldNames("file");
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return null;
+    }
     String [] values = new String[fields.length];
     DBRecord file = new DBRecord(fields, values);
     // If the file catalog tables (t_pfn, t_lfn, t_meta) are present,
