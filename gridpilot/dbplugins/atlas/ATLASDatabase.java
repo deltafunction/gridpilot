@@ -1439,12 +1439,6 @@ public class ATLASDatabase implements Database{
     return null;
   }
   
-  public String getFileDatasetID(String datasetName, String fileID){
-    DBRecord file = getFile(datasetName, fileID);
-    String dsn = file.getValue("dsn").toString();
-    return getDatasetID(dsn);
-  };
-  
   public String getFileID(String datasetName, String fileID){
     DBRecord file = getFile(datasetName, fileID);
     return file.getValue("guid").toString();
@@ -1783,7 +1777,7 @@ public class ATLASDatabase implements Database{
   }
 
   public void registerFileLocation(String vuid, String dsn, String guid,
-      String lfn, String url, boolean datasetComplete){
+      String lfn, String url, boolean datasetComplete) throws Exception {
 
     DQ2Access dq2Access = null;
     try{
@@ -1795,20 +1789,20 @@ public class ATLASDatabase implements Database{
       logFile.addMessage(error, e);
     }
     boolean datasetExists = false;
-    // Check if dataset already exists and has the same name
+    // Check if dataset already exists and has the same id
     try{
-      String existingName = null;
+      String existingID = null;
       try{
-        existingName = getDatasetName(vuid);
+        existingID = getDatasetID(dsn);
       }
       catch(Exception ee){
       }
-      if(existingName!=null && !existingName.equals("")){
-        if(!existingName.equalsIgnoreCase(dsn)){
-          error = "WARNING: dataset "+vuid+" already registered in DQ2 with name "+
-          existingName+"!="+vuid+". Using "+existingName+".";
+      if(existingID!=null && !existingID.equals("")){
+        if(!existingID.equalsIgnoreCase(vuid)){
+          error = "WARNING: dataset "+dsn+" already registered in DQ2 with name "+
+          existingID+"!="+vuid+". Using "+existingID+".";
           logFile.addMessage(error);
-          dsn = existingName;
+          vuid = existingID;
         }
         datasetExists = true;
       }
@@ -1827,7 +1821,7 @@ public class ATLASDatabase implements Database{
       catch(Exception e){
         error = "WARNING: could not create dataset "+dsn+" in DQ2 "+
         ". Registration of "+lfn+" in DQ2 will NOT be done";
-        logFile.addMessage(error);
+        logFile.addMessage(error, e);
         datasetExists =false;
       }
     }
@@ -1843,7 +1837,7 @@ public class ATLASDatabase implements Database{
       catch(Exception e){
         error = "WARNING: could not update dataset "+dsn+" in DQ2 "+
         ". Registration of "+lfn+" in DQ2 NOT done";
-        logFile.addMessage(error);
+        logFile.addMessage(error, e);
       }
     }
     
@@ -1870,13 +1864,14 @@ public class ATLASDatabase implements Database{
       }
       catch(Exception e){
         logFile.addMessage("WARNING: failed to register LFN "+lfn+
-            " on "+homeServerMysqlAlias+". Please delete them by hand.");
+            " on "+homeServerMysqlAlias+". Please delete them by hand.", e);
       }
     }
     catch(Exception e){
-      error = "ERROR: cannot register "+url+" in file catalog. "+e.getMessage();
-      logFile.addMessage(error);
+      //error = "ERROR: cannot register "+url+" in file catalog. "+e.getMessage();
+      //logFile.addMessage(error);
       catalogRegOk = false;
+      throw e;
     }
     
     if(catalogRegOk){
@@ -1910,7 +1905,7 @@ public class ATLASDatabase implements Database{
       catch(Exception e){
         error = "WARNING: could not update dataset "+dsn+" in DQ2 "+
            ". Registration of "+homeServer+" in DQ2 NOT done";
-        logFile.addMessage(error);
+        logFile.addMessage(error, e);
       }
     }
   }

@@ -27,6 +27,7 @@ import gridpilot.ConfigFile;
 import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
+import gridpilot.LogFile;
 import gridpilot.Util;
 import gridpilot.DBResult;
 import gridpilot.DBRecord;
@@ -47,7 +48,6 @@ public class MySQLDatabase implements Database{
   private String passwd = "";
   private Connection conn = null;
   private String error = "";
- 
   private String [] transformationFields = null;
   private String [] jobDefFields = null;
   private String [] datasetFields = null;
@@ -58,6 +58,7 @@ public class MySQLDatabase implements Database{
   private String dbName = null;
   private boolean gridAuth;
   private GlobusCredential globusCred = null;
+  private boolean fileCatalog = false;
 
   public MySQLDatabase(String _dbName,
       String _driver, String _database,
@@ -193,19 +194,38 @@ public class MySQLDatabase implements Database{
       makeTable("runtimeEnvironment");
     }
     if(t_lfnFields==null || t_lfnFields.length<1){
-      makeTable("t_lfn");
+      try{
+        makeTable("t_lfn");
+      }
+      catch(Exception e){
+      }
     }
     if(t_pfnFields==null || t_pfnFields.length<1){
-      makeTable("t_pfn");
+      try{
+        makeTable("t_pfn");
+      }
+      catch(Exception e){
+      }
     }
     if(t_metaFields==null || t_metaFields.length<1){
-      makeTable("t_meta");
+      try{
+        makeTable("t_meta");
+      }
+      catch(Exception e){
+      }
     }
-    setFieldNames();
+    try{
+      setFieldNames();
+    }
+    catch(Exception e){
+      error = "ERROR: could not set field names. "+e.getMessage();
+      Debug.debug(error, 1);
+      e.printStackTrace();
+    }
   }
   
   public boolean isFileCatalog(){
-    return t_lfnFields!=null && t_lfnFields.length>0;
+    return fileCatalog;
   }
   
   public String connect() throws SQLException{
@@ -213,7 +233,7 @@ public class MySQLDatabase implements Database{
     return "";
   }
   
-  private void setFieldNames(){
+  private void setFieldNames() throws SQLException {
     datasetFields = getFieldNames("dataset");
     jobDefFields = getFieldNames("jobDefinition");
     transformationFields = getFieldNames("transformation");
@@ -221,9 +241,17 @@ public class MySQLDatabase implements Database{
     runtimeEnvironmentFields = getFieldNames("runtimeEnvironment");
     // only needed if we need an explicit file catalog where more than one
     // pfn per lfn can be registered.
-    t_lfnFields = getFieldNames("t_lfn");
-    t_pfnFields = getFieldNames("t_pfn");
-    t_metaFields = getFieldNames("t_meta");
+    try{
+      t_lfnFields = getFieldNames("t_lfn");
+      t_pfnFields = getFieldNames("t_pfn");
+      t_metaFields = getFieldNames("t_meta");
+    }
+    catch(SQLException e){
+    }
+    
+    if(t_lfnFields!=null && t_lfnFields.length>0){
+      fileCatalog = true;
+    }
   }
 
   private boolean makeTable(String table){
@@ -232,6 +260,9 @@ public class MySQLDatabase implements Database{
     //String [] fields = Util.split(tablesConfig.getValue("tables", table+" field names"), ",");
     String [] fields = Util.split(tablesConfig.getValue(dbName, table+" field names"), ",");
     String [] fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
+    if(fields==null || fieldTypes==null){
+      return false;
+    }
     String sql = "CREATE TABLE "+table+"(";
     for(int i=0; i<fields.length; ++i){
       if(i>0){
@@ -296,28 +327,22 @@ public class MySQLDatabase implements Database{
     return new String [] {""};
   }
  
-  public synchronized String [] getFieldNames(String table){
-    try{
-      Debug.debug("getFieldNames for table "+table, 3);
-      if(!isFileCatalog() && table.equalsIgnoreCase("file")){
-        return new String [] {"datasetName", "name", "url"};
-      }
-      Statement stmt = conn.createStatement();
-      // TODO: Do we need to execute a query to get the metadata?
-      ResultSet rset = stmt.executeQuery("SELECT * FROM "+table+" LIMIT 1");
-      ResultSetMetaData md = rset.getMetaData();
-      String [] res = new String[md.getColumnCount()];
-      for(int i=1; i<=md.getColumnCount(); ++i){
-        res[i-1] = md.getColumnName(i);
-      }
-      Debug.debug("found "+Util.arrayToString(res), 3);
-      return res;
+  public synchronized String [] getFieldNames(String table)
+     throws SQLException {
+    Debug.debug("getFieldNames for table "+table, 3);
+    if(!isFileCatalog() && table.equalsIgnoreCase("file")){
+      return new String [] {"datasetName", "name", "url"};
     }
-    catch(Exception e){
-      e.printStackTrace();
-      Debug.debug(e.getMessage(),1);
-      return null;
+    Statement stmt = conn.createStatement();
+    // TODO: Do we need to execute a query to get the metadata?
+    ResultSet rset = stmt.executeQuery("SELECT * FROM "+table+" LIMIT 1");
+    ResultSetMetaData md = rset.getMetaData();
+    String [] res = new String[md.getColumnCount()];
+    for(int i=1; i<=md.getColumnCount(); ++i){
+      res[i-1] = md.getColumnName(i);
     }
+    Debug.debug("found "+Util.arrayToString(res), 3);
+    return res;
   }
 
   public synchronized String getTransformationID(String transName, String transVersion){
@@ -413,8 +438,8 @@ public class MySQLDatabase implements Database{
     return Util.split(inputs);
   }
 
-  public String [] getJobDefTransPars(String transformationID){
-    String args =  getJobDefinition(transformationID).getValue("transPars").toString();
+  public String [] getJobDefTransPars(String jobDefID){
+    String args = getJobDefinition(jobDefID).getValue("transPars").toString();
     return Util.split(args);
   }
 
@@ -441,19 +466,18 @@ public class MySQLDatabase implements Database{
     for(int i=0; i<fouts.length; i++){
       if(par.equals(fouts[i])){
         name = map[i*2+1];
+        break;
       }
     }
     return name;
   }
 
-  public String getStdOutFinalDest(String jobDefinitionID){
-    // nothing for now
-    return "";
+  public String getStdOutFinalDest(String jobDefID){
+    return getJobDefinition(jobDefID).getValue("stdoutDest").toString();
   }
 
-  public String getStdErrFinalDest(String jobDefinitionID){
-    // nothing for now
-    return "";
+  public String getStdErrFinalDest(String jobDefID){
+    return getJobDefinition(jobDefID).getValue("stderrDest").toString();
   }
 
   public String getTransformationScript(String jobDefID){
@@ -556,11 +580,6 @@ public class MySQLDatabase implements Database{
     return ret;
   }
 
-  public boolean saveDefVals(String datasetID, String[] defvals, String user){
-    // nothing for now
-    return false;
-  }
-
   public synchronized DBResult select(String selectRequest, String identifier,
       boolean findAll){
     
@@ -598,24 +617,42 @@ public class MySQLDatabase implements Database{
       }
     }
     
-    // The "file" table is a pseudo table constructed from "jobDefinitions".
-    // We replace "url" with "outFileMapping" and parse the values of
-    // outFileMapping later.
-    if(req.matches("SELECT (.+) url\\, (.+) FROM file (.+)")){
-      patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
-      matcher = patt.matcher(req);
-      req = matcher.replaceAll("SELECT $1 outFileMapping, $2 FROM file $3");
+    if(isFileCatalog()){
+      // The "file" table is a pseudo table constructed from the tables
+      // t_pfn, t_lfn and t_meta
+      if(req.matches("SELECT (.+) FROM file WHERE (.+)")){
+        patt = Pattern.compile("SELECT (.+) FROM file WHERE (.+)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceAll("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE ($2) AND" +
+                "t_lfn.guid=t_pfn.guid AND t_meta.guid=t_pfn.guid");
+      }
+      if(req.matches("SELECT (.+) FROM file (.+)")){
+        patt = Pattern.compile("SELECT (.+) FROM file", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceAll("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE " +
+                "t_lfn.guid=t_pfn.guid AND t_meta.guid=t_pfn.guid");
+      }
     }
-    if(req.matches("SELECT (.+) url FROM file (.+)")){
-      patt = Pattern.compile("SELECT (.+) url FROM file (.+)", Pattern.CASE_INSENSITIVE);
-      matcher = patt.matcher(req);
-      req = matcher.replaceAll("SELECT $1 outFileMapping FROM file $2");
-    }
-    if(req.matches("SELECT (.+) FROM file (.+)")){
-      fileTable = true;
-      patt = Pattern.compile("SELECT (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
-      matcher = patt.matcher(req);
-      req = matcher.replaceAll("SELECT $1 FROM jobDefinition $2");
+    else{
+      // The "file" table is a pseudo table constructed from "jobDefinitions".
+      // We replace "url" with "outFileMapping" and parse the values of
+      // outFileMapping later.
+      if(req.matches("SELECT (.+) url\\, (.+) FROM file (.+)")){
+        patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceAll("SELECT $1 outFileMapping, $2 FROM file $3");
+      }
+      if(req.matches("SELECT (.+) url FROM file (.+)")){
+        patt = Pattern.compile("SELECT (.+) url FROM file (.+)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceAll("SELECT $1 outFileMapping FROM file $2");
+      }
+      if(req.matches("SELECT (.+) FROM file (.+)")){
+        fileTable = true;
+        patt = Pattern.compile("SELECT (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceAll("SELECT $1 FROM jobDefinition $2");
+      }
     }
 
     patt = Pattern.compile("CONTAINS (\\S+)", Pattern.CASE_INSENSITIVE);
@@ -633,7 +670,7 @@ public class MySQLDatabase implements Database{
       ResultSetMetaData md = rset.getMetaData();
       String[] fields = new String[md.getColumnCount()];
       //find out how many rows..
-      int i=0;
+      int i = 0;
       while(rset.next()){
         i++;
       }
@@ -1070,7 +1107,7 @@ public class MySQLDatabase implements Database{
   }
 
   // Selects only the fields listed in fieldNames. Other fields are set to "".
-  public synchronized DBRecord [] selectJobDefinitions(String datasetID, String [] fieldNames){
+  private synchronized DBRecord [] selectJobDefinitions(String datasetID, String [] fieldNames){
     
     String req = "SELECT";
     for(int i=0; i<fieldNames.length; ++i){
@@ -1131,7 +1168,7 @@ public class MySQLDatabase implements Database{
     DBResult res = new DBResult(runtimeEnvironmentFields.length, jt.length);
     res.fields = runtimeEnvironmentFields;
     for(int i=0; i<jt.length; ++i){
-      for(int j=0; j<jt.length; ++j){
+      for(int j=0; j<runtimeEnvironmentFields.length; ++j){
         res.values[i][j] = jt[i].values[j];
       }
     }
@@ -1284,7 +1321,6 @@ public class MySQLDatabase implements Database{
       try{
         Statement stmt = conn.createStatement();
         stmt.executeUpdate(arg);
-        conn.commit();
       }
       catch(Exception e){
         execok = false;
@@ -1362,6 +1398,10 @@ public class MySQLDatabase implements Database{
       }
     }
     sql += ")";
+    // When pasting to non-matching schema, there will be these
+    // if there are multiple non-matching fields
+    sql = sql.replaceFirst(",\\) VALUES ", ") VALUES ");
+    sql = sql.replaceFirst(",\\)$", ")");
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
@@ -1526,7 +1566,7 @@ public class MySQLDatabase implements Database{
     String sql = "UPDATE jobDefinition  SET ";
     int addedFields = 0;
     for(int i=0; i<jobDefFields.length; ++i){
-      if(!jobDefFields[i].equals("identifier")){
+      if(!jobDefFields[i].equalsIgnoreCase("identifier")){
         for(int j=0; j<fields.length; ++j){
           // only add if present in jobDefFields
           if(jobDefFields[i].equalsIgnoreCase(fields[j])){
@@ -1544,16 +1584,15 @@ public class MySQLDatabase implements Database{
             else{
               values[j] = "'"+values[j]+"'";
             }
-            
+            if(addedFields>0){
+              sql += ",";
+            }
             sql += fields[j];
             sql += "=";
             sql += values[j];
             ++addedFields;
             break;
           }
-        }
-        if(addedFields>0 && addedFields<fields.length-1){
-          sql += ",";
         }
       }
     }
@@ -1590,8 +1629,8 @@ public class MySQLDatabase implements Database{
 
     String sql = "UPDATE dataset SET ";
     int addedFields = 0;
-    for(int i=0; i < datasetFields.length; ++i){
-      if(!datasetFields[i].equals("identifier")){
+    for(int i=0; i<datasetFields.length; ++i){
+      if(!datasetFields[i].equalsIgnoreCase("identifier")){
         for(int j=0; j<fields.length; ++j){
           // only add if present in datasetFields
           if(datasetFields[i].equalsIgnoreCase(fields[j])){
@@ -1658,7 +1697,7 @@ public class MySQLDatabase implements Database{
     String sql = "UPDATE transformation SET ";
     int addedFields = 0;
     for(int i=0; i<transformationFields.length; ++i){
-      if(!transformationFields[i].equals("identifier")){
+      if(!transformationFields[i].equalsIgnoreCase("identifier")){
         for(int j=0; j<fields.length; ++j){
           // only add if present in transformationFields
           if(transformationFields[i].equalsIgnoreCase(fields[j])){
@@ -1725,7 +1764,7 @@ public class MySQLDatabase implements Database{
     String sql = "UPDATE runtimeEnvironment SET ";
     int addedFields = 0;
     for(int i=0; i<runtimeEnvironmentFields.length; ++i){
-      if(!runtimeEnvironmentFields[i].equals("identifier")){
+      if(!runtimeEnvironmentFields[i].equalsIgnoreCase("identifier")){
         for(int j=0; j<fields.length; ++j){
           // only add if present in runtimeEnvironmentFields
           if(runtimeEnvironmentFields[i].equalsIgnoreCase(fields[j])){
@@ -1817,7 +1856,7 @@ public class MySQLDatabase implements Database{
     boolean ok = true;
     try{
       String sql = "DELETE FROM jobDefinition WHERE dataset = '"+
-      getDataset(datasetID).getValue("name")+"'";
+        getDatasetName(datasetID)+"'";
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
     }
@@ -1937,16 +1976,24 @@ public class MySQLDatabase implements Database{
   }
   
   public DBRecord getFile(String datasetName, String fileID){
-    String [] fields = getFieldNames("file");
+    String [] fields = null;
+    try{
+      fields= getFieldNames("file");
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return null;
+    }
     String [] values = new String[fields.length];
     DBRecord file = new DBRecord(fields, values);
     // If the file catalog tables (t_pfn, t_lfn, t_meta) are present,
     // we use them.
     if(isFileCatalog()){
-      // "dsn", "lfn", "pfns", "guid"
+      Vector fieldsVector = new Vector();
+      // first some special fields; we lump all pfname's into the same pfname field
       for(int i=0; i<fields.length; ++i){
         try{
-          if(fields[i].equalsIgnoreCase("dsn")){
+          if(fields[i].equalsIgnoreCase("dsname")){
             file.setValue(fields[i], datasetName);
           }
           else if(fields[i].equalsIgnoreCase("lfn")){
@@ -1954,7 +2001,7 @@ public class MySQLDatabase implements Database{
             file.setValue(fields[i],
                 Util.getValues(conn, "t_lfn", "guid", fileID, new String [] {"lfname"})[0][0]);
           }
-          else if(fields[i].equalsIgnoreCase("pfns")){
+          else if(fields[i].equalsIgnoreCase("pfname")){
             String [][] res = Util.getValues(conn, "t_pfn", "guid", fileID, new String [] {"pfname"});
             String [] pfns = new String [res.length];
             for(int j=0; j<res.length; ++j){
@@ -1965,8 +2012,22 @@ public class MySQLDatabase implements Database{
           else if(fields[i].equalsIgnoreCase("guid")){
             file.setValue(fields[i], fileID);
           }
-
+          else{
+            fieldsVector.add(fields[i]);
         }
+        }
+        catch(Exception e){
+          Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
+        }
+      }
+      // get the rest of the values
+      DBResult res = select("SELECT LIMIT 0 1+" +
+          Util.arrayToString(fieldsVector.toArray(), ", ") +
+            " FROM file WHERE guid = "+fileID, "guid", true);
+      for(int i=0; i<fieldsVector.size(); ++i){
+        try{
+          file.setValue(fields[i], res.getValue(0, fields[i]).toString());
+    }
         catch(Exception e){
           Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
         }
@@ -2000,38 +2061,226 @@ public class MySQLDatabase implements Database{
     return file;
   }
 
-  // This is not really a file catalog: THE output file is
-  // the first in the list of fn -> pfn mappings of outFileMapping
+  // Take different actions depending on whether or not
+  // t_lfn, etc. are present
   public String [] getFileURLs(String datasetName, String fileID){
-    // TODO: take different actions depending on existence of file tables
-    String ret = null;
-    try{
-      DBRecord file = getFile(datasetName, fileID);
-      ret = file.getValue("url").toString();
+    if(isFileCatalog()){
+      String ret = null;
+      try{
+        DBRecord file = getFile(datasetName, fileID);
+        ret = file.getValue("pfname").toString();
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
+      }
+      return Util.split(ret);
     }
-    catch(Exception e){
-      Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
+    else{
+      String ret = null;
+      try{
+        DBRecord file = getFile(datasetName, fileID);
+        ret = file.getValue("url").toString();
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
+      }
+      return new String [] {ret};
     }
-    return new String [] {ret};
   }
 
   public void registerFileLocation(String datasetID, String datasetName,
-      String fileID, String lfn, String url, boolean datasetComplete){
-    // TODO
+      String fileID, String lfn, String url, boolean datasetComplete) throws Exception {
+    
+    // if this is not a file catalog we don't have to do anything
+    if(isFileCatalog()){
+      return;
+    }
+    
+    boolean datasetExists = false;
+    // Check if dataset already exists and has the same id
+    try{
+      String existingID = null;
+      try{
+        existingID = getDatasetID(datasetName);
+      }
+      catch(Exception ee){
+      }
+      if(existingID!=null && !existingID.equals("")){
+        if(!existingID.equalsIgnoreCase(datasetID)){
+          error = "WARNING: dataset "+datasetName+" already registered with id "+
+          existingID+"!="+datasetID+". Using "+existingID+".";
+          GridPilot.getClassMgr().getLogFile().addMessage(error);
+          datasetID = existingID;
+        }
+        datasetExists = true;
+      }
+    }
+    catch(Exception e){
+      datasetExists =false;
+    }
+    
+    // If the dataset does not exist, create it
+    if(!datasetExists){
+      try{
+        GridPilot.getClassMgr().getStatusBar().setLabel("Creating new dataset "+datasetName);
+        if(!createDataset("dataset", new String [] {"name"}, new Object [] {datasetName})){
+          throw new SQLException("createDataset failed");
+        }
+        datasetID = getDatasetID(datasetName);
+        GridPilot.getClassMgr().getLogFile().addInfo("Created new dataset "+datasetName+
+            ". Please add some metadata if needed.");
+        datasetExists = true;
+      }
+      catch(Exception e){
+        error = "WARNING: could not create dataset "+datasetName+
+        "Aborting . The file "+lfn+" would be an orphan. Please correct this by hand.";
+        GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+        datasetExists =false;
+        return;
+      }
+    }
+
+    boolean fileExists = false;
+    // Check if file already exists and has the same id
+    try{
+      String existingID = null;
+      try{
+        existingID = getFileID(lfn);
+      }
+      catch(Exception ee){
+      }
+      if(existingID!=null && !existingID.equals("")){
+        if(!existingID.equalsIgnoreCase(datasetID)){
+          error = "WARNING: file "+lfn+" already registered with id "+
+          existingID+"!="+fileID+". Using "+existingID+".";
+          GridPilot.getClassMgr().getLogFile().addMessage(error);
+          fileID = existingID;
+        }
+        fileExists = true;
+      }
+    }
+    catch(Exception e){
+      fileExists =false;
+    }
+    
+    // If the file does not exist, create it - with the url.
+    if(!fileExists){
+      try{
+        GridPilot.getClassMgr().getStatusBar().setLabel("Creating new file "+lfn);
+        if(!createFile(datasetName, fileID, lfn, url)){
+          throw new SQLException("create file failed");
+        }
+        datasetID = getFileID(lfn);
+        GridPilot.getClassMgr().getLogFile().addInfo("Created new file "+lfn+
+            ". Please add some metadata if needed.");
+        fileExists = true;
+      }
+      catch(Exception e){
+        error = "ERROR: could not create file "+lfn;
+        GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+        fileExists =false;
+      }
+    }
+    // Otherwise, just add the url.
+    else{
+      addUrlToFile(fileID, url);
+    }
+    
   }
- 
+
+  // This is only to be used if this is a file catalog.
+  private synchronized void addUrlToFile(String fileID, String url)
+     throws Exception {
+    String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ("+
+    url + ", " + fileID +
+    ")";
+    Debug.debug(sql, 2);
+    Statement stmt = conn.createStatement();
+    stmt.executeUpdate(sql);
+    conn.commit();
+  }
+  
+  // This is only to be used if this is a file catalog.
+  private synchronized boolean createFile(String datasetName, String fileID,
+      String lfn, String url){
+    
+    String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ("+
+    url + ", " + fileID +
+    "); ";
+    sql += "INSERT INTO t_lfn (lfname, guid) VALUES ("+
+    lfn + ", " + fileID +
+    "); ";    Debug.debug(sql, 2);
+    sql += "INSERT INTO t_meta (guid, dsname) VALUES ("+
+    fileID + ", " + datasetName +
+    ")";
+    Debug.debug(sql, 2);
+    boolean execok = true;
+    try{
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+      conn.commit();
+    }
+    catch(Exception e){
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+    }
+    return execok;
+  }
+
   public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) {
-    //  TODO
-    return false;
+    if(isFileCatalog()){
+      LogFile logFile = GridPilot.getClassMgr().getLogFile();
+      boolean ok = true;
+      for(int i=0; i<fileIDs.length; ++i){
+        try{
+          String req = "DELETE FROM t_lfn WHERE guid ='"+fileIDs[i]+"'";
+          Debug.debug(">> "+req, 3);
+          int rowsAffected = conn.createStatement().executeUpdate(req);
+          if(rowsAffected==0){
+            error = "WARNING: could not delete guid "+fileIDs[i]+" from t_lfn";
+            logFile.addMessage(error);
+          }
+          req = "DELETE FROM t_pfn WHERE guid ='"+fileIDs[i]+"'";
+          Debug.debug(">> "+req, 3);
+          rowsAffected = conn.createStatement().executeUpdate(req);
+          if(rowsAffected==0){
+            error = "WARNING: could not delete guid "+fileIDs[i]+" from t_pfn";
+            logFile.addMessage(error);
+          }
+          req = "DELETE FROM t_meta WHERE guid ='"+fileIDs[i]+"'";
+          Debug.debug(">> "+req, 3);
+          rowsAffected = conn.createStatement().executeUpdate(req);
+          if(rowsAffected==0){
+            error = "WARNING: could not delete guid "+fileIDs[i]+" from t_meta";
+            logFile.addMessage(error);
+          }
+        }
+        catch(Exception e){
+          ok = false;
+        }
+      }
+      return ok;
+    }
+    else{
+      // do nothing
+      return false;
+    }
   }
 
-  public String getFileDatasetID(String datasetName,String fileID){
-    // TODO
-    return null;
+  // This is only to be used if this is a file catalog.
+  private synchronized String getFileID(String lfn){
+    return Util.getValues(conn, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
+  }
+  
+  public String getFileID(String datasetName, String name){
+    if(isFileCatalog()){
+      return getFileID(name);
+    }
+    else{
+      // an autoincremented integer is of no use...
+      return null;
+    }
   }
 
-  public String getFileID(String datasetName,String fileID){
-    // TODO
-    return null;
-  }
 }

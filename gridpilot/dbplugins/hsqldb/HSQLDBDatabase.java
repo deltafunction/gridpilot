@@ -26,6 +26,7 @@ import gridpilot.ConfigFile;
 import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
+import gridpilot.LogFile;
 import gridpilot.Util;
 import gridpilot.DBResult;
 import gridpilot.DBRecord;
@@ -306,7 +307,7 @@ public class HSQLDBDatabase implements Database{
 
   public synchronized boolean cleanRunInfo(String jobDefID){
     String sql = "UPDATE jobDefinition SET jobID = ''," +
-        "outTmp = '', validationResult = '' " +
+        "outTmp = '', errTmp = '', validationResult = '' " +
         "WHERE identifier = '"+
     jobDefID+"'";
     boolean ok = true;
@@ -454,8 +455,10 @@ public class HSQLDBDatabase implements Database{
   }
 
   public String [] getOutputMapping(String jobDefID){
-    String outMap = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
-    return Util.split(outMap);
+    String transformationID = getJobDefTransformationID(jobDefID);
+    String outputs = getTransformation(
+        transformationID).getValue("outputFiles").toString();
+    return Util.split(outputs);
   }
 
   public String [] getJobDefInputFiles(String jobDefID){
@@ -1261,12 +1264,12 @@ public class HSQLDBDatabase implements Database{
     String sql = "INSERT INTO jobDefinition (";
     for(int i=1; i<jobDefFields.length; ++i){
       sql += jobDefFields[i];
-      if(jobDefFields.length>2 && i<jobDefFields.length - 1){
+      if(jobDefFields.length>2 && i<jobDefFields.length-1){
         sql += ",";
       }
     }
     sql += ") VALUES (";
-    for(int i = 1; i < jobDefFields.length; ++i){
+    for(int i = 1; i<jobDefFields.length; ++i){
       
       if(jobDefFields[i].equalsIgnoreCase("created")){
         try{
@@ -1455,8 +1458,8 @@ public class HSQLDBDatabase implements Database{
       }
     }
     sql += ")";
-    // When pasting to non-mathing schema, there will be these
-    // if  there are multiple non-matching fields
+    // When pasting to non-matching schema, there will be these
+    // if there are multiple non-matching fields
     sql = sql.replaceFirst(",\\) VALUES ", ") VALUES ");
     sql = sql.replaceFirst(",\\)$", ")");
     Debug.debug(sql, 2);
@@ -1633,14 +1636,14 @@ public class HSQLDBDatabase implements Database{
           if(jobDefFields[i].equalsIgnoreCase(fields[j])){
             if(jobDefFields[i].equalsIgnoreCase("created")){
               try{
-                values[i] = makeDate(values[i].toString());
+                values[j] = makeDate(values[j].toString());
               }
               catch(Exception e){
-                values[i] = makeDate("");
+                values[j] = makeDate("");
               }
             }
             else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
-              values[i] = makeDate("");
+              values[j] = makeDate("");
             }
             else if((jobDefFields[i].equalsIgnoreCase("outputFileSize") ||
                 jobDefFields[i].equalsIgnoreCase("CPU")) &&
@@ -1696,21 +1699,21 @@ public class HSQLDBDatabase implements Database{
 
     String sql = "UPDATE dataset SET ";
     int addedFields = 0;
-    for(int i=0; i < datasetFields.length; ++i){
+    for(int i=0; i<datasetFields.length; ++i){
       if(!datasetFields[i].equalsIgnoreCase("identifier")){
         for(int j=0; j<fields.length; ++j){
           // only add if present in datasetFields
           if(datasetFields[i].equalsIgnoreCase(fields[j])){
             if(datasetFields[i].equalsIgnoreCase("created")){
               try{
-                values[i] = makeDate(values[i].toString());
+                values[j] = makeDate(values[j].toString());
               }
               catch(Exception e){
-                values[i] = makeDate("");
+                values[j] = makeDate("");
               }
             }
             else if(datasetFields[i].equalsIgnoreCase("lastModified")){
-              values[i] = makeDate("");
+              values[j] = makeDate("");
             }
             else{
               values[j] = "'"+values[j]+"'";
@@ -1770,14 +1773,14 @@ public class HSQLDBDatabase implements Database{
           if(transformationFields[i].equalsIgnoreCase(fields[j])){
             if(transformationFields[i].equalsIgnoreCase("created")){
               try{
-                values[i] = makeDate(values[i].toString());
+                values[j] = makeDate(values[j].toString());
               }
               catch(Exception e){
-                values[i] = makeDate("");
+                values[j] = makeDate("");
               }
             }
             else if(transformationFields[i].equalsIgnoreCase("lastModified")){
-              values[i] = makeDate("");
+              values[j] = makeDate("");
             }
             else{
               values[j] = "'"+values[j]+"'";
@@ -1837,14 +1840,14 @@ public class HSQLDBDatabase implements Database{
           if(runtimeEnvironmentFields[i].equalsIgnoreCase(fields[j])){
             if(runtimeEnvironmentFields[i].equalsIgnoreCase("created")){
               try{
-                values[i] = makeDate(values[i].toString());
+                values[j] = makeDate(values[j].toString());
               }
               catch(Exception e){
-                values[i] = makeDate("");
+                values[j] = makeDate("");
               }
             }
             else if(runtimeEnvironmentFields[i].equalsIgnoreCase("lastModified")){
-              values[i] = makeDate("");
+              values[j] = makeDate("");
             }
             else{
               values[j] = "'"+Util.dbEncode(values[j])+"'";
@@ -2179,23 +2182,198 @@ public class HSQLDBDatabase implements Database{
   }
 
   public void registerFileLocation(String datasetID, String datasetName,
-      String fileID, String lfn, String url, boolean datasetComplete){
-    // TODO
+      String fileID, String lfn, String url, boolean datasetComplete) throws Exception {
+    
+    // if this is not a file catalog we don't have to do anything
+    if(isFileCatalog()){
+      return;
+    }
+    
+    boolean datasetExists = false;
+    // Check if dataset already exists and has the same id
+    try{
+      String existingID = null;
+      try{
+        existingID = getDatasetID(datasetName);
+      }
+      catch(Exception ee){
+      }
+      if(existingID!=null && !existingID.equals("")){
+        if(!existingID.equalsIgnoreCase(datasetID)){
+          error = "WARNING: dataset "+datasetName+" already registered with id "+
+          existingID+"!="+datasetID+". Using "+existingID+".";
+          GridPilot.getClassMgr().getLogFile().addMessage(error);
+          datasetID = existingID;
+        }
+        datasetExists = true;
+      }
+    }
+    catch(Exception e){
+      datasetExists =false;
+    }
+    
+    // If the dataset does not exist, create it
+    if(!datasetExists){
+      try{
+        GridPilot.getClassMgr().getStatusBar().setLabel("Creating new dataset "+datasetName);
+        if(!createDataset("dataset", new String [] {"name"}, new Object [] {datasetName})){
+          throw new SQLException("createDataset failed");
+        }
+        datasetID = getDatasetID(datasetName);
+        GridPilot.getClassMgr().getLogFile().addInfo("Created new dataset "+datasetName+
+            ". Please add some metadata if needed.");
+        datasetExists = true;
+      }
+      catch(Exception e){
+        error = "WARNING: could not create dataset "+datasetName+
+        "Aborting . The file "+lfn+" would be an orphan. Please correct this by hand.";
+        GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+        datasetExists =false;
+        return;
+      }
+    }
+
+    boolean fileExists = false;
+    // Check if file already exists and has the same id
+    try{
+      String existingID = null;
+      try{
+        existingID = getFileID(lfn);
+      }
+      catch(Exception ee){
+      }
+      if(existingID!=null && !existingID.equals("")){
+        if(!existingID.equalsIgnoreCase(datasetID)){
+          error = "WARNING: file "+lfn+" already registered with id "+
+          existingID+"!="+fileID+". Using "+existingID+".";
+          GridPilot.getClassMgr().getLogFile().addMessage(error);
+          fileID = existingID;
+        }
+        fileExists = true;
+      }
+    }
+    catch(Exception e){
+      fileExists =false;
+    }
+    
+    // If the file does not exist, create it - with the url.
+    if(!fileExists){
+      try{
+        GridPilot.getClassMgr().getStatusBar().setLabel("Creating new file "+lfn);
+        if(!createFile(datasetName, fileID, lfn, url)){
+          throw new SQLException("create file failed");
+        }
+        datasetID = getFileID(lfn);
+        GridPilot.getClassMgr().getLogFile().addInfo("Created new file "+lfn+
+            ". Please add some metadata if needed.");
+        fileExists = true;
+      }
+      catch(Exception e){
+        error = "ERROR: could not create file "+lfn;
+        GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+        fileExists =false;
+      }
+    }
+    // Otherwise, just add the url.
+    else{
+      addUrlToFile(fileID, url);
+    }
+    
+  }
+
+  // This is only to be used if this is a file catalog.
+  private synchronized void addUrlToFile(String fileID, String url)
+     throws Exception {
+    String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ("+
+    url + ", " + fileID +
+    ")";
+    Debug.debug(sql, 2);
+    Statement stmt = conn.createStatement();
+    stmt.executeUpdate(sql);
+    conn.commit();
   }
   
+  // This is only to be used if this is a file catalog.
+  private synchronized boolean createFile(String datasetName, String fileID,
+      String lfn, String url){
+    
+    String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ("+
+    url + ", " + fileID +
+    "); ";
+    sql += "INSERT INTO t_lfn (lfname, guid) VALUES ("+
+    lfn + ", " + fileID +
+    "); ";    Debug.debug(sql, 2);
+    sql += "INSERT INTO t_meta (guid, dsname) VALUES ("+
+    fileID + ", " + datasetName +
+    ")";
+    Debug.debug(sql, 2);
+    boolean execok = true;
+    try{
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+      conn.commit();
+    }
+    catch(Exception e){
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+    }
+    return execok;
+  }
+
   public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) {
-    //  TODO
-    return false;
+    if(isFileCatalog()){
+      LogFile logFile = GridPilot.getClassMgr().getLogFile();
+      boolean ok = true;
+      for(int i=0; i<fileIDs.length; ++i){
+        try{
+          String req = "DELETE FROM t_lfn WHERE guid ='"+fileIDs[i]+"'";
+          Debug.debug(">> "+req, 3);
+          int rowsAffected = conn.createStatement().executeUpdate(req);
+          if(rowsAffected==0){
+            error = "WARNING: could not delete guid "+fileIDs[i]+" from t_lfn";
+            logFile.addMessage(error);
+          }
+          req = "DELETE FROM t_pfn WHERE guid ='"+fileIDs[i]+"'";
+          Debug.debug(">> "+req, 3);
+          rowsAffected = conn.createStatement().executeUpdate(req);
+          if(rowsAffected==0){
+            error = "WARNING: could not delete guid "+fileIDs[i]+" from t_pfn";
+            logFile.addMessage(error);
+          }
+          req = "DELETE FROM t_meta WHERE guid ='"+fileIDs[i]+"'";
+          Debug.debug(">> "+req, 3);
+          rowsAffected = conn.createStatement().executeUpdate(req);
+          if(rowsAffected==0){
+            error = "WARNING: could not delete guid "+fileIDs[i]+" from t_meta";
+            logFile.addMessage(error);
+          }
+        }
+        catch(Exception e){
+          ok = false;
+        }
+      }
+      return ok;
+    }
+    else{
+      // do nothing
+      return false;
+    }
   }
 
-  public String getFileDatasetID(String datasetName,String fileID){
-    // TODO
-    return null;
+  // This is only to be used if this is a file catalog.
+  private synchronized String getFileID(String lfn){
+    return Util.getValues(conn, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
   }
-
-  public String getFileID(String datasetName,String fileID){
-    // TODO
-    return null;
+  
+  public String getFileID(String datasetName, String name){
+    if(isFileCatalog()){
+      return getFileID(name);
+    }
+    else{
+      // an autoincremented integer is of no use...
+      return null;
+    }
   }
 
 }
