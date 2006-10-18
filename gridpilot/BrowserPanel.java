@@ -447,19 +447,23 @@ public class BrowserPanel extends JDialog implements ActionListener{
     newUrl = newUrl.replaceAll("\\s+$", "");
     newUrl = newUrl.replaceAll("\\\\", "/");
     newUrl = newUrl.replaceAll("file:C", "file:/C");
-    Debug.debug("Adding URL to history: "+newUrl, 3);
+    
     // check if url is already in history and add if not
+    boolean refresh = false;
     if(!urlList.contains(newUrl)){
+      refresh = true;
+      Debug.debug("Adding URL to history: "+newUrl, 2);
       if(urlList.size()>HISTORY_SIZE){
         Debug.debug("History size exceeded, removing first, "+
-            urlList.size()+">"+HISTORY_SIZE, 3);
+            urlList.size()+">"+HISTORY_SIZE, 2);
         GridPilot.getClassMgr().removeUrl(urlList.iterator().next().toString());
       }
       GridPilot.getClassMgr().addUrl(newUrl);
       Debug.debug("urlSet is now: "+Util.arrayToString(
-          urlList.toArray(), " : "), 3);
+          urlList.toArray(), " : "), 2);
     }
-    if(!urlList.contains(newUrl) || currentUrlBox.getItemCount()==0 && urlList.size()>0){
+
+    if(refresh || currentUrlBox.getItemCount()==0 && urlList.size()>0){
       currentUrlBox.removeAllItems();
       urlList = GridPilot.getClassMgr().getUrlList();
       for(ListIterator it=urlList.listIterator(urlList.size()-1); it.hasPrevious();){
@@ -467,6 +471,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       currentUrlBox.updateUI();
     }
+
     addUrlKeyListener();
     currentUrlString = url;
     if(withNavigation){
