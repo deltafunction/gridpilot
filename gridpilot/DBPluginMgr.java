@@ -709,34 +709,6 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String getFileDatasetID(final String datasetName, final String fileID){
-    MyThread t = new MyThread(){
-      String res = "-1";
-      public void run(){
-        try{
-          res = db.getFileDatasetID(datasetName, fileID);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
-                             fileID, t);
-        }
-      }
-      public String getStringRes(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(Util.waitForThread(t, dbName, dbTimeOut, "getFileDatasetID")){
-      return t.getStringRes();
-    }
-    else{
-      return "-1";
-    }
-  }
-
   public String getJobDefStatus(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
@@ -1298,12 +1270,20 @@ public class DBPluginMgr implements Database{
     }
   }
 
+  /**
+   * Create a new record in a file table.The idea is to pass on
+   * values immediately grabbable from the source table, then look up
+   * the file locations. 
+   */
   public DBRecord createFil(DBPluginMgr sourceMgr, String datasetName, String name,
       String [] fields, Object [] values) throws Exception{
     
     String [] fileFieldNames = getFieldNames("file");
     String [] fileValues = new String [fileFieldNames.length];
     DBRecord file = new DBRecord(fileFieldNames, fileValues);
+    
+    // TODO: insert this record.
+    // TODO: rethink
    
     if(fields.length!=values.length){
       throw new DataFormatException("The number of fields and values do not agree, "+
@@ -1338,6 +1318,7 @@ public class DBPluginMgr implements Database{
       catch(Exception e){
         logFile.addMessage("ERROR: could not register "+urls[i]+" for file "+
             name+" in dataset "+datasetName, e);
+        GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: could not register "+urls[i]);
         ok = false;
       }
     }
