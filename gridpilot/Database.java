@@ -94,12 +94,11 @@ public interface Database{
   public DBRecord getFile(String datasetName, String fileID);
   public String getFileID(String datasetName, String fileID);
   public String [] getFileURLs(String datasetName, String fileID);
-  public String getFileDatasetID(String datasetName, String fileID);
   // For file catalogs only: register an lfn/pfn pair.
   // TODO: if fileID/lfn do not exist, create.
   // datasetComplete is ignored by other than ATLAS
   public void registerFileLocation(String datasetID, String datasetName,
-      String fileID, String lfn, String url, boolean datasetComplete);
+      String fileID, String lfn, String url, boolean datasetComplete) throws Exception;
   public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup);
   
   // ####### Job execution
