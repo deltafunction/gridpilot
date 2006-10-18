@@ -469,6 +469,10 @@ public class TransferControl{
         try{
           statusTable.setValueAt("NOT started!", transfers[i].getTableRow(),
               TransferInfo.FIELD_TRANSFER_ID);
+          statusTable.setValueAt(transfers[i].getSource().getURL(), transfers[i].getTableRow(),
+              TransferInfo.FIELD_SOURCE);
+          statusTable.setValueAt(transfers[i].getDestination().getURL(), transfers[i].getTableRow(),
+              TransferInfo.FIELD_DESTINATION);
           transfers[i].setInternalStatus(FileTransfer.STATUS_ERROR);
           transfers[i].setNeedToBeRefreshed(false);
           GridPilot.getClassMgr().getFTPlugin(
@@ -959,10 +963,19 @@ public class TransferControl{
       }
       if(datasetName==null || datasetName.equals("")){
         GridPilot.getClassMgr().getLogFile().addMessage("WARNING: dataset name not found. "+
-            "This file, "+lfn+", may not keep its dataset name.");
+            "This file, "+lfn+", may not keep its dataset association.");
       }
-      transfer.getDBPluginMgr().registerFileLocation(
-          datasetID, datasetName, guid, lfn, destination, false);
+      try{
+        transfer.getDBPluginMgr().registerFileLocation(
+            datasetID, datasetName, guid, lfn, destination, false);
+      }
+      catch(Exception e){
+        GridPilot.getClassMgr().getLogFile().addMessage(
+            "ERROR: could not register "+destination+" for file "+
+            lfn+" in dataset "+datasetName, e);
+        GridPilot.getClassMgr().getGlobalFrame(
+        ).monitoringPanel.statusBar.setLabel("ERROR: could not register "+destination);
+      }
       GridPilot.getClassMgr().getGlobalFrame(
          ).monitoringPanel.statusBar.setLabel("Registration done");
     }
