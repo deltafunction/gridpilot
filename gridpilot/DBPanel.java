@@ -2031,6 +2031,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     dlUrlDir = dlUrlDir.replaceFirst("\\\\", "/");
     dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w)://", "file:////$1://");
     dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w):/", "file:////$1:/");
+    dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w)", "file:////$1");
     for(int i=0; i<selectedFileIdentifiers.length; ++i){
       String [] urls = null;
       String guid = null;
@@ -2514,8 +2515,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     try{
       // Check if parent dataset exists
       String targetFileIdentifier = targetMgr.getIdentifierField("file");
-      String targetDsId = targetMgr.getFileDatasetID(datasetName,
-          file.getValue(targetFileIdentifier).toString());
+      String targetDsId = targetMgr.getDatasetID(datasetName);
       if(!targetDsId.equals("-1")){
         targetMgr.createFil(sourceMgr, datasetName, name, file.fields, file.values);
       }
