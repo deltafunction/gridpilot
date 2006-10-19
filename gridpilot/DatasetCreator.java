@@ -87,7 +87,10 @@ public class DatasetCreator{
                   transformationName, transformationVersion);
             }
             else if(cstAttrNames[j].equalsIgnoreCase("runNumber")){
-              resCstAttr[j] = dbPluginMgr.getRunNumber(datasetIDs[i]);
+              String runNum = dbPluginMgr.getRunNumber(datasetIDs[i]);
+              if(runNum!=null && !runNum.equals("") && !runNum.equals("-1")){
+                resCstAttr[j] = runNum;
+              }
             }
             else if(cstAttrNames[j].equalsIgnoreCase("inputDataset")){
               resCstAttr[j] = dbPluginMgr.getDatasetName(datasetIDs[i]);
@@ -182,28 +185,27 @@ public class DatasetCreator{
           //statusBar.removeLabel();
         }
       }
-    }
-    
+    } 
   }
 
   private boolean createDataset(DBPluginMgr dbPluginMgr, String targetTable){
     synchronized(semaphoreAMICreation){
-          statusBar.setLabel("Creating dataset ...");
-          pb.setValue(pb.getValue()+1);
-        
-          boolean succes = dbPluginMgr.createDataset(
-              targetTable, cstAttrNames, resCstAttr);
-          if(!succes){
-            JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
-               "ERROR: dataset cannot be created.\n"+
-               dbPluginMgr.getError(),
-               "", JOptionPane.ERROR_MESSAGE);
-            statusBar.setLabel("Dataset NOT created.");
-            return false;
-          }
-          else{
-            statusBar.setLabel("Dataset created.");
-          }
+      statusBar.setLabel("Creating dataset ...");
+      pb.setValue(pb.getValue()+1);
+    
+      boolean succes = dbPluginMgr.createDataset(
+          targetTable, cstAttrNames, resCstAttr);
+      if(!succes){
+        JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
+           "ERROR: dataset cannot be created.\n"+
+           dbPluginMgr.getError(),
+           "", JOptionPane.ERROR_MESSAGE);
+        statusBar.setLabel("Dataset NOT created.");
+        return false;
+      }
+      else{
+        statusBar.setLabel("Dataset created.");
+      }
     }
     return true;
   }
