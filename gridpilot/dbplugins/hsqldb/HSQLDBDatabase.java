@@ -27,6 +27,7 @@ import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.LogFile;
+import gridpilot.MessagePane;
 import gridpilot.Util;
 import gridpilot.DBResult;
 import gridpilot.DBRecord;
@@ -2186,6 +2187,9 @@ public class HSQLDBDatabase implements Database{
     
     // if this is not a file catalog we don't have to do anything
     if(isFileCatalog()){
+      String msg = "This is a virtual file catalog - it cannot be modified directly.";
+      String title = "Table cannot be modified";
+      MessagePane.showMessage(msg, title);
       return;
     }
     
