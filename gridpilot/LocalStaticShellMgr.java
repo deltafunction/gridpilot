@@ -298,6 +298,9 @@ public class LocalStaticShellMgr{
   }
   
   public static HashSet listFilesRecursively(String fileOrDir){
+    if(fileOrDir.startsWith("~")){
+      fileOrDir = System.getProperty("defaultUser.home")+fileOrDir.substring(1);
+    }
     return listFilesRecursively(new File(fileOrDir), new HashSet(), 1);
   }
 
