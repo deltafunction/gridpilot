@@ -28,6 +28,7 @@ import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.LogFile;
+import gridpilot.MessagePane;
 import gridpilot.Util;
 import gridpilot.DBResult;
 import gridpilot.DBRecord;
@@ -233,6 +234,28 @@ public class MySQLDatabase implements Database{
     return "";
   }
   
+  private boolean checkTable(String table){
+    ConfigFile tablesConfig = GridPilot.getClassMgr().getConfigFile();
+    String [] fields = null;
+    String [] fieldTypes = null;
+    try{
+      fields = Util.split(tablesConfig.getValue(dbName, table+" field names"), ",");
+      fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
+    }
+    catch(Exception e){
+    }
+    if(fields==null || fieldTypes==null){
+      return false;
+    }
+    else{
+      if(table.equalsIgnoreCase("t_pfn") ||table.equalsIgnoreCase("t_lfn") ||
+          table.equalsIgnoreCase("t_meta")){
+        fileCatalog = true;
+      }
+      return true;
+    }
+  }
+  
   private void setFieldNames() throws SQLException {
     datasetFields = getFieldNames("dataset");
     jobDefFields = getFieldNames("jobDefinition");
@@ -248,16 +271,15 @@ public class MySQLDatabase implements Database{
     }
     catch(SQLException e){
     }
-    
-    if(t_lfnFields!=null && t_lfnFields.length>0){
-      fileCatalog = true;
-    }
   }
 
   private boolean makeTable(String table){
-    //ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/mysql/tables.conf");
+    
+    if(!checkTable(table)){
+      return false;
+    }
+    
     ConfigFile tablesConfig = GridPilot.getClassMgr().getConfigFile();
-    //String [] fields = Util.split(tablesConfig.getValue("tables", table+" field names"), ",");
     String [] fields = Util.split(tablesConfig.getValue(dbName, table+" field names"), ",");
     String [] fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
     if(fields==null || fieldTypes==null){
@@ -332,6 +354,9 @@ public class MySQLDatabase implements Database{
     Debug.debug("getFieldNames for table "+table, 3);
     if(!isFileCatalog() && table.equalsIgnoreCase("file")){
       return new String [] {"datasetName", "name", "url"};
+    }
+    else if(!checkTable(table)){
+      return null;
     }
     Statement stmt = conn.createStatement();
     // TODO: Do we need to execute a query to get the metadata?
@@ -2093,6 +2118,9 @@ public class MySQLDatabase implements Database{
     
     // if this is not a file catalog we don't have to do anything
     if(isFileCatalog()){
+      String msg = "This is a virtual file catalog - it cannot be modified directly.";
+      String title = "Table cannot be modified";
+      MessagePane.showMessage(msg, title);
       return;
     }
     

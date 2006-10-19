@@ -207,6 +207,28 @@ public class HSQLDBDatabase implements Database{
     return "";
   }
   
+  private boolean checkTable(String table){
+    ConfigFile tablesConfig = GridPilot.getClassMgr().getConfigFile();
+    String [] fields = null;
+    String [] fieldTypes = null;
+    try{
+      fields = Util.split(tablesConfig.getValue(dbName, table+" field names"), ",");
+      fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
+    }
+    catch(Exception e){
+    }
+    if(fields==null || fieldTypes==null){
+      return false;
+    }
+    else{
+      if(table.equalsIgnoreCase("t_pfn") ||table.equalsIgnoreCase("t_lfn") ||
+          table.equalsIgnoreCase("t_meta")){
+        fileCatalog = true;
+      }
+      return true;
+    }
+  }
+
   private void setFieldNames() throws SQLException {
     //ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/hsqldb/tables.conf");
     configFile = GridPilot.getClassMgr().getConfigFile();
@@ -230,15 +252,15 @@ public class HSQLDBDatabase implements Database{
     }
     catch(SQLException e){
     }
-    
-    if(t_lfnFields!=null && t_lfnFields.length>0){
-      fileCatalog = true;
-    }
   }
 
   private boolean makeTable(String table){
     Debug.debug("Creating table "+table, 3);
-    //ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/hsqldb/tables.conf");
+
+    if(!checkTable(table)){
+      return false;
+    }
+    
     String [] fields = Util.split(configFile.getValue(dbName, table+" field names"), ",");
     String [] fieldTypes = Util.split(configFile.getValue(dbName, table+" field types"), ",");
     if(fields==null || fieldTypes==null){
@@ -360,6 +382,9 @@ public class HSQLDBDatabase implements Database{
     Debug.debug("getFieldNames for table "+table, 3);
     if(!isFileCatalog() && table.equalsIgnoreCase("file")){
       return new String [] {"datasetName", "name", "url"};
+    }
+    else if(!checkTable(table)){
+      return null;
     }
     //return new String [] {"dsn", "lfn", "pfns", "guid"};
     Statement stmt = conn.createStatement();
