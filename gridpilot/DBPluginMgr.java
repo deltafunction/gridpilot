@@ -1275,33 +1275,8 @@ public class DBPluginMgr implements Database{
    * values immediately grabbable from the source table, then look up
    * the file locations. 
    */
-  public DBRecord createFil(DBPluginMgr sourceMgr, String datasetName, String name,
-      String [] fields, Object [] values) throws Exception{
-    
-    String [] fileFieldNames = getFieldNames("file");
-    String [] fileValues = new String [fileFieldNames.length];
-    DBRecord file = new DBRecord(fileFieldNames, fileValues);
-    
-    // TODO: insert this record.
-    // TODO: rethink
-   
-    if(fields.length!=values.length){
-      throw new DataFormatException("The number of fields and values do not agree, "+
-          fields.length+"!="+values.length);
-    }
-    if(fields.length>fileFieldNames.length){
-      Debug.debug("The number of fields is too large, "+
-          fields.length+">"+fileFieldNames.length, 1);
-    }
-    
-    for(int i=0; i<fileFieldNames.length; ++i){
-      for(int j=0; j<fields.length; ++j){
-        if(fields[j].equalsIgnoreCase(fileFieldNames[i])){
-          file.setValue(fileFieldNames[i], values[j].toString());
-        }
-      }
-    }
-    
+  public void createFil(DBPluginMgr sourceMgr, String datasetName, String name) throws Exception{
+       
     String datasetID = sourceMgr.getDatasetID(datasetName);
     String fileID = sourceMgr.getFileID(datasetName, name);
     String [] urls = sourceMgr.getFileURLs(datasetName, fileID);
@@ -1325,8 +1300,6 @@ public class DBPluginMgr implements Database{
     if(!finalOk){
       throw new IOException("ERROR: could not register any files.");
     }
-    
-    return file;
   }
 
   public synchronized boolean createTransformation(final Object [] values){

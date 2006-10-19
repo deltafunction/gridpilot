@@ -14,6 +14,7 @@ import org.globus.util.GlobusURL;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Vector;
@@ -2265,7 +2266,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     Debug.debug("Copying!", 3);
     int [] rows = tableResults.getSelectedRows();
     String [] ids = getSelectedIdentifiers();
-    String [] idNames = new String [ids.length];
+    String [] copyObjects = new String [ids.length];
     if(tableName.equalsIgnoreCase("file")){
       String nameField = dbPluginMgr.getNameField("file");
       String [] datasetNameFields = dbPluginMgr.getFileDatasetReference();
@@ -2281,14 +2282,17 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       }
       for(int i=0; i<ids.length; ++i){
-        idNames[i] = 
+        copyObjects[i] = 
           "'"+tableResults.getValueAt(rows[i], datasetNameIndex).toString()+"'::'"+
           tableResults.getValueAt(rows[i], nameIndex).toString()+"'::'"+
           ids[i]+"'";
       }
     }
+    else{
+      copyObjects = ids;
+    }
     StringSelection stringSelection = new StringSelection(
-        dbName+" "+tableName+" "+Util.arrayToString(idNames));
+        dbName+" "+tableName+" "+Util.arrayToString(copyObjects));
     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
     clipboard.setContents(stringSelection, this);
     clipboardOwned = true;
@@ -2313,14 +2317,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(!clipboardOwned){
       return;
     }
+    boolean ok = true;
     try{
+      // this can stay null for other than files
       String datasetName = null;
+      // this can stay null for other than datasets and files
       String name = null;
+      // this is always needed
       String id = null;
       for(int i=2; i<records.length; ++i){
         name = null;
-        id = null;
-        // Check if record is a dataset and already there and
+        id = records[i];
+        // Check if record is a dataset and already there
         // ask for prefix if this is the case.
         // Only datasets have unique names.
         try{
@@ -2332,7 +2340,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                 "new-"+name);
             }
           }
-          if(tableName.equalsIgnoreCase("file")){
+          else if(tableName.equalsIgnoreCase("file")){
             // Well, once more, because DQ2 cannot lookup files we have
             // to introduce an ugly hack: we pass both dataset name, file name and id
             // ('dsname'::'name'::'id') when copy-pasting
@@ -2344,10 +2352,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             id = rest.substring(index+4, rest.length()-1);
             
           }
-          insertRecord(records[0], records[1], dbName, tableName,
-              id, name, datasetName);
+          insertRecord(records[0], records[1], id, name, datasetName);
         }
         catch(Exception e){
+          ok = false;
           String error = "ERROR: could not insert record: "+
           records[0]+", "+records[1]+", "+dbName+", "+tableName+", "+
           records[i]+", "+name;
@@ -2387,7 +2395,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       statusBar.removeProgressBar(pb);
     }
     GridPilot.getClassMgr().getGlobalFrame().cutting = false;
-    refresh();
+    if(ok){
+      refresh();
+    }
     try{
       if(GridPilot.getClassMgr().getGlobalFrame().cutPanel!=null){
         ((DBPanel) GridPilot.getClassMgr().getGlobalFrame().cutPanel).refresh();
@@ -2408,25 +2418,24 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * @param targetTable
    * @param id
    * @param name
+   * @param datasetName    only relevant for job definitions and files
    * @throws Exception
    */
   public void insertRecord(String sourceDB, String sourceTable,
-      String targetDB, String targetTable, String id, String name,
-      String datasetName) throws Exception{
+      String id, String name, String datasetName) throws Exception{
     
     DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(sourceDB);
-    DBPluginMgr targetMgr = GridPilot.getClassMgr().getDBPluginMgr(targetDB);
     
     DBRecord record = null;
 
     if(tableName.equalsIgnoreCase("jobDefinition")){
       try{
         record = sourceMgr.getJobDefinition(id);
-        insertJobDefinition(record, targetMgr);
+        insertJobDefinition(record);
       }
       catch(Exception e){
         String msg = "ERROR: job definition "+id+" could not be created, "+sourceDB+
-        "."+sourceTable+"->"+targetDB+"."+targetTable+". "+e.getMessage();
+        "."+sourceTable+"->"+dbName+"."+tableName+". "+e.getMessage();
         Debug.debug(msg, 1);
         statusBar.setLabel(msg);
         GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
@@ -2436,11 +2445,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     else if(tableName.equalsIgnoreCase("dataset")){
       try{
         record = sourceMgr.getDataset(id);
-        insertDataset(record, sourceMgr, targetMgr, name);
+        insertDataset(record, sourceMgr, name);
       }
       catch(Exception e){
         String msg = "ERROR: dataset "+id+" could not be created, "+sourceDB+
-        "."+sourceTable+"->"+targetDB+"."+targetTable+". "+e.getMessage();
+        "."+sourceTable+"->"+dbName+"."+tableName+". "+e.getMessage();
         Debug.debug(msg, 1);
         statusBar.setLabel(msg);
         GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
@@ -2450,11 +2459,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     else if(tableName.equalsIgnoreCase("transformation")){
       try{
         record = sourceMgr.getTransformation(id);
-        insertTransformation(record, sourceMgr, targetMgr);
+        insertTransformation(record, sourceMgr);
       }
       catch(Exception e){
         String msg = "ERROR: transformation "+id+" could not be created, "+sourceDB+
-        "."+sourceTable+"->"+targetDB+"."+targetTable+". "+e.getMessage();
+        "."+sourceTable+"->"+dbName+"."+tableName+". "+e.getMessage();
         Debug.debug(msg, 1);
         statusBar.setLabel(msg);
         GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
@@ -2464,11 +2473,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
       try{
         record = sourceMgr.getRuntimeEnvironment(id);
-        insertRuntimeEnvironment(record, targetMgr);
+        insertRuntimeEnvironment(record);
       }
       catch(Exception e){
         String msg = "ERROR: runtime environment "+id+" could not be created, "+sourceDB+
-        "."+sourceTable+"->"+targetDB+"."+targetTable+". "+e.getMessage();
+        "."+sourceTable+"->"+dbName+"."+tableName+". "+e.getMessage();
         Debug.debug(msg, 1);
         statusBar.setLabel(msg);
         GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
@@ -2478,11 +2487,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     else if(tableName.equalsIgnoreCase("file")){
       try{
         record = sourceMgr.getFile(datasetName, id);
-        insertFile(record, dbPluginMgr, targetMgr, name, datasetName);
+        // TODO: copy also file metadata?
+        insertFile(sourceMgr, name, datasetName);
       }
       catch(Exception e){
         String msg = "ERROR: file "+id+" could not be inserted, "+sourceDB+
-        "."+sourceTable+"->"+targetDB+"."+targetTable+". "+e.getMessage();
+        "."+sourceTable+"->"+dbName+"."+tableName+". "+e.getMessage();
         Debug.debug(msg, 1);
         statusBar.setLabel(msg);
         GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
@@ -2491,17 +2501,17 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
   }
   
-  public boolean insertJobDefinition(DBRecord jobDef, DBPluginMgr dbMgr) throws Exception{  
+  public boolean insertJobDefinition(DBRecord jobDef) throws Exception{  
     try{
       // Check if parent dataset exists
-      String targetJobDefIdentifier = dbMgr.getIdentifierField("jobDefinition");
-      String targetDsId = dbMgr.getJobDefDatasetID(jobDef.getValue(targetJobDefIdentifier).toString());
+      String targetJobDefIdentifier = dbPluginMgr.getIdentifierField("jobDefinition");
+      String targetDsId = dbPluginMgr.getJobDefDatasetID(jobDef.getValue(targetJobDefIdentifier).toString());
       if(!targetDsId.equals("-1")){
-        dbMgr.createJobDef(jobDef.fields, jobDef.values);
+        dbPluginMgr.createJobDef(jobDef.fields, jobDef.values);
       }
       else{
-        throw(new Exception("ERROR: Parent dataset for job defintion "+
-            jobDef.getValue(targetJobDefIdentifier)+" does not exist."));
+        String error = "ERROR: parent dataset for job definition does not exist.";
+        throw(new Exception(error));
       }
     }
     catch(Exception e){
@@ -2510,18 +2520,19 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return true;
   }
   
-  public boolean insertFile(DBRecord file, DBPluginMgr targetMgr, 
-      DBPluginMgr sourceMgr, String name, String datasetName) throws Exception{  
+  public boolean insertFile(DBPluginMgr sourceMgr, String name, String datasetName) throws Exception{
+    if(!dbPluginMgr.isFileCatalog()){
+      throw new SQLException("Cannot create file(s) in virtual table.");
+    }
     try{
       // Check if parent dataset exists
-      String targetFileIdentifier = targetMgr.getIdentifierField("file");
-      String targetDsId = targetMgr.getDatasetID(datasetName);
-      if(!targetDsId.equals("-1")){
-        targetMgr.createFil(sourceMgr, datasetName, name, file.fields, file.values);
+      String targetDatasetId = dbPluginMgr.getDatasetID(datasetName);
+      if(!targetDatasetId.equals("-1")){
+        dbPluginMgr.createFil(sourceMgr, datasetName, name);
       }
       else{
-        throw(new Exception("ERROR: Parent dataset for job defintion "+
-            file.getValue(targetFileIdentifier)+" does not exist."));
+        throw(new Exception("ERROR: Parent dataset for file "+
+            name+" does not exist."));
       }
     }
     catch(Exception e){
@@ -2531,13 +2542,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   public boolean insertDataset(DBRecord dataset, DBPluginMgr sourceMgr,
-      DBPluginMgr targetMgr, String name) throws Exception{
+      String name) throws Exception{
     try{
       boolean ok = false;
       boolean success = true;
       try{
-        // Check if referenced transformation exists
-        
+        // Check if referenced transformation exists     
         String sourceTransName = sourceMgr.getDatasetTransformationName(
             dataset.getValue(sourceMgr.getIdentifierField(
                 "dataset")).toString());
@@ -2545,20 +2555,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             dataset.getValue(sourceMgr.getIdentifierField(
                 "dataset")).toString());  
         
-        DBResult targetTransformations = targetMgr.getTransformations();
+        DBResult targetTransformations = dbPluginMgr.getTransformations();
         Vector transVec = new Vector();
         for(int i=0; i<targetTransformations.values.length; ++i){
-          if(targetTransformations.getValue(i, targetMgr.getNameField(
+          if(targetTransformations.getValue(i, dbPluginMgr.getNameField(
               "transformation")).toString(
               ).equalsIgnoreCase(sourceTransName)){
             transVec.add(targetTransformations.getRow(i));
           }
         }
         for(int i=0; i<transVec.size(); ++i){
-          // TODO: consider adding method like getVersionField
-          if(((DBRecord) transVec.get(i)).getValue(targetMgr.getVersionField(
-              "transformation")
-              ).toString().equalsIgnoreCase(sourceTransVersion)){
+          if(((DBRecord) transVec.get(i)).getValue(dbPluginMgr.getVersionField(
+              "transformation")).toString().equalsIgnoreCase(sourceTransVersion)){
             ok = true;
             break;
           }
@@ -2567,7 +2575,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       catch(Exception ee){
         ee.printStackTrace();
       }
-      if(ok){
+      // only if this is a job-only database (no file catalog) do we deny creating
+      // orphaned datasets (data provenance enforcement).
+      if(ok || dbPluginMgr.isFileCatalog()){
         Debug.debug("Creating dataset: " + Util.arrayToString(dataset.fields, ":") + " ---> " +
             Util.arrayToString(dataset.values, ":"), 3);
         try{
@@ -2576,22 +2586,19 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             dataset.setValue(sourceMgr.getNameField("dataset"),
                 name);
           }
-          else{
-            dataset.setValue(sourceMgr.getNameField("dataset"),
-                dataset.getValue(sourceMgr.getNameField("dataset")).toString());
-          }
         }
         catch(Exception e){
-          Debug.debug("WARNING: Could not add prefix", 3);
+          Debug.debug("WARNING: Could not set dataset name "+name, 3);
           e.printStackTrace();
         }
-        success = targetMgr.createDataset("dataset", dataset.fields, dataset.values);
+        success = dbPluginMgr.createDataset("dataset", dataset.fields, dataset.values);
         if(!success){
-          throw(new Exception("ERROR: "+targetMgr.getError()));
+          throw(new Exception("ERROR: "+dbPluginMgr.getError()));
         }
       }
       else{
-        throw(new Exception("ERROR: Transformation for dataset does not exist."));
+        String error = "ERROR: transformation for dataset does not exist.";
+        throw(new Exception(error));
       }
     }
     catch(Exception e){
@@ -2600,29 +2607,27 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return true;
   }
   
-  public boolean insertTransformation(DBRecord transformation, DBPluginMgr sourceMgr,
-      DBPluginMgr targetMgr) throws Exception{
+  public boolean insertTransformation(DBRecord transformation, DBPluginMgr sourceMgr)
+     throws Exception{
     try{
       // Check if referenced runtime environment exists
       String sourceTransformationIdentifier = sourceMgr.getIdentifierField("transformation");
-      String targetTransformationIdentifier = targetMgr.getIdentifierField("transformation");
-      String targetRuntimeEnvironmentName = targetMgr.getNameField("runtimeEnvironment");
+      String targetTransformationIdentifier = dbPluginMgr.getIdentifierField("transformation");
+      String targetRuntimeEnvironmentName = dbPluginMgr.getNameField("runtimeEnvironment");
       String runtimeEnvironment = sourceMgr.getTransformationRuntimeEnvironment(
           transformation.getValue(
               sourceTransformationIdentifier).toString());
-      DBResult targetRuntimes = targetMgr.getRuntimeEnvironments();
+      DBResult targetRuntimes = dbPluginMgr.getRuntimeEnvironments();
       Vector runtimeNames = new Vector();
       for(int i=0; i<targetRuntimes.values.length; ++i){
         runtimeNames.add(targetRuntimes.getValue(i, targetRuntimeEnvironmentName).toString());
       }
-      if(runtimeEnvironment!=null && runtimeNames!=null &&
-          runtimeNames.contains(runtimeEnvironment)){
-        targetMgr.createTransformation(transformation.values);
+      if(runtimeEnvironment==null || runtimeNames==null ||
+          !runtimeNames.contains(runtimeEnvironment)){
+        GridPilot.getClassMgr().getLogFile().addInfo("WARNING: runtime environment for transformation "+
+              transformation.getValue(targetTransformationIdentifier)+" does not exist.");
       }
-      else{
-        throw(new Exception("ERROR: runtime environment for transformation "+
-            transformation.getValue(targetTransformationIdentifier)+" does not exist."));
-      }
+      dbPluginMgr.createTransformation(transformation.values);
     }
     catch(Exception e){
       throw e;
@@ -2630,9 +2635,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return true;
   }
   
-  public boolean insertRuntimeEnvironment(DBRecord pack, DBPluginMgr dbMgr) throws Exception{
+  public boolean insertRuntimeEnvironment(DBRecord pack) throws Exception{
     try{
-      dbMgr.createRuntimeEnvironment(pack.values);
+      dbPluginMgr.createRuntimeEnvironment(pack.values);
     }
     catch(Exception e){
       throw e;
