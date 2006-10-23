@@ -2630,7 +2630,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         GridPilot.getClassMgr().getLogFile().addInfo("WARNING: runtime environment for transformation "+
               transformation.getValue(targetTransformationIdentifier)+" does not exist.");
       }
-      dbPluginMgr.createTransformation(transformation.values);
+      dbPluginMgr.createTrans(transformation.fields, transformation.values);
     }
     catch(Exception e){
       throw e;
@@ -2640,7 +2640,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   
   public boolean insertRuntimeEnvironment(DBRecord pack) throws Exception{
     try{
-      dbPluginMgr.createRuntimeEnvironment(pack.values);
+      dbPluginMgr.createRuntimeEnv(pack.fields, pack.values);
     }
     catch(Exception e){
       throw e;

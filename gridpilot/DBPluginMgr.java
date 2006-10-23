@@ -1270,6 +1270,70 @@ public class DBPluginMgr implements Database{
     }
   }
 
+  public DBRecord createTrans(String [] fields, Object [] values) throws Exception{
+    
+    String [] transFieldNames = getFieldNames("transformation");
+    
+    if(fields.length!=values.length){
+      throw new DataFormatException("The number of fields and values do not agree, "+
+          fields.length+"!="+values.length);
+    }
+    if(fields.length>transFieldNames.length){
+      Debug.debug("The number of fields is too large, "+
+          fields.length+">"+transFieldNames.length, 1);
+    }
+    String [] vals = new String[transFieldNames.length];
+    for(int i=0; i<transFieldNames.length; ++i){
+      vals[i] = "";
+      for(int j=0; j<fields.length; ++j){
+        if(fields[j].equalsIgnoreCase(transFieldNames[i]) &&
+            !fields[j].equalsIgnoreCase(getIdentifierField("transformation"))){
+          vals[i] = values[j].toString();
+          break;
+        }
+      }
+    }
+    DBRecord jobDef = new DBRecord(transFieldNames, vals);
+    if(createTransformation(vals)){
+       return jobDef;
+    }
+    else{
+      throw new IOException("ERROR: createTransformation failed");
+    }
+  }
+
+  public DBRecord createRuntimeEnv(String [] fields, Object [] values) throws Exception{
+    
+    String [] runtimeFieldNames = getFieldNames("runtimeEnvironment");
+    
+    if(fields.length!=values.length){
+      throw new DataFormatException("The number of fields and values do not agree, "+
+          fields.length+"!="+values.length);
+    }
+    if(fields.length>runtimeFieldNames.length){
+      Debug.debug("The number of fields is too large, "+
+          fields.length+">"+runtimeFieldNames.length, 1);
+    }
+    String [] vals = new String[runtimeFieldNames.length];
+    for(int i=0; i<runtimeFieldNames.length; ++i){
+      vals[i] = "";
+      for(int j=0; j<fields.length; ++j){
+        if(fields[j].equalsIgnoreCase(runtimeFieldNames[i]) &&
+            !fields[j].equalsIgnoreCase(getIdentifierField("runtimeEnvironment"))){
+          vals[i] = values[j].toString();
+          break;
+        }
+      }
+    }
+    DBRecord jobDef = new DBRecord(runtimeFieldNames, vals);
+    if(createRuntimeEnvironment(vals)){
+       return jobDef;
+    }
+    else{
+      throw new IOException("ERROR: createRuntimeEnvironment failed");
+    }
+  }
+
   /**
    * Create a new record in a file table.The idea is to pass on
    * values immediately grabbable from the source table, then look up
