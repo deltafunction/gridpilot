@@ -1347,6 +1347,7 @@ public class MySQLDatabase implements Database{
           "')";
     if(datasetName!=null && !datasetName.equals("")){
       boolean execok = true;
+      Debug.debug("Updating >>> "+arg, 2);
       try{
         Statement stmt = conn.createStatement();
         stmt.executeUpdate(arg);
@@ -1355,6 +1356,7 @@ public class MySQLDatabase implements Database{
         execok = false;
         Debug.debug(e.getMessage(), 2);
         error = e.getMessage();
+        e.printStackTrace();
       }
       return execok;
     }
