@@ -906,13 +906,13 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String [] getOutputMapping(final String jobDefID){
+  public String [] getOutputFiles(final String jobDefID){
   
     MyThread t = new MyThread(){
       String [] res = null;
       public void run(){
         try{
-          res = db.getOutputMapping(jobDefID);
+          res = db.getOutputFiles(jobDefID);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +

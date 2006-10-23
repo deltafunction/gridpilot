@@ -105,7 +105,7 @@ public interface Database{
   public String getRunInfo(String jobDefID, String key);
   public boolean cleanRunInfo(String jobDefID);
   public boolean reserveJobDefinition(String jobDefID, String UserName, String cs);
-  public String [] getOutputMapping(String jobDefID);
+  public String [] getOutputFiles(String jobDefID);
   public String [] getJobDefInputFiles(String jobDefID);
   public String getJobDefOutRemoteName(String jobDefID, String par);
   public String getJobDefOutLocalName(String jobDefID, String par);
