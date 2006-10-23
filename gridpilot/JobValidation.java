@@ -136,7 +136,7 @@ public class JobValidation{
               job.getJobDefId()));
       datasetMgr.updateDBStatus(job, dbStatus);
     }
-    if(dbStatus!=job.getDBStatus()){ // checks that updateAMIStatus succeded
+    if(dbStatus!=job.getDBStatus()){ // checks that updateDBStatus succeded
       logFile.addMessage("update DB status failed after validation ; " +
                          "this job is set back updatable, and will be revalidated later " +
                          "(after redetection of this job end", job);

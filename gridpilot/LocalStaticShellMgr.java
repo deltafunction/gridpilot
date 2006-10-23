@@ -5,6 +5,9 @@ import java.util.*;
 
 public class LocalStaticShellMgr{
 
+  private static int MAX_DEPTH = 10;
+  private HashMap processes = new HashMap();
+  
   public LocalStaticShellMgr(){
   }
 
@@ -279,8 +282,6 @@ public class LocalStaticShellMgr{
     return new File(dir).isDirectory();
   }
   
-  private static int MAX_DEPTH = 10;
-  
   private static HashSet listFilesRecursively(File fileOrDir, HashSet files, int depth){
     Debug.debug("Listing "+fileOrDir.getAbsolutePath()+":"+fileOrDir.isFile()+":"+
         fileOrDir.isDirectory()+":"+depth, 3);
@@ -299,7 +300,7 @@ public class LocalStaticShellMgr{
   
   public static HashSet listFilesRecursively(String fileOrDir){
     if(fileOrDir.startsWith("~")){
-      fileOrDir = System.getProperty("defaultUser.home")+fileOrDir.substring(1);
+      fileOrDir = System.getProperty("user.home")+fileOrDir.substring(1);
     }
     return listFilesRecursively(new File(fileOrDir), new HashSet(), 1);
   }
@@ -316,20 +317,25 @@ public class LocalStaticShellMgr{
    * @return hash code of the started process
    * @throws IOException
    */
-  public HashMap processes = new HashMap();
-  
   public Process getProcess(String cmd){
     Process ret = null;
     try{
+      Debug.debug("getting process "+cmd, 3);
       ret = (Process) processes.get(cmd);
+      Debug.debug("got process "+ret, 3);
     }
     catch(Exception e){
       Debug.debug("Could not get process for "+cmd, 2);
     }
     return ret;
   }
+  
+  public HashMap getProcesses(){
+    return processes;
+  }
 
   public void addProcess(String cmd, Process process){
+    Debug.debug("adding process "+cmd+" :: "+process, 3);
     processes.put(cmd, process);
   }
 
@@ -345,7 +351,7 @@ public class LocalStaticShellMgr{
       public void run(){
         try{
           
-          final Process proc = Runtime.getRuntime().exec(cmd, null, 
+          Process proc = Runtime.getRuntime().exec(cmd, null, 
               (workingDirectory==null ? null : new File(workingDirectory)));
           
           FileOutputStream fos = new FileOutputStream(stdOutFile);
@@ -356,7 +362,7 @@ public class LocalStaticShellMgr{
 
           errorGobbler.start();
           outputGobbler.start();
-                                
+                                          
           addProcess(cmd, proc);
 
           proc.waitFor();
@@ -381,13 +387,15 @@ public class LocalStaticShellMgr{
     Debug.debug("Running job: "+cmd, 2);
     runThread.start();
     
-    for(int rep=0; rep<10; ++rep){
-      Debug.debug("Sleeping 3 seconds...", 2);
-      Thread.sleep(3000);
+    // Try 3 times to get the job id. If not possible, submission has
+    // probably failed (or finished very very fast...)
+    for(int rep=0; rep<3; ++rep){
       if(getProcess(cmd)!=null){
         Debug.debug("Returning job: "+getProcess(cmd).hashCode(), 2);
         return getProcess(cmd);
       }
+      Debug.debug("Sleeping 3 seconds...", 2);
+      Thread.sleep(3000);
     }
     return null;
   }
