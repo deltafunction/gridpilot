@@ -1,6 +1,8 @@
 package gridpilot;
 
 import javax.swing.JOptionPane;
+
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Vector;
 
@@ -280,6 +282,26 @@ public class CSPluginMgr implements ComputingSystem{
    * @see ComputingSystem#submit(JobInfo)
    */
   public boolean submit(final JobInfo job){
+    
+    // first check if the runtime environments are present
+    
+    String[] rtes = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()
+        ).getRuntimeEnvironments(job.getJobDefId());
+
+    for(int i=0; i<rtes.length; ++i){
+      try{
+        String id = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()
+        ).getRuntimeEnvironmentID(rtes[i], job.getCSName());
+        if(id==null || id.equals("-1")){
+          throw new IOException("Runtime environment "+rtes[i]+" not found.");
+        }
+      }
+      catch(Exception e){
+        //MessagePane.showMessage("Could not submit job. "+e.getMessage(), "Error");
+        logFile.addMessage("Could not submit job. "+e.getMessage(), e);
+        return false;
+      }
+    }
 
     MyThread t = new MyThread(){
       boolean res = false;
@@ -728,24 +750,26 @@ public class CSPluginMgr implements ComputingSystem{
 
     if(Util.waitForThread(t, job.getCSName(), copyFileTimeOut, "postProcessing")){
       if(t.getBooleanRes()){
-        // Register the new file
+        // Register the new file if the db is a file catalog
         try{
           DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-          String datasetID = dbPluginMgr.getJobDefDatasetID(job.getJobDefId());
-          String datasetName = dbPluginMgr.getDatasetName(datasetID);
-          String[] outputFiles = dbPluginMgr.getOutputFiles(job.getJobDefId());
-          String remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(),
-              outputFiles[0]);
-          String [] nameArray = Util.split(remoteName, "\\\\");
-          nameArray = Util.split(nameArray[nameArray.length-1], "/");
-          String lfn = nameArray[nameArray.length-1];
-          String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
-          String message = "Registering UUID "+uuid.toString()+" and LFN "+lfn+
-             " for new location "+remoteName;
-          GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
-          Debug.debug(message, 2);
-          dbPluginMgr.registerFileLocation(datasetID, datasetName,
-              uuid, lfn, remoteName, false);
+          if(dbPluginMgr.isFileCatalog()){
+            String datasetID = dbPluginMgr.getJobDefDatasetID(job.getJobDefId());
+            String datasetName = dbPluginMgr.getDatasetName(datasetID);
+            String[] outputFiles = dbPluginMgr.getOutputFiles(job.getJobDefId());
+            String remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(),
+                outputFiles[0]);
+            String [] nameArray = Util.split(remoteName, "\\\\");
+            nameArray = Util.split(nameArray[nameArray.length-1], "/");
+            String lfn = nameArray[nameArray.length-1];
+            String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+            String message = "Registering UUID "+uuid.toString()+" and LFN "+lfn+
+               " for new location "+remoteName;
+            GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
+            Debug.debug(message, 2);
+            dbPluginMgr.registerFileLocation(datasetID, datasetName,
+                uuid, lfn, remoteName, false);
+          }
         }
         catch(Exception e){
           String error = "Exception during postProcess of job " + job.getName()+ "\n" +
