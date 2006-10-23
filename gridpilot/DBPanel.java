@@ -844,8 +844,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
         }
         for(int i=0; i<identifiers.length; ++i){
-          identifiers[i] =
-            tableResults.getUnsortedValueAt(i, col).toString();
+          if(tableResults.getUnsortedValueAt(i, col)!=null){
+            identifiers[i] = tableResults.getUnsortedValueAt(i, col).toString();
+          }
+          else{
+            identifiers[i] = "-1";
+          }
         }
 
         if(tableName.equalsIgnoreCase("dataset")){
@@ -1269,7 +1273,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       msg += "?";
       
-      final JCheckBox cbCleanup = new JCheckBox("Delete file catalog entries", true);
+      final JCheckBox cbCleanup = new JCheckBox("Delete physical files", true);
       ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
       try{
         int choice = confirmBox.getConfirm("Confirm delete",
@@ -1797,8 +1801,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             // We assume that the dataset name is used as reference...
             // TODO: improve this
             String datasetColumn = "dsn";
-            String [] fileDatasetReference =
-              dbPluginMgr.getFileDatasetReference();
+            String [] fileDatasetReference = dbPluginMgr.getFileDatasetReference();
             if(fileDatasetReference!=null){
               datasetColumn = fileDatasetReference[1];
             }

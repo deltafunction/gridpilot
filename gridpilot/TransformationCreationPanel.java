@@ -304,6 +304,9 @@ public class TransformationCreationPanel extends CreateEditPanel{
     }
     int row = 0;
     for(int i=0; i<cstAttributesNames.length; ++i, ++row){
+      if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled()){
+        tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
+      }
       if(cstAttributesNames[i].equalsIgnoreCase("definition") ||
           cstAttributesNames[i].equalsIgnoreCase("inputFiles") ||
          cstAttributesNames[i].equalsIgnoreCase("script") ||
@@ -322,9 +325,6 @@ public class TransformationCreationPanel extends CreateEditPanel{
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
             new Insets(5, 25, 5, 5), 0, 0));
-      }
-      if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled()){
-        tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
       }
       if(cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironmentName")){
         Debug.debug("Setting selection to "+runtimeEnvironmentName, 3);
