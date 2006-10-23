@@ -304,75 +304,82 @@ public class Util{
           Debug.debug("URL: "+e.getURL().toExternalForm(), 3);
           if(e.getURL().toExternalForm().equals("http://check/")){
             String httpScript = jt.getText();
-            String url = null;
-            try{
-              if(httpScript.startsWith("/")){
-                url = (new File(httpScript)).toURL().toExternalForm();
-              }
-              else if(httpScript.startsWith("file://")){
-                url = (new File(httpScript.substring(6))).toURL().toExternalForm();
-              }
-              else if(httpScript.startsWith("file://")){
-                url = (new File(httpScript.substring(5))).toURL().toExternalForm();
-              }
-              else{
-                url = httpScript;
-              }
-            }
-            catch(Exception ee){
-              Debug.debug("Could not open URL "+httpScript+". "+ee.getMessage(), 1);
-              ee.printStackTrace();
-              GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+httpScript);
-              return;
-            }
-            Debug.debug("URL: "+url, 3);
             frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-            final String finUrl = url;
+            final String finUrl = httpScript;
             final String finBaseUrl = "";//url;
-            MyThread t = new MyThread(){
+            (new MyThread(){
               public void run(){
                 BrowserPanel wb = null;
-                try{
-                  wb = new BrowserPanel(//GridPilot.getClassMgr().getGlobalFrame(),
-                                  frame,
-                                  "Choose file",
-                                  finUrl,
-                                  finBaseUrl,
-                                  true,
-                                  true,
-                                  false,
-                                  null,
-                                  null);
+                
+                String [] urls = split(finUrl);
+                if(urls.length==0){
+                  urls = new String [] {""};
                 }
-                catch(Exception eee){
-                  Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
-                  GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
-                  ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+                for(int i=0; i<urls.length; ++i){
                   try{
-                    confirmBox.getConfirm("URL could not be opened",
-                                         "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
-                                      new Object[] {"OK"});
+                    if(urls[i].startsWith("/")){
+                      urls[i] = (new File(urls[i])).toURL().toExternalForm();
+                    }
+                    else if(urls[i].startsWith("file://")){
+                      urls[i] = (new File(urls[i].substring(6))).toURL().toExternalForm();
+                    }
+                    else if(urls[i].startsWith("file://")){
+                      urls[i] = (new File(urls[i].substring(5))).toURL().toExternalForm();
+                    }
                   }
-                  catch(Exception eeee){
-                    Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
+                  catch(Exception ee){
+                    Debug.debug("Could not open URL "+urls[i]+". "+ee.getMessage(), 1);
+                    ee.printStackTrace();
+                    GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+urls[i]);
+                    return;
+                  }
+                  Debug.debug("URL: "+urls[i], 3);
+                  
+                  try{
+                    wb = new BrowserPanel(//GridPilot.getClassMgr().getGlobalFrame(),
+                                    frame,
+                                    "Choose file",
+                                    //finUrl,
+                                    urls[i],
+                                    finBaseUrl,
+                                    true,
+                                    /*filter*/true,
+                                    /*navigation*/true,
+                                    null,
+                                    null);
+                  }
+                  catch(Exception eee){
+                    Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
+                    GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
+                    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+                    try{
+                      confirmBox.getConfirm("URL could not be opened",
+                                           "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
+                                        new Object[] {"OK"});
+                    }
+                    catch(Exception eeee){
+                      Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
+                    }
+                  }
+                                   
+                  if(wb!=null && wb.lastURL!=null &&
+                      wb.lastURL.startsWith(finBaseUrl)){
+                    // Set the text: the URL browsed to with base URL removed
+                    //jt.setText(wb.lastURL.substring(finBaseUrl.length()));
+                    urls[i] = wb.lastURL.substring(finBaseUrl.length());
+                    //GridPilot.getClassMgr().getStatusBar().setLabel("");
+                  }
+                  else{
+                    // Don't do anything if we cannot get a URL
+                    Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
                   }
                 }
-                if(wb!=null && wb.lastURL!=null &&
-                    wb.lastURL.startsWith(finBaseUrl)){
-                  // Set the text: the URL browsed to with base URL removed
-                  jt.setText(wb.lastURL.substring(
-                      finBaseUrl.length()));
-                  //GridPilot.getClassMgr().getStatusBar().setLabel("");
-                }
-                else{
-                  // Don't do anything if we cannot get a URL
-                  Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
-                }
+                
+                jt.setText(Util.arrayToString(urls));
                 frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
                 //GridPilot.getClassMgr().getStatusBar().setLabel("");
               }
-            };
-            t.start();
+            }).start();
           }
         }
       }
@@ -847,14 +854,6 @@ public class Util{
     catch(IOException e){
       throw e;
     }
-  }
-  
-  public static String [] objectToListArray(Object [] arr){
-    String [] res = new String [arr.length];
-    for(int i=0; i<arr.length; ++i){
-      res[i] = arr[i].toString();
-    }
-    return res;
   }
   
   /**
@@ -1358,12 +1357,13 @@ public class Util{
       }
       rset.close();
       if(resultVector.size()==0){
-        Debug.debug("WARNING: No dataset with "+ id +" "+idValue, 2);
+        Debug.debug("WARNING: No record in "+table+" with "+ id +" "+idValue, 2);
       }
       resultArray = new String [resultVector.size()][fields.length];
       for(int i=0; i<resultVector.size(); ++i){
         for(int j=0; j<fields.length; ++j){
           resultArray[i][j] = ((String []) resultVector.get(i))[j];
+          Debug.debug("Added value "+i+j+" "+resultArray[i][j], 3);
         }
       }
     }
