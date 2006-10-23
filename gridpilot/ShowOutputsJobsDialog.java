@@ -60,6 +60,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
       }
       catch(Exception e){
         Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
+        e.printStackTrace();
       }
 
       choices[i] = showTabs(parent, "Job " + job.getName(),
