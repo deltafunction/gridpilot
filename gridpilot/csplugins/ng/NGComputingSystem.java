@@ -423,7 +423,7 @@ public class NGComputingSystem implements ComputingSystem{
     
     // Delete files that may have been copied to storage elements
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    String[] outputMapping = dbPluginMgr.getOutputMapping(job.getJobDefId());
+    String[] outputMapping = dbPluginMgr.getOutputFiles(job.getJobDefId());
     String fileName;
     for(int i=0; i<outputMapping.length/2-1; ++i){
       try{

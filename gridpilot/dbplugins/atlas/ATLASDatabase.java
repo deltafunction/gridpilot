@@ -2319,7 +2319,7 @@ public class ATLASDatabase implements Database{
     return false;
   }
 
-  public String[] getOutputMapping(String jobDefID){
+  public String[] getOutputFiles(String jobDefID){
     // TODO Auto-generated method stub
     return null;
   }

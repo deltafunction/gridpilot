@@ -181,7 +181,7 @@ public class NGScriptGenerator extends ScriptGenerator{
         line += "(\"stderr\" \"stderr\")";
       }
             
-      String[] outputMapping = dbPluginMgr.getOutputMapping(job.getJobDefId());
+      String[] outputMapping = dbPluginMgr.getOutputFiles(job.getJobDefId());
       String localName;
       String logicalName;
       // output file copy
