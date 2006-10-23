@@ -26,6 +26,7 @@ import gridpilot.ConfigFile;
 import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
+import gridpilot.LocalStaticShellMgr;
 import gridpilot.LogFile;
 import gridpilot.MessagePane;
 import gridpilot.Util;
@@ -63,6 +64,15 @@ public class HSQLDBDatabase implements Database{
     user = _user;
     passwd = _passwd;
     dbName = _dbName;
+    
+    if(GridPilot.getClassMgr().getConfigFile().getValue(dbName, "t_pfn field names")!=
+      null){
+      fileCatalog = true;
+    }
+
+    if(database!=null && database.indexOf("/~")>0){
+      database = database.replaceFirst("/~", System.getProperty("user.home"));
+    }
     
     configFile = GridPilot.getClassMgr().getConfigFile();
 
@@ -122,6 +132,7 @@ public class HSQLDBDatabase implements Database{
         makeTable("t_lfn");
       }
       catch(Exception e){
+        e.printStackTrace();
       }
     }
     if(t_pfnFields==null || t_pfnFields.length<1){
@@ -129,6 +140,7 @@ public class HSQLDBDatabase implements Database{
         makeTable("t_pfn");
       }
       catch(Exception e){
+        e.printStackTrace();
       }
     }
     if(t_metaFields==null || t_metaFields.length<1){
@@ -136,6 +148,7 @@ public class HSQLDBDatabase implements Database{
         makeTable("t_meta");
       }
       catch(Exception e){
+        e.printStackTrace();
       }
     }
     try{
@@ -210,21 +223,17 @@ public class HSQLDBDatabase implements Database{
   private boolean checkTable(String table){
     ConfigFile tablesConfig = GridPilot.getClassMgr().getConfigFile();
     String [] fields = null;
-    String [] fieldTypes = null;
+    //String [] fieldTypes = null;
     try{
       fields = Util.split(tablesConfig.getValue(dbName, table+" field names"), ",");
-      fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
+      //fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
     }
     catch(Exception e){
     }
-    if(fields==null || fieldTypes==null){
+    if(fields==null /*|| fieldTypes==null*/){
       return false;
     }
     else{
-      if(table.equalsIgnoreCase("t_pfn") ||table.equalsIgnoreCase("t_lfn") ||
-          table.equalsIgnoreCase("t_meta")){
-        fileCatalog = true;
-      }
       return true;
     }
   }
@@ -380,8 +389,15 @@ public class HSQLDBDatabase implements Database{
   public synchronized String [] getFieldNames(String table)
      throws SQLException {
     Debug.debug("getFieldNames for table "+table, 3);
-    if(!isFileCatalog() && table.equalsIgnoreCase("file")){
-      return new String [] {"datasetName", "name", "url"};
+    if(table.equalsIgnoreCase("file")){
+      if(!isFileCatalog() ){
+        return new String [] {"datasetName", "name", "url"};
+      }
+      else{
+        return Util.split(
+            GridPilot.getClassMgr().getConfigFile().getValue(dbName, "file field names"),
+            ", ");
+      }
     }
     else if(!checkTable(table)){
       return null;
@@ -480,7 +496,7 @@ public class HSQLDBDatabase implements Database{
     return Util.split(res);
   }
 
-  public String [] getOutputMapping(String jobDefID){
+  public String [] getOutputFiles(String jobDefID){
     String transformationID = getJobDefTransformationID(jobDefID);
     String outputs = getTransformation(
         transformationID).getValue("outputFiles").toString();
@@ -657,7 +673,7 @@ public class HSQLDBDatabase implements Database{
       Debug.debug("Correcting non-valid select pattern", 3);
       patt = Pattern.compile("SELECT \\*\\, (.+) FROM", Pattern.CASE_INSENSITIVE);
       matcher = patt.matcher(req);
-      req = matcher.replaceAll("SELECT * FROM");
+      req = matcher.replaceFirst("SELECT * FROM");
     }
     else{
       patt = Pattern.compile(", "+identifier+" ", Pattern.CASE_INSENSITIVE);
@@ -667,7 +683,7 @@ public class HSQLDBDatabase implements Database{
       if(!patt.matcher(req).find()){
         patt = Pattern.compile(" FROM (\\w+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceAll(", "+identifier+" FROM "+"$1");
+        req = matcher.replaceFirst(", "+identifier+" FROM "+"$1");
       }
     }
     
@@ -677,35 +693,38 @@ public class HSQLDBDatabase implements Database{
       if(req.matches("SELECT (.+) FROM file WHERE (.+)")){
         patt = Pattern.compile("SELECT (.+) FROM file WHERE (.+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceAll("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE ($2) AND" +
-                "t_lfn.guid=t_pfn.guid AND t_meta.guid=t_pfn.guid");
+        req = matcher.replaceFirst("SELECT DISTINCT $1 FROM t_pfn, t_lfn, t_meta" +
+            " JOIN t_lfn ON t_pfn.guid=t_lfn.guid JOIN t_meta ON t_pfn.guid=t_meta.guid" +
+            " WHERE $2");
       }
-      if(req.matches("SELECT (.+) FROM file (.+)")){
+      if(req.matches("SELECT (.+) FROM file\\b(.*)")){
         patt = Pattern.compile("SELECT (.+) FROM file", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceAll("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE " +
-                "t_lfn.guid=t_pfn.guid AND t_meta.guid=t_pfn.guid");
+        req = matcher.replaceFirst("SELECT DISTINCT $1 FROM t_pfn, t_lfn, t_meta" +
+                " JOIN t_lfn ON t_pfn.guid=t_lfn.guid JOIN t_meta ON t_pfn.guid=t_meta.guid");
       }
+      Debug.debug("new search: "+req, 3);
     }
     else{
       // The "file" table is a pseudo table constructed from "jobDefinitions".
       // We replace "url" with "outFileMapping" and parse the values of
       // outFileMapping later.
-      if(req.matches("SELECT (.+) url\\, (.+) FROM file (.+)")){
-        patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
+      if(req.matches("SELECT (.+) url\\, (.+) FROM file\\b(.*)")){
+        patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceAll("SELECT $1 outFileMapping, $2 FROM file $3");
+        req = matcher.replaceFirst("SELECT $1 outFileMapping, $2 FROM file $3");
       }
-      if(req.matches("SELECT (.+) url FROM file (.+)")){
-        patt = Pattern.compile("SELECT (.+) url FROM file (.+)", Pattern.CASE_INSENSITIVE);
+      if(req.matches("SELECT (.+) url FROM file\\b(.*)")){
+        patt = Pattern.compile("SELECT (.+) url FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceAll("SELECT $1 outFileMapping FROM file $2");
+        req = matcher.replaceFirst("SELECT $1 outFileMapping FROM file $2");
       }
-      if(req.matches("SELECT (.+) FROM file (.+)")){
+      if(req.matches("SELECT (.+) FROM file\\b(.*)")){
         fileTable = true;
-        patt = Pattern.compile("SELECT (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
+        patt = Pattern.compile("SELECT (.+) FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceAll("SELECT $1 FROM jobDefinition $2");
+        req = matcher.replaceFirst("SELECT $1 FROM jobDefinition $2");
+        Debug.debug("new pseudo search: "+req, 3);
       }
     }
 
@@ -713,7 +732,7 @@ public class HSQLDBDatabase implements Database{
     matcher = patt.matcher(req);
     req = matcher.replaceAll("LIKE '%$1%'");
     
-    patt = Pattern.compile("([<>=]) (\\S+)", Pattern.CASE_INSENSITIVE);
+    patt = Pattern.compile("([<>=]) ([^\\s^\\(^\\)]+)", Pattern.CASE_INSENSITIVE);
     matcher = patt.matcher(req);
     req = matcher.replaceAll("$1 '$2'");
     
@@ -2083,6 +2102,7 @@ public class HSQLDBDatabase implements Database{
     }
     String [] values = new String[fields.length];
     DBRecord file = new DBRecord(fields, values);
+    Debug.debug("file fields: "+Util.arrayToString(file.fields), 3);
     // If the file catalog tables (t_pfn, t_lfn, t_meta) are present,
     // we use them.
     if(isFileCatalog()){
@@ -2102,7 +2122,7 @@ public class HSQLDBDatabase implements Database{
             String [][] res = Util.getValues(conn, "t_pfn", "guid", fileID, new String [] {"pfname"});
             String [] pfns = new String [res.length];
             for(int j=0; j<res.length; ++j){
-              pfns[j] = res[i][0];
+              pfns[j] = res[j][0];
             }
             file.setValue(fields[i], Util.arrayToString(pfns));
           }
@@ -2115,15 +2135,17 @@ public class HSQLDBDatabase implements Database{
         }
         catch(Exception e){
           Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
+          e.printStackTrace();
         }
       }
       // get the rest of the values
-      DBResult res = select("SELECT LIMIT 0 1+" +
+      DBResult res = select("SELECT " +
           Util.arrayToString(fieldsVector.toArray(), ", ") +
             " FROM file WHERE guid = "+fileID, "guid", true);
       for(int i=0; i<fieldsVector.size(); ++i){
         try{
-          file.setValue(fields[i], res.getValue(0, fields[i]).toString());
+          file.setValue(fieldsVector.get(i).toString(),
+              res.getValue(0, fieldsVector.get(i).toString()).toString());
         }
         catch(Exception e){
           Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
@@ -2211,7 +2233,7 @@ public class HSQLDBDatabase implements Database{
       String fileID, String lfn, String url, boolean datasetComplete) throws Exception {
     
     // if this is not a file catalog we don't have to do anything
-    if(isFileCatalog()){
+    if(!isFileCatalog()){
       String msg = "This is a virtual file catalog - it cannot be modified directly.";
       String title = "Table cannot be modified";
       MessagePane.showMessage(msg, title);
@@ -2313,9 +2335,8 @@ public class HSQLDBDatabase implements Database{
   // This is only to be used if this is a file catalog.
   private synchronized void addUrlToFile(String fileID, String url)
      throws Exception {
-    String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ("+
-    url + ", " + fileID +
-    ")";
+    String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
+    url + "', '" + fileID +"')";
     Debug.debug(sql, 2);
     Statement stmt = conn.createStatement();
     stmt.executeUpdate(sql);
@@ -2325,29 +2346,51 @@ public class HSQLDBDatabase implements Database{
   // This is only to be used if this is a file catalog.
   private synchronized boolean createFile(String datasetName, String fileID,
       String lfn, String url){
-    
-    String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ("+
-    url + ", " + fileID +
-    "); ";
-    sql += "INSERT INTO t_lfn (lfname, guid) VALUES ("+
-    lfn + ", " + fileID +
-    "); ";    Debug.debug(sql, 2);
-    sql += "INSERT INTO t_meta (guid, dsname) VALUES ("+
-    fileID + ", " + datasetName +
-    ")";
+    String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
+    url + "', '" + fileID + "'); ";
     Debug.debug(sql, 2);
-    boolean execok = true;
+    boolean execok1 = true;
     try{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
     }
     catch(Exception e){
-      execok = false;
+      execok1 = false;
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
     }
-    return execok;
+    sql = "INSERT INTO t_lfn (lfname, guid) VALUES ('"+
+    lfn + "', '" + fileID +
+    "'); ";    Debug.debug(sql, 2);
+    Debug.debug(sql, 2);
+    boolean execok2 = true;
+    try{
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+      conn.commit();
+    }
+    catch(Exception e){
+      execok2 = false;
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+    }
+    sql = "INSERT INTO t_meta (guid, dsname) VALUES ('"+
+    fileID + "', '" + datasetName +
+    "')";
+    Debug.debug(sql, 2);
+    boolean execok3 = true;
+    try{
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+      conn.commit();
+    }
+    catch(Exception e){
+      execok3 = false;
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+    }
+    return execok1 && execok2 && execok3;
   }
 
   public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) {
@@ -2356,6 +2399,28 @@ public class HSQLDBDatabase implements Database{
       boolean ok = true;
       for(int i=0; i<fileIDs.length; ++i){
         try{
+          if(cleanup){
+            String fileNames = null;
+            try{
+              if(isFileCatalog()){
+                fileNames = getFile(datasetID, fileIDs[i]).getValue("pfname").toString();
+              }
+              else{
+                fileNames = getFile(datasetID, fileIDs[i]).getValue("url").toString();
+              }
+              Debug.debug("Deleting files "+fileNames, 2);
+              if(fileNames!=null && !fileNames.equals("no such field")){
+                String[] fileNameArray = Util.split(fileNames);
+                for(int j=0; j<fileNameArray.length; ++j){
+                  // TODO: extend TransferControl.deleteFiles() to cover local files.
+                  LocalStaticShellMgr.deleteFile(fileNameArray[j]);
+                }
+              }
+            }
+            catch(Exception e){
+              logFile.addMessage("WARNING: Could not delete files "+fileNames);
+            }
+          }
           String req = "DELETE FROM t_lfn WHERE guid ='"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
           int rowsAffected = conn.createStatement().executeUpdate(req);
@@ -2377,6 +2442,7 @@ public class HSQLDBDatabase implements Database{
             error = "WARNING: could not delete guid "+fileIDs[i]+" from t_meta";
             logFile.addMessage(error);
           }
+          conn.commit();
         }
         catch(Exception e){
           ok = false;

@@ -18,6 +18,7 @@ import java.sql.Statement;
 
 import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
+import org.globus.util.GlobusURL;
 import org.ietf.jgss.GSSCredential;
 
 import jonelo.jacksum.*;
@@ -29,6 +30,7 @@ import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.LogFile;
 import gridpilot.MessagePane;
+import gridpilot.TransferControl;
 import gridpilot.Util;
 import gridpilot.DBResult;
 import gridpilot.DBRecord;
@@ -70,6 +72,12 @@ public class MySQLDatabase implements Database{
     passwd = _passwd;
     dbName = _dbName;
 
+    if(GridPilot.getClassMgr().getConfigFile().getValue(dbName, "t_pfn field names")!=
+      null){
+      fileCatalog = true;
+    }
+
+    
     boolean showDialog = true;
     // if global frame is set, this is a reload
     if(GridPilot.getClassMgr().getGlobalFrame()==null){
@@ -248,10 +256,6 @@ public class MySQLDatabase implements Database{
       return false;
     }
     else{
-      if(table.equalsIgnoreCase("t_pfn") ||table.equalsIgnoreCase("t_lfn") ||
-          table.equalsIgnoreCase("t_meta")){
-        fileCatalog = true;
-      }
       return true;
     }
   }
@@ -451,7 +455,7 @@ public class MySQLDatabase implements Database{
     return Util.split(res);
   }
 
-  public String [] getOutputMapping(String jobDefID){
+  public String [] getOutputFiles(String jobDefID){
     String transformationID = getJobDefTransformationID(jobDefID);
     String outputs = getTransformation(
         transformationID).getValue("outputFiles").toString();
@@ -2030,7 +2034,7 @@ public class MySQLDatabase implements Database{
             String [][] res = Util.getValues(conn, "t_pfn", "guid", fileID, new String [] {"pfname"});
             String [] pfns = new String [res.length];
             for(int j=0; j<res.length; ++j){
-              pfns[j] = res[i][0];
+              pfns[j] = res[j][0];
             }
             file.setValue(fields[i], Util.arrayToString(pfns));
           }
@@ -2051,8 +2055,9 @@ public class MySQLDatabase implements Database{
             " FROM file WHERE guid = "+fileID, "guid", true);
       for(int i=0; i<fieldsVector.size(); ++i){
         try{
-          file.setValue(fields[i], res.getValue(0, fields[i]).toString());
-    }
+          file.setValue(fieldsVector.get(i).toString(),
+              res.getValue(0, fieldsVector.get(i).toString()).toString());
+        }
         catch(Exception e){
           Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
         }
@@ -2117,7 +2122,7 @@ public class MySQLDatabase implements Database{
       String fileID, String lfn, String url, boolean datasetComplete) throws Exception {
     
     // if this is not a file catalog we don't have to do anything
-    if(isFileCatalog()){
+    if(!isFileCatalog()){
       String msg = "This is a virtual file catalog - it cannot be modified directly.";
       String title = "Table cannot be modified";
       MessagePane.showMessage(msg, title);
@@ -2219,41 +2224,60 @@ public class MySQLDatabase implements Database{
   // This is only to be used if this is a file catalog.
   private synchronized void addUrlToFile(String fileID, String url)
      throws Exception {
-    String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ("+
-    url + ", " + fileID +
-    ")";
+    String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
+    url + "', '" + fileID +
+    "')";
     Debug.debug(sql, 2);
     Statement stmt = conn.createStatement();
     stmt.executeUpdate(sql);
-    conn.commit();
   }
   
   // This is only to be used if this is a file catalog.
   private synchronized boolean createFile(String datasetName, String fileID,
       String lfn, String url){
-    
-    String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ("+
-    url + ", " + fileID +
-    "); ";
-    sql += "INSERT INTO t_lfn (lfname, guid) VALUES ("+
-    lfn + ", " + fileID +
-    "); ";    Debug.debug(sql, 2);
-    sql += "INSERT INTO t_meta (guid, dsname) VALUES ("+
-    fileID + ", " + datasetName +
-    ")";
+    String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
+    url + "', '" + fileID +
+    "'); ";
     Debug.debug(sql, 2);
-    boolean execok = true;
+    boolean execok1 = true;
     try{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
-      conn.commit();
     }
     catch(Exception e){
-      execok = false;
+      execok1 = false;
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
     }
-    return execok;
+    sql = "INSERT INTO t_lfn (lfname, guid) VALUES ('"+
+    lfn + "', '" + fileID +
+    "'); ";    Debug.debug(sql, 2);
+    Debug.debug(sql, 2);
+    boolean execok2 = true;
+    try{
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+    }
+    catch(Exception e){
+      execok2 = false;
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+    }
+    sql = "INSERT INTO t_meta (guid, dsname) VALUES ('"+
+    fileID + "', '" + datasetName +
+    "')";
+    Debug.debug(sql, 2);
+    boolean execok3 = true;
+    try{
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+    }
+    catch(Exception e){
+      execok3 = false;
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+    }
+    return execok1 && execok2 && execok3;
   }
 
   public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) {
@@ -2262,6 +2286,26 @@ public class MySQLDatabase implements Database{
       boolean ok = true;
       for(int i=0; i<fileIDs.length; ++i){
         try{
+          if(cleanup){
+            String fileNames = null;
+            try{
+              if(isFileCatalog()){
+                fileNames = getFile(datasetID, fileIDs[i]).getValue("pfname").toString();
+              }
+              else{
+                fileNames = getFile(datasetID, fileIDs[i]).getValue("url").toString();
+              }
+              String[] fileNameArray = Util.split(fileNames);
+              GlobusURL [] urlArray = new GlobusURL [fileNameArray.length];
+              for(int j=0; j<fileNameArray.length; ++j){
+                urlArray[j] = new GlobusURL(fileNameArray[j]);
+              }
+              TransferControl.deleteFiles(urlArray);
+            }
+            catch(Exception e){
+              logFile.addMessage("WARNING: Could not delete files "+fileNames);
+            }
+          }
           String req = "DELETE FROM t_lfn WHERE guid ='"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
           int rowsAffected = conn.createStatement().executeUpdate(req);
@@ -2283,6 +2327,7 @@ public class MySQLDatabase implements Database{
             error = "WARNING: could not delete guid "+fileIDs[i]+" from t_meta";
             logFile.addMessage(error);
           }
+          conn.commit();
         }
         catch(Exception e){
           ok = false;
