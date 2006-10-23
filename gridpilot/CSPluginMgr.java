@@ -6,6 +6,8 @@ import java.util.Vector;
 
 import javax.swing.*;
 
+import org.safehaus.uuid.UUIDGenerator;
+
 /**
  * The purpose of this class is to protect GridPilot from plugin errors, exceptions, abnormal behaviours. <p>
  *
@@ -112,7 +114,7 @@ public class CSPluginMgr implements ComputingSystem{
            new SecureShellMgr(host, user, password, remoteHome));
       }
       else if(host!=null && host.endsWith("localhost")){
-        shellMgr.put(csNames[i], new LocalStaticShellMgr());
+        shellMgr.put(csNames[i], new LocalShellMgr());
       }
       else{
         // no shell used by this plugin
@@ -725,11 +727,41 @@ public class CSPluginMgr implements ComputingSystem{
     t.start();
 
     if(Util.waitForThread(t, job.getCSName(), copyFileTimeOut, "postProcessing")){
-      return t.getBooleanRes();
+      if(t.getBooleanRes()){
+        // Register the new file
+        try{
+          DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+          String datasetID = dbPluginMgr.getJobDefDatasetID(job.getJobDefId());
+          String datasetName = dbPluginMgr.getDatasetName(datasetID);
+          String[] outputFiles = dbPluginMgr.getOutputFiles(job.getJobDefId());
+          String remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(),
+              outputFiles[0]);
+          String [] nameArray = Util.split(remoteName, "\\\\");
+          nameArray = Util.split(nameArray[nameArray.length-1], "/");
+          String lfn = nameArray[nameArray.length-1];
+          String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+          String message = "Registering UUID "+uuid.toString()+" and LFN "+lfn+
+             " for new location "+remoteName;
+          GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
+          Debug.debug(message, 2);
+          dbPluginMgr.registerFileLocation(datasetID, datasetName,
+              uuid, lfn, remoteName, false);
+        }
+        catch(Exception e){
+          String error = "Exception during postProcess of job " + job.getName()+ "\n" +
+          "\tException\t: " + e.getMessage();
+          logFile.addMessage(error, e);
+          return false;
+        }
+        return true;
+      }
+      else{
+        return false;
+      }
     }
     else{
       return false;
-    }
+    }    
   }
   
   /**
