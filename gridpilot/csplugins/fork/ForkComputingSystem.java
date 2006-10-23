@@ -156,6 +156,7 @@ public class ForkComputingSystem implements ComputingSystem{
       }
       catch(IOException e){
         logFile.addMessage("WARNING: Could not write test transformation", e);
+        return;
       }
       finally{
         try{
@@ -174,6 +175,7 @@ public class ForkComputingSystem implements ComputingSystem{
     catch(Exception e){
       logFile.addMessage("WARNING: Could not create test transformation in DB"+localRuntimeDB,
           e);
+      return;
     }
     try{
       StringBuffer stdout = new StringBuffer();
@@ -191,8 +193,6 @@ public class ForkComputingSystem implements ComputingSystem{
     }
 
     try{
-      localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
-        localRuntimeDB);
       if(localDBMgr.getTransformationID("test", "0.1")==null ||
           localDBMgr.getTransformationID("test", "0.1").equals("-1")){
         String [] fields = localDBMgr.getFieldNames("transformation");
