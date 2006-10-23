@@ -85,8 +85,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
     Debug.debug("browser history file: "+GridPilot.browserHistoryFile, 2);
     if(GridPilot.browserHistoryFile!=null && !GridPilot.browserHistoryFile.equals("")){
       if(GridPilot.browserHistoryFile.startsWith("~")){
-        GridPilot.browserHistoryFile = System.getProperty("user.home") + File.separator +
-        GridPilot.browserHistoryFile.substring(1);
+        String homeDir = System.getProperty("user.home");
+        if(!homeDir.endsWith(File.separator)){
+          homeDir += File.separator;
+        }
+        GridPilot.browserHistoryFile = homeDir+GridPilot.browserHistoryFile.substring(1);
       }
       try{
         if(!LocalStaticShellMgr.existsFile(GridPilot.browserHistoryFile)){
