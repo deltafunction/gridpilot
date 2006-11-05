@@ -223,7 +223,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
 
     miClear.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        clear();
+        clear(statusTable.getSelectedRows());
       }
     });
 
@@ -455,13 +455,12 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   /**
    * Removes selected transfers from this status table.
    */
-  public void clear(){
+  public void clear(int [] selectedRows){
     transferControl = GridPilot.getClassMgr().getTransferControl();
     if(transferControl.isSubmitting()){
       Debug.debug("cannot clear table during submission", 3);
       return;
     }
-    int [] selectedRows = statusTable.getSelectedRows();
     Vector runningRowsVector = new Vector();
     Vector transferVector = getTransfersAtRows(selectedRows);
     TransferInfo transfer = null;
