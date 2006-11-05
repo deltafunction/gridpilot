@@ -69,6 +69,7 @@ public interface Database{
   public String getDatasetTransformationVersion(String datasetID);
 
   // ####### Job definition table
+  public boolean isJobRepository();
   // the convention here is that when datasetID is set to -1,
   // all jobDefinitions are returned
   public DBResult getJobDefinitions(String datasetID, String [] fieldNames);
