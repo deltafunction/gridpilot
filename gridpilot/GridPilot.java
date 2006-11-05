@@ -529,9 +529,9 @@ public class GridPilot extends JApplet{
             "Disconnecting "+dbNames[i]);
         GridPilot.getClassMgr().getStatusBar().animateProgressBar();
         getClassMgr().getDBPluginMgr(dbNames[i]).disconnect();
-        Debug.debug("Connecting "+dbNames[i], 2);
+        Debug.debug("Connecting to "+dbNames[i], 2);
         GridPilot.getClassMgr().getStatusBar().setLabel(
-            "Connecting "+dbNames[i]);
+            "Connecting to "+dbNames[i]);
         GridPilot.getClassMgr().getStatusBar().animateProgressBar();
         getClassMgr().getDBPluginMgr(dbNames[i]).init();
         Debug.debug("Connection ok.", 2);
