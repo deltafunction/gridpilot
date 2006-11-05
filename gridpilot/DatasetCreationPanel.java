@@ -64,13 +64,13 @@ public class DatasetCreationPanel extends CreateEditPanel{
     table = panel.getTable();
     cstAttributesNames = dbPluginMgr.getFieldNames("dataset");
     cstAttr = new String[cstAttributesNames.length];
-    datasetIdentifier = dbPluginMgr.getIdentifierField("dataset");
+    datasetIdentifier = Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
     transformations = dbPluginMgr.getTransformations();
     
     datasetTransformationReference =
-      dbPluginMgr.getDatasetTransformationReference();
+      Util.getDatasetTransformationReference(dbPluginMgr.getDBName());
     datasetTransformationVersionReference =
-      dbPluginMgr.getDatasetTransformationVersionReference();
+      Util.getDatasetTransformationVersionReference(dbPluginMgr.getDBName());
     
     // Find identifier index
     int identifierIndex = -1;
@@ -610,7 +610,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           DBPanel dbPanel = new DBPanel(targetDBPluginMgr.getDBName(),
               "transformation");
           String idField =
-            targetDBPluginMgr.getIdentifierField("transformation");
+            Util.getIdentifierField(targetDBPluginMgr.getDBName(), "transformation");
           String id = targetDBPluginMgr.getTransformationID(transformationName,
               transformationVersion);
           dbPanel.selectPanel.setConstraint(idField,
@@ -700,8 +700,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       // If this DB has no job definition table, there's no point in
       // allowing the creation of datasets with an input dataset in it.
       try{
-        if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.dbNames[i]).getFieldNames("jobDefinition")==null)){
+        if(!GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[i]).isJobRepository()){
           continue;
         }
       }
@@ -767,7 +766,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           targetFields[j].equalsIgnoreCase(datasetTransformationVersionReference[1])){
       }
       else if(targetFields[j].equalsIgnoreCase(
-          targetDBPluginMgr.getNameField("dataset"))){
+          Util.getNameField(targetDBPluginMgr.getDBName(), "dataset"))){
         targetAttr[j] = dbPluginMgr.getTargetDatasetName(
             targetDB, dbPluginMgr.getDatasetName(datasetIDs[0]),
             transformationName, transformationVersion);

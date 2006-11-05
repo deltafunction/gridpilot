@@ -41,9 +41,9 @@ public class DatasetCreator{
     dbPluginMgr = _dbPluginMgr;
     
     datasetTransformationReference =
-      dbPluginMgr.getDatasetTransformationReference();
+      Util.getDatasetTransformationReference(dbPluginMgr.getDBName());
     datasetTransformationVersionReference =
-      dbPluginMgr.getDatasetTransformationVersionReference();
+      Util.getDatasetTransformationVersionReference(dbPluginMgr.getDBName());
 
     makeDataset();
   }
@@ -68,7 +68,7 @@ public class DatasetCreator{
           transformationVersion = cstAttr[j];
         }
       }
-      String datasetNameField = dbPluginMgr.getNameField("Dataset");
+      String datasetNameField = Util.getNameField(dbPluginMgr.getDBName(), "Dataset");
       for(int i=0; i<datasetIDs.length; ++i){
         Debug.debug("Creating #"+datasetIDs[i], 2);
         DBRecord res = dbPluginMgr.getDataset(datasetIDs[i]);
