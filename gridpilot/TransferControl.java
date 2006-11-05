@@ -392,10 +392,8 @@ public class TransferControl{
       
       sources[i] = transfers[i].getSource();
       destinations[i] = transfers[i].getDestination();
-      
-      transfers[i].setInternalStatus(FileTransfer.STATUS_WAIT);
-      
-      Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
+            
+      /*Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
       for(int j=0; j<submittedTransfers.size(); ++j){
         try{
           String id = ((TransferInfo) submittedTransfers.get(j)).getTransferID();
@@ -406,8 +404,10 @@ public class TransferControl{
         }
         catch(Exception e){
         }
-      }
-
+      }*/
+      
+      resubmit = (transfers[i].getInternalStatus()>-1);
+      
       if(!resubmit){
         transfers[i].setTableRow(GridPilot.getClassMgr().getSubmittedTransfers().size());
         GridPilot.getClassMgr().getSubmittedTransfers().add(transfers[i]);
@@ -418,6 +418,8 @@ public class TransferControl{
           appendTablevalues[i][j] = statusTable.getValueAt(startRow+i, j);
         }
       }
+
+      transfers[i].setInternalStatus(FileTransfer.STATUS_WAIT);
 
       statusTable.setValueAt(transfers[i].getSource().getURL(),
           transfers[i].getTableRow(), TransferInfo.FIELD_SOURCE);

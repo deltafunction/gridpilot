@@ -279,12 +279,30 @@ public class TransferStatusUpdateControl{
       if(toCheckTransfers.isEmpty()){
         return;
       }
-      String ftName = ((TransferInfo) toCheckTransfers.get(0)).getFTName();
-
+      
+      String ftName = null;
       int currentTransfer = 0;
-      while((transfers.size()<((Integer) maxTransfersByUpdate.get(ftName)).intValue() ||
-          ((Integer) maxTransfersByUpdate.get(ftName)).intValue()==0)
-            && currentTransfer<toCheckTransfers.size()){
+      int maxTransfers = 0;
+      
+      while(true){
+        if(currentTransfer>=toCheckTransfers.size()){
+          break;
+        }
+        ftName = null;
+        try{
+          ftName = ((TransferInfo) toCheckTransfers.get(currentTransfer)).getFTName();
+        }
+        catch(Exception e){
+        }
+        if(ftName==null || maxTransfersByUpdate.get(ftName)==null){
+          Debug.debug("Could not get maxTransfersByUpdate for "+ftName, 1);
+          ++currentTransfer;
+          continue;
+        }
+        maxTransfers = ((Integer) maxTransfersByUpdate.get(ftName)).intValue();
+        if(maxTransfers!=0 && transfers.size()>=maxTransfers){
+          break;
+        }
         Debug.debug("Adding transfer to toCheckTransfers "+currentTransfer, 3);
         if(((TransferInfo) toCheckTransfers.get(
             currentTransfer)).getFTName().toString().equalsIgnoreCase(ftName)){
@@ -295,6 +313,7 @@ public class TransferStatusUpdateControl{
         }
       }
     }
+    
     checkingTransfers.addAll(transfers);
 
     int [] previousInternalStatus = new int [transfers.size()];
