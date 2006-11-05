@@ -46,7 +46,7 @@ public class RuntimeCreator{
     }
     if(editing){
       String tranformationIdentifier =
-        dbPluginMgr.getIdentifierField("runtimeEnvironment");
+        Util.getIdentifierField(dbPluginMgr.getDBName(), "runtimeEnvironment");
       String id = "-1";
       for(int i=0; i<cstAttrNames.length; ++i){
         Debug.debug("Checking name "+tranformationIdentifier+":"+cstAttrNames[i].toString(), 3);

@@ -69,7 +69,7 @@ public class JobDefCreator{
     Debug.debug(this.getClass().getName() + " is calling DB", 2);
 
     if(editing){
-      String jobDefIdentifier = dbPluginMgr.getIdentifierField("jobDefinition");
+      String jobDefIdentifier = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
       String id = "-1";
       for(int i=0; i<cstAttrNames.length; ++i){
         if(cstAttrNames[i].toString().equalsIgnoreCase(

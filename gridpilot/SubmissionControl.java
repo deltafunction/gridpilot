@@ -129,7 +129,7 @@ public class SubmissionControl{
       // are not yet put in toSubmitJobs).
       statusBar.setLabel("Reserving. Please wait...");
       statusBar.animateProgressBar();
-      String jobDefIdentifier = dbPluginMgr.getIdentifierField("jobDefinition");
+      String jobDefIdentifier = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
       for(int i=0; i<selectedJobs.size(); ++i){
         DBRecord jobDef = ((DBRecord) selectedJobs.get(i));
         String jobDefID = jobDef.getValue(jobDefIdentifier).toString();

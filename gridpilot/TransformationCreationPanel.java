@@ -57,7 +57,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     // Find transformation ID from table
     if(table.getSelectedRow()>-1 && editing){
       Debug.debug("Editing...", 3);
-      String [] runtimeReference = dbPluginMgr.getTransformationRuntimeReference();
+      String [] runtimeReference = Util.getTransformationRuntimeReference(dbPluginMgr.getDBName());
       for(int i=0; i<table.getColumnNames().length; ++i){
         Object fieldVal = table.getUnsortedValueAt(table.getSelectedRow(),i);
         Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
@@ -268,7 +268,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
           DBPanel dbPanel = new DBPanel(dbPluginMgr.getDBName(),
               "runtimeEnvironment");
           String nameField =
-            dbPluginMgr.getNameField("runtimeEnvironment");
+            Util.getNameField(dbPluginMgr.getDBName(), "runtimeEnvironment");
           dbPanel.selectPanel.setConstraint(nameField,
               runtimeEnvironmentName, 0);
           dbPanel.searchRequest();           

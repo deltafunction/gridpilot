@@ -661,7 +661,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         user = null;
         DBRecord job = new DBRecord(allJobDefinitions.fields,
             allJobDefinitions.values[i]);
-        String idField = dbPluginMgr.getIdentifierField("jobDefinition");
+        String idField = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
         Debug.debug("Checking:"+Util.arrayToString(job.values), 3);
         String id = job.getValue(idField).toString();
         // if not showing all jobs and job not submitted by me, continue
