@@ -79,8 +79,15 @@ public class TransferInfo extends DBRecord{
   // identical to the protocol name, e.g. srm.
   // IDs are of the form protocol-(get|put|copy):....
   public String getFTName(){
-    String [] split = Util.split(id, "-");
-    return split[0];
+    String ft = "";
+    try{
+      String [] split = Util.split(id, "-");
+      ft = split[0];
+    }
+    catch(Exception e){
+      //e.printStackTrace();
+    }
+    return ft;
   }
   
   public GlobusURL getSource(){
