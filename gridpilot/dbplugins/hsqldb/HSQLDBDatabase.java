@@ -54,6 +54,7 @@ public class HSQLDBDatabase implements Database{
   private String dbName = null;
   private ConfigFile configFile = null;
   private boolean fileCatalog = false;
+  private boolean jobRepository = false;
   
   private static String SERVER_RUNNING = "no";
 
@@ -68,6 +69,11 @@ public class HSQLDBDatabase implements Database{
     if(GridPilot.getClassMgr().getConfigFile().getValue(dbName, "t_pfn field names")!=
       null){
       fileCatalog = true;
+    }
+
+    if(GridPilot.getClassMgr().getConfigFile().getValue(dbName, "jobDefinition field names")!=
+      null){
+      jobRepository = true;
     }
 
     if(database!=null && database.indexOf("/~")>0){
@@ -165,6 +171,10 @@ public class HSQLDBDatabase implements Database{
     return fileCatalog;
   }
   
+  public boolean isJobRepository(){
+    return jobRepository;
+  }
+  
   public String connect(){
     try{
       Class.forName(driver).newInstance();
@@ -187,13 +197,18 @@ public class HSQLDBDatabase implements Database{
               database.startsWith("hsql://localhost/")){
             // If there is not a server running and server
             // should run on localhost, start one
-            Debug.debug("Starting local database server. "+
+            Debug.debug("Starting local database server, since SERVER_RUNNING = "+
                 SERVER_RUNNING, 3);
             server = new Server();
             String dbPath = database.substring(16);
             server.setDatabasePath(0, dbPath);
             databaseName = database.substring(database.lastIndexOf("/")+1);
             server.setDatabaseName(0, databaseName);
+            server.setRestartOnShutdown(false);
+            server.setTls(false);
+            // This is just a high port number. If not set, an exception is
+            // thrown when restarting the server...
+            server.setPort(9001);
             Debug.debug("Starting database server, "+databaseName+":"+
                 dbPath, 1);
             server.start();
@@ -338,10 +353,10 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized boolean cleanRunInfo(String jobDefID){
+    String idField = Util.getIdentifierField(dbName, "jobDefinition");
     String sql = "UPDATE jobDefinition SET jobID = ''," +
         "outTmp = '', errTmp = '', validationResult = '' " +
-        "WHERE identifier = '"+
-    jobDefID+"'";
+        "WHERE "+idField+" = '"+jobDefID+"'";
     boolean ok = true;
     try{
       Statement stmt = conn.createStatement();
@@ -367,6 +382,7 @@ public class HSQLDBDatabase implements Database{
         }
         conn.close();
         server.stop();
+        SERVER_RUNNING = "no";
       }
       else{
         try{
@@ -390,8 +406,10 @@ public class HSQLDBDatabase implements Database{
      throws SQLException {
     Debug.debug("getFieldNames for table "+table, 3);
     if(table.equalsIgnoreCase("file")){
+      String nameField = Util.getNameField(dbName, "dataset");
+      String [] refFields = Util.getJobDefDatasetReference(dbName);
       if(!isFileCatalog() ){
-        return new String [] {"datasetName", "name", "url"};
+        return new String [] {refFields[1], nameField, "url"};
       }
       else{
         return Util.split(
@@ -416,15 +434,18 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized String getTransformationID(String transName, String transVersion){
-    String req = "SELECT identifier from transformation where name = '"+transName + "'"+
-    " AND version = '"+transVersion+"'";
+    String idField = Util.getIdentifierField(dbName, "transformation");
+    String nameField = Util.getNameField(dbName, "transformation");
+    String versionField = Util.getVersionField(dbName, "transformation");
+    String req = "SELECT "+idField+" from transformation where "+nameField+" = '"+transName + "'"+
+    " AND "+versionField+" = '"+transVersion+"'";
     String id = null;
     Vector vec = new Vector();
     try{
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
-        id = rset.getString("identifier");
+        id = rset.getString(idField);
         if(id!=null){
           Debug.debug("Adding id "+id, 3);
           vec.add(id);
@@ -454,7 +475,9 @@ public class HSQLDBDatabase implements Database{
   }
 
   public synchronized String getRuntimeEnvironmentID(String name, String cs){
-    String req = "SELECT identifier from runtimeEnvironment where name = '"+name + "'"+
+    String nameField = Util.getNameField(dbName, "runtimeEnvironment");
+    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
+    String req = "SELECT "+idField+" from runtimeEnvironment where "+nameField+" = '"+name + "'"+
     " AND computingSystem = '"+cs+"'";
     String id = null;
     Vector vec = new Vector();
@@ -462,7 +485,7 @@ public class HSQLDBDatabase implements Database{
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
-        id = rset.getString("identifier");
+        id = rset.getString(idField);
         if(id!=null){
           Debug.debug("Adding id "+id, 3);
           vec.add(id);
@@ -591,13 +614,15 @@ public class HSQLDBDatabase implements Database{
   }
 
   public String getJobDefName(String jobDefinitionID){
-    return getJobDefinition(jobDefinitionID).getValue("name").toString();
+    String nameField = Util.getNameField(dbName, "jobDefintion");
+    return getJobDefinition(jobDefinitionID).getValue(nameField).toString();
   }
 
   public String getJobDefDatasetID(String jobDefinitionID){
     String datasetName = getJobDefinition(jobDefinitionID).getValue("datasetName").toString();
     String datasetID = getDatasetID(datasetName);
-    return getDataset(datasetID).getValue("identifier").toString();
+    String idField = Util.getIdentifierField(dbName, "dataset");
+    return getDataset(datasetID).getValue(idField).toString();
   }
 
  public String getRuntimeInitText(String runTimeEnvironmentName, String csName){
@@ -612,8 +637,10 @@ public class HSQLDBDatabase implements Database{
     String transformation = dataset.getValue("transformationName").toString();
     String version = dataset.getValue("transformationVersion").toString();
     String transID = null;
-    String req = "SELECT identifier FROM "+
-    "transformation WHERE name = '"+transformation+"' AND version = '"+version+"'";
+    String idField = Util.getIdentifierField(dbName, "transformation");
+    String nameField = Util.getNameField(dbName, "transformation");
+    String req = "SELECT "+idField+" FROM "+
+       "transformation WHERE "+nameField+" = '"+transformation+"' AND version = '"+version+"'";
     Vector vec = new Vector();
     Debug.debug(req, 2);
     try{
@@ -625,7 +652,7 @@ public class HSQLDBDatabase implements Database{
               transformation+", "+version, 1);
           break;
         }
-        transID = rset.getString("identifier");
+        transID = rset.getString(idField);
         if(transID!=null){
           Debug.debug("Adding version "+transID, 3);
           vec.add(version);
@@ -660,6 +687,7 @@ public class HSQLDBDatabase implements Database{
     int identifierColumn = -1;
     boolean fileTable = false;
     int urlColumn = -1;
+    int nameColumn = -1;
     Pattern patt;
     Matcher matcher;
 
@@ -764,6 +792,13 @@ public class HSQLDBDatabase implements Database{
           // replace "outFileMapping" with "url" in the Table.
           fields[j] = "URL";
         }
+        // Find the name column number
+        if(fileTable && fields[j].equalsIgnoreCase(Util.getNameField(dbName, "jobDefinition")) && 
+            j!=md.getColumnCount()-1){
+          nameColumn = j;
+          // replace "name" with the what's defined in the config file
+          fields[j] = Util.getNameField(dbName, "file");
+        }
       }
       if(withStar && identifierColumn>-1){
         fields[identifierColumn] = md.getColumnName(md.getColumnCount());
@@ -812,6 +847,17 @@ public class HSQLDBDatabase implements Database{
             values[i][j] = foo;
           }
         }
+        // Add extension to name
+        if(nameColumn>-1 && urlColumn>-1 && values[i][urlColumn].indexOf("/")>0){
+          int lastSlash = values[i][urlColumn].lastIndexOf("/");
+          String fileName = null;
+          if(lastSlash>-1){
+            fileName = values[i][urlColumn].substring(lastSlash + 1);
+          }
+          if(fileName.startsWith(values[i][nameColumn])){
+            values[i][nameColumn] = fileName;
+          }
+        }
         i++;
       }
       return new DBResult(fields, values);
@@ -825,6 +871,8 @@ public class HSQLDBDatabase implements Database{
   // TODO: use getValues
   public synchronized DBRecord getDataset(String datasetID){
     
+    String idField = Util.getIdentifierField(dbName, "dataset");
+   
     DBRecord dataset = null;
     String req = "SELECT "+datasetFields[0];
     if(datasetFields.length>1){
@@ -833,7 +881,7 @@ public class HSQLDBDatabase implements Database{
       }
     }
     req += " FROM dataset";
-    req += " WHERE identifier = '"+ datasetID+"'";
+    req += " WHERE "+idField+" = '"+ datasetID+"'";
     try{
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
@@ -844,8 +892,7 @@ public class HSQLDBDatabase implements Database{
           if(datasetFields[i].endsWith("FK") || datasetFields[i].endsWith("ID") &&
               !datasetFields[i].equalsIgnoreCase("grid") ||
               datasetFields[i].endsWith("COUNT")){
-            int tmp = rset.getInt(datasetFields[i]);
-            values[i] = Integer.toString(tmp);
+            values[i] = Integer.toString(rset.getInt(datasetFields[i]));
           }
           else{
             values[i] = rset.getString(datasetFields[i]);
@@ -882,18 +929,21 @@ public class HSQLDBDatabase implements Database{
   }
 
   public String getDatasetName(String datasetID){
-    return getDataset(datasetID).getValue("name").toString();
+    String nameField = Util.getNameField(dbName, "dataset");
+    return getDataset(datasetID).getValue(nameField).toString();
   }
 
   public synchronized String getDatasetID(String datasetName){
-    String req = "SELECT identifier from dataset where name = '"+datasetName + "'";
+    String idField = Util.getIdentifierField(dbName, "dataset");
+    String nameField = Util.getNameField(dbName, "dataset");
+    String req = "SELECT "+idField+" from dataset where "+nameField+" = '"+datasetName + "'";
     String id = null;
     Vector vec = new Vector();
     try{
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
-        id = rset.getString("identifier");
+        id = rset.getString(idField);
         if(id!=null){
           Debug.debug("Adding id "+id, 3);
           vec.add(id);
@@ -928,6 +978,8 @@ public class HSQLDBDatabase implements Database{
 
   public synchronized DBRecord getRuntimeEnvironment(String runtimeEnvironmentID){
     
+    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
+
     DBRecord pack = null;
     String req = "SELECT "+runtimeEnvironmentFields[0];
     if(runtimeEnvironmentFields.length>1){
@@ -936,7 +988,7 @@ public class HSQLDBDatabase implements Database{
       }
     }
     req += " FROM runtimeEnvironment";
-    req += " WHERE identifier = '"+ runtimeEnvironmentID+"'";
+    req += " WHERE "+idField+" = '"+ runtimeEnvironmentID+"'";
     try{
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
@@ -977,6 +1029,8 @@ public class HSQLDBDatabase implements Database{
   
   public synchronized DBRecord getTransformation(String transformationID){
     
+    String idField = Util.getIdentifierField(dbName, "transformation");
+
     DBRecord transformation = null;
     String req = "SELECT "+transformationFields[0];
     if(transformationFields.length>1){
@@ -985,7 +1039,7 @@ public class HSQLDBDatabase implements Database{
       }
     }
     req += " FROM transformation";
-    req += " WHERE identifier = '"+ transformationID+"'";
+    req += " WHERE "+idField+" = '"+ transformationID+"'";
     try{
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
@@ -1130,8 +1184,10 @@ public class HSQLDBDatabase implements Database{
   // Selects only the fields listed in fieldNames. Other fields are set to "".
   public synchronized DBRecord getJobDefinition(String jobDefinitionID){
     
+    String idField = Util.getIdentifierField(dbName, "jobDefinition");
+    
     String req = "SELECT *";
-    req += " FROM jobDefinition where identifier = '"+
+    req += " FROM jobDefinition where "+idField+" = '"+
     jobDefinitionID + "'";
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
@@ -1646,17 +1702,19 @@ public class HSQLDBDatabase implements Database{
     return execok;
   }
   
-  public boolean updateJobDefinition(String jobDefID,
-      String [] values){
+  public boolean updateJobDefinition(String jobDefID, String [] values){
+    String nameField = Util.getNameField(dbName, "dataset");
     return updateJobDefinition(
         jobDefID,
-        new String [] {"userInfo", "jobID", "name", "outTmp", "errTmp"},
+        new String [] {"userInfo", "jobID", nameField, "outTmp", "errTmp"},
         values
     );
   }
   
   public synchronized boolean updateJobDefinition(String jobDefID, String [] fields,
       String [] values){
+    
+    String idField = Util.getIdentifierField(dbName, "jobDefinition");
     
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -1675,7 +1733,7 @@ public class HSQLDBDatabase implements Database{
     String sql = "UPDATE jobDefinition  SET ";
     int addedFields = 0;
     for(int i=0; i<jobDefFields.length; ++i){
-      if(!jobDefFields[i].equalsIgnoreCase("identifier")){
+      if(!jobDefFields[i].equalsIgnoreCase(idField)){
         for(int j=0; j<fields.length; ++j){
           // only add if present in jobDefFields
           if(jobDefFields[i].equalsIgnoreCase(fields[j])){
@@ -1710,7 +1768,7 @@ public class HSQLDBDatabase implements Database{
         }
       }
     }
-    sql += " WHERE identifier="+jobDefID;
+    sql += " WHERE "+idField+"="+jobDefID;
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
@@ -1730,6 +1788,8 @@ public class HSQLDBDatabase implements Database{
   public synchronized boolean updateDataset(String datasetID, String [] fields,
       String [] values){
 
+    String idField = Util.getIdentifierField(dbName, "dataset");
+
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
           fields.length+"!="+values.length, 1);
@@ -1745,7 +1805,7 @@ public class HSQLDBDatabase implements Database{
     String sql = "UPDATE dataset SET ";
     int addedFields = 0;
     for(int i=0; i<datasetFields.length; ++i){
-      if(!datasetFields[i].equalsIgnoreCase("identifier")){
+      if(!datasetFields[i].equalsIgnoreCase(idField)){
         for(int j=0; j<fields.length; ++j){
           // only add if present in datasetFields
           if(datasetFields[i].equalsIgnoreCase(fields[j])){
@@ -1776,7 +1836,7 @@ public class HSQLDBDatabase implements Database{
         }
       }
     }
-    sql += " WHERE identifier="+datasetID;
+    sql += " WHERE "+idField+"="+datasetID;
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
@@ -1795,6 +1855,8 @@ public class HSQLDBDatabase implements Database{
   public synchronized boolean updateTransformation(String transformationID, String [] fields,
       String [] values){
     
+    String idField = Util.getIdentifierField(dbName, "transformation");
+    
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
           fields.length+"!="+values.length, 1);
@@ -1812,7 +1874,7 @@ public class HSQLDBDatabase implements Database{
     String sql = "UPDATE transformation SET ";
     int addedFields = 0;
     for(int i=0; i<transformationFields.length; ++i){
-      if(!transformationFields[i].equalsIgnoreCase("identifier")){
+      if(!transformationFields[i].equalsIgnoreCase(idField)){
         for(int j=0; j<fields.length; ++j){
           // only add if present in transformationFields
           if(transformationFields[i].equalsIgnoreCase(fields[j])){
@@ -1843,7 +1905,7 @@ public class HSQLDBDatabase implements Database{
         }
       }
     }
-    sql += " WHERE identifier="+transformationID;
+    sql += " WHERE "+idField+"="+transformationID;
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
@@ -1862,6 +1924,8 @@ public class HSQLDBDatabase implements Database{
   public synchronized boolean updateRuntimeEnvironment(String runtimeEnvironmentID, String [] fields,
       String [] values){
     
+    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
+    
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
           fields.length+"!="+values.length, 1);
@@ -1879,7 +1943,7 @@ public class HSQLDBDatabase implements Database{
     String sql = "UPDATE runtimeEnvironment SET ";
     int addedFields = 0;
     for(int i=0; i<runtimeEnvironmentFields.length; ++i){
-      if(!runtimeEnvironmentFields[i].equalsIgnoreCase("identifier")){
+      if(!runtimeEnvironmentFields[i].equalsIgnoreCase(idField)){
         for(int j=0; j<fields.length; ++j){
           // only add if present in runtimeEnvironmentFields
           if(runtimeEnvironmentFields[i].equalsIgnoreCase(fields[j])){
@@ -1910,7 +1974,7 @@ public class HSQLDBDatabase implements Database{
         }
       }
     }
-    sql += " WHERE identifier="+runtimeEnvironmentID;
+    sql += " WHERE "+idField+"="+runtimeEnvironmentID;
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
@@ -1927,9 +1991,10 @@ public class HSQLDBDatabase implements Database{
   }
   
   public synchronized boolean deleteJobDefinition(String jobDefId){
+    String idField = Util.getIdentifierField(dbName, "jobDefinition");
     boolean ok = true;
     try{
-      String sql = "DELETE FROM jobDefinition WHERE identifier = '"+
+      String sql = "DELETE FROM jobDefinition WHERE "+idField+" = '"+
       jobDefId+"'";
       Debug.debug(sql, 3);
       Statement stmt = conn.createStatement();
@@ -1944,9 +2009,10 @@ public class HSQLDBDatabase implements Database{
   }
   
     public synchronized boolean deleteDataset(String datasetID, boolean cleanup){
+    String idField = Util.getIdentifierField(dbName, "dataset");
       boolean ok = true;
       try{
-        String sql = "DELETE FROM dataset WHERE identifier = '"+
+      String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
         datasetID+"'";
         Statement stmt = conn.createStatement();
         stmt.executeUpdate(sql);
@@ -1969,9 +2035,10 @@ public class HSQLDBDatabase implements Database{
     }
 
     public synchronized boolean deleteJobDefsFromDataset(String datasetID){
+    String [] refFields = Util.getJobDefDatasetReference(dbName);
       boolean ok = true;
       try{
-        String sql = "DELETE FROM jobDefinition WHERE dataset = '"+
+      String sql = "DELETE FROM jobDefinition WHERE "+refFields[1]+" = '"+
         getDatasetName(datasetID)+"'";
         Statement stmt = conn.createStatement();
         stmt.executeUpdate(sql);
@@ -1984,9 +2051,10 @@ public class HSQLDBDatabase implements Database{
     }
 
     public synchronized boolean deleteTransformation(String transformationID){
+    String idField = Util.getIdentifierField(dbName, "transformation");
       boolean ok = true;
       try{
-        String sql = "DELETE FROM transformation WHERE identifier = '"+
+      String sql = "DELETE FROM transformation WHERE "+idField+" = '"+
         transformationID+"'";
         Statement stmt = conn.createStatement();
         stmt.executeUpdate(sql);
@@ -2000,9 +2068,10 @@ public class HSQLDBDatabase implements Database{
     }
       
     public synchronized boolean deleteRuntimeEnvironment(String runtimeEnvironmentID){
+    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
       boolean ok = true;
       try{
-        String sql = "DELETE FROM runtimeEnvironment WHERE identifier = '"+
+      String sql = "DELETE FROM runtimeEnvironment WHERE "+idField+" = '"+
         runtimeEnvironmentID+"'";
         Statement stmt = conn.createStatement();
         stmt.executeUpdate(sql);
@@ -2016,8 +2085,11 @@ public class HSQLDBDatabase implements Database{
     }
       
   public synchronized String [] getVersions(String transformation){   
-    String req = "SELECT identifier, version FROM "+
-    "transformation WHERE name = '"+transformation+"'";
+    String idField = Util.getIdentifierField(dbName, "transformation");
+    String nameField = Util.getNameField(dbName, "transformation");
+    String versionField = Util.getVersionField(dbName, "transformation");
+    String req = "SELECT "+idField+", "+versionField+" FROM "+
+    "transformation WHERE "+nameField+" = '"+transformation+"'";
     Vector vec = new Vector();
     Debug.debug(req, 2);
     String version;
@@ -2032,7 +2104,7 @@ public class HSQLDBDatabase implements Database{
         }
         else{
           Debug.debug("WARNING: version null for identifier "+
-              rset.getInt("identifier"), 1);
+              rset.getInt(idField), 1);
         }
       }
       rset.close();  
@@ -2153,8 +2225,8 @@ public class HSQLDBDatabase implements Database{
       }
     }
     // If there are no file catalog tables, we construct a virtual file table
-    // from the jobDefinition table.
-    else{
+    // from the jobDefinition table - if it is present.
+    else if(isJobRepository()){
       // "datasetName", "name", "url"
       DBRecord jobDef = getJobDefinition(fileID);
       for(int i=0; i<fields.length; ++i){
@@ -2253,7 +2325,7 @@ public class HSQLDBDatabase implements Database{
         if(!existingID.equalsIgnoreCase(datasetID)){
           error = "WARNING: dataset "+datasetName+" already registered with id "+
           existingID+"!="+datasetID+". Using "+existingID+".";
-          GridPilot.getClassMgr().getLogFile().addMessage(error);
+          GridPilot.getClassMgr().getLogFile().addInfo(error);
           datasetID = existingID;
         }
         datasetExists = true;
@@ -2266,8 +2338,9 @@ public class HSQLDBDatabase implements Database{
     // If the dataset does not exist, create it
     if(!datasetExists){
       try{
+        String nameField = Util.getNameField(dbName, "dataset");
         GridPilot.getClassMgr().getStatusBar().setLabel("Creating new dataset "+datasetName);
-        if(!createDataset("dataset", new String [] {"name"}, new Object [] {datasetName})){
+        if(!createDataset("dataset", new String [] {nameField}, new Object [] {datasetName})){
           throw new SQLException("createDataset failed");
         }
         datasetID = getDatasetID(datasetName);
@@ -2314,7 +2387,6 @@ public class HSQLDBDatabase implements Database{
         if(!createFile(datasetName, fileID, lfn, url)){
           throw new SQLException("create file failed");
         }
-        datasetID = getFileID(lfn);
         GridPilot.getClassMgr().getLogFile().addInfo("Created new file "+lfn+
             ". Please add some metadata if needed.");
         fileExists = true;
@@ -2327,9 +2399,17 @@ public class HSQLDBDatabase implements Database{
     }
     // Otherwise, just add the url.
     else{
+      // If the url is already registered, skip
+      String [] urls = getFileURLs(datasetName, fileID);
+      for(int i=0; i<urls.length; ++i){
+        if(urls[i].equals(url)){
+          error = "WARNING: URL "+url+" already registered for file "+lfn+". Skipping.";
+          GridPilot.getClassMgr().getLogFile().addMessage(error);
+          return;
+        }
+      }
       addUrlToFile(fileID, url);
     }
-    
   }
 
   // This is only to be used if this is a file catalog.
@@ -2456,19 +2536,25 @@ public class HSQLDBDatabase implements Database{
     }
   }
 
-  // This is only to be used if this is a file catalog.
   private synchronized String getFileID(String lfn){
-    return Util.getValues(conn, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
+    if(isFileCatalog()){
+      return Util.getValues(conn, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
+    }
+    else if(isJobRepository()){
+      // an autoincremented integer is of no use... Except for when pasting:
+      // then we need it to get the pfns.
+      String nameField = Util.getNameField(dbName, "jobDefinition");
+      String idField = Util.getIdentifierField(dbName, "jobDefinition");
+      return Util.getValues(conn, "jobDefinition", nameField, lfn,
+          new String [] {idField})[0][0];
+    }
+    else{
+      return null;
+    }
   }
   
   public String getFileID(String datasetName, String name){
-    if(isFileCatalog()){
-      return getFileID(name);
-    }
-    else{
-      // an autoincremented integer is of no use...
-      return null;
-    }
+    return getFileID(name);
   }
 
 }

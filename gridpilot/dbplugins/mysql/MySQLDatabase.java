@@ -62,6 +62,7 @@ public class MySQLDatabase implements Database{
   private boolean gridAuth;
   private GlobusCredential globusCred = null;
   private boolean fileCatalog = false;
+  private boolean jobRepository = false;
 
   public MySQLDatabase(String _dbName,
       String _driver, String _database,
@@ -76,7 +77,11 @@ public class MySQLDatabase implements Database{
       null){
       fileCatalog = true;
     }
-
+    
+    if(GridPilot.getClassMgr().getConfigFile().getValue(dbName, "jobDefinition field names")!=
+      null){
+      jobRepository = true;
+    }
     
     boolean showDialog = true;
     // if global frame is set, this is a reload
@@ -237,6 +242,10 @@ public class MySQLDatabase implements Database{
     return fileCatalog;
   }
   
+  public boolean isJobRepository(){
+    return jobRepository;
+  }
+  
   public String connect() throws SQLException{
     conn = Util.sqlConnection(driver, database, user, passwd, gridAuth);
     return "";
@@ -245,14 +254,14 @@ public class MySQLDatabase implements Database{
   private boolean checkTable(String table){
     ConfigFile tablesConfig = GridPilot.getClassMgr().getConfigFile();
     String [] fields = null;
-    String [] fieldTypes = null;
+    //String [] fieldTypes = null;
     try{
       fields = Util.split(tablesConfig.getValue(dbName, table+" field names"), ",");
-      fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
+      //fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
     }
     catch(Exception e){
     }
-    if(fields==null || fieldTypes==null){
+    if(fields==null /*|| fieldTypes==null*/){
       return false;
     }
     else{
@@ -322,10 +331,10 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized boolean cleanRunInfo(String jobDefID){
+    String idField = Util.getIdentifierField(dbName, "jobDefinition");
     String sql = "UPDATE jobDefinition SET jobID = ''," +
         "outTmp = '', errTmp = '', validationResult = '' " +
-        "WHERE identifier = '"+
-    jobDefID+"'";
+        "WHERE "+idField+" = '"+jobDefID+"'";
     boolean ok = true;
     try{
       Statement stmt = conn.createStatement();
@@ -348,16 +357,20 @@ public class MySQLDatabase implements Database{
     }
   }
 
-  public String [] getDefVals(String datasetID, String user){
-    // nothing for now
-    return new String [] {""};
-  }
- 
   public synchronized String [] getFieldNames(String table)
      throws SQLException {
     Debug.debug("getFieldNames for table "+table, 3);
-    if(!isFileCatalog() && table.equalsIgnoreCase("file")){
-      return new String [] {"datasetName", "name", "url"};
+    if(table.equalsIgnoreCase("file")){
+      String nameField = Util.getNameField(dbName, "dataset");
+      String [] refFields = Util.getJobDefDatasetReference(dbName);
+      if(!isFileCatalog() ){
+        return new String [] {refFields[1], nameField, "url"};
+      }
+      else{
+        return Util.split(
+            GridPilot.getClassMgr().getConfigFile().getValue(dbName, "file field names"),
+            ", ");
+      }
     }
     else if(!checkTable(table)){
       return null;
@@ -375,15 +388,18 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized String getTransformationID(String transName, String transVersion){
-    String req = "SELECT identifier from transformation where name = '"+transName + "'"+
-    " AND version = '"+transVersion+"'";
+    String idField = Util.getIdentifierField(dbName, "transformation");
+    String nameField = Util.getNameField(dbName, "transformation");
+    String versionField = Util.getVersionField(dbName, "transformation");
+    String req = "SELECT "+idField+" from transformation where "+nameField+" = '"+transName + "'"+
+    " AND "+versionField+" = '"+transVersion+"'";
     String id = null;
     Vector vec = new Vector();
     try{
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
-        id = rset.getString("identifier");
+        id = rset.getString(idField);
         if(id!=null){
           Debug.debug("Adding id "+id, 3);
           vec.add(id);
@@ -413,7 +429,9 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized String getRuntimeEnvironmentID(String name, String cs){
-    String req = "SELECT identifier from runtimeEnvironment where name = '"+name + "'"+
+    String nameField = Util.getNameField(dbName, "runtimeEnvironment");
+    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
+    String req = "SELECT "+idField+" from runtimeEnvironment where "+nameField+" = '"+name + "'"+
     " AND computingSystem = '"+cs+"'";
     String id = null;
     Vector vec = new Vector();
@@ -421,7 +439,7 @@ public class MySQLDatabase implements Database{
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
-        id = rset.getString("identifier");
+        id = rset.getString(idField);
         if(id!=null){
           Debug.debug("Adding id "+id, 3);
           vec.add(id);
@@ -548,13 +566,15 @@ public class MySQLDatabase implements Database{
   }
 
   public String getJobDefName(String jobDefinitionID){
-    return getJobDefinition(jobDefinitionID).getValue("name").toString();
+    String nameField = Util.getNameField(dbName, "jobDefintion");
+    return getJobDefinition(jobDefinitionID).getValue(nameField).toString();
   }
 
   public String getJobDefDatasetID(String jobDefinitionID){
     String datasetName = getJobDefinition(jobDefinitionID).getValue("datasetName").toString();
     String datasetID = getDatasetID(datasetName);
-    return getDataset(datasetID).getValue("identifier").toString();
+    String idField = Util.getIdentifierField(dbName, "dataset");
+    return getDataset(datasetID).getValue(idField).toString();
   }
 
   public String getRuntimeInitText(String runTimeEnvironmentName, String csName){
@@ -569,8 +589,10 @@ public class MySQLDatabase implements Database{
     String transformation = dataset.getValue("transformationName").toString();
     String version = dataset.getValue("transformationVersion").toString();
     String transID = null;
-    String req = "SELECT identifier FROM "+
-    "transformation WHERE name = '"+transformation+"' AND version = '"+version+"'";
+    String idField = Util.getIdentifierField(dbName, "transformation");
+    String nameField = Util.getNameField(dbName, "transformation");
+    String req = "SELECT "+idField+" FROM "+
+       "transformation WHERE "+nameField+" = '"+transformation+"' AND version = '"+version+"'";
     Vector vec = new Vector();
     Debug.debug(req, 2);
     try{
@@ -582,7 +604,7 @@ public class MySQLDatabase implements Database{
               transformation+", "+version, 1);
           break;
         }
-        transID = rset.getString("identifier");
+        transID = rset.getString(idField);
         if(transID!=null){
           Debug.debug("Adding version "+transID, 3);
           vec.add(version);
@@ -617,6 +639,7 @@ public class MySQLDatabase implements Database{
     int identifierColumn = -1;
     boolean fileTable = false;
     int urlColumn = -1;
+    int nameColumn = -1;
     Pattern patt;
     Matcher matcher;
 
@@ -632,7 +655,7 @@ public class MySQLDatabase implements Database{
       Debug.debug("Correcting non-valid select pattern", 3);
       patt = Pattern.compile("SELECT \\*\\, (.+) FROM", Pattern.CASE_INSENSITIVE);
       matcher = patt.matcher(req);
-      req = matcher.replaceAll("SELECT * FROM");
+      req = matcher.replaceFirst("SELECT * FROM");
     }
     else{
       patt = Pattern.compile(", "+identifier+" ", Pattern.CASE_INSENSITIVE);
@@ -642,7 +665,7 @@ public class MySQLDatabase implements Database{
       if(!patt.matcher(req).find()){
         patt = Pattern.compile(" FROM (\\w+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceAll(", "+identifier+" FROM "+"$1");
+        req = matcher.replaceFirst(", "+identifier+" FROM "+"$1");
       }
     }
     
@@ -652,13 +675,13 @@ public class MySQLDatabase implements Database{
       if(req.matches("SELECT (.+) FROM file WHERE (.+)")){
         patt = Pattern.compile("SELECT (.+) FROM file WHERE (.+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceAll("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE ($2) AND" +
+        req = matcher.replaceFirst("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE ($2) AND" +
                 "t_lfn.guid=t_pfn.guid AND t_meta.guid=t_pfn.guid");
       }
       if(req.matches("SELECT (.+) FROM file (.+)")){
         patt = Pattern.compile("SELECT (.+) FROM file", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceAll("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE " +
+        req = matcher.replaceFirst("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE " +
                 "t_lfn.guid=t_pfn.guid AND t_meta.guid=t_pfn.guid");
       }
     }
@@ -669,18 +692,18 @@ public class MySQLDatabase implements Database{
       if(req.matches("SELECT (.+) url\\, (.+) FROM file (.+)")){
         patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceAll("SELECT $1 outFileMapping, $2 FROM file $3");
+        req = matcher.replaceFirst("SELECT $1 outFileMapping, $2 FROM file $3");
       }
       if(req.matches("SELECT (.+) url FROM file (.+)")){
         patt = Pattern.compile("SELECT (.+) url FROM file (.+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceAll("SELECT $1 outFileMapping FROM file $2");
+        req = matcher.replaceFirst("SELECT $1 outFileMapping FROM file $2");
       }
       if(req.matches("SELECT (.+) FROM file (.+)")){
         fileTable = true;
         patt = Pattern.compile("SELECT (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceAll("SELECT $1 FROM jobDefinition $2");
+        req = matcher.replaceFirst("SELECT $1 FROM jobDefinition $2");
       }
     }
 
@@ -708,16 +731,23 @@ public class MySQLDatabase implements Database{
         fields[j] = md.getColumnName(j+1);
         // If we did select *, make sure that the identifier
         // row is at the end as it should be
-        if(withStar && fields[j].equalsIgnoreCase(identifier)  && 
+        if(withStar && fields[j].equalsIgnoreCase(identifier) && 
             j!=md.getColumnCount()-1){
           identifierColumn = j;
         }
         // Find the outFileMapping column number
-        if(fileTable && fields[j].equalsIgnoreCase("outFileMapping")  && 
+        if(fileTable && fields[j].equalsIgnoreCase("outFileMapping") && 
             j!=md.getColumnCount()-1){
           urlColumn = j;
           // replace "outFileMapping" with "url" in the Table.
           fields[j] = "url";
+        }
+        // Find the name column number
+        if(fileTable && fields[j].equalsIgnoreCase(Util.getNameField(dbName, "jobDefinition")) && 
+            j!=md.getColumnCount()-1){
+          nameColumn = j;
+          // replace "name" with the what's defined in the config file
+          fields[j] = Util.getNameField(dbName, "file");
         }
       }
       if(withStar && identifierColumn>-1){
@@ -767,6 +797,17 @@ public class MySQLDatabase implements Database{
             values[i][j] = foo;
           }
         }
+        // Add extension to name
+        if(nameColumn>-1 && urlColumn>-1 && values[i][urlColumn].indexOf("/")>0){
+          int lastSlash = values[i][urlColumn].lastIndexOf("/");
+          String fileName = null;
+          if(lastSlash>-1){
+            fileName = values[i][urlColumn].substring(lastSlash + 1);
+          }
+          if(fileName.startsWith(values[i][nameColumn])){
+            values[i][nameColumn] = fileName;
+          }
+        }
         i++;
       }
       return new DBResult(fields, values);
@@ -779,6 +820,8 @@ public class MySQLDatabase implements Database{
   
   public synchronized DBRecord getDataset(String datasetID){
     
+    String idField = Util.getIdentifierField(dbName, "dataset");
+   
     DBRecord dataset = null;
     String req = "SELECT "+datasetFields[0];
     if(datasetFields.length>1){
@@ -787,7 +830,7 @@ public class MySQLDatabase implements Database{
       }
     }
     req += " FROM dataset";
-    req += " WHERE identifier = '"+ datasetID+"'";
+    req += " WHERE "+idField+" = '"+ datasetID+"'";
     try{
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
@@ -835,18 +878,21 @@ public class MySQLDatabase implements Database{
   }
   
   public String getDatasetName(String datasetID){
-    return getDataset(datasetID).getValue("name").toString();
+    String nameField = Util.getNameField(dbName, "dataset");
+    return getDataset(datasetID).getValue(nameField).toString();
   }
 
   public synchronized String getDatasetID(String datasetName){
-    String req = "SELECT identifier from dataset where name = '"+datasetName + "'";
+    String idField = Util.getIdentifierField(dbName, "dataset");
+    String nameField = Util.getNameField(dbName, "dataset");
+    String req = "SELECT "+idField+" from dataset where "+nameField+" = '"+datasetName + "'";
     String id = null;
     Vector vec = new Vector();
     try{
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
-        id = rset.getString("identifier");
+        id = rset.getString(idField);
         if(id!=null){
           Debug.debug("Adding id "+id, 3);
           vec.add(id);
@@ -881,6 +927,8 @@ public class MySQLDatabase implements Database{
 
   public synchronized DBRecord getRuntimeEnvironment(String runtimeEnvironmentID){
     
+    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
+
     DBRecord pack = null;
     String req = "SELECT "+runtimeEnvironmentFields[0];
     if(runtimeEnvironmentFields.length>1){
@@ -889,7 +937,7 @@ public class MySQLDatabase implements Database{
       }
     }
     req += " FROM runtimeEnvironment";
-    req += " WHERE identifier = '"+ runtimeEnvironmentID+"'";
+    req += " WHERE "+idField+" = '"+ runtimeEnvironmentID+"'";
     try{
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
@@ -930,6 +978,8 @@ public class MySQLDatabase implements Database{
   
   public synchronized DBRecord getTransformation(String transformationID){
     
+    String idField = Util.getIdentifierField(dbName, "transformation");
+
     DBRecord transformation = null;
     String req = "SELECT "+transformationFields[0];
     if(transformationFields.length>1){
@@ -938,7 +988,7 @@ public class MySQLDatabase implements Database{
       }
     }
     req += " FROM transformation";
-    req += " WHERE identifier = '"+ transformationID+"'";
+    req += " WHERE "+idField+" = '"+ transformationID+"'";
     try{
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
@@ -1083,8 +1133,10 @@ public class MySQLDatabase implements Database{
   // Selects only the fields listed in fieldNames. Other fields are set to "".
   public synchronized DBRecord getJobDefinition(String jobDefinitionID){
     
+    String idField = Util.getIdentifierField(dbName, "jobDefinition");
+    
     String req = "SELECT *";
-    req += " FROM jobDefinition where identifier = '"+
+    req += " FROM jobDefinition where "+idField+" = '"+
     jobDefinitionID + "'";
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
@@ -1549,7 +1601,7 @@ public class MySQLDatabase implements Database{
     // be the case.
     for(int i=0; i<identifiers.length; ++i){
       sql += "identifier"+"="+identifiers[i];
-      if(identifiers.length > 1 && i < identifiers.length - 1){
+      if(identifiers.length>1 && i<identifiers.length-1){
         sql += " OR ";
       }
     }
@@ -1568,17 +1620,19 @@ public class MySQLDatabase implements Database{
     return execok;
   }
   
-  public boolean updateJobDefinition(String jobDefID,
-      String [] values){
+  public boolean updateJobDefinition(String jobDefID, String [] values){
+    String nameField = Util.getNameField(dbName, "dataset");
     return updateJobDefinition(
         jobDefID,
-        new String [] {"userInfo", "jobID", "name", "outTmp", "errTmp"},
+        new String [] {"userInfo", "jobID", nameField, "outTmp", "errTmp"},
         values
     );
   }
   
   public synchronized boolean updateJobDefinition(String jobDefID, String [] fields,
       String [] values){
+    
+    String idField = Util.getIdentifierField(dbName, "jobDefinition");
     
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -1597,7 +1651,7 @@ public class MySQLDatabase implements Database{
     String sql = "UPDATE jobDefinition  SET ";
     int addedFields = 0;
     for(int i=0; i<jobDefFields.length; ++i){
-      if(!jobDefFields[i].equalsIgnoreCase("identifier")){
+      if(!jobDefFields[i].equalsIgnoreCase(idField)){
         for(int j=0; j<fields.length; ++j){
           // only add if present in jobDefFields
           if(jobDefFields[i].equalsIgnoreCase(fields[j])){
@@ -1627,7 +1681,7 @@ public class MySQLDatabase implements Database{
         }
       }
     }
-    sql += " WHERE identifier="+jobDefID;
+    sql += " WHERE "+idField+"="+jobDefID;
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
@@ -1645,6 +1699,8 @@ public class MySQLDatabase implements Database{
   
   public synchronized boolean updateDataset(String datasetID, String [] fields,
       String [] values){
+    
+    String idField = Util.getIdentifierField(dbName, "dataset");
 
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -1661,7 +1717,7 @@ public class MySQLDatabase implements Database{
     String sql = "UPDATE dataset SET ";
     int addedFields = 0;
     for(int i=0; i<datasetFields.length; ++i){
-      if(!datasetFields[i].equalsIgnoreCase("identifier")){
+      if(!datasetFields[i].equalsIgnoreCase(idField)){
         for(int j=0; j<fields.length; ++j){
           // only add if present in datasetFields
           if(datasetFields[i].equalsIgnoreCase(fields[j])){
@@ -1692,7 +1748,7 @@ public class MySQLDatabase implements Database{
         }
       }
     }
-    sql += " WHERE identifier="+datasetID;
+    sql += " WHERE "+idField+"="+datasetID;
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
@@ -1711,6 +1767,8 @@ public class MySQLDatabase implements Database{
   public synchronized boolean updateTransformation(String transformationID, String [] fields,
       String [] values){
     
+    String idField = Util.getIdentifierField(dbName, "transformation");
+    
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
           fields.length+"!="+values.length, 1);
@@ -1728,7 +1786,7 @@ public class MySQLDatabase implements Database{
     String sql = "UPDATE transformation SET ";
     int addedFields = 0;
     for(int i=0; i<transformationFields.length; ++i){
-      if(!transformationFields[i].equalsIgnoreCase("identifier")){
+      if(!transformationFields[i].equalsIgnoreCase(idField)){
         for(int j=0; j<fields.length; ++j){
           // only add if present in transformationFields
           if(transformationFields[i].equalsIgnoreCase(fields[j])){
@@ -1759,7 +1817,7 @@ public class MySQLDatabase implements Database{
         }
       }
     }
-    sql += " WHERE identifier="+transformationID;
+    sql += " WHERE "+idField+"="+transformationID;
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
@@ -1778,6 +1836,8 @@ public class MySQLDatabase implements Database{
   public synchronized boolean updateRuntimeEnvironment(String runtimeEnvironmentID, String [] fields,
       String [] values){
     
+    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
+    
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
           fields.length+"!="+values.length, 1);
@@ -1795,7 +1855,7 @@ public class MySQLDatabase implements Database{
     String sql = "UPDATE runtimeEnvironment SET ";
     int addedFields = 0;
     for(int i=0; i<runtimeEnvironmentFields.length; ++i){
-      if(!runtimeEnvironmentFields[i].equalsIgnoreCase("identifier")){
+      if(!runtimeEnvironmentFields[i].equalsIgnoreCase(idField)){
         for(int j=0; j<fields.length; ++j){
           // only add if present in runtimeEnvironmentFields
           if(runtimeEnvironmentFields[i].equalsIgnoreCase(fields[j])){
@@ -1826,7 +1886,7 @@ public class MySQLDatabase implements Database{
         }
       }
     }
-    sql += " WHERE identifier="+runtimeEnvironmentID;
+    sql += " WHERE "+idField+"="+runtimeEnvironmentID;
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
@@ -1843,9 +1903,10 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized boolean deleteJobDefinition(String jobDefId){
+    String idField = Util.getIdentifierField(dbName, "jobDefinition");
     boolean ok = true;
     try{
-      String sql = "DELETE FROM jobDefinition WHERE identifier = '"+
+      String sql = "DELETE FROM jobDefinition WHERE "+idField+" = '"+
       jobDefId+"'";
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
@@ -1859,9 +1920,10 @@ public class MySQLDatabase implements Database{
   }
   
   public synchronized boolean deleteDataset(String datasetID, boolean cleanup){
+    String idField = Util.getIdentifierField(dbName, "dataset");
     boolean ok = true;
     try{
-      String sql = "DELETE FROM dataset WHERE identifier = '"+
+      String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
       datasetID+"'";
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
@@ -1884,9 +1946,10 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized boolean deleteJobDefsFromDataset(String datasetID){
+    String [] refFields = Util.getJobDefDatasetReference(dbName);
     boolean ok = true;
     try{
-      String sql = "DELETE FROM jobDefinition WHERE dataset = '"+
+      String sql = "DELETE FROM jobDefinition WHERE "+refFields[1]+" = '"+
         getDatasetName(datasetID)+"'";
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
@@ -1899,9 +1962,10 @@ public class MySQLDatabase implements Database{
   }
     
   public synchronized boolean deleteTransformation(String transformationID){
+    String idField = Util.getIdentifierField(dbName, "transformation");
     boolean ok = true;
     try{
-      String sql = "DELETE FROM transformation WHERE identifier = '"+
+      String sql = "DELETE FROM transformation WHERE "+idField+" = '"+
       transformationID+"'";
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
@@ -1915,9 +1979,10 @@ public class MySQLDatabase implements Database{
   }
     
   public synchronized boolean deleteRuntimeEnvironment(String runtimeEnvironmentID){
+    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
     boolean ok = true;
     try{
-      String sql = "DELETE FROM runtimeEnvironment WHERE identifier = '"+
+      String sql = "DELETE FROM runtimeEnvironment WHERE "+idField+" = '"+
       runtimeEnvironmentID+"'";
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
@@ -1931,8 +1996,11 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized String [] getVersions(String transformation){   
-    String req = "SELECT identifier, version FROM "+
-    "transformation WHERE name = '"+transformation+"'";
+    String idField = Util.getIdentifierField(dbName, "transformation");
+    String nameField = Util.getNameField(dbName, "transformation");
+    String versionField = Util.getVersionField(dbName, "transformation");
+    String req = "SELECT "+idField+", "+versionField+" FROM "+
+    "transformation WHERE "+nameField+" = '"+transformation+"'";
     Vector vec = new Vector();
     Debug.debug(req, 2);
     String version;
@@ -1947,7 +2015,7 @@ public class MySQLDatabase implements Database{
         }
         else{
           Debug.debug("WARNING: version null for identifier "+
-              rset.getInt("identifier"), 1);
+              rset.getInt(idField), 1);
         }
       }
       rset.close();  
@@ -2067,7 +2135,7 @@ public class MySQLDatabase implements Database{
     }
     // If there are no file catalog tables, we construct a virtual file table
     // from the jobDefinition table.
-    else{
+    else if(isJobRepository()){
       // "datasetName", "name", "url"
       DBRecord jobDef = getJobDefinition(fileID);
       for(int i=0; i<fields.length; ++i){
@@ -2144,7 +2212,7 @@ public class MySQLDatabase implements Database{
         if(!existingID.equalsIgnoreCase(datasetID)){
           error = "WARNING: dataset "+datasetName+" already registered with id "+
           existingID+"!="+datasetID+". Using "+existingID+".";
-          GridPilot.getClassMgr().getLogFile().addMessage(error);
+          GridPilot.getClassMgr().getLogFile().addInfo(error);
           datasetID = existingID;
         }
         datasetExists = true;
@@ -2157,8 +2225,9 @@ public class MySQLDatabase implements Database{
     // If the dataset does not exist, create it
     if(!datasetExists){
       try{
+        String nameField = Util.getNameField(dbName, "dataset");
         GridPilot.getClassMgr().getStatusBar().setLabel("Creating new dataset "+datasetName);
-        if(!createDataset("dataset", new String [] {"name"}, new Object [] {datasetName})){
+        if(!createDataset("dataset", new String [] {nameField}, new Object [] {datasetName})){
           throw new SQLException("createDataset failed");
         }
         datasetID = getDatasetID(datasetName);
@@ -2205,7 +2274,6 @@ public class MySQLDatabase implements Database{
         if(!createFile(datasetName, fileID, lfn, url)){
           throw new SQLException("create file failed");
         }
-        datasetID = getFileID(lfn);
         GridPilot.getClassMgr().getLogFile().addInfo("Created new file "+lfn+
             ". Please add some metadata if needed.");
         fileExists = true;
@@ -2218,17 +2286,24 @@ public class MySQLDatabase implements Database{
     }
     // Otherwise, just add the url.
     else{
+      // If the url is already registered, skip
+      String [] urls = getFileURLs(datasetName, fileID);
+      for(int i=0; i<urls.length; ++i){
+        if(urls[i].equals(url)){
+          error = "WARNING: URL "+url+" already registered for file "+lfn+". Skipping.";
+          GridPilot.getClassMgr().getLogFile().addMessage(error);
+          return;
+        }
+      }
       addUrlToFile(fileID, url);
     }
-    
   }
 
   // This is only to be used if this is a file catalog.
   private synchronized void addUrlToFile(String fileID, String url)
      throws Exception {
     String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
-    url + "', '" + fileID +
-    "')";
+    url + "', '" + fileID +"')";
     Debug.debug(sql, 2);
     Statement stmt = conn.createStatement();
     stmt.executeUpdate(sql);
@@ -2238,8 +2313,7 @@ public class MySQLDatabase implements Database{
   private synchronized boolean createFile(String datasetName, String fileID,
       String lfn, String url){
     String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
-    url + "', '" + fileID +
-    "'); ";
+    url + "', '" + fileID + "'); ";
     Debug.debug(sql, 2);
     boolean execok1 = true;
     try{
@@ -2343,19 +2417,25 @@ public class MySQLDatabase implements Database{
     }
   }
 
-  // This is only to be used if this is a file catalog.
   private synchronized String getFileID(String lfn){
-    return Util.getValues(conn, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
+    if(isFileCatalog()){
+      return Util.getValues(conn, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
+    }
+    else if(isJobRepository()){
+      // an autoincremented integer is of no use... Except for when pasting:
+      // then we need it to get the pfns.
+      String nameField = Util.getNameField(dbName, "jobDefinition");
+      String idField = Util.getIdentifierField(dbName, "jobDefinition");
+      return Util.getValues(conn, "jobDefinition", nameField, lfn,
+          new String [] {idField})[0][0];
+    }
+    else{
+      return null;
+    }
   }
   
   public String getFileID(String datasetName, String name){
-    if(isFileCatalog()){
-      return getFileID(name);
-    }
-    else{
-      // an autoincremented integer is of no use...
-      return null;
-    }
+    return getFileID(name);
   }
 
 }
