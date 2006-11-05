@@ -1187,7 +1187,23 @@ public class Util{
 
   public static Connection sqlConnection(String driver, String database,
       String user, String passwd, boolean gridAuth) throws SQLException{
+    return sqlConnection(driver, database,
+        user, passwd, gridAuth, null, null);
+  }
+
+  public static Connection sqlConnection(String driver, String database,
+      String user, String passwd, boolean gridAuth, String _connectionTimeout,
+      String _socketTimeout) throws SQLException{
     Connection conn = null;
+    // timeouts in milliseconds
+    String connectionTimeout = null;
+    String socketTimeout = null;
+    if(_connectionTimeout==null){
+      connectionTimeout = "10000";
+    }
+    if(_socketTimeout==null){
+      socketTimeout = "30000";
+    }
     try{
       Class.forName(driver).newInstance();
     }
@@ -1201,11 +1217,15 @@ public class Util{
     try{
       if(gridAuth){
         conn = DriverManager.getConnection(database+
-            "?user="+user+"&password=&useSSL=true");
+            "?user="+user+"&password=&useSSL=true&" +
+                    "connectionTimeout="+connectionTimeout+
+                    "&socketTimeout="+socketTimeout);
       }
       else{
         conn = DriverManager.getConnection(database+
-            "?user="+user+"&password="+passwd);
+            "?user="+user+"&password="+passwd+
+            "&connectionTimeout="+connectionTimeout+
+            "&socketTimeout="+socketTimeout);
       }
     }
     catch(Exception e){
@@ -1372,6 +1392,94 @@ public class Util{
       return new String [fields.length][0];
     }
     return resultArray;
+  }
+
+  public static String [] getFileDatasetReference(String dbName){
+    String [] ret = GridPilot.getClassMgr().getConfigFile().getValues(dbName,
+      "file dataset reference");
+    if(ret==null || ret.length<2){
+      ret = new String [] {"name", "datasetName"};
+    }
+    Debug.debug("jobDef dataset reference for "+dbName
+        +" : "+arrayToString(ret), 2);
+    return ret;
+  }
+
+  public static String getIdentifierField(String dbName, String table){
+    String ret = GridPilot.getClassMgr().getConfigFile().getValue(dbName, table+" identifier");
+    if(ret==null || ret.equals("")){
+      ret = "identifier";
+    }
+    Debug.debug("Identifier for "+dbName+" - "+table+" : "+ret, 2);
+    return ret;
+  }
+
+  /**
+   * Get the name of the column holding the name.
+   */
+  public static String getNameField(String dbName, String table){
+    String ret = GridPilot.getClassMgr().getConfigFile().getValue(dbName, table+" name");
+    if(ret==null || ret.equals("")){
+      ret = "name";
+    }
+    Debug.debug("Name for "+dbName+" - "+table+" : "+ret, 2);
+    return ret;
+  }
+
+  /**
+   * Get the name of the column holding the version.
+   */
+  public static String getVersionField(String dbName, String table){
+    String ret = GridPilot.getClassMgr().getConfigFile().getValue(dbName, table+" version");
+    if(ret==null || ret.equals("")){
+      ret = "version";
+    }
+    Debug.debug("Version for "+dbName+" - "+table+" : "+ret, 2);
+    return ret;
+  }
+
+  public static String [] getJobDefDatasetReference(String dbName){
+    String [] ret = GridPilot.getClassMgr().getConfigFile().getValues(dbName,
+      "jobDefinition dataset reference");
+    if(ret==null || ret.length<2){
+      ret = new String [] {"name", "datasetName"};
+    }
+    Debug.debug("jobDef dataset reference for "+dbName
+        +" : "+arrayToString(ret), 2);
+    return ret;
+  }
+
+  public static String [] getDatasetTransformationReference(String dbName){
+    String [] ret = GridPilot.getClassMgr().getConfigFile().getValues(dbName,
+      "dataset transformation reference");
+    if(ret==null || ret.length<2){
+      ret = new String [] {"name", "transformationName"};
+    }
+    Debug.debug("dataset transformation reference for "+dbName
+        +" : "+arrayToString(ret), 2);
+    return ret;
+  }
+
+  public static String [] getDatasetTransformationVersionReference(String dbName){
+    String [] ret = GridPilot.getClassMgr().getConfigFile().getValues(dbName,
+      "dataset transformation version reference");
+    if(ret==null || ret.length<2){
+      ret = new String [] {"version", "transformationVersion"};
+    }
+    Debug.debug("dataset transformation version reference for "+dbName
+        +" : "+arrayToString(ret), 2);
+    return ret;
+  }
+
+  public static String [] getTransformationRuntimeReference(String dbName){
+    String [] ret = GridPilot.getClassMgr().getConfigFile().getValues(dbName,
+      "transformation runtime environment reference");
+    if(ret==null || ret.length<2){
+      ret = new String [] {"name", "runtimeEnvironmentName"};
+    }
+    Debug.debug("transformation runtime environment reference for "+dbName
+        +" : "+arrayToString(ret), 2);
+    return ret;
   }
   
 }
