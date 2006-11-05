@@ -160,6 +160,10 @@ public class ATLASDatabase implements Database{
     return true;
   }
 
+  public boolean isJobRepository(){
+    return false;
+  }
+  
   public String connect(){
     return null;
   }
