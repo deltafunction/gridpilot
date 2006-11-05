@@ -7,6 +7,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
 
+import org.safehaus.uuid.UUIDGenerator;
+
 import gridpilot.GridPilot;
 import gridpilot.ConfigFile;
 import gridpilot.Debug;
@@ -1164,6 +1166,34 @@ public class DBPluginMgr implements Database{
     }
   }
 
+  public synchronized boolean isJobRepository(){
+    
+    MyThread t = new MyThread(){
+      boolean res = false;
+      public void run(){
+        try{
+          res = db.isJobRepository();
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName, t);
+        }
+      }
+      public boolean getBoolRes(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(Util.waitForThread(t, dbName, dbTimeOut, "isJobRepository")){
+      return t.getBoolRes();
+    }
+    else{
+      return false;
+    }
+  }
+
   public synchronized boolean createJobDefinition(final String [] values){
   
     MyThread t = new MyThread(){
@@ -1247,7 +1277,7 @@ public class DBPluginMgr implements Database{
       vals[i] = "";
       for(int j=0; j<fields.length; ++j){
         if(fields[j].equalsIgnoreCase(jobDefFieldNames[i]) &&
-            !fields[j].equalsIgnoreCase(getIdentifierField("jobDefinition"))){
+            !fields[j].equalsIgnoreCase(Util.getIdentifierField(dbName, "jobDefinition"))){
           vals[i] = values[j].toString();
           break;
         }
@@ -1287,7 +1317,7 @@ public class DBPluginMgr implements Database{
       vals[i] = "";
       for(int j=0; j<fields.length; ++j){
         if(fields[j].equalsIgnoreCase(transFieldNames[i]) &&
-            !fields[j].equalsIgnoreCase(getIdentifierField("transformation"))){
+            !fields[j].equalsIgnoreCase(Util.getIdentifierField(dbName, "transformation"))){
           vals[i] = values[j].toString();
           break;
         }
@@ -1319,7 +1349,7 @@ public class DBPluginMgr implements Database{
       vals[i] = "";
       for(int j=0; j<fields.length; ++j){
         if(fields[j].equalsIgnoreCase(runtimeFieldNames[i]) &&
-            !fields[j].equalsIgnoreCase(getIdentifierField("runtimeEnvironment"))){
+            !fields[j].equalsIgnoreCase(Util.getIdentifierField(dbName, "runtimeEnvironment"))){
           vals[i] = values[j].toString();
           break;
         }
@@ -1340,16 +1370,36 @@ public class DBPluginMgr implements Database{
    * the file locations. 
    */
   public void createFil(DBPluginMgr sourceMgr, String datasetName, String name) throws Exception{
-       
+  
+    // In case the file was copied from a virtual table from a job repository,
+    // strip the extension off when querying for the identifier.
+    String fileName = name;
+    if(!sourceMgr.isFileCatalog() && sourceMgr.isJobRepository()){
+      int lastDot = fileName.lastIndexOf(".");
+      if(lastDot>-1){
+        fileName = fileName.substring(0, lastDot);
+      }  
+    }
+    
     String datasetID = sourceMgr.getDatasetID(datasetName);
-    String fileID = sourceMgr.getFileID(datasetName, name);
+    String fileID = sourceMgr.getFileID(datasetName, fileName);
     String [] urls = sourceMgr.getFileURLs(datasetName, fileID);
+    
+    String uuid = fileID;
+    // In case the file was copied from a virtual table from a job repository,
+    // generate new GUID
+    if(!sourceMgr.isFileCatalog() && sourceMgr.isJobRepository()){
+      uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+      String message = "Generated new UUID "+uuid.toString()+" for "+fileName;
+      GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
+      GridPilot.getClassMgr().getLogFile().addInfo(message);
+    }
     
     boolean ok = true;
     boolean finalOk = true;
     for(int i=0; i<urls.length; ++i){
       try{
-        registerFileLocation(datasetID, datasetName, fileID, name, urls[i],
+        registerFileLocation(datasetID, datasetName, uuid, name, urls[i],
             false);
         finalOk = finalOk || ok;
         ok = true;
@@ -2287,94 +2337,6 @@ public class DBPluginMgr implements Database{
     }
   }
   
-  public String getIdentifierField(String table){
-    String ret = configFile.getValue(dbName, table+" identifier");
-    if(ret==null || ret.equals("")){
-      ret = "identifier";
-    }
-    Debug.debug("Identifier for "+dbName+" - "+table+" : "+ret, 2);
-    return ret;
-  }
-
-  /**
-   * Get the name of the column holding the name.
-   */
-  public String getNameField(String table){
-    String ret = configFile.getValue(dbName, table+" name");
-    if(ret==null || ret.equals("")){
-      ret = "name";
-    }
-    Debug.debug("Name for "+dbName+" - "+table+" : "+ret, 2);
-    return ret;
-  }
-
-  /**
-   * Get the name of the column holding the version.
-   */
-  public String getVersionField(String table){
-    String ret = configFile.getValue(dbName, table+" version");
-    if(ret==null || ret.equals("")){
-      ret = "version";
-    }
-    Debug.debug("Version for "+dbName+" - "+table+" : "+ret, 2);
-    return ret;
-  }
-
-  public String [] getJobDefDatasetReference(){
-    String [] ret = configFile.getValues(dbName,
-      "jobDefinition dataset reference");
-    if(ret==null || ret.length<2){
-      ret = new String [] {"name", "datasetName"};
-    }
-    Debug.debug("jobDef dataset reference for "+dbName
-        +" : "+Util.arrayToString(ret), 2);
-    return ret;
-  }
-
-  public String [] getFileDatasetReference(){
-    String [] ret = configFile.getValues(dbName,
-      "file dataset reference");
-    if(ret==null || ret.length<2){
-      ret = new String [] {"name", "datasetName"};
-    }
-    Debug.debug("jobDef dataset reference for "+dbName
-        +" : "+Util.arrayToString(ret), 2);
-    return ret;
-  }
-
-  public String [] getDatasetTransformationReference(){
-    String [] ret = configFile.getValues(dbName,
-      "dataset transformation reference");
-    if(ret==null || ret.length<2){
-      ret = new String [] {"name", "transformationName"};
-    }
-    Debug.debug("dataset transformation reference for "+dbName
-        +" : "+Util.arrayToString(ret), 2);
-    return ret;
-  }
-
-  public String [] getDatasetTransformationVersionReference(){
-    String [] ret = configFile.getValues(dbName,
-      "dataset transformation version reference");
-    if(ret==null || ret.length<2){
-      ret = new String [] {"version", "transformationVersion"};
-    }
-    Debug.debug("dataset transformation version reference for "+dbName
-        +" : "+Util.arrayToString(ret), 2);
-    return ret;
-  }
-
-  public String [] getTransformationRuntimeReference(){
-    String [] ret = configFile.getValues(dbName,
-      "transformation runtime environment reference");
-    if(ret==null || ret.length<2){
-      ret = new String [] {"name", "runtimeEnvironmentName"};
-    }
-    Debug.debug("transformation runtime environment reference for "+dbName
-        +" : "+Util.arrayToString(ret), 2);
-    return ret;
-  }
-
   public String [] getDBHiddenFields(String tableName){
     HashMap dbDefFields = new HashMap();
     String [] ret;
@@ -2437,7 +2399,7 @@ public class DBPluginMgr implements Database{
     
     arg = "select totalEvents, totalFiles from dataset where identifier='"+
     datasetID+"'";
-    res = select(arg, getIdentifierField("dataset"), true);
+    res = select(arg, Util.getIdentifierField(dbName, "dataset"), true);
     if(res.values.length>0){
       try{
         totalEvents = Integer.parseInt(res.values[0][0].toString());
@@ -2502,7 +2464,7 @@ public class DBPluginMgr implements Database{
   }
 
   public String [] getFileURLs(final String datasetName, final String fileID){
-    Debug.debug("Getting field names for table "+fileID, 3);
+    Debug.debug("Getting field names for file # "+fileID, 3);
    
     MyThread t = new MyThread(){
       String [] res = null;
