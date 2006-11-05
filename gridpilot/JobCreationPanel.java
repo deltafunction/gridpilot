@@ -44,8 +44,8 @@ public class JobCreationPanel extends CreateEditPanel{
     dbPluginMgr = _dbPluginMgr;
     dbName = dbPluginMgr.getDBName();
     Table table = panel.getTable();
-    String jobDefinitionIdentifier = dbPluginMgr.getIdentifierField(
-        "jobDefinition");
+    String jobDefinitionIdentifier = Util.getIdentifierField(
+        dbPluginMgr.getDBName(), "jobDefinition");
     String [] datasetFieldArray = dbPluginMgr.getFieldnames("dataset");
     for(int i=0; i<datasetFieldArray.length; ++i){
       datasetFieldArray[i] = datasetFieldArray[i].toLowerCase();
@@ -215,10 +215,10 @@ public class JobCreationPanel extends CreateEditPanel{
       }
       if(cstAttributesNames[i].equalsIgnoreCase("name")){
         // Set the name of the job description to <dataset name>.<number>
-         detailFields.add(tcCstAttributes[i]);
-         detailFields.add(constantAttributeLabels[i]);
-         tcCstAttributes[i].setText("$n.${i:5}");
-       }
+        detailFields.add(tcCstAttributes[i]);
+        detailFields.add(constantAttributeLabels[i]);
+        tcCstAttributes[i].setText("$n.${i:5}");
+      }
       else if(cstAttributesNames[i].equalsIgnoreCase("number")){
         detailFields.add(tcCstAttributes[i]);
         detailFields.add(constantAttributeLabels[i]);
