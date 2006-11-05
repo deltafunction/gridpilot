@@ -53,6 +53,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private boolean withFilter = false;
   private boolean withNavigation = false;
   protected String lastURL = null;
+  protected String [] lastUrlList = null;
   private String currentUrlString = "";
   private JComboBox currentUrlBox = null;
   private GSIFTPFileTransfer gridftpFileSystem = null;
@@ -498,6 +499,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
    */
   private void setDisplay(String url) throws Exception{
     try{
+      lastUrlList = null;
+      // TODO: implement lastUrlList for other than gsiftp
       Debug.debug("Checking URL, "+url, 3);
       // browse remote web directory
       if((url.startsWith("http://") ||
@@ -688,6 +691,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       
       Debug.debug("Setting thisUrl, "+url, 3);
       thisUrl = url;
+      lastUrlList = new String [] {thisUrl};
       setUrl(thisUrl);
     }
     catch(IOException e){
@@ -927,6 +931,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
             e.getMessage());
       }
       pButton.updateUI();
+      lastUrlList = new String [] {thisUrl};
     }
     catch(Exception e){
       Debug.debug("Could not set gzip display of "+localPath+". "+
@@ -1081,17 +1086,19 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       
       Vector textVector = gridftpFileSystem.list(globusUrl, filter,
-          this.statusBar, new JProgressBar());
+          this.statusBar);
 
       String text = "";
       // TODO: reconsider max entries and why listing more is so slow...
       // display max 500 entries
+      // TODO: make this configurable
       int maxEntries = 500;
       int length = textVector.size()<maxEntries ? textVector.size() : maxEntries;
       String name = null;
       String bytes = null;
       String longName = null;
       String [] nameAndBytes = null;
+      lastUrlList = new String [length];
       for(int i=0; i<length; ++i){
         nameAndBytes = null;
         longName = textVector.get(i).toString();
@@ -1118,6 +1125,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         if(i<length-1){
           text += "<br>\n";
         }
+        lastUrlList[i] = "gsiftp://"+host+":"+port+localPath+name;
         Debug.debug(textVector.get(i).toString(), 3);
       }
       ep.setContentType("text/html");
@@ -1126,7 +1134,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
       if(!localPath.equals("/")){
         htmlText += "<a href=\"gsiftp://"+host+":"+port+localPath+"../\">"+/*"gsiftp://"+host+":"+port+localPath+*/"../</a><br>\n";
       }
-      Debug.debug("running arrayToString...", 3);
       htmlText += text;
       if(textVector.size()>maxEntries){
         htmlText += "<br>\n...<br>\n...<br>\n...<br>\n";
