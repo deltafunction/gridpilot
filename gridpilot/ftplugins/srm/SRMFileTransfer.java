@@ -608,7 +608,7 @@ public class SRMFileTransfer implements FileTransfer {
           Debug.debug("Transfer request submitted for get. Waiting for ok.", 2);
           // show message on status bar on monitoring frame
           StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
-          statusBar.setLabel("Waiting for files to be ready...");
+          statusBar.setLabel("Waiting for file(s) to be ready...");
           waitForOK(thesePendingIDs);
         }
         catch(Exception e){
@@ -713,7 +713,7 @@ public class SRMFileTransfer implements FileTransfer {
           Debug.debug("Transfer request submitted for put. Waiting for ok.", 2);
           // show message on status bar on monitoring frame
           StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
-          statusBar.setLabel("Waiting for files to be ready...");
+          statusBar.setLabel("Waiting for file(s) to be ready...");
           waitForOK(thesePendingIDs);
         }
         catch(Exception e){

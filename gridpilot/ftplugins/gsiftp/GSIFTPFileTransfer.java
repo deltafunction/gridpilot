@@ -777,8 +777,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
    * List files and/or directories on gridftp server.
    */
   public Vector list(GlobusURL globusUrl, String filter,
-      StatusBar statusBar, JProgressBar pb)
-    throws IOException, FTPException{
+      StatusBar statusBar) throws IOException, FTPException{
     globusUrl = new GlobusURL(globusUrl.getURL().replaceFirst("/[^\\/]*/\\.\\.", ""));
     String localPath = "/";
     if(globusUrl.getPath()!=null){
@@ -831,7 +830,9 @@ public class GSIFTPFileTransfer implements FileTransfer {
       if(filter==null || filter.equals("")){
         filter = "*";
       }
-      statusBar.setLabel("Filtering...");
+      if(statusBar!=null){
+        statusBar.setLabel("Filtering...");
+      }
       Debug.debug("Filter is "+filter, 3);
       filter = filter.replaceAll("\\.", "\\\\.");
       filter = filter.replaceAll("\\*", ".*");
@@ -877,7 +878,9 @@ public class GSIFTPFileTransfer implements FileTransfer {
           }
         }
       }
-      statusBar.setLabel(directories+" directories, "+files+" files");
+      if(statusBar!=null){
+        statusBar.setLabel(directories+" directories, "+files+" files");
+      }
       return textVector;
     }
     catch(FTPException e){
@@ -894,7 +897,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
   }
   
   public long getFileBytes(GlobusURL url) throws Exception {
-    Vector listVector = list(url, null, null, null);
+    Vector listVector = list(url, null, null);
     String line = (String) listVector.get(0);
     String [] entries = Util.split(line);
     return Long.parseLong(entries[1]);
