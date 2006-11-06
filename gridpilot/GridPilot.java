@@ -296,7 +296,7 @@ public class GridPilot extends JApplet{
         frame.validate();
       }
 
-      frame.setSize(new Dimension(900, 700));
+      frame.setSize(new Dimension(950, 700));
 
       //Center the window
       Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();

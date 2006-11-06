@@ -757,7 +757,7 @@ public class HSQLDBDatabase implements Database{
       }
     }
 
-    patt = Pattern.compile("CONTAINS (\\S+)", Pattern.CASE_INSENSITIVE);
+    patt = Pattern.compile("([<>=]) ([^\\s()]+)", Pattern.CASE_INSENSITIVE);
     matcher = patt.matcher(req);
     req = matcher.replaceAll("LIKE '%$1%'");
     
@@ -1495,7 +1495,7 @@ public class HSQLDBDatabase implements Database{
         if(i>0){
           nonMatchedStr += "\n";
         }
-        nonMatchedStr += fields[i]+" : "+values[i];
+        nonMatchedStr += fields[i]+": "+values[i];
       }
     }
     String sql = "INSERT INTO "+table+" (";
@@ -1518,7 +1518,7 @@ public class HSQLDBDatabase implements Database{
       if(!nonMatchedFields.contains(new Integer(i))){
         if(!nonMatchedStr.equals("") &&
             datasetFields[i].equalsIgnoreCase("comment")){
-          values[i] = nonMatchedStr;
+          values[i] = values[i]+" --- UNMATCHED: "+nonMatchedStr;
         }
         if(datasetFields[i].equalsIgnoreCase("created")){
           try{
@@ -2010,8 +2010,17 @@ public class HSQLDBDatabase implements Database{
   }
   
     public synchronized boolean deleteDataset(String datasetID, boolean cleanup){
-    String idField = Util.getIdentifierField(dbName, "dataset");
+      String idField = Util.getIdentifierField(dbName, "dataset");
       boolean ok = true;
+      if(isJobRepository() && cleanup){
+        ok = deleteJobDefsFromDataset(datasetID);
+        if(!ok){
+          Debug.debug("ERROR: Deleting job definitions of dataset #"+
+              datasetID+" failed."+" Please clean up by hand.", 1);
+          error = "ERROR: Deleting job definitions of dataset #"+
+             datasetID+" failed."+" Please clean up by hand.";
+        }
+      }
       try{
       String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
         datasetID+"'";
@@ -2022,15 +2031,6 @@ public class HSQLDBDatabase implements Database{
         Debug.debug(e.getMessage(), 2);
         error = e.getMessage();
         ok = false;
-      }
-      if(ok && cleanup){
-        ok = deleteJobDefsFromDataset(datasetID);
-        if(!ok){
-          Debug.debug("ERROR: Deleting job definitions of dataset #"+
-              datasetID+" failed."+" Please clean up by hand.", 1);
-          error = "ERROR: Deleting job definitions of dataset #"+
-             datasetID+" failed."+" Please clean up by hand.";
-        }
       }
       return ok;
     }
@@ -2322,7 +2322,7 @@ public class HSQLDBDatabase implements Database{
       }
       catch(Exception ee){
       }
-      if(existingID!=null && !existingID.equals("")){
+      if(existingID!=null && !existingID.equals("-1") && !existingID.equals("")){
         if(!existingID.equalsIgnoreCase(datasetID)){
           error = "WARNING: dataset "+datasetName+" already registered with id "+
           existingID+"!="+datasetID+". Using "+existingID+".";
@@ -2443,7 +2443,7 @@ public class HSQLDBDatabase implements Database{
     }
     sql = "INSERT INTO t_lfn (lfname, guid) VALUES ('"+
     lfn + "', '" + fileID +
-    "'); ";    Debug.debug(sql, 2);
+    "'); ";
     Debug.debug(sql, 2);
     boolean execok2 = true;
     try{
@@ -2502,21 +2502,21 @@ public class HSQLDBDatabase implements Database{
               logFile.addMessage("WARNING: Could not delete files "+fileNames);
             }
           }
-          String req = "DELETE FROM t_lfn WHERE guid ='"+fileIDs[i]+"'";
+          String req = "DELETE FROM t_lfn WHERE guid = '"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
           int rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+fileIDs[i]+" from t_lfn";
             logFile.addMessage(error);
           }
-          req = "DELETE FROM t_pfn WHERE guid ='"+fileIDs[i]+"'";
+          req = "DELETE FROM t_pfn WHERE guid = '"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
           rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+fileIDs[i]+" from t_pfn";
             logFile.addMessage(error);
           }
-          req = "DELETE FROM t_meta WHERE guid ='"+fileIDs[i]+"'";
+          req = "DELETE FROM t_meta WHERE guid = '"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
           rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){

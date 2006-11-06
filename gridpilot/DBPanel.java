@@ -80,7 +80,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   // The idea is to ignore new requests when working on a request
   private boolean working = false;
   private SubmissionControl submissionControl = null;
-  private boolean jobDefTableExists;
   
   private static String defaultURL;
   
@@ -117,18 +116,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      tableName = _tableName;
      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
      statusBar = GridPilot.getClassMgr().getStatusBar();
-     
-     jobDefTableExists = false;
-     if(tableName.equalsIgnoreCase("dataset")){
-       // Check if there is a jobDefinition table in this database
-       try{
-         jobDefTableExists = dbPluginMgr.isJobRepository();
-       }
-       catch(Exception e){
-         jobDefTableExists = false;
-       }
-     }
-     
+          
      identifier = Util.getIdentifierField(dbPluginMgr.getDBName(), tableName);
      
      if(tableName.equalsIgnoreCase("jobDefinition")){
@@ -866,9 +854,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
               // We assume that there are only two kinds of databases:
               // runtime/transformation/dataset/job catalogs and dataset/file catalogs.
-              bViewJobDefinitions.setEnabled(jobDefTableExists && !lsm.isSelectionEmpty() &&
+              bViewJobDefinitions.setEnabled(dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              bDefineJobDefinitions.setEnabled(jobDefTableExists && !lsm.isSelectionEmpty());
+              bDefineJobDefinitions.setEnabled(dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty());
               bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
               bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
@@ -1239,7 +1227,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void editFile(){
     // This should be safe. Only mysql and hsqldb contain jobDefinitions and are directly editable.
     // TODO: support editing other file catalogs
-    if(jobDefTableExists && !dbPluginMgr.isFileCatalog()){
+    if(dbPluginMgr.isJobRepository() && !dbPluginMgr.isFileCatalog()){
       editJobDef();
     }
     else{
@@ -1255,7 +1243,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             break;
           }
         }
-        // This would work if the file catalog would support searches on individual files.
+        // This would work if all file catalogs would support searches on individual files.
         // DQ2 doesn't
         /*values[j] = dbPluginMgr.getFile(tableResults.getValueAt(i,
             // the identifier is the last column
@@ -1344,7 +1332,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             }
             tableResults.tableModel.fireTableDataChanged();
             GridPilot.getClassMgr().getStatusBar().setLabel(
-               "Deleting job definition(s) done.");
+               "Deleting file(s) done.");
             statusBar.removeProgressBar(pb);
           }
           if(anyDeleted){
@@ -1558,12 +1546,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           if(!datasetIdentifiers[i].equals("-1")){
             if(!okAll){
               ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
-              cbCleanup = new JCheckBox("Delete child records", true);    
+              cbCleanup = new JCheckBox("Delete job definitions", true);    
               if(i<1){
                 try{
                   choice = confirmBox.getConfirm("Confirm delete",
                                        "Really delete dataset # "+datasetIdentifiers[i]+"?",
-                                    new Object[] {"OK", "Skip", cbCleanup});
+                                       dbPluginMgr.isJobRepository() ?
+                                       new Object[] {"OK", "Skip", cbCleanup} :
+                                         new Object[] {"OK", "Skip"});
                 }
                 catch(java.lang.Exception e){
                   Debug.debug("Could not get confirmation, "+e.getMessage(),1);
@@ -1573,7 +1563,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                 try{
                   choice = confirmBox.getConfirm("Confirm delete",
                                        "Really delete dataset # "+datasetIdentifiers[i]+"?",
-                                    new Object[] {"OK", "Skip", "OK for all", "Skip all", cbCleanup});
+                                       dbPluginMgr.isJobRepository() ?
+                                       new Object[] {"OK", "Skip", "OK for all", "Skip all", cbCleanup} :
+                                         new Object[] {"OK", "Skip", "OK for all", "Skip all"});
                   }
                 catch(java.lang.Exception e){
                   Debug.debug("Could not get confirmation, "+e.getMessage(),1);
@@ -1590,7 +1582,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             }
             if(!skip || okAll){
               Debug.debug("deleting dataset # " + datasetIdentifiers[i], 2);
-              if(dbPluginMgr.deleteDataset(datasetIdentifiers[i], cbCleanup.isSelected())){
+              if(dbPluginMgr.deleteDataset(datasetIdentifiers[i],
+                  dbPluginMgr.isJobRepository() && cbCleanup.isSelected())){
                 deleted.add(datasetIdentifiers[i]);
                 statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " deleted.");
               }
@@ -2609,9 +2602,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     else if(tableName.equalsIgnoreCase("file")){
       try{
-        record = sourceMgr.getFile(datasetName, id);
+        //record = sourceMgr.getFile(datasetName, id);
         // TODO: copy also file metadata?
-        insertFile(sourceMgr, name, datasetName);
+        insertFile(sourceMgr, name, datasetName, id);
       }
       catch(Exception e){
         String msg = "ERROR: file "+id+" could not be inserted, "+sourceDB+
@@ -2643,20 +2636,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return true;
   }
   
-  public boolean insertFile(DBPluginMgr sourceMgr, String name, String datasetName) throws Exception{
+  public boolean insertFile(DBPluginMgr sourceMgr, String name, String datasetName,
+      String fileID) throws Exception{
     if(!dbPluginMgr.isFileCatalog()){
       throw new SQLException("Cannot create file(s) in virtual table.");
     }
     try{
-      // Check if parent dataset exists
-      String targetDatasetId = dbPluginMgr.getDatasetID(datasetName);
-      if(!targetDatasetId.equals("-1")){
-        dbPluginMgr.createFil(sourceMgr, datasetName, name);
-      }
+      // Check if parent dataset exists - NO, not necessary, it will be created...
+      /*String targetDatasetId = dbPluginMgr.getDatasetID(datasetName);
+      if(!targetDatasetId.equals("-1")){*/
+        dbPluginMgr.createFil(sourceMgr, datasetName, name, fileID);
+      /*}
       else{
         throw(new Exception("ERROR: Parent dataset for file "+
             name+" does not exist."));
-      }
+      }*/
     }
     catch(Exception e){
       throw e;

@@ -675,33 +675,36 @@ public class MySQLDatabase implements Database{
       if(req.matches("SELECT (.+) FROM file WHERE (.+)")){
         patt = Pattern.compile("SELECT (.+) FROM file WHERE (.+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceFirst("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE ($2) AND" +
+        req = matcher.replaceFirst("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE ($2) AND " +
                 "t_lfn.guid=t_pfn.guid AND t_meta.guid=t_pfn.guid");
       }
-      if(req.matches("SELECT (.+) FROM file (.+)")){
+      if(req.matches("SELECT (.+) FROM file\\b(.*)")){
         patt = Pattern.compile("SELECT (.+) FROM file", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
         req = matcher.replaceFirst("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE " +
                 "t_lfn.guid=t_pfn.guid AND t_meta.guid=t_pfn.guid");
       }
+      patt = Pattern.compile("SELECT (.*) guid FROM", Pattern.CASE_INSENSITIVE);
+      matcher = patt.matcher(req);
+      req = matcher.replaceFirst("SELECT $1 t_lfn.guid FROM");
     }
     else{
       // The "file" table is a pseudo table constructed from "jobDefinitions".
       // We replace "url" with "outFileMapping" and parse the values of
       // outFileMapping later.
-      if(req.matches("SELECT (.+) url\\, (.+) FROM file (.+)")){
-        patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
+      if(req.matches("SELECT (.+) url\\, (.+) FROM file\\b(.*)")){
+        patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
         req = matcher.replaceFirst("SELECT $1 outFileMapping, $2 FROM file $3");
       }
-      if(req.matches("SELECT (.+) url FROM file (.+)")){
-        patt = Pattern.compile("SELECT (.+) url FROM file (.+)", Pattern.CASE_INSENSITIVE);
+      if(req.matches("SELECT (.+) url FROM file\\b(.*)")){
+        patt = Pattern.compile("SELECT (.+) url FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
         req = matcher.replaceFirst("SELECT $1 outFileMapping FROM file $2");
       }
-      if(req.matches("SELECT (.+) FROM file (.+)")){
+      if(req.matches("SELECT (.+) FROM file\\b(.*)")){
         fileTable = true;
-        patt = Pattern.compile("SELECT (.+) FROM file (.+)", Pattern.CASE_INSENSITIVE);
+        patt = Pattern.compile("SELECT (.+) FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
         req = matcher.replaceFirst("SELECT $1 FROM jobDefinition $2");
       }
@@ -710,7 +713,7 @@ public class MySQLDatabase implements Database{
     patt = Pattern.compile("CONTAINS (\\S+)", Pattern.CASE_INSENSITIVE);
     matcher = patt.matcher(req);
     req = matcher.replaceAll("LIKE '%$1%'");
-    patt = Pattern.compile("([<>=]) (\\S+)", Pattern.CASE_INSENSITIVE);
+    patt = Pattern.compile("([<>=]) ([^\\s()]+)", Pattern.CASE_INSENSITIVE);
     matcher = patt.matcher(req);
     req = matcher.replaceAll("$1 '$2'");
     
@@ -1420,32 +1423,35 @@ public class MySQLDatabase implements Database{
 
   public synchronized boolean createDataset(String table,
       String [] fields, Object [] _values){ 
-    Object [] values = new Object [_values.length];
-    for(int i=0; i<values.length; ++i){
-      values[i] = _values[i];
-    }
+    Object [] values = new Object [datasetFields.length];
     String nonMatchedStr = "";
-    Vector nonMatchedFields = new Vector();
+    Vector matchedFields = new Vector();
     boolean match = false;
-    for(int i=1; i<fields.length; ++i){
+    for(int i=0; i<fields.length; ++i){
       match = false;
-      for(int j=1; j<datasetFields.length; ++j){
+      int j = 0;
+      // TODO: map source name field to target name field and
+      // source identifier field to target identifier field.
+      for(j=0; j<datasetFields.length; ++j){
         if(fields[i].equalsIgnoreCase(datasetFields[j])){
+          matchedFields.add(new Integer(i));
           match = true;
           break;
         }
       }
       if(!match){
-        nonMatchedFields.add(new Integer(i));
         if(i>0){
           nonMatchedStr += "\n";
         }
-        nonMatchedStr += fields[i]+" : "+values[i];
+        nonMatchedStr += fields[i]+": "+_values[i];
+      }
+      else{
+        values[j] = _values[i];
       }
     }
     String sql = "INSERT INTO "+table+" (";
-    for(int i=1; i<datasetFields.length; ++i){
-      if(!nonMatchedFields.contains(new Integer(i))){
+    for(int i=0; i<datasetFields.length; ++i){
+      if(matchedFields.contains(new Integer(i))){
         sql += datasetFields[i];
         if(datasetFields.length>0 && i<datasetFields.length-1){
           sql += ",";
@@ -1453,11 +1459,13 @@ public class MySQLDatabase implements Database{
       }
     }
     sql += ") VALUES (";
-    for(int i=1; i<datasetFields.length; ++i){
-      if(!nonMatchedFields.contains(new Integer(i))){
+    for(int i=0; i<datasetFields.length; ++i){
+      if(matchedFields.contains(new Integer(i))){
         if(!nonMatchedStr.equals("") &&
-            datasetFields[i].equalsIgnoreCase("comment")){
-          values[i] = nonMatchedStr;
+            // TODO: make metaData field configurable like identifier and name field
+            (datasetFields[i].equalsIgnoreCase("comment") ||
+                datasetFields[i].equalsIgnoreCase("metaData"))){
+          values[i] = values[i]+"\n --- UNMATCHED: \n"+nonMatchedStr;
         }
         if(datasetFields[i].equalsIgnoreCase("created")){
           try{
@@ -1470,11 +1478,11 @@ public class MySQLDatabase implements Database{
         else if(datasetFields[i].equalsIgnoreCase("lastModified")){
           values[i] = makeDate("");
         }
-        else{
+        else if(values[i]!=null){
           values[i] = values[i].toString().replaceAll("\n","\\\\n");
           values[i] = "'"+values[i]+"'";
         }
-        sql += values[i].toString();
+        sql += values[i];
         if(datasetFields.length>0 && i<datasetFields.length-1){
           sql += ",";
         }
@@ -1922,6 +1930,15 @@ public class MySQLDatabase implements Database{
   public synchronized boolean deleteDataset(String datasetID, boolean cleanup){
     String idField = Util.getIdentifierField(dbName, "dataset");
     boolean ok = true;
+    if(isJobRepository() && cleanup){
+      ok = deleteJobDefsFromDataset(datasetID);
+      if(!ok){
+        Debug.debug("ERROR: Deleting job definitions of dataset #"+
+            datasetID+" failed."+" Please clean up by hand.", 1);
+        error = "ERROR: Deleting job definitions of dataset #"+
+           datasetID+" failed."+" Please clean up by hand.";
+      }
+    }
     try{
       String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
       datasetID+"'";
@@ -1932,15 +1949,6 @@ public class MySQLDatabase implements Database{
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
       ok = false;
-    }
-    if(ok && cleanup){
-      ok = deleteJobDefsFromDataset(datasetID);
-      if(!ok){
-        Debug.debug("ERROR: Deleting job definitions of dataset #"+
-            datasetID+" failed."+" Please clean up by hand.", 1);
-        error = "ERROR: Deleting job definitions of dataset #"+
-           datasetID+" failed."+" Please clean up by hand.";
-      }
     }
     return ok;
   }
@@ -2191,6 +2199,9 @@ public class MySQLDatabase implements Database{
   public void registerFileLocation(String datasetID, String datasetName,
       String fileID, String lfn, String url, boolean datasetComplete) throws Exception {
     
+    Debug.debug("Registering URL "+url+" for file "+
+        datasetID+":"+datasetName+":"+fileID+":"+lfn, 2);
+    
     // if this is not a file catalog we don't have to do anything
     if(!isFileCatalog()){
       String msg = "This is a virtual file catalog - it cannot be modified directly.";
@@ -2208,7 +2219,7 @@ public class MySQLDatabase implements Database{
       }
       catch(Exception ee){
       }
-      if(existingID!=null && !existingID.equals("")){
+      if(existingID!=null && !existingID.equals("-1") && !existingID.equals("")){
         if(!existingID.equalsIgnoreCase(datasetID)){
           error = "WARNING: dataset "+datasetName+" already registered with id "+
           existingID+"!="+datasetID+". Using "+existingID+".";
@@ -2224,6 +2235,7 @@ public class MySQLDatabase implements Database{
     
     // If the dataset does not exist, create it
     if(!datasetExists){
+      Debug.debug("Creating dataset "+datasetName, 2);
       try{
         String nameField = Util.getNameField(dbName, "dataset");
         GridPilot.getClassMgr().getStatusBar().setLabel("Creating new dataset "+datasetName);
@@ -2269,6 +2281,7 @@ public class MySQLDatabase implements Database{
     
     // If the file does not exist, create it - with the url.
     if(!fileExists){
+      Debug.debug("Creating file "+lfn, 2);
       try{
         GridPilot.getClassMgr().getStatusBar().setLabel("Creating new file "+lfn);
         if(!createFile(datasetName, fileID, lfn, url)){
@@ -2286,6 +2299,7 @@ public class MySQLDatabase implements Database{
     }
     // Otherwise, just add the url.
     else{
+      Debug.debug("Registering URL "+url, 2);
       // If the url is already registered, skip
       String [] urls = getFileURLs(datasetName, fileID);
       for(int i=0; i<urls.length; ++i){
@@ -2327,7 +2341,7 @@ public class MySQLDatabase implements Database{
     }
     sql = "INSERT INTO t_lfn (lfname, guid) VALUES ('"+
     lfn + "', '" + fileID +
-    "'); ";    Debug.debug(sql, 2);
+    "'); ";
     Debug.debug(sql, 2);
     boolean execok2 = true;
     try{
@@ -2382,30 +2396,30 @@ public class MySQLDatabase implements Database{
               logFile.addMessage("WARNING: Could not delete files "+fileNames);
             }
           }
-          String req = "DELETE FROM t_lfn WHERE guid ='"+fileIDs[i]+"'";
+          String req = "DELETE FROM t_lfn WHERE guid = '"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
           int rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+fileIDs[i]+" from t_lfn";
             logFile.addMessage(error);
           }
-          req = "DELETE FROM t_pfn WHERE guid ='"+fileIDs[i]+"'";
+          req = "DELETE FROM t_pfn WHERE guid = '"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
           rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+fileIDs[i]+" from t_pfn";
             logFile.addMessage(error);
           }
-          req = "DELETE FROM t_meta WHERE guid ='"+fileIDs[i]+"'";
+          req = "DELETE FROM t_meta WHERE guid = '"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
           rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+fileIDs[i]+" from t_meta";
             logFile.addMessage(error);
           }
-          conn.commit();
         }
         catch(Exception e){
+          e.printStackTrace();
           ok = false;
         }
       }

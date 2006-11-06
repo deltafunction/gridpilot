@@ -1369,7 +1369,8 @@ public class DBPluginMgr implements Database{
    * values immediately grabbable from the source table, then look up
    * the file locations. 
    */
-  public void createFil(DBPluginMgr sourceMgr, String datasetName, String name) throws Exception{
+  public void createFil(DBPluginMgr sourceMgr, String datasetName, String name,
+      String id) throws Exception{
   
     // In case the file was copied from a virtual table from a job repository,
     // strip the extension off when querying for the identifier.
@@ -1382,10 +1383,10 @@ public class DBPluginMgr implements Database{
     }
     
     String datasetID = sourceMgr.getDatasetID(datasetName);
-    String fileID = sourceMgr.getFileID(datasetName, fileName);
-    String [] urls = sourceMgr.getFileURLs(datasetName, fileID);
+    //String id = sourceMgr.getFileID(datasetName, fileName);
+    String [] urls = sourceMgr.getFileURLs(datasetName, id);
     
-    String uuid = fileID;
+    String uuid = id;
     // In case the file was copied from a virtual table from a job repository,
     // generate new GUID
     if(!sourceMgr.isFileCatalog() && sourceMgr.isJobRepository()){

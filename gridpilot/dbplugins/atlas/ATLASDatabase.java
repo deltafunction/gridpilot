@@ -1443,8 +1443,8 @@ public class ATLASDatabase implements Database{
     return null;
   }
   
-  public String getFileID(String datasetName, String fileID){
-    DBRecord file = getFile(datasetName, fileID);
+  public String getFileID(String datasetName, String fileName){
+    DBRecord file = getFile(datasetName, fileName);
     return file.getValue("guid").toString();
   };
   
@@ -1470,14 +1470,16 @@ public class ATLASDatabase implements Database{
     DBResult files = getFiles(vuid);
     String lfn = null;
     for(int i=0; i<files.values.length; ++i){
+      Debug.debug("matching fileID "+fileID, 3);
       if(files.getValue(i, "guid").toString().equals(fileID)){
         lfn = files.getValue(i, "lfn").toString();
+        break;
       };
     }
     
     // Get the pfns
     Vector pfnVector = new Vector();
-    findPFNs(dsn, lfn, false);
+    findPFNs(vuid, lfn, false);
     for(int j=0; j<getPFNs().length; ++j){
       pfnVector.add((String) getPFNs()[j]);
     }

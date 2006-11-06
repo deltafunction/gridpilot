@@ -313,6 +313,19 @@ public class ForkComputingSystem implements ComputingSystem{
             (new File(runtimeDirectory)).getAbsolutePath().length()+1).replaceAll(
                 "\\\\", "/");
         
+        boolean rteExistsLocally = false;
+        if(localDBMgr!=null){
+          try{
+            String rtId = localDBMgr.getRuntimeEnvironmentID(name, csName);
+            if(rtId!=null && !rtId.equals("-1")){
+              rteExistsLocally = true;
+            }
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+        }
+                
         // Get the URL.
         // The URL is only for allowing the submitter to
         // download stdout/stderr
@@ -384,13 +397,20 @@ public class ForkComputingSystem implements ComputingSystem{
             }
           }
           if(localDBMgr!=null){
-            try{
-              if(localDBMgr.createRuntimeEnvironment(rtVals)){
-                finalRuntimesLocal.add(name);
+            // create if not there
+            if(!rteExistsLocally){
+              try{
+                if(localDBMgr.createRuntimeEnvironment(rtVals)){
+                  finalRuntimesLocal.add(name);
+                }
+              }
+              catch(Exception e){
+                e.printStackTrace();
               }
             }
-            catch(Exception e){
-              e.printStackTrace();
+            // tag for deletion in any case
+            else{
+              finalRuntimesLocal.add(name);
             }
           }
           
@@ -411,7 +431,20 @@ public class ForkComputingSystem implements ComputingSystem{
             try{
               DBPluginMgr remoteDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
                   remoteDB);
-              if(remoteDBMgr.createRuntimeEnvironment(rtVals)){
+              boolean rteExistsRemotely = false;
+              if(localDBMgr!=null){
+                try{
+                  String rtId = remoteDBMgr.getRuntimeEnvironmentID(name, csName);
+                  if(rtId!=null && !rtId.equals("-1")){
+                    rteExistsRemotely = true;
+                  }
+                }
+                catch(Exception e){
+                  e.printStackTrace();
+                }
+              }
+              // Only create and tag for deletion if not already there.
+              if(!rteExistsRemotely && remoteDBMgr.createRuntimeEnvironment(rtVals)){
                 finalRuntimesRemote.add(name);
               }
             }
