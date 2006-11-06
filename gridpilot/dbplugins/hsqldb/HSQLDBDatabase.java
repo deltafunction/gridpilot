@@ -77,7 +77,8 @@ public class HSQLDBDatabase implements Database{
     }
 
     if(database!=null && database.indexOf("/~")>0){
-      database = database.replaceFirst("/~", System.getProperty("user.home"));
+      database = database.replaceFirst("/~",
+          System.getProperty("user.home").replaceAll("\\\\", "/").replaceFirst("C:/", "/C:/"));
     }
     
     configFile = GridPilot.getClassMgr().getConfigFile();
