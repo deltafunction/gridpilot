@@ -2561,7 +2561,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     else if(tableName.equalsIgnoreCase("dataset")){
       try{
         record = sourceMgr.getDataset(id);
-        insertDataset(record, sourceMgr, name);
+        insertDataset(record, sourceMgr, name, id);
       }
       catch(Exception e){
         String msg = "ERROR: dataset "+id+" could not be created, "+sourceDB+
@@ -2659,7 +2659,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   public boolean insertDataset(DBRecord dataset, DBPluginMgr sourceMgr,
-      String name) throws Exception{
+      String name, String id) throws Exception{
     try{
       boolean ok = false;
       boolean success = true;
@@ -2698,10 +2698,23 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         Debug.debug("Creating dataset: " + Util.arrayToString(dataset.fields, ":") + " ---> " +
             Util.arrayToString(dataset.values, ":"), 3);
         try{
-          // if name specified, use it
+          // if name is specified, use it
           if(name!=null && !name.equals("")){
             dataset.setValue(Util.getNameField(sourceMgr.getDBName(), "dataset"),
                 name);
+          }
+        }
+        catch(Exception e){
+          Debug.debug("WARNING: Could not set dataset name "+name, 3);
+          e.printStackTrace();
+        }
+        try{
+          // if id is specified, use it - except when copying from a
+          // job-only database - in which case the id will be a useless
+          // autoincremented number
+          if(sourceMgr.isFileCatalog() && id!=null && !id.equals("")){
+            dataset.setValue(Util.getIdentifierField(sourceMgr.getDBName(), "dataset"),
+                id);
           }
         }
         catch(Exception e){

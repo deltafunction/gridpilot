@@ -21,6 +21,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 
 import org.hsqldb.Server;
+import org.safehaus.uuid.UUIDGenerator;
 
 import gridpilot.ConfigFile;
 import gridpilot.Database;
@@ -1475,6 +1476,7 @@ public class HSQLDBDatabase implements Database{
   
   public synchronized boolean createDataset(String table,
       String [] fields, Object [] _values){
+    String idField = Util.getIdentifierField(dbName, "dataset");
     Object [] values = new Object [_values.length];
     for(int i=0; i<values.length; ++i){
       values[i] = _values[i];
@@ -1518,7 +1520,7 @@ public class HSQLDBDatabase implements Database{
       if(!nonMatchedFields.contains(new Integer(i))){
         if(!nonMatchedStr.equals("") &&
             datasetFields[i].equalsIgnoreCase("comment")){
-          values[i] = values[i]+" --- UNMATCHED: "+nonMatchedStr;
+          values[i] = values[i]+"\n"+nonMatchedStr;
         }
         if(datasetFields[i].equalsIgnoreCase("created")){
           try{
@@ -1531,7 +1533,25 @@ public class HSQLDBDatabase implements Database{
         else if(datasetFields[i].equalsIgnoreCase("lastModified")){
           values[i] = makeDate("");
         }
-        else{
+        else if(isFileCatalog() && datasetFields[i].equalsIgnoreCase(idField)){
+          // Generate uuid if this is a file catalogue and the
+          // passed id is not a uuid.
+          boolean isNum = false;
+          try{
+            int num = Integer.parseInt(values[i].toString());
+            isNum = (num>-1);
+          }
+          catch(Exception e){
+          }
+          if(isNum || values[i]==null || values[i].equals("")){
+            values[i] = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+            String message = "Generated new UUID "+values[i].toString()+" for dataset";
+            GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
+            GridPilot.getClassMgr().getLogFile().addInfo(message);
+          }
+           values[i] = "'"+values[i]+"'";
+        }
+        else if(values[i]!=null){
           values[i] = values[i].toString().replaceAll("\n","\\\\n");
           values[i] = "'"+values[i].toString()+"'";
         }
@@ -2333,18 +2353,20 @@ public class HSQLDBDatabase implements Database{
       }
     }
     catch(Exception e){
-      datasetExists =false;
+      datasetExists = false;
     }
     
     // If the dataset does not exist, create it
     if(!datasetExists){
       try{
         String nameField = Util.getNameField(dbName, "dataset");
+        String idField = Util.getIdentifierField(dbName, "dataset");
         GridPilot.getClassMgr().getStatusBar().setLabel("Creating new dataset "+datasetName);
-        if(!createDataset("dataset", new String [] {nameField}, new Object [] {datasetName})){
+        if(!createDataset("dataset",
+            new String [] {nameField, idField}, new Object [] {datasetName, datasetID})){
           throw new SQLException("createDataset failed");
         }
-        datasetID = getDatasetID(datasetName);
+        //datasetID = getDatasetID(datasetName);
         GridPilot.getClassMgr().getLogFile().addInfo("Created new dataset "+datasetName+
             ". Please add some metadata if needed.");
         datasetExists = true;

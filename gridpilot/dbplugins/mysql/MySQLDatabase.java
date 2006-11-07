@@ -20,6 +20,7 @@ import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.util.GlobusURL;
 import org.ietf.jgss.GSSCredential;
+import org.safehaus.uuid.UUIDGenerator;
 
 import jonelo.jacksum.*;
 import jonelo.jacksum.algorithm.*;
@@ -1422,7 +1423,8 @@ public class MySQLDatabase implements Database{
   }
 
   public synchronized boolean createDataset(String table,
-      String [] fields, Object [] _values){ 
+      String [] fields, Object [] _values){
+    String idField = Util.getIdentifierField(dbName, "dataset");
     Object [] values = new Object [datasetFields.length];
     String nonMatchedStr = "";
     Vector matchedFields = new Vector();
@@ -1430,8 +1432,6 @@ public class MySQLDatabase implements Database{
     for(int i=0; i<fields.length; ++i){
       match = false;
       int j = 0;
-      // TODO: map source name field to target name field and
-      // source identifier field to target identifier field.
       for(j=0; j<datasetFields.length; ++j){
         if(fields[i].equalsIgnoreCase(datasetFields[j])){
           matchedFields.add(new Integer(i));
@@ -1465,7 +1465,7 @@ public class MySQLDatabase implements Database{
             // TODO: make metaData field configurable like identifier and name field
             (datasetFields[i].equalsIgnoreCase("comment") ||
                 datasetFields[i].equalsIgnoreCase("metaData"))){
-          values[i] = values[i]+"\n --- UNMATCHED: \n"+nonMatchedStr;
+          values[i] = values[i]+"\n"+nonMatchedStr;
         }
         if(datasetFields[i].equalsIgnoreCase("created")){
           try{
@@ -1477,6 +1477,24 @@ public class MySQLDatabase implements Database{
         }
         else if(datasetFields[i].equalsIgnoreCase("lastModified")){
           values[i] = makeDate("");
+        }
+        else if(isFileCatalog() && datasetFields[i].equalsIgnoreCase(idField)){
+          // Generate uuid if this is a file catalogue and the
+          // passed id is not a uuid.
+          boolean isNum = false;
+          try{
+            int num = Integer.parseInt(values[i].toString());
+            isNum = (num>-1);
+          }
+          catch(Exception e){
+          }
+          if(isNum || values[i]==null || values[i].equals("")){
+            values[i] = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+            String message = "Generated new UUID "+values[i].toString()+" for dataset";
+            GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
+            GridPilot.getClassMgr().getLogFile().addInfo(message);
+          }
+           values[i] = "'"+values[i]+"'";
         }
         else if(values[i]!=null){
           values[i] = values[i].toString().replaceAll("\n","\\\\n");
@@ -2230,19 +2248,23 @@ public class MySQLDatabase implements Database{
       }
     }
     catch(Exception e){
-      datasetExists =false;
+      datasetExists = false;
     }
     
     // If the dataset does not exist, create it
     if(!datasetExists){
       Debug.debug("Creating dataset "+datasetName, 2);
+      // TODO: map source name field to target name field and
+      // source identifier field to target identifier field.
       try{
         String nameField = Util.getNameField(dbName, "dataset");
+        String idField = Util.getIdentifierField(dbName, "dataset");
         GridPilot.getClassMgr().getStatusBar().setLabel("Creating new dataset "+datasetName);
-        if(!createDataset("dataset", new String [] {nameField}, new Object [] {datasetName})){
+        if(!createDataset("dataset",
+            new String [] {nameField, idField}, new Object [] {datasetName, datasetID})){
           throw new SQLException("createDataset failed");
         }
-        datasetID = getDatasetID(datasetName);
+        //datasetID = getDatasetID(datasetName);
         GridPilot.getClassMgr().getLogFile().addInfo("Created new dataset "+datasetName+
             ". Please add some metadata if needed.");
         datasetExists = true;
