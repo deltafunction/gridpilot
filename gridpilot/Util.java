@@ -1192,17 +1192,23 @@ public class Util{
   }
 
   public static Connection sqlConnection(String driver, String database,
-      String user, String passwd, boolean gridAuth, String _connectionTimeout,
+      String user, String passwd, boolean gridAuth, String _connectTimeout,
       String _socketTimeout) throws SQLException{
     Connection conn = null;
     // timeouts in milliseconds
-    String connectionTimeout = null;
+    String connectTimeout = null;
     String socketTimeout = null;
-    if(_connectionTimeout==null){
-      connectionTimeout = "10000";
+    if(_connectTimeout==null){
+      connectTimeout = "10000";
+    }
+    else{
+      connectTimeout = _connectTimeout;
     }
     if(_socketTimeout==null){
       socketTimeout = "30000";
+    }
+    else{
+      socketTimeout = _socketTimeout;
     }
     try{
       Class.forName(driver).newInstance();
@@ -1218,13 +1224,13 @@ public class Util{
       if(gridAuth){
         conn = DriverManager.getConnection(database+
             "?user="+user+"&password=&useSSL=true&" +
-                    "connectionTimeout="+connectionTimeout+
+                    "connectionTimeout="+connectTimeout+
                     "&socketTimeout="+socketTimeout);
       }
       else{
         conn = DriverManager.getConnection(database+
             "?user="+user+"&password="+passwd+
-            "&connectionTimeout="+connectionTimeout+
+            "&connectionTimeout="+connectTimeout+
             "&socketTimeout="+socketTimeout);
       }
     }
