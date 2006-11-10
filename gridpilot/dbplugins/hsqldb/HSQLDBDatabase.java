@@ -758,7 +758,7 @@ public class HSQLDBDatabase implements Database{
       }
     }
 
-    patt = Pattern.compile("([<>=]) ([^\\s()]+)", Pattern.CASE_INSENSITIVE);
+    patt = Pattern.compile("CONTAINS ([^\\s()]+)", Pattern.CASE_INSENSITIVE);
     matcher = patt.matcher(req);
     req = matcher.replaceAll("LIKE '%$1%'");
     
@@ -1857,7 +1857,7 @@ public class HSQLDBDatabase implements Database{
         }
       }
     }
-    sql += " WHERE "+idField+"="+datasetID;
+    sql += " WHERE "+idField+"='"+datasetID+"'";
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
