@@ -52,7 +52,7 @@ public class GlobalFrame extends GPFrame{
   public void initGUI(Container container) throws Exception{
     
     container.setLayout(new BorderLayout());
-    container.setPreferredSize(new Dimension(800, 600));
+    //container.setPreferredSize(new Dimension(800, 600));
         
     GridPilot.getClassMgr().setStatusBar(new StatusBar());
     statusBar = GridPilot.getClassMgr().getStatusBar();

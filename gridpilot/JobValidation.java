@@ -159,10 +159,10 @@ public class JobValidation{
     for(int i=0; i<outArray.length; ++i){
       for(int j=0; j<errorPatterns.length; ++j){
         foundError = false;
-        if(outArray[i].contains(errorPatterns[j])){
+        if(outArray[i].indexOf(errorPatterns[j])>-1){
           foundError = true;
           for(int k=0; k<errorAntiPatterns.length; ++k){
-            if(outArray[i].contains(errorAntiPatterns[k])){
+            if(outArray[i].indexOf(errorAntiPatterns[k])>-1){
               foundError = false;
               break;
             }
@@ -182,7 +182,7 @@ public class JobValidation{
     for(int i=0; i<errArray.length; ++i){
       foundError = true;
       for(int k=0; k<errorAntiPatterns.length; ++k){
-        if(errArray[i].contains(errorAntiPatterns[k])){
+        if(errArray[i].indexOf(errorAntiPatterns[k])>-1){
           foundError = false;
           break;
         }

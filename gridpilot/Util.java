@@ -930,7 +930,9 @@ public class Util{
    */
   public static Object [] shuffle(Object [] arr){
     ArrayList arl = new ArrayList();
-    Collections.addAll(arl, arr);
+    for(int i=0; i<arr.length; ++i){
+      arl.add(arr[i]);
+    }
     Collections.shuffle(arl);
     return arl.toArray();
   }
@@ -1223,8 +1225,8 @@ public class Util{
     try{
       if(gridAuth){
         conn = DriverManager.getConnection(database+
-            "?user="+user+"&password=&useSSL=true&" +
-                    "connectionTimeout="+connectTimeout+
+            "?user="+user+"&password=&useSSL=true"+
+                    "&connectionTimeout="+connectTimeout+
                     "&socketTimeout="+socketTimeout);
       }
       else{
