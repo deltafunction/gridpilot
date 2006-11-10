@@ -64,6 +64,8 @@ public class MySQLDatabase implements Database{
   private GlobusCredential globusCred = null;
   private boolean fileCatalog = false;
   private boolean jobRepository = false;
+  private String connectTimeout = null;
+  private String socketTimeout = null;
 
   public MySQLDatabase(String _dbName,
       String _driver, String _database,
@@ -73,6 +75,18 @@ public class MySQLDatabase implements Database{
     user = _user;
     passwd = _passwd;
     dbName = _dbName;
+    
+    connectTimeout = "0";
+    socketTimeout = "0";
+    
+    String _connectTimeout = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "connect timeout");
+    if(_connectTimeout!=null && !_connectTimeout.equals("")){
+      connectTimeout = _connectTimeout;
+    }
+    String _socketTimeout = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "socket timeout");
+    if(_socketTimeout!=null && !_socketTimeout.equals("")){
+      socketTimeout = _socketTimeout;
+    }
 
     if(GridPilot.getClassMgr().getConfigFile().getValue(dbName, "t_pfn field names")!=
       null){
@@ -248,7 +262,10 @@ public class MySQLDatabase implements Database{
   }
   
   public String connect() throws SQLException{
-    conn = Util.sqlConnection(driver, database, user, passwd, gridAuth);
+    Debug.debug("connectTimeout: "+connectTimeout, 3);
+    Debug.debug("socketTimeout: "+socketTimeout, 3);
+    conn = Util.sqlConnection(driver, database, user, passwd, gridAuth,
+        connectTimeout, socketTimeout);
     return "";
   }
   
@@ -1774,7 +1791,7 @@ public class MySQLDatabase implements Database{
         }
       }
     }
-    sql += " WHERE "+idField+"="+datasetID;
+    sql += " WHERE "+idField+"='"+datasetID+"'";
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
