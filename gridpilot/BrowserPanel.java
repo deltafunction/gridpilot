@@ -693,6 +693,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       thisUrl = url;
       lastUrlList = new String [] {thisUrl};
       setUrl(thisUrl);
+      statusBar.setLabel("");
     }
     catch(IOException e){
       Debug.debug("Could not set text editor for url "+url+". "+
@@ -741,6 +742,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       Debug.debug("Setting thisUrl, "+url, 3);
       thisUrl = url;
       setUrl(thisUrl);
+      statusBar.setLabel("");
     }
     catch(IOException e){
       Debug.debug("Could not set text editor for url "+url+". "+
