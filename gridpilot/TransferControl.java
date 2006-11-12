@@ -5,7 +5,10 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -522,6 +525,72 @@ public class TransferControl{
     return findFTPlugin(fileTransferID).getBytesTransferred(fileTransferID);
   }
   
+  /**
+   * Delete a list of files; local and/or remote. Local are handled
+   * by LocalStaticShellMgr, remote by the available plugins.
+   * @param toDeleteFiles URL strings spefifying the file locations.
+   */
+  public static void deleteFiles(String [] toDeleteFiles){
+    // get the list of remote files, ordered by protocol
+    HashMap remoteFiles = new HashMap();
+    String protocol = null;
+    for(int i=0; i<toDeleteFiles.length; ++i){
+      if(toDeleteFiles[i].matches("^\\w+:.*") &&
+          !toDeleteFiles[i].toLowerCase().startsWith("c:") &&
+          !toDeleteFiles[i].toLowerCase().startsWith("file:")){
+        protocol = toDeleteFiles[i].replaceFirst("^(\\w+):", "$1");
+        if(remoteFiles.get(protocol)==null){
+          remoteFiles.put(protocol, new HashSet());
+        }
+        ((HashSet) remoteFiles.get(protocol)).add(toDeleteFiles[i]);
+      }
+    }
+    // Delete local files
+    for(int i=0; i<toDeleteFiles.length; ++i){
+      if(!toDeleteFiles[i].matches("^\\w+:.*") ||
+          toDeleteFiles[i].toLowerCase().startsWith("c:") ||
+          toDeleteFiles[i].toLowerCase().startsWith("c:") ||
+          toDeleteFiles[i].toLowerCase().startsWith("file:")){
+        try{
+          LocalStaticShellMgr.deleteFile(toDeleteFiles[i]);
+        }
+        catch(Exception e){
+          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete file "+
+              toDeleteFiles[i]+". Please do so by hand.");
+        }
+      }
+    }
+    // Delete remote files
+    GlobusURL [] remoteUrls = null;
+    HashSet urlSet = null;
+    int j = 0;
+    for(Iterator it=remoteFiles.keySet().iterator(); it.hasNext();){
+      urlSet = ((HashSet) it.next());
+      remoteUrls = new GlobusURL [urlSet.size()];
+      j = 0;
+      for(Iterator itt=urlSet.iterator(); itt.hasNext(); ++j){
+        try{
+          remoteUrls[j] = new GlobusURL((String) itt.next());
+        }
+        catch(MalformedURLException e){
+          e.printStackTrace();
+        }
+      }
+      try{
+        TransferControl.deleteFiles(remoteUrls);
+      }
+      catch(Exception e){
+        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete files "+
+            Util.arrayToString(remoteUrls)+". Please do so by hand.");
+      }
+    }
+  }
+  
+  /**
+   * Delete a list of files, using the available plugins.
+   * @param urls array of URLs
+   * @throws Exception
+   */
   public static void deleteFiles(GlobusURL [] urls) throws Exception {
     String ftPluginName = null;
     boolean protocolOK = false;

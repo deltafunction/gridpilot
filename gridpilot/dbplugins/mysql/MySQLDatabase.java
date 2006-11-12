@@ -18,7 +18,6 @@ import java.sql.Statement;
 
 import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
-import org.globus.util.GlobusURL;
 import org.ietf.jgss.GSSCredential;
 import org.safehaus.uuid.UUIDGenerator;
 
@@ -1945,7 +1944,41 @@ public class MySQLDatabase implements Database{
     return execok;
   }
 
-  public synchronized boolean deleteJobDefinition(String jobDefId){
+  public synchronized boolean deleteJobDefinition(String jobDefId, boolean cleanup){
+    if(cleanup){
+      DBRecord jobDef = getJobDefinition(jobDefId);
+      String [] toDeletefiles = null;
+      try{
+        if(isFileCatalog()){
+          // In this case: don't delete the first of the output files, since
+          // this is the file registered in the file catalog and will be
+          // deleted when deleting the file catalog entry.
+          String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
+          toDeletefiles = new String [outFiles.length+2-(outFiles.length>0?1:0)];
+          toDeletefiles[0] = jobDef.getValue("stdoutDest").toString();
+          toDeletefiles[1] = jobDef.getValue("stderrDest").toString();
+          for(int i=2; i<toDeletefiles.length; ++i){
+            toDeletefiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-1]);
+          }
+        }
+        else{
+          String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
+          toDeletefiles = new String [outFiles.length+2];
+          toDeletefiles[0] = jobDef.getValue("stdoutDest").toString();
+          toDeletefiles[1] = jobDef.getValue("stderrDest").toString();
+          for(int i=2; i<toDeletefiles.length; ++i){
+            toDeletefiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-2]);
+          }
+        }
+        Debug.debug("Deleting files "+Util.arrayToString(toDeletefiles), 2);
+        if(toDeletefiles!=null){
+          TransferControl.deleteFiles(toDeletefiles);
+        }
+      }
+      catch(Exception e){
+        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete files "+toDeletefiles);
+      }
+    }
     String idField = Util.getIdentifierField(dbName, "jobDefinition");
     boolean ok = true;
     try{
@@ -2424,12 +2457,8 @@ public class MySQLDatabase implements Database{
               else{
                 fileNames = getFile(datasetID, fileIDs[i]).getValue("url").toString();
               }
-              String[] fileNameArray = Util.split(fileNames);
-              GlobusURL [] urlArray = new GlobusURL [fileNameArray.length];
-              for(int j=0; j<fileNameArray.length; ++j){
-                urlArray[j] = new GlobusURL(fileNameArray[j]);
-              }
-              TransferControl.deleteFiles(urlArray);
+              String [] fileNameArray = Util.split(fileNames);
+              TransferControl.deleteFiles(fileNameArray);
             }
             catch(Exception e){
               logFile.addMessage("WARNING: Could not delete files "+fileNames);

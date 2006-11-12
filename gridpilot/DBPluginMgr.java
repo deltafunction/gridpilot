@@ -1682,13 +1682,13 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public synchronized boolean deleteJobDefinition(final String jobDefID){
+  public synchronized boolean deleteJobDefinition(final String jobDefID, final boolean cleanup){
     
       MyThread t = new MyThread(){
         boolean res = false;
         public void run(){
           try{
-            res = db.deleteJobDefinition(jobDefID);
+            res = db.deleteJobDefinition(jobDefID, cleanup);
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +

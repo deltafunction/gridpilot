@@ -2264,7 +2264,7 @@ public class ATLASDatabase implements Database{
     return false;
   }
 
-  public boolean deleteJobDefinition(String jobDefID){
+  public boolean deleteJobDefinition(String jobDefID, boolean cleanup){
     // TODO Auto-generated method stub
     return false;
   }

@@ -5,8 +5,6 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-//import java.util.HashSet;
-//import java.util.Iterator;
 import java.util.TimeZone;
 import java.util.Vector;
 import java.util.regex.Matcher;
@@ -27,9 +25,9 @@ import gridpilot.ConfigFile;
 import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
-import gridpilot.LocalStaticShellMgr;
 import gridpilot.LogFile;
 import gridpilot.MessagePane;
+import gridpilot.TransferControl;
 import gridpilot.Util;
 import gridpilot.DBResult;
 import gridpilot.DBRecord;
@@ -2011,7 +2009,41 @@ public class HSQLDBDatabase implements Database{
     return execok;
   }
   
-  public synchronized boolean deleteJobDefinition(String jobDefId){
+  public synchronized boolean deleteJobDefinition(String jobDefId, boolean cleanup){
+    if(cleanup){
+      DBRecord jobDef = getJobDefinition(jobDefId);
+      String [] toDeleteFiles = null;
+      try{
+        if(isFileCatalog()){
+          // In this case: don't delete the first of the output files, since
+          // this is the file registered in the file catalog and will be
+          // deleted when deleting the file catalog entry.
+          String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
+          toDeleteFiles = new String [outFiles.length+2-(outFiles.length>0?1:0)];
+          toDeleteFiles[0] = jobDef.getValue("stdoutDest").toString();
+          toDeleteFiles[1] = jobDef.getValue("stderrDest").toString();
+          for(int i=2; i<toDeleteFiles.length; ++i){
+            toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-1]);
+          }
+        }
+        else{
+          String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
+          toDeleteFiles = new String [outFiles.length+2];
+          toDeleteFiles[0] = jobDef.getValue("stdoutDest").toString();
+          toDeleteFiles[1] = jobDef.getValue("stderrDest").toString();
+          for(int i=2; i<toDeleteFiles.length; ++i){
+            toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-2]);
+          }
+        }
+        Debug.debug("Deleting files "+Util.arrayToString(toDeleteFiles), 2);        
+        if(toDeleteFiles!=null){
+          TransferControl.deleteFiles(toDeleteFiles);
+        }
+      }
+      catch(Exception e){
+        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete files "+toDeleteFiles);
+      }
+    }
     String idField = Util.getIdentifierField(dbName, "jobDefinition");
     boolean ok = true;
     try{
@@ -2029,81 +2061,81 @@ public class HSQLDBDatabase implements Database{
     return ok;
   }
   
-    public synchronized boolean deleteDataset(String datasetID, boolean cleanup){
-      String idField = Util.getIdentifierField(dbName, "dataset");
-      boolean ok = true;
-      if(isJobRepository() && cleanup){
-        ok = deleteJobDefsFromDataset(datasetID);
-        if(!ok){
-          Debug.debug("ERROR: Deleting job definitions of dataset #"+
-              datasetID+" failed."+" Please clean up by hand.", 1);
-          error = "ERROR: Deleting job definitions of dataset #"+
-             datasetID+" failed."+" Please clean up by hand.";
-        }
+  public synchronized boolean deleteDataset(String datasetID, boolean cleanup){
+    String idField = Util.getIdentifierField(dbName, "dataset");
+    boolean ok = true;
+    if(isJobRepository() && cleanup){
+      ok = deleteJobDefsFromDataset(datasetID);
+      if(!ok){
+        Debug.debug("ERROR: Deleting job definitions of dataset #"+
+            datasetID+" failed."+" Please clean up by hand.", 1);
+        error = "ERROR: Deleting job definitions of dataset #"+
+           datasetID+" failed."+" Please clean up by hand.";
       }
-      try{
-      String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
-        datasetID+"'";
-        Statement stmt = conn.createStatement();
-        stmt.executeUpdate(sql);
-      }
-      catch(Exception e){
-        Debug.debug(e.getMessage(), 2);
-        error = e.getMessage();
-        ok = false;
-      }
-      return ok;
     }
+    try{
+    String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
+      datasetID+"'";
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+    }
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+      ok = false;
+    }
+    return ok;
+  }
 
-    public synchronized boolean deleteJobDefsFromDataset(String datasetID){
+  public synchronized boolean deleteJobDefsFromDataset(String datasetID){
     String [] refFields = Util.getJobDefDatasetReference(dbName);
-      boolean ok = true;
-      try{
-      String sql = "DELETE FROM jobDefinition WHERE "+refFields[1]+" = '"+
-        getDatasetName(datasetID)+"'";
-        Statement stmt = conn.createStatement();
-        stmt.executeUpdate(sql);
-      }
-      catch(Exception e){
-        Debug.debug(e.getMessage(), 1);
-        ok = false;
-      }
-      return ok;
+    boolean ok = true;
+    try{
+    String sql = "DELETE FROM jobDefinition WHERE "+refFields[1]+" = '"+
+      getDatasetName(datasetID)+"'";
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
     }
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 1);
+      ok = false;
+    }
+    return ok;
+  }
 
-    public synchronized boolean deleteTransformation(String transformationID){
+  public synchronized boolean deleteTransformation(String transformationID){
     String idField = Util.getIdentifierField(dbName, "transformation");
-      boolean ok = true;
-      try{
-      String sql = "DELETE FROM transformation WHERE "+idField+" = '"+
-        transformationID+"'";
-        Statement stmt = conn.createStatement();
-        stmt.executeUpdate(sql);
-      }
-      catch(Exception e){
-        Debug.debug(e.getMessage(), 2);
-        error = e.getMessage();
-        ok = false;
-      }
-      return ok;
+    boolean ok = true;
+    try{
+    String sql = "DELETE FROM transformation WHERE "+idField+" = '"+
+      transformationID+"'";
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
     }
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+      ok = false;
+    }
+    return ok;
+  }
       
-    public synchronized boolean deleteRuntimeEnvironment(String runtimeEnvironmentID){
+  public synchronized boolean deleteRuntimeEnvironment(String runtimeEnvironmentID){
     String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
-      boolean ok = true;
-      try{
-      String sql = "DELETE FROM runtimeEnvironment WHERE "+idField+" = '"+
-        runtimeEnvironmentID+"'";
-        Statement stmt = conn.createStatement();
-        stmt.executeUpdate(sql);
-      }
-      catch(Exception e){
-        Debug.debug(e.getMessage(), 2);
-        error = e.getMessage();
-        ok = false;
-      }
-      return ok;
+    boolean ok = true;
+    try{
+    String sql = "DELETE FROM runtimeEnvironment WHERE "+idField+" = '"+
+      runtimeEnvironmentID+"'";
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
     }
+    catch(Exception e){
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+      ok = false;
+    }
+    return ok;
+  }
       
   public synchronized String [] getVersions(String transformation){   
     String idField = Util.getIdentifierField(dbName, "transformation");
@@ -2513,11 +2545,8 @@ public class HSQLDBDatabase implements Database{
               }
               Debug.debug("Deleting files "+fileNames, 2);
               if(fileNames!=null && !fileNames.equals("no such field")){
-                String[] fileNameArray = Util.split(fileNames);
-                for(int j=0; j<fileNameArray.length; ++j){
-                  // TODO: extend TransferControl.deleteFiles() to cover local files.
-                  LocalStaticShellMgr.deleteFile(fileNameArray[j]);
-                }
+                String [] fileNameArray = Util.split(fileNames);
+                TransferControl.deleteFiles(fileNameArray);
               }
             }
             catch(Exception e){

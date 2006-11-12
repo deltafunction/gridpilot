@@ -1282,7 +1282,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
       try{
         int choice = confirmBox.getConfirm("Confirm delete",
-            msg+"?", new Object[] {"OK", "Cancel", cbCleanup});
+            msg, new Object[] {"OK", "Cancel", cbCleanup});
         if(choice==1){
           return;
         }
@@ -1439,12 +1439,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       msg += " " + ids[i];
     }
     msg += "?";
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
-        msg, "Delete?",
-        JOptionPane.YES_NO_OPTION);
-    if(choice==JOptionPane.NO_OPTION){
+
+    final JCheckBox cbCleanup = new JCheckBox("Delete physical files", true);
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    try{
+      int choice = confirmBox.getConfirm("Confirm delete",
+          msg, new Object[] {"OK", "Cancel", cbCleanup});
+      if(choice==1){
+        return;
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
       return;
     }
+
     workThread = new Thread(){
       public void run(){
         if(!getWorking()){
@@ -1469,7 +1478,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           datasetMgr.removeRow(ids[i]);
         }
         
-        //int [] rows = tableResults.getSelectedRows();
         Debug.debug("Deleting "+ids.length+" rows", 2);
         if(ids.length != 0){
           GridPilot.getClassMgr().getStatusBar().setLabel(
@@ -1479,7 +1487,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           statusBar.setProgressBar(pb);
           statusBar.setProgressBar(pb);
           for(int i=ids.length-1; i>=0; i--){
-            boolean success = dbPluginMgr.deleteJobDefinition(ids[i]);
+            boolean success = dbPluginMgr.deleteJobDefinition(ids[i], cbCleanup.isSelected());
             if(!success){
               String msg = "Deleting job definition "+ids[i]+" failed";
               Debug.debug(msg, 1);
@@ -1491,8 +1499,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               anyDeleted = true;
             }
             pb.setValue(pb.getValue()+1);
-            //tableResults.removeRow(rows[i]);
-            //tableResults.tableModel.fireTableDataChanged();
           }
           GridPilot.getClassMgr().getStatusBar().setLabel(
              "Deleting job definition(s) done.");
@@ -2782,7 +2788,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(sourceDB);
     if(tableName.equalsIgnoreCase("jobDefinition")){
       try{
-        sourceMgr.deleteJobDefinition(id);
+        sourceMgr.deleteJobDefinition(id, false);
       }
       catch(Exception e){
         String msg = "ERROR: job definition "+id+" could not be deleted from, "+sourceDB+

@@ -78,7 +78,7 @@ public interface Database{
   public boolean createJobDefinition(String datasetName, String [] cstAttrNames,
       String [] resCstAttr, String [] trpars, String [] [] ofmap, String odest,
       String edest);
-  public boolean deleteJobDefinition(String jobDefID);
+  public boolean deleteJobDefinition(String jobDefID, boolean cleanup);
   public boolean updateJobDefinition(String jobDefID, String [] fields, String [] values);
   // Here the following fields are assumed:
   // "user", "jobDefID", "jobName", "stdOut", "stdErr"
