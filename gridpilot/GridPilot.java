@@ -143,6 +143,23 @@ public class GridPilot extends JApplet{
       if(csNames==null || csNames.length==0){
         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("Computing systems", "systems"));
       }
+      else{
+        for(int i=0; i<csNames.length; ++i){
+          String host = getClassMgr().getConfigFile().getValue(csNames[i], "host");
+          if(host!=null && !host.endsWith("localhost")){
+            String user = getClassMgr().getConfigFile().getValue(csNames[i], "user");
+            String password = getClassMgr().getConfigFile().getValue(csNames[i], "password");
+            getClassMgr().setShellMgr(csNames[i],
+               new SecureShellMgr(host, user, password));
+           }
+          else if(host!=null && host.endsWith("localhost")){
+            getClassMgr().setShellMgr(csNames[i], new LocalShellMgr());
+          }
+          else{
+            // no shell used by this plugin
+          }
+        }
+      }
       tabs = getClassMgr().getConfigFile().getValues("GridPilot", "initial panels");
       proxyTimeLeftLimit = Integer.parseInt(
         getClassMgr().getConfigFile().getValue("GridPilot", "proxy time left limit"));
@@ -359,45 +376,39 @@ public class GridPilot extends JApplet{
     }
   }
   
-  public static String [] userPwd(String _user, String _passwd, String _database){
-    // asking for user and password for DBPluginMgr
-    
+  public static String [] userPwd(String message, String [] fields, String [] initialValues){    
     if(splash!=null){
       splash.hide();
-    }
-
+    }   
     JPanel pUserPwd = new JPanel(new GridBagLayout());
-    JTextField tfUser = new JTextField(_user);
-    JPasswordField pfPwd = new JPasswordField(_passwd);
-    JTextField tfDatabase = new JTextField(_database);
-    
-    pUserPwd.add(new JLabel("User : "), new GridBagConstraints(0,0, 1, 1, 0.0, 0.0,
-        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
-
-    pUserPwd.add(tfUser, new GridBagConstraints(1, 0, 1, 1, 1.0, 0.0,
-        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
-
-    pUserPwd.add(new JLabel("Password : "), new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
-        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
-
-    pUserPwd.add(pfPwd, new GridBagConstraints(1, 2, 1, 1, 1.0, 0.0,
-        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
-
-    pUserPwd.add(new JLabel("Database : "), new GridBagConstraints(0, 3, 1, 1, 0.0, 0.0,
-        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
-
-    pUserPwd.add(tfDatabase, new GridBagConstraints(1, 3, 1, 1, 1.0, 0.0,
-        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
-
-
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),pUserPwd, "DB login", JOptionPane.OK_CANCEL_OPTION);
-
-    String [] results;
+    pUserPwd.add(new JLabel(message+"\n"), new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 25, 25, 25), 0, 0));
+    JTextField [] tf = new JTextField [fields.length];
+    for(int i=0; i<fields.length; ++i){
+      if(fields[i].equalsIgnoreCase("password")){
+        tf[i] = new JPasswordField(initialValues[i]);
+      }
+      else{
+        tf[i] = new JTextField(initialValues[i]);
+      }
+      pUserPwd.add(new JLabel(fields[i]+": "), new GridBagConstraints(0, i+1, 1, 1, 0.0, 0.0,
+          GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
+      pUserPwd.add(tf[i], new GridBagConstraints(1, i+1, 1, 1, 1.0, 0.0,
+          GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
+    }
+    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), pUserPwd,
+        "Login", JOptionPane.OK_CANCEL_OPTION);
+    String [] results = new String [fields.length];
     if(choice == JOptionPane.OK_OPTION){
-      results = new String [3];
-      results[0] = tfUser.getText();
-      results[1] = new String(pfPwd.getPassword());
-      results[2] = tfDatabase.getText();
+      results = new String [fields.length];
+      for(int i=0; i<fields.length; ++i){
+        if(fields[i].equalsIgnoreCase("password")){
+          results[i] = new String(((JPasswordField) tf[i]).getPassword());
+        }
+        else{
+          results[i] = tf[i].getText();
+        }
+      }
     }
     else{
       results = null;
@@ -406,7 +417,6 @@ public class GridPilot extends JApplet{
     if(splash!=null){
       splash.show();
     }
-
     return results;
   }
   

@@ -1,12 +1,8 @@
 package gridpilot;
 
-import javax.swing.JOptionPane;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Vector;
-
-import javax.swing.*;
 
 import org.safehaus.uuid.UUIDGenerator;
 
@@ -59,7 +55,6 @@ public class CSPluginMgr implements ComputingSystem{
 
   private String [] csNames;
   private HashMap cs ;
-  private HashMap shellMgr;
 
   public CSPluginMgr() throws Throwable{
     init();
@@ -80,9 +75,7 @@ public class CSPluginMgr implements ComputingSystem{
     configFile = GridPilot.getClassMgr().getConfigFile();
 
     csNames = GridPilot.csNames;
-
     cs = new HashMap(csNames.length);
-    shellMgr = new HashMap(csNames.length);
 
     try{
       loadClasses();
@@ -107,20 +100,6 @@ public class CSPluginMgr implements ComputingSystem{
       catch(Exception e){
         // if we cannot show text on splash, just silently ignore
       }
-      String host = configFile.getValue(csNames[i], "host");
-      if(host!=null && !host.endsWith("localhost")){
-        String user = configFile.getValue(csNames[i], "user");
-        String password = configFile.getValue(csNames[i], "password");
-        String remoteHome = configFile.getValue(csNames[i], "working directory");
-        shellMgr.put(csNames[i],
-           new SecureShellMgr(host, user, password, remoteHome));
-      }
-      else if(host!=null && host.endsWith("localhost")){
-        shellMgr.put(csNames[i], new LocalShellMgr());
-      }
-      else{
-        // no shell used by this plugin
-      }
 
       // Arguments and class name for <ComputingSystemName>ComputingSystem
       String csClass = configFile.getValue(csNames[i], "class");
@@ -144,8 +123,8 @@ public class CSPluginMgr implements ComputingSystem{
       }
       catch(Exception e){
         loadfailed = true;
-        Debug.debug("plugin " + csNames[i] + "(" + csClass + ") loaded", 2);
-        //e.printStackTrace();
+        Debug.debug("plugin " + csNames[i] + "(" + csClass + ") not loaded, trying MyClassLoader", 2);
+        e.printStackTrace();
         //do nothing, will try with MyClassLoader.
       }
       if(loadfailed){
@@ -183,41 +162,33 @@ public class CSPluginMgr implements ComputingSystem{
 
   void reconnect(){
     for(int i=0; i<csNames.length ; ++i){
-      if(shellMgr.get(csNames[i]) instanceof SecureShellMgr){
-        ((SecureShellMgr) shellMgr.get(csNames[i])).reconnect();
+      ShellMgr shellMgr = null;
+      try{
+        shellMgr = GridPilot.getClassMgr().getShellMgr(csNames[i]);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        continue;
+      }
+      if(shellMgr instanceof SecureShellMgr){
+        ((SecureShellMgr) shellMgr).reconnect();
       }
     }
   }
 
   void disconnect(){
     for(int i=0; i<csNames.length ; ++i){
-      if(shellMgr.get(csNames[i]) instanceof SecureShellMgr){
-        ((SecureShellMgr) shellMgr.get(csNames[i])).exit();
+      ShellMgr shellMgr = null;
+      try{
+        shellMgr = GridPilot.getClassMgr().getShellMgr(csNames[i]);
       }
-    }
-  }
-
-  /**
-   * Return the Shell Manager for this job
-   */
-  public ShellMgr getShellMgr(JobInfo job) throws Exception{
-    String csName = job.getCSName();
-    if(csName==null || csName.equals("")){
-      return askWhichShell(job);
-    }
-    else{
-      return getShellMgr(csName);
-    }
-  }
-
-  public ShellMgr getShellMgr(String csName) throws Exception{
-    ShellMgr smgr = (ShellMgr) shellMgr.get(csName);
-    if(smgr==null){
-      Debug.debug("No computing system "+csName, 3);
-      throw new Exception("No computing system "+csName);
-    }
-    else{
-      return smgr;
+      catch(Exception e){
+        e.printStackTrace();
+        continue;
+      }
+      if(shellMgr instanceof SecureShellMgr){
+        ((SecureShellMgr) shellMgr).exit();
+      }
     }
   }
 
@@ -612,40 +583,6 @@ public class CSPluginMgr implements ComputingSystem{
     }
     else{
       return new String [] {null, "No response"};
-    }
-  }
-
-  private ShellMgr askWhichShell(JobInfo job){
-
-    JComboBox cb = new JComboBox();
-    for(int i=0; i<shellMgr.size() ; ++i){
-      String type = "";
-      if(shellMgr.get(csNames[i]) instanceof SecureShellMgr){
-        type = " (remote)";
-      }
-      if(shellMgr.get(csNames[i]) instanceof LocalStaticShellMgr){
-        type = " (local)";
-      }
-      cb.addItem(csNames[i] + type);
-    }
-    cb.setSelectedIndex(0);
-
-
-    JPanel p = new JPanel(new java.awt.BorderLayout());
-    p.add(new JLabel("Which shell do you want to use for this job (" +
-                     job.getName() +")"), java.awt.BorderLayout.NORTH );
-    p.add(cb, java.awt.BorderLayout.CENTER);
-
-    JOptionPane.showMessageDialog(JOptionPane.getRootFrame(), p,
-                                  "This job doesn't have a shell",
-                                  JOptionPane.PLAIN_MESSAGE);
-
-    int ind = cb.getSelectedIndex();
-    if(ind>=0 && ind<shellMgr.size()){
-      return (ShellMgr) shellMgr.get(csNames[ind]);
-    }
-    else{
-      return null;
     }
   }
 

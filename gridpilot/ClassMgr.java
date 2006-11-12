@@ -4,6 +4,11 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
 
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+
 import org.globus.common.CoGProperties;
 import org.ietf.jgss.GSSCredential;
 
@@ -35,6 +40,7 @@ public class ClassMgr{
   private TransferControl transferControl;
   private GSIFTPFileTransfer gsiftpFileSystem;
   private Vector urlList = new Vector();
+  private HashMap shellMgrs = new HashMap();
   private static String caCertsTmpdir = null;
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
@@ -193,12 +199,74 @@ public class ClassMgr{
     return csPluginMgr;
   }
 
+  /**
+   * Return the Shell Manager for this job
+   */
+  public ShellMgr getShellMgr(JobInfo job) throws Exception{
+    String csName = job.getCSName();
+    if(csName==null || csName.equals("")){
+      return askWhichShell(job);
+    }
+    else{
+      return getShellMgr(csName);
+    }
+  }
+  
+  public void setShellMgr(String csName, ShellMgr shellMgr){
+    shellMgrs.put(csName, shellMgr);
+  }
+
+  public ShellMgr getShellMgr(String csName) throws Exception{
+    ShellMgr smgr = (ShellMgr) shellMgrs.get(csName);
+    if(smgr==null){
+      Debug.debug("No computing system "+csName, 3);
+      throw new Exception("No computing system "+csName);
+    }
+    else{
+      return smgr;
+    }
+  }
+
   public void clearDBCaches(){
     for(Iterator i=dbMgrs.values().iterator(); i.hasNext();){
       ((DBPluginMgr) i.next()).clearCaches();
     }
   }
   
+  private ShellMgr askWhichShell(JobInfo job){
+
+    JComboBox cb = new JComboBox();
+    for(int i=0; i<shellMgrs.size() ; ++i){
+      String type = "";
+      if(shellMgrs.get(GridPilot.csNames[i]) instanceof SecureShellMgr){
+        type = " (remote)";
+      }
+      if(shellMgrs.get(GridPilot.csNames[i]) instanceof LocalStaticShellMgr){
+        type = " (local)";
+      }
+      cb.addItem(GridPilot.csNames[i] + type);
+    }
+    cb.setSelectedIndex(0);
+
+
+    JPanel p = new JPanel(new java.awt.BorderLayout());
+    p.add(new JLabel("Which shell do you want to use for this job (" +
+                     job.getName() +")"), java.awt.BorderLayout.NORTH );
+    p.add(cb, java.awt.BorderLayout.CENTER);
+
+    JOptionPane.showMessageDialog(JOptionPane.getRootFrame(), p,
+                                  "This job doesn't have a shell",
+                                  JOptionPane.PLAIN_MESSAGE);
+
+    int ind = cb.getSelectedIndex();
+    if(ind>=0 && ind<shellMgrs.size()){
+      return (ShellMgr) shellMgrs.get(GridPilot.csNames[ind]);
+    }
+    else{
+      return null;
+    }
+  }
+
   public LogFile getLogFile(){
     if(logFile==null){
       Debug.debug("logFile null", 3);

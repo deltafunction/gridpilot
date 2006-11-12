@@ -184,7 +184,8 @@ public class MySQLDatabase implements Database{
     for(int rep=0; rep<3; ++rep){
       if(showDialog ||
           user==null || (passwd==null && !gridAuth) || database==null){
-        up = GridPilot.userPwd(user, passwd, database);
+        up = GridPilot.userPwd("DB login to "+dbName, new String [] {"User", "Password", "Database"},
+            new String [] {user, passwd, database});
         if(up==null){
           return;
         }

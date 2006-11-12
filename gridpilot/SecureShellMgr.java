@@ -14,7 +14,6 @@ public class SecureShellMgr implements ShellMgr{
 
   private JSch jsch=new JSch();
   private Channel [] sshs;
-  private String remoteHome;
   private String host;
   private String user;
   private String password;
@@ -26,35 +25,61 @@ public class SecureShellMgr implements ShellMgr{
   private int channelsNum = 1;
 
   public SecureShellMgr(String _host, String _user,
-      String _password, String _remoteHome){
+      String _password){
     BasicConfigurator.configure();
     Logger.getRootLogger().setLevel(Level.ERROR);
     host = _host;
     user = _user;
     password = _password;
-    remoteHome = _remoteHome;
     logFile = GridPilot.getClassMgr().getLogFile();
     configFile = GridPilot.getClassMgr().getConfigFile();
     channelInUse = 0;
     connect();
     logFile.addInfo("Authentication completed on " + host + "(user : " + user +
-        ", password : " + password + ", home : " + remoteHome + ")");
+        ", password : " + password + ")");
   }
 
   private void connect(){
     try{
-      session = jsch.getSession(user, host, 22);
-      java.util.Hashtable config = new java.util.Hashtable();
-      config.put("StrictHostKeyChecking", "no");
-      session.setConfig(config);
-      if(password!=null){
-        session.setPassword(password);
+      UserInfo ui = new MyUserInfo();
+      boolean showDialog = true;
+      // if global frame is set, this is a reload
+      if(GridPilot.getClassMgr().getGlobalFrame()==null){
+        showDialog = false;
       }
-      else{
-        UserInfo ui = new MyUserInfo();
-        session.setUserInfo(ui);
+      boolean gridAuth = false;
+      String [] up = null;
+      for(int rep=0; rep<3; ++rep){
+        if(showDialog ||
+            user==null || (password==null && !gridAuth) || host==null){
+          up = GridPilot.userPwd("Shell login on "+host, new String [] {"User", "Password", "Host"},
+              new String [] {user, password, host});
+          if(up==null){
+            return;
+          }
+          else{
+            user = up[0];
+            password = up[1];
+            host = up[2];
+          }
+        }
+        try{
+          session = jsch.getSession(user, host, 22);
+          session.setHost(host);
+          session.setPassword(password);
+          session.setUserInfo(ui);
+          java.util.Hashtable config = new java.util.Hashtable();
+          config.put("StrictHostKeyChecking", "no");
+          session.setConfig(config);
+          session.connect();
+          break;
+        }
+        catch(Exception e){
+          password = null;
+          continue;
+        }
       }
-      session.connect();
+      
       try{
         channelsNum = Integer.parseInt(
             configFile.getValue("GridPilot", "maximum simultaneous submissions"))+
@@ -68,11 +93,10 @@ public class SecureShellMgr implements ShellMgr{
             e.getMessage(), 1);
       }      
       sshs = new Channel[channelsNum];
-      //remoteHome = getFullPath(remoteHome);
     }
     catch (Exception e){
       Debug.debug("Could not connect via ssh, "+user+", "+password+", "+host+
-          "."+e.getMessage(), 1);
+          ". "+e.getMessage(), 1);
       e.printStackTrace();
     }
   }
@@ -206,7 +230,18 @@ public class SecureShellMgr implements ShellMgr{
 
   private String getFullPath(String name){
     if(!name.startsWith("/") && !name.startsWith("~")){
-      name = remoteHome + (remoteHome.endsWith("/") ? "" : "/") + name;
+      StringBuffer stdOut = new StringBuffer();
+      StringBuffer stdErr = new StringBuffer();
+      try{
+        int ret = exec("echo $PWD", stdOut, stdErr);
+        if(ret!=0 || stdErr.length()>0){
+          Debug.debug("ERROR: cannot get current directory. "+stdErr, 3);
+        }
+      }
+      catch(IOException e){
+        Debug.debug(e.getMessage(), 2);
+      }
+      name = stdOut.toString()+name.substring(1);
     }
     if(name.startsWith("~")){
       StringBuffer stdOut = new StringBuffer();

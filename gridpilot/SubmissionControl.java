@@ -270,7 +270,7 @@ public class SubmissionControl{
       JobInfo job = (JobInfo) jobs.get(i);
       ShellMgr shell = null;
       try{
-        shell = csPluginMgr.getShellMgr(job);
+        shell = GridPilot.getClassMgr().getShellMgr(job);
       }
       catch(Exception e){
         Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);

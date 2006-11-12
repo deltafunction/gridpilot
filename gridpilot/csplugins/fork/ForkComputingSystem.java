@@ -17,9 +17,9 @@ import gridpilot.ComputingSystem;
 import gridpilot.DBPluginMgr;
 import gridpilot.Debug;
 import gridpilot.JobInfo;
-import gridpilot.LocalShellMgr;
 import gridpilot.LogFile;
 import gridpilot.GridPilot;
+import gridpilot.ShellMgr;
 import gridpilot.Util;
 
 public class ForkComputingSystem implements ComputingSystem{
@@ -33,10 +33,11 @@ public class ForkComputingSystem implements ComputingSystem{
 
   private LogFile logFile;
   private String csName;
-  private LocalShellMgr shellMgr;
+  private ShellMgr shellMgr;
   private String workingDir;
   private String commandSuffix;
   private String defaultUser;
+  private String userName;
   private String error = "";
   private String runtimeDirectory = null;
   private String transformationDirectory = null;
@@ -49,19 +50,29 @@ public class ForkComputingSystem implements ComputingSystem{
   public ForkComputingSystem(String _csName){
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
-    shellMgr = new LocalShellMgr();
     
+    defaultUser = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "default user");
+    userName = GridPilot.getClassMgr().getConfigFile().getValue(csName, "user");
+
+    try{
+      shellMgr = GridPilot.getClassMgr().getShellMgr(csName);
+    }
+    catch(Exception e){
+      Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
+      return;
+    }
+
     workingDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "working directory");
     if(workingDir==null || workingDir.equals("")){
       workingDir = "~";
     }
-    if(workingDir.startsWith("~")){
+    if(shellMgr.isLocal() && workingDir!=null && workingDir.startsWith("~")){
       workingDir = System.getProperty("user.home")+workingDir.substring(1);
     }
-    if(workingDir.endsWith("/") || workingDir.endsWith("\\")){
+    if(workingDir!=null && workingDir.endsWith("/") || workingDir.endsWith("\\")){
       workingDir = workingDir.substring(0, workingDir.length()-1);
     }
-    if(!shellMgr.existsFile(workingDir)){
+    if(workingDir!=null && !shellMgr.existsFile(workingDir)){
       logFile.addInfo("Working directory "+workingDir+" does not exist, creating.");
       shellMgr.mkdirs(workingDir);
     }
@@ -77,7 +88,6 @@ public class ForkComputingSystem implements ComputingSystem{
       runtimeDirectory = System.getProperty("user.home")+runtimeDirectory.substring(1);
     }
 
-    defaultUser = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "default user");
     publicCertificate = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "public certificate");
     remoteDB = GridPilot.getClassMgr().getConfigFile().getValue(
@@ -245,10 +255,16 @@ public class ForkComputingSystem implements ComputingSystem{
    */
   public void setupRuntimeEnvironments(String csName){
 
-    if(shellMgr.isLocal() && System.getProperty("os.name").toLowerCase().startsWith("linux")){
+    if(shellMgr.isLocal() &&
+        System.getProperty("os.name").toLowerCase().startsWith("linux") ||
+        // remote shells always run on Linux
+        !shellMgr.isLocal()){
+      Debug.debug("Setting up runtime environments...", 3);
       try{
+        // TODO: Generalize to remote
         File linuxFile = new File(runtimeDirectory, "Linux");
         if(!linuxFile.exists()){
+          Debug.debug("Writing "+linuxFile.getAbsolutePath(), 3);
           shellMgr.writeFile(linuxFile.getAbsolutePath(), "# This is a dummy runtime environment" +
                 " description file. Its presence just means that we are running on Linux.", false);
         }
@@ -727,6 +743,9 @@ public class ForkComputingSystem implements ComputingSystem{
   }
     
   public String getUserInfo(String csName){
+    if(userName!=null && !userName.equals("")){
+      return userName;
+    }
     String user = null;
     try{
       user = System.getProperty("user.name");

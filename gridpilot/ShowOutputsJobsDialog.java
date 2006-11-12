@@ -56,7 +56,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
       }
       ShellMgr shell = null;
       try{
-        shell = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+        shell = GridPilot.getClassMgr().getShellMgr(job);
       }
       catch(Exception e){
         Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
