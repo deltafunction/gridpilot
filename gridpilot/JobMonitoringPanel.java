@@ -345,12 +345,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       mSubmit.add(mi);
     }
 
-    /*miResetChanges.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        jobControl.resetChanges();
-      }
-    });*/
-
     miKill.setEnabled(false);
     miDecide.setEnabled(false);
     mSubmit.setEnabled(false);
@@ -358,13 +352,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     mShow.setEnabled(false);
 
-    //miShowOutput.setEnabled(false);
-    //miShowFullStatus.setEnabled(false);
-    //miShowInfo.setEnabled(false);
     miRevalidate.setEnabled(false);
     mDB.setEnabled(false);
-
-    //miResetChanges.setEnabled(true);
 
     mDB.add(miDBDefined);
     mDB.add(miDBFailed);
@@ -472,8 +461,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         dbChoices[i]  = options[choices[i]];
       }
     }
-
-    //jobControl.undecidedChoices(jobs, dbChoices);
 
     DatasetMgr datasetMgr = null;
     for(int i=0; i<jobs.size(); ++i){
@@ -743,9 +730,14 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         mSubmit.setEnabled(false);
       }
 
-      miShowFullStatus.setEnabled(true);
-      miShowOutput.setEnabled(true);
-      miShowInfo.setEnabled(true);
+      miShowFullStatus.setEnabled(!lsm.isSelectionEmpty() &&
+          lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+      miShowOutput.setEnabled(!lsm.isSelectionEmpty() &&
+          lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+      miShowInfo.setEnabled(!lsm.isSelectionEmpty() &&
+          lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+      miShowScripts.setEnabled(!lsm.isSelectionEmpty() &&
+          lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
 
       mDB.setEnabled(true);
       mShow.setEnabled(true);

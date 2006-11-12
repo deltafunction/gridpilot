@@ -207,7 +207,7 @@ public class JobValidation{
     try{
       if((job.getStdOut()==null || job.getStdOut().length()==0) &&
          (job.getStdErr()==null || job.getStdErr().length()==0)){
-         logFile.addMessage("Validation script for job " + job.getName()  +
+         logFile.addMessage("Validation for job " + job.getName()  +
              ") cannot be run : this job doesn't have any outputs", job);
          return DBPluginMgr.UNDECIDED;
       }
@@ -237,7 +237,7 @@ public class JobValidation{
       }
 
       String errorMatches = validate(outs);
-      Debug.debug("validation script ended with : " + errorMatches, 3);
+      Debug.debug("validation ended with : " + errorMatches, 3);
       job.setValidationResult(errorMatches);
       if(errorMatches.length()==0){
         exitValue = EXIT_VALIDATED;

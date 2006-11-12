@@ -18,7 +18,7 @@ import gridpilot.DBRecord;
  *     after the job end.
  *     If StdErr is null, all outputs have to be written in StdOut
  * - String ValidationStdOut (ValidationStdErr)
- *      Outputs of the validation script ran on this job (at the end)
+ *      Outputs of the validation ran on this job (at the end)
  * - String  JobId
  *      Id of this job (only if this job has been submitted), specific to
  * his computing system (an integer on LSF, https://... on European Datagrid, gsiftp://... on NorduGrid, ...
