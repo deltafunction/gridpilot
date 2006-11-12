@@ -71,6 +71,13 @@ public interface ShellMgr{
   public boolean deleteFile(String path);
 
   /**
+   * Deletes the specified directory.
+   * @return  true if and only if the directory has been deleted;
+   *          false otherwise
+   */
+  public boolean deleteDir(String dir);
+  
+  /**
    * Copies file 'src' to file 'dest'. 
    * If the parent directory doesn't exist, it is created.
    * @return  true if and only if the copy succeeded;
@@ -110,7 +117,33 @@ public interface ShellMgr{
    * Tells wether this is a local shell manager or not (remote).
    */
   public boolean isLocal();
+  
+  /**
+   * Run a command and add the command name + command to the hash map
+   * of running processes.
+   * @param cmd    the command string
+   * @param workingDirectory  the directory where the command is executed
+   * @param stdOutFile    a file destination for the stdout
+   * @param stdErrFile    a file destination for the stderr
+   * @return              a string identifying the running command
+   * @throws Exception
+   */
+  public String submit(String cmd, String workingDirectory,
+      String stdOutFile, String stdErrFile) throws Exception;
 
+  /**
+   * Kills a process and removes it from the hash map of running processes.
+   * @param id    the string identifying the process.
+   */
+  public void killProcess(String id);
+
+  /**
+   * Check if a process is running.
+   * @return  true or false.
+   * @param id    the string identifying the process.
+   */
+  public boolean isRunning(String id);
+      
   public void exit();
 
 

@@ -5,6 +5,11 @@ import java.util.*;
 
 public class LocalShellMgr implements ShellMgr {
 
+  private static int MAX_DEPTH = 10;
+  private HashMap processes = new HashMap();
+  private HashMap processNames = new HashMap();
+  private HashMap bufferedGobblers = new HashMap();
+  
   public LocalShellMgr(){
   }
 
@@ -182,6 +187,16 @@ public class LocalShellMgr implements ShellMgr {
   public String readFile(String _path) throws FileNotFoundException, IOException {
     String path = Util.clearFile(_path);
     Debug.debug("Reading file "+path, 2);
+    Debug.debug("Checking buffers "+Util.arrayToString(bufferedGobblers.keySet().toArray()), 3);
+    if(bufferedGobblers.containsKey(path)){
+      try{
+        Debug.debug("Returning buffer ", 3);
+        return ((StreamGobbler) bufferedGobblers.get(path)).buffer.toString();
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
     RandomAccessFile f = new RandomAccessFile(path, "r");
     byte [] b  = new byte [(int)f.length()];
     f.readFully(b);
@@ -219,15 +234,19 @@ public class LocalShellMgr implements ShellMgr {
   // Deletes all files and subdirectories under dir.
   // Returns true if all deletions were successful.
   // If a deletion fails, the method stops attempting to delete and returns false.
-  public static boolean deleteDir(File dir){
+  public boolean deleteDir(String dirString){
+    File dir = new File(dirString);
     if(dir.isDirectory()){
       String[] children = dir.list();
       for(int i=0; i<children.length; i++){
-        boolean success = deleteDir(new File(dir, children[i]));
+        boolean success = deleteDir((new File(dir, children[i])).getAbsolutePath());
         if(!success){
           return false;
         }
       }
+    }
+    else{
+      return false;
     }
     // The directory is now empty so delete it
     return dir.delete();
@@ -238,7 +257,7 @@ public class LocalShellMgr implements ShellMgr {
     Debug.debug("deleting file "+path, 3);
     File dirOrFile = new File(path);
     if(dirOrFile.isDirectory()){
-      return deleteDir(dirOrFile);
+      return deleteDir(path);
     }
     else{
       return dirOrFile.delete();
@@ -279,9 +298,9 @@ public class LocalShellMgr implements ShellMgr {
     return new File(dir).isDirectory();
   }
   
-  private static int MAX_DEPTH = 10;
-  
-  private HashSet listFilesRecursively(File fileOrDir, HashSet files, int depth){
+  private static HashSet listFilesRecursively(File fileOrDir, HashSet files, int depth){
+    Debug.debug("Listing "+fileOrDir.getAbsolutePath()+":"+fileOrDir.isFile()+":"+
+        fileOrDir.isDirectory()+":"+depth, 3);
     if(fileOrDir.isFile()){
       files.add(fileOrDir);
     }
@@ -296,43 +315,54 @@ public class LocalShellMgr implements ShellMgr {
   }
   
   public HashSet listFilesRecursively(String fileOrDir){
-    return listFilesRecursively(new File(fileOrDir), new HashSet(), 10);
+    if(fileOrDir.startsWith("~")){
+      fileOrDir = System.getProperty("user.home")+fileOrDir.substring(1);
+    }
+    return listFilesRecursively(new File(fileOrDir), new HashSet(), 1);
   }
 
-  /**
-   * Executes in the shell the command 'cmd', in the directory 'workingDirecory'. <br>
-   * Standard output is written to the file stdOutFile.
-   * Standard error is written to the file stdErrFile.
-   * <p>
-   * All elements of cmd can be <code>null</code>, or contain several tokens ;
-   * if an element of cmd contains spaces, all "words" are used like as much as
-   * differents parameters.
-   *
-   * @return hash code of the started process
-   * @throws IOException
-   */
-  public HashMap processes = new HashMap();
-  
-  public Process getProcess(String cmd){
-    Process ret = null;
+  private String getProcessID(String name){
+    String ret = null;
     try{
-      ret = (Process) processes.get(cmd);
+      Debug.debug("getting process id for"+name, 3);
+      ret = (String) processNames.get(name);
+      Debug.debug("got process "+ret, 3);
     }
     catch(Exception e){
-      Debug.debug("Could not get process for "+cmd, 2);
+      Debug.debug("Could not get process ID for "+name, 2);
     }
     return ret;
   }
-
-  public void addProcess(String cmd, Process process){
-    processes.put(cmd, process);
+  
+  public void addProcess(String name, String id, Process process){
+    Debug.debug("adding process "+id+" :: "+process, 3);
+    processes.put(id, process);
+    processNames.put(name, id);
   }
 
-  public void removeProcess(String cmd){
-    processes.remove(cmd);
+  public void killProcess(String id){
+    try{
+      Process proc = (Process) processes.get((id));
+      Debug.debug("killing job #"+proc.hashCode()+" : "+id, 2);
+      proc.destroy();
+      processes.remove(id);
+      String key = null;
+      for(Iterator it=processNames.keySet().iterator(); it.hasNext();){
+        key = (String) it.next();
+        if(processNames.get(key).equals(id)){
+          break;
+        }
+      }
+      processNames.remove(key);
+    }
+    catch(Exception e){
+       GridPilot.getClassMgr().getLogFile().addMessage("Exception during job killing :\n" +
+                                  "\tJob#\t: " + id +"\n" +
+                                  "\tException\t: " + e.getMessage(), e);
+    }
   }
 
-  public Process submit(final String cmd, final String workingDirectory,
+  public String submit(final String cmd, final String workingDirectory,
                   final String stdOutFile, final String stdErrFile) throws Exception {
     Debug.debug("executing "+cmd, 3);
 
@@ -340,19 +370,24 @@ public class LocalShellMgr implements ShellMgr {
       public void run(){
         try{
           
-          final Process proc = Runtime.getRuntime().exec(cmd, null, 
+          Process proc = Runtime.getRuntime().exec(cmd, null, 
               (workingDirectory==null ? null : new File(workingDirectory)));
           
-          FileOutputStream fos = new FileOutputStream(stdOutFile);
+          //FileOutputStream fos = new FileOutputStream(stdOutFile);
+          BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(stdOutFile)/*, 100000*/);
           StreamGobbler outputGobbler = new StreamGobbler(proc.getInputStream(), "OUTPUT", fos);
-            
-          FileOutputStream fes = new FileOutputStream(stdErrFile);
+          bufferedGobblers.put(stdOutFile, outputGobbler);
+
+          //FileOutputStream fes = new FileOutputStream(stdErrFile);
+          BufferedOutputStream fes = new BufferedOutputStream(new FileOutputStream(stdErrFile)/*, 100000*/);
           StreamGobbler errorGobbler = new StreamGobbler(proc.getErrorStream(), "ERROR", fes);            
+          bufferedGobblers.put(stdErrFile, errorGobbler);
 
           errorGobbler.start();
           outputGobbler.start();
-                                
-          addProcess(cmd, proc);
+          
+          String id = Integer.toString(proc.hashCode());
+          addProcess(cmd, id, proc);
 
           proc.waitFor();
 
@@ -361,7 +396,8 @@ public class LocalShellMgr implements ShellMgr {
           fes.flush();
           fes.close();
           
-          removeProcess(cmd);
+          processes.remove(id);
+          processNames.remove(cmd);
         }
         catch(Exception ie){
           GridPilot.getClassMgr().getLogFile().addMessage("Exception in LocalStaticShellMgr.exec : " +
@@ -376,13 +412,15 @@ public class LocalShellMgr implements ShellMgr {
     Debug.debug("Running job: "+cmd, 2);
     runThread.start();
     
-    for(int rep=0; rep<10; ++rep){
+    // Try 3 times to get the job id. If not possible, submission has
+    // probably failed (or finished very very fast...)
+    for(int rep=0; rep<3; ++rep){
+      if(getProcessID(cmd)!=null){
+        Debug.debug("Returning ID: "+getProcessID(cmd).hashCode(), 2);
+        return getProcessID(cmd);
+      }
       Debug.debug("Sleeping 3 seconds...", 2);
       Thread.sleep(3000);
-      if(getProcess(cmd)!=null){
-        Debug.debug("Returning job: "+getProcess(cmd).hashCode(), 2);
-        return getProcess(cmd);
-      }
     }
     return null;
   }
@@ -392,9 +430,8 @@ public class LocalShellMgr implements ShellMgr {
     String type;
     OutputStream os;
     
-    StreamGobbler(InputStream is, String type){
-        this(is, type, null);
-    }
+    StringBuffer buffer = new StringBuffer("");
+    
     StreamGobbler(InputStream is, String type, OutputStream redirect){
         this.is = is;
         this.type = type;
@@ -413,8 +450,9 @@ public class LocalShellMgr implements ShellMgr {
         while((line = br.readLine())!=null){
           if(pwo!=null){
             pwo.println(line);
+            buffer.append(line+"\n");
+            Debug.debug(type + ">" + line, 3);    
           }
-          System.out.println(type + ">" + line);    
         }
         if(pwo!=null){
           pwo.flush();
@@ -431,6 +469,16 @@ public class LocalShellMgr implements ShellMgr {
   }
   
   public void exit(){
+  }
+
+  public boolean isRunning(String id){
+    Process proc = null;
+    try{
+      proc = (Process) processes.get(id);
+    }
+    catch(Exception e){
+    }
+    return (proc!=null);
   }
 
 }

@@ -17,7 +17,7 @@ import gridpilot.ComputingSystem;
 import gridpilot.DBPluginMgr;
 import gridpilot.Debug;
 import gridpilot.JobInfo;
-import gridpilot.LocalStaticShellMgr;
+import gridpilot.LocalShellMgr;
 import gridpilot.LogFile;
 import gridpilot.GridPilot;
 import gridpilot.Util;
@@ -33,7 +33,7 @@ public class ForkComputingSystem implements ComputingSystem{
 
   private LogFile logFile;
   private String csName;
-  private LocalStaticShellMgr shellMgr;
+  private LocalShellMgr shellMgr;
   private String workingDir;
   private String commandSuffix;
   private String defaultUser;
@@ -49,7 +49,7 @@ public class ForkComputingSystem implements ComputingSystem{
   public ForkComputingSystem(String _csName){
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
-    shellMgr = new LocalStaticShellMgr();
+    shellMgr = new LocalShellMgr();
     
     workingDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "working directory");
     if(workingDir==null || workingDir.equals("")){
@@ -61,9 +61,9 @@ public class ForkComputingSystem implements ComputingSystem{
     if(workingDir.endsWith("/") || workingDir.endsWith("\\")){
       workingDir = workingDir.substring(0, workingDir.length()-1);
     }
-    if(!LocalStaticShellMgr.existsFile(workingDir)){
+    if(!shellMgr.existsFile(workingDir)){
       logFile.addInfo("Working directory "+workingDir+" does not exist, creating.");
-      LocalStaticShellMgr.mkdirs(workingDir);
+      shellMgr.mkdirs(workingDir);
     }
     
     commandSuffix = ".sh";
@@ -86,9 +86,9 @@ public class ForkComputingSystem implements ComputingSystem{
         csName, "runtime database");
     
     if(runtimeDirectory!=null){
-      if(!LocalStaticShellMgr.existsFile(runtimeDirectory)){
+      if(!shellMgr.existsFile(runtimeDirectory)){
         logFile.addInfo("Runtime directory "+runtimeDirectory+" does not exist, creating.");
-        LocalStaticShellMgr.mkdirs(runtimeDirectory);
+        shellMgr.mkdirs(runtimeDirectory);
       }
       setupRuntimeEnvironments(csName);
     }
@@ -98,9 +98,9 @@ public class ForkComputingSystem implements ComputingSystem{
       transformationDirectory = System.getProperty("user.home")+transformationDirectory.substring(1);
     }
     if(transformationDirectory!=null){
-      if(!LocalStaticShellMgr.existsFile(transformationDirectory)){
+      if(!shellMgr.existsFile(transformationDirectory)){
         try{
-          LocalStaticShellMgr.mkdirs(transformationDirectory);
+          shellMgr.mkdirs(transformationDirectory);
         }
         catch(Exception e){
           e.printStackTrace();
@@ -114,22 +114,22 @@ public class ForkComputingSystem implements ComputingSystem{
     // If we are running on Linux and a transformation directory is
     // specified in the config file, copy there a test transformation
     
-    if(!System.getProperty("os.name").toLowerCase().startsWith("linux")){
+    if(shellMgr.isLocal() && !System.getProperty("os.name").toLowerCase().startsWith("linux")){
       return;
     }
     
     // Create two dummy input files
-    if(!LocalStaticShellMgr.existsFile("/tmp/file1.root")){
+    if(!shellMgr.existsFile("/tmp/file1.root")){
       try{
-        LocalStaticShellMgr.writeFile("/tmp/file1.root", "", false);
+        shellMgr.writeFile("/tmp/file1.root", "", false);
       }
       catch(Exception e){
         e.printStackTrace();
       }
     }
-    if(!LocalStaticShellMgr.existsFile("/tmp/file2.root")){
+    if(!shellMgr.existsFile("/tmp/file2.root")){
       try{
-        LocalStaticShellMgr.writeFile("/tmp/file2.root", "", false);
+        shellMgr.writeFile("/tmp/file2.root", "", false);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -180,7 +180,7 @@ public class ForkComputingSystem implements ComputingSystem{
     try{
       StringBuffer stdout = new StringBuffer();
       StringBuffer stderr = new StringBuffer();
-      LocalStaticShellMgr.exec(
+      shellMgr.exec(
           "chmod +x "+testScript.getAbsolutePath(), stdout, stderr);
       if(stderr!=null && stderr.length()!=0){
         logFile.addMessage("Could not set transformation executable. "+stderr);
@@ -245,20 +245,20 @@ public class ForkComputingSystem implements ComputingSystem{
    */
   public void setupRuntimeEnvironments(String csName){
 
-    if(System.getProperty("os.name").toLowerCase().startsWith("linux")){
+    if(shellMgr.isLocal() && System.getProperty("os.name").toLowerCase().startsWith("linux")){
       try{
         File linuxFile = new File(runtimeDirectory, "Linux");
         if(!linuxFile.exists()){
-          LocalStaticShellMgr.writeFile(linuxFile.getAbsolutePath(), "# This is a dummy runtime environment" +
+          shellMgr.writeFile(linuxFile.getAbsolutePath(), "# This is a dummy runtime environment" +
                 " description file. Its presence just means that we are running on Linux.", false);
         }
         linuxFile = new File("tmp", "data1.root");
         if(!linuxFile.exists()){
-          LocalStaticShellMgr.writeFile(linuxFile.getAbsolutePath(), "", false);
+          shellMgr.writeFile(linuxFile.getAbsolutePath(), "", false);
         }
         linuxFile = new File("tmp", "data2.root");
         if(!linuxFile.exists()){
-          LocalStaticShellMgr.writeFile(linuxFile.getAbsolutePath(), "", false);
+          shellMgr.writeFile(linuxFile.getAbsolutePath(), "", false);
         }
       }
       catch(Exception e){
@@ -266,11 +266,10 @@ public class ForkComputingSystem implements ComputingSystem{
             e);
       }
     }
-
     
     finalRuntimesLocal = new HashSet();
     finalRuntimesRemote = new HashSet();
-    HashSet runtimes = LocalStaticShellMgr.listFilesRecursively(runtimeDirectory);
+    HashSet runtimes = shellMgr.listFilesRecursively(runtimeDirectory);
     if(runtimes!=null && runtimes.size()>0){
       File fil = null;
       String hostName = null;
@@ -371,7 +370,7 @@ public class ForkComputingSystem implements ComputingSystem{
         
         // get the certificate
         try{
-          cert = LocalStaticShellMgr.readFile(publicCertificate);
+          cert = shellMgr.readFile(publicCertificate);
           // TODO: check if certificate includes private key
           // and discard the key if so
         }
@@ -470,8 +469,8 @@ public class ForkComputingSystem implements ComputingSystem{
   public boolean submit(final JobInfo job){
     
     // create the run directory
-    if(!LocalStaticShellMgr.existsFile(runDir(job))){
-      LocalStaticShellMgr.mkdirs(runDir(job));
+    if(!shellMgr.existsFile(runDir(job))){
+      shellMgr.mkdirs(runDir(job));
     }
     
     final String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
@@ -485,8 +484,8 @@ public class ForkComputingSystem implements ComputingSystem{
     scriptGenerator.createWrapper(job, job.getName()+commandSuffix);
     
     try{
-      Process proc = shellMgr.submit(cmd, runDir(job), stdoutFile, stderrFile);
-      job.setJobId(proc!=null?Integer.toString(proc.hashCode()):"");   
+      String id = shellMgr.submit(cmd, runDir(job), stdoutFile, stderrFile);
+      job.setJobId(id!=null?id:"");   
     }
     catch(Exception ioe){
       ioe.printStackTrace();
@@ -517,19 +516,7 @@ public class ForkComputingSystem implements ComputingSystem{
     // Host.
     job.setHost("localhost");
 
-    // Status. Either running or not. 
-    boolean jobRunning = false;
-    Process proc = null;
-    Iterator it = shellMgr.getProcesses().values().iterator();
-    while(it.hasNext()){
-      proc = ((Process) it.next());
-       if(proc!=null &&
-          Integer.parseInt(job.getJobId())==proc.hashCode()){
-        jobRunning = true;
-        break;
-      }
-    }
-    if(jobRunning/*stdOut.length()!=0 &&
+    if(shellMgr.isRunning(job.getJobId())/*stdOut.length()!=0 &&
         stdOut.indexOf(job.getName())>-1*/
         ){
       job.setJobStatus("Running");
@@ -565,7 +552,7 @@ public class ForkComputingSystem implements ComputingSystem{
           remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputMapping[i]);
           remoteName = Util.clearFile(remoteName);
           Debug.debug(localName + ": -> " + remoteName, 2);
-          LocalStaticShellMgr.copyFile(localName, remoteName);
+          shellMgr.copyFile(localName, remoteName);
         }
         catch(Exception e){
           job.setJobStatus("Error");
@@ -579,39 +566,18 @@ public class ForkComputingSystem implements ComputingSystem{
     }
   }
 
-  /**
-   * Script :
-   *  param : jobId
-   */
   public boolean killJobs(Vector jobsToKill){
-    Process proc = null;
-    String cmd = null;
     Vector errors = new Vector();
+    JobInfo job = null;
     for(Enumeration en=jobsToKill.elements(); en.hasMoreElements();){
       try{
-        Iterator it = shellMgr.getProcesses().keySet().iterator();
-        while(it.hasNext()){
-          cmd = (String) it.next();
-          proc = (Process) shellMgr.getProcesses().get(
-              (cmd));
-          if(proc!=null &&
-              Integer.parseInt(((JobInfo) en.nextElement()).getJobId())==
-                proc.hashCode()){
-            Debug.debug("killing job #"+proc.hashCode()+" : "+cmd, 2);
-            proc.destroy();
-            // should not be necessary
-            try{
-              shellMgr.removeProcess(cmd);
-            }
-            catch(Exception ee){
-            }
-          }
-        }
+        job = (JobInfo) en.nextElement();
+        shellMgr.killProcess(job.getJobId());
       }
       catch(Exception e){
         errors.add(e.getMessage());
         logFile.addMessage("Exception during job killing :\n" +
-                                    "\tJob#\t: " + cmd +"\n" +
+                                    "\tJob#\t: " + job.getName() +"\n" +
                                     "\tException\t: " + e.getMessage(), e);
       }
     }
@@ -630,7 +596,7 @@ public class ForkComputingSystem implements ComputingSystem{
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
     try{
-      LocalStaticShellMgr.deleteFile(finalStdOut);
+      shellMgr.deleteFile(finalStdOut);
     }
     catch(Exception ioe){
       error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
@@ -638,7 +604,7 @@ public class ForkComputingSystem implements ComputingSystem{
       logFile.addMessage(error, ioe);
     }
     try{
-      LocalStaticShellMgr.deleteFile(finalStdErr);
+      shellMgr.deleteFile(finalStdErr);
     }
     catch(Exception ioe){
       error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
@@ -646,7 +612,7 @@ public class ForkComputingSystem implements ComputingSystem{
       logFile.addMessage(error, ioe);
     }
     try{
-      LocalStaticShellMgr.deleteDir(new File(runDir));
+      shellMgr.deleteDir(runDir);
     }
     catch(Exception ioe){
       error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
@@ -730,24 +696,20 @@ public class ForkComputingSystem implements ComputingSystem{
   }
 
   public String getFullStatus(JobInfo job){
-    Process proc = null;
-    Iterator it = shellMgr.getProcesses().values().iterator();
-    while(it.hasNext()){
-      proc = ((Process) it.next());
-       if(proc!=null &&
-          Integer.parseInt(job.getJobId())==proc.hashCode()){
-        return "Job #"+job.getJobId()+" is running.";
-      }
+    if(shellMgr.isRunning(job.getJobId())){
+      return "Job #"+job.getJobId()+" is running.";
     }
-    return "Job #"+job.getJobId()+" is not running.";
+    else{
+      return "Job #"+job.getJobId()+" is not running.";
+    }
   }
 
   public String[] getCurrentOutputs(JobInfo job){
     try{
-      String stdOutText = LocalStaticShellMgr.readFile(job.getStdOut());
+      String stdOutText = shellMgr.readFile(job.getStdOut());
       String stdErrText = "";
-      if(LocalStaticShellMgr.existsFile(job.getStdErr())){
-        stdErrText = LocalStaticShellMgr.readFile(job.getStdErr());
+      if(shellMgr.existsFile(job.getStdErr())){
+        stdErrText = shellMgr.readFile(job.getStdErr());
       }
       return new String [] {stdOutText, stdErrText};
     }
@@ -794,7 +756,7 @@ public class ForkComputingSystem implements ComputingSystem{
     if(copyToFinalDest(job)){
       // Delete the run directory
       try{
-        LocalStaticShellMgr.deleteDir(new File(runDir));
+        shellMgr.deleteDir(runDir);
       }
       catch(Exception e){
         error = "Exception during postProcess of job " + job.getName()+ "\n" +
@@ -820,6 +782,10 @@ public class ForkComputingSystem implements ComputingSystem{
   private boolean getInputFiles(JobInfo job){
     boolean ok = true;
     
+    // TODO: support sources: gsiftp://, ftp://.
+    // TODO: if source is /..., c:\... or file://...,
+    // use shellMgr to scp the file from local disk.
+
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String transID = dbPluginMgr.getJobDefTransformationID(job.getJobDefId());
     Debug.debug("Getting input files for transformation " + transID, 2);
@@ -839,9 +805,8 @@ public class ForkComputingSystem implements ComputingSystem{
           inputFiles[i] = inputFiles[i].replaceFirst("^file:/*", "/");
         }
         try{
-          if(!LocalStaticShellMgr.existsFile(inputFiles[i])){
+          if(!shellMgr.existsFile(inputFiles[i])){
             logFile.addMessage("File " + inputFiles[i] + " doesn't exist");
-            //return false;
             ok = false;
             continue;
           }
@@ -851,7 +816,6 @@ public class ForkComputingSystem implements ComputingSystem{
           Debug.debug(error, 2);
           logFile.addMessage(error);
           ok = false;
-          //throw e;
         }
         Debug.debug("Pre-processing : Getting " + inputFiles[i], 2);
         String fileName = inputFiles[i];
@@ -860,10 +824,9 @@ public class ForkComputingSystem implements ComputingSystem{
           fileName = fileName.substring(lastSlash + 1);
         }
         try{
-          if(!LocalStaticShellMgr.copyFile(inputFiles[i], runDir(job)+"/"+fileName)){
+          if(!shellMgr.copyFile(inputFiles[i], runDir(job)+"/"+fileName)){
             logFile.addMessage("Pre-processing : Cannot get " +
                 inputFiles[i]);
-            //return false;
             ok = false;
           }
         }
@@ -872,7 +835,6 @@ public class ForkComputingSystem implements ComputingSystem{
           Debug.debug(error, 2);
           logFile.addMessage(error);
           ok = false;
-          //throw e;
         }
       }
     }
@@ -893,15 +855,15 @@ public class ForkComputingSystem implements ComputingSystem{
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
-    // TODO: should we support destinations like gsiftp:// and http://?
-    // For grid systems they should already have been taken care of by
-    // the job description.
+    // TODO: support destinations: gsiftp://, ftp://.
+    // TODO: if destination is /..., c:\... or file://...,
+    // use shellMgr to scp the file to local disk.
     /**
      * move temp StdOut -> finalStdOut
      */
     if(finalStdOut!=null && finalStdOut.trim().length()!=0){
       try{
-        if(!LocalStaticShellMgr.existsFile(job.getStdOut())){
+        if(!shellMgr.existsFile(job.getStdOut())){
           error = "Post processing : File " + job.getStdOut() + " doesn't exist";
           logFile.addMessage(error);
           return false;
@@ -911,12 +873,10 @@ public class ForkComputingSystem implements ComputingSystem{
         error = "ERROR checking for stdout: "+e.getMessage();
         Debug.debug(error, 2);
         logFile.addMessage(error);
-        //throw e;
       }
       Debug.debug("Post processing : Renaming " + job.getStdOut() + " in " + finalStdOut, 2);
-      // if(!shell.moveFile(job.getStdOut(), finalStdOut)){
       try{
-        if(!LocalStaticShellMgr.copyFile(job.getStdOut(), finalStdOut)){
+        if(!shellMgr.copyFile(job.getStdOut(), finalStdOut)){
           error = "Post processing : Cannot move \n\t" +
           job.getStdOut() +
           "\n into \n\t" + finalStdOut;
@@ -928,7 +888,6 @@ public class ForkComputingSystem implements ComputingSystem{
         error = "ERROR copying stdout: "+e.getMessage();
         Debug.debug(error, 2);
         logFile.addMessage(error);
-        //throw e;
       }
       job.setStdOut(finalStdOut);
     }
@@ -938,7 +897,7 @@ public class ForkComputingSystem implements ComputingSystem{
      */
     if(finalStdErr!=null && finalStdErr.trim().length()!=0){
       try{
-        if(!LocalStaticShellMgr.existsFile(job.getStdErr())){
+        if(!shellMgr.existsFile(job.getStdErr())){
           logFile.addMessage("Post processing : File " + job.getStdErr() + " doesn't exist");
           return false;
         }
@@ -947,12 +906,10 @@ public class ForkComputingSystem implements ComputingSystem{
         error = "ERROR checking for stderr: "+e.getMessage();
         Debug.debug(error, 2);
         logFile.addMessage(error);
-        //throw e;
       }
       Debug.debug("Post processing : Renaming " + job.getStdErr() + " in " + finalStdErr,2);
-      //shell.moveFile(job.getStdOut(), finalStdOutName);
       try{
-        if(!LocalStaticShellMgr.copyFile(job.getStdErr(), finalStdErr)){
+        if(!shellMgr.copyFile(job.getStdErr(), finalStdErr)){
           logFile.addMessage("Post processing : Cannot move \n\t" +
                              job.getStdErr() +
                              "\n into \n\t" + finalStdErr);
@@ -963,7 +920,6 @@ public class ForkComputingSystem implements ComputingSystem{
         error = "ERROR copying stderr: "+e.getMessage();
         Debug.debug(error, 2);
         logFile.addMessage(error);
-        //throw e;
       }
       job.setStdErr(finalStdErr);
     }

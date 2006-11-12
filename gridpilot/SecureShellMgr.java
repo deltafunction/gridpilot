@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 
 import org.apache.log4j.*;
+import org.safehaus.uuid.UUIDGenerator;
 
 public class SecureShellMgr implements ShellMgr{
 
@@ -276,9 +277,30 @@ public class SecureShellMgr implements ShellMgr{
     StringBuffer stdOut = new StringBuffer();
     StringBuffer stdErr = new StringBuffer();
     try{
-      int ret = exec("rm "+path, stdOut, stdErr);
+      int ret = exec("rm -f "+path, stdOut, stdErr);
       if(ret!=0 || stdErr.length()>0){
         Debug.debug("WARNING: could not delete file "+path+". "+stdErr, 1);
+        return false;
+      }
+    }
+    catch(IOException e){
+      Debug.debug(e.getMessage(), 2);
+      return false;
+    }
+    return true;
+  }
+
+  public boolean deleteDir(String path){
+    if(!isDirectory(path)){
+      return false;
+    }
+    Debug.debug("deleting directory "+path, 2); 
+    StringBuffer stdOut = new StringBuffer();
+    StringBuffer stdErr = new StringBuffer();
+    try{
+      int ret = exec("rm -rf "+path, stdOut, stdErr);
+      if(ret!=0 || stdErr.length()>0){
+        Debug.debug("WARNING: could not delete directory "+path+". "+stdErr, 1);
         return false;
       }
     }
@@ -505,5 +527,48 @@ public class SecureShellMgr implements ShellMgr{
   public HashSet listFilesRecursively(String fileOrDir){
     return listFilesRecursively(fileOrDir, new HashSet(), 10);
   }
-  
+
+  public String submit(String cmd, String workingDirectory, String stdOutFile,
+      String stdErrFile) throws Exception{
+    // first write small script containing the command and returning the pid of itself
+    String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+    writeFile("/tmp/"+uuid+".sh",
+        cmd+"2>"+stdOutFile+">"+stdErrFile+"&\n" +
+        "echo $$", false);
+    StringBuffer stdOut = new StringBuffer();
+    StringBuffer stdErr = new StringBuffer();
+    // execute the script
+    exec("/tmp/"+uuid+".sh", stdOut, stdErr);
+    String pid = stdOut.toString();
+    stdOut = new StringBuffer();
+    stdErr = new StringBuffer();
+    exec("rm /tmp/"+uuid+".sh", stdOut, stdErr);
+    return pid;
+  }
+
+  public void killProcess(String id){
+    StringBuffer stdOut = new StringBuffer();
+    StringBuffer stdErr = new StringBuffer();
+    try{
+      exec("kill "+id, stdOut, stdErr);
+    }
+    catch(IOException e){
+      e.printStackTrace();
+    }
+  }
+
+  public boolean isRunning(String id){
+    String out = null;
+    StringBuffer stdOut = new StringBuffer();
+    StringBuffer stdErr = new StringBuffer();
+    try{
+      exec("ps -p "+id+" -o comm=", stdOut, stdErr);
+      out = stdOut.toString();
+    }
+    catch(IOException e){
+      e.printStackTrace();
+    }
+    return (out!=null && !out.equals(""));
+  }
+
 }
