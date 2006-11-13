@@ -129,17 +129,17 @@ public class ForkComputingSystem implements ComputingSystem{
     }
     
     // Create two dummy input files
-    if(!shellMgr.existsFile("/tmp/file1.root")){
+    if(!shellMgr.existsFile("/tmp/data1.txt")){
       try{
-        shellMgr.writeFile("/tmp/file1.root", "", false);
+        shellMgr.writeFile("/tmp/data1.txt", "", false);
       }
       catch(Exception e){
         e.printStackTrace();
       }
     }
-    if(!shellMgr.existsFile("/tmp/file2.root")){
+    if(!shellMgr.existsFile("/tmp/data2.txt")){
       try{
-        shellMgr.writeFile("/tmp/file2.root", "", false);
+        shellMgr.writeFile("/tmp/data2.txt", "", false);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -261,24 +261,16 @@ public class ForkComputingSystem implements ComputingSystem{
         !shellMgr.isLocal()){
       Debug.debug("Setting up runtime environments...", 3);
       try{
-        // TODO: Generalize to remote
-        File linuxFile = new File(runtimeDirectory, "Linux");
-        if(!linuxFile.exists()){
-          Debug.debug("Writing "+linuxFile.getAbsolutePath(), 3);
-          shellMgr.writeFile(linuxFile.getAbsolutePath(), "# This is a dummy runtime environment" +
+        String filePath = null;
+        filePath = runtimeDirectory+"/"+"Linux";
+        if(!shellMgr.existsFile(filePath)){
+          Debug.debug("Writing "+filePath, 3);
+          shellMgr.writeFile(filePath, "# This is a dummy runtime environment" +
                 " description file. Its presence just means that we are running on Linux.", false);
-        }
-        linuxFile = new File("tmp", "data1.root");
-        if(!linuxFile.exists()){
-          shellMgr.writeFile(linuxFile.getAbsolutePath(), "", false);
-        }
-        linuxFile = new File("tmp", "data2.root");
-        if(!linuxFile.exists()){
-          shellMgr.writeFile(linuxFile.getAbsolutePath(), "", false);
         }
       }
       catch(Exception e){
-        logFile.addMessage("WARNING: Could not create Linux runtime enviromnment file",
+        logFile.addMessage("WARNING: Could not create Linux runtime environment file",
             e);
       }
     }

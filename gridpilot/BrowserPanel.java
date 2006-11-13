@@ -1513,6 +1513,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       statusBar.setLabel("Downloading "+fileName+" from "+thisUrl+
           " to "+dir);
 
+      // TODO: move this into TransferControl and have it used by ForkComputinSystem
       Debug.debug("Downloading file from "+thisUrl, 3);
       // local directory
       if(thisUrl.startsWith("file:")){
