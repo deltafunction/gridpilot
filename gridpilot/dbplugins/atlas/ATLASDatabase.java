@@ -359,7 +359,7 @@ public class ATLASDatabase implements Database{
                 recordVector.add(name);
               }
               else if(fields[k].equalsIgnoreCase("vuid")){
-                vuids[j] = vuids[j].replace("'", "");
+                vuids[j] = vuids[j].replaceAll("'", "");
                 if(vuid==null || vuid.equals("") || vuids[j].matches("(?i)"+vuid)){
                   Debug.debug("Adding vuid: "+vuids[j], 3);
                   recordVector.add(vuids[j]);

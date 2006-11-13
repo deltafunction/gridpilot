@@ -3,6 +3,7 @@ package gridpilot.csplugins.fork;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -156,7 +157,7 @@ public class ForkComputingSystem implements ComputingSystem{
         URL fileURL = GridPilot.class.getResource(
             GridPilot.resourcesPath+"/"+testScriptName);
         in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
-        out = new PrintWriter(testScript);
+        out = new PrintWriter(new FileWriter(testScript));
         String line = null;
         while((line = in.readLine())!=null){
           out.println(line);
