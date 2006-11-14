@@ -111,51 +111,14 @@ public class CSPluginMgr implements ComputingSystem{
       Class [] csArgsType = {String.class};
       Object [] csArgs = {csNames[i]};
       
-      boolean loadfailed = false;
       Debug.debug("argument types: "+Util.arrayToString(csArgsType), 3);
       Debug.debug("arguments: "+Util.arrayToString(csArgs), 3);
       try{
-        /*Class newClass = this.getClass().getClassLoader().loadClass(csClass);
-        cs.put(csNames[i],
-            (newClass.getConstructor(csArgsType).newInstance(csArgs)));*/
-        // Why doesn't this work?
         cs.put(csNames[i], Util.loadClass(csClass, csArgsType, csArgs));
       }
-      catch(Exception e){
-        loadfailed = true;
-        Debug.debug("plugin " + csNames[i] + "(" + csClass + ") not loaded, trying MyClassLoader", 2);
+      catch(Throwable e){
+        Debug.debug("ERROR: plugin " + csNames[i] + "(" + csClass + ") not loaded. "+e.getMessage(), 2);
         e.printStackTrace();
-        //do nothing, will try with MyClassLoader.
-      }
-      if(loadfailed){
-        try{
-          try{
-            try{
-              // loading of this plug-in
-              MyClassLoader mcl = new MyClassLoader();
-              Debug.debug("Loading class "+csClass, 3);
-              if(mcl!=null && csClass!=null && csArgsType!=null && csArgs!=null &&
-                 mcl.findClass(csClass)!=null){
-                cs.put(csNames[i],
-                   (ComputingSystem)(mcl.findClass(csClass).getConstructor(csArgsType).newInstance(csArgs)));
-
-                Debug.debug("plugin " + csNames[i] + "(" + csClass + ") loaded", 2);
-              }
-            }
-            catch(ClassNotFoundException e){
-              logFile.addMessage("Cannot load class for " + csNames[i], e);
-              //throw e;
-            }      
-          }
-          catch(IllegalArgumentException iae){
-          logFile.addMessage("Cannot load class for " + csNames[i] + ".\nThe plugin constructor " +
-                             "must have one parameter (String)", iae);
-          //throw iae;
-          }
-        }
-        catch(Exception e){
-          logFile.addMessage("Cannot load class for " + csNames[i], e);
-        }
       }
     }
   }
