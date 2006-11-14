@@ -32,12 +32,11 @@ abstract public class ScriptGenerator{
     csName = _csName;
     configFile = GridPilot.getClassMgr().getConfigFile();
     logFile = GridPilot.getClassMgr().getLogFile();
-
   }
 
   private String getLine(String s){return s + "\n";}
 
-  private String getBloc(String []s, int type, String _commentStart){
+  private String getBloc(String [] s, int type, String _commentStart){
     String bloc = null;
     String commentStart = "";
     if(_commentStart==null){

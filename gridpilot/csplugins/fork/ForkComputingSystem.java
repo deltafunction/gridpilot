@@ -492,7 +492,7 @@ public class ForkComputingSystem implements ComputingSystem{
     ForkScriptGenerator scriptGenerator =
       new ForkScriptGenerator(job.getCSName(), runDir(job));
 
-    scriptGenerator.createWrapper(job, job.getName()+commandSuffix);
+    scriptGenerator.createWrapper(shellMgr, job, job.getName()+commandSuffix);
     
     try{
       String id = shellMgr.submit(cmd, runDir(job), stdoutFile, stderrFile);
@@ -772,12 +772,32 @@ public class ForkComputingSystem implements ComputingSystem{
   private boolean setRemoteOutputFiles(JobInfo job){
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String [] outputFiles = dbPluginMgr.getOutputFiles(job.getJobDefId());
-    String [] remoteNames = new String [outputFiles.length];
-    // TODO: check for remote files.
-    for(int i=0; i<outputFiles.length; ++i){
-      //remoteNames[i] = dbPluginMgr.getJobDefOutRemoteName(outputFiles[i]);
+    Vector remoteNamesVector = new Vector();
+    String remoteName = null;
+    boolean ok = true;
+    try{
+      for(int i=0; i<outputFiles.length; ++i){
+        remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFiles[i]);
+        // These are considered remote
+        if(remoteName!=null && !remoteName.equals("") && !remoteName.startsWith("file:") &&
+            !remoteName.startsWith("/") && !remoteName.toLowerCase().startsWith("c:")){
+          remoteNamesVector.add(outputFiles[i]);
+        }
+      }
+      String [][] remoteNames = new String [remoteNamesVector.size()][2];
+      for(int i=0; i<remoteNamesVector.size(); ++i){
+        remoteNames[i][0] = dbPluginMgr.getJobDefOutLocalName(job.getJobDefId(),
+            remoteNamesVector.get(i).toString());
+        remoteNames[i][1] = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(),
+            remoteNamesVector.get(i).toString());
+      }
+      job.setUploadFiles(remoteNames);
     }
-    return true;
+    catch(Exception e){
+      e.printStackTrace();
+      ok = false;
+    }
+    return ok;
   }
 
   /**
@@ -866,7 +886,7 @@ public class ForkComputingSystem implements ComputingSystem{
               ok = false;
             }
           }
-          // If source is remote, get the it
+          // If source is remote, get it
           else if(!inputFiles[i].matches("^file:/*[^/]+.*") &&
               inputFiles[i].matches("^[a-z]+:/*[^/]+.*")){
             try{
@@ -915,19 +935,31 @@ public class ForkComputingSystem implements ComputingSystem{
     // Output file copy.
     // Try copying file(s) to output destination
     String jobDefID = job.getJobDefId();
-    String[] outputMapping = dbPluginMgr.getOutputFiles(jobDefID);
+    String [] outputNames = dbPluginMgr.getOutputFiles(jobDefID);
     String localName = null;
     String remoteName = null;
-    // TODO: check for local files.
-    for(int i=0; i<outputMapping.length; ++i){
+    boolean ok = true;
+    for(int i=0; i<outputNames.length; ++i){
       try{
         localName = runDir(job) +"/"+dbPluginMgr.getJobDefOutLocalName(jobDefID,
-            outputMapping[i]);
+            outputNames[i]);
         localName = Util.clearFile(localName);
-        remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputMapping[i]);
-        remoteName = Util.clearFile(remoteName);
-        Debug.debug(localName + ": -> " + remoteName, 2);
-        shellMgr.copyFile(localName, remoteName);
+        remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputNames[i]);
+        // These are considered remote and have been taken care of by the job script (not recommended)
+        if(remoteName!=null && !remoteName.equals("") && !remoteName.startsWith("file:") &&
+            !remoteName.startsWith("/") && !remoteName.toLowerCase().startsWith("c:")){
+        }
+        else{
+          // By convention, these should be copied back to the client (where GridPilot is running) via ssh.
+          if(remoteName.startsWith("file:")){
+            remoteName = Util.clearFile(remoteName);
+            Debug.debug(localName + ": -> " + remoteName, 2);
+            if(!shellMgr.copyFile(localName, remoteName)){
+              throw new Exception("ERROR: Could not copy file with SSH.") ;
+            };
+          }
+          // Others we simply leave on the server.
+        }
       }
       catch(Exception e){
         job.setJobStatus("Error");
@@ -936,78 +968,102 @@ public class ForkComputingSystem implements ComputingSystem{
         "\tCommand\t: " + localName + ": -> " + remoteName +"\n" +
         "\tException\t: " + e.getMessage();
         logFile.addMessage(error, e);
+        ok = false;
       }
+    }
+    if(!ok){
+      return ok;
     }
     
     // Stdout/stderr
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
-    // TODO: for remote shells: scp output files of the form file://
-    // to the local disk.
+    
     /**
      * move temp StdOut -> finalStdOut
      */
+    ok = false;   
     if(finalStdOut!=null && finalStdOut.trim().length()!=0){
-      try{
-        if(!shellMgr.existsFile(job.getStdOut())){
-          error = "Post processing : File " + job.getStdOut() + " doesn't exist";
-          logFile.addMessage(error);
-          return false;
-        }
+      if(copyOutputFile(job.getStdOut(), finalStdOut)){
+        job.setStdOut(finalStdOut);
+        ok = true;
       }
-      catch(Throwable e){
-        error = "ERROR checking for stdout: "+e.getMessage();
-        Debug.debug(error, 2);
-        logFile.addMessage(error);
-      }
-      Debug.debug("Post processing : Renaming " + job.getStdOut() + " in " + finalStdOut, 2);
-      try{
-        if(!shellMgr.copyFile(job.getStdOut(), finalStdOut)){
-          error = "Post processing : Cannot move \n\t" +
-          job.getStdOut() +
-          "\n into \n\t" + finalStdOut;
-          logFile.addMessage(error);
-          return false;
-        }
-      }
-      catch(Throwable e){
-        error = "ERROR copying stdout: "+e.getMessage();
-        Debug.debug(error, 2);
-        logFile.addMessage(error);
-      }
-      job.setStdOut(finalStdOut);
     }
 
     /**
      * move temp StdErr -> finalStdErr
      */
+    ok = false;   
     if(finalStdErr!=null && finalStdErr.trim().length()!=0){
+      if(copyOutputFile(job.getStdErr(), finalStdErr)){
+        job.setStdErr(finalStdErr);
+        ok = true;
+      }
+    }
+
+    return ok;
+    
+  }
+  
+  private boolean copyOutputFile(String src, String dest){
+    if(dest.startsWith("file:") || dest.startsWith("/") ||
+        dest.toLowerCase().startsWith("c:") && shellMgr.isLocal()){
       try{
-        if(!shellMgr.existsFile(job.getStdErr())){
-          logFile.addMessage("Post processing : File " + job.getStdErr() + " doesn't exist");
+        if(!shellMgr.existsFile(src)){
+          error = "Post processing : File " + src + " doesn't exist";
+          logFile.addMessage(error);
           return false;
         }
       }
       catch(Throwable e){
-        error = "ERROR checking for stderr: "+e.getMessage();
+        error = "ERROR checking for "+src+": "+e.getMessage();
         Debug.debug(error, 2);
         logFile.addMessage(error);
+        return false;
       }
-      Debug.debug("Post processing : Renaming " + job.getStdErr() + " in " + finalStdErr,2);
-      try{
-        if(!shellMgr.copyFile(job.getStdErr(), finalStdErr)){
-          logFile.addMessage("Post processing : Cannot move \n\t" +
-                             job.getStdErr() +
-                             "\n into \n\t" + finalStdErr);
+      // by convention, if the destination starts with file:, we get the file to the local disk
+      if(dest.startsWith("file:") && !shellMgr.isLocal()){
+        Debug.debug("Post processing : getting " + src + " in " + dest, 2);
+        try{
+          if(!shellMgr.download(src, Util.clearFile(dest))){
+            error = "Post processing : Cannot get \n\t" +
+            src + "\n to \n\t" + dest;
+            logFile.addMessage(error);
+            return false;
+          }
+        }
+        catch(Throwable e){
+          error = "ERROR getting "+src+": "+e.getMessage();
+          Debug.debug(error, 2);
+          logFile.addMessage(error);
           return false;
         }
       }
-      catch(Throwable e){
-        error = "ERROR copying stderr: "+e.getMessage();
-        Debug.debug(error, 2);
-        logFile.addMessage(error);
+      // if we have a fully qualified name (and for Windows a local shell), we copy it with the shellMgr
+      else{
+        Debug.debug("Post processing : renaming " + src + " in " + dest, 2);
+        try{
+          if(!shellMgr.copyFile(src, dest)){
+            error = "Post processing : Cannot move \n\t" + src +
+            "\n into \n\t" + dest;
+            logFile.addMessage(error);
+            return false;
+          }
+        }
+        catch(Throwable e){
+          error = "ERROR copying "+src+": "+e.getMessage();
+          Debug.debug(error, 2);
+          logFile.addMessage(error);
+          return false;
+        }
       }
-      job.setStdErr(finalStdErr);
+    }
+    // relative paths and getting files from a Windows server is not supported
+    else{
+      error = "ERROR copying : unqualified paths and getting files from a " +
+          "Windows server is not supported.";
+      logFile.addMessage(error);
+      return false;
     }
     return true;
   }

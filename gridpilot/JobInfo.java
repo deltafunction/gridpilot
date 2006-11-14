@@ -53,9 +53,9 @@ public class JobInfo extends DBRecord{
   // List of files to be downloaded by the job itself.
   // The use of this should be avoided as far as possible.
   private String [] downloadFiles = null;
-  // List of files to be uploaded by the job itself.
+  // List of files to be uploaded by the job itself. A nx2 array with src->dest mappings.
   // The use of this should be avoided as far as possible.
-  private String [] uploadFiles = null;
+  private String [][] uploadFiles = null;
  
   private String jobID="";
   private String jobStatus="";
@@ -133,7 +133,7 @@ public class JobInfo extends DBRecord{
     return downloadFiles;
   }
 
-  public String [] getUploadFiles(){
+  public String [][] getUploadFiles(){
     return uploadFiles;
   }
 
@@ -213,7 +213,7 @@ public class JobInfo extends DBRecord{
     //setValues();
   }
 
-  public void setUploadFiles(String [] _files){
+  public void setUploadFiles(String [][] _files){
     uploadFiles = _files;
     //setValues();
   }
