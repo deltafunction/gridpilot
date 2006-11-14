@@ -780,7 +780,7 @@ public class ForkComputingSystem implements ComputingSystem{
         remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFiles[i]);
         // These are considered remote
         if(remoteName!=null && !remoteName.equals("") && !remoteName.startsWith("file:") &&
-            !remoteName.startsWith("/") && !remoteName.toLowerCase().startsWith("c:")){
+            !remoteName.startsWith("/") && !remoteName.matches("\\w:.*")){
           remoteNamesVector.add(outputFiles[i]);
         }
       }
@@ -835,7 +835,7 @@ public class ForkComputingSystem implements ComputingSystem{
         if(!shellMgr.isLocal()){
           // If source starts with file:/, scp the file from local disk.
           if(inputFiles[i].matches("^file:/*[^/]+.*")){
-            inputFiles[i] = inputFiles[i].replaceFirst("^file:/*", "/");
+            inputFiles[i] = Util.clearFile(inputFiles[i]);
             shellMgr.download(inputFiles[i], runDir(job)+"/"+fileName);
           }
           // If source starts with /, just use the remote file.
@@ -858,8 +858,9 @@ public class ForkComputingSystem implements ComputingSystem{
         else{
           // If source starts with file:/, / or c:\ /, just copy over the local file.
           if(inputFiles[i].startsWith("/") ||
-             inputFiles[i].toLowerCase().startsWith("c:") ||
+             inputFiles[i].matches("\\w:.*") ||
              inputFiles[i].startsWith("file:")){
+            inputFiles[i] = Util.clearFile(inputFiles[i]);
             try{
               if(!shellMgr.existsFile(inputFiles[i])){
                 logFile.addMessage("File " + inputFiles[i] + " doesn't exist");
@@ -947,7 +948,7 @@ public class ForkComputingSystem implements ComputingSystem{
         remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputNames[i]);
         // These are considered remote and have been taken care of by the job script (not recommended)
         if(remoteName!=null && !remoteName.equals("") && !remoteName.startsWith("file:") &&
-            !remoteName.startsWith("/") && !remoteName.toLowerCase().startsWith("c:")){
+            !remoteName.startsWith("/") && !remoteName.matches("\\w:.*")){
         }
         else{
           // By convention, these should be copied back to the client (where GridPilot is running) via ssh.
@@ -1007,7 +1008,7 @@ public class ForkComputingSystem implements ComputingSystem{
   
   private boolean copyOutputFile(String src, String dest){
     if(dest.startsWith("file:") || dest.startsWith("/") ||
-        dest.toLowerCase().startsWith("c:") && shellMgr.isLocal()){
+        dest.matches("\\w:.*") && shellMgr.isLocal()){
       try{
         if(!shellMgr.existsFile(src)){
           error = "Post processing : File " + src + " doesn't exist";

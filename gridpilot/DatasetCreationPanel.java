@@ -602,7 +602,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       return;
     }
     GridPilot.getClassMgr().getGlobalFrame().requestFocusInWindow();
-    GridPilot.getClassMgr().getGlobalFrame().setVisible(true);
+    //GridPilot.getClassMgr().getGlobalFrame().setVisible(true);
     Thread t = new Thread(){
       public void run(){
         try{

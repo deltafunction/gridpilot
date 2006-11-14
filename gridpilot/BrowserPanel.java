@@ -501,6 +501,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
     try{
       lastUrlList = null;
       // TODO: implement lastUrlList for other than gsiftp - that is, http - will have to wait...
+      if(url.startsWith("file:/~")){
+        url = "file:"+System.getProperty("user.home")+url.substring(7);
+      }
       Debug.debug("Checking URL, "+url, 3);
       // browse remote web directory
       if((url.startsWith("http://") ||

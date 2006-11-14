@@ -547,7 +547,7 @@ public class TransferControl{
     String protocol = null;
     for(int i=0; i<toDeleteFiles.length; ++i){
       if(toDeleteFiles[i].matches("^\\w+:.*") &&
-          !toDeleteFiles[i].toLowerCase().startsWith("c:") &&
+          !toDeleteFiles[i].toLowerCase().matches("\\w:.*") &&
           !toDeleteFiles[i].toLowerCase().startsWith("file:")){
         protocol = toDeleteFiles[i].replaceFirst("^(\\w+):", "$1");
         if(remoteFiles.get(protocol)==null){
@@ -559,8 +559,7 @@ public class TransferControl{
     // Delete local files
     for(int i=0; i<toDeleteFiles.length; ++i){
       if(!toDeleteFiles[i].matches("^\\w+:.*") ||
-          toDeleteFiles[i].toLowerCase().startsWith("c:") ||
-          toDeleteFiles[i].toLowerCase().startsWith("c:") ||
+          toDeleteFiles[i].matches("\\w:.*") ||
           toDeleteFiles[i].toLowerCase().startsWith("file:")){
         try{
           LocalStaticShellMgr.deleteFile(toDeleteFiles[i]);
