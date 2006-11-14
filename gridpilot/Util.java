@@ -410,9 +410,9 @@ public class Util{
       Debug.debug("plugin " + "(" + className + ") loaded, "+ret.getClass(), 2);
     }
     catch(Exception e){
-      //e.printStackTrace();
       Debug.debug("WARNING: failed to load class with standard method, trying findClass. "+
           e.getMessage(), 1);
+      e.printStackTrace();
       loadfailed = true;
       //do nothing, will try with findClass.
     }

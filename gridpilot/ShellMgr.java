@@ -119,6 +119,24 @@ public interface ShellMgr{
   public boolean isLocal();
   
   /**
+   * Only implemented by remote shells: Uploads file 'src' on local
+   * disk to file 'dest' on server. 
+   * If the parent directory doesn't exist, it is created.
+   * @return  true if and only if the copy succeeded;
+   *          false otherwise
+   */
+  public boolean upload(String src, String dest);
+
+  /**
+   * Only implemented by remote shells: Downloads file 'src' on server
+   * to file 'dest' on local disk. 
+   * If the parent directory doesn't exist, it is created.
+   * @return  true if and only if the copy succeeded;
+   *          false otherwise
+   */
+  public boolean download(String src, String dest);
+
+  /**
    * Run a command and add the command name + command to the hash map
    * of running processes.
    * @param cmd    the command string

@@ -56,7 +56,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   protected String [] lastUrlList = null;
   private String currentUrlString = "";
   private JComboBox currentUrlBox = null;
-  private GSIFTPFileTransfer gridftpFileSystem = null;
+  private GSIFTPFileTransfer gsiftpFileTransfer = null;
   private boolean ok = true;
   private boolean saveUrlHistory = false;
   private boolean doingSearch = false;
@@ -80,7 +80,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     
     setModal(modal);
     
-    gridftpFileSystem = new GSIFTPFileTransfer();
+    gsiftpFileTransfer = new GSIFTPFileTransfer();
     
     String urlHistory = null;
     Debug.debug("browser history file: "+GridPilot.browserHistoryFile, 2);
@@ -500,7 +500,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private void setDisplay(String url) throws Exception{
     try{
       lastUrlList = null;
-      // TODO: implement lastUrlList for other than gsiftp
+      // TODO: implement lastUrlList for other than gsiftp - that is, http - will have to wait...
       Debug.debug("Checking URL, "+url, 3);
       // browse remote web directory
       if((url.startsWith("http://") ||
@@ -634,7 +634,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     Debug.debug("Created temp file "+tmpFile, 3);
     GridFTPClient gridFtpClient = null;
     try{
-      gridFtpClient = gridftpFileSystem.connect(host, Integer.parseInt(port));
+      gridFtpClient = gsiftpFileTransfer.connect(host, Integer.parseInt(port));
     }
     catch(Exception e){
       Debug.debug("Could not connect. "+
@@ -742,6 +742,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       Debug.debug("Setting thisUrl, "+url, 3);
       thisUrl = url;
       setUrl(thisUrl);
+      lastUrlList = new String [] {thisUrl};
       statusBar.setLabel("");
     }
     catch(IOException e){
@@ -784,6 +785,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       Debug.debug("Setting thisUrl, "+url, 3);
       thisUrl = url;
       setUrl(thisUrl);
+      lastUrlList = new String [] {thisUrl};
       ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     }
     catch(IOException e){
@@ -811,6 +813,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       Debug.debug("Setting thisUrl, "+thisUrl, 3);
       thisUrl = url;
       setUrl(thisUrl);
+      lastUrlList = new String [] {thisUrl};
     }
     catch(IOException e){
       Debug.debug("Could not set html display of url "+url+". "+
@@ -915,7 +918,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     Debug.debug("Path: "+localPath, 3);
     Debug.debug("Directory: "+localDir, 3);
     try{
-      GridFTPClient gridFtpClient = gridftpFileSystem.connect(host, Integer.parseInt(port));
+      GridFTPClient gridFtpClient = gsiftpFileTransfer.connect(host, Integer.parseInt(port));
       try{
         gridFtpClient.changeDir(localDir);
         if(gridFtpClient.getSize(localPath)==0){
@@ -990,7 +993,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         filter = filter.replaceAll("\\.", "\\\\.");
         filter = filter.replaceAll("\\*", ".*");
         Debug.debug("Filtering with "+filter, 3);
-        
+        Vector lastUrlVector = new Vector();
         for(int j=0; j<text.length; ++j){
           if(text[j].substring(localPath.length()).matches(filter)){
             if(LocalStaticShellMgr.isDirectory(text[j])){
@@ -1006,7 +1009,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
                     !localPath.matches("\\w:/.*")) ? 
                     text[j].substring(localPath.length()+2) :
                       text[j].substring(localPath.length())) +  "</a>");
+            lastUrlVector.add("file:"+text[j]);
           }
+        }
+        lastUrlList = new String [lastUrlVector.size()];
+        for(int j=0; j<lastUrlList.length; ++j){
+          lastUrlList[j] = lastUrlVector.get(j).toString();
         }
         ep.setContentType("text/html");
         htmlText = "<html>\n";
@@ -1087,7 +1095,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         port = 2811;
       }
       
-      Vector textVector = gridftpFileSystem.list(globusUrl, filter,
+      Vector textVector = gsiftpFileTransfer.list(globusUrl, filter,
           this.statusBar);
 
       String text = "";
@@ -1284,39 +1292,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
     Debug.debug("File or directory "+fsPath+" deleted", 2);
   }
-
-  /**
-   * Copy file to directory fsPath.
-   */
-  private void localCopy(String fsPath, File file) throws IOException{
-    if(!fsPath.endsWith("/")){
-      fsPath = fsPath+"/";
-    }
-    // TODO: implement wildcard *
-    try{
-      String fileName = file.getName();
-      int lastSlash = fileName.lastIndexOf("/");
-      if(lastSlash>-1){
-        fileName = fileName.substring(lastSlash + 1);
-      }
-      if(!LocalStaticShellMgr.isDirectory(fsPath)){
-        throw new IOException("ERROR: "+fsPath+" is not a directory.");
-      }
-      if(!LocalStaticShellMgr.copyFile(file.getAbsolutePath(),
-          fsPath+fileName)){
-        throw new IOException(file.getAbsolutePath()+
-            " could not be copied to "+fsPath+fileName);
-      }
-      // if we don't get an exception, the file got written...
-      Debug.debug("File "+file.getAbsolutePath()+" written to " +
-          fsPath+fileName, 2);
-      return;
-    }
-    catch(IOException e){
-      Debug.debug("Could not write "+fsPath, 1);
-      throw e;
-    }
-  }
   
   /**
    * Create an empty file or directory in the directory fsPath.
@@ -1397,7 +1372,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       try{
         globusUrl = new GlobusURL(fullName);
-        gridftpFileSystem.deleteFile(globusUrl);
+        gsiftpFileTransfer.deleteFile(globusUrl);
         statusBar.setLabel(globusUrl.getPath()+" deleted");
         try{
           setDisplay(thisUrl);
@@ -1418,234 +1393,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
     else{
       throw(new IOException("Unknown protocol for "+thisUrl));
-    }
-  }
-
-  /**
-   * Upload file to fsPath.
-   * Ask for the file with a FileChooser.
-   */
-  private void upload() throws IOException, FTPException{
-    try{
-      
-      if(!thisUrl.endsWith("/")){
-        throw(new IOException("Upload location must be a directory. "+thisUrl));
-      }
-
-      File file = getInputFile();
-      
-      Debug.debug("Uploading file to "+thisUrl, 3);
-      // local directory
-      if(thisUrl.startsWith("file:")){
-        String fsPath = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
-        fsPath = fsPath.replaceFirst("^file://", "/");
-        fsPath = fsPath.replaceFirst("^file:/", "/");
-        fsPath = fsPath.replaceFirst("^file:", "");
-        Debug.debug("Uploading file to "+fsPath, 3);        
-        if(fsPath==null || file==null){
-          return;
-        }
-        
-        if(!fsPath.endsWith("/") && !file.getName().startsWith("/"))
-          fsPath = fsPath+"/";
-        
-        localCopy(fsPath, file);
-      }
-      // remote gsiftp directory
-      else if(thisUrl.startsWith("gsiftp://")){
-        if(!thisUrl.endsWith("/")){
-          throw(new IOException("Upload location must be a directory. "+thisUrl));
-        }
-        GlobusURL globusUrl = new GlobusURL(thisUrl+file.getName());
-        JProgressBar pb = new JProgressBar();
-        statusBar.setProgressBar(pb);
-        gridftpFileSystem.putFile(file, globusUrl,
-            statusBar, new JProgressBar());
-        statusBar.removeProgressBar(pb);
-      }
-      else{
-        throw(new IOException("Unknown protocol for "+thisUrl));
-      }
-    }
-    catch(IOException e){
-      Debug.debug("Could not save to URL "+thisUrl+". "+e.getMessage(), 1);
-      ep.setText("ERROR!\n\nFile could not be copied.\n\n" +
-          e.getMessage());
-      throw e;
-    }
-    catch(FTPException e){
-      Debug.debug("Could not save to URL "+thisUrl+". "+e.getMessage(), 1);
-      throw e;
-    }
-
-    try{
-      ep.getDocument().putProperty(
-          Document.StreamDescriptionProperty, null);
-      setDisplay(thisUrl);
-    }
-    catch(Exception ioe){
-      ioe.printStackTrace();
-    }
-  }
-  
-  /**
-   * Download file to fsPath.
-   * Ask for the file with a FileChooser.
-   */
-  private void download() throws IOException{
-    try{
-      
-      if(!thisUrl.endsWith("/")){
-        throw(new IOException("Download location must be a directory. "+thisUrl));
-      }
-
-      File dir = Util.getDownloadDir(this);      
-      if(thisUrl==null || dir==null){
-        throw new IOException("ERROR: source or destination directory not given. "+
-            thisUrl+":"+dir);
-      }
-      
-      String fileName = Util.getFileName(jtFilter.getText());
-      if(fileName==null){
-        return;
-      }
-      
-      statusBar.setLabel("Downloading "+fileName+" from "+thisUrl+
-          " to "+dir);
-
-      // TODO: move this into TransferControl and have it used by ForkComputinSystem
-      Debug.debug("Downloading file from "+thisUrl, 3);
-      // local directory
-      if(thisUrl.startsWith("file:")){
-        String rootUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
-        String fsPath = rootUrl;
-        fsPath = fsPath.replaceFirst("^file://", "/");
-        fsPath = fsPath.replaceFirst("^file:/", "/");
-        fsPath = fsPath.replaceFirst("^file:", "");
-        Debug.debug("Downloading file to "+dir.getAbsolutePath(), 3);        
-        if(fsPath==null || dir==null){
-          throw new IOException("ERROR: source or destination directory not given. "+
-              fsPath+":"+dir);
-        }        
-        if(!fsPath.endsWith("/") && !fileName.startsWith("/")){
-          fsPath = fsPath+"/";
-        }
-        try{
-          localCopy(dir.getAbsolutePath(), new File(fsPath+fileName));
-          statusBar.setLabel(fsPath+fileName+" copied");
-        }
-        catch(IOException e){
-          Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
-          statusBar.setLabel("ERROR: download failed. "+e.getMessage());
-          e.printStackTrace();
-          return;
-        }
-      }
-      // remote gsiftp directory
-      else if(thisUrl.startsWith("gsiftp://")){
-        // construct remote location of file
-        String rootUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
-        String fsPath = rootUrl;
-        if(!fsPath.endsWith("/") && !fileName.startsWith("/")){
-          fsPath = fsPath+"/";
-        }
-        // construct local location of file
-        Debug.debug("Downloading to "+dir.getAbsolutePath(), 3);        
-        Debug.debug("Downloading "+fileName+" from "+thisUrl, 3);
-        final String fName = fileName;
-        final File dName = dir;
-        ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        (new MyThread(){
-          public void run(){
-            try{
-              GlobusURL globusUrl = new GlobusURL(thisUrl+fName);
-              JProgressBar pb = new JProgressBar();
-              statusBar.setProgressBar(pb);
-              gridftpFileSystem.getFile(globusUrl, dName, statusBar,
-                  pb);
-              statusBar.removeProgressBar(pb);
-              statusBar.setLabel(thisUrl+fName+" downloaded");
-            }
-            catch(IOException e){
-              Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
-              statusBar.setLabel("ERROR: download failed. "+e.getMessage());
-              e.printStackTrace();
-              return;
-            }
-            catch(FTPException e){
-              Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
-              statusBar.setLabel("ERROR: download failed. "+e.getMessage());
-              e.printStackTrace();
-              return;
-            }
-            finally{
-              ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-            }
-          }
-        }).run();               
-      }
-      else if(thisUrl.startsWith("http://") || thisUrl.startsWith("https://")){
-        // construct remote location of file
-        String rootUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
-        String fsPath = rootUrl;
-        if(!fsPath.endsWith("/") && !fileName.startsWith("/")){
-          fsPath = fsPath+"/";
-        }
-        // construct local location of file
-        Debug.debug("Downloading file to "+dir.getAbsolutePath(), 3);        
-        String dirPath = dir.getAbsolutePath();
-        if(!dirPath.endsWith("/") && !fileName.startsWith("/")){
-          dirPath = dirPath+"/";
-        }
-        Debug.debug("Downloading from "+thisUrl+fileName+" to "+dirPath+fileName, 2);
-        final String fName = fileName;
-        final String dName = dirPath;
-        // TODO: implement wildcard *
-        ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        (new MyThread(){
-          public void run(){
-            try{
-              InputStream is = (new URL(thisUrl+fName)).openStream();
-              DataInputStream dis = new DataInputStream(new BufferedInputStream(is));
-              FileOutputStream os = new FileOutputStream(new File(dName+fName));
-              // read data in chunks of 10 kB
-              byte [] b = new byte[10000];
-              while(dis.read(b)>-1){
-                os.write(b);
-              }
-              dis.close();
-              is.close();
-              os.close();
-              statusBar.setLabel(thisUrl+fName+" downloaded");
-            }
-            catch(IOException e){
-              Debug.debug("File download failed. "+e.getMessage(), 1);
-              statusBar.setLabel("File download failed. "+e.getMessage());
-              e.printStackTrace();
-            }
-            finally{
-              ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-            }
-          }
-        }).run();               
-      }
-      else{
-        throw(new IOException("Unknown protocol for "+thisUrl));
-      }
-    }
-    catch(IOException e){
-      Debug.debug("Could not get URL "+thisUrl+". "+e.getMessage(), 1);
-      e.printStackTrace();
-      throw e;
-    }
-        
-    try{
-      ep.getDocument().putProperty(
-          Document.StreamDescriptionProperty, null);
-      setDisplay(thisUrl);
-    }
-    catch(Exception ioe){
-      ioe.printStackTrace();
     }
   }
   
@@ -1675,7 +1422,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       else if(thisUrl.startsWith("gsiftp://")){
         Debug.debug("Creating file in "+thisUrl, 3);
         GlobusURL globusUrl = new GlobusURL(thisUrl);
-        ret = gridftpFileSystem.create(globusUrl);
+        ret = gsiftpFileTransfer.create(globusUrl);
         ep.getDocument().putProperty(
             Document.StreamDescriptionProperty, null);
         setDisplay(thisUrl);
@@ -1711,7 +1458,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         }
         else if(thisUrl.startsWith("gsiftp://")){
           GlobusURL globusUrl = new GlobusURL(thisUrl);
-          gridftpFileSystem.write(globusUrl, ep.getText());
+          gsiftpFileTransfer.write(globusUrl, ep.getText());
         }
         else{
           throw(new IOException("Unknown protocol for "+thisUrl));
@@ -1726,11 +1473,30 @@ public class BrowserPanel extends JDialog implements ActionListener{
         delete();
       }
       else if(e.getSource()==bUpload){
-        upload();
+        File file = getInputFile();
+        TransferControl.upload(thisUrl, file, ep);
+        try{
+          ep.getDocument().putProperty(
+              Document.StreamDescriptionProperty, null);
+          setDisplay(thisUrl);
+        }
+        catch(Exception ioe){
+          ioe.printStackTrace();
+        }
         statusBar.setLabel(thisUrl+" uploaded");
       }
       else if(e.getSource()==bDownload){
-        download();
+        File dir = Util.getDownloadDir(this);      
+        String fileName = Util.getFileName(jtFilter.getText());
+        TransferControl.download(thisUrl, fileName, dir, ep);
+        try{
+          ep.getDocument().putProperty(
+              Document.StreamDescriptionProperty, null);
+          setDisplay(thisUrl);
+        }
+        catch(Exception ioe){
+          ioe.printStackTrace();
+        }
       }
     }
     catch(Exception ex){

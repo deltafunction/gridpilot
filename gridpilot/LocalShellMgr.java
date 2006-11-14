@@ -298,17 +298,17 @@ public class LocalShellMgr implements ShellMgr {
     return new File(dir).isDirectory();
   }
   
-  private static HashSet listFilesRecursively(File fileOrDir, HashSet files, int depth){
-    Debug.debug("Listing "+fileOrDir.getAbsolutePath()+":"+fileOrDir.isFile()+":"+
-        fileOrDir.isDirectory()+":"+depth, 3);
-    if(fileOrDir.isFile()){
+  private static HashSet listFilesRecursively(String fileOrDir, HashSet files, int depth){
+    Debug.debug("Listing "+fileOrDir+":"+depth, 3);
+    File fil = new File(fileOrDir);
+    if(fil.isFile()){
       files.add(fileOrDir);
     }
-    if(fileOrDir.isDirectory() && depth<=MAX_DEPTH){
-      File [] dirContents = fileOrDir.listFiles(); // List of files/dirs.
+    if(fil.isDirectory() && depth<=MAX_DEPTH){
+      File [] dirContents = fil.listFiles(); // List of files/dirs.
       Arrays.sort(dirContents);
       for(int i=0; i<dirContents.length; ++i){
-          listFilesRecursively(dirContents[i], files, depth+1); // Recursively list.
+          listFilesRecursively(dirContents[i].getAbsolutePath(), files, depth+1); // Recursively list.
       }
     }
     return files;
@@ -318,7 +318,7 @@ public class LocalShellMgr implements ShellMgr {
     if(fileOrDir.startsWith("~")){
       fileOrDir = System.getProperty("user.home")+fileOrDir.substring(1);
     }
-    return listFilesRecursively(new File(fileOrDir), new HashSet(), 1);
+    return listFilesRecursively(fileOrDir, new HashSet(), 1);
   }
 
   private String getProcessID(String name){
@@ -479,6 +479,14 @@ public class LocalShellMgr implements ShellMgr {
     catch(Exception e){
     }
     return (proc!=null);
+  }
+
+  public boolean upload(String src,String dest){
+    return false;
+  }
+
+  public boolean download(String src,String dest){
+    return false;
   }
 
 }

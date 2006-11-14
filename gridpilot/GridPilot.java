@@ -381,20 +381,20 @@ public class GridPilot extends JApplet{
       splash.hide();
     }   
     JPanel pUserPwd = new JPanel(new GridBagLayout());
-    pUserPwd.add(new JLabel(message+"\n"), new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
-        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 25, 25, 25), 0, 0));
+    pUserPwd.add(new JLabel(message), new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(0, 0, 15, 0), 0, 0));
     JTextField [] tf = new JTextField [fields.length];
     for(int i=0; i<fields.length; ++i){
       if(fields[i].equalsIgnoreCase("password")){
-        tf[i] = new JPasswordField(initialValues[i]);
+        tf[i] = new JPasswordField(initialValues[i], 24);
       }
       else{
-        tf[i] = new JTextField(initialValues[i]);
+        tf[i] = new JTextField(initialValues[i], 24);
       }
       pUserPwd.add(new JLabel(fields[i]+": "), new GridBagConstraints(0, i+1, 1, 1, 0.0, 0.0,
-          GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
+          GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(0, 0, 0, 0), 0, 0));
       pUserPwd.add(tf[i], new GridBagConstraints(1, i+1, 1, 1, 1.0, 0.0,
-          GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
+          GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(0, 0, 5, 0), 0, 0));
     }
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), pUserPwd,
         "Login", JOptionPane.OK_CANCEL_OPTION);
@@ -413,7 +413,6 @@ public class GridPilot extends JApplet{
     else{
       results = null;
     }
-
     if(splash!=null){
       splash.show();
     }

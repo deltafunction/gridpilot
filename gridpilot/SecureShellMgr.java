@@ -1,8 +1,15 @@
 package gridpilot;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+
 import com.jcraft.jsch.*;
 import javax.swing.*;
+
 import java.io.*;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -21,7 +28,6 @@ public class SecureShellMgr implements ShellMgr{
   private ConfigFile configFile;
   private Session session;
   private int channels;
-  private int channelInUse;
   private int channelsNum = 1;
 
   public SecureShellMgr(String _host, String _user,
@@ -33,7 +39,6 @@ public class SecureShellMgr implements ShellMgr{
     password = _password;
     logFile = GridPilot.getClassMgr().getLogFile();
     configFile = GridPilot.getClassMgr().getConfigFile();
-    channelInUse = 0;
     connect();
     logFile.addInfo("Authentication completed on " + host + "(user : " + user +
         ", password : " + password + ")");
@@ -49,7 +54,7 @@ public class SecureShellMgr implements ShellMgr{
       }
       boolean gridAuth = false;
       String [] up = null;
-      for(int rep=0; rep<3; ++rep){
+      for(int rep=0; rep<3; ++rep){               
         if(showDialog ||
             user==null || (password==null && !gridAuth) || host==null){
           up = GridPilot.userPwd("Shell login on "+host, new String [] {"User", "Password", "Host"},
@@ -71,7 +76,10 @@ public class SecureShellMgr implements ShellMgr{
           java.util.Hashtable config = new java.util.Hashtable();
           config.put("StrictHostKeyChecking", "no");
           session.setConfig(config);
-          session.connect();
+          if(GridPilot.splash!=null){
+            GridPilot.splash.hide();
+          }
+          session.connect(30000);
           break;
         }
         catch(Exception e){
@@ -114,95 +122,79 @@ public class SecureShellMgr implements ShellMgr{
 
   public int exec(String cmd, String [] env, String workingDirectory,
       StringBuffer stdOut, StringBuffer stdErr) throws IOException{
-    Debug.debug(cmd, 1);
-    ChannelExec channel = getChannel();
-    InputStream in = channel.getInputStream();
-    InputStream err = channel.getErrStream();
-    byte[] tmp=new byte[1024];
-    byte[] tmp1=new byte[1024];
-    // first cd to workingDirectory  
+    
+    if(env!=null){
+      cmd = Util.arrayToString(env, "; ")+";"+cmd;
+    }
     if(workingDirectory!=null){
-      ((ChannelExec) channel).setCommand("cd "+workingDirectory);
-      while(true){
-        while(in.available()>0){
-          int i=in.read(tmp, 0, 1024);
-          if(i<0) break;
-          stdOut.append(new String(tmp, 0, i));
-        }
-        while(err.available()>0){
-          int j=err.read(tmp1, 0, 1024);
-          if(j<0)break;
-          stdErr.append(new String(tmp1, 0, j));
-        }
-        if(channel.isClosed()){
-          break;
-        }
-      }
-      int exitStatus = channel.getExitStatus();
-      if(exitStatus!=0 || stdErr!=null){
-        Debug.debug("Working directory (" + workingDirectory + ") cannot be used " +
-            " for exec " + cmd + " : " +
-            stdErr, 2);
-        logFile.addMessage("Working directory (" + workingDirectory + ") cannot be used " +
-                           " for exec " + cmd + " : " +
-                           stdErr);
-        channel.disconnect();
-        return(exitStatus);
-      }
+      cmd = "cd "+workingDirectory+";"+cmd;
     }
     
-    // Environment
-    if(env!=null){
-      ((ChannelExec) channel).setCommand(Util.arrayToString(env, "; "));
+    Debug.debug("Executing command "+cmd, 1);
+    
+    int exitStatus = 0;
+    ChannelExec channel = null;
+    String error = "";
+    try{
+      channel = getChannel();
+      InputStream in = channel.getInputStream();
+      InputStream err = channel.getErrStream();
+      byte[] tmp=new byte[1024];
+      byte[] tmp1=new byte[1024];
+      ((ChannelExec) channel).setCommand(cmd);
+      channel.connect();
       while(true){
         while(in.available()>0){
           int i=in.read(tmp, 0, 1024);
-          if(i<0) break;
+          if(i<0){
+            break;
+          }
           stdOut.append(new String(tmp, 0, i));
         }
         while(err.available()>0){
           int j=err.read(tmp1, 0, 1024);
-          if(j<0)break;
+          if(j<0){
+            break;
+          }
           stdErr.append(new String(tmp1, 0, j));
         }
         if(channel.isClosed()){
           break;
         }
+        try{
+          Thread.sleep(1000);
+          }
+        catch(Exception ee){        
+        }
       }
-      int exitStatus = channel.getExitStatus();
-      if(exitStatus!=0 || stdErr!=null){
-        Debug.debug("Environment (" + Util.arrayToString(env, "; ") + ") cannot be used " +
-            " for exec " + cmd + " : " +
-            stdErr, 2);
-        logFile.addMessage("Environment (" + Util.arrayToString(env, "; ") + ") cannot be used " +
-                           " for exec " + cmd + " : " +
-                           stdErr);
+      if(stdOut.length()>0){
+        stdOut.delete(stdOut.length()-1, stdOut.length());
+      }
+      if(stdErr.length()>0){
+        stdErr.delete(stdErr.length()-1, stdErr.length());
+      }
+      Debug.debug("Command stdout: "+stdOut.toString(), 3);
+      exitStatus = channel.getExitStatus();
+    }
+    catch(Exception e){
+      error = e.getMessage();
+      exitStatus = -1;
+    }
+    finally{
+      try{
         channel.disconnect();
-        return(exitStatus);
+      }
+      catch(Exception e){
       }
     }
-
-    ((ChannelExec) channel).setCommand(cmd);
-    while(true){
-      while(in.available()>0){
-        int i=in.read(tmp, 0, 1024);
-        if(i<0) break;
-        stdOut.append(new String(tmp, 0, i));
-      }
-      while(err.available()>0){
-        int j=err.read(tmp1, 0, 1024);
-        if(j<0)break;
-        stdErr.append(new String(tmp1, 0, j));
-      }
-      if(channel.isClosed()){
-        Debug.debug("exit-status: "+channel.getExitStatus(), 2);
-        break;
-      }
+    if(exitStatus!=0 || stdErr!=null && !stdErr.toString().equals("")){
+      logFile.addMessage("ERROR executing command " + cmd + " : " +
+                         stdErr+":"+error);
     }
-    return(channel.getExitStatus());
+    return(exitStatus);
   }
 
-  public synchronized String readFile(String path) throws IOException {
+  public String readFile(String path) throws IOException {
     Debug.debug("reading file "+path, 2); 
     StringBuffer stdOut = new StringBuffer();
     StringBuffer stdErr = new StringBuffer();
@@ -213,19 +205,239 @@ public class SecureShellMgr implements ShellMgr{
     return stdOut.toString();
   }
 
-  public synchronized void writeFile(String name, String content, boolean append) throws IOException {
+  public void writeFile(String name, String content, boolean append) throws IOException {
     Debug.debug("writing file " + name, 2);
     name = getFullPath(name);
-    StringBuffer stdOut = new StringBuffer();
+    
+    /*StringBuffer stdOut = new StringBuffer();
     StringBuffer stdErr = new StringBuffer();
     String op = ">";
     if(append){
       op = ">>";
     }
-    int ret = exec("echo "+content+op+name, stdOut, stdErr);
+    content = content.replaceAll("'", "\\\\'");
+    int ret = exec("echo '"+content+"'"+op+name, stdOut, stdErr);
     if(ret!=0 || stdErr.length()>0){
       throw new IOException("Could not write to file "+name+". "+stdErr);
+    }*/
+
+    InputStream is = new ByteArrayInputStream(content.getBytes());
+    BufferedReader in = new BufferedReader(new InputStreamReader(is));
+    File tmpFile = File.createTempFile("gridpilot-", "");
+    PrintWriter out = new PrintWriter(new FileWriter(tmpFile)); 
+    String line;
+    while((line = in.readLine())!=null){
+      out.println(line);
     }
+    in.close();
+    out.close();    
+    upload(tmpFile.getAbsolutePath(), name);
+    tmpFile.delete(); 
+  }
+  
+  /**
+   * Upload file on ssh server.
+   * 
+   * @param lFile    local file of the form /dir/file or c:\dir\file
+   * @param rFile    remote file name of the form /dir/file, or dir/file
+   */
+  public boolean upload(String lFile, String rFile){
+    FileInputStream is=null;
+    try{
+      // exec 'scp -t rfile' remotely
+      String command = "scp -p -t "+rFile;
+      Channel channel = getChannel();
+      ((ChannelExec) channel).setCommand(command);
+
+      // get I/O streams for remote scp
+      OutputStream out = channel.getOutputStream();
+      InputStream in = channel.getInputStream();
+
+      channel.connect();
+
+      if(checkAck(in)!=0){
+        logFile.addMessage("ERROR: could not copy file "+lFile+"->"+user+"@"+host+":"+rFile);
+        return false;
+      }
+
+      // send "C0644 filesize filename", where filename should not include '/'
+      long filesize = (new File(lFile)).length();
+      command = "C0644 "+filesize+" ";
+      if(lFile.lastIndexOf('/')>0){
+        command += lFile.substring(lFile.lastIndexOf('/')+1);
+      }
+      else{
+        command += lFile;
+      }
+      command += "\n";
+      out.write(command.getBytes());
+      out.flush();
+      if(checkAck(in)!=0){
+        logFile.addMessage("ERROR: could not copy file "+lFile+"->"+user+"@"+host+":"+rFile);
+        return false;
+      }
+
+      // send a content of lfile
+      is = new FileInputStream(lFile);
+      byte[] buf = new byte[1024];
+      while(true){
+        int len=is.read(buf, 0, buf.length);
+        if(len<=0) break;
+        out.write(buf, 0, len); //out.flush();
+      }
+      is.close();
+      is = null;
+      // send '\0'
+      buf[0] = 0;
+      out.write(buf, 0, 1);
+      out.flush();
+      if(checkAck(in)!=0){
+        logFile.addMessage("ERROR: could not copy file "+lFile+"->"+user+"@"+host+":"+rFile);
+        return false;
+      }
+      out.close();
+      channel.disconnect();
+    }
+    catch(Exception e){
+      logFile.addMessage("ERROR: could not copy file "+lFile+"->"+user+"@"+host+":"+rFile, e);
+      e.printStackTrace();
+      try{
+        if(is!=null)is.close();
+      }
+      catch(Exception ee){
+      }
+      return false;
+    }
+    return true;
+  }
+
+  public boolean download(String lFile, String rFile){
+    FileOutputStream fos=null;
+    try{
+      String prefix=null;
+      if(new File(lFile).isDirectory()){
+        prefix=lFile+File.separator;
+      }
+      // exec 'scp -f rfile' remotely
+      String command="scp -f "+rFile;
+      Channel channel = getChannel();
+      ((ChannelExec)channel).setCommand(command);
+      // get I/O streams for remote scp
+      OutputStream out=channel.getOutputStream();
+      InputStream in=channel.getInputStream();
+      channel.connect();
+      byte[] buf=new byte[1024];
+      // send '\0'
+      buf[0]=0;
+      out.write(buf, 0, 1);
+      out.flush();
+      while(true){
+        int c=checkAck(in);
+        if(c!='C'){
+          break;
+        }
+        // read '0644 '
+        in.read(buf, 0, 5);
+        long filesize=0L;
+        while(true){
+          if(in.read(buf, 0, 1)<0){
+            // error
+            break; 
+          }
+          if(buf[0]==' '){
+            break;
+          }
+          filesize=filesize*10L+(long)(buf[0]-'0');
+        }
+        String file=null;
+        for(int i=0;;i++){
+          in.read(buf, i, 1);
+          if(buf[i]==(byte)0x0a){
+            file=new String(buf, 0, i);
+            break;    
+          }
+        }
+        Debug.debug("filesize="+filesize+", file="+file, 2);
+        // send '\0'
+        buf[0]=0;
+        out.write(buf, 0, 1);
+        out.flush();
+        // read content of lfile
+        fos=new FileOutputStream(prefix==null ? lFile : prefix+file);
+        int foo;
+        while(true){
+          if(buf.length<filesize){
+            foo=buf.length;
+          }
+          else{
+            foo=(int)filesize;
+          }
+          foo=in.read(buf, 0, foo);
+          if(foo<0){
+            // error 
+            break;
+          }
+          fos.write(buf, 0, foo);
+          filesize-=foo;
+          if(filesize==0L){
+            break;
+          }
+        }
+        fos.close();
+        fos=null;
+        if(checkAck(in)!=0){
+          return false;
+        }
+        // send '\0'
+        buf[0]=0;
+        out.write(buf, 0, 1);
+        out.flush();
+      }
+    }
+    catch(Exception e){
+      logFile.addMessage("ERROR: could not copy file "+lFile+"->"+user+"@"+host+":"+rFile, e);
+      e.printStackTrace();
+      try{
+        if(fos!=null){
+          fos.close();
+        }
+      }
+      catch(Exception ee){
+      }
+      return false;
+    }
+    return true;
+  }
+
+  private static int checkAck(InputStream in) throws IOException{
+    int b = in.read();
+    // b may be 0 for success,
+    //          1 for error,
+    //          2 for fatal error,
+    //          -1
+    if(b==0){
+      return b;
+    }
+    if(b==-1){
+      return b;
+    }
+
+    if(b==1 || b==2){
+      StringBuffer sb = new StringBuffer();
+      int c;
+      do{
+        c = in.read();
+        sb.append((char)c);
+      }
+      while(c!='\n');
+      if(b==1){ // error
+        Debug.debug(sb.toString(), 2);
+      }
+      if(b==2){ // fatal error
+        Debug.debug(sb.toString(), 1);
+      }
+    }
+    return b;
   }
 
   private String getFullPath(String name){
@@ -248,12 +460,14 @@ public class SecureShellMgr implements ShellMgr{
       StringBuffer stdErr = new StringBuffer();
       try{
         int ret = exec("echo $HOME", stdOut, stdErr);
-        if(ret!=0 || stdErr.length()>0){
-          Debug.debug("ERROR: cannot get home directory. "+stdErr, 3);
+        if(ret!=0 || stdErr!=null && stdErr.length()>0){
+          Debug.debug("WARNING: problem getting home directory. "+stdErr, 3);
         }
+        Debug.debug("Got home directory: "+stdOut.toString(), 3);
       }
       catch(IOException e){
-        Debug.debug(e.getMessage(), 2);
+        e.printStackTrace();
+        Debug.debug(e.getMessage(), 1);
       }
       name = stdOut.toString()+name.substring(1);
    }
@@ -408,20 +622,31 @@ public class SecureShellMgr implements ShellMgr{
 
   public String [] listFiles(String dirPath){
     String dirFullPath = "";
-    if(dirPath ==null || dirPath.equals("")){
+    if(dirPath==null || dirPath.equals("")){
       dirFullPath = "";
     }
     else{
       dirFullPath = getFullPath(dirPath);
     }
     if(dirFullPath.endsWith("/")){
-      dirFullPath = dirFullPath.substring(0, dirFullPath.length() -1);
+      dirFullPath = dirFullPath.substring(0, dirFullPath.length()-1);
     }
     Debug.debug("dirFullPath : " + dirFullPath, 2);
     StringBuffer stdOut = new StringBuffer();
     StringBuffer stdErr = new StringBuffer();
     try{
-      int ret = exec("ls "+dirFullPath+" | awk '{print ENVIRON[\"PWD\"]\"/\"$1}'", stdOut, stdErr);
+      int ret = 0;
+      String parentDir = "";
+      if(isDirectory(dirFullPath)){
+        parentDir = dirFullPath;
+      }
+      else{
+        int lastSlash = dirFullPath.lastIndexOf("/");
+        if(lastSlash>0){
+          parentDir = dirFullPath.substring(0, lastSlash);
+        }
+      }
+      ret = exec("cd "+parentDir+"; ls "+dirFullPath+" | awk '{print ENVIRON[\"PWD\"]\"/\"$1}'", stdOut, stdErr);
       if(ret!=0 || stdErr.length()>0){
         Debug.debug("directory "+dirFullPath+" does not exist. "+stdErr, 3);
         return new String [] {};
@@ -443,7 +668,7 @@ public class SecureShellMgr implements ShellMgr{
     StringBuffer stdOut = new StringBuffer();
     StringBuffer stdErr = new StringBuffer();
     try{
-      int ret = exec("ls -pd "+dir+"| grep'.*/$'", stdOut, stdErr);
+      int ret = exec("ls -pd "+dir+" | grep '.*/$'", stdOut, stdErr);
       if(ret!=0 || stdErr.length()>0){
         Debug.debug("directory "+dir+" does not exist. "+stdErr, 3);
         return false;
@@ -465,29 +690,27 @@ public class SecureShellMgr implements ShellMgr{
   }
 
   synchronized private ChannelExec getChannel(){
-    ChannelExec  channel = null;
     try{
-      // pick first unused channel
-      for(int i=0; i<=channels; ++i){
-        if(sshs[i]==null || sshs[i].isClosed()){
-          sshs[i] = session.openChannel("exec");
-          if(!sshs[i].isConnected()){
-            sshs[i].connect();
+      ChannelExec channel = null;
+      int maxTries = 10;
+      int count = 0;
+      boolean channelOk = false;
+      while(count<maxTries){
+        // wait for first free channel
+        for(int i=0; i<=channels; ++i){
+          if(sshs[i]==null || sshs[i].isClosed()){
+            sshs[i] = session.openChannel("exec");
             channel = (ChannelExec) sshs[i];
+            channelOk = true;
             break;
           }
         }
-        else if(sshs[i].isEOF()){
-          sshs[i].disconnect();
-          sshs[i].connect();
-          channel = (ChannelExec) sshs[i];
+        if(channelOk){
           break;
         }
-      }
-      // all channels used, cycle through them
-      if(channel==null){
-        channelInUse = (channelInUse+1) % channels;
-        channel = (ChannelExec) sshs[channelInUse];
+        Debug.debug("WARNING: no free ssh channels, waiting for commands to finish...", 2);
+        Thread.sleep(3000);
+        ++count;
       }
       return (ChannelExec) channel;
     }

@@ -3,10 +3,8 @@ package gridpilot.csplugins.fork;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.URL;
 import java.util.Enumeration;
@@ -21,6 +19,7 @@ import gridpilot.JobInfo;
 import gridpilot.LogFile;
 import gridpilot.GridPilot;
 import gridpilot.ShellMgr;
+import gridpilot.TransferControl;
 import gridpilot.Util;
 
 public class ForkComputingSystem implements ComputingSystem{
@@ -85,7 +84,7 @@ public class ForkComputingSystem implements ComputingSystem{
     
     runtimeDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "runtime directory");   
-    if(runtimeDirectory!=null && runtimeDirectory.startsWith("~")){
+    if(shellMgr.isLocal() && runtimeDirectory!=null && runtimeDirectory.startsWith("~")){
       runtimeDirectory = System.getProperty("user.home")+runtimeDirectory.substring(1);
     }
 
@@ -105,7 +104,7 @@ public class ForkComputingSystem implements ComputingSystem{
     }
     transformationDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "transformation directory");   
-    if(transformationDirectory!=null && transformationDirectory.startsWith("~")){
+    if(shellMgr.isLocal() && transformationDirectory!=null && transformationDirectory.startsWith("~")){
       transformationDirectory = System.getProperty("user.home")+transformationDirectory.substring(1);
     }
     if(transformationDirectory!=null){
@@ -148,22 +147,20 @@ public class ForkComputingSystem implements ComputingSystem{
     }
     
     String testScriptName = "test.sh";
-    File testScript = new File(transformationDirectory, testScriptName);
+    StringBuffer fileStr = new StringBuffer("");
     
-    if(!testScript.exists()){
+    if(!shellMgr.existsFile(transformationDirectory+"/"+testScriptName)){
       BufferedReader in = null;
-      PrintWriter out = null;
       try{
         URL fileURL = GridPilot.class.getResource(
             GridPilot.resourcesPath+"/"+testScriptName);
         in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
-        out = new PrintWriter(new FileWriter(testScript));
         String line = null;
         while((line = in.readLine())!=null){
-          out.println(line);
+          fileStr.append(line+"\n");
         }
         in.close();
-        out.close();
+        shellMgr.writeFile(transformationDirectory+"/"+testScriptName, fileStr.toString(), false);
       }
       catch(IOException e){
         logFile.addMessage("WARNING: Could not write test transformation", e);
@@ -172,7 +169,6 @@ public class ForkComputingSystem implements ComputingSystem{
       finally{
         try{
           in.close();
-          out.close();
         }
         catch(Exception ee){
         }
@@ -192,7 +188,7 @@ public class ForkComputingSystem implements ComputingSystem{
       StringBuffer stdout = new StringBuffer();
       StringBuffer stderr = new StringBuffer();
       shellMgr.exec(
-          "chmod +x "+testScript.getAbsolutePath(), stdout, stderr);
+          "chmod +x "+transformationDirectory+"/"+testScriptName, stdout, stderr);
       if(stderr!=null && stderr.length()!=0){
         logFile.addMessage("Could not set transformation executable. "+stderr);
         throw new FileNotFoundException(stderr.toString());
@@ -228,7 +224,7 @@ public class ForkComputingSystem implements ComputingSystem{
             values[i] = "result.txt";
           }
           else if(fields[i].equalsIgnoreCase("script")){
-            values[i] = testScript.getAbsolutePath();
+            values[i] = transformationDirectory+"/"+testScriptName;
           }
           else if(fields[i].equalsIgnoreCase("comment")){
             values[i] = "Transformation script to test running local GridPilot jobs on Linux.";
@@ -280,7 +276,7 @@ public class ForkComputingSystem implements ComputingSystem{
     finalRuntimesRemote = new HashSet();
     HashSet runtimes = shellMgr.listFilesRecursively(runtimeDirectory);
     if(runtimes!=null && runtimes.size()>0){
-      File fil = null;
+      String fil = null;
       String hostName = null;
       
       String name = null;
@@ -306,6 +302,11 @@ public class ForkComputingSystem implements ComputingSystem{
           localDBMgr.getFieldNames("runtimeEnvironment");
         rtVals = new String [runtimeEnvironmentFields.length];
       }
+      
+      // Expand ~. Should work for both local and remote shells...
+      if(runtimes.size()>0){
+        runtimeDirectory = (new File(shellMgr.listFiles(runtimeDirectory)[0])).getParentFile().getAbsolutePath();
+      }
 
       for(Iterator it=runtimes.iterator(); it.hasNext();){
         
@@ -313,12 +314,11 @@ public class ForkComputingSystem implements ComputingSystem{
         cert = null;
         url = null;
 
-        fil = (File) it.next();
+        fil = (String) it.next();
         
         // Get the name
-        Debug.debug("File found: "+fil.getName()+":"+fil.getAbsolutePath(), 3);
-        name = fil.getAbsolutePath().substring(
-            (new File(runtimeDirectory)).getAbsolutePath().length()+1).replaceAll(
+        Debug.debug("File found: "+runtimeDirectory+":"+fil, 3);
+        name = fil.substring(runtimeDirectory.length()+1).replaceAll(
                 "\\\\", "/");
         
         boolean rteExistsLocally = false;
@@ -377,14 +377,16 @@ public class ForkComputingSystem implements ComputingSystem{
         }
         Debug.debug("url: "+url, 3);
         
-        // get the certificate
-        try{
-          cert = shellMgr.readFile(publicCertificate);
-          // TODO: check if certificate includes private key
-          // and discard the key if so
-        }
-        catch(Exception e){
-          //e.printStackTrace();
+        if(publicCertificate!=null){
+          // get the certificate
+          try{
+            cert = shellMgr.readFile(publicCertificate);
+            // TODO: check if certificate includes private key
+            // and discard the key if so
+          }
+          catch(Exception e){
+            //e.printStackTrace();
+          }
         }
 
         if(name!=null && name.length()>0 &&
@@ -545,32 +547,6 @@ public class ForkComputingSystem implements ComputingSystem{
       else{
         job.setJobStatus("Error");
         job.setInternalStatus(ComputingSystem.STATUS_ERROR);
-      }
-      // Output file copy.
-      // Try copying file(s) to output destination
-      String jobDefID = job.getJobDefId();
-      DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-      String[] outputMapping = dbPluginMgr.getOutputFiles(jobDefID);
-      String localName = null;
-      String remoteName = null;
-      for(int i=0; i<outputMapping.length; ++i){
-        try{
-          localName = runDir(job) +"/"+dbPluginMgr.getJobDefOutLocalName(jobDefID,
-              outputMapping[i]);
-          localName = Util.clearFile(localName);
-          remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputMapping[i]);
-          remoteName = Util.clearFile(remoteName);
-          Debug.debug(localName + ": -> " + remoteName, 2);
-          shellMgr.copyFile(localName, remoteName);
-        }
-        catch(Exception e){
-          job.setJobStatus("Error");
-          job.setInternalStatus(ComputingSystem.STATUS_ERROR);
-          error = "Exception during copying of output file(s) for job : " + job.getName() + "\n" +
-          "\tCommand\t: " + localName + ": -> " + remoteName +"\n" +
-          "\tException\t: " + e.getMessage();
-          logFile.addMessage(error, e);
-        }
       }
     }
   }
@@ -784,7 +760,24 @@ public class ForkComputingSystem implements ComputingSystem{
   }
 
   public boolean preProcess(JobInfo job){
-    return getInputFiles(job);
+    return setRemoteOutputFiles(job) && getInputFiles(job);
+  }
+  
+  /**
+   * Checks output files for remote URLs and adds these
+   * with job.setUploadFiles
+   * @param job
+   * @return
+   */
+  private boolean setRemoteOutputFiles(JobInfo job){
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    String [] outputFiles = dbPluginMgr.getOutputFiles(job.getJobDefId());
+    String [] remoteNames = new String [outputFiles.length];
+    // TODO: check for remote files.
+    for(int i=0; i<outputFiles.length; ++i){
+      //remoteNames[i] = dbPluginMgr.getJobDefOutRemoteName(outputFiles[i]);
+    }
+    return true;
   }
 
   /**
@@ -793,11 +786,6 @@ public class ForkComputingSystem implements ComputingSystem{
    */
   private boolean getInputFiles(JobInfo job){
     boolean ok = true;
-    
-    // TODO: support sources: gsiftp://, ftp://.
-    // TODO: if source is /..., c:\... or file://...,
-    // use shellMgr to scp the file from local disk.
-
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String transID = dbPluginMgr.getJobDefTransformationID(job.getJobDefId());
     Debug.debug("Getting input files for transformation " + transID, 2);
@@ -811,45 +799,105 @@ public class ForkComputingSystem implements ComputingSystem{
     for(int i=0; i<jobInputFiles.length; ++i){
       inputFiles[i+transInputFiles.length] = jobInputFiles[i];
     }
+    Vector downloadVector = new Vector();
+    String [] downloadFiles = null;
     for(int i=0; i<inputFiles.length; ++i){
+      Debug.debug("Pre-processing : Getting " + inputFiles[i], 2);
+      String fileName = inputFiles[i];
+      String urlDir = "/";
+      int lastSlash = inputFiles[i].lastIndexOf("/");
+      if(lastSlash>-1){
+        fileName = inputFiles[i].substring(lastSlash + 1);
+        urlDir = inputFiles[i].substring(0, lastSlash);
+      }
       if(inputFiles[i]!=null && inputFiles[i].trim().length()!=0){
-        if(inputFiles[i].matches("^file:/*[^/]+.*")){
-          inputFiles[i] = inputFiles[i].replaceFirst("^file:/*", "/");
-        }
-        try{
-          if(!shellMgr.existsFile(inputFiles[i])){
-            logFile.addMessage("File " + inputFiles[i] + " doesn't exist");
-            ok = false;
-            continue;
+        // Remote shell
+        if(!shellMgr.isLocal()){
+          // If source starts with file:/, scp the file from local disk.
+          if(inputFiles[i].matches("^file:/*[^/]+.*")){
+            inputFiles[i] = inputFiles[i].replaceFirst("^file:/*", "/");
+            shellMgr.download(inputFiles[i], runDir(job)+"/"+fileName);
           }
-        }
-        catch(Throwable e){
-          error = "ERROR getting input file: "+e.getMessage();
-          Debug.debug(error, 2);
-          logFile.addMessage(error);
-          ok = false;
-        }
-        Debug.debug("Pre-processing : Getting " + inputFiles[i], 2);
-        String fileName = inputFiles[i];
-        int lastSlash = fileName.lastIndexOf("/");
-        if(lastSlash>-1){
-          fileName = fileName.substring(lastSlash + 1);
-        }
-        try{
-          if(!shellMgr.copyFile(inputFiles[i], runDir(job)+"/"+fileName)){
-            logFile.addMessage("Pre-processing : Cannot get " +
-                inputFiles[i]);
+          // If source starts with /, just use the remote file.
+          else if(inputFiles[i].startsWith("/")){
+          }
+          // If source is remote, have the job script get it
+          // (assuming that e.g. the runtime environment ARC has been required)
+          else if(!inputFiles[i].matches("^file:/*[^/]+.*") &&
+              inputFiles[i].matches("^[a-z]+:/*[^/]+.*")){
+            downloadVector.add(inputFiles[i]);
+          }
+          // Relative paths are not supported
+          else{
+            logFile.addMessage("ERROR: could not get input file "+inputFiles[i]+
+                ". Names must be fully qualified.");
             ok = false;
           }
         }
-        catch(Throwable e){
-          error = "ERROR getting input file: "+e.getMessage();
-          Debug.debug(error, 2);
-          logFile.addMessage(error);
-          ok = false;
+        // Local shell
+        else{
+          // If source starts with file:/, / or c:\ /, just copy over the local file.
+          if(inputFiles[i].startsWith("/") ||
+             inputFiles[i].toLowerCase().startsWith("c:") ||
+             inputFiles[i].startsWith("file:")){
+            try{
+              if(!shellMgr.existsFile(inputFiles[i])){
+                logFile.addMessage("File " + inputFiles[i] + " doesn't exist");
+                ok = false;
+                continue;
+              }
+            }
+            catch(Throwable e){
+              error = "ERROR getting input file: "+e.getMessage();
+              Debug.debug(error, 2);
+              logFile.addMessage(error);
+              ok = false;
+            }
+            try{
+              if(!shellMgr.copyFile(inputFiles[i], runDir(job)+"/"+fileName)){
+                logFile.addMessage("ERROR: Cannot get input file " + inputFiles[i]);
+                ok = false;
+              }
+            }
+            catch(Throwable e){
+              error = "ERROR getting input file: "+e.getMessage();
+              Debug.debug(error, 2);
+              logFile.addMessage(error);
+              ok = false;
+            }
+          }
+          // If source is remote, get the it
+          else if(!inputFiles[i].matches("^file:/*[^/]+.*") &&
+              inputFiles[i].matches("^[a-z]+:/*[^/]+.*")){
+            try{
+              TransferControl.download(urlDir, fileName,
+                  new File(runDir(job)), GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+            }
+            catch(IOException ioe){
+              logFile.addMessage("WARNING: GridPilot could not get input file "+inputFiles[i]+
+                  ".", ioe);
+              ioe.printStackTrace();
+              // If we could not get file natively, have the job script get it
+              // (assuming that e.g. the runtime environment ARC has been required)
+              downloadVector.add(inputFiles[i]);
+            }
+          }
+          // Relative paths are not supported
+          else{
+            logFile.addMessage("ERROR: could not get input file "+inputFiles[i]+
+                ". Names must be fully qualified.");
+            ok = false;
+          }
         }
       }
     }
+    downloadFiles = new String[downloadVector.size()];
+    for(int i=0; i<downloadVector.size(); ++i){
+      if(downloadVector.get(i)!=null){
+        downloadFiles[i] = downloadVector.get(i).toString();
+      }
+    }
+    job.setDownloadFiles(downloadFiles);
     return ok;
   }
   
@@ -860,16 +908,42 @@ public class ForkComputingSystem implements ComputingSystem{
    * (from AtCom1)
    */
   private boolean copyToFinalDest(JobInfo job){
-    // Will only run if there is a shell available for the computing system
-    // in question - and if the destination is accessible from this shell.
-    // For grids, stdout and stderr should be taken care of by the xrsl or jdsl
-    // (*ScriptGenerator)
+    
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    
+    // Output files
+    // Output file copy.
+    // Try copying file(s) to output destination
+    String jobDefID = job.getJobDefId();
+    String[] outputMapping = dbPluginMgr.getOutputFiles(jobDefID);
+    String localName = null;
+    String remoteName = null;
+    // TODO: check for local files.
+    for(int i=0; i<outputMapping.length; ++i){
+      try{
+        localName = runDir(job) +"/"+dbPluginMgr.getJobDefOutLocalName(jobDefID,
+            outputMapping[i]);
+        localName = Util.clearFile(localName);
+        remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputMapping[i]);
+        remoteName = Util.clearFile(remoteName);
+        Debug.debug(localName + ": -> " + remoteName, 2);
+        shellMgr.copyFile(localName, remoteName);
+      }
+      catch(Exception e){
+        job.setJobStatus("Error");
+        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+        error = "Exception during copying of output file(s) for job : " + job.getName() + "\n" +
+        "\tCommand\t: " + localName + ": -> " + remoteName +"\n" +
+        "\tException\t: " + e.getMessage();
+        logFile.addMessage(error, e);
+      }
+    }
+    
+    // Stdout/stderr
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
-    // TODO: support destinations: gsiftp://, ftp://.
-    // TODO: if destination is /..., c:\... or file://...,
-    // use shellMgr to scp the file to local disk.
+    // TODO: for remote shells: scp output files of the form file://
+    // to the local disk.
     /**
      * move temp StdOut -> finalStdOut
      */

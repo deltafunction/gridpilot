@@ -42,14 +42,20 @@ import gridpilot.DBRecord;
 
 public class JobInfo extends DBRecord{
 
-  private String jobName="";
-  private String jobDefID="-1";
-  private String cs="";
-  private String user="";
-  private String db="";
-  private String outTmp="";
-  private String errTmp="";
-  private String validationResult="";
+  private String jobName = "";
+  private String jobDefID = "-1";
+  private String cs = "";
+  private String user = "";
+  private String db = "";
+  private String outTmp = "";
+  private String errTmp = "";
+  private String validationResult = "";
+  // List of files to be downloaded by the job itself.
+  // The use of this should be avoided as far as possible.
+  private String [] downloadFiles = null;
+  // List of files to be uploaded by the job itself.
+  // The use of this should be avoided as far as possible.
+  private String [] uploadFiles = null;
  
   private String jobID="";
   private String jobStatus="";
@@ -123,6 +129,14 @@ public class JobInfo extends DBRecord{
     return errTmp;
   }
   
+  public String [] getDownloadFiles(){
+    return downloadFiles;
+  }
+
+  public String [] getUploadFiles(){
+    return uploadFiles;
+  }
+
   public String getValidationResult(){
     return validationResult;
   }
@@ -194,6 +208,16 @@ public class JobInfo extends DBRecord{
     //setValues();
   }
   
+  public void setDownloadFiles(String [] _files){
+    downloadFiles = _files;
+    //setValues();
+  }
+
+  public void setUploadFiles(String [] _files){
+    uploadFiles = _files;
+    //setValues();
+  }
+
   public void setValidationResult(String _result){
     validationResult = _result;
     //setValues();

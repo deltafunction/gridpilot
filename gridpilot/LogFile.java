@@ -212,7 +212,7 @@ public class LogFile {
 
     Enumeration e = actionsOnMessages.elements();
     Debug.debug("Adding message " +s+
-        " to "+Util.arrayToString(actionsOnMessages.toArray()), 3);
+        ". "+Util.arrayToString(actionsOnMessages.toArray()), 3);
     while(e.hasMoreElements()){
       ((ActionOnMessage)e.nextElement()).newMessage(header, s,
           type!=INFORMATION_MESSAGE);
