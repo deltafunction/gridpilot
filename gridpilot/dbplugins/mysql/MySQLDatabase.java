@@ -1352,6 +1352,11 @@ public class MySQLDatabase implements Database{
       else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
         values[i] = makeDate("");
       }
+      else if((jobDefFields[i].equalsIgnoreCase("outputFileKilobytes") ||
+          jobDefFields[i].equalsIgnoreCase("cpuSeconds")) &&
+          (values[i]==null || values[i].equals(""))){
+        values[i] = "'0'";
+      }
       else{
         values[i] = "'"+values[i]+"'";
       }     
@@ -1708,6 +1713,11 @@ public class MySQLDatabase implements Database{
             }
             else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
               values[j] = makeDate("");
+            }
+            else if((jobDefFields[i].equalsIgnoreCase("outputFileKilobytes") ||
+                jobDefFields[i].equalsIgnoreCase("cpuSeconds")) &&
+                (values[j]==null || values[j].equals(""))){
+              values[j] = "'0'";
             }
             else{
               values[j] = "'"+values[j]+"'";

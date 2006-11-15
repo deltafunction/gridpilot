@@ -1384,6 +1384,11 @@ public class HSQLDBDatabase implements Database{
       else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
         values[i] = makeDate("");
       }
+      else if((jobDefFields[i].equalsIgnoreCase("outputFileKilobytes") ||
+          jobDefFields[i].equalsIgnoreCase("cpuSeconds")) &&
+          (values[i]==null || values[i].equals(""))){
+        values[i] = "'0'";
+      }
       else{
         values[i] = "'"+values[i]+"'";
       }
@@ -1768,8 +1773,8 @@ public class HSQLDBDatabase implements Database{
             else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
               values[j] = makeDate("");
             }
-            else if((jobDefFields[i].equalsIgnoreCase("outputFileSize") ||
-                jobDefFields[i].equalsIgnoreCase("CPU")) &&
+            else if((jobDefFields[i].equalsIgnoreCase("outputFileKilobytes") ||
+                jobDefFields[i].equalsIgnoreCase("cpuSeconds")) &&
                 (values[j]==null || values[j].equals(""))){
               values[j] = "'0'";
             }

@@ -504,6 +504,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       if(url.startsWith("file:/~")){
         url = "file:"+System.getProperty("user.home")+url.substring(7);
       }
+      else if(url.startsWith("file:~")){
+        url = "file:"+System.getProperty("user.home")+url.substring(6);
+      }
       Debug.debug("Checking URL, "+url, 3);
       // browse remote web directory
       if((url.startsWith("http://") ||
