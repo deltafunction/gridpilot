@@ -7,7 +7,6 @@ import gridpilot.DBPluginMgr;
 import gridpilot.Debug;
 import gridpilot.JobInfo;
 import gridpilot.GridPilot;
-import gridpilot.LocalStaticShellMgr;
 import gridpilot.ScriptGenerator;
 import gridpilot.ShellMgr;
 import gridpilot.Util;
@@ -45,11 +44,15 @@ public class ForkScriptGenerator extends ScriptGenerator{
     if(!shellMgr.isLocal() || !System.getProperty("os.name").toLowerCase().startsWith("windows")){
       commentStart = "#";
       writeLine(buf, "#!/bin/sh");
+      // write out the process name, for SecureShellMgr.submit to pick up
+      writeLine(buf, "echo $$");
     }
     
     // sleep 5 seconds, to give GridPilot a chance to pick up the process id
     // for very short jobs
     writeBloc(buf, "Sleep 5 seconds before start", ScriptGenerator.TYPE_SUBSECTION, commentStart);
+    // this is to be sure to have some stdout (jobs without are considered failed)
+    writeLine(buf, "echo starting...");
     if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
       writeLine(buf, "ping -n 10 127.0.0.1 >/nul");
     }
@@ -135,12 +138,12 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
 
     try{
-      LocalStaticShellMgr.writeFile(workingDir+"/"+fileName, buf.toString(), false);
+      shellMgr.writeFile(workingDir+"/"+fileName, buf.toString(), false);
       // This will not work under Windows; we silently ignore...
       try{
         StringBuffer stdout = new StringBuffer();
         StringBuffer stderr = new StringBuffer();
-        LocalStaticShellMgr.exec("chmod +x "+workingDir+"/"+fileName, stdout, stderr);
+        shellMgr.exec("chmod +x "+workingDir+"/"+fileName, stdout, stderr);
         if(stderr!=null && stderr.length()!=0){
           logFile.addMessage("Could not set job executable. "+stderr);
           throw new FileNotFoundException(stderr.toString());

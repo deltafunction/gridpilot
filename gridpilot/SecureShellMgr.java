@@ -188,8 +188,8 @@ public class SecureShellMgr implements ShellMgr{
       }
     }
     if(exitStatus!=0 || stdErr!=null && !stdErr.toString().equals("")){
-      logFile.addMessage("ERROR executing command " + cmd + " : " +
-                         stdErr+":"+error);
+      Debug.debug("WARNING: error executing command " + cmd + " : " +
+                         stdErr+":"+error, 2);
     }
     return(exitStatus);
   }
@@ -242,11 +242,13 @@ public class SecureShellMgr implements ShellMgr{
    * @param rFile    remote file name of the form /dir/file, or dir/file
    */
   public boolean upload(String lFile, String rFile){
-    FileInputStream is=null;
+    rFile = getFullPath(rFile);
+    FileInputStream is = null;
+    Channel channel = null;
     try{
       // exec 'scp -t rfile' remotely
       String command = "scp -p -t "+rFile;
-      Channel channel = getChannel();
+      channel = getChannel();
       ((ChannelExec) channel).setCommand(command);
 
       // get I/O streams for remote scp
@@ -296,7 +298,6 @@ public class SecureShellMgr implements ShellMgr{
         return false;
       }
       out.close();
-      channel.disconnect();
     }
     catch(Exception e){
       logFile.addMessage("ERROR: could not copy file "+lFile+"->"+user+"@"+host+":"+rFile, e);
@@ -308,11 +309,20 @@ public class SecureShellMgr implements ShellMgr{
       }
       return false;
     }
+    finally{
+      try{
+        channel.disconnect();
+      }
+      catch(Exception e){
+      }
+    }
     return true;
   }
 
-  public boolean download(String lFile, String rFile){
-    FileOutputStream fos=null;
+  public boolean download(String rFile, String lFile){
+    lFile = getFullPath(lFile);
+    FileOutputStream fos = null;
+    Channel channel = null;
     try{
       String prefix=null;
       if(new File(lFile).isDirectory()){
@@ -320,7 +330,7 @@ public class SecureShellMgr implements ShellMgr{
       }
       // exec 'scp -f rfile' remotely
       String command="scp -f "+rFile;
-      Channel channel = getChannel();
+      channel = getChannel();
       ((ChannelExec)channel).setCommand(command);
       // get I/O streams for remote scp
       OutputStream out=channel.getOutputStream();
@@ -405,6 +415,13 @@ public class SecureShellMgr implements ShellMgr{
       catch(Exception ee){
       }
       return false;
+    }
+    finally{
+      try{
+        channel.disconnect();
+      }
+      catch(Exception e){
+      }
     }
     return true;
   }
@@ -692,10 +709,10 @@ public class SecureShellMgr implements ShellMgr{
   synchronized private ChannelExec getChannel(){
     try{
       ChannelExec channel = null;
-      int maxTries = 10;
+      int maxTries = 5;
       int count = 0;
       boolean channelOk = false;
-      while(count<maxTries){
+      while(true){
         // wait for first free channel
         for(int i=0; i<=channels; ++i){
           if(sshs[i]==null || sshs[i].isClosed()){
@@ -711,6 +728,15 @@ public class SecureShellMgr implements ShellMgr{
         Debug.debug("WARNING: no free ssh channels, waiting for commands to finish...", 2);
         Thread.sleep(3000);
         ++count;
+        if(count>maxTries-1){
+          java.util.Random r = new java.util.Random(19580427);
+          int rn = (r.nextInt() & Integer.MAX_VALUE) % sshs.length;
+          Debug.debug("WARNING: liberating ssh channel #"+rn+" by force...", 2);
+          sshs[rn].disconnect();
+        }
+        if(count>maxTries){
+          break;
+        }
       }
       return (ChannelExec) channel;
     }
@@ -788,19 +814,20 @@ public class SecureShellMgr implements ShellMgr{
 
   public String submit(String cmd, String workingDirectory, String stdOutFile,
       String stdErrFile) throws Exception{
-    // first write small script containing the command and returning the pid of itself
+    // first write small script containing the command script
     String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
-    writeFile("/tmp/"+uuid+".sh",
-        cmd+"2>"+stdOutFile+">"+stdErrFile+"&\n" +
-        "echo $$", false);
+    writeFile("/tmp/"+uuid+".sh", cmd+" 2> "+stdErrFile+" > "+stdOutFile+" &", false);
     StringBuffer stdOut = new StringBuffer();
     StringBuffer stdErr = new StringBuffer();
     // execute the script
-    exec("/tmp/"+uuid+".sh", stdOut, stdErr);
-    String pid = stdOut.toString();
+    exec("sh /tmp/"+uuid+".sh", null, workingDirectory, stdOut, stdErr);
     stdOut = new StringBuffer();
     stdErr = new StringBuffer();
-    exec("rm /tmp/"+uuid+".sh", stdOut, stdErr);
+    exec("rm /tmp/"+uuid+".sh; head -1 "+stdOutFile, stdOut, stdErr);
+    String pid = stdOut.toString().trim();
+    if(stdErr!=null && stdErr.length()>0 || stdOut==null || stdOut.length()==0){
+      throw new IOException("ERROR: could not get PID for job "+cmd+". "+stdErr);
+    }
     return pid;
   }
 
@@ -820,6 +847,8 @@ public class SecureShellMgr implements ShellMgr{
     StringBuffer stdOut = new StringBuffer();
     StringBuffer stdErr = new StringBuffer();
     try{
+      // TODO: it seems to get the parent process of
+      // /bin/sh /afs/cern.ch/user/f/fjob/GridPilot/jobs/testDataset.00001/testDataset.00001.sh
       exec("ps -p "+id+" -o comm=", stdOut, stdErr);
       out = stdOut.toString();
     }

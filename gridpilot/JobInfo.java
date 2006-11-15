@@ -265,7 +265,7 @@ public class JobInfo extends DBRecord{
         "  Host \t: " + getHost() + "\n" +
         "  Status DB \t: " + gridpilot.DBPluginMgr.getStatusName(getDBStatus()) + "\n" +
         "  Status \t: " + getJobStatus() + "\n" +
-        "  Status AtCom \t: "+ getInternalStatus() + "\n" +
+        "  Status internal \t: "+ getInternalStatus() + "\n" +
         "  StdOut \t: " + getStdOut() + "\n" +
         "  StdErr \t: " + getStdErr() + "\n";
   }

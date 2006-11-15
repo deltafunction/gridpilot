@@ -478,12 +478,6 @@ public class ForkComputingSystem implements ComputingSystem{
    *  stdOut : jobId
    */
   public boolean submit(final JobInfo job){
-    
-    // create the run directory
-    if(!shellMgr.existsFile(runDir(job))){
-      shellMgr.mkdirs(runDir(job));
-    }
-    
     final String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
     final String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";
     final String cmd = runDir(job)+"/"+job.getName()+commandSuffix;
@@ -534,17 +528,32 @@ public class ForkComputingSystem implements ComputingSystem{
       job.setInternalStatus(ComputingSystem.STATUS_RUNNING);
     }
     else{
-      File stdErrFile = new File(job.getStdErr());
-      File stdOutFile = new File(job.getStdOut());
-      if(stdErrFile.exists() && stdErrFile.length()>0){
-        job.setJobStatus("Done with errors");
+      if(shellMgr.existsFile(job.getStdErr())){
+        boolean ok = true;
+        String stdErr = "";
+        try{
+          stdErr = shellMgr.readFile(job.getStdErr());
+        }
+        catch(Exception e){
+          ok = false;
+        }
+        if(stdErr!=null && stdErr.length()>0){
+          ok = false;
+        }
+        if(!ok){
+          job.setJobStatus("Done with errors");
+        }
+        else{
+          job.setJobStatus("Done");
+        }
         job.setInternalStatus(ComputingSystem.STATUS_DONE);
       }
-      else if(stdOutFile.exists()){
+      else if(shellMgr.existsFile(job.getStdOut())){
         job.setJobStatus("Done");
         job.setInternalStatus(ComputingSystem.STATUS_DONE);
       }
       else{
+        // If there is no stdout and no stderr, the job is considered to have failed...
         job.setJobStatus("Error");
         job.setInternalStatus(ComputingSystem.STATUS_ERROR);
       }
@@ -733,26 +742,29 @@ public class ForkComputingSystem implements ComputingSystem{
       user = defaultUser;
     }
     else{
-      Debug.debug("ERROR: no defaultUser defined!", 1);
+      Debug.debug("WARNING: no defaultUser defined!", 1);
     }
     return user;
   }
   
   public boolean postProcess(JobInfo job){
-    Debug.debug("PostProcessing for job " + job.getName(), 2);
+    Debug.debug("Post processing job " + job.getName(), 2);
     String runDir = runDir(job);
+    boolean ok = true;
     if(copyToFinalDest(job)){
       // Delete the run directory
       try{
-        shellMgr.deleteDir(runDir);
+        ok = shellMgr.deleteDir(runDir);
       }
       catch(Exception e){
-        error = "Exception during postProcess of job " + job.getName()+ "\n" +
-        "\tException\t: " + e.getMessage();
-        logFile.addMessage(error, e);
-        //return false;
+        e.printStackTrace();
+        ok = false;
       }
-      return true;
+      if(!ok){
+        error = "Exception during postProcess of job " + job.getName();
+        logFile.addMessage(error);
+      }
+      return ok;
     }
     else{
       return false;
@@ -760,6 +772,16 @@ public class ForkComputingSystem implements ComputingSystem{
   }
 
   public boolean preProcess(JobInfo job){
+    // create the run directory
+    try{
+      if(!shellMgr.existsFile(runDir(job))){
+        shellMgr.mkdirs(runDir(job));
+      }
+    }
+    catch(Exception e){
+      logFile.addMessage("ERROR: could not create run directory for job.", e);
+      return false;
+    }
     return setRemoteOutputFiles(job) && getInputFiles(job);
   }
   
@@ -836,7 +858,10 @@ public class ForkComputingSystem implements ComputingSystem{
           // If source starts with file:/, scp the file from local disk.
           if(inputFiles[i].matches("^file:/*[^/]+.*")){
             inputFiles[i] = Util.clearFile(inputFiles[i]);
-            shellMgr.download(inputFiles[i], runDir(job)+"/"+fileName);
+            ok = shellMgr.upload(inputFiles[i], runDir(job)+"/"+fileName);
+            if(!ok){
+              logFile.addMessage("ERROR: could not put input file "+inputFiles[i]);
+            }
           }
           // If source starts with /, just use the remote file.
           else if(inputFiles[i].startsWith("/")){
@@ -946,21 +971,7 @@ public class ForkComputingSystem implements ComputingSystem{
             outputNames[i]);
         localName = Util.clearFile(localName);
         remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputNames[i]);
-        // These are considered remote and have been taken care of by the job script (not recommended)
-        if(remoteName!=null && !remoteName.equals("") && !remoteName.startsWith("file:") &&
-            !remoteName.startsWith("/") && !remoteName.matches("\\w:.*")){
-        }
-        else{
-          // By convention, these should be copied back to the client (where GridPilot is running) via ssh.
-          if(remoteName.startsWith("file:")){
-            remoteName = Util.clearFile(remoteName);
-            Debug.debug(localName + ": -> " + remoteName, 2);
-            if(!shellMgr.copyFile(localName, remoteName)){
-              throw new Exception("ERROR: Could not copy file with SSH.") ;
-            };
-          }
-          // Others we simply leave on the server.
-        }
+        ok = ok && copyOutputFile(localName, remoteName);
       }
       catch(Exception e){
         job.setJobStatus("Error");
@@ -984,7 +995,7 @@ public class ForkComputingSystem implements ComputingSystem{
      * move temp StdOut -> finalStdOut
      */
     ok = false;   
-    if(finalStdOut!=null && finalStdOut.trim().length()!=0){
+    if(finalStdOut!=null && finalStdOut.trim().length()>0){
       if(copyOutputFile(job.getStdOut(), finalStdOut)){
         job.setStdOut(finalStdOut);
         ok = true;
@@ -995,7 +1006,7 @@ public class ForkComputingSystem implements ComputingSystem{
      * move temp StdErr -> finalStdErr
      */
     ok = false;   
-    if(finalStdErr!=null && finalStdErr.trim().length()!=0){
+    if(finalStdErr!=null && finalStdErr.trim().length()>0){
       if(copyOutputFile(job.getStdErr(), finalStdErr)){
         job.setStdErr(finalStdErr);
         ok = true;
@@ -1024,9 +1035,25 @@ public class ForkComputingSystem implements ComputingSystem{
       }
       // by convention, if the destination starts with file:, we get the file to the local disk
       if(dest.startsWith("file:") && !shellMgr.isLocal()){
-        Debug.debug("Post processing : getting " + src + " in " + dest, 2);
+        Debug.debug("Post processing : getting " + src + " -> " + dest, 2);
         try{
-          if(!shellMgr.download(src, Util.clearFile(dest))){
+          String realDest = Util.clearTildeLocally(Util.clearFile(dest));
+          Debug.debug("Post processing : real locations: " + src + " -> " + realDest, 2);
+          File realParentDir = (new File(realDest)).getParentFile();
+          // Check if parent dir exists, create if not
+          if(!realParentDir.exists()){
+            try{
+              if(!realParentDir.mkdir()){
+                throw new Exception("Error creating directory "+realParentDir.getAbsolutePath());
+              }
+            }
+            catch(Exception e){
+              error = "ERROR: could not create directory for job outputs.";
+              logFile.addMessage(error, e);
+              return false;
+            }
+          }
+          if(!shellMgr.download(src, realDest)){
             error = "Post processing : Cannot get \n\t" +
             src + "\n to \n\t" + dest;
             logFile.addMessage(error);
@@ -1040,7 +1067,7 @@ public class ForkComputingSystem implements ComputingSystem{
           return false;
         }
       }
-      // if we have a fully qualified name (and for Windows a local shell), we copy it with the shellMgr
+      // if we have a fully qualified name (and for Windows a local shell), we just copy it with the shellMgr
       else{
         Debug.debug("Post processing : renaming " + src + " in " + dest, 2);
         try{

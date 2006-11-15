@@ -477,12 +477,25 @@ public class Util{
   }
   
   public static String clearFile(String _line){
+    if(_line==null){
+      return _line;
+    }
     String line = _line;
     line = line.replaceFirst("^file:///", "/");
     line = line.replaceFirst("^file://", "/");
     line = line.replaceFirst("^file:/", "/");
     line = line.replaceFirst("^file:", "");
     return line;
+  }
+
+  public static String clearTildeLocally(String str){
+    if(str==null){
+      return str;
+    }
+    if(str.startsWith("~")){
+      str = System.getProperty("user.home")+str.substring(1);
+    }
+    return str;
   }
 
   public static String addFile(String _line){

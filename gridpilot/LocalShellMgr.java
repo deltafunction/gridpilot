@@ -21,8 +21,8 @@ public class LocalShellMgr implements ShellMgr {
    *
    */
   public boolean copyFile(String _src, String _dest){
-    String src = Util.clearFile(_src);
-    String dest = Util.clearFile(_dest);
+    String src = Util.clearTildeLocally(Util.clearFile(_src));
+    String dest = Util.clearTildeLocally(Util.clearFile(_dest));
     Debug.debug("copying file "+src+"->"+dest, 3);
     if(src.equals(dest)){
       return true;
@@ -123,7 +123,7 @@ public class LocalShellMgr implements ShellMgr {
     int exitValue;
     Debug.debug("executing "+cmd, 3);
     Process p = Runtime.getRuntime().exec(cmd, env,
-       (workingDirectory==null ? null : new File(workingDirectory)));
+       (workingDirectory==null ? null : new File(Util.clearTildeLocally(Util.clearFile(workingDirectory)))));
 
     waitOutputs(p, stdOut, stdErr);
 
@@ -185,7 +185,7 @@ public class LocalShellMgr implements ShellMgr {
   }
 
   public String readFile(String _path) throws FileNotFoundException, IOException {
-    String path = Util.clearFile(_path);
+    String path = Util.clearTildeLocally(Util.clearFile(_path));
     Debug.debug("Reading file "+path, 2);
     Debug.debug("Checking buffers "+Util.arrayToString(bufferedGobblers.keySet().toArray()), 3);
     if(bufferedGobblers.containsKey(path)){
@@ -206,7 +206,7 @@ public class LocalShellMgr implements ShellMgr {
   }
 
   public void writeFile(String _name, String content, boolean append) throws IOException {
-    String name = Util.clearFile(_name);
+    String name = Util.clearTildeLocally(Util.clearFile(_name));
     Debug.debug("name : " + name + "\nappend : " + append + "\ncontent : \n" + content, 1);
     File parent = new File(name).getParentFile();
     if(parent!=null && !parent.exists()){
@@ -221,11 +221,11 @@ public class LocalShellMgr implements ShellMgr {
   }
 
   public boolean existsFile(String name){
-    return new File(name).exists();
+    return new File(Util.clearTildeLocally(Util.clearFile(name))).exists();
   }
 
   public boolean mkdirs(String _dir){
-    String dir = Util.clearFile(_dir);
+    String dir = Util.clearTildeLocally(Util.clearFile(_dir));
     Debug.debug("making dirs "+dir, 3);
     return new File(dir).mkdirs();
   }
@@ -235,7 +235,8 @@ public class LocalShellMgr implements ShellMgr {
   // Returns true if all deletions were successful.
   // If a deletion fails, the method stops attempting to delete and returns false.
   public boolean deleteDir(String dirString){
-    File dir = new File(dirString);
+    Debug.debug("Deleting "+dirString, 2);
+    File dir = new File(Util.clearTildeLocally(Util.clearFile(dirString)));
     if(dir.isDirectory()){
       String[] children = dir.list();
       for(int i=0; i<children.length; i++){
@@ -245,15 +246,13 @@ public class LocalShellMgr implements ShellMgr {
         }
       }
     }
-    else{
-      return false;
-    }
     // The directory is now empty so delete it
+    Debug.debug("Deleting "+dir.getAbsolutePath(), 3);
     return dir.delete();
   }
 
   public boolean deleteFile(String _path){
-    String path = Util.clearFile(_path);
+    String path = Util.clearTildeLocally(Util.clearFile(_path));
     Debug.debug("deleting file "+path, 3);
     File dirOrFile = new File(path);
     if(dirOrFile.isDirectory()){
@@ -265,8 +264,8 @@ public class LocalShellMgr implements ShellMgr {
   }
 
   public boolean moveFile(String _src, String _dest){
-    String src = Util.clearFile(_src);
-    String dest = Util.clearFile(_dest);
+    String src = Util.clearTildeLocally(Util.clearFile(_src));
+    String dest = Util.clearTildeLocally(Util.clearFile(_dest));
     Debug.debug("moving file "+src+"->"+dest, 3);
     File destFile = new File(dest);
     if(destFile.getParent()!=null &&  !destFile.getParentFile().exists())
@@ -278,7 +277,7 @@ public class LocalShellMgr implements ShellMgr {
   }
 
   public String[] listFiles(String dir){
-    File fdir = new File(dir);
+    File fdir = new File(Util.clearTildeLocally(Util.clearFile(dir)));
     File [] fres = fdir.listFiles();
     if(fres==null){
       return null;
@@ -295,7 +294,7 @@ public class LocalShellMgr implements ShellMgr {
   }
 
   public boolean isDirectory(String dir){
-    return new File(dir).isDirectory();
+    return new File(Util.clearTildeLocally(Util.clearFile(dir))).isDirectory();
   }
   
   private static HashSet listFilesRecursively(String fileOrDir, HashSet files, int depth){
@@ -315,10 +314,7 @@ public class LocalShellMgr implements ShellMgr {
   }
   
   public HashSet listFilesRecursively(String fileOrDir){
-    if(fileOrDir.startsWith("~")){
-      fileOrDir = System.getProperty("user.home")+fileOrDir.substring(1);
-    }
-    return listFilesRecursively(fileOrDir, new HashSet(), 1);
+    return listFilesRecursively(Util.clearTildeLocally(Util.clearFile(fileOrDir)), new HashSet(), 1);
   }
 
   private String getProcessID(String name){
