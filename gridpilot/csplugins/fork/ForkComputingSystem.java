@@ -852,7 +852,7 @@ public class ForkComputingSystem implements ComputingSystem{
       int lastSlash = inputFiles[i].lastIndexOf("/");
       if(lastSlash>-1){
         fileName = inputFiles[i].substring(lastSlash + 1);
-        urlDir = inputFiles[i].substring(0, lastSlash);
+        urlDir = inputFiles[i].substring(0, lastSlash + 1);
       }
       if(inputFiles[i]!=null && inputFiles[i].trim().length()!=0){
         // Remote shell
@@ -918,10 +918,10 @@ public class ForkComputingSystem implements ComputingSystem{
           else if(!inputFiles[i].matches("^file:/*[^/]+.*") &&
               inputFiles[i].matches("^[a-z]+:/*[^/]+.*")){
             try{
-              TransferControl.download(urlDir, fileName,
+              TransferControl.download(urlDir + fileName,
                   new File(runDir(job)), GridPilot.getClassMgr().getGlobalFrame().getContentPane());
             }
-            catch(IOException ioe){
+            catch(Exception ioe){
               logFile.addMessage("WARNING: GridPilot could not get input file "+inputFiles[i]+
                   ".", ioe);
               ioe.printStackTrace();

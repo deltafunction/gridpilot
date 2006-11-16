@@ -1075,50 +1075,63 @@ public class TransferControl{
 
   /**
    * Download file from URL. Quick method - bypassing transfer control and monitoring.
-   * @param thisUrl
+   * @param url
    * @param fileName
-   * @param dir
+   * @param destination    can be either a directory or a file
    * @param frame
    * @throws IOException
    */
-  public static void download(final String thisUrl, String fileName, File dir, final Container frame) throws IOException{
+  public static void download(final String url, File destination, final Container frame) throws Exception{
     try{
       
-      if(!thisUrl.endsWith("/")){
-        throw(new IOException("Download location must be a directory. "+thisUrl));
+      if(url==null || url.endsWith("/")|| destination==null){
+        throw new IOException("ERROR: source or destination not given. "+
+            url+":"+destination);
+      }      
+      
+      File downloadDir = null;
+      String destFileName = null;
+      String srcUrlDir = null;
+      String srcFileName = null;
+      
+      int lastSlash = url.lastIndexOf("/");
+      srcUrlDir = url.substring(0, lastSlash + 1);
+      srcFileName = url.substring(lastSlash + 1);
+     
+      if(destination.getAbsolutePath().endsWith("/")){
+        downloadDir = destination;
+        destFileName = url.substring(lastSlash + 1);
       }
-
-      if(thisUrl==null || dir==null){
-        throw new IOException("ERROR: source or destination directory not given. "+
-            thisUrl+":"+dir);
+      else{
+        downloadDir = destination.getParentFile();
+        destFileName = destination.getName();
       }
       
-      if(fileName==null){
-        return;
-      }
-      GridPilot.getClassMgr().getStatusBar().setLabel("Downloading "+fileName+" from "+thisUrl+
-          " to "+dir);
+      GridPilot.getClassMgr().getStatusBar().setLabel("Downloading "+srcFileName+" from "+srcUrlDir+
+          " to "+downloadDir);
 
       // TODO: move this into TransferControl and have it used by ForkComputinSystem
-      Debug.debug("Downloading file from "+thisUrl, 3);
+      Debug.debug("Downloading file from "+srcUrlDir, 3);
       // local directory
-      if(thisUrl.startsWith("file:")){
-        String rootUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
-        String fsPath = rootUrl;
+      if(srcUrlDir.startsWith("file:")){
+        if(!destFileName.equals(srcFileName)){
+          throw(new IOException("ERROR: Cannot rename file "+srcFileName+"->"+destFileName));
+        }
+        String fsPath = srcUrlDir;
         fsPath = fsPath.replaceFirst("^file://", "/");
         fsPath = fsPath.replaceFirst("^file:/", "/");
         fsPath = fsPath.replaceFirst("^file:", "");
-        Debug.debug("Downloading file to "+dir.getAbsolutePath(), 3);        
-        if(fsPath==null || dir==null){
+        Debug.debug("Downloading file to "+downloadDir.getAbsolutePath(), 3);        
+        if(fsPath==null || downloadDir==null){
           throw new IOException("ERROR: source or destination directory not given. "+
-              fsPath+":"+dir);
+              fsPath+":"+downloadDir);
         }        
-        if(!fsPath.endsWith("/") && !fileName.startsWith("/")){
+        if(!fsPath.endsWith("/") && !destFileName.startsWith("/")){
           fsPath = fsPath+"/";
         }
         try{
-          localCopy(dir.getAbsolutePath(), new File(fsPath+fileName));
-          GridPilot.getClassMgr().getStatusBar().setLabel(fsPath+fileName+" copied");
+          localCopy(downloadDir.getAbsolutePath(), new File(fsPath+destFileName));
+          GridPilot.getClassMgr().getStatusBar().setLabel(fsPath+destFileName+" copied");
         }
         catch(IOException e){
           Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
@@ -1128,30 +1141,25 @@ public class TransferControl{
         }
       }
       // remote gsiftp directory
-      else if(thisUrl.startsWith("gsiftp://")){
-        // construct remote location of file
-        String rootUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
-        String fsPath = rootUrl;
-        if(!fsPath.endsWith("/") && !fileName.startsWith("/")){
-          fsPath = fsPath+"/";
+      else if(srcUrlDir.startsWith("gsiftp://")){
+        Debug.debug("Downloading to "+downloadDir.getAbsolutePath(), 3);        
+        Debug.debug("Downloading "+destFileName+" from "+srcUrlDir, 3);
+        if(!destFileName.equals(srcFileName)){
+          throw(new IOException("ERROR: Cannot rename file "+srcFileName+"->"+destFileName));
         }
-        // construct local location of file
-        Debug.debug("Downloading to "+dir.getAbsolutePath(), 3);        
-        Debug.debug("Downloading "+fileName+" from "+thisUrl, 3);
-        final String fName = fileName;
-        final File dName = dir;
+        final File dName = downloadDir;
         frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         (new MyThread(){
           public void run(){
             try{
-              GlobusURL globusUrl = new GlobusURL(thisUrl+fName);
+              GlobusURL globusUrl = new GlobusURL(url);
               GSIFTPFileTransfer gsiftpFileTransfer = new GSIFTPFileTransfer();
               JProgressBar pb = new JProgressBar();
               GridPilot.getClassMgr().getStatusBar().setProgressBar(pb);
               gsiftpFileTransfer.getFile(globusUrl, dName, GridPilot.getClassMgr().getStatusBar(),
                   pb);
               GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
-              GridPilot.getClassMgr().getStatusBar().setLabel(thisUrl+fName+" downloaded");
+              GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
             }
             catch(IOException e){
               Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
@@ -1171,28 +1179,20 @@ public class TransferControl{
           }
         }).run();               
       }
-      else if(thisUrl.startsWith("http://") || thisUrl.startsWith("https://")){
-        // construct remote location of file
-        String rootUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
-        String fsPath = rootUrl;
-        if(!fsPath.endsWith("/") && !fileName.startsWith("/")){
-          fsPath = fsPath+"/";
-        }
-        // construct local location of file
-        Debug.debug("Downloading file to "+dir.getAbsolutePath(), 3);        
-        String dirPath = dir.getAbsolutePath();
-        if(!dirPath.endsWith("/") && !fileName.startsWith("/")){
+      else if(srcUrlDir.startsWith("http://") || srcUrlDir.startsWith("https://")){
+        Debug.debug("Downloading file to "+downloadDir.getAbsolutePath(), 3);        
+        String dirPath = downloadDir.getAbsolutePath();
+        if(!dirPath.endsWith("/") && !destFileName.startsWith("/")){
           dirPath = dirPath+"/";
         }
-        Debug.debug("Downloading from "+thisUrl+fileName+" to "+dirPath+fileName, 2);
-        final String fName = fileName;
+        Debug.debug("Downloading from "+url+" to "+dirPath+destFileName, 2);
+        final String fName = destFileName;
         final String dName = dirPath;
-        // TODO: implement wildcard *
         frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         (new MyThread(){
           public void run(){
             try{
-              InputStream is = (new URL(thisUrl+fName)).openStream();
+              InputStream is = (new URL(url)).openStream();
               DataInputStream dis = new DataInputStream(new BufferedInputStream(is));
               FileOutputStream os = new FileOutputStream(new File(dName+fName));
               // read data in chunks of 10 kB
@@ -1203,7 +1203,7 @@ public class TransferControl{
               dis.close();
               is.close();
               os.close();
-              GridPilot.getClassMgr().getStatusBar().setLabel(thisUrl+fName+" downloaded");
+              GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
             }
             catch(IOException e){
               Debug.debug("File download failed. "+e.getMessage(), 1);
@@ -1217,11 +1217,11 @@ public class TransferControl{
         }).run();               
       }
       else{
-        throw(new IOException("Unknown protocol for "+thisUrl));
+        throw(new IOException("Unknown protocol for "+url));
       }
     }
     catch(IOException e){
-      Debug.debug("Could not get URL "+thisUrl+". "+e.getMessage(), 1);
+      Debug.debug("Could not get URL "+url+". "+e.getMessage(), 1);
       e.printStackTrace();
       throw e;
     }   
@@ -1229,42 +1229,51 @@ public class TransferControl{
 
   /**
    * Upload file to URL.
-   * @param thisUrl
+   * @param uploadUrl the destination; can be either a directory or a file name
    * @param file
    * @param frame
    * @throws IOException
    * @throws FTPException
    */
-  public static void upload(final String thisUrl, File file, final Container frame) throws IOException, FTPException{
+  public static void upload(final String uploadUrl, File file, final Container frame) throws IOException, FTPException{
     try{
       
-      if(!thisUrl.endsWith("/")){
-        throw(new IOException("Upload location must be a directory. "+thisUrl));
+      String uploadUrlDir = null;
+      String uploadFileName = null;
+      
+      if(uploadUrl.endsWith("/")){
+        uploadUrlDir = uploadUrl;
+        uploadFileName = file.getName();
+      }
+      else{
+        int lastSlash = uploadUrl.lastIndexOf("/");
+        if(lastSlash>-1){
+          uploadFileName = uploadUrl.substring(lastSlash + 1);
+          uploadUrlDir = uploadUrl.substring(0, lastSlash + 1);
+        }
       }
       
-      Debug.debug("Uploading file to "+thisUrl, 3);
+      Debug.debug("Uploading file to "+uploadUrlDir, 3);
       // local directory
-      if(thisUrl.startsWith("file:")){
-        String fsPath = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
-        fsPath = fsPath.replaceFirst("^file://", "/");
-        fsPath = fsPath.replaceFirst("^file:/", "/");
-        fsPath = fsPath.replaceFirst("^file:", "");
+      if(uploadUrlDir.startsWith("file:")){
+        String fsPath = Util.clearFile(uploadUrlDir);
         Debug.debug("Uploading file to "+fsPath, 3);        
-        if(fsPath==null || file==null){
-          return;
+        if(fsPath==null || uploadFileName==null || file==null){
+          throw(new IOException("ERROR: fsPath==null || uploadFileName==null || file==null"));
         }
-        
+        if(!file.getName().equals(uploadFileName)){
+          throw(new IOException("ERROR: Cannot rename local file "+file.getName()+"->"+uploadFileName));
+        }      
         if(!fsPath.endsWith("/") && !file.getName().startsWith("/"))
           fsPath = fsPath+"/";
-        
         localCopy(fsPath, file);
       }
       // remote gsiftp directory
-      else if(thisUrl.startsWith("gsiftp://")){
-        if(!thisUrl.endsWith("/")){
-          throw(new IOException("Upload location must be a directory. "+thisUrl));
+      else if(uploadUrlDir.startsWith("gsiftp://")){
+        if(!uploadUrlDir.endsWith("/")){
+          throw(new IOException("Upload location must be a directory. "+uploadUrl));
         }
-        GlobusURL globusUrl = new GlobusURL(thisUrl+file.getName());
+        GlobusURL globusUrl = new GlobusURL(uploadUrlDir+uploadFileName);
         JProgressBar pb = new JProgressBar();
         GridPilot.getClassMgr().getStatusBar().setProgressBar(pb);
         GSIFTPFileTransfer gsiftpFileTransfer = new GSIFTPFileTransfer();
@@ -1273,17 +1282,17 @@ public class TransferControl{
         GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
       }
       else{
-        throw(new IOException("Unknown protocol for "+thisUrl));
+        throw(new IOException("Unknown protocol for "+uploadUrl));
       }
     }
     catch(IOException e){
-      Debug.debug("Could not upload to URL "+thisUrl+". "+e.getMessage(), 1);
+      Debug.debug("Could not upload to URL "+uploadUrl+". "+e.getMessage(), 1);
       GridPilot.getClassMgr().getStatusBar().setLabel("ERROR!\n\nFile could not be copied.\n\n" +
           e.getMessage());
       throw e;
     }
     catch(FTPException e){
-      Debug.debug("Could not save to URL "+thisUrl+". "+e.getMessage(), 1);
+      Debug.debug("Could not save to URL "+uploadUrl+". "+e.getMessage(), 1);
       throw e;
     }
   }

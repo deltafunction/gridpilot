@@ -33,6 +33,7 @@ import gridpilot.LocalStaticShellMgr;
 import gridpilot.LogFile;
 import gridpilot.GridPilot;
 import gridpilot.StatusBar;
+import gridpilot.TransferControl;
 import gridpilot.Util;
 import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 
@@ -80,13 +81,12 @@ public class NGComputingSystem implements ComputingSystem{
     if(workingDir==null || workingDir.equals("")){
       workingDir = "~";
     }
+    // unqualified names
     else if(!workingDir.toLowerCase().matches("\\w:.*") &&
         !workingDir.startsWith("/") && !workingDir.startsWith("~")){
       workingDir = "~"+File.separator+workingDir;
     }
-    if(workingDir.startsWith("~")){
-      workingDir = System.getProperty("user.home")+workingDir.substring(1);
-    }
+    workingDir = Util.clearTildeLocally(Util.clearFile(workingDir));
     if(workingDir.endsWith("/") || workingDir.endsWith("\\")){
       workingDir = workingDir.substring(0, workingDir.length()-1);
     }
@@ -539,7 +539,8 @@ public class NGComputingSystem implements ComputingSystem{
     
     // Get the outputs
     try{
-      Debug.debug("Getting : " + job.getName() + ":" + job.getJobId(), 3);
+      Debug.debug("Getting : " + job.getName() + ":" + job.getJobId() +
+          " -> "+dirName, 3);
       ARCGridFTPJob gridJob = getGridJob(job);
       gridJob.get(dirName);
      }
@@ -1073,7 +1074,7 @@ public class NGComputingSystem implements ComputingSystem{
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
     
-    GSIFTPFileTransfer gridftpFileSystem = GridPilot.getClassMgr().getGSIFTPFileTransfer();
+    //GSIFTPFileTransfer gridftpFileSystem = GridPilot.getClassMgr().getGSIFTPFileTransfer();
 
     /**
      * move temp StdOut -> finalStdOut
@@ -1082,7 +1083,7 @@ public class NGComputingSystem implements ComputingSystem{
       try{
         syncCurrentOutputs(job);
         if(!LocalStaticShellMgr.existsFile(job.getStdOut())){
-          logFile.addMessage("Post processing : File " + job.getStdOut() + " doesn't exist");
+          logFile.addMessage("Post-processing : File " + job.getStdOut() + " doesn't exist");
           return false;
         }
       }
@@ -1092,14 +1093,10 @@ public class NGComputingSystem implements ComputingSystem{
         logFile.addMessage(error, e);
         //throw e;
       }
-      Debug.debug("Post processing : Renaming " + job.getStdOut() + " in " + finalStdOut, 2);
-      // TODO: use TransferControl
-      // if(!shell.moveFile(job.getStdOut(), finalStdOut)){
+      Debug.debug("Post-processing : Moving " + job.getStdOut() + " -> " + finalStdOut, 2);
       try{
-        gridftpFileSystem.putFile(new File(job.getStdOut()),
-            new GlobusURL(finalStdOut),
-            GridPilot.getClassMgr().getStatusBar(),
-            null);
+        TransferControl.upload(finalStdOut, new File(job.getStdOut()),
+            GridPilot.getClassMgr().getGlobalFrame().getContentPane());
       }
       catch(Throwable e){
         error = "ERROR copying stdout: "+e.getMessage();
@@ -1117,7 +1114,7 @@ public class NGComputingSystem implements ComputingSystem{
     if(finalStdErr!=null && finalStdErr.trim().length()!=0){
       try{
         if(!LocalStaticShellMgr.existsFile(job.getStdErr())){
-          logFile.addMessage("Post processing : File " + job.getStdErr() + " doesn't exist");
+          logFile.addMessage("Post-processing : File " + job.getStdErr() + " doesn't exist");
           return false;
         }
       }
@@ -1130,10 +1127,8 @@ public class NGComputingSystem implements ComputingSystem{
       Debug.debug("Post processing : Renaming " + job.getStdErr() + " in " + finalStdErr,2);
       //shell.moveFile(job.getStdOut(), finalStdOutName);
       try{
-        gridftpFileSystem.putFile(new File(job.getStdErr()),
-            new GlobusURL(finalStdErr),
-            GridPilot.getClassMgr().getStatusBar(),
-            null);
+        TransferControl.upload(finalStdErr, new File(job.getStdErr()),
+            GridPilot.getClassMgr().getGlobalFrame().getContentPane());
       }
       catch(Throwable e){
         error = "ERROR copying stderr: "+e.getMessage();

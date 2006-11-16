@@ -1494,7 +1494,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       else if(e.getSource()==bDownload){
         File dir = Util.getDownloadDir(this);      
         String fileName = Util.getFileName(jtFilter.getText());
-        TransferControl.download(thisUrl, fileName, dir, ep);
+        TransferControl.download(thisUrl+fileName, dir, ep);
         try{
           ep.getDocument().putProperty(
               Document.StreamDescriptionProperty, null);
