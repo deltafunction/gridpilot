@@ -495,6 +495,13 @@ public class Util{
     if(str.startsWith("~")){
       str = System.getProperty("user.home")+str.substring(1);
     }
+    // in case we're trying to use unix paths on windows
+    if(System.getProperty("os.name").toLowerCase().startsWith("windows") && str.startsWith("/")){
+      str = "C:"+str;
+    }
+    if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
+      str =str.replaceAll("/", "\\\\");
+    }
     return str;
   }
 
