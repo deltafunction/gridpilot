@@ -199,6 +199,8 @@ public class NGComputingSystem implements ComputingSystem{
       return;
     }
     finalRuntimes = new HashSet();
+    // At least for now, we only have Linux resources on NorduGrid
+    finalRuntimes.add("Linux");
     if(useInfoSystem){
       Object rte = null;
       for(int i=0; i<resources.length; ++i){
