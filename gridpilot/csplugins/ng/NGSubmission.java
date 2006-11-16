@@ -183,7 +183,7 @@ public class NGSubmission{
             break;
           }
           else{
-            if(resourceIndex>resources.length-1){
+            if(resourceIndex==resources.length-1){
               resourceIndex = 0;
             }
             else{
