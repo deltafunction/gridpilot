@@ -41,7 +41,7 @@ public class NGScriptGenerator extends ScriptGenerator{
     String [] actualParam = dbPluginMgr.getJobDefTransPars(jobDefID);
 
     // The transformation script
-    String httpscript = dbPluginMgr.getTransformationScript(jobDefID);        
+    String httpscript = dbPluginMgr.getTransformationScript(jobDefID);
     String scriptname = httpscript;
     int lastSlash = scriptname.lastIndexOf("/");
     if(lastSlash>-1){
@@ -84,12 +84,8 @@ public class NGScriptGenerator extends ScriptGenerator{
       }
       // Input files: scripts
       writeLine(bufXRSL,"(inputFiles=");
-      if(exeFileName.indexOf(":/")==-1){
-        inputFilesList.add(exeFileName);
-        writeLine(bufXRSL,"(\""+shortExeFileName+"\" \"\")");
-      }
-      else if(exeFileName.startsWith("file:/")){
-        inputFilesList.add(exeFileName.substring(5));
+      if(exeFileName.matches("^\\w:.*") || exeFileName.startsWith("file:/")){
+        inputFilesList.add(Util.clearTildeLocally(Util.clearFile(exeFileName)));
         writeLine(bufXRSL,"(\""+shortExeFileName+"\" \"\")");
       }
       else{
@@ -97,13 +93,8 @@ public class NGScriptGenerator extends ScriptGenerator{
         //xrslExeFileName = xrslExeFileName.replaceAll("\\\\","\\\\\\\\");
         writeLine(bufXRSL,"(\""+shortExeFileName+"\" \""+xrslExeFileName+"\")");
       }
-      
-      if(httpscript.indexOf(":/")==-1){
-        inputFilesList.add(httpscript);
-        writeLine(bufXRSL,"(\""+scriptname+"\" \"\")");
-      }
-      else if(httpscript.startsWith("file:/")){
-        inputFilesList.add(httpscript.substring(5));
+      if(httpscript.matches("^\\w:.*") || httpscript.startsWith("file:/")){
+        inputFilesList.add(Util.clearTildeLocally(Util.clearFile(httpscript)));
         writeLine(bufXRSL,"(\""+scriptname+"\" \"\")");
       }
       else{
@@ -119,8 +110,8 @@ public class NGScriptGenerator extends ScriptGenerator{
       if(inputs!=null && inputs.length>0){
         inputFiles1 = inputs;
       }
-      // Input files (typically a tarball with code) from
-      // transformation definition
+      // Input files from transformation definition
+      // (typically a tarball with code)
       String[] inputFiles2 = new String [] {};
       inputs = dbPluginMgr.getTransformationInputs(
           dbPluginMgr.getJobDefTransformationID(jobDefID));
@@ -134,44 +125,42 @@ public class NGScriptGenerator extends ScriptGenerator{
       for(int i=0; i<inputFiles.length; ++i){
         // Find unqualified name of input file and use this for destination
         lastSlash = inputFiles[i].lastIndexOf("/");
-        if(lastSlash > -1){
+        if(lastSlash>-1){
           inputFileName = inputFiles[i].substring(lastSlash + 1);
         }
         else{
           inputFileName = inputFiles[i];
         }
-        inputFileURL = "";
+        inputFileURL = null;
         if(inputFiles[i].startsWith("http://") ||
             inputFiles[i].startsWith("https://") ||
             inputFiles[i].startsWith("gsiftp://") ||
             inputFiles[i].startsWith("ftp://")){
           inputFileURL = inputFiles[i];
         }
-        Debug.debug("remote physical name: "+inputFileURL,3);
-        if (inputFiles[i].startsWith("/castor/cern.ch")){
+        /*else if(inputFiles[i].startsWith("/castor/cern.ch")){
           inputFileURL = "gsiftp://castorgrid.cern.ch"+inputFiles[i];
-        }
+        }*/
         // If input file is not given as a full URL or /castor/cern.ch/...
         // prepend default url prefix - if url is defined in config file
-        if(inputFileURL.length()==0){
-          // Construct URL using full path of input file
-          inputFileURL = inputFiles[i];
+        else{
+          // URL is full path of input file
+          inputFileURL = Util.clearTildeLocally(Util.clearFile(inputFiles[i]));
         }
-        
-        // Add local files to the return value
-        if(inputFileURL.indexOf(":/")==-1 || httpscript.startsWith("file:/")){
+        Debug.debug("remote physical name: "+inputFileURL, 3);
+       
+        // Add local files to the return value.
+        // Files starting with / are assumed to already be on the server.
+        if(inputFiles[i].startsWith("file:/")){
           inputFilesList.add(inputFileURL);
+          writeLine(bufXRSL,"(\""+inputFileName+"\" \""+inputFileURL+"\")");       
+        }
+        else if(inputFiles[i].startsWith("/")){
+          // do nothing
         }
         else{
-          if(inputFileURL.length()>0){
-            writeLine(bufXRSL,"(\""+inputFileName+"\" \""+inputFileURL+"\")");       
-          }
-          // If url is not defined in config file, read from file system
-          else{
-            writeLine(bufXRSL,"(\""+inputFileName+"\" \""+inputFiles[i]+"\")");
-          }
+          writeLine(bufXRSL,"(\""+inputFileName+"\" \""+inputFileURL+"\")");       
         }
-
       }
       writeLine(bufXRSL,")");
 
@@ -196,16 +185,14 @@ public class NGScriptGenerator extends ScriptGenerator{
       
       // runtime environment
       String [] uses = dbPluginMgr.getRuntimeEnvironments(jobDefID);
-      for(int i=0; i<uses.length; ++i){
-        if(uses!=null && uses.length>0 && uses[0]!=null){
-          for(int j=0; j<uses.length; ++j){
-            writeLine(bufXRSL, "(runTimeEnvironment="+
-                Util.dos2unix(uses[i])+")");
-            writeLine(bufXRSL, "");
+      if(uses!=null && uses.length>0 && uses[0]!=null){
+        for(int i=0; i<uses.length; ++i){
+          // At least for now, we only have Linux resources on NorduGrid
+          if(uses[i].equals("Linux")){
+            continue;
           }
-        }
-        else{
-          Debug.debug("WARNING: Could not get runtime environment for. "+uses[i], 1);
+          writeLine(bufXRSL, "(runTimeEnvironment="+Util.dos2unix(uses[i])+")");
+          writeLine(bufXRSL, "");
         }
       }
       
