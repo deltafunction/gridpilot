@@ -51,9 +51,6 @@ public class ForkComputingSystem implements ComputingSystem{
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
     
-    defaultUser = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "default user");
-    userName = GridPilot.getClassMgr().getConfigFile().getValue(csName, "user");
-
     try{
       shellMgr = GridPilot.getClassMgr().getShellMgr(csName);
     }
@@ -61,6 +58,9 @@ public class ForkComputingSystem implements ComputingSystem{
       Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
       return;
     }
+    
+    defaultUser = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "default user");
+    userName = shellMgr.getUserName();
 
     workingDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "working directory");
     if(workingDir==null || workingDir.equals("")){
@@ -78,14 +78,23 @@ public class ForkComputingSystem implements ComputingSystem{
     }
     
     commandSuffix = ".sh";
-    if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
+    if(shellMgr.isLocal() && System.getProperty("os.name").toLowerCase().startsWith("windows")){
       commandSuffix = ".bat";
     }
     
     runtimeDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "runtime directory");   
-    if(shellMgr.isLocal() && runtimeDirectory!=null && runtimeDirectory.startsWith("~")){
-      runtimeDirectory = System.getProperty("user.home")+runtimeDirectory.substring(1);
+    if(runtimeDirectory!=null && runtimeDirectory.startsWith("~")){
+      // Expand ~. Should work for both local and remote shells...
+      if(shellMgr.isLocal()){
+        runtimeDirectory = System.getProperty("user.home")+runtimeDirectory.substring(1);
+      }
+      else{
+        // remote shells are always non-Windows, so just discard c: and replace \ -> /
+        runtimeDirectory = (new File(shellMgr.listFiles(runtimeDirectory)[0])
+            ).getParentFile().getAbsolutePath().replaceAll("\\\\", "/"
+                ).replaceFirst("^\\w:", "");
+      }
     }
 
     publicCertificate = GridPilot.getClassMgr().getConfigFile().getValue(
@@ -303,11 +312,6 @@ public class ForkComputingSystem implements ComputingSystem{
         rtVals = new String [runtimeEnvironmentFields.length];
       }
       
-      // Expand ~. Should work for both local and remote shells...
-      if(runtimes.size()>0){
-        runtimeDirectory = (new File(shellMgr.listFiles(runtimeDirectory)[0])).getParentFile().getAbsolutePath();
-      }
-
       for(Iterator it=runtimes.iterator(); it.hasNext();){
         
         name = null;
@@ -318,8 +322,7 @@ public class ForkComputingSystem implements ComputingSystem{
         
         // Get the name
         Debug.debug("File found: "+runtimeDirectory+":"+fil, 3);
-        name = fil.substring(runtimeDirectory.length()+1).replaceAll(
-                "\\\\", "/");
+        name = fil.substring(runtimeDirectory.length()+1);
         
         boolean rteExistsLocally = false;
         if(localDBMgr!=null){
@@ -724,6 +727,12 @@ public class ForkComputingSystem implements ComputingSystem{
     if(userName!=null && !userName.equals("")){
       return userName;
     }
+    if(defaultUser!=null){
+      return defaultUser;
+    }
+    else{
+      Debug.debug("default user null, using system user", 3);
+    }
     String user = null;
     try{
       user = System.getProperty("user.name");
@@ -736,13 +745,6 @@ public class ForkComputingSystem implements ComputingSystem{
       error = "Exception during getUserInfo\n" +
       "\tException\t: " + ioe.getMessage();
       logFile.addMessage(error, ioe);
-    }
-    if(user==null && defaultUser!=null){
-      Debug.debug("Job defaultUser null, using value from config file", 3);
-      user = defaultUser;
-    }
-    else{
-      Debug.debug("WARNING: no defaultUser defined!", 1);
     }
     return user;
   }
@@ -1038,8 +1040,8 @@ public class ForkComputingSystem implements ComputingSystem{
         Debug.debug("Post processing : getting " + src + " -> " + dest, 2);
         try{
           String realDest = Util.clearTildeLocally(Util.clearFile(dest));
-          Debug.debug("Post processing : real locations: " + src + " -> " + realDest, 2);
           File realParentDir = (new File(realDest)).getParentFile();
+          Debug.debug("Post processing : real locations: " + src + " -> " + realDest, 2);
           // Check if parent dir exists, create if not
           if(!realParentDir.exists()){
             try{

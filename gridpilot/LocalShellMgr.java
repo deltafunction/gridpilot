@@ -485,4 +485,8 @@ public class LocalShellMgr implements ShellMgr {
     return false;
   }
 
+  public String getUserName(){
+    return null;
+  }
+
 }

@@ -4,6 +4,11 @@ import java.io.*;
 import java.util.HashSet;
 
 public interface ShellMgr{
+  
+  /**
+   * Get the user name that was used to authenticate
+   */
+  public String getUserName();
 
   /**
    * Executes in the shell the command 'cmd', in the current directory, with

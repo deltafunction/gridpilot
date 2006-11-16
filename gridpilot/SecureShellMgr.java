@@ -230,7 +230,8 @@ public class SecureShellMgr implements ShellMgr{
       out.println(line);
     }
     in.close();
-    out.close();    
+    out.close();
+    Util.dos2unix(tmpFile);
     upload(tmpFile.getAbsolutePath(), name);
     tmpFile.delete(); 
   }
@@ -283,7 +284,7 @@ public class SecureShellMgr implements ShellMgr{
       is = new FileInputStream(lFile);
       byte[] buf = new byte[1024];
       while(true){
-        int len=is.read(buf, 0, buf.length);
+        int len = is.read(buf, 0, buf.length);
         if(len<=0) break;
         out.write(buf, 0, len); //out.flush();
       }
@@ -320,35 +321,35 @@ public class SecureShellMgr implements ShellMgr{
   }
 
   public boolean download(String rFile, String lFile){
-    lFile = getFullPath(lFile);
+    rFile = getFullPath(rFile);
     FileOutputStream fos = null;
     Channel channel = null;
     try{
-      String prefix=null;
+      String prefix = null;
       if(new File(lFile).isDirectory()){
-        prefix=lFile+File.separator;
+        prefix = lFile+File.separator;
       }
       // exec 'scp -f rfile' remotely
-      String command="scp -f "+rFile;
+      String command = "scp -f "+rFile;
       channel = getChannel();
       ((ChannelExec)channel).setCommand(command);
       // get I/O streams for remote scp
-      OutputStream out=channel.getOutputStream();
-      InputStream in=channel.getInputStream();
+      OutputStream out = channel.getOutputStream();
+      InputStream in = channel.getInputStream();
       channel.connect();
-      byte[] buf=new byte[1024];
+      byte[] buf = new byte[1024];
       // send '\0'
-      buf[0]=0;
+      buf[0] = 0;
       out.write(buf, 0, 1);
       out.flush();
       while(true){
-        int c=checkAck(in);
+        int c = checkAck(in);
         if(c!='C'){
           break;
         }
         // read '0644 '
         in.read(buf, 0, 5);
-        long filesize=0L;
+        long filesize = 0L;
         while(true){
           if(in.read(buf, 0, 1)<0){
             // error
@@ -357,32 +358,32 @@ public class SecureShellMgr implements ShellMgr{
           if(buf[0]==' '){
             break;
           }
-          filesize=filesize*10L+(long)(buf[0]-'0');
+          filesize = filesize*10L+(long)(buf[0]-'0');
         }
-        String file=null;
+        String file = null;
         for(int i=0;;i++){
           in.read(buf, i, 1);
           if(buf[i]==(byte)0x0a){
-            file=new String(buf, 0, i);
+            file = new String(buf, 0, i);
             break;    
           }
         }
         Debug.debug("filesize="+filesize+", file="+file, 2);
         // send '\0'
-        buf[0]=0;
+        buf[0] = 0;
         out.write(buf, 0, 1);
         out.flush();
         // read content of lfile
-        fos=new FileOutputStream(prefix==null ? lFile : prefix+file);
+        fos = new FileOutputStream(prefix==null ? lFile : prefix+file);
         int foo;
         while(true){
           if(buf.length<filesize){
-            foo=buf.length;
+            foo = buf.length;
           }
           else{
-            foo=(int)filesize;
+            foo = (int)filesize;
           }
-          foo=in.read(buf, 0, foo);
+          foo = in.read(buf, 0, foo);
           if(foo<0){
             // error 
             break;
@@ -394,18 +395,18 @@ public class SecureShellMgr implements ShellMgr{
           }
         }
         fos.close();
-        fos=null;
+        fos = null;
         if(checkAck(in)!=0){
           return false;
         }
         // send '\0'
-        buf[0]=0;
+        buf[0] = 0;
         out.write(buf, 0, 1);
         out.flush();
       }
     }
     catch(Exception e){
-      logFile.addMessage("ERROR: could not copy file "+lFile+"->"+user+"@"+host+":"+rFile, e);
+      logFile.addMessage("ERROR: could not copy file "+user+"@"+host+":"+rFile+"->"+lFile, e);
       e.printStackTrace();
       try{
         if(fos!=null){
@@ -856,6 +857,10 @@ public class SecureShellMgr implements ShellMgr{
       e.printStackTrace();
     }
     return (out!=null && !out.equals(""));
+  }
+
+  public String getUserName(){
+    return user;
   }
 
 }

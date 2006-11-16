@@ -53,7 +53,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     writeBloc(buf, "Sleep 5 seconds before start", ScriptGenerator.TYPE_SUBSECTION, commentStart);
     // this is to be sure to have some stdout (jobs without are considered failed)
     writeLine(buf, "echo starting...");
-    if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
+    if(shellMgr.isLocal() && System.getProperty("os.name").toLowerCase().startsWith("windows")){
       writeLine(buf, "ping -n 10 127.0.0.1 >/nul");
     }
     else{
@@ -69,9 +69,9 @@ public class ForkScriptGenerator extends ScriptGenerator{
     for(int i=0; i<rtes.length; ++i){
       writeBloc(buf, "runtime environment: " + rtes[i], ScriptGenerator.TYPE_COMMENT, commentStart);
       String initTxt = dbPluginMgr.getRuntimeInitText(rtes[i], csName).toString();
-      writeLine(buf, Util.dos2unix(initTxt)); // get rid of Windows' <ctrl>M
+      writeLine(buf, initTxt); 
       writeLine(buf, ("source "+Util.clearFile(runtimeDirectory)+
-          "/"+rtes[i]).replaceAll("//", "/")); // get rid of Windows' <ctrl>M
+          "/"+rtes[i]).replaceAll("//", "/"));
       writeLine(buf, "");
     }
 
@@ -81,9 +81,9 @@ public class ForkScriptGenerator extends ScriptGenerator{
     if(inputFiles!=null && inputFiles.length>0 || outputFiles!=null && outputFiles.length>0){
       if(requiredRuntimeEnv!=null && requiredRuntimeEnv.length()>0){
         String initTxt = dbPluginMgr.getRuntimeInitText(requiredRuntimeEnv, csName).toString();
-        writeLine(buf, Util.dos2unix(initTxt)); // get rid of Windows' <ctrl>M
+        writeLine(buf, initTxt);
         writeLine(buf, ("source "+Util.clearFile(runtimeDirectory)+
-            "/"+requiredRuntimeEnv).replaceAll("//", "/")); // get rid of Windows' <ctrl>M
+            "/"+requiredRuntimeEnv).replaceAll("//", "/"));
         writeLine(buf, "");
       }
       if(remoteCopyCommand!=null && remoteCopyCommand.length()>0){
