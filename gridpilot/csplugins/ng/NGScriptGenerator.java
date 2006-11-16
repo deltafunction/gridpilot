@@ -50,7 +50,7 @@ public class NGScriptGenerator extends ScriptGenerator{
 
     //create xrsl file
     String shortExeFileName = new File(exeFileName).getName();
-    String xrslExeFileName = exeFileName;
+    String xrslExeFileName = Util.clearTildeLocally(Util.clearFile(exeFileName));
     Debug.debug("shortName : " + shortExeFileName, 3);
     String inputFileName = null;
     String inputFileURL = null;
@@ -84,7 +84,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       }
       // Input files: scripts
       writeLine(bufXRSL,"(inputFiles=");
-      if(exeFileName.matches("^\\w:.*") || exeFileName.startsWith("file:/")){
+      if(exeFileName.matches("^\\w:.*") || exeFileName.startsWith("file:")){
         inputFilesList.add(Util.clearTildeLocally(Util.clearFile(exeFileName)));
         writeLine(bufXRSL,"(\""+shortExeFileName+"\" \"\")");
       }
@@ -93,7 +93,7 @@ public class NGScriptGenerator extends ScriptGenerator{
         //xrslExeFileName = xrslExeFileName.replaceAll("\\\\","\\\\\\\\");
         writeLine(bufXRSL,"(\""+shortExeFileName+"\" \""+xrslExeFileName+"\")");
       }
-      if(httpscript.matches("^\\w:.*") || httpscript.startsWith("file:/")){
+      if(httpscript.matches("^\\w:.*") || httpscript.startsWith("file:")){
         inputFilesList.add(Util.clearTildeLocally(Util.clearFile(httpscript)));
         writeLine(bufXRSL,"(\""+scriptname+"\" \"\")");
       }
@@ -115,6 +115,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       String[] inputFiles2 = new String [] {};
       inputs = dbPluginMgr.getTransformationInputs(
           dbPluginMgr.getJobDefTransformationID(jobDefID));
+      Debug.debug("input files: "+inputs.length+" "+Util.arrayToString(inputs), 3);
       if(inputs!=null && inputs.length>0){
         inputFiles2 = inputs;
       }
@@ -151,7 +152,7 @@ public class NGScriptGenerator extends ScriptGenerator{
        
         // Add local files to the return value.
         // Files starting with / are assumed to already be on the server.
-        if(inputFiles[i].startsWith("file:/")){
+        if(inputFiles[i].startsWith("file:")){
           inputFilesList.add(inputFileURL);
           writeLine(bufXRSL,"(\""+inputFileName+"\" \""+inputFileURL+"\")");       
         }
