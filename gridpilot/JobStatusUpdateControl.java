@@ -313,6 +313,9 @@ public class JobStatusUpdateControl{
           // With the line below: avoid checking over and over again.
           //                      To recheck, clear and add again to monitoring panel.
           //job.setNeedToBeRefreshed(false);
+          if(job.getDBStatus()==DBPluginMgr.UNDECIDED || job.getDBStatus()==DBPluginMgr.UNEXPECTED){
+            job.setNeedToBeRefreshed(false);
+          }
           break;
         case ComputingSystem.STATUS_FAILED:
           job.setNeedToBeRefreshed(false);
