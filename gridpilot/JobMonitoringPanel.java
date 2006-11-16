@@ -260,9 +260,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     miResubmit.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        submissionControl = GridPilot.getClassMgr().getSubmissionControl();
-        submissionControl.resubmit(
-            DatasetMgr.getJobsAtRows(statusTable.getSelectedRows()));
+        (new Thread(){
+          public void run(){
+            submissionControl = GridPilot.getClassMgr().getSubmissionControl();
+            submissionControl.resubmit(
+                DatasetMgr.getJobsAtRows(statusTable.getSelectedRows()));
+          }
+        }).start();
       }
     });
 
