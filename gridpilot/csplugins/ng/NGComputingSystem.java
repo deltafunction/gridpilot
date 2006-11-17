@@ -411,7 +411,7 @@ public class NGComputingSystem implements ComputingSystem{
     catch(Exception e){
       Debug.debug("Could not cancel job. Probably finished. "+
           job.getName()+". "+e.getMessage(), 3);
-      e.printStackTrace();
+      //e.printStackTrace();
     }
     try{
       ARCGridFTPJob gridJob = getGridJob(job);
@@ -539,13 +539,13 @@ public class NGComputingSystem implements ComputingSystem{
     
     // Get the outputs
     try{
-      Debug.debug("Getting : " + job.getName() + ":" + job.getJobId() +
+      Debug.debug("Getting : " + job.getName() + " : " + job.getJobId() +
           " -> "+dirName, 3);
       ARCGridFTPJob gridJob = getGridJob(job);
-      gridJob.get(dirName);
+      gridJob.get(runDir(job)/*dirName*/);
      }
      catch(Exception ae){
-       error = "Exception during get outputs of " + job.getName() + ":" + job.getJobId() + ":\n" +
+       error = "Exception during get outputs of " + job.getName() + " : " + job.getJobId() + ":\n" +
        "\tException\t: " + ae.getMessage();
        logFile.addMessage(error, ae);
        ae.printStackTrace();
@@ -1066,22 +1066,21 @@ public class NGComputingSystem implements ComputingSystem{
    * (from AtCom1)
    */
   private boolean copyToFinalDest(JobInfo job){
-    // Will only run if there is a shell available for the computing system
-    // in question - and if the destination is accessible from this shell.
-    // For grids, stdout and stderr should be taken care of by the xrsl or jdsl
-    // (*ScriptGenerator)
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
     
-    //GSIFTPFileTransfer gridftpFileSystem = GridPilot.getClassMgr().getGSIFTPFileTransfer();
-
+    /**
+     * move downloaded output files to their final destinations
+     */
+    // TODO: look at ForkComputingsystem.setRemoteOutputFiles and job.getUploadFiles();
+    
     /**
      * move temp StdOut -> finalStdOut
      */
     if(finalStdOut!=null && finalStdOut.trim().length()!=0){
       try{
-        // this has already been done by doValidate
+        // this has already been done by doValidate...
         //syncCurrentOutputs(job);
         if(!LocalStaticShellMgr.existsFile(job.getStdOut())){
           logFile.addMessage("Post-processing : File " + job.getStdOut() + " doesn't exist");
@@ -1090,6 +1089,7 @@ public class NGComputingSystem implements ComputingSystem{
       }
       catch(Throwable e){
         error = "ERROR checking for stdout: "+e.getMessage();
+        e.printStackTrace();
         Debug.debug(error, 2);
         logFile.addMessage(error, e);
         //throw e;
@@ -1121,11 +1121,12 @@ public class NGComputingSystem implements ComputingSystem{
       }
       catch(Throwable e){
         error = "ERROR checking for stderr: "+e.getMessage();
+        e.printStackTrace();
         Debug.debug(error, 2);
         logFile.addMessage(error, e);
         //throw e;
       }
-      Debug.debug("Post processing : Renaming " + job.getStdErr() + " in " + finalStdErr,2);
+      Debug.debug("Post processing : Moving " + job.getStdErr() + " -> " + finalStdErr,2);
       //shell.moveFile(job.getStdOut(), finalStdOutName);
       try{
         TransferControl.upload(finalStdErr, new File(job.getStdErr()),
