@@ -41,17 +41,29 @@ public class NGScriptGenerator extends ScriptGenerator{
     String [] actualParam = dbPluginMgr.getJobDefTransPars(jobDefID);
 
     // The transformation script
-    String httpscript = dbPluginMgr.getTransformationScript(jobDefID);
-    String scriptname = httpscript;
-    int lastSlash = scriptname.lastIndexOf("/");
+    String scriptFileName = dbPluginMgr.getTransformationScript(jobDefID);
+    String shortScriptName = scriptFileName;
+    int lastSlash = shortScriptName.replaceAll("\\\\", "/").lastIndexOf("/");
     if(lastSlash>-1){
-      scriptname = scriptname.substring(lastSlash + 1);
+      shortScriptName = shortScriptName.substring(lastSlash + 1);
+    }
+    String xrslScriptName = null;
+    // names starting with file: will be uploaded, names starting with
+    // / or c:\ are considered to be locally available on the server
+    if(scriptFileName.startsWith("file:")){
+      xrslScriptName = Util.clearTildeLocally(Util.clearFile(scriptFileName));
+      inputFilesList.add(xrslScriptName);
+    }
+    else{
+      xrslScriptName = scriptFileName;
     }
 
-    //create xrsl file
+    //The xrsl file
     String shortExeFileName = new File(exeFileName).getName();
     String xrslExeFileName = Util.clearTildeLocally(Util.clearFile(exeFileName));
     Debug.debug("shortName : " + shortExeFileName, 3);
+    inputFilesList.add(xrslExeFileName);
+
     String inputFileName = null;
     String inputFileURL = null;
 
@@ -78,29 +90,15 @@ public class NGScriptGenerator extends ScriptGenerator{
       else{
         writeLine(bufXRSL,"(stderr=stderr)");
       }
-      writeLine(bufXRSL,"(executables=\""+shortExeFileName+"\" \""+scriptname+"\")");
+      writeLine(bufXRSL,"(executables=\""+shortExeFileName+"\" \""+shortScriptName+"\")");
       if(cpuTime!=null && !cpuTime.equals("")){
         writeLine(bufXRSL,"(cpuTime=\""+cpuTime+"\")(*endCpu*)");
       }
       // Input files: scripts
       writeLine(bufXRSL,"(inputFiles=");
-      if(exeFileName.matches("^\\w:.*") || exeFileName.startsWith("file:")){
-        inputFilesList.add(Util.clearTildeLocally(Util.clearFile(exeFileName)));
-        writeLine(bufXRSL,"(\""+shortExeFileName+"\" \"\")");
-      }
-      else{
-        //xrslExeFileName = exeFileName.replaceAll("\\w:\\\\","");
-        //xrslExeFileName = xrslExeFileName.replaceAll("\\\\","\\\\\\\\");
-        writeLine(bufXRSL,"(\""+shortExeFileName+"\" \""+xrslExeFileName+"\")");
-      }
-      if(httpscript.matches("^\\w:.*") || httpscript.startsWith("file:")){
-        inputFilesList.add(Util.clearTildeLocally(Util.clearFile(httpscript)));
-        writeLine(bufXRSL,"(\""+scriptname+"\" \"\")");
-      }
-      else{
-        //httpscript = httpscript.replaceAll("\\w:\\\\","");
-        //httpscript = httpscript.replaceAll("\\\\","\\\\\\\\");
-        writeLine(bufXRSL,"(\""+scriptname+"\" \""+httpscript+"\")");
+      writeLine(bufXRSL,"(\""+shortExeFileName+"\" \"\")");
+      if(!scriptFileName.startsWith("file:")){
+        writeLine(bufXRSL,"(\""+shortScriptName+"\" \""+xrslScriptName+"\")");
       }
       
       // Input files.
@@ -125,7 +123,7 @@ public class NGScriptGenerator extends ScriptGenerator{
             
       for(int i=0; i<inputFiles.length; ++i){
         // Find unqualified name of input file and use this for destination
-        lastSlash = inputFiles[i].lastIndexOf("/");
+        lastSlash = inputFiles[i].replaceAll("\\\\", "/").lastIndexOf("/");
         if(lastSlash>-1){
           inputFileName = inputFiles[i].substring(lastSlash + 1);
         }
@@ -139,22 +137,16 @@ public class NGScriptGenerator extends ScriptGenerator{
             inputFiles[i].startsWith("ftp://")){
           inputFileURL = inputFiles[i];
         }
-        /*else if(inputFiles[i].startsWith("/castor/cern.ch")){
-          inputFileURL = "gsiftp://castorgrid.cern.ch"+inputFiles[i];
-        }*/
-        // If input file is not given as a full URL or /castor/cern.ch/...
-        // prepend default url prefix - if url is defined in config file
         else{
           // URL is full path of input file
           inputFileURL = Util.clearTildeLocally(Util.clearFile(inputFiles[i]));
         }
-        Debug.debug("remote physical name: "+inputFileURL, 3);
+        Debug.debug("Input file physical name: "+inputFileURL, 3);
        
         // Add local files to the return value.
         // Files starting with / are assumed to already be on the server.
         if(inputFiles[i].startsWith("file:")){
           inputFilesList.add(inputFileURL);
-          writeLine(bufXRSL,"(\""+inputFileName+"\" \""+inputFileURL+"\")");       
         }
         else if(inputFiles[i].startsWith("/")){
           // do nothing
@@ -170,16 +162,20 @@ public class NGScriptGenerator extends ScriptGenerator{
       if(!join){
         line += "(\"stderr\" \"stderr\")";
       }
-            
-      String[] outputMapping = dbPluginMgr.getOutputFiles(job.getJobDefId());
+
+      String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
       String localName;
-      String logicalName;
+      String remoteName;
       // output file copy
-      for(int i=0; i<outputMapping.length/2; ++i){
-        localName = Util.addFile(outputMapping[2*i]);
-        logicalName = Util.addFile(outputMapping[2*i+1]);
-        Debug.debug("remote name: "+logicalName,3);
-        line += "(\""+localName+"\" \""+logicalName+"\")" ;
+      for(int i=0; i<outputFileNames.length; ++i){
+        localName = dbPluginMgr.getJobDefOutLocalName(job.getJobDefId(), outputFileNames[i]);
+        remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFileNames[i]);
+        if(remoteName.startsWith("/") || remoteName.matches("^\\w:.*") ||
+            remoteName.startsWith("file:")){
+          remoteName = localName;
+        }
+        Debug.debug("remote name: "+remoteName,3);
+        line += "(\""+localName+"\" \""+remoteName+"\")" ;
       }
       line += ")";
       writeLine(bufXRSL,line);
@@ -234,10 +230,9 @@ public class NGScriptGenerator extends ScriptGenerator{
       String [] tmpParams = null;
       for(int i=0; i< formalParam.length; ++i){
       	try{
-      		// replace spaces with commas
-      		tmpParams = Util.split(actualParam[i]);
-          writeLine(bufScript, "p"+(i+1)+"="+
-          		Util.arrayToString(tmpParams, ","));
+          // replace spaces with commas
+      	  tmpParams = Util.split(actualParam[i]);
+          writeLine(bufScript, "p"+(i+1)+"="+Util.arrayToString(tmpParams, ","));
       	}
       	catch(Exception ex){
       		GridPilot.getClassMgr().getStatusBar().setLabel("Warning: problem with job parameter "+i);
@@ -251,8 +246,8 @@ public class NGScriptGenerator extends ScriptGenerator{
       writeBloc(bufScript, "core script call", 1, "# ");
       
       // workaround for bug in NG on Condor
-      writeLine(bufScript, "chmod +x "+scriptname);
-      line = "./"+scriptname ;
+      writeLine(bufScript, "chmod +x "+shortScriptName);
+      line = "./"+shortScriptName ;
       for(int i=0; i<formalParam.length; ++i)
         line += " $p"+(i+1);
       writeLine(bufScript, line);

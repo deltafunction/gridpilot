@@ -251,9 +251,14 @@ public class NGSubmission{
             "(action=\"request\")");
         // Since cpuTime has been used to find queue, we no longer need it
         xrsl = xrsl.replaceFirst("\\((?i)cputime=.*\\)\\(\\*endCpu\\*\\)", "");
-          
+        
+        Debug.debug("Submittig with input files: "+Util.arrayToString(files.toArray()), 2);
+        Debug.debug("Submittig with input files: "+Util.arrayToString(fileNames.toArray()), 2);
+       
         gridJob.submit(xrsl, files, fileNames);
+        
         ngJobId = gridJob.getGlobalId();
+        
         Debug.debug("NGJobId: " + ngJobId, 3);
       }
       catch(ARCGridFTPJobException ae){

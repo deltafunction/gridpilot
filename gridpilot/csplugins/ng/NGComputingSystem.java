@@ -566,7 +566,7 @@ public class NGComputingSystem implements ComputingSystem{
     }
     if(job.getStdErr() != null && !job.getStdErr().equals("")){
       try{
-        LocalStaticShellMgr.copyFile(dirName+File.separator, job.getStdErr());
+        LocalStaticShellMgr.copyFile(dirName+File.separator+"stderr", job.getStdErr());
       }
       catch(Exception ioe){
         error = "Exception during job " + job.getName() + " getOutput :\n" +
@@ -1081,7 +1081,8 @@ public class NGComputingSystem implements ComputingSystem{
      */
     if(finalStdOut!=null && finalStdOut.trim().length()!=0){
       try{
-        syncCurrentOutputs(job);
+        // this has already been done by doValidate
+        //syncCurrentOutputs(job);
         if(!LocalStaticShellMgr.existsFile(job.getStdOut())){
           logFile.addMessage("Post-processing : File " + job.getStdOut() + " doesn't exist");
           return false;
