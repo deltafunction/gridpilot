@@ -60,7 +60,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
       }
       catch(Exception e){
         Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
-        e.printStackTrace();
+        //e.printStackTrace();
       }
 
       choices[i] = showTabs(parent, "Job " + job.getName(),
@@ -119,14 +119,19 @@ public class ShowOutputsJobsDialog extends JOptionPane{
             panel.add(pb, BorderLayout.NORTH);
             String content;
             try{
-              content = shell.readFile(filesPaths[finalI]);
+              if(shell == null){
+                content = LocalStaticShellMgr.readFile(filesPaths[finalI]);
+              }
+              else{
+                content = shell.readFile(filesPaths[finalI]);
+              }
             }
             catch (FileNotFoundException e){
               content = "This file (" + filesPaths[finalI] + ") doesn't exist";
               textArea.setForeground(Color.gray);
             }
-            catch(IOException e){
-              content = "IOExeption during reading of file " +
+            catch(Exception e){
+              content = "Exeption during reading of file " +
                   filesPaths[finalI] + " : " +
                   e.getMessage();
               textArea.setForeground(Color.gray);
