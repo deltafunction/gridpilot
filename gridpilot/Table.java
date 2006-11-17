@@ -648,10 +648,12 @@ public class Table extends JTable{
   private void changeShow(ActionEvent e){
     JCheckBoxMenuItem cbmu = (JCheckBoxMenuItem)e.getSource();
     Debug.debug("Show " + cbmu.getMnemonic(), 1);
-    if(cbmu.isSelected())
+    if(cbmu.isSelected()){
       showColumn(cbmu.getMnemonic());
-    else
+    }
+    else{
       hideColumn(cbmu.getMnemonic());
+    }
   }
 
   public synchronized void paintImmediately(int x,int y,int w, int h){
