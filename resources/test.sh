@@ -13,13 +13,13 @@
 if test $# -eq 0; then
   echo "USAGE:   test.sh <multiplier> <input file names>"
   echo "NOTICE: if only <multiplier> is given it defaults to"
-  echo "test.sh <multiplier> file1.root file2.root"
+  echo "test.sh <multiplier> file1.txt file2.txt"
   echo 
   echo "         <multiplier> ...       job parameter"
   echo "         <input file name> .... name of input files - a comma separated list"
 
   echo
-  echo "EXAMPLE: test.sh file1.root,file2,root,file3.root outfile.txt 3"
+  echo "EXAMPLE: test.sh file1.txt,file2,txt,file3.txt outfile.txt 3"
   echo
   exit 0
 fi
@@ -31,7 +31,7 @@ fi
 MULT=$1
 INFN=$2
 if ["$INFN" -eq ""]; then
-  INFN="file1.root,file2.root"
+  INFN="file1.txt,file2.txt"
 fi
 
 OUTFN="out.txt"
