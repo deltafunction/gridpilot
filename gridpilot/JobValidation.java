@@ -237,13 +237,14 @@ public class JobValidation{
       }
 
       String errorMatches = validate(outs);
-      Debug.debug("validation ended with : " + errorMatches, 3);
       job.setValidationResult(errorMatches);
       if(errorMatches.length()==0){
         exitValue = EXIT_VALIDATED;
+        Debug.debug("Validation ended with : " + errorMatches, 2);
       }
       else{
         exitValue = EXIT_UNDECIDED;
+        logFile.addMessage("Validation ended with : " + errorMatches);
       }
 
     }
