@@ -960,7 +960,6 @@ public class ForkComputingSystem implements ComputingSystem{
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     
     // Output files
-    // Output file copy.
     // Try copying file(s) to output destination
     String jobDefID = job.getJobDefId();
     String [] outputNames = dbPluginMgr.getOutputFiles(jobDefID);
