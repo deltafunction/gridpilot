@@ -444,7 +444,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       bDefineJobDefinitions.setEnabled(false);
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
-      updateUI();
     }
     else if(tableName.equalsIgnoreCase("file")){
       
@@ -493,7 +492,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
       bDownload.setEnabled(false);
-      updateUI();
     }
     else if(tableName.equalsIgnoreCase("jobDefinition")){
       
@@ -557,7 +555,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       bMonitor.setEnabled(false);
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
-      updateUI();
     }
     else if(tableName.equalsIgnoreCase("transformation")){
       
@@ -597,7 +594,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       //bDefineJobDefinitions.setEnabled(false);
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
-      updateUI();
     }    
     else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
       
@@ -640,8 +636,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       menuEditCopy.setEnabled(false);
       menuEditCut.setEnabled(false);
       menuEditPaste.setEnabled(false);
-      updateUI();
-    }    
+    } 
+    updateUI();
   }
 
   public String getTitle(){
@@ -731,7 +727,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     /*remove(panelTableResults);
     add(panelTableResults, ct);*/
-    updateUI();
+    //updateUI();
+    //tableResults.updateUI()
   }
 
   /**
