@@ -17,7 +17,9 @@ import java.util.*;
 public class ConfigFile{
   private String configFileName;
   private RandomAccessFile file;
-  private boolean inJar = false;
+  private boolean inJar;
+  private HashMap valueStrings;
+  private HashMap valueArrays;
 
   /**
    * Constructor. Initalizes this configuration file manager with the file 'configFile'
@@ -25,6 +27,8 @@ public class ConfigFile{
   public ConfigFile(File configFile){
     this.configFileName = configFile.getAbsolutePath();
     inJar = false;
+    valueStrings = new HashMap();
+    valueArrays = new HashMap();
   }
 
   /**
@@ -35,6 +39,9 @@ public class ConfigFile{
     if(!GridPilot.tmpConfFile.containsKey(configFileName) ||
         GridPilot.tmpConfFile.get(configFileName)==null){
       makeTmpConfigFile();
+      // caching
+      valueStrings = new HashMap();
+      valueArrays = new HashMap();
     }
     inJar = true;
   }
@@ -105,6 +112,10 @@ public class ConfigFile{
       return null;
     }
     
+    if(valueStrings.keySet().contains(section+"=="+attribute)){
+      return (String) valueStrings.get(section+"=="+attribute);
+    }
+    
     Debug.debug("getValue("+section+", "+attribute+")", 3);
     
     String result;
@@ -133,6 +144,7 @@ public class ConfigFile{
       result = "";
     }
     Debug.debug("got value: "+result, 3);
+    valueStrings.put(section+"=="+attribute, result);
     return result;
   }
 
@@ -149,6 +161,16 @@ public class ConfigFile{
    */
 
   public String [] getValues(String section, String attribute){
+
+    if(this.isFake()){
+      return null;
+    }
+    
+    if(valueArrays.keySet().contains(section+"=="+attribute)){
+      return (String []) valueArrays.get(section+"=="+attribute);
+    }
+    
+    Debug.debug("getValues("+section+", "+attribute+")", 3);
 
     Vector l = new Vector();
     String res;
@@ -180,6 +202,7 @@ public class ConfigFile{
     for(int i=0; i<l.size(); ++i){
       stringRes[i] = l.elementAt(i).toString();
     }
+    valueArrays.put(section+"=="+attribute, stringRes);
     return stringRes;
   }
 
