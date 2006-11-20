@@ -19,7 +19,7 @@ if test $# -eq 0; then
   echo "         <input file name> .... name of input files - a comma separated list"
 
   echo
-  echo "EXAMPLE: 3 test.sh data1.txt,data2,txt,data3.txt"
+  echo "EXAMPLE: test.sh 7 data1.txt,data2.txt,data3.txt"
   echo
   exit 0
 fi
@@ -98,13 +98,13 @@ echo $fullsum > $OUTFN
 # Post processing
 #
 
-#sleep 20
+sleep 20
 
 # this will be registered as metadata
-echo SIZE: `du -sk $OUTFN | awk '{print $1}'`
+echo GRIDPILOT METADATA: OUTPUTFILEKILOBYTES = `du -sk $OUTFN | awk '{print $1}'`
 
 endDate=`date +%s`
-echo "End: $endDate"
+echo "End date: $endDate"
 
 # this will be registered as metadata
-echo SECONDS_ELAPSED: $(($endDate - $startDate))
+echo GRIDPILOT METADATA: CPUSECONDS = $(($endDate - $startDate))
