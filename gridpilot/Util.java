@@ -505,6 +505,7 @@ public class Util{
     return str;
   }
 
+  // TODO: use this everywhere
   public static String addFile(String _line){
     String line = _line;
     line = line.replaceFirst("^/", "file:///");
