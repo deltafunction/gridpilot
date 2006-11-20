@@ -26,6 +26,8 @@ public class GridPilot extends JApplet{
   private static String debugLevel = "0";
   private static String proxyHost = null;
   private static String proxyPort = null;
+  private static JLabel exitPanel = new JLabel();
+  private static JPanel topExitPanel = new JPanel();
   
   public static HashMap tmpConfFile = new HashMap();
   public static String logFileName = "gridpilot.log";
@@ -329,51 +331,86 @@ public class GridPilot extends JApplet{
       frame.setVisible(true);
     }
   }
-
-  public static void exit(int exitCode){
-    //  Cancel all transfers
-    Debug.debug("Cancelling all transfers...", 2);
-    TransferControl.exit();
-    //Delete temporary files
-    File delFile = null;
-    try{
-      for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext(); ){
-        delFile = ((File) tmpConfFile.get(it.next()));
-        Debug.debug("Cleaning up: deleting "+delFile.getAbsolutePath(), 2);
-        if(delFile.isDirectory()){
-          LocalStaticShellMgr.deleteDir(delFile);
+  
+  public static void exit(final int exitCode){
+    Thread t1 = new Thread(){
+      public void run(){
+        exitPanel.setText("<html>Exiting...<br>Click OK to force quit.</html>");
+        JProgressBar jp = new JProgressBar();
+        jp.setIndeterminate(true);
+        topExitPanel.add(exitPanel);
+        topExitPanel.add(jp);
+        int ret = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
+            topExitPanel,
+            "Exiting", JOptionPane.PLAIN_MESSAGE);
+        topExitPanel.validate();
+        Debug.debug("return value: ", ret);
+        if(ret==JOptionPane.OK_OPTION){
+          System.exit(-1);
+        }
+      }
+    };
+    Thread t2 = new Thread(){
+      public void run(){
+        //  Cancel all transfers
+        String message = "Cancelling all transfers...";
+        Debug.debug(message, 2);
+        exitPanel.setText("<html>"+message+"<br>Click OK to force quit.</html>");
+        topExitPanel.validate();
+        TransferControl.exit();
+        //Delete temporary files
+        File delFile = null;
+        try{
+          for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext(); ){
+            delFile = ((File) tmpConfFile.get(it.next()));
+            Debug.debug("Cleaning up: deleting "+delFile.getAbsolutePath(), 2);
+            if(delFile.isDirectory()){
+              LocalStaticShellMgr.deleteDir(delFile);
+            }
+            else{
+              delFile.delete();
+            }
+          }
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        // Disconnect DBs and CSs
+        message = "Disconnecting computing systems...";
+        Debug.debug(message, 2);
+        exitPanel.setText("<html>"+message+"<br>Click OK to force quit.</html>");
+        topExitPanel.validate();
+        if(getClassMgr().csPluginMgr!=null){
+          getClassMgr().getCSPluginMgr().disconnect();
+          getClassMgr().getCSPluginMgr().exit();
+        }
+        message = "Disconnecting databases...";
+        Debug.debug(message, 2);
+        exitPanel.setText("<html>"+message+"<br>Click OK to force quit.</html>");
+        for(int i=0; i<dbNames.length; ++i){
+          getClassMgr().getDBPluginMgr(dbNames[i]).disconnect();
+          Debug.debug("Disconnecting "+dbNames[i], 2);
+        }
+        message = "All systems disconnected.";
+        Debug.debug(message, 2);
+        exitPanel.setText(message);
+        topExitPanel.validate();
+        if(!applet){
+          System.exit(exitCode);
         }
         else{
-          delFile.delete();
+          try{
+            Debug.debug("NAME: "+getClassMgr().getGridPilot(), 2);
+            getClassMgr().getGlobalFrame().dispose();
+          }
+          catch(Exception e){
+            Debug.debug(e.getMessage(), 1);
+          }
         }
       }
-    }
-    catch(Exception e){
-      e.printStackTrace();
-    }
-    // Disconnect DBs and CSs
-    Debug.debug("Disconnecting computing systems...", 2);
-    if(getClassMgr().csPluginMgr!=null){
-      getClassMgr().getCSPluginMgr().disconnect();
-      getClassMgr().getCSPluginMgr().exit();
-    }
-    for(int i=0; i<dbNames.length; ++i){
-      getClassMgr().getDBPluginMgr(dbNames[i]).disconnect();
-      Debug.debug("Disconnecting "+dbNames[i], 2);
-    }
-    Debug.debug("All systems disconnected.", 2);
-    if(!applet){
-      System.exit(exitCode);
-    }
-    else{
-      try{
-        Debug.debug("NAME: "+getClassMgr().getGridPilot(), 2);
-        getClassMgr().getGlobalFrame().dispose();
-      }
-      catch(Exception e){
-        Debug.debug(e.getMessage(), 1);
-      }
-    }
+    };
+    t1.start();
+    t2.start();
   }
   
   public static String [] userPwd(String message, String [] fields, String [] initialValues){    
