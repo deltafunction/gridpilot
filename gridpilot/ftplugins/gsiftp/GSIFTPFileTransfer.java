@@ -827,8 +827,15 @@ public class GSIFTPFileTransfer implements FileTransfer {
       String bytes = null;
       int directories = 0;
       int files = 0;
+      boolean onlyDirs = false;
       if(filter==null || filter.equals("")){
         filter = "*";
+      }
+      else{
+        onlyDirs = filter.endsWith("/");
+        if(onlyDirs){
+          filter = filter.substring(0, filter.length()-1);
+        }
       }
       if(statusBar!=null){
         statusBar.setLabel("Filtering...");
@@ -858,7 +865,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
             ++directories;
             continue;
           }
-          else if(line.matches("-[rwxsS-]* .*")){
+          else if(!onlyDirs && line.matches("-[rwxsS-]* .*")){
             textVector.add(fileName+" "+bytes);
             ++files;
             continue;
@@ -873,6 +880,9 @@ public class GSIFTPFileTransfer implements FileTransfer {
             ++directories;
           }
           catch(Exception e){
+            if(onlyDirs){
+              continue;
+            }
             textVector.add(fileName+" "+bytes);
             ++files;
           }

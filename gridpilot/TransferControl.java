@@ -89,8 +89,8 @@ public class TransferControl{
       timer.stop();
       return;
     }
-    synchronized(toSubmitTransfers){
-      synchronized(submittingTransfers){
+    /*synchronized(toSubmitTransfers)*/{
+      /*synchronized(submittingTransfers)*/{
         // use status bar on monitoring frame
         statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
 
@@ -122,9 +122,8 @@ public class TransferControl{
             };      
           }
           if(pluginName==null){
-            throw new IOException("ERROR: protocol not supported or" +
-                " plugin initialization " +
-                "failed. "+firstSrc+"->"+firstDest);
+            throw new IOException("ERROR: protocol not supported or plugin initialization " +
+                "failed.\n"+firstSrc+"\n->\n\n"+firstDest);
           }
           Debug.debug("plugin selected: "+pluginName, 3);
           
@@ -147,8 +146,8 @@ public class TransferControl{
               theseTransfers[i] = tmpTransfer;
             }
             try{
-              if(!GridPilot.getClassMgr().getFTPlugin(
-                  firstSrc.getProtocol()).checkURLs(theseSources, theseDestinations)){
+              if(!GridPilot.getClassMgr().getFTPlugin(pluginName).checkURLs(
+                  theseSources, theseDestinations)){
                 brokenOut = true;
                 Debug.debug("Breaking because of non-uniform URLs", 2);
                 break;
@@ -156,7 +155,9 @@ public class TransferControl{
             }
             catch(Exception e){
               brokenOut = true;
-              Debug.debug("Breaking because of non-uniform URLs", 2);
+              Debug.debug("Problem checking URLs", 2);
+              e.printStackTrace();
+              toSubmitTransfers.removeAllElements();
               break;
             }
             
@@ -171,9 +172,10 @@ public class TransferControl{
           }
         }
         catch(Exception e){
-          statusBar.setLabel("ERROR: queueing transfer(s) failed");
+          toSubmitTransfers.removeAllElements();
+          statusBar.setLabel("ERROR: queueing transfer(s) failed.");
           logFile.addMessage("ERROR: queueing transfer(s) failed:\n"+
-              Util.arrayToString(transferVector.toArray()), e);
+              ((transferVector==null||transferVector.toArray()==null)?"":Util.arrayToString(transferVector.toArray())), e);
           return;
         }
         
@@ -330,7 +332,7 @@ public class TransferControl{
         if(!timer.isRunning()){
           timer.restart();
         }
-        statusBar.setLabel("Queueing done.");
+        //statusBar.setLabel("Queueing done.");
         statusBar.stopAnimation();
       }
     };
@@ -407,6 +409,7 @@ public class TransferControl{
       sources[i] = transfers[i].getSource();
       destinations[i] = transfers[i].getDestination();
             
+      // This does not catch transfers that have not gotten an id
       /*Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
       for(int j=0; j<submittedTransfers.size(); ++j){
         try{
@@ -622,9 +625,8 @@ public class TransferControl{
       };      
     }
     if(!protocolOK || ftPluginName==null){
-      throw new IOException("ERROR: protocol not supported or" +
-          " plugin initialization " +
-          "failed. "+Util.arrayToString(srcUrls)+"->"+Util.arrayToString(urls));
+      throw new IOException("ERROR: protocol not supported or plugin initialization failed.\n"+
+          Util.arrayToString(srcUrls)+"\n->\n"+Util.arrayToString(urls));
     }
     
     // delete the files
@@ -1110,27 +1112,18 @@ public class TransferControl{
       GridPilot.getClassMgr().getStatusBar().setLabel("Downloading "+srcFileName+" from "+srcUrlDir+
           " to "+downloadDir);
 
-      // TODO: move this into TransferControl and have it used by ForkComputinSystem
       Debug.debug("Downloading file from "+srcUrlDir, 3);
       // local directory
       if(srcUrlDir.startsWith("file:")){
-        if(!destFileName.equals(srcFileName)){
-          throw(new IOException("ERROR: Cannot rename file "+srcFileName+"->"+destFileName));
-        }
-        String fsPath = srcUrlDir;
-        fsPath = fsPath.replaceFirst("^file://", "/");
-        fsPath = fsPath.replaceFirst("^file:/", "/");
-        fsPath = fsPath.replaceFirst("^file:", "");
+        String fsPath = Util.clearFile(url);
         Debug.debug("Downloading file to "+downloadDir.getAbsolutePath(), 3);        
         if(fsPath==null || downloadDir==null){
           throw new IOException("ERROR: source or destination directory not given. "+
               fsPath+":"+downloadDir);
         }        
-        if(!fsPath.endsWith("/") && !destFileName.startsWith("/")){
-          fsPath = fsPath+"/";
-        }
         try{
-          localCopy(downloadDir.getAbsolutePath(), new File(fsPath+destFileName));
+          localCopy(new File(fsPath),
+              (new File(downloadDir, destFileName)).getAbsolutePath());
           GridPilot.getClassMgr().getStatusBar().setLabel(fsPath+destFileName+" copied");
         }
         catch(IOException e){
@@ -1235,7 +1228,7 @@ public class TransferControl{
    * @throws IOException
    * @throws FTPException
    */
-  public static void upload(final String uploadUrl, File file, final Container frame) throws IOException, FTPException{
+  public static void upload(File file, final String uploadUrl, final Container frame) throws IOException, FTPException{
     try{
       
       String uploadUrlDir = null;
@@ -1253,20 +1246,15 @@ public class TransferControl{
         }
       }
       
-      Debug.debug("Uploading file to "+uploadUrlDir, 3);
+      Debug.debug("Uploading file "+file+" to directory "+uploadUrlDir, 3);
       // local directory
       if(uploadUrlDir.startsWith("file:")){
-        String fsPath = Util.clearFile(uploadUrlDir);
-        Debug.debug("Uploading file to "+fsPath, 3);        
+        String fsPath = Util.clearFile(uploadUrl);
+        Debug.debug("Local directory path: "+fsPath, 3);        
         if(fsPath==null || uploadFileName==null || file==null){
           throw(new IOException("ERROR: fsPath==null || uploadFileName==null || file==null"));
         }
-        if(!file.getName().equals(uploadFileName)){
-          throw(new IOException("ERROR: Cannot rename local file "+file.getName()+"->"+uploadFileName));
-        }      
-        if(!fsPath.endsWith("/") && !file.getName().startsWith("/"))
-          fsPath = fsPath+"/";
-        localCopy(fsPath, file);
+        localCopy(file, fsPath);
       }
       // remote gsiftp directory
       else if(uploadUrlDir.startsWith("gsiftp://")){
@@ -1298,24 +1286,15 @@ public class TransferControl{
   }
   
   /**
-   * Copy file to directory fsPath.
+   * Copy file to a file or directory fsPath.
    */
-  private static void localCopy(String fsPath, File file) throws IOException{
-    if(!fsPath.endsWith("/")){
-      fsPath = fsPath+"/";
-    }
-    // TODO: implement wildcard *
+  private static void localCopy(File file, String fsPath) throws IOException{
     try{
       String fileName = file.getName();
-      int lastSlash = fileName.lastIndexOf("/");
-      if(lastSlash>-1){
-        fileName = fileName.substring(lastSlash + 1);
+      if(LocalStaticShellMgr.isDirectory(fsPath)){
+        fsPath = (new File(fsPath, fileName)).getAbsolutePath();
       }
-      if(!LocalStaticShellMgr.isDirectory(fsPath)){
-        throw new IOException("ERROR: "+fsPath+" is not a directory.");
-      }
-      if(!LocalStaticShellMgr.copyFile(file.getAbsolutePath(),
-          fsPath+fileName)){
+      if(!LocalStaticShellMgr.copyFile(file.getAbsolutePath(), fsPath)){
         throw new IOException(file.getAbsolutePath()+
             " could not be copied to "+fsPath+fileName);
       }

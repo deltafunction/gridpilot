@@ -71,7 +71,7 @@ public class NGComputingSystem implements ComputingSystem{
   private String [] clusters;
   private String [] giises;
   private ARCResource [] resources;
-  private String runtimeDB = null;
+  private String [] runtimeDBs = null;
   private HashSet finalRuntimes = null;
   
   public NGComputingSystem(String _csName){
@@ -172,13 +172,13 @@ public class NGComputingSystem implements ComputingSystem{
     Debug.debug("Clusters: "+Util.arrayToString(clusters), 2);
     
     try{
-      runtimeDB = GridPilot.getClassMgr().getConfigFile().getValue(
-          csName, "runtime database");
+      runtimeDBs = GridPilot.getClassMgr().getConfigFile().getValues(
+          csName, "runtime databases");
     }
     catch(Exception e){
       Debug.debug("ERROR getting runtime database: "+e.getMessage(), 1);
     }
-    if(runtimeDB!=null && !runtimeDB.equals("")){
+    if(runtimeDBs!=null && !runtimeDBs.equals("")){
       setupRuntimeEnvironments(csName);
     }    
   }
@@ -189,66 +189,68 @@ public class NGComputingSystem implements ComputingSystem{
    */
   public void setupRuntimeEnvironments(String csName){
     Set runtimes = null;
-    DBPluginMgr dbPluginMgr = null;      
-    try{
-      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(
-          runtimeDB);
-    }
-    catch(Exception e){
-      Debug.debug("WARNING: could not load runtime DB "+runtimeDB, 1);
-      return;
-    }
-    finalRuntimes = new HashSet();
-    // At least for now, we only have Linux resources on NorduGrid
-    finalRuntimes.add("Linux");
-    if(useInfoSystem){
-      Object rte = null;
-      for(int i=0; i<resources.length; ++i){
-        try{
-          runtimes = resources[i].getRuntimeenvironment();
-          for(Iterator it=runtimes.iterator(); it.hasNext();){
-            rte = it.next();
-            Debug.debug("Adding runtime environment: "+rte.toString()+":"+rte.getClass(), 3);
-            finalRuntimes.add(rte);
-          }
-        }
-        catch(Exception ae){
-          ae.printStackTrace();
-        }
+    DBPluginMgr dbPluginMgr = null;
+    for(int ii=0; ii<runtimeDBs.length; ++ii){
+      try{
+        dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(
+            runtimeDBs[ii]);
       }
-      String [] runtimeEnvironmentFields =
-        dbPluginMgr.getFieldNames("runtimeEnvironment");
-      String [] rtVals = new String [runtimeEnvironmentFields.length];
-      String name = null;
-      for(Iterator it=finalRuntimes.iterator(); it.hasNext();){       
-        name = (String) it.next();
-        for(int i=0; i<runtimeEnvironmentFields.length; ++i){
-          if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
-            rtVals[i] = name;
-          }
-          else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
-            rtVals[i] = csName;
-          }
-          else{
-            rtVals[i] = "";
-          }
-        }
-        try{
-          // only create if there is not already a record with this name
-          // and csName
-          if(dbPluginMgr.getRuntimeEnvironmentID(name, csName).equals("-1")){
-            if(!dbPluginMgr.createRuntimeEnvironment(rtVals)){
-              finalRuntimes.remove(name);
+      catch(Exception e){
+        Debug.debug("WARNING: could not load runtime DB "+runtimeDBs[ii], 1);
+        continue;
+      }
+      finalRuntimes = new HashSet();
+      // At least for now, we only have Linux resources on NorduGrid
+      finalRuntimes.add("Linux");
+      if(useInfoSystem){
+        Object rte = null;
+        for(int i=0; i<resources.length; ++i){
+          try{
+            runtimes = resources[i].getRuntimeenvironment();
+            for(Iterator it=runtimes.iterator(); it.hasNext();){
+              rte = it.next();
+              Debug.debug("Adding runtime environment: "+rte.toString()+":"+rte.getClass(), 3);
+              finalRuntimes.add(rte);
             }
           }
+          catch(Exception ae){
+            ae.printStackTrace();
+          }
         }
-        catch(Exception e){
-          e.printStackTrace();
+        String [] runtimeEnvironmentFields =
+          dbPluginMgr.getFieldNames("runtimeEnvironment");
+        String [] rtVals = new String [runtimeEnvironmentFields.length];
+        String name = null;
+        for(Iterator it=finalRuntimes.iterator(); it.hasNext();){       
+          name = (String) it.next();
+          for(int i=0; i<runtimeEnvironmentFields.length; ++i){
+            if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
+              rtVals[i] = name;
+            }
+            else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
+              rtVals[i] = csName;
+            }
+            else{
+              rtVals[i] = "";
+            }
+          }
+          try{
+            // only create if there is not already a record with this name
+            // and csName
+            if(dbPluginMgr.getRuntimeEnvironmentID(name, csName).equals("-1")){
+              if(!dbPluginMgr.createRuntimeEnvironment(rtVals)){
+                finalRuntimes.remove(name);
+              }
+            }
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
         }
       }
-    }
-    else{
-      // Can't do anything. The user will have to set up runtime environments by hand.
+      else{
+        // Can't do anything. The user will have to set up runtime environments by hand.
+      }
     }
   }
 
@@ -485,29 +487,34 @@ public class NGComputingSystem implements ComputingSystem{
     String initText = null;
     String id = "-1";
     boolean ok = true;
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(
-        runtimeDB);
-    for(Iterator it=finalRuntimes.iterator(); it.hasNext();){
-      ok = true;
-      runtimeName = (String )it.next();
-      // Don't delete records with a non-empty initText.
-      // These can only have been created by hand.
-      initText = dbPluginMgr.getRuntimeInitText(runtimeName, csName);
-      if(initText!=null && !initText.equals("")){
-        continue;
+    for(int ii=0; ii<runtimeDBs.length; ++ii){
+      try{
+        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(
+            runtimeDBs[ii]);
+        for(Iterator it=finalRuntimes.iterator(); it.hasNext();){
+          ok = true;
+          runtimeName = (String )it.next();
+          // Don't delete records with a non-empty initText.
+          // These can only have been created by hand.
+          initText = dbPluginMgr.getRuntimeInitText(runtimeName, csName);
+          if(initText!=null && !initText.equals("")){
+            continue;
+          }
+          id = dbPluginMgr.getRuntimeEnvironmentID(runtimeName, csName);
+          if(!id.equals("-1")){
+            ok = dbPluginMgr.deleteRuntimeEnvironment(id);
+          }
+          else{
+            ok = false;
+          }
+          if(!ok){
+            Debug.debug("WARNING: could not delete runtime environment " +
+                runtimeName+" from database "+dbPluginMgr.getDBName(), 1);
+          }
+        }
       }
-      id = dbPluginMgr.getRuntimeEnvironmentID(runtimeName, csName);
-      if(!id.equals("-1")){
-        ok = dbPluginMgr.deleteRuntimeEnvironment(id);
-      }
-      else{
-        ok = false;
-      }
-      if(!ok){
-        Debug.debug("WARNING: could not delete runtime environment " +
-            runtimeName+
-            " from database "+
-            dbPluginMgr.getDBName(), 1);
+      catch(Exception e){
+        e.printStackTrace();
       }
     }
   }
@@ -1069,11 +1076,37 @@ public class NGComputingSystem implements ComputingSystem{
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+    boolean ok = true;
     
     /**
      * move downloaded output files to their final destinations
      */
-    // TODO: look at ForkComputingsystem.setRemoteOutputFiles and job.getUploadFiles();
+    String jobID = job.getJobId().substring(job.getJobId().lastIndexOf("/"));
+    int lastSlash = job.getJobId().lastIndexOf("/");
+    if(lastSlash>-1){
+      jobID = job.getJobId().substring(lastSlash + 1);
+    }
+    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
+    String localName = null;
+    String remoteName = null;
+    for(int i=0; i<outputFileNames.length; ++i){
+      try{
+        localName = dbPluginMgr.getJobDefOutLocalName(job.getJobDefId(), outputFileNames[i]);
+        remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFileNames[i]);
+        if(remoteName.startsWith("file:")){
+          TransferControl.upload(
+              new File(runDir(job)+File.separator+jobID+File.separator+localName),
+              Util.clearTildeLocally(remoteName),
+              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+        }
+      }
+      catch(Exception e){
+        error = "ERROR coping file "+localName+" -> "+remoteName+
+        " to final destination: "+e.getMessage();
+        logFile.addMessage(error, e);
+        ok = false;
+      }
+    }
     
     /**
      * move temp StdOut -> finalStdOut
@@ -1084,7 +1117,7 @@ public class NGComputingSystem implements ComputingSystem{
         //syncCurrentOutputs(job);
         if(!LocalStaticShellMgr.existsFile(job.getStdOut())){
           logFile.addMessage("Post-processing : File " + job.getStdOut() + " doesn't exist");
-          return false;
+          ok = false;
         }
       }
       catch(Throwable e){
@@ -1092,20 +1125,20 @@ public class NGComputingSystem implements ComputingSystem{
         e.printStackTrace();
         Debug.debug(error, 2);
         logFile.addMessage(error, e);
-        //throw e;
+        ok = false;
       }
       Debug.debug("Post-processing : Moving " + job.getStdOut() + " -> " + finalStdOut, 2);
       try{
-        TransferControl.upload(finalStdOut, new File(job.getStdOut()),
+        TransferControl.upload(new File(job.getStdOut()), finalStdOut,
             GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+        job.setStdOut(finalStdOut);
       }
       catch(Throwable e){
         error = "ERROR copying stdout: "+e.getMessage();
         Debug.debug(error, 2);
         logFile.addMessage(error, e);
-        //throw e;
+        ok = false;
       }
-      job.setStdOut(finalStdOut);
     }
 
     /**
@@ -1124,23 +1157,22 @@ public class NGComputingSystem implements ComputingSystem{
         e.printStackTrace();
         Debug.debug(error, 2);
         logFile.addMessage(error, e);
-        //throw e;
+        ok = false;
       }
       Debug.debug("Post processing : Moving " + job.getStdErr() + " -> " + finalStdErr,2);
-      //shell.moveFile(job.getStdOut(), finalStdOutName);
       try{
-        TransferControl.upload(finalStdErr, new File(job.getStdErr()),
+        TransferControl.upload(new File(job.getStdErr()), finalStdErr,
             GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+        job.setStdErr(finalStdErr);
       }
       catch(Throwable e){
         error = "ERROR copying stderr: "+e.getMessage();
         Debug.debug(error, 2);
         logFile.addMessage(error, e);
-        //throw e;
+        ok = false;
       }
-      job.setStdErr(finalStdErr);
     }
-    return true;
+    return ok;
   }
   
   /** 

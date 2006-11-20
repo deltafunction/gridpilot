@@ -409,7 +409,7 @@ public class HSQLDBDatabase implements Database{
     if(table.equalsIgnoreCase("file")){
       String nameField = Util.getNameField(dbName, "dataset");
       String [] refFields = Util.getJobDefDatasetReference(dbName);
-      if(!isFileCatalog() ){
+      if(!isFileCatalog()){
         return new String [] {refFields[1], nameField, "url"};
       }
       else{
@@ -1007,9 +1007,9 @@ public class HSQLDBDatabase implements Database{
                 runtimeEnvironmentFields[j]+". "+e.getMessage(),1);
           }
         }
-        Debug.debug("Adding value "+jt[0], 3);
+        //Debug.debug("Adding value "+jt[0], 3);
         runtimeEnvironmentVector.add(new DBRecord(runtimeEnvironmentFields, jt));
-        Debug.debug("Added value "+((DBRecord) runtimeEnvironmentVector.get(i)).getAt(0), 3);
+        //Debug.debug("Added value "+((DBRecord) runtimeEnvironmentVector.get(i)).getAt(0), 3);
         ++i;
       }
       if(i==0){
@@ -1058,9 +1058,9 @@ public class HSQLDBDatabase implements Database{
                 transformationFields[j]+". "+e.getMessage(),1);
           }
         }
-        Debug.debug("Adding value "+jt[0], 3);
+        //Debug.debug("Adding value "+jt[0], 3);
         transformationVector.add(new DBRecord(transformationFields, jt));
-        Debug.debug("Added value "+((DBRecord) transformationVector.get(i)).getAt(0), 3);
+        //Debug.debug("Added value "+((DBRecord) transformationVector.get(i)).getAt(0), 3);
         ++i;
       }
       if(i==0){
@@ -1117,9 +1117,9 @@ public class HSQLDBDatabase implements Database{
                 runtimeEnvironmentFields[j]+". "+e.getMessage(),1);
           }
         }
-        Debug.debug("Adding value "+jt[0], 3);
+        //Debug.debug("Adding value "+jt[0], 3);
         runtimeEnvironmentVector.add(new DBRecord(runtimeEnvironmentFields, jt));
-        Debug.debug("Added value "+((DBRecord) runtimeEnvironmentVector.get(i)).getAt(0), 3);
+        //Debug.debug("Added value "+((DBRecord) runtimeEnvironmentVector.get(i)).getAt(0), 3);
         ++i;
       }
       allRuntimeEnvironmentRecords = new DBRecord[i];
@@ -1671,6 +1671,9 @@ public class HSQLDBDatabase implements Database{
       }
       else if(runtimeEnvironmentFields[i].equalsIgnoreCase("lastModified")){
         values[i] = makeDate("");
+      }
+      else if(values[i]==null){
+        values[i] = "''";
       }
       else{
         values[i] = "'"+values[i].toString()+"'";
@@ -2428,7 +2431,7 @@ public class HSQLDBDatabase implements Database{
       catch(Exception ee){
       }
       if(existingID!=null && !existingID.equals("")){
-        if(!existingID.equalsIgnoreCase(datasetID)){
+        if(!existingID.equalsIgnoreCase(fileID)){
           error = "WARNING: file "+lfn+" already registered with id "+
           existingID+"!="+fileID+". Using "+existingID+".";
           GridPilot.getClassMgr().getLogFile().addMessage(error);

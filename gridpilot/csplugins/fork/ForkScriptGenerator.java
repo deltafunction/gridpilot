@@ -80,6 +80,8 @@ public class ForkScriptGenerator extends ScriptGenerator{
     String [][] outputFiles = job.getUploadFiles();
     if(inputFiles!=null && inputFiles.length>0 || outputFiles!=null && outputFiles.length>0){
       if(requiredRuntimeEnv!=null && requiredRuntimeEnv.length()>0){
+        // requiredRuntimeEnv is only needed to get input files from
+        // remote sources or copy ouput files to final destinations
         String initTxt = dbPluginMgr.getRuntimeInitText(requiredRuntimeEnv, csName).toString();
         writeLine(buf, initTxt);
         writeLine(buf, ("source "+Util.clearFile(runtimeDirectory)+
@@ -114,7 +116,12 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
     writeBloc(buf, line, ScriptGenerator.TYPE_SUBSECTION, commentStart);
     for(int i=0; i<formalParam.length; ++i){
-      actualParam[i] = Util.encode(actualParam[i]);
+      try{
+        actualParam[i] = Util.encode(actualParam[i]);
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: parameter "+formalParam[i]+" is not set.", 2);
+      }
     }
     writeLine(buf, "");
     writeBloc(buf, "transformation script call", ScriptGenerator.TYPE_SUBSECTION, commentStart);

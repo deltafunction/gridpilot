@@ -527,7 +527,8 @@ public class SRMFileTransfer implements FileTransfer {
     checkURLsUniformity(toType, destUrls, false);
     
     if(getUrlType(srcUrls[0])==UNKNOWN_URL ||
-        getUrlType(destUrls[0])==UNKNOWN_URL){
+        getUrlType(destUrls[0])==UNKNOWN_URL ||
+        !srcUrls[0].getProtocol().equals("srm") && !destUrls[0].getProtocol().equals("srm") ){
       return false;
     }
     else{

@@ -38,7 +38,9 @@ public class NGSubmission{
   private int clusterIndex = 0;
   private ARCResource [] resources = null;
   private int resourceIndex = 0;
-  NGScriptGenerator scriptGenerator;
+  private NGScriptGenerator scriptGenerator;
+  
+  private static int MAX_SUBMIT_RETRIES = 7;
 
   public NGSubmission(String _csName, String [] _clusters){
     Debug.debug("Loading class NGSubmission", 3);
@@ -57,7 +59,7 @@ public class NGSubmission{
   }
 
   public boolean submit(JobInfo job, String scriptName, String xrslName) throws ARCDiscoveryException,
-  MalformedURLException{
+  MalformedURLException, IOException{
 
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     
@@ -230,41 +232,57 @@ public class NGSubmission{
         submissionHost = "gsiftp://"+submissionHost+":2811/jobs";
       }
       Debug.debug("Submitting to "+ submissionHost, 2);
-      try{
-        ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost);
-        GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-        GlobusCredential globusCred = null;
-        if(credential instanceof GlobusGSSCredentialImpl){
-          globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+
+      /*String testXrsl = "&(executable=/bin/echo)(jobName=\"Jarclib test submission \")" +
+      "(action=request)(arguments=\"/bin/echo\" \"Test\")"+
+      "(join=yes)(stdout=out.txt)(outputfiles=(\"test\" \"\"))(queue=\"" +
+       "short" + "\")";*/
+      
+      xrsl = xrsl.replaceFirst("\\(\\*(?i)queue=\"_submitqueue_\"\\*\\)",
+          "(queue=\""+queue+"\")");
+      xrsl = xrsl.replaceFirst("\\(\\*(?i)action=\"request\"\\*\\)",
+          "(action=\"request\")");
+      // Since cpuTime has been used to find queue, we no longer need it
+      xrsl = xrsl.replaceFirst("\\((?i)cputime=.*\\)\\(\\*endCpu\\*\\)", "");
+      
+      Debug.debug("Submittig with input files: "+Util.arrayToString(files.toArray()), 2);
+      Debug.debug("Submittig with input files: "+Util.arrayToString(fileNames.toArray()), 2);
+
+      int i = 0;
+      while(true){
+        try{
+          ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost);
+          GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+          GlobusCredential globusCred = null;
+          if(credential instanceof GlobusGSSCredentialImpl){
+            globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+          }
+          gridJob.addProxy(globusCred);
+          gridJob.connect();             
+          gridJob.submit(xrsl, files, fileNames);       
+          ngJobId = gridJob.getGlobalId();
+          Debug.debug("NG Job Id: " + ngJobId, 3);
+          break;
         }
-        gridJob.addProxy(globusCred);
-        gridJob.connect();
-        
-        /*String testXrsl = "&(executable=/bin/echo)(jobName=\"Jarclib test submission \")" +
-        "(action=request)(arguments=\"/bin/echo\" \"Test\")"+
-        "(join=yes)(stdout=out.txt)(outputfiles=(\"test\" \"\"))(queue=\"" +
-         "short" + "\")";*/
-        
-        xrsl = xrsl.replaceFirst("\\(\\*(?i)queue=\"_submitqueue_\"\\*\\)",
-            "(queue=\""+queue+"\")");
-        xrsl = xrsl.replaceFirst("\\(\\*(?i)action=\"request\"\\*\\)",
-            "(action=\"request\")");
-        // Since cpuTime has been used to find queue, we no longer need it
-        xrsl = xrsl.replaceFirst("\\((?i)cputime=.*\\)\\(\\*endCpu\\*\\)", "");
-        
-        Debug.debug("Submittig with input files: "+Util.arrayToString(files.toArray()), 2);
-        Debug.debug("Submittig with input files: "+Util.arrayToString(fileNames.toArray()), 2);
-       
-        gridJob.submit(xrsl, files, fileNames);
-        
-        ngJobId = gridJob.getGlobalId();
-        
-        Debug.debug("NGJobId: " + ngJobId, 3);
-      }
-      catch(ARCGridFTPJobException ae){
-        logFile.addMessage("ARCGridFTPJobException during submission of " + xrslFileName + ":\n" +
-            "\tException\t: " + ae.getMessage(), ae);
-        throw ae;
+        catch(ARCGridFTPJobException ae){
+          logFile.addMessage("ARCGridFTPJobException during submission of " + xrslFileName + ":\n" +
+              "\tException\t: " + ae.getMessage(), ae);
+          if(i>MAX_SUBMIT_RETRIES){
+            Debug.debug("WARNING: could not submit job", 1);
+            break;
+          }
+          else{
+            Debug.debug("WARNING: problem submitting, retrying", 2);
+            ++i;
+            try{
+              Thread.sleep(5000);
+            }
+            catch(Exception ee){
+              break;
+            }
+            continue;
+          }
+        }
       }
     }
     return ngJobId;

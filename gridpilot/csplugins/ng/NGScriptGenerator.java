@@ -20,7 +20,9 @@ import gridpilot.Util;
 public class NGScriptGenerator extends ScriptGenerator{
 
   String cpuTime = null;
-  List inputFilesList = null;
+  List localInputFilesList = null;
+  List remoteInputFilesList = null;
+  List remoteOutputFilesList = null;
   
   public NGScriptGenerator(String _csName){
     super(_csName);
@@ -29,9 +31,11 @@ public class NGScriptGenerator extends ScriptGenerator{
   }
 
   // Returns List of input files, needed for ARCGridFTPJob.submit()
-  public List createXRSL(JobInfo job, String exeFileName, String xrslFileName, boolean join){
+  public List createXRSL(JobInfo job, String exeFileName, String xrslFileName, boolean join)
+     throws IOException {
 
-    inputFilesList = new Vector();
+    localInputFilesList = new Vector();
+    remoteInputFilesList = new Vector();
     StringBuffer bufXRSL = new StringBuffer();
     StringBuffer bufScript = new StringBuffer();
     String line = "";
@@ -52,7 +56,7 @@ public class NGScriptGenerator extends ScriptGenerator{
     // / or c:\ are considered to be locally available on the server
     if(scriptFileName.startsWith("file:")){
       xrslScriptName = Util.clearTildeLocally(Util.clearFile(scriptFileName));
-      inputFilesList.add(xrslScriptName);
+      localInputFilesList.add(xrslScriptName);
     }
     else{
       xrslScriptName = scriptFileName;
@@ -62,7 +66,7 @@ public class NGScriptGenerator extends ScriptGenerator{
     String shortExeFileName = new File(exeFileName).getName();
     String xrslExeFileName = Util.clearTildeLocally(Util.clearFile(exeFileName));
     Debug.debug("shortName : " + shortExeFileName, 3);
-    inputFilesList.add(xrslExeFileName);
+    localInputFilesList.add(xrslExeFileName);
 
     String inputFileName = null;
     String inputFileURL = null;
@@ -94,11 +98,13 @@ public class NGScriptGenerator extends ScriptGenerator{
       if(cpuTime!=null && !cpuTime.equals("")){
         writeLine(bufXRSL,"(cpuTime=\""+cpuTime+"\")(*endCpu*)");
       }
+      boolean infi = false;
       // Input files: scripts
-      writeLine(bufXRSL,"(inputFiles=");
-      writeLine(bufXRSL,"(\""+shortExeFileName+"\" \"\")");
+      //writeLine(bufXRSL,"(\""+shortExeFileName+"\" \"\")");
       if(!scriptFileName.startsWith("file:")){
+        writeLine(bufXRSL,"(inputFiles=");
         writeLine(bufXRSL,"(\""+shortScriptName+"\" \""+xrslScriptName+"\")");
+        infi = true;
       }
       
       // Input files.
@@ -146,16 +152,29 @@ public class NGScriptGenerator extends ScriptGenerator{
         // Add local files to the return value.
         // Files starting with / are assumed to already be on the server.
         if(inputFiles[i].startsWith("file:")){
-          inputFilesList.add(inputFileURL);
+          localInputFilesList.add(inputFileURL);
         }
         else if(inputFiles[i].startsWith("/")){
           // do nothing
         }
         else{
-          writeLine(bufXRSL,"(\""+inputFileName+"\" \""+inputFileURL+"\")");       
+          if(!infi){
+            writeLine(bufXRSL,"(\""+shortScriptName+"\" \""+xrslScriptName+"\")");
+            infi = true;
+          }
+          writeLine(bufXRSL,"(\""+inputFileName+"\" \""+inputFileURL+"\")");
+          remoteInputFilesList.add(inputFileURL);
         }
       }
-      writeLine(bufXRSL,")");
+      if(infi){
+        writeLine(bufXRSL,")");
+      }
+      
+      String [] remoteInputFilesArray = new String [remoteInputFilesList.size()];
+      for(int i=0; i<remoteInputFilesList.size(); ++i){
+        remoteInputFilesArray[i] = (String) remoteInputFilesList.get(i);
+      }
+      job.setDownloadFiles(remoteInputFilesArray);
 
       // outputfiles
       line = "(outputFiles=" + "(\"stdout\" \"stdout\")" ;
@@ -163,6 +182,7 @@ public class NGScriptGenerator extends ScriptGenerator{
         line += "(\"stderr\" \"stderr\")";
       }
 
+      remoteOutputFilesList = new Vector();
       String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
       String localName;
       String remoteName;
@@ -170,9 +190,22 @@ public class NGScriptGenerator extends ScriptGenerator{
       for(int i=0; i<outputFileNames.length; ++i){
         localName = dbPluginMgr.getJobDefOutLocalName(job.getJobDefId(), outputFileNames[i]);
         remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFileNames[i]);
-        if(remoteName.startsWith("/") || remoteName.matches("^\\w:.*") ||
-            remoteName.startsWith("file:")){
+        if(remoteName.startsWith("/") || remoteName.matches("^\\w:.*")){
+          // In analogy with ForkComputingSystem, this should trigger
+          // copying the file to a place on the file system on the server.
+          // There should not be any reason to support this
+          // (if needed we could add a cp command to the job script).
+          throw new IOException("ERROR: copying files locally on the worker node" +
+                " is not supported. "+remoteName);
+        }
+        else if(remoteName.startsWith("file:")){
+          // Files like gsiftp://... will be dealt with by the computing element
           remoteName = localName;
+        }
+        else{
+          // These are copied back to the client by jarclib and GridPilot
+          // moves them locally on the client to their final destination
+          remoteOutputFilesList.add(new String [] {localName, remoteName});
         }
         Debug.debug("remote name: "+remoteName,3);
         line += "(\""+localName+"\" \""+remoteName+"\")" ;
@@ -180,6 +213,18 @@ public class NGScriptGenerator extends ScriptGenerator{
       line += ")";
       writeLine(bufXRSL,line);
       
+      String [][] remoteOutputFilesArray = new String [remoteOutputFilesList.size()][2];
+      for(int i=0; i<remoteOutputFilesList.size(); ++i){
+        remoteOutputFilesArray[i] = (String []) remoteOutputFilesList.get(i);
+      }
+      // Notice that here we use the job.getUploadFiles in the opposite way than
+      // ForkComputingSystem: job.getUploadFiles are copied back to the client
+      // (for ForkComputingSystem these files are copied somewhere other than
+      // back to the client).
+      // Notice also that jobs are NOT persistent. So this information is NOT available
+      // on restart of GridPilot.
+      job.setUploadFiles(remoteOutputFilesArray);
+
       // runtime environment
       String [] uses = dbPluginMgr.getRuntimeEnvironments(jobDefID);
       if(uses!=null && uses.length>0 && uses[0]!=null){
@@ -257,10 +302,6 @@ public class NGScriptGenerator extends ScriptGenerator{
         LocalStaticShellMgr.writeFile(exeFileName,
             bufScript.toString(), false);
         Util.dos2unix(new File(exeFileName));
-        /*Util.dos2unixConvert(new File(exeFileName),
-            new File(exeFileName+".unix"));
-        LocalStaticShellMgr.deleteFile(exeFileName);
-        LocalStaticShellMgr.moveFile(exeFileName+".unix", exeFileName);*/
       }
       catch(FileNotFoundException fnfe){
         System.err.print(fnfe.getMessage());
@@ -272,7 +313,7 @@ public class NGScriptGenerator extends ScriptGenerator{
         ioe.printStackTrace();
         return null;
       }
-      return inputFilesList;
+      return localInputFilesList;
     }
     catch(Exception ioe){
       logFile.addMessage("ERROR: could not write script", ioe);
