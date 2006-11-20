@@ -12,7 +12,6 @@ import java.awt.*;
 public class MonitoringPanel extends CreateEditPanel {
 
   private static final long serialVersionUID = 1L;
-  // use status bar on main window
   public StatusBar statusBar = null;
   // Central panel
   public JTabbedPane tpStatLog = new JTabbedPane();
@@ -25,6 +24,7 @@ public class MonitoringPanel extends CreateEditPanel {
    * Constructor
    */
   public MonitoringPanel() throws Exception{   
+    // use status bar on main window until a monitoring panel is actually created
     statusBar = GridPilot.getClassMgr().getStatusBar();
   }
   

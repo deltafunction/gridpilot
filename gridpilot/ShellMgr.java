@@ -62,9 +62,9 @@ public interface ShellMgr{
    * Creates the directory named by this abstract pathname, including any
    * necessary but nonexistent parent directories.
    *
-   * @return true if and only if the directory was created,
-   *          along with all necessary parent directories; false
-   *          otherwise
+   * @return true if and only if after finishing the directory
+   *          along with all necessary parent directories exist; false
+   *          otherwise. Notice that this is different from File.mkdirs
    */
   public boolean mkdirs(String dir);
 
