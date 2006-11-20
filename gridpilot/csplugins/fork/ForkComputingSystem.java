@@ -226,7 +226,7 @@ public class ForkComputingSystem implements ComputingSystem{
             values[i] = "Linux";
           }
           else if(fields[i].equalsIgnoreCase("arguments")){
-            values[i] = "inputFileNames multiplier";
+            values[i] = "multiplier inputFileNames";
           }
           else if(fields[i].equalsIgnoreCase("inputFiles")){
             values[i] = "file:"+transformationDirectory+"/data1.txt "+
