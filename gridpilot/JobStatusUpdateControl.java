@@ -64,7 +64,7 @@ public class JobStatusUpdateControl{
    * Thread vector. <p>
    * @see #checkingJobs
    */
-  private Vector checkingThread = new Vector();
+  public Vector checkingThread = new Vector();
 
   private ImageIcon iconChecking;
 
@@ -353,7 +353,7 @@ public class JobStatusUpdateControl{
       }
       Debug.debug("joined", 2);
     }
-    // When selecting "Stop update",
+    // When selecting "Stop checking",
     // if a large number of threads were running, one could not refresh anymore.
     checkingThread.removeAllElements();
   }
