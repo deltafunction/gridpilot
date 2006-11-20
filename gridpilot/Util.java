@@ -89,7 +89,7 @@ public class Util{
   
   // Default when interrupting threads. Can be overridden by argument.
   private static boolean ASK_BEFORE_INTERRUPT = true;
-  
+    
   public static String [] split(String s){
     StringTokenizer tok = new StringTokenizer(s);
     int len = tok.countTokens();
@@ -1291,7 +1291,8 @@ public class Util{
         noTextArea = false;
       }
       else{
-        jval = new JLabel(cstAttr[i].toString());
+        jval = new JTextField(cstAttr[i].toString());
+        ((JTextField) jval).setEditable(false);
       }
       pResult.add(new JLabel(cstAttrNames[i] + " : "),
           new GridBagConstraints(0, row, 1, 1, 0.0, 0.0 ,
@@ -1438,7 +1439,7 @@ public class Util{
     if(ret==null || ret.equals("")){
       ret = "identifier";
     }
-    Debug.debug("Identifier for "+dbName+" - "+table+" : "+ret, 2);
+    //Debug.debug("Identifier for "+dbName+" - "+table+" : "+ret, 2);
     return ret;
   }
 
@@ -1450,7 +1451,7 @@ public class Util{
     if(ret==null || ret.equals("")){
       ret = "name";
     }
-    Debug.debug("Name for "+dbName+" - "+table+" : "+ret, 2);
+    //Debug.debug("Name for "+dbName+" - "+table+" : "+ret, 2);
     return ret;
   }
 
@@ -1462,7 +1463,7 @@ public class Util{
     if(ret==null || ret.equals("")){
       ret = "version";
     }
-    Debug.debug("Version for "+dbName+" - "+table+" : "+ret, 2);
+    //Debug.debug("Version for "+dbName+" - "+table+" : "+ret, 2);
     return ret;
   }
 
