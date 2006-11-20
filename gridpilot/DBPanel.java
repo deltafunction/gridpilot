@@ -2260,9 +2260,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         String error = "WARNING: dataset ID not found for "+name;
         GridPilot.getClassMgr().getLogFile().addMessage(error);
       }
+      String realUrl = null;
       for(int j=0; j<urls.length; ++j){
         try{
-          srcUrl = new GlobusURL(urls[j]);
+          if(urls[j].startsWith("file:")){
+            realUrl = urls[j].replaceFirst("^file:/+", "file:////");
+            realUrl = realUrl.replaceFirst("^file:([^/]+)", "file:///$1").replaceFirst(
+                "~", System.getProperty("user.home"));
+            realUrl = realUrl.replaceFirst("^file:(\\w):", "file:////$1:");
+            Debug.debug("Corrected: "+urls[j]+"->"+realUrl, 3);
+          }
+          else{
+            realUrl = urls[j];
+          }
+          Debug.debug("Getting URL "+realUrl, 3);
+          srcUrl = new GlobusURL(realUrl);
           // Add :8443 to srm urls without port number
           if(srcUrl.getPort()<1 && srcUrl.getProtocol().toLowerCase().equals("srm")){
             srcUrl = new GlobusURL(urls[j].replaceFirst("(srm://[^/]+)/", "$1:8443/"));

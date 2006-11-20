@@ -80,7 +80,8 @@ public class DatasetCreator{
             // Get values from source dataset in question, excluding
             // transformation, transVersion and any other filled-in values.
             // Construct name for new target dataset.
-            if(cstAttrNames[j].equalsIgnoreCase(datasetNameField)){
+            if((resCstAttr[j]==null || resCstAttr[j].equals("")) &&
+                cstAttrNames[j].equalsIgnoreCase(datasetNameField)){
               resCstAttr[j] = dbPluginMgr.getTargetDatasetName(
                   targetDB,
                   dbPluginMgr.getDatasetName(datasetIDs[i]),
