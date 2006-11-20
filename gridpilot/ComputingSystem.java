@@ -145,7 +145,7 @@ public interface ComputingSystem{
   public boolean killJobs(Vector jobs);
 
   /**
-   * Called when job 'job' failed, in order to delete all "garbages" made by job.
+   * Called when job failed, in order to delete all "garbage" made by job.
    */
   public void clearOutputMapping(JobInfo job);
 
