@@ -305,8 +305,8 @@ public class Table extends JTable{
   public synchronized void setValueAt(Object value, int row, int col){
     tableModel.setValueAt(value, row, col);
     repaint();//getCellRect(row, col, true));
-//    getUI().installUI(this);
-//    updateUI();
+    //getUI().installUI(this);
+    //updateUI();
     revalidate();
   }
 
@@ -339,15 +339,10 @@ public class Table extends JTable{
    * some rows are appened, otherwise, last rows are deleted.
    */
   public synchronized void createRows(int r){
-//    getUI().installUI(this);
     clearSelection();
     tableModel.createRows(r);
-//    getUI().installUI(this);
-
-//    initUI();
-
     revalidate();
-//    updateUI();
+    //updateUI();
   }
 
   /**
@@ -361,8 +356,9 @@ public class Table extends JTable{
   
   synchronized public void deleteRows(Vector vecIndexes){
     int[] indexes = new int[vecIndexes.size()];
-    for (int i=0; i<vecIndexes.size(); i++)
+    for (int i=0; i<vecIndexes.size(); i++){
       indexes[i] = ((Integer)vecIndexes.elementAt(i)).intValue();
+    }
     clearSelection();
     tableModel.deleteRows(indexes);
     revalidate();
@@ -377,13 +373,6 @@ public class Table extends JTable{
     revalidate();
   }
   
-  /*
-  public synchronized void deleteRow(int index){
-    clearSelection();
-    tableModel.deleteRow(index);
-    revalidate();
-  }
-  */
   public synchronized TableCellRenderer getCellRenderer(int row, int column){
     return tableCellRenderer;
   }
