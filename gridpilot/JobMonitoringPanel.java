@@ -5,6 +5,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -47,6 +48,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   // Buttons panel
   private JPanel pButtons = new JPanel();
   private JButton bKill = new JButton("Kill");
+  private JButton bStopUpdate = new JButton("Stop update");
   private JButton bRefresh = new JButton("Refresh");
   // auto refresh
   private JCheckBox cbAutoRefresh = new JCheckBox("each");
@@ -63,7 +65,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JMenuItem miShowFullStatus = new JMenuItem("Full status");
   private JMenuItem miShowInfo = new JMenuItem("Information");
   private JMenuItem miShowScripts = new JMenuItem("Scripts");
-  private JMenuItem miStopUpdate = new JMenuItem("Stop update");
   private JMenuItem miRevalidate = new JMenuItem("Revalidate");
   private JMenu mDB = new JMenu("Set DB Status");
   public JobStatusUpdateControl statusUpdateControl;
@@ -190,6 +191,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     });
     bKill.setEnabled(false);
 
+    bStopUpdate.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        statusUpdateControl.reset();
+      }
+    });
+    bStopUpdate.setEnabled(false);
+
     bRefresh.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         statusUpdateControl.updateStatus(null);
@@ -218,12 +226,14 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     
     pButtons.add(bKill);
     pButtons.add(new JLabel(" | "));
+    pButtons.add(bStopUpdate);
     pButtons.add(bRefresh);
     pButtons.add(cbAutoRefresh);
     pButtons.add(sAutoRefresh);
     pButtons.add(cbRefreshUnits);
 
     bKill.setToolTipText("Kill the selected jobs");
+    bStopUpdate.setToolTipText("Stop refreshing status of jobs");
     bRefresh.setToolTipText("Refresh all jobs");
 
     mainPanel.add(pOptions, BorderLayout.EAST);
@@ -329,12 +339,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
 
-    miStopUpdate.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        statusUpdateControl.reset();
-      }
-    });
-
     for(int i=0; i<GridPilot.csNames.length; ++i){
       JMenuItem mi = new JMenuItem(GridPilot.csNames[i], i);
       mi.addActionListener(new ActionListener(){
@@ -376,8 +380,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     statusTable.addMenuItem(miResubmit);
     statusTable.addMenuItem(mShow);
     statusTable.addMenuItem(miRevalidate);
-    statusTable.addMenuItem(miStopUpdate);
-    //statusTable.addMenuItem(miResetChanges);
     statusTable.addMenuItem(mDB);
 
   }
@@ -689,6 +691,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     //Ignore extra messages.
     if (e.getValueIsAdjusting()) return;
 
+    bStopUpdate.setEnabled(statusUpdateControl.checkingThread.size()>0);
     ListSelectionModel lsm = (ListSelectionModel)e.getSource();
     if(lsm.isSelectionEmpty()){
       bKill.setEnabled(false);
@@ -752,12 +755,25 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     new Thread(){
       public void run(){
         Vector jobs = DatasetMgr.getJobsAtRows(statusTable.getSelectedRows());
-        JobInfo job;
-        DatasetMgr datasetMgr;
+        JobInfo job = null;
+        DatasetMgr datasetMgr = null;
+        HashMap datasetJobs = new HashMap();
         for(int i=0; i<jobs.size(); ++i){
           job = (JobInfo) jobs.get(i);
           datasetMgr = getDatasetMgr(job);
-          datasetMgr.setDBStatus(new int [] {statusTable.getSelectedRows()[i]}, dbStatus);
+          if(!datasetJobs.containsKey(datasetMgr)){
+            datasetJobs.put(datasetMgr, new Vector());
+          }
+          ((Vector) datasetJobs.get(datasetMgr)).add(new Integer(i));
+        }
+        for(Iterator it=datasetJobs.keySet().iterator(); it.hasNext();){
+          datasetMgr = (DatasetMgr) it.next();
+          Vector jobRows = ((Vector) datasetJobs.get(datasetMgr));
+          int [] rows = new int [jobRows.size()];
+          for(int i=0; i<jobRows.size(); ++i){
+            rows[i] = ((Integer) jobRows.get(i)).intValue();
+          }
+          datasetMgr.setDBStatus(rows, dbStatus);
         }
       }
     }.start();
