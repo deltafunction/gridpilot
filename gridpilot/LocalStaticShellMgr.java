@@ -26,11 +26,13 @@ public class LocalStaticShellMgr{
     }
 
     File destFile = new File(dest);
-    if(destFile.getParent()!=null &&  !destFile.getParentFile().exists())
-      if(!destFile.getParentFile().mkdirs()){
-        Debug.debug("cannot create parent directory for " + dest, 3);
-        return false;
-      }
+    try{
+      destFile.getParentFile().mkdirs();
+    }
+    catch(Exception e){
+      Debug.debug("cannot create parent directory for " + dest, 3);
+      return false;
+    }      
       
     try{
       File srcFile = new File(src);
@@ -214,7 +216,14 @@ public class LocalStaticShellMgr{
   public static boolean mkdirs(String _dir){
     String dir = Util.clearTildeLocally(Util.clearFile(_dir));
     Debug.debug("making dirs "+dir, 3);
-    return new File(dir).mkdirs();
+    try{
+      (new File(dir)).mkdirs();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return false;
+    }
+    return true;
   }
 
   
@@ -253,11 +262,15 @@ public class LocalStaticShellMgr{
     String dest = Util.clearFile(_dest);
     Debug.debug("moving file "+src+"->"+dest, 3);
     File destFile = new File(dest);
-    if(destFile.getParent()!=null &&  !destFile.getParentFile().exists())
-      if(!destFile.getParentFile().mkdirs()){
+    if(destFile.getParent()!=null && !destFile.getParentFile().exists()){
+      try{
+        destFile.getParentFile().mkdirs();
+      } 
+      catch(Exception e){
         Debug.debug("cannot create parent directory for " + dest, 3);
         return false;
       }
+    }
     return new File(src).renameTo(destFile);
   }
 
