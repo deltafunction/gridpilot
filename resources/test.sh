@@ -19,7 +19,7 @@ if test $# -eq 0; then
   echo "         <input file name> .... name of input files - a comma separated list"
 
   echo
-  echo "EXAMPLE: test.sh data1.txt,data2,txt,data3.txt outfile.txt 3"
+  echo "EXAMPLE: 3 test.sh data1.txt,data2,txt,data3.txt"
   echo
   exit 0
 fi
@@ -30,9 +30,12 @@ fi
 
 MULT=$1
 INFN=$2
-if ["$INFN" -eq ""]; then
+if [ "$INFN" = "" ]; then
   INFN="data1.txt,data2.txt"
 fi
+
+echo
+echo "Input files: $INFN"
 
 OUTFN="out.txt"
 
