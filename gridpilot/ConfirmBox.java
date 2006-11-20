@@ -13,15 +13,13 @@ public class ConfirmBox extends JDialog implements ActionListener {
   private JButton bOk = new JButton();
   private JButton bCancel = new JButton();
 
-  public ConfirmBox(Frame parent/*, String title, String text*/){
+  public ConfirmBox(Frame parent){
     super(parent);
    enableEvents(AWTEvent.WINDOW_EVENT_MASK);
   }
 
   public int getConfirm(String title, String text, Object[] showResultsOptions ) throws Exception {
-    //Label jText = new JLabel(text);
     JOptionPane op = new JOptionPane(
-         //jText,
          text,
          JOptionPane.QUESTION_MESSAGE,
          JOptionPane.YES_NO_CANCEL_OPTION,

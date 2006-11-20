@@ -1066,16 +1066,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     
     jtFilter.setEnabled(true);
     String filter = jtFilter.getText();
-    
-    // This is done by gridftpFileSystem.list.
-    // Doing it twice messes things up.
-    /*if(filter==null || filter.equals("")){
-      filter = "*";
-    }
-    statusBar.setLabel("Filtering...");
-    filter = filter.replaceAll("\\.", "\\\\.");
-    filter = filter.replaceAll("\\*", ".*");*/
-          
     String htmlText = "";
 
     try{
@@ -1480,7 +1470,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       else if(e.getSource()==bUpload){
         File file = getInputFile();
-        TransferControl.upload(thisUrl, file, ep);
+        TransferControl.upload(file, thisUrl, ep);
         try{
           ep.getDocument().putProperty(
               Document.StreamDescriptionProperty, null);

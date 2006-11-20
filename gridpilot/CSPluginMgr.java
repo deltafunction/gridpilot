@@ -54,7 +54,8 @@ public class CSPluginMgr implements ComputingSystem{
   private int defaultTimeOut = 60*1000;
 
   private String [] csNames;
-  private HashMap cs ;
+  private HashMap cs;
+  private int threadI;
 
   public CSPluginMgr() throws Throwable{
     init();
@@ -146,7 +147,6 @@ public class CSPluginMgr implements ComputingSystem{
         shellMgr = GridPilot.getClassMgr().getShellMgr(csNames[i]);
       }
       catch(Exception e){
-        e.printStackTrace();
         continue;
       }
       if(shellMgr instanceof SecureShellMgr){
@@ -291,7 +291,6 @@ public class CSPluginMgr implements ComputingSystem{
   }
 
 
-  private int killThreadIndex = 0;
   /**
    * Kills these jobs
    * @see ComputingSystem#killJobs(Vector)
@@ -303,65 +302,54 @@ public class CSPluginMgr implements ComputingSystem{
     statusBar.animateProgressBar();
     
     HashMap csJobs = new HashMap();
-    for(int i=0; i<csNames.length; ++i){
-      csJobs.put(csNames[i], new Vector());
-    }
+    String csName = null;
     for(int i=0; i<jobs.size(); ++i){
-      ((Vector) csJobs.get(((JobInfo) jobs.get(i)).getCSName())
-          ).add(jobs.get(i));
-    }
-    
-    //final Vector [] csJobsArray = (Vector []) csJobs.values().toArray();
-    final Vector [] csJobsArray = new Vector[csNames.length];
-    for(int i=0; i<csNames.length; ++i){
-      csJobsArray[i] = (Vector) csJobs.get(csNames[i]);
-    }
-    
-    MyThread [] threads = new MyThread[csNames.length];
-    for(killThreadIndex=0; killThreadIndex<csNames.length;
-       ++killThreadIndex){
- 
-      Debug.debug("Killing thread "+csJobsArray.length+":"+killThreadIndex, 3);
-      
-      if(csJobsArray==null || csJobsArray[killThreadIndex]==null ||
-          csJobsArray[killThreadIndex].size()==0 ||
-          ((JobInfo) csJobsArray[killThreadIndex].get(0)).getCSName()==null){
-        continue;
+      csName = ((JobInfo) jobs.get(i)).getCSName();
+      if(!csJobs.keySet().contains(csName)){
+        csJobs.put(csName, new Vector());
       }
-            
-      threads[killThreadIndex] = new MyThread(){
+      ((Vector) csJobs.get(csName)).add(jobs.get(i));
+    }
+    
+    final HashMap csJobsFinal = csJobs;
+    
+    MyThread [] threads = new MyThread[csJobs.size()];
+    for(threadI=0; threadI<threads.length; ++threadI){
+ 
+      Debug.debug("Killing thread "+threads.length+":"+threadI, 3);
+      
+      threads[threadI] = new MyThread(){
         public void run(){
           try{
-            Debug.debug("Killing thread "+csJobsArray.length+":"+killThreadIndex, 3);
-
-            ((ComputingSystem) cs.get(((JobInfo) csJobsArray[killThreadIndex].get(0)).getCSName())
-                ).killJobs(csJobsArray[killThreadIndex]);
+            String csName = (String) csJobsFinal.keySet().toArray()[threadI];
+            ((ComputingSystem) cs.get(csName)).killJobs((Vector) csJobsFinal.get(csName));
           }
           catch(Exception t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " during kill job ", t);
           }
-          ++killThreadIndex;
         }
       };
-
     }
-    killThreadIndex = 0;
-    for(int i=0; i<csNames.length; ++i){
-      threads[i].start();
+
+    for(int i=0; i<threads.length; ++i){
+      threadI = i;
+      threads[threadI].start();
+      try{
+        Thread.sleep(2000);
+      }
+      catch(InterruptedException e){
+      }
     }
 
     // When killing jobs from several CSs, we wait the timeout of
     // the first one for the first jobs and then just move with
     // timeout 0 to kill the others
-    Util.waitForThread(threads[0],
-        ((JobInfo) csJobsArray[0].get(0)).getCSName(),
+    Util.waitForThread(threads[0],(String) csJobsFinal.keySet().toArray()[0],
         killTimeOut, "killJobs");
     if(csNames.length>1){
-      for(killThreadIndex=1; killThreadIndex<csNames.length;
-      ++killThreadIndex){
-        Util.waitForThread(threads[killThreadIndex],
-            ((JobInfo) csJobsArray[killThreadIndex].get(0)).getCSName(),
+      for(int i=1; i<threads.length; ++i){
+        Util.waitForThread(threads[i], (String) csJobsFinal.keySet().toArray()[i],
             0, "killJobs");
       }
     }

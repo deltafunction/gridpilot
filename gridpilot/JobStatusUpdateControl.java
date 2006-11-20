@@ -120,7 +120,7 @@ public class JobStatusUpdateControl{
   public void loadValues(){
 
     /**
-     * Load of maxSimultaneousChecking
+     * Load maxSimultaneousChecking
      */
     String tmp = configFile.getValue("GridPilot", "maximum simultaneous checking");
     if(tmp!=null){
@@ -136,7 +136,7 @@ public class JobStatusUpdateControl{
       logFile.addMessage(configFile.getMissingMessage("GridPilot", "maximum simultaneous checking") + "\n" +
                          "Default value = " + maxSimultaneousChecking);
     /**
-     * Load of timeBetweenCheking
+     * Load timeBetweenCheking
      */
     tmp = configFile.getValue("GridPilot", "time between checks");
     if(tmp!=null){

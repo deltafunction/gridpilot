@@ -482,21 +482,13 @@ public class JobCreator{
     return res;
   }
 
-  /** The first of the output file namnes of a dataset.
+  /**
+   * The first of the output file names of the transformation
+   * used to produce a dataset.
    * This is used as input file for the jobs of other datasets.
    * So, NOTICE: the (root) output file should always be the FIRST in the
    * field 'outputs' in the transformation definition.
    */
-  private String getTransOutFileName(String db, String datasetID){
-    String outputFileNameStr = null;
-    DBPluginMgr dbMgr = GridPilot.getClassMgr().getDBPluginMgr(
-        db);
-    outputFileNameStr = dbMgr.getTransformationOutputs(
-        dbPluginMgr.getTransformationID(
-        dbPluginMgr.getDatasetTransformationName(datasetID),
-        dbPluginMgr.getDatasetTransformationVersion(datasetID))).toString();
-    return Util.split(outputFileNameStr)[0];
-  }
 
   private void evaluateAll(int currentDataset, int currentPartition, String name,
       String number, String energy, String particle, String outputDest,
@@ -529,7 +521,7 @@ public class JobCreator{
             inputDB);
         inputDatasetID = inputMgr.getDatasetID(inputDataset);
         inputJobDefRecords = inputMgr.getJobDefinitions(inputDatasetID, 
-                new String [] {inputDBIdentifierField});
+                new String [] {inputDBIdentifierField, "eventMin", "eventMax"});
         inputJobDefIds = new String [inputJobDefRecords.values.length];
         for(int i=0; i<inputJobDefIds.length; ++i){
           inputJobDefIds[i] = inputJobDefRecords.getValue(i,
@@ -541,63 +533,73 @@ public class JobCreator{
     }
     catch(Exception e){
       Debug.debug("No input dataset for "+datasetIdentifiers[currentDataset], 2);
-      e.printStackTrace();
+      //e.printStackTrace();
       //return;
     }
-    if(inputJobDefIds.length>0 &&
-        Integer.parseInt(inputJobDefRecords.getValue(
+    boolean eventsPresent = true;
+    if(inputJobDefIds.length>0){
+      // just a quick check to avoid exceptions
+      if(inputJobDefRecords.getValue(0, "eventMin")==null ||
+          inputJobDefRecords.getValue(0, "eventMax")==null){
+        eventsPresent = false;
+      }
+      if(eventsPresent){
+        if(Integer.parseInt(inputJobDefRecords.getValue(
             currentPartition-1, "eventMin").toString())==evtMin &&
         Integer.parseInt(inputJobDefRecords.getValue(
                 currentPartition-1, "eventMax").toString())==
-	    	evtMax){
-      inputJobDefOutputFileName = getTransOutFileName(inputDB, datasetIdentifiers[currentDataset]);
-      inputFiles += inputMgr.getJobDefOutRemoteName(
-          inputJobDefIds[currentPartition-1], inputJobDefOutputFileName);
-      Debug.debug("Adding input file "+inputJobDefIds[currentPartition-1]+
-      		"-->"+inputFiles, 3);
-    }
-    else if(inputJobDefIds.length>0){
-      for(int j=0; j<inputJobDefIds.length; ++j){
-        readEvtMin = Integer.parseInt(inputJobDefRecords.getValue(
-            j, "eventMin").toString());
-        readEvtMax = Integer.parseInt(inputJobDefRecords.getValue(
-            j, "eventMax").toString());
-        Debug.debug("Range of events: "+evtMin+"-->"+evtMax, 2);
-        Debug.debug("Range of input events: "+readEvtMin+"-->"+readEvtMax, 2);
-        
-        if(readEvtMin!=-1 && readEvtMax!=-1 && (
-  					// This should catch all cases where event in input files are
-  					// partitioned differently from input events (events in output files).
-  					// TODO:  needs to be checked!
-        		readEvtMax-readEvtMin>evtMax-evtMin &&
-           (evtMin>=readEvtMin &&
-            evtMin<=readEvtMax ||
-            
-            evtMin<=readEvtMin &&
-            evtMax>=readEvtMax ||
-                
-            evtMax>=readEvtMin &&
-            evtMax<=readEvtMax) ||
-
-            readEvtMax-readEvtMin<evtMax-evtMin &&
-            (readEvtMin>=evtMin &&
-             readEvtMin<=evtMax ||
-             
-             readEvtMin<=evtMin &&
-             readEvtMax>=evtMax ||
-                 
-             readEvtMax>=evtMin &&
-             readEvtMax<=evtMax))
-        ){
-          if(j>0){
-            inputFiles += " ";
-          }
+          evtMax){
+          //inputJobDefOutputFileName = getTransOutFileName(inputDB, datasetIdentifiers[currentDataset]);
+          inputJobDefOutputFileName = inputMgr.getOutputFiles(
+              inputJobDefIds[currentPartition-1])[0];
+          // TODO: get this to work both with jobDefinitions and files in input dataset...
+          // where is it set as argument
           inputFiles += inputMgr.getJobDefOutRemoteName(
-              inputJobDefIds[j], inputJobDefOutputFileName);
-          Debug.debug("Adding input file "+inputJobDefIds[j]+
-          		"-->"+inputFiles, 3);
+              inputJobDefIds[currentPartition-1], inputJobDefOutputFileName);
+          Debug.debug("Adding input file "+inputJobDefIds[currentPartition-1]+
+                  "-->"+inputFiles, 3);
         }
         else{
+          for(int j=0; j<inputJobDefIds.length; ++j){
+            readEvtMin = Integer.parseInt(inputJobDefRecords.getValue(
+                j, "eventMin").toString());
+            readEvtMax = Integer.parseInt(inputJobDefRecords.getValue(
+                j, "eventMax").toString());
+            Debug.debug("Range of events: "+evtMin+"-->"+evtMax, 2);
+            Debug.debug("Range of input events: "+readEvtMin+"-->"+readEvtMax, 2);
+            
+            if(readEvtMin!=-1 && readEvtMax!=-1 && (
+                          // This should catch all cases where event in input files are
+                          // partitioned differently from input events (events in output files).
+                          // TODO:  needs to be checked!
+                  readEvtMax-readEvtMin>evtMax-evtMin &&
+               (evtMin>=readEvtMin &&
+                evtMin<=readEvtMax ||
+                
+                evtMin<=readEvtMin &&
+                evtMax>=readEvtMax ||
+                    
+                evtMax>=readEvtMin &&
+                evtMax<=readEvtMax) ||
+
+                readEvtMax-readEvtMin<evtMax-evtMin &&
+                (readEvtMin>=evtMin &&
+                 readEvtMin<=evtMax ||
+                 
+                 readEvtMin<=evtMin &&
+                 readEvtMax>=evtMax ||
+                     
+                 readEvtMax>=evtMin &&
+                 readEvtMax<=evtMax))){
+              if(j>0){
+                inputFiles += " ";
+              }
+              inputFiles += inputMgr.getJobDefOutRemoteName(
+                  inputJobDefIds[j], inputJobDefOutputFileName);
+              Debug.debug("Adding input file "+inputJobDefIds[j]+
+                      "-->"+inputFiles, 3);
+            }
+          }
         }
       }
     }
