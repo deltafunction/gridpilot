@@ -338,6 +338,7 @@ public class GridPilot extends JApplet{
         exitPanel.setText("<html>Exiting...<br>Click OK to force quit.</html>");
         JProgressBar jp = new JProgressBar();
         jp.setIndeterminate(true);
+        topExitPanel.setLayout(new GridBagLayout());
         topExitPanel.add(exitPanel);
         topExitPanel.add(jp);
         int ret = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
