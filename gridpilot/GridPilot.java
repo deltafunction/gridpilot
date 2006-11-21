@@ -335,16 +335,19 @@ public class GridPilot extends JApplet{
   public static void exit(final int exitCode){
     Thread t1 = new Thread(){
       public void run(){
-        exitPanel.setText("<html>Exiting...<br>Click OK to force quit.</html>");
+        exitPanel.setText("Exiting... Please wait or click OK to force quit.                                      ");
         JProgressBar jp = new JProgressBar();
         jp.setIndeterminate(true);
         topExitPanel.setLayout(new GridBagLayout());
-        topExitPanel.add(exitPanel);
-        topExitPanel.add(jp);
+        topExitPanel.add(exitPanel, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+            new Insets(5, 5, 5, 5), 0, 0));
+        topExitPanel.add(jp, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+            new Insets(5, 5, 5, 5), 0, 0));
         int ret = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
             topExitPanel,
             "Exiting", JOptionPane.PLAIN_MESSAGE);
-        topExitPanel.validate();
         Debug.debug("return value: ", ret);
         if(ret==JOptionPane.OK_OPTION){
           System.exit(-1);
@@ -354,10 +357,9 @@ public class GridPilot extends JApplet{
     Thread t2 = new Thread(){
       public void run(){
         //  Cancel all transfers
-        String message = "Cancelling all transfers...";
+        String message = "Cancelling all running transfers...";
         Debug.debug(message, 2);
-        exitPanel.setText("<html>"+message+"<br>Click OK to force quit.</html>");
-        topExitPanel.validate();
+        exitPanel.setText(message+" Click OK to force quit.");
         TransferControl.exit();
         //Delete temporary files
         File delFile = null;
@@ -379,15 +381,14 @@ public class GridPilot extends JApplet{
         // Disconnect DBs and CSs
         message = "Disconnecting computing systems...";
         Debug.debug(message, 2);
-        exitPanel.setText("<html>"+message+"<br>Click OK to force quit.</html>");
-        topExitPanel.validate();
+        exitPanel.setText(message+" Click OK to force quit.");
         if(getClassMgr().csPluginMgr!=null){
           getClassMgr().getCSPluginMgr().disconnect();
           getClassMgr().getCSPluginMgr().exit();
         }
         message = "Disconnecting databases...";
         Debug.debug(message, 2);
-        exitPanel.setText("<html>"+message+"<br>Click OK to force quit.</html>");
+        exitPanel.setText(message+" Click OK to force quit.");
         for(int i=0; i<dbNames.length; ++i){
           getClassMgr().getDBPluginMgr(dbNames[i]).disconnect();
           Debug.debug("Disconnecting "+dbNames[i], 2);
@@ -395,7 +396,6 @@ public class GridPilot extends JApplet{
         message = "All systems disconnected.";
         Debug.debug(message, 2);
         exitPanel.setText(message);
-        topExitPanel.validate();
         if(!applet){
           System.exit(exitCode);
         }
