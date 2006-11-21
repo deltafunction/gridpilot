@@ -249,9 +249,10 @@ public class NGSubmission{
       Debug.debug("Submittig with input files: "+Util.arrayToString(fileNames.toArray()), 2);
 
       int i = 0;
+      ARCGridFTPJob gridJob = null;
       while(true){
         try{
-          ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost);
+          gridJob = new ARCGridFTPJob(submissionHost);
           GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
           GlobusCredential globusCred = null;
           if(credential instanceof GlobusGSSCredentialImpl){
@@ -262,9 +263,11 @@ public class NGSubmission{
           gridJob.submit(xrsl, files, fileNames);       
           ngJobId = gridJob.getGlobalId();
           Debug.debug("NG Job Id: " + ngJobId, 3);
+          gridJob.disconnect();
           break;
         }
         catch(ARCGridFTPJobException ae){
+          gridJob.disconnect();
           logFile.addMessage("ARCGridFTPJobException during submission of " + xrslFileName + ":\n" +
               "\tException\t: " + ae.getMessage(), ae);
           if(i>MAX_SUBMIT_RETRIES){
