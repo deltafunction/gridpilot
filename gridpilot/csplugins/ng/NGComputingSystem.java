@@ -35,7 +35,6 @@ import gridpilot.GridPilot;
 import gridpilot.StatusBar;
 import gridpilot.TransferControl;
 import gridpilot.Util;
-import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 
 /**
  * Main class for the NorduGrid plugin. <br>
@@ -383,7 +382,7 @@ public class NGComputingSystem implements ComputingSystem{
         Debug.debug("Cleaning : " + job.getName() + ":" + job.getJobId(), 3);
         ARCGridFTPJob gridJob = getGridJob(job);
         gridJob.cancel();
-        gridJob.clean();
+        //gridJob.clean();
       }
       catch(Exception ae){
         errors.add(ae.getMessage());
@@ -402,8 +401,6 @@ public class NGComputingSystem implements ComputingSystem{
   }
 
   public void clearOutputMapping(JobInfo job){
-    
-    GSIFTPFileTransfer gsiftpFileTransfer = GridPilot.getClassMgr().getGSIFTPFileTransfer();
     
     // Clean job off grid. - just in case...
     try{
@@ -427,24 +424,23 @@ public class NGComputingSystem implements ComputingSystem{
     
     // Delete files that may have been copied to storage elements
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    String[] outputMapping = dbPluginMgr.getOutputFiles(job.getJobDefId());
-    String fileName;
-    for(int i=0; i<outputMapping.length/2-1; ++i){
-      try{
-        fileName = Util.addFile(outputMapping[2*i+1]);
-        gsiftpFileTransfer.deleteFile(new GlobusURL(fileName));
+    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
+    try{
+      for(int i=0; i<outputFileNames.length; ++i){
+        outputFileNames[i] = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFileNames[i]);
       }
-      catch(Exception e){
-        error = "WARNING: could not delete output file. "+e.getMessage();
-        Debug.debug(error, 3);
-      }
+      TransferControl.deleteFiles(outputFileNames);
+    }
+    catch(Exception e){
+      error = "WARNING: could not delete output file. "+e.getMessage();
+      Debug.debug(error, 3);
     }
     // Delete stdout/stderr that may have been copied to final destination
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
       try{
-        gsiftpFileTransfer.deleteFile(new GlobusURL(finalStdOut));
+        TransferControl.deleteFiles(new String [] {finalStdOut});
       }
       catch(Exception e){
         error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
@@ -457,7 +453,7 @@ public class NGComputingSystem implements ComputingSystem{
     }
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
       try{
-        gsiftpFileTransfer.deleteFile(new GlobusURL(finalStdErr));
+        TransferControl.deleteFiles(new String [] {finalStdErr});
       }
       catch(Exception e){
         error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
