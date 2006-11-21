@@ -1,4 +1,4 @@
-# $Id: 1c3f2ca8.signing_policy,v 1.1 2006/08/08 16:26:09 fjob Exp $ 
+# $Id: 1c3f2ca8.signing_policy,v 1.2 2006/11/21 17:16:39 fjob Exp $ 
 
 # ca-signing-policy.conf, see ca-signing-policy.doc for more information
 #
@@ -38,8 +38,8 @@
 # End DOE SG CA Policy
 # 
 # $Log: 1c3f2ca8.signing_policy,v $
-# Revision 1.1  2006/08/08 16:26:09  fjob
-# Added default certificates to distribution.
+# Revision 1.2  2006/11/21 17:16:39  fjob
+# update
 #
 # Revision 1.1  2004/07/05 14:09:55  davidg
 # imported version 0.20
@@ -59,7 +59,7 @@
 # to   /DC=DOEGrids
 #
 # Revision 1.2  2003/05/03 01:16:38  dhiva
-# $Id: 1c3f2ca8.signing_policy,v 1.1 2006/08/08 16:26:09 fjob Exp $ Included
+# $Id: 1c3f2ca8.signing_policy,v 1.2 2006/11/21 17:16:39 fjob Exp $ Included
 #
 # Revision 1.1  2003/05/03 01:15:05  dhiva
 # Globus Support Files for pki1.doegrids.org CA

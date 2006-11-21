@@ -1,0 +1,12 @@
+#
+# @(#)$Id: 747183a5.info,v 1.1 2006/11/21 17:16:28 fjob Exp $
+# Information for CA SiGNET
+#   obtained from 747183a5 in SiGNET/
+alias = SiGNET
+ca_url = http://signet-ca.ijs.si/pub/cacert/cacert.pem
+crl_url = http://signet-ca.ijs.si/pub/crl/cacrl.crl
+email = signet-ca@ijs.si
+status = accredited:classic
+url = http://signet-ca.ijs.si/
+version = 1.10
+sha1fp.0 = 8E:CC:79:71:3F:FD:9D:05:3C:D0:EE:D2:45:3A:43:B0:8E:82:13:17

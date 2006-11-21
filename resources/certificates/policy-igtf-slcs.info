@@ -1,0 +1,4 @@
+# @(#)policy-igtf-slcs.info - IGTF slcs authorities
+# Generated Monday, 16 Oct, 2006
+version = 1.10
+requires = 

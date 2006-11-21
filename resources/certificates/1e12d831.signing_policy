@@ -1,0 +1,9 @@
+# EACL APACGrid CA 2006/04/11
+ access_id_CA  X509    '/C=AU/O=APACGrid/OU=CA/CN=APACGrid/emailAddress=camanager@vpac.org'
+ pos_rights    globus  CA:sign
+ cond_subjects globus  '"/C=AU/O=APACGrid/*"'
+#
+ access_id_CA  X509    '/C=AU/O=APACGrid/OU=CA/CN=APACGrid/Email=camanager@vpac.org'
+ pos_rights    globus  CA:sign
+ cond_subjects globus  '"/C=AU/O=APACGrid/*"'
+# end of EACL

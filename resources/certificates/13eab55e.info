@@ -1,0 +1,12 @@
+#
+# @(#)$Id: 13eab55e.info,v 1.1 2006/11/21 17:16:29 fjob Exp $
+# Information for CA Spain
+#   obtained from 13eab55e in Spain/
+alias = Spain
+ca_url = http://grid.ifca.unican.es/ca/datagrid-es/13eab55e.0
+crl_url = http://grid.ifca.unican.es/ca/datagrid-es/13eab55e.r0
+email = datagrid-es-ca@ifca.unican.es
+status = accredited:classic
+url = http://grid.ifca.unican.es/ca/datagrid-es/
+version = 1.10
+sha1fp.0 = E2:A5:AA:5C:F2:0F:FD:36:DB:F8:2A:D2:ED:99:6F:94:A6:75:02:41

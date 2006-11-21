@@ -1,0 +1,9 @@
+#
+# @(#)$Id: d64ccb53.info,v 1.1 2006/11/21 17:16:38 fjob Exp $
+# Information for CA Russia
+#   obtained from d64ccb53 in Russia/
+alias = Russia
+crl_url = http://lhc.sinp.msu.ru/CA/d64ccb53.r0
+status = accredited:classic
+version = 1.10
+sha1fp.0 = 9F:22:0F:ED:F8:AF:4A:5D:25:AD:6E:73:97:F1:7F:82:76:C7:F2:4C

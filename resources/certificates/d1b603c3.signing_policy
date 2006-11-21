@@ -1,4 +1,4 @@
-# $Id: d1b603c3.signing_policy,v 1.1 2006/08/08 16:26:06 fjob Exp $
+# $Id: d1b603c3.signing_policy,v 1.2 2006/11/21 17:16:35 fjob Exp $
 #
 # ca-signing-policy.conf, see ca-signing-policy.doc for more information
 #
@@ -37,8 +37,8 @@
 # End DOE SG CA Policy
 # 
 # $Log: d1b603c3.signing_policy,v $
-# Revision 1.1  2006/08/08 16:26:06  fjob
-# Added default certificates to distribution.
+# Revision 1.2  2006/11/21 17:16:35  fjob
+# update
 #
 # Revision 1.1  2004/07/05 14:09:59  davidg
 # imported version 0.20
@@ -57,7 +57,7 @@
 # Modified the access_id_CA and included /O=ESnet
 #
 # Revision 1.2  2003/05/03 01:18:09  dhiva
-# $Id: d1b603c3.signing_policy,v 1.1 2006/08/08 16:26:06 fjob Exp $ included for all these files
+# $Id: d1b603c3.signing_policy,v 1.2 2006/11/21 17:16:35 fjob Exp $ included for all these files
 #
 # Revision 1.1  2003/05/03 01:15:06  dhiva
 # Globus Support Files for pki1.doegrids.org CA

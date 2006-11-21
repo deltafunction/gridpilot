@@ -40,7 +40,7 @@ public class NGSubmission{
   private int resourceIndex = 0;
   private NGScriptGenerator scriptGenerator;
   
-  private static int MAX_SUBMIT_RETRIES = 7;
+  private static int MAX_SUBMIT_RETRIES = 3;
 
   public NGSubmission(String _csName, String [] _clusters){
     Debug.debug("Loading class NGSubmission", 3);
@@ -182,6 +182,7 @@ public class NGSubmission{
               resources[resourceIndex].getFreejobs()>0){
             submissionHost = resources[resourceIndex].getClusterName();
             queue = resources[resourceIndex].getQueueName();
+            Debug.debug("Submitting to queue: "+queue, 2);            
             break;
           }
           else{
@@ -245,8 +246,8 @@ public class NGSubmission{
       // Since cpuTime has been used to find queue, we no longer need it
       xrsl = xrsl.replaceFirst("\\((?i)cputime=.*\\)\\(\\*endCpu\\*\\)", "");
       
-      Debug.debug("Submittig with input files: "+Util.arrayToString(files.toArray()), 2);
-      Debug.debug("Submittig with input files: "+Util.arrayToString(fileNames.toArray()), 2);
+      Debug.debug("Submitting with input files: "+Util.arrayToString(files.toArray()), 2);
+      Debug.debug("Submitting with input files: "+Util.arrayToString(fileNames.toArray()), 2);
 
       int i = 0;
       ARCGridFTPJob gridJob = null;
@@ -259,7 +260,7 @@ public class NGSubmission{
             globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
           }
           gridJob.addProxy(globusCred);
-          gridJob.connect();             
+          gridJob.connect();
           gridJob.submit(xrsl, files, fileNames);       
           ngJobId = gridJob.getGlobalId();
           Debug.debug("NG Job Id: " + ngJobId, 3);

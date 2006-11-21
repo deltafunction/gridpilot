@@ -1,0 +1,11 @@
+#
+# @(#)$Id: d1b603c3.info,v 1.1 2006/11/21 17:16:32 fjob Exp $
+# Information for CA ESnet
+#   obtained from d1b603c3 in ESnet/
+alias = ESnet
+url = http://www.doegrids.org/
+crl_url = http://es.net/CA/d1b603c3/CRL/d1b603c3.r0
+email = trouble@es.net
+status = accredited:classic
+version = 1.10
+sha1fp.0 = B4:B8:24:59:3C:7A:CF:B2:D4:39:64:0F:C5:51:22:24:D2:E0:CE:3F

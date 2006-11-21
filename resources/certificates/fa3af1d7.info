@@ -1,0 +1,11 @@
+#
+# @(#)$Id: fa3af1d7.info,v 1.1 2006/11/21 17:16:38 fjob Exp $
+# Information for CA CERN
+#   obtained from fa3af1d7 in CERN/
+alias = CERN
+crl_url = http://service-grid-ca.web.cern.ch/service-grid-ca/cgi-bin/getCRL
+url = http://service-grid-ca.web.cern.ch/service-grid-ca/
+email = service-grid-ca@cern.ch
+status = accredited:classic
+version = 1.10
+sha1fp.0 = 7B:86:34:13:2C:4F:39:3E:27:4C:65:84:90:13:11:4D:0A:B7:E8:96

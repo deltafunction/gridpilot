@@ -51,8 +51,11 @@ public class NGComputingSystem implements ComputingSystem{
   public static final String NG_STATUS_CANCELLING = "CANCELLING";
   public static final String NG_STATUS_SUBMITTING = "SUBMITTING";
   public static final String NG_STATUS_INLRMSQ = "INLRMS: Q";
+  public static final String NG_STATUS_INLRMSQ1 = "INLRMS:Q";
   public static final String NG_STATUS_INLRMSR = "INLRMS: R";
+  public static final String NG_STATUS_INLRMSR1 = "INLRMS:R";
   public static final String NG_STATUS_INLRMSE = "INLRMS: E";
+  public static final String NG_STATUS_INLRMSE1 = "INLRMS:E";
 
   public static final String NG_STATUS_FAILURE = "FAILURE";
   public static final String NG_STATUS_FAILED = "FAILED";
@@ -317,7 +320,8 @@ public class NGComputingSystem implements ComputingSystem{
           job.setInternalStatus(ComputingSystem.STATUS_ERROR);
         }
       }
-      else if(job.getJobStatus().equals(NG_STATUS_FAILURE)){
+      else if(job.getJobStatus().equals(NG_STATUS_FAILURE) ||
+          job.getJobStatus().equals(NG_STATUS_FAILED)){
         //getOutput(job);
         job.setInternalStatus(ComputingSystem.STATUS_FAILED);
       }
@@ -332,7 +336,8 @@ public class NGComputingSystem implements ComputingSystem{
       else if(job.getJobStatus().equals(NG_STATUS_FAILED)){
         job.setInternalStatus(ComputingSystem.STATUS_ERROR);
       }
-      else if(job.getJobStatus().equals(NG_STATUS_INLRMSR)){
+      else if(job.getJobStatus().equals(NG_STATUS_INLRMSR) ||
+          job.getJobStatus().equals(NG_STATUS_INLRMSR1)){
         job.setInternalStatus(ComputingSystem.STATUS_RUNNING);
       }
       //job.setInternalStatus(ComputingSystem.STATUS_WAIT);
