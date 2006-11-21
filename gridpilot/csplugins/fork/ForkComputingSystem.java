@@ -198,8 +198,15 @@ public class ForkComputingSystem implements ComputingSystem{
     try{
       StringBuffer stdout = new StringBuffer();
       StringBuffer stderr = new StringBuffer();
+      String transDir = transformationDirectory;
+      if(shellMgr.isLocal()){
+        transDir = Util.clearTildeLocally(transDir);
+      }
+      /*else{
+        transDir = transDir.replaceFirst("~", "\\$HOME");
+      }*/
       shellMgr.exec(
-          "chmod +x "+transformationDirectory+"/"+testScriptName, stdout, stderr);
+          "chmod +x "+transDir+"/"+testScriptName, stdout, stderr);
       if(stderr!=null && stderr.length()!=0){
         logFile.addMessage("Could not set transformation executable. "+stderr);
         throw new FileNotFoundException(stderr.toString());
@@ -624,22 +631,72 @@ public class ForkComputingSystem implements ComputingSystem{
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+
+    // Delete files that may have been copied to final destination.
+    // Files starting with file: are considered to be on the server accessed
+    // with shellMgr
+    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
+    String fileName;
+    Vector remoteFiles = new Vector();
+    for(int i=0; i<outputFileNames.length; ++i){
+      fileName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFileNames[i]);
+      if(fileName.startsWith("file:")){
+        shellMgr.deleteFile(fileName);
+      }
+      else{
+        remoteFiles.add(fileName);
+      }
+    }
+    String [] remoteFilesArr = new String [remoteFiles.size()];
+    for(int i=0; i<remoteFilesArr.length; ++i){
+      remoteFilesArr[i] = (String) remoteFiles.get(i);
+    }
     try{
-      shellMgr.deleteFile(finalStdOut);
+      TransferControl.deleteFiles(remoteFilesArr);
     }
-    catch(Exception ioe){
-      error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
-      "\tException\t: " + ioe.getMessage();
-      logFile.addMessage(error, ioe);
+    catch(Exception e){
+      error = "WARNING: could not delete output files. "+e.getMessage();
+      Debug.debug(error, 3);
     }
-    try{
-      shellMgr.deleteFile(finalStdErr);
+    
+    // Delete stdout/stderr that may have been copied to final destination
+    if(finalStdOut!=null && finalStdOut.trim().length()>0){
+      try{
+        if(finalStdOut.startsWith("file:")){
+          shellMgr.deleteFile(finalStdOut);
+        }
+        else{
+          TransferControl.deleteFiles(new String [] {finalStdOut});
+        }
+      }
+      catch(Exception e){
+        error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
+        Debug.debug(error, 2);
+      }
+      catch(Throwable e){
+        error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
+        Debug.debug(error, 2);
+      }
     }
-    catch(Exception ioe){
-      error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
-      "\tException\t: " + ioe.getMessage();
-      logFile.addMessage(error, ioe);
+    if(finalStdErr!=null && finalStdErr.trim().length()>0){
+      try{
+        if(finalStdErr.startsWith("file:")){
+          shellMgr.deleteFile(finalStdErr);
+        }
+        else{
+          TransferControl.deleteFiles(new String [] {finalStdErr});
+        }
+      }
+      catch(Exception e){
+        error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
+        Debug.debug(error, 2);
+      }
+      catch(Throwable e){
+        error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
+        Debug.debug(error, 2);
+      }
     }
+
     try{
       shellMgr.deleteDir(runDir);
     }
@@ -818,7 +875,32 @@ public class ForkComputingSystem implements ComputingSystem{
       logFile.addMessage("ERROR: could not create run directory for job.", e);
       return false;
     }
+    if(!shellMgr.isLocal()){
+      try{
+        writeUserProxy();
+      }
+      catch(Exception e){
+        logFile.addMessage("WARNING: could not cwrite user proxy.", e);
+      }
+    }
     return setRemoteOutputFiles(job) && getInputFiles(job);
+  }
+  
+  private void writeUserProxy() throws IOException{
+    try{
+      StringBuffer stdout = new StringBuffer();
+      StringBuffer stderr = new StringBuffer();
+      if(shellMgr.exec("id -u", stdout, stderr)!=0 ||
+          stderr!=null && stderr.length()!=0){
+        //logFile.addMessage("Could not get user id. "+stderr);
+        throw new FileNotFoundException(stderr.toString());
+      }
+      String uid = stdout.toString().trim();
+      shellMgr.upload(Util.getProxyFile().getAbsolutePath(), "/tmp/x509up_u"+uid);     
+    }
+    catch(Exception e){
+      throw new IOException("WARNING: NOT writing user proxy. " +"Probably not on UNIX. "+e.getMessage());
+    }
   }
   
   /**
@@ -1123,9 +1205,9 @@ public class ForkComputingSystem implements ComputingSystem{
         }
       }
     }
-    // relative paths and getting files from a Windows server is not supported
+    // relative paths or getting files from a Windows server is not supported
     else{
-      error = "ERROR copying : unqualified paths and getting files from a " +
+      error = "ERROR copying : unqualified paths or getting files from a " +
           "Windows server is not supported.";
       logFile.addMessage(error);
       return false;

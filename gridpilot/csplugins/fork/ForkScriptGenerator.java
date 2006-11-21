@@ -150,7 +150,11 @@ public class ForkScriptGenerator extends ScriptGenerator{
       try{
         StringBuffer stdout = new StringBuffer();
         StringBuffer stderr = new StringBuffer();
-        shellMgr.exec("chmod +x "+workingDir+"/"+fileName, stdout, stderr);
+        String workDir = workingDir;
+        if(shellMgr.isLocal()){
+          workDir = Util.clearTildeLocally(workDir);
+        }
+        shellMgr.exec("chmod +x "+workDir+"/"+fileName, stdout, stderr);
         if(stderr!=null && stderr.length()!=0){
           logFile.addMessage("Could not set job executable. "+stderr);
           throw new FileNotFoundException(stderr.toString());
