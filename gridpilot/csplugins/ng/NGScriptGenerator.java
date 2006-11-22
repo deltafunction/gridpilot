@@ -94,7 +94,8 @@ public class NGScriptGenerator extends ScriptGenerator{
       else{
         writeLine(bufXRSL,"(stderr=stderr)");
       }
-      writeLine(bufXRSL,"(executables=\""+shortExeFileName+"\" \""+shortScriptName+"\")");
+      //writeLine(bufXRSL,"(executables=\""+shortExeFileName+"\" \""+shortScriptName+"\")");
+      writeLine(bufXRSL,"(executables=\""+shortScriptName+"\")");
       if(cpuTime!=null && !cpuTime.equals("")){
         writeLine(bufXRSL,"(cpuTime=\""+cpuTime+"\")(*endCpu*)");
       }
