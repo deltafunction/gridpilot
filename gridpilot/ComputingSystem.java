@@ -150,7 +150,7 @@ public interface ComputingSystem{
   public void clearOutputMapping(JobInfo job);
 
   /**
-   * Called when AtCom is closed.
+   * Called when GridPilot is closed.
    * Could be useful if some connection need to be closed, temp files te be deleted, ...
    */
   public void exit();
