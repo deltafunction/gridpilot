@@ -25,7 +25,7 @@ public class ConfigFile{
    * Constructor. Initalizes this configuration file manager with the file 'configFile'
    */
   public ConfigFile(File configFile){
-    this.configFileName = configFile.getAbsolutePath();
+    configFileName = configFile.getAbsolutePath();
     inJar = false;
     valueStrings = new HashMap();
     valueArrays = new HashMap();
@@ -34,8 +34,8 @@ public class ConfigFile{
   /**
    * Constructor. Initalizes this configuration file manager with the file of name 'configFileName'
    */
-  public ConfigFile(String configFileName){
-    this.configFileName = configFileName;
+  public ConfigFile(String _configFileName){
+    configFileName = _configFileName;
     if(!GridPilot.tmpConfFile.containsKey(configFileName) ||
         GridPilot.tmpConfFile.get(configFileName)==null){
       makeTmpConfigFile();
@@ -47,29 +47,36 @@ public class ConfigFile{
   }
   
   public void makeTmpConfigFile(){
+    InputStream is =  null;
+    BufferedReader in = null;
+    PrintWriter out = null;
+    String prefix = "";
+    String suffix = "";      
+    String shortName = (new File(configFileName).getName());
+    if(shortName.indexOf(".")>0){
+      prefix = shortName.substring(0, shortName.indexOf(".")+1);
+      suffix = shortName.substring(shortName.indexOf("."));
+    }
+    else{
+      prefix = shortName;
+    }      
     try{
-      // To be able to open with random access when running from a jar
-      // we first extract the config file to a tmp file and then open
-      // the tmp file.
-      URL fileURL = getClass().getClassLoader().getResource(configFileName);
-      // If file.conf is used, create temp file with prefix file and suffix conf.
-      String shortName = (new File(configFileName).getName());
-      String prefix = "";
-      String suffix = "";
-      
-      if(shortName.indexOf(".")>0){
-        prefix = shortName.substring(0, shortName.indexOf(".")+1);
-        suffix = shortName.substring(shortName.indexOf("."));
+      // First just see if we can open file
+      try{
+        in = new BufferedReader(new FileReader((new File(configFileName))));
       }
-      else{
-        prefix = shortName;
+      catch(Exception e){
+        // To be able to open with random access when running from a jar
+        // we first extract the config file to a tmp file and then open
+        // the tmp file.
+        URL fileURL = getClass().getClassLoader().getResource(configFileName);
+        // If file.conf is used, create temp file with prefix file and suffix conf.
+        Debug.debug("fileURL: "+configFileName+":"+prefix+":"+suffix+":"+fileURL, 3);
+        is = fileURL.openStream();
+        in = new BufferedReader(new InputStreamReader(is));
       }
-      
-      Debug.debug("fileURL: "+configFileName+":"+prefix+":"+suffix, 3);
-      BufferedReader in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
       GridPilot.tmpConfFile.put(configFileName, File.createTempFile(prefix, suffix));
-      PrintWriter out = new PrintWriter(
-          new FileWriter((File) GridPilot.tmpConfFile.get(configFileName))); 
+      out = new PrintWriter(new FileWriter((File) GridPilot.tmpConfFile.get(configFileName))); 
       String line;
       while((line = in.readLine())!=null){
         out.println(line);
@@ -78,6 +85,13 @@ public class ConfigFile{
       out.close();
     }
     catch(IOException e){
+      try{
+        in.close();
+        out.close();
+        is.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug("cannot find file "+ configFileName+". "+
           e.getMessage(), 1);
       e.printStackTrace();
