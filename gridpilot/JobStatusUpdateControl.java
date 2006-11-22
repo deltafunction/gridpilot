@@ -330,8 +330,9 @@ public class JobStatusUpdateControl{
     
     Debug.debug("Finished trigCheck", 3);
 
-    if(!timerChecking.isRunning())
+    if(!timerChecking.isRunning()){
       timerChecking.restart();
+    }
   }
 
   /**
