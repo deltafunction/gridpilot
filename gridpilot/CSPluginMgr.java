@@ -124,22 +124,6 @@ public class CSPluginMgr implements ComputingSystem{
     }
   }
 
-  void reconnect(){
-    for(int i=0; i<csNames.length ; ++i){
-      ShellMgr shellMgr = null;
-      try{
-        shellMgr = GridPilot.getClassMgr().getShellMgr(csNames[i]);
-      }
-      catch(Exception e){
-        e.printStackTrace();
-        continue;
-      }
-      if(shellMgr instanceof SecureShellMgr){
-        ((SecureShellMgr) shellMgr).reconnect();
-      }
-    }
-  }
-
   void disconnect(){
     for(int i=0; i<csNames.length ; ++i){
       ShellMgr shellMgr = null;
@@ -734,5 +718,30 @@ public class CSPluginMgr implements ComputingSystem{
 
     Util.waitForThread(t, csName, setupTimeOut, "setupRuntimeEnvironments");
   }
+
+  public void reconnect(){
+    try{
+      init();
+    }
+    catch (Throwable e1) {
+      e1.printStackTrace();
+      Debug.debug("WARNING: could not reload computing system plugins", 1);
+    }
+    
+    for(int i=0; i<csNames.length ; ++i){
+      ShellMgr shellMgr = null;
+      try{
+        shellMgr = GridPilot.getClassMgr().getShellMgr(csNames[i]);
+      }
+      catch(Exception e){
+        //e.printStackTrace();
+        continue;
+      }
+      if(shellMgr!=null && shellMgr instanceof SecureShellMgr){
+        ((SecureShellMgr) shellMgr).reconnect();
+      }
+    }
+  }
+
 
 }
