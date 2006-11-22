@@ -48,13 +48,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   // Buttons panel
   private JPanel pButtons = new JPanel();
   private JButton bKill = new JButton("Kill");
-  private JButton bStopUpdate = new JButton("Stop update");
   private JButton bRefresh = new JButton("Refresh");
   // auto refresh
   private JCheckBox cbAutoRefresh = new JCheckBox("each");
   private JSpinner sAutoRefresh = new JSpinner();
   private JComboBox cbRefreshUnits = new JComboBox(new Object []{"sec", "min"});
   private int MIN = 1;
+  private JMenuItem miStopUpdate = new JMenuItem("Stop updating");
   private JMenuItem miKill = new JMenuItem("Kill");
   private JMenuItem miDecide = new JMenuItem("Decide");
   private JMenuItem miRefresh = new JMenuItem("Refresh");
@@ -191,15 +191,9 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     });
     bKill.setEnabled(false);
 
-    bStopUpdate.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        statusUpdateControl.reset();
-      }
-    });
-    bStopUpdate.setEnabled(false);
-
     bRefresh.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
+        miStopUpdate.setEnabled(true);
         statusUpdateControl.updateStatus(null);
       }
     });
@@ -226,14 +220,12 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     
     pButtons.add(bKill);
     pButtons.add(new JLabel(" | "));
-    pButtons.add(bStopUpdate);
     pButtons.add(bRefresh);
     pButtons.add(cbAutoRefresh);
     pButtons.add(sAutoRefresh);
     pButtons.add(cbRefreshUnits);
 
     bKill.setToolTipText("Kill the selected jobs");
-    bStopUpdate.setToolTipText("Stop refreshing status of jobs");
     bRefresh.setToolTipText("Refresh all jobs");
 
     mainPanel.add(pOptions, BorderLayout.EAST);
@@ -250,6 +242,15 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    */
   private void makeMenu(){
 
+    miStopUpdate.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        statusUpdateControl.reset();
+      }
+    });
+    miStopUpdate.setEnabled(false);
+
+    miStopUpdate.setToolTipText("Stop refreshing status of jobs");
+
     miKill.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         kill();
@@ -264,6 +265,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     miRefresh.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
+        miStopUpdate.setEnabled(true);
         statusUpdateControl.updateStatus(statusTable.getSelectedRows());
       }
     });
@@ -373,6 +375,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     mShow.add(miShowScripts);
 
     statusTable.addMenuSeparator();
+    statusTable.addMenuItem(miStopUpdate);
+    statusTable.addMenuSeparator();
     statusTable.addMenuItem(miKill);
     statusTable.addMenuItem(miDecide);
     statusTable.addMenuItem(miRefresh);
@@ -442,13 +446,17 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    */
   void decide(){
     int [] rows = statusTable.getSelectedRows();
+    
+    Debug.debug("Deciding rows "+Util.arrayToString(rows), 3);
 
-    if(!DatasetMgr.areDecidables(rows))
+    if(!DatasetMgr.areDecidables(rows)){
       return;
+    }
 
     Vector jobs = DatasetMgr.getJobsAtRows(rows);
 
     int [] options = {DBPluginMgr.VALIDATED, DBPluginMgr.FAILED, DBPluginMgr.UNDECIDED, DBPluginMgr.ABORTED};
+    
     String [] sOptions = {
         DBPluginMgr.getStatusName(options[0]),
         DBPluginMgr.getStatusName(options[1]),
@@ -689,9 +697,12 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    */
   private void selectionEvent(ListSelectionEvent e){
     //Ignore extra messages.
-    if (e.getValueIsAdjusting()) return;
-
-    bStopUpdate.setEnabled(statusUpdateControl.checkingThread.size()>0);
+    if (e.getValueIsAdjusting()){
+      return;
+    }
+    
+    miStopUpdate.setEnabled(statusUpdateControl.checkingThread.size()>0);
+    
     ListSelectionModel lsm = (ListSelectionModel)e.getSource();
     if(lsm.isSelectionEmpty()){
       bKill.setEnabled(false);
@@ -753,8 +764,10 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   private void setDBStatus(final int dbStatus){
     new Thread(){
-      public void run(){
-        Vector jobs = DatasetMgr.getJobsAtRows(statusTable.getSelectedRows());
+      public void run(){    
+        int [] rows = statusTable.getSelectedRows();       
+        Debug.debug("Setting status of rows "+Util.arrayToString(rows), 3);
+        Vector jobs = DatasetMgr.getJobsAtRows(rows);
         JobInfo job = null;
         DatasetMgr datasetMgr = null;
         HashMap datasetJobs = new HashMap();
@@ -764,16 +777,16 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           if(!datasetJobs.containsKey(datasetMgr)){
             datasetJobs.put(datasetMgr, new Vector());
           }
-          ((Vector) datasetJobs.get(datasetMgr)).add(new Integer(i));
+          ((Vector) datasetJobs.get(datasetMgr)).add(new Integer(rows[i]));
         }
         for(Iterator it=datasetJobs.keySet().iterator(); it.hasNext();){
           datasetMgr = (DatasetMgr) it.next();
           Vector jobRows = ((Vector) datasetJobs.get(datasetMgr));
-          int [] rows = new int [jobRows.size()];
+          int [] dsRows = new int [jobRows.size()];
           for(int i=0; i<jobRows.size(); ++i){
-            rows[i] = ((Integer) jobRows.get(i)).intValue();
+            dsRows[i] = ((Integer) jobRows.get(i)).intValue();
           }
-          datasetMgr.setDBStatus(rows, dbStatus);
+          datasetMgr.setDBStatus(dsRows, dbStatus);
         }
       }
     }.start();
