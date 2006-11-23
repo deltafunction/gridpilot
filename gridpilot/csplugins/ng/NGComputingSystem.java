@@ -74,7 +74,7 @@ public class NGComputingSystem implements ComputingSystem{
   private String [] giises;
   private ARCResource [] resources;
   private String [] runtimeDBs = null;
-  private HashSet<String> finalRuntimes = null;
+  private HashSet finalRuntimes = null;
   
   public NGComputingSystem(String _csName){
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
@@ -107,7 +107,7 @@ public class NGComputingSystem implements ComputingSystem{
     // restrict to these clusters
     if(clusters!=null && clusters.length!=0){
       String cluster = null;
-      Set<String> clusterSet = new HashSet<String>();
+      Set clusterSet = new HashSet();
       for(int i=0; i<clusters.length; ++i){
         if(!clusters[i].startsWith("ldap://")){
           cluster = "ldap://"+clusters[i]+
@@ -201,16 +201,16 @@ public class NGComputingSystem implements ComputingSystem{
         Debug.debug("WARNING: could not load runtime DB "+runtimeDBs[ii], 1);
         continue;
       }
-      finalRuntimes = new HashSet<String>();
+      finalRuntimes = new HashSet();
       // At least for now, we only have Linux resources on NorduGrid
       finalRuntimes.add("Linux");
       if(useInfoSystem){
-        String rte = null;
+        Object rte = null;
         for(int i=0; i<resources.length; ++i){
           try{
             runtimes = resources[i].getRuntimeenvironment();
             for(Iterator it=runtimes.iterator(); it.hasNext();){
-              rte = (String) it.next();
+              rte = it.next();
               Debug.debug("Adding runtime environment: "+rte.toString()+":"+rte.getClass(), 3);
               finalRuntimes.add(rte);
             }
@@ -380,7 +380,7 @@ public class NGComputingSystem implements ComputingSystem{
   
   public boolean killJobs(Vector jobsToKill){
     JobInfo job = null;
-    Vector<String> errors = new Vector<String>();
+    Vector errors = new Vector();
     for(Enumeration en=jobsToKill.elements(); en.hasMoreElements();){
       try{
         job = (JobInfo) en.nextElement();
@@ -820,7 +820,7 @@ public class NGComputingSystem implements ComputingSystem{
   
   public ARCJob getJobFromIS(JobInfo job) throws ARCGridFTPJobException{
     Set tmpClusters = arcDiscovery.getClusters();
-    Set<String> jobClusters = new HashSet<String>();
+    Set jobClusters = new HashSet();
     String submissionHost;
     try{
       submissionHost = (new GlobusURL(job.getJobId())).getHost();
@@ -841,7 +841,7 @@ public class NGComputingSystem implements ComputingSystem{
     // restrict to the one cluster holding the job
     arcDiscovery.setClusters(jobClusters);
     ARCJob [] allJobs = findCurrentJobsFromIS();
-    HashSet<String> allJobIds = new HashSet<String>();
+    HashSet allJobIds = new HashSet();
     // return to including all clusters
     arcDiscovery.setClusters(tmpClusters);
     for(int i=0; i<allJobs.length; ++i){
@@ -856,7 +856,6 @@ public class NGComputingSystem implements ComputingSystem{
     throw new ARCGridFTPJobException("No job found matching "+job.getJobId());
   }
   
-  @SuppressWarnings("unchecked")
   public ARCJob [] findCurrentJobsFromIS(){
     StatusBar statusBar = GridPilot.getClassMgr().getStatusBar();
 
@@ -864,7 +863,7 @@ public class NGComputingSystem implements ComputingSystem{
     long limit = 10000;
     long offset = 2000; // some +- coefficient
     Collection foundJobs = null;
-    HashSet<String> foundJobIDs = new HashSet<String>();
+    HashSet foundJobIDs = new HashSet();
     try{
       statusBar.setLabel("Finding jobs for "+getUserInfo(csName)+ ", please wait...");
       Debug.debug("Finding jobs for "+getUserInfo(csName)+ ", please wait...", 3);
@@ -880,7 +879,7 @@ public class NGComputingSystem implements ComputingSystem{
           // Failed to connect to server message. Just ignore.
           continue;
         }
-        result = (HashSet<String>) ((TaskResult) itObj).getResult();
+        result = (HashSet) ((TaskResult) itObj).getResult();
         foundJobIDs.addAll(result);
       }
       statusBar.setLabel("Finding jobs done");
@@ -924,7 +923,7 @@ public class NGComputingSystem implements ComputingSystem{
           getUserInfo(csName), 20, limit);
       Object itObj = null;
       HashSet tmpRes = null;
-      HashSet<ARCResource> resourcesSet = new HashSet<ARCResource>();
+      HashSet resourcesSet = new HashSet();
       boolean clusterOK = false;
       for(Iterator it=foundResources.iterator(); it.hasNext(); ){
         itObj = it.next();

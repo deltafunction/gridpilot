@@ -20,8 +20,8 @@ import gridpilot.Util;
 public class NGScriptGenerator extends ScriptGenerator{
 
   String cpuTime = null;
-  List<String> localInputFilesList = null;
-  List<String> remoteInputFilesList = null;
+  List localInputFilesList = null;
+  List remoteInputFilesList = null;
   
   public NGScriptGenerator(String _csName){
     super(_csName);
@@ -33,8 +33,8 @@ public class NGScriptGenerator extends ScriptGenerator{
   public List createXRSL(JobInfo job, String exeFileName, String xrslFileName, boolean join)
      throws IOException {
 
-    localInputFilesList = new Vector<String>();
-    remoteInputFilesList = new Vector<String>();
+    localInputFilesList = new Vector();
+    remoteInputFilesList = new Vector();
     StringBuffer bufXRSL = new StringBuffer();
     StringBuffer bufScript = new StringBuffer();
     String line = "";
