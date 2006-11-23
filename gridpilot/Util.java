@@ -720,13 +720,17 @@ public class Util{
   }
     
   public static File getProxyFile(){
+    String proxyDirectory = clearTildeLocally(GridPilot.proxyDir);
+    if((new File(proxyDirectory)).exists()){
+      return new File(proxyDirectory+"/x509up_"+System.getProperty("user.name"));
+    }
     return new File("/tmp/x509up_"+System.getProperty("user.name"));
   }
   
   public static GSSCredential initGridProxy() throws IOException, GSSException{
     
     ExtendedGSSManager manager = (ExtendedGSSManager) ExtendedGSSManager.getInstance();
-    //String proxyFile = "/tmp/x509up_u501";
+    //String proxyDir = "/tmp/x509up_u501";
     File proxy = getProxyFile();
     GSSCredential credential = null;
         

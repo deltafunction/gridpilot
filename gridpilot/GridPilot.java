@@ -42,6 +42,7 @@ public class GridPilot extends JApplet{
   public static int proxyTimeValid = 129600;
   public static String keyFile = "~/.globus/userkey.pem";
   public static String certFile = "~/.globus/usercert.pem";
+  public static String proxyDir = "~/.globus/usercert.pem";
   public static String keyPassword = null;
   public static String caCerts = null;
   public static String dateFormatString = "yyyy-MM-dd HH:mm:ss";
@@ -52,6 +53,7 @@ public class GridPilot extends JApplet{
   public static String [] ftNames;
   public static String [] csNames = null;
   public static String gridftpHomeURL = null;
+  public static boolean isExiting = false;
 
   /**
    * Constructor
@@ -171,6 +173,8 @@ public class GridPilot extends JApplet{
           "key file");
       certFile = getClassMgr().getConfigFile().getValue("GridPilot",
           "certificate file");
+      proxyDir = getClassMgr().getConfigFile().getValue("GridPilot",
+      "grid proxy directory");
       keyPassword = getClassMgr().getConfigFile().getValue("GridPilot",
           "key password");
       caCerts = getClassMgr().getConfigFile().getValue("GridPilot",
@@ -333,8 +337,12 @@ public class GridPilot extends JApplet{
   }
   
   public static void exit(final int exitCode){
+    if(isExiting){
+      return;
+    }
     Thread t1 = new Thread(){
       public void run(){
+        isExiting = true;
         exitPanel.setText("Exiting... Please wait or click OK to force quit.                                      ");
         JProgressBar jp = new JProgressBar();
         jp.setIndeterminate(true);
