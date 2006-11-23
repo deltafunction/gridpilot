@@ -75,7 +75,7 @@ public class NGSubmission{
 
     List files = scriptGenerator.createXRSL(job, scriptName, xrslName, !withStdErr);
     // Now the short file names
-    List fileNames = new Vector();
+    List<String> fileNames = new Vector<String>();
     String file;
     for(Iterator it=files.iterator(); it.hasNext();){
       file = (new File(it.next().toString())).getName();
