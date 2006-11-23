@@ -22,7 +22,6 @@ public class NGScriptGenerator extends ScriptGenerator{
   String cpuTime = null;
   List localInputFilesList = null;
   List remoteInputFilesList = null;
-  List remoteOutputFilesList = null;
   
   public NGScriptGenerator(String _csName){
     super(_csName);
@@ -51,15 +50,10 @@ public class NGScriptGenerator extends ScriptGenerator{
     if(lastSlash>-1){
       shortScriptName = shortScriptName.substring(lastSlash + 1);
     }
-    String xrslScriptName = null;
     // names starting with file: will be uploaded, names starting with
     // / or c:\ are considered to be locally available on the server
     if(scriptFileName.startsWith("file:")){
-      xrslScriptName = Util.clearTildeLocally(Util.clearFile(scriptFileName));
-      localInputFilesList.add(xrslScriptName);
-    }
-    else{
-      xrslScriptName = scriptFileName;
+      localInputFilesList.add(Util.clearTildeLocally(Util.clearFile(scriptFileName)));
     }
 
     //The xrsl file
@@ -82,8 +76,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       writeLine(bufXRSL,"(reRun=\"1\")");
       writeLine(bufXRSL,"(jobname=\""+shortExeFileName+"\")");
       //writeLine(bufXRSL,"(arguments=\"\")");
-      // This hack seems to be necessary, as the executable is there,
-      // but logged as not found.
+      // Necessary for 0.4 servers.
       writeLine(bufXRSL,"(arguments=\""+shortExeFileName+"\")");
       writeLine(bufXRSL,"(executable=\""+shortExeFileName+"\")");
       //writeLine(bufXRSL,"(stdlog=stdlog)");
@@ -94,18 +87,19 @@ public class NGScriptGenerator extends ScriptGenerator{
       else{
         writeLine(bufXRSL,"(stderr=stderr)");
       }
-      //writeLine(bufXRSL,"(executables=\""+shortExeFileName+"\" \""+shortScriptName+"\")");
-      writeLine(bufXRSL,"(executables=\""+shortScriptName+"\")");
+      writeLine(bufXRSL,"(executables=\""+shortExeFileName+"\" \""+shortScriptName+"\")");
+      //writeLine(bufXRSL,"(executables=\""+shortScriptName+"\")");
       if(cpuTime!=null && !cpuTime.equals("")){
         writeLine(bufXRSL,"(cpuTime=\""+cpuTime+"\")(*endCpu*)");
       }
-      boolean infi = false;
       // Input files: scripts
-      //writeLine(bufXRSL,"(\""+shortExeFileName+"\" \"\")");
-      if(!scriptFileName.startsWith("file:")){
-        writeLine(bufXRSL,"(inputFiles=");
-        writeLine(bufXRSL,"(\""+shortScriptName+"\" \""+xrslScriptName+"\")");
-        infi = true;
+      writeLine(bufXRSL,"(inputFiles=");
+      writeLine(bufXRSL,"(\""+shortExeFileName+"\" \""+shortExeFileName+"\")");
+      if(scriptFileName.startsWith("file:")){
+        writeLine(bufXRSL,"(\""+shortScriptName+"\" \""+/*shortScriptName+*/"\")");
+      }
+      else if(!scriptFileName.startsWith("/")){
+        writeLine(bufXRSL,"(\""+shortScriptName+"\" \""+scriptFileName+"\")");
       }
       
       // Input files.
@@ -153,23 +147,18 @@ public class NGScriptGenerator extends ScriptGenerator{
         // Add local files to the return value.
         // Files starting with / are assumed to already be on the server.
         if(inputFiles[i].startsWith("file:")){
+          writeLine(bufXRSL,"(\""+inputFileName+"\" \""/*+inputFileURL*/+"\")");
           localInputFilesList.add(inputFileURL);
         }
         else if(inputFiles[i].startsWith("/")){
           // do nothing
         }
         else{
-          if(!infi){
-            writeLine(bufXRSL,"(\""+shortScriptName+"\" \""+xrslScriptName+"\")");
-            infi = true;
-          }
           writeLine(bufXRSL,"(\""+inputFileName+"\" \""+inputFileURL+"\")");
           remoteInputFilesList.add(inputFileURL);
         }
       }
-      if(infi){
-        writeLine(bufXRSL,")");
-      }
+      writeLine(bufXRSL,")");
       
       String [] remoteInputFilesArray = new String [remoteInputFilesList.size()];
       for(int i=0; i<remoteInputFilesList.size(); ++i){
@@ -178,12 +167,13 @@ public class NGScriptGenerator extends ScriptGenerator{
       job.setDownloadFiles(remoteInputFilesArray);
 
       // outputfiles
-      line = "(outputFiles=" + "(\"stdout\" \"stdout\")" ;
+      //line = "(outputFiles=" + "(\"stdout\" \"stdout\")" ;
+      line = "(outputFiles=" + "(\"stdout\" \"\")" ;
       if(!join){
-        line += "(\"stderr\" \"stderr\")";
+        //line += "(\"stderr\" \"stderr\")";
+        line += "(\"stderr\" \"\")";
       }
 
-      remoteOutputFilesList = new Vector();
       String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
       String localName;
       String remoteName;
@@ -200,31 +190,18 @@ public class NGScriptGenerator extends ScriptGenerator{
                 " is not supported. "+remoteName);
         }
         else if(remoteName.startsWith("file:")){
-          // Files like gsiftp://... will be dealt with by the computing element
-          remoteName = localName;
-        }
-        else{
           // These are copied back to the client by jarclib and GridPilot
           // moves them locally on the client to their final destination
-          remoteOutputFilesList.add(new String [] {localName, remoteName});
+          remoteName = "";
+        }
+        else{
+          // Files like gsiftp://... will be dealt with by the computing element
         }
         Debug.debug("remote name: "+remoteName,3);
         line += "(\""+localName+"\" \""+remoteName+"\")" ;
       }
       line += ")";
       writeLine(bufXRSL,line);
-      
-      String [][] remoteOutputFilesArray = new String [remoteOutputFilesList.size()][2];
-      for(int i=0; i<remoteOutputFilesList.size(); ++i){
-        remoteOutputFilesArray[i] = (String []) remoteOutputFilesList.get(i);
-      }
-      // Notice that here we use the job.getUploadFiles in the opposite way than
-      // ForkComputingSystem: job.getUploadFiles are copied back to the client
-      // (for ForkComputingSystem these files are copied somewhere other than
-      // back to the client).
-      // Notice also that jobs are NOT persistent. So this information is NOT available
-      // on restart of GridPilot.
-      job.setUploadFiles(remoteOutputFilesArray);
 
       // runtime environment
       String [] uses = dbPluginMgr.getRuntimeEnvironments(jobDefID);
@@ -250,7 +227,7 @@ public class NGScriptGenerator extends ScriptGenerator{
         return null;
       }
 
-      //create job script
+      // create job script
 
       // Header
       writeLine(bufScript, "#!" + configFile.getValue(csName, "Shell"));
@@ -274,7 +251,10 @@ public class NGScriptGenerator extends ScriptGenerator{
       }
       writeBloc(bufScript, line, 1, "# ");
       String [] tmpParams = null;
-      for(int i=0; i< formalParam.length; ++i){
+      // Use actualParam.length instead of formalParam.length.
+      // This way, if not all parameters are filled in the first will
+      // be used and the rest just left empty.
+      for(int i=0; i</*formalParam.length*/actualParam.length; ++i){
       	try{
           // replace spaces with commas
       	  tmpParams = Util.split(actualParam[i]);

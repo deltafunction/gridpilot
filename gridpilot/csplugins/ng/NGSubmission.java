@@ -131,7 +131,6 @@ public class NGSubmission{
         line = line.replaceAll("\\r", "");
         line = line.replaceAll("\\n", "");
         xrsl += line;
-        Debug.debug("XRSL: "+line, 3);
       }
       in.close();
     }
@@ -239,13 +238,20 @@ public class NGSubmission{
       "(join=yes)(stdout=out.txt)(outputfiles=(\"test\" \"\"))(queue=\"" +
        "short" + "\")";*/
       
-      xrsl = xrsl.replaceFirst("\\(\\*(?i)queue=\"_submitqueue_\"\\*\\)",
-          "(queue=\""+queue+"\")");
+      if(queue==null){
+        xrsl = xrsl.replaceFirst("\\(\\*(?i)queue=\"_submitqueue_\"\\*\\)",
+            "");
+      }
+      else{
+        xrsl = xrsl.replaceFirst("\\(\\*(?i)queue=\"_submitqueue_\"\\*\\)",
+            "(queue=\""+queue+"\")");
+      }
       xrsl = xrsl.replaceFirst("\\(\\*(?i)action=\"request\"\\*\\)",
           "(action=\"request\")");
       // Since cpuTime has been used to find queue, we no longer need it
       xrsl = xrsl.replaceFirst("\\((?i)cputime=.*\\)\\(\\*endCpu\\*\\)", "");
       
+      Debug.debug("XRSL: "+xrsl, 3);
       Debug.debug("Submitting with input files: "+Util.arrayToString(files.toArray()), 2);
       Debug.debug("Submitting with input files: "+Util.arrayToString(fileNames.toArray()), 2);
 
