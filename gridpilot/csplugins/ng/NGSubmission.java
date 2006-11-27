@@ -78,7 +78,7 @@ public class NGSubmission{
     List fileNames = new Vector();
     String file;
     for(Iterator it=files.iterator(); it.hasNext();){
-      file = (new File(it.next().toString())).getName();
+      file = (new File((String) it.next())).getName();
       fileNames.add(file);
     }
     
@@ -164,7 +164,7 @@ public class NGSubmission{
       if(!submissionHost.startsWith("gsiftp://")){
         submissionHost = "gsiftp://"+submissionHost+":2811/jobs";
       }
-      // TODO: don't know if this will work
+      // TODO: don't know if this will work - well it works with >0.5, NOT with 0.4.5
       queue = "";
     }
     else{
@@ -239,8 +239,10 @@ public class NGSubmission{
        "short" + "\")";*/
       
       if(queue==null){
-        xrsl = xrsl.replaceFirst("\\(\\*(?i)queue=\"_submitqueue_\"\\*\\)",
-            "");
+        throw new ARCDiscoveryException("No queues found, cannot submit. Submission will not " +
+                "work on 0.4.x servers.");
+        //xrsl = xrsl.replaceFirst("\\(\\*(?i)queue=\"_submitqueue_\"\\*\\)",
+        //    "");
       }
       else{
         xrsl = xrsl.replaceFirst("\\(\\*(?i)queue=\"_submitqueue_\"\\*\\)",
@@ -249,7 +251,7 @@ public class NGSubmission{
       xrsl = xrsl.replaceFirst("\\(\\*(?i)action=\"request\"\\*\\)",
           "(action=\"request\")");
       // Since cpuTime has been used to find queue, we no longer need it
-      xrsl = xrsl.replaceFirst("\\((?i)cputime=.*\\)\\(\\*endCpu\\*\\)", "");
+      //xrsl = xrsl.replaceFirst("\\((?i)cputime=.*\\)\\(\\*endCpu\\*\\)", "");
       
       Debug.debug("XRSL: "+xrsl, 3);
       Debug.debug("Submitting with input files: "+Util.arrayToString(files.toArray()), 2);
