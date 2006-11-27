@@ -819,6 +819,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     
     cstAttributesNames = targetFields;
+    cstAttr = targetAttr;
     tcCstAttributes = null;
     Debug.debug("initAttributePanel", 3);
     initAttributePanel();

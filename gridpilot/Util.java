@@ -721,7 +721,7 @@ public class Util{
     
   public static File getProxyFile(){
     String proxyDirectory = clearTildeLocally(GridPilot.proxyDir);
-    if((new File(proxyDirectory)).exists()){
+    if(proxyDirectory!=null && (new File(proxyDirectory)).exists()){
       return new File(proxyDirectory+"/x509up_"+System.getProperty("user.name"));
     }
     return new File("/tmp/x509up_"+System.getProperty("user.name"));
