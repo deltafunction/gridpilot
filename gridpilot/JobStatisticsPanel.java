@@ -33,6 +33,8 @@ public class JobStatisticsPanel extends StatisticsPanel{
           //Debug.debug("Increasing value "+j+" from "+values[j]+" with "+theseValues[j], 3);
           values[j] += theseValues[j];
         }
+        //fix
+        break;
       }
     }
     else{
@@ -50,6 +52,8 @@ public class JobStatisticsPanel extends StatisticsPanel{
         for(int j=0; j<values.length; ++j){
           values[j] += theseValues[j];
         }
+        // fix
+        break;
       }
     }
     repaint();

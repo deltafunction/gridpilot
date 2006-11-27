@@ -677,17 +677,19 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           continue;
         }
         // if status ok, add the job
+        DatasetMgr mgr = null;
         for(int j=0; j<statusList.length; ++j){
           Debug.debug("Getting status: "+idField+":"+id, 3);
           jobStatus = dbPluginMgr.getJobDefStatus(id);
           if(statusList[j]==DBPluginMgr.getStatusId(jobStatus)){
-            DatasetMgr mgr = GridPilot.getClassMgr().getDatasetMgr(GridPilot.dbNames[ii],
+            mgr = GridPilot.getClassMgr().getDatasetMgr(GridPilot.dbNames[ii],
                 dbPluginMgr.getJobDefDatasetID(id));
             Debug.debug("Adding job #"+id, 3);
             mgr.addJobs(new String [] {id});
             break;
           }
         }
+        mgr.updateJobsByStatus();
       }
     }
   }
@@ -864,8 +866,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       for(Iterator it = GridPilot.getClassMgr().getDatasetMgrs().iterator(); it.hasNext();){
         mgr = ((DatasetMgr) it.next());
         mgr.initChanges();
-        mgr.updateJobsByStatus();
       }
+      mgr.updateJobsByStatus();
     }
     catch(Exception e){
       ret = false;

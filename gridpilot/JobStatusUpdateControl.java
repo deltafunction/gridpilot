@@ -102,7 +102,7 @@ public class JobStatusUpdateControl{
       iconChecking = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "checking.png", 3);
+      logFile.addMessage("Could not find image "+ GridPilot.resourcesPath + "checking.png");
       iconChecking = new ImageIcon();
     }
     Debug.debug("iconChecking: "+imgURL, 3);
@@ -291,6 +291,8 @@ public class JobStatusUpdateControl{
     datasetMgrs = GridPilot.getClassMgr().getDatasetMgrs();
     for(Iterator it = datasetMgrs.iterator(); it.hasNext();){
       ((DatasetMgr) it.next()).updateJobsByStatus();
+      // fix
+      break;
     }
   
     for(int i=0; i<jobs.size(); ++i){

@@ -2345,13 +2345,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         DBRecord jobDef;
         String [] selectedJobIdentifiers = getSelectedIdentifiers();
         String idField = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefintition");
+        DatasetMgr datasetMgr = null;
         for(int i=0; i<selectedJobIdentifiers.length; ++i){
           jobDef = dbPluginMgr.getJobDefinition(selectedJobIdentifiers[i]);
-          DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName,
+          datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName,
               dbPluginMgr.getJobDefDatasetID(
                   jobDef.getValue(idField).toString()));
           datasetMgr.addJobs(new String [] {selectedJobIdentifiers[i]});
         }
+        datasetMgr.updateJobsByStatus();
       }
     }.start();
   }
@@ -2391,6 +2393,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     String csName = ((JMenuItem)e.getSource()).getText();
     // submit the jobs
     submissionControl.submitJobDefinitions(selectedJobDefinitions, csName, dbPluginMgr);
+    // TODO: add cancelling possibility
   }
   
   public void copy(){
