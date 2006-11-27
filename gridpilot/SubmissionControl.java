@@ -3,6 +3,7 @@ package gridpilot;
 import javax.swing.*;
 
 import java.awt.event.*;
+import java.net.URL;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Vector;
@@ -101,11 +102,13 @@ public class SubmissionControl{
     String resourcesPath = configFile.getValue("GridPilot", "resources");
     if(resourcesPath != null && !resourcesPath.endsWith("/"))
       resourcesPath += "/";
+    URL imgURL=null;
     try{
-      iconSubmitting = new ImageIcon(resourcesPath + "submitting.png");
+      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "submitting.png");
+      iconSubmitting = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ resourcesPath + "submitting.png", 3);
+      logFile.addMessage("Could not find image "+ resourcesPath + "submitting.png");
       iconSubmitting = new ImageIcon();
     }
     isRand = configFile.getValue("GridPilot", "randomized submission");
@@ -468,7 +471,8 @@ public class SubmissionControl{
         DatasetMgr.FIELD_CS);
     //statusTable.setValueAt(job.getName(), job.getTableRow(),
     //                       DatasetMgr);
-    //Debug.debug("jobName : " + job.getName(), 3);
+    Debug.debug("Submitting : " + job.getName()+" : "+statusTable.getRowCount()+
+        " : "+job.getTableRow()+" : "+iconSubmitting, 3);
     statusTable.setValueAt(iconSubmitting, job.getTableRow(),
         DatasetMgr.FIELD_CONTROL);
     DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
@@ -515,8 +519,6 @@ public class SubmissionControl{
       DatasetMgr.updateDBCell(job, statusTable);
       //jobControl.updateJobsByStatus();
     }
-    // remove iconSubmitting
-    statusTable.setValueAt(null, job.getTableRow(), DatasetMgr.FIELD_CONTROL);
     //jobControl.updateJobsByStatus();
     for(Iterator it = GridPilot.getClassMgr().getDatasetMgrs().iterator(); it.hasNext();){
       ((DatasetMgr) it.next()).updateJobsByStatus();
@@ -533,6 +535,8 @@ public class SubmissionControl{
       pbSubmission.setValue(0);
       statusBar.setLabel("Submission done.");
     }
+    // remove iconSubmitting
+    statusTable.setValueAt(null, job.getTableRow(), DatasetMgr.FIELD_CONTROL);
   }
 
   public boolean isSubmitting(){
