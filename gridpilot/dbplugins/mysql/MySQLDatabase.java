@@ -2278,6 +2278,15 @@ public class MySQLDatabase implements Database{
     }
   }
 
+  /**
+   * Returns the files registered for a given dataset id.
+   */
+  public DBResult getFiles(String datasetID){
+    String idField = Util.getIdentifierField(dbName, "dataset");
+    DBResult res = select("SELECT * FROM file WHERE "+idField+" = "+datasetID, idField, false);
+    return res;
+  }
+
   public void registerFileLocation(String datasetID, String datasetName,
       String fileID, String lfn, String url, boolean datasetComplete) throws Exception {
     
