@@ -7,6 +7,7 @@ import javax.swing.*;
 import gridpilot.DBResult;
 
 import java.awt.*;
+import java.io.IOException;
 
 /**
  * Creates the job definitions
@@ -96,16 +97,8 @@ public class JobCreator{
       return;
     }
 
-
     int firstPartition = 1;
-    int lastPartition  = 1;
-
-    if(firstPartition > lastPartition){
-      GridPilot.getClassMgr().getLogFile().addMessage(
-          "first value (from) cannot be greater then last value (To) : " +
-          firstPartition + ">" + lastPartition);
-      return;
-    }
+    int lastPartition  = -1;
 
     boolean skipAll = false;
     boolean skip = false;
@@ -116,6 +109,8 @@ public class JobCreator{
     //  When using recon_detail, version is not known
     len = datasetIdentifiers.length;
     for(int currentDataset=0; currentDataset<len; ++currentDataset){
+      
+      Debug.debug("Creating job definitions for dataset "+datasetIdentifiers[currentDataset], 2);
 
       int partitionCount = 0;
       
@@ -124,16 +119,71 @@ public class JobCreator{
       // that is, the fields eventMin, eventMax and nEvents will not be set in the
       // jobDefinition record.
       eventSplits = dbPluginMgr.getEventSplits(datasetIdentifiers[currentDataset]);
+      // First, see if we can split according to event specifications
       if(eventSplits!=null && eventSplits.length>1){
         lastPartition = firstPartition+eventSplits.length-1;
+        Debug.debug("found first partition from event splitting: "+firstPartition, 1);
+        Debug.debug("found last partition rom event splitting: "+lastPartition, 1);
       }
-      else{
-      	Debug.debug("ERROR: Could not get event splitting.", 1);
-        statusBar.setLabel("ERROR: Could not get event splitting.");
-      	return;
+      // If that didn't work, see if we can get the number of files
+      // of the input dataset directly
+      String inputDataset = null;
+      DBPluginMgr inputMgr = null;
+      String inputDB = null;
+      if(lastPartition<=0){
+        String error = "WARNING: could not get event splitting.";
+        GridPilot.getClassMgr().getLogFile().addInfo(error);
+        statusBar.setLabel(error);
+      	//return;
+        // try to get number of files from input dataset
+        try{
+          inputDB = (String) dbPluginMgr.getDataset(
+              datasetIdentifiers[currentDataset]).getValue("inputDB");
+          inputMgr = GridPilot.getClassMgr().getDBPluginMgr(
+              inputDB);
+          inputDataset = (String) dbPluginMgr.getDataset(
+              datasetIdentifiers[currentDataset]).getValue("inputDataset");
+          String totalInputFiles = (String) inputMgr.getDataset(
+              inputDataset).getValue("totalFiles");
+          firstPartition = 1;
+          lastPartition = Integer.parseInt(totalInputFiles);
+        }
+        catch(Exception ee){
+          error = "ERROR: Could not get number of input files from " +
+              "field totalFiles in input dataset record.";
+          GridPilot.getClassMgr().getLogFile().addMessage(error);
+        }
+      }
+      // If that didn't work, see if we can get the number of files
+      // of the input dataset by querying the dataset catalog
+      if(lastPartition<=0){
+        String error = "WARNING: number of files not in dataset record.";
+        GridPilot.getClassMgr().getLogFile().addInfo(error);
+        statusBar.setLabel(error);
+        DBResult inputFiles = inputMgr.getFiles(inputMgr.getDatasetID(inputDataset));
+        firstPartition = 1;
+        lastPartition = inputFiles.values.length;
+      }
+      // If that didn't work, see if we can get the number of files
+      // of the input dataset by querying the file catalog
+      if(lastPartition<=0){
+        String error = "ERROR: Could not get number of input files from input dataset.";
+        GridPilot.getClassMgr().getLogFile().addMessage(error);
+        return;
+        //firstPartition = 1;
+        //lastPartition  = 1;
+      }
+      Debug.debug("first partition: "+firstPartition, 1);
+      Debug.debug("last partition: "+lastPartition, 1);
+      
+      if(firstPartition>lastPartition){
+        GridPilot.getClassMgr().getLogFile().addMessage(
+            "ERROR: first value (from) cannot be greater then last value (To) : " +
+            firstPartition + ">" + lastPartition);
+        return;
       }
 
-      for(int currentPartition = firstPartition ; currentPartition <= lastPartition && !skipAll; ++currentPartition){
+      for(int currentPartition=firstPartition; currentPartition<=lastPartition && !skipAll; ++currentPartition){
 
         showThis = showResults;
         // NOTICE: here we assume that the following fields are present in dataset:
@@ -144,9 +194,9 @@ public class JobCreator{
           evaluateAll(currentDataset, currentPartition,
               dbPluginMgr.getDatasetName(datasetIdentifiers[currentDataset]),
               dbPluginMgr.getRunNumber(datasetIdentifiers[currentDataset]),
-              dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("beamEnergy").toString(),
-              dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("beamParticle").toString(),
-              dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("outputLocation").toString(),
+              (String) dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("beamEnergy"),
+              (String) dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("beamParticle"),
+              (String) dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("outputLocation"),
                  eventSplits);
         }
         catch(Exception ex){
@@ -370,8 +420,8 @@ public class JobCreator{
           pos = sss.indexOf(rep);
           if(pos>=0){
             try{
-              val = dbPluginMgr.getDataset(dbPluginMgr.getDatasetID(name)
-              ).getValue(fields[i]).toString();
+              val = (String) dbPluginMgr.getDataset(dbPluginMgr.getDatasetID(name)
+              ).getValue(fields[i]);
             }
             catch(Exception e){
               // nothing necessary...
@@ -492,79 +542,118 @@ public class JobCreator{
 
   private void evaluateAll(int currentDataset, int currentPartition, String name,
       String number, String energy, String particle, String outputDest,
-      int [][] eventSplits)throws ArithmeticException, SyntaxException{
+      int [][] eventSplits)throws ArithmeticException, SyntaxException,
+      IOException{
     
     String inputFiles = "";
-    int evtMin = eventSplits[currentPartition-1][0];
-    int evtMax = eventSplits[currentPartition-1][1];
-    int readEvtMin;
-    int readEvtMax;
-    String [] inputJobDefIds = new String [] {};
+    int evtMin = -1;
+    int evtMax = -1;
+    int readEvtMin = -1;
+    int readEvtMax = -1;
+    try{
+      evtMin = eventSplits[currentPartition-1][0];
+      evtMax = eventSplits[currentPartition-1][1];
+    }
+    catch(Exception e){
+    }
+    String [] inputIds = new String [] {};
     String inputDB = null;
     String inputDataset = null;
     DBPluginMgr inputMgr = null;
     String inputDatasetID = "-1";
-    DBResult inputJobDefRecords = null;
-    String inputJobDefOutputFileName = null;
+    DBResult inputRecords = null;
+    String inputFileName = null;
+    boolean fileCatalogInput = false;
     // Construct input file names
-    try{
-      inputDB = dbPluginMgr.getDataset(
-          datasetIdentifiers[currentDataset]).getValue("inputDB").toString();
-      String inputDBIdentifierField = Util.getIdentifierField(
-          GridPilot.getClassMgr().getDBPluginMgr(inputDB
-          ).getDBName(), "jobDefinition");
-      inputDataset = dbPluginMgr.getDataset(
-          datasetIdentifiers[currentDataset]).getValue("inputDataset").toString();
-      if(inputDataset!=null && !inputDataset.equals("") &&
-      		inputDB!=null && !inputDB.equals("")){
-        inputMgr = GridPilot.getClassMgr().getDBPluginMgr(
-            inputDB);
-        inputDatasetID = inputMgr.getDatasetID(inputDataset);
-        inputJobDefRecords = inputMgr.getJobDefinitions(inputDatasetID, 
-                new String [] {inputDBIdentifierField, "eventMin", "eventMax"});
-        inputJobDefIds = new String [inputJobDefRecords.values.length];
-        for(int i=0; i<inputJobDefIds.length; ++i){
-          inputJobDefIds[i] = inputJobDefRecords.getValue(i,
-              inputDBIdentifierField).toString();
+    inputDB = (String) dbPluginMgr.getDataset(
+        datasetIdentifiers[currentDataset]).getValue("inputDB");
+    inputMgr = GridPilot.getClassMgr().getDBPluginMgr(
+        inputDB);
+    inputDataset = (String )dbPluginMgr.getDataset(
+        datasetIdentifiers[currentDataset]).getValue("inputDataset");
+    if(inputDataset!=null && !inputDataset.equalsIgnoreCase("")){
+      if(inputMgr.isFileCatalog()){
+        try{
+          String inputDBFileIdentifierField = Util.getIdentifierField(
+              inputMgr.getDBName(), "file");
+          if(inputDataset!=null && !inputDataset.equals("") &&
+              inputDB!=null && !inputDB.equals("")){
+            inputDatasetID = inputMgr.getDatasetID(inputDataset);
+            inputRecords = inputMgr.getFiles(inputDatasetID);
+            inputIds = new String[inputRecords.values.length];
+            for(int i=0; i<inputIds.length; ++i){
+              inputIds[i] = (String) inputRecords.getValue(i,
+                  inputDBFileIdentifierField);
+            }
+            Debug.debug("Input files for "+datasetIdentifiers[currentDataset]+
+                ":"+inputDataset+":"+inputDB+": "+Util.arrayToString(inputIds), 3);
+          }
         }
-        Debug.debug("Input datasets for "+datasetIdentifiers[currentDataset]+
-        		":"+inputDataset+":"+inputDB+": "+inputJobDefIds.length, 3);
+        catch(Exception e){
+          Debug.debug("No input dataset for "+datasetIdentifiers[currentDataset], 2);
+          //e.printStackTrace();
+          //return;
+        }
       }
-    }
-    catch(Exception e){
-      Debug.debug("No input dataset for "+datasetIdentifiers[currentDataset], 2);
-      //e.printStackTrace();
-      //return;
+      if((inputRecords==null || inputRecords.values.length==0) && inputMgr.isJobRepository()){
+        try{
+          String inputDBJobDefIdentifierField = Util.getIdentifierField(
+              inputMgr.getDBName(), "jobDefinition");
+          if(inputDataset!=null && !inputDataset.equals("") &&
+              inputDB!=null && !inputDB.equals("")){
+            inputDatasetID = inputMgr.getDatasetID(inputDataset);
+            inputRecords = inputMgr.getJobDefinitions(inputDatasetID, 
+                    new String [] {inputDBJobDefIdentifierField, "eventMin", "eventMax"});
+            inputIds = new String[inputRecords.values.length];
+            for(int i=0; i<inputIds.length; ++i){
+              inputIds[i] = (String) inputRecords.getValue(i,
+                  inputDBJobDefIdentifierField);
+            }
+            Debug.debug("Input job definitions for "+datasetIdentifiers[currentDataset]+
+                ":"+inputDataset+":"+inputDB+": "+Util.arrayToString(inputIds), 3);
+          }
+        }
+        catch(Exception e){
+          Debug.debug("No input dataset for "+datasetIdentifiers[currentDataset], 2);
+          //e.printStackTrace();
+          //return;
+        }
+      }
+      else{
+        fileCatalogInput = true;
+      }
+      if(inputRecords==null || inputRecords.values.length==0){
+        throw new IOException ("Could not get input files, cannot proceed.");
+      }
     }
     boolean eventsPresent = true;
-    if(inputJobDefIds.length>0){
+    if(inputIds.length>0){
       // just a quick check to avoid exceptions
-      if(inputJobDefRecords.getValue(0, "eventMin")==null ||
-          inputJobDefRecords.getValue(0, "eventMax")==null){
+      if(inputRecords.getValue(0, "eventMin")==null ||
+          inputRecords.getValue(0, "eventMax")==null){
         eventsPresent = false;
+        Debug.debug("No event information in dataset "+datasetIdentifiers[currentDataset], 2);
       }
       if(eventsPresent){
-        if(Integer.parseInt(inputJobDefRecords.getValue(
-            currentPartition-1, "eventMin").toString())==evtMin &&
-        Integer.parseInt(inputJobDefRecords.getValue(
-                currentPartition-1, "eventMax").toString())==
+        if(Integer.parseInt((String) inputRecords.getValue(
+            currentPartition-1, "eventMin"))==evtMin &&
+        Integer.parseInt((String) inputRecords.getValue(
+                currentPartition-1, "eventMax"))==
           evtMax){
           //inputJobDefOutputFileName = getTransOutFileName(inputDB, datasetIdentifiers[currentDataset]);
-          inputJobDefOutputFileName = inputMgr.getOutputFiles(
-              inputJobDefIds[currentPartition-1])[0];
-          // TODO: get this to work both with jobDefinitions and files in input dataset...
-          // where is it set as argument
+          inputFileName = inputMgr.getOutputFiles(
+              inputIds[currentPartition-1])[0];
           inputFiles += inputMgr.getJobDefOutRemoteName(
-              inputJobDefIds[currentPartition-1], inputJobDefOutputFileName);
-          Debug.debug("Adding input file "+inputJobDefIds[currentPartition-1]+
+              inputIds[currentPartition-1], inputFileName);
+          Debug.debug("Adding input file "+inputIds[currentPartition-1]+
                   "-->"+inputFiles, 3);
         }
         else{
-          for(int j=0; j<inputJobDefIds.length; ++j){
-            readEvtMin = Integer.parseInt(inputJobDefRecords.getValue(
-                j, "eventMin").toString());
-            readEvtMax = Integer.parseInt(inputJobDefRecords.getValue(
-                j, "eventMax").toString());
+          for(int j=0; j<inputIds.length; ++j){
+            readEvtMin = Integer.parseInt((String) inputRecords.getValue(
+                j, "eventMin"));
+            readEvtMax = Integer.parseInt((String) inputRecords.getValue(
+                j, "eventMax"));
             Debug.debug("Range of events: "+evtMin+"-->"+evtMax, 2);
             Debug.debug("Range of input events: "+readEvtMin+"-->"+readEvtMax, 2);
             
@@ -595,27 +684,62 @@ public class JobCreator{
                 inputFiles += " ";
               }
               inputFiles += inputMgr.getJobDefOutRemoteName(
-                  inputJobDefIds[j], inputJobDefOutputFileName);
-              Debug.debug("Adding input file "+inputJobDefIds[j]+
+                  inputIds[j], inputFileName);
+              Debug.debug("Adding input file "+inputIds[j]+
                       "-->"+inputFiles, 3);
             }
           }
         }
       }
+      else{
+        // just assume one-to-one input to output files
+        if(fileCatalogInput){
+          Debug.debug("Using input file from file catalog", 2);
+          // The logical file name - we don't use it: I don't see the point
+          // of giving lfc://some/path/some/file.root or mysql://somedb/file.root
+          // to the CE, when we can check file availability right here.
+          /*inputFileName = (String) inputMgr.getFile(datasetIdentifiers[currentDataset],
+              inputIds[currentPartition-1]).getValue("lfn");*/
+          // Use the first pfn returned.
+          // Notice: if "find all PFNs" is checked all PFNs will be looked up,
+          // slowing down job creation enormeously, and still only the first will be used.
+          // So, it should NOT be checked.
+          String inputFils = (String) inputMgr.getFile(inputDataset,
+              inputIds[currentPartition-1]).getValue("pfns");
+          String [] inputFilArr = Util.split(inputFils);
+          inputFiles = inputFilArr[0];
+        }
+        else{
+          inputFileName = inputMgr.getOutputFiles(
+              inputIds[currentPartition-1])[0];
+          inputFiles = inputMgr.getJobDefOutRemoteName(
+              inputIds[currentPartition-1], inputFileName);
+        }
+        Debug.debug("--->"+inputFiles, 2);
+      }
     }
+    // construct the (short) file names for the job script arguments
     String inputs = "";
     String [] fils;
     String [] inArr = Util.split(inputFiles);
+    String addFils = "";
     for(int j=0; j<inArr.length; ++j){
       if(j>0){
         inputs += " ";
       }
       fils = Util.split(inArr[j], "/");
       if(fils.length>0){
+        addFils = fils[fils.length-1];
+      }
+      else{
+        addFils = inArr[j];
+      }
+      fils = Util.split(addFils, "\\\\");
+      if(fils.length>0){
         inputs += fils[fils.length-1];
       }
       else{
-        inputs += inArr[j];
+        inputs += addFils;
       }
     }
     // jobDefinition fields
@@ -627,7 +751,7 @@ public class JobCreator{
     for(int i=0; i<jobDefFields.length; ++i){
       jobDefFields[i] = jobDefFields[i].toLowerCase();
     }
-    ArrayList jobdefinitionfields = new ArrayList(Arrays.asList(jobDefFields));    
+    ArrayList jobdefinitionFields = new ArrayList(Arrays.asList(jobDefFields));    
     ArrayList jobattributenames = new ArrayList(Arrays.asList(cstAttrNames));
     ArrayList jobAttributeNames = new ArrayList(Arrays.asList(cstAttrNames));
     ArrayList jobAttributes = new ArrayList(Arrays.asList(cstAttr));
@@ -635,22 +759,22 @@ public class JobCreator{
       jobattributenames.set(i, jobattributenames.get(i).toString().toLowerCase());
     }
     if(!jobattributenames.contains("eventmin") &&
-        jobdefinitionfields.contains("eventmin")){
+        jobdefinitionFields.contains("eventmin")){
       jobAttributeNames.add("eventMin");
       jobAttributes.add("0");
     }
     if(!jobattributenames.contains("eventmax") &&
-        jobdefinitionfields.contains("eventmax")){
+        jobdefinitionFields.contains("eventmax")){
       jobAttributeNames.add("eventMax");
       jobAttributes.add("0");
     }
     if(!jobattributenames.contains("nevents") &&
-        jobdefinitionfields.contains("nevents")){
+        jobdefinitionFields.contains("nevents")){
       jobAttributeNames.add("nEvents");
       jobAttributes.add("0");
     }
     if(!jobattributenames.contains("inputfilenames") &&
-        jobdefinitionfields.contains("inputfilenames")){
+        jobdefinitionFields.contains("inputfilenames")){
       jobAttributeNames.add("inputFileNames");
       jobAttributes.add("");
     }
@@ -668,7 +792,7 @@ public class JobCreator{
     resCstAttr = new String[cstAttr.length];
     for(int i=0; i<resCstAttr.length; ++i){
       Debug.debug("parameter #"+i+":"+resCstAttr.length+":"+cstAttrNames[i], 3);
-      Debug.debug("eventSplits: "+eventSplits.length, 3);
+      Debug.debug("eventSplits: "+(eventSplits==null?-1:eventSplits.length), 3);
       if(cstAttrNames[i].equalsIgnoreCase("eventMin") &&
           eventSplits!=null && eventSplits.length>1){
         Debug.debug("setting event minimum", 3);
@@ -685,11 +809,15 @@ public class JobCreator{
         resCstAttr[i] = Integer.toString(eventSplits[currentPartition-1][1]-
                                          eventSplits[currentPartition-1][0]+1);
       }
-      else if(cstAttrNames[i].equalsIgnoreCase("inputFileNames") &&
-          eventSplits!=null && eventSplits.length>1){
+      else if(cstAttrNames[i].equalsIgnoreCase("inputFileNames")){
+        if(eventSplits!=null && eventSplits.length>1){
+          resCstAttr[i] = inputFiles;
+        }
+        else{
+          resCstAttr[i] = inputFiles;
+        }
         // all files from input dataset containing the needed events
         Debug.debug("setting input files "+inputFiles, 3);
-        resCstAttr[i] = inputFiles;
       }
       else{
         Debug.debug("evaluating", 3);
@@ -709,15 +837,24 @@ public class JobCreator{
         resJobParam[i] = Integer.toString(eventSplits[currentPartition-1][1]-
             eventSplits[currentPartition-1][0]+1);
       }
-      else if((jobParamNames[i].equalsIgnoreCase("inputFileNames")) &&
-          eventSplits!=null && eventSplits.length>1){
-        resJobParam[i] = inputs;
+      else if((jobParamNames[i].equalsIgnoreCase("inputFileNames"))){
+        if(eventSplits!=null && eventSplits.length>1){
+          resJobParam[i] = inputs;
+        }
+        else{
+          resJobParam[i] = inputs;
+        }
       }
       // Fill in if it matches one of the jobDefinition fields
-      else if(jobdefinitionfields.contains(jobParamNames[i].toLowerCase())){
-        if(resCstAttr[jobdefinitionfields.indexOf(jobParamNames[i].toLowerCase())]==null ||
-            resCstAttr[jobdefinitionfields.indexOf(jobParamNames[i].toLowerCase())].equals("")){
-          resCstAttr[jobdefinitionfields.indexOf(jobParamNames[i].toLowerCase())] = resJobParam[i];
+      //else if(jobdefinitionFields.contains(jobParamNames[i].toLowerCase())){
+      else if(jobattributenames.contains(jobParamNames[i].toLowerCase())){
+        //int jobParamIndex = jobdefinitionFields.indexOf(jobParamNames[i].toLowerCase());
+        int jobParamIndex = jobattributenames.indexOf(jobParamNames[i].toLowerCase());
+        Debug.debug("Filling in job parameter "+jobParamNames[i]+":"+jobParamIndex+" from "+
+            Util.arrayToString(jobattributenames.toArray()), 3);
+        if(resCstAttr[jobParamIndex]==null || resCstAttr[jobParamIndex].equals("")){
+          //resCstAttr[jobdefinitionFields.indexOf(jobParamNames[i].toLowerCase())] = resJobParam[i];
+          resCstAttr[jobParamIndex] = resJobParam[i];
         }
       }
       else{
