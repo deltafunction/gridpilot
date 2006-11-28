@@ -98,6 +98,7 @@ public interface Database{
   // For file catalogs only: register an lfn/pfn pair.
   // TODO: if fileID/lfn do not exist, create.
   // datasetComplete is ignored by other than ATLAS
+  public DBResult getFiles(String datasetID);
   public void registerFileLocation(String datasetID, String datasetName,
       String fileID, String lfn, String url, boolean datasetComplete) throws Exception;
   public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup);
