@@ -46,7 +46,8 @@ public class TransformationCreationPanel extends CreateEditPanel{
     editing = _editing;
     panel = _panel;
     table = panel.getTable();
-    transformationIdentifier = "identifier";
+    transformationIdentifier =
+      Util.getIdentifierField(dbPluginMgr.getDBName(), "transformation");
     transformationFields = dbPluginMgr.getFieldNames("transformation");
     cstAttributesNames = dbPluginMgr.getFieldNames("transformation");    
     runtimeEnvironments = dbPluginMgr.getRuntimeEnvironments();
@@ -304,8 +305,16 @@ public class TransformationCreationPanel extends CreateEditPanel{
     }
     int row = 0;
     for(int i=0; i<cstAttributesNames.length; ++i, ++row){
-      if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled()){
-        tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
+      if(cstAttributesNames[i].equalsIgnoreCase("initLines") ||
+          cstAttributesNames[i].equalsIgnoreCase("comment")){
+        if(!reuseTextFields || tcCstAttributes[i]==null){
+          tcCstAttributes[i] = Util.createTextArea();
+        }
+      }
+      else{
+        if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled()){
+          tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
+        }
       }
       if(cstAttributesNames[i].equalsIgnoreCase("definition") ||
           cstAttributesNames[i].equalsIgnoreCase("inputFiles") ||
@@ -353,8 +362,14 @@ public class TransformationCreationPanel extends CreateEditPanel{
             cstAttributesNames[i].toString()) &&
             !transformationFields[j].toString().equals("")){
           if(tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled() &&
-             tcCstAttributes[i].getText().length()==0){
-            tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
+             tcCstAttributes[i].getText().length()==0){            
+            if(cstAttributesNames[i].equalsIgnoreCase("initLines") ||
+                cstAttributesNames[i].equalsIgnoreCase("comment")){
+              tcCstAttributes[i] = Util.createTextArea();
+            }
+            else{
+              tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
+            }
             pAttributes.add(tcCstAttributes[i],
                 new GridBagConstraints(
                     1,i/*row*/, 3, 1, 1.0, 0.0,

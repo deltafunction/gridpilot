@@ -567,10 +567,12 @@ public class JobCreator{
     // Construct input file names
     inputDB = (String) dbPluginMgr.getDataset(
         datasetIdentifiers[currentDataset]).getValue("inputDB");
-    inputMgr = GridPilot.getClassMgr().getDBPluginMgr(
-        inputDB);
-    inputDataset = (String )dbPluginMgr.getDataset(
-        datasetIdentifiers[currentDataset]).getValue("inputDataset");
+    if(inputDB!=null && !inputDB.equals("")){
+      inputMgr = GridPilot.getClassMgr().getDBPluginMgr(
+          inputDB);
+      inputDataset = (String )dbPluginMgr.getDataset(
+          datasetIdentifiers[currentDataset]).getValue("inputDataset");
+    }
     if(inputDataset!=null && !inputDataset.equalsIgnoreCase("")){
       if(inputMgr.isFileCatalog()){
         try{

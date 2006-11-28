@@ -207,26 +207,20 @@ public class DatasetCreationPanel extends CreateEditPanel{
       tcCstAttributes = new JTextComponent[cstAttributesNames.length];
     }
     for(int i=0; i<cstAttributesNames.length; ++i){
-      if(cstAttributesNames[i].equalsIgnoreCase("actualPars") ||
-          cstAttributesNames[i].equalsIgnoreCase("transFormalPars")){
-        JTextArea textArea = new JTextArea(10, TEXTFIELDWIDTH);
-        textArea.setLineWrap(true);
-        textArea.setWrapStyleWord(true);
-        textArea.setEditable(true);
+      if(cstAttributesNames[i].equalsIgnoreCase("metaData")){
         if(!reuseTextFields || tcCstAttributes[i]==null){
-          tcCstAttributes[i] = textArea;
+          tcCstAttributes[i] = Util.createTextArea();
         }
-        Util.setJText(tcCstAttributes[i], cstAttr[i]);
       }
       else{
         if(!editing && !reuseTextFields || tcCstAttributes[i]==null){
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
         }
-        if(cstAttr[i]!=null && !cstAttr[i].equals("")){
-          Debug.debug("Setting cstAttr["+i+"]: "+cstAttr[i], 3);
-          Util.setJText(tcCstAttributes[i], cstAttr[i]);
-        }
       }      
+      if(cstAttr[i]!=null && !cstAttr[i].equals("")){
+        Debug.debug("Setting cstAttr["+i+"]: "+cstAttr[i], 3);
+        Util.setJText(tcCstAttributes[i], cstAttr[i]);
+      }
       Debug.debug("Adding cstAttributesNames["+i+"], "+cstAttributesNames[i]+
           " "+tcCstAttributes[i].getClass().toString(), 3);
       if(cstAttributesNames[i].equalsIgnoreCase("outputLocation")){
@@ -472,7 +466,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
       ret[i] = transformations.getValue(i, "name").toString(); 
     }
     // This is to ensure only unique elements
-    // TODO: for some reason this doesn't seam to work
     Arrays.sort(ret);
     Vector vec = new Vector();
     if(transformations.values.length>0){
@@ -565,7 +558,9 @@ public class DatasetCreationPanel extends CreateEditPanel{
       }
       catch(Exception e){
       }
-      pVersion.add(new JLabel("No versions found."));
+      if(editing){
+        pVersion.add(new JLabel("No versions found."));
+      }
     }
     else if(versions.length==1){
       transformationVersion = versions[0];

@@ -1473,7 +1473,8 @@ public class MySQLDatabase implements Database{
     }
     String sql = "INSERT INTO "+table+" (";
     for(int i=0; i<datasetFields.length; ++i){
-      if(matchedFields.contains(new Integer(i))){
+      if(!((values[i]==null || values[i].toString().equals("''") || values[i].toString().equals(""))) &&
+          matchedFields.contains(new Integer(i))){
         sql += datasetFields[i];
         if(datasetFields.length>0 && i<datasetFields.length-1){
           sql += ",";
@@ -1482,7 +1483,8 @@ public class MySQLDatabase implements Database{
     }
     sql += ") VALUES (";
     for(int i=0; i<datasetFields.length; ++i){
-      if(matchedFields.contains(new Integer(i))){
+      if(!((values[i]==null || values[i].toString().equals("''") || values[i].toString().equals(""))) &&
+          matchedFields.contains(new Integer(i))){
         if(!nonMatchedStr.equals("") &&
             // TODO: make metaData field configurable like identifier and name field
             (datasetFields[i].equalsIgnoreCase("comment") ||
@@ -1773,7 +1775,8 @@ public class MySQLDatabase implements Database{
     String sql = "UPDATE dataset SET ";
     int addedFields = 0;
     for(int i=0; i<datasetFields.length; ++i){
-      if(!datasetFields[i].equalsIgnoreCase(idField)){
+      if(!((values[i]==null || values[i].toString().equals("''") || values[i].toString().equals(""))) &&
+          !datasetFields[i].equalsIgnoreCase(idField)){
         for(int j=0; j<fields.length; ++j){
           // only add if present in datasetFields
           if(datasetFields[i].equalsIgnoreCase(fields[j])){
@@ -1792,15 +1795,15 @@ public class MySQLDatabase implements Database{
               values[j] = "'"+values[j]+"'";
             }
             
+            if(addedFields>0){
+              sql += ",";
+            }
             sql += fields[j];
             sql += "=";
             sql += values[j];
             ++addedFields;
             break;
           }
-        }
-        if(addedFields>0 && addedFields<fields.length-1){
-          sql += ",";
         }
       }
     }

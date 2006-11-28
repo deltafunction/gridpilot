@@ -47,13 +47,13 @@ public class TransformationCreator{
     }
 
     if(editing){
-      String tranformationIdentifier =
+      String transformationIdentifier =
         Util.getIdentifierField(dbPluginMgr.getDBName(), "transformation");
       String id = "-1";
       for(int i=0; i<cstAttrNames.length; ++i){
-        Debug.debug("Checking name "+tranformationIdentifier+":"+cstAttrNames[i].toString(), 3);
+        Debug.debug("Checking name "+transformationIdentifier+":"+cstAttrNames[i].toString(), 3);
         if(cstAttrNames[i].toString().equalsIgnoreCase(
-            tranformationIdentifier)){
+            transformationIdentifier)){
           id = cstAttr[i];
           break;
         }

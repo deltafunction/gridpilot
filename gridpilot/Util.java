@@ -1291,7 +1291,9 @@ public class Util{
     for(int i =0; i<cstAttr.length; ++i, ++row){
       if(cstAttrNames[i].equalsIgnoreCase("initLines") ||
           cstAttrNames[i].equalsIgnoreCase("outFileMapping") ||
-          cstAttrNames[i].equalsIgnoreCase("pfns")){
+          cstAttrNames[i].equalsIgnoreCase("pfns") ||
+          cstAttrNames[i].equalsIgnoreCase("metaData") ||
+          cstAttrNames[i].equalsIgnoreCase("comment")){
         jval = Util.createGrayTextArea(cstAttr[i]);
         noTextArea = false;
       }
