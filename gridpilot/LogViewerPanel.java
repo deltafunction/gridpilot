@@ -16,12 +16,12 @@ public class LogViewerPanel extends JTextPane{
   SimpleAttributeSet attrRed = new SimpleAttributeSet();
   DefaultStyledDocument doc;
 
-  public LogViewerPanel() {
+  public LogViewerPanel(){
     Debug.debug("New LogViewerPanel", 3);
     doc = new DefaultStyledDocument();
     setDocument(doc);
-    GridPilot.getClassMgr().getLogFile().addActionOnMessage(new ActionOnMessage() {
-      public void newMessage(String head, String cont, boolean isError) {
+    GridPilot.getClassMgr().getLogFile().addActionOnMessage(new ActionOnMessage(){
+      public void newMessage(String head, String cont, boolean isError){
         Debug.debug("Adding message: "+cont, 3);
         addLogMessage(head, cont, isError);
       }
@@ -38,8 +38,8 @@ public class LogViewerPanel extends JTextPane{
 
   private void createMenu(){
     JMenuItem miClear = new JMenuItem("Clear");
-    final JCheckBoxMenuItem cbmiShowInfoMessages = new JCheckBoxMenuItem("Show info messages");
-    final JCheckBoxMenuItem cbmiShowHeader = new JCheckBoxMenuItem("Show header");
+    final JCheckBoxMenuItem cbmiShowInfoMessages = new JCheckBoxMenuItem("Show new information messages");
+    final JCheckBoxMenuItem cbmiShowHeader = new JCheckBoxMenuItem("Show headers for new messages");
 
     miClear.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
@@ -67,7 +67,7 @@ public class LogViewerPanel extends JTextPane{
 
     this.addMouseListener(new java.awt.event.MouseAdapter() {
       public void mousePressed(MouseEvent e) {
-        if (e.getButton() != MouseEvent.BUTTON1) // right button
+        if (e.getButton()!=MouseEvent.BUTTON1) // right button
           popupMenu.show(e.getComponent(), e.getX(), e.getY());
       }
     });
@@ -75,15 +75,17 @@ public class LogViewerPanel extends JTextPane{
 
   private void addLogMessage(String header, String cont, boolean isError) {
 
-    if(!isError && !showInfoMessages)
+    if(!isError && !showInfoMessages){
       return;
-    try {
+    }
+    try{
       doc.setParagraphAttributes(doc.getLength(), 0, isError ? attrRed : attrBlack, true);
-      if(showHeader)
+      if(showHeader){
         doc.insertString(doc.getLength(),
                          header +
                          (header.endsWith("\n") ? "" : "\n") +
                          "_____________\n", null);
+      }
       doc.insertString(doc.getLength(),
                        cont +
                        (cont.endsWith("\n") ? "" : "\n"),
@@ -94,7 +96,7 @@ public class LogViewerPanel extends JTextPane{
                        attrBlack);
       setCaretPosition(doc.getLength());
     }
-    catch (BadLocationException ble) {
+    catch(BadLocationException ble){
       ble.printStackTrace();
     }
   }
