@@ -370,7 +370,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
           cstAttributesNames,
           datasetID
           );
-      if(dsu.anyCreated){
+      // TODO: refresh results on panel showing datasets from the db - if such a panel is shown
+      if(dsu.anyCreated && panel.dbName.equalsIgnoreCase(dbPluginMgr.getDBName())){
         panel.refresh();
       }
     }

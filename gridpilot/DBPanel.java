@@ -59,7 +59,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private String [] identifiers;
   // lists of field names with table name as key
   private String [] fieldNames = null;
-  private String dbName = null;
   private String tableName;
   private String identifier = null;
   private String jobDefIdentifier = null;
@@ -85,6 +84,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   
   public JPanel panelSelectPanel = new JPanel(new GridBagLayout());
   public SelectPanel selectPanel;
+  public String dbName = null;
 
   // try grabbing the semaphore
   private synchronized boolean getWorking(){
