@@ -2060,6 +2060,35 @@ public class DBPluginMgr implements Database{
       }
     }
 
+  public DBResult getFiles(final String datasetID){
+    
+    MyThread t = new MyThread(){
+      DBResult res = null;
+      public void run(){
+        try{
+          res = db.getFiles(datasetID);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             datasetID, t);
+        }
+      }
+      public DBResult getDB2Res(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(Util.waitForThread(t, dbName, dbTimeOut, "getFiles")){
+      return t.getDB2Res();
+    }
+    else{
+      return null;
+    }
+  }
+
   public DBResult getJobDefinitions(final String datasetID, final String [] fieldNames){
   
     MyThread t = new MyThread(){
@@ -2395,7 +2424,7 @@ public class DBPluginMgr implements Database{
     int nrEvents = 0;
     int totalEvents = 0;
     int totalFiles = 0;
-    int [][] splits = {{0,0}};
+    int [][] splits = {{0, 0}};
     String debug = "";
     
     arg = "select totalEvents, totalFiles from dataset where identifier='"+
@@ -2409,7 +2438,11 @@ public class DBPluginMgr implements Database{
       catch(Exception e){
         Debug.debug("ERROR: could not split. "+e.getMessage(), 2);
         e.printStackTrace();
+        return null;
       }
+    }
+    if(totalFiles==0 && totalEvents==0){
+      return null;
     }
     if(totalFiles>0 && totalEvents>0){
       Debug.debug("Found totalFiles: "+totalFiles+", totalEvents: "+totalEvents, 2);
