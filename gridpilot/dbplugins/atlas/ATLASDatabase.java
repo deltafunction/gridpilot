@@ -598,7 +598,7 @@ public class ATLASDatabase implements Database{
       JProgressBar pb = new JProgressBar();
       pb.setMaximum((records.length));
       GridPilot.getClassMgr().getStatusBar().setProgressBar(pb);
-      pb.setToolTipText("click here to cancel");
+      pb.setToolTipText("click here to cancel PFN lookup");
       pb.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent me){
           setFindPFNs(false);
