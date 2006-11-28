@@ -367,7 +367,7 @@ public class GridPilot extends JApplet{
         //  Cancel all transfers
         String message = "Cancelling all running transfers...";
         Debug.debug(message, 2);
-        exitPanel.setText(message+" Click OK to force quit.");
+        exitPanel.setText(message+" Click OK to force quit.        ");
         TransferControl.exit();
         //Delete temporary files
         File delFile = null;
@@ -389,14 +389,14 @@ public class GridPilot extends JApplet{
         // Disconnect DBs and CSs
         message = "Disconnecting computing systems...";
         Debug.debug(message, 2);
-        exitPanel.setText(message+" Click OK to force quit.");
+        exitPanel.setText(message+" Click OK to force quit.        ");
         if(getClassMgr().csPluginMgr!=null){
           getClassMgr().getCSPluginMgr().disconnect();
           getClassMgr().getCSPluginMgr().exit();
         }
         message = "Disconnecting databases...";
         Debug.debug(message, 2);
-        exitPanel.setText(message+" Click OK to force quit.");
+        exitPanel.setText(message+" Click OK to force quit.        ");
         for(int i=0; i<dbNames.length; ++i){
           getClassMgr().getDBPluginMgr(dbNames[i]).disconnect();
           Debug.debug("Disconnecting "+dbNames[i], 2);
