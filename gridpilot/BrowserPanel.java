@@ -962,12 +962,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(fsPath.startsWith("file://")){
       localPath = fsPath.substring(6);
     }
-    else if(fsPath.startsWith("file:/")){
+    else if(fsPath.startsWith("file:")){
       localPath = fsPath.substring(5);
     }
-    /*else if(fsPath.startsWith("file:")){
-      localPath = fsPath.substring(4);
-    }*/
     else if(fsPath.matches("(\\w:\\\\).*")){
       localPath = fsPath.substring(2);
     }
@@ -1323,6 +1320,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       fsPath = fsPath.replaceFirst("^file://", "/");
       fsPath = fsPath.replaceFirst("^file:/", "/");
       fsPath = fsPath.replaceFirst("^file:", "");
+      fsPath = fsPath.replaceFirst("^/(\\w):", "$1:");
       Debug.debug("Deleting file in "+fsPath, 3);
       if(fsPath==null || fileName==null){
         return;
@@ -1408,6 +1406,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         fsPath = fsPath.replaceFirst("^file://", "/");
         fsPath = fsPath.replaceFirst("^file:/", "/");
         fsPath = fsPath.replaceFirst("^file:", "");
+        fsPath = fsPath.replaceFirst("^/(\\w):", "$1:");
         Debug.debug("Creating file in "+fsPath, 3);
         ret = localCreate(fsPath);
         ep.getDocument().putProperty(
@@ -1449,6 +1448,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           fsPath = fsPath.replaceFirst("^file://", "/");
           fsPath = fsPath.replaceFirst("^file:/", "/");
           fsPath = fsPath.replaceFirst("^file:", "");
+          fsPath = fsPath.replaceFirst("^/(\\w):", "$1:");
           String text = ep.getText();
           localWriteFile(fsPath, text);
         }
