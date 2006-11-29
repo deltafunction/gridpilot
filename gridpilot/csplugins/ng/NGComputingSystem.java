@@ -1102,7 +1102,7 @@ public class NGComputingSystem implements ComputingSystem{
         }
       }
       catch(Exception e){
-        error = "ERROR coping file "+localName+" -> "+remoteName+
+        error = "ERROR copying file "+localName+" -> "+remoteName+
         " to final destination: "+e.getMessage();
         logFile.addMessage(error, e);
         ok = false;
