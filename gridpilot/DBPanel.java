@@ -2730,9 +2730,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           // if id is specified, use it - except when copying from a
           // job-only database - in which case the id will be a useless
           // autoincremented number
-          if(sourceMgr.isFileCatalog() && id!=null && !id.equals("")){
-            dataset.setValue(Util.getIdentifierField(sourceMgr.getDBName(), "dataset"),
-                id);
+          if(id!=null && !id.equals("")){
+            if(sourceMgr.getDBName().equals(dbPluginMgr.getDBName())){
+              dataset.setValue(Util.getIdentifierField(sourceMgr.getDBName(), "dataset"),
+                  "''");
+            }
+            else if(sourceMgr.isFileCatalog()){
+              dataset.setValue(Util.getIdentifierField(sourceMgr.getDBName(), "dataset"),
+                  id);
+            }
           }
         }
         catch(Exception e){

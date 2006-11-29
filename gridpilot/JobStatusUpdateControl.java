@@ -286,14 +286,6 @@ public class JobStatusUpdateControl{
       statusTable.setValueAt(((JobInfo) jobs.get(i)).getJobStatus(),
           ((JobInfo) jobs.get(i)).getTableRow(), DatasetMgr.FIELD_STATUS);
     }
-
-    Debug.debug("Updating "+jobs.size()+" jobs by status", 3);
-    datasetMgrs = GridPilot.getClassMgr().getDatasetMgrs();
-    for(Iterator it = datasetMgrs.iterator(); it.hasNext();){
-      ((DatasetMgr) it.next()).updateJobsByStatus();
-      // fix
-      break;
-    }
   
     for(int i=0; i<jobs.size(); ++i){
       JobInfo job = (JobInfo) jobs.get(i);
@@ -328,6 +320,14 @@ public class JobStatusUpdateControl{
           break;
         }
       }
+    }
+    
+    Debug.debug("Updating "+jobs.size()+" jobs by status", 3);
+    datasetMgrs = GridPilot.getClassMgr().getDatasetMgrs();
+    for(Iterator it = datasetMgrs.iterator(); it.hasNext();){
+      ((DatasetMgr) it.next()).updateJobsByStatus();
+      // fix
+      break;
     }
     
     Debug.debug("Finished trigCheck", 3);

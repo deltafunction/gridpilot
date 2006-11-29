@@ -485,6 +485,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     }
     statusTable.updateSelection();
+    datasetMgr.updateJobsByStatus();
   }
 
   /**
@@ -689,7 +690,9 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
             break;
           }
         }
-        mgr.updateJobsByStatus();
+        if(mgr!=null){
+          mgr.updateJobsByStatus();
+        }
       }
     }
   }

@@ -1238,12 +1238,21 @@ public class TransferControl{
         uploadUrlDir = uploadUrl;
         uploadFileName = file.getName();
       }
-      else{
-        int lastSlash = uploadUrl.lastIndexOf("/");
+      else if(uploadUrl.endsWith("\\")){
+        uploadUrlDir = uploadUrl;
+        uploadFileName = file.getName();
+      }
+      if(uploadUrlDir==null){
+        int lastSlash1 = uploadUrl.lastIndexOf("/");
+        int lastSlash2 = uploadUrl.lastIndexOf("\\");
+        int lastSlash = lastSlash2>lastSlash1 ? lastSlash2 : lastSlash1;
         if(lastSlash>-1){
           uploadFileName = uploadUrl.substring(lastSlash + 1);
           uploadUrlDir = uploadUrl.substring(0, lastSlash + 1);
         }
+      }
+      if(uploadUrlDir==null){
+        throw new IOException("Could not get upload directory from "+uploadUrl);
       }
       
       Debug.debug("Uploading file "+file+" to directory "+uploadUrlDir, 3);
