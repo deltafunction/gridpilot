@@ -520,6 +520,30 @@ public class GridPilot extends JApplet{
    * Called when user chooses "Reload values" in gridpilot menu
    */
   public static void reloadConfigValues(){
+    
+    // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
+    if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
+      userConfFileName = confFileName;
+    }
+    ConfigFile confFile = null;
+    try{
+      File exConfFile = new File(System.getProperty("user.home") + File.separator +
+          userConfFileName);
+      if(!exConfFile.exists()){
+        throw new FileNotFoundException("WARNING: Configuration file "+
+            exConfFile.getAbsolutePath()+" not found.");
+      }
+      System.out.println("Trying to load configuration file "+exConfFile);
+      confFile = new ConfigFile(exConfFile);
+    }
+    catch(Exception ee){
+      System.out.println("WARNING: could not load external configuration file, " +
+              "using default config file.");
+      ee.printStackTrace();
+      confFile = new ConfigFile(confFileName);
+    }
+    getClassMgr().setConfigFile(confFile);
+    
     try{
       for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext();){
         ((File) tmpConfFile.get(it.next())).delete();
