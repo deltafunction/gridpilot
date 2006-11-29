@@ -471,10 +471,12 @@ public class JobCreationPanel extends CreateEditPanel{
   private Vector getTextFields(){
     Vector v = new Vector();
     v.addAll(tcConstant);
-    for(int i=0; i<tcCstAttributes.length; ++i)
+    for(int i=0; i<tcCstAttributes.length; ++i){
       v.add(tcCstAttributes[i]);
-    for(int i=0; i<tcJobParam.length ; ++i)
+    }
+    for(int i=0; i<tcJobParam.length ; ++i){
       v.add(tcJobParam[i]);
+    }
     for(int i=0; i<tcOutputMap.length ; ++i){
       v.add(tcOutputMap[i][0]);
       v.add(tcOutputMap[i][1]);

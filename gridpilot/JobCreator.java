@@ -7,7 +7,11 @@ import javax.swing.*;
 import gridpilot.DBResult;
 
 import java.awt.*;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
 /**
  * Creates the job definitions
@@ -249,7 +253,7 @@ public class JobCreator{
           }
 
           switch(choice){
-            case 0  : skip = false;  break;  // OK
+            case 0  : skip = false;  break; // OK
             case 1  : skip = true;   break; // Skip
             case 2  : skip = false;  showResults = false ; break;   //OK for all
             case 3  : skip = true;   skipAll = true; // Skip all
@@ -514,10 +518,12 @@ public class JobCreator{
    */
   private String getConstantValue(char c){
     int index = (int) (c - 'A');
-    if(index < 0 || index >=constants.size())
+    if(index<0 || index>=constants.size()){
       return null;
-    else
+    }
+    else{
       return ((JTextField ) (constants.get(index))).getText();
+    }
   }
 
   /**
@@ -640,8 +646,7 @@ public class JobCreator{
         if(Integer.parseInt((String) inputRecords.getValue(
             currentPartition-1, "eventMin"))==evtMin &&
         Integer.parseInt((String) inputRecords.getValue(
-                currentPartition-1, "eventMax"))==
-          evtMax){
+                currentPartition-1, "eventMax"))==evtMax){
           //inputJobDefOutputFileName = getTransOutFileName(inputDB, datasetIdentifiers[currentDataset]);
           inputFileName = inputMgr.getOutputFiles(
               inputIds[currentPartition-1])[0];
@@ -744,6 +749,7 @@ public class JobCreator{
         inputs += addFils;
       }
     }
+    
     // jobDefinition fields
     
     // Add eventMin, eventMax and inputFileNames if they are
@@ -798,18 +804,17 @@ public class JobCreator{
       if(cstAttrNames[i].equalsIgnoreCase("eventMin") &&
           eventSplits!=null && eventSplits.length>1){
         Debug.debug("setting event minimum", 3);
-        resCstAttr[i] = Integer.toString(eventSplits[currentPartition-1][0]);
+        resCstAttr[i] = Integer.toString(evtMin);
       }
       else if(cstAttrNames[i].equalsIgnoreCase("eventMax") &&
           eventSplits!=null && eventSplits.length>1){
         Debug.debug("setting event maximum", 3);
-        resCstAttr[i] = Integer.toString(eventSplits[currentPartition-1][1]);
+        resCstAttr[i] = Integer.toString(evtMax);
       }
       else if(cstAttrNames[i].equalsIgnoreCase("nevents") &&
           eventSplits!=null && eventSplits.length>1){
         Debug.debug("setting event number", 3);
-        resCstAttr[i] = Integer.toString(eventSplits[currentPartition-1][1]-
-                                         eventSplits[currentPartition-1][0]+1);
+        resCstAttr[i] = Integer.toString(evtMax-evtMin+1);
       }
       else if(cstAttrNames[i].equalsIgnoreCase("inputFileNames")){
         if(eventSplits!=null && eventSplits.length>1){
@@ -827,17 +832,31 @@ public class JobCreator{
             energy, particle, outputDest);
       }
     }
+    
     // Job parameters
+    
+    // metadata information from the metadata field of the dataset
+    String metaDataString = (String) dbPluginMgr.getDataset(
+        datasetIdentifiers[currentDataset]).getValue("metaData");
+    HashMap metaData = parseMetaData(metaDataString);
+    HashSet metadatakeys = new HashSet(metaData.keySet());
+    String key = null;
+    for(Iterator it=metadatakeys.iterator(); it.hasNext();){
+      key = it.next().toString();
+      metaData.put(key.toLowerCase(), metaData.get(key));
+    }
+    
     for(int i=0; i<resJobParam.length; ++i){
-      Debug.debug("param #"+i, 3);
+      Debug.debug("param #"+i+" : "+jobParamNames[i]+" -> "+
+          metaData.containsKey(jobParamNames[i].toLowerCase())+ " : "+
+          Util.arrayToString(metaData.keySet().toArray()), 3);
       if((jobParamNames[i].equalsIgnoreCase("eventMin")) &&
           eventSplits!=null && eventSplits.length>1){
-        resJobParam[i] = Integer.toString(eventSplits[currentPartition-1][0]);
+        resJobParam[i] = Integer.toString(evtMin);
       }
       else if((jobParamNames[i].equalsIgnoreCase("nEvents")) &&
           eventSplits!=null && eventSplits.length>1){
-        resJobParam[i] = Integer.toString(eventSplits[currentPartition-1][1]-
-            eventSplits[currentPartition-1][0]+1);
+        resJobParam[i] = Integer.toString(evtMax-evtMin+1);
       }
       else if((jobParamNames[i].equalsIgnoreCase("inputFileNames"))){
         if(eventSplits!=null && eventSplits.length>1){
@@ -858,6 +877,12 @@ public class JobCreator{
           //resCstAttr[jobdefinitionFields.indexOf(jobParamNames[i].toLowerCase())] = resJobParam[i];
           resCstAttr[jobParamIndex] = resJobParam[i];
         }
+      }
+      // Fill in metadata
+      else if(metaData.containsKey(jobParamNames[i].toLowerCase())){
+        resJobParam[i] = (String) metaData.get(jobParamNames[i].toLowerCase());
+        Debug.debug("Matched metadata with job parameter: "+jobParamNames[i]+
+            "-->"+resJobParam[i], 3);
       }
       else{
         resJobParam[i] = evaluate(jobParam[i], currentPartition, name, number,
@@ -941,6 +966,30 @@ public class JobCreator{
       }
     }
     return res;
+  }
+  
+  HashMap parseMetaData(String str){
+    HashMap hm = new HashMap();
+    try{
+      InputStream is = new ByteArrayInputStream(str.getBytes());
+      BufferedReader in = new BufferedReader(new InputStreamReader(is));
+      String line;
+      String key = null;
+      String value = null;
+      while((line = in.readLine())!=null){
+        if(line.matches("^\\w+: \\w+$")){
+          key = line.replaceFirst("^(\\w+): \\w+$", "$1");
+          value = line.replaceFirst("^\\w+: (\\w+)$", "$1");
+          Debug.debug("Adding metadata "+key+":"+value, 2);
+          hm.put(key, value);
+        }
+      }
+      in.close();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    return hm;
   }
   
   private int showResult(int currentPartition, String [] resCstAttr, String [] resJobParam,
