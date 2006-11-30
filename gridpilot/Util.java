@@ -971,7 +971,7 @@ public class Util{
     fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
     fc.setDialogTitle("Choose dowload directory");
     int returnVal = fc.showOpenDialog(parent);
-    if (returnVal==JFileChooser.APPROVE_OPTION){
+    if(returnVal==JFileChooser.APPROVE_OPTION){
       file = fc.getSelectedFile();
       Debug.debug("Opening: " + file.getName(), 2);
     }

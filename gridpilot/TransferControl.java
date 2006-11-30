@@ -1100,7 +1100,7 @@ public class TransferControl{
       srcUrlDir = url.substring(0, lastSlash + 1);
       srcFileName = url.substring(lastSlash + 1);
      
-      if(destination.getAbsolutePath().endsWith("/")){
+      if(destination.isDirectory()){
         downloadDir = destination;
         destFileName = url.substring(lastSlash + 1);
       }

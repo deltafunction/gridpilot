@@ -655,13 +655,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       gridFtpClient.get(localPath, tmpFile);
     }
-    catch(FTPException e){
-      e.printStackTrace();
+    catch(Exception e){
       Debug.debug("Could not read "+localPath, 1);
-      ep.setText("ERROR!\n\nThe file "+localPath+" could not be read. "+
-          "\n\nIf it is a directory, please end with a /\n\n"+
-          e.getMessage());
-      throw e;
+      e.printStackTrace();
+      String error = "ERROR!\n\nThe file "+localPath+" could not be read. "+
+      "\n\nIf it is a directory, please end with a /. "+
+      e.getMessage();
+      ep.setText(error);
+      throw new IOException(error);
     }
     pButton.updateUI();
     try{
@@ -1484,6 +1485,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       else if(e.getSource()==bDownload){
         File dir = Util.getDownloadDir(this);      
         String fileName = Util.getFileName(jtFilter.getText());
+        Debug.debug("Getting file : "+thisUrl+fileName+" -> "+dir.getAbsolutePath(), 3);
         TransferControl.download(thisUrl+fileName, dir, ep);
         try{
           ep.getDocument().putProperty(
