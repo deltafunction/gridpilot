@@ -135,7 +135,10 @@ public class NGScriptGenerator extends ScriptGenerator{
         if(inputFiles[i].startsWith("http://") ||
             inputFiles[i].startsWith("https://") ||
             inputFiles[i].startsWith("gsiftp://") ||
-            inputFiles[i].startsWith("ftp://")){
+            inputFiles[i].startsWith("ftp://")||
+            inputFiles[i].startsWith("rls://") ||
+            inputFiles[i].startsWith("se://") ||
+            inputFiles[i].startsWith("httpg://")){
           inputFileURL = inputFiles[i];
         }
         else{
@@ -167,13 +170,33 @@ public class NGScriptGenerator extends ScriptGenerator{
       job.setDownloadFiles(remoteInputFilesArray);
 
       // outputfiles
-      //line = "(outputFiles=" + "(\"stdout\" \"stdout\")" ;
-      line = "(outputFiles=" + "(\"stdout\" \"\")" ;
-      if(!join){
-        //line += "(\"stderr\" \"stderr\")";
-        line += "(\"stderr\" \"\")";
+      
+      String finalStdoutDest = dbPluginMgr.getStdOutFinalDest(jobDefID);
+      if((finalStdoutDest.startsWith("gsiftp://") ||
+          finalStdoutDest.startsWith("ftp://") ||
+          finalStdoutDest.startsWith("rls://") ||
+          finalStdoutDest.startsWith("se://") ||
+          finalStdoutDest.startsWith("httpg://"))){
+        line = "(outputFiles=" + "(\"stdout\" \""+finalStdoutDest+"\")" ;
       }
-
+      else{
+        line = "(outputFiles=" + "(\"stdout\" \"\")" ;
+      }
+      String finalStderrDest = dbPluginMgr.getStdErrFinalDest(jobDefID);
+      if((finalStderrDest.startsWith("gsiftp://") ||
+          finalStderrDest.startsWith("ftp://") ||
+          finalStderrDest.startsWith("rls://") ||
+          finalStderrDest.startsWith("se://") ||
+          finalStderrDest.startsWith("httpg://"))){
+        if(!join){
+          line += "(\"stderr\" \""+finalStderrDest+"\")";
+        }
+      }
+      else{
+        if(!join){
+          line += "(\"stderr\" \"\")";
+        }
+      }
       String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
       String localName;
       String remoteName;

@@ -1112,7 +1112,12 @@ public class NGComputingSystem implements ComputingSystem{
     /**
      * move temp StdOut -> finalStdOut
      */
-    if(finalStdOut!=null && finalStdOut.trim().length()!=0){
+    if(finalStdOut!=null && finalStdOut.trim().length()!=0 &&
+        !(finalStdOut.startsWith("gsiftp://") ||
+            finalStdOut.startsWith("ftp://") ||
+            finalStdOut.startsWith("rls://") ||
+            finalStdOut.startsWith("se://") ||
+            finalStdOut.startsWith("httpg://"))){
       try{
         // this has already been done by doValidate...
         //syncCurrentOutputs(job);
@@ -1146,7 +1151,12 @@ public class NGComputingSystem implements ComputingSystem{
      * move temp StdErr -> finalStdErr
      */
 
-    if(finalStdErr!=null && finalStdErr.trim().length()!=0){
+    if(finalStdErr!=null && finalStdErr.trim().length()!=0 &&
+        !(finalStdErr.startsWith("gsiftp://") ||
+            finalStdErr.startsWith("ftp://") ||
+            finalStdErr.startsWith("rls://") ||
+            finalStdErr.startsWith("se://") ||
+            finalStdErr.startsWith("httpg://"))){
       try{
         if(!LocalStaticShellMgr.existsFile(job.getStdErr())){
           logFile.addMessage("Post-processing : File " + job.getStdErr() + " doesn't exist");
