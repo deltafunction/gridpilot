@@ -1436,7 +1436,7 @@ public class Util{
     if(ret==null || ret.length<2){
       ret = new String [] {"name", "datasetName"};
     }
-    Debug.debug("jobDef dataset reference for "+dbName
+    Debug.debug("file dataset reference for "+dbName
         +" : "+arrayToString(ret), 2);
     return ret;
   }
@@ -1480,7 +1480,7 @@ public class Util{
     if(ret==null || ret.length<2){
       ret = new String [] {"name", "datasetName"};
     }
-    Debug.debug("jobDef dataset reference for "+dbName
+    Debug.debug("jobDefinition dataset reference for "+dbName
         +" : "+arrayToString(ret), 2);
     return ret;
   }
