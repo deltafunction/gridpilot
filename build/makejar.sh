@@ -1,7 +1,8 @@
+#!/bin/bash
+
 cp -r ../resources ./
 cp -r ../gridpilot ./
 cp ../gridpilot.conf ./
-cp ../readme.txt ./
 ls resources/certificates > resources/ca_certs_list.txt
 sed -e "s/.*date.*/\<\!--date--\>`date`/" resources/about.htm > tmpAbout.htm
 mv -f tmpAbout.htm resources/about.htm
@@ -14,7 +15,7 @@ rm -f gridpilot.*jar *signed.jar
 
 jarFiles=`ls ../lib/*.jar`
 for name in ${jarFiles[@]}
-  do
+do
   jar -xvf $name
 done
 
@@ -22,14 +23,32 @@ find . -type f | grep -v CVS | grep -v META-INF | grep -v suresh | grep -v 'grid
 
 echo Creating an unsigned applet
 
-first=2000
-len=`cat jars | wc -l`
-echo Length: $len
-((rest = $len - $first))
+length=2000
+totalFiles=`cat jars | wc -l`
+((steps = $totalFiles  / $length))
+((rest = $totalFiles - $steps * $length))
+echo Total number of files: $totalFiles
+echo Steps: $steps
 echo Rest: $rest
 
-jar -cmf manifest gridpilot.jar `head -n $first jars`
-jar -uf gridpilot.jar `tail -n $rest jars`
+echo Packing: 1 : $length
+jar -cmf manifest gridpilot.jar `head -n $length jars`
+
+((realSteps = $steps - 1))
+for i in `seq 1 $realSteps`
+do
+((start = $i * $length + 1))
+((rem = $totalFiles - $start + 1))
+echo Packing: $start : $length
+jar -uf gridpilot.jar `tail -n $rem jars | head -n $length`
+done 
+
+if [ $rest -gt 0 ]
+then
+  ((fin = $steps * $length))
+  echo Packing: $fin : $rest
+  jar -uf gridpilot.jar `tail -n $rest jars`
+fi
 
 if [ -f suresh.store ]
 then
@@ -40,6 +59,6 @@ fi
 keytool -storepass "dummy###" -export -keystore suresh.store -alias sureshcert -file suresh.cer
 jarsigner -storepass "dummy###" -signedjar gridpilot.signed.jar -keystore suresh.store gridpilot.jar sureshcert -storepass "dummy###"
 
-rm -rf oracle javax com COM cryptix hsqlServlet.class LICENSE.txt log4j.properties META-INF netscape org xjava LDAP*
+rm -rf oracle javax com COM cryptix hsqlServlet.class LICENSE.txt log4j.properties META-INF netscape org xjava LDAP* *.properties axis* Jacksum* electric* diskCache* help jonelo LGPL* LICENSE* README.txt samples soaprmi sxt tests xpp
 rm -f ~/.globus/tmp.p12
 rm -rf jars gridpilot resources tmp* gridpilot.conf readme.txt gridpilot.log
