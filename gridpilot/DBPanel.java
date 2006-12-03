@@ -819,6 +819,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         
         tableResults.setTable(res.values, res.fields);
         
+        Debug.debug("Done setting table", 3);
+        
         identifiers = new String[tableResults.getRowCount()];
         // 'col' is the column with the jobDefinition identifier
         int col = tableResults.getColumnCount()-1;
@@ -1332,10 +1334,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                "Deleting file(s) done.");
             statusBar.removeProgressBar(pb);
           }
+          stopWorking();
           if(anyDeleted){
             refresh();
           }
-          stopWorking();
         }
       };
       workThread.start();
