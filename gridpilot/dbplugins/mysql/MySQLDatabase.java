@@ -200,6 +200,7 @@ public class MySQLDatabase implements Database{
         break;
       }
       catch(Exception e){
+        e.printStackTrace();
         passwd = null;
         continue;
       }

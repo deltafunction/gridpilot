@@ -616,6 +616,7 @@ public class Util{
      throws InvalidKeyException, GeneralSecurityException{
 
     // decrypt the password
+    Debug.debug("Decrypting key...", 3);
     if(key.isEncrypted()){
         key.decrypt(password);
       }
@@ -624,8 +625,10 @@ public class Util{
     int proxyType = GSIConstants.DELEGATION_FULL;
 
     // factory for proxy generation
+    Debug.debug("Creating factory for proxy generation...", 3);
     BouncyCastleCertProcessingFactory factory = BouncyCastleCertProcessingFactory.getDefault();
 
+    Debug.debug("Creating credentials...", 3);
     GlobusCredential myCredentials = factory.createCredential(new X509Certificate[] { userCert }, key.getPrivateKey(), strength, lifetime,
             proxyType, (X509ExtensionSet) null);
     return myCredentials;
@@ -695,7 +698,7 @@ public class Util{
           in.close();
           out.close();
         }
-        catch(IOException e){
+        catch(Exception e){
           Debug.debug("WARNING: Could not read CA certificate "+fileName+
               ". Skipping.", 2);
         }
@@ -778,9 +781,11 @@ public class Util{
         }
         catch(IllegalArgumentException e){
           // cancelling
+          e.printStackTrace();
           break;
         }
         try{
+          Debug.debug("Creating proxy, "+Util.arrayToString(password), 3);
           cred = createProxy(password[1], password[2],
              password[0], GridPilot.proxyTimeValid, 512);
           credential = new GlobusGSSCredentialImpl(cred, GSSCredential.INITIATE_AND_ACCEPT) ;
@@ -789,6 +794,7 @@ public class Util{
           GridPilot.keyPassword = password[0];
         }
         catch(Exception e){
+          e.printStackTrace();
           continue;
         }
         try{
