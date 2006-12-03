@@ -830,7 +830,7 @@ public class HSQLDBDatabase implements Database{
           }
           else if(fileTable && urlColumn>-1 && j==urlColumn){
             // The first output file specified in outFileMapping
-            // is be convention *the* output file.
+            // is by convention *the* output file.
             String [] foos = Util.split(rset.getString(j+1));
             String foo = "";
             if(foos.length>1){
@@ -2247,7 +2247,7 @@ public class HSQLDBDatabase implements Database{
           if(fields[i].equalsIgnoreCase("dsname")){
             file.setValue(fields[i], datasetName);
           }
-          else if(fields[i].equalsIgnoreCase("lfn")){
+          else if(fields[i].equalsIgnoreCase("lfname")){
             // TODO: we're assuming a on-to-one lfn/guid mapping. Improve.
             file.setValue(fields[i],
                 Util.getValues(conn, "t_lfn", "guid", fileID, new String [] {"lfname"})[0][0]);
@@ -2279,10 +2279,10 @@ public class HSQLDBDatabase implements Database{
       for(int i=0; i<fieldsVector.size(); ++i){
         try{
           file.setValue(fieldsVector.get(i).toString(),
-              res.getValue(0, fieldsVector.get(i).toString()).toString());
+              (String) res.getValue(0, (String) fieldsVector.get(i)));
         }
         catch(Exception e){
-          Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
+          Debug.debug("WARNING: could not set field "+fieldsVector.get(i)+". "+e.getMessage(), 2);
         }
       }
     }
@@ -2568,7 +2568,8 @@ public class HSQLDBDatabase implements Database{
               }
             }
             catch(Exception e){
-              logFile.addMessage("WARNING: Could not delete files "+fileNames);
+              e.printStackTrace();
+              logFile.addMessage("WARNING: Could not delete file(s) "+fileNames);
             }
           }
           String req = "DELETE FROM t_lfn WHERE guid = '"+fileIDs[i]+"'";

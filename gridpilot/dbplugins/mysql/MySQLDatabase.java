@@ -696,6 +696,9 @@ public class MySQLDatabase implements Database{
         matcher = patt.matcher(req);
         req = matcher.replaceFirst("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE ($2) AND " +
                 "t_lfn.guid=t_pfn.guid AND t_meta.guid=t_pfn.guid");
+        patt = Pattern.compile("WHERE(\\W+)guid(\\s*=.*)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceFirst("WHERE$1t_lfn.guid$2");
       }
       if(req.matches("SELECT (.+) FROM file\\b(.*)")){
         patt = Pattern.compile("SELECT (.+) FROM file", Pattern.CASE_INSENSITIVE);
@@ -801,7 +804,7 @@ public class MySQLDatabase implements Database{
           }
           else if(fileTable && urlColumn>-1 && j==urlColumn){
             // The first output file specified in outFileMapping
-            // is be convention *the* output file.
+            // is by convention *the* output file.
             String [] foos = Util.split(rset.getString(j+1));
             String foo = "";
             if(foos.length>1){
@@ -2183,13 +2186,14 @@ public class MySQLDatabase implements Database{
     // we use them.
     if(isFileCatalog()){
       Vector fieldsVector = new Vector();
+      Debug.debug("file fields: "+Util.arrayToString(fields), 3);
       // first some special fields; we lump all pfname's into the same pfname field
       for(int i=0; i<fields.length; ++i){
         try{
           if(fields[i].equalsIgnoreCase("dsname")){
             file.setValue(fields[i], datasetName);
           }
-          else if(fields[i].equalsIgnoreCase("lfn")){
+          else if(fields[i].equalsIgnoreCase("lfname")){
             // TODO: we're assuming a on-to-one lfn/guid mapping. Improve.
             file.setValue(fields[i],
                 Util.getValues(conn, "t_lfn", "guid", fileID, new String [] {"lfname"})[0][0]);
@@ -2207,23 +2211,24 @@ public class MySQLDatabase implements Database{
           }
           else{
             fieldsVector.add(fields[i]);
-        }
+          }
         }
         catch(Exception e){
           Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
         }
       }
       // get the rest of the values
-      DBResult res = select("SELECT LIMIT 0 1+" +
+      DBResult res = select("SELECT " +
           Util.arrayToString(fieldsVector.toArray(), ", ") +
             " FROM file WHERE guid = "+fileID, "guid", true);
       for(int i=0; i<fieldsVector.size(); ++i){
         try{
           file.setValue(fieldsVector.get(i).toString(),
-              res.getValue(0, fieldsVector.get(i).toString()).toString());
+              (String) res.getValue(0, (String) fieldsVector.get(i)));
         }
         catch(Exception e){
-          Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
+          Debug.debug("WARNING: could not set field "+fieldsVector.get(i)+". "+e.getMessage(), 2);
+          e.printStackTrace();
         }
       }
     }
@@ -2488,7 +2493,8 @@ public class MySQLDatabase implements Database{
               TransferControl.deleteFiles(fileNameArray);
             }
             catch(Exception e){
-              logFile.addMessage("WARNING: Could not delete files "+fileNames);
+              e.printStackTrace();
+              logFile.addMessage("WARNING: Could not delete file(s) "+fileNames);
             }
           }
           String req = "DELETE FROM t_lfn WHERE guid = '"+fileIDs[i]+"'";
