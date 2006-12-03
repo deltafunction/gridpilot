@@ -578,7 +578,7 @@ public class TransferControl{
     HashSet urlSet = null;
     int j = 0;
     for(Iterator it=remoteFiles.keySet().iterator(); it.hasNext();){
-      urlSet = ((HashSet) it.next());
+      urlSet = ((HashSet) remoteFiles.get(it.next()));
       remoteUrls = new GlobusURL [urlSet.size()];
       j = 0;
       for(Iterator itt=urlSet.iterator(); itt.hasNext(); ++j){
@@ -590,9 +590,11 @@ public class TransferControl{
         }
       }
       try{
+        Debug.debug("Deleting "+Util.arrayToString(remoteUrls), 2);
         TransferControl.deleteFiles(remoteUrls);
       }
       catch(Exception e){
+        e.printStackTrace();
         GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete files "+
             Util.arrayToString(remoteUrls)+". Please do so by hand.");
       }
@@ -606,7 +608,6 @@ public class TransferControl{
    */
   public static void deleteFiles(GlobusURL [] urls) throws Exception {
     String ftPluginName = null;
-    boolean protocolOK = false;
     String [] fts = GridPilot.ftNames;
     
     // Construct dummy array of file URLs
@@ -624,7 +625,7 @@ public class TransferControl{
         break;
       };      
     }
-    if(!protocolOK || ftPluginName==null){
+    if(ftPluginName==null){
       throw new IOException("ERROR: protocol not supported or plugin initialization failed.\n"+
           Util.arrayToString(srcUrls)+"\n->\n"+Util.arrayToString(urls));
     }
