@@ -372,7 +372,7 @@ public class MySQLDatabase implements Database{
     }
     catch(SQLException e){
       Debug.debug("Closing connection failed. "+
-          e.getCause().toString()+"\n"+e.getMessage(),1);
+          e.getCause().toString()+"\n"+e.getMessage(), 1);
     }
   }
 
@@ -443,7 +443,7 @@ public class MySQLDatabase implements Database{
       return "-1";
     }
     else{
-      return vec.get(0).toString();
+      return (String) vec.get(0);
     }
   }
 
@@ -483,36 +483,35 @@ public class MySQLDatabase implements Database{
       return "-1";
     }
     else{
-      return vec.get(0).toString();
+      return (String) vec.get(0);
     }
   }
 
   public String [] getTransformationJobParameters(String transformationID){
-    String res =  getTransformation(transformationID).getValue("arguments").toString(); 
+    String res = (String) getTransformation(transformationID).getValue("arguments"); 
     return Util.split(res);
   }
 
   public String [] getOutputFiles(String jobDefID){
     String transformationID = getJobDefTransformationID(jobDefID);
-    String outputs = getTransformation(
-        transformationID).getValue("outputFiles").toString();
+    String outputs = (String) getTransformation(transformationID).getValue("outputFiles");
     return Util.split(outputs);
   }
 
   public String [] getJobDefInputFiles(String jobDefID){
-    String inputs = getJobDefinition(jobDefID).getValue("inputFileNames").toString();
+    String inputs = (String) getJobDefinition(jobDefID).getValue("inputFileNames");
     return Util.split(inputs);
   }
 
   public String [] getJobDefTransPars(String jobDefID){
-    String args = getJobDefinition(jobDefID).getValue("transPars").toString();
+    String args = (String) getJobDefinition(jobDefID).getValue("transPars");
     return Util.split(args);
   }
 
   public String getJobDefOutLocalName(String jobDefID, String par){
     String transID = getJobDefTransformationID(jobDefID);
-    String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
-    String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
+    String [] fouts = Util.split((String) getTransformation(transID).getValue("outputFiles"));
+    String maps = (String) getJobDefinition(jobDefID).getValue("outFileMapping");
     String[] map = Util.split(maps);
     String name = "";
     for(int i=0; i<fouts.length; i++){
@@ -525,8 +524,8 @@ public class MySQLDatabase implements Database{
 
   public String getJobDefOutRemoteName(String jobDefID, String par){
     String transID = getJobDefTransformationID(jobDefID);
-    String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
-    String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
+    String [] fouts = Util.split((String) getTransformation(transID).getValue("outputFiles"));
+    String maps = (String) getJobDefinition(jobDefID).getValue("outFileMapping");
     String[] map = Util.split(maps);
     String name = "";
     for(int i=0; i<fouts.length; i++){
@@ -539,35 +538,33 @@ public class MySQLDatabase implements Database{
   }
 
   public String getStdOutFinalDest(String jobDefID){
-    return getJobDefinition(jobDefID).getValue("stdoutDest").toString();
+    return (String) getJobDefinition(jobDefID).getValue("stdoutDest");
   }
 
   public String getStdErrFinalDest(String jobDefID){
-    return getJobDefinition(jobDefID).getValue("stderrDest").toString();
+    return (String) getJobDefinition(jobDefID).getValue("stderrDest");
   }
 
   public String getTransformationScript(String jobDefID){
     String transformationID = getJobDefTransformationID(jobDefID);
-    String script = getTransformation(
-        transformationID).getValue("script").toString();
+    String script = (String) getTransformation(transformationID).getValue("script");
     return script;
   }
 
   public String [] getRuntimeEnvironments(String jobDefID){
     String transformationID = getJobDefTransformationID(jobDefID);
-    String rts = getTransformation(
-        transformationID).getValue("runtimeEnvironmentName").toString();
+    String rts = (String) getTransformation(transformationID).getValue("runtimeEnvironmentName");
     return Util.split(rts);
   }
 
   public String [] getTransformationArguments(String jobDefID){
     String transformationID = getJobDefTransformationID(jobDefID);
-    String args =  getTransformation(transformationID).getValue("arguments").toString();
+    String args = (String) getTransformation(transformationID).getValue("arguments");
     return Util.split(args);
   }
 
   public String getTransformationRuntimeEnvironment(String transformationID){
-    return getTransformation(transformationID).getValue("runtimeEnvironmentName").toString();
+    return (String) getTransformation(transformationID).getValue("runtimeEnvironmentName");
   }
 
   public String getJobDefUserInfo(String jobDefinitionID){
@@ -576,37 +573,36 @@ public class MySQLDatabase implements Database{
       return "";
     }
     else{
-      return userInfo.toString();
+      return (String) userInfo;
     }
   }
 
   public String getJobDefStatus(String jobDefinitionID){
-    return getJobDefinition(jobDefinitionID).getValue("status").toString();
+    return (String) getJobDefinition(jobDefinitionID).getValue("status");
   }
 
   public String getJobDefName(String jobDefinitionID){
     String nameField = Util.getNameField(dbName, "jobDefintion");
-    return getJobDefinition(jobDefinitionID).getValue(nameField).toString();
+    return (String) getJobDefinition(jobDefinitionID).getValue(nameField);
   }
 
   public String getJobDefDatasetID(String jobDefinitionID){
-    String datasetName = getJobDefinition(jobDefinitionID).getValue("datasetName").toString();
+    String datasetName = (String) getJobDefinition(jobDefinitionID).getValue("datasetName");
     String datasetID = getDatasetID(datasetName);
     String idField = Util.getIdentifierField(dbName, "dataset");
-    return getDataset(datasetID).getValue(idField).toString();
+    return (String) getDataset(datasetID).getValue(idField);
   }
 
   public String getRuntimeInitText(String runTimeEnvironmentName, String csName){
-    String initTxt = getRuntimeEnvironment(
-         getRuntimeEnvironmentID(runTimeEnvironmentName, csName)
-      ).getValue("initLines").toString();
+    String initTxt = (String) getRuntimeEnvironment(
+         getRuntimeEnvironmentID(runTimeEnvironmentName, csName)).getValue("initLines");
     return initTxt;
   }
 
   public synchronized String getJobDefTransformationID(String jobDefinitionID){
     DBRecord dataset = getDataset(getJobDefDatasetID(jobDefinitionID));
-    String transformation = dataset.getValue("transformationName").toString();
-    String version = dataset.getValue("transformationVersion").toString();
+    String transformation = (String) dataset.getValue("transformationName");
+    String version = (String) dataset.getValue("transformationVersion");
     String transID = null;
     String idField = Util.getIdentifierField(dbName, "transformation");
     String nameField = Util.getNameField(dbName, "transformation");
@@ -895,16 +891,16 @@ public class MySQLDatabase implements Database{
   }
   
   public String getDatasetTransformationName(String datasetID){
-    return getDataset(datasetID).getValue("transformationName").toString();
+    return (String) getDataset(datasetID).getValue("transformationName");
   }
   
   public String getDatasetTransformationVersion(String datasetID){
-    return getDataset(datasetID).getValue("transformationVersion").toString();
+    return (String) getDataset(datasetID).getValue("transformationVersion");
   }
   
   public String getDatasetName(String datasetID){
     String nameField = Util.getNameField(dbName, "dataset");
-    return getDataset(datasetID).getValue(nameField).toString();
+    return (String) getDataset(datasetID).getValue(nameField);
   }
 
   public synchronized String getDatasetID(String datasetName){
@@ -915,6 +911,7 @@ public class MySQLDatabase implements Database{
     Vector vec = new Vector();
     try{
       Statement stmt = conn.createStatement();
+      Debug.debug(">>> sql string was: "+req, 3);
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
         id = rset.getString(idField);
@@ -942,12 +939,12 @@ public class MySQLDatabase implements Database{
       return "-1";
     }
     else{
-      return vec.get(0).toString();
+      return (String) vec.get(0);
     }
   }
 
   public String getRunNumber(String datasetID){
-    return getDataset(datasetID).getValue("runNumber").toString();
+    return (String) getDataset(datasetID).getValue("runNumber");
   }
 
   public synchronized DBRecord getRuntimeEnvironment(String runtimeEnvironmentID){
@@ -1054,7 +1051,7 @@ public class MySQLDatabase implements Database{
   
   public String getRunInfo(String jobDefID, String key){
     DBRecord jobDef = getJobDefinition(jobDefID);
-    return jobDef.getValue(key).toString();
+    return (String) jobDef.getValue(key);
   }
 
   /*
@@ -1311,7 +1308,7 @@ public class MySQLDatabase implements Database{
                 res.values[i][j] = "";
               }
               else{
-                res.values[i][j] = jt[i].getValue(fieldNames[j]).toString();
+                res.values[i][j] = (String) jt[i].getValue(fieldNames[j]);
               }
             }
             catch(Throwable e){
@@ -1347,7 +1344,7 @@ public class MySQLDatabase implements Database{
     for(int i=1; i<jobDefFields.length; ++i){     
       if(jobDefFields[i].equalsIgnoreCase("created")){
         try{
-          values[i] = makeDate(values[i].toString());
+          values[i] = makeDate(values[i]);
         }
         catch(Exception e){
           values[i] = makeDate("");
@@ -1477,7 +1474,8 @@ public class MySQLDatabase implements Database{
     }
     String sql = "INSERT INTO "+table+" (";
     for(int i=0; i<datasetFields.length; ++i){
-      if(!((values[i]==null || values[i].toString().equals("''") || values[i].toString().equals(""))) &&
+      if((isFileCatalog() && datasetFields[i].equalsIgnoreCase(idField) ||
+          !((values[i]==null || values[i].toString().equals("''") || values[i].toString().equals("")))) &&
           matchedFields.contains(new Integer(i))){
         sql += datasetFields[i];
         if(datasetFields.length>0 && i<datasetFields.length-1){
@@ -1487,7 +1485,8 @@ public class MySQLDatabase implements Database{
     }
     sql += ") VALUES (";
     for(int i=0; i<datasetFields.length; ++i){
-      if(!((values[i]==null || values[i].toString().equals("''") || values[i].toString().equals(""))) &&
+      if((isFileCatalog() && datasetFields[i].equalsIgnoreCase(idField) ||
+          !((values[i]==null || values[i].toString().equals("''") || values[i].toString().equals("")))) &&
           matchedFields.contains(new Integer(i))){
         if(!nonMatchedStr.equals("") &&
             // TODO: make metaData field configurable like identifier and name field
@@ -1497,7 +1496,7 @@ public class MySQLDatabase implements Database{
         }
         if(datasetFields[i].equalsIgnoreCase("created")){
           try{
-            values[i] = makeDate(values[i].toString());
+            values[i] = makeDate((String) values[i]);
           }
           catch(Exception e){
             values[i] = makeDate("");
@@ -1511,14 +1510,15 @@ public class MySQLDatabase implements Database{
           // passed id is not a uuid.
           boolean isNum = false;
           try{
-            int num = Integer.parseInt(values[i].toString());
+            int num = Integer.parseInt((String) values[i]);
             isNum = (num>-1);
           }
           catch(Exception e){
           }
-          if(isNum || values[i]==null || values[i].equals("")){
+          if(isNum || values[i]==null || values[i].equals("") ||
+              values[i].equals("''")){
             values[i] = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
-            String message = "Generated new UUID "+values[i].toString()+" for dataset";
+            String message = "Generated new UUID "+values[i]+" for dataset";
             GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
             GridPilot.getClassMgr().getLogFile().addInfo(message);
           }
@@ -1566,7 +1566,7 @@ public class MySQLDatabase implements Database{
     for(int i=1; i<transformationFields.length; ++i){
       if(transformationFields[i].equalsIgnoreCase("created")){
         try{
-          values[i] = makeDate(values[i].toString());
+          values[i] = makeDate((String) values[i]);
         }
         catch(Exception e){
           values[i] = makeDate("");
@@ -1576,10 +1576,10 @@ public class MySQLDatabase implements Database{
         values[i] = makeDate("");
       }
       else{
-        values[i] = "'"+values[i].toString()+"'";
+        values[i] = "'"+values[i]+"'";
       }
 
-      sql += values[i].toString();
+      sql += values[i];
       if(transformationFields.length>1 && i<transformationFields.length - 1){
         sql += ",";
       }
@@ -1612,7 +1612,7 @@ public class MySQLDatabase implements Database{
       for(int i=1; i<runtimeEnvironmentFields.length; ++i){
         if(runtimeEnvironmentFields[i].equalsIgnoreCase("created")){
           try{
-            values[i] = makeDate(values[i].toString());
+            values[i] = makeDate((String) values[i]);
           }
           catch(Exception e){
             values[i] = makeDate("");
@@ -1625,10 +1625,10 @@ public class MySQLDatabase implements Database{
           values[i] = "''";
         }
         else{
-          values[i] = "'"+values[i].toString()+"'";
+          values[i] = "'"+values[i]+"'";
         }
     
-        sql += values[i].toString();
+        sql += values[i];
         if(runtimeEnvironmentFields.length>1 && i<runtimeEnvironmentFields.length - 1){
           sql += ",";
         }
@@ -1650,6 +1650,7 @@ public class MySQLDatabase implements Database{
     
   public synchronized boolean setJobDefsField(String [] identifiers,
       String field, String value){
+    String idField = Util.getIdentifierField(dbName, "jobDefinition");
     String sql = "UPDATE jobDefinition SET ";
     sql += field+"='"+value+"' WHERE ";
     // Not very elegant, but we need to use Identifier instead of
@@ -1657,7 +1658,7 @@ public class MySQLDatabase implements Database{
     // a JobDefinition object has already been made, which may not
     // be the case.
     for(int i=0; i<identifiers.length; ++i){
-      sql += "identifier"+"="+identifiers[i];
+      sql += idField+"="+identifiers[i];
       if(identifiers.length>1 && i<identifiers.length-1){
         sql += " OR ";
       }
@@ -1714,7 +1715,7 @@ public class MySQLDatabase implements Database{
           if(jobDefFields[i].equalsIgnoreCase(fields[j])){
             if(jobDefFields[i].equalsIgnoreCase("created")){
               try{
-                values[j] = makeDate(values[j].toString());
+                values[j] = makeDate((String) values[j]);
               }
               catch(Exception e){
                 values[j] = makeDate("");
@@ -1855,7 +1856,7 @@ public class MySQLDatabase implements Database{
           if(transformationFields[i].equalsIgnoreCase(fields[j])){
             if(transformationFields[i].equalsIgnoreCase("created")){
               try{
-                values[j] = makeDate(values[j].toString());
+                values[j] = makeDate((String) values[j]);
               }
               catch(Exception e){
                 values[j] = makeDate("");
@@ -1924,7 +1925,7 @@ public class MySQLDatabase implements Database{
           if(runtimeEnvironmentFields[i].equalsIgnoreCase(fields[j])){
             if(runtimeEnvironmentFields[i].equalsIgnoreCase("created")){
               try{
-                values[j] = makeDate(values[j].toString());
+                values[j] = makeDate((String) values[j]);
               }
               catch(Exception e){
                 values[j] = makeDate("");
@@ -1976,8 +1977,8 @@ public class MySQLDatabase implements Database{
           // deleted when deleting the file catalog entry.
           String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
           toDeletefiles = new String [outFiles.length+2-(outFiles.length>0?1:0)];
-          toDeletefiles[0] = jobDef.getValue("stdoutDest").toString();
-          toDeletefiles[1] = jobDef.getValue("stderrDest").toString();
+          toDeletefiles[0] = (String) jobDef.getValue("stdoutDest");
+          toDeletefiles[1] = (String) jobDef.getValue("stderrDest");
           for(int i=2; i<toDeletefiles.length; ++i){
             toDeletefiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-1]);
           }
@@ -1985,8 +1986,8 @@ public class MySQLDatabase implements Database{
         else{
           String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
           toDeletefiles = new String [outFiles.length+2];
-          toDeletefiles[0] = jobDef.getValue("stdoutDest").toString();
-          toDeletefiles[1] = jobDef.getValue("stderrDest").toString();
+          toDeletefiles[0] = (String) jobDef.getValue("stdoutDest");
+          toDeletefiles[1] = (String) jobDef.getValue("stderrDest");
           for(int i=2; i<toDeletefiles.length; ++i){
             toDeletefiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-2]);
           }
@@ -2132,18 +2133,18 @@ public class MySQLDatabase implements Database{
     }
     String [] ret = new String[vec1.size()];
     for(int i=0; i<vec1.size(); ++i){
-      ret[i] = vec1.get(i).toString();
+      ret[i] = (String) vec1.get(i);
     }
     return ret;
   }
 
   public String [] getTransformationOutputs(String transformationID){    
-    String outputs = getTransformation(transformationID).getValue("outputFiles").toString();
+    String outputs = (String) getTransformation(transformationID).getValue("outputFiles");
     return Util.split(outputs);
   }
 
   public String [] getTransformationInputs(String transformationID){    
-    String inputs = getTransformation(transformationID).getValue("inputFiles").toString();
+    String inputs = (String) getTransformation(transformationID).getValue("inputFiles");
     return Util.split(inputs);
   }
   
@@ -2223,7 +2224,7 @@ public class MySQLDatabase implements Database{
             " FROM file WHERE guid = "+fileID, "guid", true);
       for(int i=0; i<fieldsVector.size(); ++i){
         try{
-          file.setValue(fieldsVector.get(i).toString(),
+          file.setValue((String) fieldsVector.get(i),
               (String) res.getValue(0, (String) fieldsVector.get(i)));
         }
         catch(Exception e){
@@ -2239,7 +2240,7 @@ public class MySQLDatabase implements Database{
       DBRecord jobDef = getJobDefinition(fileID);
       for(int i=0; i<fields.length; ++i){
         try{
-          file.setValue(fields[i], jobDef.getValue(fields[i]).toString());
+          file.setValue(fields[i], (String) jobDef.getValue(fields[i]));
         }
         catch(Exception e){
           Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
@@ -2247,7 +2248,7 @@ public class MySQLDatabase implements Database{
       }
       for(int i=0; i<jobDef.fields.length; ++i){
         if(jobDef.fields[i].equalsIgnoreCase("outFileMapping")){
-          String [] map = Util.split(jobDef.getValue(jobDef.fields[i]).toString());
+          String [] map = Util.split((String) jobDef.getValue(jobDef.fields[i]));
           try{
             file.setValue("url", map[1]);
           }
@@ -2267,7 +2268,7 @@ public class MySQLDatabase implements Database{
       String ret = null;
       try{
         DBRecord file = getFile(datasetName, fileID);
-        ret = file.getValue("pfname").toString();
+        ret = (String) file.getValue("pfname");
       }
       catch(Exception e){
         Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
@@ -2278,7 +2279,7 @@ public class MySQLDatabase implements Database{
       String ret = null;
       try{
         DBRecord file = getFile(datasetName, fileID);
-        ret = file.getValue("url").toString();
+        ret = (String) file.getValue("url");
       }
       catch(Exception e){
         Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
@@ -2318,6 +2319,7 @@ public class MySQLDatabase implements Database{
         existingID = getDatasetID(datasetName);
       }
       catch(Exception ee){
+        ee.printStackTrace();
       }
       if(existingID!=null && !existingID.equals("-1") && !existingID.equals("")){
         if(!existingID.equalsIgnoreCase(datasetID)){
@@ -2330,6 +2332,7 @@ public class MySQLDatabase implements Database{
       }
     }
     catch(Exception e){
+      e.printStackTrace();
       datasetExists = false;
     }
     
@@ -2353,7 +2356,7 @@ public class MySQLDatabase implements Database{
       }
       catch(Exception e){
         error = "WARNING: could not create dataset "+datasetName+
-        "Aborting . The file "+lfn+" would be an orphan. Please correct this by hand.";
+        ". Aborting . The file "+lfn+" would be an orphan. Please correct this by hand.";
         GridPilot.getClassMgr().getLogFile().addMessage(error, e);
         datasetExists =false;
         return;
@@ -2484,10 +2487,10 @@ public class MySQLDatabase implements Database{
             String fileNames = null;
             try{
               if(isFileCatalog()){
-                fileNames = getFile(datasetID, fileIDs[i]).getValue("pfname").toString();
+                fileNames = (String) getFile(datasetID, fileIDs[i]).getValue("pfname");
               }
               else{
-                fileNames = getFile(datasetID, fileIDs[i]).getValue("url").toString();
+                fileNames = (String) getFile(datasetID, fileIDs[i]).getValue("url");
               }
               String [] fileNameArray = Util.split(fileNames);
               TransferControl.deleteFiles(fileNameArray);
