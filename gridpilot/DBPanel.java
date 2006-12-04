@@ -79,6 +79,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   // The idea is to ignore new requests when working on a request
   private boolean working = false;
   private SubmissionControl submissionControl = null;
+  // Import thread semaphore
+  private boolean importingFiles = false;
   
   private static String defaultURL;
   
@@ -1503,10 +1505,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
              "Deleting job definition(s) done.");
           statusBar.removeProgressBar(pb);
         }
+        stopWorking();
         if(anyDeleted){
           refresh();
         }
-        stopWorking();
       }
     };
     workThread.start();
@@ -1603,12 +1605,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
         }
         //statusBar.setLabel("Deleting dataset(s) done.");
+        stopWorking();
         if(deleted.size()>0){
           refresh();
           statusBar.setLabel(deleted.size()+" of "+
               datasetIdentifiers.length+" datasets deleted.");
         }
-        stopWorking();
       }
     };
     workThread.start();
@@ -1893,9 +1895,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Called when mouse is pressed on the Import button
    */
   private void importFiles(){
-    if(!getSelectedIdentifier().equals("-1")){
+    if(!getSelectedIdentifier().equals("-1") && !importingFiles){
       new Thread(){
         public void run(){
+          importingFiles = true;
           // Get the dataset name and id
           String datasetID = getSelectedIdentifier();
           String datasetName = dbPluginMgr.getDatasetName(datasetID);
@@ -1911,35 +1914,38 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             GridPilot.getClassMgr().getLogFile().addMessage(error, e);
             return;
           }         
-          // Register the files
-          String uuid = null;
-          String lfn = null;
-          String pfn = null;
-          for(int i=0; i<regUrls.length; ++i){
-            try{
-              pfn = regUrls[i];
-              int lastSlash = pfn.lastIndexOf("/");
-              lfn = pfn;
-              if(lastSlash>-1){
-                lfn = pfn.substring(lastSlash + 1);
+          if(regUrls!=null){
+            // Register the files
+            String uuid = null;
+            String lfn = null;
+            String pfn = null;
+            for(int i=0; i<regUrls.length; ++i){
+              try{
+                pfn = regUrls[i];
+                int lastSlash = pfn.lastIndexOf("/");
+                lfn = pfn;
+                if(lastSlash>-1){
+                  lfn = pfn.substring(lastSlash + 1);
+                }
+                uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+                String message = "Generated new UUID "+uuid.toString()+" for "+lfn;
+                GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
+                GridPilot.getClassMgr().getLogFile().addInfo(message);
+                dbPluginMgr.registerFileLocation(
+                    datasetID, datasetName, uuid, lfn, pfn, false);
               }
-              uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
-              String message = "Generated new UUID "+uuid.toString()+" for "+lfn;
-              GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
-              GridPilot.getClassMgr().getLogFile().addInfo(message);
-              dbPluginMgr.registerFileLocation(
-                  datasetID, datasetName, uuid, lfn, pfn, false);
+              catch(Exception e){
+                GridPilot.getClassMgr().getLogFile().addMessage(
+                    "ERROR: could not register "+pfn+" for file "+
+                    lfn+" in dataset "+datasetName, e);
+                GridPilot.getClassMgr().getGlobalFrame(
+                ).monitoringPanel.statusBar.setLabel("ERROR: could not register "+pfn);
+              }
             }
-            catch(Exception e){
-              GridPilot.getClassMgr().getLogFile().addMessage(
-                  "ERROR: could not register "+pfn+" for file "+
-                  lfn+" in dataset "+datasetName, e);
-              GridPilot.getClassMgr().getGlobalFrame(
-              ).monitoringPanel.statusBar.setLabel("ERROR: could not register "+pfn);
-            }
+            GridPilot.getClassMgr().getGlobalFrame(
+               ).monitoringPanel.statusBar.setLabel("Registration done");
+            importingFiles = false;
           }
-          GridPilot.getClassMgr().getGlobalFrame(
-             ).monitoringPanel.statusBar.setLabel("Registration done");
         }
       }.start();
     }
@@ -2684,28 +2690,34 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       boolean ok = false;
       boolean success = true;
       try{
-        // Check if referenced transformation exists     
-        String sourceTransName = sourceMgr.getDatasetTransformationName(
-            dataset.getValue(Util.getIdentifierField(sourceMgr.getDBName(),
-                "dataset")).toString());
-        String sourceTransVersion = sourceMgr.getDatasetTransformationVersion(
-            dataset.getValue(Util.getIdentifierField(sourceMgr.getDBName(),
-                "dataset")).toString());  
-        
-        DBResult targetTransformations = dbPluginMgr.getTransformations();
-        Vector transVec = new Vector();
-        for(int i=0; i<targetTransformations.values.length; ++i){
-          if(targetTransformations.getValue(i, Util.getNameField(dbPluginMgr.getDBName(),
-              "transformation")).toString(
-              ).equalsIgnoreCase(sourceTransName)){
-            transVec.add(targetTransformations.getRow(i));
-          }
+        // If there are no transformations in source or target, there's no point
+        // in checking
+        if(!sourceMgr.isJobRepository() || !dbPluginMgr.isJobRepository()){
+          ok = true;
         }
-        for(int i=0; i<transVec.size(); ++i){
-          if(((DBRecord) transVec.get(i)).getValue(Util.getVersionField(dbPluginMgr.getDBName(),
-              "transformation")).toString().equalsIgnoreCase(sourceTransVersion)){
-            ok = true;
-            break;
+        else{
+          // Check if referenced transformation exists     
+          String sourceTransName = sourceMgr.getDatasetTransformationName(
+              dataset.getValue(Util.getIdentifierField(sourceMgr.getDBName(),
+                  "dataset")).toString());
+          String sourceTransVersion = sourceMgr.getDatasetTransformationVersion(
+              dataset.getValue(Util.getIdentifierField(sourceMgr.getDBName(),
+                  "dataset")).toString());          
+          DBResult targetTransformations = dbPluginMgr.getTransformations();
+          Vector transVec = new Vector();
+          for(int i=0; i<targetTransformations.values.length; ++i){
+            if(targetTransformations.getValue(i, Util.getNameField(dbPluginMgr.getDBName(),
+                "transformation")).toString(
+                ).equalsIgnoreCase(sourceTransName)){
+              transVec.add(targetTransformations.getRow(i));
+            }
+          }
+          for(int i=0; i<transVec.size(); ++i){
+            if(((DBRecord) transVec.get(i)).getValue(Util.getVersionField(dbPluginMgr.getDBName(),
+                "transformation")).toString().equalsIgnoreCase(sourceTransVersion)){
+              ok = true;
+              break;
+            }
           }
         }
       }
@@ -2715,12 +2727,52 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       // only if this is a job-only database (no file catalog) do we deny creating
       // orphaned datasets (data provenance enforcement).
       if(ok || dbPluginMgr.isFileCatalog()){
+        
+        ////
+        String [] targetFields = dbPluginMgr.getFieldNames("dataset");
+        String [] targetValues = new String[targetFields.length];
+        String [] sourceFields = sourceMgr.getFieldNames("dataset");
+        String [] sourceValues = new String[sourceFields.length];
+        for(int j=0; j<targetFields.length; ++j){ 
+          targetValues[j] = "";
+          //Do the mapping.
+          for(int k=0; k<sourceFields.length; ++k){
+            if(sourceFields[k].equalsIgnoreCase(targetFields[j])){
+              targetValues[j] = sourceValues[k];
+              break;
+            }
+          }
+          // see if attribute is in target dataset and set. If not, ignore.
+          if(targetValues[j]==null || targetValues[j].equals("")){
+            boolean fieldPresent = false;
+            for(int l=0; l<sourceFields.length; ++l){
+              if(targetFields[j].equalsIgnoreCase(sourceFields[l])){
+                fieldPresent = true;
+                break;
+              }
+            }
+            if(fieldPresent){
+              try{
+                if(dataset.getValue(targetFields[j])!=null){
+                  targetValues[j] = (String) dataset.getValue(targetFields[j]);
+                }
+              }
+              catch(Exception e){
+                e.printStackTrace();
+              }
+            }
+          }
+        }
+        dataset = new DBRecord(targetFields, targetValues);
+        ////
+        
         Debug.debug("Creating dataset: " + Util.arrayToString(dataset.fields, ":") + " ---> " +
             Util.arrayToString(dataset.values, ":"), 3);
         try{
           // if name is specified, use it
           if(name!=null && !name.equals("")){
-            dataset.setValue(Util.getNameField(sourceMgr.getDBName(), "dataset"),
+            Debug.debug("Setting name "+name, 3);
+            dataset.setValue(Util.getNameField(dbPluginMgr.getDBName(), "dataset"),
                 name);
           }
         }
@@ -2729,22 +2781,25 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           e.printStackTrace();
         }
         try{
-          // if id is specified, use it - except when copying from a
+          // If id is specified, use it - except when copying from a
           // job-only database - in which case the id will be a useless
-          // autoincremented number
+          // autoincremented number or if source and target db are the same
+          // - in which case we clear the id
           if(id!=null && !id.equals("")){
             if(sourceMgr.getDBName().equals(dbPluginMgr.getDBName())){
-              dataset.setValue(Util.getIdentifierField(sourceMgr.getDBName(), "dataset"),
+              Debug.debug("Clearing id", 3);
+              dataset.setValue(Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset"),
                   "''");
             }
             else if(sourceMgr.isFileCatalog()){
-              dataset.setValue(Util.getIdentifierField(sourceMgr.getDBName(), "dataset"),
+              Debug.debug("Setting id "+id, 3);
+              dataset.setValue(Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset"),
                   id);
             }
           }
         }
         catch(Exception e){
-          Debug.debug("WARNING: Could not set dataset name "+name, 3);
+          Debug.debug("WARNING: Could not set dataset id "+id, 3);
           e.printStackTrace();
         }
         success = dbPluginMgr.createDataset("dataset", dataset.fields, dataset.values);

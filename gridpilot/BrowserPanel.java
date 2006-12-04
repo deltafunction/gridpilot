@@ -1219,6 +1219,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       saveHistory();
       dispose();
       lastURL = origUrl;
+      lastUrlList = null;
     }
     else{
       try{
@@ -1230,6 +1231,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       catch(Exception ioe){
         ioe.printStackTrace();
         dispose();
+        lastUrlList = null;
         lastURL = origUrl;
       }
     }
