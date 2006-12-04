@@ -67,6 +67,9 @@ import javax.swing.event.HyperlinkListener;
 import javax.swing.plaf.UIResource;
 import javax.swing.text.JTextComponent;
 
+import jonelo.jacksum.JacksumAPI;
+import jonelo.jacksum.algorithm.AbstractChecksum;
+
 import org.globus.gsi.CertUtil;
 import org.globus.gsi.GSIConstants;
 import org.globus.gsi.GlobusCredential;
@@ -1524,4 +1527,63 @@ public class Util{
     return ret;
   }
   
+  public static String getGridDatabaseUser(){
+    GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+    GlobusCredential globusCred = null;
+    if(credential instanceof GlobusGSSCredentialImpl){
+      globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+    }
+    String user = null;
+    Debug.debug("getting identity", 3);
+    String subject = globusCred.getIdentity();
+    /* remove leading whitespace */
+    subject = subject.replaceAll("^\\s+", "");
+    /* remove trailing whitespace */
+    subject = subject.replaceAll("\\s+$", "");
+    
+    AbstractChecksum checksum = null;
+    try{
+      checksum = JacksumAPI.getChecksumInstance("cksum");
+      
+      /*
+       * It would be nicer to use the openssl certificate hash instead
+       * of the cksum of the subject, but it seems not possible in
+       * practice.
+       * 
+       * From /openssl/crypto/x509/x509_cmp.c.
+       * Without DES MD5 encoding we will not get the right hash.
+       * The missing method (c++, from openldap):
+       * EVP_Digest(x->bytes->data, x->bytes->length, md, NULL, EVP_md5(), NULL);
+       */
+      /*
+      Debug.debug("Issuer: "+ globusCred.getIssuer(), 3);
+      Debug.debug("Identity: "+globusCred.getIdentity(), 3);
+      Debug.debug("Subject DN: "+
+          globusCred.getIdentityCertificate().getSubjectDN(), 3);         
+      AbstractChecksum cs = JacksumAPI.getChecksumInstance("md5");
+      cs.update(globusCred.getIdentity().getBytes());
+      byte md[] = new byte[16];
+      md = cs.getByteArray();
+      long ret = ( (md[0])|(md[1]<<8L)|
+          (md[2]<<16L)|(md[3]<<24L)
+          )&0xffffffffL;
+      Debug.debug("Hash: "+ret, 3);
+      //Debug.debug("Hash: "+Long.toHexString(Long.parseLong(
+      //    cs.getFormattedValue(), 10)), 2);
+      Debug.debug("Wanted Hash: "+
+          Long.valueOf("806d2203", 16), 3);
+      */
+    }
+    catch(Exception nsae){
+      String error = "ERROR: could not generate grid user name. "+nsae.getMessage();
+      nsae.printStackTrace();
+      GridPilot.getClassMgr().getLogFile().addMessage(error, nsae);
+      return null;
+    }
+    checksum.update(subject.getBytes());
+    user = checksum.getFormattedValue();
+    Debug.debug("Using user name from cksum of grid subject: "+user, 2);
+    return user;
+    
+  }
 }
