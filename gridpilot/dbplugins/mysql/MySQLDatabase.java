@@ -21,9 +21,6 @@ import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.ietf.jgss.GSSCredential;
 import org.safehaus.uuid.UUIDGenerator;
 
-import jonelo.jacksum.*;
-import jonelo.jacksum.algorithm.*;
-
 import gridpilot.ConfigFile;
 import gridpilot.Database;
 import gridpilot.Debug;
@@ -119,46 +116,7 @@ public class MySQLDatabase implements Database{
       subject = subject.replaceAll("\\s+$", "");
       
       if(user==null || user.equals("")){
-        AbstractChecksum checksum = null;
-        try{
-          checksum = JacksumAPI.getChecksumInstance("cksum");
-          
-          /*
-           * It would be nicer to use the openssl certificate hash instead
-           * of the cksum of the subject, but it seems not possible in
-           * practice.
-           * 
-           * From /openssl/crypto/x509/x509_cmp.c.
-           * Without DES MD5 encoding we will not get the right hash.
-           * The missing method (c++, from openldap):
-           * EVP_Digest(x->bytes->data, x->bytes->length, md, NULL, EVP_md5(), NULL);
-           */
-          /*
-          Debug.debug("Issuer: "+ globusCred.getIssuer(), 3);
-          Debug.debug("Identity: "+globusCred.getIdentity(), 3);
-          Debug.debug("Subject DN: "+
-              globusCred.getIdentityCertificate().getSubjectDN(), 3);         
-          AbstractChecksum cs = JacksumAPI.getChecksumInstance("md5");
-          cs.update(globusCred.getIdentity().getBytes());
-          byte md[] = new byte[16];
-          md = cs.getByteArray();
-          long ret = ( (md[0])|(md[1]<<8L)|
-              (md[2]<<16L)|(md[3]<<24L)
-              )&0xffffffffL;
-          Debug.debug("Hash: "+ret, 3);
-          //Debug.debug("Hash: "+Long.toHexString(Long.parseLong(
-          //    cs.getFormattedValue(), 10)), 2);
-          Debug.debug("Wanted Hash: "+
-              Long.valueOf("806d2203", 16), 3);
-          */
-        }
-        catch(Exception nsae){
-          Debug.debug("ERROR: "+nsae.getMessage(), 1);
-          nsae.printStackTrace();
-          return;
-        }
-        checksum.update(subject.getBytes());
-        user = checksum.getFormattedValue();
+        user = Util.getGridDatabaseUser();
         Debug.debug("Using user name from cksum of grid subject: "+user, 2);
       }
       
