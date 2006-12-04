@@ -18,6 +18,7 @@ import java.awt.event.*;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Vector;
 
 import java.awt.datatransfer.Clipboard;
@@ -807,6 +808,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         DBResult res = null;
         res = dbPluginMgr.select(selectRequest, identifier, findAll());
+        Debug.debug("Setting table", 3);
+        tableResults.setTable(res.values, res.fields);
+        Debug.debug("Done setting table", 3);
 
         bViewFiles.setEnabled(false);
         bViewJobDefinitions.setEnabled(false);
@@ -818,11 +822,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         menuEditCopy.setEnabled(false);
         menuEditCut.setEnabled(false);
         menuEditPaste.setEnabled(clipboardOwned);
-        
-        tableResults.setTable(res.values, res.fields);
-        
-        Debug.debug("Done setting table", 3);
-        
+                
         identifiers = new String[tableResults.getRowCount()];
         // 'col' is the column with the jobDefinition identifier
         int col = tableResults.getColumnCount()-1;
@@ -983,6 +983,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         stopWorking();
       }
     };
+
     workThread.start();
 
   }
@@ -1298,35 +1299,69 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             return;
           }
           boolean anyDeleted = false;
-          String [] ids = getSelectedIdentifiers();
-
-          //int [] rows = tableResults.getSelectedRows();
-          Debug.debug("Deleting "+ids.length+" rows", 2);
-          if(ids.length != 0){
+          String [] allIds = getSelectedIdentifiers();
+          
+          HashMap datasetNameAndIds = new HashMap();
+          String [] fileDatasetReference = Util.getFileDatasetReference(dbPluginMgr.getDBName());
+          int [] rows = tableResults.getSelectedRows();
+          int fileDatasetIdColumn = -1;
+          // Find the dataset name column on the files tab
+          for(int i=0; i<tableResults.getColumnCount(); ++i){
+            if(tableResults.getColumnName(i).equalsIgnoreCase(fileDatasetReference[1])){
+              fileDatasetIdColumn = i;
+              break;
+            }
+          }
+          String dsn = null;
+          // Group the file IDs by dataset name
+          for(int i=0; i<allIds.length; ++i){
+            dsn = (String) tableResults.getValueAt(rows[i], fileDatasetIdColumn);
+            if(!datasetNameAndIds.containsKey(dsn)){
+              datasetNameAndIds.put(dsn, new Vector());
+            }
+            ((Vector) datasetNameAndIds.get(dsn)).add(allIds[i]);
+          }          
+          
+          Debug.debug("Deleting "+allIds.length+" rows. "+Util.arrayToString(allIds), 2);
+          if(allIds.length!=0){
             GridPilot.getClassMgr().getStatusBar().setLabel(
                "Deleting file(s). Please wait ...");
             JProgressBar pb = new JProgressBar();
-            pb.setMaximum(ids.length);
+            pb.setMaximum(allIds.length);
             statusBar.setProgressBar(pb);
             statusBar.setProgressBar(pb);
-            boolean success = true;
-            try{
-              success = dbPluginMgr.deleteFiles("", ids, cbCleanup.isSelected());
+            
+            String [] ids = null;
+            Vector idVec = null;
+            String datasetId = null;
+            for(Iterator it=datasetNameAndIds.keySet().iterator(); it.hasNext();){
+              dsn = (String) it.next();
+              datasetId = dbPluginMgr.getDatasetID(dsn);
+              idVec = (Vector) datasetNameAndIds.get(dsn);
+              ids = new String [idVec.size()];
+              for(int i=0; i<idVec.size(); ++i){
+                ids[i] = (String) idVec.get(i);
+                boolean success = true;
+                try{
+                  success = dbPluginMgr.deleteFiles(datasetId, ids, cbCleanup.isSelected());
+                }
+                catch(Exception e){
+                  e.printStackTrace();
+                  success = false;
+                }
+                if(!success){
+                  String msg = "Deleting files "+Util.arrayToString(ids)+" failed.";
+                  Debug.debug(msg, 1);
+                  GridPilot.getClassMgr().getStatusBar().setLabel(msg);
+                  GridPilot.getClassMgr().getLogFile().addMessage(msg);
+                }
+                else{
+                  anyDeleted = true;
+                }
+              }
             }
-            catch(Exception e){
-              e.printStackTrace();
-              success = false;
-            }
-            if(!success){
-              String msg = "Deleting files "+Util.arrayToString(ids)+" failed.";
-              Debug.debug(msg, 1);
-              GridPilot.getClassMgr().getStatusBar().setLabel(msg);
-              GridPilot.getClassMgr().getLogFile().addMessage(msg);
-            }
-            else{
-              anyDeleted = true;
-            }
-            for(int i=ids.length-1; i>=0; i--){
+                        
+            for(int i=allIds.length-1; i>=0; i--){
               pb.setValue(pb.getValue()+1);
               // Not necessary, we refresh below
               //tableResults.removeRow(rows[i]);
