@@ -894,6 +894,7 @@ public class ATLASDatabase implements Database{
       // gridAuth to authenticate
       if(user.equals("")){
         gridAuth = true;
+        user = Util.getGridDatabaseUser();
       }
       // Make the connection
       Connection conn = Util.sqlConnection(driver, database, user, passwd, gridAuth);
@@ -978,6 +979,7 @@ public class ATLASDatabase implements Database{
       // gridAuth to authenticate
       if(user.equals("")){
         gridAuth = true;
+        user = Util.getGridDatabaseUser();
       }
       // Make the connection
       Connection conn = Util.sqlConnection(driver, database, user, passwd, gridAuth);
@@ -1063,6 +1065,7 @@ public class ATLASDatabase implements Database{
       // gridAuth to authenticate
       if(user.equals("")){
         gridAuth = true;
+        user = Util.getGridDatabaseUser();
       }
       // Make the connection
       Connection conn = Util.sqlConnection(driver, database, user, passwd, gridAuth);
@@ -1138,6 +1141,7 @@ public class ATLASDatabase implements Database{
       // gridAuth to authenticate
       if(user.equals("")){
         gridAuth = true;
+        user = Util.getGridDatabaseUser();
       }
       // Make the connection
       Connection conn = Util.sqlConnection(driver, database, user, passwd, gridAuth);
@@ -1147,7 +1151,7 @@ public class ATLASDatabase implements Database{
       for(int i=0; i<lfns.length; ++i){
         try{
           req = "INSERT INTO t_lfn (lfname, guid) VALUES " +
-             "("+lfns[i]+", "+guids[i]+")";
+             "('"+lfns[i]+"', '"+guids[i]+"')";
           Debug.debug(">> "+req, 3);
           rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){
@@ -1155,7 +1159,7 @@ public class ATLASDatabase implements Database{
             logFile.addMessage(error);
           }
           req = "INSERT INTO t_pfn (pfname, guid) VALUES " +
-          "("+pfns[i]+", "+guids[i]+")";
+          "('"+pfns[i]+"', '"+guids[i]+"')";
           Debug.debug(">> "+req, 3);
           rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){
@@ -1165,10 +1169,20 @@ public class ATLASDatabase implements Database{
         }
         catch(Exception e){
           error = "ERROR: could not insert lfn or lfn/pfn "+lfns[i]+"/"+pfns[i]+" on "+catalogServer;
-          logFile.addMessage(error);
+          logFile.addMessage(error, e);
           GridPilot.getClassMgr().getStatusBar().setLabel(error);
         }
         if(sync){
+          // First, just try and create the metadata entry - in case it's not there already
+          try{
+            req = "INSERT INTO t_meta (sync, guid) VALUES " +
+               "('', '"+guids[i]+"')";
+            Debug.debug(">> "+req, 3);
+            rowsAffected = conn.createStatement().executeUpdate(req);
+            Debug.debug("rowsAffected "+rowsAffected, 3);
+          }
+          catch(Exception e){
+          }
           try{
             // Now flag this guid for write in t_meta
             req = "UPDATE t_meta SET sync = 'write' WHERE guid ='"+guids[i]+"'";
@@ -1555,6 +1569,7 @@ public class ATLASDatabase implements Database{
     catch(Exception e){
       error = "ERROR: could not delete files "+Util.arrayToString(fileIDs)+" from " +
          datasetID+". Aborting";
+      e.printStackTrace();
       logFile.addMessage(error, e);
       GridPilot.getClassMgr().getStatusBar().setLabel(error);
       return false;
@@ -1699,48 +1714,71 @@ public class ATLASDatabase implements Database{
     // NOTICE that this changes the vuid of the dataset...
     GridPilot.getClassMgr().getStatusBar().setLabel("Cleaning up DQ dataset catalog...");
     DQ2Access dq2Access = null;
+    String [] completeLocations = null;
+    String [] incompleteLocations = null;
     try{
       dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
-      // Delete all locations from old vuid (a new vuid will be created)
-      for(int i=0; i<locations.getComplete().length; ++i){
-        try{
-          dq2Access.deleteFromSite(datasetID, locations.getComplete()[i]);
-        }
-        catch(Exception e){
+      try{
+        completeLocations = locations.getComplete();
+        // Delete all locations from old vuid (a new vuid will be created)
+        for(int i=0; i<completeLocations.length; ++i){
+          try{
+            dq2Access.deleteFromSite(datasetID, locations.getComplete()[i]);
+          }
+          catch(Exception e){
+          }
         }
       }
-      for(int i=0; i<locations.getIncomplete().length; ++i){
-        try{
-          dq2Access.deleteFromSite(datasetID, locations.getComplete()[i]);
+      catch(Exception ee){
+        ee.printStackTrace();
+      }
+      try{
+        incompleteLocations = locations.getIncomplete();
+        for(int i=0; i<incompleteLocations.length; ++i){
+          try{
+            dq2Access.deleteFromSite(datasetID, locations.getComplete()[i]);
+          }
+          catch(Exception e){
+          }
         }
-        catch(Exception e){
-        }
+      }
+      catch(Exception ee){
+        ee.printStackTrace();
       }
       // Clear the lfns by creating new dataset with the same dsn
+      Debug.debug("Creating new version of dataset "+dsn, 2);
       dq2Access.createNewDatasetVersion(dsn);
       // Add the lfns we don't delete
-      dq2Access.addLFNsToDataset(toKeepLfns, toKeepGuids, datasetID);
+      Debug.debug("Re-adding original LFNs "+Util.arrayToString(toKeepLfns), 2);
+      if(toKeepLfns.length>0 && toKeepGuids.length>0){
+        dq2Access.addLFNsToDataset(toKeepLfns, toKeepGuids, datasetID);
+      }
       // Re-register all locations
-      for(int i=0; i<locations.getComplete().length; ++i){
-        try{
-          if(locations.getComplete()[i].equalsIgnoreCase(homeServer)){
-            continue;
+      Debug.debug("Re-registering original locations "+Util.arrayToString(toKeepLfns), 2);
+      if(completeLocations!=null && completeLocations.length>0){
+        for(int i=0; i<completeLocations.length; ++i){
+          try{
+            if(locations.getComplete()[i].equalsIgnoreCase(homeServer)){
+              continue;
+            }
+            dq2Access.registerLocation(datasetID, dsn,
+                true, completeLocations[i]);
           }
-          dq2Access.registerLocation(datasetID, dsn,
-              true, locations.getComplete()[i]);
-        }
-        catch(Exception e){
+          catch(Exception e){
+          }
         }
       }
-      for(int i=0; i<locations.getIncomplete().length; ++i){
-        try{
-          if(locations.getIncomplete()[i].equalsIgnoreCase(homeServer)){
-            continue;
+      if(incompleteLocations!=null && incompleteLocations.length>0){
+        for(int i=0; i<incompleteLocations.length; ++i){
+          try{
+            if(locations.getIncomplete()[i].equalsIgnoreCase(homeServer)){
+              continue;
+            }
+            dq2Access.registerLocation(datasetID, dsn,
+                false, incompleteLocations[i]);
           }
-          dq2Access.registerLocation(datasetID, dsn,
-              false, locations.getIncomplete()[i]);
-        }
-        catch(Exception e){
+          catch(Exception e){
+          }
         }
       }
       // Re-register home location if we failed to delete all files
@@ -1762,10 +1800,11 @@ public class ATLASDatabase implements Database{
         }
       }
     }
-    catch(Exception e){
+    catch(Exception eee){
+      eee.printStackTrace();
       error = "WARNING: could not connect to "+dq2Url+" on port "+dq2SecurePort+". Writing " +
          "not possible";
-      logFile.addMessage(error, e);
+      logFile.addMessage(error, eee);
       return false;
     }
     return true;
@@ -1834,7 +1873,7 @@ public class ATLASDatabase implements Database{
     
     if(datasetExists){
       String [] guids = new String[] {guid};
-      String [] lfns = new String[] {guid};
+      String [] lfns = new String[] {lfn};
       try{
         GridPilot.getClassMgr().getStatusBar().setLabel("Registering new lfn " +lfn+
           " with DQ2");
@@ -1859,12 +1898,12 @@ public class ATLASDatabase implements Database{
       try{
         // if we're using an alias, write in alias and flag for writing
         if(homeServerMysqlAlias!=null){
-          registerLFNs(homeServerMysqlAlias, new String [] {vuid},
+          registerLFNs(homeServerMysqlAlias, new String [] {guid},
               new String [] {lfn}, new String [] {url}, true);
         }
         // otherwise, assume that home server is a mysql server and just write there
         else{
-          registerLFNs(this.getFileCatalogServer(homeServer), new String [] {vuid},
+          registerLFNs(this.getFileCatalogServer(homeServer), new String [] {guid},
               new String [] {lfn}, new String [] {url}, false);
         }
       }
@@ -1890,12 +1929,12 @@ public class ATLASDatabase implements Database{
         String [] incomplete = locations[0].getIncomplete();
         String [] complete = locations[0].getComplete();
         for(int i=0; i<incomplete.length; ++i){
-          if(incomplete[i].equalsIgnoreCase(homeServer)){
+          if(incomplete[i].trim().equalsIgnoreCase(homeServer.trim())){
             siteRegistered = true;
           }
         }
         for(int i=0; i<complete.length; ++i){
-          if(complete[i].equalsIgnoreCase(homeServer)){
+          if(complete[i].trim().equalsIgnoreCase(homeServer.trim())){
             siteRegistered = true;
           }
         }

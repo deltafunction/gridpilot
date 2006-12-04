@@ -151,7 +151,21 @@ public class DQ2Access {
 		wsSecure.get(deleteDatasetURL, keys, values);
 		return true;
 	}
-	
+
+  /**
+   * deletes a Dataset version
+   * @param vuid VUID of the Dataset to erase
+   */
+  public boolean deleteDatasetVersion(String vuid) throws IOException
+  {
+    String keys[]= {"vuid","delete"};
+    String values[] = {vuid,"yes"};
+    Debug.debug("Deleting "+vuid, 2);
+    Debug.debug(" on "+deleteDatasetURL+" : "+wsSecure.protocolname, 2);
+    wsSecure.get(deleteDatasetURL, keys, values);
+    return true;
+  }
+
 	/**
 	 * registers Dataset in Location
 	 * @param vuid the vuid of the dataset being registered in a site
