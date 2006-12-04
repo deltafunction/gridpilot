@@ -1505,7 +1505,7 @@ public class HSQLDBDatabase implements Database{
       }
     }
     String sql = "INSERT INTO "+table+" (";
-    for(int i=1; i<datasetFields.length; ++i){
+    for(int i=0; i<datasetFields.length; ++i){
       if(!nonMatchedFields.contains(new Integer(i))){
         sql += datasetFields[i];
         if(datasetFields.length>0 && i<datasetFields.length-1){
@@ -1520,7 +1520,7 @@ public class HSQLDBDatabase implements Database{
         Util.arrayToString(datasetFieldTypes.values().toArray())+"\n"+
         Util.arrayToString(datasetFields)+"\n"+
         Util.arrayToString(fields), 3);
-    for(int i=1; i<datasetFields.length; ++i){
+    for(int i=0; i<datasetFields.length; ++i){
       if(!nonMatchedFields.contains(new Integer(i))){
         if(!nonMatchedStr.equals("") &&
             datasetFields[i].equalsIgnoreCase("comment")){
@@ -1542,12 +1542,13 @@ public class HSQLDBDatabase implements Database{
           // passed id is not a uuid.
           boolean isNum = false;
           try{
-            int num = Integer.parseInt(values[i].toString());
+            int num = Integer.parseInt((String) values[i]);
             isNum = (num>-1);
           }
           catch(Exception e){
           }
-          if(isNum || values[i]==null || values[i].equals("")){
+          if(isNum || values[i]==null || values[i].equals("") ||
+              values[i].equals("''")){
             values[i] = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
             String message = "Generated new UUID "+values[i].toString()+" for dataset";
             GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
@@ -1564,7 +1565,7 @@ public class HSQLDBDatabase implements Database{
         // but here, locally, it should be ok.
         Debug.debug("Value of  "+datasetFields[i]+": "+values[i], 3);
         try{
-          if(fields[i]!=null && values[i].toString().equals("''") && 
+          if(fields[i]!=null && (values[i]==null || values[i].toString().equals("") || values[i].toString().equals("''")) && 
               (datasetFieldTypes.get(datasetFields[i]).toString().toLowerCase().startsWith("int") ||
                datasetFieldTypes.get(datasetFields[i]).toString().toLowerCase().startsWith("bigint") ||
                datasetFieldTypes.get(datasetFields[i]).toString().toLowerCase().startsWith("tinyint") ||
@@ -1572,6 +1573,9 @@ public class HSQLDBDatabase implements Database{
             Debug.debug("Fixing "+datasetFields[i]+":"+values[i]+
                 " - "+datasetFieldTypes.get(datasetFields[i]).toString().toLowerCase(), 3);
             values[i] = "'0'";
+          }
+          else if(values[i]==null){
+            values[i] = "''";
           }
         }
         catch(Exception e){
@@ -1702,6 +1706,7 @@ public class HSQLDBDatabase implements Database{
   
   public synchronized boolean setJobDefsField(String [] identifiers,
       String field, String value){
+    String idField = Util.getIdentifierField(dbName, "jobDefinition");
     String sql = "UPDATE jobDefinition SET ";
     sql += field+"='"+value+"' WHERE ";
     // Not very elegant, but we need to use Identifier instead of
@@ -1709,8 +1714,8 @@ public class HSQLDBDatabase implements Database{
     // a JobDefinition object has already been made, which may not
     // be the case.
     for(int i=0; i<identifiers.length; ++i){
-      sql += "identifier"+"="+identifiers[i];
-      if(identifiers.length > 1 && i < identifiers.length - 1){
+      sql += idField+"="+identifiers[i];
+      if(identifiers.length>1 && i<identifiers.length - 1){
         sql += " OR ";
       }
     }
@@ -2423,7 +2428,7 @@ public class HSQLDBDatabase implements Database{
       }
       catch(Exception e){
         error = "WARNING: could not create dataset "+datasetName+
-        "Aborting . The file "+lfn+" would be an orphan. Please correct this by hand.";
+        ". Aborting . The file "+lfn+" would be an orphan. Please correct this by hand.";
         GridPilot.getClassMgr().getLogFile().addMessage(error, e);
         datasetExists =false;
         return;
