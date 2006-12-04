@@ -2,11 +2,10 @@ package gridpilot;
 
 import java.util.Vector;
 
-//import gridpilot.DBVector;
-import gridpilot.DBRecord;
-
 import javax.swing.JLabel;
 import javax.swing.table.AbstractTableModel;
+
+import gridpilot.DBRecord;
 
 /**
  * Extention of AbstractTableModel. <p>
