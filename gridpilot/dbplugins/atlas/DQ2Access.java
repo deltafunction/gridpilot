@@ -67,7 +67,7 @@ public class DQ2Access {
 
 	/**
 	 * creates Dataset
-	 * @param DataSetName The Name of the DataSet to be created
+	 * @param dsn The Name of the DataSet to be created
 	 * returns the vuid of the created Dataset   
 	 */
 	public String createDataset(String dsn) throws IOException
@@ -86,6 +86,29 @@ public class DQ2Access {
     }    
     return ret;
 	}
+
+    /**
+     * creates Dataset
+     * @param dsn The Name of the DataSet to be created
+     * @param vuid The ID of the DataSet to be created
+     * NOTICE: this does not work: the vuid is ignored
+     */
+    public String createDataset(String dsn, String vuid) throws IOException
+    {
+        String keys[]={"dsn", "vuid"};
+        String values[]={dsn, vuid};
+    Debug.debug("Creating dataset with web service on "+createDatasetURL, 1);
+        String response=wsSecure.post(createDatasetURL, keys, values);
+    String ret = parseVuid(URLDecoder.decode(response, "utf-8"));
+    if(ret.indexOf("DQDatasetExistsException")>-1 && ret.indexOf("'")>-1){
+      throw new IOException("ERROR: Dataset exists");
+    }
+    else if(ret.indexOf("Exception")>-1 && ret.indexOf("'")>-1){
+      throw new IOException("ERROR: exception from DQ2: "+
+          ret.replaceFirst(".*\\W+(\\w*Exception).*", "$1"));
+    }    
+    return ret;
+    }
 
 	/**
 	 * adds Files to Dataset
@@ -154,7 +177,7 @@ public class DQ2Access {
     // We have to parse something like
     // {'version': 1, 'vuid': '709b2ae9-f827-4800-b577-e3a38a763983', 'duid': 'b98adabc-c7f5-4354-a0ac-7d65d95c2f16'}
     Debug.debug("Parsing "+toParse, 3);
-    String ret = toParse.replaceFirst(".*vuid:'([^']+)'.*", "$1");
+    String ret = toParse.replaceFirst(".*'vuid': '([^']+)'.*", "$1");
     Debug.debug("--> "+ret, 3);
     return(ret);
 	}

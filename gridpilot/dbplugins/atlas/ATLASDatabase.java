@@ -302,7 +302,7 @@ public class ATLASDatabase implements Database{
       // Get the DQ result
       String str = readGetUrl(url);
       // Check if the result is of the form {...}
-      if(str== null || !str.matches("^\\{.*\\}$")){
+      if(str==null || !str.matches("^\\{.*\\}$") || str.matches("^\\{\\}$")){
         Debug.debug("WARNING: search returned an error "+str, 1);
         return new DBResult(fields, new String[0][fields.length]);
       }
@@ -1403,16 +1403,16 @@ public class ATLASDatabase implements Database{
     String ret = "-1";
     try{
       ret = res.getRow(0).getValue("vuid").toString();
-      Debug.debug("Found id "+ret+" from "+datasetName, 3);
     }
     catch(Exception e){
       error = "Could not get dataset ID from "+datasetName+". "+e.getMessage();
       e.printStackTrace();
       return "-1";
     }
-    if(ret==null){
+    if(ret==null || ret.equals("")){
       return "-1";
     }
+    Debug.debug("Returning id "+ret+" for "+datasetName, 3);
     return ret;
   }
 
@@ -1919,9 +1919,14 @@ public class ATLASDatabase implements Database{
   public boolean createDataset(String table, String[] fields,
       Object[] values){
     
+    Debug.debug("Creating dataset "+Util.arrayToString(fields)+
+        " --> "+Util.arrayToString(values), 2);
+    
     String dsn = null;
     String vuid = null;
-    String [] valueStrings = new String [values.length];
+    String assignedVuid = null;
+    Vector fieldStrings = new Vector();
+    Vector valueStrings = new Vector();
     
     if(table==null || !table.equalsIgnoreCase("dataset")){
       error = "ERROR: could not use table "+table;
@@ -1934,11 +1939,35 @@ public class ATLASDatabase implements Database{
       dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
       for(int i=0; i<values.length; ++i){
         if(fields[i].equalsIgnoreCase("dsn")){
-          dsn = values[i].toString();
+          dsn = (String) values[i];
         }
-        valueStrings[i] = values[i].toString();
+        if(fields[i].equalsIgnoreCase("vuid") &&
+            values[i]!=null && !values[i].toString().equals("")){
+          vuid = (String) values[i];
+        }
+        else if(values[i]!=null && !values[i].toString().equals("") &&
+            !values[i].toString().equals("''")){
+          fieldStrings.add((String) fields[i]);
+          valueStrings.add((String) values[i]);
+        }
       }
-      vuid = dq2Access.createDataset(dsn);
+      if(dsn==null || dsn.equals("")){
+        throw new Exception ("dsn empty: "+dsn);
+      }
+      // Unfortunately DQ2 does not use the supplied vuid when creating,
+      // but generated a new one.
+      // So we have to update and change the vuid.
+      if(vuid!=null && !vuid.equals("")){
+        assignedVuid = dq2Access.createDataset(dsn, vuid);
+        if(assignedVuid!=null && !assignedVuid.equals(vuid)){
+          fieldStrings.add("vuid");
+          valueStrings.add(vuid);
+          vuid = assignedVuid;
+        }
+      }
+      else{
+        vuid = dq2Access.createDataset(dsn);
+      }
     }
     catch(Exception e){
       error = "ERROR: could not connect to DQ2 dataset at "+dq2Server+" on port "+dq2SecurePort+
@@ -1946,8 +1975,28 @@ public class ATLASDatabase implements Database{
       logFile.addMessage(error, e);
       return false;
     }
-
-    return updateDataset(vuid, fields, valueStrings);
+    if(valueStrings.size()>0){
+      String [] fieldArray = new String [fieldStrings.size()];
+      String [] valueArray = new String [valueStrings.size()];
+      for(int i=0; i<fieldStrings.size(); ++i){
+        fieldArray[i] = (String) fieldStrings.get(i);
+        valueArray[i] = (String) valueStrings.get(i);
+      }
+      try{
+        if(!updateDataset(vuid, fieldArray, valueArray)){
+          throw new IOException("Update failed.");
+        }
+      }
+      catch(Exception e){
+        error = "WARNING: dataset "+dsn+" created but some parameters not correctly set; " +
+                "DQ2 probably assigned new VUID.";
+        logFile.addMessage(error, e);
+      }
+      return true;
+    }
+    else{
+      return true;
+    }
   }
 
   /**
@@ -2087,7 +2136,7 @@ public class ATLASDatabase implements Database{
     
     // If the dataset does not exist, abort
     if(!exists){
-      error = "ERROR: dataset "+dsn+" does not exist, cannot update.";
+      error = "ERROR: dataset "+dsn+" does not exist, cannot delete.";
       logFile.addMessage(error);
       return false;
     }
