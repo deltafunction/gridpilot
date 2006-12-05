@@ -484,6 +484,7 @@ public class Util{
       return _line;
     }
     String line = _line;
+    line = line.replaceFirst("^file:/+(\\w:)", "$1");
     line = line.replaceFirst("^file:///", "/");
     line = line.replaceFirst("^file://", "/");
     line = line.replaceFirst("^file:/", "/");
