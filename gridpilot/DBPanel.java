@@ -1304,18 +1304,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           HashMap datasetNameAndIds = new HashMap();
           String [] fileDatasetReference = Util.getFileDatasetReference(dbPluginMgr.getDBName());
           int [] rows = tableResults.getSelectedRows();
-          int fileDatasetIdColumn = -1;
+          int fileDatasetNameColumn = -1;
           // Find the dataset name column on the files tab
           for(int i=0; i<tableResults.getColumnCount(); ++i){
             if(tableResults.getColumnName(i).equalsIgnoreCase(fileDatasetReference[1])){
-              fileDatasetIdColumn = i;
+              fileDatasetNameColumn = i;
               break;
             }
           }
           String dsn = null;
           // Group the file IDs by dataset name
           for(int i=0; i<allIds.length; ++i){
-            dsn = (String) tableResults.getValueAt(rows[i], fileDatasetIdColumn);
+            dsn = (String) tableResults.getValueAt(rows[i], fileDatasetNameColumn);
             if(!datasetNameAndIds.containsKey(dsn)){
               datasetNameAndIds.put(dsn, new Vector());
             }
@@ -1334,30 +1334,33 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             String [] ids = null;
             Vector idVec = null;
             String datasetId = null;
+            Debug.debug("Deleting from "+datasetNameAndIds.keySet().size()+" datasets. "+
+                Util.arrayToString(datasetNameAndIds.keySet().toArray()), 2);
             for(Iterator it=datasetNameAndIds.keySet().iterator(); it.hasNext();){
               dsn = (String) it.next();
               datasetId = dbPluginMgr.getDatasetID(dsn);
               idVec = (Vector) datasetNameAndIds.get(dsn);
               ids = new String [idVec.size()];
               for(int i=0; i<idVec.size(); ++i){
-                ids[i] = (String) idVec.get(i);
-                boolean success = true;
-                try{
-                  success = dbPluginMgr.deleteFiles(datasetId, ids, cbCleanup.isSelected());
-                }
-                catch(Exception e){
-                  e.printStackTrace();
-                  success = false;
-                }
-                if(!success){
-                  String msg = "Deleting files "+Util.arrayToString(ids)+" failed.";
-                  Debug.debug(msg, 1);
-                  GridPilot.getClassMgr().getStatusBar().setLabel(msg);
-                  GridPilot.getClassMgr().getLogFile().addMessage(msg);
-                }
-                else{
-                  anyDeleted = true;
-                }
+                ids[i] = idVec.get(i).toString();
+              }
+              Debug.debug("Now deleting "+ids.length+" files: "+Util.arrayToString(ids), 3);
+              boolean success = true;
+              try{
+                success = dbPluginMgr.deleteFiles(datasetId, ids, cbCleanup.isSelected());
+              }
+              catch(Exception e){
+                e.printStackTrace();
+                success = false;
+              }
+              if(!success){
+                String msg = "Deleting files "+Util.arrayToString(ids)+" failed.";
+                Debug.debug(msg, 1);
+                GridPilot.getClassMgr().getStatusBar().setLabel(msg);
+                GridPilot.getClassMgr().getLogFile().addMessage(msg);
+              }
+              else{
+                anyDeleted = true;
               }
             }
                         
@@ -2261,7 +2264,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           guid = file.getValue(idField).toString();
         }
         if(name==null){
-          guid = file.getValue(nameField).toString();
+          name = file.getValue(nameField).toString();
         }
         if(urls==null){
           urls = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i]);
@@ -2536,7 +2539,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           String error = "ERROR: could not insert record: "+
           records[0]+", "+records[1]+", "+dbName+", "+tableName+", "+
           records[i]+", "+name;
-          GridPilot.getClassMgr().getLogFile().addMessage(error);
+          GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+          e.printStackTrace();
         }
       }
     }
@@ -2608,7 +2612,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(tableName.equalsIgnoreCase("jobDefinition")){
       try{
         record = sourceMgr.getJobDefinition(id);
-        insertJobDefinition(record);
+        insertJobDefinition(sourceMgr, record);
       }
       catch(Exception e){
         String msg = "ERROR: job definition "+id+" could not be created, "+sourceDB+
@@ -2678,11 +2682,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
   }
   
-  public boolean insertJobDefinition(DBRecord jobDef) throws Exception{  
+  public boolean insertJobDefinition(DBPluginMgr sourceMgr, DBRecord jobDef) throws Exception{  
     try{
       // Check if parent dataset exists
-      String targetJobDefIdentifier = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
-      String targetDsId = dbPluginMgr.getJobDefDatasetID(jobDef.getValue(targetJobDefIdentifier).toString());
+      String sourceJobDefIdentifier = Util.getIdentifierField(sourceMgr.getDBName(), "jobDefinition");
+      String datasetName = sourceMgr.getDatasetName(
+          sourceMgr.getJobDefDatasetID((String) jobDef.getValue(sourceJobDefIdentifier)));
+      String targetDsId = dbPluginMgr.getDatasetID(datasetName);
       if(!targetDsId.equals("-1")){
         dbPluginMgr.createJobDef(jobDef.fields, jobDef.values);
       }
