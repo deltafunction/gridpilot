@@ -1278,7 +1278,12 @@ public class DBPluginMgr implements Database{
       for(int j=0; j<fields.length; ++j){
         if(fields[j].equalsIgnoreCase(jobDefFieldNames[i]) &&
             !fields[j].equalsIgnoreCase(Util.getIdentifierField(dbName, "jobDefinition"))){
-          vals[i] = values[j].toString();
+          if(vals[i]==null){
+            vals[i] = "";
+         }
+          else{
+            vals[i] = (String) values[j];
+          }
           break;
         }
       }
@@ -1318,7 +1323,12 @@ public class DBPluginMgr implements Database{
       for(int j=0; j<fields.length; ++j){
         if(fields[j].equalsIgnoreCase(transFieldNames[i]) &&
             !fields[j].equalsIgnoreCase(Util.getIdentifierField(dbName, "transformation"))){
-          vals[i] = values[j].toString();
+          if(vals[i]==null){
+            vals[i] = "";
+          }
+          else{
+            vals[i] = (String) values[j];
+          }
           break;
         }
       }
@@ -1350,7 +1360,12 @@ public class DBPluginMgr implements Database{
       for(int j=0; j<fields.length; ++j){
         if(fields[j].equalsIgnoreCase(runtimeFieldNames[i]) &&
             !fields[j].equalsIgnoreCase(Util.getIdentifierField(dbName, "runtimeEnvironment"))){
-          vals[i] = values[j].toString();
+          if(vals[i]==null){
+            vals[i] = "";
+          }
+          else{
+            vals[i] = (String) values[j];
+          }
           break;
         }
       }
