@@ -2331,6 +2331,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           Debug.debug(srcUrl.getURL()+" ---> "+destUrl.getURL(), 2);
           transfer = new TransferInfo(srcUrl, destUrl);
           transfer.setDBPluginMgr(regDBPluginMgr);
+          
+          
+          // TODO: queue transfers with all PFNs in TransferInfo and loop in SRM plugin
+          // try on csc11.005145.PythiaZmumu.recon.AOD.v11004205
+          
           try{
             // If the file is in a file catalog, we should reuse the lfn, guid
             // and the dataset name and id if possible.

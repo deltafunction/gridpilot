@@ -595,7 +595,7 @@ public class SRMFileTransfer implements FileTransfer {
         srm = connect(srcUrls[0]);
         RequestStatus rs = srm.get(sources, protocols);
         if(rs==null){
-          throw new IOException("ERROR: null requests status");
+          throw new IOException("ERROR: null request status");
         }
         GlobusURL [] turls = new GlobusURL[srcUrls.length];
         String [] ids = new String[srcUrls.length];

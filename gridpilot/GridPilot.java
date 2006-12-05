@@ -561,6 +561,12 @@ public class GridPilot extends JApplet{
     for(int i=0; i<dbNames.length; ++i){
       getClassMgr().getDBPluginMgr(dbNames[i]).loadValues();
     }
+    try{
+      loadFTs();
+    }
+    catch(Throwable e){
+       e.printStackTrace();
+    }
     initDebug();
     splash = null;
   }
