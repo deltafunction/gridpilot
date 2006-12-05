@@ -255,10 +255,8 @@ public class HSQLDBDatabase implements Database{
   }
 
   private void setFieldNames() throws SQLException {
-    //ConfigFile tablesConfig = new ConfigFile("gridpilot/dbplugins/hsqldb/tables.conf");
     configFile = GridPilot.getClassMgr().getConfigFile();
     datasetFields = getFieldNames("dataset");
-    //String [] dsFieldTypes = Util.split(tablesConfig.getValue("tables", "dataset field types"), ",");
     String [] dsFieldTypes = Util.split(configFile.getValue(dbName, "dataset field types"), ",");
     for(int i=0; i<datasetFields.length; ++i){
       datasetFieldTypes.put(datasetFields[i], dsFieldTypes[i]);
@@ -1488,27 +1486,31 @@ public class HSQLDBDatabase implements Database{
     String nonMatchedStr = "";
     Vector nonMatchedFields = new Vector();
     boolean match = false;
-    for(int i=1; i<fields.length; ++i){
+    for(int i=0; i<fields.length; ++i){
       match = false;
-      for(int j=1; j<datasetFields.length; ++j){
+      for(int j=0; j<datasetFields.length; ++j){
         if(fields[i].equalsIgnoreCase(datasetFields[j])){
           match = true;
           break;
         }
       }
       if(!match){
-        nonMatchedFields.add(new Integer(i));
+        nonMatchedFields.add(fields[i]);
         if(i>0){
           nonMatchedStr += "\n";
         }
         nonMatchedStr += fields[i]+": "+values[i];
       }
     }
+    if(nonMatchedFields.size()>0){
+      Debug.debug("Could not match "+Util.arrayToString(nonMatchedFields.toArray())+
+          " with "+Util.arrayToString(datasetFields), 3);
+    }
     String sql = "INSERT INTO "+table+" (";
-    for(int i=0; i<datasetFields.length; ++i){
-      if(!nonMatchedFields.contains(new Integer(i))){
-        sql += datasetFields[i];
-        if(datasetFields.length>0 && i<datasetFields.length-1){
+    for(int i=0; i<fields.length; ++i){
+      if(!nonMatchedFields.contains(fields[i])){
+        sql += fields[i];
+        if(fields.length>0 && i<fields.length-1){
           sql += ",";
         }
       }
@@ -1520,13 +1522,13 @@ public class HSQLDBDatabase implements Database{
         Util.arrayToString(datasetFieldTypes.values().toArray())+"\n"+
         Util.arrayToString(datasetFields)+"\n"+
         Util.arrayToString(fields), 3);
-    for(int i=0; i<datasetFields.length; ++i){
-      if(!nonMatchedFields.contains(new Integer(i))){
+    for(int i=0; i<fields.length; ++i){
+      if(!nonMatchedFields.contains(fields[i])){
         if(!nonMatchedStr.equals("") &&
-            datasetFields[i].equalsIgnoreCase("comment")){
+            fields[i].equalsIgnoreCase("comment")){
           values[i] = values[i]+"\n"+nonMatchedStr;
         }
-        if(datasetFields[i].equalsIgnoreCase("created")){
+        if(fields[i].equalsIgnoreCase("created")){
           try{
             values[i] = makeDate(values[i].toString());
           }
@@ -1534,10 +1536,10 @@ public class HSQLDBDatabase implements Database{
             values[i] = makeDate("");
           }
         }
-        else if(datasetFields[i].equalsIgnoreCase("lastModified")){
+        else if(fields[i].equalsIgnoreCase("lastModified")){
           values[i] = makeDate("");
         }
-        else if(isFileCatalog() && datasetFields[i].equalsIgnoreCase(idField)){
+        else if(isFileCatalog() && fields[i].equalsIgnoreCase(idField)){
           // Generate uuid if this is a file catalogue and the
           // passed id is not a uuid.
           boolean isNum = false;
@@ -1563,15 +1565,15 @@ public class HSQLDBDatabase implements Database{
         // Set empty numeric fields to 0.
         // Empty fields should not be allowed in central dataset catalogs,
         // but here, locally, it should be ok.
-        Debug.debug("Value of  "+datasetFields[i]+": "+values[i], 3);
+        Debug.debug("Value of  "+fields[i]+": "+values[i], 3);
         try{
           if(fields[i]!=null && (values[i]==null || values[i].toString().equals("") || values[i].toString().equals("''")) && 
-              (datasetFieldTypes.get(datasetFields[i]).toString().toLowerCase().startsWith("int") ||
-               datasetFieldTypes.get(datasetFields[i]).toString().toLowerCase().startsWith("bigint") ||
-               datasetFieldTypes.get(datasetFields[i]).toString().toLowerCase().startsWith("tinyint") ||
-               datasetFieldTypes.get(datasetFields[i]).toString().toLowerCase().startsWith("float"))){
-            Debug.debug("Fixing "+datasetFields[i]+":"+values[i]+
-                " - "+datasetFieldTypes.get(datasetFields[i]).toString().toLowerCase(), 3);
+              (datasetFieldTypes.get(fields[i]).toString().toLowerCase().startsWith("int") ||
+               datasetFieldTypes.get(fields[i]).toString().toLowerCase().startsWith("bigint") ||
+               datasetFieldTypes.get(fields[i]).toString().toLowerCase().startsWith("tinyint") ||
+               datasetFieldTypes.get(fields[i]).toString().toLowerCase().startsWith("float"))){
+            Debug.debug("Fixing "+fields[i]+":"+values[i]+
+                " - "+datasetFieldTypes.get(fields[i]).toString().toLowerCase(), 3);
             values[i] = "'0'";
           }
           else if(values[i]==null){
@@ -1581,8 +1583,8 @@ public class HSQLDBDatabase implements Database{
         catch(Exception e){
           e.printStackTrace();
         }
-        sql += values[i].toString();
-        if(datasetFields.length>0 && i<datasetFields.length-1){
+        sql += values[i];
+        if(fields.length>0 && i<fields.length-1){
           sql += ",";
         }
       }
@@ -1837,12 +1839,12 @@ public class HSQLDBDatabase implements Database{
 
     String sql = "UPDATE dataset SET ";
     int addedFields = 0;
-    for(int i=0; i<datasetFields.length; ++i){
-      if(!datasetFields[i].equalsIgnoreCase(idField)){
-        for(int j=0; j<fields.length; ++j){
+    for(int i=0; i<fields.length; ++i){
+      if(!fields[i].equalsIgnoreCase(idField)){
+        for(int j=0; j<datasetFields.length; ++j){
           // only add if present in datasetFields
-          if(datasetFields[i].equalsIgnoreCase(fields[j])){
-            if(datasetFields[i].equalsIgnoreCase("created")){
+          if(fields[i].equalsIgnoreCase(datasetFields[j])){
+            if(fields[i].equalsIgnoreCase("created")){
               try{
                 values[j] = makeDate(values[j].toString());
               }
@@ -1850,7 +1852,7 @@ public class HSQLDBDatabase implements Database{
                 values[j] = makeDate("");
               }
             }
-            else if(datasetFields[i].equalsIgnoreCase("lastModified")){
+            else if(fields[i].equalsIgnoreCase("lastModified")){
               values[j] = makeDate("");
             }
             else{
@@ -2233,7 +2235,7 @@ public class HSQLDBDatabase implements Database{
   public DBRecord getFile(String datasetName, String fileID){
     String [] fields = null;
     try{
-      fields= getFieldNames("file");
+      fields = getFieldNames("file");
     }
     catch(Exception e){
       e.printStackTrace();
@@ -2417,6 +2419,7 @@ public class HSQLDBDatabase implements Database{
         String nameField = Util.getNameField(dbName, "dataset");
         String idField = Util.getIdentifierField(dbName, "dataset");
         GridPilot.getClassMgr().getStatusBar().setLabel("Creating new dataset "+datasetName);
+        Debug.debug("Creating new dataset; "+nameField+":"+idField+"-->"+datasetName+":"+datasetID, 3);
         if(!createDataset("dataset",
             new String [] {nameField, idField}, new Object [] {datasetName, datasetID})){
           throw new SQLException("createDataset failed");
@@ -2555,6 +2558,7 @@ public class HSQLDBDatabase implements Database{
     if(isFileCatalog()){
       LogFile logFile = GridPilot.getClassMgr().getLogFile();
       boolean ok = true;
+      Debug.debug("Deleting files "+Util.arrayToString(fileIDs), 2);
       for(int i=0; i<fileIDs.length; ++i){
         try{
           if(cleanup){
@@ -2566,10 +2570,21 @@ public class HSQLDBDatabase implements Database{
               else{
                 fileNames = getFile(datasetID, fileIDs[i]).getValue("url").toString();
               }
+              fileNames = fileNames.replaceAll("(\\w\\w+:)", "'::'$1");
+              fileNames = "'"+fileNames.replaceAll("^'::'", "")+"'";
               Debug.debug("Deleting files "+fileNames, 2);
               if(fileNames!=null && !fileNames.equals("no such field")){
-                String [] fileNameArray = Util.split(fileNames);
-                TransferControl.deleteFiles(fileNameArray);
+                String [] fileNameArray = Util.split(fileNames, "'::'");
+                if(fileNameArray.length>0){
+                  fileNameArray[fileNameArray.length-1] = fileNameArray[fileNameArray.length-1].
+                     substring(0, fileNameArray[fileNameArray.length-1].length()-1);
+                  fileNameArray[0] = fileNameArray[0].substring(1);
+                  Debug.debug("Deleting files "+Util.arrayToString(fileNameArray, "---"), 2);
+                  if(Util.arrayToString(fileNameArray).indexOf("'")>-1){
+                    throw new Exception("Something went wrong. Backing out. Nothing deleted.");
+                  }
+                  TransferControl.deleteFiles(fileNameArray);
+                }
               }
             }
             catch(Exception e){

@@ -1415,7 +1415,7 @@ public class MySQLDatabase implements Database{
       int j = 0;
       for(j=0; j<datasetFields.length; ++j){
         if(fields[i].equalsIgnoreCase(datasetFields[j])){
-          matchedFields.add(new Integer(i));
+          matchedFields.add(fields[i]);
           match = true;
           break;
         }
@@ -1431,28 +1431,28 @@ public class MySQLDatabase implements Database{
       }
     }
     String sql = "INSERT INTO "+table+" (";
-    for(int i=0; i<datasetFields.length; ++i){
-      if((isFileCatalog() && datasetFields[i].equalsIgnoreCase(idField) ||
+    for(int i=0; i<fields.length; ++i){
+      if((isFileCatalog() && fields[i].equalsIgnoreCase(idField) ||
           !((values[i]==null || values[i].toString().equals("''") || values[i].toString().equals("")))) &&
-          matchedFields.contains(new Integer(i))){
-        sql += datasetFields[i];
-        if(datasetFields.length>0 && i<datasetFields.length-1){
+          matchedFields.contains(fields[i])){
+        sql += fields[i];
+        if(fields.length>0 && i<fields.length-1){
           sql += ",";
         }
       }
     }
     sql += ") VALUES (";
-    for(int i=0; i<datasetFields.length; ++i){
-      if((isFileCatalog() && datasetFields[i].equalsIgnoreCase(idField) ||
+    for(int i=0; i<fields.length; ++i){
+      if((isFileCatalog() && fields[i].equalsIgnoreCase(idField) ||
           !((values[i]==null || values[i].toString().equals("''") || values[i].toString().equals("")))) &&
-          matchedFields.contains(new Integer(i))){
+          matchedFields.contains(fields[i])){
         if(!nonMatchedStr.equals("") &&
             // TODO: make metaData field configurable like identifier and name field
-            (datasetFields[i].equalsIgnoreCase("comment") ||
-                datasetFields[i].equalsIgnoreCase("metaData"))){
+            (fields[i].equalsIgnoreCase("comment") ||
+                fields[i].equalsIgnoreCase("metaData"))){
           values[i] = values[i]+"\n"+nonMatchedStr;
         }
-        if(datasetFields[i].equalsIgnoreCase("created")){
+        if(fields[i].equalsIgnoreCase("created")){
           try{
             values[i] = makeDate((String) values[i]);
           }
@@ -1460,10 +1460,10 @@ public class MySQLDatabase implements Database{
             values[i] = makeDate("");
           }
         }
-        else if(datasetFields[i].equalsIgnoreCase("lastModified")){
+        else if(fields[i].equalsIgnoreCase("lastModified")){
           values[i] = makeDate("");
         }
-        else if(isFileCatalog() && datasetFields[i].equalsIgnoreCase(idField)){
+        else if(isFileCatalog() && fields[i].equalsIgnoreCase(idField)){
           // Generate uuid if this is a file catalogue and the
           // passed id is not a uuid.
           boolean isNum = false;
@@ -1487,7 +1487,7 @@ public class MySQLDatabase implements Database{
           values[i] = "'"+values[i]+"'";
         }
         sql += values[i];
-        if(datasetFields.length>0 && i<datasetFields.length-1){
+        if(fields.length>0 && i<fields.length-1){
           sql += ",";
         }
       }
@@ -1737,13 +1737,13 @@ public class MySQLDatabase implements Database{
 
     String sql = "UPDATE dataset SET ";
     int addedFields = 0;
-    for(int i=0; i<datasetFields.length; ++i){
+    for(int i=0; i<fields.length; ++i){
       if(!((values[i]==null || values[i].toString().equals("''") || values[i].toString().equals(""))) &&
           !datasetFields[i].equalsIgnoreCase(idField)){
-        for(int j=0; j<fields.length; ++j){
+        for(int j=0; j<datasetFields.length; ++j){
           // only add if present in datasetFields
-          if(datasetFields[i].equalsIgnoreCase(fields[j])){
-            if(datasetFields[i].equalsIgnoreCase("created")){
+          if(fields[i].equalsIgnoreCase(datasetFields[j])){
+            if(fields[i].equalsIgnoreCase("created")){
               try{
                 values[j] = makeDate(values[j].toString());
               }
@@ -1751,7 +1751,7 @@ public class MySQLDatabase implements Database{
                 values[j] = makeDate("");
               }
             }
-            else if(datasetFields[i].equalsIgnoreCase("lastModified")){
+            else if(fields[i].equalsIgnoreCase("lastModified")){
               values[j] = makeDate("");
             }
             else{
@@ -2133,7 +2133,7 @@ public class MySQLDatabase implements Database{
   public DBRecord getFile(String datasetName, String fileID){
     String [] fields = null;
     try{
-      fields= getFieldNames("file");
+      fields = getFieldNames("file");
     }
     catch(Exception e){
       e.printStackTrace();
@@ -2450,8 +2450,22 @@ public class MySQLDatabase implements Database{
               else{
                 fileNames = (String) getFile(datasetID, fileIDs[i]).getValue("url");
               }
-              String [] fileNameArray = Util.split(fileNames);
-              TransferControl.deleteFiles(fileNameArray);
+              fileNames = fileNames.replaceAll("(\\w\\w+:)", "'::'$1");
+              fileNames = "'"+fileNames.replaceAll("^'::'", "")+"'";
+              Debug.debug("Deleting files "+fileNames, 2);
+              if(fileNames!=null && !fileNames.equals("no such field")){
+                String [] fileNameArray = Util.split(fileNames, "'::'");
+                if(fileNameArray.length>0){
+                  fileNameArray[fileNameArray.length-1] = fileNameArray[fileNameArray.length-1].
+                     substring(0, fileNameArray[fileNameArray.length-1].length()-1);
+                  fileNameArray[0] = fileNameArray[0].substring(1);
+                  Debug.debug("Deleting files "+Util.arrayToString(fileNameArray, "---"), 2);
+                  if(Util.arrayToString(fileNameArray).indexOf("'")>-1){
+                    throw new Exception("Something went wrong. Backing out. Nothing deleted.");
+                  }
+                  TransferControl.deleteFiles(fileNameArray);
+                }
+              }
             }
             catch(Exception e){
               e.printStackTrace();
