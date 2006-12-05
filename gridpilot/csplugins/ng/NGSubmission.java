@@ -209,7 +209,13 @@ public class NGSubmission{
              (resource==null ||
              resources[i].getMaxjobs()>resource.getMaxjobs() &&
              resources[i].getTotalQueueCPUs()>resource.getTotalQueueCPUs())){
-            resource = resources[i];
+             resource = resources[i];
+             queue = resource.getQueueName();
+          }
+          else{
+            logFile.addInfo("Ressource rejected: \n"+
+                "Max jobs:"+resources[i].getMaxjobs()+
+                "\nTotal CPUs:"+resources[i].getTotalQueueCPUs());
           }
         }
         if(resource!=null){
