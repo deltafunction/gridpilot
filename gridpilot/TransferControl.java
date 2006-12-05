@@ -519,6 +519,7 @@ public class TransferControl{
         pbSubmission.setMaximum(0);
         pbSubmission.setValue(0);
         statusBar.setLabel("Queueing transfers done.");
+        GridPilot.getClassMgr().getStatusBar().setLabel("");
       }
     }
   };
