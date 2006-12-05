@@ -114,9 +114,7 @@ public class ATLASDatabase implements Database{
       URL toaURL = null;
       toaFile = File.createTempFile(/*prefix*/"GridPilot-TOA", /*suffix*/"");
       toaFile.delete();
-      toa.replaceFirst("^file:///+", "/");
-      toa.replaceFirst("^file://", "");
-      toa.replaceFirst("^file:", "");
+      toa = Util.clearFile(toa);
       if(toa.startsWith("~")){
         toa = System.getProperty("user.home") + File.separator +
         toa.substring(1);
