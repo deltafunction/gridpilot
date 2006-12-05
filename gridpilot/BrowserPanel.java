@@ -1312,7 +1312,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Ask for the name.
    */
   private void delete() throws IOException{
-    String fileName = Util.getFileName(jtFilter.getText());
+    String fileName = Util.getFileName(""/*jtFilter.getText()*/);
     if(fileName==null){
       return;
     }  
