@@ -124,7 +124,25 @@ public class SRMFileTransfer implements FileTransfer {
        Debug.debug("connected to server, obtained proxy of type "+srm.getClass(), 2);
     }
     catch(Exception srme){
-       throw new IOException(srme.toString());
+      srme.printStackTrace();
+       //throw new IOException(srme.toString());
+    }
+    try{
+      srm = new SRMClientV1(
+          srmUrl,
+          GridPilot.getClassMgr().getGridCredential(),
+          Long.parseLong(Integer.toString(
+              1000*Integer.parseInt(copyRetryTimeout))),
+          Integer.parseInt(copyRetries),
+          new SRMLogger(true),
+          /*doDelegation*/true,
+          /*fullDelegation*/true,
+          /*gss_expected_name*/"host",
+          "srm/managerv1");
+      Debug.debug("connected to server, obtained proxy of type "+srm.getClass(), 2);
+    }
+    catch(Exception srme){
+      throw new IOException(srme.toString());
     }
     if(srm==null){
        throw new IOException("ERROR: Cannot get SRM connection.");
@@ -549,8 +567,6 @@ public class SRMFileTransfer implements FileTransfer {
     
     ISRM srm = null;
 
-    // TODO: implement wildcard *
-    
     try{
       String[] srcStrs = new String[srcUrls.length];
       String[] destStrs = new String[destUrls.length];
@@ -562,7 +578,7 @@ public class SRMFileTransfer implements FileTransfer {
       }
       
       boolean[] wantPerm = new boolean[srcUrls.length];
-      // Don't request any permanent files.
+      // Don't request permanency.
       // TODO: make this configurable.
       Arrays.fill(wantPerm, false);
       

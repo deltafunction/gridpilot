@@ -2355,7 +2355,14 @@ public class HSQLDBDatabase implements Database{
       catch(Exception e){
         Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
       }
-      return Util.split(ret);
+      String [] urls = null;
+      try{
+        urls = Util.splitUrls(ret);
+      }
+      catch (Exception e) {
+        e.printStackTrace();
+      }
+      return urls;
     }
     else{
       String ret = null;
@@ -2570,19 +2577,10 @@ public class HSQLDBDatabase implements Database{
               else{
                 fileNames = getFile(datasetID, fileIDs[i]).getValue("url").toString();
               }
-              fileNames = fileNames.replaceAll("(\\w\\w+:)", "'::'$1");
-              fileNames = "'"+fileNames.replaceAll("^'::'", "")+"'";
               Debug.debug("Deleting files "+fileNames, 2);
               if(fileNames!=null && !fileNames.equals("no such field")){
-                String [] fileNameArray = Util.split(fileNames, "'::'");
-                if(fileNameArray.length>0){
-                  fileNameArray[fileNameArray.length-1] = fileNameArray[fileNameArray.length-1].
-                     substring(0, fileNameArray[fileNameArray.length-1].length()-1);
-                  fileNameArray[0] = fileNameArray[0].substring(1);
-                  Debug.debug("Deleting files "+Util.arrayToString(fileNameArray, "---"), 2);
-                  if(Util.arrayToString(fileNameArray).indexOf("'")>-1){
-                    throw new Exception("Something went wrong. Backing out. Nothing deleted.");
-                  }
+                String [] fileNameArray = Util.splitUrls(fileNames);
+                if(fileNameArray!=null && fileNameArray.length>0){
                   TransferControl.deleteFiles(fileNameArray);
                 }
               }

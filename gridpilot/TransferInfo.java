@@ -1,5 +1,8 @@
 package gridpilot;
 
+import java.util.HashSet;
+import java.util.Iterator;
+
 import org.globus.util.GlobusURL;
 
 /**
@@ -8,6 +11,9 @@ import org.globus.util.GlobusURL;
 public class TransferInfo extends DBRecord{
 
   private String id = null;
+  // Set of GlobusURLs containing all found sources for this file
+  private HashSet sources = new HashSet();
+  // The source that is actually transferred
   private GlobusURL source = null;
   private GlobusURL destination = null;
   private String status = null;
@@ -35,6 +41,7 @@ public class TransferInfo extends DBRecord{
   private int tableRow = -1;
 
   public TransferInfo(GlobusURL source, GlobusURL destination){
+    addSource(source);
     setSource(source);
     setDestination(destination);
   }
@@ -94,6 +101,16 @@ public class TransferInfo extends DBRecord{
     return source;
   }
   
+  public GlobusURL [] getSources(){
+    GlobusURL [] srcs = new GlobusURL[sources.size()];
+    int i = 0;
+    for(Iterator it=sources.iterator(); it.hasNext();){
+      srcs[i] = (GlobusURL) it.next();
+      ++i;
+    }
+    return srcs;
+  }
+  
   public void setTransferID(String _id){
     id = _id;
   }
@@ -112,6 +129,22 @@ public class TransferInfo extends DBRecord{
 
   public void setSource(GlobusURL _source){
     source = _source;
+  }
+
+  public void addSource(GlobusURL _source){
+    sources.add(_source);
+  }
+
+  public void removeSource(GlobusURL _source){
+    Debug.debug("Removing source "+_source.getURL()+
+        " from "+sources.size(), 3);
+    StringBuffer debugSources = new StringBuffer("");
+    for(Iterator it=sources.iterator(); it.hasNext();){
+      debugSources.append(" : "+((GlobusURL) it.next()).getURL());
+    }
+    Debug.debug("Sources"+debugSources.toString(), 3);
+    sources.remove(_source);
+    Debug.debug("Number of sources is now "+sources.size(), 3);
   }
 
   public GlobusURL getDestination(){

@@ -1505,7 +1505,7 @@ public class ATLASDatabase implements Database{
     String [] ret = null;
     try{
       DBRecord file = getFile(datasetName, fileID);
-      ret = Util.split(file.getValue("pfns").toString());
+      ret = Util.splitUrls(file.getValue("pfns").toString());
     }
     catch(Exception e){
       Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
@@ -2223,241 +2223,194 @@ public class ATLASDatabase implements Database{
 
 
   public String getDatasetTransformationName(String datasetID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String getDatasetTransformationVersion(String datasetID){
-    // TODO Auto-generated method stub
     return null;
   }
   public String[] getRuntimeEnvironments(String jobDefID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public DBResult getRuntimeEnvironments(){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String getRuntimeEnvironmentID(String name, String cs){
-    // TODO Auto-generated method stub
     return "-1";
   }
 
   public DBRecord getRuntimeEnvironment(String runtimeEnvironmentID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String getRuntimeInitText(String pack, String cluster){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public boolean createRuntimeEnvironment(Object[] values){
-    // TODO Auto-generated method stub
     return false;
   }
 
   public boolean updateRuntimeEnvironment(String runtimeEnvironmentID,
       String[] fields, String[] values){
-    // TODO Auto-generated method stub
     return false;
   }
 
   public boolean deleteRuntimeEnvironment(String runtimeEnvironmentID){
-    // TODO Auto-generated method stub
     return false;
   }
 
   public DBResult getTransformations(){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public DBRecord getTransformation(String transformationID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String getTransformationID(String transName, String transVersion){
-    // TODO Auto-generated method stub
     return "-1";
   }
 
   public boolean createTransformation(Object[] values){
-    // TODO Auto-generated method stub
     return false;
   }
 
   public boolean updateTransformation(String transformatinID, String[] fields,
       String[] values){
-    // TODO Auto-generated method stub
     return false;
   }
 
   public boolean deleteTransformation(String transformationID){
-    // TODO Auto-generated method stub
     return false;
   }
 
   public String[] getVersions(String transformationName){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String getTransformationRuntimeEnvironment(String transformationID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String[] getTransformationJobParameters(String transformationID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String[] getTransformationOutputs(String transformationID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String[] getTransformationInputs(String transformationID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public DBResult getJobDefinitions(String datasetID, String[] fieldNames){
-    // TODO
     return null;
   }
 
   public DBRecord getJobDefinition(String jobDefID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public boolean createJobDefinition(String[] values){
-    // TODO Auto-generated method stub
     return false;
   }
 
   public boolean createJobDefinition(String datasetName, String[] cstAttrNames,
       String[] resCstAttr, String[] trpars, String[][] ofmap, String odest,
       String edest){
-    // TODO Auto-generated method stub
     return false;
   }
 
   public boolean deleteJobDefinition(String jobDefID, boolean cleanup){
-    // TODO Auto-generated method stub
     return false;
   }
 
   public boolean updateJobDefinition(String jobDefID, String[] fields,
       String[] values){
-    // TODO Auto-generated method stub
     return false;
   }
 
   public boolean updateJobDefinition(String jobDefID, String[] values){
-    // TODO Auto-generated method stub
     return false;
   }
 
   public String getJobDefStatus(String jobDefID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String getJobDefUserInfo(String jobDefID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String getJobDefName(String jobDefID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String getJobDefDatasetID(String jobDefID){
-    // TODO Auto-generated method stub
     return "-1";
   }
 
   public String getJobDefTransformationID(String jobDefID){
-    // TODO Auto-generated method stub
     return "-1";
   }
 
   public String getTransformationScript(String jobDefID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String getRunInfo(String jobDefID, String key){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public boolean cleanRunInfo(String jobDefID){
-    // TODO Auto-generated method stub
     return false;
   }
 
   public boolean reserveJobDefinition(String jobDefID, String UserName, String cs){
-    // TODO Auto-generated method stub
     return false;
   }
 
   public String[] getOutputFiles(String jobDefID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String[] getJobDefInputFiles(String jobDefID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String getJobDefOutRemoteName(String jobDefID, String par){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String getJobDefOutLocalName(String jobDefID, String par){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String getStdOutFinalDest(String jobDefID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String getStdErrFinalDest(String jobDefID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String[] getTransformationArguments(String jobDefID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public String[] getJobDefTransPars(String jobDefID){
-    // TODO Auto-generated method stub
     return null;
   }
 
   public boolean setJobDefsField(String [] identifiers, String field, String value){
-    // TODO Auto-generated method stub
     return false;
   }
 
   public String getError(){
-    // TODO Auto-generated method stub
     return error;
   }
 

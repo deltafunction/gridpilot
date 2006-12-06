@@ -1406,18 +1406,16 @@ public class MySQLDatabase implements Database{
   public synchronized boolean createDataset(String table,
       String [] fields, Object [] _values){
     String idField = Util.getIdentifierField(dbName, "dataset");
-    Object [] values = new Object [datasetFields.length];
+    Object [] values = new Object [_values.length];
     String nonMatchedStr = "";
     Vector matchedFields = new Vector();
     boolean match = false;
     for(int i=0; i<fields.length; ++i){
       match = false;
-      int j = 0;
-      for(j=0; j<datasetFields.length; ++j){
+      for(int j=0; j<datasetFields.length; ++j){
         if(fields[i].equalsIgnoreCase(datasetFields[j])){
           matchedFields.add(fields[i]);
           match = true;
-          break;
         }
       }
       if(!match){
@@ -1427,7 +1425,7 @@ public class MySQLDatabase implements Database{
         nonMatchedStr += fields[i]+": "+_values[i];
       }
       else{
-        values[j] = _values[i];
+        values[i] = _values[i];
       }
     }
     String sql = "INSERT INTO "+table+" (";
@@ -1485,6 +1483,9 @@ public class MySQLDatabase implements Database{
         else if(values[i]!=null){
           values[i] = values[i].toString().replaceAll("\n","\\\\n");
           values[i] = "'"+values[i]+"'";
+        }
+        else if(values[i]==null){
+          values[i] = "''";
         }
         sql += values[i];
         if(fields.length>0 && i<fields.length-1){
@@ -2231,7 +2232,14 @@ public class MySQLDatabase implements Database{
       catch(Exception e){
         Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
       }
-      return Util.split(ret);
+      String [] urls = null;
+      try{
+        urls = Util.splitUrls(ret);
+      }
+      catch (Exception e) {
+        e.printStackTrace();
+      }
+      return urls;
     }
     else{
       String ret = null;
@@ -2450,19 +2458,10 @@ public class MySQLDatabase implements Database{
               else{
                 fileNames = (String) getFile(datasetID, fileIDs[i]).getValue("url");
               }
-              fileNames = fileNames.replaceAll("(\\w\\w+:)", "'::'$1");
-              fileNames = "'"+fileNames.replaceAll("^'::'", "")+"'";
               Debug.debug("Deleting files "+fileNames, 2);
               if(fileNames!=null && !fileNames.equals("no such field")){
-                String [] fileNameArray = Util.split(fileNames, "'::'");
-                if(fileNameArray.length>0){
-                  fileNameArray[fileNameArray.length-1] = fileNameArray[fileNameArray.length-1].
-                     substring(0, fileNameArray[fileNameArray.length-1].length()-1);
-                  fileNameArray[0] = fileNameArray[0].substring(1);
-                  Debug.debug("Deleting files "+Util.arrayToString(fileNameArray, "---"), 2);
-                  if(Util.arrayToString(fileNameArray).indexOf("'")>-1){
-                    throw new Exception("Something went wrong. Backing out. Nothing deleted.");
-                  }
+                String [] fileNameArray = Util.splitUrls(fileNames);
+                if(fileNameArray!=null && fileNameArray.length>0){
                   TransferControl.deleteFiles(fileNameArray);
                 }
               }

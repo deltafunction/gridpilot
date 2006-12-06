@@ -440,8 +440,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonResultsPanel(bCreateRecords);
       addButtonResultsPanel(bEditRecord);
       addButtonResultsPanel(bDeleteRecord);
-      addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
+      addButtonSelectPanel(bClear);
       bViewFiles.setEnabled(false);
       bViewJobDefinitions.setEnabled(false);
       bDefineJobDefinitions.setEnabled(false);
@@ -490,8 +490,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       pFindAll.add(new JLabel("Find all PFNs"));
       pFindAll.add(cbFindAllFiles);
       addButtonSelectPanel(pFindAll);
-      addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
+      addButtonSelectPanel(bClear);
       bEditRecord.setEnabled(false);
       bDeleteRecord.setEnabled(false);
       bDownload.setEnabled(false);
@@ -552,8 +552,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonResultsPanel(bCreateRecords);
       addButtonResultsPanel(bEditRecord);
       addButtonResultsPanel(bDeleteRecord);
-      addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
+      addButtonSelectPanel(bClear);
       bSubmit.setEnabled(false);
       bMonitor.setEnabled(false);
       bEditRecord.setEnabled(false);
@@ -590,8 +590,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonResultsPanel(bCreateRecords);
       addButtonResultsPanel(bEditRecord);
       addButtonResultsPanel(bDeleteRecord);
-      addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
+      addButtonSelectPanel(bClear);
       //bViewFiles.setEnabled(false);
       //bViewJobDefinitions.setEnabled(false);
       //bDefineJobDefinitions.setEnabled(false);
@@ -629,8 +629,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonResultsPanel(bCreateRecords);
       addButtonResultsPanel(bEditRecord);
       addButtonResultsPanel(bDeleteRecord);
-      addButtonSelectPanel(bClear);
       addButtonSelectPanel(bSearch);
+      addButtonSelectPanel(bClear);
       //bViewFiles.setEnabled(false);
       //bViewJobDefinitions.setEnabled(false);
       //bDefineJobDefinitions.setEnabled(false);
@@ -1384,83 +1384,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
   }
   
-  // From AtCom1
-  // TODO: try if not better than deleteJobDefs
-  /**
-   * Deletes selected job definitions from the database. 
-   * Returns list of successfully deleted job definitions.
-   */
-  /*public synchronized HashSet deleteJobdefinitions(boolean showResults) {
-  // TODO: Delete job definitions only if jobs not running.
-  
-  boolean skipAll = false;
-  boolean skip = false;
-
-  boolean showThis;
-  int choice = 3;
-  HashSet deleted = new HashSet();
-  int [] selectedJobDefs = getSelectedIdentifiers();
-  JProgressBar pb = new JProgressBar();
-  pb.setMaximum(pb.getMaximum()+selectedJobDefs.length);
-  statusBar.setProgressBar(pb);
-  showThis = showResults;
-  Debug.debug("Deleting "+selectedJobDefs.length+" logical files",2);
-  JCheckBox cbCleanup = null;
-  
-  for(int i=selectedJobDefs.length-1; i>=0 && !skipAll; --i){
-    
-    if(skipAll){
-      break;
-    }
-    
-    if(showThis && !skipAll){
-        
-      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()); 
-      cbCleanup = new JCheckBox("Cleanup runtime info", true);
-      try{
-        if(i>0){
-          choice = confirmBox.getConfirm("Confirm delete",
-             "Really delete logical file # "+selectedJobDefs[i]+"?",
-             new Object[] {"OK", "Skip", "OK for all", "Skip all", cbCleanup});
-        }
-        else{
-          choice = confirmBox.getConfirm("Confirm delete",
-           "Really delete logical file # "+selectedJobDefs[i]+"?",
-           new Object[] {"OK",  "Skip", cbCleanup});        
-        }
-      }
-      catch(java.lang.Exception e){Debug.debug("Could not get confirmation, "+e.getMessage(),1);}
-        switch(choice){
-          case 0  : skip = false;  break;  // OK
-          case 1  : skip = true;   break; // Skip
-          case 2  : skip = false;  showThis = false ; break;   //OK for all
-          case 3  : skip = true;   showThis = false ; skipAll = true; break;// Skip all
-          default : skip = true;   skipAll = true; break;// other (closing the dialog). Same action as "Skip all"
-        }
-      }
-      if(!skipAll && !skip){
-        Debug.debug("deleting logical file # " + selectedJobDefs[i], 2);
-        pb.setValue(pb.getValue()+1);
-        if(cbCleanup.isSelected()){
-          if(!dbPluginMgr.cleanRunInfo(selectedJobDefs[i])){
-            GridPilot.getClassMgr().getLogFile().addMessage(
-                "WARNING: Deleting runtime record for logicalFile # "+selectedJobDefs[i]+
-                " failed."+"Please clean up by hand."+dbPluginMgr.getError());
-          }
-        }
-        if(dbPluginMgr.deleteJobDefinition(selectedJobDefs[i])){
-          deleted.add(Integer.toString(selectedJobDefs[i]));
-          statusBar.setLabel("Job definition # " + selectedJobDefs[i] + " deleted.");
-        }
-        else{
-          statusBar.setLabel("Job definition # " + selectedJobDefs[i] + " NOT deleted.");
-          Debug.debug("WARNING: Job definition "+selectedJobDefs[i]+" could not be deleted",1);
-        }   
-      }
-    }
-    return deleted;
-  }*/
-
   private void deleteJobDefs(){
     String msg = "Are you sure you want to delete jobDefinition";
     if(getSelectedIdentifiers().length>1){
@@ -2243,7 +2166,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         // TODO: perhaps make this configurable like identifier and name,
         // dbPluginMgr.getPfnsField("file");
         String urlsString = values.get("pfns").toString();
-        urls = Util.split(urlsString);
+        urls = Util.splitUrls(urlsString);
       }
       catch(Exception e){
       }
@@ -2307,6 +2230,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         GridPilot.getClassMgr().getLogFile().addMessage(error);
       }
       String realUrl = null;
+      transfer = null;
       for(int j=0; j<urls.length; ++j){
         try{
           if(urls[j].startsWith("file:")){
@@ -2328,15 +2252,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           dlUrl = dlUrlDir+(new File (srcUrl.getPath())).getName();
           destUrl = new GlobusURL(dlUrl);
           Debug.debug("Preparing download of file "+name, 2);
-          Debug.debug(srcUrl.getURL()+" ---> "+destUrl.getURL(), 2);
-          transfer = new TransferInfo(srcUrl, destUrl);
-          transfer.setDBPluginMgr(regDBPluginMgr);
-          
-          
-          // TODO: queue transfers with all PFNs in TransferInfo and loop in SRM plugin
-          // try on csc11.005145.PythiaZmumu.recon.AOD.v11004205
-          
           try{
+            if(transfer==null){
+              transfer = new TransferInfo(srcUrl, destUrl);
+            }
+            Debug.debug(transfer.getSource().getURL()+" ---> "+transfer.getDestination().getURL(), 2);
+            transfer.setDBPluginMgr(regDBPluginMgr);
             // If the file is in a file catalog, we should reuse the lfn, guid
             // and the dataset name and id if possible.
             if(dbPluginMgr.isFileCatalog()){
@@ -2348,14 +2269,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             transfer.setLFN(name);
             transfer.setDatasetName(datasetName);
             transfer.setDatasetID(datasetID);
-            transfers.add(transfer);
-            // We simply take the first file in the list of PFNs.
-            // TODO: implement some seletion algorithm; choose the
-            // file which is "closest".
-            break;
+            transfer.addSource(srcUrl);
           }
           catch(Exception ee){
             // Try next URL
+            ee.printStackTrace();
             continue;
           }
         }
@@ -2368,6 +2286,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           continue;
         }
       }
+      Util.setClosestSource(transfer);
+      Debug.debug("adding transfer "+transfer.getSource().getURL()+" ---> "+transfer.getDestination().getURL(), 2);
+      transfers.add(transfer);
     }
     if(!transfers.isEmpty()){
       try{

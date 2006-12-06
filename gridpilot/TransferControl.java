@@ -456,18 +456,60 @@ public class TransferControl{
       ((DBVectorTableModel) statusTable.getModel()).setTable(tableValues, GridPilot.transferStatusFields);
     }
 
+    // find shortest list of source URLs
+    int sourceListLen = -1;
+    for(int i=0; i<transfers.length; ++i){
+      if(sourceListLen==-1 || transfers[i].getSources().length<sourceListLen){
+        sourceListLen = transfers[i].getSources().length;
+      }
+    }
+    Debug.debug("Trying "+sourceListLen+" sources", 3);
+
     try{
-      ids = GridPilot.getClassMgr().getFTPlugin(ftPlugin).startCopyFiles(
-          sources, destinations);
+      // try source URLs one by one
+      for(int i=0; i<sourceListLen; ++i){
+        Debug.debug("trial --->"+i, 3);
+
+        for(int j=0; j<transfers.length; ++j){
+          sources[j] = transfers[j].getSource();
+        }
+        
+        try{
+          ids = GridPilot.getClassMgr().getFTPlugin(ftPlugin).startCopyFiles(
+              sources, destinations);
+          
+          if(ids.length!=transfers.length){
+            throw new IOException("ERROR: returned number of transfer ids don't agree " +
+                "with number of submitted tranfers: "+ids.length+"!="+transfers.length+
+                ". Don't know what to do; cancelling all.");
+          }
+        }
+        catch(Exception ee){
+          // try on csc11.005145.PythiaZmumu.recon.AOD.v11004205
+          ee.printStackTrace();
+          // make sure we don't try this source again
+          if(i<sourceListLen-1){
+            for(int j=0; j<transfers.length; ++j){
+              transfers[j].removeSource(transfers[j].getSource());
+              Util.setClosestSource(transfers[j]);
+              Debug.debug("Retrying transfer, sources left: " +
+                  transfers[j].getSources().length+
+                  ". Closest source is now: "+
+                  transfers[j].getSource().getURL(), 2);
+              logFile.addMessage("WARNING: retrying transfer, closest source is now: "+
+                  transfers[j].getSource().getURL(), ee);
+            }
+          }
+        }
+      }
       
-      if(ids.length!=transfers.length){
-        throw new IOException("ERROR: returned number of transfer ids don't agree " +
-            "with number of submitted tranfers: "+ids.length+"!="+transfers.length+
-            ". Don't know what to do; cancelling all.");
+      if(ids==null){
+        throw new IOException("Starting transfer failed with all sources.");
       }
 
       String userInfo = GridPilot.getClassMgr().getFTPlugin(
           ftPlugin).getUserInfo();
+      
       for(int i=0; i<transfers.length; ++i){
         
         transfers[i].setNeedToBeRefreshed(true);
@@ -953,10 +995,10 @@ public class TransferControl{
   
   /**
    *  Take some action on transfer failure, like asking to delete partly copied
-   *  target file.
+   *  target file or retry...
    */
   public static void transferFailure(TransferInfo transfer){
-    // TODO
+    // TODO: retry on transfer failure
     GridPilot.getClassMgr().getGlobalFrame(
         ).monitoringPanel.statusBar.setLabel("Transfer "+transfer.getTransferID()+" failed");
   }

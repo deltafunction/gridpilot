@@ -78,6 +78,7 @@ import org.globus.gsi.X509ExtensionSet;
 import org.globus.gsi.bc.BouncyCastleCertProcessingFactory;
 import org.globus.gsi.bc.BouncyCastleOpenSSLKey;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
+import org.globus.util.GlobusURL;
 import org.gridforum.jgss.ExtendedGSSCredential;
 import org.gridforum.jgss.ExtendedGSSManager;
 import org.ietf.jgss.GSSCredential;
@@ -1585,6 +1586,62 @@ public class Util{
     user = checksum.getFormattedValue();
     Debug.debug("Using user name from cksum of grid subject: "+user, 2);
     return user;
-    
   }
+  
+  /**
+   * Find closest in getSources() by checking with GridPilot.preferredFileServers
+   */
+  public static void setClosestSource(TransferInfo transfer){
+    boolean ok = false;
+    GlobusURL [] sources = transfer.getSources();
+    if(GridPilot.preferredFileServers!=null && GridPilot.preferredFileServers.length>0){
+      Debug.debug("Preferred file servers: "+Util.arrayToString(GridPilot.preferredFileServers), 2);
+      int closeness = -1;
+      for(int i=0; i<sources.length; ++i){
+        Debug.debug("Checking source: "+sources[i].getURL()+" : "+sources[i].getHost(), 2);
+        for(int j=0; j<GridPilot.preferredFileServers.length; ++j){
+          Debug.debug("Checking file server: "+GridPilot.preferredFileServers[j], 2);
+          if((sources[i].getURL().startsWith(GridPilot.preferredFileServers[j]) ||
+              sources[i].getHost().matches(".*"+
+              GridPilot.preferredFileServers[j].replaceAll("\\.", "\\\\.").replaceAll("\\*", "\\.\\*")+".*")) &&
+              (j<closeness || closeness==-1)){
+            closeness = j;
+            transfer.setSource(sources[i]);
+            ok = true;
+            Debug.debug("Setting closest source : "+transfer.getSource().getURL(), 2);
+          }
+        }
+      }
+    }
+    else{
+      Debug.debug("WARNING: no preferred file servers defined. "+GridPilot.preferredFileServers, 2);
+    }
+    if(!ok){
+      transfer.setSource(sources[0]);
+    }
+  }
+  
+  public static String [] splitUrls(String urls) throws Exception{
+    if(!urls.matches("^\\w\\w+:.*")){
+      return split(urls);
+    }
+    urls = urls.replaceAll("(\\w\\w+:)", "'::'$1");
+    urls = "'"+urls.replaceAll("^'::'", "")+"'";
+    Debug.debug("Splitting URLs "+urls, 3);
+    String [] urlArray = null;
+    if(urls!=null && !urls.equals("no such field")){
+      urlArray = Util.split(urls, "'::'");
+      if(urlArray.length>0){
+        urlArray[urlArray.length-1] = urlArray[urlArray.length-1].
+           substring(0, urlArray[urlArray.length-1].length()-1);
+        urlArray[0] = urlArray[0].substring(1);
+        Debug.debug("Returning URLs "+Util.arrayToString(urlArray, "---"), 2);
+        if(Util.arrayToString(urlArray).indexOf("'")>-1){
+          throw new Exception("Something went wrong. Backing out.");
+        }
+      }
+    }
+    return urlArray;
+  }
+
 }
