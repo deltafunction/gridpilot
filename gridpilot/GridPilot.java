@@ -29,6 +29,7 @@ public class GridPilot extends JApplet{
   private static JLabel exitPanel = new JLabel();
   private static JPanel topExitPanel = new JPanel();
   
+  public static String [] preferredFileServers = null;
   public static HashMap tmpConfFile = new HashMap();
   public static String logFileName = "gridpilot.log";
   public static String [] jobColorMapping;
@@ -106,7 +107,7 @@ public class GridPilot extends JApplet{
 
   public static void loadConfigValues(){
     try{
-      
+      preferredFileServers = getClassMgr().getConfigFile().getValues("GridPilot", "preferred file servers");
       proxyHost = getClassMgr().getConfigFile().getValue("GridPilot", "proxy host");
       proxyPort = getClassMgr().getConfigFile().getValue("GridPilot", "proxy port");
       if(proxyHost!=null && proxyHost.length()>0){
