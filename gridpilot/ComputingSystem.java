@@ -174,7 +174,7 @@ public interface ComputingSystem{
    *
    * @return String [] {'job' StdOut, 'job' StdErr}
    */
-  public String [] getCurrentOutputs(JobInfo job) throws IOException;
+  public String [] getCurrentOutputs(JobInfo job, boolean resyncFirst) throws IOException;
 
   /**
    * Gets scripts used for running this job.

@@ -792,7 +792,7 @@ public class ForkComputingSystem implements ComputingSystem{
     }
   }
 
-  public String[] getCurrentOutputs(JobInfo job){
+  public String[] getCurrentOutputs(JobInfo job, boolean resyncFirst){
     try{
       String stdOutText = shellMgr.readFile(job.getStdOut());
       String stdErrText = "";

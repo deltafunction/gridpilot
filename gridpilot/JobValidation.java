@@ -213,9 +213,11 @@ public class JobValidation{
       }
       
       try{
-        outs = GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(job);
+        outs = GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(job, false);
       }
       catch(Exception e){
+        // TODO: we would get an Exception here if trying to resync, since stdout/stderr are gone on the server,
+        // but since they were synced by updateStatus, it should be ok
         e.printStackTrace();
       }
 

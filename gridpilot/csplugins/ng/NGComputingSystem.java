@@ -314,6 +314,7 @@ public class NGComputingSystem implements ComputingSystem{
       }
       else if(job.getJobStatus().equals(NG_STATUS_FINISHED)){
         try{
+          syncCurrentOutputs(job);
           if(getOutput(job)){
             job.setInternalStatus(ComputingSystem.STATUS_DONE);
           }
@@ -742,55 +743,58 @@ public class NGComputingSystem implements ComputingSystem{
     return result;
   }
 
-  public String [] getCurrentOutputs(JobInfo job) throws IOException{
+  public String [] getCurrentOutputs(JobInfo job, boolean resyncFirst) throws IOException{
     
     String stdOutFile = job.getStdOut();
     String stdErrFile = job.getStdErr();
 
-    // move existing files out of the way
-    if(stdOutFile!=null && !stdOutFile.equals("") &&
-        LocalStaticShellMgr.existsFile(stdOutFile)){
-      LocalStaticShellMgr.moveFile(stdOutFile, stdOutFile+".bk");
+    if(resyncFirst){
+
+      // move existing files out of the way
+      if(stdOutFile!=null && !stdOutFile.equals("") &&
+          LocalStaticShellMgr.existsFile(stdOutFile)){
+        LocalStaticShellMgr.moveFile(stdOutFile, stdOutFile+".bk");
+      }
+      if(stdErrFile!=null && !stdErrFile.equals("") &&
+          LocalStaticShellMgr.existsFile(stdErrFile)){
+        LocalStaticShellMgr.moveFile(stdErrFile, stdErrFile+".bk");
+      }
+      
+      // if retrieval of files fails, move old files back in place
+      if(!syncCurrentOutputs(job)){
+        try{
+          LocalStaticShellMgr.deleteFile(stdOutFile);
+        }
+        catch(Exception e){
+        }
+        try{
+          LocalStaticShellMgr.deleteFile(stdErrFile);
+        }
+        catch(Exception e){
+        }
+        try{
+          LocalStaticShellMgr.moveFile(stdOutFile+".bk", stdOutFile);
+        }
+        catch(Exception e){
+        }
+        try{
+          LocalStaticShellMgr.moveFile(stdErrFile+".bk", stdErrFile);
+        }
+        catch(Exception e){
+        }
+      }
+      // delete backup files
+      else{
+        try{
+          LocalStaticShellMgr.deleteFile(stdOutFile+".bk");
+          LocalStaticShellMgr.deleteFile(stdErrFile+".bk");
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+      }
     }
-    if(stdErrFile!=null && !stdErrFile.equals("") &&
-        LocalStaticShellMgr.existsFile(stdErrFile)){
-      LocalStaticShellMgr.moveFile(stdErrFile, stdErrFile+".bk");
-    }
-    
-    // if retrieval of files fails, move old files back in place
-    if(!syncCurrentOutputs(job)){
-      try{
-        LocalStaticShellMgr.deleteFile(stdOutFile);
-      }
-      catch(Exception e){
-      }
-      try{
-        LocalStaticShellMgr.deleteFile(stdErrFile);
-      }
-      catch(Exception e){
-      }
-      try{
-        LocalStaticShellMgr.moveFile(stdOutFile+".bk", stdOutFile);
-      }
-      catch(Exception e){
-      }
-      try{
-        LocalStaticShellMgr.moveFile(stdErrFile+".bk", stdErrFile);
-      }
-      catch(Exception e){
-      }
-    }
-    // delete backup files
-    else{
-      try{
-        LocalStaticShellMgr.deleteFile(stdOutFile+".bk");
-        LocalStaticShellMgr.deleteFile(stdErrFile+".bk");
-      }
-      catch(Exception e){
-        e.printStackTrace();
-      }
-    }
-    
+        
     String [] res = new String[2];
 
     if(stdOutFile!=null && !stdOutFile.equals("")){
@@ -999,8 +1003,8 @@ public class NGComputingSystem implements ComputingSystem{
         int choice = (new ConfirmBox(JOptionPane.getRootFrame())).getConfirm(
             "Confirm create directory",
             "The working directory, "+dirName+",  of this job was not found. \n" +
-            "It was probably submitted from another machine. \n" +
-            "Click OK to create the directory \n" +
+            "The job was probably submitted from another machine or has already been validated. \n" +
+            "Click OK to create the directory " +
             "(stdout/stder will be synchronized, scripts will not).", new Object[] {"OK",  "Skip"});
         if(choice==0){
           LocalStaticShellMgr.mkdirs(dirName);
@@ -1020,14 +1024,29 @@ public class NGComputingSystem implements ComputingSystem{
         }
       }
       
-      Debug.debug("Downloading stdout/err of: " + job.getName() + ":" + job.getJobId()+
-          " to " + dirName, 3);
-      gridJob.getOutputFile("stdout", dirName);
-      gridJob.getOutputFile("stderr", dirName);
-      LocalStaticShellMgr.moveFile((new File(dirName, "stdout")).getAbsolutePath(),
-          job.getStdOut());
-      LocalStaticShellMgr.moveFile((new File(dirName, "stderr")).getAbsolutePath(),
-          job.getStdErr());
+      if(job.getJobStatus().equals(NG_STATUS_FINISHED)){
+        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+        String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+        String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+        Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
+            "from final destination "+finalStdOut+" to " + dirName, 3);
+        TransferControl.download(finalStdOut,
+            new File(dirName), GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+        Debug.debug("Downloading stderr of: " + job.getName() + ":" + job.getJobId()+
+            "from final destination "+finalStdErr+" to " + dirName, 3);
+        TransferControl.download(finalStdErr,
+            new File(dirName), GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+      }
+      else{
+        Debug.debug("Downloading stdout/err of: " + job.getName() + ":" + job.getJobId()+
+            " to " + dirName, 3);
+        gridJob.getOutputFile("stdout", dirName);
+        gridJob.getOutputFile("stderr", dirName);
+        LocalStaticShellMgr.moveFile((new File(dirName, "stdout")).getAbsolutePath(),
+            job.getStdOut());
+        LocalStaticShellMgr.moveFile((new File(dirName, "stderr")).getAbsolutePath(),
+            job.getStdErr());
+      }     
     }
     catch(Exception ae){
       error = "Exception during get stdout of " + job.getName() + ":" + job.getJobId() + ":\n" +
@@ -1085,6 +1104,17 @@ public class NGComputingSystem implements ComputingSystem{
         error = e.getMessage();
         return false;
       }
+      // Clean the job off the grid
+      try{
+        ARCGridFTPJob gridJob = getGridJob(job);
+        gridJob.clean();
+      }
+      catch(Exception e){
+        Debug.debug("Could not clean job. Probably already deleted. "+
+            job.getName()+". "+e.getMessage(), 3);
+        e.printStackTrace();
+        //return false;
+      }
       return true;
     }
     else{
@@ -1116,7 +1146,8 @@ public class NGComputingSystem implements ComputingSystem{
     boolean ok = true;
     
     /**
-     * move downloaded output files to their final destinations
+     * move downloaded output files to their final destinations -
+     * IF these destainations have the format file:...
      */
     String jobID = job.getJobId().substring(job.getJobId().lastIndexOf("/"));
     int lastSlash = job.getJobId().lastIndexOf("/");
@@ -1155,7 +1186,7 @@ public class NGComputingSystem implements ComputingSystem{
             finalStdOut.startsWith("se://") ||
             finalStdOut.startsWith("httpg://"))){
       try{
-        // this has already been done by doValidate...
+        // this has already been done by doValidate --> getCurrentOutputs
         //syncCurrentOutputs(job);
         if(!LocalStaticShellMgr.existsFile(job.getStdOut())){
           logFile.addMessage("Post-processing : File " + job.getStdOut() + " doesn't exist");

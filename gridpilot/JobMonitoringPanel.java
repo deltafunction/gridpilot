@@ -512,7 +512,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         String [] outs = null;
         try{
           outs = GridPilot.getClassMgr().getCSPluginMgr(
-          ).getCurrentOutputs(job);
+          ).getCurrentOutputs(job, true);
         }
         catch(Exception e){
           outs = new String [] {"Could not read stdout "+e.getMessage(),
