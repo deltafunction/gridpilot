@@ -258,8 +258,8 @@ public class LocalStaticShellMgr{
   }
 
   public static boolean moveFile(String _src, String _dest){
-    String src = Util.clearFile(_src);
-    String dest = Util.clearFile(_dest);
+    String src = Util.clearTildeLocally(Util.clearFile(_src));
+    String dest = Util.clearTildeLocally(Util.clearFile(_dest));
     Debug.debug("moving file "+src+"->"+dest, 3);
     File destFile = new File(dest);
     if(destFile.getParent()!=null && !destFile.getParentFile().exists()){

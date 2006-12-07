@@ -4,6 +4,7 @@ import javax.swing.JOptionPane;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -59,7 +60,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
         shell = GridPilot.getClassMgr().getShellMgr(job);
       }
       catch(Exception e){
-        Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
+        Debug.debug("WARNING: no shell manager: "+e.getMessage(), 1);
         //e.printStackTrace();
       }
 
@@ -107,8 +108,13 @@ public class ShowOutputsJobsDialog extends JOptionPane{
         JScrollPane scrollPane = new JScrollPane(textArea);
         panel.add(scrollPane, BorderLayout.CENTER);
         panel.add(label, BorderLayout.SOUTH);
-        String tabName = filesPaths[i].substring(
-            filesPaths[i].lastIndexOf("/") + 1);
+        String tabName = "";
+        if(filesPaths[i].lastIndexOf("/")>0){
+          tabName = filesPaths[i].substring(filesPaths[i].lastIndexOf("/") + 1);
+        }
+        else{
+          tabName = filesPaths[i].substring(filesPaths[i].lastIndexOf(File.separator) + 1);
+        }
         outputs.add(panel, tabName);
         final int finalI = i;
         Thread t = new Thread() {

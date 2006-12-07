@@ -13,6 +13,8 @@ import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.Vector;
 
+import javax.swing.JOptionPane;
+
 import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.util.GlobusURL;
@@ -26,6 +28,7 @@ import org.nordugrid.multithread.TaskResult;
 
 import gridpilot.ComputingSystem;
 import gridpilot.ConfigFile;
+import gridpilot.ConfirmBox;
 import gridpilot.DBPluginMgr;
 import gridpilot.Debug;
 import gridpilot.JobInfo;
@@ -66,6 +69,7 @@ public class NGComputingSystem implements ComputingSystem{
   private static String csName;
   private static LogFile logFile;
   private String workingDir;
+  private String unparsedWorkingDir;
   private ARCDiscovery arcDiscovery;
   private String defaultUser;
   private String error = "";
@@ -79,7 +83,8 @@ public class NGComputingSystem implements ComputingSystem{
   public NGComputingSystem(String _csName){
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     csName = _csName;
-    workingDir = configFile.getValue(csName, "working directory");
+    unparsedWorkingDir= configFile.getValue(csName, "working directory");
+    workingDir = unparsedWorkingDir;
     if(workingDir==null || workingDir.equals("")){
       workingDir = "~";
     }
@@ -256,7 +261,7 @@ public class NGComputingSystem implements ComputingSystem{
     }
   }
 
-    /*
+  /*
    * Local directory to keep xrsl, shell script and temporary copies of stdin/stdout
    */
   protected String runDir(JobInfo job){
@@ -982,11 +987,29 @@ public class NGComputingSystem implements ComputingSystem{
 
   // Copy stdout+stderr to local files
   public boolean syncCurrentOutputs(JobInfo job){
-        
     try{
       Debug.debug("Getting : " + job.getName() + ":" + job.getJobId(), 3);
       ARCGridFTPJob gridJob = getGridJob(job);
       String dirName = runDir(job);
+      
+      // First check if working directory is there. If not, we may be
+      // checking from another machine than the one we submitted from.
+      // We just create it...
+      if(!LocalStaticShellMgr.existsFile(dirName)){
+        int choice = (new ConfirmBox(JOptionPane.getRootFrame())).getConfirm(
+            "Confirm create directory",
+            "The working directory, "+dirName+",  of this job was not found. \n" +
+            "It was probably submitted from another machine. \n" +
+            "Click OK to create the directory \n" +
+            "(stdout/stder will be synchronized, scripts will not).", new Object[] {"OK",  "Skip"});
+        if(choice==0){
+          LocalStaticShellMgr.mkdirs(dirName);
+          final String stdoutFile = unparsedWorkingDir+File.separator+job.getName() + File.separator + job.getName() + ".stdout";
+          final String stderrFile = unparsedWorkingDir+File.separator+job.getName() + File.separator + job.getName() + ".stderr";
+          job.setOutputs(stdoutFile, stderrFile);
+        }
+      }
+      
       Debug.debug("Downloading stdout/err of: " + job.getName() + ":" + job.getJobId()+
           " to " + dirName, 3);
       gridJob.getOutputFile("stdout", dirName);
@@ -1060,8 +1083,11 @@ public class NGComputingSystem implements ComputingSystem{
   }
 
   public boolean preProcess(JobInfo job){
-    final String stdoutFile = runDir(job) + File.separator + job.getName() + ".stdout";
-    final String stderrFile = runDir(job) + File.separator + job.getName() + ".stderr";
+    //final String stdoutFile = runDir(job) + File.separator + job.getName() + ".stdout";
+    //final String stderrFile = runDir(job) + File.separator + job.getName() + ".stderr";
+    // preserve ~ in tmp stdout/stderr, so checking from another machine might work
+    final String stdoutFile = unparsedWorkingDir+File.separator+job.getName() + File.separator + job.getName() + ".stdout";
+    final String stderrFile = unparsedWorkingDir+File.separator+job.getName() + File.separator + job.getName() + ".stderr";
     job.setOutputs(stdoutFile, stderrFile);
     // input files are already there
     return true;
