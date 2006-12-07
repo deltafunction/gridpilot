@@ -84,15 +84,15 @@ public class NGComputingSystem implements ComputingSystem{
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     csName = _csName;
     unparsedWorkingDir= configFile.getValue(csName, "working directory");
-    workingDir = unparsedWorkingDir;
-    if(workingDir==null || workingDir.equals("")){
-      workingDir = "~";
+    if(unparsedWorkingDir==null || unparsedWorkingDir.equals("")){
+      unparsedWorkingDir = "~";
     }
     // unqualified names
-    else if(!workingDir.toLowerCase().matches("\\w:.*") &&
-        !workingDir.startsWith("/") && !workingDir.startsWith("~")){
-      workingDir = "~"+File.separator+workingDir;
+    else if(!unparsedWorkingDir.toLowerCase().matches("\\w:.*") &&
+        !unparsedWorkingDir.startsWith("/") && !unparsedWorkingDir.startsWith("~")){
+      unparsedWorkingDir = "~"+"/"+unparsedWorkingDir;
     }
+    workingDir = unparsedWorkingDir;
     workingDir = Util.clearTildeLocally(Util.clearFile(workingDir));
     if(workingDir.endsWith("/") || workingDir.endsWith("\\")){
       workingDir = workingDir.substring(0, workingDir.length()-1);
@@ -265,7 +265,7 @@ public class NGComputingSystem implements ComputingSystem{
    * Local directory to keep xrsl, shell script and temporary copies of stdin/stdout
    */
   protected String runDir(JobInfo job){
-    return workingDir+File.separator+job.getName();
+    return workingDir+"/"+job.getName();
   }
 
   public boolean submit(JobInfo job) {
@@ -1004,9 +1004,19 @@ public class NGComputingSystem implements ComputingSystem{
             "(stdout/stder will be synchronized, scripts will not).", new Object[] {"OK",  "Skip"});
         if(choice==0){
           LocalStaticShellMgr.mkdirs(dirName);
-          final String stdoutFile = unparsedWorkingDir+File.separator+job.getName() + File.separator + job.getName() + ".stdout";
-          final String stderrFile = unparsedWorkingDir+File.separator+job.getName() + File.separator + job.getName() + ".stderr";
+          final String stdoutFile = unparsedWorkingDir+"/"+job.getName() + "/" + job.getName() + ".stdout";
+          final String stderrFile = unparsedWorkingDir+"/"+job.getName() + "/" + job.getName() + ".stderr";
           job.setOutputs(stdoutFile, stderrFile);
+          DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+          if(!dbPluginMgr.updateJobDefinition(
+              job.getJobDefId(),
+              new String []{job.getUser(), job.getJobId(), job.getName(),
+              job.getStdOut(), job.getStdErr()})){
+            logFile.addMessage("DB update(" + job.getJobDefId() + ", " +
+                           job.getJobId() + ", " + job.getName() + ", " +
+                           job.getStdOut() + ", " + job.getStdErr() +
+                           ") failed", job);    
+          }
         }
       }
       
@@ -1086,8 +1096,8 @@ public class NGComputingSystem implements ComputingSystem{
     //final String stdoutFile = runDir(job) + File.separator + job.getName() + ".stdout";
     //final String stderrFile = runDir(job) + File.separator + job.getName() + ".stderr";
     // preserve ~ in tmp stdout/stderr, so checking from another machine might work
-    final String stdoutFile = unparsedWorkingDir+File.separator+job.getName() + File.separator + job.getName() + ".stdout";
-    final String stderrFile = unparsedWorkingDir+File.separator+job.getName() + File.separator + job.getName() + ".stderr";
+    final String stdoutFile = unparsedWorkingDir+"/"+job.getName() + "/" + job.getName() + ".stdout";
+    final String stderrFile = unparsedWorkingDir+"/"+job.getName() + "/" + job.getName() + ".stderr";
     job.setOutputs(stdoutFile, stderrFile);
     // input files are already there
     return true;

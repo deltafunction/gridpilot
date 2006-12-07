@@ -1929,35 +1929,37 @@ public class MySQLDatabase implements Database{
     if(cleanup){
       DBRecord jobDef = getJobDefinition(jobDefId);
       String [] toDeletefiles = null;
-      try{
-        if(isFileCatalog()){
-          // In this case: don't delete the first of the output files, since
-          // this is the file registered in the file catalog and will be
-          // deleted when deleting the file catalog entry.
-          String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
-          toDeletefiles = new String [outFiles.length+2-(outFiles.length>0?1:0)];
-          toDeletefiles[0] = (String) jobDef.getValue("stdoutDest");
-          toDeletefiles[1] = (String) jobDef.getValue("stderrDest");
-          for(int i=2; i<toDeletefiles.length; ++i){
-            toDeletefiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-1]);
+      if(!((String) jobDef.getValue("status")).equalsIgnoreCase("Defined")){
+        try{
+          if(isFileCatalog()){
+            // In this case: don't delete the first of the output files, since
+            // this is the file registered in the file catalog and will be
+            // deleted when deleting the file catalog entry.
+            String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
+            toDeletefiles = new String [outFiles.length+2-(outFiles.length>0?1:0)];
+            toDeletefiles[0] = (String) jobDef.getValue("stdoutDest");
+            toDeletefiles[1] = (String) jobDef.getValue("stderrDest");
+            for(int i=2; i<toDeletefiles.length; ++i){
+              toDeletefiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-1]);
+            }
+          }
+          else{
+            String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
+            toDeletefiles = new String [outFiles.length+2];
+            toDeletefiles[0] = (String) jobDef.getValue("stdoutDest");
+            toDeletefiles[1] = (String) jobDef.getValue("stderrDest");
+            for(int i=2; i<toDeletefiles.length; ++i){
+              toDeletefiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-2]);
+            }
+          }
+          Debug.debug("Deleting files "+Util.arrayToString(toDeletefiles), 2);
+          if(toDeletefiles!=null){
+            TransferControl.deleteFiles(toDeletefiles);
           }
         }
-        else{
-          String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
-          toDeletefiles = new String [outFiles.length+2];
-          toDeletefiles[0] = (String) jobDef.getValue("stdoutDest");
-          toDeletefiles[1] = (String) jobDef.getValue("stderrDest");
-          for(int i=2; i<toDeletefiles.length; ++i){
-            toDeletefiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-2]);
-          }
+        catch(Exception e){
+          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete files "+toDeletefiles);
         }
-        Debug.debug("Deleting files "+Util.arrayToString(toDeletefiles), 2);
-        if(toDeletefiles!=null){
-          TransferControl.deleteFiles(toDeletefiles);
-        }
-      }
-      catch(Exception e){
-        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete files "+toDeletefiles);
       }
     }
     String idField = Util.getIdentifierField(dbName, "jobDefinition");

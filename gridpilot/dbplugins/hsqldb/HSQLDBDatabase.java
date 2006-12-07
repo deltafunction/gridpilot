@@ -2029,35 +2029,37 @@ public class HSQLDBDatabase implements Database{
     if(cleanup){
       DBRecord jobDef = getJobDefinition(jobDefId);
       String [] toDeleteFiles = null;
-      try{
-        if(isFileCatalog()){
-          // In this case: don't delete the first of the output files, since
-          // this is the file registered in the file catalog and will be
-          // deleted when deleting the file catalog entry.
-          String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
-          toDeleteFiles = new String [outFiles.length+2-(outFiles.length>0?1:0)];
-          toDeleteFiles[0] = jobDef.getValue("stdoutDest").toString();
-          toDeleteFiles[1] = jobDef.getValue("stderrDest").toString();
-          for(int i=2; i<toDeleteFiles.length; ++i){
-            toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-1]);
+      if(!((String) jobDef.getValue("status")).equalsIgnoreCase("Defined")){
+        try{
+          if(isFileCatalog()){
+            // In this case: don't delete the first of the output files, since
+            // this is the file registered in the file catalog and will be
+            // deleted when deleting the file catalog entry.
+            String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
+            toDeleteFiles = new String [outFiles.length+2-(outFiles.length>0?1:0)];
+            toDeleteFiles[0] = jobDef.getValue("stdoutDest").toString();
+            toDeleteFiles[1] = jobDef.getValue("stderrDest").toString();
+            for(int i=2; i<toDeleteFiles.length; ++i){
+              toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-1]);
+            }
+          }
+          else{
+            String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
+            toDeleteFiles = new String [outFiles.length+2];
+            toDeleteFiles[0] = jobDef.getValue("stdoutDest").toString();
+            toDeleteFiles[1] = jobDef.getValue("stderrDest").toString();
+            for(int i=2; i<toDeleteFiles.length; ++i){
+              toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-2]);
+            }
+          }
+          Debug.debug("Deleting files "+Util.arrayToString(toDeleteFiles), 2);        
+          if(toDeleteFiles!=null){
+            TransferControl.deleteFiles(toDeleteFiles);
           }
         }
-        else{
-          String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
-          toDeleteFiles = new String [outFiles.length+2];
-          toDeleteFiles[0] = jobDef.getValue("stdoutDest").toString();
-          toDeleteFiles[1] = jobDef.getValue("stderrDest").toString();
-          for(int i=2; i<toDeleteFiles.length; ++i){
-            toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-2]);
-          }
+        catch(Exception e){
+          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete files "+toDeleteFiles);
         }
-        Debug.debug("Deleting files "+Util.arrayToString(toDeleteFiles), 2);        
-        if(toDeleteFiles!=null){
-          TransferControl.deleteFiles(toDeleteFiles);
-        }
-      }
-      catch(Exception e){
-        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete files "+toDeleteFiles);
       }
     }
     String idField = Util.getIdentifierField(dbName, "jobDefinition");
