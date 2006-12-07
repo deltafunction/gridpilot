@@ -1345,7 +1345,7 @@ public class TransferControl{
     try{
       String fileName = file.getName();
       if(LocalStaticShellMgr.isDirectory(fsPath)){
-        fsPath = (new File(fsPath, fileName)).getAbsolutePath();
+        fsPath = (new File(Util.clearTildeLocally(Util.clearFile(fsPath)), fileName)).getAbsolutePath();
       }
       if(!LocalStaticShellMgr.copyFile(file.getAbsolutePath(), fsPath)){
         throw new IOException(file.getAbsolutePath()+

@@ -1202,7 +1202,7 @@ public class NGComputingSystem implements ComputingSystem{
       }
       Debug.debug("Post-processing : Moving " + job.getStdOut() + " -> " + finalStdOut, 2);
       try{
-        TransferControl.upload(new File(job.getStdOut()), finalStdOut,
+        TransferControl.upload(new File(Util.clearTildeLocally(Util.clearFile(job.getStdOut()))), finalStdOut,
             GridPilot.getClassMgr().getGlobalFrame().getContentPane());
         job.setStdOut(finalStdOut);
       }
@@ -1239,7 +1239,7 @@ public class NGComputingSystem implements ComputingSystem{
       }
       Debug.debug("Post processing : Moving " + job.getStdErr() + " -> " + finalStdErr,2);
       try{
-        TransferControl.upload(new File(job.getStdErr()), finalStdErr,
+        TransferControl.upload(new File(Util.clearTildeLocally(Util.clearFile(job.getStdErr()))), finalStdErr,
             GridPilot.getClassMgr().getGlobalFrame().getContentPane());
         job.setStdErr(finalStdErr);
       }
