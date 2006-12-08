@@ -314,7 +314,16 @@ public class NGComputingSystem implements ComputingSystem{
       }
       else if(job.getJobStatus().equals(NG_STATUS_FINISHED)){
         try{
-          syncCurrentOutputs(job);
+          // Only sync if CE has copied stdout/stderr to final destination.
+          // Otherwise, getOutput will get them (and syncCurrentOutputs will fail
+          // because it will try to get them from final destination).
+          DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+          String stdoutDest = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+          String stderrDest = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+          if(!stdoutDest.startsWith("file:") ||
+              stderrDest!=null && !stderrDest.equals("") && !stderrDest.startsWith("file:")){
+            syncCurrentOutputs(job);
+          }
           if(getOutput(job)){
             job.setInternalStatus(ComputingSystem.STATUS_DONE);
           }
@@ -750,47 +759,62 @@ public class NGComputingSystem implements ComputingSystem{
 
     if(resyncFirst){
 
-      // move existing files out of the way
-      if(stdOutFile!=null && !stdOutFile.equals("") &&
+      // move existing files out of the way.
+      // - do it only if job.getStdOut is not the final destination, that is,
+      // if syncCurrentOutputs will not get
+      // stdout/stderr from the final destination
+      boolean isValidated = false;
+      String dirName = runDir(job);
+      if(!LocalStaticShellMgr.existsFile(dirName) || job.getDBStatus()==DBPluginMgr.VALIDATED){
+        isValidated = true;
+      }
+      if(!isValidated && stdOutFile!=null && !stdOutFile.equals("") &&
           LocalStaticShellMgr.existsFile(stdOutFile)){
         LocalStaticShellMgr.moveFile(stdOutFile, stdOutFile+".bk");
       }
-      if(stdErrFile!=null && !stdErrFile.equals("") &&
+      if(!isValidated && stdErrFile!=null && !stdErrFile.equals("") &&
           LocalStaticShellMgr.existsFile(stdErrFile)){
         LocalStaticShellMgr.moveFile(stdErrFile, stdErrFile+".bk");
       }
       
       // if retrieval of files fails, move old files back in place
       if(!syncCurrentOutputs(job)){
-        try{
-          LocalStaticShellMgr.deleteFile(stdOutFile);
-        }
-        catch(Exception e){
-        }
-        try{
-          LocalStaticShellMgr.deleteFile(stdErrFile);
-        }
-        catch(Exception e){
-        }
-        try{
-          LocalStaticShellMgr.moveFile(stdOutFile+".bk", stdOutFile);
-        }
-        catch(Exception e){
-        }
-        try{
-          LocalStaticShellMgr.moveFile(stdErrFile+".bk", stdErrFile);
-        }
-        catch(Exception e){
+        if(!isValidated){
+          try{
+            LocalStaticShellMgr.deleteFile(stdOutFile);
+          }
+          catch(Exception e){
+          }
+          try{
+            LocalStaticShellMgr.deleteFile(stdErrFile);
+          }
+          catch(Exception e){
+          }
+          try{
+            LocalStaticShellMgr.moveFile(stdOutFile+".bk", stdOutFile);
+          }
+          catch(Exception e){
+          }
+          try{
+            LocalStaticShellMgr.moveFile(stdErrFile+".bk", stdErrFile);
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
         }
       }
       // delete backup files
       else{
-        try{
-          LocalStaticShellMgr.deleteFile(stdOutFile+".bk");
-          LocalStaticShellMgr.deleteFile(stdErrFile+".bk");
-        }
-        catch(Exception e){
-          e.printStackTrace();
+        Debug.debug("WARNING: could not update stdout/stderr for job "+
+            job.getName(), 2);
+        if(!isValidated){
+          try{
+            LocalStaticShellMgr.deleteFile(stdOutFile+".bk");
+            LocalStaticShellMgr.deleteFile(stdErrFile+".bk");
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }    
         }
       }
     }
@@ -999,6 +1023,7 @@ public class NGComputingSystem implements ComputingSystem{
       // First check if working directory is there. If not, we may be
       // checking from another machine than the one we submitted from.
       // We just create it...
+      boolean getFromfinalDest = false;
       if(!LocalStaticShellMgr.existsFile(dirName)){
         int choice = (new ConfirmBox(JOptionPane.getRootFrame())).getConfirm(
             "Confirm create directory",
@@ -1021,21 +1046,27 @@ public class NGComputingSystem implements ComputingSystem{
                            job.getStdOut() + ", " + job.getStdErr() +
                            ") failed", job);    
           }
+          getFromfinalDest = true;
         }
       }
-      
-      if(job.getJobStatus().equals(NG_STATUS_FINISHED)){
-        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-        String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
-        String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
-        Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
-            "from final destination "+finalStdOut+" to " + dirName, 3);
-        TransferControl.download(finalStdOut,
-            new File(dirName), GridPilot.getClassMgr().getGlobalFrame().getContentPane());
-        Debug.debug("Downloading stderr of: " + job.getName() + ":" + job.getJobId()+
-            "from final destination "+finalStdErr+" to " + dirName, 3);
-        TransferControl.download(finalStdErr,
-            new File(dirName), GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+
+      DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+      String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+      String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+
+      if(getFromfinalDest || job.getJobStatus().equals(NG_STATUS_FINISHED)){
+        if(getFromfinalDest || !finalStdOut.startsWith("file:")){
+          Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
+              "from final destination "+finalStdOut+" to " + dirName, 3);
+          TransferControl.download(finalStdOut,
+              new File(dirName), GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+        }
+        if(getFromfinalDest || !finalStdErr.startsWith("file:")){
+          Debug.debug("Downloading stderr of: " + job.getName() + ":" + job.getJobId()+
+              "from final destination "+finalStdErr+" to " + dirName, 3);
+          TransferControl.download(finalStdErr,
+              new File(dirName), GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+        }
       }
       else{
         Debug.debug("Downloading stdout/err of: " + job.getName() + ":" + job.getJobId()+
