@@ -1993,11 +1993,13 @@ public class MySQLDatabase implements Database{
     try{
       String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
       datasetID+"'";
+      Debug.debug(">>> sql string was: "+sql, 3);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
+      e.printStackTrace();
       error = e.getMessage();
       ok = false;
     }
