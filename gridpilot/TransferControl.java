@@ -1159,7 +1159,7 @@ public class TransferControl{
       Debug.debug("Downloading file from "+srcUrlDir, 3);
       // local directory
       if(srcUrlDir.startsWith("file:")){
-        String fsPath = Util.clearFile(url);
+        String fsPath = Util.clearTildeLocally(Util.clearFile(url));
         Debug.debug("Downloading file to "+downloadDir.getAbsolutePath(), 3);        
         if(fsPath==null || downloadDir==null){
           throw new IOException("ERROR: source or destination directory not given. "+
