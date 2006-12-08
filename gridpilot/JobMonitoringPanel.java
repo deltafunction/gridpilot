@@ -465,27 +465,29 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     };
 
     int choices [] = ShowOutputsJobsDialog.show(JOptionPane.getRootFrame(), jobs, sOptions);
-    int dbChoices [] = new int[choices.length];
+    if(choices!=null){
+      int dbChoices [] = new int[choices.length];
 
-    for(int i=0; i<jobs.size(); ++i){
-      if(choices[i]==-1){
-        dbChoices[i] = DBPluginMgr.UNDECIDED;
+      for(int i=0; i<jobs.size(); ++i){
+        if(choices[i]==-1){
+          dbChoices[i] = DBPluginMgr.UNDECIDED;
+        }
+        else{
+          dbChoices[i]  = options[choices[i]];
+        }
       }
-      else{
-        dbChoices[i]  = options[choices[i]];
-      }
-    }
 
-    DatasetMgr datasetMgr = null;
-    for(int i=0; i<jobs.size(); ++i){
-      JobInfo job = (JobInfo) jobs.get(i);
-      if(job.getDBStatus()!=dbChoices[i]){
-        datasetMgr = getDatasetMgr(job);
-        datasetMgr.updateDBStatus(job, dbChoices[i]);
+      DatasetMgr datasetMgr = null;
+      for(int i=0; i<jobs.size(); ++i){
+        JobInfo job = (JobInfo) jobs.get(i);
+        if(job.getDBStatus()!=dbChoices[i]){
+          datasetMgr = getDatasetMgr(job);
+          datasetMgr.updateDBStatus(job, dbChoices[i]);
+        }
       }
+      statusTable.updateSelection();
+      datasetMgr.updateJobsByStatus();
     }
-    statusTable.updateSelection();
-    datasetMgr.updateJobsByStatus();
   }
 
   /**

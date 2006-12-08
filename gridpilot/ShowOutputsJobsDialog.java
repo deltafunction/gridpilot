@@ -65,8 +65,12 @@ public class ShowOutputsJobsDialog extends JOptionPane{
       }
 
       choices[i] = showTabs(parent, "Job " + job.getName(),
-         shell,
-         files, options, cbForAll);
+         shell, files, options, cbForAll);
+      
+      // abort if window is closed
+      if(choices[i]==CLOSED_OPTION){
+        return null;
+      }
 
       if(cbForAll!=null && cbForAll.isSelected()){
         int iSave = i;
@@ -171,15 +175,17 @@ public class ShowOutputsJobsDialog extends JOptionPane{
       Thread t = (Thread) threads.get(i);
       t.interrupt();
     }
-    if (options==null){
+    if(options==null){
       return CLOSED_OPTION;
     }
     Object selectedValue = pane.getValue();
     if(selectedValue==null){
+      Debug.debug("Window probably closed, returning "+CLOSED_OPTION, 3);
       return CLOSED_OPTION;
     }
     for(int i=0; i<options.length; ++i){
       if(options[i]==selectedValue){
+        Debug.debug("Returning "+i, 3);
         return i;
       }
     }
