@@ -145,17 +145,23 @@ public class DBVectorTableModel extends AbstractTableModel {
   synchronized public void setTable(Object [][] _values, String [] _columnNames){
     if(_values!=null && _values.length!=0 && _values[0]!=null && _columnNames!=null &&
        _values[0].length!= _columnNames.length){
-        Debug.debug("ERROR: MyTableModel : column count for " +
+        GridPilot.getClassMgr().getLogFile().addMessage("ERROR: MyTableModel : column count for " +
             "values and columnNames are different. "+
             _values[0].length+"!="+ _columnNames.length+" : "+
             Util.arrayToString(_columnNames)+" : "+
-            Util.arrayToString(_values[0]), 1);
+            Util.arrayToString(_values[0]));
         return;
     }
 
-    if(_values==null || _columnNames==null){
-      values = new Object[0][];
-      columnNames = new String[0];
+    if(_columnNames==null || _columnNames.length==0){
+         GridPilot.getClassMgr().getLogFile().addMessage("ERROR: cannot create table " +
+            "with no column names. "+_columnNames);
+         return;
+     }
+
+    if(_values==null){
+      values = new Object[0][_columnNames.length];
+      columnNames = _columnNames;
       theRecords = new Vector();
     }
     else{
@@ -163,6 +169,7 @@ public class DBVectorTableModel extends AbstractTableModel {
       columnNames = _columnNames;
       theRecords = new Vector();
       for(int i=0; i<values.length; ++i){
+        Debug.debug("Adding record "+Util.arrayToString(values[i]), 3);
         theRecords.add(new DBRecord(columnNames, values[i]));
       }
       columnClass = new Class[columnNames.length];
@@ -211,19 +218,19 @@ public class DBVectorTableModel extends AbstractTableModel {
       int oldr = getRowCount();
       Object[][] tmpValues = new Object[r][];
       int i;
-      for(i=0; i<r && i< oldr; ++i)  // recovering of old rows
-        tmpValues[i]=values[i];
-      for(;i<r; ++i) // creation of new rows
-        tmpValues[i]=new Object[columnNames.length];
-
-    //  for(;i<oldr;++i)
-    //  " free tableData[i]"
-
+      for(i=0; i<r && i< oldr; ++i){  // recovering of old rows
+        tmpValues[i] = values[i];
+      }
+      for(;i<r; ++i){ // creation of new rows
+        tmpValues[i] = new Object[columnNames.length];
+        // FO: this should fix the sorting problem
+        theRecords.add(new DBRecord(columnNames, tmpValues[i]));
+      }
       indexes = new int [r];
       resetIndexes();
       values = tmpValues;
     }
-//    fireTableStructureChanged();*/
+    // fireTableStructureChanged();
   }
 
   /*FO: this is buggy, doesn't work when sorted on columns. Use removeRow instead*/
@@ -321,7 +328,7 @@ public class DBVectorTableModel extends AbstractTableModel {
       }
       if(iMin!=i){
         swapRows(i, iMin);
-        //Debug.debug("Record "+theRecords.size()+" : "+i, 3);
+        Debug.debug("Record "+theRecords.size()+" : "+i, 3);
         a = (DBRecord) theRecords.get(i);
         b = (DBRecord) theRecords.get(iMin);
         theRecords.setElementAt(b,i);
