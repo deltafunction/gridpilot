@@ -239,7 +239,7 @@ public class Table extends JTable{
 
   /**
    * Sets column names of this table, using columnNames. 
-   * The "new" table has 0 row
+   * The "new" table has 0 rows
    */
 
   synchronized public void setTable(String [] columnNames){
