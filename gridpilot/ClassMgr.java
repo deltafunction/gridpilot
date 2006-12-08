@@ -299,8 +299,7 @@ public class ClassMgr{
       Debug.debug("Creating new Table with fields "+Util.arrayToString(fieldNames), 3);
       jobStatusTable = new Table(new String [] {}, fieldNames,
           GridPilot.jobColorMapping);
-       GridPilot.getClassMgr().setJobStatusTable(jobStatusTable);
-      //new Exception().printStackTrace();
+      setJobStatusTable(jobStatusTable);
     }
     return jobStatusTable;
   }
