@@ -564,6 +564,8 @@ public class GridPilot extends JApplet{
     }
     try{
       loadFTs();
+      splash.stopSplash();
+      splash = null;
     }
     catch(Throwable e){
        e.printStackTrace();
