@@ -7,11 +7,7 @@ import javax.swing.*;
 import gridpilot.DBResult;
 
 import java.awt.*;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 
 /**
  * Creates the job definitions
@@ -189,6 +185,8 @@ public class JobCreator{
 
       for(int currentPartition=firstPartition; currentPartition<=lastPartition && !skipAll; ++currentPartition){
 
+        statusBar.setLabel("Preparing job definition # " + currentPartition + "...");
+
         showThis = showResults;
         // NOTICE: here we assume that the following fields are present in dataset:
         // beamEnergy, beamParticle, outputLocation.
@@ -309,7 +307,7 @@ public class JobCreator{
         resOutMap = (String [][]) vOutMap.remove(0);
         resStdOut  = (String []) vStdOut.remove(0);
 
-        statusBar.setLabel("Creating job definition # " + part + " ...");
+        statusBar.setLabel("Creating job definition # " + part + "...");
         pb.setValue(pb.getValue()+1);
 
         transName = dbPluginMgr.getDatasetTransformationName(datasetIdentifiers[idNum]);
@@ -838,7 +836,7 @@ public class JobCreator{
     // metadata information from the metadata field of the dataset
     String metaDataString = (String) dbPluginMgr.getDataset(
         datasetIdentifiers[currentDataset]).getValue("metaData");
-    HashMap metaData = parseMetaData(metaDataString);
+    HashMap metaData = Util.parseMetaData(metaDataString);
     HashSet metadatakeys = new HashSet(metaData.keySet());
     String key = null;
     for(Iterator it=metadatakeys.iterator(); it.hasNext();){
@@ -850,15 +848,18 @@ public class JobCreator{
       Debug.debug("param #"+i+" : "+jobParamNames[i]+" -> "+
           metaData.containsKey(jobParamNames[i].toLowerCase())+ " : "+
           Util.arrayToString(metaData.keySet().toArray()), 3);
-      if((jobParamNames[i].equalsIgnoreCase("eventMin")) &&
+      if((jobParam[i]==null || jobParam[i].equals("")) &&
+          (jobParamNames[i].equalsIgnoreCase("eventMin")) &&
           eventSplits!=null && eventSplits.length>1){
         resJobParam[i] = Integer.toString(evtMin);
       }
-      else if((jobParamNames[i].equalsIgnoreCase("nEvents")) &&
+      else if((jobParam[i]==null || jobParam[i].equals("")) &&
+          (jobParamNames[i].equalsIgnoreCase("nEvents")) &&
           eventSplits!=null && eventSplits.length>1){
         resJobParam[i] = Integer.toString(evtMax-evtMin+1);
       }
-      else if((jobParamNames[i].equalsIgnoreCase("inputFileNames"))){
+      else if((jobParam[i]==null || jobParam[i].equals("")) &&
+          (jobParamNames[i].equalsIgnoreCase("inputFileNames"))){
         if(eventSplits!=null && eventSplits.length>1){
           resJobParam[i] = inputs;
         }
@@ -868,7 +869,8 @@ public class JobCreator{
       }
       // Fill in if it matches one of the jobDefinition fields
       //else if(jobdefinitionFields.contains(jobParamNames[i].toLowerCase())){
-      else if(jobattributenames.contains(jobParamNames[i].toLowerCase())){
+      else if((jobParam[i]==null || jobParam[i].equals("")) &&
+          jobattributenames.contains(jobParamNames[i].toLowerCase())){
         //int jobParamIndex = jobdefinitionFields.indexOf(jobParamNames[i].toLowerCase());
         int jobParamIndex = jobattributenames.indexOf(jobParamNames[i].toLowerCase());
         Debug.debug("Filling in job parameter "+jobParamNames[i]+":"+jobParamIndex+" from "+
@@ -879,7 +881,8 @@ public class JobCreator{
         }
       }
       // Fill in metadata
-      else if(metaData.containsKey(jobParamNames[i].toLowerCase())){
+      else if((jobParam[i]==null || jobParam[i].equals("")) &&
+          metaData.containsKey(jobParamNames[i].toLowerCase())){
         resJobParam[i] = (String) metaData.get(jobParamNames[i].toLowerCase());
         Debug.debug("Matched metadata with job parameter: "+jobParamNames[i]+
             "-->"+resJobParam[i], 3);
@@ -967,31 +970,7 @@ public class JobCreator{
     }
     return res;
   }
-  
-  HashMap parseMetaData(String str){
-    HashMap hm = new HashMap();
-    try{
-      InputStream is = new ByteArrayInputStream(str.getBytes());
-      BufferedReader in = new BufferedReader(new InputStreamReader(is));
-      String line;
-      String key = null;
-      String value = null;
-      while((line = in.readLine())!=null){
-        if(line.matches("^\\w+: \\w+$")){
-          key = line.replaceFirst("^(\\w+): \\w+$", "$1");
-          value = line.replaceFirst("^\\w+: (\\w+)$", "$1");
-          Debug.debug("Adding metadata "+key+":"+value, 2);
-          hm.put(key, value);
-        }
-      }
-      in.close();
-    }
-    catch(Exception e){
-      e.printStackTrace();
-    }
-    return hm;
-  }
-  
+    
   private int showResult(int currentPartition, String [] resCstAttr, String [] resJobParam,
                          String [][] resOutMap, String [] resStdOut, Object[] showResultsOptions){
 
