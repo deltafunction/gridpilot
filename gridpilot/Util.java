@@ -10,6 +10,7 @@ import java.awt.Insets;
 import java.awt.Toolkit;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -17,6 +18,7 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.InetAddress;
@@ -41,6 +43,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
@@ -1642,6 +1645,30 @@ public class Util{
       }
     }
     return urlArray;
+  }
+
+  public static HashMap parseMetaData(String str){
+    HashMap hm = new HashMap();
+    try{
+      InputStream is = new ByteArrayInputStream(str.getBytes());
+      BufferedReader in = new BufferedReader(new InputStreamReader(is));
+      String line;
+      String key = null;
+      String value = null;
+      while((line = in.readLine())!=null){
+        if(line.matches("^\\w+: .+$")){
+          key = line.replaceFirst("^(\\w+): .+$", "$1");
+          value = line.replaceFirst("^\\w+: (.+)$", "$1");
+          Debug.debug("Adding metadata "+key+":"+value, 2);
+          hm.put(key, value);
+        }
+      }
+      in.close();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    return hm;
   }
 
 }
