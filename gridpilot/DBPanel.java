@@ -772,7 +772,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         for(int i=0; i<3; ++i){
           if(!getWorking()){
             // retry 3 times with 3 seconds in between
-            statusBar.setLabel("Busy, please wait ...", 2);
+            statusBar.setLabel("Busy, please wait...", 2);
             try{
               Thread.sleep(3000);
             }
@@ -789,7 +789,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             break;
           }
         }
-        statusBar.setLabel("Searching, please wait ...", 2);
+        statusBar.setLabel("Searching, please wait...", 2);
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         statusBar.animateProgressBar();
         statusBar.setIndeterminateProgressBarToolTip("click here to cancel");
@@ -1325,7 +1325,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           Debug.debug("Deleting "+allIds.length+" rows. "+Util.arrayToString(allIds), 2);
           if(allIds.length!=0){
             GridPilot.getClassMgr().getStatusBar().setLabel(
-               "Deleting file(s). Please wait ...");
+               "Deleting file(s). Please wait...");
             JProgressBar pb = new JProgressBar();
             pb.setMaximum(allIds.length);
             statusBar.setProgressBar(pb);
@@ -1443,7 +1443,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         Debug.debug("Deleting "+ids.length+" rows", 2);
         if(ids.length != 0){
           GridPilot.getClassMgr().getStatusBar().setLabel(
-             "Deleting job definition(s). Please wait ...");
+             "Deleting job definition(s). Please wait...");
           JProgressBar pb = new JProgressBar();
           pb.setMaximum(ids.length);
           statusBar.setProgressBar(pb);
@@ -1667,7 +1667,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         Debug.debug("Deleting "+ids.length+" rows", 2);
         if(ids.length!=0){
           GridPilot.getClassMgr().getStatusBar().setLabel(
-             "Deleting transformation(s). Please wait ...");
+             "Deleting transformation(s). Please wait...");
           JProgressBar pb = new JProgressBar();
           statusBar.setProgressBar(pb);
           pb.setMaximum(ids.length);
@@ -1732,7 +1732,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         Debug.debug("Deleting "+ids.length+" rows", 2);
         if(ids.length != 0){
           GridPilot.getClassMgr().getStatusBar().setLabel(
-             "Deleting runtime environment(s). Please wait ...");
+             "Deleting runtime environment(s). Please wait...");
           JProgressBar pb = new JProgressBar();
           pb.setMaximum(ids.length);
           statusBar.setProgressBar(pb);
@@ -2318,13 +2318,33 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         String [] selectedJobIdentifiers = getSelectedIdentifiers();
         String idField = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefintition");
         DatasetMgr datasetMgr = null;
+        
+        statusBar.setLabel("Retrieving jobs...");
+        // Group the file IDs by dataset
+        HashMap datasetMgrsAndIds = new HashMap();
         for(int i=0; i<selectedJobIdentifiers.length; ++i){
           jobDef = dbPluginMgr.getJobDefinition(selectedJobIdentifiers[i]);
           datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName,
-              dbPluginMgr.getJobDefDatasetID(
-                  jobDef.getValue(idField).toString()));
-          datasetMgr.addJobs(new String [] {selectedJobIdentifiers[i]});
+              dbPluginMgr.getJobDefDatasetID(jobDef.getValue(idField).toString()));
+          if(!datasetMgrsAndIds.containsKey(datasetMgr)){
+            datasetMgrsAndIds.put(datasetMgr, new Vector());
+          }
+          ((Vector) datasetMgrsAndIds.get(datasetMgr)).add(selectedJobIdentifiers[i]);
         }
+        
+        // Add them
+        String [] ids = null;
+        Vector idVec = null;
+        for(Iterator it=datasetMgrsAndIds.keySet().iterator(); it.hasNext();){
+          datasetMgr = (DatasetMgr) it.next();
+          idVec = (Vector) datasetMgrsAndIds.get(datasetMgr);
+          ids = new String [idVec.size()];
+          for(int i=0; i<idVec.size(); ++i){
+            ids[i] = idVec.get(i).toString();
+          }
+          datasetMgr.addJobs(ids);
+        }
+
         datasetMgr.updateJobsByStatus();
       }
     }.start();
@@ -2356,16 +2376,57 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Called when a computing system in pmSubmitMenu is selected
    * Submits all selected logicalFiles (partitions) in computing system chosen in the popupMenu
    */
-  private void submit(ActionEvent e){
-    String [] selectedJobDefIdentifiers = getSelectedIdentifiers();
-    Vector selectedJobDefinitions = new Vector();
-    for(int i=0; i<selectedJobDefIdentifiers.length; ++i){
-      selectedJobDefinitions.add(dbPluginMgr.getJobDefinition(selectedJobDefIdentifiers[i]));
-    }
-    String csName = ((JMenuItem)e.getSource()).getText();
-    // submit the jobs
-    submissionControl.submitJobDefinitions(selectedJobDefinitions, csName, dbPluginMgr);
-    // TODO: add cancelling possibility
+  private void submit(final ActionEvent e){
+    workThread = new Thread(){
+      public void run(){
+        for(int i=0; i<3; ++i){
+          if(!getWorking()){
+            // retry 3 times with 3 seconds in between
+            statusBar.setLabel("Busy, please wait...", 2);
+            try{
+              Thread.sleep(3000);
+            }
+            catch(Exception e){
+            }
+            if(i==2){
+              return;
+            }
+            else{
+              continue;
+            }
+          }
+          else{
+            break;
+          }
+        }
+        statusBar.setLabel("Preparing jobs, please wait...", 2);
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        statusBar.animateProgressBar();
+        statusBar.setIndeterminateProgressBarToolTip("click here to interrupt (not recommended)");
+        statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
+          public void mouseClicked(MouseEvent me){
+            setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+            statusBar.stopAnimation();
+            workThread.interrupt();
+          }
+        });
+        String [] selectedJobDefIdentifiers = getSelectedIdentifiers();
+        Vector selectedJobDefinitions = new Vector();
+        for(int i=0; i<selectedJobDefIdentifiers.length; ++i){
+          selectedJobDefinitions.add(dbPluginMgr.getJobDefinition(selectedJobDefIdentifiers[i]));
+        }
+        String csName = ((JMenuItem)e.getSource()).getText();
+        // submit the jobs
+        statusBar.setLabel("Submitting. Please wait...");
+        submissionControl.submitJobDefinitions(selectedJobDefinitions, csName, dbPluginMgr);
+        statusBar.stopAnimation();
+        statusBar.setLabel("");
+        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        stopWorking();
+      }
+    };
+
+    workThread.start();
   }
   
   public void copy(){
@@ -2478,7 +2539,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(GridPilot.getClassMgr().getGlobalFrame().cutting){
       Debug.debug("Deleting "+(records.length-2)+" rows", 2);
       statusBar.setLabel(
-      "Deleting job definition(s). Please wait ...");
+      "Deleting job definition(s). Please wait...");
       JProgressBar pb = new JProgressBar();
       pb.setMaximum((records.length-2));
       statusBar.setProgressBar(pb);
