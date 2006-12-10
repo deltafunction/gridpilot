@@ -131,7 +131,7 @@ public class SubmissionControl{
       // if one does it, you can "load job from db" during reservation (when jobs
       // are not yet put in toSubmitJobs).
       statusBar.setLabel("Reserving. Please wait...");
-      statusBar.animateProgressBar();
+      //statusBar.animateProgressBar();
       String jobDefIdentifier = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
       for(int i=0; i<selectedJobs.size(); ++i){
         DBRecord jobDef = ((DBRecord) selectedJobs.get(i));
@@ -177,10 +177,10 @@ public class SubmissionControl{
       }
       statusBar.setLabel("Reserving done.");
       //statusBar.removeLabel();
-      statusBar.stopAnimation();
+      //statusBar.stopAnimation();
       if(!newJobs.isEmpty()){
         statusBar.setLabel("Monitoring. Please wait...");
-        statusBar.animateProgressBar();
+        //statusBar.animateProgressBar();
         // new rows in table
         statusTable.createRows(submittedJobs.size());
         //jobControl.initChanges();
@@ -189,7 +189,7 @@ public class SubmissionControl{
         }
         // jobControl.updateJobsByStatus();
         statusBar.setLabel("Monitoring done.");
-        statusBar.stopAnimation();
+        //statusBar.stopAnimation();
         queue(newJobs);
       }
     }
@@ -241,7 +241,7 @@ public class SubmissionControl{
       }
     });
     statusBar.setLabel("Adding to submission queue. Please wait...");
-    statusBar.animateProgressBar();
+    //statusBar.animateProgressBar();
     pbSubmission.setToolTipText("Click here to cancel submission");
     if(!isProgressBarSet){
       statusBar.setProgressBar(pbSubmission);
@@ -254,7 +254,7 @@ public class SubmissionControl{
       timer.restart();
     }
     statusBar.setLabel("Adding done.");
-    statusBar.stopAnimation();
+    //statusBar.stopAnimation();
   }
 
   /**
@@ -268,6 +268,7 @@ public class SubmissionControl{
 
     boolean askSave = false;
     boolean deleteFiles = false;
+    statusBar.setLabel("Cleaning up jobs...");
     for(int i=0; i<jobs.size() ; ++i){
 
       JobInfo job = (JobInfo) jobs.get(i);
@@ -408,6 +409,7 @@ public class SubmissionControl{
       }
     }
     Vector submitables = new Vector();
+    statusBar.setLabel("Updating job status...");
     while(jobs.size()>0){
       JobInfo job = (JobInfo) jobs.remove(0);
       //jobControl.updateDBStatus(job, DBPluginMgr.SUBMITTED);
@@ -436,6 +438,7 @@ public class SubmissionControl{
     }
     DatasetMgr.updateJobCells(submitables, statusTable);
     // if all went well we can now submit
+    statusBar.setLabel("Submitting jobs...");
     queue(submitables);
   }
 

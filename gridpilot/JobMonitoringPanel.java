@@ -502,7 +502,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     if(selectedRow==-1){
       return;
     }
-    statusBar.setLabel("Waiting for outputs ...");
+    statusBar.setLabel("Waiting for outputs...");
     statusBar.animateProgressBar();
     ((JFrame) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
         Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -599,7 +599,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private void loadDBJobs(final boolean allJobs){
     new Thread(){
       public void run(){
-        statusBar.setLabel("Waiting for DB Server ...");
+        statusBar.setLabel("Waiting for DB Server...");
         statusBar.animateProgressBar();
         bLoadJobs.setEnabled(false);
         bLoadMyJobs.setEnabled(false);

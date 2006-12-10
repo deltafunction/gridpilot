@@ -125,7 +125,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
           public void run() {
             JProgressBar pb = new JProgressBar();
             pb.setIndeterminate(true);
-            textArea.setText("please wait ... I'm reading ...");
+            textArea.setText("Please wait, reading...");
             panel.add(pb, BorderLayout.NORTH);
             String content;
             try{
@@ -224,7 +224,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
           public void run(){
             JProgressBar pb = new JProgressBar();
             pb.setIndeterminate(true);
-            textArea.setText("please wait ... I'm reading ...");
+            textArea.setText("Please wait, I'm reading...");
             panel.add(pb, BorderLayout.NORTH);
             String content;
             try{
