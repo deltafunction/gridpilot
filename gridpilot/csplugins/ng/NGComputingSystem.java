@@ -79,6 +79,9 @@ public class NGComputingSystem implements ComputingSystem{
   private ARCResource [] resources;
   private String [] runtimeDBs = null;
   private HashSet finalRuntimes = null;
+  private int submissionNumber = 1;
+  
+  public static int SUBMIT_RESOURCES_REFRESH_INTERVAL = 5;
   
   public NGComputingSystem(String _csName){
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
@@ -269,11 +272,18 @@ public class NGComputingSystem implements ComputingSystem{
   }
 
   public boolean submit(JobInfo job) {
+    if(submissionNumber==SUBMIT_RESOURCES_REFRESH_INTERVAL){
+      GridPilot.getClassMgr().getLogFile().addInfo("Refreshing computing resources...");
+      refreshResources();
+      submissionNumber = 1;
+    }
     Debug.debug("submitting..."+gridProxyInitialized, 3);
     String scriptName = runDir(job) + File.separator + job.getName() + ".job";
     String xrslName = runDir(job) + File.separator + job.getName() + ".xrsl";
     try{
-      return ngSubmission.submit(job, scriptName, xrslName);
+      boolean ret = ngSubmission.submit(submissionNumber, job, scriptName, xrslName);
+      ++submissionNumber;
+      return ret;
     }
     catch(Exception e){
       error = e.getMessage();
@@ -781,22 +791,19 @@ public class NGComputingSystem implements ComputingSystem{
       if(!syncCurrentOutputs(job)){
         if(!isValidated){
           try{
-            LocalStaticShellMgr.deleteFile(stdOutFile);
+            if(LocalStaticShellMgr.existsFile(stdOutFile+".bk")){
+              LocalStaticShellMgr.deleteFile(stdOutFile);
+              LocalStaticShellMgr.moveFile(stdOutFile+".bk", stdOutFile);
+            }
           }
           catch(Exception e){
+            e.printStackTrace();
           }
           try{
-            LocalStaticShellMgr.deleteFile(stdErrFile);
-          }
-          catch(Exception e){
-          }
-          try{
-            LocalStaticShellMgr.moveFile(stdOutFile+".bk", stdOutFile);
-          }
-          catch(Exception e){
-          }
-          try{
-            LocalStaticShellMgr.moveFile(stdErrFile+".bk", stdErrFile);
+            if(LocalStaticShellMgr.existsFile(stdErrFile+".bk")){
+              LocalStaticShellMgr.deleteFile(stdErrFile);
+              LocalStaticShellMgr.moveFile(stdErrFile+".bk", stdErrFile);
+            }
           }
           catch(Exception e){
             e.printStackTrace();
@@ -1016,7 +1023,7 @@ public class NGComputingSystem implements ComputingSystem{
   // Copy stdout+stderr to local files
   public boolean syncCurrentOutputs(JobInfo job){
     try{
-      Debug.debug("Getting : " + job.getName() + ":" + job.getJobId(), 3);
+      Debug.debug("Syncing " + job.getName() + ":" + job.getJobId(), 3);
       ARCGridFTPJob gridJob = getGridJob(job);
       String dirName = runDir(job);
       
@@ -1054,30 +1061,45 @@ public class NGComputingSystem implements ComputingSystem{
       String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
       String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
 
-      if(getFromfinalDest || job.getJobStatus().equals(NG_STATUS_FINISHED)){
+      if(!(getFromfinalDest || job.getJobStatus().equals(NG_STATUS_FINISHED) ||
+          job.getDBStatus()==DBPluginMgr.UNDECIDED)){
+        Debug.debug("Downloading stdout/err of: " + job.getName() + " : " + job.getJobId() +
+            " : " + job.getJobStatus()+" to " + dirName, 3);
+        try{
+          gridJob.getOutputFile("stdout", dirName);
+          LocalStaticShellMgr.moveFile((new File(dirName, "stdout")).getAbsolutePath(),
+              job.getStdOut());
+          gridJob.getOutputFile("stderr", dirName);
+          LocalStaticShellMgr.moveFile((new File(dirName, "stderr")).getAbsolutePath(),
+              job.getStdErr());
+        }
+        catch(Exception e){
+          // if this fails, give it a try to get from final destination;
+          // it could be that the job is in NG_STATUS_FINISHED on the CE,
+          // but GridPilot does not know, because the job has not been
+          // refreshed yet
+          getFromfinalDest = true;
+          e.printStackTrace();
+        }
+      }
+      
+      if(getFromfinalDest || job.getJobStatus().equals(NG_STATUS_FINISHED) ||
+          job.getDBStatus()==DBPluginMgr.UNDECIDED){
         if(getFromfinalDest || !finalStdOut.startsWith("file:")){
           Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
-              "from final destination "+finalStdOut+" to " + dirName, 3);
-          TransferControl.download(finalStdOut,
-              new File(dirName), GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+              " from final destination "+finalStdOut+" to " +
+              Util.clearTildeLocally(Util.clearFile(job.getStdOut())), 3);
+          TransferControl.download(finalStdOut, new File(Util.clearTildeLocally(Util.clearFile(job.getStdOut()))),
+              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
         }
         if(getFromfinalDest || !finalStdErr.startsWith("file:")){
           Debug.debug("Downloading stderr of: " + job.getName() + ":" + job.getJobId()+
-              "from final destination "+finalStdErr+" to " + dirName, 3);
-          TransferControl.download(finalStdErr,
-              new File(dirName), GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+              " from final destination "+finalStdErr+" to " +
+              Util.clearTildeLocally(Util.clearFile(job.getStdErr())), 3);
+          TransferControl.download(finalStdErr, new File(Util.clearTildeLocally(Util.clearFile(job.getStdErr()))),
+              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
         }
       }
-      else{
-        Debug.debug("Downloading stdout/err of: " + job.getName() + ":" + job.getJobId()+
-            " to " + dirName, 3);
-        gridJob.getOutputFile("stdout", dirName);
-        gridJob.getOutputFile("stderr", dirName);
-        LocalStaticShellMgr.moveFile((new File(dirName, "stdout")).getAbsolutePath(),
-            job.getStdOut());
-        LocalStaticShellMgr.moveFile((new File(dirName, "stderr")).getAbsolutePath(),
-            job.getStdErr());
-      }     
     }
     catch(Exception ae){
       error = "Exception during get stdout of " + job.getName() + ":" + job.getJobId() + ":\n" +
@@ -1329,6 +1351,10 @@ public class NGComputingSystem implements ComputingSystem{
         return true;
       }
     }
+  }
+  
+  public void refreshResources(){
+    resources = findAuthorizedResourcesFromIS();
   }
 
   private static String getValueOf(String attribute, String out){
