@@ -1407,7 +1407,6 @@ public class DBPluginMgr implements Database{
     if(!sourceMgr.isFileCatalog() && sourceMgr.isJobRepository()){
       uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
       String message = "Generated new UUID "+uuid.toString()+" for "+fileName;
-      GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
       GridPilot.getClassMgr().getLogFile().addInfo(message);
     }
     
@@ -1423,7 +1422,6 @@ public class DBPluginMgr implements Database{
       catch(Exception e){
         logFile.addMessage("ERROR: could not register "+urls[i]+" for file "+
             name+" in dataset "+datasetName, e);
-        GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: could not register "+urls[i]);
         ok = false;
       }
     }
