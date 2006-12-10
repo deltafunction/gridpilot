@@ -37,7 +37,6 @@ public class NGSubmission{
   private String [] clusters = null;
   private int clusterIndex = 0;
   private ARCResource [] resources = null;
-  private int resourceIndex = 0;
   private NGScriptGenerator scriptGenerator;
   
   private static int MAX_SUBMIT_RETRIES = 3;
@@ -56,9 +55,10 @@ public class NGSubmission{
     csName = _csName;
     resources = _resources;
     scriptGenerator =  new NGScriptGenerator(csName);
+    rankResources(resources);
   }
 
-  public boolean submit(JobInfo job, String scriptName, String xrslName) throws ARCDiscoveryException,
+  public boolean submit(int submissionNumber, JobInfo job, String scriptName, String xrslName) throws ARCDiscoveryException,
   MalformedURLException, IOException{
 
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
@@ -89,7 +89,7 @@ public class NGSubmission{
     }
     String ngJobId = null;
     try{
-      ngJobId = submit(job, xrslName, files, fileNames);
+      ngJobId = submit(submissionNumber, job, xrslName, files, fileNames);
     }
     catch(Exception e){
       e.printStackTrace();
@@ -106,7 +106,7 @@ public class NGSubmission{
     }
   }
 
-  private String submit(final JobInfo job, final String xrslFileName,
+  private String submit(final int submissionNumber, final JobInfo job, final String xrslFileName,
       final List files, final List fileNames) throws ARCDiscoveryException,
   MalformedURLException, ARCGridFTPJobException, IOException{
     
@@ -177,20 +177,12 @@ public class NGSubmission{
           // is submitted, otherwise try next resource.
           // If no free slots are found, submit to the resource
           // with highest number of CPUs
-          if(matcher.isResourceSuitable(xrsl, resources[resourceIndex]) &&
-              resources[resourceIndex].getFreejobs()>0){
-            submissionHost = resources[resourceIndex].getClusterName();
-            queue = resources[resourceIndex].getQueueName();
+          if(matcher.isResourceSuitable(xrsl, resources[i]) &&
+              resources[i].getFreejobs()>0){
+            submissionHost = resources[i].getClusterName();
+            queue = resources[i].getQueueName();
             Debug.debug("Submitting to queue: "+queue, 2);            
             break;
-          }
-          else{
-            if(resourceIndex==resources.length-1){
-              resourceIndex = 0;
-            }
-            else{
-              ++resourceIndex;
-            }
           }
         }
         catch(ARCGridFTPJobException ae){
@@ -207,8 +199,8 @@ public class NGSubmission{
               " : "+Util.arrayToString(resources[i].getRuntimeenvironment().toArray()), 2);
           if(matcher.isResourceSuitable(xrsl, resources[i]) &&
              (resource==null ||
-             resources[i].getMaxjobs()>resource.getMaxjobs() &&
-             resources[i].getTotalQueueCPUs()>resource.getTotalQueueCPUs())){
+             resources[i].getTotalQueueCPUs()>resource.getTotalQueueCPUs() ||
+             resources[i].getFreejobs()>resource.getFreejobs())){
              resource = resources[i];
              queue = resource.getQueueName();
           }
@@ -261,7 +253,7 @@ public class NGSubmission{
       
       Debug.debug("XRSL: "+xrsl, 3);
       Debug.debug("Submitting with input files: "+Util.arrayToString(files.toArray()), 2);
-      Debug.debug("Submitting with input files: "+Util.arrayToString(fileNames.toArray()), 2);
+      Debug.debug("Submitting with input file names: "+Util.arrayToString(fileNames.toArray()), 2);
 
       int i = 0;
       ARCGridFTPJob gridJob = null;
@@ -304,5 +296,22 @@ public class NGSubmission{
       }
     }
     return ngJobId;
+  }
+  
+  private ARCResource [] rankResources(ARCResource [] resources){
+    ARCResource [] ret = null;
+    for(int i=0; i<resources.length; ++i){
+      // It seems that only getFreejobs and getTotalQueueCPUs can be trusted
+      Debug.debug("Resource "+resources[i].getClusterName(), 2);
+      Debug.debug("   getFreejobs: "+resources[i].getFreejobs(), 2);
+      Debug.debug("   getMaxjobs: "+resources[i].getMaxjobs(), 2);
+      Debug.debug("   getNodeCPU: "+resources[i].getNodeCPU(), 2);
+      Debug.debug("   getNodememory: "+resources[i].getNodememory(), 2);
+      Debug.debug("   getQueued: "+resources[i].getQueued(), 2);
+      Debug.debug("   getQueueName: "+resources[i].getQueueName(), 2);
+      Debug.debug("   getTotalClusterCPUs: "+resources[i].getTotalClusterCPUs(), 2);
+      Debug.debug("   getTotalQueueCPUs: "+resources[i].getTotalQueueCPUs(), 2);
+    }
+    return ret;
   }
 }
