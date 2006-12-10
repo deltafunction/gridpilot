@@ -397,7 +397,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   /**
    *  Edit or create a dataset
    */
-  public void setValues(){
+  private void setValues(){
     
     Debug.debug("setValues: " + datasetID +
         " " + transformationName + " " + transformationVersion, 3); 
@@ -565,7 +565,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
     else if(versions.length==1){
       transformationVersion = versions[0];
       pVersion.add(new JLabel(transformationVersion));
-      setValues();
+      //setValues();
+      setValuesInAttributePanel();
       pTop.add(jbEditTrans);
     }
     else{
@@ -652,7 +653,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     catch(Exception e){
     }
-    setValues();
+    //setValues();
+    setValuesInAttributePanel();
     pTop.add(jbEditTrans);
     pTop.validate();
   }
