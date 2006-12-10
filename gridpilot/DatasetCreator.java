@@ -191,7 +191,7 @@ public class DatasetCreator{
 
   private boolean createDataset(DBPluginMgr dbPluginMgr, String targetTable){
     synchronized(semaphoreAMICreation){
-      statusBar.setLabel("Creating dataset ...");
+      statusBar.setLabel("Creating dataset...");
       pb.setValue(pb.getValue()+1);
     
       boolean succes = dbPluginMgr.createDataset(
