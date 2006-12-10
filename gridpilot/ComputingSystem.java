@@ -151,7 +151,7 @@ public interface ComputingSystem{
 
   /**
    * Called when GridPilot is closed.
-   * Could be useful if some connection need to be closed, temp files te be deleted, ...
+   * Could be useful if some connection needs to be closed, temp files need to be deleted, ...
    */
   public void exit();
 
