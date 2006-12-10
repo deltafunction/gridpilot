@@ -1181,10 +1181,9 @@ public class TransferControl{
       else if(srcUrlDir.startsWith("gsiftp://")){
         Debug.debug("Downloading to "+downloadDir.getAbsolutePath(), 3);        
         Debug.debug("Downloading "+destFileName+" from "+srcUrlDir, 3);
-        if(!destFileName.equals(srcFileName)){
-          throw(new IOException("ERROR: Cannot rename file "+srcFileName+"->"+destFileName));
-        }
         final File dName = downloadDir;
+        final String destFName = destFileName;
+        final String srcFName = srcFileName;
         frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         (new MyThread(){
           public void run(){
@@ -1197,6 +1196,10 @@ public class TransferControl{
                   pb);
               GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
               GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
+              if(!destFName.equals(srcFName)){
+                LocalStaticShellMgr.moveFile((new File(dName, srcFName)).getAbsolutePath(),
+                    (new File(dName, destFName)).getAbsolutePath());
+              }
             }
             catch(IOException e){
               Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
