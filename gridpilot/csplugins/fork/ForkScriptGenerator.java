@@ -1,7 +1,11 @@
 package gridpilot.csplugins.fork;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.MalformedURLException;
+
+import org.globus.util.GlobusURL;
 
 import gridpilot.DBPluginMgr;
 import gridpilot.Debug;
@@ -91,8 +95,17 @@ public class ForkScriptGenerator extends ScriptGenerator{
       if(remoteCopyCommand!=null && remoteCopyCommand.length()>0){
         if(inputFiles!=null && inputFiles.length>0){
           writeBloc(buf, "Input files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
+          String name = null;
           for(int i=0; i<inputFiles.length; ++i){
-            writeLine(buf, remoteCopyCommand+" "+inputFiles[i]+" file:///`pwd`/"+inputFiles[i]);
+            try{
+              name = new File((new GlobusURL(inputFiles[i])).getPath()).getName();
+            }
+            catch(MalformedURLException e){
+              e.printStackTrace();
+              logFile.addMessage("ERROR: could not get input file "+inputFiles[i], e);
+              continue;
+            }
+            writeLine(buf, remoteCopyCommand+" "+inputFiles[i]+" file:///`pwd`/"+name);
           }
           writeLine(buf, "");
         }
