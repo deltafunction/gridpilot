@@ -164,7 +164,7 @@ public class ForkComputingSystem implements ComputingSystem{
       BufferedReader in = null;
       try{
         URL fileURL = GridPilot.class.getResource(
-            GridPilot.resourcesPath+"/"+testScriptName);
+            GridPilot.resourcesPath+testScriptName);
         in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
         String line = null;
         while((line = in.readLine())!=null){
