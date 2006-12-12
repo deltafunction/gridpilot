@@ -123,6 +123,7 @@ public class MySQLDatabase implements Database{
       if(database!=null && database.endsWith("/")){
         String dbName = subject.replaceAll(" ", "_");
         dbName = dbName.replaceAll("/", "|");
+        dbName = dbName.replaceAll(".", "_");
         dbName = dbName.substring(1);
         database = database + dbName;
       }
