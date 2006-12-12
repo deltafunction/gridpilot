@@ -20,7 +20,9 @@ import java.rmi.RemoteException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Vector;
@@ -53,7 +55,8 @@ public class ATLASDatabase implements Database{
   private String dq2Url;
   private String dbName;
   private String toa;
-  private String homeServer;
+  private String homeSite;
+  private String [] preferredSites;
   private String homeServerMysqlAlias;
   private LogFile logFile;
   private File toaFile;
@@ -96,16 +99,18 @@ public class ATLASDatabase implements Database{
     error = "";
     pfnVector = new Vector();
 
+    // Set preferred download sites
+    preferredSites = configFile.getValues(dbName, "preferred sites");
     // Set home server and possible mysql alias
-    homeServer = configFile.getValue(dbName, "home catalog server");
-    if(homeServer!=null){
-      String [] servers = Util.split(homeServer);
+    homeSite = configFile.getValue(dbName, "home site");
+    if(homeSite!=null){
+      String [] servers = Util.split(homeSite);
       if(servers.length==2){
-        homeServer = servers[0];
+        homeSite = servers[0];
         homeServerMysqlAlias = servers[1];
       }
       else if(servers.length==0 || servers.length>2){
-        homeServer = null;
+        homeSite = null;
       }
     }
     // Get and cache the TOA file
@@ -1221,7 +1226,7 @@ public class ATLASDatabase implements Database{
     
     Debug.debug("Trying to match "+name, 3);
     while((line = in.readLine())!=null){
-      // Say, we havea name 'CSCS'; first look for lines like
+      // Say, we have a name 'CSCS'; first look for lines like
       // 'FZKSITES': [ 'FZK', 'FZU', 'CSCS', 'CYF', 'DESY-HH', 'DESY-ZN', 'UNI-FREIBURG', 'WUP' ],
       // 'FZK': [ 'FZKDISK', 'FZKTAPE' ],
       if(line.matches("^\\W*(\\w*SITES)\\W*\\s*:\\s*\\[.*\\W+"+name+"\\W+.*")){
@@ -1231,8 +1236,7 @@ public class ATLASDatabase implements Database{
       else if(line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+name+"\\W+.*") &&
           line.indexOf("SITES")<0){
         catalogSite = line.replaceFirst("^\\W*(\\w*)\\W*\\s*:.*",
-            "$1")+
-        "SITES";
+            "$1")+"SITES";
         Debug.debug("Catalog site: "+catalogSite, 3);
       }
       // Now look for
@@ -1315,24 +1319,52 @@ public class ATLASDatabase implements Database{
     Vector locations = new Vector();
     // make sure homeServer is first in the list
     for(int i=0; i<dqLocations.getComplete().length; ++i){
-      if(dqLocations.getComplete()[i].equalsIgnoreCase(homeServer)){
-        locations.add(homeServer);
+      if(dqLocations.getComplete()[i].equalsIgnoreCase(homeSite)){
+        locations.add(homeSite);
         break;
       }
     }
     for(int i=0; i<dqLocations.getIncomplete().length; ++i){
-      if(dqLocations.getIncomplete()[i].equalsIgnoreCase(homeServer)){
-        locations.add(homeServer);
+      if(dqLocations.getIncomplete()[i].equalsIgnoreCase(homeSite)){
+        locations.add(homeSite);
         break;
       }
     }
+    // add the preferred sites if there
+    boolean added = false;
+    for(int ii=0; ii<preferredSites.length; ++ii){
+      added = false;
+      for(int i=0; i<dqLocations.getComplete().length; ++i){
+        if(!dqLocations.getComplete()[i].equalsIgnoreCase(homeSite) &&
+            dqLocations.getComplete()[i].equalsIgnoreCase(preferredSites[ii])){
+          locations.add(preferredSites[ii]);
+          added = true;
+          break;
+        }
+      }
+      if(added){
+        continue;
+      }
+      for(int i=0; i<dqLocations.getIncomplete().length; ++i){
+        if(!dqLocations.getIncomplete()[i].equalsIgnoreCase(homeSite) &&
+            dqLocations.getIncomplete()[i].equalsIgnoreCase(preferredSites[ii])){
+          locations.add(preferredSites[ii]);
+          break;
+        }
+      }
+    }
+    // add the rest
+    HashSet preferredSet = new HashSet();
+    Collections.addAll(preferredSet, preferredSites);
     for(int i=0; i<dqLocations.getComplete().length; ++i){
-      if(!dqLocations.getComplete()[i].equalsIgnoreCase(homeServer)){
+      if(!dqLocations.getComplete()[i].equalsIgnoreCase(homeSite) &&
+          !preferredSet.contains(dqLocations.getComplete()[i])){
         locations.add(dqLocations.getComplete()[i]);
       }
     }
     for(int i=0; i<dqLocations.getIncomplete().length; ++i){
-      if(!dqLocations.getIncomplete()[i].equalsIgnoreCase(homeServer)){
+      if(!dqLocations.getIncomplete()[i].equalsIgnoreCase(homeSite) &&
+          !preferredSet.contains(dqLocations.getIncomplete()[i])){
         locations.add(dqLocations.getIncomplete()[i]);
       }
     }
@@ -1352,8 +1384,8 @@ public class ATLASDatabase implements Database{
                 Debug.debug("Querying TOA for "+finalLocations.get(ii), 2);
                 String catalogServer = null;
                 // If trying to query the home lfc server, use the mysql alias if possible
-                if(homeServer!=null && homeServerMysqlAlias!=null &&
-                    finalLocations.get(ii).toString().equalsIgnoreCase(homeServer)){
+                if(homeSite!=null && homeServerMysqlAlias!=null &&
+                    finalLocations.get(ii).toString().equalsIgnoreCase(homeSite)){
                   catalogServer = homeServerMysqlAlias;
                 }
                 else{
@@ -1390,6 +1422,7 @@ public class ATLASDatabase implements Database{
         }
         catch(Exception e){
         }
+        // break out after first location, if "Find all" is not checked
         if(!findAll && getPFNsString()!=null && getPFNsString().length()>0){
           break;
         }
@@ -1598,7 +1631,7 @@ public class ATLASDatabase implements Database{
           complete = true;
           location = locations.getComplete()[0];
         }
-        if(!location.equalsIgnoreCase(homeServer) || homeServerMysqlAlias==null ||
+        if(!location.equalsIgnoreCase(homeSite) || homeServerMysqlAlias==null ||
             homeServerMysqlAlias.equals("")){
           throw new Exception("Can only delete files on home catalog server MySQL alias.");
         }
@@ -1699,7 +1732,7 @@ public class ATLASDatabase implements Database{
         }
         // otherwise, it is assumed that we're using a mysql catalog and we delete
         else{
-          deleteLFNs(getFileCatalogServer(homeServer), toDeleteLfns);
+          deleteLFNs(getFileCatalogServer(homeSite), toDeleteLfns);
         }
       }
       catch(Exception e){
@@ -1756,7 +1789,7 @@ public class ATLASDatabase implements Database{
       if(completeLocations!=null && completeLocations.length>0){
         for(int i=0; i<completeLocations.length; ++i){
           try{
-            if(locations.getComplete()[i].equalsIgnoreCase(homeServer)){
+            if(locations.getComplete()[i].equalsIgnoreCase(homeSite)){
               continue;
             }
             dq2Access.registerLocation(datasetID, dsn,
@@ -1769,7 +1802,7 @@ public class ATLASDatabase implements Database{
       if(incompleteLocations!=null && incompleteLocations.length>0){
         for(int i=0; i<incompleteLocations.length; ++i){
           try{
-            if(locations.getIncomplete()[i].equalsIgnoreCase(homeServer)){
+            if(locations.getIncomplete()[i].equalsIgnoreCase(homeSite)){
               continue;
             }
             dq2Access.registerLocation(datasetID, dsn,
@@ -1783,7 +1816,7 @@ public class ATLASDatabase implements Database{
       if(!ok || toKeepGuids.length>0){
         try{
           dq2Access.registerLocation(datasetID, dsn,
-              (complete && !atLeastOneDeleted), homeServer);
+              (complete && !atLeastOneDeleted), homeSite);
         }
         catch(Exception ee){
           ee.printStackTrace();
@@ -1792,7 +1825,7 @@ public class ATLASDatabase implements Database{
       else{
         // Otherwise clear the home location
         try{
-          dq2Access.deleteFromSite(datasetID, homeServer);
+          dq2Access.deleteFromSite(datasetID, homeSite);
         }
         catch(Exception ee){
         }
@@ -1901,7 +1934,7 @@ public class ATLASDatabase implements Database{
         }
         // otherwise, assume that home server is a mysql server and just write there
         else{
-          registerLFNs(this.getFileCatalogServer(homeServer), new String [] {guid},
+          registerLFNs(this.getFileCatalogServer(homeSite), new String [] {guid},
               new String [] {lfn}, new String [] {url}, false);
         }
       }
@@ -1921,25 +1954,25 @@ public class ATLASDatabase implements Database{
       // Register home site in DQ2
       try{
         GridPilot.getClassMgr().getStatusBar().setLabel("Checking if lfn " +lfn+
-           " is registered with "+homeServer+" in DQ2");
+           " is registered with "+homeSite+" in DQ2");
         DQ2Locations [] locations = getLocations("'"+vuid+"'");
         boolean siteRegistered = false;
         String [] incomplete = locations[0].getIncomplete();
         String [] complete = locations[0].getComplete();
         for(int i=0; i<incomplete.length; ++i){
-          if(incomplete[i].trim().equalsIgnoreCase(homeServer.trim())){
+          if(incomplete[i].trim().equalsIgnoreCase(homeSite.trim())){
             siteRegistered = true;
           }
         }
         for(int i=0; i<complete.length; ++i){
-          if(complete[i].trim().equalsIgnoreCase(homeServer.trim())){
+          if(complete[i].trim().equalsIgnoreCase(homeSite.trim())){
             siteRegistered = true;
           }
         }
         if(!siteRegistered){
           GridPilot.getClassMgr().getStatusBar().setLabel("Registering new lfn " +lfn+
-          " with "+homeServer+" in DQ2");
-          dq2Access.registerLocation(vuid, dsn, datasetComplete, homeServer);
+          " with "+homeSite+" in DQ2");
+          dq2Access.registerLocation(vuid, dsn, datasetComplete, homeSite);
         }
         else{
           GridPilot.getClassMgr().getStatusBar().setLabel("Yes!");
@@ -1947,7 +1980,7 @@ public class ATLASDatabase implements Database{
       }
       catch(Exception e){
         error = "WARNING: could not update dataset "+dsn+" in DQ2 "+
-           ". Registration of "+homeServer+" in DQ2 NOT done";
+           ". Registration of "+homeSite+" in DQ2 NOT done";
         logFile.addMessage(error, e);
       }
     }
