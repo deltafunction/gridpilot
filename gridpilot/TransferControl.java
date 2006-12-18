@@ -115,11 +115,16 @@ public class TransferControl{
             Debug.debug("Checking plugin "+fts[i], 3);
             checkSources = new GlobusURL [] {firstSrc};
             checkDestinations = new GlobusURL [] {firstDest};
-            if(GridPilot.getClassMgr().getFTPlugin(
-                fts[i]).checkURLs(checkSources, checkDestinations)){
-              pluginName = fts[i];
-              break;
-            };      
+            try{
+              if(GridPilot.getClassMgr().getFTPlugin(
+                  fts[i]).checkURLs(checkSources, checkDestinations)){
+                pluginName = fts[i];
+                break;
+              };      
+            }
+            catch(Exception e){
+              e.printStackTrace();
+            }
           }
           if(pluginName==null){
             throw new IOException("ERROR: protocol not supported or plugin initialization " +
@@ -156,6 +161,8 @@ public class TransferControl{
             catch(Exception e){
               brokenOut = true;
               Debug.debug("Problem checking URLs", 2);
+              logFile.addMessage("WARNING: there was a problem queueing all " +
+                    "transfers.", e);
               e.printStackTrace();
               toSubmitTransfers.removeAllElements();
               break;
@@ -567,7 +574,13 @@ public class TransferControl{
   };
 
   public static String getStatus(String fileTransferID) throws Exception {
-    return findFTPlugin(fileTransferID).getStatus(fileTransferID);
+    String status = findFTPlugin(fileTransferID).getStatus(fileTransferID);
+    if(status!=null && status.matches("^\\w+://.*")){
+      return "Ready";
+    }
+    else{
+      return status;
+    }
   }
 
   public static String getFullStatus(String fileTransferID) throws Exception {
@@ -1034,7 +1047,7 @@ public class TransferControl{
       findFTPlugin(transfer.getTransferID()).finalize(transfer.getTransferID());
     }
     catch(Exception e){
-      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: finalize coule not " +
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: finalize could not " +
           "be done for transfer "+id, e);
     }
     // If transfer.getDBPluginMgr() is not null, it is the convention that this
@@ -1105,6 +1118,10 @@ public class TransferControl{
       }
       GridPilot.getClassMgr().getGlobalFrame(
          ).monitoringPanel.statusBar.setLabel("Registration done");
+    }
+    else{
+      GridPilot.getClassMgr().getGlobalFrame(
+      ).monitoringPanel.statusBar.setLabel("Copying done");
     }
   }
   
