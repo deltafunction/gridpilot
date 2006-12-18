@@ -55,7 +55,8 @@ public class SRMFileTransfer implements FileTransfer {
   private static final int CAN_WRITE_FILE_URL = 0x40;
   private static final int DIRECTORY_URL = 0x80;
   private static final int UNKNOWN_URL = 0x100;
-
+  private static final int GSIFTP_URL = 0x200;
+  
   private static String pluginName;
 
   public SRMFileTransfer(){
@@ -158,6 +159,8 @@ public class SRMFileTransfer implements FileTransfer {
    *                           index of the file in question in the array
    *                           RequestStatus.fileStatuses.
    *                           Format: srm-{get|put|copy}::srm request id:transfer index::'srcTurl' 'destTurl' 'srmSurl'
+   *
+   * Change: when getting status from SRM, instead of "Ready" the TURL is now returned.
    */
   public String getStatus(String fileTransferID) throws SRMException {
     String [] idArr = parseFileTransferID(fileTransferID);
@@ -168,12 +171,14 @@ public class SRMFileTransfer implements FileTransfer {
     String shortID = idArr[7];
 
     String status = null;
+    String turl = null;
 
     if(!pendingIDs.contains(fileTransferID) && (
         requestType.equals("get") || requestType.equals("put"))){
       // get status from GSIFTPFileTransfer (or whichever protocol the SRM uses)
       try{
         status = TransferControl.getStatus(shortID);
+        Debug.debug("Got status from subsystem: "+status, 2);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -190,7 +195,15 @@ public class SRMFileTransfer implements FileTransfer {
         ISRM srm = connect(new GlobusURL(surl));
         RequestStatus rs = srm.getRequestStatus(requestId);
         status = rs.fileStatuses[statusIndex].state;
-        return status;
+        turl = rs.fileStatuses[statusIndex].TURL;
+        Debug.debug("Got status from SRM server: "+statusIndex+" : "+status+
+            " : "+rs.fileStatuses[statusIndex].TURL, 2);
+        if(status.equals("Ready") && turl!=null){
+          return turl;
+        }
+        else{
+          return status;
+        }
       }
       catch(Exception e){
         throw new SRMException("ERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage());
@@ -437,12 +450,17 @@ public class SRMFileTransfer implements FileTransfer {
     String surl = idArr[6];
 
     try{
+      // getStatus
       ISRM srm = connect(new GlobusURL(surl));
       RequestStatus rs = srm.getRequestStatus(requestId);
-      // state should be one of "Pending", "Active", "Done", "Failed".
-      if(rs.state.equalsIgnoreCase("Done") || rs.state.equalsIgnoreCase("Failed")){
-        srm.setFileStatus(requestId, statusIndex, "Done");
-      }
+      Debug.debug("Finalizing request "+rs.requestId+" : "+rs.state+" : "+Util.arrayToString(rs.fileStatuses), 2);
+      // state should be one of "Ready", "Pending", "Active", "Done", "Failed".
+      //RequestStatus types: “Get”, “Put”, “Copy”, …
+      //RequestStatus states: “Pending”, “Active”, “Done”, “Failed”
+      //RequestFileStatus: “Pending”, “Ready”, “Running”, “Done”, “Failed”
+      //if(rs.state.equalsIgnoreCase("Done") || rs.state.equalsIgnoreCase("Failed")){
+        srm.setFileStatus(requestId, rs.fileStatuses[statusIndex].fileId, "Done");
+      //}
     }
     catch(Exception e){
       throw new SRMException("ERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage());
@@ -467,7 +485,8 @@ public class SRMFileTransfer implements FileTransfer {
     try{
       ISRM srm = connect(new GlobusURL(surl));
       // This cancels and sets to Done.
-      srm.setFileStatus(requestId, statusIndex, "Done");
+      RequestStatus rs = srm.getRequestStatus(requestId);
+      srm.setFileStatus(requestId, rs.fileStatuses[statusIndex].fileId, "Done");
     }
     catch(Exception e){
       throw new SRMException("ERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage());
@@ -490,10 +509,15 @@ public class SRMFileTransfer implements FileTransfer {
 
   // Wait for all files to be ready on the SRM server before beginning the
   // transfers. This may be reconsidered...
-  private void waitForOK(Vector _thesePendingIDs) throws SRMException {
+  private String [] waitForOK(Vector _thesePendingIDs) throws SRMException {
     synchronized(pendingIDs){
       Vector thesePendingIDs = _thesePendingIDs;
       String status = null;
+      String [] idArray = new String[thesePendingIDs.size()];
+      String [] turlArray = new String[thesePendingIDs.size()];
+      for(int i=0; i<thesePendingIDs.size(); ++i){
+        idArray[i] = (String) thesePendingIDs.get(i);
+      }
       int i = 0;
       pendingIDs.addAll(thesePendingIDs);
       while(true){
@@ -502,15 +526,33 @@ public class SRMFileTransfer implements FileTransfer {
         }
         ++i;
         for(int j=0; j<thesePendingIDs.size(); ++j){
-          if(thesePendingIDs.isEmpty()){
-            break;
-          }
           Debug.debug("Checking status "+i+" - "+j+":"+thesePendingIDs.size(), 3);
           String id = (String) thesePendingIDs.get(j);
           Debug.debug("of --> "+id, 3);
           try{
             status = getStatus(id);
-            if(status.equalsIgnoreCase("Ready")){
+            Debug.debug("Got status "+status, 3);
+            if(status.matches("^\\w+://.*")){
+              for(int k=0; k<idArray.length; ++k){
+                if(idArray[k].equals(id)){
+                  turlArray[k] = status;
+                  break;
+                }
+              }
+              pendingIDs.remove(id);
+              thesePendingIDs.remove(id);
+            }
+            else if(status.equalsIgnoreCase("Ready")){
+              pendingIDs.remove(id);
+              thesePendingIDs.remove(id);
+            }
+            else if(status.equalsIgnoreCase("Failed")){
+              for(int k=0; k<idArray.length; ++k){
+                if(idArray[k].equals(id)){
+                  turlArray[k] = "Failed";
+                  break;
+                }
+              }
               pendingIDs.remove(id);
               thesePendingIDs.remove(id);
             }
@@ -519,6 +561,9 @@ public class SRMFileTransfer implements FileTransfer {
             Debug.debug("WARNING: could not get status of "+id, 1);
             e.printStackTrace();
           }
+        }
+        if(thesePendingIDs.isEmpty()){
+          break;
         }
         if(i>checkRetries+1){
           throw new SRMException("ERROR: file(s) were not ready within "+
@@ -529,9 +574,11 @@ public class SRMFileTransfer implements FileTransfer {
           Thread.sleep(checkRetrySleep);
         }
         catch(InterruptedException e){
+          e.printStackTrace();
           break;
         }
       }
+      return turlArray;
     }
   }
 
@@ -590,8 +637,9 @@ public class SRMFileTransfer implements FileTransfer {
       int toType = getUrlType(destUrls[0]);
       checkURLsUniformity(toType, destUrls, false);
       
-      if(fromType==SRM_URL && (toType & FILE_URL)==FILE_URL){
-        // if the source is srm and the destination is file we get
+      if(fromType==SRM_URL &&
+          ((toType & FILE_URL)==FILE_URL || (toType & GSIFTP_URL)==GSIFTP_URL)){
+        // if the source is srm and the destination is file or gsiftp we get
         String sources[] = new String[srcUrls.length];
         String dests[] = new String[srcUrls.length];
         for(int i = 0; i<srcUrls.length; ++i){
@@ -601,7 +649,7 @@ public class SRMFileTransfer implements FileTransfer {
               (new File(fileDest.getPath())).isDirectory()){
             throw new IOException("ERROR: destination is directory "+ fileDest.getURL());
           }
-          if(!(new File(fileDest.getPath())).getParentFile().canWrite()){
+          if((toType & FILE_URL)==FILE_URL && !(new File(fileDest.getPath())).getParentFile().canWrite()){
             throw new IOException("ERROR: destination directory is not writeable "+ fileDest.getURL());
           }
           sources[i] = srmSrc.getURL();
@@ -615,6 +663,7 @@ public class SRMFileTransfer implements FileTransfer {
         }
         GlobusURL [] turls = new GlobusURL[srcUrls.length];
         String [] ids = new String[srcUrls.length];
+        String [] assignedTurls = null;
         // First, assign temporary ids (with TURL null) and wait for ready
         Vector thesePendingIDs = new Vector();
         for(int i=0; i<srcUrls.length; ++i){
@@ -626,33 +675,47 @@ public class SRMFileTransfer implements FileTransfer {
           // show message on status bar on monitoring frame
           StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
           statusBar.setLabel("Waiting for file(s) to be ready...");
-          waitForOK(thesePendingIDs);
+          assignedTurls = waitForOK(thesePendingIDs);
+          Debug.debug("Assigned TURLs: "+Util.arrayToString(assignedTurls), 2);
         }
         catch(Exception e){
           e.printStackTrace();
           throw new IOException("ERROR: problem getting transfers ready confirmation" +
-              "from server."+ e.getMessage());
+              "from server. "+ e.getMessage());
         }
         // Now, assign the real ids (with TURL not null)
         try{
+          Debug.debug("Request: "+rs.toString(), 3);
+          Debug.debug("File statuses: "+srcUrls.length+":"+rs.fileStatuses.length, 3);
+          Debug.debug("File status 0: "+rs.fileStatuses[0], 3);
           for(int i=0; i<srcUrls.length; ++i){
-            turls[i] = new GlobusURL(rs.fileStatuses[i].TURL);
+            if(assignedTurls!=null && assignedTurls[i]!=null){
+              if(assignedTurls[i].equals("Failed")){
+                throw new SRMException("Failed to get TURL.");
+              }
+              turls[i] = new GlobusURL(assignedTurls[i]);
+            }
+            else{
+              turls[i] = new GlobusURL(rs.fileStatuses[i].TURL);
+            }
             ids[i] = pluginName+"-get::"+rs.requestId+"::"+i+"::'"+turls[i].getURL()+"' '"+destUrls[i].getURL()+
             "' '"+srcUrls[0].getURL()+"'";
           }
         }
         catch(Exception e){
           e.printStackTrace();
-          throw new IOException("ERROR: problem getting TURLS" +
+          throw new IOException("ERROR: problem getting TURLS " +
               e.getMessage());
         }
         // if no exception was thrown, all is ok and we can set files to "Running"
         for(int i=0; i<srcUrls.length; ++i){
           try{
-            srm.setFileStatus(rs.requestId, i, "Running");
+            srm.setFileStatus(rs.requestId, rs.fileStatuses[i].fileId, "Running");
+            Debug.debug("Status is now "+rs.fileStatuses[i].state, 3);
           }
           catch(Exception e){
-            Debug.debug("WARNING: could not set file to Running. "+turls[i], 3);
+            GridPilot.getClassMgr().getLogFile().addMessage(
+                "WARNING: could not set file to Running. "+turls[i], e);
           }
         }
         // show message on status bar on monitoring frame
@@ -677,7 +740,7 @@ public class SRMFileTransfer implements FileTransfer {
       }
       else if(fromType==SRM_URL && toType!=SRM_URL){
         // if the source is srm and the destination is something other
-        // than SRM, but not file, we push from the source
+        // than SRM or GSIFTP, but not file, we push from the source
         srm = connect(srcUrls[0]);
         RequestStatus rs = srm.copy(srcStrs, destStrs, wantPerm);
         if(rs==null){
@@ -720,6 +783,7 @@ public class SRMFileTransfer implements FileTransfer {
         }
         GlobusURL [] turls = new GlobusURL[srcUrls.length];
         String [] ids = new String[srcUrls.length];
+        String [] assignedTurls = null;
         // First, assign temporary ids (with TURL null) and wait for ready
         Vector thesePendingIDs = new Vector();
         for(int i=0; i<srcUrls.length; ++i){
@@ -731,7 +795,7 @@ public class SRMFileTransfer implements FileTransfer {
           // show message on status bar on monitoring frame
           StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
           statusBar.setLabel("Waiting for file(s) to be ready...");
-          waitForOK(thesePendingIDs);
+          assignedTurls = waitForOK(thesePendingIDs);
         }
         catch(Exception e){
           throw new IOException("ERROR: problem getting transfers ready confirmation" +
@@ -740,7 +804,15 @@ public class SRMFileTransfer implements FileTransfer {
         // Now, assign the real ids (with TURL not null)
         try{
           for(int i=0; i<srcUrls.length; ++i){
-            turls[i] = new GlobusURL(rs.fileStatuses[i].TURL);
+            if(assignedTurls!=null && assignedTurls[i]!=null){
+              if(assignedTurls[i].equals("Failed")){
+                throw new SRMException("Failed to get TURL.");
+              }
+              turls[i] = new GlobusURL(assignedTurls[i]);
+            }
+            else{
+              turls[i] = new GlobusURL(rs.fileStatuses[i].TURL);
+            }
             ids[i] = pluginName+"-get::"+rs.requestId+"::"+i+"::'"+srcUrls[i].getURL()+"' '"+turls[i].getURL()+
             "' '"+destUrls[0].getURL()+"'";
           }
@@ -752,10 +824,11 @@ public class SRMFileTransfer implements FileTransfer {
         // if no exception was thrown, all is ok and we can set files to "Running"
         for(int i=0; i<srcUrls.length; ++i){
           try{
-            srm.setFileStatus(rs.requestId, i, "Running");
+            srm.setFileStatus(rs.requestId, rs.fileStatuses[i].fileId, "Running");
           }
           catch(Exception e){
-            Debug.debug("WARNING: could not set file to Running. "+turls[i], 3);
+            GridPilot.getClassMgr().getLogFile().addMessage(
+                "WARNING: could not set file to Running. "+turls[i], e);
           }
         }
         // show message on status bar on monitoring frame
@@ -875,12 +948,13 @@ public class SRMFileTransfer implements FileTransfer {
 
   public static int getUrlType(GlobusURL url) throws IOException {
     String prot = url.getProtocol();
-    if(prot != null ) {
+    if(prot!=null ) {
        if(prot.equals("srm")) {
           return SRM_URL;
-       } else if(prot.equals("http")   ||
+       }
+       else if(prot.equals("http") ||
           prot.equals("ftp")    ||
-          prot.equals("gsiftp") ||
+          //prot.equals("gsiftp") ||
           prot.equals("gridftp")||
           prot.equals("https")  ||
           prot.equals("ldap")   ||
@@ -888,7 +962,11 @@ public class SRMFileTransfer implements FileTransfer {
           prot.equals("dcap")   ||
           prot.equals("rfio")) {
           return SUPPORTED_PROTOCOL_URL;
-       } else if(!prot.equals("file")) {
+       }
+       else if(prot.equals("gsiftp")) {
+         return GSIFTP_URL;
+      }
+       else if(!prot.equals("file")) {
           return UNKNOWN_URL;
        }
     }
@@ -919,7 +997,8 @@ public class SRMFileTransfer implements FileTransfer {
     }
     String host = urls[0].getHost();
     int port = urls[0].getPort();
-    if(type ==SRM_URL  || ((type & SUPPORTED_PROTOCOL_URL)==SUPPORTED_PROTOCOL_URL)){
+    if(type ==SRM_URL  || type==GSIFTP_URL ||
+        ((type & SUPPORTED_PROTOCOL_URL)==SUPPORTED_PROTOCOL_URL)){
       if(host==null || host.equals("") || port<0){
         String error = "illegal source url: "+
         urls[0].getURL();
@@ -937,7 +1016,7 @@ public class SRMFileTransfer implements FileTransfer {
           }
           if(!host.equals(urls[i].getHost())){
             String error = "if specifying multiple  sources, "+
-            "all sources must have same host"+
+            "all sources must have same host. "+
             urls[i].getURL();
             Debug.debug(error, 2);
             throw new IllegalArgumentException(error);
@@ -945,7 +1024,7 @@ public class SRMFileTransfer implements FileTransfer {
           if(port!=urls[i].getPort()){
             String error =
               "if specifying multiple  sources, "+
-              "all sources must have same port"+
+              "all sources must have same port. "+
               urls[i] ;
             Debug.debug(error, 2);
             throw new IllegalArgumentException(error);
@@ -971,7 +1050,7 @@ public class SRMFileTransfer implements FileTransfer {
           throw new IllegalArgumentException(error);
         }
         if(areSources && ((thisTypeI & EXISTS_FILE_URL)==0)){
-          String error = "source file does not exists"+
+          String error = "source file does not exist"+
           urls[i].getURL();
           Debug.debug(error, 2);
           throw new IllegalArgumentException(error);
@@ -1043,19 +1122,20 @@ public class SRMFileTransfer implements FileTransfer {
       // TODO: should this be STATUS_WAIT?
       ret = FileTransfer.STATUS_ERROR;
     }
-    else if(ftStatus==null || ftStatus.equalsIgnoreCase("Pending")){
+    else if(ftStatus==null && ftStatus.equalsIgnoreCase("Pending")){
       ret = FileTransfer.STATUS_WAIT;
     }
-    else if(ftStatus==null || ftStatus.equalsIgnoreCase("Ready")){
+    else if(ftStatus==null && (ftStatus.equalsIgnoreCase("Ready") ||
+        status.matches("^\\w+://.*"))){
       ret = FileTransfer.STATUS_WAIT;
     }
-    else if(ftStatus==null || ftStatus.equalsIgnoreCase("Running")){
+    else if(ftStatus==null && ftStatus.equalsIgnoreCase("Running")){
       ret = FileTransfer.STATUS_RUNNING;
     }
-    else if(ftStatus==null || ftStatus.equalsIgnoreCase("Done")){
+    else if(ftStatus==null && ftStatus.equalsIgnoreCase("Done")){
       ret = FileTransfer.STATUS_DONE;
     }
-    else if(ftStatus==null || ftStatus.equalsIgnoreCase("Failed")){
+    else if(ftStatus==null && ftStatus.equalsIgnoreCase("Failed")){
       ret = FileTransfer.STATUS_FAILED;
     }
     else{
