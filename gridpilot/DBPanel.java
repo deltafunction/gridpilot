@@ -834,42 +834,48 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             return;
         }
         Object [][] vals = null;
-        Debug.debug("Searching from cursor "+cursor, 2);
-        if(cursor==-1){
-          res = dbPluginMgr.select(selectRequest, identifier, findAll());
-          if(GridPilot.fileRows>0 && res.values.length>GridPilot.fileRows){
-            vals = new Object [GridPilot.fileRows][];
-            System.arraycopy(res.values, 0, vals, 0, GridPilot.fileRows);
-            bNext.setEnabled(true);
-            bPrevious.setEnabled(false);
-            cursor = 0;
+        if(tableName.equalsIgnoreCase("file")){
+          Debug.debug("Searching from cursor "+cursor, 2);
+          if(cursor==-1){
+            res = dbPluginMgr.select(selectRequest, identifier, findAll());
+            if(GridPilot.fileRows>0 && res.values.length>GridPilot.fileRows){
+              vals = new Object [GridPilot.fileRows][];
+              System.arraycopy(res.values, 0, vals, 0, GridPilot.fileRows);
+              bNext.setEnabled(true);
+              bPrevious.setEnabled(false);
+              cursor = 0;
+            }
+            else{
+              vals = res.values;
+              bNext.setEnabled(false);
+              bPrevious.setEnabled(false);
+              cursor = -1;
+            }
           }
           else{
-            vals = res.values;
-            bNext.setEnabled(false);
-            bPrevious.setEnabled(false);
-            cursor = -1;
+            // we've reached the end
+            if(cursor+GridPilot.fileRows>res.values.length){
+              vals = new Object [res.values.length-cursor][];
+              System.arraycopy(res.values, cursor, vals, 0, res.values.length-cursor);
+              bNext.setEnabled(false);
+              bPrevious.setEnabled(true);
+            }
+            else{
+              vals = new Object [GridPilot.fileRows][];
+              System.arraycopy(res.values, cursor, vals, 0, GridPilot.fileRows);
+              if(res.values.length-cursor>GridPilot.fileRows){
+                bNext.setEnabled(true);
+              }
+              else{
+                bNext.setEnabled(false);
+              }
+              bPrevious.setEnabled(cursor>0);
+            }
           }
         }
         else{
-          // we've reached the end
-          if(cursor+GridPilot.fileRows>res.values.length){
-            vals = new Object [res.values.length-cursor][];
-            System.arraycopy(res.values, cursor, vals, 0, res.values.length-cursor);
-            bNext.setEnabled(false);
-            bPrevious.setEnabled(true);
-          }
-          else{
-            vals = new Object [GridPilot.fileRows][];
-            System.arraycopy(res.values, cursor, vals, 0, GridPilot.fileRows);
-            if(res.values.length-cursor>GridPilot.fileRows){
-              bNext.setEnabled(true);
-            }
-            else{
-              bNext.setEnabled(false);
-            }
-            bPrevious.setEnabled(cursor>0);
-          }
+          res = dbPluginMgr.select(selectRequest, identifier, findAll());
+          vals = res.values;
         }
         Debug.debug("Setting table", 3);
         tableResults.setTable(vals, res.fields);
@@ -1025,9 +1031,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         
         GridPilot.getClassMgr().getGlobalFrame().menuEdit.updateUI();
         statusBar.stopAnimation();
-        statusBar.setLabel("Records found: "+res.values.length+
-            " displaying "+(cursor==-1?"":""+cursor)+" to "+
-            ((cursor==-1?0:cursor)+tableResults.getRowCount()), 20);
+        if(tableName.equalsIgnoreCase("file")){
+          statusBar.setLabel("Records found: "+res.values.length+
+              " displaying "+(cursor==-1?"":""+cursor)+" to "+
+              ((cursor==-1?0:cursor)+tableResults.getRowCount()), 20);
+        }
+        else{
+          statusBar.setLabel("Records found: "+tableResults.getRowCount(), 20);
+        }
         setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         
         if(sortColumn>-1){
