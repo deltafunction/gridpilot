@@ -912,8 +912,8 @@ public class ATLASDatabase implements Database{
         resultVector.add(rset.getString("guid"));
       }
       if(resultVector.size()==0){
-        error = "ERROR: No guid with found for lfn "+lfn;
-        Debug.debug(error, 1);
+        error = "ERROR: No guid found for lfn "+lfn;
+        logFile.addMessage(error);
         throw new SQLException(error);
       }
       else if(resultVector.size()>1){
@@ -1220,61 +1220,91 @@ public class ATLASDatabase implements Database{
     
     String catalogSite = null;
     String catalogServer = null;
+    String catalogName = null;
+    String parentSite = null;
     // Parse TOA file
-    BufferedReader in = new BufferedReader(new InputStreamReader((toaFile.toURL()).openStream()));
+    BufferedReader in = null;
     String line = null;
+    String inLine = null;
+    int count = 0;
     
     Debug.debug("Trying to match "+name, 3);
-    while((line = in.readLine())!=null){
-      // Say, we have a name 'CSCS'; first look for lines like
-      // 'FZKSITES': [ 'FZK', 'FZU', 'CSCS', 'CYF', 'DESY-HH', 'DESY-ZN', 'UNI-FREIBURG', 'WUP' ],
-      // 'FZK': [ 'FZKDISK', 'FZKTAPE' ],
-      if(line.matches("^\\W*(\\w*SITES)\\W*\\s*:\\s*\\[.*\\W+"+name+"\\W+.*")){
-        catalogSite = line.replaceFirst("^\\W*(\\w*SITES)\\W*\\s*:.*", "$1");
-        Debug.debug("Catalog site: "+catalogSite, 3);
+    while(catalogServer==null && count<5){
+      boolean chkSite = false;
+      ++count;
+      in = new BufferedReader(new InputStreamReader((toaFile.toURL()).openStream()));
+      StringBuffer lb = new StringBuffer();
+      while((inLine = in.readLine())!=null){
+        // take care of "lines" split on multiple lines
+        if(inLine.endsWith("',")){
+          lb.append(inLine);
+          continue;
+        }
+        else if(inLine.matches("^\\s*\\#.*")){
+          continue;
+        }
+        else if(lb.length()>0){
+          lb.append(inLine);
+          line = lb.toString();
+          lb.setLength(0);
+        }
+        else{
+          line = inLine;
+        }
+        // Say, we have a name 'CSCS'; first look for lines like
+        // 'FZKSITES': [ 'FZK', 'FZU', 'CSCS', 'CYF', 'DESY-HH', 'DESY-ZN', 'UNI-FREIBURG', 'WUP' ],
+        // 'FZK': [ 'FZKDISK', 'FZKTAPE' ],
+        if(parentSite!=null &&
+            line.matches("^\\W*'(\\w*)':\\s*\\[.*\\W+"+parentSite+"\\W+.*") ||
+            parentSite==null && line.matches("^\\W*'(\\w*)':\\s*\\[.*\\W+"+name+"\\W+.*")){
+          catalogSite = line.replaceFirst("^\\W*'(\\w*)':.*", "$1");
+          Debug.debug("Catalog site: "+catalogSite, 3);
+        }
+        if(line.indexOf("SITES")<0 && line.indexOf("TIER1S")<0 && 
+            line.indexOf("LRC")<0 && line.indexOf("LFC")<0 && (
+                parentSite!=null &&
+                line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+parentSite+"\\W+.*") ||
+                line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+name+"\\W+.*"))
+            ){
+          parentSite = line.replaceFirst("^\\W*(\\w*)\\W*\\s*:.*",
+              "$1");
+          Debug.debug("Parent site: "+parentSite, 3);
+        }
+        if(!chkSite){
+          Debug.debug("Checking: "+catalogSite, 3);
+          chkSite = true;
+        }
+        // Now look for
+        // FZKLFC = 'lfc://lfc-fzk.gridka.de:/grid/atlas/'
+        if(catalogSite!=null &&
+            line.matches("^\\s*\\S+LFC\\s*:.*'"+catalogSite+"'.*")){
+          catalogName = line.replaceFirst("^\\s*(\\S+LFC)\\s*:.*'"+catalogSite+"'.*", "$1");
+          Debug.debug("Catalog name: "+catalogName, 3);
+        }
+        else if(catalogSite!=null &&
+            line.matches("^\\s*\\S+LRC\\s*:.*'"+catalogSite+"'.*")){
+          catalogName = line.replaceFirst("^\\s*(\\S+LRC)\\s*:.*'"+catalogSite+"'.*", "$1");
+          Debug.debug("Catalog name: "+catalogName, 3);
+        }
+        else if(catalogSite!=null &&
+            line.matches("^\\s*\\S+LFC\\s*:.*'"+name+"'.*")){
+          catalogName = line.replaceFirst("^\\s*(\\S+LFC)\\s*:.*'"+name+"'.*", "$1");
+          Debug.debug("Catalog name: "+catalogName, 3);
+        }
+        else if(catalogSite!=null &&
+            line.matches("^\\s*\\S+LRC\\s*:.*'"+name+"'.*")){
+          catalogName = line.replaceFirst("^\\s*(\\S+LRC)\\s*:.*'"+name+"'.*", "$1");
+          Debug.debug("Catalog name: "+catalogName, 3);
+        }
+        else if(catalogName!=null &&
+            line.matches("^\\s*"+catalogName+"\\s*=\\s*'(.+)'.*")){
+          catalogServer = line.replaceFirst("^\\s*"+catalogName+
+              "\\s*=\\s*'(.+)'.*", "$1");
+          Debug.debug("Catalog server: "+catalogServer, 3);
+        }
       }
-      else if(line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+name+"\\W+.*") &&
-          line.indexOf("SITES")<0){
-        catalogSite = line.replaceFirst("^\\W*(\\w*)\\W*\\s*:.*",
-            "$1")+"SITES";
-        Debug.debug("Catalog site: "+catalogSite, 3);
-      }
-      // Now look for
-      // FZKLFC = 'lfc://lfc-fzk.gridka.de:/grid/atlas/'
-      if(catalogSite!=null &&
-          line.matches("^\\s*"+catalogSite.substring(0, catalogSite.length()-5)+
-              "LFC\\s*=\\s*'(.+)'.*")){
-        catalogServer = line.replaceFirst("^\\s*"+catalogSite.substring(0, catalogSite.length()-5)+
-            "LFC\\s*=\\s*'(.+)'.*", "$1");
-        Debug.debug("Catalog server: "+catalogServer, 3);
-        break;
-      }
-      else if(catalogSite!=null &&
-          line.matches("^\\s*"+catalogSite.substring(0, catalogSite.length()-5)+
-              "LRC\\s*=\\s*'(.+)'.*")){
-        catalogServer = line.replaceFirst("^\\s*"+catalogSite.substring(0, catalogSite.length()-5)+
-            "LRC\\s*=\\s*'(.+)'.*", "$1");
-        Debug.debug("Catalog server: "+catalogServer, 3);
-        break;
-      }
-      else if(catalogSite!=null &&
-          line.matches("^\\s*"+name+
-              "LFC\\s*=\\s*'(.+)'.*")){
-        catalogServer = line.replaceFirst("^\\s*"+catalogSite.substring(0, catalogSite.length()-5)+
-            "LFC\\s*=\\s*'(.+)'.*", "$1");
-        Debug.debug("Catalog server: "+catalogServer, 3);
-        break;
-      }
-      else if(catalogSite!=null &&
-          line.matches("^\\s*"+name+
-              "LRC\\s*=\\s*'(.+)'.*")){
-        catalogServer = line.replaceFirst("^\\s*"+catalogSite.substring(0, catalogSite.length()-5)+
-            "LRC\\s*=\\s*'(.+)'.*", "$1");
-        Debug.debug("Catalog server: "+catalogServer, 3);
-        break;
-      }
+      in.close();
     }
-    in.close();
     fileCatalogs.put(name, catalogServer);
     return catalogServer;
   }
@@ -1396,8 +1426,9 @@ public class ATLASDatabase implements Database{
                       finalLocations.get(ii));
                   return;
                 }
-                Debug.debug("Querying "+catalogServer, 2);
-                GridPilot.getClassMgr().getStatusBar().setLabel("Querying "+catalogServer);
+                Debug.debug("Querying "+catalogServer+" for "+lfName, 2);
+                GridPilot.getClassMgr().getStatusBar().setLabel(
+                    "Querying "+catalogServer);
                 try{
                   String [] pfns = getPFNs(catalogServer, lfName, findAll);
                   for(int n=0; n<pfns.length; ++n){
