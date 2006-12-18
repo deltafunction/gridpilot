@@ -22,6 +22,7 @@ import org.globus.ftp.exception.FTPException;
 import org.globus.ftp.exception.ServerException;
 import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
+import org.globus.gsi.gssapi.auth.Authorization;
 import org.globus.io.urlcopy.UrlCopy;
 import org.globus.io.urlcopy.UrlCopyException;
 import org.globus.util.GlobusURL;
@@ -149,7 +150,11 @@ public class GSIFTPFileTransfer implements FileTransfer {
         //Debug.debug(gridFtpClient.quote("PBSZ 16384").getMessage(), 3);
         gridFtpClient.setProtectionBufferSize(16384);
         //Debug.debug(gridFtpClient.quote("DCAU N").getMessage(), 3);// N, A
-        gridFtpClient.setDataChannelAuthentication(DataChannelAuthentication.NONE);
+        try{
+          gridFtpClient.setDataChannelAuthentication(DataChannelAuthentication.NONE);
+        }
+        catch(Exception ee){
+        }
         //Debug.debug(gridFtpClient.quote("PROT C").getMessage(), 3);
         //gridFtpClient.setDataChannelProtection(GridFTPSession.PROTECTION_SAFE);
         //gridFtpClient.quote("PORT 129,194,55,235,35,46");
@@ -928,6 +933,15 @@ public class GSIFTPFileTransfer implements FileTransfer {
         if(srcUrls[i].getProtocol().equalsIgnoreCase("gsiftp") &&
             destUrls[i].getProtocol().equalsIgnoreCase("gsiftp")){
           urlCopy.setUseThirdPartyCopy(true);
+          GridFTPClient srcClient = connect(srcUrls[i].getHost(), srcUrls[i].getPort());
+          GridFTPClient dstClient = connect(destUrls[i].getHost(), destUrls[i].getPort());
+          Authorization srcAuth = srcClient.getAuthorization();
+          Authorization dstAuth = dstClient.getAuthorization();
+          //urlCopy.setDCAU(true);
+          urlCopy.setSourceAuthorization(srcAuth);
+          urlCopy.setDestinationAuthorization(dstAuth);
+          srcClient.close();
+          dstClient.close();
         }
         urlCopy.addUrlCopyListener(urlCopyTransferListener);
         // The transfer id is chosen to be "gsiftp-{get|put|copy}::'srcUrl' 'destUrl'"
