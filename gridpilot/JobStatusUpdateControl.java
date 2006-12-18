@@ -314,8 +314,13 @@ public class JobStatusUpdateControl{
         case ComputingSystem.STATUS_FAILED:
           job.setNeedToBeRefreshed(false);
           datasetMgrs = GridPilot.getClassMgr().getDatasetMgrs();
+          DatasetMgr mgr = null;
           for(Iterator it = datasetMgrs.iterator(); it.hasNext();){
-            ((DatasetMgr) it.next()).jobFailure(job);
+            mgr = ((DatasetMgr) it.next());
+            if(mgr.dbName.equals(job.getDBName())){
+              mgr.jobFailure(job);
+              break;
+            }
           }
           break;
         }
