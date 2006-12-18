@@ -30,6 +30,7 @@ public class GridPilot extends JApplet{
   private static JPanel topExitPanel = new JPanel();
   
   public static String [] preferredFileServers = null;
+  public static int fileRows = 300;
   public static HashMap tmpConfFile = new HashMap();
   public static String logFileName = "gridpilot.log";
   public static String [] jobColorMapping;
@@ -105,8 +106,11 @@ public class GridPilot extends JApplet{
     }
   }
 
+  // TODO: enclose each in try/catch and set sensible default if it fails
   public static void loadConfigValues(){
     try{
+      fileRows = Integer.parseInt(
+          getClassMgr().getConfigFile().getValue("GridPilot", "file rows"));
       preferredFileServers = getClassMgr().getConfigFile().getValues("GridPilot", "preferred file servers");
       proxyHost = getClassMgr().getConfigFile().getValue("GridPilot", "proxy host");
       proxyPort = getClassMgr().getConfigFile().getValue("GridPilot", "proxy port");

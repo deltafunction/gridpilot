@@ -51,6 +51,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bMonitor = new JButton("Monitor job(s)");
   private JButton bDeleteRecord = new JButton("Delete record(s)");
   private JButton bSearch = new JButton("Search");
+  private JButton bNext = new JButton("Next results >>");
+  private JButton bPrevious = new JButton("<< Previous results");
   private JButton bClear = new JButton("Clear");
   private JButton bViewJobDefinitions = new JButton("Show jobDefinition(s)");
   private JButton bViewFiles = new JButton("Show file(s)");
@@ -82,7 +84,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private SubmissionControl submissionControl = null;
   // Import thread semaphore
   private boolean importingFiles = false;
-  
+  private int cursor = -1;
+  private DBResult res = null;
+
   private static String defaultURL;
   
   public JPanel panelSelectPanel = new JPanel(new GridBagLayout());
@@ -313,6 +317,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       public void keyPressed(KeyEvent e){
         switch(e.getKeyCode()){
           case KeyEvent.VK_ENTER:
+            cursor = -1;
             search();
         }
         if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c") ||
@@ -368,10 +373,25 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     // Costumized for each type of table
     bSearch.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
+        cursor = -1;
         search();
       }
     });
     bSearch.setToolTipText("Search results for this request");
+    bNext.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        cursor = cursor+GridPilot.fileRows;
+        search();
+      }
+    });
+    bNext.setToolTipText("Next search results for this request");
+    bPrevious.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        cursor = cursor-GridPilot.fileRows;
+        search();
+      }
+    });
+    bPrevious.setToolTipText("Previous search results for this request");
     bClear.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         clear();
@@ -485,11 +505,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonResultsPanel(bEditRecord);
       //addButtonResultsPanel(bCreateRecords);
       addButtonResultsPanel(bDeleteRecord);
+      // For files, add nex/previous buttons
+      bPrevious.setEnabled(false);
+      bNext.setEnabled(false);
+      addButtonSelectPanel(bPrevious);
+      addButtonSelectPanel(bNext);
+      addButtonSelectPanel(new JLabel("  "));
       // Add tickbox to search panel
       JPanel pFindAll = new JPanel();
       pFindAll.add(new JLabel("Find all PFNs"));
       pFindAll.add(cbFindAllFiles);
       addButtonSelectPanel(pFindAll);
+      addButtonSelectPanel(new JLabel(" "));
       addButtonSelectPanel(bSearch);
       addButtonSelectPanel(bClear);
       bEditRecord.setEnabled(false);
@@ -769,7 +796,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         
     workThread = new Thread(){
       public void run(){
-        for(int i=0; i<3; ++i){
+        for(int i=0; i<1; ++i){
           if(!getWorking()){
             // retry 3 times with 3 seconds in between
             statusBar.setLabel("Busy, please wait...", 2);
@@ -806,10 +833,46 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         if(selectRequest==null){
             return;
         }
-        DBResult res = null;
-        res = dbPluginMgr.select(selectRequest, identifier, findAll());
+        Object [][] vals = null;
+        Debug.debug("Searching from cursor "+cursor, 2);
+        if(cursor==-1){
+          res = dbPluginMgr.select(selectRequest, identifier, findAll());
+          if(GridPilot.fileRows>0 && res.values.length>GridPilot.fileRows){
+            vals = new Object [GridPilot.fileRows][];
+            System.arraycopy(res.values, 0, vals, 0, GridPilot.fileRows);
+            bNext.setEnabled(true);
+            bPrevious.setEnabled(false);
+            cursor = 0;
+          }
+          else{
+            vals = res.values;
+            bNext.setEnabled(false);
+            bPrevious.setEnabled(false);
+            cursor = -1;
+          }
+        }
+        else{
+          // we've reached the end
+          if(cursor+GridPilot.fileRows>res.values.length){
+            vals = new Object [res.values.length-cursor][];
+            System.arraycopy(res.values, cursor, vals, 0, res.values.length-cursor);
+            bNext.setEnabled(false);
+            bPrevious.setEnabled(true);
+          }
+          else{
+            vals = new Object [GridPilot.fileRows][];
+            System.arraycopy(res.values, cursor, vals, 0, GridPilot.fileRows);
+            if(res.values.length-cursor>GridPilot.fileRows){
+              bNext.setEnabled(true);
+            }
+            else{
+              bNext.setEnabled(false);
+            }
+            bPrevious.setEnabled(cursor>0);
+          }
+        }
         Debug.debug("Setting table", 3);
-        tableResults.setTable(res.values, res.fields);
+        tableResults.setTable(vals, res.fields);
         Debug.debug("Done setting table", 3);
 
         bViewFiles.setEnabled(false);
@@ -962,7 +1025,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         
         GridPilot.getClassMgr().getGlobalFrame().menuEdit.updateUI();
         statusBar.stopAnimation();
-        statusBar.setLabel("Records found: "+tableResults.getRowCount(), 20);
+        statusBar.setLabel("Records found: "+res.values.length+
+            " displaying "+(cursor==-1?"":""+cursor)+" to "+
+            ((cursor==-1?0:cursor)+tableResults.getRowCount()), 20);
         setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         
         if(sortColumn>-1){
@@ -2379,7 +2444,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void submit(final ActionEvent e){
     workThread = new Thread(){
       public void run(){
-        for(int i=0; i<3; ++i){
+        for(int i=0; i<1; ++i){
           if(!getWorking()){
             // retry 3 times with 3 seconds in between
             statusBar.setLabel("Busy, please wait...", 2);
