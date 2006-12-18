@@ -123,7 +123,7 @@ public class MySQLDatabase implements Database{
       if(database!=null && database.endsWith("/")){
         String dbName = subject.replaceAll(" ", "_");
         dbName = dbName.replaceAll("/", "|");
-        dbName = dbName.replaceAll(".", "_");
+        dbName = dbName.replaceAll("\\.", "_");
         dbName = dbName.substring(1);
         database = database + dbName;
       }
@@ -224,6 +224,10 @@ public class MySQLDatabase implements Database{
   public String connect() throws SQLException{
     Debug.debug("connectTimeout: "+connectTimeout, 3);
     Debug.debug("socketTimeout: "+socketTimeout, 3);
+    Debug.debug("database: "+database, 3);
+    Debug.debug("gridAuth: "+gridAuth, 3);
+    Debug.debug("user: "+user, 3);
+    Debug.debug("passwd: "+passwd, 3);
     conn = Util.sqlConnection(driver, database, user, passwd, gridAuth,
         connectTimeout, socketTimeout);
     return "";
