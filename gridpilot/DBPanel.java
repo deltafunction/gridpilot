@@ -1033,7 +1033,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         statusBar.stopAnimation();
         if(tableName.equalsIgnoreCase("file")){
           statusBar.setLabel("Records found: "+res.values.length+
-              " displaying "+(cursor==-1?"":""+cursor)+" to "+
+              ". Displaying "+(cursor==-1?"1":""+(cursor+1))+" to "+
               ((cursor==-1?0:cursor)+tableResults.getRowCount()), 20);
         }
         else{
