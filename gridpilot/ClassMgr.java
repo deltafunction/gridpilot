@@ -1,7 +1,12 @@
 package gridpilot;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Properties;
 import java.util.Vector;
 
 import javax.swing.JComboBox;
@@ -11,6 +16,7 @@ import javax.swing.JPanel;
 
 import org.globus.common.CoGProperties;
 import org.ietf.jgss.GSSCredential;
+import org.logicalcobwebs.proxool.ProxoolFacade;
 
 import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 
@@ -42,6 +48,9 @@ public class ClassMgr{
   private Vector urlList = new Vector();
   private HashMap shellMgrs = new HashMap();
   private static String caCertsTmpdir = null;
+  private static String DEFAULT_POOL_SIZE = "10";
+  // list of urls in db pool
+  private HashSet dbURLs = new HashSet();
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
   public GSSCredential credential = null;
@@ -474,6 +483,106 @@ public class ClassMgr{
       gsiftpFileSystem = new GSIFTPFileTransfer();
     }
     return gsiftpFileSystem;
+  }
+  
+  //timeouts in milliseconds
+  public void sqlConnection(String dbName, String driver, String databaseUrl,
+      String user, String passwd, boolean gridAuth, String connectionTimeout,
+      String socketTimeout, String _poolSize) throws SQLException{
+    
+    if(dbURLs.contains(dbName)){
+      return;
+    }
+    
+    Debug.debug("connectTimeout: "+connectionTimeout, 3);
+    Debug.debug("socketTimeout: "+socketTimeout, 3);
+    Debug.debug("database: "+databaseUrl, 3);
+    Debug.debug("gridAuth: "+gridAuth, 3);
+    Debug.debug("user: "+user, 3);
+    Debug.debug("passwd: "+passwd, 3);   
+
+    String poolSize = _poolSize==null?DEFAULT_POOL_SIZE:_poolSize;
+    Properties info = new Properties();
+        
+    try{
+      if(gridAuth){
+        /*url = database+
+            "?user="+user+"&password=&useSSL=true"+
+                    "&connectionTimeout="+connectTimeout+
+                    "&socketTimeout="+socketTimeout;*/
+        info.setProperty("user", user);
+        info.setProperty("password", "");
+        info.setProperty("useSSL", "true");
+        if(connectionTimeout!=null){
+          info.setProperty("connectionTimeout", connectionTimeout);
+        }
+        if(socketTimeout!=null){
+          info.setProperty("socketTimeout", socketTimeout);
+        }
+      }
+      else{
+        /*url = database+
+            "?user="+user+"&password="+passwd+
+            "&connectionTimeout="+connectTimeout+
+            "&socketTimeout="+socketTimeout;*/
+        info.setProperty("user", user);
+        info.setProperty("password", passwd);
+        if(connectionTimeout!=null){
+          info.setProperty("connectionTimeout", connectionTimeout);
+        }
+        if(socketTimeout!=null){
+          info.setProperty("socketTimeout", socketTimeout);
+        }
+      }
+    }
+    catch(Exception e){
+      String error = "Could not connect to database "+databaseUrl+
+          " with "+user+":"+passwd;
+      e.printStackTrace();
+      throw new SQLException(error);
+    }  
+    
+    try{
+      Class.forName("org.logicalcobwebs.proxool.ProxoolDriver");
+      info.setProperty("proxool.maximum-connection-count", poolSize);
+      info.setProperty("proxool.house-keeping-test-sql", "select CURRENT_DATE");
+      info.setProperty("verbose", "false");
+      //String url = "jdbc:hsqldb:test";
+      String proxoolUrl = "proxool." + dbName + ":" + driver + ":" + databaseUrl;
+      ProxoolFacade.registerConnectionPool(proxoolUrl, info);
+
+      //Class.forName(driver).newInstance();
+    }
+    catch(Exception e){
+      String error = "Could not load the driver "+driver+". ";
+      GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+      Debug.debug(error, 1);
+      e.printStackTrace();
+      throw new SQLException(error);
+    }
+    
+    dbURLs.add(dbName);
+    
+  }
+  
+  public Connection getDBConnection(String dbName){
+    Connection conn = null;
+    try {
+      conn = DriverManager.getConnection("proxool."+dbName);
+    }
+    catch(SQLException e) {
+      e.printStackTrace();
+      GridPilot.getClassMgr().getLogFile().addMessage(
+          "ERROR: failed connecting to database "+dbName, e);
+    }
+    try{
+      conn.setAutoCommit(true);
+    }
+    catch(Exception e){
+      GridPilot.getClassMgr().getLogFile().addMessage(
+          "failed setting auto commit to true: "+e.getMessage());
+    }
+    return conn;
   }
 
 }

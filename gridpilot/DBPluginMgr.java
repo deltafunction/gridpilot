@@ -2160,34 +2160,6 @@ public class DBPluginMgr implements Database{
     }
   }
 
-  public String connect(){
-  
-    MyThread t = new MyThread(){
-      String res = null;
-      public void run(){
-        try{
-          res = db.connect();
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName, t);
-        }
-      }
-      public String getStringRes(){
-        return res;
-      }
-    };
-  
-    t.start();
-  
-    if(Util.waitForThread(t, dbName, dbTimeOut, "connect")){
-      return t.getStringRes();
-    }
-    else{
-      return null;
-    }
-  }
-
   public void disconnect(){
   
     MyThread t = new MyThread(){

@@ -12,7 +12,6 @@ public interface Database{
   public static final int ABORTED = 6;
   public static final int UNEXPECTED = 7;
   
-  public String connect() throws SQLException;
   public void disconnect();
   // TODO: implement in plugins and make menu point active.
   public void clearCaches();

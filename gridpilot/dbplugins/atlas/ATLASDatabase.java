@@ -71,6 +71,9 @@ public class ATLASDatabase implements Database{
   // catalog sites are registered in DQ than the home catalog or if there
   // is no home catalog set.
   private boolean forceDelete = false;
+  private static String connectTimeout = "10000";
+  private static String socketTimeout = "30000";
+
 
   public ATLASDatabase(String _dbName){
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
@@ -167,10 +170,6 @@ public class ATLASDatabase implements Database{
     return false;
   }
   
-  public String connect(){
-    return null;
-  }
-
   public void disconnect(){
   }
 
@@ -900,7 +899,11 @@ public class ATLASDatabase implements Database{
         user = Util.getGridDatabaseUser();
       }
       // Make the connection
-      Connection conn = Util.sqlConnection(driver, database, user, passwd, gridAuth);
+      // we use the database url as alias
+      GridPilot.getClassMgr().sqlConnection(
+          database, driver, database, user, passwd, gridAuth,
+          connectTimeout, socketTimeout, "3");
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       // First query the t_lfn table to get the guid
       String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
       ResultSet rset = null;
@@ -985,7 +988,10 @@ public class ATLASDatabase implements Database{
         user = Util.getGridDatabaseUser();
       }
       // Make the connection
-      Connection conn = Util.sqlConnection(driver, database, user, passwd, gridAuth);
+      GridPilot.getClassMgr().sqlConnection(
+          database, driver, database, user, passwd, gridAuth,
+          connectTimeout, socketTimeout, "3");
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       String lfn = null;
       int rowsAffected = 0;
       for(int i=0; i<lfns.length; ++i){
@@ -1071,7 +1077,10 @@ public class ATLASDatabase implements Database{
         user = Util.getGridDatabaseUser();
       }
       // Make the connection
-      Connection conn = Util.sqlConnection(driver, database, user, passwd, gridAuth);
+      GridPilot.getClassMgr().sqlConnection(
+          database, driver, database, user, passwd, gridAuth,
+          connectTimeout, socketTimeout, "3");
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       String lfn = null;
       int rowsAffected = 0;
       for(int i=0; i<lfns.length; ++i){
@@ -1147,7 +1156,10 @@ public class ATLASDatabase implements Database{
         user = Util.getGridDatabaseUser();
       }
       // Make the connection
-      Connection conn = Util.sqlConnection(driver, database, user, passwd, gridAuth);
+      GridPilot.getClassMgr().sqlConnection(
+          database, driver, database, user, passwd, gridAuth,
+          connectTimeout, socketTimeout, "3");
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       int rowsAffected = 0;
       String req = null;
       // Do the insertions in t_lfn and t_pfn

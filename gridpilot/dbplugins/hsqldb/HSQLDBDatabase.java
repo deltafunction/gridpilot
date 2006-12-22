@@ -11,7 +11,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
@@ -19,6 +18,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 
 import org.hsqldb.Server;
+import org.logicalcobwebs.proxool.ProxoolFacade;
 import org.safehaus.uuid.UUIDGenerator;
 
 import gridpilot.ConfigFile;
@@ -38,7 +38,6 @@ public class HSQLDBDatabase implements Database{
   private String database = "";
   private String user = "";
   private String passwd = "";
-  private Connection conn = null;
   private String error = "";
   private Server server = null;
   private String [] transformationFields = null;
@@ -54,8 +53,11 @@ public class HSQLDBDatabase implements Database{
   private ConfigFile configFile = null;
   private boolean fileCatalog = false;
   private boolean jobRepository = false;
+  private Connection getFieldNamesConn = null;
+  private Connection selectConn = null;
   
   private static String SERVER_RUNNING = "no";
+  private static String MAX_CONNECTIONS = "15";
 
   public HSQLDBDatabase(String _dbName,
       String _driver, String _database, String _user, String _passwd){
@@ -188,8 +190,11 @@ public class HSQLDBDatabase implements Database{
     try{
       if(database.startsWith("file:")){
         // In-memory database
-        conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
-           user, passwd);
+        //conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
+        //   user, passwd);
+        GridPilot.getClassMgr().sqlConnection(
+            dbName, driver, "jdbc:hsqldb:"+database, user, passwd,
+            false, null, null, MAX_CONNECTIONS);
       }
       else if(database.startsWith("hsql:")){
         synchronized(SERVER_RUNNING){
@@ -216,8 +221,11 @@ public class HSQLDBDatabase implements Database{
             database = "hsql://localhost/"+databaseName;
             SERVER_RUNNING = "yes";
           }
-          conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
-              user, passwd);
+          //conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
+          //    user, passwd);
+          GridPilot.getClassMgr().sqlConnection(
+              dbName, driver, "jdbc:hsqldb:"+database, user, passwd,
+              false, null, null, MAX_CONNECTIONS);
         }
       }
     }
@@ -226,13 +234,9 @@ public class HSQLDBDatabase implements Database{
           ", "+user+", "+passwd+" : "+e, 3);
       e.printStackTrace();
       return null;
-    }  
-    try{
-      conn.setAutoCommit(true);
     }
-    catch(Exception e){
-      Debug.debug("failed setting auto commit to true: "+e.getMessage(), 2);
-    }
+    getFieldNamesConn = GridPilot.getClassMgr().getDBConnection(dbName);
+    selectConn = GridPilot.getClassMgr().getDBConnection(dbName);
     return "";
   }
   
@@ -284,6 +288,8 @@ public class HSQLDBDatabase implements Database{
       return false;
     }
     
+    Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+
     String [] fields = Util.split(configFile.getValue(dbName, table+" field names"), ",");
     String [] fieldTypes = Util.split(configFile.getValue(dbName, table+" field types"), ",");
     if(fields==null || fieldTypes==null){
@@ -319,7 +325,6 @@ public class HSQLDBDatabase implements Database{
       try{
         Statement stmt = conn.createStatement();
         Debug.debug("Altering table. "+sql1, 1);
-        stmt = conn.createStatement();
         stmt.executeUpdate(sql1);
       }
       catch(Exception e){
@@ -334,7 +339,6 @@ public class HSQLDBDatabase implements Database{
       try{
         Statement stmt = conn.createStatement();
         Debug.debug("Altering table. "+sql1, 1);
-        stmt = conn.createStatement();
         stmt.executeUpdate(sql1);
       }
       catch(Exception e){
@@ -343,6 +347,12 @@ public class HSQLDBDatabase implements Database{
         e.printStackTrace();
         error = e.getMessage();
       }
+    }
+    try{
+      conn.close();
+    }
+    catch (SQLException e) {
+      e.printStackTrace();
     }
     return execok;
   }
@@ -358,8 +368,10 @@ public class HSQLDBDatabase implements Database{
         "WHERE "+idField+" = '"+jobDefID+"'";
     boolean ok = true;
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
+      conn.close();
     }
     catch(Exception e){
       error = e.getMessage();
@@ -372,30 +384,37 @@ public class HSQLDBDatabase implements Database{
     try{
       if(server!=null){
         try{
+          getFieldNamesConn.close();
+          selectConn.close();
+          Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
           Statement stmt = conn.createStatement();
           stmt.executeUpdate("SHUTDOWN");
+          conn.close();
         }
         catch(Exception e){
           Debug.debug("Shutting down server failed. "+
               e.getCause().toString()+"\n"+e.getMessage(),1);
         }
-        conn.close();
         server.stop();
         SERVER_RUNNING = "no";
       }
       else{
         try{
+          getFieldNamesConn.close();
+          selectConn.close();
+          Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
           Statement stmt = conn.createStatement();
           stmt.executeUpdate("SHUTDOWN COMPACT");
+          conn.close();
+          ProxoolFacade.killAllConnections(dbName, "User forced reconnect", false);
         }
         catch(Exception e){
           Debug.debug("Compacting database failed. "+
               e.getCause().toString()+"\n"+e.getMessage(),1);
         }
-        conn.close();
       }
     }
-    catch(SQLException e){
+    catch(Exception e){
       Debug.debug("Closing connection failed. "+
           e.getCause().toString()+"\n"+e.getMessage(),1);
     }
@@ -420,7 +439,7 @@ public class HSQLDBDatabase implements Database{
       return null;
     }
     //return new String [] {"dsn", "lfn", "pfns", "guid"};
-    Statement stmt = conn.createStatement();
+    Statement stmt = getFieldNamesConn.createStatement();
     // TODO: Do we need to execute a query to get the metadata?
     ResultSet rset = stmt.executeQuery("SELECT LIMIT 0 1 * FROM "+table);
     ResultSetMetaData md = rset.getMetaData();
@@ -441,6 +460,7 @@ public class HSQLDBDatabase implements Database{
     String id = null;
     Vector vec = new Vector();
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -454,7 +474,8 @@ public class HSQLDBDatabase implements Database{
               transName, 1);
         }
       }
-      rset.close();  
+      rset.close();
+      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
@@ -481,6 +502,7 @@ public class HSQLDBDatabase implements Database{
     String id = null;
     Vector vec = new Vector();
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -494,7 +516,8 @@ public class HSQLDBDatabase implements Database{
               name, 1);
         }
       }
-      rset.close();  
+      rset.close();
+      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
@@ -643,6 +666,7 @@ public class HSQLDBDatabase implements Database{
     Vector vec = new Vector();
     Debug.debug(req, 2);
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -660,7 +684,8 @@ public class HSQLDBDatabase implements Database{
           Debug.debug("WARNING: identifier null", 1);
         }
       }
-      rset.close();  
+      rset.close();
+      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
@@ -766,7 +791,7 @@ public class HSQLDBDatabase implements Database{
     Debug.debug(">>> sql string was : "+req, 3);
     
     try{
-      Statement stmt = conn.createStatement();
+      Statement stmt = selectConn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       ResultSetMetaData md = rset.getMetaData();
       String[] fields = new String[md.getColumnCount()];
@@ -882,6 +907,7 @@ public class HSQLDBDatabase implements Database{
     req += " FROM dataset";
     req += " WHERE "+idField+" = '"+ datasetID+"'";
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
       Vector datasetVector = new Vector();
@@ -902,6 +928,7 @@ public class HSQLDBDatabase implements Database{
         datasetVector.add(jobd);
       }
       rset.close();
+      conn.close();
       if(datasetVector.size()==0){
         Debug.debug("ERROR: No dataset with id "+datasetID, 1);
       }
@@ -939,6 +966,7 @@ public class HSQLDBDatabase implements Database{
     String id = null;
     Vector vec = new Vector();
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -952,7 +980,8 @@ public class HSQLDBDatabase implements Database{
               datasetName, 1);
         }
       }
-      rset.close();  
+      rset.close();
+      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
@@ -989,6 +1018,7 @@ public class HSQLDBDatabase implements Database{
     req += " FROM runtimeEnvironment";
     req += " WHERE "+idField+" = '"+ runtimeEnvironmentID+"'";
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
       Vector runtimeEnvironmentVector = new Vector();
@@ -1010,6 +1040,8 @@ public class HSQLDBDatabase implements Database{
         //Debug.debug("Added value "+((DBRecord) runtimeEnvironmentVector.get(i)).getAt(0), 3);
         ++i;
       }
+      rset.close();
+      conn.close();
       if(i==0){
         Debug.debug("ERROR: No runtime environment found with id "+runtimeEnvironmentID, 1);
       }
@@ -1040,6 +1072,7 @@ public class HSQLDBDatabase implements Database{
     req += " FROM transformation";
     req += " WHERE "+idField+" = '"+ transformationID+"'";
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
       Vector transformationVector = new Vector();
@@ -1061,6 +1094,8 @@ public class HSQLDBDatabase implements Database{
         //Debug.debug("Added value "+((DBRecord) transformationVector.get(i)).getAt(0), 3);
         ++i;
       }
+      rset.close();
+      conn.close();
       if(i==0){
         Debug.debug("ERROR: No transformation found with id "+transformationID, 1);
       }
@@ -1100,6 +1135,7 @@ public class HSQLDBDatabase implements Database{
       }
       req += " FROM runtimeEnvironment";
       Debug.debug(req, 3);
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       rset = conn.createStatement().executeQuery(req);
       Vector runtimeEnvironmentVector = new Vector();
       String [] jt = new String[runtimeEnvironmentFields.length];
@@ -1120,6 +1156,8 @@ public class HSQLDBDatabase implements Database{
         //Debug.debug("Added value "+((DBRecord) runtimeEnvironmentVector.get(i)).getAt(0), 3);
         ++i;
       }
+      rset.close();
+      conn.close();
       allRuntimeEnvironmentRecords = new DBRecord[i];
       for(int j=0; j<i; ++j){
         allRuntimeEnvironmentRecords[j] = ((DBRecord) runtimeEnvironmentVector.get(j));
@@ -1149,6 +1187,7 @@ public class HSQLDBDatabase implements Database{
       }
       req += " FROM transformation";
       Debug.debug(req, 3);
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       rset = conn.createStatement().executeQuery(req);
       Vector transformationVector = new Vector();
       String [] jt = new String[transformationFields.length];
@@ -1167,6 +1206,8 @@ public class HSQLDBDatabase implements Database{
         transformationVector.add(new DBRecord(transformationFields, jt));
         ++i;
       }
+      rset.close();
+      conn.close();
       allTransformationRecords = new DBRecord[i];
       for(int j=0; j<i; ++j){
         allTransformationRecords[j] = ((DBRecord) transformationVector.get(j));
@@ -1191,6 +1232,7 @@ public class HSQLDBDatabase implements Database{
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -1219,6 +1261,7 @@ public class HSQLDBDatabase implements Database{
         jobdefv.add(jobd);
       }
       rset.close();
+      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -1254,6 +1297,7 @@ public class HSQLDBDatabase implements Database{
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -1283,7 +1327,7 @@ public class HSQLDBDatabase implements Database{
       
       };
       rset.close();
-    
+      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -1400,9 +1444,11 @@ public class HSQLDBDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
+      conn.close();
     }
     catch(Exception e){
       execok = false;
@@ -1459,9 +1505,11 @@ public class HSQLDBDatabase implements Database{
       Debug.debug(arg, 3);
       boolean execok = true;
       try{
+        Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
         Statement stmt = conn.createStatement();
         stmt.executeUpdate(arg);
         conn.commit();
+        conn.close();
       }
       catch(Exception e){
         execok = false;
@@ -1597,9 +1645,11 @@ public class HSQLDBDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
+      conn.close();
     }
     catch(Exception e){
       execok = false;
@@ -1644,9 +1694,11 @@ public class HSQLDBDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
+      conn.close();
     }
     catch(Exception e){
       execok = false;
@@ -1694,9 +1746,11 @@ public class HSQLDBDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
+      conn.close();
     }
     catch(Exception e){
       execok = false;
@@ -1724,9 +1778,11 @@ public class HSQLDBDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
+      conn.close();
     }
     catch(Exception e){
       execok = false;
@@ -1806,10 +1862,11 @@ public class HSQLDBDatabase implements Database{
     sql += " WHERE "+idField+"="+jobDefID;
     Debug.debug(sql, 2);
     boolean execok = true;
-    try{
+    try{Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
+      conn.close();
     }
     catch(Exception e){
       execok = false;
@@ -1875,8 +1932,11 @@ public class HSQLDBDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
+      conn.commit();
+      conn.close();
     }
     catch(Exception e){
       execok = false;
@@ -1944,8 +2004,11 @@ public class HSQLDBDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
+      conn.commit();
+      conn.close();
     }
     catch(Exception e){
       execok = false;
@@ -2013,8 +2076,11 @@ public class HSQLDBDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
+      conn.commit();
+      conn.close();
     }
     catch(Exception e){
       execok = false;
@@ -2068,8 +2134,11 @@ public class HSQLDBDatabase implements Database{
       String sql = "DELETE FROM jobDefinition WHERE "+idField+" = '"+
       jobDefId+"'";
       Debug.debug(sql, 3);
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
+      conn.commit();
+      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2094,8 +2163,11 @@ public class HSQLDBDatabase implements Database{
     try{
     String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
       datasetID+"'";
+    Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
+      conn.commit();
+      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2109,10 +2181,13 @@ public class HSQLDBDatabase implements Database{
     String [] refFields = Util.getJobDefDatasetReference(dbName);
     boolean ok = true;
     try{
-    String sql = "DELETE FROM jobDefinition WHERE "+refFields[1]+" = '"+
+      String sql = "DELETE FROM jobDefinition WHERE "+refFields[1]+" = '"+
       getDatasetName(datasetID)+"'";
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
+      conn.commit();
+      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
@@ -2125,10 +2200,13 @@ public class HSQLDBDatabase implements Database{
     String idField = Util.getIdentifierField(dbName, "transformation");
     boolean ok = true;
     try{
-    String sql = "DELETE FROM transformation WHERE "+idField+" = '"+
+      String sql = "DELETE FROM transformation WHERE "+idField+" = '"+
       transformationID+"'";
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
+      conn.commit();
+      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2142,10 +2220,13 @@ public class HSQLDBDatabase implements Database{
     String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
     boolean ok = true;
     try{
-    String sql = "DELETE FROM runtimeEnvironment WHERE "+idField+" = '"+
+      String sql = "DELETE FROM runtimeEnvironment WHERE "+idField+" = '"+
       runtimeEnvironmentID+"'";
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
+      conn.commit();
+      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2165,6 +2246,7 @@ public class HSQLDBDatabase implements Database{
     Debug.debug(req, 2);
     String version;
     try{
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -2178,7 +2260,8 @@ public class HSQLDBDatabase implements Database{
               rset.getInt(idField), 1);
         }
       }
-      rset.close();  
+      rset.close();
+      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
@@ -2236,8 +2319,10 @@ public class HSQLDBDatabase implements Database{
   
   public DBRecord getFile(String datasetName, String fileID){
     String [] fields = null;
+    Connection conn = null;
     try{
       fields = getFieldNames("file");
+      conn = GridPilot.getClassMgr().getDBConnection(dbName);
     }
     catch(Exception e){
       e.printStackTrace();
@@ -2262,7 +2347,7 @@ public class HSQLDBDatabase implements Database{
                 Util.getValues(conn, "t_lfn", "guid", fileID, new String [] {"lfname"})[0][0]);
           }
           else if(fields[i].equalsIgnoreCase("pfname")){
-            String [][] res = Util.getValues(conn, "t_pfn", "guid", fileID, new String [] {"pfname"});
+            String [][] res = Util.getValues(GridPilot.getClassMgr().getDBConnection(dbName), "t_pfn", "guid", fileID, new String [] {"pfname"});
             String [] pfns = new String [res.length];
             for(int j=0; j<res.length; ++j){
               pfns[j] = res[j][0];
@@ -2320,30 +2405,14 @@ public class HSQLDBDatabase implements Database{
         }
       }
     }
+    try{
+      conn.close();
+    }
+    catch(SQLException e){
+     e.printStackTrace();
+    }
     return file;
   }
-
-  /*public DBResult getFiles(String datasetID){
-    String datasetName = getDatasetName(datasetID);
-    String identifier = isFileCatalog() ? "guid" : "identifier";
-    // get all unique guid's
-    HashSet uidsSet = new HashSet();
-    DBResult res = select("SELECT * FROM file WHERE vuid = "+datasetID, identifier, true);
-    for(int i=0; i<res.values.length; ++i){
-      uidsSet.add(res.getValue(i, identifier));
-    }
-    String [] fields = getFieldNames("file");
-    String [][] values = new String [uidsSet.size()][fields.length];
-    int i=0;
-    for(Iterator it=uidsSet.iterator(); it.hasNext();){
-      Object [] vals = getFile(datasetName, ((String) it.next())).values;
-      for(int j=0; j<fields.length; ++j){
-        values[i][j] = (String) vals[j];
-      }
-      ++i;
-    }
-    return new DBResult(fields, values);
-  }*/
 
   // Take different actions depending on whether or not
   // t_lfn, etc. are present
@@ -2508,19 +2577,23 @@ public class HSQLDBDatabase implements Database{
     String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
     url + "', '" + fileID +"')";
     Debug.debug(sql, 2);
+    Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
     Statement stmt = conn.createStatement();
     stmt.executeUpdate(sql);
     conn.commit();
+    conn.close();
   }
   
   // This is only to be used if this is a file catalog.
   private synchronized boolean createFile(String datasetName, String fileID,
       String lfn, String url){
+    Connection conn = null;
     String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
     url + "', '" + fileID + "'); ";
     Debug.debug(sql, 2);
     boolean execok1 = true;
     try{
+      conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -2554,6 +2627,7 @@ public class HSQLDBDatabase implements Database{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
+      conn.close();
     }
     catch(Exception e){
       execok3 = false;
@@ -2565,6 +2639,7 @@ public class HSQLDBDatabase implements Database{
 
   public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) {
     if(isFileCatalog()){
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       LogFile logFile = GridPilot.getClassMgr().getLogFile();
       boolean ok = true;
       Debug.debug("Deleting files "+Util.arrayToString(fileIDs), 2);
@@ -2619,6 +2694,12 @@ public class HSQLDBDatabase implements Database{
           ok = false;
         }
       }
+      try{
+        conn.close();
+      }
+      catch(SQLException e){
+        e.printStackTrace();
+      }
       return ok;
     }
     else{
@@ -2629,15 +2710,31 @@ public class HSQLDBDatabase implements Database{
 
   private synchronized String getFileID(String lfn){
     if(isFileCatalog()){
-      return Util.getValues(conn, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      String ret = Util.getValues(conn, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
+      try{
+        conn.close();
+      }
+      catch(SQLException e){
+        e.printStackTrace();
+      }
+      return ret;
     }
     else if(isJobRepository()){
       // an autoincremented integer is of no use... Except for when pasting:
       // then we need it to get the pfns.
       String nameField = Util.getNameField(dbName, "jobDefinition");
       String idField = Util.getIdentifierField(dbName, "jobDefinition");
-      return Util.getValues(conn, "jobDefinition", nameField, lfn,
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      String ret = Util.getValues(conn, "jobDefinition", nameField, lfn,
           new String [] {idField})[0][0];
+      try{
+        conn.close();
+      }
+      catch(SQLException e){
+        e.printStackTrace();
+      }
+      return ret;
     }
     else{
       return null;

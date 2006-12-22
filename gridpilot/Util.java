@@ -37,7 +37,6 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -1226,70 +1225,6 @@ public class Util{
     out.close();
   }
 
-  public static Connection sqlConnection(String driver, String database,
-      String user, String passwd, boolean gridAuth) throws SQLException{
-    return sqlConnection(driver, database,
-        user, passwd, gridAuth, null, null);
-  }
-
-  public static Connection sqlConnection(String driver, String database,
-      String user, String passwd, boolean gridAuth, String _connectTimeout,
-      String _socketTimeout) throws SQLException{
-    Connection conn = null;
-    // timeouts in milliseconds
-    String connectTimeout = null;
-    String socketTimeout = null;
-    if(_connectTimeout==null){
-      connectTimeout = "10000";
-    }
-    else{
-      connectTimeout = _connectTimeout;
-    }
-    if(_socketTimeout==null){
-      socketTimeout = "30000";
-    }
-    else{
-      socketTimeout = _socketTimeout;
-    }
-    try{
-      Class.forName(driver).newInstance();
-    }
-    catch(Exception e){
-      String error = "Could not load the driver "+driver+". ";
-      GridPilot.getClassMgr().getLogFile().addMessage(error, e);
-      Debug.debug(error, 1);
-      e.printStackTrace();
-      throw new SQLException(error);
-    }
-    try{
-      if(gridAuth){
-        conn = DriverManager.getConnection(database+
-            "?user="+user+"&password=&useSSL=true"+
-                    "&connectionTimeout="+connectTimeout+
-                    "&socketTimeout="+socketTimeout);
-      }
-      else{
-        conn = DriverManager.getConnection(database+
-            "?user="+user+"&password="+passwd+
-            "&connectionTimeout="+connectTimeout+
-            "&socketTimeout="+socketTimeout);
-      }
-    }
-    catch(Exception e){
-      String error = "Could not connect to database "+database+
-          " with "+user+":"+passwd;
-      e.printStackTrace();
-      throw new SQLException(error);
-    }  
-    try{
-      conn.setAutoCommit(true);
-    }
-    catch(Exception e){
-      Debug.debug("failed setting auto commit to true: "+e.getMessage(), 2);
-    }
-    return conn;
-  }
-  
   public static int showResult(String [] cstAttrNames, String [] cstAttr, String title,
       int moreThanOne){
     
