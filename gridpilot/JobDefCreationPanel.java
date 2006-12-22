@@ -20,7 +20,6 @@ import java.util.*;
 public class JobDefCreationPanel extends CreateEditPanel{
 
   private static final long serialVersionUID = 1L;
-  protected DatasetMgr datasetMgr;
   protected JScrollPane spAttributes = new JScrollPane();
   protected String jobDefinitionID = "-1";
   protected Table table;
@@ -47,24 +46,23 @@ public class JobDefCreationPanel extends CreateEditPanel{
   public JobDefCreationPanel(
       /*this is in case DBPanel was opened from the menu and _datasetMgr is null*/
       String _dbName,
-      DatasetMgr _datasetMgr,
+      String _datasetID,
       DBPanel _panel,
       Boolean bEditing){
     
     editing = bEditing.booleanValue();
-    datasetMgr = _datasetMgr;
     dbName = _dbName;
     panel = _panel;
     table = panel.getTable();
+    
+    dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
 
-    if(datasetMgr!=null){
-      dbPluginMgr = datasetMgr.getDBPluginMgr();
-      datasetID = datasetMgr.getDatasetID();
-      datasetName = datasetMgr.getDatasetName();
+    if(_datasetID!=null && _datasetID.length()>0){
+      datasetID = _datasetID;
+      datasetName = dbPluginMgr.getDatasetName(datasetID);
     }
     else{
       datasetID = "-1";
-      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
       datasetName = "";
     }
 

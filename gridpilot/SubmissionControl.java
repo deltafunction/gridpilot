@@ -231,6 +231,11 @@ public class SubmissionControl{
    * These jobs are put in toSubmitJobs. <p>
    */
   private void queue(Vector jobs){
+    
+    if(jobs==null || jobs.size()==0){
+      return;
+    }
+    
     if(isRand!=null && isRand.equalsIgnoreCase("yes")){
       jobs = Util.shuffle(jobs);
     }
@@ -247,8 +252,13 @@ public class SubmissionControl{
       statusBar.setProgressBar(pbSubmission);
       isProgressBarSet = true;
     }
-    DatasetMgr.updateDBCells(jobs, statusTable);
-    DatasetMgr.updateJobCells(jobs, statusTable);
+    
+    JobInfo job = (JobInfo) jobs.get(0);
+    
+    DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName());
+    
+    datasetMgr.updateDBCells(jobs);
+    datasetMgr.updateJobCells(jobs);
     toSubmitJobs.addAll(jobs);
     if(!timer.isRunning()){
       timer.restart();
@@ -268,7 +278,7 @@ public class SubmissionControl{
 
     boolean askSave = false;
     boolean deleteFiles = false;
-    statusBar.setLabel("Cleaning up jobs...");
+    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Cleaning up jobs...");
     for(int i=0; i<jobs.size() ; ++i){
 
       JobInfo job = (JobInfo) jobs.get(i);
@@ -409,13 +419,15 @@ public class SubmissionControl{
       }
     }
     Vector submitables = new Vector();
-    statusBar.setLabel("Updating job status...");
+    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Updating job status...");
+    
+    JobInfo job = null;
+    DatasetMgr datasetMgr = null;
+    
     while(jobs.size()>0){
-      JobInfo job = (JobInfo) jobs.remove(0);
+      job = (JobInfo) jobs.remove(0);
       //jobControl.updateDBStatus(job, DBPluginMgr.SUBMITTED);
-      DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
-          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
-              job.getJobDefId()));
+      datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName());
       // first clean up old job
       datasetMgr.getDBPluginMgr().cleanRunInfo(job.getJobDefId());
       GridPilot.getClassMgr().getCSPluginMgr().clearOutputMapping(job);
@@ -436,9 +448,10 @@ public class SubmissionControl{
         submitables.add(job);
       }
     }
-    DatasetMgr.updateJobCells(submitables, statusTable);
+
+    datasetMgr.updateJobCells(submitables);
     // if all went well we can now submit
-    statusBar.setLabel("Submitting jobs...");
+    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Submitting jobs...");
     queue(submitables);
   }
 
@@ -478,9 +491,7 @@ public class SubmissionControl{
         " : "+job.getTableRow()+" : "+iconSubmitting, 3);
     statusTable.setValueAt(iconSubmitting, job.getTableRow(),
         DatasetMgr.FIELD_CONTROL);
-    DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
-        GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
-            job.getJobDefId()));
+    DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName());
     if(csPluginMgr.preProcess(job) && csPluginMgr.submit(job)){
       Debug.debug("Job " + job.getName() + " submitted : \n" +
                   "\tCSJobId = " + job.getJobId() + "\n" +
@@ -519,7 +530,7 @@ public class SubmissionControl{
             DBPluginMgr.getStatusName(job.getDBStatus()) +
                            ") failed", job);
       }
-      DatasetMgr.updateDBCell(job, statusTable);
+      datasetMgr.updateDBCell(job);
       //jobControl.updateJobsByStatus();
     }
     //jobControl.updateJobsByStatus();
@@ -554,15 +565,15 @@ public class SubmissionControl{
   private void cancelSubmission(){
     timer.stop();
     Enumeration e = toSubmitJobs.elements();
+    JobInfo job = null;
+    DatasetMgr datasetMgr = null;
     while(e.hasMoreElements()){
-      JobInfo job = (JobInfo) e.nextElement();
+      job = (JobInfo) e.nextElement();
       statusTable.setValueAt("Not submitted (cancelled)!", job.getTableRow(), DatasetMgr.FIELD_JOBID);
       statusTable.setValueAt(job.getName(), job.getTableRow(), DatasetMgr.FIELD_JOBNAME);
       job.setInternalStatus(ComputingSystem.STATUS_FAILED);
       job.setNeedToBeRefreshed(false);
-      DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
-          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
-              job.getJobDefId()));
+      datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName());
       if(datasetMgr.updateDBStatus(job, DBPluginMgr.FAILED)){
         job.setDBStatus(DBPluginMgr.FAILED);
       }
@@ -571,7 +582,7 @@ public class SubmissionControl{
             DBPluginMgr.getStatusName(job.getDBStatus()) + ") failed", job);
       }
     }
-    DatasetMgr.updateDBCells(toSubmitJobs, statusTable);
+    datasetMgr.updateDBCells(toSubmitJobs);
     toSubmitJobs.removeAllElements();
     statusBar.removeProgressBar(pbSubmission);
     pbSubmission.setMaximum(0);

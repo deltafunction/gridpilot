@@ -284,7 +284,7 @@ public class NGScriptGenerator extends ScriptGenerator{
           writeLine(bufScript, "p"+(i+1)+"="+Util.arrayToString(tmpParams, ","));
       	}
       	catch(Exception ex){
-      		GridPilot.getClassMgr().getStatusBar().setLabel("Warning: problem with job parameter "+i);
+      		logFile.addMessage("Warning: problem with job parameter "+i);
       	  Debug.debug("WARNING: problem with job parameter "+i+": "+ex.getMessage(), 1);
       	  ex.printStackTrace();
       	}

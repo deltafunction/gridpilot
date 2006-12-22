@@ -836,8 +836,9 @@ public class NGComputingSystem implements ComputingSystem{
        catch(IOException ae){
          error = "Exception during getCurrentOutputs (stdout) for " + job.getName() + ":" + job.getJobId() + ":\n" +
          "\nException: " + ae.getMessage();
-         res[0] = error;
-         GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: "+ae.getMessage());
+         res[0] = "*** Could not read stdout ***\n Probably the job has not started yet, " +
+                "did never start or got deleted.";
+         GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("ERROR: "+ae.getMessage());
          logFile.addMessage(error, ae);
          //throw ae;
        }
@@ -852,7 +853,8 @@ public class NGComputingSystem implements ComputingSystem{
          "\nException: " + ae.getMessage();
          //logFile.addMessage(error, ae);
          //ae.printStackTrace();
-         res[1] = error;
+         res[1] = "*** Could not read stderr ***\n Probably the job has not started yet, " +
+         "did never start or got deleted.";
        }
     }
     return res;
@@ -897,7 +899,7 @@ public class NGComputingSystem implements ComputingSystem{
   }
   
   public ARCJob [] findCurrentJobsFromIS(){
-    StatusBar statusBar = GridPilot.getClassMgr().getStatusBar();
+    StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
 
     long start = System.currentTimeMillis();
     long limit = 10000;
@@ -950,14 +952,13 @@ public class NGComputingSystem implements ComputingSystem{
   }
   
   public ARCResource [] findAuthorizedResourcesFromIS(){
-    StatusBar statusBar = GridPilot.getClassMgr().getStatusBar();
     long start = System.currentTimeMillis();
     long limit = 10000;
     long offset = 2000; // some +- coefficient
     Collection foundResources = null;
     ARCResource [] resourcesArray = null;
     try{
-      statusBar.setLabel("Finding resources, please wait...");
+      logFile.addInfo("Finding resources, please wait...");
       // a Collection of HashSets
       foundResources = arcDiscovery.findAuthorizedResources(
           getUserInfo(csName), 20, limit);
@@ -1002,18 +1003,17 @@ public class NGComputingSystem implements ComputingSystem{
         resourcesArray[i] = (ARCResource) it.next();
         ++i;
       }
-      statusBar.setLabel("Finding resources done");
+      logFile.addInfo("Finding resources done");
     }
     catch(InterruptedException e){
       Debug.debug("User interrupt of resource checking!", 2);
     }
     long end = System.currentTimeMillis();
-    if((end - start) < limit + offset){
+    if((end - start)<limit + offset){
       Debug.debug("WARNING: failed to stay within time limit of "+limit/1000+" seconds.", 1);
     }
     if(foundResources.size()==0){
       error = "WARNING: failed to find authorized queues.";
-      statusBar.setLabel(error);
       Debug.debug("WARNING: failed to find authorized queues.", 1);
       logFile.addMessage(error + "\n\tDN\t: "+getUserInfo(csName));
     }

@@ -646,6 +646,9 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     String user = "";
     String csName = "";
     DBResult allJobDefinitions = null;
+    // Group the file IDs by dataset
+    HashMap datasetMgrsAndIds = new HashMap();
+
     for(int ii=0; ii<GridPilot.dbNames.length; ++ii){
       dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[ii]);
       shownFields = null;
@@ -661,6 +664,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       Debug.debug ("number of jobs for "+GridPilot.dbNames[ii]+
           ": "+allJobDefinitions.values.length, 2);
 
+      DatasetMgr mgr = GridPilot.getClassMgr().getDatasetMgr(GridPilot.dbNames[ii]);
       for(int i=0; i<allJobDefinitions.values.length; ++i){
         user = null;
         DBRecord job = new DBRecord(allJobDefinitions.fields,
@@ -680,23 +684,34 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           continue;
         }
         // if status ok, add the job
-        DatasetMgr mgr = null;
         for(int j=0; j<statusList.length; ++j){
           Debug.debug("Getting status: "+idField+":"+id, 3);
           jobStatus = dbPluginMgr.getJobDefStatus(id);
           if(statusList[j]==DBPluginMgr.getStatusId(jobStatus)){
-            mgr = GridPilot.getClassMgr().getDatasetMgr(GridPilot.dbNames[ii],
-                dbPluginMgr.getJobDefDatasetID(id));
+            if(!datasetMgrsAndIds.containsKey(mgr)){
+              datasetMgrsAndIds.put(mgr, new Vector());
+            }
             Debug.debug("Adding job #"+id, 3);
-            mgr.addJobs(new String [] {id});
+            ((Vector) datasetMgrsAndIds.get(mgr)).add(id);
             break;
           }
         }
-        if(mgr!=null){
-          mgr.updateJobsByStatus();
-        }
       }
     }
+    // Add them
+    String [] ids = null;
+    Vector idVec = null;
+    DatasetMgr datasetMgr = null;
+    for(Iterator it=datasetMgrsAndIds.keySet().iterator(); it.hasNext();){
+      datasetMgr = (DatasetMgr) it.next();
+      idVec = (Vector) datasetMgrsAndIds.get(datasetMgr);
+      ids = new String [idVec.size()];
+      for(int i=0; i<idVec.size(); ++i){
+        ids[i] = idVec.get(i).toString();
+      }
+      datasetMgr.addJobs(ids);
+    }
+    datasetMgr.updateJobsByStatus();
   }
 
   /**
@@ -884,9 +899,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   }
   
   DatasetMgr getDatasetMgr(JobInfo job){
-    return GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
-        GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
-            job.getJobDefId()));
+    return GridPilot.getClassMgr().getDatasetMgr(job.getDBName());
   }
 
   public void copy(){

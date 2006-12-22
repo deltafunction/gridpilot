@@ -1189,7 +1189,7 @@ public class TransferControl{
         }
         catch(IOException e){
           Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
-          GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: download failed. "+e.getMessage());
+          GridPilot.getClassMgr().getLogFile().addMessage("ERROR: download failed. "+e.getMessage());
           e.printStackTrace();
           return;
         }
@@ -1220,13 +1220,13 @@ public class TransferControl{
             }
             catch(IOException e){
               Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
-              GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: download failed. "+e.getMessage());
+              GridPilot.getClassMgr().getLogFile().addMessage("ERROR: download failed. "+e.getMessage());
               e.printStackTrace();
               return;
             }
             catch(FTPException e){
               Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
-              GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: download failed. "+e.getMessage());
+              GridPilot.getClassMgr().getLogFile().addMessage("ERROR: download failed. "+e.getMessage());
               e.printStackTrace();
               return;
             }

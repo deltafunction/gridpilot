@@ -799,7 +799,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         for(int i=0; i<1; ++i){
           if(!getWorking()){
             // retry 3 times with 3 seconds in between
-            statusBar.setLabel("Busy, please wait...", 2);
+            statusBar.setLabel("Busy, please wait...");
             try{
               Thread.sleep(3000);
             }
@@ -816,7 +816,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             break;
           }
         }
-        statusBar.setLabel("Searching, please wait...", 2);
+        statusBar.setLabel("Searching, please wait...");
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         statusBar.animateProgressBar();
         statusBar.setIndeterminateProgressBarToolTip("click here to cancel");
@@ -1032,12 +1032,17 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         GridPilot.getClassMgr().getGlobalFrame().menuEdit.updateUI();
         statusBar.stopAnimation();
         if(tableName.equalsIgnoreCase("file")){
-          statusBar.setLabel("Records found: "+res.values.length+
-              ". Displaying "+(cursor==-1?"1":""+(cursor+1))+" to "+
-              ((cursor==-1?0:cursor)+tableResults.getRowCount()), 20);
+          if(res.values.length>0){
+            statusBar.setLabel("Records found: "+res.values.length+
+                ". Displaying "+(cursor==-1?"1":""+(cursor+1))+" to "+
+                ((cursor==-1?0:cursor)+tableResults.getRowCount()));
+          }
+          else{
+            statusBar.setLabel("No records found");
+          }
         }
         else{
-          statusBar.setLabel("Records found: "+tableResults.getRowCount(), 20);
+          statusBar.setLabel("Records found: "+tableResults.getRowCount());
         }
         setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         
@@ -1280,22 +1285,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   private void editJobDef(){
-    DatasetMgr datasetMgr = null;
     String selectedDatasetID = dbPluginMgr.getJobDefDatasetID(getSelectedIdentifier());
     if(parentId.equals("-1")){
       parentId = selectedDatasetID;
     }
-    Debug.debug("Got dbPluginMgr:"+dbPluginMgr+":"+parentId, 1);
-    try{
-      datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName, selectedDatasetID);
-    }
-    catch(Throwable e){
-      Debug.debug("ERROR: could not get DatasetMgr. "+e.getMessage(), 1);
-      e.printStackTrace();
-      return;
-    }
+    Debug.debug("Got parent dataset id:"+parentId, 1);
     JobDefCreationPanel panel = null;
-    panel = new JobDefCreationPanel(dbName, datasetMgr, this,
+    panel = new JobDefCreationPanel(dbName, selectedDatasetID, this,
         new Boolean(true));
     CreateEditDialog pDialog = new CreateEditDialog(panel, true, false, true);
     pDialog.setTitle(tableName);
@@ -1502,11 +1498,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
         // Update job monitoring display
         for(int i=ids.length-1; i>=0; --i){
-          String currentDatasetID = dbPluginMgr.getJobDefDatasetID(ids[i]);
           Debug.debug("Got dbPluginMgr:"+dbPluginMgr+":"+parentId, 1);
           DatasetMgr datasetMgr = null;
           try{
-            datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName, currentDatasetID);
+            datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName);
           }
           catch(Throwable e){
             Debug.debug("ERROR: could not get DatasetMgr. "+e.getMessage(), 1);
@@ -2390,24 +2385,20 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.tpStatLog.setSelectedIndex(0);
     new Thread(){
       public void run(){        
-        DBRecord jobDef;
         String [] selectedJobIdentifiers = getSelectedIdentifiers();
-        String idField = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefintition");
         DatasetMgr datasetMgr = null;
         
         statusBar.setLabel("Retrieving jobs...");
         // Group the file IDs by dataset
         HashMap datasetMgrsAndIds = new HashMap();
         for(int i=0; i<selectedJobIdentifiers.length; ++i){
-          jobDef = dbPluginMgr.getJobDefinition(selectedJobIdentifiers[i]);
-          datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName,
-              dbPluginMgr.getJobDefDatasetID(jobDef.getValue(idField).toString()));
+          datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName);
           if(!datasetMgrsAndIds.containsKey(datasetMgr)){
             datasetMgrsAndIds.put(datasetMgr, new Vector());
           }
           ((Vector) datasetMgrsAndIds.get(datasetMgr)).add(selectedJobIdentifiers[i]);
         }
-        
+        statusBar.setLabel("Retrieving jobs done.");
         // Add them
         String [] ids = null;
         Vector idVec = null;
@@ -2458,7 +2449,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         for(int i=0; i<1; ++i){
           if(!getWorking()){
             // retry 3 times with 3 seconds in between
-            statusBar.setLabel("Busy, please wait...", 2);
+            statusBar.setLabel("Busy, please wait...");
             try{
               Thread.sleep(3000);
             }
@@ -2475,7 +2466,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             break;
           }
         }
-        statusBar.setLabel("Preparing jobs, please wait...", 2);
+        statusBar.setLabel("Preparing jobs, please wait...");
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         statusBar.animateProgressBar();
         statusBar.setIndeterminateProgressBarToolTip("click here to interrupt (not recommended)");

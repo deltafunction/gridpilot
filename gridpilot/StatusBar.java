@@ -29,17 +29,11 @@ public class StatusBar extends JPanel {
   private Frame frame;
   private ImageIcon save = new ImageIcon();
   private ImageIcon waitingIcon;
-
-  private Timer timerLabel = new Timer(0, new ActionListener(){
-    public void actionPerformed(ActionEvent e){
-      //removeLabel();
-    }
-  });
+  // Semaphore
+  private boolean statusBarActive = false;
 
   public StatusBar(){
     setLayout(new BorderLayout());
-
-    timerLabel.setRepeats(false);
 
     add(new JLabel(" "), BorderLayout.WEST);
     
@@ -57,64 +51,65 @@ public class StatusBar extends JPanel {
   /**
    * Sets this JLabel on the left on this status bar
    */
-  public synchronized void setLabel(JLabel _label){
-    if(timerLabel.isRunning())
-      timerLabel.stop();
+  public /*synchronized*/ void setLabel(JLabel _label){
 
-    removeLabel();
+    if(statusBarActive){
+      return;
+    }
+    statusBarActive = true;
+    
+    remove(label);
+    label = new JLabel(" ");
+    add(label, BorderLayout.CENTER);
+    updateUI();
 
     label = _label;
 
     add(label, BorderLayout.CENTER);
 
     updateUI();
+    
+    statusBarActive = false;
   }
 
   /**
    * Sets this String on the left of this status bar
    */
-  public synchronized void setLabel(String s){
+  public /*synchronized*/ void setLabel(String s){
     setLabel(new JLabel(s));
-  }
-
-  /**
-   * Sets this JLabel on the left on this status bare during 'secTime' seconds
-   */
-  public synchronized void setLabel(JLabel _label, int secTime){
-    setLabel(_label);
-
-    timerLabel.setInitialDelay(secTime * 1000);
-    timerLabel.start();
-  }
-
-  /**
-   * Sets this String on the left of this status bar during 'secTime' seconds
-   */
-  public synchronized void setLabel(String _label, int secTime){
-    setLabel(new JLabel(_label), secTime);
-
   }
 
   /**
    * Sets this JProgressBar on the rigth of this status bar. <br>
    */
-  public synchronized void setProgressBar(JProgressBar pb) {
+  public /*synchronized*/ void setProgressBar(JProgressBar pb) {
+    if(statusBarActive){
+      return;
+    }
+    statusBarActive = true;
     if(!stackProgressBar.empty()){
-      remove((JProgressBar) stackProgressBar.peek());
+      //remove((JProgressBar) stackProgressBar.peek());
+      statusBarActive = false;
+      return;
     }
     stackProgressBar.push(pb);
     add(pb, BorderLayout.EAST);
+    statusBarActive = false;
   }
 
   /**
    * Removes the current label
    */
-  public synchronized void removeLabel(){
+  public /*synchronized*/ void removeLabel(){
+    if(statusBarActive){
+      return;
+    }
+    statusBarActive = true;
     remove(label);
-
     label = new JLabel(" ");
     add(label, BorderLayout.CENTER);
     updateUI();
+    statusBarActive = false;
   }
 
   /**
@@ -122,25 +117,35 @@ public class StatusBar extends JPanel {
    * If another progress bar was shown before that <code>p</code> was set, the
    * previous progress bar is re-shown (if this old progress bar hasn't been removed)
    */
-  public synchronized void removeProgressBar(JProgressBar p){
-    if(p==null)
+  public /*synchronized*/ void removeProgressBar(JProgressBar p){
+    if(statusBarActive){
       return;
+    }
+    statusBarActive = true;
+    if(p==null){
+      statusBarActive = false;
+      return;
+    }
     remove(p);
-
-    if(stackProgressBar.contains(p))
+    if(stackProgressBar.contains(p)){
       stackProgressBar.remove(p);
-
-    if(!stackProgressBar.isEmpty())
+    }
+    if(!stackProgressBar.isEmpty()){
       setProgressBar((JProgressBar) stackProgressBar.pop());
-
+    }
     updateUI();
+    statusBarActive = false;
   }
 
 
   /**
-   * Sets an undeterminate progress bar on the right of this progress bar
+   * Sets an indeterminate progress bar on the right of this progress bar
    */
-  public synchronized void animateProgressBar(){
+  public /*synchronized*/ void animateProgressBar(){
+    if(statusBarActive){
+      return;
+    }
+    statusBarActive = true;
     setProgressBar(indeterminatePB);
     indeterminatePB.setIndeterminate(true);
     if(frame == null)
@@ -148,30 +153,46 @@ public class StatusBar extends JPanel {
 
     save.setImage(frame.getIconImage());
     frame.setIconImage(waitingIcon.getImage());
+    statusBarActive = false;
   }
 
   /**
    * Removes this animated progress bar
    */
-  public synchronized void stopAnimation(){
+  public /*synchronized*/ void stopAnimation(){
+    if(statusBarActive){
+      return;
+    }
+    statusBarActive = true;
     indeterminatePB.setIndeterminate(false);
     removeProgressBar(indeterminatePB);
     indeterminatePB.removeAll();
     frame.setIconImage(save.getImage());
+    statusBarActive = false;
   }
 
   /**
    * Adds a MouseListener to the animated progres bar. <p>
    */
   public void addIndeterminateProgressBarMouseListener(MouseListener ml){
+    if(statusBarActive){
+      return;
+    }
+    statusBarActive = true;
     indeterminatePB.addMouseListener(ml);
+    statusBarActive = false;
   }
 
   /**
    * Adds a ToolTip to animated progres bar. <p>
    */
   public void setIndeterminateProgressBarToolTip(String s){
+    if(statusBarActive){
+      return;
+    }
+    statusBarActive = true;
     indeterminatePB.setToolTipText(s);
+    statusBarActive = false;
   }
 }
 

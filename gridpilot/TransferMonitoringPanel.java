@@ -54,11 +54,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private JMenuItem miResubmit = new JMenuItem("Retry transfer(s)");
   private JMenuItem miClear = new JMenuItem("Clear");
   private TransferControl transferControl;
-  
-  
-  // TODO: menu disappears after resubmitting or adding more transfers...
-  
-  
+    
   public TransferStatusUpdateControl statusUpdateControl = null;
   
   private Timer timerRefresh = new Timer(0, new ActionListener (){
@@ -77,7 +73,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
         selectionEvent(e);
       }
     });
-    transferControl = new TransferControl();
+    transferControl = GridPilot.getClassMgr().getTransferControl();
     statusUpdateControl = new TransferStatusUpdateControl();
   }
   

@@ -106,7 +106,7 @@ public class JobValidation{
         public void run(){
           Debug.debug("Validating job "+job.getName(), 2);
           int dbStatus = doValidate(job);
-          GridPilot.getClassMgr().getStatusBar().setLabel("Validation of " + job.getName() + " done : "
+          GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Validation of " + job.getName() + " done : "
               + DBPluginMgr.getStatusName(dbStatus) +
               " (" + (toValidateJobs.size() + waitingJobs.size())+ " jobs in the queue )");
           endOfValidation(job, dbStatus);
@@ -131,9 +131,7 @@ public class JobValidation{
                          ") failed", job);
     }
     if(dbStatus!=job.getDBStatus()){
-      DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName(),
-          GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).getJobDefDatasetID(
-              job.getJobDefId()));
+      DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName());
       datasetMgr.updateDBStatus(job, dbStatus);
     }
     if(dbStatus!=job.getDBStatus()){ // checks that updateDBStatus succeded
@@ -213,7 +211,7 @@ public class JobValidation{
       }
       
       try{
-        outs = GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(job, false);
+        outs = GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(job, true/*false*/);
       }
       catch(Exception e){
         // TODO: we would get an Exception here if trying to resync, since stdout/stderr are gone on the server,

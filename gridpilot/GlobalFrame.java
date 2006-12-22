@@ -57,7 +57,7 @@ public class GlobalFrame extends GPFrame{
     GridPilot.getClassMgr().setStatusBar(new StatusBar());
     statusBar = GridPilot.getClassMgr().getStatusBar();
     container.add(statusBar, BorderLayout.SOUTH);
-    statusBar.setLabel("GridPilot welcomes you!", 20);
+    statusBar.setLabel("GridPilot welcomes you!");
     
     monitoringPanel = new MonitoringPanel();
     
