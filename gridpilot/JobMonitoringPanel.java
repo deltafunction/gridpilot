@@ -276,7 +276,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           public void run(){
             submissionControl = GridPilot.getClassMgr().getSubmissionControl();
             submissionControl.resubmit(
-                DatasetMgr.getJobsAtRows(statusTable.getSelectedRows()));
+                JobMgr.getJobsAtRows(statusTable.getSelectedRows()));
           }
         }).start();
       }
@@ -308,7 +308,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     miRevalidate.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        DatasetMgr.revalidate(statusTable.getSelectedRows());
+        JobMgr.revalidate(statusTable.getSelectedRows());
       }
     });
 
@@ -346,7 +346,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       mi.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           submissionControl = GridPilot.getClassMgr().getSubmissionControl();
-          submissionControl.submitJobs((Vector) DatasetMgr.getJobsAtRows(statusTable.getSelectedRows()),
+          submissionControl.submitJobs((Vector) JobMgr.getJobsAtRows(statusTable.getSelectedRows()),
               /*computingSystem*/
               /*((JMenuItem) e.getSource()).getMnemonic()*/
               ((JMenuItem) e.getSource()).getText());
@@ -436,7 +436,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   void kill(){
     (new Thread(){
       public void run(){
-        DatasetMgr.killJobs(statusTable.getSelectedRows());
+        JobMgr.killJobs(statusTable.getSelectedRows());
       }
     }).start();
   }
@@ -449,11 +449,11 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     
     Debug.debug("Deciding rows "+Util.arrayToString(rows), 3);
 
-    if(!DatasetMgr.areDecidables(rows)){
+    if(!JobMgr.areDecidables(rows)){
       return;
     }
 
-    Vector jobs = DatasetMgr.getJobsAtRows(rows);
+    Vector jobs = JobMgr.getJobsAtRows(rows);
 
     int [] options = {DBPluginMgr.VALIDATED, DBPluginMgr.FAILED, DBPluginMgr.UNDECIDED, DBPluginMgr.ABORTED};
     
@@ -477,16 +477,16 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         }
       }
 
-      DatasetMgr datasetMgr = null;
+      JobMgr jobMgr = null;
       for(int i=0; i<jobs.size(); ++i){
         JobInfo job = (JobInfo) jobs.get(i);
         if(job.getDBStatus()!=dbChoices[i]){
-          datasetMgr = getDatasetMgr(job);
-          datasetMgr.updateDBStatus(job, dbChoices[i]);
+          jobMgr = getJobMgr(job);
+          jobMgr.updateDBStatus(job, dbChoices[i]);
         }
       }
       statusTable.updateSelection();
-      datasetMgr.updateJobsByStatus();
+      jobMgr.updateJobsByStatus();
     }
   }
 
@@ -509,7 +509,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     final Thread t = new Thread(){
       public void run(){
-        JobInfo job = DatasetMgr.getJobAtRow(selectedRow);
+        JobInfo job = JobMgr.getJobAtRow(selectedRow);
         String [] outNames = new String [] {"stdout", "stderr"};
         String [] outs = null;
         try{
@@ -531,7 +531,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         statusBar.setLabel("");
 
         String message = "";
-        if(DatasetMgr.isRunning(selectedRow)){
+        if(JobMgr.isRunning(selectedRow)){
           message = "Current outputs of job";
         }
         else{
@@ -558,7 +558,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private void showFullStatus(){
     final Thread t = new Thread(){
       public void run(){
-        JobInfo job = DatasetMgr.getJobAtRow(statusTable.getSelectedRow());
+        JobInfo job = JobMgr.getJobAtRow(statusTable.getSelectedRow());
         String status = GridPilot.getClassMgr().getCSPluginMgr().getFullStatus(job);
         statusBar.removeLabel();
         statusBar.stopAnimation();
@@ -580,12 +580,12 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    * Shows information about the job at the selected row. <p>
    */
   private void showInfo(){
-    String info = DatasetMgr.getJobInfo(statusTable.getSelectedRow());
+    String info = JobMgr.getJobInfo(statusTable.getSelectedRow());
     MessagePane.showMessage(info, "Job Infos");
   }
 
   private void showScripts(){
-    JobInfo job = DatasetMgr.getJobAtRow(statusTable.getSelectedRow());
+    JobInfo job = JobMgr.getJobAtRow(statusTable.getSelectedRow());
     ShowOutputsJobsDialog.showTabs(JOptionPane.getRootFrame(),
         "Scripts for job " + job.getName(),
         job,
@@ -647,7 +647,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     String csName = "";
     DBResult allJobDefinitions = null;
     // Group the file IDs by dataset
-    HashMap datasetMgrsAndIds = new HashMap();
+    HashMap jobMgrsAndIds = new HashMap();
 
     for(int ii=0; ii<GridPilot.dbNames.length; ++ii){
       dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[ii]);
@@ -664,7 +664,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       Debug.debug ("number of jobs for "+GridPilot.dbNames[ii]+
           ": "+allJobDefinitions.values.length, 2);
 
-      DatasetMgr mgr = GridPilot.getClassMgr().getDatasetMgr(GridPilot.dbNames[ii]);
+      JobMgr mgr = GridPilot.getClassMgr().getJobMgr(GridPilot.dbNames[ii]);
       for(int i=0; i<allJobDefinitions.values.length; ++i){
         user = null;
         DBRecord job = new DBRecord(allJobDefinitions.fields,
@@ -688,11 +688,11 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           Debug.debug("Getting status: "+idField+":"+id, 3);
           jobStatus = dbPluginMgr.getJobDefStatus(id);
           if(statusList[j]==DBPluginMgr.getStatusId(jobStatus)){
-            if(!datasetMgrsAndIds.containsKey(mgr)){
-              datasetMgrsAndIds.put(mgr, new Vector());
+            if(!jobMgrsAndIds.containsKey(mgr)){
+              jobMgrsAndIds.put(mgr, new Vector());
             }
             Debug.debug("Adding job #"+id, 3);
-            ((Vector) datasetMgrsAndIds.get(mgr)).add(id);
+            ((Vector) jobMgrsAndIds.get(mgr)).add(id);
             break;
           }
         }
@@ -701,17 +701,17 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     // Add them
     String [] ids = null;
     Vector idVec = null;
-    DatasetMgr datasetMgr = null;
-    for(Iterator it=datasetMgrsAndIds.keySet().iterator(); it.hasNext();){
-      datasetMgr = (DatasetMgr) it.next();
-      idVec = (Vector) datasetMgrsAndIds.get(datasetMgr);
+    JobMgr jobMgr = null;
+    for(Iterator it=jobMgrsAndIds.keySet().iterator(); it.hasNext();){
+      jobMgr = (JobMgr) it.next();
+      idVec = (Vector) jobMgrsAndIds.get(jobMgr);
       ids = new String [idVec.size()];
       for(int i=0; i<idVec.size(); ++i){
         ids[i] = idVec.get(i).toString();
       }
-      datasetMgr.addJobs(ids);
+      jobMgr.addJobs(ids);
     }
-    datasetMgr.updateJobsByStatus();
+    jobMgr.updateJobsByStatus();
   }
 
   /**
@@ -738,7 +738,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     }
     else{
       int [] rows = statusTable.getSelectedRows();
-      if(DatasetMgr.areDecidables(rows)){
+      if(JobMgr.areDecidables(rows)){
         miDecide.setEnabled(true);
         miRevalidate.setEnabled(true);
       }
@@ -747,7 +747,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         miRevalidate.setEnabled(false);
       }
 
-      if(DatasetMgr.areKillables(rows)){
+      if(JobMgr.areKillables(rows)){
         bKill.setEnabled(true);
         miKill.setEnabled(true);
       }
@@ -756,14 +756,14 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         miKill.setEnabled(false);
       }
 
-      if(DatasetMgr.areResumbitables(rows)){
+      if(JobMgr.areResumbitables(rows)){
         miResubmit.setEnabled(true);
       }
       else{
         miResubmit.setEnabled(false);
       }
 
-      if(DatasetMgr.areSubmitables(rows)){
+      if(JobMgr.areSubmitables(rows)){
         mSubmit.setEnabled(true);
       }
       else{
@@ -789,26 +789,26 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       public void run(){    
         int [] rows = statusTable.getSelectedRows();       
         Debug.debug("Setting status of rows "+Util.arrayToString(rows), 3);
-        Vector jobs = DatasetMgr.getJobsAtRows(rows);
+        Vector jobs = JobMgr.getJobsAtRows(rows);
         JobInfo job = null;
-        DatasetMgr datasetMgr = null;
+        JobMgr jobMgr = null;
         HashMap datasetJobs = new HashMap();
         for(int i=0; i<jobs.size(); ++i){
           job = (JobInfo) jobs.get(i);
-          datasetMgr = getDatasetMgr(job);
-          if(!datasetJobs.containsKey(datasetMgr)){
-            datasetJobs.put(datasetMgr, new Vector());
+          jobMgr = getJobMgr(job);
+          if(!datasetJobs.containsKey(jobMgr)){
+            datasetJobs.put(jobMgr, new Vector());
           }
-          ((Vector) datasetJobs.get(datasetMgr)).add(new Integer(rows[i]));
+          ((Vector) datasetJobs.get(jobMgr)).add(new Integer(rows[i]));
         }
         for(Iterator it=datasetJobs.keySet().iterator(); it.hasNext();){
-          datasetMgr = (DatasetMgr) it.next();
-          Vector jobRows = ((Vector) datasetJobs.get(datasetMgr));
+          jobMgr = (JobMgr) it.next();
+          Vector jobRows = ((Vector) datasetJobs.get(jobMgr));
           int [] dsRows = new int [jobRows.size()];
           for(int i=0; i<jobRows.size(); ++i){
             dsRows[i] = ((Integer) jobRows.get(i)).intValue();
           }
-          datasetMgr.setDBStatus(dsRows, dbStatus);
+          jobMgr.setDBStatus(dsRows, dbStatus);
         }
       }
     }.start();
@@ -842,7 +842,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     Enumeration e =  submittedJobs.elements();
     while(e.hasMoreElements()){
       JobInfo job = (JobInfo) e.nextElement();
-      if(DatasetMgr.isRunning(job)){
+      if(JobMgr.isRunning(job)){
         if(showRows==ONLY_RUNNING_JOBS){
           statusTable.showRow(job.getTableRow());
         }
@@ -881,10 +881,10 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     boolean ret = true;
     GridPilot.getClassMgr().getSubmittedJobs().removeAllElements();
     statusTable.createRows(0);
-    DatasetMgr mgr = null;
+    JobMgr mgr = null;
     try{
-      for(Iterator it = GridPilot.getClassMgr().getDatasetMgrs().iterator(); it.hasNext();){
-        mgr = ((DatasetMgr) it.next());
+      for(Iterator it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
+        mgr = ((JobMgr) it.next());
         mgr.initChanges();
       }
       mgr.updateJobsByStatus();
@@ -898,8 +898,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     return ret;
   }
   
-  DatasetMgr getDatasetMgr(JobInfo job){
-    return GridPilot.getClassMgr().getDatasetMgr(job.getDBName());
+  JobMgr getJobMgr(JobInfo job){
+    return GridPilot.getClassMgr().getJobMgr(job.getDBName());
   }
 
   public void copy(){

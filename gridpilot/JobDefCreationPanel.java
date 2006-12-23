@@ -1,7 +1,6 @@
 package gridpilot;
 
 import gridpilot.Debug;
-//import gridpilot.DatasetMgr;
 import gridpilot.DBRecord;
 
 import javax.swing.*;
@@ -44,7 +43,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
   protected static int TEXTFIELDWIDTH = 32;
 
   public JobDefCreationPanel(
-      /*this is in case DBPanel was opened from the menu and _datasetMgr is null*/
+      /*this is in case DBPanel was opened from the menu and _datasetID is null*/
       String _dbName,
       String _datasetID,
       DBPanel _panel,
@@ -169,7 +168,6 @@ public class JobDefCreationPanel extends CreateEditPanel{
     
     Debug.debug("creating new JobDefCreator", 3);  
     JobDefCreator jdc = new JobDefCreator(dbName,
-                      //datasetMgr,
                       showResults,
                       tcConstant,
                       cstAttr,

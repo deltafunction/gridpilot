@@ -39,7 +39,7 @@ public class ClassMgr{
   private int debugLevel = 3;
   private HashMap dbMgrs = new HashMap();
   private HashMap ft = new HashMap();
-  private HashMap datasetMgrs = new HashMap();
+  private HashMap jobMgrs = new HashMap();
   private Vector submittedJobs = new Vector();
   private Vector submittedTransfers = new Vector();
   private SubmissionControl submissionControl;
@@ -146,41 +146,41 @@ public class ClassMgr{
     ft.put(ftName, ftObject);
   }
 
-  // This method creates a new DatasetMgr if there is
+  // This method creates a new JobMgr if there is
   // none in the HashMap with key dbName
-  public DatasetMgr getDatasetMgr(String dbName){
-    if(datasetMgrs==null){
-      Debug.debug("datasetMgrs null", 3);
+  public JobMgr getJobMgr(String dbName){
+    if(jobMgrs==null){
+      Debug.debug("jobMgrs null", 3);
     }
-    if(!datasetMgrs.keySet().contains(dbName)){
-      Debug.debug("Creating new DatasetMgr, "+dbName, 3);
-      datasetMgrs.put(dbName, new DatasetMgr(dbName));
+    if(!jobMgrs.keySet().contains(dbName)){
+      Debug.debug("Creating new JobMgr, "+dbName, 3);
+      jobMgrs.put(dbName, new JobMgr(dbName));
     }
-    return (DatasetMgr) datasetMgrs.get(dbName);
+    return (JobMgr) jobMgrs.get(dbName);
   }
   
-  public Vector getDatasetMgrs(){
-    Vector allDatasetMgrs = new Vector();
-    if(datasetMgrs==null || datasetMgrs.size()==0){
-      Debug.debug("No datasetMgrs", 3);
+  public Vector getJobMgrs(){
+    Vector allJobMgrs = new Vector();
+    if(jobMgrs==null || jobMgrs.size()==0){
+      Debug.debug("No jobMgrs", 3);
     }
     else{
-      //Debug.debug("getting datasetMgrs, "+datasetMgrs.size(), 3);
-      for(Iterator it=datasetMgrs.values().iterator(); it.hasNext();){
-        allDatasetMgrs.add(it.next());
+      //Debug.debug("getting jobMgrs, "+jobMgrs.size(), 3);
+      for(Iterator it=jobMgrs.values().iterator(); it.hasNext();){
+        allJobMgrs.add(it.next());
       }
     }
-    return allDatasetMgrs;
+    return allJobMgrs;
   }
   
   // The HashMap of HashMaps of datasets is kept here
-  public void addDatasetMgr(DatasetMgr datasetMgr){
-    if(datasetMgrs==null){
-      Debug.debug("datasetMgrs null", 3);
+  public void addJobMgr(JobMgr jobMgr){
+    if(jobMgrs==null){
+      Debug.debug("jobMgrs null", 3);
       new Exception().printStackTrace();
     }
-    if(!datasetMgrs.keySet().contains(datasetMgr.dbName)){
-      datasetMgrs.put(datasetMgr.dbName, datasetMgr);
+    if(!jobMgrs.keySet().contains(jobMgr.dbName)){
+      jobMgrs.put(jobMgr.dbName, jobMgr);
     }
   }
 

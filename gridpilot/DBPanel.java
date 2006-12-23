@@ -1271,7 +1271,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */ 
   private void createJobDefs(){
     Debug.debug("Creating job definition(s), "+getSelectedIdentifiers().length, 3);
-    //JobDefCreationPanel panel = new JobDefCreationPanel(dbName, datasetMgr, this, false);
+    //JobDefCreationPanel panel = new JobDefCreationPanel(dbName, jobMgr, this, false);
     JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, this);
     CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true);
     pDialog.setTitle("jobDefinition");
@@ -1499,16 +1499,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         // Update job monitoring display
         for(int i=ids.length-1; i>=0; --i){
           Debug.debug("Got dbPluginMgr:"+dbPluginMgr+":"+parentId, 1);
-          DatasetMgr datasetMgr = null;
+          JobMgr jobMgr = null;
           try{
-            datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName);
+            jobMgr = GridPilot.getClassMgr().getJobMgr(dbName);
           }
           catch(Throwable e){
-            Debug.debug("ERROR: could not get DatasetMgr. "+e.getMessage(), 1);
+            Debug.debug("ERROR: could not get JobMgr. "+e.getMessage(), 1);
             e.printStackTrace();
             return;
           }
-          datasetMgr.removeRow(ids[i]);
+          jobMgr.removeRow(ids[i]);
         }
         
         Debug.debug("Deleting "+ids.length+" rows", 2);
@@ -2386,33 +2386,33 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     new Thread(){
       public void run(){        
         String [] selectedJobIdentifiers = getSelectedIdentifiers();
-        DatasetMgr datasetMgr = null;
+        JobMgr jobMgr = null;
         
         statusBar.setLabel("Retrieving jobs...");
         // Group the file IDs by dataset
-        HashMap datasetMgrsAndIds = new HashMap();
+        HashMap jobMgrsAndIds = new HashMap();
         for(int i=0; i<selectedJobIdentifiers.length; ++i){
-          datasetMgr = GridPilot.getClassMgr().getDatasetMgr(dbName);
-          if(!datasetMgrsAndIds.containsKey(datasetMgr)){
-            datasetMgrsAndIds.put(datasetMgr, new Vector());
+          jobMgr = GridPilot.getClassMgr().getJobMgr(dbName);
+          if(!jobMgrsAndIds.containsKey(jobMgr)){
+            jobMgrsAndIds.put(jobMgr, new Vector());
           }
-          ((Vector) datasetMgrsAndIds.get(datasetMgr)).add(selectedJobIdentifiers[i]);
+          ((Vector) jobMgrsAndIds.get(jobMgr)).add(selectedJobIdentifiers[i]);
         }
         statusBar.setLabel("Retrieving jobs done.");
         // Add them
         String [] ids = null;
         Vector idVec = null;
-        for(Iterator it=datasetMgrsAndIds.keySet().iterator(); it.hasNext();){
-          datasetMgr = (DatasetMgr) it.next();
-          idVec = (Vector) datasetMgrsAndIds.get(datasetMgr);
+        for(Iterator it=jobMgrsAndIds.keySet().iterator(); it.hasNext();){
+          jobMgr = (JobMgr) it.next();
+          idVec = (Vector) jobMgrsAndIds.get(jobMgr);
           ids = new String [idVec.size()];
           for(int i=0; i<idVec.size(); ++i){
             ids[i] = idVec.get(i).toString();
           }
-          datasetMgr.addJobs(ids);
+          jobMgr.addJobs(ids);
         }
 
-        datasetMgr.updateJobsByStatus();
+        jobMgr.updateJobsByStatus();
       }
     }.start();
   }

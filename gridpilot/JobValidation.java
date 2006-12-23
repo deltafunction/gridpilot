@@ -131,8 +131,8 @@ public class JobValidation{
                          ") failed", job);
     }
     if(dbStatus!=job.getDBStatus()){
-      DatasetMgr datasetMgr = GridPilot.getClassMgr().getDatasetMgr(job.getDBName());
-      datasetMgr.updateDBStatus(job, dbStatus);
+      JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
+      jobMgr.updateDBStatus(job, dbStatus);
     }
     if(dbStatus!=job.getDBStatus()){ // checks that updateDBStatus succeded
       logFile.addMessage("update DB status failed after validation ; " +

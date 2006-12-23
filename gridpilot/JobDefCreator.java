@@ -10,7 +10,6 @@ import javax.swing.*;
  */
 public class JobDefCreator{
 
-  //private DatasetMgr datasetMgr;
   private DBPluginMgr dbPluginMgr;
   private boolean showResults;
   private String [] cstAttr;
@@ -20,7 +19,6 @@ public class JobDefCreator{
   public boolean anyCreated = false;
 
   public JobDefCreator(String _dbName,
-                       //DatasetMgr _datasetMgr,
                        boolean _showResults,
                        Vector _constants,
                        String [] _cstAttr,

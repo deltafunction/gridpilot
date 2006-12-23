@@ -35,7 +35,7 @@ public class JobCreationPanel extends CreateEditPanel{
   // TODO: make this configurable?
   private String [] stdOutputNames = {"stdout", "stderr"};
 
-  // TODO: use DatasetMgr, move some functionality from here to there.
+  // TODO: use JobMgr, move some functionality from here to there.
   
   /**
    * Constructor

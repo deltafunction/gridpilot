@@ -16,8 +16,8 @@ public class JobStatisticsPanel extends StatisticsPanel{
   private static final long serialVersionUID = 1L;
 
   public void update(){
-    Vector datasetMgrs = GridPilot.getClassMgr().getDatasetMgrs();
-    //Debug.debug("datasetMgrs: "+datasetMgrs.size(), 3);
+    Vector jobMgrs = GridPilot.getClassMgr().getJobMgrs();
+    //Debug.debug("jobMgrs: "+jobMgrs.size(), 3);
     if(style<painters.size()){
       statusNames = DBPluginMgr.getDBStatusNames();
       // Set the number of jobs in each state to 0
@@ -26,9 +26,9 @@ public class JobStatisticsPanel extends StatisticsPanel{
         values[i]= 0;
       }
       int [] theseValues = new int[values.length];
-      //Debug.debug("DatasetMgrs: "+datasetMgrs.size(), 3);
-      for(int i=0; i<datasetMgrs.size(); ++i){
-        theseValues = ((DatasetMgr) datasetMgrs.get(i)).getJobsByDBStatus();
+      //Debug.debug("JobMgrs: "+jobMgrs.size(), 3);
+      for(int i=0; i<jobMgrs.size(); ++i){
+        theseValues = ((JobMgr) jobMgrs.get(i)).getJobsByDBStatus();
         for(int j=0; j<values.length; ++j){
           //Debug.debug("Increasing value "+j+" from "+values[j]+" with "+theseValues[j], 3);
           values[j] += theseValues[j];
@@ -47,8 +47,8 @@ public class JobStatisticsPanel extends StatisticsPanel{
         values[i]= 0;
       }
       int [] theseValues = new int [values.length];
-      for(int i=0; i<datasetMgrs.size(); ++i){
-        theseValues = ((DatasetMgr) datasetMgrs.get(i)).getJobsByStatus();
+      for(int i=0; i<jobMgrs.size(); ++i){
+        theseValues = ((JobMgr) jobMgrs.get(i)).getJobsByStatus();
         for(int j=0; j<values.length; ++j){
           values[j] += theseValues[j];
         }

@@ -11,7 +11,7 @@ import java.awt.event.*;
 
 /**
  * This class manages the jobs status update. <p>
- * When DatasetMgr requests for job updates, these jobs are appended in the queue
+ * When JobMgr requests for job updates, these jobs are appended in the queue
  * <code>toCheckJobs</code> (if they need to be refreshed, and they are not already
  * in this queue).
  * A timer (<code>timerChecking</code>, running if <code>toCheckJob</code> is not empty),
@@ -68,7 +68,7 @@ public class JobStatusUpdateControl{
 
   private ImageIcon iconChecking;
 
-  private Vector datasetMgrs;
+  private Vector jobMgrs;
 
   public JobStatusUpdateControl(){
     statusTable = GridPilot.getClassMgr().getJobStatusTable();
@@ -199,7 +199,7 @@ public class JobStatusUpdateControl{
     }
     else{
       rows = statusTable.getSelectedRows();
-      jobs = DatasetMgr.getJobsAtRows(rows);
+      jobs = JobMgr.getJobsAtRows(rows);
     }
    
     // fill toCheckJobs with running jobs
@@ -234,7 +234,7 @@ public class JobStatusUpdateControl{
    * <li>STATUS_WAIT : nothing
    * <li>STATUS_DONE : call jobValidation.validate
    * <li>STATUS_RUN : update status and host in status table
-   * <li>STATUS_FAILED : call datasetMgr.jobFailure
+   * <li>STATUS_FAILED : call jobMgr.jobFailure
    * </ul>
    *
    */
@@ -268,7 +268,7 @@ public class JobStatusUpdateControl{
     int [] previousInternalStatus = new int [jobs.size()];
     for(int i=0; i<jobs.size(); ++i){
       Debug.debug("Setting value for job "+i, 3);
-      statusTable.setValueAt(iconChecking, ((JobInfo) jobs.get(i)).getTableRow(), DatasetMgr.FIELD_CONTROL);
+      statusTable.setValueAt(iconChecking, ((JobInfo) jobs.get(i)).getTableRow(), JobMgr.FIELD_CONTROL);
       previousInternalStatus[i] = ((JobInfo) jobs.get(i)).getInternalStatus();
     }
     
@@ -282,9 +282,9 @@ public class JobStatusUpdateControl{
 
     for(int i=0; i<jobs.size(); ++i){
       Debug.debug("Setting value of job #"+i, 3);
-      statusTable.setValueAt(null, ((JobInfo) jobs.get(i)).getTableRow(), DatasetMgr.FIELD_CONTROL);
+      statusTable.setValueAt(null, ((JobInfo) jobs.get(i)).getTableRow(), JobMgr.FIELD_CONTROL);
       statusTable.setValueAt(((JobInfo) jobs.get(i)).getJobStatus(),
-          ((JobInfo) jobs.get(i)).getTableRow(), DatasetMgr.FIELD_STATUS);
+          ((JobInfo) jobs.get(i)).getTableRow(), JobMgr.FIELD_STATUS);
     }
   
     for(int i=0; i<jobs.size(); ++i){
@@ -300,7 +300,7 @@ public class JobStatusUpdateControl{
           GridPilot.getClassMgr().getJobValidation().validate(job);
           break;
         case ComputingSystem.STATUS_RUNNING:
-          statusTable.setValueAt(job.getHost(), job.getTableRow(), DatasetMgr.FIELD_HOST);
+          statusTable.setValueAt(job.getHost(), job.getTableRow(), JobMgr.FIELD_HOST);
           break;
         case ComputingSystem.STATUS_ERROR:
           // Without the line below: leave as refreshable, in case the error is intermittent.
@@ -313,10 +313,10 @@ public class JobStatusUpdateControl{
           break;
         case ComputingSystem.STATUS_FAILED:
           job.setNeedToBeRefreshed(false);
-          datasetMgrs = GridPilot.getClassMgr().getDatasetMgrs();
-          DatasetMgr mgr = null;
-          for(Iterator it = datasetMgrs.iterator(); it.hasNext();){
-            mgr = ((DatasetMgr) it.next());
+          jobMgrs = GridPilot.getClassMgr().getJobMgrs();
+          JobMgr mgr = null;
+          for(Iterator it = jobMgrs.iterator(); it.hasNext();){
+            mgr = ((JobMgr) it.next());
             if(mgr.dbName.equals(job.getDBName())){
               mgr.jobFailure(job);
               break;
@@ -328,9 +328,9 @@ public class JobStatusUpdateControl{
     }
     
     Debug.debug("Updating "+jobs.size()+" jobs by status", 3);
-    datasetMgrs = GridPilot.getClassMgr().getDatasetMgrs();
-    for(Iterator it = datasetMgrs.iterator(); it.hasNext();){
-      ((DatasetMgr) it.next()).updateJobsByStatus();
+    jobMgrs = GridPilot.getClassMgr().getJobMgrs();
+    for(Iterator it = jobMgrs.iterator(); it.hasNext();){
+      ((JobMgr) it.next()).updateJobsByStatus();
       // fix
       break;
     }
