@@ -901,9 +901,9 @@ public class ATLASDatabase implements Database{
       // Make the connection
       // we use the database url as alias
       GridPilot.getClassMgr().sqlConnection(
-          database, driver, database, user, passwd, gridAuth,
+          host, driver, database, user, passwd, gridAuth,
           connectTimeout, socketTimeout, "3");
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = GridPilot.getClassMgr().getDBConnection(host);
       // First query the t_lfn table to get the guid
       String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
       ResultSet rset = null;
