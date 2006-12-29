@@ -890,6 +890,7 @@ public class ATLASDatabase implements Database{
       String passwd = catalogUrl.getPwd()==null ? "" : catalogUrl.getPwd();
       String path = catalogUrl.getPath()==null ? "" : "/"+catalogUrl.getPath();
       String host = catalogUrl.getHost();
+      String alias = host.replaceAll("\\.", "_");
       String database = "jdbc:mysql://"+host+port+path;
       boolean gridAuth = false;
       // The (GridPilot) convention is that if no user name is given (in TOA), we use
@@ -901,9 +902,9 @@ public class ATLASDatabase implements Database{
       // Make the connection
       // we use the database url as alias
       GridPilot.getClassMgr().sqlConnection(
-          host, driver, database, user, passwd, gridAuth,
+          alias, driver, database, user, passwd, gridAuth,
           connectTimeout, socketTimeout, "3");
-      Connection conn = GridPilot.getClassMgr().getDBConnection(host);
+      Connection conn = GridPilot.getClassMgr().getDBConnection(alias);
       // First query the t_lfn table to get the guid
       String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
       ResultSet rset = null;
@@ -979,6 +980,7 @@ public class ATLASDatabase implements Database{
       String passwd = catalogUrl.getPwd()==null ? "" : catalogUrl.getPwd();
       String path = catalogUrl.getPath()==null ? "" : "/"+catalogUrl.getPath();
       String host = catalogUrl.getHost();
+      String alias = host.replaceAll("\\.", "_");
       String database = "jdbc:mysql://"+host+port+path;
       boolean gridAuth = false;
       // The (GridPilot) convention is that if no user name is given (in TOA), we use
@@ -989,9 +991,9 @@ public class ATLASDatabase implements Database{
       }
       // Make the connection
       GridPilot.getClassMgr().sqlConnection(
-          database, driver, database, user, passwd, gridAuth,
+          alias, driver, database, user, passwd, gridAuth,
           connectTimeout, socketTimeout, "3");
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = GridPilot.getClassMgr().getDBConnection(alias);
       String lfn = null;
       int rowsAffected = 0;
       for(int i=0; i<lfns.length; ++i){
@@ -1068,6 +1070,7 @@ public class ATLASDatabase implements Database{
       String passwd = catalogUrl.getPwd()==null ? "" : catalogUrl.getPwd();
       String path = catalogUrl.getPath()==null ? "" : "/"+catalogUrl.getPath();
       String host = catalogUrl.getHost();
+      String alias = host.replaceAll("\\.", "_");
       String database = "jdbc:mysql://"+host+port+path;
       boolean gridAuth = false;
       // The (GridPilot) convention is that if no user name is given (in TOA), we use
@@ -1078,9 +1081,9 @@ public class ATLASDatabase implements Database{
       }
       // Make the connection
       GridPilot.getClassMgr().sqlConnection(
-          database, driver, database, user, passwd, gridAuth,
+          alias, driver, database, user, passwd, gridAuth,
           connectTimeout, socketTimeout, "3");
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = GridPilot.getClassMgr().getDBConnection(alias);
       String lfn = null;
       int rowsAffected = 0;
       for(int i=0; i<lfns.length; ++i){
@@ -1147,6 +1150,7 @@ public class ATLASDatabase implements Database{
       String passwd = catalogUrl.getPwd()==null ? "" : catalogUrl.getPwd();
       String path = catalogUrl.getPath()==null ? "" : "/"+catalogUrl.getPath();
       String host = catalogUrl.getHost();
+      String alias = host.replaceAll("\\.", "_");
       String database = "jdbc:mysql://"+host+port+path;
       boolean gridAuth = false;
       // The (GridPilot) convention is that if no user name is given (in TOA), we use
@@ -1157,9 +1161,9 @@ public class ATLASDatabase implements Database{
       }
       // Make the connection
       GridPilot.getClassMgr().sqlConnection(
-          database, driver, database, user, passwd, gridAuth,
+          alias, driver, database, user, passwd, gridAuth,
           connectTimeout, socketTimeout, "3");
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = GridPilot.getClassMgr().getDBConnection(alias);
       int rowsAffected = 0;
       String req = null;
       // Do the insertions in t_lfn and t_pfn
@@ -1457,7 +1461,7 @@ public class ATLASDatabase implements Database{
             }
           };
           t.start();              
-          if(!Util.waitForThread(t, dbName, fileCatalogTimeout, "select", new Boolean(false))){
+          if(!Util.waitForThread(t, dbName, fileCatalogTimeout, "lookup pfns", new Boolean(false))){
             error = "WARNING: timed out waiting for "+locations.get(i);
             logFile.addMessage(error);
             GridPilot.getClassMgr().getStatusBar().setLabel(error);
