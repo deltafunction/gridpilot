@@ -720,7 +720,7 @@ public class SRMFileTransfer implements FileTransfer {
         }
         // show message on status bar on monitoring frame
         StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
-        statusBar.setLabel("Files ready, starting download.");
+        statusBar.setLabel("File(s) ready, starting download.");
         try{
           // Now use some other plugin - depending on the TURL returned
           TransferControl.startCopyFiles(turls, destUrls);
@@ -833,7 +833,7 @@ public class SRMFileTransfer implements FileTransfer {
         }
         // show message on status bar on monitoring frame
         StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
-        statusBar.setLabel("Files ready, starting download.");
+        statusBar.setLabel("File(s) ready, starting download.");
         try{
           // Now use some other plugin - depending on the TURL returned
           TransferControl.startCopyFiles(srcUrls, turls);
