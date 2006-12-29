@@ -2492,7 +2492,6 @@ public class MySQLDatabase implements Database{
       conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
-      conn.close();
     }
     catch(Exception e){
       execok1 = false;

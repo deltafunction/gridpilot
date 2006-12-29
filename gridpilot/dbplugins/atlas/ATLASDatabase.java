@@ -73,6 +73,7 @@ public class ATLASDatabase implements Database{
   private boolean forceDelete = false;
   private static String connectTimeout = "10000";
   private static String socketTimeout = "30000";
+  private static String LRC_POOLSIZE = "5";
 
 
   public ATLASDatabase(String _dbName){
@@ -903,7 +904,7 @@ public class ATLASDatabase implements Database{
       // we use the database url as alias
       GridPilot.getClassMgr().sqlConnection(
           alias, driver, database, user, passwd, gridAuth,
-          connectTimeout, socketTimeout, "3");
+          connectTimeout, socketTimeout, LRC_POOLSIZE);
       Connection conn = GridPilot.getClassMgr().getDBConnection(alias);
       // First query the t_lfn table to get the guid
       String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
@@ -918,6 +919,8 @@ public class ATLASDatabase implements Database{
       if(resultVector.size()==0){
         error = "ERROR: No guid found for lfn "+lfn;
         logFile.addMessage(error);
+        rset.close();
+        conn.close();
         throw new SQLException(error);
       }
       else if(resultVector.size()>1){
@@ -940,6 +943,8 @@ public class ATLASDatabase implements Database{
       if(resultVector.size()==0){
         error = "ERROR: No pfns with found for guid "+guid;
         Debug.debug(error, 1);
+        rset.close();
+        conn.close();
         throw new SQLException(error);
       }
       rset.close();
@@ -992,7 +997,7 @@ public class ATLASDatabase implements Database{
       // Make the connection
       GridPilot.getClassMgr().sqlConnection(
           alias, driver, database, user, passwd, gridAuth,
-          connectTimeout, socketTimeout, "3");
+          connectTimeout, socketTimeout, LRC_POOLSIZE);
       Connection conn = GridPilot.getClassMgr().getDBConnection(alias);
       String lfn = null;
       int rowsAffected = 0;
@@ -1082,7 +1087,7 @@ public class ATLASDatabase implements Database{
       // Make the connection
       GridPilot.getClassMgr().sqlConnection(
           alias, driver, database, user, passwd, gridAuth,
-          connectTimeout, socketTimeout, "3");
+          connectTimeout, socketTimeout, LRC_POOLSIZE);
       Connection conn = GridPilot.getClassMgr().getDBConnection(alias);
       String lfn = null;
       int rowsAffected = 0;
@@ -1143,82 +1148,92 @@ public class ATLASDatabase implements Database{
     String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
     GlobusURL catalogUrl = new GlobusURL(catalogServer);
     if(catalogUrl.getProtocol().equals("mysql")){
-      // Set parameters
-      String driver = "org.gjt.mm.mysql.Driver";
-      String port = catalogUrl.getPort()==-1 ? "" : ":"+catalogUrl.getPort();
-      String user = catalogUrl.getUser()==null ? "" : catalogUrl.getUser();
-      String passwd = catalogUrl.getPwd()==null ? "" : catalogUrl.getPwd();
-      String path = catalogUrl.getPath()==null ? "" : "/"+catalogUrl.getPath();
-      String host = catalogUrl.getHost();
-      String alias = host.replaceAll("\\.", "_");
-      String database = "jdbc:mysql://"+host+port+path;
-      boolean gridAuth = false;
-      // The (GridPilot) convention is that if no user name is given (in TOA), we use
-      // gridAuth to authenticate
-      if(user.equals("")){
-        gridAuth = true;
-        user = Util.getGridDatabaseUser();
-      }
-      // Make the connection
-      GridPilot.getClassMgr().sqlConnection(
-          alias, driver, database, user, passwd, gridAuth,
-          connectTimeout, socketTimeout, "3");
-      Connection conn = GridPilot.getClassMgr().getDBConnection(alias);
-      int rowsAffected = 0;
-      String req = null;
-      // Do the insertions in t_lfn and t_pfn
-      for(int i=0; i<lfns.length; ++i){
-        try{
-          req = "INSERT INTO t_lfn (lfname, guid) VALUES " +
-             "('"+lfns[i]+"', '"+guids[i]+"')";
-          Debug.debug(">> "+req, 3);
-          rowsAffected = conn.createStatement().executeUpdate(req);
-          if(rowsAffected==0){
-            error = "WARNING: could not insert lfn "+lfns[i]+" on "+catalogServer;
-            logFile.addMessage(error);
-          }
-          req = "INSERT INTO t_pfn (pfname, guid) VALUES " +
-          "('"+pfns[i]+"', '"+guids[i]+"')";
-          Debug.debug(">> "+req, 3);
-          rowsAffected = conn.createStatement().executeUpdate(req);
-          if(rowsAffected==0){
-            error = "WARNING: could not insert pfn "+pfns[i]+" on "+catalogServer;
-            logFile.addMessage(error);
-          }
+      Connection conn = null;
+      try{
+        // Set parameters
+        String driver = "org.gjt.mm.mysql.Driver";
+        String port = catalogUrl.getPort()==-1 ? "" : ":"+catalogUrl.getPort();
+        String user = catalogUrl.getUser()==null ? "" : catalogUrl.getUser();
+        String passwd = catalogUrl.getPwd()==null ? "" : catalogUrl.getPwd();
+        String path = catalogUrl.getPath()==null ? "" : "/"+catalogUrl.getPath();
+        String host = catalogUrl.getHost();
+        String alias = host.replaceAll("\\.", "_");
+        String database = "jdbc:mysql://"+host+port+path;
+        boolean gridAuth = false;
+        // The (GridPilot) convention is that if no user name is given (in TOA), we use
+        // gridAuth to authenticate
+        if(user.equals("")){
+          gridAuth = true;
+          user = Util.getGridDatabaseUser();
         }
-        catch(Exception e){
-          error = "ERROR: could not insert lfn or lfn/pfn "+lfns[i]+"/"+pfns[i]+" on "+catalogServer;
-          logFile.addMessage(error, e);
-          GridPilot.getClassMgr().getStatusBar().setLabel(error);
-        }
-        if(sync){
-          // First, just try and create the metadata entry - in case it's not there already
+        // Make the connection
+        GridPilot.getClassMgr().sqlConnection(
+            alias, driver, database, user, passwd, gridAuth,
+            connectTimeout, socketTimeout, LRC_POOLSIZE);
+        conn = GridPilot.getClassMgr().getDBConnection(alias);
+        int rowsAffected = 0;
+        String req = null;
+        // Do the insertions in t_lfn and t_pfn
+        for(int i=0; i<lfns.length; ++i){
           try{
-            req = "INSERT INTO t_meta (sync, guid) VALUES " +
-               "('', '"+guids[i]+"')";
-            Debug.debug(">> "+req, 3);
-            rowsAffected = conn.createStatement().executeUpdate(req);
-            Debug.debug("rowsAffected "+rowsAffected, 3);
-          }
-          catch(Exception e){
-          }
-          try{
-            // Now flag this guid for write in t_meta
-            req = "UPDATE t_meta SET sync = 'write' WHERE guid ='"+guids[i]+"'";
+            req = "INSERT INTO t_lfn (lfname, guid) VALUES " +
+               "('"+lfns[i]+"', '"+guids[i]+"')";
             Debug.debug(">> "+req, 3);
             rowsAffected = conn.createStatement().executeUpdate(req);
             if(rowsAffected==0){
-              error = "WARNING: could flag guid "+guids[i]+" for write in t_meta on "+catalogServer;
+              error = "WARNING: could not insert lfn "+lfns[i]+" on "+catalogServer;
+              logFile.addMessage(error);
+            }
+            req = "INSERT INTO t_pfn (pfname, guid) VALUES " +
+            "('"+pfns[i]+"', '"+guids[i]+"')";
+            Debug.debug(">> "+req, 3);
+            rowsAffected = conn.createStatement().executeUpdate(req);
+            if(rowsAffected==0){
+              error = "WARNING: could not insert pfn "+pfns[i]+" on "+catalogServer;
               logFile.addMessage(error);
             }
           }
           catch(Exception e){
-            error = "WARNING: could flag guid "+guids[i]+" for write in t_meta on "+catalogServer;
-            logFile.addMessage(error);
+            error = "ERROR: could not insert lfn or lfn/pfn "+lfns[i]+"/"+pfns[i]+" on "+catalogServer;
+            logFile.addMessage(error, e);
+            GridPilot.getClassMgr().getStatusBar().setLabel(error);
+          }
+          if(sync){
+            // First, just try and create the metadata entry - in case it's not there already
+            try{
+              req = "INSERT INTO t_meta (sync, guid) VALUES " +
+                 "('', '"+guids[i]+"')";
+              Debug.debug(">> "+req, 3);
+              rowsAffected = conn.createStatement().executeUpdate(req);
+              Debug.debug("rowsAffected "+rowsAffected, 3);
+            }
+            catch(Exception e){
+            }
+            try{
+              // Now flag this guid for write in t_meta
+              req = "UPDATE t_meta SET sync = 'write' WHERE guid ='"+guids[i]+"'";
+              Debug.debug(">> "+req, 3);
+              rowsAffected = conn.createStatement().executeUpdate(req);
+              if(rowsAffected==0){
+                error = "WARNING: could flag guid "+guids[i]+" for write in t_meta on "+catalogServer;
+                logFile.addMessage(error);
+              }
+            }
+            catch(Exception e){
+              error = "WARNING: could flag guid "+guids[i]+" for write in t_meta on "+catalogServer;
+              logFile.addMessage(error);
+            }
           }
         }
+        conn.close();
       }
-      conn.close();
+      catch(Exception e){
+        try{
+          conn.close();
+        }
+        catch(Exception ee){
+        }
+      }
     }
     else{
       error = "ERROR: protocol not supported: "+catalogUrl.getProtocol();
