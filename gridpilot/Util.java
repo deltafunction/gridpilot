@@ -1563,9 +1563,11 @@ public class Util{
     if(!urls.matches("^\\w\\w+:.*")){
       return split(urls);
     }
-    urls = urls.replaceAll("(\\w\\w+:)", "'::'$1");
-    urls = "'"+urls.replaceAll("^'::'", "")+"'";
     Debug.debug("Splitting URLs "+urls, 3);
+    urls = urls.replaceAll("(\\w\\w+:/)", "'::'$1");
+    urls = urls.replaceAll("\\s(file:)", "'::'$1");
+    urls = "'"+urls.replaceAll("^'::'", "")+"'";
+    Debug.debug("Split URLs "+urls, 3);
     String [] urlArray = null;
     if(urls!=null && !urls.equals("no such field")){
       urlArray = Util.split(urls, "'::'");
