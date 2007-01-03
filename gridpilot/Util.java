@@ -982,7 +982,7 @@ public class Util{
     File file = null;
     JFileChooser fc = new JFileChooser();
     fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-    fc.setDialogTitle("Choose dowload directory");
+    fc.setDialogTitle("Choose download directory");
     int returnVal = fc.showOpenDialog(parent);
     if(returnVal==JFileChooser.APPROVE_OPTION){
       file = fc.getSelectedFile();
