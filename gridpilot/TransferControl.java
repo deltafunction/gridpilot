@@ -339,7 +339,7 @@ public class TransferControl{
         if(!timer.isRunning()){
           timer.restart();
         }
-        //statusBar.setLabel("Queueing done.");
+        statusBar.setLabel("Queueing done.");
         statusBar.stopAnimation();
       }
     };
@@ -526,6 +526,7 @@ public class TransferControl{
             TransferInfo.FIELD_TRANSFER_ID);
         statusTable.setValueAt(userInfo, transfers[i].getTableRow(),
             TransferInfo.FIELD_USER);
+        pbSubmission.setValue(pbSubmission.getValue() + 1);
         Debug.debug("Transfer submitted", 2);
       }
       statusTable.updateSelection();
@@ -561,13 +562,12 @@ public class TransferControl{
       if(!timer.isRunning()){
         timer.restart();
       }
-      pbSubmission.setValue(pbSubmission.getValue() + transfers.length);
       if(pbSubmission.getPercentComplete()==1.0){
         statusBar.removeProgressBar(pbSubmission);
         isProgressBarSet = false;
         pbSubmission.setMaximum(0);
         pbSubmission.setValue(0);
-        statusBar.setLabel("Queueing transfers done.");
+        //statusBar.setLabel("Queueing all transfers done.");
         GridPilot.getClassMgr().getStatusBar().setLabel("");
       }
     }

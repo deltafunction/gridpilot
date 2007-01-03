@@ -389,7 +389,11 @@ public class HSQLDBDatabase implements Database{
           Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
           Statement stmt = conn.createStatement();
           stmt.executeUpdate("SHUTDOWN");
-          conn.close();
+          try{
+            conn.close();
+          }
+          catch(Exception ee){
+          }
         }
         catch(Exception e){
           Debug.debug("Shutting down server failed. "+
