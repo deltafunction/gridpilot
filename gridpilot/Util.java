@@ -1564,7 +1564,7 @@ public class Util{
       return split(urls);
     }
     Debug.debug("Splitting URLs "+urls, 3);
-    urls = urls.replaceAll("(\\w\\w+:/)", "'::'$1");
+    urls = urls.replaceAll("(\\w\\w+://)", "'::'$1");
     urls = urls.replaceAll("\\s(file:)", "'::'$1");
     urls = "'"+urls.replaceAll("^'::'", "")+"'";
     Debug.debug("Split URLs "+urls, 3);
