@@ -1032,7 +1032,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         // if we don't get an exception, the directory got read...
         Debug.debug("Directory "+localPath, 2);
         Debug.debug("Setting thisUrl, "+localPath, 3);
-        thisUrl = (new File(localPath)).toURL().toExternalForm();
+        thisUrl = (new File(localPath)).toURI().toURL().toExternalForm();
         setUrl(thisUrl);
         statusBar.setLabel(directories+" directories, "+files+" files");
         return;

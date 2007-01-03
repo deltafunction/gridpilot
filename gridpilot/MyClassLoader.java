@@ -32,7 +32,7 @@ class MyClassLoader extends ClassLoader{
             Debug.debug("name : " + className, 3);
             if(!className.equals(name)){
               try{
-                loadClass(files[i].toURL(), className);
+                loadClass(files[i].toURI().toURL(), className);
               }
               catch(Throwable t){}
             }

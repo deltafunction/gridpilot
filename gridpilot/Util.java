@@ -324,13 +324,13 @@ public class Util{
                 for(int i=0; i<urls.length; ++i){
                   try{
                     if(urls[i].startsWith("/")){
-                      urls[i] = (new File(urls[i])).toURL().toExternalForm();
+                      urls[i] = (new File(urls[i])).toURI().toURL().toExternalForm();
                     }
                     else if(urls[i].startsWith("file://")){
-                      urls[i] = (new File(urls[i].substring(6))).toURL().toExternalForm();
+                      urls[i] = (new File(urls[i].substring(6))).toURI().toURL().toExternalForm();
                     }
                     else if(urls[i].startsWith("file://")){
-                      urls[i] = (new File(urls[i].substring(5))).toURL().toExternalForm();
+                      urls[i] = (new File(urls[i].substring(5))).toURI().toURL().toExternalForm();
                     }
                   }
                   catch(Exception ee){

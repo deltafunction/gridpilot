@@ -129,7 +129,7 @@ public class ATLASDatabase implements Database{
         toa.substring(1);
       }
       if(toa.matches("\\w:.*") || toa.indexOf(":")<0){
-        toaURL = (new File(toa)).toURL();
+        toaURL = (new File(toa)).toURI().toURL();
       }
       else{
         toaURL = new URL(toa);
@@ -1263,7 +1263,7 @@ public class ATLASDatabase implements Database{
     while(catalogServer==null && count<5){
       boolean chkSite = false;
       ++count;
-      in = new BufferedReader(new InputStreamReader((toaFile.toURL()).openStream()));
+      in = new BufferedReader(new InputStreamReader((toaFile.toURI().toURL()).openStream()));
       StringBuffer lb = new StringBuffer();
       while((inLine = in.readLine())!=null){
         // take care of "lines" split on multiple lines
