@@ -1444,7 +1444,8 @@ public class ATLASDatabase implements Database{
               try{
                 Debug.debug("Querying TOA for "+finalLocations.get(ii), 2);
                 String catalogServer = null;
-                // If trying to query the home lfc server, use the mysql alias if possible
+                // If trying to query the home lfc server, first try the mysql alias if possible
+                // TODO: fall back to LFC
                 if(homeSite!=null && homeServerMysqlAlias!=null &&
                     finalLocations.get(ii).toString().equalsIgnoreCase(homeSite)){
                   catalogServer = homeServerMysqlAlias;
