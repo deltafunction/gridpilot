@@ -18,6 +18,7 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLDecoder;
 import java.util.ListIterator;
 import java.util.Vector;
 
@@ -130,6 +131,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           ++lineNumber;
           line = line.replaceAll("\\r", "");
           line = line.replaceAll("\\n", "");
+          line = URLDecoder.decode(line, "utf-8");
           GridPilot.getClassMgr().addUrl(line);
           Debug.debug("URL: "+line, 3);
         }
@@ -442,6 +444,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Set the text of the navigation label or input field
    */
   private void setUrl(String url){
+    try{
+      url = URLDecoder.decode(url, "utf-8");
+    }
+    catch (UnsupportedEncodingException e){
+      e.printStackTrace();
+    }
     String newUrl = url;
     GridPilot.getClassMgr().removeUrl("");
     Vector urlList = GridPilot.getClassMgr().getUrlList();
@@ -976,6 +984,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
     localPath = localPath.replaceFirst("^/(\\w):", "$1:");
     localPath = localPath.replaceFirst("^file:(\\w):", "$1:");
     localPath = localPath.replaceFirst("^/(\\w):", "$1:");
+    try{
+      localPath = URLDecoder.decode(localPath, "utf-8");
+    }
+    catch (UnsupportedEncodingException e){
+      e.printStackTrace();
+    }
     Debug.debug("setLocalDirDisplay "+localPath, 3);
     try{
       bSave.setEnabled(false);
