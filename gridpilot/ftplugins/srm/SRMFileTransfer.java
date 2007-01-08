@@ -2,6 +2,8 @@ package gridpilot.ftplugins.srm;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Vector;
@@ -649,12 +651,21 @@ public class SRMFileTransfer implements FileTransfer {
               (new File(fileDest.getPath())).isDirectory()){
             throw new IOException("ERROR: destination is directory "+ fileDest.getURL());
           }
-          if((toType & FILE_URL)==FILE_URL && !(new File(fileDest.getPath())).getParentFile().canWrite()){
-            throw new IOException("ERROR: destination directory is not writeable "+ fileDest.getURL());
+          String fsPath = fileDest.getPath();
+          fsPath = fsPath.replaceFirst("^/+", "/");
+          fsPath = fsPath.replaceFirst("^/(\\w:/+)", "$1");
+          try{
+            fsPath = URLDecoder.decode(fsPath, "utf-8");
+          }
+          catch (UnsupportedEncodingException e){
+            e.printStackTrace();
+          }
+          if((toType & FILE_URL)==FILE_URL && !(new File(fsPath)).getParentFile().canWrite()){
+            throw new IOException("ERROR: destination directory is not writeable. "+ fsPath);
           }
           sources[i] = srmSrc.getURL();
           Debug.debug("source file #"+i+" : "+sources[i], 2);
-          dests[i] = fileDest.getPath();
+          dests[i] = fsPath;
         }   
         srm = connect(srcUrls[0]);
         RequestStatus rs = srm.get(sources, protocols);
