@@ -2152,13 +2152,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
       }
     }
-    if(wb!=null && wb.lastURL!=null &&
-        wb.lastURL.startsWith(finBaseUrl)){
-        //GridPilot.getClassMgr().getStatusBar().setLabel("");
-    }
-    else{
-      // Don't do anything if we cannot get a URL
+    if(wb==null || wb.lastURL==null ||
+        !wb.lastURL.startsWith(finBaseUrl) || wb.lastUrlList==null){
       Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
+      throw new IOException("No download directory");
     }
     frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     //GridPilot.getClassMgr().getStatusBar().setLabel("");
