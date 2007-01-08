@@ -122,6 +122,8 @@ public class GridPilot extends JApplet{
         systemProperties.put("http.proxySet", "true");
         systemProperties.put("http.proxyHost", proxyHost);
         systemProperties.put("http.proxyPort", proxyPort);
+        systemProperties.put("https.proxyHost",proxyHost);
+        systemProperties.put("https.proxyPort",proxyPort); 
         //systemProperties.put("http.proxyUser", "");
         //systemProperties.put("http.proxyPassword", "");
         System.setProperties(systemProperties);
