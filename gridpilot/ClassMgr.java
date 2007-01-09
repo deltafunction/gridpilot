@@ -35,8 +35,8 @@ public class ClassMgr{
   private StatisticsPanel jobStatisticsPanel;
   private StatisticsPanel transferStatisticsPanel;
   private JobValidation jobValidation;
-  private GridPilot prodCom;
-  private int debugLevel = 3;
+  private GridPilot gridPilot;
+  private int debugLevel = 0;
   private HashMap dbMgrs = new HashMap();
   private HashMap ft = new HashMap();
   private HashMap jobMgrs = new HashMap();
@@ -102,7 +102,7 @@ public class ClassMgr{
   }
 
   public void setGridPilot(GridPilot _gridpilot) {
-    prodCom = _gridpilot;
+    gridPilot = _gridpilot;
   }
 
   public void setDebugLevel(int _debugLevel){
@@ -390,11 +390,11 @@ public class ClassMgr{
   }
 
   public GridPilot getGridPilot(){
-    if(prodCom==null){
+    if(gridPilot==null){
       Debug.debug("Object null", 3);
       new Exception().printStackTrace();
     }
-    return prodCom;
+    return gridPilot;
   }
 
   public int getDebugLevel(){

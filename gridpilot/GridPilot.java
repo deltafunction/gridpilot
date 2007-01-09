@@ -594,7 +594,7 @@ public class GridPilot extends JApplet{
       }
       catch(NumberFormatException nfe){
         getClassMgr().getLogFile().addMessage("Debug is not an integer in configFile, section [gridpilot]");
-        getClassMgr().setDebugLevel(3);
+        getClassMgr().setDebugLevel(0);
       }
     }
   }

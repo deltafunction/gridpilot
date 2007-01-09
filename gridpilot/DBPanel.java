@@ -1428,7 +1428,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               if(!success){
                 String msg = "Deleting files "+Util.arrayToString(ids)+" failed.";
                 Debug.debug(msg, 1);
-                GridPilot.getClassMgr().getStatusBar().setLabel(msg);
+                GridPilot.getClassMgr().getStatusBar().setLabel("Deleting file(s) failed");
                 GridPilot.getClassMgr().getLogFile().addMessage(msg);
               }
               else{
