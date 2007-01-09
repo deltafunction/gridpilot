@@ -70,10 +70,11 @@ public class ATLASDatabase implements Database{
   // and the home server will be de-registered in DQ, even if other
   // catalog sites are registered in DQ than the home catalog or if there
   // is no home catalog set.
-  private boolean forceDelete = false;
+  private static boolean forceDelete = false;
   private static String connectTimeout = "10000";
   private static String socketTimeout = "30000";
   private static String LRC_POOLSIZE = "5";
+  private static boolean DELETE_FROM_SITES_ON_ALL_CATALOGS = false;
 
 
   public ATLASDatabase(String _dbName){
@@ -1003,12 +1004,13 @@ public class ATLASDatabase implements Database{
       int rowsAffected = 0;
       for(int i=0; i<lfns.length; ++i){
         try{
+          lfn = lfns[i];
           // First query the t_lfn table to get the guid
           String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
           ResultSet rset = null;
           String guid = null;
           Vector resultVector = new Vector();
-          Debug.debug(">> "+req, 3);
+          Debug.debug(">> "+req, 2);
           rset = conn.createStatement().executeQuery(req);
           while(rset.next()){
             resultVector.add(rset.getString("guid"));
@@ -1023,22 +1025,22 @@ public class ATLASDatabase implements Database{
           }
           guid = (String) resultVector.get(0);
           // Now delete this guid from the t_lfn, t_pfn and t_meta tables
-          req = "DELETE FROM t_lfn WHERE guid ='"+guid+"'";
-          Debug.debug(">> "+req, 3);
+          req = "DELETE FROM t_lfn WHERE guid = '"+guid+"'";
+          Debug.debug(">> "+req, 2);
           rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+guid+" from t_lfn on "+catalogServer;
             logFile.addMessage(error);
           }
-          req = "DELETE FROM t_pfn WHERE guid ='"+guid+"'";
-          Debug.debug(">> "+req, 3);
+          req = "DELETE FROM t_pfn WHERE guid = '"+guid+"'";
+          Debug.debug(">> "+req, 2);
           rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+guid+" from t_pfn on "+catalogServer;
             logFile.addMessage(error);
           }
-          req = "DELETE FROM t_meta WHERE guid ='"+guid+"'";
-          Debug.debug(">> "+req, 3);
+          req = "DELETE FROM t_meta WHERE guid = '"+guid+"'";
+          Debug.debug(">> "+req, 2);
           rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+guid+" from t_meta on "+catalogServer;
@@ -1047,7 +1049,8 @@ public class ATLASDatabase implements Database{
         }
         catch(Exception e){
           error = "WARNING: problem deleting lfn "+lfns[i]+" on "+catalogServer;
-          logFile.addMessage(error);
+          e.printStackTrace();
+          logFile.addMessage(error, e);
         }
       }
       conn.close();
@@ -1093,6 +1096,7 @@ public class ATLASDatabase implements Database{
       int rowsAffected = 0;
       for(int i=0; i<lfns.length; ++i){
         try{
+          lfn = lfns[i];
           // First query the t_lfn table to get the guid
           String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
           ResultSet rset = null;
@@ -1446,9 +1450,11 @@ public class ATLASDatabase implements Database{
                 String catalogServer = null;
                 // If trying to query the home lfc server, first try the mysql alias if possible
                 // TODO: fall back to LFC
+                String tryAgain = null;
                 if(homeSite!=null && homeServerMysqlAlias!=null &&
                     finalLocations.get(ii).toString().equalsIgnoreCase(homeSite)){
                   catalogServer = homeServerMysqlAlias;
+                  tryAgain = getFileCatalogServer((String) finalLocations.get(ii)); 
                 }
                 else{
                   catalogServer = getFileCatalogServer((String) finalLocations.get(ii)); 
@@ -1462,7 +1468,15 @@ public class ATLASDatabase implements Database{
                 GridPilot.getClassMgr().getStatusBar().setLabel(
                     "Querying "+catalogServer);
                 try{
-                  String [] pfns = getPFNs(catalogServer, lfName, findAll);
+                  String [] pfns = null;
+                  try{
+                    pfns = getPFNs(catalogServer, lfName, findAll);
+                  }
+                  catch(Exception e){
+                  }
+                  if(tryAgain!=null && (pfns==null || pfns.length==0)){
+                    pfns = getPFNs(tryAgain, lfName, findAll);
+                  }
                   for(int n=0; n<pfns.length; ++n){
                     addPFN(pfns[n]);
                   }
@@ -1618,13 +1632,11 @@ public class ATLASDatabase implements Database{
     String [] toDeleteLfns = null;
     String [] toKeepLfns = null;
     String [] toKeepGuids = null;
-    String dsn = null;
     // NOTICE: we are assuming that there is a one-to-one mapping between
     //         lfns and guids. This is not necessarily the case...
     // TODO: improve
     try{
       GridPilot.getClassMgr().getStatusBar().setLabel("Finding LFNs...");
-      dsn = getDatasetName(datasetID);
       DBResult currentFiles = getFiles(datasetID);
       toDeleteLfns = new String[fileIDs.length];
       toKeepGuids = new String[currentFiles.values.length-fileIDs.length];
@@ -1676,51 +1688,64 @@ public class ATLASDatabase implements Database{
     boolean complete = false;
     DQ2Locations locations = null;
     if(cleanup){
-      GridPilot.getClassMgr().getStatusBar().setLabel("Finding locations...");
-      // Check that the location is homeServer and that it has a MySQL Alias
-      try{
-        // Find the locations (to keep)
-        locations = getLocations("'"+datasetID+"'")[0];
-        if(locations.getIncomplete().length+locations.getIncomplete().length>1){
-          throw new Exception("More than one location registered: "+
-              Util.arrayToString(locations.getIncomplete())+" "+
-              Util.arrayToString(locations.getComplete()));
+      if(forceDelete){
+        //GridPilot.getClassMgr().getStatusBar().setLabel("Finding locations...");
+        // Check that the location is homeServer and that it has a MySQL Alias
+        try{
+          // Find the locations (to keep)
+          locations = getLocations("'"+datasetID+"'")[0];
+          if(locations.getIncomplete().length+locations.getIncomplete().length>1){
+            throw new Exception("More than one location registered: "+
+                Util.arrayToString(locations.getIncomplete())+" "+
+                Util.arrayToString(locations.getComplete()));
+          }
+          String location = null;
+          if(locations.getIncomplete().length==1){
+            location = locations.getIncomplete()[0];
+          }
+          else if(locations.getComplete().length==1){
+            complete = true;
+            location = locations.getComplete()[0];
+          }
+          if(!location.equalsIgnoreCase(homeSite) || homeServerMysqlAlias==null ||
+              homeServerMysqlAlias.equals("")){
+            throw new Exception("Can only delete files on home catalog server MySQL alias.");
+          }
         }
-        String location = null;
-        if(locations.getIncomplete().length==1){
-          location = locations.getIncomplete()[0];
-        }
-        else if(locations.getComplete().length==1){
-          complete = true;
-          location = locations.getComplete()[0];
-        }
-        if(!location.equalsIgnoreCase(homeSite) || homeServerMysqlAlias==null ||
-            homeServerMysqlAlias.equals("")){
-          throw new Exception("Can only delete files on home catalog server MySQL alias.");
-        }
-      }
-      catch(Exception e){
-        if(!forceDelete){
-          error = "ERROR: problem with locations. Aborting.";
-          logFile.addMessage(error, e);
-          return false;
-        }
-        else{
+        catch(Exception e){
           error = "WARNING: problem with locations. There may be orphaned LFNs in DQ2, " +
-              "and/or wrongly registered locations in DQ2 and/or " +
-              "wrongly registered file catalog entries.";
+          "and/or wrongly registered locations in DQ2 and/or " +
+          "wrongly registered file catalog entries.";
           logFile.addMessage(error, e);
         }
       }
-      
       // Delete the physical files.
       // First store them all in a Vector.
       Vector pfns = new Vector();
       for(int i=0; i<toDeleteLfns.length; ++i){
         // Get the pfns
-        findPFNs(datasetID, toDeleteLfns[i], false);
-        for(int j=0; j<getPFNs().length; ++j){
-          pfns.add((String) getPFNs()[j]);
+        if(DELETE_FROM_SITES_ON_ALL_CATALOGS){
+          findPFNs(datasetID, toDeleteLfns[i], false);
+          for(int j=0; j<getPFNs().length; ++j){
+            pfns.add((String) getPFNs()[j]);
+          }
+        }
+        else{
+          try{
+            // if we're using an alias
+            if(homeServerMysqlAlias!=null){
+              Collections.addAll(pfns, getPFNs(homeServerMysqlAlias, toDeleteLfns[i], true));
+            }
+            // otherwise, it is assumed that we're using a mysql catalog
+            else{
+              Collections.addAll(pfns, getPFNs(homeSite, toDeleteLfns[i], true));
+            }
+          }
+          catch(Exception e){
+            logFile.addMessage("WARNING: failed to find PFNs to delete, "+
+                Util.arrayToString(toDeleteLfns)+
+                " on "+homeServerMysqlAlias+" or "+homeSite+". Please delete them by hand.");
+          }
         }
       }      
       // Then construct a HashMap of Vectors of files on the same server.
@@ -1787,6 +1812,7 @@ public class ATLASDatabase implements Database{
       GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
 
       // Remove entries from MySQL catalog
+      // Notice: we delete ONLY one entry per lfn, the one in the home catalog
       GridPilot.getClassMgr().getStatusBar().setLabel("Cleaning up home catalog...");
       try{
         // if we're using an alias, just flag for deletion
@@ -1801,107 +1827,111 @@ public class ATLASDatabase implements Database{
       catch(Exception e){
         logFile.addMessage("WARNING: failed to delete LFNs "+Util.arrayToString(toDeleteLfns)+
             " on "+homeServerMysqlAlias+". Please delete them by hand.");
-      }  
+      }
     }
-        
-    // Deregister the LFNs from this vuid on DQ2.
-    // NOTICE that this changes the vuid of the dataset...
-    GridPilot.getClassMgr().getStatusBar().setLabel("Cleaning up DQ dataset catalog...");
-    DQ2Access dq2Access = null;
-    String [] completeLocations = null;
-    String [] incompleteLocations = null;
-    try{
-      dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
+    
+    if(forceDelete){
+      // Deregister the LFNs from this vuid on DQ2.
+      // NOTICE that this changes the vuid of the dataset...
+      String dsn = null;
+      dsn = getDatasetName(datasetID);
+      DQ2Access dq2Access = null;
+      String [] completeLocations = null;
+      String [] incompleteLocations = null;
       try{
-        completeLocations = locations.getComplete();
-        // Delete all locations from old vuid (a new vuid will be created)
-        for(int i=0; i<completeLocations.length; ++i){
-          try{
-            dq2Access.deleteFromSite(datasetID, locations.getComplete()[i]);
-          }
-          catch(Exception e){
-          }
-        }
-      }
-      catch(Exception ee){
-        ee.printStackTrace();
-      }
-      try{
-        incompleteLocations = locations.getIncomplete();
-        for(int i=0; i<incompleteLocations.length; ++i){
-          try{
-            dq2Access.deleteFromSite(datasetID, locations.getComplete()[i]);
-          }
-          catch(Exception e){
-          }
-        }
-      }
-      catch(Exception ee){
-        ee.printStackTrace();
-      }
-      // Clear the lfns by creating new dataset with the same dsn
-      Debug.debug("Creating new version of dataset "+dsn, 2);
-      dq2Access.createNewDatasetVersion(dsn);
-      // Add the lfns we don't delete
-      Debug.debug("Re-adding original LFNs "+Util.arrayToString(toKeepLfns), 2);
-      if(toKeepLfns.length>0 && toKeepGuids.length>0){
-        dq2Access.addLFNsToDataset(toKeepLfns, toKeepGuids, datasetID);
-      }
-      // Re-register all locations
-      Debug.debug("Re-registering original locations "+Util.arrayToString(toKeepLfns), 2);
-      if(completeLocations!=null && completeLocations.length>0){
-        for(int i=0; i<completeLocations.length; ++i){
-          try{
-            if(locations.getComplete()[i].equalsIgnoreCase(homeSite)){
-              continue;
-            }
-            dq2Access.registerLocation(datasetID, dsn,
-                true, completeLocations[i]);
-          }
-          catch(Exception e){
-          }
-        }
-      }
-      if(incompleteLocations!=null && incompleteLocations.length>0){
-        for(int i=0; i<incompleteLocations.length; ++i){
-          try{
-            if(locations.getIncomplete()[i].equalsIgnoreCase(homeSite)){
-              continue;
-            }
-            dq2Access.registerLocation(datasetID, dsn,
-                false, incompleteLocations[i]);
-          }
-          catch(Exception e){
-          }
-        }
-      }
-      // Re-register home location if we failed to delete all files
-      if(!ok || toKeepGuids.length>0){
+        dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
         try{
-          dq2Access.registerLocation(datasetID, dsn,
-              (complete && !atLeastOneDeleted), homeSite);
+          completeLocations = locations.getComplete();
+          // Delete all locations from old vuid (a new vuid will be created)
+          for(int i=0; i<completeLocations.length; ++i){
+            try{
+              dq2Access.deleteFromSite(datasetID, locations.getComplete()[i]);
+            }
+            catch(Exception e){
+            }
+          }
         }
         catch(Exception ee){
           ee.printStackTrace();
         }
-      }
-      else{
-        // Otherwise clear the home location
         try{
-          dq2Access.deleteFromSite(datasetID, homeSite);
+          incompleteLocations = locations.getIncomplete();
+          for(int i=0; i<incompleteLocations.length; ++i){
+            try{
+              dq2Access.deleteFromSite(datasetID, locations.getComplete()[i]);
+            }
+            catch(Exception e){
+            }
+          }
         }
         catch(Exception ee){
+          ee.printStackTrace();
+        }
+        // Clear the lfns by creating new dataset with the same dsn
+        Debug.debug("Creating new version of dataset "+dsn, 2);
+        dq2Access.createNewDatasetVersion(dsn);
+        // Add the lfns we don't delete
+        Debug.debug("Re-adding original LFNs "+Util.arrayToString(toKeepLfns), 2);
+        if(toKeepLfns.length>0 && toKeepGuids.length>0){
+          dq2Access.addLFNsToDataset(toKeepLfns, toKeepGuids, datasetID);
+        }
+        // Re-register all locations
+        Debug.debug("Re-registering original locations "+Util.arrayToString(toKeepLfns), 2);
+        if(completeLocations!=null && completeLocations.length>0){
+          for(int i=0; i<completeLocations.length; ++i){
+            try{
+              if(locations.getComplete()[i].equalsIgnoreCase(homeSite)){
+                continue;
+              }
+              dq2Access.registerLocation(datasetID, dsn,
+                  true, completeLocations[i]);
+            }
+            catch(Exception e){
+            }
+          }
+        }
+        if(incompleteLocations!=null && incompleteLocations.length>0){
+          for(int i=0; i<incompleteLocations.length; ++i){
+            try{
+              if(locations.getIncomplete()[i].equalsIgnoreCase(homeSite)){
+                continue;
+              }
+              dq2Access.registerLocation(datasetID, dsn,
+                  false, incompleteLocations[i]);
+            }
+            catch(Exception e){
+            }
+          }
+        }
+        // Re-register home location if we failed to delete all files
+        if(!ok || toKeepGuids.length>0){
+          try{
+            dq2Access.registerLocation(datasetID, dsn,
+                (complete && !atLeastOneDeleted), homeSite);
+          }
+          catch(Exception ee){
+            ee.printStackTrace();
+          }
+        }
+        else{
+          // Otherwise clear the home location
+          try{
+            dq2Access.deleteFromSite(datasetID, homeSite);
+          }
+          catch(Exception ee){
+          }
         }
       }
+      catch(Exception eee){
+        eee.printStackTrace();
+        error = "WARNING: could not connect to "+dq2Url+" on port "+dq2SecurePort+". Writing " +
+           "not possible";
+        logFile.addMessage(error, eee);
+        return false;
+      }
     }
-    catch(Exception eee){
-      eee.printStackTrace();
-      error = "WARNING: could not connect to "+dq2Url+" on port "+dq2SecurePort+". Writing " +
-         "not possible";
-      logFile.addMessage(error, eee);
-      return false;
-    }
-    return true;
+    return ok;
+
   }
 
   /**
@@ -2182,16 +2212,16 @@ public class ATLASDatabase implements Database{
       // vuid
       if(fields[i].equalsIgnoreCase("vuid")){
         error = "WARNING: cannot change vuid";
-        GridPilot.getClassMgr().getStatusBar().setLabel(error);
+        //GridPilot.getClassMgr().getStatusBar().setLabel(error);
         logFile.addMessage(error+" "+vuid);
-        return false;
+        //return false;
       }
       // dsn
       else if(fields[i].equalsIgnoreCase("dsn")){
         error = "WARNING: cannot change dsn";
-        GridPilot.getClassMgr().getStatusBar().setLabel(error);
+        //GridPilot.getClassMgr().getStatusBar().setLabel(error);
         logFile.addMessage(error+" "+dsn);
-        return false;
+        //return false;
       }
       // complete, incomplete
       else if(fields[i].equalsIgnoreCase("incomplete") ||
@@ -2209,24 +2239,53 @@ public class ATLASDatabase implements Database{
         }
         if(dqLocations!=null && dqLocations.length>0){
           try{
-            // Delete all locations
-            for(int j=0; j<dqLocations[0].getComplete().length; ++j){
-              dq2Access.deleteFromSite(vuid, dqLocations[0].getComplete()[j]);
-            }
-            for(int j=0; j<dqLocations[0].getComplete().length; ++j){
-              dq2Access.deleteFromSite(vuid, dqLocations[0].getComplete()[j]);
-            }
-            // Set the new ones
             if(fields[i].equalsIgnoreCase("complete")){
               String [] newLocations = Util.split(values[i]);
+              Set newLocationsSet = new HashSet();
+              Collections.addAll(newLocationsSet, newLocations);
+              // Delete locations
+              for(int j=0; j<dqLocations[0].getComplete().length; ++j){
+                if(newLocationsSet.contains(dqLocations[0].getComplete()[j])){
+                  continue;
+                }
+                Debug.debug("Deleting location "+dqLocations[0].getComplete()[j]+
+                    " for vuid "+vuid, 2);
+                dq2Access.deleteFromSite(vuid, dqLocations[0].getComplete()[j]);
+              }
+              // Set the new ones
+              Set oldLocationsSet = new HashSet();
+              Collections.addAll(oldLocationsSet, dqLocations[0].getComplete());
               for(int j=0; j<newLocations.length; ++j){
-                dq2Access.registerLocation(vuid, dsn, true, values[i]);
+                if(oldLocationsSet.contains(newLocations[j])){
+                  continue;
+                }
+                Debug.debug("Registering location "+newLocations[j]+
+                    " for vuid "+vuid, 2);
+                dq2Access.registerLocation(vuid, dsn, true, newLocations[j]);
               }
             }
+            //BNLTAPE CERNPROD CYF LYONTAPE CSCS
             else if(fields[i].equalsIgnoreCase("incomplete")){
               String [] newLocations = Util.split(values[i]);
+              Set newLocationsSet = new HashSet();
+              Collections.addAll(newLocationsSet, newLocations);
+              for(int j=0; j<dqLocations[0].getIncomplete().length; ++j){
+                if(newLocationsSet.contains(dqLocations[0].getIncomplete()[j])){
+                  continue;
+                }
+                Debug.debug("Deleting location "+dqLocations[0].getIncomplete()[j]+
+                    " for vuid "+vuid, 2);
+                dq2Access.deleteFromSite(vuid, dqLocations[0].getIncomplete()[j]);
+              }
+              Set oldLocationsSet = new HashSet();
+              Collections.addAll(oldLocationsSet, dqLocations[0].getIncomplete());
               for(int j=0; j<newLocations.length; ++j){
-                dq2Access.registerLocation(vuid, dsn, false, values[i]);
+                if(oldLocationsSet.contains(newLocations[j])){
+                  continue;
+                }
+                Debug.debug("Registering location "+newLocations[j]+
+                    " for vuid "+vuid, 2);
+                dq2Access.registerLocation(vuid, dsn, false, newLocations[j]);
               }
             }
           }
