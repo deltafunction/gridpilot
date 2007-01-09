@@ -908,13 +908,27 @@ public class ATLASDatabase implements Database{
           connectTimeout, socketTimeout, LRC_POOLSIZE);
       Connection conn = GridPilot.getClassMgr().getDBConnection(alias);
       // First query the t_lfn table to get the guid
-      String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
+      String req = null;
+      if(homeSite!=null && homeServerMysqlAlias!=null &&
+          catalogServer.equalsIgnoreCase(homeServerMysqlAlias)){
+        req = "SELECT t_lfn.guid, sync FROM t_lfn, t_meta WHERE lfname ='"+lfn+"' AND " +
+                "t_lfn.guid=t_meta.guid";
+      }
+      else{
+        req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
+      }
       ResultSet rset = null;
       String guid = null;
       Vector resultVector = new Vector();
       Debug.debug(">> "+req, 3);
       rset = conn.createStatement().executeQuery(req);
       while(rset.next()){
+        // Don't display records flagged for deletion
+        if(homeSite!=null && homeServerMysqlAlias!=null &&
+            catalogServer.equalsIgnoreCase(homeServerMysqlAlias) &&
+            rset.getString("sync").equals("delete")){
+          continue;
+        }
         resultVector.add(rset.getString("guid"));
       }
       if(resultVector.size()==0){
@@ -1643,26 +1657,31 @@ public class ATLASDatabase implements Database{
       toKeepLfns = new String[currentFiles.values.length-fileIDs.length];
       int count = 0;
       int count1 = 0;
+      boolean staysThere = false;
       for(int i=0; i<currentFiles.values.length; ++i){
+        staysThere = false;
         for(int j=0; j<fileIDs.length; ++j){
-          if(!currentFiles.getValue(i, "guid").toString().equalsIgnoreCase(fileIDs[j])){
-            toKeepGuids[count] = currentFiles.getValue(i, "guid").toString();
-            toKeepLfns[count] = currentFiles.getValue(i, "lfn").toString();
-            if(toKeepGuids[count]==null || toKeepLfns[count]==null ||
-                toKeepGuids[count].equals("") || toKeepLfns[count].equals("")){
-              error = "ERROR: no guid/lfn for "+toKeepGuids[count]+"/"+toKeepLfns[count]+
-              ". Aborting delete; nothing deleted.";
-              logFile.addMessage(error);
-              GridPilot.getClassMgr().getStatusBar().setLabel(error);
-              return false;
-            }
-            ++count;
+          if(currentFiles.getValue(i, "guid").toString().equalsIgnoreCase(fileIDs[j])){
+            staysThere = true;
             break;
           }
-          else{
-            toDeleteLfns[count1] = currentFiles.getValue(i, "lfn").toString();
-            ++count1;
+        }
+        if(!staysThere){
+          toKeepGuids[count] = currentFiles.getValue(i, "guid").toString();
+          toKeepLfns[count] = currentFiles.getValue(i, "lfn").toString();
+          if(toKeepGuids[count]==null || toKeepLfns[count]==null ||
+              toKeepGuids[count].equals("") || toKeepLfns[count].equals("")){
+            error = "ERROR: no guid/lfn for "+toKeepGuids[count]+"/"+toKeepLfns[count]+
+            ". Aborting delete; nothing deleted.";
+            logFile.addMessage(error);
+            GridPilot.getClassMgr().getStatusBar().setLabel(error);
+            return false;
           }
+          ++count;
+        }
+        else{
+          toDeleteLfns[count1] = currentFiles.getValue(i, "lfn").toString();
+          ++count1;
         }
       }
       if(count!=currentFiles.values.length-fileIDs.length){
