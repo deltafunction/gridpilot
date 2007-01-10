@@ -939,8 +939,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               menuEditPaste.setEnabled(clipboardOwned);
             }
           });
-
+          Debug.debug("Making dataset menu", 3);
           makeDatasetMenu();
+          Debug.debug("Done making dataset menu", 3);
         }
         else if(tableName.equalsIgnoreCase("file")){
           tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
@@ -1029,7 +1030,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           makeRuntimeEnvironmentMenu();
         }
         
-        GridPilot.getClassMgr().getGlobalFrame().menuEdit.updateUI();
         statusBar.stopAnimation();
         if(tableName.equalsIgnoreCase("file")){
           if(res.values.length>0){
@@ -1046,11 +1046,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         
+        Debug.debug("Sorting", 3);
         if(sortColumn>-1){
           Debug.debug("Sorting: "+sortColumn+":"+isAscending, 3);
           ((DBVectorTableModel) tableResults.getModel()).sort(sortColumn, isAscending);
         }
-        
+        Debug.debug("Setting column widths", 3);
         if(columnWidths!=null){
           String [] columnNames = ((DBVectorTableModel) tableResults.getModel()).getColumnNames();
           // If we have changed the displayed columns, there's no point...
@@ -1061,6 +1062,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             }
           }
         }
+        Debug.debug("Updating edit menu", 3);
+        GridPilot.getClassMgr().getGlobalFrame().menuEdit.updateUI();
+        Debug.debug("Done Updating edit menu", 3);
         stopWorking();
       }
     };
