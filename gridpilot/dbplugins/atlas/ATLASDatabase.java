@@ -932,10 +932,14 @@ public class ATLASDatabase implements Database{
         resultVector.add(rset.getString("guid"));
       }
       if(resultVector.size()==0){
-        error = "ERROR: No guid found for lfn "+lfn;
-        logFile.addMessage(error);
+        error = "WARNING: No guid found for lfn "+lfn+" on "+catalogServer;
         rset.close();
         conn.close();
+        if(catalogServer.equalsIgnoreCase(homeServerMysqlAlias)){
+          pfns = new String [] {};
+          return pfns;
+        }
+        logFile.addMessage(error);
         throw new SQLException(error);
       }
       else if(resultVector.size()>1){
