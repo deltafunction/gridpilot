@@ -205,7 +205,7 @@ public class NGSubmission{
              queue = resource.getQueueName();
           }
           else{
-            logFile.addInfo("Ressource rejected: \n"+
+            logFile.addInfo("Resource rejected: \n"+
                 "Max jobs:"+resources[i].getMaxjobs()+
                 "\nTotal CPUs:"+resources[i].getTotalQueueCPUs());
           }
