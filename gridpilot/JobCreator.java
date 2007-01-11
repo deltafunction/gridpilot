@@ -687,18 +687,21 @@ public class JobCreator{
         Debug.debug("No event information in dataset "+datasetIdentifiers[currentDataset], 2);
       }
       if(eventsPresent){
-        if(Integer.parseInt((String) inputRecords.getValue(
-            currentPartition-1, "eventMin"))==evtMin &&
-        Integer.parseInt((String) inputRecords.getValue(
-                currentPartition-1, "eventMax"))==evtMax){
-          //inputJobDefOutputFileName = getTransOutFileName(inputDB, datasetIdentifiers[currentDataset]);
-          inputFileName = inputMgr.getOutputFiles(inputIds[currentPartition-1])[0];
-          inputFiles += inputMgr.getJobDefOutRemoteName(
-              inputIds[currentPartition-1], inputFileName);
-          Debug.debug("Adding input file "+inputIds[currentPartition-1]+
-                  "-->"+inputFiles, 3);
+        boolean inputFileFound = false;
+        for(int j=0; j<inputIds.length; ++j){
+          if(Integer.parseInt((String) inputRecords.getValue(
+              j, "eventMin"))==evtMin &&
+          Integer.parseInt((String) inputRecords.getValue(
+                  j, "eventMax"))==evtMax){
+            //inputJobDefOutputFileName = getTransOutFileName(inputDB, datasetIdentifiers[currentDataset]);
+            inputFileName = inputMgr.getOutputFiles(inputIds[j])[0];
+            inputFiles += inputMgr.getJobDefOutRemoteName(inputIds[j], inputFileName);
+            Debug.debug("Adding input file "+inputIds[j]+"-->"+inputFiles, 3);
+            inputFileFound = true;
+            break;
+          }
         }
-        else{
+        if(!inputFileFound){
           for(int j=0; j<inputIds.length; ++j){
             readEvtMin = Integer.parseInt((String) inputRecords.getValue(
                 j, "eventMin"));
