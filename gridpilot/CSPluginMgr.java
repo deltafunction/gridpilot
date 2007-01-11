@@ -282,7 +282,7 @@ public class CSPluginMgr implements ComputingSystem{
   public boolean killJobs(final Vector jobs){
     
     StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
-    statusBar.setLabel("Killing jobs...");
+    statusBar.setLabel("Killing job(s)...");
     statusBar.animateProgressBar();
     
     HashMap csJobs = new HashMap();
@@ -338,7 +338,7 @@ public class CSPluginMgr implements ComputingSystem{
       }
     }
     statusBar.stopAnimation();
-    statusBar.setLabel("Killing jobs done.");
+    statusBar.setLabel("Killing job(s) done.");
     return true;
   }
 
