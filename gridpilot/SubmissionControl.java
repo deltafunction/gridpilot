@@ -546,7 +546,8 @@ public class SubmissionControl{
       isProgressBarSet = false;
       pbSubmission.setMaximum(0);
       pbSubmission.setValue(0);
-      statusBar.setLabel("Submission done.");
+      //statusBar.setLabel("Submission done.");
+      GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Submission done.");
     }
     // remove iconSubmitting
     statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
