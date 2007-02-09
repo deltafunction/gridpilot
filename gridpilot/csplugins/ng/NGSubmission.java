@@ -248,8 +248,9 @@ public class NGSubmission{
       }
       xrsl = xrsl.replaceFirst("\\(\\*(?i)action=\"request\"\\*\\)",
           "(action=\"request\")");
-      // Since cpuTime has been used to find queue, we no longer need it
-      //xrsl = xrsl.replaceFirst("\\((?i)cputime=.*\\)\\(\\*endCpu\\*\\)", "");
+      // Since cpuTime has been used to find queue, we no longer need it.
+      // Moreover, it is minutes with 0.4.5 and seconds with 0.6 servers.
+      xrsl = xrsl.replaceFirst("\\((?i)cputime=.*\\)\\(\\*endCpu\\*\\)", "");
       
       Debug.debug("XRSL: "+xrsl, 3);
       Debug.debug("Submitting with input files: "+Util.arrayToString(files.toArray()), 2);
