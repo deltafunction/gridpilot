@@ -902,7 +902,7 @@ public class NGComputingSystem implements ComputingSystem{
     StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
 
     long start = System.currentTimeMillis();
-    long limit = 10000;
+    long limit = 30000;//10000;
     long offset = 2000; // some +- coefficient
     Collection foundJobs = null;
     HashSet foundJobIDs = new HashSet();
@@ -930,7 +930,7 @@ public class NGComputingSystem implements ComputingSystem{
       Debug.debug("User interrupt of job checking!", 2);
     }
     long end = System.currentTimeMillis();
-    if((end - start) < limit + offset){
+    if((end - start) > limit + offset){
       Debug.debug("WARNING: failed to stay within time limit of "+limit/1000+" seconds. "+
           (end - start)/1000, 1);
     }
@@ -953,7 +953,7 @@ public class NGComputingSystem implements ComputingSystem{
   
   public ARCResource [] findAuthorizedResourcesFromIS(){
     long start = System.currentTimeMillis();
-    long limit = 10000;
+    long limit = 30000;//10000;
     long offset = 2000; // some +- coefficient
     Collection foundResources = null;
     ARCResource [] resourcesArray = null;
