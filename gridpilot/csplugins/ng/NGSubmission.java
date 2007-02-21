@@ -46,7 +46,6 @@ public class NGSubmission{
     logFile = GridPilot.getClassMgr().getLogFile();
     csName = _csName;
     clusters = _clusters;
-    scriptGenerator =  new NGScriptGenerator(csName);
   }
 
   public NGSubmission(String _csName, ARCResource [] _resources){
@@ -61,6 +60,7 @@ public class NGSubmission{
   public boolean submit(int submissionNumber, JobInfo job, String scriptName, String xrslName) throws ARCDiscoveryException,
   MalformedURLException, IOException{
 
+    scriptGenerator =  new NGScriptGenerator(csName);
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     
     String finalStdErr = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
@@ -106,8 +106,8 @@ public class NGSubmission{
     }
   }
 
-  private String submit(final int submissionNumber, final JobInfo job, final String xrslFileName,
-      final List files, final List fileNames) throws ARCDiscoveryException,
+  private String submit(int submissionNumber, JobInfo job, String xrslFileName,
+      List files, List fileNames) throws ARCDiscoveryException,
   MalformedURLException, ARCGridFTPJobException, IOException{
     
     String ngJobId = null;
@@ -203,6 +203,7 @@ public class NGSubmission{
              resources[i].getFreejobs()>resource.getFreejobs())){
              resource = resources[i];
              queue = resource.getQueueName();
+             break;
           }
           else{
             logFile.addInfo("Resource rejected: \n"+
