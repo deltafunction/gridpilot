@@ -64,10 +64,10 @@ public class NGComputingSystem implements ComputingSystem{
   public static final String NG_STATUS_FAILED = "FAILED";
   public static final String NG_STATUS_ERROR = "ERROR";
 
+  public static int SUBMIT_RESOURCES_REFRESH_INTERVAL = 5;
+
   private NGSubmission ngSubmission;
   private Boolean gridProxyInitialized = Boolean.FALSE;
-  private static String csName;
-  private static LogFile logFile;
   private String workingDir;
   private String unparsedWorkingDir;
   private ARCDiscovery arcDiscovery;
@@ -81,7 +81,10 @@ public class NGComputingSystem implements ComputingSystem{
   private HashSet finalRuntimes = null;
   private int submissionNumber = 1;
   
-  public static int SUBMIT_RESOURCES_REFRESH_INTERVAL = 5;
+  private static String csName;
+  private static LogFile logFile;
+  private static boolean confirmDirectoryCreation = false;
+  
   
   public NGComputingSystem(String _csName){
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
@@ -1032,12 +1035,18 @@ public class NGComputingSystem implements ComputingSystem{
       // We just create it...
       boolean getFromfinalDest = false;
       if(!LocalStaticShellMgr.existsFile(dirName)){
-        int choice = (new ConfirmBox(JOptionPane.getRootFrame())).getConfirm(
-            "Confirm create directory",
-            "The working directory, "+dirName+",  of this job was not found. \n" +
-            "The job was probably submitted from another machine or has already been validated. \n" +
-            "Click OK to create the directory " +
-            "(stdout/stder will be synchronized, scripts will not).", new Object[] {"OK",  "Skip"});
+        int choice = -1;
+        if(confirmDirectoryCreation){
+          choice = (new ConfirmBox(JOptionPane.getRootFrame())).getConfirm(
+              "Confirm create directory",
+              "The working directory, "+dirName+",  of this job was not found. \n" +
+              "The job was probably submitted from another machine or has already been validated. \n" +
+              "Click OK to create the directory " +
+              "(stdout/stder will be synchronized, scripts will not).", new Object[] {"OK",  "Skip"});
+        }
+        else{
+          choice = 0;
+        }
         if(choice==0){
           LocalStaticShellMgr.mkdirs(dirName);
           final String stdoutFile = unparsedWorkingDir+"/"+job.getName() + "/" + job.getName() + ".stdout";
@@ -1054,6 +1063,10 @@ public class NGComputingSystem implements ComputingSystem{
                            ") failed", job);    
           }
           getFromfinalDest = true;
+        }
+        else{
+          logFile.addMessage("WARNING: Directory "+dirName+" does not exist. Cannot proceed.");
+          return false;
         }
       }
 
