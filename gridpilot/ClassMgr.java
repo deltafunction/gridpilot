@@ -567,10 +567,10 @@ public class ClassMgr{
   
   public Connection getDBConnection(String dbName){
     Connection conn = null;
-    try {
+    try{
       conn = DriverManager.getConnection("proxool."+dbName);
     }
-    catch(SQLException e) {
+    catch(SQLException e){
       e.printStackTrace();
       GridPilot.getClassMgr().getLogFile().addMessage(
           "ERROR: failed connecting to database "+dbName, e);
