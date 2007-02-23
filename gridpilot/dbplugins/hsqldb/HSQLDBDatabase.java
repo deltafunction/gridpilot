@@ -703,7 +703,6 @@ public class HSQLDBDatabase implements Database{
         new String [] {"status", "userInfo", "computingSystem"},
         new String [] {"Submitted", userInfo, cs}
         );
-    clearCaches();
     return ret;
   }
 
@@ -1479,7 +1478,6 @@ public class HSQLDBDatabase implements Database{
     for (int i=0 ; i<ofmap.length ; i++){  
       ofmapstr += ofmap[i] [0] + " " + ofmap[i] [1] + " ";
     }
-    clearCaches();
     // Update DB with "request" and return success/failure
     // Fetch current date and time
     SimpleDateFormat dateFormat = new SimpleDateFormat(GridPilot.dateFormatString);
