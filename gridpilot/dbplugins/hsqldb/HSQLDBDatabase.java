@@ -2321,10 +2321,8 @@ public class HSQLDBDatabase implements Database{
   
   public DBRecord getFile(String datasetName, String fileID){
     String [] fields = null;
-    Connection conn = null;
     try{
       fields = getFieldNames("file");
-      conn = GridPilot.getClassMgr().getDBConnection(dbName);
     }
     catch(Exception e){
       e.printStackTrace();
@@ -2346,10 +2344,10 @@ public class HSQLDBDatabase implements Database{
           else if(fields[i].equalsIgnoreCase("lfname")){
             // TODO: we're assuming a on-to-one lfn/guid mapping. Improve.
             file.setValue(fields[i],
-                Util.getValues(conn, "t_lfn", "guid", fileID, new String [] {"lfname"})[0][0]);
+                Util.getValues(dbName, "t_lfn", "guid", fileID, new String [] {"lfname"})[0][0]);
           }
           else if(fields[i].equalsIgnoreCase("pfname")){
-            String [][] res = Util.getValues(GridPilot.getClassMgr().getDBConnection(dbName), "t_pfn", "guid", fileID, new String [] {"pfname"});
+            String [][] res = Util.getValues(dbName, "t_pfn", "guid", fileID, new String [] {"pfname"});
             String [] pfns = new String [res.length];
             for(int j=0; j<res.length; ++j){
               pfns[j] = res[j][0];
@@ -2406,12 +2404,6 @@ public class HSQLDBDatabase implements Database{
           }
         }
       }
-    }
-    try{
-      conn.close();
-    }
-    catch(SQLException e){
-     e.printStackTrace();
     }
     return file;
   }
@@ -2712,14 +2704,7 @@ public class HSQLDBDatabase implements Database{
 
   private synchronized String getFileID(String lfn){
     if(isFileCatalog()){
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      String ret = Util.getValues(conn, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
-      try{
-        conn.close();
-      }
-      catch(SQLException e){
-        e.printStackTrace();
-      }
+      String ret = Util.getValues(dbName, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
       return ret;
     }
     else if(isJobRepository()){
@@ -2727,15 +2712,8 @@ public class HSQLDBDatabase implements Database{
       // then we need it to get the pfns.
       String nameField = Util.getNameField(dbName, "jobDefinition");
       String idField = Util.getIdentifierField(dbName, "jobDefinition");
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      String ret = Util.getValues(conn, "jobDefinition", nameField, lfn,
+      String ret = Util.getValues(dbName, "jobDefinition", nameField, lfn,
           new String [] {idField})[0][0];
-      try{
-        conn.close();
-      }
-      catch(SQLException e){
-        e.printStackTrace();
-      }
       return ret;
     }
     else{
