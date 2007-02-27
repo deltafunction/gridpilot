@@ -3,17 +3,26 @@ package gridpilot;
 public class DBRecord{
   
   public String [] fields = null;
-  public Object [] values = null;
+  public String [] values = null;
   public static String identifier = null;
   
   public DBRecord(){
     fields = new String [] {""};
   }
   
-  public DBRecord(String [] _fields, Object [] _values){
+  public DBRecord(String [] _fields, String [] _values){
     fields = _fields;
     values = _values;
   }
+
+  public DBRecord(String [] _fields, Object [] _values){
+    fields = _fields;
+    values = new String [_values.length];
+    for(int i=0; i<_values.length; i++){
+      values[i] = _values.toString();
+    }
+  }
+
   public Object getAt(int i){
     return values[i];  
   }

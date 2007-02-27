@@ -36,8 +36,6 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -1330,7 +1328,7 @@ public class Util{
     return JOptionPane.CLOSED_OPTION;
   }
 
-  public static String [][] getValues(Connection conn, String table, String id,
+  public static String [][] getValues(String dbName, String table, String id,
       String idValue, String [] fields){
     String req = "SELECT "+fields[0];
     String values [] = new String[fields.length];
@@ -1345,22 +1343,13 @@ public class Util{
     String [][] resultArray = null;
     try{
       Debug.debug(">> "+req, 3);
-      ResultSet rset = conn.createStatement().executeQuery(req);
+      DBResult rset = GridPilot.getClassMgr().getDBPluginMgr(dbName).executeQuery(req);
       while(rset.next()){
         for(int i=0; i<fields.length;i++){
-          if(fields[i].endsWith("FK") || fields[i].endsWith("ID") &&
-              !fields[i].equalsIgnoreCase("grid") ||
-              fields[i].endsWith("COUNT")){
-            int tmp = rset.getInt(fields[i]);
-            values[i] = Integer.toString(tmp);
-          }
-          else{
-            values[i] = rset.getString(fields[i]);
-          }
+          values[i] = rset.getString(fields[i]);
         }
         resultVector.add(values);
       }
-      rset.close();
       if(resultVector.size()==0){
         Debug.debug("WARNING: No record in "+table+" with "+ id +" "+idValue, 2);
       }
@@ -1606,6 +1595,40 @@ public class Util{
       e.printStackTrace();
     }
     return hm;
+  }
+
+  public static String getTableName(String sql){
+    String table = null;
+    table = sql.replaceFirst("^(?i)SELECT .* FROM (\\S+)$", "$1");
+    if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
+      return table;
+    }
+    table = sql.replaceFirst("^(?i)SELECT .* FROM (\\S+) WHERE .*", "$1");
+    if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
+      return table;
+    }
+    table = sql.replaceFirst("^(?i)INSERT INTO (\\S+) .*", "$1");
+    if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
+      return table;
+    }
+    table = sql.replaceFirst("^(?i)UPDATE (\\S+) .*", "$1");
+    if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
+      return table;
+    }
+    table = sql.replaceFirst("^(?i)DELETE FROM (\\S+) .*", "$1");
+    if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
+      return table;
+    }
+    return table;
+  }
+
+  public static String [] getColumnNames(String sql){
+    String fields = null;
+    fields = sql.replaceFirst("^(?i)SELECT (.*) FROM .*", "$1");
+    if(fields!=null){
+      return Util.split(fields, ",");
+    }
+    return null;
   }
 
 }

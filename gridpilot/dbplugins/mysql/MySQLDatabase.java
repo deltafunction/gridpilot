@@ -2217,7 +2217,6 @@ public class MySQLDatabase implements Database{
     DBRecord file = new DBRecord(fields, values);
     // If the file catalog tables (t_pfn, t_lfn, t_meta) are present,
     // we use them.
-    Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
     if(isFileCatalog()){
       Vector fieldsVector = new Vector();
       Debug.debug("file fields: "+Util.arrayToString(fields), 3);
@@ -2230,11 +2229,11 @@ public class MySQLDatabase implements Database{
           else if(fields[i].equalsIgnoreCase("lfname")){
             // TODO: we're assuming a on-to-one lfn/guid mapping. Improve.
             file.setValue(fields[i],
-                Util.getValues(conn,
+                Util.getValues(dbName,
                     "t_lfn", "guid", fileID, new String [] {"lfname"})[0][0]);
           }
           else if(fields[i].equalsIgnoreCase("pfname")){
-            String [][] res = Util.getValues(conn,
+            String [][] res = Util.getValues(dbName,
                 "t_pfn", "guid", fileID, new String [] {"pfname"});
             String [] pfns = new String [res.length];
             for(int j=0; j<res.length; ++j){
@@ -2292,12 +2291,6 @@ public class MySQLDatabase implements Database{
           }
         }
       }
-    }
-    try {
-      conn.close();
-    }
-    catch(SQLException e){
-      e.printStackTrace();
     }
     return file;
   }
@@ -2602,30 +2595,16 @@ public class MySQLDatabase implements Database{
 
   private synchronized String getFileID(String lfn){
     if(isFileCatalog()){
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      String ret = Util.getValues(conn, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
-      try{
-        conn.close();
-      }
-      catch(SQLException e){
-        e.printStackTrace();
-      }
+      String ret = Util.getValues(dbName, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
       return ret;
     }
     else if(isJobRepository()){
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       // an autoincremented integer is of no use... Except for when pasting:
       // then we need it to get the pfns.
       String nameField = Util.getNameField(dbName, "jobDefinition");
       String idField = Util.getIdentifierField(dbName, "jobDefinition");
-      String ret = Util.getValues(conn, "jobDefinition", nameField, lfn,
+      String ret = Util.getValues(dbName, "jobDefinition", nameField, lfn,
           new String [] {idField})[0][0];
-      try{
-        conn.close();
-      }
-      catch(SQLException e){
-        e.printStackTrace();
-      }
       return ret;
     }
     else{

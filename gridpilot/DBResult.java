@@ -3,7 +3,14 @@ package gridpilot;
 public class DBResult{
   
   public String[]    fields;
-  public Object[][]  values;
+  public String[][]  values;
+  
+  private int cursor = -1;
+  
+  public boolean beforeFirst(){
+    cursor = -1;
+    return true;
+  }
 
   public DBResult(int nrFields, int nrValues){
     fields = new String [nrFields];
@@ -20,6 +27,41 @@ public class DBResult{
     String [] [] v = {};
     fields = f;
     values = v;
+  }
+  
+  public boolean next(){
+    if(cursor==values.length-1){
+      return false;
+    }
+    else{
+      ++cursor;
+      return true;
+    }
+  }
+
+  // Here, 1 is the first column!
+  public String getString(int column){
+    if (cursor>values.length-1){
+      return "no such row";
+    }
+    if(column>values[0].length){
+      return "no such column";
+    }
+    return (String) values[cursor][column-1];
+  }
+
+  public String getString(String col){
+    if(cursor>values.length-1){
+      return "no such row";
+    }
+    Debug.debug("fields: "+Util.arrayToString(fields), 3);
+    for(int i=0; i<fields.length; i++){
+      Debug.debug("checking value "+values[cursor][i], 3);
+      if(col.equalsIgnoreCase(fields[i])){
+        return (String) values[cursor][i];
+      }
+    }
+    return "no such field";
   }
 
   public Object getAt(int row, int column){

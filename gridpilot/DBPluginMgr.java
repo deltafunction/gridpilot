@@ -20,7 +20,7 @@ import gridpilot.MyThread;
  * This class manages access to databases.
  *
  */
-public class DBPluginMgr implements Database{
+public class DBPluginMgr extends DBCache implements Database{
 
   private ConfigFile configFile;
   private LogFile logFile;
