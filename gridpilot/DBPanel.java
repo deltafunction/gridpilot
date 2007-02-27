@@ -833,13 +833,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         if(selectRequest==null){
             return;
         }
-        Object [][] vals = null;
+        String [][] vals = null;
         if(tableName.equalsIgnoreCase("file")){
           Debug.debug("Searching from cursor "+cursor, 2);
           if(cursor==-1){
             res = dbPluginMgr.select(selectRequest, identifier, findAll());
             if(GridPilot.fileRows>0 && res.values.length>GridPilot.fileRows){
-              vals = new Object [GridPilot.fileRows][];
+              vals = new String [GridPilot.fileRows][];
               System.arraycopy(res.values, 0, vals, 0, GridPilot.fileRows);
               bNext.setEnabled(true);
               bPrevious.setEnabled(false);
@@ -855,13 +855,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           else{
             // we've reached the end
             if(cursor+GridPilot.fileRows>res.values.length){
-              vals = new Object [res.values.length-cursor][];
+              vals = new String [res.values.length-cursor][];
               System.arraycopy(res.values, cursor, vals, 0, res.values.length-cursor);
               bNext.setEnabled(false);
               bPrevious.setEnabled(true);
             }
             else{
-              vals = new Object [GridPilot.fileRows][];
+              vals = new String [GridPilot.fileRows][];
               System.arraycopy(res.values, cursor, vals, 0, GridPilot.fileRows);
               if(res.values.length-cursor>GridPilot.fileRows){
                 bNext.setEnabled(true);
@@ -1289,6 +1289,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   private void editJobDef(){
+    editJobDef(null);
+  }
+  
+  private void editJobDef(String displayName){
     String selectedDatasetID = dbPluginMgr.getJobDefDatasetID(getSelectedIdentifier());
     if(parentId.equals("-1")){
       parentId = selectedDatasetID;
@@ -1298,7 +1302,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     panel = new JobDefCreationPanel(dbName, selectedDatasetID, this,
         new Boolean(true));
     CreateEditDialog pDialog = new CreateEditDialog(panel, true, false, true);
-    pDialog.setTitle(tableName);
+    pDialog.setTitle(displayName!=null?displayName:tableName);
     //pDialog.setVisible(true);
   }
 
@@ -1306,7 +1310,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     // This should be safe. Only mysql and hsqldb contain jobDefinitions and are directly editable.
     // TODO: support editing other file catalogs
     if(dbPluginMgr.isJobRepository() && !dbPluginMgr.isFileCatalog()){
-      editJobDef();
+      editJobDef("jobDefinition");
     }
     else{
       // Just display the content
