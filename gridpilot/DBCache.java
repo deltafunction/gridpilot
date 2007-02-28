@@ -50,7 +50,8 @@ public class DBCache{
       row = new String[fields.length];
       for(int i=0; i<fields.length; i++){
         if(fields[i].endsWith("FK") || fields[i].endsWith("ID") &&
-            !fields[i].equalsIgnoreCase("grid") || fields[i].endsWith("COUNT")){
+            !fields[i].equalsIgnoreCase("grid") && !fields[i].equalsIgnoreCase("jobid") ||
+            fields[i].endsWith("COUNT")){
           row[i] = Integer.toString(rset.getInt(i+1));
         }
         else{
