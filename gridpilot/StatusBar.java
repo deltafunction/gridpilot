@@ -22,6 +22,7 @@ public class StatusBar extends JPanel {
 
   private static final long serialVersionUID = 1L;
   private JLabel label = new JLabel();
+  private boolean labelOn = false;
   private JProgressBar indeterminatePB = new JProgressBar();
 
   java.util.Stack stackProgressBar = new java.util.Stack();
@@ -69,6 +70,8 @@ public class StatusBar extends JPanel {
 
     updateUI();
     
+    labelOn = true;
+    
     statusBarActive = false;
   }
 
@@ -76,7 +79,18 @@ public class StatusBar extends JPanel {
    * Sets this String on the left of this status bar
    */
   public /*synchronized*/ void setLabel(String s){
-    setLabel(new JLabel(s));
+    //setLabel(new JLabel(s));
+    if(statusBarActive){
+      return;
+    }
+    statusBarActive = true;
+    label.setText(s);
+    if(!labelOn){
+      add(label, BorderLayout.CENTER);
+      labelOn = true;
+    }
+    label.updateUI();
+    statusBarActive = false;
   }
 
   /**
