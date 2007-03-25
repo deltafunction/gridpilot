@@ -87,9 +87,10 @@ public class DBPluginMgr extends DBCache implements Database{
     if(tmp!=null){
       try{
         dbTimeOut = new Integer(tmp).intValue();
+        dbTimeOut = 1000*dbTimeOut;
       }
       catch(NumberFormatException nfa){
-        logFile.addMessage("value of default timeout (" + tmp +") is not an integer");
+        logFile.addMessage("value of db timeout (" + tmp +") is not an integer");
       }
     }
   }
@@ -211,6 +212,12 @@ public class DBPluginMgr extends DBCache implements Database{
    
     MyThread t = new MyThread(){
       String [] res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getFieldNames(table);
@@ -239,6 +246,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getRuntimeInitText(final String runtimeEnvName, final String csName){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getRuntimeInitText(runtimeEnvName, csName);
@@ -267,6 +280,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getStdOutFinalDest(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getStdOutFinalDest(jobDefinitionID);
@@ -295,6 +314,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getStdErrFinalDest(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getStdErrFinalDest(jobDefinitionID);
@@ -323,6 +348,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getError(){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getError();
@@ -350,6 +381,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getTransformationScript(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getTransformationScript(jobDefinitionID);
@@ -378,6 +415,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String [] getRuntimeEnvironments(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String [] res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getRuntimeEnvironments(jobDefinitionID);
@@ -406,6 +449,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String [] getTransformationArguments(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String [] res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getTransformationArguments(jobDefinitionID);
@@ -434,6 +483,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getTransformationRuntimeEnvironment(final String transformationID){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getTransformationRuntimeEnvironment(transformationID);
@@ -462,6 +517,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getJobDefUserInfo(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getJobDefUserInfo(jobDefinitionID);
@@ -490,6 +551,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getJobDefName(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getJobDefName(jobDefinitionID);
@@ -518,6 +585,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getDatasetName(final String datasetID){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getDatasetName(datasetID);
@@ -546,6 +619,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getRunNumber(final String datasetID){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getRunNumber(datasetID);
@@ -574,6 +653,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getRuntimeEnvironmentID(final String name, final String cs){
     MyThread t = new MyThread(){
       String res = "-1";
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getRuntimeEnvironmentID(name, cs);
@@ -602,6 +687,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getTransformationID(final String transName, final String transVersion){
     MyThread t = new MyThread(){
       String res = "-1";
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getTransformationID(transName, transVersion);
@@ -630,6 +721,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getDatasetID(final String datasetName){
     MyThread t = new MyThread(){
       String res = "-1";
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getDatasetID(datasetName);
@@ -658,6 +755,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getFileID(final String datasetName, final String fileName){
     MyThread t = new MyThread(){
       String res = "-1";
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getFileID(datasetName, fileName);
@@ -686,6 +789,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getJobDefDatasetID(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = "-1";
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getJobDefDatasetID(jobDefinitionID);
@@ -714,6 +823,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getJobDefStatus(final String jobDefinitionID){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getJobDefStatus(jobDefinitionID);
@@ -742,6 +857,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getJobDefValue(final String jobDefID, final String key){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getJobDefinition(jobDefID).getValue(key).toString();
@@ -770,6 +891,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getRunInfo(final String jobDefID, final String key){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getRunInfo(jobDefID, key).toString();
@@ -798,6 +925,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getJobDefTransformationID(final String jobDefID){
     MyThread t = new MyThread(){
       String res = "-1";
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getJobDefTransformationID(jobDefID);
@@ -826,6 +959,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getDatasetTransformationName(final String datasetID){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getDatasetTransformationName(datasetID);
@@ -854,6 +993,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getDatasetTransformationVersion(final String datasetID){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getDatasetTransformationVersion(datasetID);
@@ -882,6 +1027,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getTransformationValue(final String jobDefID, final String key){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getTransformation(
@@ -912,6 +1063,12 @@ public class DBPluginMgr extends DBCache implements Database{
   
     MyThread t = new MyThread(){
       String [] res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getOutputFiles(jobDefID);
@@ -941,6 +1098,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
       MyThread t = new MyThread(){
         String [] res = null;
+        public void requestStop(){
+          db.requestStop();
+        }
+        public void clearRequestStop(){
+          db.clearRequestStop();
+        }
         public void run(){
           try{
             res = db.getJobDefInputFiles(jobDefID);
@@ -970,6 +1133,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
       MyThread t = new MyThread(){
         String [] res = null;
+        public void requestStop(){
+          db.requestStop();
+        }
+        public void clearRequestStop(){
+          db.clearRequestStop();
+        }
         public void run(){
           try{
             res = db.getJobDefTransPars(jobDefID);
@@ -998,6 +1167,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getJobDefOutLocalName(final String jobDefID, final String outpar){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getJobDefOutLocalName(jobDefID, outpar);
@@ -1026,6 +1201,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String getJobDefOutRemoteName(final String jobDefinitionID, final String outpar){
     MyThread t = new MyThread(){
       String res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getJobDefOutRemoteName(jobDefinitionID, outpar);
@@ -1055,6 +1236,12 @@ public class DBPluginMgr extends DBCache implements Database{
   
     MyThread t = new MyThread(){
       String [] res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getTransformationJobParameters(transformationID);
@@ -1084,6 +1271,12 @@ public class DBPluginMgr extends DBCache implements Database{
   
     MyThread t = new MyThread(){
       String [] res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getTransformationOutputs(transformationID);
@@ -1113,6 +1306,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
     MyThread t = new MyThread(){
       String [] res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getTransformationInputs(transformationID);
@@ -1142,6 +1341,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
     MyThread t = new MyThread(){
       boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.isFileCatalog();
@@ -1170,6 +1375,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
     MyThread t = new MyThread(){
       boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.isJobRepository();
@@ -1198,6 +1409,12 @@ public class DBPluginMgr extends DBCache implements Database{
   
     MyThread t = new MyThread(){
       boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.createJobDefinition(values);
@@ -1234,6 +1451,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
     MyThread t = new MyThread(){
       boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.createJobDefinition(datasetName, cstAttrNames, resCstAttr,
@@ -1434,6 +1657,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
     MyThread t = new MyThread(){
       boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.createTransformation(values);
@@ -1463,6 +1692,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
     MyThread t = new MyThread(){
       boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.createRuntimeEnvironment(values);
@@ -1492,6 +1727,12 @@ public class DBPluginMgr extends DBCache implements Database{
       final String [] fields, final Object [] values){
     MyThread t = new MyThread(){
       boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.createDataset(targetTable, fields, values);
@@ -1521,6 +1762,12 @@ public class DBPluginMgr extends DBCache implements Database{
       final String field, final String value){  
     MyThread t = new MyThread(){
       boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.setJobDefsField(identifiers, field, value);
@@ -1550,6 +1797,12 @@ public class DBPluginMgr extends DBCache implements Database{
       final String [] fields, final String [] values){
     MyThread t = new MyThread(){
       boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.updateJobDefinition(jobDefID, fields, values);
@@ -1580,6 +1833,12 @@ public class DBPluginMgr extends DBCache implements Database{
   
     MyThread t = new MyThread(){
       boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.updateJobDefinition(jobDefID, values);
@@ -1610,6 +1869,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
       MyThread t = new MyThread(){
         boolean res = false;
+        public void requestStop(){
+          db.requestStop();
+        }
+        public void clearRequestStop(){
+          db.clearRequestStop();
+        }
         public void run(){
           try{
             res = db.updateDataset(datasetID, fields, values);
@@ -1640,6 +1905,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
       MyThread t = new MyThread(){
         boolean res = false;
+        public void requestStop(){
+          db.requestStop();
+        }
+        public void clearRequestStop(){
+          db.clearRequestStop();
+        }
         public void run(){
           try{
             res = db.updateTransformation(transformationID, fields, values);
@@ -1670,6 +1941,12 @@ public class DBPluginMgr extends DBCache implements Database{
   
     MyThread t = new MyThread(){
       boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.updateRuntimeEnvironment(runtimeEnvironmentID, fields, values);
@@ -1699,6 +1976,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
       MyThread t = new MyThread(){
         boolean res = false;
+        public void requestStop(){
+          db.requestStop();
+        }
+        public void clearRequestStop(){
+          db.clearRequestStop();
+        }
         public void run(){
           try{
             res = db.deleteJobDefinition(jobDefID, cleanup);
@@ -1729,6 +2012,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
     MyThread t = new MyThread(){
       boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.deleteFiles(datasetID, fileIDs, cleanup);
@@ -1758,6 +2047,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
       MyThread t = new MyThread(){
         boolean res = false;
+        public void requestStop(){
+          db.requestStop();
+        }
+        public void clearRequestStop(){
+          db.clearRequestStop();
+        }
         public void run(){
           try{
             res = db.deleteDataset(datasetID, cleanup);
@@ -1787,6 +2082,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
       MyThread t = new MyThread(){
         boolean res = false;
+        public void requestStop(){
+          db.requestStop();
+        }
+        public void clearRequestStop(){
+          db.clearRequestStop();
+        }
         public void run(){
           try{
             res = db.deleteTransformation(transformationID);
@@ -1816,6 +2117,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
       MyThread t = new MyThread(){
         boolean res = false;
+        public void requestStop(){
+          db.requestStop();
+        }
+        public void clearRequestStop(){
+          db.clearRequestStop();
+        }
         public void run(){
           try{
             res = db.deleteRuntimeEnvironment(runtimeEnvironmentID);
@@ -1846,6 +2153,12 @@ public class DBPluginMgr extends DBCache implements Database{
   
     MyThread t = new MyThread(){
       boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.reserveJobDefinition(jobDefID, userName, cs);
@@ -1875,6 +2188,12 @@ public class DBPluginMgr extends DBCache implements Database{
   
     MyThread t = new MyThread(){
       boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.cleanRunInfo(jobDefID);
@@ -1905,6 +2224,12 @@ public class DBPluginMgr extends DBCache implements Database{
   
     MyThread t = new MyThread(){
       DBResult res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.select(selectQuery, identifier, findAll);
@@ -1934,6 +2259,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
     MyThread t = new MyThread(){
       DBResult res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getRuntimeEnvironments();
@@ -1962,6 +2293,12 @@ public class DBPluginMgr extends DBCache implements Database{
   
     MyThread t = new MyThread(){
       DBResult res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getTransformations();
@@ -1990,6 +2327,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
       MyThread t = new MyThread(){
         DBRecord res = null;
+        public void requestStop(){
+          db.requestStop();
+        }
+        public void clearRequestStop(){
+          db.clearRequestStop();
+        }
         public void run(){
           try{
             res = db.getDataset(datasetID);
@@ -2019,6 +2362,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
       MyThread t = new MyThread(){
         DBRecord res = null;
+        public void requestStop(){
+          db.requestStop();
+        }
+        public void clearRequestStop(){
+          db.clearRequestStop();
+        }
         public void run(){
           try{
             res = db.getRuntimeEnvironment(runtimeEnvironmentID);
@@ -2048,6 +2397,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
       MyThread t = new MyThread(){
         DBRecord res = null;
+        public void requestStop(){
+          db.requestStop();
+        }
+        public void clearRequestStop(){
+          db.clearRequestStop();
+        }
         public void run(){
           try{
             res = db.getTransformation(transformationID);
@@ -2077,6 +2432,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
     MyThread t = new MyThread(){
       DBResult res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getFiles(datasetID);
@@ -2106,6 +2467,12 @@ public class DBPluginMgr extends DBCache implements Database{
   
     MyThread t = new MyThread(){
       DBResult res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getJobDefinitions(datasetID, fieldNames);
@@ -2135,6 +2502,12 @@ public class DBPluginMgr extends DBCache implements Database{
   
     MyThread t = new MyThread(){
       DBRecord res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getJobDefinition(jobDefinitionID);
@@ -2163,6 +2536,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public void disconnect(){
   
     MyThread t = new MyThread(){
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
            db.disconnect();
@@ -2187,6 +2566,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public synchronized void clearCaches(){
   
     MyThread t = new MyThread(){
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
            db.clearCaches();
@@ -2213,6 +2598,12 @@ public class DBPluginMgr extends DBCache implements Database{
       final String url, final boolean datasetComplete){
     
     MyThread t = new MyThread(){
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
            db.registerFileLocation(datasetID, datasetName, fileID, lfn, url, datasetComplete);
@@ -2370,6 +2761,12 @@ public class DBPluginMgr extends DBCache implements Database{
   public String [] getVersions(final String transformationName){
     MyThread t = new MyThread(){
       String [] res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getVersions(transformationName);
@@ -2457,6 +2854,12 @@ public class DBPluginMgr extends DBCache implements Database{
     
     MyThread t = new MyThread(){
       DBRecord res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getFile(datasetName, fileID);
@@ -2487,6 +2890,12 @@ public class DBPluginMgr extends DBCache implements Database{
    
     MyThread t = new MyThread(){
       String [] res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
       public void run(){
         try{
           res = db.getFileURLs(datasetName, fileID);
@@ -2510,6 +2919,12 @@ public class DBPluginMgr extends DBCache implements Database{
     else{
       return null;
     }
+  }
+
+  public void requestStop(){
+  }
+  
+  public void clearRequestStop(){
   }
   
 }

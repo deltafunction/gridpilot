@@ -47,6 +47,7 @@ import java.util.Random;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
@@ -90,10 +91,7 @@ import org.ietf.jgss.GSSException;
  */
 
 public class Util{
-  
-  // Default when interrupting threads. Can be overridden by argument.
-  private static boolean ASK_BEFORE_INTERRUPT = true;
-    
+      
   public static String [] split(String s){
     StringTokenizer tok = new StringTokenizer(s);
     int len = tok.countTokens();
@@ -896,15 +894,38 @@ public class Util{
    * Asks the user if he wants to interrupt a plug-in
    */
   private static boolean askForInterrupt(String name, String fct){
-    String msg = "No response from " + name +
-                 " for " + fct + "\n"+
+    
+    if(!GridPilot.askBeforeInterrupt){
+      return !GridPilot.waitForever;
+    }
+    
+    String msg = "No response from " + name + " for " + fct + "\n"+
                  "Do you want to interrupt it ?";
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), msg, "No response from plugin",
-        JOptionPane.YES_NO_OPTION);
+    int choice = -1;
+    
+    final JCheckBox cbRemember = new JCheckBox("Remember decision", true);
+    cbRemember.setSelected(false);
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    try{
+      choice = confirmBox.getConfirm("No response from plugin",
+          msg, new Object[] {"OK", "Cancel", cbRemember});
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return true;
+    }
+    
     if(choice==JOptionPane.YES_OPTION){
+      if(cbRemember.isSelected()){
+        GridPilot.askBeforeInterrupt = false;
+      }
       return true;
     }
     else{
+      if(cbRemember.isSelected()){
+        GridPilot.askBeforeInterrupt = false;
+        GridPilot.waitForever = true;
+      }
       return false;
     }
   }
@@ -912,6 +933,7 @@ public class Util{
   /**
    * Waits the specified <code>MyThread</code> during maximum <code>timeOut</code> ms.
    * @return true if <code>t</code> ended normally, false if <code>t</code> has been interrupted
+   * @throws InterruptedException 
    */
   public static boolean waitForThread(MyThread t, String name, int _timeOut,
       String function){
@@ -920,22 +942,43 @@ public class Util{
 
   public static boolean waitForThread(MyThread t, String name, int _timeOut,
       String function, Boolean _askForInterrupt){
-    int timeOut = _timeOut;
-    boolean askForInterrupt = ASK_BEFORE_INTERRUPT;
+    int timeOut = GridPilot.waitForever ? 0 : _timeOut;
+    boolean ask = GridPilot.askBeforeInterrupt;
     if(_askForInterrupt!=null){
-      askForInterrupt = _askForInterrupt.booleanValue();
+      ask = _askForInterrupt.booleanValue();
     }
     do{
       try{
         t.join(timeOut);
       }
-      catch(InterruptedException ie){}
+      catch(InterruptedException ie){
+        ie.printStackTrace();
+      }
 
       if(t.isAlive()){
-        if(!askForInterrupt || askForInterrupt(name, function)){
+        if(!ask || askForInterrupt(name, function)){
           GridPilot.getClassMgr().getLogFile().addMessage("No response from plugin " +
               name + " for " + function);
-          t.interrupt();
+          t.requestStop();
+          try{
+            t.interrupt();
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+          while(t.isAlive()){
+            try{
+              Debug.debug("Waiting for thread to exit...", 2);
+              Thread.sleep(1000);
+              if(!t.isInterrupted()){
+                t.interrupt();
+              }
+            }
+            catch(InterruptedException e){
+              break;
+            }
+          }         
+          t.clearRequestStop();
           return false;
         }
       }

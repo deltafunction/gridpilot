@@ -55,6 +55,7 @@ public class HSQLDBDatabase implements Database{
   private boolean jobRepository = false;
   private Connection getFieldNamesConn = null;
   private Connection selectConn = null;
+  private boolean stop = false;
   
   private static String SERVER_RUNNING = "no";
   private static String MAX_CONNECTIONS = "15";
@@ -170,6 +171,18 @@ public class HSQLDBDatabase implements Database{
     }
   }
   
+  public void requestStop(){
+    stop = true;
+  }
+  
+  public void clearRequestStop(){
+    stop = false;
+  }
+
+  public boolean getStop(){
+    return stop;
+  }
+
   public boolean isFileCatalog(){
     return fileCatalog;
   }

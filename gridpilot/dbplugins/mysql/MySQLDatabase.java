@@ -63,6 +63,7 @@ public class MySQLDatabase implements Database{
   private boolean jobRepository = false;
   private String connectTimeout = null;
   private String socketTimeout = null;
+  private boolean stop = false;
   
   private static String MAX_CONNECTIONS = "15";
 
@@ -216,6 +217,18 @@ public class MySQLDatabase implements Database{
     }
   }
   
+  public void requestStop(){
+    stop = true;
+  }
+  
+  public void clearRequestStop(){
+    stop = false;
+  }
+
+  public boolean getStop(){
+    return stop;
+  }
+
   public boolean isFileCatalog(){
     return fileCatalog;
   }

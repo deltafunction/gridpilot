@@ -56,6 +56,12 @@ public class GridPilot extends JApplet{
   public static String [] csNames = null;
   public static String gridftpHomeURL = null;
   public static boolean isExiting = false;
+  // Default when interrupting threads. Can be overridden by argument to waitForThread.
+  public static boolean askBeforeInterrupt = true;
+  // This is set to true only if "remember this answer" is checked in a thread interruption
+  // dialog. It overrides the various thread timeouts and can be cleared only by
+  // "reload values from config file"
+  public static boolean waitForever = false;
 
   /**
    * Constructor
@@ -212,6 +218,17 @@ public class GridPilot extends JApplet{
          "globus tcp port range");
       gridftpHomeURL = getClassMgr().getConfigFile().getValue("GridPilot",
          "Gridftp home url");
+      String ask = null;
+      try{
+        ask = getClassMgr().getConfigFile().getValue("GridPilot",
+        "Ask before thread interrupt");
+        askBeforeInterrupt = !(ask!=null && (
+            ask.equalsIgnoreCase("no") ||
+            ask.equalsIgnoreCase("false")));
+      }
+      catch(Exception e){
+        askBeforeInterrupt = true;
+      }
     }
     catch(Throwable e){
       if(e instanceof Error)
@@ -220,7 +237,8 @@ public class GridPilot extends JApplet{
         getClassMgr().getLogFile().addMessage("Exception during loading of config values", e);
         System.exit(-1);
       }
-    }    
+    }
+    waitForever = false;
   }
   
   public static void loadDBs() throws Throwable{
