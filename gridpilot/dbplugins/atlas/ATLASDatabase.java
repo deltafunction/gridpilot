@@ -70,11 +70,16 @@ public class ATLASDatabase implements Database{
   // and the home server will be de-registered in DQ, even if other
   // catalog sites are registered in DQ than the home catalog or if there
   // is no home catalog set.
+  private int pathConvention = 1;
+  private HashMap dqLocationsCache = new HashMap();
+  private boolean stop = false;
+
   private static boolean forceDelete = false;
   private static String connectTimeout = "10000";
   private static String socketTimeout = "30000";
   private static String LRC_POOLSIZE = "5";
   private static boolean DELETE_FROM_SITES_ON_ALL_CATALOGS = false;
+  private static int pathConventions = 2;
 
 
   public ATLASDatabase(String _dbName){
@@ -164,6 +169,18 @@ public class ATLASDatabase implements Database{
     }
   }
 
+  public void requestStop(){
+    stop = true;
+  }
+  
+  public void clearRequestStop(){
+    stop = false;
+  }
+
+  public boolean getStop(){
+    return stop;
+  }
+
   public boolean isFileCatalog(){
     return true;
   }
@@ -176,6 +193,9 @@ public class ATLASDatabase implements Database{
   }
 
   public void clearCaches(){
+    fileCatalogs.clear();
+    dqLocationsCache.clear();
+    pathConvention = 1;
   }
   
   private void setFindPFNs(boolean doit){
@@ -183,6 +203,11 @@ public class ATLASDatabase implements Database{
   }
   
   public DBResult select(String selectRequest, String identifier, boolean findAll){
+    
+    if(getStop()){
+      return null;
+    }
+    
     String req = selectRequest;
     Pattern patt;
     Matcher matcher;
@@ -609,6 +634,9 @@ public class ATLASDatabase implements Database{
         }
       });
       for(int i=0; i<records.length; ++i){
+        if(getStop()){
+          break;
+        }
         GridPilot.getClassMgr().getStatusBar().setLabel("Record "+(i+1)+" : "+records.length);
         pb.setValue(i+1);
         Vector recordVector = new Vector();
@@ -692,6 +720,11 @@ public class ATLASDatabase implements Database{
    * Returns the locations of a set of vuids.
    */
   private DQ2Locations [] getLocations(String vuidsString) throws IOException {
+    
+    if(getStop()){
+      return null;
+    }
+    
     /*curl --user-agent "dqcurl" --silent --get --insecure --data
     "dsns=%5B%5D" --data "vuids=%5B%27cdced2bd-5217-423a-9690-8b2bb5b48fa8%27%5D"
     http://atlddmpro.cern.ch:8000/dq2/ws_location/dataset
@@ -728,6 +761,11 @@ public class ATLASDatabase implements Database{
     DQ2Locations [] dqLocations = new DQ2Locations[len];
     Debug.debug("Found "+records.length+" records. "+Util.arrayToString(records, " : "), 2);
     for(int i=0; i<len; ++i){
+      
+      if(getStop()){
+        break;
+      }
+
       if(i>records.length-1){
         dqLocations[i] = dqLocations[records.length-1];
         continue;
@@ -833,6 +871,56 @@ public class ATLASDatabase implements Database{
     return dec;
   }
   
+  // Construct path following ATLAS conventions
+  private String makeAtlasPath(String lfn){
+    
+    String atlasLpn = null;
+    String [] lfnMetaData = Util.split(lfn, "\\.");
+    
+    switch(pathConvention){
+    
+     case 2:
+       Debug.debug("Using old path convention", 2);
+       // csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103._00001.pool.root ->
+       // /grid/atlas/dq2/csc11/csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103/
+       if(lfnMetaData.length==8 || lfnMetaData.length==9 || lfnMetaData.length==10){
+         atlasLpn = /*datafiles*/"dq2/"+lfnMetaData[0];
+         //atlasLPN += "/"+lfnMetaData[3];
+         atlasLpn += "/"+lfnMetaData[0]+"."+lfnMetaData[1]+"."+lfnMetaData[2]+"."+
+            lfnMetaData[3]+"."+lfnMetaData[4]+"."+lfnMetaData[5];
+         atlasLpn += "/"+lfn;
+       }
+       else{
+         atlasLpn = lfn;
+       }
+       break;
+       
+     case 1:
+       Debug.debug("Using new path convention", 2);
+       // New (or old?) convention:
+       // csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103._00001.pool.root ->
+       // /grid/atlas/dq2/csc11/csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103/AOD/
+       if(lfnMetaData.length==8 || lfnMetaData.length==9 || lfnMetaData.length==10){
+         atlasLpn = /*"datafiles/"+*/"dq2/"+lfnMetaData[0];
+         atlasLpn += "/"+lfnMetaData[4];
+         atlasLpn += "/"+lfnMetaData[0]+"."+lfnMetaData[1]+"."+lfnMetaData[2]+"."+
+            lfnMetaData[3]+"."+lfnMetaData[4]+"."+lfnMetaData[5];
+         atlasLpn += "/"+lfn;
+       }
+       else{
+         atlasLpn = lfn;
+       }
+       break;
+       
+     default:
+       Debug.debug("pathConvention not in range: "+pathConvention, 2);
+       throw new IndexOutOfBoundsException("pathConvention not in range: "+pathConvention);
+
+    }
+    
+    return atlasLpn;
+  }
+  
   /**
    * Returns an array of SURLs for the given file name (lfn).
    * The catalog server string must be of the form
@@ -846,7 +934,37 @@ public class ATLASDatabase implements Database{
    * csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103/
    * csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103._00001.pool.root.
    */
-  private String [] getPFNs(String _catalogServer, String lfn, boolean findAll)
+  
+  private String [] getPFNs(final String _catalogServer, final String lfn, final boolean findAll){
+    MyThread t = new MyThread(){
+      String [] res = null;
+      public String [] getString2Res(){
+        return res;
+      }
+      public void run(){
+        if(getStop()){
+          return;
+        }
+        try{
+          res = getPFNs0(_catalogServer, lfn, findAll);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+      }
+    };
+    t.start();              
+    if(!Util.waitForThread(t, dbName, fileCatalogTimeout, "lookup pfns", new Boolean(false))){
+      error = "WARNING: timed out.";
+      logFile.addMessage(error);
+      GridPilot.getClassMgr().getStatusBar().setLabel(error);
+    }
+    return t.getString2Res();
+  }
+
+  
+  
+  private String [] getPFNs0(String _catalogServer, String lfn, boolean findAll)
      throws RemoteException, ServiceException, MalformedURLException, SQLException {
     String [] pfns = null;
     // get rid of the :/, which GlobusURL doesn't like
@@ -858,31 +976,34 @@ public class ATLASDatabase implements Database{
       DataLocationInterface dli = new DataLocationInterfaceLocator();
       /*e.g. "http://lfc-atlas.cern.ch:8085", "http://lxb1941.cern.ch:8085"
              "http://lfc-atlas-test.cern.ch:8085" */
-      Debug.debug("Connecting to DLI web service at http://"+host+":8085", 3);
+      String basePath = "/"+path+(path.endsWith("/")?"":"/");
       URL dliUrl = new URL("http://"+host+":8085");
-      // Prepend the directory, following ATLAS conventions, e.g.
-      // csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103._00001.pool.root ->
-      // /grid/atlas/dq2/csc11/csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103/
-      String atlasLPN = "/"+path+(path.endsWith("/")?"":"/");
-      String [] lfnMetaData = Util.split(lfn, "\\.");
-      if(lfnMetaData.length==8 || lfnMetaData.length==9 || lfnMetaData.length==10){
-        atlasLPN += /*datafiles*/"dq2/"+lfnMetaData[0];
-        //atlasLPN += "/"+lfnMetaData[3];
-        atlasLPN += "/"+lfnMetaData[0]+"."+lfnMetaData[1]+"."+lfnMetaData[2]+"."+
-           lfnMetaData[3]+"."+lfnMetaData[4]+"."+lfnMetaData[5];
-        atlasLPN += "/"+lfn;
+      Debug.debug("Connecting to DLI web service at "+dliUrl.toExternalForm(), 2);
+      for(int i=0; i<pathConventions; ++i){
+        String atlasLPN = basePath+makeAtlasPath(lfn);
+        Debug.debug("LPN: "+atlasLPN, 2);
+        try{
+          pfns = dli.getDataLocationInterface(dliUrl).listReplicas(
+              "lfn", atlasLPN);
+        }
+        catch(Exception e){
+        }
+        // if nothing is found, try another path convention (and remember this)
+        if(pfns==null || pfns.length==0 ||
+            pfns.length==1 && (pfns[0]==null || pfns[0].equals(""))){
+          ++pathConvention;
+          if(pathConvention>pathConventions){
+            pathConvention = 1;
+          }
+        }
+        else{
+          if(!findAll && pfns!=null && pfns.length>1){
+            pfns = new String [] {pfns[0]};
+          }
+          Debug.debug("PFNs: "+Util.arrayToString(pfns), 2);
+          break;
+        }
       }
-      else{
-        atlasLPN = atlasLPN+lfn;
-      }
-      Debug.debug("LPN: "+atlasLPN, 3);
-      pfns = dli.getDataLocationInterface(dliUrl).listReplicas(
-          "lfn", atlasLPN);
-      if(!findAll && pfns!=null && pfns.length>1){
-        pfns = new String [] {pfns[0]};
-      }
-      Debug.debug("PFNs: "+Util.arrayToString(pfns), 3);
-      return pfns;
     }
     else if(catalogUrl.getProtocol().equals("mysql")){
       // Set parameters
@@ -993,6 +1114,11 @@ public class ATLASDatabase implements Database{
    */
   private void deleteLFNs(String _catalogServer, String [] lfns)
      throws RemoteException, ServiceException, MalformedURLException, SQLException {
+    
+    if(getStop()){
+      return;
+    }
+    
     // get rid of the :/, which GlobusURL doesn't like
     String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
     GlobusURL catalogUrl = new GlobusURL(catalogServer);
@@ -1021,6 +1147,11 @@ public class ATLASDatabase implements Database{
       String lfn = null;
       int rowsAffected = 0;
       for(int i=0; i<lfns.length; ++i){
+        
+        if(getStop()){
+          break;
+        }
+
         try{
           lfn = lfns[i];
           // First query the t_lfn table to get the guid
@@ -1085,6 +1216,11 @@ public class ATLASDatabase implements Database{
    */
   private void setDeleteLFNs(String _catalogServer, String [] lfns)
      throws RemoteException, ServiceException, MalformedURLException, SQLException {
+    
+    if(getStop()){
+      return;
+    }
+    
     // get rid of the :/, which GlobusURL doesn't like
     String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
     GlobusURL catalogUrl = new GlobusURL(catalogServer);
@@ -1113,6 +1249,11 @@ public class ATLASDatabase implements Database{
       String lfn = null;
       int rowsAffected = 0;
       for(int i=0; i<lfns.length; ++i){
+        
+        if(getStop()){
+          break;
+        }
+        
         try{
           lfn = lfns[i];
           // First query the t_lfn table to get the guid
@@ -1166,6 +1307,11 @@ public class ATLASDatabase implements Database{
   private void registerLFNs(String _catalogServer, String [] guids,
       String [] lfns, String [] pfns, boolean sync)
      throws RemoteException, ServiceException, MalformedURLException, SQLException {
+    
+    if(getStop()){
+      return;
+    }
+    
     // get rid of the :/, which GlobusURL doesn't like
     String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
     GlobusURL catalogUrl = new GlobusURL(catalogServer);
@@ -1197,6 +1343,11 @@ public class ATLASDatabase implements Database{
         String req = null;
         // Do the insertions in t_lfn and t_pfn
         for(int i=0; i<lfns.length; ++i){
+          
+          if(getStop()){
+            break;
+          }
+          
           try{
             req = "INSERT INTO t_lfn (lfname, guid) VALUES " +
                "('"+lfns[i]+"', '"+guids[i]+"')";
@@ -1381,12 +1532,19 @@ public class ATLASDatabase implements Database{
     return pfnVector.toArray();
   }
   
+
   /**
-   * Fill the vector pfnVector with PFNs registered for lfn.
+   * Find the locations of a given dataset.
+   * @param vuid dataset ID
+   * @return Vector of Strings (site names)
    */
-  private void findPFNs(String vuid, String lfn, final boolean findAll){
-    clearPFNs();
-    // Get the PFNs. Start with the DQ locations
+  private Vector getOrderedLocations(String vuid){
+    
+    // First check cache
+    if(dqLocationsCache.containsKey(vuid)){
+      return (Vector) dqLocationsCache.get(vuid);
+    }
+    
     DQ2Locations dqLocations = null;
     try{
       dqLocations = getLocations("'"+vuid+"'")[0];
@@ -1452,74 +1610,82 @@ public class ATLASDatabase implements Database{
       }
     }
     Debug.debug("Found locations "+Util.arrayToString(locations.toArray()), 3);
+    dqLocationsCache.put(vuid, locations);
+    return locations;
+  }
+  
+  /**
+   * Fill the vector pfnVector with PFNs registered for lfn.
+   */
+  private void findPFNs(String vuid, String lfn, boolean findAll){
     // Query all with a timeout of 5 seconds.    
     // First try the home server if configured
     // Next try the locations with complete datasets, then the incomplete
-    final String lfName = lfn;
-    final Vector finalLocations = locations;
+    String lfName = lfn;
+    Vector locations = getOrderedLocations(vuid);
+    Object [] locationsArray = locations.toArray();
     try{
-      for(int i=0; i<locations.size(); ++i){
-        final int ii = i;
+      for(int i=0; i<locationsArray.length; ++i){
+        if(getStop()){
+          return;
+        }
+        clearPFNs();
         try{
-          MyThread t = new MyThread(){
-            public void run(){
-              try{
-                Debug.debug("Querying TOA for "+finalLocations.get(ii), 2);
-                String catalogServer = null;
-                // If trying to query the home lfc server, first try the mysql alias if possible
-                // TODO: fall back to LFC
-                String tryAgain = null;
-                if(homeSite!=null && homeServerMysqlAlias!=null &&
-                    finalLocations.get(ii).toString().equalsIgnoreCase(homeSite)){
-                  catalogServer = homeServerMysqlAlias;
-                  tryAgain = getFileCatalogServer((String) finalLocations.get(ii)); 
-                }
-                else{
-                  catalogServer = getFileCatalogServer((String) finalLocations.get(ii)); 
-                }
-                if(catalogServer==null){
-                  logFile.addMessage("WARNING: could not find catalog server for "+
-                      finalLocations.get(ii));
-                  return;
-                }
-                Debug.debug("Querying "+catalogServer+" for "+lfName, 2);
-                GridPilot.getClassMgr().getStatusBar().setLabel(
-                    "Querying "+catalogServer);
-                try{
-                  String [] pfns = null;
-                  try{
-                    pfns = getPFNs(catalogServer, lfName, findAll);
-                  }
-                  catch(Exception e){
-                  }
-                  if(tryAgain!=null && (pfns==null || pfns.length==0)){
-                    pfns = getPFNs(tryAgain, lfName, findAll);
-                  }
-                  for(int n=0; n<pfns.length; ++n){
-                    addPFN(pfns[n]);
-                  }
-                }
-                catch(Exception e){
-                }
-              }
-              catch(Throwable t){
-                logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                                   " from plugin " + dbName, t);
-              }
+          Debug.debug("Querying TOA for "+i+":"+locationsArray[i], 2);
+          String catalogServer = null;
+          // If trying to query the home lfc server, first try the mysql alias if possible
+          // TODO: fall back to LFC
+          String tryAgain = null;
+          if(homeSite!=null && homeServerMysqlAlias!=null &&
+              ((String) locationsArray[i]).equalsIgnoreCase(homeSite)){
+            catalogServer = homeServerMysqlAlias;
+            tryAgain = getFileCatalogServer((String) locationsArray[i]); 
+          }
+          else{
+            catalogServer = getFileCatalogServer((String) locationsArray[i]); 
+          }
+          if(catalogServer==null){
+            logFile.addMessage("WARNING: could not find catalog server for "+
+                locationsArray[i]);
+            return;
+          }
+          Debug.debug("Querying "+i+"-->"+catalogServer+" for "+lfName, 2);
+          GridPilot.getClassMgr().getStatusBar().setLabel("Querying "+catalogServer);
+          try{
+            String [] pfns = null;
+            try{
+              pfns = getPFNs(catalogServer, lfName, findAll);
             }
-          };
-          t.start();              
-          if(!Util.waitForThread(t, dbName, fileCatalogTimeout, "lookup pfns", new Boolean(false))){
-            error = "WARNING: timed out waiting for "+locations.get(i);
-            logFile.addMessage(error);
-            GridPilot.getClassMgr().getStatusBar().setLabel(error);
+            catch(Exception e){
+              e.printStackTrace();
+            }
+            if(tryAgain!=null && (pfns==null || pfns.length==0)){
+              pfns = getPFNs(tryAgain, lfName, findAll);
+            }
+            for(int n=0; n<pfns.length; ++n){
+              addPFN(pfns[n]);
+            }
+          }
+          catch(Throwable t){
+            t.printStackTrace();
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + dbName, t);
           }
         }
         catch(Exception e){
+          e.printStackTrace();
         }
         // break out after first location, if "Find all" is not checked
-        if(!findAll && getPFNsString()!=null && getPFNsString().length()>0){
+        if(!findAll && !pfnVector.isEmpty() && pfnVector.get(0)!=null){
           break;
+        }
+        // if we did not find anything on this location, put it last in the
+        // HashMap of locations
+        if(pfnVector.isEmpty() || pfnVector.get(0)==null){
+          Debug.debug("pfnVector:"+pfnVector.size(), 2);
+          Debug.debug("Deprecating location: "+((Vector) dqLocationsCache.get(vuid)).get(0), 2);
+          Collections.rotate((Vector) dqLocationsCache.get(vuid), -1);
+          Debug.debug("New first location: "+((Vector) dqLocationsCache.get(vuid)).get(0), 2);
         }
       }
       GridPilot.getClassMgr().getStatusBar().setLabel("Querying done.");
@@ -1646,6 +1812,11 @@ public class ATLASDatabase implements Database{
    * and the entries on MySQL home server.
    */
   public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup){
+
+    if(getStop()){
+      return false;
+    }
+    
     // Find the LFNs to keep and those to delete.
     String [] toDeleteLfns = null;
     String [] toKeepLfns = null;
@@ -1746,6 +1917,9 @@ public class ATLASDatabase implements Database{
       // First store them all in a Vector.
       Vector pfns = new Vector();
       for(int i=0; i<toDeleteLfns.length; ++i){
+        if(getStop()){
+          return false;
+        }
         // Get the pfns
         if(DELETE_FROM_SITES_ON_ALL_CATALOGS){
           findPFNs(datasetID, toDeleteLfns[i], false);
@@ -1806,10 +1980,14 @@ public class ATLASDatabase implements Database{
       pb.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent me){
           setFindPFNs(false);
+          stop = true;
         }
       });
       int i = 0;
       for(Iterator it=hosts.iterator(); it.hasNext();){
+        if(getStop()){
+          break;
+        }
         ++i;
         GridPilot.getClassMgr().getStatusBar().setLabel("Record "+i+" : "+hosts.size());
         pb.setValue(i);
@@ -1834,6 +2012,10 @@ public class ATLASDatabase implements Database{
       }
       GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
 
+      if(getStop()){
+        return false;
+      }
+      
       // Remove entries from MySQL catalog
       // Notice: we delete ONLY one entry per lfn, the one in the home catalog
       GridPilot.getClassMgr().getStatusBar().setLabel("Cleaning up home catalog...");
@@ -1867,6 +2049,9 @@ public class ATLASDatabase implements Database{
           completeLocations = locations.getComplete();
           // Delete all locations from old vuid (a new vuid will be created)
           for(int i=0; i<completeLocations.length; ++i){
+            if(getStop()){
+              return false;
+            }
             try{
               dq2Access.deleteFromSite(datasetID, locations.getComplete()[i]);
             }
@@ -1880,6 +2065,9 @@ public class ATLASDatabase implements Database{
         try{
           incompleteLocations = locations.getIncomplete();
           for(int i=0; i<incompleteLocations.length; ++i){
+            if(getStop()){
+              return false;
+            }
             try{
               dq2Access.deleteFromSite(datasetID, locations.getComplete()[i]);
             }
@@ -1902,6 +2090,9 @@ public class ATLASDatabase implements Database{
         Debug.debug("Re-registering original locations "+Util.arrayToString(toKeepLfns), 2);
         if(completeLocations!=null && completeLocations.length>0){
           for(int i=0; i<completeLocations.length; ++i){
+            if(getStop()){
+              return false;
+            }
             try{
               if(locations.getComplete()[i].equalsIgnoreCase(homeSite)){
                 continue;
@@ -1915,6 +2106,9 @@ public class ATLASDatabase implements Database{
         }
         if(incompleteLocations!=null && incompleteLocations.length>0){
           for(int i=0; i<incompleteLocations.length; ++i){
+            if(getStop()){
+              return false;
+            }
             try{
               if(locations.getIncomplete()[i].equalsIgnoreCase(homeSite)){
                 continue;
@@ -2105,6 +2299,10 @@ public class ATLASDatabase implements Database{
   public boolean createDataset(String table, String[] fields,
       Object[] values){
     
+    if(getStop()){
+      return false;
+    }
+    
     Debug.debug("Creating dataset "+Util.arrayToString(fields)+
         " --> "+Util.arrayToString(values), 2);
     
@@ -2140,6 +2338,11 @@ public class ATLASDatabase implements Database{
       if(dsn==null || dsn.equals("")){
         throw new Exception ("dsn empty: "+dsn);
       }
+      
+      if(getStop()){
+        return false;
+      }
+      
       // Unfortunately DQ2 does not use the supplied vuid when creating,
       // but generated a new one.
       // So we have to update and change the vuid.
@@ -2191,6 +2394,11 @@ public class ATLASDatabase implements Database{
    *         file catalog entries or physical files.
    */
   public boolean updateDataset(String vuid, String[] fields, String[] values){
+    
+    if(getStop()){
+      return false;
+    }
+    
     DQ2Access dq2Access = null;
     try{
       dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
@@ -2232,6 +2440,11 @@ public class ATLASDatabase implements Database{
     }
     DQ2Locations [] dqLocations = null;
     for(int i=0; i<values.length; ++i){
+      
+      if(getStop()){
+        return false;
+      }
+      
       // vuid
       if(fields[i].equalsIgnoreCase("vuid")){
         error = "WARNING: cannot change vuid";
@@ -2326,6 +2539,11 @@ public class ATLASDatabase implements Database{
   }
 
   public boolean deleteDataset(String datasetID, boolean cleanup){
+    
+    if(getStop()){
+      return false;
+    }
+    
     DQ2Access dq2Access = null;
     try{
       dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
@@ -2356,6 +2574,10 @@ public class ATLASDatabase implements Database{
       return false;
     }
     
+    if(getStop()){
+      return false;
+    }
+
     // First delete files if cleanup is true
     if(cleanup){
       try{
@@ -2376,6 +2598,10 @@ public class ATLASDatabase implements Database{
       }
     }
     
+    if(getStop()){
+      return false;
+    }
+
     // Now, delete the dataset
     try{
       dq2Access.deleteDataset(dsn);
