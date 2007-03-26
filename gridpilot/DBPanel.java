@@ -1199,9 +1199,20 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     miDelete.setEnabled(dbPluginMgr.isFileCatalog());
     miEdit.setEnabled(true);
     miDownload.setEnabled(true);
-    miLookupPFNs.setEnabled(dbPluginMgr.isFileCatalog());
+    boolean hasPFNs = false;
+    if(dbPluginMgr.isFileCatalog()){
+      String [] fileFields = dbPluginMgr.getFieldNames("file");
+      for(int i=0; i<fileFields.length; ++i){
+        if(fileFields[i].equalsIgnoreCase("pfns")){
+          hasPFNs = true;
+          break;
+        }
+      }
+    }
+    miLookupPFNs.setEnabled(hasPFNs);
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miDownload);
+    tableResults.addMenuItem(miLookupPFNs);
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miEdit);
     tableResults.addMenuItem(miDelete);
@@ -2089,10 +2100,44 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
   private void lookupPFNs(){
     new Thread(){
-      public void run(){
-        // First, ask for sites
-        // TODO
-        //String [] fileSites = getFileSites();
+      public void run(){               
+        String [] selectedFileIdentifiers = getSelectedIdentifiers();
+        int [] selectedRows = tableResults.getSelectedRows();
+        for(int i=0; i<selectedFileIdentifiers.length; ++i){
+          // We assume that the dataset name is used as reference...
+          // TODO: improve this
+          String datasetColumn = "dsn";
+          String [] fileDatasetReference =
+            Util.getFileDatasetReference(dbPluginMgr.getDBName());
+          if(fileDatasetReference!=null){
+            datasetColumn = fileDatasetReference[1];
+          }
+          // Get the datasetName from the table.            
+          HashMap values = new HashMap();
+          String pfnsColumn = Util.getPFNsField(dbName);
+          Debug.debug("PFNs column name: "+pfnsColumn, 2);
+          int pfnsColumnIndex = -1;
+          for(int j=0; j<fieldNames.length; ++j){
+            // Not displayed colums
+            for(int k=0; k<tableResults.getColumnCount(); ++k){
+              if(tableResults.getColumnName(k).equalsIgnoreCase(fieldNames[j])){
+                values.put(fieldNames[j], tableResults.getUnsortedValueAt(selectedRows[i], k).toString());
+                break;
+              }
+            }
+            if(fieldNames[j].equalsIgnoreCase(pfnsColumn)){
+              pfnsColumnIndex = j;
+            }
+          }
+          String datasetName = null;
+          try{
+            datasetName = values.get(datasetColumn).toString();
+          }
+          catch(Exception e){
+          }
+          String [] pfns = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i]);
+          tableResults.setValueAt(Util.arrayToString(pfns), selectedRows[i], pfnsColumnIndex);
+        }
       }
     }.start();
   }
