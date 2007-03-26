@@ -642,7 +642,7 @@ public class ATLASDatabase implements Database{
       }
       GridPilot.getClassMgr().getStatusBar().setProgressBar(pb);
       JButton bCancel = new JButton(cancelIcon);
-      bCancel.setToolTipText("click here to cancel PFN lookup");
+      bCancel.setToolTipText("click here to stop PFN lookup");
       bCancel.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent me){
           setFindPFNs(false);
