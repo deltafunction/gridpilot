@@ -1,5 +1,6 @@
 package gridpilot.dbplugins.atlas;
 
+import java.awt.FlowLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.BufferedInputStream;
@@ -29,6 +30,9 @@ import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.xml.rpc.ServiceException;
 
@@ -626,13 +630,29 @@ public class ATLASDatabase implements Database{
       String [] record = null;
       JProgressBar pb = new JProgressBar();
       pb.setMaximum((records.length));
+      ImageIcon cancelIcon;
+      URL imgURL=null;
+      try{
+        imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "stop.png");
+        cancelIcon = new ImageIcon(imgURL);
+      }
+      catch(Exception e){
+        Debug.debug("Could not find image "+ GridPilot.resourcesPath + "stop.png", 3);
+        cancelIcon = new ImageIcon();
+      }
       GridPilot.getClassMgr().getStatusBar().setProgressBar(pb);
-      pb.setToolTipText("click here to cancel PFN lookup");
-      pb.addMouseListener(new MouseAdapter(){
+      JButton bCancel = new JButton(cancelIcon);
+      bCancel.setToolTipText("click here to cancel PFN lookup");
+      bCancel.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent me){
           setFindPFNs(false);
         }
       });
+      JPanel jpCancel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+      jpCancel.add(bCancel);
+      jpCancel.setPreferredSize(new java.awt.Dimension(6, 4));
+      jpCancel.setSize(new java.awt.Dimension(6, 4));
+      GridPilot.getClassMgr().getStatusBar().setCenterComponent(jpCancel);
       for(int i=0; i<records.length; ++i){
         if(getStop()){
           break;
@@ -700,6 +720,7 @@ public class ATLASDatabase implements Database{
       }
       setFindPFNs(true);
       GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
+      GridPilot.getClassMgr().getStatusBar().clearCenterComponent();
       values = new String[valuesVector.size()][fields.length];
       for(int i=0; i<valuesVector.size(); ++i){
         for(int j=0; j<fields.length; ++j){

@@ -24,6 +24,7 @@ public class StatusBar extends JPanel {
   private JLabel label = new JLabel();
   private boolean labelOn = false;
   private JProgressBar indeterminatePB = new JProgressBar();
+  private JComponent comp = new JLabel("");
 
   java.util.Stack stackProgressBar = new java.util.Stack();
 
@@ -37,6 +38,8 @@ public class StatusBar extends JPanel {
     setLayout(new BorderLayout());
 
     add(new JLabel(" "), BorderLayout.WEST);
+    comp = new JLabel("");
+    add(comp, BorderLayout.CENTER);
     
     URL imgURL=null;
     try{
@@ -50,6 +53,35 @@ public class StatusBar extends JPanel {
   }
 
   /**
+   * Sets this JComponent in the center on this status bar
+   */
+  public /*synchronized*/ void setCenterComponent(JComponent _comp){
+
+    if(statusBarActive){
+      return;
+    }
+    statusBarActive = true;
+    remove(comp);
+    comp = _comp;
+    add(comp, BorderLayout.CENTER);
+    updateUI();
+    statusBarActive = false;
+  }
+
+  public /*synchronized*/ void clearCenterComponent(){
+
+    if(statusBarActive){
+      return;
+    }
+    statusBarActive = true;
+    remove(comp);
+    comp = new JLabel("");
+    add(comp, BorderLayout.CENTER);
+    updateUI();
+    statusBarActive = false;
+  }
+
+ /**
    * Sets this JLabel on the left on this status bar
    */
   public /*synchronized*/ void setLabel(JLabel _label){
@@ -61,12 +93,12 @@ public class StatusBar extends JPanel {
     
     remove(label);
     label = new JLabel(" ");
-    add(label, BorderLayout.CENTER);
+    add(label, BorderLayout.WEST);
     updateUI();
 
     label = _label;
 
-    add(label, BorderLayout.CENTER);
+    add(label, BorderLayout.WEST);
 
     updateUI();
     
@@ -86,7 +118,7 @@ public class StatusBar extends JPanel {
     statusBarActive = true;
     label.setText(s);
     if(!labelOn){
-      add(label, BorderLayout.CENTER);
+      add(label, BorderLayout.WEST);
       labelOn = true;
     }
     label.updateUI();
