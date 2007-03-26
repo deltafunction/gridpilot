@@ -967,12 +967,18 @@ public class Util{
           catch(Exception e){
             e.printStackTrace();
           }
+          int i = 0;
+          // Wait 10 seconds for thread to exit
           while(t.isAlive()){
             try{
               Debug.debug("Waiting for thread to exit...", 2);
               Thread.sleep(1000);
               if(!t.isInterrupted()){
                 t.interrupt();
+              }
+              ++i;
+              if(i>10){
+                break;
               }
             }
             catch(InterruptedException e){
@@ -1423,6 +1429,17 @@ public class Util{
     return ret;
   }
 
+  /**
+   * Get the name of the table column holding the PFNs.
+   */
+  public static String getPFNsField(String dbName){
+    String ret = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "Pfns field");
+    return ret;
+  }
+
+  /**
+   * Get the name of the column holding the identifier.
+   */
   public static String getIdentifierField(String dbName, String table){
     String ret = GridPilot.getClassMgr().getConfigFile().getValue(dbName, table+" identifier");
     if(ret==null || ret.equals("")){
