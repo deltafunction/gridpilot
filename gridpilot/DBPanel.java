@@ -1175,6 +1175,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     JMenuItem miDelete = new JMenuItem("Delete");
     miEdit = new JMenuItem("View");
     JMenuItem miDownload = new JMenuItem("Replicate file(s)");
+    JMenuItem miLookupPFNs = new JMenuItem("Lookup PFN(s)");
     miDelete.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         deleteFiles();
@@ -1190,9 +1191,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         download();
       }
     });
+    miLookupPFNs.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        lookupPFNs();
+      }
+    });
     miDelete.setEnabled(dbPluginMgr.isFileCatalog());
     miEdit.setEnabled(true);
     miDownload.setEnabled(true);
+    miLookupPFNs.setEnabled(dbPluginMgr.isFileCatalog());
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miDownload);
     tableResults.addMenuSeparator();
@@ -2076,6 +2083,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel();
           GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.tpStatLog.setSelectedIndex(1);
         }
+      }
+    }.start();
+  }
+
+  private void lookupPFNs(){
+    new Thread(){
+      public void run(){
+        // First, ask for sites
+        // TODO
+        //String [] fileSites = getFileSites();
       }
     }.start();
   }
