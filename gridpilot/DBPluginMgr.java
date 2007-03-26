@@ -2625,50 +2625,6 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  //  private boolean askBeforeInterrupt = true;
-  /**
-   * Waits the specified MyThread during maximum timeOut ms.
-   * @return true if t ended normally, false if t has been interrupted
-   */
-  /*private boolean waitForThread(MyThread t, String dbName, int timeOut, String function){
-    do{
-      try{
-        t.join(timeOut);
-      }
-      catch(InterruptedException ie){
-      }
-  
-      if(t.isAlive()){
-        if(!askBeforeInterrupt || askForInterrupt(dbName, function)){
-          logFile.addMessage("No response from plugin " +
-                             dbName + " for " + function);
-          t.interrupt();
-          return false;
-        }
-      }
-      else{
-        break;
-      }
-    }
-    while(true);
-    return true;
-  }*/
-
-  /**
-   * Asks the user if he wants to interrupt a plug-in
-   */
-  /*private boolean askForInterrupt(String csName, String fct){
-    String msg = "No response from plugin " + csName +
-                 " for " + fct + "\n"+
-                 "Do you want to interrupt it ?";
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), msg, "No response from plugin",
-        JOptionPane.YES_NO_OPTION);
-    if(choice == JOptionPane.YES_OPTION)
-      return true;
-    else
-      return false;
-  }*/
-  
   /**
    * Returns status names for statistics panel.
    * (From AtCom1)
