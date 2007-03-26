@@ -926,6 +926,7 @@ public class Util{
         GridPilot.askBeforeInterrupt = false;
         GridPilot.waitForever = true;
       }
+      GridPilot.getClassMgr().getGlobalFrame().setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       return false;
     }
   }
