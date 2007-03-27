@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.TimeZone;
 import java.util.Vector;
 import java.util.regex.Matcher;
@@ -24,6 +25,7 @@ import org.logicalcobwebs.proxool.ProxoolFacade;
 import org.safehaus.uuid.UUIDGenerator;
 
 import gridpilot.ConfigFile;
+import gridpilot.DBCache;
 import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
@@ -42,7 +44,7 @@ import gridpilot.DBRecord;
  * If _user is "" or null, the user is the cksum of the grid
  * certificate subject and X509 authentication is used.
  */
-public class MySQLDatabase implements Database{
+public class MySQLDatabase extends DBCache implements Database {
   
   private String driver = "";
   private String database = "";
@@ -56,13 +58,13 @@ public class MySQLDatabase implements Database{
   private String [] t_lfnFields = null;
   private String [] t_pfnFields = null;
   private String [] t_metaFields = null;
-  private String dbName = null;
   private boolean gridAuth;
   private GlobusCredential globusCred = null;
   private boolean fileCatalog = false;
   private boolean jobRepository = false;
   private String connectTimeout = null;
   private String socketTimeout = null;
+  private HashMap tableFieldNames = new HashMap();
   private boolean stop = false;
   
   private static String MAX_CONNECTIONS = "15";
@@ -131,6 +133,14 @@ public class MySQLDatabase implements Database{
         dbName = dbName.substring(1);
         database = database + dbName;
       }
+      String useCachingStr = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "cache search results");
+      if(useCachingStr==null || useCachingStr.equalsIgnoreCase("")){
+        useCaching = false;
+      }
+      else{
+        useCaching = ((useCachingStr.equalsIgnoreCase("yes")||
+            useCachingStr.equalsIgnoreCase("true"))?true:false);
+      }
     }
     
     if(gridAuth){
@@ -168,6 +178,22 @@ public class MySQLDatabase implements Database{
         continue;
       }
     }
+    setUpTables();
+  }
+  
+  public void requestStop(){
+    stop = true;
+  }
+  
+  public void clearRequestStop(){
+    stop = false;
+  }
+
+  public boolean getStop(){
+    return stop;
+  }
+
+  public void setUpTables(){
     try{
       setFieldNames();
     }
@@ -217,18 +243,6 @@ public class MySQLDatabase implements Database{
     }
   }
   
-  public void requestStop(){
-    stop = true;
-  }
-  
-  public void clearRequestStop(){
-    stop = false;
-  }
-
-  public boolean getStop(){
-    return stop;
-  }
-
   public boolean isFileCatalog(){
     return fileCatalog;
   }
@@ -306,11 +320,8 @@ public class MySQLDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Debug.debug("Creating table. "+sql, 1);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       execok = false;
@@ -322,7 +333,7 @@ public class MySQLDatabase implements Database{
   }
 
   public void clearCaches(){
-    // nothing for now
+    clearCache();
   }
 
   public synchronized boolean cleanRunInfo(String jobDefID){
@@ -332,10 +343,7 @@ public class MySQLDatabase implements Database{
         "WHERE "+idField+" = '"+jobDefID+"'";
     boolean ok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       error = e.getMessage();
@@ -357,19 +365,35 @@ public class MySQLDatabase implements Database{
   public synchronized String [] getFieldNames(String table)
      throws SQLException {
     Debug.debug("getFieldNames for table "+table, 3);
+    String [] ret = null;
+    if(tableFieldNames.containsKey(table)){
+      if(tableFieldNames.get(table)==null){
+        return null;
+      }
+      ret = new String[((String []) tableFieldNames.get(table)).length];
+      for(int i=0; i<ret.length; ++i){
+        ret[i] = ((String []) tableFieldNames.get(table))[i];
+      }
+      Debug.debug("returning fields: "+Util.arrayToString(ret), 3);
+      return ret;
+    }
     if(table.equalsIgnoreCase("file")){
       String nameField = Util.getNameField(dbName, "dataset");
       String [] refFields = Util.getJobDefDatasetReference(dbName);
-      if(!isFileCatalog() ){
-        return new String [] {refFields[1], nameField, "url"};
-      }
+      if(!isFileCatalog()){
+        ret = new String [] {refFields[1], nameField, "url"};
+       }
       else{
-        return Util.split(
+        ret = Util.split(
             GridPilot.getClassMgr().getConfigFile().getValue(dbName, "file field names"),
             ", ");
       }
+      tableFieldNames.put(table, ret);
+      return ret;
     }
     else if(!checkTable(table)){
+      Debug.debug("Notice: no fields defined for table "+table+". Using all.", 2);
+      tableFieldNames.put(table, null);
       return null;
     }
     Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
@@ -377,13 +401,15 @@ public class MySQLDatabase implements Database{
     // TODO: Do we need to execute a query to get the metadata?
     ResultSet rset = stmt.executeQuery("SELECT * FROM "+table+" LIMIT 1");
     ResultSetMetaData md = rset.getMetaData();
-    String [] res = new String[md.getColumnCount()];
+    ret = new String[md.getColumnCount()];
     for(int i=1; i<=md.getColumnCount(); ++i){
-      res[i-1] = md.getColumnName(i);
+      ret[i-1] = md.getColumnName(i);
     }
-    Debug.debug("found "+Util.arrayToString(res), 3);
     conn.close();
-    return res;
+    System.out.println("caching and returning fields for "+dbName+
+        "."+table+": "+Util.arrayToString(ret));
+    tableFieldNames.put(table, ret);
+    return ret;
   }
 
   public synchronized String getTransformationID(String transName, String transVersion){
@@ -395,9 +421,7 @@ public class MySQLDatabase implements Database{
     String id = null;
     Vector vec = new Vector();
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      ResultSet rset = stmt.executeQuery(req);
+      DBResult rset = executeQuery(req);
       while(rset.next()){
         id = rset.getString(idField);
         if(id!=null){
@@ -409,8 +433,6 @@ public class MySQLDatabase implements Database{
               transName, 1);
         }
       }
-      rset.close();
-      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
@@ -437,9 +459,7 @@ public class MySQLDatabase implements Database{
     String id = null;
     Vector vec = new Vector();
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      ResultSet rset = stmt.executeQuery(req);
+      DBResult rset = executeQuery(req);
       while(rset.next()){
         id = rset.getString(idField);
         if(id!=null){
@@ -451,8 +471,6 @@ public class MySQLDatabase implements Database{
               name, 1);
         }
       }
-      rset.close();
-      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
@@ -595,9 +613,7 @@ public class MySQLDatabase implements Database{
     Vector vec = new Vector();
     Debug.debug(req, 2);
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      ResultSet rset = stmt.executeQuery(req);
+      DBResult rset = executeQuery(req);
       while(rset.next()){
         if(transID!=null){
           Debug.debug("WARNING: more than one transformation for name, version :" +
@@ -613,8 +629,6 @@ public class MySQLDatabase implements Database{
           Debug.debug("WARNING: identifier null", 1);
         }
       }
-      rset.close();
-      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
@@ -628,7 +642,6 @@ public class MySQLDatabase implements Database{
         new String [] {"status", "userInfo", "computingSystem"},
         new String [] {"Submitted", userInfo, cs}
         );
-    clearCaches();
     return ret;
   }
 
@@ -724,57 +737,58 @@ public class MySQLDatabase implements Database{
     Debug.debug(">>> sql string is: "+req, 3);
     
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      ResultSet rset = stmt.executeQuery(req);
-      ResultSetMetaData md = rset.getMetaData();
-      String[] fields = new String[md.getColumnCount()];
-      //find out how many rows..
-      int i = 0;
-      while(rset.next()){
-        i++;
+      String table = Util.getTableName(req);
+      String[] fields = null;
+      if(withStar){
+        fields = getFieldNames(table);
+        Debug.debug("found fields: "+Util.arrayToString(fields), 3);
       }
-      String [][] values = new String[i][md.getColumnCount()];
-      for(int j=0; j<md.getColumnCount(); ++j){
-        fields[j] = md.getColumnName(j+1);
+      else{
+        fields = Util.getColumnNames(req);
+        Debug.debug("found fields: "+Util.arrayToString(fields), 3);
+      }
+      for(int j=0; j<fields.length; ++j){
         // If we did select *, make sure that the identifier
         // row is at the end as it should be
         if(withStar && fields[j].equalsIgnoreCase(identifier) && 
-            j!=md.getColumnCount()-1){
+            j!=fields.length-1){
           identifierColumn = j;
         }
         // Find the outFileMapping column number
         if(fileTable && fields[j].equalsIgnoreCase("outFileMapping") && 
-            j!=md.getColumnCount()-1){
+            j!=fields.length-1){
           urlColumn = j;
           // replace "outFileMapping" with "url" in the Table.
           fields[j] = "url";
         }
         // Find the name column number
         if(fileTable && fields[j].equalsIgnoreCase(Util.getNameField(dbName, "jobDefinition")) && 
-            j!=md.getColumnCount()-1){
+            j!=fields.length-1){
           nameColumn = j;
           // replace "name" with the what's defined in the config file
           fields[j] = Util.getNameField(dbName, "file");
         }
       }
       if(withStar && identifierColumn>-1){
-        fields[identifierColumn] = md.getColumnName(md.getColumnCount());
-        fields[md.getColumnCount()-1] = identifier;
+        fields[identifierColumn] = fields[fields.length-1];
+        fields[fields.length-1] = identifier;
       }
-      rset = stmt.executeQuery(req);
-      i=0;
+      DBResult rset = executeQuery(req);
+      String [][] values = new String[rset.values.length][fields.length];
+      int i=0;
       while(rset.next()){
-        for(int j=0; j<md.getColumnCount(); ++j){
+        for(int j=0; j<rset.fields.length; ++j){
+          Debug.debug("sorting "+withStar+" "+identifierColumn+" "+
+              rset.fields.length, 3);
           if(withStar && identifierColumn>-1){
             if(j==identifierColumn){
               // identifier column is not at the end, so we swap
               // identifier column and the last column
-              String foo = rset.getString(md.getColumnCount());
+              String foo = rset.getString(rset.fields.length);
               Debug.debug("values "+i+" "+foo, 2);
               values[i][j] = foo;
             }
-            else if(j==md.getColumnCount()-1){
+            else if(j==rset.fields.length-1){
               String foo = rset.getString(identifierColumn+1);
               Debug.debug("values "+i+" "+foo, 2);
               values[i][j] = foo;
@@ -818,11 +832,10 @@ public class MySQLDatabase implements Database{
         }
         i++;
       }
-      rset.close();
-      conn.close();
       return new DBResult(fields, values);
     }
     catch(SQLException e){
+      e.printStackTrace();
       Debug.debug(e.getMessage(),1);
       return new DBResult();
     }
@@ -843,27 +856,17 @@ public class MySQLDatabase implements Database{
     req += " WHERE "+idField+" = '"+ datasetID+"'";
     try{
       Debug.debug(">> "+req, 3);
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      ResultSet rset = conn.createStatement().executeQuery(req);
+      DBResult rset = executeQuery(req);
       Vector datasetVector = new Vector();
       while(rset.next()){
         String values[] = new String[datasetFields.length];
         for(int i=0; i<datasetFields.length;i++){
-          if(datasetFields[i].endsWith("FK") || datasetFields[i].endsWith("ID") &&
-              !datasetFields[i].equalsIgnoreCase("grid") ||
-              datasetFields[i].endsWith("COUNT")){
-            values[i] = Integer.toString(rset.getInt(datasetFields[i]));
-          }
-          else{
-            values[i] = rset.getString(datasetFields[i]);
-          }
+          values[i] = rset.getString(datasetFields[i]);
           //Debug.debug(datasetFields[i]+"-->"+values[i], 2);
         }
         DBRecord jobd = new DBRecord(datasetFields, values);
         datasetVector.add(jobd);
       }
-      rset.close();
-      conn.close();
       if(datasetVector.size()==0){
         Debug.debug("ERROR: No dataset with id "+datasetID, 1);
       }
@@ -871,7 +874,7 @@ public class MySQLDatabase implements Database{
         dataset = ((DBRecord) datasetVector.get(0));
       }
       if(datasetVector.size()>1){
-        Debug.debug("WARNING: More than one ("+rset.getRow()+") dataset found with id "+datasetID, 1);
+        Debug.debug("WARNING: More than one ("+rset.values.length+") dataset found with id "+datasetID, 1);
       }
     }
     catch(SQLException e){
@@ -901,10 +904,8 @@ public class MySQLDatabase implements Database{
     String id = null;
     Vector vec = new Vector();
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
       Debug.debug(">>> sql string was: "+req, 3);
-      ResultSet rset = stmt.executeQuery(req);
+      DBResult rset = executeQuery(req);
       while(rset.next()){
         id = rset.getString(idField);
         if(id!=null){
@@ -916,8 +917,6 @@ public class MySQLDatabase implements Database{
               datasetName, 1);
         }
       }
-      rset.close();
-      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
@@ -955,8 +954,7 @@ public class MySQLDatabase implements Database{
     req += " WHERE "+idField+" = '"+ runtimeEnvironmentID+"'";
     try{
       Debug.debug(">> "+req, 3);
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      ResultSet rset = conn.createStatement().executeQuery(req);
+      DBResult rset = executeQuery(req);
       Vector runtimeEnvironmentVector = new Vector();
       String [] jt = new String[runtimeEnvironmentFields.length];
       int i = 0;
@@ -976,8 +974,6 @@ public class MySQLDatabase implements Database{
         //Debug.debug("Added value "+((DBRecord) runtimeEnvironmentVector.get(i)).getAt(0), 3);
         ++i;
       }
-      rset.close();
-      conn.close();
       if(i==0){
         Debug.debug("ERROR: No runtime environment found with id "+runtimeEnvironmentID, 1);
       }
@@ -985,7 +981,7 @@ public class MySQLDatabase implements Database{
         pack = ((DBRecord) runtimeEnvironmentVector.get(0));
       }
       if(i>1){
-        Debug.debug("WARNING: More than one ("+rset.getRow()+") runtime environment found with id "+runtimeEnvironmentID, 1);
+        Debug.debug("WARNING: More than one ("+rset.values.length+") runtime environment found with id "+runtimeEnvironmentID, 1);
       }
     }
     catch(SQLException e){
@@ -1009,8 +1005,7 @@ public class MySQLDatabase implements Database{
     req += " WHERE "+idField+" = '"+ transformationID+"'";
     try{
       Debug.debug(">> "+req, 3);
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      ResultSet rset = conn.createStatement().executeQuery(req);
+      DBResult rset = executeQuery(req);
       Vector transformationVector = new Vector();
       String [] jt = new String[transformationFields.length];
       int i = 0;
@@ -1030,8 +1025,6 @@ public class MySQLDatabase implements Database{
         //Debug.debug("Added value "+((DBRecord) transformationVector.get(i)).getAt(0), 3);
         ++i;
       }
-      rset.close();
-      conn.close();
       if(i==0){
         Debug.debug("ERROR: No transformation found with id "+transformationID, 1);
       }
@@ -1039,7 +1032,7 @@ public class MySQLDatabase implements Database{
         transformation = ((DBRecord) transformationVector.get(0));
       }
       if(i>1){
-        Debug.debug("WARNING: More than one ("+rset.getRow()+") transformation found with id "+transformationID, 1);
+        Debug.debug("WARNING: More than one ("+rset.values.length+") transformation found with id "+transformationID, 1);
       }
     }
     catch(SQLException e){
@@ -1058,9 +1051,9 @@ public class MySQLDatabase implements Database{
    */
   private synchronized DBRecord [] getRuntimeEnvironmentRecords(){
     
-    ResultSet rset = null;
+    DBResult rset = null;
     String req = "";
-    DBRecord [] allRuntimeEnvironmentRecords = null;   
+    DBRecord [] allRuntimeEnvironmentRecords = null;
     try{      
       req = "SELECT "+runtimeEnvironmentFields[0];
       if(runtimeEnvironmentFields.length>1){
@@ -1070,8 +1063,7 @@ public class MySQLDatabase implements Database{
       }
       req += " FROM runtimeEnvironment";
       Debug.debug(req, 3);
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      rset = conn.createStatement().executeQuery(req);
+      rset = executeQuery(req);
       Vector runtimeEnvironmentVector = new Vector();
       String [] jt = new String[runtimeEnvironmentFields.length];
       int i = 0;
@@ -1091,8 +1083,6 @@ public class MySQLDatabase implements Database{
         //Debug.debug("Added value "+((DBRecord) runtimeEnvironmentVector.get(i)).getAt(0), 3);
         ++i;
       }
-      rset.close();
-      conn.close();
       allRuntimeEnvironmentRecords = new DBRecord[i];
       for(int j=0; j<i; ++j){
         allRuntimeEnvironmentRecords[j] = ((DBRecord) runtimeEnvironmentVector.get(j));
@@ -1110,9 +1100,9 @@ public class MySQLDatabase implements Database{
    */
   private synchronized DBRecord [] getTransformationRecords(){
     
-    ResultSet rset = null;
+    DBResult rset = null;
     String req = "";
-    DBRecord [] allTransformationRecords = null;   
+    DBRecord [] allTransformationRecords = null;
     try{      
       req = "SELECT "+transformationFields[0];
       if(transformationFields.length>1){
@@ -1122,8 +1112,7 @@ public class MySQLDatabase implements Database{
       }
       req += " FROM transformation";
       Debug.debug(req, 3);
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      rset = conn.createStatement().executeQuery(req);
+      rset = executeQuery(req);
       Vector transformationVector = new Vector();
       String [] jt = new String[transformationFields.length];
       int i = 0;
@@ -1143,8 +1132,6 @@ public class MySQLDatabase implements Database{
         //Debug.debug("Added value "+((DBRecord) transformationVector.get(i)).getAt(0), 3);
         ++i;
       }
-      rset.close();
-      conn.close();
       allTransformationRecords = new DBRecord[i];
       for(int j=0; j<i; ++j){
         allTransformationRecords[j] = ((DBRecord) transformationVector.get(j));
@@ -1168,9 +1155,7 @@ public class MySQLDatabase implements Database{
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      ResultSet rset = stmt.executeQuery(req);
+      DBResult rset = executeQuery(req);
       while(rset.next()){
         String values[] = new String[jobDefFields.length];
         for(int i=0; i<jobDefFields.length;i++){
@@ -1178,14 +1163,7 @@ public class MySQLDatabase implements Database{
           String val = "";
           for(int j=0; j<jobDefFields.length; ++j){
             if(fieldname.equalsIgnoreCase(jobDefFields[j])){
-              if((fieldname.endsWith("FK") || fieldname.endsWith("ID")) &&
-                  !fieldname.equalsIgnoreCase("jobid")){
-                int tmp = rset.getInt(fieldname);
-                val = Integer.toString(tmp);
-              }
-              else{
-                val = rset.getString(fieldname);
-              }
+              val = rset.getString(fieldname);
               break;
             }
             val = "";
@@ -1196,8 +1174,6 @@ public class MySQLDatabase implements Database{
         DBRecord jobd = new DBRecord(jobDefFields, values);
         jobdefv.add(jobd);
       }
-      rset.close();
-      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -1233,9 +1209,7 @@ public class MySQLDatabase implements Database{
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      ResultSet rset = stmt.executeQuery(req);
+      DBResult rset = executeQuery(req);
       while(rset.next()){
         String values[] = new String[jobDefFields.length];
         for(int i=0; i<jobDefFields.length;i++){
@@ -1243,14 +1217,7 @@ public class MySQLDatabase implements Database{
           String val = "";
           for(int j=0; j<fieldNames.length; ++j){
             if(fieldname.equalsIgnoreCase(fieldNames[j])){
-              if(fieldname.endsWith("FK") || fieldname.endsWith("ID") &&
-                  !fieldname.equalsIgnoreCase("jobID")){
-                int tmp = rset.getInt(fieldname);
-                val = Integer.toString(tmp);
-              }
-              else{
-                val = rset.getString(fieldname);
-              }
+              val = rset.getString(fieldname);
               break;
             }
             val = "";
@@ -1262,8 +1229,6 @@ public class MySQLDatabase implements Database{
         jobdefv.add(jobd);
       
       };
-      rset.close();
-      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -1378,10 +1343,7 @@ public class MySQLDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       execok = false;
@@ -1408,7 +1370,6 @@ public class MySQLDatabase implements Database{
     for (int i=0 ; i<ofmap.length ; i++){  
       ofmapstr += ofmap[i] [0] + " " + ofmap[i] [1] + " ";
     }
-    clearCaches();
     // Update DB with "request" and return success/failure
     // Fetch current date and time
     SimpleDateFormat dateFormat = new SimpleDateFormat(GridPilot.dateFormatString);
@@ -1438,10 +1399,7 @@ public class MySQLDatabase implements Database{
       boolean execok = true;
       Debug.debug("Updating >>> "+arg, 2);
       try{
-        Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-        Statement stmt = conn.createStatement();
-        stmt.executeUpdate(arg);
-        conn.close();
+        executeUpdate(arg);
       }
       catch(Exception e){
         execok = false;
@@ -1555,10 +1513,7 @@ public class MySQLDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       execok = false;
@@ -1603,10 +1558,7 @@ public class MySQLDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       execok = false;
@@ -1654,10 +1606,7 @@ public class MySQLDatabase implements Database{
       Debug.debug(sql, 2);
       boolean execok = true;
       try{
-        Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-        Statement stmt = conn.createStatement();
-        stmt.executeUpdate(sql);
-        conn.close();
+        executeUpdate(sql);
       }
       catch(Exception e){
         execok = false;
@@ -1685,10 +1634,7 @@ public class MySQLDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       execok = false;
@@ -1769,10 +1715,7 @@ public class MySQLDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       execok = false;
@@ -1839,10 +1782,7 @@ public class MySQLDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       execok = false;
@@ -1910,10 +1850,7 @@ public class MySQLDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       execok = false;
@@ -1981,10 +1918,7 @@ public class MySQLDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       execok = false;
@@ -2037,10 +1971,7 @@ public class MySQLDatabase implements Database{
     try{
       String sql = "DELETE FROM jobDefinition WHERE "+idField+" = '"+
       jobDefId+"'";
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2066,10 +1997,7 @@ public class MySQLDatabase implements Database{
       String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
       datasetID+"'";
       Debug.debug(">>> sql string was: "+sql, 3);
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2086,10 +2014,7 @@ public class MySQLDatabase implements Database{
     try{
       String sql = "DELETE FROM jobDefinition WHERE "+refFields[1]+" = '"+
         getDatasetName(datasetID)+"'";
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
@@ -2104,10 +2029,7 @@ public class MySQLDatabase implements Database{
     try{
       String sql = "DELETE FROM transformation WHERE "+idField+" = '"+
       transformationID+"'";
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2123,10 +2045,7 @@ public class MySQLDatabase implements Database{
     try{
       String sql = "DELETE FROM runtimeEnvironment WHERE "+idField+" = '"+
       runtimeEnvironmentID+"'";
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
-      conn.close();
+      executeUpdate(sql);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2146,9 +2065,7 @@ public class MySQLDatabase implements Database{
     Debug.debug(req, 2);
     String version;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      ResultSet rset = stmt.executeQuery(req);
+      DBResult rset = executeQuery(req);
       while(rset.next()){
         version = rset.getString("version");
         if(version!=null){
@@ -2157,11 +2074,9 @@ public class MySQLDatabase implements Database{
         }
         else{
           Debug.debug("WARNING: version null for identifier "+
-              rset.getInt(idField), 1);
+              rset.getString(idField), 1);
         }
       }
-      rset.close();
-      conn.close();
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
@@ -2230,6 +2145,7 @@ public class MySQLDatabase implements Database{
     DBRecord file = new DBRecord(fields, values);
     // If the file catalog tables (t_pfn, t_lfn, t_meta) are present,
     // we use them.
+    Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
     if(isFileCatalog()){
       Vector fieldsVector = new Vector();
       Debug.debug("file fields: "+Util.arrayToString(fields), 3);
@@ -2304,6 +2220,12 @@ public class MySQLDatabase implements Database{
           }
         }
       }
+    }
+    try {
+      conn.close();
+    }
+    catch(SQLException e){
+      e.printStackTrace();
     }
     return file;
   }
@@ -2480,10 +2402,7 @@ public class MySQLDatabase implements Database{
     String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
     url + "', '" + fileID +"')";
     Debug.debug(sql, 2);
-    Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-    Statement stmt = conn.createStatement();
-    stmt.executeUpdate(sql);
-    conn.close();
+    executeUpdate(sql);
   }
   
   // This is only to be used if this is a file catalog.
@@ -2495,9 +2414,7 @@ public class MySQLDatabase implements Database{
     boolean execok1 = true;
     Connection conn = null;
     try{
-      conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
+      executeUpdate(sql);
     }
     catch(Exception e){
       execok1 = false;
@@ -2510,8 +2427,7 @@ public class MySQLDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok2 = true;
     try{
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
+      executeUpdate(sql);
     }
     catch(Exception e){
       execok2 = false;
@@ -2524,8 +2440,7 @@ public class MySQLDatabase implements Database{
     Debug.debug(sql, 2);
     boolean execok3 = true;
     try{
-      Statement stmt = conn.createStatement();
-      stmt.executeUpdate(sql);
+      executeUpdate(sql);
       conn.close();
     }
     catch(Exception e){
@@ -2540,7 +2455,6 @@ public class MySQLDatabase implements Database{
     if(isFileCatalog()){
       LogFile logFile = GridPilot.getClassMgr().getLogFile();
       boolean ok = true;
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       for(int i=0; i<fileIDs.length; ++i){
         try{
           if(cleanup){
@@ -2567,21 +2481,21 @@ public class MySQLDatabase implements Database{
           }
           String req = "DELETE FROM t_lfn WHERE guid = '"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
-          int rowsAffected = conn.createStatement().executeUpdate(req);
+          int rowsAffected = executeUpdate(req);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+fileIDs[i]+" from t_lfn";
             logFile.addMessage(error);
           }
           req = "DELETE FROM t_pfn WHERE guid = '"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
-          rowsAffected = conn.createStatement().executeUpdate(req);
+          rowsAffected = executeUpdate(req);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+fileIDs[i]+" from t_pfn";
             logFile.addMessage(error);
           }
           req = "DELETE FROM t_meta WHERE guid = '"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
-          rowsAffected = conn.createStatement().executeUpdate(req);
+          rowsAffected = executeUpdate(req);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+fileIDs[i]+" from t_meta";
             logFile.addMessage(error);
@@ -2591,12 +2505,6 @@ public class MySQLDatabase implements Database{
           e.printStackTrace();
           ok = false;
         }
-      }
-      try{
-        conn.close();
-      }
-      catch(SQLException e){
-         e.printStackTrace();
       }
       return ok;
     }
@@ -2608,16 +2516,30 @@ public class MySQLDatabase implements Database{
 
   private synchronized String getFileID(String lfn){
     if(isFileCatalog()){
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       String ret = Util.getValues(dbName, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
+      try{
+        conn.close();
+      }
+      catch(SQLException e){
+        e.printStackTrace();
+      }
       return ret;
     }
     else if(isJobRepository()){
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       // an autoincremented integer is of no use... Except for when pasting:
       // then we need it to get the pfns.
       String nameField = Util.getNameField(dbName, "jobDefinition");
       String idField = Util.getIdentifierField(dbName, "jobDefinition");
       String ret = Util.getValues(dbName, "jobDefinition", nameField, lfn,
           new String [] {idField})[0][0];
+      try{
+        conn.close();
+      }
+      catch(SQLException e){
+        e.printStackTrace();
+      }
       return ret;
     }
     else{

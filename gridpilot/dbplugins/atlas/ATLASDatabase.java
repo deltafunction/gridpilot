@@ -77,6 +77,8 @@ public class ATLASDatabase implements Database{
   private int pathConvention = 1;
   private HashMap dqLocationsCache = new HashMap();
   private boolean stop = false;
+  private HashMap queryResults = new HashMap();
+  private boolean useCaching = false;
 
   private static boolean forceDelete = false;
   private static String connectTimeout = "10000";
@@ -90,6 +92,15 @@ public class ATLASDatabase implements Database{
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     logFile = GridPilot.getClassMgr().getLogFile();
     dbName = _dbName;
+    
+    String useCachingStr = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "cache search results");
+    if(useCachingStr==null || useCachingStr.equalsIgnoreCase("")){
+      useCaching = false;
+    }
+    else{
+      useCaching = ((useCachingStr.equalsIgnoreCase("yes")||
+          useCachingStr.equalsIgnoreCase("true"))?true:false);
+    }
 
     dq2Server = configFile.getValue(dbName, "DQ2 server");
     dq2Port = configFile.getValue(dbName, "DQ2 port");
@@ -208,6 +219,11 @@ public class ATLASDatabase implements Database{
   
   public DBResult select(String selectRequest, String identifier, boolean findAll){
     
+    if(useCaching && queryResults.containsKey(selectRequest)){
+      Debug.debug("Returning cached result for "+selectRequest, 2);
+      return (DBResult) queryResults.get(selectRequest);
+    }
+    
     if(getStop()){
       return null;
     }
@@ -257,7 +273,9 @@ public class ATLASDatabase implements Database{
       error = "ERROR: this is a too expensive search pattern; "+req;
       GridPilot.getClassMgr().getStatusBar().setLabel(error);
       Debug.debug(error, 1);
-      return new DBResult(fields, new String[0][fields.length]);
+      DBResult res = new DBResult(fields, new String[0][fields.length]);
+      queryResults.put(selectRequest, res);
+      return res;
     }
     
     String get = null;
@@ -536,6 +554,7 @@ public class ATLASDatabase implements Database{
         Debug.debug("Adding record "+Util.arrayToString(values[i]), 3);
       }
       DBResult res = new DBResult(fields, values);
+      queryResults.put(selectRequest, res);
       return res;
     }
    //---------------------------------------------------------------------
@@ -729,6 +748,7 @@ public class ATLASDatabase implements Database{
         Debug.debug("Adding record "+Util.arrayToString(values[i]), 3);
       }
       DBResult res = new DBResult(fields, values);
+      queryResults.put(selectRequest, res);
       return res;
     }
     else{
@@ -1139,6 +1159,8 @@ public class ATLASDatabase implements Database{
     if(getStop()){
       return;
     }
+    
+    clearCacheEntries("file");
     
     // get rid of the :/, which GlobusURL doesn't like
     String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
@@ -1838,6 +1860,8 @@ public class ATLASDatabase implements Database{
       return false;
     }
     
+    clearCacheEntries("file");
+    
     // Find the LFNs to keep and those to delete.
     String [] toDeleteLfns = null;
     String [] toKeepLfns = null;
@@ -2324,6 +2348,8 @@ public class ATLASDatabase implements Database{
       return false;
     }
     
+    clearCacheEntries("dataset");
+    
     Debug.debug("Creating dataset "+Util.arrayToString(fields)+
         " --> "+Util.arrayToString(values), 2);
     
@@ -2419,6 +2445,8 @@ public class ATLASDatabase implements Database{
     if(getStop()){
       return false;
     }
+    
+    clearCacheEntries("dataset");
     
     DQ2Access dq2Access = null;
     try{
@@ -2565,6 +2593,8 @@ public class ATLASDatabase implements Database{
       return false;
     }
     
+    clearCacheEntries("dataset");
+    
     DQ2Access dq2Access = null;
     try{
       dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
@@ -2640,6 +2670,29 @@ public class ATLASDatabase implements Database{
   public String getRunNumber(String datasetID){
     // TODO
     return null;
+  }
+  
+  public void clearCacheEntries(String table){
+    if(!useCaching){
+      return;
+    }
+    String thisSql = null;
+    String thisTableName = null;
+    HashSet deleteKeys = new HashSet();
+    for(Iterator it=queryResults.keySet().iterator(); it.hasNext();){
+      thisSql = (String) it.next();
+      thisTableName = Util.getTableName(thisSql);
+      Debug.debug("Checking cache: "+thisTableName+"<->"+table, 2);
+      if(thisTableName.equalsIgnoreCase(table)){
+        deleteKeys.add(thisSql);
+      }
+    }
+    Debug.debug("Clearing cache entries", 2);
+    for(Iterator it=deleteKeys.iterator(); it.hasNext();){
+      thisSql = (String) it.next();
+      Debug.debug("--> "+thisSql, 3);
+      queryResults.remove(thisSql);
+    }
   }
 
   // -------------------------------------------------------------------

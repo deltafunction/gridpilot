@@ -15,7 +15,7 @@ import gridpilot.GridPilot;
 import gridpilot.Debug;
 
 /**
- * This class manages access to databases.
+ * This class provides methods for caching JDBC queries.
  *
  */
 public class DBCache{
@@ -26,6 +26,10 @@ public class DBCache{
   protected boolean useCaching = false;
   
   public DBCache(){
+  }
+  
+  public void clearCache(){
+    queryResults.clear();
   }
   
   public DBResult executeQuery(String sql) throws SQLException{

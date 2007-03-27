@@ -2135,8 +2135,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           catch(Exception e){
           }
+          JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
+          frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
           String [] pfns = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i]);
           tableResults.setValueAt(Util.arrayToString(pfns), selectedRows[i], pfnsColumnIndex);
+          frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
       }
     }.start();
