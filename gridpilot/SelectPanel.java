@@ -5,6 +5,7 @@ import gridpilot.Debug;
 import javax.swing.*;
 
 import java.awt.*;
+
 import javax.swing.border.*;
 import java.awt.event.*;
 
@@ -73,39 +74,6 @@ public class SelectPanel extends JPanel{
 
   /**
    * Reads the selection panel and returns a representation of the selection in
-   * basic SQL
-   */
-  /*public String getRequest(){
-    String ret = "SELECT ";
-    for(int i = 0; i<sPanel.spDisplayList.getComponentCount(); ++i){
-      SPanel.DisplayPanel cb = ((SPanel.DisplayPanel) sPanel.spDisplayList.getComponent(i));
-      if(i>0){
-        ret += ", ";
-      }
-      ret += cb.cbDisplayAttribute.getSelectedItem();
-    }
-    ret += " FROM " + tableName;
-    if(sPanel.spConstraintList.getComponentCount() > 0 &&
-        !((SPanel.ConstraintPanel) sPanel.spConstraintList.getComponent(0)).tfConstraintValue.getText().equals("")){
-      ret += " WHERE ";
-    }
-    for(int i = 0; i<sPanel.spConstraintList.getComponentCount(); ++i){
-      SPanel.ConstraintPanel cb = ((SPanel.ConstraintPanel) sPanel.spConstraintList.getComponent(i));
-      if(!cb.tfConstraintValue.getText().equals("")){
-        if(i>0){
-          ret += " AND ";
-        }
-        ret += cb.cbConstraintAttribute.getSelectedItem() + " ";
-        ret += cb.cbConstraintRelation.getSelectedItem() + " ";
-        ret += cb.tfConstraintValue.getText();
-      }
-    }
-    Debug.debug("Search request: " + ret, 3);
-    return ret;
-  }*/
-
-  /**
-   * Reads the selection panel and returns a representation of the selection in
    * basic SQL. Uses shownFields for SELECT, the selection for WHERE.
    */
   public String getRequest(String [] shownFields){
@@ -147,38 +115,7 @@ public class SelectPanel extends JPanel{
     Debug.debug("Search request: " + ret, 3);
     return ret;
   }
-
-  /**
-   * Returns the index of the string s in the array array, or -1
-   */
-  /*private int getIndexOf(String [] array, String s){
-    if(array==null || s==null){
-      return -1;
-    }
-    for(int i=0; i<array.length; ++i){
-      if(array[i].equals(s)){
-        return i;
-      }
-    }
-    return -1;
-  }*/
   
-  /**
-   * Gets panel number of the panel which contains the source of the current event.
-   * @return index in sources of e.getSource
-   */
-  /*private int getPanel(ActionEvent e, Object [] sources){
-    if(e.getSource().getClass()==JButton.class){
-      return ((JButton)(e.getSource())).getMnemonic();
-    }
-    for(int i=0; i<sources.length; ++i){
-      if(e.getSource()==sources[i])
-        return i;
-    }
-    Debug.debug("ERROR: SelectPanel.getPanel : source not found", 1);
-    return -1;
-  }*/
-
   /**
    * Initialises the panel # 'panel'.
    * Called by : this.initGUI()
@@ -209,6 +146,8 @@ public class SelectPanel extends JPanel{
       spDisplays = new JPanel();
       
       this.setLayout(new GridBagLayout());
+      
+      spConstraints.setLayout(new FlowLayout(FlowLayout.LEFT, 4, 14));
         
       //// Add constraints
       //Label
@@ -242,7 +181,7 @@ public class SelectPanel extends JPanel{
       //// Display attributes
     
       // Label
-      spDisplays.add(new JLabel("Show : "));
+      spDisplays.add(new JLabel("Show :         "));
   
       // Button More
       bAddDisplayRow.setText("More");
@@ -463,8 +402,6 @@ public class SelectPanel extends JPanel{
             }
             if((val!=null) && (secondcomp!=null)){
               Debug.debug("Setting selected "+val, 3);
-              //((JComboBox) ((SelectPanel.SPanel.DisplayPanel) spanel.spDisplayList.getComponent(
-              //    /*nr*/h)).getComponent(0)).setSelectedItem(val.toUpperCase());
               // the various databases like to upper-case the names,
               // so try all possibilities
               ((JComboBox) secondcomp).setSelectedItem(val);

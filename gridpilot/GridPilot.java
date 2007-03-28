@@ -54,7 +54,7 @@ public class GridPilot extends JApplet{
   public static String [] dbNames;
   public static String [] ftNames;
   public static String [] csNames = null;
-  public static String gridftpHomeURL = null;
+  public static String gridHomeURL = null;
   public static boolean isExiting = false;
   // Default when interrupting threads. Can be overridden by argument to waitForThread.
   public static boolean askBeforeInterrupt = true;
@@ -216,8 +216,8 @@ public class GridPilot extends JApplet{
          "browser history file");
       globusTcpPortRange = getClassMgr().getConfigFile().getValue("File transfer systems",
          "globus tcp port range");
-      gridftpHomeURL = getClassMgr().getConfigFile().getValue("GridPilot",
-         "Gridftp home url");
+      gridHomeURL = getClassMgr().getConfigFile().getValue("GridPilot",
+         "Grid home url");
       String ask = null;
       try{
         ask = getClassMgr().getConfigFile().getValue("GridPilot",
@@ -368,6 +368,8 @@ public class GridPilot extends JApplet{
     Thread t1 = new Thread(){
       public void run(){
         isExiting = true;
+        exitPanel.setPreferredSize(new Dimension(400, 40));
+        exitPanel.setIgnoreRepaint(true);
         exitPanel.setText("Exiting... Please wait or click OK to force quit.");
         JProgressBar jp = new JProgressBar();
         jp.setIndeterminate(true);
