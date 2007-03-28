@@ -8,6 +8,8 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Toolkit;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
@@ -47,6 +49,8 @@ import java.util.Random;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -62,6 +66,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
+import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
@@ -291,8 +296,7 @@ public class Util{
  
   public static JEditorPane createCheckPanel(
       final JFrame frame, 
-      final String name, final JTextComponent jt,
-      final DBPluginMgr dbPluginMgr){
+      final String name, final JTextComponent jt){
     //final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
     String markup = "<font size=-1 face=sans-serif><b>"+name+" : </b></font><br>"+
       "<a href=\"http://check/\">browse</a>";
@@ -546,6 +550,27 @@ public class Util{
     JPasswordField passwordField = new JPasswordField(password, 24);
     JTextField keyField = new JTextField(keyFile, 24);
     JTextField certField = new JTextField(certFile, 24);
+    
+    // TODO: use
+    ImageIcon browseIcon;
+    URL imgURL=null;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "folder_blue_open.png");
+      browseIcon = new ImageIcon(imgURL);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "folder_blue_open.png", 3);
+      browseIcon = new ImageIcon();
+    }
+    JButton bHome = new JButton(browseIcon);
+    bHome.setToolTipText("browse file system");
+    bHome.setPreferredSize(new java.awt.Dimension(22, 22));
+    bHome.setSize(new java.awt.Dimension(22, 22));
+    bHome.addMouseListener(new MouseAdapter(){
+      public void mouseClicked(MouseEvent me){
+      }
+    });
+    // End TODO
 
     panel.add(tp, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
         GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
@@ -558,13 +583,16 @@ public class Util{
         GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
         0, 0));
 
-    panel.add(new JLabel("Key file:"),
+    panel.add(//new JLabel("Key file:"),
+        Util.createCheckPanel(
+            (JFrame) SwingUtilities.getWindowAncestor(panel),
+            "Key file:", keyField),
         new GridBagConstraints(0, 2, 1, 1, 1.0, 1.0,
         GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
         0, 0));
-    panel.add(keyField, new GridBagConstraints(1, 2, 1, 1, 1.0, 1.0,
-        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
-        0, 0));
+    //panel.add(keyField, new GridBagConstraints(1, 2, 1, 1, 1.0, 1.0,
+    //    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+    //    0, 0));
 
     panel.add(new JLabel("Cert file:"),
         new GridBagConstraints(0, 3, 1, 1, 1.0, 1.0,
