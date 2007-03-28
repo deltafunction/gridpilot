@@ -1731,10 +1731,10 @@ public class ATLASDatabase implements Database{
           }
           int len = tl.size();
           Debug.debug("Deprecating location: "+locationsArray[i]+" -->"+
-              j+":"+(len-1)+":"+(-len+j+1), 2);
+              j+":"+len+":"+(-len+j+1), 2);
           // TODO: get this to work!
-          Collections.rotate(((Vector) dqLocationsCache.get(vuid)).subList(j, len-1),
-              -len+j+1);
+          Collections.rotate(((Vector) dqLocationsCache.get(vuid)).subList(j, len),
+              len-j-1);
           Debug.debug("New location cache for "+vuid+
               ": "+Util.arrayToString(((Vector) dqLocationsCache.get(vuid)).toArray()), 2);
         }
