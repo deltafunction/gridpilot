@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -66,7 +67,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
-import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
@@ -294,7 +294,110 @@ public class Util{
     }
   }
  
-  public static JEditorPane createCheckPanel(
+ public static void launchCheckBrowser(final JFrame frame, String url,
+     final JTextComponent jt, final boolean localFS){
+   if(url.equals("http://check/")){
+     String httpScript = jt.getText();
+     if(frame!=null){
+       frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+     }
+     final String finUrl = httpScript;
+     final String finBaseUrl = "";//url;
+     (new MyThread(){
+       public void run(){
+         BrowserPanel wb = null;
+         
+         String [] urls = split(finUrl);
+         if(urls.length==0){
+           urls = new String [] {""};
+         }
+         for(int i=0; i<urls.length; ++i){
+           try{
+             if(urls[i].startsWith("/")){
+               urls[i] = (new File(urls[i])).toURI().toURL().toExternalForm();
+             }
+             else if(urls[i].startsWith("file://")){
+               urls[i] = (new File(urls[i].substring(6))).toURI().toURL().toExternalForm();
+             }
+             else if(urls[i].startsWith("file://")){
+               urls[i] = (new File(urls[i].substring(5))).toURI().toURL().toExternalForm();
+             }
+           }
+           catch(Exception ee){
+             Debug.debug("Could not open URL "+urls[i]+". "+ee.getMessage(), 1);
+             ee.printStackTrace();
+             GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+urls[i]);
+             return;
+           }
+           Debug.debug("URL: "+urls[i], 3);
+           
+           try{
+             if(frame!=null){
+               wb = new BrowserPanel(//GridPilot.getClassMgr().getGlobalFrame(),
+                   frame,
+                   "Choose file",
+                   //finUrl,
+                   urls[i],
+                   finBaseUrl,
+                   true,
+                   /*filter*/true,
+                   /*navigation*/true,
+                   null,
+                   null,
+                   localFS);
+             }
+             else{
+               wb = new BrowserPanel(
+                   "Choose file",
+                   //finUrl,
+                   urls[i],
+                   finBaseUrl,
+                   true,
+                   /*filter*/false,
+                   /*navigation*/false,
+                   null,
+                   null,
+                   localFS);
+             }
+           }
+           catch(Exception eee){
+             Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
+             GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
+             ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+             try{
+               confirmBox.getConfirm("URL could not be opened",
+                                    "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
+                                 new Object[] {"OK"});
+             }
+             catch(Exception eeee){
+               Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
+             }
+           }
+                            
+           if(wb!=null && wb.lastURL!=null &&
+               wb.lastURL.startsWith(finBaseUrl)){
+             // Set the text: the URL browsed to with base URL removed
+             //jt.setText(wb.lastURL.substring(finBaseUrl.length()));
+             urls[i] = wb.lastURL.substring(finBaseUrl.length());
+             //GridPilot.getClassMgr().getStatusBar().setLabel("");
+           }
+           else{
+             // Don't do anything if we cannot get a URL
+             Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
+           }
+         }
+         
+         jt.setText(arrayToString(urls));
+         if(frame!=null){
+           frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+         }
+         //GridPilot.getClassMgr().getStatusBar().setLabel("");
+       }
+     }).start();
+   }
+ }
+ 
+ public static JEditorPane createCheckPanel(
       final JFrame frame, 
       final String name, final JTextComponent jt){
     //final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
@@ -307,86 +410,7 @@ public class Util{
       new HyperlinkListener(){
       public void hyperlinkUpdate(HyperlinkEvent e){
         if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
-          Debug.debug("URL: "+e.getURL().toExternalForm(), 3);
-          if(e.getURL().toExternalForm().equals("http://check/")){
-            String httpScript = jt.getText();
-            frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-            final String finUrl = httpScript;
-            final String finBaseUrl = "";//url;
-            (new MyThread(){
-              public void run(){
-                BrowserPanel wb = null;
-                
-                String [] urls = split(finUrl);
-                if(urls.length==0){
-                  urls = new String [] {""};
-                }
-                for(int i=0; i<urls.length; ++i){
-                  try{
-                    if(urls[i].startsWith("/")){
-                      urls[i] = (new File(urls[i])).toURI().toURL().toExternalForm();
-                    }
-                    else if(urls[i].startsWith("file://")){
-                      urls[i] = (new File(urls[i].substring(6))).toURI().toURL().toExternalForm();
-                    }
-                    else if(urls[i].startsWith("file://")){
-                      urls[i] = (new File(urls[i].substring(5))).toURI().toURL().toExternalForm();
-                    }
-                  }
-                  catch(Exception ee){
-                    Debug.debug("Could not open URL "+urls[i]+". "+ee.getMessage(), 1);
-                    ee.printStackTrace();
-                    GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+urls[i]);
-                    return;
-                  }
-                  Debug.debug("URL: "+urls[i], 3);
-                  
-                  try{
-                    wb = new BrowserPanel(//GridPilot.getClassMgr().getGlobalFrame(),
-                                    frame,
-                                    "Choose file",
-                                    //finUrl,
-                                    urls[i],
-                                    finBaseUrl,
-                                    true,
-                                    /*filter*/true,
-                                    /*navigation*/true,
-                                    null,
-                                    null);
-                  }
-                  catch(Exception eee){
-                    Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
-                    GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
-                    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
-                    try{
-                      confirmBox.getConfirm("URL could not be opened",
-                                           "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
-                                        new Object[] {"OK"});
-                    }
-                    catch(Exception eeee){
-                      Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
-                    }
-                  }
-                                   
-                  if(wb!=null && wb.lastURL!=null &&
-                      wb.lastURL.startsWith(finBaseUrl)){
-                    // Set the text: the URL browsed to with base URL removed
-                    //jt.setText(wb.lastURL.substring(finBaseUrl.length()));
-                    urls[i] = wb.lastURL.substring(finBaseUrl.length());
-                    //GridPilot.getClassMgr().getStatusBar().setLabel("");
-                  }
-                  else{
-                    // Don't do anything if we cannot get a URL
-                    Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
-                  }
-                }
-                
-                jt.setText(Util.arrayToString(urls));
-                frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-                //GridPilot.getClassMgr().getStatusBar().setLabel("");
-              }
-            }).start();
-          }
+          launchCheckBrowser(frame, e.getURL().toExternalForm(), jt, false);
         }
       }
     });
@@ -407,8 +431,8 @@ public class Util{
     // Arguments and class name for <DatabaseName>Database
     boolean loadfailed = false;
     Object ret = null;
-    Debug.debug("argument types: "+Util.arrayToString(argTypes), 3);
-    Debug.debug("arguments: "+Util.arrayToString(args), 3);
+    Debug.debug("argument types: "+arrayToString(argTypes), 3);
+    Debug.debug("arguments: "+arrayToString(args), 3);
     try{
       //Class newClass = this.getClass().getClassLoader().loadClass(dbClass);
       Class newClass = (new MyClassLoader()).loadClass(className);
@@ -519,9 +543,9 @@ public class Util{
     return line;
   }
 
-  public static String [] getGridPassword(String keyFile, String certFile, String password){
+  public static String [] getGridCredentials(String keyFile, String certFile, String password){
     
-    JPanel panel = new JPanel(new GridBagLayout());
+    final JPanel panel = new JPanel(new GridBagLayout());
     JTextPane tp = new JTextPane();
     tp.setText("");
     tp.setEditable(false);
@@ -548,10 +572,20 @@ public class Util{
     }
 
     JPasswordField passwordField = new JPasswordField(password, 24);
-    JTextField keyField = new JTextField(keyFile, 24);
-    JTextField certField = new JTextField(certFile, 24);
+    final JTextField keyField = new JTextField(keyFile, 24);
+    final JTextField certField = new JTextField(certFile, 24);
+
+    panel.add(tp, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
+        GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5),
+        0, 0));
+    panel.add(new JLabel("Password:"),
+        new GridBagConstraints(0, 1, 1, 1, 1.0, 1.0,
+        GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5),
+        0, 0));
+    panel.add(passwordField, new GridBagConstraints(1, 1, 1, 1, 1.0, 1.0,
+        GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5),
+        0, 0));
     
-    // TODO: use
     ImageIcon browseIcon;
     URL imgURL=null;
     try{
@@ -562,45 +596,54 @@ public class Util{
       Debug.debug("Could not find image "+ GridPilot.resourcesPath + "folder_blue_open.png", 3);
       browseIcon = new ImageIcon();
     }
-    JButton bHome = new JButton(browseIcon);
-    bHome.setToolTipText("browse file system");
-    bHome.setPreferredSize(new java.awt.Dimension(22, 22));
-    bHome.setSize(new java.awt.Dimension(22, 22));
-    bHome.addMouseListener(new MouseAdapter(){
+    
+    JButton bBrowse1 = new JButton(browseIcon);
+    bBrowse1.setToolTipText("browse file system");
+    bBrowse1.setPreferredSize(new java.awt.Dimension(22, 22));
+    bBrowse1.setSize(new java.awt.Dimension(22, 22));
+    
+    JButton bBrowse2 = new JButton(browseIcon);
+    bBrowse2.setToolTipText("browse file system");
+    bBrowse2.setPreferredSize(new java.awt.Dimension(22, 22));
+    bBrowse2.setSize(new java.awt.Dimension(22, 22));
+    
+    bBrowse1.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
+        launchCheckBrowser(null, "http://check/", keyField, true);
       }
     });
-    // End TODO
+    bBrowse2.addMouseListener(new MouseAdapter(){
+      public void mouseClicked(MouseEvent me){
+        launchCheckBrowser(null, "http://check/", certField, true);
+      }
+    });
+    
+    JPanel jpKey = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+    jpKey.add(new JLabel("Key:           "));
+    jpKey.add(bBrowse1);
 
-    panel.add(tp, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
-        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
-        0, 0));
-    panel.add(new JLabel("Password:"),
-        new GridBagConstraints(0, 1, 1, 1, 1.0, 1.0,
-            GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
-        0, 0));
-    panel.add(passwordField, new GridBagConstraints(1, 1, 1, 1, 1.0, 1.0,
-        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
-        0, 0));
+    JPanel jpCert = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+    jpCert.add(new JLabel("Certificate: "));
+    jpCert.add(bBrowse2);
+   
 
-    panel.add(//new JLabel("Key file:"),
-        Util.createCheckPanel(
-            (JFrame) SwingUtilities.getWindowAncestor(panel),
-            "Key file:", keyField),
+    panel.add(jpKey,
         new GridBagConstraints(0, 2, 1, 1, 1.0, 1.0,
-        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5),
+        0, 0)
+      );
+    panel.add(keyField, new GridBagConstraints(1, 2, 1, 1, 1.0, 1.0,
+        GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5),
         0, 0));
-    //panel.add(keyField, new GridBagConstraints(1, 2, 1, 1, 1.0, 1.0,
-    //    GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
-    //    0, 0));
 
-    panel.add(new JLabel("Cert file:"),
+    panel.add(jpCert,
         new GridBagConstraints(0, 3, 1, 1, 1.0, 1.0,
-        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5),
         0, 0));
     panel.add(certField, new GridBagConstraints(1, 3, 1, 1, 1.0, 1.0,
-        GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5),
         0, 0));
+    
     Debug.debug("showing dialog", 3);
     
     if(GridPilot.splash!=null){
@@ -621,7 +664,8 @@ public class Util{
     else{
       return new String [] {
           new String(passwordField.getPassword()),
-          keyField.getText(), certField.getText()
+          clearTildeLocally(clearFile(keyField.getText())),
+          clearTildeLocally(clearFile(certField.getText()))
           };
     }
   }
@@ -802,12 +846,12 @@ public class Util{
           GridPilot.proxyTimeLeftLimit, 3);
       // Create new proxy
       Debug.debug("creating new proxy", 3);
-      String [] password = null;
+      String [] credentials = null;
       GlobusCredential cred = null;
       FileOutputStream out = null;
       for(int i=0; i<=3; ++i){
         try{
-          password = getGridPassword(GridPilot.keyFile, GridPilot.certFile,
+          credentials = getGridCredentials(GridPilot.keyFile, GridPilot.certFile,
               GridPilot.keyPassword);
         }
         catch(IllegalArgumentException e){
@@ -816,13 +860,13 @@ public class Util{
           break;
         }
         try{
-          Debug.debug("Creating proxy, "+Util.arrayToString(password), 3);
-          cred = createProxy(password[1], password[2],
-             password[0], GridPilot.proxyTimeValid, 512);
+          Debug.debug("Creating proxy, "+arrayToString(credentials), 3);
+          cred = createProxy(credentials[1], credentials[2],
+             credentials[0], GridPilot.proxyTimeValid, 512);
           credential = new GlobusGSSCredentialImpl(cred, GSSCredential.INITIATE_AND_ACCEPT) ;
           // Keep password in memory - needed by mysql plugin
-          Debug.debug("Setting grid password to "+password[0], 3);
-          GridPilot.keyPassword = password[0];
+          Debug.debug("Setting grid password to "+credentials[0], 3);
+          GridPilot.keyPassword = credentials[0];
         }
         catch(Exception e){
           e.printStackTrace();
@@ -1166,7 +1210,7 @@ public class Util{
       if(GridPilot.keyPassword==null){
         // delete proxy and reinitialize - this will set GridPilot.keyPassword
         Debug.debug("reinitializing grid proxy to get password", 3);
-        Util.getProxyFile().delete();
+        getProxyFile().delete();
         GridPilot.getClassMgr().gridProxyInitialized = Boolean.FALSE;
         GridPilot.getClassMgr().credential = null;
         GridPilot.getClassMgr().getGridCredential();
@@ -1319,7 +1363,7 @@ public class Util{
           cstAttrNames[i].equalsIgnoreCase("pfns") ||
           cstAttrNames[i].equalsIgnoreCase("metaData") ||
           cstAttrNames[i].equalsIgnoreCase("comment")){
-        jval = Util.createGrayTextArea(cstAttr[i]);
+        jval = createGrayTextArea(cstAttr[i]);
         noTextArea = false;
       }
       else{
@@ -1611,7 +1655,7 @@ public class Util{
     boolean ok = false;
     GlobusURL [] sources = transfer.getSources();
     if(GridPilot.preferredFileServers!=null && GridPilot.preferredFileServers.length>0){
-      Debug.debug("Preferred file servers: "+Util.arrayToString(GridPilot.preferredFileServers), 2);
+      Debug.debug("Preferred file servers: "+arrayToString(GridPilot.preferredFileServers), 2);
       int closeness = -1;
       for(int i=0; i<sources.length; ++i){
         Debug.debug("Checking source: "+sources[i].getURL()+" : "+sources[i].getHost(), 2);
@@ -1648,13 +1692,13 @@ public class Util{
     Debug.debug("Split URLs "+urls, 3);
     String [] urlArray = null;
     if(urls!=null && !urls.equals("no such field")){
-      urlArray = Util.split(urls, "'::'");
+      urlArray = split(urls, "'::'");
       if(urlArray.length>0){
         urlArray[urlArray.length-1] = urlArray[urlArray.length-1].
            substring(0, urlArray[urlArray.length-1].length()-1);
         urlArray[0] = urlArray[0].substring(1);
-        Debug.debug("Returning URLs "+Util.arrayToString(urlArray, "---"), 2);
-        if(Util.arrayToString(urlArray).indexOf("'")>-1){
+        Debug.debug("Returning URLs "+arrayToString(urlArray, "---"), 2);
+        if(arrayToString(urlArray).indexOf("'")>-1){
           throw new Exception("Something went wrong. Backing out.");
         }
       }
@@ -1715,7 +1759,7 @@ public class Util{
     String fields = null;
     fields = sql.replaceFirst("^(?i)SELECT (.*) FROM .*", "$1");
     if(fields!=null){
-      return Util.split(fields, ",");
+      return split(fields, ",");
     }
     return null;
   }
