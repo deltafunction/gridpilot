@@ -123,6 +123,32 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      tableName = _tableName;
      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
      statusBar = GridPilot.getClassMgr().getStatusBar();
+     
+     // Get download dir or URL.
+     // Default to either home dir on "home gridftp server"
+     // as defined in config file, or user.home
+     if((defaultURL==null || defaultURL.equals("")) && GridPilot.gridHomeURL!=null){
+       defaultURL = GridPilot.gridHomeURL;
+     }
+     else if(defaultURL==null || defaultURL.equals("")){
+       defaultURL = "~";
+     }
+     
+     if(defaultURL.startsWith("~")){
+       try{
+         String userHome = System.getProperty("user.home");
+         if(userHome.endsWith(File.separator) || userHome.endsWith("/")){
+           userHome = userHome.substring(0, userHome.length()-1);
+         }
+         defaultURL = userHome + "/" +
+         (defaultURL.length()>1 ? defaultURL.substring(2) : "");
+       }
+       catch(Exception e){
+         e.printStackTrace();
+       }
+     }
+     
+     GridPilot.gridHomeURL = defaultURL;
           
      identifier = Util.getIdentifierField(dbPluginMgr.getDBName(), tableName);
      
@@ -1176,6 +1202,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     miEdit = new JMenuItem("View");
     JMenuItem miDownload = new JMenuItem("Replicate file(s)");
     JMenuItem miLookupPFNs = new JMenuItem("Lookup PFN(s)");
+    JMenuItem miCopyPFNs = new JMenuItem("Copy PFN(s) to clipboard");
     miDelete.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         deleteFiles();
@@ -1194,6 +1221,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     miLookupPFNs.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         lookupPFNs();
+      }
+    });
+    miCopyPFNs.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        copyPFNs();
       }
     });
     miDelete.setEnabled(dbPluginMgr.isFileCatalog());
@@ -2014,31 +2046,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   private void download(){
     new Thread(){
-      public void run(){
-        // First get download dir or URL.
-        // Default to either home dir on "home gridftp server"
-        // as defined in config file, or system.home
-        if((defaultURL==null || defaultURL.equals("")) && GridPilot.gridftpHomeURL!=null){
-          defaultURL = GridPilot.gridftpHomeURL;
-        }
-        else if(defaultURL==null || defaultURL.equals("")){
-          defaultURL = "~";
-        }
-        
-        if(defaultURL.startsWith("~")){
-          try{
-            String userHome = System.getProperty("user.home");
-            if(userHome.endsWith(File.separator) || userHome.endsWith("/")){
-              userHome = userHome.substring(0, userHome.length()-1);
-            }
-            defaultURL = userHome + "/" +
-            (defaultURL.length()>1 ? defaultURL.substring(2) : "");
-          }
-          catch(Exception e){
-            e.printStackTrace();
-          }
-        }
-        
+      public void run(){        
         // if the table jobDefinition is present, we are using
         // the native tables and only one url/pfn per jobDefinition/file
         // is allowed, thus no db combobox needed
@@ -2103,19 +2111,19 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       public void run(){               
         String [] selectedFileIdentifiers = getSelectedIdentifiers();
         int [] selectedRows = tableResults.getSelectedRows();
+        // We assume that the dataset name is used as reference...
+        // TODO: improve this
+        String datasetColumn = "dsn";
+        String [] fileDatasetReference =
+          Util.getFileDatasetReference(dbPluginMgr.getDBName());
+        if(fileDatasetReference!=null){
+          datasetColumn = fileDatasetReference[1];
+        }
+        String pfnsColumn = Util.getPFNsField(dbName);
+        Debug.debug("PFNs column name: "+pfnsColumn, 2);
         for(int i=0; i<selectedFileIdentifiers.length; ++i){
-          // We assume that the dataset name is used as reference...
-          // TODO: improve this
-          String datasetColumn = "dsn";
-          String [] fileDatasetReference =
-            Util.getFileDatasetReference(dbPluginMgr.getDBName());
-          if(fileDatasetReference!=null){
-            datasetColumn = fileDatasetReference[1];
-          }
           // Get the datasetName from the table.            
           HashMap values = new HashMap();
-          String pfnsColumn = Util.getPFNsField(dbName);
-          Debug.debug("PFNs column name: "+pfnsColumn, 2);
           int pfnsColumnIndex = -1;
           for(int j=0; j<fieldNames.length; ++j){
             // Not displayed colums
@@ -2144,6 +2152,40 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       }
     }.start();
+  }
+
+  private void copyPFNs(){
+    String [] selectedFileIdentifiers = getSelectedIdentifiers();
+    int [] selectedRows = tableResults.getSelectedRows();
+    Object [] pfns = new String [selectedFileIdentifiers.length];
+    for(int i=0; i<selectedFileIdentifiers.length; ++i){
+      HashMap values = new HashMap();
+      String pfnsColumn = Util.getPFNsField(dbName);
+      Debug.debug("PFNs column name: "+pfnsColumn, 2);
+      int pfnsColumnIndex = -1;
+      for(int j=0; j<fieldNames.length; ++j){
+        // Not displayed colums
+        for(int k=0; k<tableResults.getColumnCount(); ++k){
+          if(tableResults.getColumnName(k).equalsIgnoreCase(fieldNames[j])){
+            values.put(fieldNames[j], tableResults.getUnsortedValueAt(selectedRows[i], k).toString());
+            break;
+          }
+        }
+        if(fieldNames[j].equalsIgnoreCase(pfnsColumn)){
+          pfnsColumnIndex = j;
+        }
+      }
+      JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
+      frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+      pfns[i] = tableResults.getValueAt(selectedRows[i], pfnsColumnIndex);
+      frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+    }
+    Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+    StringSelection stringSelection = new StringSelection(Util.arrayToString(pfns));
+    clipboard.setContents(stringSelection, this);
+    clipboardOwned = false;
+    menuEditPaste.setEnabled(false);
+    GridPilot.getClassMgr().getGlobalFrame().cutting = false;
   }
 
   private String [] getImportFiles() throws IOException{
@@ -2213,6 +2255,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                       "*/");
     }
     catch(Exception eee){
+      frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
       eee.printStackTrace();
       GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
@@ -2226,12 +2269,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
       }
     }
+    frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     if(wb==null || wb.lastURL==null ||
         !wb.lastURL.startsWith(finBaseUrl) || wb.lastUrlList==null){
       Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
       throw new IOException("No download directory");
     }
-    frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     //GridPilot.getClassMgr().getStatusBar().setLabel("");
     String ret = wb.lastURL.substring(finBaseUrl.length());
     Debug.debug("Returning last URL "+ret, 2);
@@ -2263,20 +2306,20 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w)://", "file:////$1://");
     dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w):/", "file:////$1:/");
     dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w)", "file:////$1");
+    // We assume that the dataset name is used as reference...
+    // TODO: improve this
+    String datasetColumn = "dsn";
+    String [] fileDatasetReference =
+      Util.getFileDatasetReference(dbPluginMgr.getDBName());
+    if(fileDatasetReference!=null){
+      datasetColumn = fileDatasetReference[1];
+    }
     for(int i=0; i<selectedFileIdentifiers.length; ++i){
       String [] urls = null;
       String guid = null;
       String name = null;
       String datasetName = null;
       String datasetID = null;
-      // We assume that the dataset name is used as reference...
-      // TODO: improve this
-      String datasetColumn = "dsn";
-      String [] fileDatasetReference =
-        Util.getFileDatasetReference(dbPluginMgr.getDBName());
-      if(fileDatasetReference!=null){
-        datasetColumn = fileDatasetReference[1];
-      }
       // First try and get the values from the table.            
       HashMap values = new HashMap();
       for(int j=0; j<fieldNames.length; ++j){
