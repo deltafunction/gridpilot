@@ -91,9 +91,10 @@ public interface Database{
   
   // ####### File table
   public boolean isFileCatalog() throws InterruptedException;
-  public DBRecord getFile(String datasetName, String fileID) throws InterruptedException;
+  // lookupPFNs must be 0, 1 or 2: 0=no lookup, 1=lookup one pfn, 2=lookup all pfns
+  public DBRecord getFile(String datasetName, String fileID, int lookupPFNs) throws InterruptedException;
   public String getFileID(String datasetName, String fileID) throws InterruptedException;
-  public String [] getFileURLs(String datasetName, String fileID) throws InterruptedException;
+  public String [] getFileURLs(String datasetName, String fileID, boolean findAll) throws InterruptedException;
   // For file catalogs only: register an lfn/pfn pair.
   // TODO: if fileID/lfn do not exist, create.
   // datasetComplete is ignored by other than ATLAS

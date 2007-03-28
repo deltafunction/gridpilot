@@ -968,7 +968,7 @@ public class Util{
             e.printStackTrace();
           }
           int i = 0;
-          // Wait 10 seconds for thread to exit
+          // Wait 5 seconds for thread to exit
           while(t.isAlive()){
             try{
               Debug.debug("Waiting for thread to exit...", 2);
@@ -977,7 +977,7 @@ public class Util{
                 t.interrupt();
               }
               ++i;
-              if(i>10){
+              if(i>4){
                 break;
               }
             }

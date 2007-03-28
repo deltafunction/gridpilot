@@ -2332,7 +2332,7 @@ public class HSQLDBDatabase implements Database{
     }
   }
   
-  public DBRecord getFile(String datasetName, String fileID){
+  public DBRecord getFile(String datasetName, String fileID, int findAllPFNs){
     String [] fields = null;
     try{
       fields = getFieldNames("file");
@@ -2360,10 +2360,19 @@ public class HSQLDBDatabase implements Database{
                 Util.getValues(dbName, "t_lfn", "guid", fileID, new String [] {"lfname"})[0][0]);
           }
           else if(fields[i].equalsIgnoreCase("pfname")){
-            String [][] res = Util.getValues(dbName, "t_pfn", "guid", fileID, new String [] {"pfname"});
-            String [] pfns = new String [res.length];
-            for(int j=0; j<res.length; ++j){
-              pfns[j] = res[j][0];
+            String [] pfns = new String [0];
+            if(findAllPFNs!=0){
+              String [][] res = Util.getValues(dbName, "t_pfn", "guid", fileID, new String [] {"pfname"});
+              pfns = new String [res.length];
+              for(int j=0; j<res.length; ++j){
+                pfns[j] = res[j][0];
+                if(findAllPFNs==1){
+                  break;
+                }
+              }
+              if(findAllPFNs==1 && pfns.length>0){
+                pfns = new String [] {pfns[0]};
+              }
             }
             file.setValue(fields[i], Util.arrayToString(pfns));
           }
@@ -2423,11 +2432,11 @@ public class HSQLDBDatabase implements Database{
 
   // Take different actions depending on whether or not
   // t_lfn, etc. are present
-  public String [] getFileURLs(String datasetName, String fileID){
+  public String [] getFileURLs(String datasetName, String fileID, boolean findAll){
     if(isFileCatalog()){
       String ret = null;
       try{
-        DBRecord file = getFile(datasetName, fileID);
+        DBRecord file = getFile(datasetName, fileID, findAll?2:1);
         ret = file.getValue("pfname").toString();
       }
       catch(Exception e){
@@ -2445,7 +2454,7 @@ public class HSQLDBDatabase implements Database{
     else{
       String ret = null;
       try{
-        DBRecord file = getFile(datasetName, fileID);
+        DBRecord file = getFile(datasetName, fileID, findAll?2:1);
         ret = file.getValue("url").toString();
       }
       catch(Exception e){
@@ -2566,7 +2575,7 @@ public class HSQLDBDatabase implements Database{
     // Otherwise, just add the url.
     else{
       // If the url is already registered, skip
-      String [] urls = getFileURLs(datasetName, fileID);
+      String [] urls = getFileURLs(datasetName, fileID, true);
       for(int i=0; i<urls.length; ++i){
         if(urls[i].equals(url)){
           error = "WARNING: URL "+url+" already registered for file "+lfn+". Skipping.";
@@ -2656,10 +2665,10 @@ public class HSQLDBDatabase implements Database{
             String fileNames = null;
             try{
               if(isFileCatalog()){
-                fileNames = getFile(datasetID, fileIDs[i]).getValue("pfname").toString();
+                fileNames = getFile(datasetID, fileIDs[i], 2).getValue("pfname").toString();
               }
               else{
-                fileNames = getFile(datasetID, fileIDs[i]).getValue("url").toString();
+                fileNames = getFile(datasetID, fileIDs[i], 2).getValue("url").toString();
               }
               Debug.debug("Deleting files "+fileNames, 2);
               if(fileNames!=null && !fileNames.equals("no such field")){

@@ -2132,7 +2132,7 @@ public class MySQLDatabase extends DBCache implements Database {
     }
   }
   
-  public DBRecord getFile(String datasetName, String fileID){
+  public DBRecord getFile(String datasetName, String fileID, int findAllPFNs){
     String [] fields = null;
     try{
       fields = getFieldNames("file");
@@ -2162,11 +2162,19 @@ public class MySQLDatabase extends DBCache implements Database {
                     "t_lfn", "guid", fileID, new String [] {"lfname"})[0][0]);
           }
           else if(fields[i].equalsIgnoreCase("pfname")){
-            String [][] res = Util.getValues(dbName,
-                "t_pfn", "guid", fileID, new String [] {"pfname"});
-            String [] pfns = new String [res.length];
-            for(int j=0; j<res.length; ++j){
-              pfns[j] = res[j][0];
+            String [] pfns = new String [0];
+            if(findAllPFNs!=0){
+              String [][] res = Util.getValues(dbName, "t_pfn", "guid", fileID, new String [] {"pfname"});
+              pfns = new String [res.length];
+              for(int j=0; j<res.length; ++j){
+                pfns[j] = res[j][0];
+                if(findAllPFNs==1){
+                  break;
+                }
+              }
+              if(findAllPFNs==1 && pfns.length>0){
+                pfns = new String [] {pfns[0]};
+              }
             }
             file.setValue(fields[i], Util.arrayToString(pfns));
           }
@@ -2232,11 +2240,11 @@ public class MySQLDatabase extends DBCache implements Database {
 
   // Take different actions depending on whether or not
   // t_lfn, etc. are present
-  public String [] getFileURLs(String datasetName, String fileID){
+  public String [] getFileURLs(String datasetName, String fileID, boolean findAll){
     if(isFileCatalog()){
       String ret = null;
       try{
-        DBRecord file = getFile(datasetName, fileID);
+        DBRecord file = getFile(datasetName, fileID, findAll?2:1);
         ret = (String) file.getValue("pfname");
       }
       catch(Exception e){
@@ -2254,7 +2262,7 @@ public class MySQLDatabase extends DBCache implements Database {
     else{
       String ret = null;
       try{
-        DBRecord file = getFile(datasetName, fileID);
+        DBRecord file = getFile(datasetName, fileID, findAll?2:1);
         ret = (String) file.getValue("url");
       }
       catch(Exception e){
@@ -2384,7 +2392,7 @@ public class MySQLDatabase extends DBCache implements Database {
     else{
       Debug.debug("Registering URL "+url, 2);
       // If the url is already registered, skip
-      String [] urls = getFileURLs(datasetName, fileID);
+      String [] urls = getFileURLs(datasetName, fileID, true);
       for(int i=0; i<urls.length; ++i){
         if(urls[i].equals(url)){
           error = "WARNING: URL "+url+" already registered for file "+lfn+". Skipping.";
@@ -2461,10 +2469,10 @@ public class MySQLDatabase extends DBCache implements Database {
             String fileNames = null;
             try{
               if(isFileCatalog()){
-                fileNames = (String) getFile(datasetID, fileIDs[i]).getValue("pfname");
+                fileNames = (String) getFile(datasetID, fileIDs[i], 2).getValue("pfname");
               }
               else{
-                fileNames = (String) getFile(datasetID, fileIDs[i]).getValue("url");
+                fileNames = (String) getFile(datasetID, fileIDs[i], 2).getValue("url");
               }
               Debug.debug("Deleting files "+fileNames, 2);
               if(fileNames!=null && !fileNames.equals("no such field")){

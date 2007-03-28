@@ -2137,7 +2137,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-          String [] pfns = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i]);
+          String [] pfns = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i],
+              findAll());
           tableResults.setValueAt(Util.arrayToString(pfns), selectedRows[i], pfnsColumnIndex);
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
@@ -2321,7 +2322,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       DBRecord file = null;
       if(guid==null || name==null || urls==null || datasetName==null){
-        file = dbPluginMgr.getFile(datasetName, selectedFileIdentifiers[i]);
+        file = dbPluginMgr.getFile(datasetName, selectedFileIdentifiers[i], 0);
         // In the case of DQ2 these are too slow or will fail and return null.
         // All information must be in the table...
         if(guid==null){
@@ -2331,7 +2332,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           name = file.getValue(nameField).toString();
         }
         if(urls==null){
-          urls = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i]);
+          urls = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i], findAll());
         }
         if(datasetName==null){
           datasetName = file.getValue(datasetColumn).toString();

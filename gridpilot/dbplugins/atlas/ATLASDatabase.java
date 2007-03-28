@@ -1094,15 +1094,10 @@ public class ATLASDatabase implements Database{
         resultVector.add(rset.getString("guid"));
       }
       if(resultVector.size()==0){
-        error = "WARNING: No guid found for lfn "+lfn+" on "+catalogServer;
         rset.close();
         conn.close();
-        if(catalogServer.equalsIgnoreCase(homeServerMysqlAlias)){
-          pfns = new String [] {};
-          return pfns;
-        }
-        logFile.addMessage(error);
-        throw new SQLException(error);
+        pfns = new String [] {};
+        return pfns;
       }
       else if(resultVector.size()>1){
         error = "WARNING: More than one ("+resultVector.size()+") guids with found for lfn "+lfn;
@@ -1668,11 +1663,12 @@ public class ATLASDatabase implements Database{
     Vector locations = getOrderedLocations(vuid);
     Object [] locationsArray = locations.toArray();
     try{
+      clearPFNs();
       for(int i=0; i<locationsArray.length; ++i){
         if(getStop()){
           return;
         }
-        clearPFNs();
+        String [] pfns = null;
         try{
           Debug.debug("Querying TOA for "+i+":"+locationsArray[i], 2);
           String catalogServer = null;
@@ -1690,12 +1686,11 @@ public class ATLASDatabase implements Database{
           if(catalogServer==null){
             logFile.addMessage("WARNING: could not find catalog server for "+
                 locationsArray[i]);
-            return;
+            continue;
           }
           Debug.debug("Querying "+i+"-->"+catalogServer+" for "+lfName, 2);
           GridPilot.getClassMgr().getStatusBar().setLabel("Querying "+catalogServer);
           try{
-            String [] pfns = null;
             try{
               pfns = getPFNs(catalogServer, lfName, findAll);
             }
@@ -1705,8 +1700,10 @@ public class ATLASDatabase implements Database{
             if(tryAgain!=null && (pfns==null || pfns.length==0)){
               pfns = getPFNs(tryAgain, lfName, findAll);
             }
-            for(int n=0; n<pfns.length; ++n){
-              addPFN(pfns[n]);
+            if(pfns!=null){
+              for(int n=0; n<pfns.length; ++n){
+                addPFN(pfns[n]);
+              }
             }
           }
           catch(Throwable t){
@@ -1724,16 +1721,39 @@ public class ATLASDatabase implements Database{
         }
         // if we did not find anything on this location, put it last in the
         // HashMap of locations
-        if(pfnVector.isEmpty() || pfnVector.get(0)==null){
-          Debug.debug("pfnVector:"+pfnVector.size(), 2);
-          Debug.debug("Deprecating location: "+((Vector) dqLocationsCache.get(vuid)).get(0), 2);
-          Collections.rotate((Vector) dqLocationsCache.get(vuid), -1);
-          Debug.debug("New first location: "+((Vector) dqLocationsCache.get(vuid)).get(0), 2);
+        if(pfns==null || pfns.length==0 || pfns[0]==null || pfns[0].equals("")){
+          Vector tl = (Vector) dqLocationsCache.get(vuid);
+          int j=0;
+          for(j=0; j<tl.size(); ++j){
+            if(tl.get(j).equals(locationsArray[i])){
+              break;
+            }
+          }
+          int len = tl.size();
+          Debug.debug("Deprecating location: "+locationsArray[i]+" -->"+
+              j+":"+(len-1)+":"+(-len+j+1), 2);
+          // TODO: get this to work!
+          Collections.rotate(((Vector) dqLocationsCache.get(vuid)).subList(j, len-1),
+              -len+j+1);
+          Debug.debug("New location cache for "+vuid+
+              ": "+Util.arrayToString(((Vector) dqLocationsCache.get(vuid)).toArray()), 2);
         }
       }
+      // Eliminate duplicates
+      Vector pfnShortVector = new Vector();
+      String tmpPfn = null;
+      for(Iterator it=pfnVector.iterator(); it.hasNext();){
+        tmpPfn = (String) it.next();
+        if(!pfnShortVector.contains(tmpPfn)){
+          pfnShortVector.add(tmpPfn);
+        }
+      }
+      pfnVector = pfnShortVector;
+      Debug.debug("pfnVector:"+pfnVector.size(), 2);
       GridPilot.getClassMgr().getStatusBar().setLabel("Querying done.");
     }
     catch(Exception e){
+      e.printStackTrace();
     }
   }
 
@@ -1793,14 +1813,14 @@ public class ATLASDatabase implements Database{
   }
   
   public String getFileID(String datasetName, String fileName){
-    DBRecord file = getFile(datasetName, fileName);
+    DBRecord file = getFile(datasetName, fileName, 0);
     return file.getValue("guid").toString();
   };
   
-  public DBRecord getFile(String dsn, String fileID){
+  public DBRecord getFile(String dsn, String fileID, int findAllPFNs){
     // "dsn", "lfn", "pfns", "guid"
     
-    // NOTICE: this query is NOT supported by DQ2. Yak!
+    // NOTICE: this query is NOT supported by DQ2.
     /*DBResult res = select("SELECT * FROM file WHERE guid = "+fileID,
         "guid", true);
     if(res.values.length>1){
@@ -1828,20 +1848,23 @@ public class ATLASDatabase implements Database{
     
     // Get the pfns
     Vector pfnVector = new Vector();
-    findPFNs(vuid, lfn, false);
-    for(int j=0; j<getPFNs().length; ++j){
-      pfnVector.add((String) getPFNs()[j]);
+    String pfns = "";
+    if(findAllPFNs!=0){
+      findPFNs(vuid, lfn, findAllPFNs==2);
+      for(int j=0; j<getPFNs().length; ++j){
+        pfnVector.add((String) getPFNs()[j]);
+      }
+      pfns = Util.arrayToString(pfnVector.toArray());
     }
-    String pfns = Util.arrayToString(pfnVector.toArray());
         
     return new DBRecord(fields, new String [] {dsn, lfn, pfns, fileID});
 
   }
 
-  public String [] getFileURLs(String datasetName, String fileID){
+  public String [] getFileURLs(String datasetName, String fileID, boolean findAll){
     String [] ret = null;
     try{
-      DBRecord file = getFile(datasetName, fileID);
+      DBRecord file = getFile(datasetName, fileID, findAll?2:1);
       ret = Util.splitUrls(file.getValue("pfns").toString());
     }
     catch(Exception e){

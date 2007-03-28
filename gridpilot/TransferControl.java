@@ -477,14 +477,9 @@ public class TransferControl{
       for(int i=0; i<sourceListLen; ++i){
         Debug.debug("trial --->"+i, 3);
 
-        for(int j=0; j<transfers.length; ++j){
-          sources[j] = transfers[j].getSource();
-        }
-        
         try{
           ids = GridPilot.getClassMgr().getFTPlugin(ftPlugin).startCopyFiles(
-              sources, destinations);
-          
+              sources, destinations);          
           if(ids.length!=transfers.length){
             throw new IOException("ERROR: returned number of transfer ids don't agree " +
                 "with number of submitted tranfers: "+ids.length+"!="+transfers.length+
@@ -507,7 +502,9 @@ public class TransferControl{
                   transfers[j].getSource().getURL(), ee);
             }
           }
+          continue;
         }
+        break;
       }
       
       if(ids==null){

@@ -758,7 +758,7 @@ public class JobCreator{
           // slowing down job creation enormeously, and still only the first will be used.
           // So, it should NOT be checked.
           String inputFils = (String) inputMgr.getFile(inputDataset,
-              inputIds[currentPartition-1]).getValue("pfns");
+              inputIds[currentPartition-1], 1).getValue("pfns");
           String [] inputFilArr = null;
           try{
             inputFilArr = Util.splitUrls(inputFils);

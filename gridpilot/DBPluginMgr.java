@@ -1622,7 +1622,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
     String datasetID = sourceMgr.getDatasetID(datasetName);
     //String id = sourceMgr.getFileID(datasetName, fileName);
-    String [] urls = sourceMgr.getFileURLs(datasetName, id);
+    String [] urls = sourceMgr.getFileURLs(datasetName, id, true);
     
     String uuid = id;
     // In case the file was copied from a virtual table from a job repository,
@@ -2806,7 +2806,8 @@ public class DBPluginMgr extends DBCache implements Database{
     return splits;
   }
 
-  public DBRecord getFile(final String datasetName, final String fileID){
+  public DBRecord getFile(final String datasetName, final String fileID,
+      final int lookupPFNs){
     
     MyThread t = new MyThread(){
       DBRecord res = null;
@@ -2818,7 +2819,7 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
-          res = db.getFile(datasetName, fileID);
+          res = db.getFile(datasetName, fileID, lookupPFNs);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -2841,7 +2842,8 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String [] getFileURLs(final String datasetName, final String fileID){
+  public String [] getFileURLs(final String datasetName, final String fileID,
+      final boolean findAll){
     Debug.debug("Getting field names for file # "+fileID, 3);
    
     MyThread t = new MyThread(){
@@ -2854,7 +2856,7 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
-          res = db.getFileURLs(datasetName, fileID);
+          res = db.getFileURLs(datasetName, fileID, findAll);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
