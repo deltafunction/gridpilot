@@ -302,12 +302,88 @@ public class BrowserPanel extends JDialog implements ActionListener{
     JPanel topPanel = new JPanel(new GridBagLayout()); 
     
     if(withNavigation){
+      ImageIcon homeIcon;
+      URL imgURL=null;
+      try{
+        imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "folder_home2.png");
+        homeIcon = new ImageIcon(imgURL);
+      }
+      catch(Exception e){
+        Debug.debug("Could not find image "+ GridPilot.resourcesPath + "folder_home2.png", 3);
+        homeIcon = new ImageIcon();
+      }
+      ImageIcon enterIcon;
+      imgURL=null;
+      try{
+        imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "key_enter.png");
+        enterIcon = new ImageIcon(imgURL);
+      }
+      catch(Exception e){
+        Debug.debug("Could not find image "+ GridPilot.resourcesPath + "key_enter.png", 3);
+        enterIcon = new ImageIcon();
+      }
+      JButton bHome = new JButton(homeIcon);
+      bHome.setToolTipText("go to grid home-URL");
+      bHome.setPreferredSize(new java.awt.Dimension(22, 22));
+      bHome.setSize(new java.awt.Dimension(22, 22));
+      bHome.addMouseListener(new MouseAdapter(){
+        public void mouseClicked(MouseEvent me){
+          MyThread t = (new MyThread(){
+            public void run(){
+              try{
+                statusBar.setLabel("Opening URL...");
+                setDisplay(GridPilot.gridHomeURL);
+              }
+              catch(Exception ee){
+                statusBar.setLabel("ERROR: could not open "+GridPilot.gridHomeURL+
+                    ". "+ee.getMessage());
+                Debug.debug("ERROR: could not open "+GridPilot.gridHomeURL+
+                    ". "+ee.getMessage(), 1);
+                ee.printStackTrace();
+              }
+              doingSearch = false;
+            }
+          });     
+          SwingUtilities.invokeLater(t);
+        }
+      });
+      JButton bEnter = new JButton(enterIcon);
+      bEnter.setToolTipText("go!");
+      bEnter.setPreferredSize(new java.awt.Dimension(22, 22));
+      bEnter.setSize(new java.awt.Dimension(22, 22));
+      bEnter.addMouseListener(new MouseAdapter(){
+        public void mouseClicked(MouseEvent me){
+          statusBar.setLabel("Opening URL...");
+          ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+          MyThread t = (new MyThread(){
+            public void run(){
+              try{
+                setDisplay(currentUrlBox.getSelectedItem().toString());
+              }
+              catch(Exception ee){
+                statusBar.setLabel("ERROR: could not open "+currentUrlBox.getSelectedItem().toString()+
+                    ". "+ee.getMessage());
+                Debug.debug("ERROR: could not open "+currentUrlBox.getSelectedItem().toString()+
+                    ". "+ee.getMessage(), 1);
+                ee.printStackTrace();
+              }
+              doingSearch = false;
+            }
+          });     
+          SwingUtilities.invokeLater(t);
+        }
+      });
+
       JPanel jpNavigation = new JPanel(new GridBagLayout());
+      jpNavigation.add(bHome);
+      jpNavigation.add(new JLabel(" "));
       jpNavigation.add(new JLabel("URL: "));
       jpNavigation.add(currentUrlBox);
       topPanel.add(jpNavigation, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
           GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL,
           new Insets(0, 5, 0, 5), 0, 0));
+      jpNavigation.add(new JLabel(" "));
+      jpNavigation.add(bEnter);
       GridPilot.getClassMgr().addUrl("");
       addUrlKeyListener();
     }
