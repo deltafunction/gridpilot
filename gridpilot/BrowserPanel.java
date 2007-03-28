@@ -62,18 +62,34 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private boolean saveUrlHistory = false;
   private boolean doingSearch = false;
   private JComponent jBox = null;
+  private boolean localFS = false;
   
   public static int HISTORY_SIZE = 15;
 
   public BrowserPanel(JFrame _parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
-      boolean _withNavigation, JComponent _jBox, String _filter) throws Exception{
+      boolean _withNavigation, JComponent _jBox, String _filter,
+      boolean _localFS) throws Exception{
     super(_parent);
+    init(title, url, _baseUrl, modal, _withFilter, _withNavigation, _jBox, _filter, _localFS);
+  }
+  
+  public BrowserPanel(String title, String url, 
+      String _baseUrl, boolean modal, boolean _withFilter,
+      boolean _withNavigation, JComponent _jBox, String _filter,
+      boolean _localFS) throws Exception{
+    init(title, url, _baseUrl, modal, _withFilter, _withNavigation, _jBox, _filter, _localFS);
+  }
+  
+  public void init(String title, String url, 
+      String _baseUrl, boolean modal, boolean _withFilter,
+      boolean _withNavigation, JComponent _jBox, String _filter, boolean _localFS) throws Exception{
     baseUrl = _baseUrl;
     origUrl = url;
     withFilter = _withFilter;
     withNavigation = _withNavigation;
     jBox = _jBox;
+    localFS = _localFS;
     
     if(_filter!=null && !_filter.equals("")){
       jtFilter.setText(_filter);
@@ -81,7 +97,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
     
     setModal(modal);
     
-    gsiftpFileTransfer = new GSIFTPFileTransfer();
+    if(!localFS){
+      gsiftpFileTransfer = new GSIFTPFileTransfer();
+    }
     
     String urlHistory = null;
     Debug.debug("browser history file: "+GridPilot.browserHistoryFile, 2);

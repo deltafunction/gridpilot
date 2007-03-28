@@ -2204,7 +2204,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                       true,
                       true,
                       null,
-                      "");
+                      "",
+                      false);
     }
     catch(Exception eee){
       Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
@@ -2252,7 +2253,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                       false,
                       true,
                       jcb,
-                      "*/");
+                      "*/",
+                      false);
     }
     catch(Exception eee){
       frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));

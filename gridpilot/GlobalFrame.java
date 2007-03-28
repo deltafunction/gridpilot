@@ -112,7 +112,7 @@ public class GlobalFrame extends GPFrame{
               public void run(){
                 try{
                   BrowserPanel bp = new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(),
-                      "GridPilot File Browser", "", "", false, true, true, null, null);
+                      "GridPilot File Browser", "", "", false, true, true, null, null, false);
                   bp.okSetEnabled(false);
                 }
                 catch(Exception ex){
@@ -262,7 +262,7 @@ public class GlobalFrame extends GPFrame{
     } 
     try{
       BrowserPanel wb = new BrowserPanel(this, "About",
-          aboutURL.toExternalForm(), "", false, false, false, null, null);
+          aboutURL.toExternalForm(), "", false, false, false, null, null, true);
       wb.bCancel.setEnabled(false);
     }
     catch(Exception e){
@@ -372,7 +372,7 @@ public class GlobalFrame extends GPFrame{
           public void run(){
             try{
               BrowserPanel bp = new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(),
-                  "GridPilot File Browser", "", "", false, true, true, null, null);
+                  "GridPilot File Browser", "", "", false, true, true, null, null, false);
               bp.okSetEnabled(false);
             }
             catch(Exception ex){
