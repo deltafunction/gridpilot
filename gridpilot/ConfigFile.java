@@ -10,7 +10,13 @@ import java.util.*;
   * - Each section begins by [sectionName] and ends by the begin of the next section or EOF
   * - Each section contains several attribute=value
   * 
-  * Configuration file management is fully case insensitive
+  * Configuration file management is fully case insensitive.
+  * 
+  * The hierarchy of items has three section levels:
+  * GridPilot - module (Databases, ...) - plugin (My_DB_Local, ...)
+  * 
+  * Each section (on anylevel) can have configuration items.
+  * These can be grouped by sectionGroups
   * 
   */
 
@@ -20,6 +26,18 @@ public class ConfigFile{
   private boolean inJar;
   private HashMap valueStrings;
   private HashMap valueArrays;
+  /**
+   * List of main section headers in config file
+   */
+  private String [] mainSections =
+    {"File transfer systems", "Databases", "Computing systems"};
+  /**
+   * List of item groups. Each key is a subsection
+   * name. Each value is an array of item names.
+   */
+  private HashMap sectionGroups;
+  private String [] excludeItems = {"Systems", "*field*", "class", "driver", "database",
+      "parameters", "randomized", "* name", "* identifier"};
 
   /**
    * Constructor. Initalizes this configuration file manager with the file 'configFile'
@@ -29,6 +47,29 @@ public class ConfigFile{
     inJar = false;
     valueStrings = new HashMap();
     valueArrays = new HashMap();
+  }
+  
+  /**
+   * Reads the config file and fills mainSections and sectionGrouops
+   */
+  private void getSections(){
+    String line;
+    String name;
+    int begin;
+    int end;
+    try{
+      do{ // read the file
+        line = readLine();
+        if((begin = line.indexOf('['))!=-1 && (end = line.indexOf(']'))!=-1){
+          name = line.substring(begin+1, end).trim();
+        }
+      }
+      while(line!=null);    
+    }
+    catch(IOException ioe){
+      Debug.debug("cannot read "+ configFileName, 1);
+      name = null;
+    }
   }
 
   /**

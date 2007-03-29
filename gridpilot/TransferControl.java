@@ -221,7 +221,7 @@ public class TransferControl{
    * Reloads some values from configuration file. <p>
    */
   public void loadValues(){
-    String tmp = configFile.getValue("GridPilot", "maximum simultaneous transfers");
+    String tmp = configFile.getValue("File transfer systems", "maximum simultaneous transfers");
     if(tmp != null){
       try{
         maxSimultaneousTransfers = Integer.parseInt(tmp);
@@ -232,9 +232,9 @@ public class TransferControl{
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage("GridPilot", "maximum simultaneous transfers") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage("File transfer systems", "maximum simultaneous transfers") + "\n" +
                               "Default value = " + maxSimultaneousTransfers);
-    tmp = configFile.getValue("GridPilot", "time between transfers");
+    tmp = configFile.getValue("File transfer systems", "time between transfers");
     if(tmp != null){
       try{
         timeBetweenTransfers = Integer.parseInt(tmp);
@@ -245,7 +245,7 @@ public class TransferControl{
       }
     }
     else{
-      logFile.addMessage(configFile.getMissingMessage("GridPilot", "time between transfers") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage("File transfer systems", "time between transfers") + "\n" +
                               "Default value = " + timeBetweenTransfers);
     }
     Debug.debug("Setting time between transfers "+timeBetweenTransfers, 3);
@@ -261,7 +261,7 @@ public class TransferControl{
       Debug.debug("Could not find image "+ resourcesPath + "submitting.png", 3);
       iconSubmitting = new ImageIcon();
     }
-    isRand = configFile.getValue("GridPilot", "randomized transfers");
+    isRand = configFile.getValue("File transfer systems", "randomized transfers");
     Debug.debug("isRand = " + isRand, 2);
   }
 

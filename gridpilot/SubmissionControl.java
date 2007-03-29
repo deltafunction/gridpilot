@@ -69,7 +69,7 @@ public class SubmissionControl{
    *
    */
   public void loadValues(){
-    String tmp = configFile.getValue("GridPilot", "maximum simultaneous submissions");
+    String tmp = configFile.getValue("Computing systems", "maximum simultaneous submissions");
     if(tmp != null){
       try{
         maxSimultaneousSubmissions = Integer.parseInt(tmp);
@@ -80,9 +80,9 @@ public class SubmissionControl{
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage("GridPilot", "maximum simultaneous submissions") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage("Computing systems", "maximum simultaneous submissions") + "\n" +
                               "Default value = " + maxSimultaneousSubmissions);
-    tmp = configFile.getValue("GridPilot", "time between submissions");
+    tmp = configFile.getValue("Computing systems", "time between submissions");
     if(tmp != null){
       try{
         timeBetweenSubmissions = Integer.parseInt(tmp);
@@ -93,7 +93,7 @@ public class SubmissionControl{
       }
     }
     else{
-      logFile.addMessage(configFile.getMissingMessage("GridPilot", "time between submissions") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage("Computing systems", "time between submissions") + "\n" +
                               "Default value = " + timeBetweenSubmissions);
     }
     Debug.debug("Setting time between submissions "+timeBetweenSubmissions, 3);
@@ -111,7 +111,7 @@ public class SubmissionControl{
       logFile.addMessage("Could not find image "+ resourcesPath + "submitting.png");
       iconSubmitting = new ImageIcon();
     }
-    isRand = configFile.getValue("GridPilot", "randomized submission");
+    isRand = configFile.getValue("Computing systems", "randomized submission");
     Debug.debug("isRand = " + isRand, 2);
   }
 

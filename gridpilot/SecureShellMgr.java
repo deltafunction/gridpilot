@@ -90,11 +90,11 @@ public class SecureShellMgr implements ShellMgr{
       
       try{
         channelsNum = Integer.parseInt(
-            configFile.getValue("GridPilot", "maximum simultaneous submissions"))+
+            configFile.getValue("Computing systems", "maximum simultaneous submissions"))+
         Integer.parseInt(
             configFile.getValue("GridPilot", "maximum simultaneous checking"))+
             Integer.parseInt(
-                configFile.getValue("GridPilot", "maximum simultaneous validating"));
+                configFile.getValue("Computing systems", "maximum simultaneous validating"));
       }
       catch(Exception e){
         Debug.debug("WARNING: could not construct number of channels. "+
