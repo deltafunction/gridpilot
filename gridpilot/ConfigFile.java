@@ -29,15 +29,18 @@ public class ConfigFile{
   /**
    * List of main section headers in config file
    */
-  private String [] mainSections =
+  private String [] sections =
     {"File transfer systems", "Databases", "Computing systems"};
   /**
-   * List of item groups. Each key is a subsection
-   * name. Each value is an array of item names.
+   * List of items that will not be included in the GUI editor.
    */
-  private HashMap sectionGroups;
   private String [] excludeItems = {"Systems", "*field*", "class", "driver", "database",
       "parameters", "randomized", "* name", "* identifier"};
+  /**
+   * Tree of ConfigNodes
+   */
+  private ConfigNode configuration;
+  private Vector sectionsVector;
 
   /**
    * Constructor. Initalizes this configuration file manager with the file 'configFile'
@@ -47,29 +50,72 @@ public class ConfigFile{
     inJar = false;
     valueStrings = new HashMap();
     valueArrays = new HashMap();
+    sectionsVector = new Vector();
+    Collections.addAll(sectionsVector, sections);
   }
   
   /**
-   * Reads the config file and fills mainSections and sectionGrouops
+   * Reads the config file and constructs tree of ConfigNodes
    */
   private void getSections(){
     String line;
     String name;
+    String value;
+    String description;
+    String sectionDescription = null;
+    ConfigNode sectionNode = null;
+    ConfigNode subSectionNode;
+    ConfigNode groupNode;
     int begin;
     int end;
+    int isIndex=0; // index of '='
     try{
       do{ // read the file
         line = readLine();
         if((begin = line.indexOf('['))!=-1 && (end = line.indexOf(']'))!=-1){
           name = line.substring(begin+1, end).trim();
+          if(!checkExclude(name)){
+            // Add the just-finished section node
+            if(sectionsVector.contains(name)){
+              if(sectionNode!=null){
+                sectionNode.setDescription(sectionDescription);
+                configuration.addNode(sectionNode);
+              }
+              // Begin a new one
+              sectionNode = new ConfigNode(name, "");
+            }
+          }
         }
+        isIndex = line.indexOf('=');
+        name = line.substring(0, isIndex).trim();
+        value = line.substring(isIndex+1).trim();
+        sectionNode.addNode(new ConfigNode(name, value));
       }
-      while(line!=null);    
+      while(line!=null);
     }
     catch(IOException ioe){
       Debug.debug("cannot read "+ configFileName, 1);
       name = null;
     }
+  }
+  
+  //private ConfigNode makeNode(String name){
+  //}
+  
+  /**
+   * Check if an item is to be excluded.
+   * @param name String name of item
+   * @return true if the item is to be excluded
+   */
+  private boolean checkExclude(String name){
+    String regEx = null;
+    for(int i=0; i<excludeItems.length; ++i){
+      regEx = excludeItems[i].replaceAll("\\*", "\\.\\*");
+      if(name.matches(regEx)){
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
