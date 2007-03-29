@@ -208,6 +208,8 @@ public class ATLASDatabase implements Database{
   }
 
   public void clearCaches(){
+    clearCacheEntries("dataset");
+    clearCacheEntries("file");
     fileCatalogs.clear();
     dqLocationsCache.clear();
     pathConvention = 1;

@@ -2574,7 +2574,8 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
-           db.clearCaches();
+          Debug.debug("Clearing cache of "+dbName, 2); 
+          db.clearCaches();
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
