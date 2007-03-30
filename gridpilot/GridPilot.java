@@ -90,7 +90,7 @@ public class GridPilot extends JApplet{
                 "using default config file.");
         ee.printStackTrace();
         confFile = new ConfigFile(confFileName);
-      }
+      }      
       getClassMgr().setConfigFile(confFile);
       loadConfigValues();
       loadDBs();
@@ -229,10 +229,13 @@ public class GridPilot extends JApplet{
       catch(Exception e){
         askBeforeInterrupt = true;
       }
+      getClassMgr().getConfigFile().printConfig();
     }
     catch(Throwable e){
-      if(e instanceof Error)
+      e.printStackTrace();
+      if(e instanceof Error){
         getClassMgr().getLogFile().addMessage("Error during loading of config values", e);
+      }
       else{
         getClassMgr().getLogFile().addMessage("Exception during loading of config values", e);
         System.exit(-1);
