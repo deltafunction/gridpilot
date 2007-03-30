@@ -229,7 +229,7 @@ public class GridPilot extends JApplet{
       catch(Exception e){
         askBeforeInterrupt = true;
       }
-      getClassMgr().getConfigFile().printConfig();
+      //getClassMgr().getConfigFile().printConfig();
     }
     catch(Throwable e){
       e.printStackTrace();

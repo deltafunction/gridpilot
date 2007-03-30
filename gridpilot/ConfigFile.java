@@ -66,7 +66,6 @@ public class ConfigFile{
   public void printConfig(){
     getSections();
     getHeadNode().printAll(0);
-    System.exit(0);
   }
 
   /**
@@ -106,18 +105,21 @@ public class ConfigFile{
         // Add group node to current subsection node.
         // Group nodes have no description.
         if(line.startsWith("##")){
-          groupNode = new ConfigNode(line.substring(3).trim());
-          if(subSectionNode!=null){
-            subSectionNode.addNode(groupNode);
+          sectionName = line.substring(3).trim();
+          if(!checkExclude(sectionName)){
+            groupNode = new ConfigNode(sectionName);
+            if(subSectionNode!=null){
+              subSectionNode.addNode(groupNode);
+            }
+            else if(sectionNode!=null){
+              sectionNode.addNode(groupNode);
+            }
+            else{
+              configuration.addNode(groupNode);
+            }
+            belowItemDescription = "";
+            aboveItemDescription = "";
           }
-          else if(sectionNode!=null){
-            sectionNode.addNode(groupNode);
-          }
-          else{
-            configuration.addNode(groupNode);
-          }
-          belowItemDescription = "";
-          aboveItemDescription = "";
         }
         else if((begin = line.indexOf('['))!=-1 && (end = line.indexOf(']'))!=-1){
           groupNode = null;
@@ -144,10 +146,12 @@ public class ConfigFile{
             if(sectionsVector.contains(newSectionName)){
               sectionNode = new ConfigNode(newSectionName);
               subSectionNode = null;
+              groupNode = null;
             }
             // Begin a new sub-section node
             else{
               subSectionNode = new ConfigNode(newSectionName);
+              groupNode = null;
             }
           }
           sectionName = newSectionName;
@@ -166,26 +170,28 @@ public class ConfigFile{
           // attribute = value
           if(isIndex>0){
             nodeName = line.substring(0, isIndex).trim();
-            value = line.substring(isIndex+1).trim();
-            node = new ConfigNode(nodeName);
-            node.setValue(value);
-            node.setDescription(belowItemDescription);
-            if(groupNode!=null){
+            if(!checkExclude(nodeName)){
+              value = line.substring(isIndex+1).trim();
+              node = new ConfigNode(nodeName);
+              node.setValue(value);
+              node.setDescription(belowItemDescription);
+              if(groupNode!=null){
+                aboveItemDescription = "";
+                groupNode.addNode(node);
+              }
+              else if(subSectionNode!=null){
+                aboveItemDescription = "";
+                subSectionNode.addNode(node);
+              }
+              else if(sectionNode!=null){
+                aboveItemDescription = "";
+                sectionNode.addNode(node);
+              }
+              else{
+                configuration.addNode(node);
+              }
               aboveItemDescription = "";
-              groupNode.addNode(node);
             }
-            if(subSectionNode!=null){
-              aboveItemDescription = "";
-              subSectionNode.addNode(node);
-            }
-            else if(sectionNode!=null){
-              aboveItemDescription = "";
-              sectionNode.addNode(node);
-            }
-            else{
-              configuration.addNode(node);
-            }
-            aboveItemDescription = "";
           }
         }
         //System.out.println("line --->"+line);

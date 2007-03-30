@@ -68,14 +68,15 @@ public class ConfigNode{
     ConfigNode node = null;
     for(Iterator it=configNodes.iterator(); it.hasNext();){
       node = (ConfigNode) it.next();
+      String levStr = "";
+      for(int i=0;i<level; ++i){
+        levStr += "  ";
+      }
       if(node.getConfigNodes()==null || node.getConfigNodes().length==0){
-        String levStr = "";
-        for(int i=0;i<level; ++i){
-          levStr += "  ";
-        }
-        System.out.println(levStr+ node.getName());
+        System.out.println(levStr+node.getName());
       }
       else{
+        System.out.println(levStr+"***"+node.getName()+"***");
         node.printAll(level + 1);
       }
     }
