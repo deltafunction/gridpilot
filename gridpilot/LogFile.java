@@ -227,7 +227,8 @@ public class LogFile {
   private synchronized boolean openFile(boolean append){
     try{
       file = new RandomAccessFile(fileName, "rw");
-    }catch(FileNotFoundException e){
+    }
+    catch(FileNotFoundException e){
       System.err.println("cannot find file "+ fileName+". "+e.getMessage());
       return false;
     }
