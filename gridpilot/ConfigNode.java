@@ -1,5 +1,6 @@
 package gridpilot;
 
+import java.util.Iterator;
 import java.util.Vector;
 
 public class ConfigNode{
@@ -9,16 +10,23 @@ public class ConfigNode{
   private String value;
   private String description;
 
-  public ConfigNode(String _name, String _value){
+  public ConfigNode(String _name){
     name = _name;
-    value = _value;
+    configNodes = new Vector();
   }
   
   public void setDescription(String _description){
     description = _description;
   }
   
+  public void setValue(String _value){
+    value = _value;
+  }
+  
   public void addNode(ConfigNode configNode){
+    if(configNode==null){
+      return;
+    }
     configNodes.add(configNode);
   }
 
@@ -33,6 +41,16 @@ public class ConfigNode{
     }
     return nodeArray;
   }
+  
+  public ConfigNode getConfigNode(String name){
+    for(Iterator it=configNodes.iterator(); it.hasNext();){
+      ConfigNode node = (ConfigNode) it.next();
+      if(node.getName().equalsIgnoreCase(name)){
+        return node;
+      }
+    }
+    return null;
+  }
 
   public String getName(){
     return name;
@@ -40,6 +58,27 @@ public class ConfigNode{
 
   public String getDescription(){
     return description;
+  }
+  
+  public String toString(){
+    return name;
+  }
+  
+  public void printAll(int level){
+    ConfigNode node = null;
+    for(Iterator it=configNodes.iterator(); it.hasNext();){
+      node = (ConfigNode) it.next();
+      if(node.getConfigNodes()==null || node.getConfigNodes().length==0){
+        String levStr = "";
+        for(int i=0;i<level; ++i){
+          levStr += "  ";
+        }
+        System.out.println(levStr+ node.getName());
+      }
+      else{
+        node.printAll(level + 1);
+      }
+    }
   }
 
 }

@@ -1,4 +1,5 @@
 package gridpilot;
+
 import java.io.*;
 import java.net.URL;
 import java.util.*;
@@ -52,56 +53,157 @@ public class ConfigFile{
     valueArrays = new HashMap();
     sectionsVector = new Vector();
     Collections.addAll(sectionsVector, sections);
+    configuration = new ConfigNode("GridPilot");
+  }
+  
+  public ConfigNode getHeadNode(){
+    return configuration;
   }
   
   /**
+   * Debugging.
+   */
+  public void printConfig(){
+    getSections();
+    getHeadNode().printAll(0);
+    System.exit(0);
+  }
+
+  /**
    * Reads the config file and constructs tree of ConfigNodes
    */
-  private void getSections(){
+  public void getSections(){
     String line;
-    String name;
+    String sectionName = null;
+    String newSectionName = null;
+    String nodeName = null;
     String value;
-    String description;
-    String sectionDescription = null;
+    String belowItemDescription = "";
+    String aboveItemDescription = "";
     ConfigNode sectionNode = null;
-    ConfigNode subSectionNode;
-    ConfigNode groupNode;
+    ConfigNode subSectionNode = null;
+    ConfigNode groupNode = null;
+    ConfigNode node;
     int begin;
     int end;
     int isIndex=0; // index of '='
     try{
+      file.close();
+    }
+    catch(IOException ioe){
+      Debug.debug("cannot close "+ configFileName, 1);
+    }
+    if(!openFile()){
+      return;
+    }
+
+    try{
       do{ // read the file
-        line = readLine();
-        if((begin = line.indexOf('['))!=-1 && (end = line.indexOf(']'))!=-1){
-          name = line.substring(begin+1, end).trim();
-          if(!checkExclude(name)){
-            // Add the just-finished section node
-            if(sectionsVector.contains(name)){
-              if(sectionNode!=null){
-                sectionNode.setDescription(sectionDescription);
-                configuration.addNode(sectionNode);
-              }
-              // Begin a new one
-              sectionNode = new ConfigNode(name, "");
+        line = readLineWithDescriptions();
+        if(line==null){
+          break;
+        }
+        // Add group node to current subsection node.
+        // Group nodes have no description.
+        if(line.startsWith("##")){
+          groupNode = new ConfigNode(line.substring(3).trim());
+          if(subSectionNode!=null){
+            subSectionNode.addNode(groupNode);
+          }
+          else if(sectionNode!=null){
+            sectionNode.addNode(groupNode);
+          }
+          else{
+            configuration.addNode(groupNode);
+          }
+          belowItemDescription = "";
+          aboveItemDescription = "";
+        }
+        else if((begin = line.indexOf('['))!=-1 && (end = line.indexOf(']'))!=-1){
+          groupNode = null;
+          newSectionName = line.substring(begin+1, end).trim();
+          // Add to the head node
+          if(newSectionName.equalsIgnoreCase("GridPilot")){
+            configuration.setDescription(aboveItemDescription);
+            aboveItemDescription = "";
+          }
+          if(sectionName!=null && !checkExclude(sectionName)){
+           // Add the just-finished section node
+           if(sectionsVector.contains(sectionName) && sectionNode!=null){
+              sectionNode.setDescription(belowItemDescription);
+              configuration.addNode(sectionNode);
+              belowItemDescription = "";
+            }
+            // Add the just-finished sub-section node
+            else if(subSectionNode!=null){
+              subSectionNode.setDescription(belowItemDescription);
+              sectionNode.addNode(subSectionNode);
+              belowItemDescription = "";
+            }
+            // Begin a new section node
+            if(sectionsVector.contains(newSectionName)){
+              sectionNode = new ConfigNode(newSectionName);
+              subSectionNode = null;
+            }
+            // Begin a new sub-section node
+            else{
+              subSectionNode = new ConfigNode(newSectionName);
             }
           }
+          sectionName = newSectionName;
         }
-        isIndex = line.indexOf('=');
-        name = line.substring(0, isIndex).trim();
-        value = line.substring(isIndex+1).trim();
-        sectionNode.addNode(new ConfigNode(name, value));
+        else{
+          // Allow escaped hashes in attribute=value lines
+          // Description/comments: the convention is that
+          // lines starting with '# ' are description lines,
+          // lines starting with '#' are comments and will be ignored.
+          if(line.indexOf('#')>-1 && line.indexOf('#')==line.indexOf('\\')+1){
+            line = line.substring(line.indexOf('#')+1);
+            aboveItemDescription += line;
+            belowItemDescription += line;
+          }
+          isIndex = line.indexOf('=');
+          // attribute = value
+          if(isIndex>0){
+            nodeName = line.substring(0, isIndex).trim();
+            value = line.substring(isIndex+1).trim();
+            node = new ConfigNode(nodeName);
+            node.setValue(value);
+            node.setDescription(belowItemDescription);
+            if(groupNode!=null){
+              aboveItemDescription = "";
+              groupNode.addNode(node);
+            }
+            if(subSectionNode!=null){
+              aboveItemDescription = "";
+              subSectionNode.addNode(node);
+            }
+            else if(sectionNode!=null){
+              aboveItemDescription = "";
+              sectionNode.addNode(node);
+            }
+            else{
+              configuration.addNode(node);
+            }
+            aboveItemDescription = "";
+          }
+        }
+        //System.out.println("line --->"+line);
+        //System.out.println("nodeName --->"+nodeName);
+        //System.out.println("sectionName --->"+sectionName);
+        //System.out.println("newSectionName --->"+newSectionName);
+        //System.out.println("groupName --->"+groupNode);
+        //System.out.println("belowItemDescription --->"+belowItemDescription);
+        //System.out.println("aboveItemDescription --->"+aboveItemDescription);
       }
       while(line!=null);
     }
     catch(IOException ioe){
       Debug.debug("cannot read "+ configFileName, 1);
-      name = null;
+      sectionName = null;
     }
   }
-  
-  //private ConfigNode makeNode(String name){
-  //}
-  
+    
   /**
    * Check if an item is to be excluded.
    * @param name String name of item
@@ -426,7 +528,7 @@ public class ConfigFile{
   private String readLine() throws IOException{
     String res;
     do{
-      res= file.readLine();
+      res = file.readLine();
       if(res!=null){
         if(res.indexOf('#')!=-1){
           // Allow \#, strip off the \
@@ -443,6 +545,33 @@ public class ConfigFile{
     }
     while(res!=null && res.length()==0);
 
+    return res;
+  }
+
+  /**
+   * Reads next line in file, remove commented lines, remove space
+   * at the end
+   */
+  private String readLineWithDescriptions() throws IOException{
+    String res;
+    do{
+      res = file.readLine();
+      if(res==null){
+        break;
+      }
+      if(res!=null){
+        // Commented out line - ignore
+        if((res.indexOf('#')==0 && res.length()==1 ||
+            res.indexOf('#')==0 && res.indexOf(' ')!=1) &&
+            !res.matches("## .*")){
+          res = null;
+        }
+        else{
+          res = res.trim();
+        }
+      }
+    }
+    while(res==null);
     return res;
   }
 
