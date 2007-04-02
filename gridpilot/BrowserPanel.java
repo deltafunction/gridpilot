@@ -265,7 +265,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     requestFocusInWindow();
     this.setTitle(title);
     
-    bOk.setText("Ok");
+    bOk.setText("OK");
     bOk.addActionListener(this);
     
     bNew.setText("New");
