@@ -34,12 +34,8 @@ public class ConfigNode{
     return value;
   }
 
-  public ConfigNode [] getConfigNodes(){
-    ConfigNode [] nodeArray = new ConfigNode[configNodes.size()];
-    for(int i=0; i<nodeArray.length; ++i){
-      nodeArray[i] = (ConfigNode) configNodes.get(i);
-    }
-    return nodeArray;
+  public Vector getConfigNodes(){
+    return configNodes;
   }
   
   public ConfigNode getConfigNode(String name){
@@ -72,7 +68,7 @@ public class ConfigNode{
       for(int i=0;i<level; ++i){
         levStr += "  ";
       }
-      if(node.getConfigNodes()==null || node.getConfigNodes().length==0){
+      if(node.getConfigNodes()==null || node.getConfigNodes().size()==0){
         System.out.println(levStr+node.getName());
       }
       else{

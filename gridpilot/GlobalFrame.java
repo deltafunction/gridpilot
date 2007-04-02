@@ -33,6 +33,7 @@ public class GlobalFrame extends GPFrame{
   public JMenuItem menuEditCopy = new JMenuItem("Copy (ctrl c)");
   public JMenuItem menuEditCut = new JMenuItem("Cut (ctrl x)");
   public JMenuItem menuEditPaste = new JMenuItem("Paste (ctrl v)");
+  public JMenuItem menuEditPrefs = new JMenuItem("Preferences");
   // keep track of whether or not we are cutting on the sub-panels
   public boolean cutting = false;
   public ListPanel cutPanel = null;
@@ -248,6 +249,16 @@ public class GlobalFrame extends GPFrame{
     Debug.debug("Pasting", 3);
     ListPanel panel = (ListPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
     panel.paste();
+  }
+  
+  public void menuEditPrefs_actionPerformed(){
+    //Schedule a job for the event-dispatching thread:
+    //creating and showing this application's GUI.
+    javax.swing.SwingUtilities.invokeLater(new Runnable() {
+        public void run() {
+            createAndShowPrefsGUI();
+        }
+    });
   }
 
   //Help | About action performed
@@ -527,6 +538,12 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuEdit.add(menuEditPaste);
+    menuEditPrefs.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        menuEditPrefs_actionPerformed();
+      }
+    });
+    menuEdit.add(menuEditPrefs);
 
     //Help
     JMenu menuHelp = new JMenu("Help");
@@ -587,5 +604,34 @@ public class GlobalFrame extends GPFrame{
       ex.printStackTrace();
     }
   }
+  
+  /**
+   * Create GUI for preferences and show it. For thread safety,
+   * this method should be invoked from the event-dispatching thread.
+   */
+  private void createAndShowPrefsGUI() {
+    // Create the window.
+    JFrame frame = new JFrame("Preferences");
+    
+    // Create and set up the content pane.
+    final PreferencesPanel prefsPanel = new PreferencesPanel();
+    prefsPanel.setOpaque(true); // content panes must be opaque
+    frame.setContentPane(prefsPanel);
+
+    // Display the window.
+    frame.pack();
+    frame.setVisible(true);
+    /*frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+    frame.addWindowListener(new WindowAdapter(){
+      public void windowClosing(WindowEvent we){
+        prefsPanel.savePrefs();
+        //we.getWindow().setVisible(false);
+        we.getWindow().dispose();
+      }
+    });*/
+  
+  }
+
+  
 
 }
