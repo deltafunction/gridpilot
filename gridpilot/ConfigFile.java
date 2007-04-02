@@ -174,24 +174,21 @@ public class ConfigFile{
               value = line.substring(isIndex+1).trim();
               node = new ConfigNode(nodeName);
               node.setValue(value);
-              node.setDescription(belowItemDescription);
+              node.setDescription(aboveItemDescription);
               if(groupNode!=null){
-                aboveItemDescription = "";
                 groupNode.addNode(node);
               }
               else if(subSectionNode!=null){
-                aboveItemDescription = "";
                 subSectionNode.addNode(node);
               }
               else if(sectionNode!=null){
-                aboveItemDescription = "";
                 sectionNode.addNode(node);
               }
               else{
                 configuration.addNode(node);
               }
-              aboveItemDescription = "";
             }
+            aboveItemDescription = "";
           }
         }
         //System.out.println("line --->"+line);

@@ -94,7 +94,20 @@ public class CSPluginMgr implements ComputingSystem{
    */
   public void loadClasses() throws Throwable{
 
+    String enabled = "no";
+
     for(int i=0; i<csNames.length; ++i){
+      enabled = "no";
+      try{
+        enabled = GridPilot.getClassMgr().getConfigFile().getValue(csNames[i], "Enabled");
+      }
+      catch(Exception e){
+        continue;
+      }
+      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
+          !enabled.equalsIgnoreCase("true")){
+        continue;
+      }
       try{
         GridPilot.splashShow("Connecting to "+csNames[i]+"...");
       }
@@ -378,9 +391,6 @@ public class CSPluginMgr implements ComputingSystem{
         public void run(){
           try{
             ((ComputingSystem) cs.get(csNames[k])).exit();
-            // TODO: is this necessary?
-            //    - No (already done by disconnect), and it causes exception on exit.
-            //((ShellMgr) shellMgr.get(csNames[k])).exit();
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +

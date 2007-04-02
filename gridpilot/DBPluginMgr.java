@@ -26,6 +26,7 @@ public class DBPluginMgr extends DBCache implements Database{
   private LogFile logFile;
   private Database db;
   private String dbName;
+  private String description;
   
   // TODO: cache here??
   //private HashMap partInfoCacheId = null ;
@@ -36,10 +37,22 @@ public class DBPluginMgr extends DBCache implements Database{
 
   public DBPluginMgr(String _dbName){
     dbName = _dbName;
+    try{
+      description = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "description");
+    }
+    catch(Exception e){
+    }
+    if(description==null){
+      description = dbName;
+    }
   }
 
   public String getDBName(){
     return dbName;
+  }
+  
+  public String getDBDescription(){
+    return description;
   }
   
   /**

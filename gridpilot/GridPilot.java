@@ -161,7 +161,19 @@ public class GridPilot extends JApplet{
         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("Computing systems", "systems"));
       }
       else{
+        String enabled = "no";
         for(int i=0; i<csNames.length; ++i){
+          enabled = "no";
+          try{
+            enabled = GridPilot.getClassMgr().getConfigFile().getValue(csNames[i], "Enabled");
+          }
+          catch(Exception e){
+            continue;
+          }
+          if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
+              !enabled.equalsIgnoreCase("true")){
+            continue;
+          }
           String host = getClassMgr().getConfigFile().getValue(csNames[i], "host");
           if(host!=null && !host.endsWith("localhost")){
             String user = getClassMgr().getConfigFile().getValue(csNames[i], "user");
@@ -247,7 +259,18 @@ public class GridPilot extends JApplet{
   public static void loadDBs() throws Throwable{
     String tmpDb = null;
     dbNames = getClassMgr().getConfigFile().getValues("Databases", "Systems");
+    String enabled = "no";
     for(int i=0; i<dbNames.length; ++i){
+      try{
+        enabled = getClassMgr().getConfigFile().getValue(dbNames[i], "Enabled");
+      }
+      catch(Exception e){
+        continue;
+      }
+      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
+          !enabled.equalsIgnoreCase("true")){
+        continue;
+      }
       try{
         splashShow("Connecting to "+dbNames[i]+"...");
       }

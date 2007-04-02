@@ -326,7 +326,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
             GridBagConstraints.CENTER,
             GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
-    panelSelectPanel.add(new JLabel(dbName),
+    panelSelectPanel.add(new JLabel(dbPluginMgr.getDBDescription()),
         new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0,
             GridBagConstraints.WEST,
             GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
