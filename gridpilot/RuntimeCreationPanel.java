@@ -160,8 +160,9 @@ public class RuntimeCreationPanel extends CreateEditPanel{
                    new Insets(5, 25, 5, 5), 0, 0));
       }
       else{
-        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), new GridBagConstraints(0, row, 1, 1, 0.0, 0.0
-            ,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));        
+        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "),
+            new GridBagConstraints(0, row, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER,
+                GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));        
         if(!editing && !reuseTextFields ||
             tcCstAttributes[i]==null){
           if(cstAttributesNames[i].toString().equalsIgnoreCase("initLines")){
