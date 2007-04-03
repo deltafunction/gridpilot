@@ -36,7 +36,7 @@ public class ConfigFile{
    * List of items that will not be included in the GUI editor.
    */
   private String [] excludeItems = {"Systems", "*field*", "class", "driver", "database",
-      "parameters", "randomized", "* name", "* identifier"};
+      "parameters", "randomized", "* name", "* identifier", "* reference"};
   /**
    * Tree of ConfigNodes
    */
@@ -83,6 +83,7 @@ public class ConfigFile{
     ConfigNode subSectionNode = null;
     ConfigNode groupNode = null;
     ConfigNode node;
+    boolean addBelowItemDescription = true;
     int begin;
     int end;
     int isIndex=0; // index of '='
@@ -98,7 +99,7 @@ public class ConfigFile{
 
     try{
       do{ // read the file
-        line = readLineWithDescriptions();
+        line = readLineIncludingDescriptions();
         if(line==null){
           break;
         }
@@ -117,9 +118,8 @@ public class ConfigFile{
             else{
               configuration.addNode(groupNode);
             }
-            belowItemDescription = "";
-            aboveItemDescription = "";
           }
+          aboveItemDescription = "";
         }
         else if((begin = line.indexOf('['))!=-1 && (end = line.indexOf(']'))!=-1){
           groupNode = null;
@@ -128,31 +128,42 @@ public class ConfigFile{
           if(newSectionName.equalsIgnoreCase("GridPilot")){
             configuration.setDescription(aboveItemDescription);
             aboveItemDescription = "";
+            belowItemDescription = "";
           }
-          if(sectionName!=null && !checkExclude(sectionName)){
-           // Add the just-finished section node
-           if(sectionsVector.contains(sectionName) && sectionNode!=null){
-              sectionNode.setDescription(belowItemDescription);
-              configuration.addNode(sectionNode);
-              belowItemDescription = "";
+          if(sectionName!=null && sectionName.length()>0){
+            if(!checkExclude(sectionName)){
+              // Add the just-finished section node
+              if(sectionsVector.contains(sectionName) && sectionNode!=null){
+                // Section don't really need descriptions.
+                // Drop it for now. The problem is that the comments
+                // describing the following attributes is included in
+                // the description. We would need to device a way to
+                // set addBelowItemDescription = false when we encounter
+                // an empty line...
+                //sectionNode.setDescription(belowItemDescription);
+                sectionNode.setDescription("");
+                 configuration.addNode(sectionNode);
+               }
+               // Add the just-finished sub-section node
+               else if(subSectionNode!=null && sectionNode!=null){
+                 subSectionNode.setDescription(belowItemDescription);
+                 sectionNode.addNode(subSectionNode);
+               }
+               // Begin a new section node
+               if(sectionsVector.contains(newSectionName)){
+                 sectionNode = new ConfigNode(newSectionName);
+                 subSectionNode = null;
+                 groupNode = null;
+                 addBelowItemDescription = true;
+               }
+               // Begin a new sub-section node
+               else{
+                 subSectionNode = new ConfigNode(newSectionName);
+                 groupNode = null;
+                 addBelowItemDescription = true;
+               }
             }
-            // Add the just-finished sub-section node
-            else if(subSectionNode!=null){
-              subSectionNode.setDescription(belowItemDescription);
-              sectionNode.addNode(subSectionNode);
-              belowItemDescription = "";
-            }
-            // Begin a new section node
-            if(sectionsVector.contains(newSectionName)){
-              sectionNode = new ConfigNode(newSectionName);
-              subSectionNode = null;
-              groupNode = null;
-            }
-            // Begin a new sub-section node
-            else{
-              subSectionNode = new ConfigNode(newSectionName);
-              groupNode = null;
-            }
+            belowItemDescription = "";
           }
           sectionName = newSectionName;
         }
@@ -163,8 +174,12 @@ public class ConfigFile{
           // lines starting with '#' are comments and will be ignored.
           if(line.indexOf('#')>-1 && line.indexOf('#')==line.indexOf('\\')+1){
             line = line.substring(line.indexOf('#')+1);
-            aboveItemDescription += line;
-            belowItemDescription += line;
+            if(addBelowItemDescription){
+              belowItemDescription += "<br>"+line;
+            }
+            else{
+              aboveItemDescription += "<br>"+line;
+            }
           }
           isIndex = line.indexOf('=');
           // attribute = value
@@ -175,6 +190,7 @@ public class ConfigFile{
               node = new ConfigNode(nodeName);
               node.setValue(value);
               node.setDescription(aboveItemDescription);
+              aboveItemDescription = "";
               if(groupNode!=null){
                 groupNode.addNode(node);
               }
@@ -188,16 +204,9 @@ public class ConfigFile{
                 configuration.addNode(node);
               }
             }
-            aboveItemDescription = "";
+            addBelowItemDescription = false;
           }
         }
-        //System.out.println("line --->"+line);
-        //System.out.println("nodeName --->"+nodeName);
-        //System.out.println("sectionName --->"+sectionName);
-        //System.out.println("newSectionName --->"+newSectionName);
-        //System.out.println("groupName --->"+groupNode);
-        //System.out.println("belowItemDescription --->"+belowItemDescription);
-        //System.out.println("aboveItemDescription --->"+aboveItemDescription);
       }
       while(line!=null);
     }
@@ -555,7 +564,7 @@ public class ConfigFile{
    * Reads next line in file, remove commented lines, remove space
    * at the end
    */
-  private String readLineWithDescriptions() throws IOException{
+  private String readLineIncludingDescriptions() throws IOException{
     String res;
     do{
       res = file.readLine();

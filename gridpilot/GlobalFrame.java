@@ -24,9 +24,11 @@ public class GlobalFrame extends GPFrame{
   private static final long serialVersionUID = 1L;
   private Vector allPanels;
   private int selectedPanel;
-  private static int i;
   private CreateEditDialog pDialog;
-  
+  private ConfigNode topNode;
+
+  private static int i;
+
   public JTabbedPane tabbedPane = new JTabbedPane();
   public MonitoringPanel monitoringPanel;
   public JMenu menuEdit = new JMenu("Edit");
@@ -45,6 +47,9 @@ public class GlobalFrame extends GPFrame{
   public GlobalFrame() throws Exception{
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     allPanels = new Vector();
+    // Create the nodes.
+    GridPilot.getClassMgr().getConfigFile().getSections();
+    topNode = GridPilot.getClassMgr().getConfigFile().getHeadNode();
   }
 
   /**
@@ -614,7 +619,7 @@ public class GlobalFrame extends GPFrame{
     JFrame frame = new JFrame("Preferences");
     
     // Create and set up the content pane.
-    final PreferencesPanel prefsPanel = new PreferencesPanel();
+    PreferencesPanel prefsPanel = new PreferencesPanel(topNode);
     prefsPanel.setOpaque(true); // content panes must be opaque
     frame.setContentPane(prefsPanel);
 

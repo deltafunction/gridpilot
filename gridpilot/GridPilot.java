@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Properties;
+import java.util.Vector;
 
 import javax.swing.*;
 
@@ -259,18 +260,28 @@ public class GridPilot extends JApplet{
   public static void loadDBs() throws Throwable{
     String tmpDb = null;
     dbNames = getClassMgr().getConfigFile().getValues("Databases", "Systems");
+    Vector dbVector = new Vector();
     String enabled = "no";
     for(int i=0; i<dbNames.length; ++i){
       try{
         enabled = getClassMgr().getConfigFile().getValue(dbNames[i], "Enabled");
       }
       catch(Exception e){
+        e.printStackTrace();
         continue;
       }
       if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
           !enabled.equalsIgnoreCase("true")){
         continue;
       }
+      dbVector.add(dbNames[i]);
+    }
+    int j = 0;
+    dbNames = new String [dbVector.size()];
+    for(Iterator it=dbVector.iterator(); it.hasNext();){
+      dbNames[j] = (String) it.next();
+    }
+    for(int i=0; i<dbNames.length; ++i){
       try{
         splashShow("Connecting to "+dbNames[i]+"...");
       }
