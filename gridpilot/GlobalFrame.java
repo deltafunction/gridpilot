@@ -25,7 +25,6 @@ public class GlobalFrame extends GPFrame{
   private Vector allPanels;
   private int selectedPanel;
   private CreateEditDialog pDialog;
-  private ConfigNode topNode;
 
   private static int i;
 
@@ -47,9 +46,6 @@ public class GlobalFrame extends GPFrame{
   public GlobalFrame() throws Exception{
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     allPanels = new Vector();
-    // Create the nodes.
-    GridPilot.getClassMgr().getConfigFile().getSections();
-    topNode = GridPilot.getClassMgr().getConfigFile().getHeadNode();
   }
 
   /**
@@ -326,7 +322,7 @@ public class GlobalFrame extends GPFrame{
         GridPilot.reloadConfigValues();
       }
     });
-    menuFile.add(miReloadValues);
+    //menuFile.add(miReloadValues);
    
     //DB
     JMenu menuDB = new JMenu("Databases");
@@ -618,6 +614,11 @@ public class GlobalFrame extends GPFrame{
     // Create the window.
     JFrame frame = new JFrame("Preferences");
     
+    // Create the nodes.
+    GridPilot.getClassMgr().getConfigFile().resetConfiguration();
+    GridPilot.getClassMgr().getConfigFile().parseSections();
+    ConfigNode topNode = GridPilot.getClassMgr().getConfigFile().getHeadNode();
+
     // Create and set up the content pane.
     PreferencesPanel prefsPanel = new PreferencesPanel(topNode);
     prefsPanel.setOpaque(true); // content panes must be opaque

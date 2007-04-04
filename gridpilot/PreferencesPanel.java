@@ -10,7 +10,6 @@ import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
-
 import javax.swing.JTree;
 import javax.swing.text.JTextComponent;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -240,11 +239,20 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
   public void savePrefs(){
     Debug.debug("Saving preferences", 1);
     String name;
+    String [] sections = new String [changedConfigParameters.size()];
+    String [] attributes = new String [changedConfigParameters.size()];
+    String [] values = new String [changedConfigParameters.size()];
+    int i = 0;
     for(Iterator it=changedConfigParameters.keySet().iterator(); it.hasNext();){
       name = (String) it.next();
-      Debug.debug(name+"-->"+((String []) changedConfigParameters.get(name))[0]+
-          "-->"+((String []) changedConfigParameters.get(name))[1], 2);
+      sections[i] = ((String []) changedConfigParameters.get(name))[0];
+      attributes[i] = name;
+      values[i] = ((String []) changedConfigParameters.get(name))[1];
+      Debug.debug(sections[i]+"-->"+attributes[i]+"-->"+values[i], 2);
+      ++i;
     }
+    GridPilot.getClassMgr().getConfigFile().setAttributes(sections, attributes, values);
+    GridPilot.reloadConfigValues();
   }
 
   public void actionPerformed(ActionEvent e){

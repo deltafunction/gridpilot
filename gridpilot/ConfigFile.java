@@ -49,10 +49,18 @@ public class ConfigFile{
   public ConfigFile(File configFile){
     configFileName = configFile.getAbsolutePath();
     inJar = false;
+    init();
+  }
+  
+  private void init(){
     valueStrings = new HashMap();
     valueArrays = new HashMap();
     sectionsVector = new Vector();
     Collections.addAll(sectionsVector, sections);
+    configuration = new ConfigNode("GridPilot");
+  }
+  
+  public void resetConfiguration(){
     configuration = new ConfigNode("GridPilot");
   }
   
@@ -64,14 +72,14 @@ public class ConfigFile{
    * Debugging.
    */
   public void printConfig(){
-    getSections();
+    parseSections();
     getHeadNode().printAll(0);
   }
 
   /**
    * Reads the config file and constructs tree of ConfigNodes
    */
-  public void getSections(){
+  public void parseSections(){
     String line;
     String sectionName = null;
     String newSectionName = null;
@@ -88,12 +96,6 @@ public class ConfigFile{
     int begin;
     int end;
     int isIndex=0; // index of '='
-    try{
-      file.close();
-    }
-    catch(IOException ioe){
-      Debug.debug("cannot close "+ configFileName, 1);
-    }
     if(!openFile()){
       return;
     }
@@ -218,6 +220,12 @@ public class ConfigFile{
       Debug.debug("cannot read "+ configFileName, 1);
       sectionName = null;
     }
+    try{
+      file.close();
+    }
+    catch(IOException ioe){
+      Debug.debug("cannot close "+ configFileName, 1);
+    }
   }
     
   /**
@@ -313,6 +321,7 @@ public class ConfigFile{
   public boolean isFake(){
     return (configFileName.equals(""));
   }
+  
   /**
    * Returns the first value of attribute "attribute" in the first section "section".
    * If section "[section]" contains
@@ -535,6 +544,82 @@ public class ConfigFile{
     }
 
     return res;
+  }
+
+  /**
+   * Search for next "attribute=value" in the given section and replaces the value
+   * with the given value.
+   *
+   */
+  public void setAttributes(String [] sections, String [] attributes, String [] values){
+    
+    Vector linesVector = new Vector();
+
+    if(!openFile()){
+      Debug.debug("WARNING: Could not save settings: Could not open configuration file.", 1);
+      return;
+    }
+
+    String line;
+    linesVector = new Vector();
+
+    try{
+      
+      do{
+        line = file.readLine();
+        if(line==null){
+          continue;
+        }
+        linesVector.add(line);
+      }
+      while(line!=null);
+      try{
+        file.close();
+      }
+      catch(IOException ioe){
+        Debug.debug("WARNING: cannot close "+ configFileName+" aborting save settings", 1);
+        return;
+      }
+
+      for(int i=0; i<sections.length; ++i){
+        boolean inSection = false;
+        for(int j=0; j<linesVector.size(); ++j){
+          line = (String) linesVector.get(j);
+          if(line==null){
+            continue;
+          }
+          if(inSection && line.trim().startsWith("[")){
+            inSection = false;
+          }
+          if(line.trim().startsWith("["+sections[i]+"]")){
+            inSection = true;
+          }
+          if(inSection && line.trim().matches("^"+attributes[i]+"\\s*=.*")){
+            Debug.debug("bingo!", 2);
+            line = attributes[i].trim()+" = "+values[i].trim();
+            linesVector.set(j, line);
+            valueStrings.put(sections[i]+"=="+attributes[i], values[i]);
+          }
+        }
+      }
+    }
+    catch(IOException ioe){
+      Debug.debug("WARNING: cannot read "+ configFileName, 1);
+    }    
+    File confFile = new File(configFileName);
+    confFile.delete();
+    Debug.debug("Writing new config file "+confFile.getAbsolutePath(), 1);
+    try{
+      PrintWriter out = new PrintWriter(new FileWriter(confFile));
+      for(Iterator it=linesVector.iterator(); it.hasNext();){
+        out.println((String) it.next());
+      }
+      out.close();
+    }
+    catch(IOException e){
+      Debug.debug("WARNING: problem writing to "+ configFileName+" settings may be corrupt", 1);
+    }
+    
   }
 
   /**
