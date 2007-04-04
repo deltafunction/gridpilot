@@ -75,6 +75,7 @@ public class ConfigFile{
     String line;
     String sectionName = null;
     String newSectionName = null;
+    String confFileSection = "GridPilot";
     String nodeName = null;
     String value;
     String belowItemDescription = "";
@@ -124,6 +125,7 @@ public class ConfigFile{
         else if((begin = line.indexOf('['))!=-1 && (end = line.indexOf(']'))!=-1){
           groupNode = null;
           newSectionName = line.substring(begin+1, end).trim();
+          confFileSection = newSectionName;
           // Add to the head node
           if(newSectionName.equalsIgnoreCase("GridPilot")){
             configuration.setDescription(aboveItemDescription);
@@ -142,27 +144,28 @@ public class ConfigFile{
                 // an empty line...
                 //sectionNode.setDescription(belowItemDescription);
                 sectionNode.setDescription("");
-                 configuration.addNode(sectionNode);
-               }
-               // Add the just-finished sub-section node
-               else if(subSectionNode!=null && sectionNode!=null){
-                 subSectionNode.setDescription(belowItemDescription);
-                 sectionNode.addNode(subSectionNode);
-               }
-               // Begin a new section node
-               if(sectionsVector.contains(newSectionName)){
-                 sectionNode = new ConfigNode(newSectionName);
-                 subSectionNode = null;
-                 groupNode = null;
-                 addBelowItemDescription = true;
-               }
-               // Begin a new sub-section node
-               else{
-                 subSectionNode = new ConfigNode(newSectionName);
-                 groupNode = null;
-                 addBelowItemDescription = true;
-               }
+                configuration.addNode(sectionNode);
+              }
+              // Add the just-finished sub-section node
+              else if(subSectionNode!=null && sectionNode!=null){
+                subSectionNode.setDescription(belowItemDescription);
+                sectionNode.addNode(subSectionNode);
+              }
+              // Begin a new section node
+              if(sectionsVector.contains(newSectionName)){
+                sectionNode = new ConfigNode(newSectionName);
+                subSectionNode = null;
+                groupNode = null;
+                addBelowItemDescription = true;
+              }
+              // Begin a new sub-section node
+              else{
+                subSectionNode = new ConfigNode(newSectionName);
+                groupNode = null;
+                addBelowItemDescription = true;
+              }
             }
+            aboveItemDescription = "";
             belowItemDescription = "";
           }
           sectionName = newSectionName;
@@ -189,6 +192,7 @@ public class ConfigFile{
               value = line.substring(isIndex+1).trim();
               node = new ConfigNode(nodeName);
               node.setValue(value);
+              node.setSection(confFileSection);
               node.setDescription(aboveItemDescription);
               aboveItemDescription = "";
               if(groupNode!=null){

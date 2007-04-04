@@ -9,6 +9,7 @@ public class ConfigNode{
   private String name;
   private String value;
   private String description;
+  private String section;
 
   public ConfigNode(String _name){
     name = _name;
@@ -23,6 +24,9 @@ public class ConfigNode{
     value = _value;
   }
   
+  public void setSection(String _section){
+    section = _section;
+  }
   public void addNode(ConfigNode configNode){
     if(configNode==null){
       return;
@@ -32,6 +36,10 @@ public class ConfigNode{
 
   public String getValue(){
     return value;
+  }
+
+  public String getSection(){
+    return section;
   }
 
   public Vector getConfigNodes(){

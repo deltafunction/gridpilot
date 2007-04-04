@@ -9,15 +9,19 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 
 import javax.swing.JTree;
 import javax.swing.text.JTextComponent;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeSelectionModel;
 import javax.swing.border.EtchedBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
 import java.awt.BorderLayout;
@@ -39,9 +43,16 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
   private JButton bOk = new JButton();
   private JButton bCancel = new JButton();
   private JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+  private HashMap changedConfigParameters = new HashMap();
   
   public PreferencesPanel(ConfigNode topNode) {
-    super(new GridLayout(1, 0));
+    //super(new GridLayout(1, 0));
+    
+    JPanel mainPane = new JPanel();
+    mainPane.setLayout(new GridLayout(1, 0));
+    BorderLayout layout = new BorderLayout();
+    layout.setVgap(0);
+    this.setLayout(layout);
 
     DefaultMutableTreeNode top = new DefaultMutableTreeNode(topNode);
     createNodes(top);
@@ -65,8 +76,8 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
 
     buttonPanel.add(bOk);
     buttonPanel.add(bCancel);
-    
-    treeView.add(buttonPanel);
+    buttonPanel.setSize(new Dimension(170, 35));
+    buttonPanel.setPreferredSize(new Dimension(170, 35));
 
     // Create the viewing pane.
     configEditorPanel = new JPanel();
@@ -80,7 +91,10 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
     splitPane.setDividerLocation(170);
         
     // Add the split pane to this panel.
-    add(splitPane);
+    mainPane.add(splitPane);
+    add(mainPane, BorderLayout.CENTER);
+    add(buttonPanel, BorderLayout.SOUTH);
+    
   }
 
   /**
@@ -98,7 +112,7 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
     int dividerLocation = splitPane.getDividerLocation();
     if(node.isLeaf()){
       ConfigNode configNode = (ConfigNode) nodeInfo;
-      splitPane.setRightComponent(createConfigPanel(configNode));
+      splitPane.setRightComponent(createConfigDescriptionPanel(configNode));
     }
     else{
       ConfigNode configNode = (ConfigNode) nodeInfo;
@@ -129,31 +143,63 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
     JPanel configPanel = new JPanel(new GridBagLayout());
     Vector nodes = configNode.getConfigNodes();
     ConfigNode node = null;
-    JLabel jlAttribute = null;
-    JTextComponent jtcValue = null;
-    JPanel jpRow = null;
     int row = 0;
     for(Iterator it=nodes.iterator(); it.hasNext();){
-      jpRow = new JPanel(/*new BorderLayout()*/
+      final JPanel jpRow = new JPanel(/*new BorderLayout()*/
           new FlowLayout(FlowLayout.LEFT, 2, 0));
       node = (ConfigNode) it.next();
       if(node.getConfigNodes().size()>0){
         continue;
       }
-      jlAttribute = new JLabel(node.getName()+":  "); 
-      if(node.getValue()!=null && node.getValue().length()>40){
+      final JTextComponent jtcValue;
+      final JLabel jlAttribute = new JLabel(node.getName()+":  ");
+      final String initValue = node.getValue();
+      final String sectionName = node.getSection();
+      if(initValue!=null && initValue.length()>40){
         jtcValue = new JTextArea(1, 24);
         ((JTextArea) jtcValue).setMargin(new Insets(0, 0, 0, 0));
         ((JTextArea) jtcValue).setBorder(new EtchedBorder(EtchedBorder.RAISED,
             Color.white, new Color(165, 163, 151)));
         ((JTextArea) jtcValue).setWrapStyleWord(true);
         ((JTextArea) jtcValue).setLineWrap(true);
-        jtcValue.setText(node.getValue());
+        jtcValue.setText(initValue);
       }
       else{
         jtcValue = new JTextField(16);
-        jtcValue.setText(node.getValue());
+        jtcValue.setText(initValue);
       }
+      
+      jtcValue.getDocument().addDocumentListener(new DocumentListener(){
+        
+        public void insertUpdate(DocumentEvent e){
+          change();
+        }
+
+        public void removeUpdate(DocumentEvent e){
+            change();
+        }
+
+        public void changedUpdate(DocumentEvent e){
+        }
+
+        private void change(){
+            String name = jlAttribute.getText().substring(0, jlAttribute.getText().length()-3);
+            String text = jtcValue.getText().trim();
+            if(!text.equals(initValue)){
+              Debug.debug("Changed preference; "+name, 2);
+              changedConfigParameters.put(name, new String [] {sectionName, text});
+            }
+            else{
+              try{
+                changedConfigParameters.remove(name);
+              }
+              catch(Exception e){
+              }
+            }
+        }
+  
+      });
+      
       jtcValue.setMaximumSize(jtcValue.getPreferredSize());
       jpRow.add(jlAttribute, BorderLayout.WEST);
       jpRow.add(jtcValue, BorderLayout.CENTER);
@@ -191,19 +237,24 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
     }
   }
 
-  public void windowClosing(){
-    savePrefs();
-  }
-  
   public void savePrefs(){
-    // TODO
+    Debug.debug("Saving preferences", 1);
+    String name;
+    for(Iterator it=changedConfigParameters.keySet().iterator(); it.hasNext();){
+      name = (String) it.next();
+      Debug.debug(name+"-->"+((String []) changedConfigParameters.get(name))[0]+
+          "-->"+((String []) changedConfigParameters.get(name))[1], 2);
+    }
   }
 
   public void actionPerformed(ActionEvent e){
     try{
       if(e.getSource()==bOk){
+        savePrefs();
+        SwingUtilities.getWindowAncestor(this).dispose();
       }
       else if(e.getSource()==bCancel){
+        SwingUtilities.getWindowAncestor(this).dispose();
       }
     }
     catch(Exception ex){
