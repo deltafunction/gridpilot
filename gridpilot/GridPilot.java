@@ -263,6 +263,7 @@ public class GridPilot extends JApplet{
     Vector dbVector = new Vector();
     String enabled = "no";
     for(int i=0; i<dbNames.length; ++i){
+      enabled = "no";
       try{
         enabled = getClassMgr().getConfigFile().getValue(dbNames[i], "Enabled");
       }
@@ -280,6 +281,7 @@ public class GridPilot extends JApplet{
     dbNames = new String [dbVector.size()];
     for(Iterator it=dbVector.iterator(); it.hasNext();){
       dbNames[j] = (String) it.next();
+      ++j;
     }
     for(int i=0; i<dbNames.length; ++i){
       try{
