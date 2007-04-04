@@ -310,7 +310,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     panel.add(sp, BorderLayout.CENTER);
     
     panel.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
-        Color.white,new Color(165, 163, 151)), ""/*title*/));
+        Color.white, new Color(165, 163, 151)), ""/*title*/));
 
     this.getContentPane().add(panel, BorderLayout.CENTER);
 
