@@ -111,16 +111,21 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
     int dividerLocation = splitPane.getDividerLocation();
     if(node.isLeaf()){
       ConfigNode configNode = (ConfigNode) nodeInfo;
-      splitPane.setRightComponent(createConfigDescriptionPanel(configNode));
+      splitPane.setRightComponent(getConfigDescriptionPanel(configNode));
     }
     else{
       ConfigNode configNode = (ConfigNode) nodeInfo;
-      splitPane.setRightComponent(createConfigDescriptionPanel(configNode));
+      splitPane.setRightComponent(getConfigDescriptionPanel(configNode));
     }
     splitPane.setDividerLocation(dividerLocation);
   }
   
-  private JComponent createConfigDescriptionPanel(ConfigNode configNode){
+  private HashMap configPanes = new HashMap();
+  
+  private JComponent getConfigDescriptionPanel(ConfigNode configNode){
+    if(configPanes.containsKey(configNode)){
+      return (JComponent) configPanes.get(configNode);
+    }
     JPanel configPanel = new JPanel(new BorderLayout());
     JScrollPane ret = new JScrollPane();
     if(configNode.getDescription()!=null && configNode.getDescription().length()>0){
@@ -135,6 +140,7 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
     else{
       ret.getViewport().add(createConfigPanel(configNode));
     }
+    configPanes.put(configNode, ret);
     return ret;
   }
 
@@ -185,11 +191,14 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
             String name = jlAttribute.getText().substring(0, jlAttribute.getText().length()-3);
             String text = jtcValue.getText().trim();
             if(!text.equals(initValue)){
-              Debug.debug("Changed preference; "+name, 2);
-              changedConfigParameters.put(name, new String [] {sectionName, text});
+              changedConfigParameters.put(sectionName+"=="+name, text);
+              Debug.debug("Changed preference; "+sectionName+"=="+name+":"+text, 2);
+              Debug.debug("Changed preferences now: "+
+                  Util.arrayToString(changedConfigParameters.keySet().toArray()), 2);
             }
             else{
               try{
+                Debug.debug("Clearing changed tag of preference; "+sectionName+"=="+name+":"+text, 2);
                 changedConfigParameters.remove(name);
               }
               catch(Exception e){
@@ -238,16 +247,18 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
 
   public void savePrefs(){
     Debug.debug("Saving preferences", 1);
-    String name;
+    String sectionAndName;
+    String [] sectionName;
     String [] sections = new String [changedConfigParameters.size()];
     String [] attributes = new String [changedConfigParameters.size()];
     String [] values = new String [changedConfigParameters.size()];
     int i = 0;
     for(Iterator it=changedConfigParameters.keySet().iterator(); it.hasNext();){
-      name = (String) it.next();
-      sections[i] = ((String []) changedConfigParameters.get(name))[0];
-      attributes[i] = name;
-      values[i] = ((String []) changedConfigParameters.get(name))[1];
+      sectionAndName = (String) it.next();
+      sectionName = Util.split(sectionAndName, "==");
+      sections[i] = sectionName[0];
+      attributes[i] = sectionName[1];
+      values[i] = ((String) changedConfigParameters.get(sectionAndName));
       Debug.debug(sections[i]+"-->"+attributes[i]+"-->"+values[i], 2);
       ++i;
     }
