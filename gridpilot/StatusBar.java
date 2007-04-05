@@ -194,8 +194,9 @@ public class StatusBar extends JPanel {
     statusBarActive = true;
     setProgressBar(indeterminatePB);
     indeterminatePB.setIndeterminate(true);
-    if(frame == null)
+    if(frame==null){
       frame = JFrame.getFrames()[1]; // ?? dangerous !!!
+    }
 
     save.setImage(frame.getIconImage());
     frame.setIconImage(waitingIcon.getImage());
