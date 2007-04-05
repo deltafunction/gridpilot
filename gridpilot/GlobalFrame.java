@@ -253,11 +253,15 @@ public class GlobalFrame extends GPFrame{
   }
   
   public void menuEditPrefs_actionPerformed(){
+    if(GridPilot.editingPrefs){
+      return;
+    }
     //Schedule a job for the event-dispatching thread:
     //creating and showing this application's GUI.
     javax.swing.SwingUtilities.invokeLater(new Runnable() {
-        public void run() {
-            createAndShowPrefsGUI();
+        public void run(){
+          GridPilot.editingPrefs = true;
+          createAndShowPrefsGUI();
         }
     });
   }
@@ -620,7 +624,7 @@ public class GlobalFrame extends GPFrame{
     ConfigNode topNode = GridPilot.getClassMgr().getConfigFile().getHeadNode();
 
     // Create and set up the content pane.
-    PreferencesPanel prefsPanel = new PreferencesPanel(topNode);
+    PreferencesPanel prefsPanel = new PreferencesPanel(frame, topNode);
     prefsPanel.setOpaque(true); // content panes must be opaque
     frame.setContentPane(prefsPanel);
 

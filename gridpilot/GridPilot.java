@@ -63,6 +63,7 @@ public class GridPilot extends JApplet{
   // dialog. It overrides the various thread timeouts and can be cleared only by
   // "reload values from config file"
   public static boolean waitForever = false;
+  public static boolean editingPrefs = false;
 
   /**
    * Constructor

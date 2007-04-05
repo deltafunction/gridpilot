@@ -2,7 +2,9 @@ package gridpilot;
 
 import javax.swing.JButton;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JEditorPane;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -33,6 +35,8 @@ import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 public class PreferencesPanel extends JPanel implements TreeSelectionListener, ActionListener {
 
@@ -44,8 +48,17 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
   private JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
   private HashMap changedConfigParameters = new HashMap();
   
-  public PreferencesPanel(ConfigNode topNode) {
-    //super(new GridLayout(1, 0));
+  public PreferencesPanel(JFrame frame, ConfigNode topNode) {
+    //super();
+
+    frame.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+    frame.addWindowListener(new WindowAdapter(){
+      public void windowClosing(WindowEvent we){
+        Debug.debug("Thwarted user attempt to close window.", 3);
+        GridPilot.editingPrefs = false;
+        we.getWindow().dispose();
+      }
+    });
     
     JPanel mainPane = new JPanel();
     mainPane.setLayout(new GridLayout(1, 0));
@@ -270,9 +283,11 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
     try{
       if(e.getSource()==bOk){
         savePrefs();
+        GridPilot.editingPrefs = false;
         SwingUtilities.getWindowAncestor(this).dispose();
       }
       else if(e.getSource()==bCancel){
+        GridPilot.editingPrefs = false;
         SwingUtilities.getWindowAncestor(this).dispose();
       }
     }
