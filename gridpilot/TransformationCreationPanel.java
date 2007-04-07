@@ -308,7 +308,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
       if(cstAttributesNames[i].equalsIgnoreCase("initLines") ||
           cstAttributesNames[i].equalsIgnoreCase("comment")){
         if(!reuseTextFields || tcCstAttributes[i]==null){
-          tcCstAttributes[i] = Util.createTextArea();
+          tcCstAttributes[i] = Util.createTextArea(TEXTFIELDWIDTH);
         }
       }
       else{
@@ -364,7 +364,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
              tcCstAttributes[i].getText().length()==0){            
             if(cstAttributesNames[i].equalsIgnoreCase("initLines") ||
                 cstAttributesNames[i].equalsIgnoreCase("comment")){
-              tcCstAttributes[i] = Util.createTextArea();
+              tcCstAttributes[i] = Util.createTextArea(TEXTFIELDWIDTH);
             }
             else{
               tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);

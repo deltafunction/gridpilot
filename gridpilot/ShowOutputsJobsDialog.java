@@ -105,7 +105,14 @@ public class ShowOutputsJobsDialog extends JOptionPane{
       if(filesPaths[i]!=null){
         final JPanel panel = new JPanel(new BorderLayout());
         JLabel label = new JLabel(filesPaths[i]);
-        final JTextArea textArea = new JTextArea();
+        final JTextArea textArea = new JTextArea(){
+          private static final long serialVersionUID=1L;
+          public java.awt.Dimension getPreferredSize(){
+            java.awt.Dimension dim = super.getPreferredSize();
+            dim.setSize(0, dim.height);
+            return dim;
+          }
+        };
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
         textArea.setEditable(false);

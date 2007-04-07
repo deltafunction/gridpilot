@@ -204,9 +204,10 @@ public class Util{
    * Sets the text of a JComponent.
    */
   public static String setJText(JComponent comp, String text){
-    if(comp.getClass().isInstance(new JTextArea())){
-      Debug.debug("Setting text "+((JTextArea) comp).getText()+"->"+text, 3);
-      ((JTextArea) comp).setText(text);
+    if(comp.getClass().isInstance(new JTextField()) ||
+        comp.getClass().isInstance(Util.createTextArea())){
+      Debug.debug("Setting text "+((JTextComponent) comp).getText()+"->"+text, 3);
+      ((JTextComponent) comp).setText(text);
     }
     else if(comp.getClass().isInstance(new JTextField())){
       Debug.debug("Setting text "+((JTextField) comp).getText()+"->"+text, 3);
@@ -216,8 +217,14 @@ public class Util{
       ((JComboBox) comp).setSelectedItem(text);
     }
     else{
-      Debug.debug("WARNING: component type "+comp.getClass()+
-          " not known. Failed to set text "+text, 3);
+      try{
+        Debug.debug("Trying to set text "+((JTextComponent) comp).getText()+"->"+text, 3);
+        ((JTextComponent) comp).setText(text);
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: component type "+comp.getClass().getName()+
+            " not known. Failed to set text "+text, 3);
+      }
     }
     return text;
   }
@@ -1115,7 +1122,30 @@ public class Util{
   }
 
   public static JTextArea createTextArea(){
-    JTextArea ta = new JTextArea();
+    
+    JTextArea ta = new JTextArea(){
+      private static final long serialVersionUID=1L;
+      public java.awt.Dimension getPreferredSize(){
+        java.awt.Dimension dim = super.getPreferredSize();
+        dim.setSize(0, dim.height);
+        return dim;
+      }
+    };
+    ta.setBorder(new JTextField().getBorder());
+    ta.setWrapStyleWord(true);
+    ta.setLineWrap(true);
+    return ta;
+  }
+  
+  public static JTextArea createTextArea(int size){
+    JTextArea ta = new JTextArea(1, size){
+      private static final long serialVersionUID=1L;
+      public java.awt.Dimension getPreferredSize(){
+        java.awt.Dimension dim = super.getPreferredSize();
+        dim.setSize(0, dim.height);
+        return dim;
+      }
+    };
     ta.setBorder(new JTextField().getBorder());
     ta.setWrapStyleWord(true);
     ta.setLineWrap(true);
@@ -1123,7 +1153,14 @@ public class Util{
   }
   
   public static JTextArea createGrayTextArea(String str){
-    JTextArea jval = new JTextArea(str);
+    JTextArea jval = new JTextArea(str){
+      private static final long serialVersionUID=1L;
+      public java.awt.Dimension getPreferredSize(){
+        java.awt.Dimension dim = super.getPreferredSize();
+        dim.setSize(0, dim.height);
+        return dim;
+      }
+    };
     ((JTextArea) jval).setLineWrap(true);
     ((JTextArea) jval).setWrapStyleWord(true);
     ((JTextArea) jval).setEditable(false);

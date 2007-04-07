@@ -28,7 +28,7 @@ import java.util.Vector;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
+//import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -163,8 +163,8 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
     ConfigNode node = null;
     int row = 0;
     for(Iterator it=nodes.iterator(); it.hasNext();){
-      final JPanel jpRow = new JPanel(/*new BorderLayout()*/
-          new FlowLayout(FlowLayout.LEFT, 2, 0));
+      final JPanel jpRow = new JPanel(new BorderLayout()
+          /*new FlowLayout(FlowLayout.LEFT, 2, 0)*/);
       node = (ConfigNode) it.next();
       if(node.getConfigNodes().size()>0){
         continue;
@@ -174,7 +174,14 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
       final String initValue = node.getValue();
       final String sectionName = node.getSection();
       if(initValue!=null && initValue.length()>40){
-        jtcValue = new JTextArea(1, 24);
+        jtcValue = new JTextArea(1, 24){
+          private static final long serialVersionUID=1L;
+          public java.awt.Dimension getPreferredSize(){
+            java.awt.Dimension dim = super.getPreferredSize();
+            dim.setSize(0, dim.height);
+            return dim;
+          }
+        };
         ((JTextArea) jtcValue).setMargin(new Insets(0, 0, 0, 0));
         ((JTextArea) jtcValue).setBorder(new EtchedBorder(EtchedBorder.RAISED,
             Color.white, new Color(165, 163, 151)));

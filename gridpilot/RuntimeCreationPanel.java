@@ -145,7 +145,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
   }
   
   private void initAttributePanel(){
-
+    
     if(!reuseTextFields || tcCstAttributes==null || tcCstAttributes.length != cstAttributesNames.length)
       tcCstAttributes = new JTextComponent[cstAttributesNames.length];
     int row = 0;
@@ -166,7 +166,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
         if(!editing && !reuseTextFields ||
             tcCstAttributes[i]==null){
           if(cstAttributesNames[i].toString().equalsIgnoreCase("initLines")){
-            tcCstAttributes[i] = Util.createTextArea();
+            tcCstAttributes[i] = Util.createTextArea(TEXTFIELDWIDTH);
           }
           else{
             tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
@@ -209,7 +209,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
           if(tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled() &&
              tcCstAttributes[i].getText().length()==0){
             if(cstAttributesNames[i].toString().equalsIgnoreCase("initLines")){
-              tcCstAttributes[i] = Util.createTextArea();
+              tcCstAttributes[i] = Util.createTextArea(TEXTFIELDWIDTH);
             }
             else{
               tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);

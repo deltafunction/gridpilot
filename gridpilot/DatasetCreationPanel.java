@@ -209,7 +209,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     for(int i=0; i<cstAttributesNames.length; ++i){
       if(cstAttributesNames[i].equalsIgnoreCase("metaData")){
         if(!reuseTextFields || tcCstAttributes[i]==null){
-          tcCstAttributes[i] = Util.createTextArea();
+          tcCstAttributes[i] = Util.createTextArea(TEXTFIELDWIDTH);
         }
       }
       else{
