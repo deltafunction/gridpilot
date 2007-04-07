@@ -35,7 +35,7 @@ public class ConfigFile{
   /**
    * List of items that will not be included in the GUI editor.
    */
-  private String [] excludeItems = {"Systems", "*field*", "class", "driver", "database",
+  private String [] excludeItems = {"Systems", "*field*", "class", "driver",
       "parameters", "randomized", "* name", "* identifier", "* reference"};
   /**
    * Tree of ConfigNodes
