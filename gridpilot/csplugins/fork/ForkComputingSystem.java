@@ -307,6 +307,14 @@ public class ForkComputingSystem implements ComputingSystem{
     }
   }
 
+  /**
+   * Scan runtime environment directory for runtime environment setup scripts;
+   * register the found RTEs in local database with computing system "Fork";
+   * register them in remote database (if defined) with computing system "GPSS".
+   * @param localDBMgr Local DBPluginMgr
+   * @param remoteDBMgr Remote DBPluginMgr
+   * @param csName Computing system name
+   */
   public void setupRuntimeEnvironments(DBPluginMgr localDBMgr, DBPluginMgr remoteDBMgr,
       String csName){
 
@@ -633,7 +641,7 @@ public class ForkComputingSystem implements ComputingSystem{
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
 
     // Delete files that may have been copied to final destination.
-    // Files starting with file: are considered to be on the server accessed
+    // Files starting with file: are considered to locally available, accessed
     // with shellMgr
     String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
     String fileName;
@@ -906,8 +914,8 @@ public class ForkComputingSystem implements ComputingSystem{
   /**
    * Checks output files for remote URLs and adds these
    * with job.setUploadFiles
-   * @param job
-   * @return
+   * @param job description of the computing job
+   * @return True if the operation completes, false otherwise
    */
   private boolean setRemoteOutputFiles(JobInfo job){
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
