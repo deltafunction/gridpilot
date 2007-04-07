@@ -456,6 +456,9 @@ public class HSQLDBDatabase implements Database{
       return null;
     }
     //return new String [] {"dsn", "lfn", "pfns", "guid"};
+    if(getFieldNamesConn.isClosed()){
+      getFieldNamesConn = GridPilot.getClassMgr().getDBConnection(dbName);
+    }
     Statement stmt = getFieldNamesConn.createStatement();
     // TODO: Do we need to execute a query to get the metadata?
     ResultSet rset = stmt.executeQuery("SELECT LIMIT 0 1 * FROM "+table);
@@ -807,6 +810,9 @@ public class HSQLDBDatabase implements Database{
     Debug.debug(">>> sql string was : "+req, 3);
     
     try{
+      if(selectConn.isClosed()){
+        selectConn = GridPilot.getClassMgr().getDBConnection(dbName);
+      }
       Statement stmt = selectConn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       ResultSetMetaData md = rset.getMetaData();
@@ -2176,9 +2182,9 @@ public class HSQLDBDatabase implements Database{
       }
     }
     try{
-    String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
-      datasetID+"'";
-    Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
+         datasetID+"'";
+      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
