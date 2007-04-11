@@ -64,6 +64,8 @@ public class GridPilot extends JApplet{
   // "reload values from config file"
   public static boolean waitForever = false;
   public static boolean editingPrefs = false;
+  public static boolean pullEnabled = false;
+  public static int maxPullRerun = 0;
 
   /**
    * Constructor
@@ -232,6 +234,15 @@ public class GridPilot extends JApplet{
          "globus tcp port range");
       gridHomeURL = getClassMgr().getConfigFile().getValue("GridPilot",
          "Grid home url");
+      String maxReRunString = getClassMgr().getConfigFile().getValue("GridPilot", "Max pull rerun");
+      if(maxReRunString!=null){
+        try{
+          maxPullRerun = Integer.parseInt(maxReRunString);
+        }
+        catch(Exception ee){
+          ee.printStackTrace();
+        }
+     }
       String ask = null;
       try{
         ask = getClassMgr().getConfigFile().getValue("GridPilot",
@@ -316,14 +327,25 @@ public class GridPilot extends JApplet{
       }
     }
     ftNames = getClassMgr().getConfigFile().getValues("File transfer systems", "Systems");
+    String enabled = null;
     for(int i=0; i<ftNames.length; ++i){
+      enabled = null;
+      try{
+        enabled = getClassMgr().getConfigFile().getValue(ftNames[i], "Enabled");
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+      if(enabled==null || !enabled.equalsIgnoreCase("yes") && !enabled.equalsIgnoreCase("true")){
+        continue;
+      }
       try{
         splashShow("Loading file transfer system: "+ftNames[i]);
       }
       catch(Exception e){
         // if we cannot show text on splash, just silently ignore
       }
-      String fsClass = getClassMgr().getConfigFile().getValue(ftNames[i], "class");
+      String fsClass = getClassMgr().getConfigFile().getValue(ftNames[i], "Class");
       getClassMgr().setFTPlugin(ftNames[i],
           (FileTransfer) Util.loadClass(fsClass, new Class []{}, new Object []{}));
     }          
@@ -623,6 +645,7 @@ public class GridPilot extends JApplet{
     getClassMgr().getJobValidation().loadValues();
     getClassMgr().getSubmissionControl().loadValues();
     getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.statusUpdateControl.loadValues();
+    getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.reInitPulling();
     getClassMgr().getGlobalFrame().monitoringPanel.transferMonitor.statusUpdateControl.loadValues();
     getClassMgr().getCSPluginMgr().loadValues();
     for(int i=0; i<dbNames.length; ++i){
@@ -709,6 +732,7 @@ public class GridPilot extends JApplet{
     GridPilot.getClassMgr().getStatusBar().setLabel(
         "Reconnecting computing systems. Please wait...");
     GridPilot.getClassMgr().getStatusBar().animateProgressBar();
+    pullEnabled = false;
     /*
      Reconnect CSs
      */

@@ -42,7 +42,7 @@ public class ForkComputingSystem implements ComputingSystem{
   private String runtimeDirectory = null;
   private String transformationDirectory = null;
   private String publicCertificate = null;
-  private String remoteDB = null;
+  private String remotePullDB = null;
   private String [] localRuntimeDBs = null;
   private HashSet finalRuntimesLocal = null;
   private HashSet finalRuntimesRemote = null;
@@ -99,8 +99,8 @@ public class ForkComputingSystem implements ComputingSystem{
 
     publicCertificate = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "public certificate");
-    remoteDB = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "remote database");
+    remotePullDB = GridPilot.getClassMgr().getConfigFile().getValue(
+        csName, "remote pull database");
     localRuntimeDBs = GridPilot.getClassMgr().getConfigFile().getValues(
         csName, "runtime databases");
     
@@ -272,13 +272,21 @@ public class ForkComputingSystem implements ComputingSystem{
   public void setupRuntimeEnvironments(String csName){
     DBPluginMgr remoteDBMgr = null;
     try{
-      remoteDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
-          remoteDB);
+      remoteDBMgr = GridPilot.getClassMgr().getDBPluginMgr(remotePullDB);
     }
     catch(Exception e){
       Debug.debug("WARNING: Could not load remote runtime DB "+
           remoteDBMgr+". Runtime environments must be defined by hand. "+
           e.getMessage(), 1);
+    }
+    if(remoteDBMgr!=null){
+      //Enable the pull button on the monitoring panel
+      GridPilot.pullEnabled = true;
+      try{
+        GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.setPullEnabled(true);
+      }
+      catch(Exception e){
+      }
     }
     for(int i=0; i<localRuntimeDBs.length; ++i){
       DBPluginMgr localDBMgr = null;
@@ -509,7 +517,7 @@ public class ForkComputingSystem implements ComputingSystem{
               }
             }
             catch(Exception e){
-              Debug.debug("WARNING: could not access "+remoteDB+". Disabling" +
+              Debug.debug("WARNING: could not access "+remotePullDB+". Disabling" +
                   "remote registration of runtime environments", 1);
             }
           }
@@ -755,11 +763,11 @@ public class ForkComputingSystem implements ComputingSystem{
         }
       }
     }
-    if(remoteDB!=null){
+    if(remotePullDB!=null){
       DBPluginMgr remoteDBMgr = null;
       try{
         remoteDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
-          remoteDB);
+          remotePullDB);
       }
       catch(Exception e){
       }
@@ -883,15 +891,28 @@ public class ForkComputingSystem implements ComputingSystem{
       logFile.addMessage("ERROR: could not create run directory for job.", e);
       return false;
     }
-    if(!shellMgr.isLocal()){
-      try{
-        writeUserProxy();
+    
+    
+    
+    // TODO: rethink this...
+    //if(job.getDownloadedFiles()!=null && job.getDownloadedFiles().length>0){
+    //  // job has already had remote input files downloaded (by PullJobsDaemon).
+    //  return true;
+    //}
+    
+    
+    
+    //else{
+      if(!shellMgr.isLocal()){
+        try{
+          writeUserProxy();
+        }
+        catch(Exception e){
+          logFile.addMessage("WARNING: could not cwrite user proxy.", e);
+        }
       }
-      catch(Exception e){
-        logFile.addMessage("WARNING: could not cwrite user proxy.", e);
-      }
-    }
-    return setRemoteOutputFiles(job) && getInputFiles(job);
+      return setRemoteOutputFiles(job) && getInputFiles(job);
+    //}
   }
   
   private void writeUserProxy() throws IOException{

@@ -425,10 +425,12 @@ public class LocalShellMgr implements ShellMgr {
     
     // Try 3 times to get the job id. If not possible, submission has
     // probably failed (or finished very very fast...)
+    String pid = null;
     for(int rep=0; rep<3; ++rep){
-      if(getProcessID(cmd)!=null){
-        Debug.debug("Returning ID: "+getProcessID(cmd).hashCode(), 2);
-        return getProcessID(cmd);
+      pid = getProcessID(cmd);
+      if(pid!=null){
+        Debug.debug("Returning ID: "+pid, 2);
+        return pid;
       }
       Debug.debug("Sleeping 3 seconds...", 2);
       Thread.sleep(3000);
@@ -473,6 +475,10 @@ public class LocalShellMgr implements ShellMgr {
         ioe.printStackTrace();  
       }
     }
+  }
+  
+  public int getJobsNumber(){
+    return processes.size();
   }
   
   public boolean isLocal(){

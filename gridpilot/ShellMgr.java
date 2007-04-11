@@ -166,6 +166,12 @@ public interface ShellMgr{
    * @param id    the string identifying the process.
    */
   public boolean isRunning(String id);
+  
+  /**
+   * Finds the number of jobs started with submit.
+   * @return
+   */
+  public int getJobsNumber();
       
   public void exit();
 

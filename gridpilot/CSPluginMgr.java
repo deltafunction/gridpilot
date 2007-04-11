@@ -56,6 +56,7 @@ public class CSPluginMgr implements ComputingSystem{
   private String [] csNames;
   private HashMap cs;
   private int threadI;
+  private HashMap pullDBs;
 
   public CSPluginMgr() throws Throwable{
     init();
@@ -95,11 +96,13 @@ public class CSPluginMgr implements ComputingSystem{
   public void loadClasses() throws Throwable{
 
     String enabled = "no";
+    String pullDB = null;
 
     for(int i=0; i<csNames.length; ++i){
       enabled = "no";
+      pullDB = null;
       try{
-        enabled = GridPilot.getClassMgr().getConfigFile().getValue(csNames[i], "Enabled");
+        enabled = configFile.getValue(csNames[i], "Enabled");
       }
       catch(Exception e){
         continue;
@@ -107,6 +110,15 @@ public class CSPluginMgr implements ComputingSystem{
       if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
           !enabled.equalsIgnoreCase("true")){
         continue;
+      }
+      
+      try{
+        pullDB = configFile.getValue(csNames[i], "Remote pull database");
+      }
+      catch(Exception e){
+      }
+      if(pullDB!=null && pullDB.length()>0){
+        pullDBs.put(csNames[i], pullDB);
       }
       try{
         GridPilot.splashShow("Connecting to "+csNames[i]+"...");
@@ -727,6 +739,21 @@ public class CSPluginMgr implements ComputingSystem{
     t.start();
 
     Util.waitForThread(t, csName, setupTimeOut, "setupRuntimeEnvironments");
+  }
+
+  /**
+   * Returns the setting of "remote pull database" in the config file
+   */
+  public String getPullDatabase(final String csName){
+    if(csName==null || csName.equals("")){
+      return null;
+    }
+    if(pullDBs.get(csName)==null){
+      return null;
+    }
+    else{
+      return (String) pullDBs.get(csName);
+    }
   }
 
   public void reconnect(){

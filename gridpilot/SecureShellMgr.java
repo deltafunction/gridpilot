@@ -29,6 +29,7 @@ public class SecureShellMgr implements ShellMgr{
   private Session session;
   private int channels;
   private int channelsNum = 1;
+  private String prefix = "/tmp/GridPilot-job-";
 
   public SecureShellMgr(String _host, String _user,
       String _password){
@@ -678,7 +679,7 @@ public class SecureShellMgr implements ShellMgr{
   }
 
   public boolean isDirectory(String dir){
-    if(dir ==null){
+    if(dir==null){
       return false;
     }
     Debug.debug("checking directory " + dir, 2);
@@ -817,14 +818,14 @@ public class SecureShellMgr implements ShellMgr{
       String stdErrFile) throws Exception{
     // first write small script containing the command script
     String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
-    writeFile("/tmp/"+uuid+".sh", cmd+" 2> "+stdErrFile+" > "+stdOutFile+" &", false);
+    writeFile(prefix+uuid+".sh", cmd+" 2> "+stdErrFile+" > "+stdOutFile+" &", false);
     StringBuffer stdOut = new StringBuffer();
     StringBuffer stdErr = new StringBuffer();
     // execute the script
-    exec("sh /tmp/"+uuid+".sh", null, workingDirectory, stdOut, stdErr);
+    exec("sh "+prefix+uuid+".sh", null, workingDirectory, stdOut, stdErr);
     stdOut = new StringBuffer();
     stdErr = new StringBuffer();
-    exec("rm /tmp/"+uuid+".sh; head -1 "+stdOutFile, stdOut, stdErr);
+    exec("rm "+prefix+uuid+".sh; head -1 "+stdOutFile, stdOut, stdErr);
     String pid = stdOut.toString().trim();
     if(stdErr!=null && stdErr.length()>0 || stdOut==null || stdOut.length()==0){
       throw new IOException("ERROR: could not get PID for job "+cmd+". "+stdErr);
@@ -861,6 +862,26 @@ public class SecureShellMgr implements ShellMgr{
 
   public String getUserName(){
     return user;
+  }
+  
+  public int getJobsNumber(){
+    // TODO: check
+    StringBuffer stdOut = new StringBuffer();
+    StringBuffer stdErr = new StringBuffer();
+    try{
+      int ret = exec("ps auxw | grep "+prefix+" | grep -v grep | wc -l", stdOut, stdErr);
+      if(ret!=0 || stdErr.length()>0){
+        Debug.debug("ERROR: could not find process number."+stdErr, 3);
+        return -1;
+      }
+      int retInt = Integer.parseInt(stdOut.toString());
+      return retInt;
+    }
+    catch(IOException e){
+      logFile.addMessage("ERROR: could not find process number.", e);
+      Debug.debug(e.getMessage(), 2);
+      return -1;
+    }
   }
 
 }
