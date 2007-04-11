@@ -271,6 +271,7 @@ public class TransferControl{
    * @param   srcUrls    Array of source URLs.
    * @param   destUrls   Array of destination URLs.
    */
+  // TODO: caching
   public static String [] startCopyFiles(GlobusURL [] srcUrls, GlobusURL [] destUrls)
      throws Exception {
 
