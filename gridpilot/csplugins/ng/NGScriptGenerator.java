@@ -20,6 +20,7 @@ import gridpilot.Util;
 public class NGScriptGenerator extends ScriptGenerator{
 
   String cpuTime = null;
+  String reRun = null;
   List localInputFilesList = null;
   List remoteInputFilesList = null;
   
@@ -27,6 +28,7 @@ public class NGScriptGenerator extends ScriptGenerator{
     super(_csName);
     csName = _csName;
     cpuTime = configFile.getValue(csName, "CPU time");
+    reRun = configFile.getValue(csName, "Max rerun");
   }
 
   // Returns List of input files, needed for ARCGridFTPJob.submit()
@@ -73,7 +75,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       writeLine(bufXRSL,"(*queue=\"_submitqueue_\"*)");
 
       writeLine(bufXRSL,"(gmlog=\"log\")");
-      writeLine(bufXRSL,"(reRun=\"1\")");
+      writeLine(bufXRSL,"(reRun=\""+(reRun!=null?reRun:"0")+"\")");
       writeLine(bufXRSL,"(jobname=\""+shortExeFileName+"\")");
       //writeLine(bufXRSL,"(arguments=\"\")");
       // Necessary for 0.4 servers.
