@@ -22,12 +22,12 @@ import java.util.Vector;
  * An object of this class will be created for each system defined in [Computing systems],
  * using the constructor with one parameter (String).
  * StdOut and StdErr for a job will be created in directory 'working directory'
- * (AtCom creates names, not files)
+ * (GridPilot creates names, not files)
  * 'max jobs by update' denotes the maximum size of the job vector that the function 'updateStatus'
  * will be receive
  * <p>
  * This interface defines some status ; these values are used by job.internalStatus.
- * Each plugin has to match status from his system to these status :
+ * Each plugin has to match status from his system to these statuses :
  * <dl><ul>
  * <li><dt><code>STATUS_WAIT</code><dd>First state, until this jobs find a cpu;
  * Different from <code>STATUS_RUNNING</code> only for statistics reason. Could be not used by
@@ -72,13 +72,6 @@ import java.util.Vector;
  * <li>{@link #exit() exit}()<p>
  * </ul></dl>
  *
- * Using {@link atcom.AtCom#getClassMgr() AtCom.getClassMgr()}, a plugin can access to :
- * <ul>
- * <li>{@link atcom.ConfigFile ConfigFile} : configuration file, should be used in order to store all configurable parameters
- * <li>{@link atcom.LogFile LogFile} : records all errors, exceptions, ...
- * <li>{@link atcom.databases.AMIMgt AMIMgt} : access to AMI database (where logicalFile (partition) key is job.PartId())
- * </ul>
- *
  * <p><a href="ComputingSystem.java.html">see sources</a>
  */
 
@@ -110,7 +103,7 @@ public interface ComputingSystem{
   /**
    * Submits this job.
    *
-   * These attributes are initialized by AtCom :<ul>
+   * These attributes are initialized by GridPilot :<ul>
    * <li>StdOut, StdErr
    * <li>Name
    * <li>AMIStatus (Submitted)
