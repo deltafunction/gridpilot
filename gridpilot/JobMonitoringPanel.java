@@ -1046,6 +1046,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   JobMgr getJobMgr(JobInfo job){
     return GridPilot.getClassMgr().getJobMgr(job.getDBName());
   }
+  
+  public void exit(){
+    for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
+      PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
+      daemon.exit();
+    }  
+  }
 
   public void copy(){
   }

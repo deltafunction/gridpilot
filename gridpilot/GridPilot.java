@@ -457,6 +457,7 @@ public class GridPilot extends JApplet{
         String message = "Cancelling all running transfers...";
         Debug.debug(message, 2);
         exitPanel.setText(message+" Click OK to force quit.");
+        GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.exit();
         TransferControl.exit();
         //Delete temporary files
         File delFile = null;
