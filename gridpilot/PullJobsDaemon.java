@@ -255,7 +255,6 @@ public class PullJobsDaemon{
    * and updates their csStatus according to the CS status.
    */
   private void updateDBCSStatus(){
-    // TODO
   }
   
   /**

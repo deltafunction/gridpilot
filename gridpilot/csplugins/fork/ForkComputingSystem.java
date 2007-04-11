@@ -890,29 +890,16 @@ public class ForkComputingSystem implements ComputingSystem{
     catch(Exception e){
       logFile.addMessage("ERROR: could not create run directory for job.", e);
       return false;
-    }
-    
-    
-    
-    // TODO: rethink this...
-    //if(job.getDownloadedFiles()!=null && job.getDownloadedFiles().length>0){
-    //  // job has already had remote input files downloaded (by PullJobsDaemon).
-    //  return true;
-    //}
-    
-    
-    
-    //else{
-      if(!shellMgr.isLocal()){
-        try{
-          writeUserProxy();
-        }
-        catch(Exception e){
-          logFile.addMessage("WARNING: could not cwrite user proxy.", e);
-        }
+    }    
+    if(!shellMgr.isLocal()){
+      try{
+        writeUserProxy();
       }
-      return setRemoteOutputFiles(job) && getInputFiles(job);
-    //}
+      catch(Exception e){
+        logFile.addMessage("WARNING: could not cwrite user proxy.", e);
+      }
+    }
+    return setRemoteOutputFiles(job) && getInputFiles(job);
   }
   
   private void writeUserProxy() throws IOException{
@@ -974,19 +961,46 @@ public class ForkComputingSystem implements ComputingSystem{
    * Assumes job.stdout points to a file in the run directory.
    */
   private boolean getInputFiles(JobInfo job){
+    
     boolean ok = true;
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String transID = dbPluginMgr.getJobDefTransformationID(job.getJobDefId());
     Debug.debug("Getting input files for transformation " + transID, 2);
     String [] transInputFiles = dbPluginMgr.getTransformationInputs(transID);
+
     Debug.debug("Getting input files for job " + job.getName(), 2);
     String [] jobInputFiles = dbPluginMgr.getJobDefInputFiles(job.getJobDefId());
-    String [] inputFiles = new String [transInputFiles.length+jobInputFiles.length];
+
+    // CONVENTION: if job has already had remote input files downloaded (by PullJobsDaemon),
+    // job.getDownloadFiles() will be set. These files should then be copied to the
+    // run directory along with any local input files.
+    // Moreover, the remote files from jobInputFiles should be ignored.
+    String [] pullInputFiles = new String [] {};
+    if(job.getDownloadFiles()!=null && job.getDownloadFiles().length>0){
+      pullInputFiles = job.getDownloadFiles();
+      Vector jobInputFilesVector = new Vector();
+      for(int i=0; i<jobInputFiles.length; ++i){
+        if(!Util.urlIsRemote(jobInputFiles[i])){
+          jobInputFilesVector.add(jobInputFiles[i]);
+        }        
+      }
+      jobInputFiles = new String [jobInputFilesVector.size()];
+      for(int i=0; i<jobInputFiles.length; ++i){
+        jobInputFiles[i] = (String) jobInputFilesVector.get(i);
+      }
+    }
+    job.setDownloadFiles(new String [] {});
+    
+    String [] inputFiles = new String [transInputFiles.length+jobInputFiles.length+
+                                       pullInputFiles.length];
     for(int i=0; i<transInputFiles.length; ++i){
       inputFiles[i] = transInputFiles[i];
     }
     for(int i=0; i<jobInputFiles.length; ++i){
       inputFiles[i+transInputFiles.length] = jobInputFiles[i];
+    }
+    for(int i=0; i<pullInputFiles.length; ++i){
+      inputFiles[i+transInputFiles.length+jobInputFiles.length] = pullInputFiles[i];
     }
     Vector downloadVector = new Vector();
     String [] downloadFiles = null;
@@ -1015,8 +1029,7 @@ public class ForkComputingSystem implements ComputingSystem{
           }
           // If source is remote, have the job script get it
           // (assuming that e.g. the runtime environment ARC has been required)
-          else if(!inputFiles[i].matches("^file:/*[^/]+.*") &&
-              inputFiles[i].matches("^[a-z]+:/*[^/]+.*")){
+          else if(Util.urlIsRemote(inputFiles[i])){
             downloadVector.add(inputFiles[i]);
           }
           // Relative paths are not supported
@@ -1060,8 +1073,7 @@ public class ForkComputingSystem implements ComputingSystem{
             }
           }
           // If source is remote, get it
-          else if(!inputFiles[i].matches("^file:/*[^/]+.*") &&
-              inputFiles[i].matches("^[a-z]+:/*[^/]+.*")){
+          else if(Util.urlIsRemote(inputFiles[i])){
             try{
               TransferControl.download(urlDir + fileName,
                   new File(runDir(job)), GridPilot.getClassMgr().getGlobalFrame().getContentPane());
