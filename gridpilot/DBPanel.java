@@ -2288,6 +2288,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return ret;
   }
   
+  /**
+   * Starts the download of the selected files to the directory _dlUrl.
+   * @param _dlUrl download directory.
+   * @param regDBPluginMgr if not null, DBPluginMgr to use to register the new
+   * file locations.
+   * @return
+   */
   private boolean startDownload(final String _dlUrl,
       final DBPluginMgr regDBPluginMgr){
     boolean ret = false;
@@ -2443,6 +2450,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           Debug.debug("Preparing download of file "+name, 2);
           try{
             if(transfer==null){
+              // Create the TransferInfo
               transfer = new TransferInfo(srcUrl, destUrl);
             }
             Debug.debug(transfer.getSource().getURL()+" ---> "+transfer.getDestination().getURL(), 2);
@@ -2481,6 +2489,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     if(!transfers.isEmpty()){
       try{
+        //Queue the transfers
         transferControl.queue(transfers);
         ret = true;
       }

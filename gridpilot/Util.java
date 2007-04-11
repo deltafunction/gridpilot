@@ -513,19 +513,28 @@ public class Util{
     }
   }
   
-  public static String clearFile(String _line){
-    if(_line==null){
-      return _line;
+  /**
+   * Clears file:/ prefix of URL.
+   * @param _url
+   * @return the file name of URL
+   */
+  public static String clearFile(String _url){
+    if(_url==null){
+      return _url;
     }
-    String line = _line;
-    line = line.replaceFirst("^file:/+(\\w:)", "$1");
-    line = line.replaceFirst("^file:///", "/");
-    line = line.replaceFirst("^file://", "/");
-    line = line.replaceFirst("^file:/", "/");
-    line = line.replaceFirst("^file:", "");
-    return line;
+    String fileName = _url;
+    fileName = fileName.replaceFirst("^file:/+(\\w:)", "$1");
+    fileName = fileName.replaceFirst("^file:///", "/");
+    fileName = fileName.replaceFirst("^file://", "/");
+    fileName = fileName.replaceFirst("^file:/", "/");
+    fileName = fileName.replaceFirst("^file:", "");
+    return fileName;
   }
 
+  /**
+   * Replaces ~ with the home directory path.
+   * @param str
+   */
   public static String clearTildeLocally(String str){
     if(str==null){
       return str;
@@ -550,6 +559,14 @@ public class Util{
     return line;
   }
 
+  /**
+   * Puts up a password dialog, asking for the key and certificate locations and
+   * the password to decrypt the key.
+   * @param keyFile
+   * @param certFile
+   * @param password
+   * @return password, key location, certificate location.
+   */
   public static String [] getGridCredentials(String keyFile, String certFile, String password){
     
     final JPanel panel = new JPanel(new GridBagLayout());
