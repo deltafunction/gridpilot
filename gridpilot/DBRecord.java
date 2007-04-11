@@ -49,4 +49,9 @@ public class DBRecord{
     }
     throw new Exception("no such field "+col);
   }
+  
+  public String toString(){
+    return Util.arrayToString(fields)+"-->"+Util.arrayToString(values);
+  }
+  
 }
