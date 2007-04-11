@@ -1817,5 +1817,9 @@ public class Util{
     }
     return null;
   }
+  
+  public static boolean urlIsRemote(String url){
+    return !url.matches("^file:/*[^/]+.*") && url.matches("^[a-z]+:/*[^/]+.*");
+  }
 
 }
