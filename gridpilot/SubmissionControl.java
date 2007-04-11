@@ -121,7 +121,7 @@ public class SubmissionControl{
    * Each job is reserved, the job is created, a row is added to statusTable
    * and submit is called. <p>
    */
-  public void submitJobDefinitions(/*vector of JobDefinitions*/Vector selectedJobs,
+  public void submitJobDefinitions(/*vector of DBRecords*/Vector selectedJobs,
       String csName, DBPluginMgr dbPluginMgr){
     GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel();
     synchronized(submittedJobs){
