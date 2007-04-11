@@ -1193,7 +1193,8 @@ public class MySQLDatabase extends DBCache implements Database {
   }
 
   // Selects only the fields listed in fieldNames. Other fields are set to "".
-  private synchronized DBRecord [] selectJobDefinitions(String datasetID, String [] fieldNames){
+  private synchronized DBRecord [] selectJobDefinitions(String datasetID, String [] fieldNames,
+      String [] statusList){
     
     String req = "SELECT";
     for(int i=0; i<fieldNames.length; ++i){
@@ -1204,7 +1205,22 @@ public class MySQLDatabase extends DBCache implements Database {
     }
     req += " FROM jobDefinition";
     if(!datasetID.equals("-1")){
-      req += " where datasetName = '"+getDatasetName(datasetID) + "'";
+      req += " WHERE datasetName = '"+getDatasetName(datasetID) + "'";
+    }
+    if(statusList!=null && statusList.length>0){
+      if(!datasetID.equals("-1")){
+        req += " AND (";
+      }
+      else{
+        req += " WHERE (";
+      }
+      for(int i=0; i<statusList.length; ++i){
+        if(i>0){
+          req += " OR ";
+        }
+        req += " status = '"+statusList[i]+"'";
+      }
+      req += ")";
     }
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
@@ -1263,9 +1279,10 @@ public class MySQLDatabase extends DBCache implements Database {
     return res;
   }
   
-  public DBResult getJobDefinitions(String datasetID, String [] fieldNames){
+  public DBResult getJobDefinitions(String datasetID, String [] fieldNames,
+      String [] statusList){
     
-    DBRecord jt [] = selectJobDefinitions(datasetID, fieldNames);
+    DBRecord jt [] = selectJobDefinitions(datasetID, fieldNames, statusList);
     DBResult res = new DBResult(fieldNames.length, jt.length);
     
     System.arraycopy(
