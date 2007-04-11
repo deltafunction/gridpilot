@@ -180,10 +180,10 @@ public class ConfigFile{
           if(line.indexOf('#')>-1 && line.indexOf('#')==line.indexOf('\\')+1){
             line = line.substring(line.indexOf('#')+1);
             if(addBelowItemDescription){
-              belowItemDescription += "<br>"+line;
+              belowItemDescription += "<br>\n"+line;
             }
             else{
-              aboveItemDescription += "<br>"+line;
+              aboveItemDescription += "<br>\n"+line;
             }
           }
           isIndex = line.indexOf('=');
