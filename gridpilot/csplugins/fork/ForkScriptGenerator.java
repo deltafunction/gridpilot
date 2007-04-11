@@ -21,6 +21,9 @@ import gridpilot.Util;
  */
 public class ForkScriptGenerator extends ScriptGenerator{
   private String workingDir = null;
+  private String runtimeDirectory = null;
+  private String remoteCopyCommand = null;
+  private String requiredRuntimeEnv = null;
   
   /**
    * Constructor
@@ -28,6 +31,12 @@ public class ForkScriptGenerator extends ScriptGenerator{
   public ForkScriptGenerator(String csName, String _workingDir){
     super(csName);
     workingDir = _workingDir;
+    runtimeDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
+        csName, "runtime directory");
+    remoteCopyCommand = GridPilot.getClassMgr().getConfigFile().getValue(
+        csName, "remote copy command");
+    requiredRuntimeEnv = GridPilot.getClassMgr().getConfigFile().getValue(
+        csName, "required runtime environment");
   }
 
   public boolean createWrapper(ShellMgr shellMgr, JobInfo job, String fileName){
@@ -37,12 +46,6 @@ public class ForkScriptGenerator extends ScriptGenerator{
     String line; //used as temp working string
     StringBuffer buf = new StringBuffer();
     String commentStart = "REM";
-    String runtimeDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "runtime directory");
-    String remoteCopyCommand = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "remote copy command");
-    String requiredRuntimeEnv = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "required runtime environment");
 
     // Header
     if(!shellMgr.isLocal() || !System.getProperty("os.name").toLowerCase().startsWith("windows")){
