@@ -4,6 +4,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Vector;
 
 import javax.swing.Timer;
@@ -16,7 +18,6 @@ import org.ietf.jgss.GSSCredential;
 public class PullJobsDaemon{
   
   private DBPluginMgr dbPluginMgr = null;
-  private CSPluginMgr csPluginMgr = null;
   private String csName = null;
   private StatusBar statusBar = null;
   private LogFile logFile = null;
@@ -24,17 +25,26 @@ public class PullJobsDaemon{
   private int maxPullRun = 1;
   private String idField = null;
   private String cacheDir = null;
+  // map of JobInfo -> (Vector of TransferInfos)
+  private HashMap runningTransfers = new HashMap();
   
   private static int WAIT_TRIES = 20;
   private static int WAIT_SLEEP = 10000;
+  private static boolean CLEANUP_CACHE_ON_EXIT = true;
   
-  private Timer timerPull = new Timer(0, new ActionListener (){
+  private Timer timerPull = new Timer(0, new ActionListener(){
     public void actionPerformed(ActionEvent e){
       pullJob();
     }
   });
 
-  private Timer timerFinish = new Timer(0, new ActionListener (){
+  private Timer timerRun = new Timer(0, new ActionListener(){
+    public void actionPerformed(ActionEvent e){
+      runJob();
+    }
+  });
+
+  private Timer timerFinish = new Timer(0, new ActionListener(){
     public void actionPerformed(ActionEvent e){
       finishJob();
     }
@@ -43,7 +53,6 @@ public class PullJobsDaemon{
   public PullJobsDaemon(String dbName, String _csName, StatusBar _statusBar){
     csName = _csName;
     dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
-    csPluginMgr = GridPilot.getClassMgr().getCSPluginMgr();
     statusBar = _statusBar;
     logFile = GridPilot.getClassMgr().getLogFile();
     idField = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
@@ -65,8 +74,10 @@ public class PullJobsDaemon{
         String tmpDir = tmpFile.getAbsolutePath();
         tmpFile.delete();
         LocalStaticShellMgr.mkdirs(tmpDir);
-        // hack to have the diretory deleted on exit
-        GridPilot.tmpConfFile.put(tmpDir, new File(tmpDir));
+        if(CLEANUP_CACHE_ON_EXIT){
+          // hack to have the diretory deleted on exit
+          GridPilot.tmpConfFile.put(tmpDir, new File(tmpDir));
+        }
         cacheDir = tmpDir;
       }
       catch(IOException e){
@@ -108,7 +119,7 @@ public class PullJobsDaemon{
   
   /**
    * Finds eligible jobs, chooses one, requests it, waits for it to
-   * be available, then starts it.
+   * be available, then starts downloading input files.
    * @return the number of started jobs (0 or 1).
    */
   public boolean pullJob(){
@@ -155,8 +166,11 @@ public class PullJobsDaemon{
       Debug.debug("Requesting job  "+okCandidates[i].getValue(
           Util.getNameField(dbPluginMgr.getDBName(), "jobDefinition")), 2);
       try{
+        // Request the job
         if(requestJob(okCandidates[i])){
+          // Wait for it to be ready on the server
           if(waitForJob(okCandidates[i])){
+            // Start downloading input files
             String jobDefID = (String) okCandidates[i].getValue(idField);
             JobInfo job = new JobInfo(
                 jobDefID,
@@ -164,9 +178,20 @@ public class PullJobsDaemon{
                 csName,
                 dbPluginMgr.getDBName()
                 );
-            if(downloadInputs(job)!=null){
-              return runJob(okCandidates[i]);
+            try{
+              startDownloadInputs(job);
             }
+            catch(Exception e){
+              throw e;
+            }
+            try{
+              dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
+                  new String [] {"downloading"});
+             }
+            catch(Exception e){
+              logFile.addMessage("WARNING: could not set csStatus to downloading for job "+jobDefID, e);
+            }
+            return true;
           }
         }
         Debug.debug("Failed requesting job, forgetting "+okCandidates[i], 2);
@@ -190,6 +215,8 @@ public class PullJobsDaemon{
    */
   public void setDelay(int delay){
       timerPull.setDelay(delay);
+      timerRun.setDelay(delay/3);
+      timerFinish.setDelay(delay/3);
   }
 
   /**
@@ -199,7 +226,7 @@ public class PullJobsDaemon{
   private DBRecord [] findEligibleJobs(){
     String [] allFields = null;
     try{
-      allFields = dbPluginMgr.getFieldnames("jobDefinition");//dbPluginMgr.getDBDefFields("jobDefinition");
+      allFields = dbPluginMgr.getFieldnames("jobDefinition");
     }
     catch(Exception e){
       Debug.debug("Skipping DB "+dbPluginMgr.getDBName(), 1);
@@ -211,8 +238,7 @@ public class PullJobsDaemon{
     DBResult allJobDefinitions = dbPluginMgr.getJobDefinitions("-1", allFields, statusList);
     Vector eligibleJobs = new Vector(); //DBRecords
     for(int i=0; i<allJobDefinitions.values.length; ++i){
-      DBRecord jobRecord = new DBRecord(allJobDefinitions.fields,
-          allJobDefinitions.values[i]);
+      DBRecord jobRecord = allJobDefinitions.getRow(i);
       if(checkRequirements(jobRecord)){
         eligibleJobs.add(jobRecord);
       }
@@ -220,6 +246,51 @@ public class PullJobsDaemon{
     DBRecord [] ret = new DBRecord[eligibleJobs.size()];
     for(int i=0; i<ret.length; ++i){
       ret[i] = (DBRecord) eligibleJobs.get(i);
+    }
+    return ret;
+  }
+  
+  /**
+   * Scans the job database for jobs controlled by this certificate
+   * and updates their csStatus according to the CS status.
+   */
+  private void updateDBCSStatus(){
+    // TODO
+  }
+  
+  /**
+   * Scans the job database for finished jobs controlled by this certificate.
+   * @return array of job records
+   */
+  private DBRecord [] findDoneJobs(){
+    String [] allFields = null;
+    try{
+      allFields = dbPluginMgr.getFieldnames("jobDefinition");
+    }
+    catch(Exception e){
+      Debug.debug("Skipping DB "+dbPluginMgr.getDBName(), 1);
+      e.printStackTrace();
+      return null;
+    }
+    // We only reqest jobs that are "Running"
+    String [] statusList = new String [] {"Running"};
+    DBResult allJobDefinitions = dbPluginMgr.getJobDefinitions("-1", allFields, statusList);
+    Vector doneJobs = new Vector(); //DBRecords
+    for(int i=0; i<allJobDefinitions.values.length; ++i){
+      DBRecord jobRecord = allJobDefinitions.getRow(i);
+      // Take only my jobs
+      String providerInfo = (String) jobRecord.getValue("providerInfo");
+      if(providerInfo.equals(userInfo)){
+        // Take only jobs that have been set as executed
+        String status = (String) jobRecord.getValue("csStatus");
+        if(status.startsWith("executed")){
+          doneJobs.add(jobRecord);
+        }
+      }
+    }
+    DBRecord [] ret = new DBRecord[doneJobs.size()];
+    for(int i=0; i<ret.length; ++i){
+      ret[i] = (DBRecord) doneJobs.get(i);
     }
     return ret;
   }
@@ -240,6 +311,9 @@ public class PullJobsDaemon{
     }
     // We only consider jobs that have csStatus unset or Ready:n, n<maxRetries
     String status = (String) jobRecord.getValue("csStatus");
+    if(status!=null && !status.equals("") && !status.startsWith("ready")){
+      return false;
+    }
     if(jobRecord!=null){
       int retries = 0;
       int index = status.indexOf(":");
@@ -251,6 +325,8 @@ public class PullJobsDaemon{
         }
       }
     }
+    //TODO: extend jobDefinition schema according to 3.1 of KnowARC virtualization proposal (T1.5)
+    // and include corresponding checks. E.g. of allowedVOs and runtimeEnvironments.
     return true;
   }
 
@@ -281,7 +357,7 @@ public class PullJobsDaemon{
   }
 
   /**
-   * Sets the status of the job to 'Ready:n' and clears the certificate
+   * Sets the status of the job to 'ready:n' and clears the certificate
    * subject in the 'providerInfo' field of the jobDefinition on the remote
    * database.
    * @param jobRecord
@@ -301,7 +377,7 @@ public class PullJobsDaemon{
         ++retries;
       }
       ok = dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus", "providerInfo"},
-          new String [] {"Ready:"+retries, ""});
+          new String [] {"ready:"+retries, ""});
     }
     catch(Exception e){
       logFile.addMessage("ERROR: could not unrequest job "+jobDefID, e);
@@ -310,8 +386,42 @@ public class PullJobsDaemon{
     return ok;
   }
 
+  /**
+   * Sets the status of the job to 'failed:n' in the remote
+   * database.
+   * @param jobRecord
+   * @return true if successful, false otherwise.
+   */
+  private void failUploadJob(DBRecord jobRecord){
+    String jobDefID = "-1";
+    try{
+      jobDefID = (String) jobRecord.getValue(idField);
+      String status = (String) jobRecord.getValue("csStatus");
+      int retries = 0;
+      int index = status.indexOf(":");
+      if(index>0){
+        String retriesString = status.substring(index+1);
+        retries = Integer.parseInt(retriesString);
+        ++retries;
+      }
+      // After 3 attempts to upload output files we give up
+      if(retries>2){
+        dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
+            new String [] {"failed: could not upload outputs of job."});
+        }
+      else{
+        dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
+            new String [] {"executed:"+retries});
+      }
+    }
+    catch(Exception e){
+      logFile.addMessage("ERROR: could not tag job as failed; "+jobDefID, e);
+    }
+  }
+
   private boolean checkFreeResources(){
     int runningJobs = -1;
+    int preparingJobs = -1;
     try{
       runningJobs = GridPilot.getClassMgr().getShellMgr(csName).getJobsNumber();
     }
@@ -320,7 +430,15 @@ public class PullJobsDaemon{
       e.printStackTrace();
       return false;
     }
-    return runningJobs>-1 && runningJobs<maxPullRun;
+    try{
+      preparingJobs = runningTransfers.size();
+    }
+    catch(Exception e){
+      logFile.addMessage("Error: Could not get running jobs.", e);
+      e.printStackTrace();
+      return false;
+    }
+    return runningJobs>-1 && preparingJobs>-1 && runningJobs+preparingJobs<maxPullRun;
   }
 
   /**
@@ -352,13 +470,13 @@ public class PullJobsDaemon{
   }
 
   /**
-   * Download all non-local files to session directory, so the
+   * Start downloading all non-local files to session directory, so the
    * job can be run directly by the Fork plugin. Update the
    * inputFiles of the JobInfo correspondingly.
    * @param job description
    * @return updated job description
    */
-  private JobInfo downloadInputs(JobInfo job) throws Exception{
+  private JobInfo startDownloadInputs(JobInfo job) throws Exception{
     
     String transID = dbPluginMgr.getJobDefTransformationID(job.getJobDefId());
     Debug.debug("Getting input files for transformation " + transID, 2);
@@ -373,36 +491,51 @@ public class PullJobsDaemon{
       inputFiles[i+transInputFiles.length] = jobInputFiles[i];
     }
     Vector downloadVector = new Vector();
+    Vector transferVector = new Vector();
     GlobusURL srcUrl = null;
     GlobusURL destUrl = null;
     int lastSlash = -1;
     String fileName = null;
     for(int i=0; i<inputFiles.length; ++i){
       // Get the remote input file URLs.
-      if(!inputFiles[i].matches("^file:/*[^/]+.*") &&
-          inputFiles[i].matches("^[a-z]+:/*[^/]+.*")){
+      if(Util.urlIsRemote(inputFiles[i])){
         try{
           srcUrl = new GlobusURL(inputFiles[i]);
           lastSlash = inputFiles[i].lastIndexOf("/");
           fileName = inputFiles[i].substring(lastSlash + 1);
           destUrl = new GlobusURL((new File(cacheDir, fileName)).getCanonicalPath());
           TransferInfo transfer = new TransferInfo(srcUrl, destUrl);
+          transferVector.add(transfer);
           downloadVector.add(inputFiles[i]);
         }
-        catch(Exception ioe){
-          logFile.addMessage("WARNING: GridPilot could not get input file "+inputFiles[i]+
-              ".", ioe);
-          ioe.printStackTrace();
+        catch(Exception e){
+          logFile.addMessage("ERROR: could not get input file "+inputFiles[i]+
+              ".", e);
+          throw e;
         }
       }
     }
-    String [] downloadFiles = new String[downloadVector.size()];
-    for(int i=0; i<downloadVector.size(); ++i){
-      if(downloadVector.get(i)!=null){
-        downloadFiles[i] = (String) downloadVector.get(i);
+    // Queue the transfers
+    if(transferVector.size()>0){
+      try{
+        GridPilot.getClassMgr().getTransferControl().queue(transferVector);
       }
+      catch(Exception e){
+        logFile.addMessage("ERROR: could not queue input file transfers.", e);
+        throw e;
+      }
+      String [] downloadFiles = new String[downloadVector.size()];
+      for(int i=0; i<downloadVector.size(); ++i){
+        if(downloadVector.get(i)!=null){
+          downloadFiles[i] = (String) downloadVector.get(i);
+        }
+      }
+      // This is to have the CS copy these files over with the shell
+      // and ignore JobDefinition.inputFiles.
+      // TODO: consider having other CSs (LSF) than FORK take heed of this.
+      job.setDownloadFiles(downloadFiles);
     }
-    job.setDownloadFiles(downloadFiles);
+    runningTransfers.put(job, transferVector);
     return job;
   }
   
@@ -411,21 +544,46 @@ public class PullJobsDaemon{
     return false;
   }
   
-  private boolean runJob(DBRecord jobRecord){
-    
-    String jobDefID = (String) jobRecord.getValue(idField);
-    JobInfo job = new JobInfo(
-        jobDefID,
-        dbPluginMgr.getJobDefName(jobDefID),
-        csName,
-        dbPluginMgr.getDBName()
-        );
-
-    
-    
-    
-    // TODO
-    return false;
+  /**
+   * Finds job ready to be run and starts it.
+   * @return true if successful, false otherwise.
+   */
+  private void runJob(){
+    boolean ok = true;
+    JobInfo job = null;
+    Vector toSubmitJobs = null;
+    for(Iterator it=runningTransfers.keySet().iterator(); it.hasNext();){
+      toSubmitJobs = new Vector();
+      job = (JobInfo) it.next();
+      Vector transfers = (Vector) runningTransfers.get(job);
+      ok = true;
+      for(Iterator itt=transfers.iterator(); itt.hasNext();){
+        TransferInfo transfer = (TransferInfo) itt.next();
+        if(TransferControl.isRunning(transfer)){
+          ok = false;
+          break;
+        }
+      }
+      if(ok){
+        try{
+          toSubmitJobs.add(dbPluginMgr.getJobDefinition((String) job.getValue(idField)));
+          GridPilot.getClassMgr().getSubmissionControl().submitJobDefinitions(toSubmitJobs,
+              csName, dbPluginMgr);
+          dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
+              new String [] {"submitted"});
+          break;
+        }
+        catch(Exception e){
+          logFile.addMessage("ERROR: failed starting job "+job, e);
+          // Running the job failed, flag it as failed - i.e. don't try to run it again.
+          dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
+              new String [] {"failed: "+"failed starting job. "+e.getMessage()});
+        }
+      }
+    }
+    if(ok && job!=null){
+      runningTransfers.remove(job);
+    }
   }
 
   /**
@@ -433,34 +591,48 @@ public class PullJobsDaemon{
    * @return true if successful, false otherwise.
    */
   private boolean finishJob(){
-    // TODO
+    
+    DBRecord [] doneJobs = findDoneJobs();
+    for(int i=0; i<doneJobs.length; ++i){
+      try{
+        if(finishJob(doneJobs[i])){
+          return true;
+        }
+      }
+      catch(Exception e){
+        logFile.addMessage("ERROR: could not finish job "+doneJobs[i], e);
+        e.printStackTrace();
+      }
+    }
     return false;
   }
   
   /**
-   * Uploads output files and set the job status as 'executed'.
+   * Uploads output files and set the job status as 'executed' or 'failed'.
    * @param jobRecord record
    * @return true if successful, false otherwise.
    */
   private boolean finishJob(DBRecord jobRecord){
+    String jobDefID = null;
     try{
       if(!uploadOutputs(jobRecord)){
-        return false;
+        throw new Exception();
       }
     }
     catch(Exception e){
       logFile.addMessage("ERROR: could not upload outputs of job "+jobRecord , e);
+      failUploadJob(jobRecord);
       return false;
     }
     try{
-      String jobDefID = (String) jobRecord.getValue(idField);
-      if(dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
+      jobDefID = (String) jobRecord.getValue(idField);
+      if(!dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
           new String [] {"executed"})){
-        return false;
+        throw new Exception();
       }
     }
     catch(Exception e){
-      logFile.addMessage("ERROR: could not upload outputs of job "+jobRecord , e);
+      logFile.addMessage("ERROR: could not update status of job "+jobRecord , e);
       return false;
     }
     return true;
@@ -470,12 +642,36 @@ public class PullJobsDaemon{
     Debug.debug("Starting job pulling", 2);
     timerPull.start();
     timerFinish.start();
+    timerRun.start();
   }
 
   public void stopPulling(){
     Debug.debug("Stopping job pulling", 2);
     timerPull.stop();
     timerFinish.stop();
+    timerRun.stop();
+  }
+  
+  public void exit(){
+    try{
+      // Cancel all transfers
+      TransferControl.cancel(new Vector(runningTransfers.values()));
+      if(CLEANUP_CACHE_ON_EXIT){
+        // Delete everything in the cache directory
+        String [] files = LocalStaticShellMgr.listFiles(cacheDir);
+        for(int i=0; i<files.length; ++i){
+          if(LocalStaticShellMgr.isDirectory(files[i])){
+            LocalStaticShellMgr.deleteDir(new File(files[i]));
+          }
+          else{
+            LocalStaticShellMgr.deleteFile(files[i]);
+          }
+        }
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }      
   }
 
 }

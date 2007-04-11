@@ -476,7 +476,7 @@ public class SubmissionControl{
 
   /**
    * Submits the specified job. <p>
-   * Creates these job outputs, and calls the plugin submission method (via PluginMgr). <br>
+   * Calls the plugin submission method (via PluginMgr). <br>
    * This method is started in a thread. <p>
    */
   private void submit(final JobInfo job){

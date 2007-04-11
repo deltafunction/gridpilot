@@ -227,9 +227,11 @@ public class LocalStaticShellMgr{
   }
 
   
-  // Deletes all files and subdirectories under dir.
-  // Returns true if all deletions were successful.
-  // If a deletion fails, the method stops attempting to delete and returns false.
+  /** 
+   * Deletes all files and subdirectories under dir.
+   * Returns true if all deletions were successful.
+   * If a deletion fails, the method stops attempting to delete and returns false.
+   */
   public static boolean deleteDir(File dir){
     //dir = new File(Util.clearTildeLocally(dir.getAbsolutePath()));
     if(dir.isDirectory()){

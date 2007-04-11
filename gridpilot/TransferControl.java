@@ -715,12 +715,16 @@ public class TransferControl{
   }
 
   /**
-   * Just cancels the job with the corresponding plugin
+   * Just cancels the transfer with the corresponding plugin
    */
   public static void cancel(final String fileTransferID) throws Exception{
     findFTPlugin(fileTransferID).cancel(fileTransferID);
   }
   
+  /**
+   * Cancels a Vector of transfers.
+   * @param transfers Vector of TransferInfo's
+   */
   public static void cancel(final Vector transfers){
     MyThread t = new MyThread(){
       TransferInfo transfer = null;
