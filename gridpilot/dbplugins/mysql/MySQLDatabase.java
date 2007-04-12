@@ -26,6 +26,7 @@ import org.safehaus.uuid.UUIDGenerator;
 
 import gridpilot.ConfigFile;
 import gridpilot.DBCache;
+import gridpilot.DBPluginMgr;
 import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
@@ -640,7 +641,7 @@ public class MySQLDatabase extends DBCache implements Database {
     boolean ret = updateJobDefinition(
         jobDefID,
         new String [] {"status", "userInfo", "computingSystem"},
-        new String [] {"Submitted", userInfo, cs}
+        new String [] {DBPluginMgr.getStatusName(DBPluginMgr.SUBMITTED), userInfo, cs}
         );
     return ret;
   }
@@ -1950,7 +1951,7 @@ public class MySQLDatabase extends DBCache implements Database {
     if(cleanup){
       DBRecord jobDef = getJobDefinition(jobDefId);
       String [] toDeletefiles = null;
-      if(!((String) jobDef.getValue("status")).equalsIgnoreCase("Defined")){
+      if(!((String) jobDef.getValue("status")).equalsIgnoreCase(DBPluginMgr.getStatusName(DBPluginMgr.DEFINED))){
         try{
           if(isFileCatalog()){
             // In this case: don't delete the first of the output files, since

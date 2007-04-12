@@ -972,7 +972,7 @@ public class ForkComputingSystem implements ComputingSystem{
     String [] jobInputFiles = dbPluginMgr.getJobDefInputFiles(job.getJobDefId());
 
     // CONVENTION: if job has already had remote input files downloaded (by PullJobsDaemon),
-    // job.getDownloadFiles() will be set. These files should then be copied to the
+    // job.getDownloadFiles() will be set (to local files). These files should then be copied to the
     // run directory along with any local input files.
     // Moreover, the remote files from jobInputFiles should be ignored.
     String [] pullInputFiles = new String [] {};
@@ -1131,7 +1131,7 @@ public class ForkComputingSystem implements ComputingSystem{
             outputNames[i]);
         localName = Util.clearFile(localName);
         remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputNames[i]);
-        ok = ok && copyOutputFile(localName, remoteName);
+        ok = ok && Util.copyOutputFile(localName, remoteName, shellMgr, error, logFile);
       }
       catch(Exception e){
         job.setJobStatus("Error");
@@ -1156,7 +1156,7 @@ public class ForkComputingSystem implements ComputingSystem{
      */
     ok = false;   
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
-      if(copyOutputFile(job.getStdOut(), finalStdOut)){
+      if(Util.copyOutputFile(job.getStdOut(), finalStdOut, shellMgr, error, logFile)){
         job.setStdOut(finalStdOut);
         ok = true;
       }
@@ -1167,7 +1167,7 @@ public class ForkComputingSystem implements ComputingSystem{
      */
     ok = false;   
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
-      if(copyOutputFile(job.getStdErr(), finalStdErr)){
+      if(Util.copyOutputFile(job.getStdErr(), finalStdErr, shellMgr, error, logFile)){
         job.setStdErr(finalStdErr);
         ok = true;
       }
@@ -1175,85 +1175,6 @@ public class ForkComputingSystem implements ComputingSystem{
 
     return ok;
     
-  }
-  
-  private boolean copyOutputFile(String src, String dest){
-    if(dest.startsWith("file:") || dest.startsWith("/") ||
-        dest.matches("\\w:.*") && shellMgr.isLocal()){
-      try{
-        if(!shellMgr.existsFile(src)){
-          error = "Post processing : File " + src + " doesn't exist";
-          logFile.addMessage(error);
-          return false;
-        }
-      }
-      catch(Throwable e){
-        error = "ERROR checking for "+src+": "+e.getMessage();
-        Debug.debug(error, 2);
-        logFile.addMessage(error);
-        return false;
-      }
-      // by convention, if the destination starts with file:, we get the file to the local disk
-      if(dest.startsWith("file:") && !shellMgr.isLocal()){
-        Debug.debug("Post processing : getting " + src + " -> " + dest, 2);
-        try{
-          String realDest = Util.clearTildeLocally(Util.clearFile(dest));
-          File realParentDir = (new File(realDest)).getParentFile();
-          Debug.debug("Post processing : real locations: " + src + " -> " + realDest, 2);
-          // Check if parent dir exists, create if not
-          if(!realParentDir.exists()){
-            try{
-              if(!realParentDir.mkdir()){
-                throw new Exception("Error creating directory "+realParentDir.getAbsolutePath());
-              }
-            }
-            catch(Exception e){
-              error = "ERROR: could not create directory for job outputs.";
-              logFile.addMessage(error, e);
-              return false;
-            }
-          }
-          if(!shellMgr.download(src, realDest)){
-            error = "Post processing : Cannot get \n\t" +
-            src + "\n to \n\t" + dest;
-            logFile.addMessage(error);
-            return false;
-          }
-        }
-        catch(Throwable e){
-          error = "ERROR getting "+src+": "+e.getMessage();
-          Debug.debug(error, 2);
-          logFile.addMessage(error);
-          return false;
-        }
-      }
-      // if we have a fully qualified name (and for Windows a local shell), we just copy it with the shellMgr
-      else{
-        Debug.debug("Post processing : renaming " + src + " in " + dest, 2);
-        try{
-          if(!shellMgr.copyFile(src, dest)){
-            error = "Post processing : Cannot move \n\t" + src +
-            "\n into \n\t" + dest;
-            logFile.addMessage(error);
-            return false;
-          }
-        }
-        catch(Throwable e){
-          error = "ERROR copying "+src+": "+e.getMessage();
-          Debug.debug(error, 2);
-          logFile.addMessage(error);
-          return false;
-        }
-      }
-    }
-    // relative paths or getting files from a Windows server is not supported
-    else{
-      error = "ERROR copying : unqualified paths or getting files from a " +
-          "Windows server is not supported.";
-      logFile.addMessage(error);
-      return false;
-    }
-    return true;
   }
   
   public String getError(String csName){

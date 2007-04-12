@@ -304,7 +304,7 @@ public class NGComputingSystem implements ComputingSystem{
     }
   }
 
-  private int updateStatus(JobInfo job){
+  private void updateStatus(JobInfo job){
     
     boolean doUpdate = false;
     String jobId = job.getJobId();
@@ -374,7 +374,6 @@ public class NGComputingSystem implements ComputingSystem{
         job.setInternalStatus(ComputingSystem.STATUS_WAIT);
       }
     }
-    return job.getInternalStatus();
   }
   
   private ARCGridFTPJob getGridJob(JobInfo job) throws ARCGridFTPJobException{
@@ -1230,7 +1229,7 @@ public class NGComputingSystem implements ComputingSystem{
         if(remoteName.startsWith("file:")){
           TransferControl.upload(
               new File(runDir(job)+File.separator+jobID+File.separator+localName),
-              Util.clearTildeLocally(remoteName),
+              remoteName,
               GridPilot.getClassMgr().getGlobalFrame().getContentPane());
         }
       }

@@ -422,10 +422,10 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
 
-    JMenuItem miDBUnexpected = new JMenuItem("Unexpected");
-    JMenuItem miDBFailed = new JMenuItem("Failed");
-    JMenuItem miDBAborted = new JMenuItem("Aborted");
-    JMenuItem miDBDefined = new JMenuItem("Defined");
+    JMenuItem miDBUnexpected = new JMenuItem(DBPluginMgr.getStatusName(DBPluginMgr.UNEXPECTED));
+    JMenuItem miDBFailed = new JMenuItem(DBPluginMgr.getStatusName(DBPluginMgr.FAILED));
+    JMenuItem miDBAborted = new JMenuItem(DBPluginMgr.getStatusName(DBPluginMgr.ABORTED));
+    JMenuItem miDBDefined = new JMenuItem(DBPluginMgr.getStatusName(DBPluginMgr.DEFINED));
 
     miDBAborted.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -728,7 +728,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    * Shows information about the job at the selected row. <p>
    */
   private void showInfo(){
-    String info = JobMgr.getJobInfo(statusTable.getSelectedRow());
+    String info = JobMgr.getJobInformation(statusTable.getSelectedRow());
     MessagePane.showMessage(info, "Job Infos");
   }
 

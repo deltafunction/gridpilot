@@ -1324,7 +1324,7 @@ public class TransferControl{
       Debug.debug("Uploading file "+file+" to directory "+uploadUrlDir, 3);
       // local directory
       if(uploadUrlDir.startsWith("file:")){
-        String fsPath = Util.clearFile(uploadUrl);
+        String fsPath = Util.clearTildeLocally(Util.clearFile(uploadUrl));
         Debug.debug("Local directory path: "+fsPath, 3);        
         if(fsPath==null || uploadFileName==null || file==null){
           throw(new IOException("ERROR: fsPath==null || uploadFileName==null || file==null"));

@@ -477,15 +477,15 @@ public class JobMgr{
    * Returns a String which contains some information about the job at the specified row. <p>
    * (from AtCom1)
    */
-  public static String getJobInfo(int row){
+  public static String getJobInformation(int row){
     JobInfo job = getJobAtRow(row);
     int st = job.getInternalStatus();
-    String statusGridPilot =  st==ComputingSystem.STATUS_WAIT ? "WAIT" :
-                          st==ComputingSystem.STATUS_RUNNING ? "RUNNING" :
-                          st==ComputingSystem.STATUS_DONE ? "DONE" :
-                          st==ComputingSystem.STATUS_ERROR ? "ERROR" :
-                          st==ComputingSystem.STATUS_FAILED ? "FAILED" :
-                          "!!! UNKNOWN STATUS";
+    String statusGridPilot = st==ComputingSystem.STATUS_WAIT ? "WAIT" :
+                             st==ComputingSystem.STATUS_RUNNING ? "RUNNING" :
+                             st==ComputingSystem.STATUS_DONE ? "DONE" :
+                             st==ComputingSystem.STATUS_ERROR ? "ERROR" :
+                             st==ComputingSystem.STATUS_FAILED ? "FAILED" :
+                             "UNKNOWN STATUS";
 
     return "  Name \t: " + job.getName() + "\n" +
         "  Job definition ID \t: " + job.getJobDefId() + "\n" +
@@ -562,6 +562,23 @@ public class JobMgr{
   /********************************************************
    * Requests about jobs
    ********************************************************/
+
+  /**
+   * Returns the submitted job with the specified jobDefinition.identifier.
+   */
+  public static JobInfo getJob(String jobDefID){
+    Vector submJobs = GridPilot.getClassMgr().getSubmittedJobs();
+    Enumeration e = submJobs.elements();
+    JobInfo job = null;
+    while(e.hasMoreElements()){
+      job = (JobInfo) e.nextElement();
+      if(job.getJobDefId().equalsIgnoreCase(jobDefID)){
+        return job;
+      }
+    }
+    Debug.debug("No submitted job found with ID "+jobDefID, 2);
+    return null;
+  }
 
   /**
    * Returns the job at the specified row in the statusTable

@@ -4,6 +4,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
@@ -31,6 +32,15 @@ public class PullJobsDaemon{
   private static int WAIT_TRIES = 20;
   private static int WAIT_SLEEP = 10000;
   private static boolean CLEANUP_CACHE_ON_EXIT = true;
+  
+  private static String STATUS_READY = "ready";
+  private static String STATUS_REQUESTED = "requested";
+  private static String STATUS_DOWNLOADING = "downloading";
+  private static String STATUS_SUBMITTED = "submitted";
+  private static String STATUS_REQUESTED_KILLED = "requestKill";
+  private static String STATUS_REQUESTED_STDOUT = "requestStdout";
+  private static String STATUS_FAILED = "failed";
+  private static String STATUS_EXECUTED = "executed";
   
   private Timer timerPull = new Timer(0, new ActionListener(){
     public void actionPerformed(ActionEvent e){
@@ -167,6 +177,7 @@ public class PullJobsDaemon{
           Util.getNameField(dbPluginMgr.getDBName(), "jobDefinition")), 2);
       try{
         // Request the job
+        statusBar.setLabel("Requesting job");
         if(requestJob(okCandidates[i])){
           // Wait for it to be ready on the server
           if(waitForJob(okCandidates[i])){
@@ -186,7 +197,7 @@ public class PullJobsDaemon{
             }
             try{
               dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
-                  new String [] {"downloading"});
+                  new String [] {STATUS_DOWNLOADING});
              }
             catch(Exception e){
               logFile.addMessage("WARNING: could not set csStatus to downloading for job "+jobDefID, e);
@@ -234,7 +245,7 @@ public class PullJobsDaemon{
       return null;
     }
     // Well, we only reqest jobs that are "Defined"
-    String [] statusList = new String [] {"Defined"};
+    String [] statusList = new String [] {DBPluginMgr.getStatusName(DBPluginMgr.DEFINED)};
     DBResult allJobDefinitions = dbPluginMgr.getJobDefinitions("-1", allFields, statusList);
     Vector eligibleJobs = new Vector(); //DBRecords
     for(int i=0; i<allJobDefinitions.values.length; ++i){
@@ -246,50 +257,6 @@ public class PullJobsDaemon{
     DBRecord [] ret = new DBRecord[eligibleJobs.size()];
     for(int i=0; i<ret.length; ++i){
       ret[i] = (DBRecord) eligibleJobs.get(i);
-    }
-    return ret;
-  }
-  
-  /**
-   * Scans the job database for jobs controlled by this certificate
-   * and updates their csStatus according to the CS status.
-   */
-  private void updateDBCSStatus(){
-  }
-  
-  /**
-   * Scans the job database for finished jobs controlled by this certificate.
-   * @return array of job records
-   */
-  private DBRecord [] findDoneJobs(){
-    String [] allFields = null;
-    try{
-      allFields = dbPluginMgr.getFieldnames("jobDefinition");
-    }
-    catch(Exception e){
-      Debug.debug("Skipping DB "+dbPluginMgr.getDBName(), 1);
-      e.printStackTrace();
-      return null;
-    }
-    // We only reqest jobs that are "Running"
-    String [] statusList = new String [] {"Running"};
-    DBResult allJobDefinitions = dbPluginMgr.getJobDefinitions("-1", allFields, statusList);
-    Vector doneJobs = new Vector(); //DBRecords
-    for(int i=0; i<allJobDefinitions.values.length; ++i){
-      DBRecord jobRecord = allJobDefinitions.getRow(i);
-      // Take only my jobs
-      String providerInfo = (String) jobRecord.getValue("providerInfo");
-      if(providerInfo.equals(userInfo)){
-        // Take only jobs that have been set as executed
-        String status = (String) jobRecord.getValue("csStatus");
-        if(status.startsWith("executed")){
-          doneJobs.add(jobRecord);
-        }
-      }
-    }
-    DBRecord [] ret = new DBRecord[doneJobs.size()];
-    for(int i=0; i<ret.length; ++i){
-      ret[i] = (DBRecord) doneJobs.get(i);
     }
     return ret;
   }
@@ -308,9 +275,9 @@ public class PullJobsDaemon{
       //user = GridPilot.getClassMgr().getCSPluginMgr().getUserInfo(csName);
       return false;
     }
-    // We only consider jobs that have csStatus unset or Ready:n, n<maxRetries
+    // We only consider jobs that have csStatus unset or ready:n, n<maxRetries
     String status = (String) jobRecord.getValue("csStatus");
-    if(status!=null && !status.equals("") && !status.startsWith("ready")){
+    if(status!=null && !status.equals("") && !status.startsWith(STATUS_READY)){
       return false;
     }
     if(jobRecord!=null){
@@ -346,7 +313,7 @@ public class PullJobsDaemon{
     boolean ok = false;
     try{
       ok = dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus", "providerInfo"},
-          new String [] {"requested", userInfo});
+          new String [] {STATUS_REQUESTED, userInfo});
      }
     catch(Exception e){
       logFile.addMessage("ERROR: could not request job "+jobDefID, e);
@@ -376,7 +343,7 @@ public class PullJobsDaemon{
         ++retries;
       }
       ok = dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus", "providerInfo"},
-          new String [] {"ready:"+retries, ""});
+          new String [] {STATUS_READY+":"+retries, ""});
     }
     catch(Exception e){
       logFile.addMessage("ERROR: could not unrequest job "+jobDefID, e);
@@ -391,32 +358,34 @@ public class PullJobsDaemon{
    * @param jobRecord
    * @return true if successful, false otherwise.
    */
-  private void failUploadJob(DBRecord jobRecord){
-    String jobDefID = "-1";
+  /*private void failUploadJob(JobInfo job){
+    String jobDefID = job.getJobDefId();
     try{
-      jobDefID = (String) jobRecord.getValue(idField);
-      String status = (String) jobRecord.getValue("csStatus");
+      String csStatus = (String) dbPluginMgr.getJobDefinition(jobDefID).getValue("csStatus");
       int retries = 0;
-      int index = status.indexOf(":");
+      int index = csStatus.indexOf(":");
       if(index>0){
-        String retriesString = status.substring(index+1);
+        String retriesString = csStatus.substring(index+1);
         retries = Integer.parseInt(retriesString);
         ++retries;
       }
       // After 3 attempts to upload output files we give up
       if(retries>2){
         dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
-            new String [] {"failed: could not upload outputs of job."});
-        }
+            new String [] {STATUS_FAILED+": could not upload outputs of job."});
+        // Now tag the job as failed internally and
+        // have JobStatusUpdateControl set the DB status
+        job.setInternalStatus(ComputingSystem.STATUS_FAILED);
+      }
       else{
         dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
-            new String [] {"executed:"+retries});
+            new String [] {STATUS_EXECUTED+":"+retries});
       }
     }
     catch(Exception e){
-      logFile.addMessage("ERROR: could not tag job as failed; "+jobDefID, e);
+      logFile.addMessage("ERROR: could not tag job as failed; "+job, e);
     }
-  }
+  }*/
 
   private boolean checkFreeResources(){
     int runningJobs = -1;
@@ -458,6 +427,7 @@ public class PullJobsDaemon{
           return true;
         }
         Debug.debug("Waiting for job to be prepared...",  2);
+        statusBar.setLabel("Waiting for requested job...");
         Thread.sleep(WAIT_SLEEP);
       }
       catch(Exception e){
@@ -471,11 +441,12 @@ public class PullJobsDaemon{
   /**
    * Start downloading all non-local files to session directory, so the
    * job can be run directly by the Fork plugin. Update the
-   * inputFiles of the JobInfo correspondingly.
+   * downloadFiles of the JobInfo correspondingly.
    * @param job description
-   * @return updated job description
    */
-  private JobInfo startDownloadInputs(JobInfo job) throws Exception{
+  private void startDownloadInputs(JobInfo job) throws Exception{
+    
+    statusBar.setLabel("Downloading input files for pulled job...");
     
     String transID = dbPluginMgr.getJobDefTransformationID(job.getJobDefId());
     Debug.debug("Getting input files for transformation " + transID, 2);
@@ -492,6 +463,8 @@ public class PullJobsDaemon{
     Vector downloadVector = new Vector();
     Vector transferVector = new Vector();
     GlobusURL srcUrl = null;
+    File destFile = null;
+    String destFileName = null;
     GlobusURL destUrl = null;
     int lastSlash = -1;
     String fileName = null;
@@ -502,10 +475,16 @@ public class PullJobsDaemon{
           srcUrl = new GlobusURL(inputFiles[i]);
           lastSlash = inputFiles[i].lastIndexOf("/");
           fileName = inputFiles[i].substring(lastSlash + 1);
-          destUrl = new GlobusURL((new File(cacheDir, fileName)).getCanonicalPath());
+          destFile = File.createTempFile(
+              (new File(cacheDir, fileName)).getCanonicalPath(), "");
+          destFileName = destFile.getCanonicalPath();
+          downloadVector.add(destFileName/*inputFiles[i]*/);
+          destFileName = destFileName.replaceFirst("^/", "");
+          destFileName = "file:////"+destFileName;
+          destUrl = new GlobusURL(destFileName);
+          destFile.delete();
           TransferInfo transfer = new TransferInfo(srcUrl, destUrl);
           transferVector.add(transfer);
-          downloadVector.add(inputFiles[i]);
         }
         catch(Exception e){
           logFile.addMessage("ERROR: could not get input file "+inputFiles[i]+
@@ -535,12 +514,6 @@ public class PullJobsDaemon{
       job.setDownloadFiles(downloadFiles);
     }
     runningTransfers.put(job, transferVector);
-    return job;
-  }
-  
-  private boolean uploadOutputs(DBRecord jobRecord){
-    // TODO
-    return false;
   }
   
   /**
@@ -551,6 +524,7 @@ public class PullJobsDaemon{
     boolean ok = true;
     JobInfo job = null;
     Vector toSubmitJobs = null;
+    String jobDefID = null;
     for(Iterator it=runningTransfers.keySet().iterator(); it.hasNext();){
       toSubmitJobs = new Vector();
       job = (JobInfo) it.next();
@@ -564,23 +538,30 @@ public class PullJobsDaemon{
         }
       }
       if(ok){
+        statusBar.setLabel("Submitting pulled job");
         try{
-          toSubmitJobs.add(dbPluginMgr.getJobDefinition((String) job.getValue(idField)));
+          // Submitting implies the creation of a new JobInfo object, now representing
+          // a running job and a record on the job monitor. This can be accessed with
+          // JobMgr.getJob().
+          jobDefID = (String) job.getValue(idField);
+          toSubmitJobs.add(dbPluginMgr.getJobDefinition(jobDefID));
           GridPilot.getClassMgr().getSubmissionControl().submitJobDefinitions(toSubmitJobs,
               csName, dbPluginMgr);
           dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
-              new String [] {"submitted"});
+              new String [] {STATUS_SUBMITTED});
           break;
         }
         catch(Exception e){
           logFile.addMessage("ERROR: failed starting job "+job, e);
           // Running the job failed, flag it as failed - i.e. don't try to run it again.
           dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
-              new String [] {"failed: "+"failed starting job. "+e.getMessage()});
+              new String [] {STATUS_FAILED+": "+"failed starting job. "+e.getMessage()});
         }
       }
     }
-    if(ok && job!=null){
+    if(ok && job!=null && jobDefID!=null){
+      // Carry over the setDownloadFiles.
+      JobMgr.getJob(jobDefID).setDownloadFiles(job.getDownloadFiles());
       runningTransfers.remove(job);
     }
   }
@@ -591,7 +572,7 @@ public class PullJobsDaemon{
    */
   private boolean finishJob(){
     
-    DBRecord [] doneJobs = findDoneJobs();
+    JobInfo [] doneJobs = findDoneJobs();
     for(int i=0; i<doneJobs.length; ++i){
       try{
         if(finishJob(doneJobs[i])){
@@ -607,31 +588,105 @@ public class PullJobsDaemon{
   }
   
   /**
+   * Checks the status of jobs as set by the CS plugin.
+   * Checks the csStatus field of the jobDefinition DB record:
+   * if it is 'requestKill' the job is killed and set to failed,
+   * if it is 'requestStdout' the stdout/stderris is written in the run directory.
+   * @return array of finished jobs
+   */
+  private JobInfo [] findDoneJobs(){
+    Vector allRunningJobs = GridPilot.getClassMgr().getSubmittedJobs();
+    Vector doneJobs = new Vector(); //DBRecords
+    Enumeration en = allRunningJobs.elements();
+    JobInfo job = null;
+    DBRecord jobRecord = null;
+    while(en.hasMoreElements()){
+      job = (JobInfo) en.nextElement();
+      String jobDefID = job.getJobDefId();
+      jobRecord = dbPluginMgr.getJobDefinition(jobDefID);
+      if(!job.getCSName().equalsIgnoreCase("gpss") ||
+          !jobRecord.getValue("providerInfo").equals(userInfo)){
+        continue;
+      }
+      // Add jobs that have been set as done by JobStatusUpdateControl,
+      // i.e. normal GridPilot running.
+      if(job.getInternalStatus()==ComputingSystem.STATUS_DONE ||
+         job.getInternalStatus()==ComputingSystem.STATUS_FAILED /*||
+         job.getInternalStatus()==ComputingSystem.STATUS_ERROR*/){
+        doneJobs.add(job);
+      }
+      if(jobRecord.getValue("csStatus").equals(STATUS_REQUESTED_KILLED)){
+        Vector killJobs = new Vector();
+        // Temporarily change the CS name from GPSS to the local one,
+        // so the killing is actually done.
+        job.setCSName(csName);
+        killJobs.add(job);
+        try{
+          GridPilot.getClassMgr().getCSPluginMgr().killJobs(killJobs);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        job.setCSName("GPSS");
+      }
+      else if(jobRecord.getValue("csStatus").equals(STATUS_REQUESTED_STDOUT)){
+        // Simply copy stdout/stderr to their final destinations.
+        // These will be on a gridftp server (if they were not originally, GPSS
+        // will have modified them temporarily to be).
+        uploadStdoutErr(job);
+      }
+    }
+    JobInfo [] ret = new JobInfo[doneJobs.size()];
+    for(int i=0; i<ret.length; ++i){
+      ret[i] = (JobInfo) doneJobs.get(i);
+    }
+    return ret;
+  }
+  
+
+  /**
+   * copy temp stdout -> finalStdout, temp stderr -> finalStdErr
+   */
+  private boolean uploadStdoutErr(JobInfo job){
+    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+    boolean ok = false;
+    ShellMgr shellMgr = null;
+    try {
+      shellMgr = GridPilot.getClassMgr().getShellMgr(csName);
+    }
+    catch (Exception e) {
+      e.printStackTrace();
+    }
+    if(finalStdOut!=null && finalStdOut.trim().length()>0){
+      if(Util.copyOutputFile(job.getStdOut(), finalStdOut, shellMgr, "", logFile)){
+        ok = true;
+      }
+    }
+    ok = false;   
+    if(finalStdErr!=null && finalStdErr.trim().length()>0){
+      if(Util.copyOutputFile(job.getStdErr(), finalStdErr, shellMgr, "", logFile)){
+        ok = true;
+      }
+    }
+    return ok;
+  }
+  
+  /**
    * Uploads output files and set the job status as 'executed' or 'failed'.
    * @param jobRecord record
    * @return true if successful, false otherwise.
    */
-  private boolean finishJob(DBRecord jobRecord){
-    String jobDefID = null;
+  private boolean finishJob(JobInfo job){
+    statusBar.setLabel("Pulled job done");
     try{
-      if(!uploadOutputs(jobRecord)){
+      if(!dbPluginMgr.updateJobDefinition(job.getJobDefId(), new String [] {"csStatus"},
+          new String [] {STATUS_EXECUTED})){
         throw new Exception();
       }
     }
     catch(Exception e){
-      logFile.addMessage("ERROR: could not upload outputs of job "+jobRecord , e);
-      failUploadJob(jobRecord);
-      return false;
-    }
-    try{
-      jobDefID = (String) jobRecord.getValue(idField);
-      if(!dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
-          new String [] {"executed"})){
-        throw new Exception();
-      }
-    }
-    catch(Exception e){
-      logFile.addMessage("ERROR: could not update status of job "+jobRecord , e);
+      logFile.addMessage("ERROR: could not update status of job "+job , e);
       return false;
     }
     return true;

@@ -22,6 +22,7 @@ import org.logicalcobwebs.proxool.ProxoolFacade;
 import org.safehaus.uuid.UUIDGenerator;
 
 import gridpilot.ConfigFile;
+import gridpilot.DBPluginMgr;
 import gridpilot.Database;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
@@ -717,7 +718,7 @@ public class HSQLDBDatabase implements Database{
     boolean ret = updateJobDefinition(
         jobDefID,
         new String [] {"status", "userInfo", "computingSystem"},
-        new String [] {"Submitted", userInfo, cs}
+        new String [] {DBPluginMgr.getStatusName(DBPluginMgr.SUBMITTED), userInfo, cs}
         );
     return ret;
   }
@@ -2133,7 +2134,7 @@ public class HSQLDBDatabase implements Database{
     if(cleanup){
       DBRecord jobDef = getJobDefinition(jobDefId);
       String [] toDeleteFiles = null;
-      if(!((String) jobDef.getValue("status")).equalsIgnoreCase("Defined")){
+      if(!((String) jobDef.getValue("status")).equalsIgnoreCase(DBPluginMgr.getStatusName(DBPluginMgr.DEFINED))){
         try{
           if(isFileCatalog()){
             // In this case: don't delete the first of the output files, since
