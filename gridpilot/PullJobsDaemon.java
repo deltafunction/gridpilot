@@ -244,7 +244,7 @@ public class PullJobsDaemon{
       e.printStackTrace();
       return null;
     }
-    // Well, we only reqest jobs that are "Defined"
+    // We only reqest jobs that are "Defined"
     String [] statusList = new String [] {DBPluginMgr.getStatusName(DBPluginMgr.DEFINED)};
     DBResult allJobDefinitions = dbPluginMgr.getJobDefinitions("-1", allFields, statusList);
     Vector eligibleJobs = new Vector(); //DBRecords
@@ -275,9 +275,9 @@ public class PullJobsDaemon{
       //user = GridPilot.getClassMgr().getCSPluginMgr().getUserInfo(csName);
       return false;
     }
-    // We only consider jobs that have csStatus unset or ready:n, n<maxRetries
+    // We only consider jobs that have csStatus ready or ready:n, n<maxRetries
     String status = (String) jobRecord.getValue("csStatus");
-    if(status!=null && !status.equals("") && !status.startsWith(STATUS_READY)){
+    if(status==null || !status.startsWith(STATUS_READY)){
       return false;
     }
     if(jobRecord!=null){
@@ -628,6 +628,9 @@ public class PullJobsDaemon{
           e.printStackTrace();
         }
         job.setCSName("GPSS");
+        // Don't wait for any confirmation, just assume the job has been killed
+        dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
+            new String [] {STATUS_FAILED+": "+"job killed. "});
       }
       else if(jobRecord.getValue("csStatus").equals(STATUS_REQUESTED_STDOUT)){
         // Simply copy stdout/stderr to their final destinations.
