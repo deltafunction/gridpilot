@@ -529,12 +529,6 @@ public class ForkComputingSystem implements ComputingSystem{
     }
   }
   
-  /**
-   * Script :
-   *  params : partId stdOut stdErr
-   *  return : 0 -> OK, job submitted, other values : job not submitted
-   *  stdOut : jobId
-   */
   public boolean submit(final JobInfo job){
     final String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
     final String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";
@@ -561,14 +555,6 @@ public class ForkComputingSystem implements ComputingSystem{
     return true;
   }
 
-  /**
-   * Script :
-   *  param : jobId
-   *  stdOut : status \n[host]
-   *  return : ComputingSystem.STATUS_WAIT, STATUS_RUNNING, STATUS_DONE, STATUS_ERROR or STATUS_FAILED
-   * (cf ComputingSystem.java)
-   *
-   */
   public void updateStatus(Vector jobs){
     for(int i=0; i<jobs.size(); ++i)
       updateStatus((JobInfo) jobs.get(i));
@@ -729,7 +715,8 @@ public class ForkComputingSystem implements ComputingSystem{
     String id = "-1";
     boolean ok = true;
     DBPluginMgr localDBMgr = null;
-    for(int i=0; i<localRuntimeDBs.length; ++i){  
+    for(int i=0; i<localRuntimeDBs.length; ++i){
+      localDBMgr = null;
       try{
         localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
             localRuntimeDBs[i]);
@@ -774,7 +761,7 @@ public class ForkComputingSystem implements ComputingSystem{
       if(remoteDBMgr!=null){
         for(Iterator it=finalRuntimesRemote.iterator(); it.hasNext();){
           ok = true;
-          runtimeName = (String )it.next();
+          runtimeName = (String) it.next();
           // Don't delete records with a non-empty initText.
           // These can only have been created by hand.
           initText = remoteDBMgr.getRuntimeInitText(runtimeName, csName);
@@ -790,9 +777,7 @@ public class ForkComputingSystem implements ComputingSystem{
           }
           if(!ok){
             Debug.debug("WARNING: could not delete runtime environment " +
-                runtimeName+
-                " from database "+
-                remoteDBMgr.getDBName(), 1);
+                runtimeName+" from database "+remoteDBMgr.getDBName(), 1);
           }
         }
       }
