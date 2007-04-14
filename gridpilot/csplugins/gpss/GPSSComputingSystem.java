@@ -150,6 +150,10 @@ public class GPSSComputingSystem implements ComputingSystem{
     return false;
   }
 
+  /**
+   * Checks for requested jobs and sets permissions if some
+   * are detected.
+   */
   public void updateStatus(Vector jobs){
     // TODO
   }
