@@ -33,14 +33,14 @@ public class PullJobsDaemon{
   private static int WAIT_SLEEP = 10000;
   private static boolean CLEANUP_CACHE_ON_EXIT = true;
   
-  private static String STATUS_READY = "ready";
-  private static String STATUS_REQUESTED = "requested";
-  private static String STATUS_DOWNLOADING = "downloading";
-  private static String STATUS_SUBMITTED = "submitted";
-  private static String STATUS_REQUESTED_KILLED = "requestKill";
-  private static String STATUS_REQUESTED_STDOUT = "requestStdout";
-  private static String STATUS_FAILED = "failed";
-  private static String STATUS_EXECUTED = "executed";
+  public static String STATUS_READY = "ready";
+  public static String STATUS_REQUESTED = "requested";
+  public static String STATUS_DOWNLOADING = "downloading";
+  public static String STATUS_SUBMITTED = "submitted";
+  public static String STATUS_REQUESTED_KILLED = "requestKill";
+  public static String STATUS_REQUESTED_STDOUT = "requestStdout";
+  public static String STATUS_FAILED = "failed";
+  public static String STATUS_EXECUTED = "executed";
   
   private Timer timerPull = new Timer(0, new ActionListener(){
     public void actionPerformed(ActionEvent e){
