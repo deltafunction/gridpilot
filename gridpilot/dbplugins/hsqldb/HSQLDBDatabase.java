@@ -583,7 +583,14 @@ public class HSQLDBDatabase implements Database{
     String transID = getJobDefTransformationID(jobDefID);
     String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
     String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
-    String[] map = Util.split(maps);
+    String[] map = null;
+    try{
+      map = Util.splitUrls(maps);
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: could not split URLs "+maps, 1);
+      map = Util.split(maps);
+    }
     String name = "";
     for(int i=0; i<fouts.length; i++){
       if(par.equals(fouts[i])){

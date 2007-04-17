@@ -515,7 +515,14 @@ public class MySQLDatabase extends DBCache implements Database {
     String transID = getJobDefTransformationID(jobDefID);
     String [] fouts = Util.split((String) getTransformation(transID).getValue("outputFiles"));
     String maps = (String) getJobDefinition(jobDefID).getValue("outFileMapping");
-    String[] map = Util.split(maps);
+    String[] map = null;
+    try{
+      map = Util.splitUrls(maps);
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: could not split URLs "+maps, 1);
+      map = Util.split(maps);
+    }
     String name = "";
     for(int i=0; i<fouts.length; i++){
       if(par.equals(fouts[i])){
