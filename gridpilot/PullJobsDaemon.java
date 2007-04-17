@@ -41,6 +41,7 @@ public class PullJobsDaemon{
   public static String STATUS_REQUESTED_STDOUT = "requestStdout";
   public static String STATUS_FAILED = "failed";
   public static String STATUS_EXECUTED = "executed";
+  public static String STATUS_ERROR = "error";
   
   private Timer timerPull = new Timer(0, new ActionListener(){
     public void actionPerformed(ActionEvent e){

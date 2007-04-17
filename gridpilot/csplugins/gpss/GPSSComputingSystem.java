@@ -2,17 +2,24 @@ package gridpilot.csplugins.gpss;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Vector;
 
+import javax.naming.TimeLimitExceededException;
 import javax.swing.Timer;
 
+import jonelo.jacksum.JacksumAPI;
+import jonelo.jacksum.algorithm.AbstractChecksum;
+
+import org.globus.ftp.exception.FTPException;
 import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
+import org.globus.util.GlobusURL;
 import org.ietf.jgss.GSSCredential;
 
 import gridpilot.ComputingSystem;
@@ -22,8 +29,14 @@ import gridpilot.DBResult;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.JobInfo;
+import gridpilot.LocalStaticShellMgr;
 import gridpilot.LogFile;
 import gridpilot.PullJobsDaemon;
+import gridpilot.TransferControl;
+import gridpilot.TransferInfo;
+import gridpilot.Util;
+import gridpilot.csplugins.ng.NGComputingSystem;
+import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 
 public class GPSSComputingSystem implements ComputingSystem{
 
@@ -34,11 +47,16 @@ public class GPSSComputingSystem implements ComputingSystem{
   private String csName;
   private HashSet finalRuntimesLocal = null;
   private String user = null;
-
+  private String remoteDir = null;
+  private GSIFTPFileTransfer gsiftpFileTransfer = null;
   
   // RTEs are refreshed from entries written by pull nodes in remote database
   // every RTE_SYNC_DELAY milliseconds.
   private static int RTE_SYNC_DELAY = 60000;
+  // Wait max 60 seconds for all input files to be uploaded
+  private static int MAX_UPLOAD_WAIT = 60000;
+  // Time to wait for stdout/stderr to be uploaded
+  private static int STDOUT_WAIT = 20000;
   
   private Timer timerSyncRTEs = new Timer(0, new ActionListener(){
     public void actionPerformed(ActionEvent e){
@@ -55,6 +73,8 @@ public class GPSSComputingSystem implements ComputingSystem{
         csName, "runtime databases");
     remoteDB = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "remote database");
+    remoteDir = GridPilot.getClassMgr().getConfigFile().getValue(
+        csName, "remote directory");
     timerSyncRTEs.setDelay(RTE_SYNC_DELAY);
     // Set user
     try{
@@ -69,10 +89,27 @@ public class GPSSComputingSystem implements ComputingSystem{
       /* remove leading whitespace */
       user = user.replaceAll("^\\s+", "");
       /* remove trailing whitespace */
-      user = user.replaceAll("\\s+$", "");      
+      user = user.replaceAll("\\s+$", "");
+      
+      // Append hash of the user subject to the remote directory name
+      AbstractChecksum checksum = null;
+      try{
+        checksum = JacksumAPI.getChecksumInstance("cksum");
+      }
+      catch(NoSuchAlgorithmException e){
+        e.printStackTrace();
+      }
+      checksum.update(user.getBytes());
+      String dir = checksum.getFormattedValue();
+      if(!remoteDir.endsWith("/")){
+        remoteDir += "/";
+      }
+      remoteDir = remoteDir + dir + "/";
+      // Create the directory
+      mkRemoteDir(remoteDir);
     }
     catch(Exception ioe){
-      error = "Exception during getUserInfo\n" +
+      error = "ERROR during initialization of GPSS plugin\n" +
       "\tException\t: " + ioe.getMessage();
       logFile.addMessage(error, ioe);
     }
@@ -92,18 +129,17 @@ public class GPSSComputingSystem implements ComputingSystem{
     String transformationName = null;
     String transformationVersion = null;
     String transformationID = null;
-    DBPluginMgr jobDbMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(
-        remoteDB);
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
     // First, read the jobDefinition, dataset and transformation.
     try{
-      jobDefinition = jobDbMgr.getJobDefinition(job.getJobDefId());
-      datasetID = jobDbMgr.getJobDefDatasetID(job.getJobDefId());
-      dataset = jobDbMgr.getDataset(datasetID);
-      transformationName = jobDbMgr.getDatasetTransformationName(datasetID);
-      transformationVersion = jobDbMgr.getDatasetTransformationVersion(datasetID);
-      transformationID = jobDbMgr.getTransformationID(transformationName, transformationVersion);
-      transformation = jobDbMgr.getTransformation(transformationID);
+      jobDefinition = dbPluginMgr.getJobDefinition(job.getJobDefId());
+      datasetID = dbPluginMgr.getJobDefDatasetID(job.getJobDefId());
+      dataset = dbPluginMgr.getDataset(datasetID);
+      transformationName = dbPluginMgr.getDatasetTransformationName(datasetID);
+      transformationVersion = dbPluginMgr.getDatasetTransformationVersion(datasetID);
+      transformationID = dbPluginMgr.getTransformationID(transformationName, transformationVersion);
+      transformation = dbPluginMgr.getTransformation(transformationID);
       // Hmm, 7 database lookups. Perhaps we should reconsider this...
     }
     catch(Exception e){
@@ -132,7 +168,13 @@ public class GPSSComputingSystem implements ComputingSystem{
       tagDeleteDataset(remoteMgr, datasetID);
       // Modify and write the jobDefinition
       jobDefinition.setValue("csStatus", PullJobsDaemon.STATUS_READY);
-      jobDefinition = updateURLs(jobDefinition);
+      try{
+        jobDefinition = updateURLs(jobDefinition);
+      }
+      catch(Exception ee){
+        error = "WARNING: could not update input/output file URLs of job";
+        logFile.addMessage(error, ee);
+      }
       remoteMgr.createJobDef(jobDefinition.fields, jobDefinition.values);
     }
     catch(Exception e){
@@ -142,20 +184,187 @@ public class GPSSComputingSystem implements ComputingSystem{
     return true;
   }
   
-  private void getRemoteDir(DBRecord jobDefinition){
-    // TODO Auto-generated method stub
-    
+  private String getRemoteJobdefID(JobInfo job) throws IOException{
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
+    String localJobDefID = job.getJobDefId();
+    String name = job.getName();
+    String dsName = dbPluginMgr.getJobDefDatasetID(localJobDefID);
+    String remoteNameField = Util.getNameField(remoteMgr.getDBName(), "jobDefinition");
+    String remoteIdField = Util.getIdentifierField(remoteMgr.getDBName(), "jobDefinition");
+    String [] remoteJobDefDSRef = Util.getJobDefDatasetReference(remoteMgr.getDBName());
+    // The remote DB will be a MySQL DB
+    DBResult remoteJobDefinitions = remoteMgr.select(
+        "SELECT "+remoteIdField+" FROM jobDefinition WHERE "+remoteNameField+" = "+name+
+        " AND "+remoteJobDefDSRef[1]+" = "+dsName, remoteIdField, false);
+    if(remoteJobDefinitions.values.length>1){
+      error = "ERROR: more than one jobDefinition with the same name!";
+      throw new IOException(error);
+    }
+    if(remoteJobDefinitions.values.length<1){
+      error = "ERROR: no jobDefinition found with the name "+name;
+      throw new IOException(error);
+    }
+    return (String) remoteJobDefinitions.getValue(0, remoteIdField);
   }
   
-  private DBRecord updateURLs(DBRecord jobDefinition){
-    // TODO
+  private String getRemoteDir(String name){
+    AbstractChecksum checksum;
     try{
-      getRemoteDir(jobDefinition);
+      checksum = JacksumAPI.getChecksumInstance("cksum");
+    }
+    catch(NoSuchAlgorithmException e){
+      e.printStackTrace();
+      return null;
+    }
+    checksum.update(name.getBytes());
+    String dir = checksum.getFormattedValue();
+    Debug.debug("Using directory name from cksum of jobDefinition name: "+dir, 2);
+    if(!remoteDir.endsWith("/")){
+      remoteDir += "/";
+    }
+    return remoteDir+dir+"/";
+  }
+  
+  private void mkRemoteDir(String url) throws IOException, FTPException{
+    if(!url.endsWith("/")){
+      throw new IOException("Directory URL: "+url+" does not end with a slash.");
+    }
+    GlobusURL globusUrl= new GlobusURL(url);
+    if(gsiftpFileTransfer==null){
+      gsiftpFileTransfer = new GSIFTPFileTransfer();
+    }
+    // First, check if directory already exists.
+    try{
+      gsiftpFileTransfer.list(globusUrl, null, null);
+      return;
     }
     catch(Exception e){
-      error = "ERROR: could not set remote output files. "+e.getMessage();
-     }
+    }
+    // If not, create it.
+    gsiftpFileTransfer.create(globusUrl);
+  }
+  
+  /**
+   * Deletes a gsiftp URL after deleting all files in it.
+   * Will not work if the URL has any sub-directories.
+   * @param url
+   * @throws Exception
+   */
+  private void deleteRemoteDir(String url) throws Exception{
+    if(!url.endsWith("/")){
+      throw new IOException("Directory URL: "+url+" does not end with a slash.");
+    }
+    GlobusURL globusUrl= new GlobusURL(url);
+    if(gsiftpFileTransfer==null){
+      gsiftpFileTransfer = new GSIFTPFileTransfer();
+    }
+    // First, check if directory exists.
+    GlobusURL [] fileURLs = null;
+    String fileName = null;
+    String [] entryArr = null;
+    String line;
+    try{
+      Vector files = gsiftpFileTransfer.list(globusUrl, null, null);
+      fileURLs = new GlobusURL [files.size()];
+      for(int i=0; i<fileURLs.length; ++i){
+        line = (String) files.get(i);
+        entryArr = Util.split(line);
+        fileName = entryArr[entryArr.length-1];
+        fileURLs[i] = new GlobusURL(url+fileName);
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return;
+    }
+    // If it does, delete the files then the directory.
+    gsiftpFileTransfer.deleteFiles(fileURLs);
+    gsiftpFileTransfer.deleteFile(globusUrl);
+  }
+  
+  /**
+   * Updates the URLs of the input/output files and stdout/stderr to be in the
+   * defined remoted directory.
+   * @param job definition
+   * @return The updated job definition
+   * @throws Exception
+   */
+  private DBRecord updateURLs(DBRecord jobDefinition) throws Exception{
+    String nameField = Util.getNameField(remoteDB, "jobDefinition");
+    String rDir = getRemoteDir((String) jobDefinition.getValue(nameField));
+    String replacePattern = "^[a-z]+:/.+/([^/]+)";
+    String [] inputFileNames = Util.splitUrls((String) jobDefinition.getValue("inputFileNames"));
+    String newInputFileName = null;
+    for(int i=0; i<inputFileNames.length; ++i){
+      if(!Util.urlIsRemote(inputFileNames[i])){
+        newInputFileName = inputFileNames[i].replaceFirst(replacePattern, rDir+"$1");
+        inputFileNames[i] = newInputFileName;
+      }
+    }
+    String [] outFileMapping = Util.splitUrls((String) jobDefinition.getValue("outFileMapping"));
+    for(int i=0; i<outFileMapping.length; ++i){
+      if((i+1)%2==0 && !Util.urlIsRemote(outFileMapping[i])){
+        outFileMapping[i] = outFileMapping[i].replaceFirst(replacePattern, rDir+"$1");
+      }
+    }
+    String stdoutDest = (String) jobDefinition.getValue("stdoutDest");
+    String stderrDest = (String) jobDefinition.getValue("stderrDest");
+    stdoutDest = stdoutDest.replaceFirst(replacePattern, rDir+"$1");
+    stderrDest = stderrDest.replaceFirst(replacePattern, rDir+"$1");
+    jobDefinition.setValue("inputFileNames", Util.arrayToString(inputFileNames));
+    jobDefinition.setValue("outFileMapping", Util.arrayToString(outFileMapping));
+    jobDefinition.setValue("stdoutDest", stdoutDest);
+    jobDefinition.setValue("stderrDest", stderrDest);
     return jobDefinition;
+  }
+
+  /**
+   * Uploads input files to the defined remote directory.
+   * @param job definition
+   * @return The updated job definition
+   * @throws Exception
+   */
+  private void uploadLocalInputFiles(DBRecord jobDefinition, String rDir) throws Exception{
+    String replacePattern = "^[a-z]+:/.+/([^/]+)";
+    String [] inputFileNames = Util.splitUrls((String) jobDefinition.getValue("inputFileNames"));
+    String newInputFileName = null;
+    TransferInfo transfer = null;
+    Vector transferVector = new Vector();
+    // Start transfers
+    for(int i=0; i<inputFileNames.length; ++i){
+      if(inputFileNames[i].startsWith("file:")){
+        newInputFileName = inputFileNames[i].replaceFirst(replacePattern, rDir+"$1");
+        transfer = new TransferInfo(
+            new GlobusURL(inputFileNames[i].replaceFirst("file:/+", "file:////")),
+            new GlobusURL(newInputFileName));
+        transferVector.add(transfer);
+      }
+    }
+    GridPilot.getClassMgr().getTransferControl().queue(transferVector);
+    // Wait for transfers to finish
+    boolean transfersDone = false;
+    int sleepT = 3000;
+    int waitT = 0;
+    while(!transfersDone && waitT*sleepT<MAX_UPLOAD_WAIT){
+      transfersDone = true;
+      for(Iterator itt=transferVector.iterator(); itt.hasNext();){
+        transfer = (TransferInfo) itt.next();
+        if(TransferControl.isRunning(transfer)){
+          transfersDone = false;
+          break;
+        }
+      }
+      if(transfersDone){
+        break;
+      }
+      Thread.sleep(sleepT);
+      ++ waitT;
+    }
+    if(!true){
+      TransferControl.cancel(transferVector);
+      throw new TimeLimitExceededException("Upload took too long, aborting.");
+    }
   }
 
   /**
@@ -236,56 +445,289 @@ public class GPSSComputingSystem implements ComputingSystem{
    * Sets csState to 'requestKill' in remote jobDefinition record.
    */
   public boolean killJobs(Vector jobs){
+    DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
     boolean ok = true;
-    // Group the jobs by DB
-    HashMap jobsMap = new HashMap();
     Enumeration en = jobs.elements();
     JobInfo job = null;
+    String remoteID= null;
     while(en.hasMoreElements()){
       job = (JobInfo) en.nextElement();
-      if(!jobsMap.containsKey(job.getDBName())){
-        jobsMap.put(job.getDBName(), new Vector());
+      try{
+        remoteID = getRemoteJobdefID(job);
       }
-      ((Vector) jobsMap.get(job.getDBName())).add(job);
-    }
-    Vector dbJobs = null;
-    DBPluginMgr mgr = null;
-    String dbName = null;
-    // Update each job
-    for(Iterator it=jobsMap.keySet().iterator(); it.hasNext();){
-      dbName = (String) it.next();
-      mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
-      dbJobs = (Vector) jobsMap.get(dbName);
-      en = dbJobs.elements();
-      while(en.hasMoreElements()){
-        job = (JobInfo) en.nextElement();
-        ok = ok && mgr.updateJobDefinition(job.getJobDefId(),
-            new String [] {"csState"}, new String [] {PullJobsDaemon.STATUS_REQUESTED_KILLED});
+      catch(IOException e){
+        logFile.addMessage("WARNING: could not kill "+job, e);
+        e.printStackTrace();
       }
+      remoteMgr.updateJobDefinition(remoteID,
+          new String [] {"csState"}, new String [] {PullJobsDaemon.STATUS_REQUESTED_KILLED});
     }
     return ok;
   }
 
   /**
-   * Creates 'local' copy of corresponding jobDefinition. For this copy:
-   * If finalStdout, finalStderr or any output files are local:
+   * Checks if a job has remote input/output files or stdout/stderr.
+   * @param job
+   * @return
+   */
+  private boolean hasLocalFiles(JobInfo job){
+    boolean hasLocal = false;
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    DBRecord jobDefinition = dbPluginMgr.getJobDefinition(job.getJobDefId());
+    try{
+      String [] inputFileNames = Util.splitUrls((String) jobDefinition.getValue("inputFileNames"));
+      String [] outFileMapping = Util.splitUrls((String) jobDefinition.getValue("outFileMapping"));
+      String stdoutDest = (String) jobDefinition.getValue("stdoutDest");
+      String stderrDest = (String) jobDefinition.getValue("stderrDest");
+      for(int i=0; i<inputFileNames.length; ++i){
+        if(!Util.urlIsRemote(inputFileNames[i])){
+          hasLocal = true;
+          break;
+        }
+      }
+      for(int i=0; i<outFileMapping.length; ++i){
+        if((i+1)%2==0 && !Util.urlIsRemote(outFileMapping[i])){
+          if(!Util.urlIsRemote(outFileMapping[i])){
+            hasLocal = true;
+            break;
+          }
+        }
+      }
+      if(!Util.urlIsRemote(stdoutDest)){
+        hasLocal = true;
+      }
+      if(!Util.urlIsRemote(stderrDest)){
+        hasLocal = true;
+      }
+    }
+    catch(Exception e){
+      error = "ERROR: problem pre-processing job. ";
+      logFile.addMessage(error, e);
+      return false;
+    }
+    return hasLocal;
+  }
+  
+  /**
+   * If any input or output files or finalStdout, finalStderr are local:
    * - Creates temporary directory on the configured gridftp server.
    * - Uploads any local input files and sets inputFiles accordingly.
    */
   public boolean preProcess(JobInfo job){
-    
-    
-    
-    
-    // TODO
-    return false;
+    // IF the job has local input or output files, create the remote temporary directory
+    // and upload input files.
+    if(hasLocalFiles(job)){
+      String rDir = null;
+      try{
+        rDir = getRemoteDir(job.getName());
+        if(!rDir.endsWith("/")){
+          rDir += "/";
+        }
+        mkRemoteDir(rDir);
+        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+        DBRecord jobDefinition = dbPluginMgr.getJobDefinition(job.getJobDefId());
+        uploadLocalInputFiles(jobDefinition, rDir);
+      }
+      catch(Exception e){
+        error = "ERROR: could not create directory or upload remote files. "+e.getMessage();
+        logFile.addMessage("could not create directory for remote output files", e);
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
-   * Clean up on remote gridftp server.
+   * Clean up on remote gridftp server. Remove the remote jobDefinition.
    */
   public void clearOutputMapping(JobInfo job){
-    // TODO
+    // IF the job has local input or output files, delete the remote equivalents
+    // and then the remote temporary directory.
+    if(hasLocalFiles(job)){
+      String rDir = null;
+      try{
+        rDir = getRemoteDir(job.getName());
+        if(!rDir.endsWith("/")){
+          rDir += "/";
+        }
+        deleteRemoteDir(rDir);
+      }
+      catch(Exception e){
+        error = "ERROR: could not delete directory or remote files. ";
+        logFile.addMessage(error, e);
+      }
+    }
+    
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+
+    // Delete files that may have been copied to final destination.
+    // Files starting with file: are considered to locally available, accessed
+    // with shellMgr
+    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
+    String fileName;
+    Vector remoteFiles = new Vector();
+    for(int i=0; i<outputFileNames.length; ++i){
+      fileName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFileNames[i]);
+      if(!Util.urlIsRemote(fileName)){
+        LocalStaticShellMgr.deleteFile(fileName);
+      }
+      else{
+        remoteFiles.add(fileName);
+      }
+    }
+    String [] remoteFilesArr = new String [remoteFiles.size()];
+    for(int i=0; i<remoteFilesArr.length; ++i){
+      remoteFilesArr[i] = (String) remoteFiles.get(i);
+    }
+    try{
+      TransferControl.deleteFiles(remoteFilesArr);
+    }
+    catch(Exception e){
+      error = "WARNING: could not delete output files. "+e.getMessage();
+      Debug.debug(error, 3);
+    }
+    
+    // Delete stdout/stderr that may have been copied to final destination
+    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+    if(finalStdOut!=null && finalStdOut.trim().length()>0){
+      try{
+        TransferControl.deleteFiles(new String [] {finalStdOut});
+      }
+      catch(Exception e){
+        error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
+        Debug.debug(error, 2);
+      }
+      catch(Throwable e){
+        error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
+        Debug.debug(error, 2);
+      }
+    }
+    if(finalStdErr!=null && finalStdErr.trim().length()>0){
+      try{
+        TransferControl.deleteFiles(new String [] {finalStdErr});
+      }
+      catch(Exception e){
+        error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
+        Debug.debug(error, 2);
+      }
+      catch(Throwable e){
+        error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
+        Debug.debug(error, 2);
+      }
+    }
+  }
+
+  /**
+   * Moves job.StdOut and job.StdErr to final destination specified in the DB. <p>
+   * job.StdOut and job.StdErr are then set to these final values. <p>
+   * @return <code>true</code> if the move went ok, <code>false</code> otherwise.
+   */
+  private boolean copyToFinalDest(JobInfo job){
+    
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
+    
+    // Output files
+    // Try copying file(s) to output destination
+    String jobDefID = job.getJobDefId();
+    String remoteID = null;
+    try{
+      remoteID = getRemoteJobdefID(job);
+    }
+    catch(IOException e){
+      e.printStackTrace();
+      error = "ERROR: could not get remote jobDefinition ID";
+      logFile.addMessage(error, e);
+      return false;
+    }
+    String [] outputNames = dbPluginMgr.getOutputFiles(jobDefID);
+    String remoteName = null;
+    String origDest = null;
+    TransferInfo transfer = null;
+    Vector transferVector = new Vector();
+    boolean ok = true;
+    for(int i=0; i<outputNames.length; ++i){
+      try{
+        remoteName = remoteMgr.getJobDefOutRemoteName(remoteID, outputNames[i]);
+        origDest = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputNames[i]);
+        if(origDest.startsWith("file:")){
+          transfer = new TransferInfo(
+              new GlobusURL(remoteName),
+              new GlobusURL(origDest.replaceFirst("file:/+", "file:////")));
+          transferVector.add(transfer);
+        }
+      }
+      catch(Exception e){
+        job.setJobStatus("Error");
+        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+        error = "Exception during copying of output file(s) for job : " + job.getName() + "\n" +
+        "\tCommand\t: " + remoteName + ": -> " + origDest +"\n" +
+        "\tException\t: " + e.getMessage();
+        logFile.addMessage(error, e);
+        ok = false;
+      }
+    }
+    if(!ok){
+      return ok;
+    }
+    
+    // Stdout/stderr
+    String origFinalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+    String origFinalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+    String remoteFinalStdOut = remoteMgr.getStdOutFinalDest(remoteID);
+    String remoteFinalStdErr = remoteMgr.getStdErrFinalDest(remoteID);
+    
+    /**
+     * move temp StdOut -> finalStdOut
+     */
+    if(origFinalStdOut!=null && origFinalStdOut.trim().length()>0 &&
+        remoteFinalStdOut!=null && remoteFinalStdOut.trim().length()>0 &&
+        !origFinalStdOut.equals(remoteFinalStdOut) && !Util.urlIsRemote(origFinalStdOut)){
+      try{
+        TransferControl.download(remoteFinalStdOut, new File(origFinalStdOut),
+            GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        error = "Exception during copying of output file(s) for job : " + job.getName() + "\n" +
+        "\tCommand\t: " + remoteFinalStdOut + ": -> " + origFinalStdOut +"\n" +
+        "\tException\t: " + e.getMessage();
+        logFile.addMessage(error, e);
+        ok = false;
+      }      
+      job.setStdOut(origFinalStdOut); 
+    }
+    else{
+      ok = false;
+    }
+
+    /**
+     * move temp StdErr -> finalStdErr
+     */
+    if(origFinalStdErr!=null && origFinalStdErr.trim().length()>0 &&
+        remoteFinalStdErr!=null && remoteFinalStdErr.trim().length()>0 &&
+        !origFinalStdErr.equals(remoteFinalStdErr) && !Util.urlIsRemote(origFinalStdErr)){
+      try{
+        TransferControl.download(remoteFinalStdErr, new File(origFinalStdErr),
+            GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        error = "Exception during copying of output file(s) for job : " + job.getName() + "\n" +
+        "\tCommand\t: " + remoteFinalStdErr + ": -> " + origFinalStdErr +"\n" +
+        "\tException\t: " + e.getMessage();
+        logFile.addMessage(error, e);
+        ok = false;
+      }      
+      job.setStdErr(origFinalStdErr); 
+    }
+    else{
+      ok = false;
+    }
+
+    return ok;
+    
   }
 
   /**
@@ -293,27 +735,80 @@ public class GPSSComputingSystem implements ComputingSystem{
    *   from the remote temporary location.
    * - Deletes the remote temporary location.
    * - Cleans up temporary transformation and dataset if any such was written.
+   * - Deletes remote jobDefinition.
    */
   public boolean postProcess(JobInfo job){
-    // TODO
-    
-    // Clean up temporary transformation and dataset
+    boolean ok = true;
+    if(hasLocalFiles(job)){
+      String rDir = null;
+      try{
+        rDir = getRemoteDir(job.getName());
+        if(!rDir.endsWith("/")){
+          rDir += "/";
+        }
+        // Download files
+        copyToFinalDest(job);
+        // Delete remote directory
+        deleteRemoteDir(rDir);
+      }
+      catch(Exception e){
+        ok = false;
+        error = "ERROR: could not delete directory or remote files. ";
+        logFile.addMessage(error, e);
+      }
+    }
+    // Clean up temporary transformation, dataset and jobDefinition
     DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    String datasetID = remoteMgr.getJobDefDatasetID(job.getJobDefId());
+    String remoteID = null;
+    try{
+      remoteID = getRemoteJobdefID(job);
+    }
+    catch(IOException e){
+      e.printStackTrace();
+      error = "ERROR: could not get remote jobDefinition ID";
+      logFile.addMessage(error, e);
+      return false;
+    }
+    String datasetID = remoteMgr.getJobDefDatasetID(remoteID);
     String transformationName = remoteMgr.getDatasetTransformationName(datasetID);
     String transformationVersion = remoteMgr.getDatasetTransformationVersion(datasetID);
     String transformationID = remoteMgr.getTransformationID(transformationName, transformationVersion);
-    deleteTaggedDataset(remoteMgr, datasetID);
-    deleteTaggedTransformation(remoteMgr, transformationID);
-    return false;
+    try{
+      deleteTaggedDataset(remoteMgr, datasetID);
+      deleteTaggedTransformation(remoteMgr, transformationID);
+    }
+    catch(Exception e){
+      ok = false;
+      error = "Failed cleaning up remote dataset or transformation";
+      logFile.addMessage(error, e);
+    }
+    try{
+      remoteMgr.deleteJobDefinition(remoteID, false);
+    }
+    catch(Exception e){
+      ok = false;
+      error = "Failed cleaning up remote jobDefinition";
+      logFile.addMessage(error, e);
+    }
+    return ok;
   }
 
   /**
    * Returns csStatus of remote jobDefinition record.
    */
   public String getFullStatus(JobInfo job){
-    // TODO
-    return null;
+    DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
+    String remoteID = null;
+    try{
+      remoteID = getRemoteJobdefID(job);
+    }
+    catch(IOException e){
+      e.printStackTrace();
+      error = "ERROR: could not get remote jobDefinition ID";
+      logFile.addMessage(error, e);
+      return null;
+    }
+    return remoteMgr.getJobDefValue(remoteID, "csStatus");
   }
 
   /**
@@ -324,12 +819,256 @@ public class GPSSComputingSystem implements ComputingSystem{
    */
   public String[] getCurrentOutputs(JobInfo job, boolean resyncFirst)
       throws IOException{
-    // TODO
-    return null;
+    String status = getFullStatus(job);
+    
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
+    String remoteID = null;
+    try{
+      remoteID = getRemoteJobdefID(job);
+    }
+    catch(IOException e){
+      e.printStackTrace();
+      error = "ERROR: could not get remote jobDefinition ID";
+      logFile.addMessage(error, e);
+      return null;
+    }
+    
+    String [] res = new String[2];
+    
+    File tmpStdout = File.createTempFile(/*prefix*/"GridPilot-stdout", /*suffix*/"");
+    File tmpStdErr = File.createTempFile(/*prefix*/"GridPilot-stderr", /*suffix*/"");
+    int sleepT = 5000;
+    int sleepN = 0;
+    try{
+      if(status.equals(PullJobsDaemon.STATUS_EXECUTED) || status.equals(PullJobsDaemon.STATUS_FAILED)){
+        String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+        String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+        if(finalStdOut.startsWith("file:")){
+          res[0] = LocalStaticShellMgr.readFile(finalStdOut);
+        }
+        else if(Util.urlIsRemote(finalStdOut)){
+          try{
+            gsiftpFileTransfer.getFile(new GlobusURL(finalStdOut), tmpStdout.getParentFile(),
+                null, null);
+          }
+          catch(Exception e){
+            e.printStackTrace();
+            throw new IOException("ERROR: could not download stdout. "+e.getMessage());
+          }
+          res[0] = LocalStaticShellMgr.readFile(tmpStdout.getCanonicalPath());
+        }
+        else{
+          throw new IOException("Cannot access local files on remote system");
+        }
+        if(finalStdErr.startsWith("file:")){
+          res[0] = LocalStaticShellMgr.readFile(finalStdErr);
+        }
+        else if(Util.urlIsRemote(finalStdErr)){
+          boolean ok = true;
+          try{
+            gsiftpFileTransfer.getFile(new GlobusURL(finalStdErr), tmpStdErr.getParentFile(),
+                null, null);
+          }
+          catch(Exception e){
+            ok = false;
+            e.printStackTrace();
+            throw new IOException("ERROR: could not download stderr. "+e.getMessage());
+          }
+          if(ok){
+            res[1] = LocalStaticShellMgr.readFile(tmpStdErr.getCanonicalPath());
+          }
+        }
+        else{
+          throw new IOException("Cannot access local files on remote system");
+        }
+      }
+      else if(status.equals(PullJobsDaemon.STATUS_SUBMITTED)){
+        String origFinalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+        String origFinalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+        String remoteFinalStdOut = remoteMgr.getStdOutFinalDest(remoteID);
+        String remoteFinalStdErr = remoteMgr.getStdErrFinalDest(remoteID);      
+        String oldStatus = remoteMgr.getJobDefValue(remoteID, "csStatus");
+        if(Util.urlIsRemote(origFinalStdOut)){
+          // Final stdout/stderr remote, delete
+          TransferControl.deleteFiles(new GlobusURL [] {new GlobusURL(origFinalStdOut),
+              new GlobusURL(remoteFinalStdErr)});
+          // Request new ones
+          remoteMgr.setJobDefsField(new String [] {remoteID}, "csStatus", PullJobsDaemon.STATUS_REQUESTED_STDOUT);
+          // Re-download
+          Thread.sleep(sleepT);
+          while(sleepN*sleepT<STDOUT_WAIT){
+            ++sleepN;
+            try{
+              TransferControl.download(origFinalStdOut, tmpStdout,
+                  GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+              TransferControl.download(origFinalStdErr, tmpStdErr,
+                  GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+              break;
+            }
+            catch(Exception e){
+              Debug.debug("Waiting for stdout...", 2);
+            }
+            // Wait
+            Thread.sleep(sleepT);
+          }
+        }
+        else{
+          // Final stdout/stderr local, delete from remote dir
+          TransferControl.deleteFiles(new GlobusURL [] {new GlobusURL(remoteFinalStdOut),
+              new GlobusURL(remoteFinalStdErr)});
+          // Request new ones
+          remoteMgr.setJobDefsField(new String [] {remoteID}, "csStatus", PullJobsDaemon.STATUS_REQUESTED_STDOUT);
+          // Wait
+          Thread.sleep(STDOUT_WAIT);
+          // Re-download
+          Thread.sleep(sleepT);
+          while(sleepN*sleepT<STDOUT_WAIT){
+            ++sleepN;
+            try{
+              TransferControl.download(remoteFinalStdOut, tmpStdout,
+                  GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+              TransferControl.download(remoteFinalStdErr, tmpStdErr,
+                  GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+              break;
+            }
+            catch(Exception e){
+              Debug.debug("Waiting for stdout...", 2);
+            }
+            // Wait
+            Thread.sleep(sleepT);
+          }
+        }
+        remoteMgr.setJobDefsField(new String [] {remoteID}, "csStatus", oldStatus);
+      }
+    }
+    catch(Exception ee){
+      ee.printStackTrace();
+      throw new IOException(ee.getMessage());
+    }
+    finally{
+      try{
+        if(!LocalStaticShellMgr.deleteFile(tmpStdout.getCanonicalPath()) ||
+            !LocalStaticShellMgr.deleteFile(tmpStdErr.getCanonicalPath())){
+           error = "WARNING: could not delete stdout or stderr temp file.";
+           logFile.addMessage(error);
+         }
+      }
+      catch(Exception eee){
+        eee.printStackTrace();
+      }
+    }
+    return res;
   }
 
   public void updateStatus(Vector jobs){
-    // TODO
+    for(int i=0; i<jobs.size(); ++i)
+      updateStatus((JobInfo) jobs.get(i));
+  }
+
+  private void updateStatus(JobInfo job){
+    
+    boolean doUpdate = false;
+    String jobId = job.getJobId();
+    if(jobId!=null){ // job already submitted
+      String statusLine;
+      statusLine = getFullStatus(job);
+      if(statusLine!=null){
+        doUpdate = extractStatus(job, statusLine);
+      }
+      else{
+        doUpdate = false;//true;
+      }
+    }
+
+    if(doUpdate){
+      Debug.debug("Updating status of job "+job.getName(), 2);
+      if(job.getJobStatus()==null){
+        Debug.debug("No status found for job "+job.getName(), 2);
+        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+      }
+      else if(job.getJobStatus().equals(NG_STATUS_FINISHED)){
+        try{
+          // Only sync if CE has copied stdout/stderr to final destination.
+          // Otherwise, getOutput will get them (and syncCurrentOutputs will fail
+          // because it will try to get them from final destination).
+          DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+          String stdoutDest = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+          String stderrDest = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+          if(!stdoutDest.startsWith("file:") ||
+              stderrDest!=null && !stderrDest.equals("") && !stderrDest.startsWith("file:")){
+            syncCurrentOutputs(job);
+          }
+          if(getOutput(job)){
+            job.setInternalStatus(ComputingSystem.STATUS_DONE);
+          }
+          else{
+            job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+          }
+        }
+        catch(Exception e){
+          job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+        }
+      }
+      else if(job.getJobStatus().equals(NG_STATUS_FAILURE) ||
+          job.getJobStatus().equals(NG_STATUS_FAILED)){
+        //getOutput(job);
+        job.setInternalStatus(ComputingSystem.STATUS_FAILED);
+      }
+      else if(job.getJobStatus().equals(NG_STATUS_ERROR)){
+        // try to clean up, just in case...
+        //getOutput(job);
+        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+      }
+      else if(job.getJobStatus().equals(NG_STATUS_DELETED)){
+        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+      }
+      else if(job.getJobStatus().equals(NG_STATUS_FAILED)){
+        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+      }
+      else if(job.getJobStatus().equals(NG_STATUS_INLRMSR) ||
+          job.getJobStatus().equals(NG_STATUS_INLRMSR1)){
+        job.setInternalStatus(ComputingSystem.STATUS_RUNNING);
+      }
+      //job.setInternalStatus(ComputingSystem.STATUS_WAIT);
+      else{
+        Debug.debug("WARNING: unknown status: "+job.getJobStatus(), 1);
+        job.setInternalStatus(ComputingSystem.STATUS_WAIT);
+      }
+    }
+  }
+
+  /** 
+   * Extracts the status status of the job and updates job status with job.setJobStatus().
+   * Returns false if the status has changed, true otherwise.
+   */
+  private static boolean extractStatus(JobInfo job, String status){
+
+    if(status==null){
+      job.setJobStatus(PullJobsDaemon.STATUS_ERROR);
+      Debug.debug(
+          "Status not found for job " + job.getName(), 2);
+      return true;
+    }
+    else{
+      if(status.startsWith(PullJobsDaemon.STATUS_EXECUTED)){
+        int errorBegin =line.indexOf("Error:");
+        if(errorBegin != -1){
+          GridPilot.getClassMgr().getLogFile().addMessage("Error at end of job " +
+              job.getName() + " :\n" +
+              line.substring(errorBegin, line.indexOf("\n", errorBegin)));
+          job.setJobStatus(NGComputingSystem.NG_STATUS_FAILURE);
+          return true;
+        }
+      }
+      if(job.getJobStatus()!=null && job.getJobStatus().equals(status)){
+        return false;
+      }
+      else{
+        job.setJobStatus(status);
+        return true;
+      }
+    }
   }
 
   public String[] getScripts(JobInfo job){
