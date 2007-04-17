@@ -1097,7 +1097,6 @@ public class ForkComputingSystem implements ComputingSystem{
    * Moves job.StdOut and job.StdErr to final destination specified in the DB. <p>
    * job.StdOut and job.StdErr are then set to these final values. <p>
    * @return <code>true</code> if the move went ok, <code>false</code> otherwise.
-   * (from AtCom1)
    */
   private boolean copyToFinalDest(JobInfo job){
     
@@ -1139,22 +1138,24 @@ public class ForkComputingSystem implements ComputingSystem{
     /**
      * move temp StdOut -> finalStdOut
      */
-    ok = false;   
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
       if(Util.copyOutputFile(job.getStdOut(), finalStdOut, shellMgr, error, logFile)){
         job.setStdOut(finalStdOut);
-        ok = true;
+      }
+      else{
+        ok = false;
       }
     }
 
     /**
      * move temp StdErr -> finalStdErr
      */
-    ok = false;   
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
       if(Util.copyOutputFile(job.getStdErr(), finalStdErr, shellMgr, error, logFile)){
         job.setStdErr(finalStdErr);
-        ok = true;
+      }
+      else{
+        ok = false;
       }
     }
 
