@@ -627,6 +627,7 @@ public class NGComputingSystem implements ComputingSystem{
     String output = "";
     String errors = "";
     String lrmsStatus = "";
+    String node = "";
     
     if(useInfoSystem){
       Debug.debug("Using information system", 3);
@@ -722,6 +723,26 @@ public class NGComputingSystem implements ComputingSystem{
         Debug.debug(error, 3);
         lrmsStatus = "";
       }
+
+      try{
+        String diag = gridJob.getOutputFile("log/diag");
+        InputStream is = new ByteArrayInputStream(diag.getBytes());
+        BufferedReader in = new BufferedReader(new InputStreamReader(is));
+        String line = null;
+        while((line = in.readLine())!=null){
+          if(line.startsWith("nodename=")){
+            node = line.replaceFirst("nodename=(\\S+)", "$1");
+          }
+        }
+        in.close();        
+      }
+      catch(Exception ioe){
+        error = "Exception during job " + job.getName() + " getFullStatus :\n" +
+        "\tException\t: " + ioe.getMessage();
+        Debug.debug(error, 3);
+        lrmsStatus = "";
+      }
+
     }
     
     String result = "";
@@ -741,7 +762,9 @@ public class NGComputingSystem implements ComputingSystem{
     if(lrmsStatus!=null && !lrmsStatus.equals("")){
       result += lrmsStatus;
     }
-    
+    if(node!=null && !node.equals("")){
+      result += "Node: "+node+"\n";
+    }
     if(comment!=null && !comment.equals("")){
       result += "Comment: "+comment+"\n";
     }
@@ -1327,7 +1350,7 @@ public class NGComputingSystem implements ComputingSystem{
     // host
     if(job.getHost()==null){
       //String host = getValueOf("Cluster", line);
-      String host = getValueOf("Execution nodes", line);
+      String host = getValueOf("Node", line);
       Debug.debug("Job Destination : " + host, 2);
       if(host!=null){
         job.setHost(host);
