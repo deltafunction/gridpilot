@@ -283,6 +283,7 @@ public class ForkComputingSystem implements ComputingSystem{
       //Enable the pull button on the monitoring panel
       GridPilot.pullEnabled = true;
       try{
+        Debug.debug("Enabling pulling of jobs", 2);
         GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.setPullEnabled(true);
       }
       catch(Exception e){
@@ -408,7 +409,7 @@ public class ForkComputingSystem implements ComputingSystem{
           // and discard the key if so
         }
         catch(Exception e){
-          //e.printStackTrace();
+          e.printStackTrace();
         }
       }
 
@@ -424,9 +425,6 @@ public class ForkComputingSystem implements ComputingSystem{
       for(Iterator it=runtimes.iterator(); it.hasNext();){
         
         name = null;
-        cert = null;
-        url = null;
-
         fil = (String) it.next();
         
         // Get the name
@@ -482,9 +480,35 @@ public class ForkComputingSystem implements ComputingSystem{
             else{
               finalRuntimesLocal.add(name);
             }
+            // Register with local DB with CS "GPSS"
+            if(cert!=null && cert.length()>0){
+              rteExistsLocally = false;
+              if(localDBMgr!=null){
+                try{
+                  String rtId = localDBMgr.getRuntimeEnvironmentID(name, "GPSS");
+                  if(rtId!=null && !rtId.equals("-1")){
+                    rteExistsLocally = true;
+                  }
+                }
+                catch(Exception e){
+                  e.printStackTrace();
+                }
+                Debug.debug("rteExistsLocally: "+rteExistsLocally, 3);
+                if(!rteExistsLocally){
+                  try{
+                    if(localDBMgr.createRuntimeEnvironment(rtVals)){
+                      finalRuntimesLocal.add(name);
+                    }
+                  }
+                  catch(Exception e){
+                    e.printStackTrace();
+                  }
+                }
+              }
+            }
           }
           
-          // Register with remote DB
+          // Register with remote DB and register again with local DB with CS "GPSS"
           if(cert!=null && cert.length()>0){
             // Write the entry in the remote DB
             for(int i=0; i<runtimeEnvironmentFields.length; ++i){
@@ -494,6 +518,15 @@ public class ForkComputingSystem implements ComputingSystem{
               else if(runtimeEnvironmentFields[i].equalsIgnoreCase("certificate")){
                 rtVals[i] = cert;
               }
+              else if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
+                rtVals[i] = name;
+              }
+              else if(runtimeEnvironmentFields[i].equalsIgnoreCase("url")){
+                rtVals[i] = url;
+              }
+              else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
+                rtVals[i] = csName;
+              }
               else{
                 rtVals[i] = "";
               }
@@ -502,7 +535,7 @@ public class ForkComputingSystem implements ComputingSystem{
               boolean rteExistsRemotely = false;
               if(remoteDBMgr!=null){
                 try{
-                  String rtId = remoteDBMgr.getRuntimeEnvironmentID(name, csName);
+                  String rtId = remoteDBMgr.getRuntimeEnvironmentID(name, "GPSS");
                   if(rtId!=null && !rtId.equals("-1")){
                     rteExistsRemotely = true;
                   }
@@ -517,9 +550,13 @@ public class ForkComputingSystem implements ComputingSystem{
               }
             }
             catch(Exception e){
-              Debug.debug("WARNING: could not access "+remotePullDB+". Disabling" +
-                  "remote registration of runtime environments", 1);
+              logFile.addMessage("WARNING: could not access "+remotePullDB+". Disabling" +
+                  "remote registration of runtime environments");
             }
+          }
+          else{
+            logFile.addMessage("WARNING: no certificate. Disabling remote registration of " +
+                    "runtime environments.");
           }
         }
       }
