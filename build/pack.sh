@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version="0.1.1"
+version="0.2.0"
 
 mkdir GridPilot-$version
 
@@ -10,7 +10,11 @@ mv GridPilot-$version/gridpilot-atlas-gen.conf GridPilot-$version/gridpilot.conf
 
 mv GridPilot-$version/gridpilot.jar GridPilot-$version/gridpilot-$version.jar
 
-sed -i 's/gridpilot\.jar/gridpilot-'$version'.jar/' GridPilot-$version/gridpilot.bat
+jars=`ls lib | awk '{print";lib/"$1}'`
+
+jars=`echo $jars | sed 's/ ;/;/g'`
+
+sed -i 's|gridpilot\.jar|gridpilot-'$version'.jar'$jars'|' GridPilot-$version/gridpilot.bat
 
 zip -r GridPilot-$version.zip GridPilot-$version
 
