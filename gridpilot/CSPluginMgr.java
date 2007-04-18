@@ -77,6 +77,8 @@ public class CSPluginMgr implements ComputingSystem{
 
     logFile = GridPilot.getClassMgr().getLogFile();
     configFile = GridPilot.getClassMgr().getConfigFile();
+    
+    pullDBs = new HashMap();
 
     csNames = GridPilot.csNames;
     cs = new HashMap(csNames.length);
@@ -139,6 +141,7 @@ public class CSPluginMgr implements ComputingSystem{
       Class [] csArgsType = {String.class};
       Object [] csArgs = {csNames[i]};
       
+      Debug.debug("class: "+csClass, 3);
       Debug.debug("argument types: "+Util.arrayToString(csArgsType), 3);
       Debug.debug("arguments: "+Util.arrayToString(csArgs), 3);
       try{
@@ -459,8 +462,19 @@ public class CSPluginMgr implements ComputingSystem{
       return "ERROR: no computing system";
     }
     boolean csFound = false;
-    for(int i=0; i<GridPilot.csNames.length; ++i){
-      if(GridPilot.csNames[i].equalsIgnoreCase(csName)){
+    String enabled = "no";
+    for(int i=0; i<csNames.length; ++i){
+      try{
+        enabled = configFile.getValue(csNames[i], "Enabled");
+      }
+      catch(Exception e){
+        continue;
+      }
+      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
+          !enabled.equalsIgnoreCase("true")){
+        continue;
+      }
+      if(csNames[i].equalsIgnoreCase(csName)){
         csFound = true;
         break;
       }
@@ -778,7 +792,7 @@ public class CSPluginMgr implements ComputingSystem{
     if(csName==null || csName.equals("")){
       return null;
     }
-    if(pullDBs.get(csName)==null){
+    if(pullDBs==null || pullDBs.get(csName)==null){
       return null;
     }
     else{
