@@ -284,6 +284,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     
     setPullEnabled(GridPilot.pullEnabled);
     if(GridPilot.pullEnabled){
+      Debug.debug("Enabling pulling of jobs", 2);
       initPulling();
     }
 
@@ -313,7 +314,18 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private void initPulling(){
     String pullDB = null;
     boolean ok = false;
+    String enabled = "no";
     for(int i=0; i<GridPilot.csNames.length; ++i){
+      try{
+        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.csNames[i], "Enabled");
+      }
+      catch(Exception e){
+        continue;
+      }
+      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
+          !enabled.equalsIgnoreCase("true")){
+        continue;
+      }
       ok = false;
       pullDB = GridPilot.getClassMgr().getCSPluginMgr().getPullDatabase(GridPilot.csNames[i]);
       if(pullDB!=null && pullDB.length()>0){
@@ -451,7 +463,18 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
 
+    String enabled = "no";
     for(int i=0; i<GridPilot.csNames.length; ++i){
+      try{
+        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.csNames[i], "Enabled");
+      }
+      catch(Exception e){
+        continue;
+      }
+      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
+          !enabled.equalsIgnoreCase("true")){
+        continue;
+      }
       JMenuItem mi = new JMenuItem(GridPilot.csNames[i], i);
       mi.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){

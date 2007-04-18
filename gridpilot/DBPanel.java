@@ -589,7 +589,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       });
       
-      for(int i=0; i<GridPilot.csNames.length ; ++i){
+      String enabled = "no";
+      for(int i=0; i<GridPilot.csNames.length; ++i){
+        try{
+          enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.csNames[i], "Enabled");
+        }
+        catch(Exception e){
+          continue;
+        }
+        if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
+            !enabled.equalsIgnoreCase("true")){
+          continue;
+        }
         JMenuItem mi = new JMenuItem(GridPilot.csNames[i]);
         //mi.setMnemonic(i);
         mi.addActionListener(new ActionListener(){
@@ -1282,7 +1293,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
            jmSetFieldValue.add(miSetFields[i]);
       }
     }
+    String enabled = "no";
     for(int i=0; i<GridPilot.csNames.length; ++i){
+      try{
+        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.csNames[i], "Enabled");
+      }
+      catch(Exception e){
+        continue;
+      }
+      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
+          !enabled.equalsIgnoreCase("true")){
+        continue;
+      }
       JMenuItem mi = new JMenuItem(GridPilot.csNames[i]);
       mi.addActionListener(new ActionListener(){
         public void actionPerformed(final ActionEvent e){
@@ -2557,7 +2579,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         return;
       }
     }
-    // if a partition is selected, shows the menu with computing systems
+    // if a jobDefinition is selected, shows the menu with computing systems
     if(getSelectedIdentifiers().length != 0){
       pmSubmitMenu.show(this, 0, 0); // without this, pmSubmitMenu.getWidth == 0
 
