@@ -241,7 +241,8 @@ public class GPSSComputingSystem implements ComputingSystem{
     catch(Exception e){
     }
     // If not, create it.
-    gsiftpFileTransfer.create(globusUrl);
+    Debug.debug("Creating directory "+globusUrl.getURL(), 2);
+    gsiftpFileTransfer.write(globusUrl, "");
   }
   
   /**
