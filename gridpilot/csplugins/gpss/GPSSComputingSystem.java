@@ -35,7 +35,6 @@ import gridpilot.PullJobsDaemon;
 import gridpilot.TransferControl;
 import gridpilot.TransferInfo;
 import gridpilot.Util;
-import gridpilot.csplugins.ng.NGComputingSystem;
 import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 
 public class GPSSComputingSystem implements ComputingSystem{
@@ -967,108 +966,6 @@ public class GPSSComputingSystem implements ComputingSystem{
   }
 
   private void updateStatus(JobInfo job){
-    
-    boolean doUpdate = false;
-    String jobId = job.getJobId();
-    if(jobId!=null){ // job already submitted
-      String statusLine;
-      statusLine = getFullStatus(job);
-      if(statusLine!=null){
-        doUpdate = extractStatus(job, statusLine);
-      }
-      else{
-        doUpdate = false;//true;
-      }
-    }
-
-    if(doUpdate){
-      Debug.debug("Updating status of job "+job.getName(), 2);
-      if(job.getJobStatus()==null){
-        Debug.debug("No status found for job "+job.getName(), 2);
-        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
-      }
-      else if(job.getJobStatus().equals(NG_STATUS_FINISHED)){
-        try{
-          // Only sync if CE has copied stdout/stderr to final destination.
-          // Otherwise, getOutput will get them (and syncCurrentOutputs will fail
-          // because it will try to get them from final destination).
-          DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-          String stdoutDest = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
-          String stderrDest = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
-          if(!stdoutDest.startsWith("file:") ||
-              stderrDest!=null && !stderrDest.equals("") && !stderrDest.startsWith("file:")){
-            syncCurrentOutputs(job);
-          }
-          if(getOutput(job)){
-            job.setInternalStatus(ComputingSystem.STATUS_DONE);
-          }
-          else{
-            job.setInternalStatus(ComputingSystem.STATUS_ERROR);
-          }
-        }
-        catch(Exception e){
-          job.setInternalStatus(ComputingSystem.STATUS_ERROR);
-        }
-      }
-      else if(job.getJobStatus().equals(NG_STATUS_FAILURE) ||
-          job.getJobStatus().equals(NG_STATUS_FAILED)){
-        //getOutput(job);
-        job.setInternalStatus(ComputingSystem.STATUS_FAILED);
-      }
-      else if(job.getJobStatus().equals(NG_STATUS_ERROR)){
-        // try to clean up, just in case...
-        //getOutput(job);
-        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
-      }
-      else if(job.getJobStatus().equals(NG_STATUS_DELETED)){
-        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
-      }
-      else if(job.getJobStatus().equals(NG_STATUS_FAILED)){
-        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
-      }
-      else if(job.getJobStatus().equals(NG_STATUS_INLRMSR) ||
-          job.getJobStatus().equals(NG_STATUS_INLRMSR1)){
-        job.setInternalStatus(ComputingSystem.STATUS_RUNNING);
-      }
-      //job.setInternalStatus(ComputingSystem.STATUS_WAIT);
-      else{
-        Debug.debug("WARNING: unknown status: "+job.getJobStatus(), 1);
-        job.setInternalStatus(ComputingSystem.STATUS_WAIT);
-      }
-    }
-  }
-
-  /** 
-   * Extracts the status status of the job and updates job status with job.setJobStatus().
-   * Returns false if the status has changed, true otherwise.
-   */
-  private static boolean extractStatus(JobInfo job, String status){
-
-    if(status==null){
-      job.setJobStatus(PullJobsDaemon.STATUS_ERROR);
-      Debug.debug(
-          "Status not found for job " + job.getName(), 2);
-      return true;
-    }
-    else{
-      if(status.startsWith(PullJobsDaemon.STATUS_EXECUTED)){
-        int errorBegin =line.indexOf("Error:");
-        if(errorBegin != -1){
-          GridPilot.getClassMgr().getLogFile().addMessage("Error at end of job " +
-              job.getName() + " :\n" +
-              line.substring(errorBegin, line.indexOf("\n", errorBegin)));
-          job.setJobStatus(NGComputingSystem.NG_STATUS_FAILURE);
-          return true;
-        }
-      }
-      if(job.getJobStatus()!=null && job.getJobStatus().equals(status)){
-        return false;
-      }
-      else{
-        job.setJobStatus(status);
-        return true;
-      }
-    }
   }
 
   public String[] getScripts(JobInfo job){
