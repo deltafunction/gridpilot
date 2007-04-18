@@ -1825,7 +1825,7 @@ public class Util{
   public static boolean copyOutputFile(String src, String dest,
       ShellMgr shellMgr, String error, LogFile logFile){
     // Local destination
-    if(/*Linux local file*/(dest.matches("^file:/[^:]*") || dest.startsWith("/")) ||
+    if(/*Linux local file*/(dest.matches("^file:~[^:]*") || dest.matches("^file:/[^:]*") || dest.startsWith("/")) ||
         /*Windows local file*/(dest.matches("\\w:.*") || dest.matches("^file:/*\\w:.*")) && shellMgr.isLocal()){
       try{
         if(!shellMgr.existsFile(src)){
