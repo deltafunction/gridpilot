@@ -51,6 +51,10 @@ public class ClassMgr{
   private static String DEFAULT_POOL_SIZE = "10";
   // list of urls in db pool
   private HashSet dbURLs = new HashSet();
+  // Map of pulled jobs -> computing systems.
+  // This map will be cleared on exit - also, all pulled
+  // JobDefinitions will be set back to 'ready'.
+  private HashMap jobCSMap = new HashMap();
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
   public GSSCredential credential = null;
@@ -583,6 +587,18 @@ public class ClassMgr{
           "failed setting auto commit to true: "+e.getMessage());
     }
     return conn;
+  }
+  
+  public String getJobCS(String jobDefID){
+    return (String) jobCSMap.get(jobDefID);
+  }
+
+  public void clearJobCS(String jobDefID){
+    jobCSMap.remove(jobDefID);
+  }
+
+  public void setJobCS(String jobDefID, String csName){
+   jobCSMap.put(jobDefID, csName);
   }
 
 }

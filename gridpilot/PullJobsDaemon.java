@@ -26,9 +26,8 @@ public class PullJobsDaemon{
   private int maxPullRun = 1;
   private String idField = null;
   private String cacheDir = null;
-  // map of JobInfo -> (Vector of TransferInfos)
+  // Map of JobInfo -> (Vector of TransferInfos)
   private HashMap runningTransfers = new HashMap();
-  
   private static int WAIT_TRIES = 20;
   private static int WAIT_SLEEP = 10000;
   private static boolean CLEANUP_CACHE_ON_EXIT = true;
@@ -41,7 +40,6 @@ public class PullJobsDaemon{
   public static String STATUS_REQUESTED_STDOUT = "requestStdout";
   public static String STATUS_FAILED = "failed";
   public static String STATUS_EXECUTED = "executed";
-  public static String STATUS_ERROR = "error";
   
   private Timer timerPull = new Timer(0, new ActionListener(){
     public void actionPerformed(ActionEvent e){
@@ -315,6 +313,7 @@ public class PullJobsDaemon{
     try{
       ok = dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus", "providerInfo"},
           new String [] {STATUS_REQUESTED, userInfo});
+      GridPilot.getClassMgr().setJobCS(jobDefID, csName);
      }
     catch(Exception e){
       logFile.addMessage("ERROR: could not request job "+jobDefID, e);
@@ -343,6 +342,7 @@ public class PullJobsDaemon{
         retries = Integer.parseInt(retriesString);
         ++retries;
       }
+      GridPilot.getClassMgr().clearJobCS(jobDefID);
       ok = dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus", "providerInfo"},
           new String [] {STATUS_READY+":"+retries, ""});
     }
@@ -677,13 +677,14 @@ public class PullJobsDaemon{
   }
   
   /**
-   * Uploads output files and set the job status as 'executed' or 'failed'.
+   * Sets the job status to 'executed' or 'failed'.
    * @param jobRecord record
    * @return true if successful, false otherwise.
    */
   private boolean finishJob(JobInfo job){
     statusBar.setLabel("Pulled job done");
     try{
+      GridPilot.getClassMgr().clearJobCS(job.getJobDefId());
       if(!dbPluginMgr.updateJobDefinition(job.getJobDefId(), new String [] {"csStatus"},
           new String [] {STATUS_EXECUTED})){
         throw new Exception();

@@ -1,7 +1,9 @@
 package gridpilot;
 
 import java.io.IOException;
+import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Vector;
 
 import org.safehaus.uuid.UUIDGenerator;
@@ -283,13 +285,41 @@ public class CSPluginMgr implements ComputingSystem{
     }
     MyThread t = new MyThread(){
       public void run(){
-        try{
-          ((ComputingSystem) cs.get(csName)).updateStatus(jobs);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + csName +
-                             " during updateStatus", t);
+        if(csName.equalsIgnoreCase("gpss")){
+          HashMap jobCSs = new HashMap();
+          String pullCSName = null;
+          JobInfo job = null;
+          Enumeration en = jobs.elements();
+          while(en.hasMoreElements()){
+            job = (JobInfo) en.nextElement();
+            pullCSName = GridPilot.getClassMgr().getJobCS(job.getJobDefId());
+            if(!jobCSs.containsKey(pullCSName)){
+              jobCSs.put(pullCSName, new Vector());
+            }
+            ((Vector) jobCSs.get(pullCSName)).add(job);
+          }
+          for(Iterator it=jobCSs.keySet().iterator(); it.hasNext();){
+            pullCSName = (String) it.next();
+            try{
+              Debug.debug("Updating status of pulled jobs on "+pullCSName, 2);
+              ((ComputingSystem) cs.get(csName)).updateStatus((Vector) jobCSs.get(pullCSName));
+            }
+            catch(Throwable t){
+              logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                                 " from plugin " + csName +
+                                 " during updateStatus", t);
+            }
+          }
+        }       
+        else{
+          try{
+            ((ComputingSystem) cs.get(csName)).updateStatus(jobs);
+          }
+          catch(Throwable t){
+            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                               " from plugin " + csName +
+                               " during updateStatus", t);
+          }
         }
       }
     };
