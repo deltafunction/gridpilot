@@ -165,7 +165,8 @@ public class RuntimeCreationPanel extends CreateEditPanel{
                 GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));        
         if(!editing && !reuseTextFields ||
             tcCstAttributes[i]==null){
-          if(cstAttributesNames[i].toString().equalsIgnoreCase("initLines")){
+          if(cstAttributesNames[i].toString().equalsIgnoreCase("initLines") ||
+              cstAttributesNames[i].toString().equalsIgnoreCase("certificate")){
             tcCstAttributes[i] = Util.createTextArea(TEXTFIELDWIDTH);
           }
           else{
