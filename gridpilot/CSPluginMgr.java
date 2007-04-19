@@ -430,7 +430,19 @@ public class CSPluginMgr implements ComputingSystem{
    * @see ComputingSystem#exit()
    */
   public void exit() {
+    String enabled = null;
     for(int i=0; i<csNames.length; ++i){
+      enabled = null;
+      try{
+        enabled = GridPilot.getClassMgr().getConfigFile().getValue(csNames[i], "Enabled");
+      }
+      catch(Exception e){
+        continue;
+      }
+      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
+          !enabled.equalsIgnoreCase("true")){
+        continue;
+      }
       final int k = i;
       MyThread t = new MyThread(){
         public void run(){
@@ -707,6 +719,8 @@ public class CSPluginMgr implements ComputingSystem{
             Debug.debug(message, 2);
             dbPluginMgr.registerFileLocation(datasetID, datasetName,
                 uuid, lfn, remoteName, false);
+            message = "Registration done";
+            GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
           }
         }
         catch(Exception e){
