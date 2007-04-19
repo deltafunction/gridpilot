@@ -401,8 +401,8 @@ public class HSQLDBDatabase implements Database{
           getFieldNamesConn.close();
           selectConn.close();
           Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-          Statement stmt = conn.createStatement();
-          stmt.executeUpdate("SHUTDOWN");
+          //Statement stmt = conn.createStatement();
+          //stmt.executeUpdate("SHUTDOWN");
           try{
             conn.close();
           }
@@ -676,10 +676,12 @@ public class HSQLDBDatabase implements Database{
   }
 
  public String getRuntimeInitText(String runTimeEnvironmentName, String csName){
-    String initTxt = getRuntimeEnvironment(
-         getRuntimeEnvironmentID(runTimeEnvironmentName, csName)
-      ).getValue("initLines").toString();
-    return initTxt;
+     String id = getRuntimeEnvironmentID(runTimeEnvironmentName, csName);
+     if(id==null){
+       return null;
+     }
+     String initTxt = (String) getRuntimeEnvironment(id).getValue("initLines");
+     return initTxt;
   }
 
   public synchronized String getJobDefTransformationID(String jobDefinitionID){
@@ -807,11 +809,11 @@ public class HSQLDBDatabase implements Database{
       }
     }
 
-    patt = Pattern.compile("CONTAINS ([^\\s()]+)", Pattern.CASE_INSENSITIVE);
+    patt = Pattern.compile("CONTAINS ([^\\s()']+)", Pattern.CASE_INSENSITIVE);
     matcher = patt.matcher(req);
     req = matcher.replaceAll("LIKE '%$1%'");
     
-    patt = Pattern.compile("([<>=]) ([^\\s^\\(^\\)]+)", Pattern.CASE_INSENSITIVE);
+    patt = Pattern.compile("([<>=]) ([^\\s^\\(^\\)^']+)", Pattern.CASE_INSENSITIVE);
     matcher = patt.matcher(req);
     req = matcher.replaceAll("$1 '$2'");
     
@@ -1312,7 +1314,7 @@ public class HSQLDBDatabase implements Database{
 
   // Selects only the fields listed in fieldNames. Other fields are set to "".
   private synchronized DBRecord [] selectJobDefinitions(String datasetID, String [] fieldNames,
-      String [] statusList){
+      String [] statusList, String [] csStatusList){
     
     String req = "SELECT";
     for(int i=0; i<fieldNames.length; ++i){
@@ -1337,6 +1339,21 @@ public class HSQLDBDatabase implements Database{
           req += " OR ";
         }
         req += " status = '"+statusList[i]+"'";
+      }
+      req += ")";
+    }
+    if(csStatusList!=null && csStatusList.length>0){
+      if(!datasetID.equals("-1") || statusList!=null && statusList.length>0){
+        req += " AND (";
+      }
+      else{
+        req += " WHERE (";
+      }
+      for(int i=0; i<csStatusList.length; ++i){
+        if(i>0){
+          req += " OR ";
+        }
+        req += " csStatus = '"+csStatusList[i]+"'";
       }
       req += ")";
     }
@@ -1409,9 +1426,9 @@ public class HSQLDBDatabase implements Database{
   }
   
   public DBResult getJobDefinitions(String datasetID, String [] fieldNames,
-      String [] statusList){
+      String [] statusList, String [] csStatusList){
     
-    DBRecord jt [] = selectJobDefinitions(datasetID, fieldNames, statusList);
+    DBRecord jt [] = selectJobDefinitions(datasetID, fieldNames, statusList, csStatusList);
     DBResult res = new DBResult(fieldNames.length, jt.length);
     
     System.arraycopy(

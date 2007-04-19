@@ -604,8 +604,11 @@ public class MySQLDatabase extends DBCache implements Database {
   }
 
   public String getRuntimeInitText(String runTimeEnvironmentName, String csName){
-    String initTxt = (String) getRuntimeEnvironment(
-         getRuntimeEnvironmentID(runTimeEnvironmentName, csName)).getValue("initLines");
+    String id = getRuntimeEnvironmentID(runTimeEnvironmentName, csName);
+    if(id==null){
+      return null;
+    }
+    String initTxt = (String) getRuntimeEnvironment(id).getValue("initLines");
     return initTxt;
   }
 
@@ -735,10 +738,10 @@ public class MySQLDatabase extends DBCache implements Database {
       }
     }
 
-    patt = Pattern.compile("CONTAINS (\\S+)", Pattern.CASE_INSENSITIVE);
+    patt = Pattern.compile("CONTAINS ([^\\s']+)", Pattern.CASE_INSENSITIVE);
     matcher = patt.matcher(req);
     req = matcher.replaceAll("LIKE '%$1%'");
-    patt = Pattern.compile("([<>=]) ([^\\s()]+)", Pattern.CASE_INSENSITIVE);
+    patt = Pattern.compile("([<>=]) ([^\\s()']+)", Pattern.CASE_INSENSITIVE);
     matcher = patt.matcher(req);
     req = matcher.replaceAll("$1 '$2'");
     
@@ -1202,7 +1205,7 @@ public class MySQLDatabase extends DBCache implements Database {
 
   // Selects only the fields listed in fieldNames. Other fields are set to "".
   private synchronized DBRecord [] selectJobDefinitions(String datasetID, String [] fieldNames,
-      String [] statusList){
+      String [] statusList, String [] csStatusList){
     
     String req = "SELECT";
     for(int i=0; i<fieldNames.length; ++i){
@@ -1227,6 +1230,21 @@ public class MySQLDatabase extends DBCache implements Database {
           req += " OR ";
         }
         req += " status = '"+statusList[i]+"'";
+      }
+      req += ")";
+    }
+    if(csStatusList!=null && csStatusList.length>0){
+      if(!datasetID.equals("-1") || statusList!=null && statusList.length>0){
+        req += " AND (";
+      }
+      else{
+        req += " WHERE (";
+      }
+      for(int i=0; i<csStatusList.length; ++i){
+        if(i>0){
+          req += " OR ";
+        }
+        req += " csStatus = '"+csStatusList[i]+"'";
       }
       req += ")";
     }
@@ -1288,9 +1306,9 @@ public class MySQLDatabase extends DBCache implements Database {
   }
   
   public DBResult getJobDefinitions(String datasetID, String [] fieldNames,
-      String [] statusList){
+      String [] statusList, String [] csStatusList){
     
-    DBRecord jt [] = selectJobDefinitions(datasetID, fieldNames, statusList);
+    DBRecord jt [] = selectJobDefinitions(datasetID, fieldNames, statusList, csStatusList);
     DBResult res = new DBResult(fieldNames.length, jt.length);
     
     System.arraycopy(
