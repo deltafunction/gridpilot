@@ -835,7 +835,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         statusStrings[j] = DBPluginMgr.getStatusName(statusList[j]);
       }
       allJobDefinitions = dbPluginMgr.getJobDefinitions(
-            /*datasetID*/"-1", shownFields, statusStrings);
+            /*datasetID*/"-1", shownFields, statusStrings, new String [] {""});
       Debug.debug ("number of jobs for "+GridPilot.dbNames[ii]+
           ": "+allJobDefinitions.values.length, 2);
 

@@ -76,7 +76,7 @@ public class PullJobsDaemon{
         ee.printStackTrace();
       }
     }
-    cacheDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "pull cache directory");
+    cacheDir = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "pull cache directory");
     if(cacheDir!=null){
       try{
         File tmpFile = File.createTempFile(/*prefix*/"GridPilot-pull-cache", /*suffix*/"");
@@ -243,9 +243,10 @@ public class PullJobsDaemon{
       e.printStackTrace();
       return null;
     }
-    // We only reqest jobs that are "Defined"
+    // We only reqest jobs that are "Defined" and "ready"
     String [] statusList = new String [] {DBPluginMgr.getStatusName(DBPluginMgr.DEFINED)};
-    DBResult allJobDefinitions = dbPluginMgr.getJobDefinitions("-1", allFields, statusList);
+    DBResult allJobDefinitions = dbPluginMgr.getJobDefinitions("-1", allFields,
+        statusList, new String [] {"ready"});
     Vector eligibleJobs = new Vector(); //DBRecords
     for(int i=0; i<allJobDefinitions.values.length; ++i){
       DBRecord jobRecord = allJobDefinitions.getRow(i);

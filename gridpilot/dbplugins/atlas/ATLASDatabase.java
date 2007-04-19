@@ -2810,7 +2810,8 @@ public class ATLASDatabase implements Database{
     return null;
   }
 
-  public DBResult getJobDefinitions(String datasetID, String[] fieldNames, String [] statusList){
+  public DBResult getJobDefinitions(String datasetID, String[] fieldNames,
+      String [] statusList, String [] csStatusList){
     return null;
   }
 

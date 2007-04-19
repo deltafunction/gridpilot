@@ -2477,7 +2477,7 @@ public class DBPluginMgr extends DBCache implements Database{
   }
 
   public DBResult getJobDefinitions(final String datasetID, final String [] fieldNames,
-      final String [] statusList){
+      final String [] statusList, final String [] csStatusList){
   
     MyThread t = new MyThread(){
       DBResult res = null;
@@ -2489,7 +2489,7 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
-          res = db.getJobDefinitions(datasetID, fieldNames, statusList);
+          res = db.getJobDefinitions(datasetID, fieldNames, statusList, csStatusList);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +

@@ -71,7 +71,7 @@ public interface Database{
   public boolean isJobRepository() throws InterruptedException;
   // the convention here is that when datasetID is set to -1,
   // all jobDefinitions are returned
-  public DBResult getJobDefinitions(String datasetID, String [] fieldNames, String [] statusList) throws InterruptedException;
+  public DBResult getJobDefinitions(String datasetID, String [] fieldNames, String [] statusList, String [] csStatusList) throws InterruptedException;
   public DBRecord getJobDefinition(String jobDefID) throws InterruptedException;
   public boolean createJobDefinition(String [] values) throws InterruptedException;
   public boolean createJobDefinition(String datasetName, String [] cstAttrNames,
