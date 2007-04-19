@@ -212,54 +212,65 @@ public class ShowOutputsJobsDialog extends JOptionPane{
       mainPanel.add(cb, BorderLayout.SOUTH);
     }
     Vector threads = new Vector();
-    for(int i=0; i<filesPaths.length; ++i){
-      if(filesPaths[i]!=null){
-        final JPanel panel = new JPanel(new BorderLayout());
-        JLabel label = new JLabel(filesPaths[i]);
-        final JTextArea textArea = new JTextArea();
-        textArea.setLineWrap(true);
-        textArea.setWrapStyleWord(true);
-        textArea.setEditable(false);
-        JScrollPane scrollPane = new JScrollPane(textArea);
-        panel.add(scrollPane, BorderLayout.CENTER);
-        panel.add(label, BorderLayout.SOUTH);
-        String tabName = filesPaths[i].substring(
-            filesPaths[i].lastIndexOf("/") + 1);
-        outputs.add(panel, tabName);
-        final int finalI = i;
-        Thread t = new Thread(){
-          public void run(){
-            JProgressBar pb = new JProgressBar();
-            pb.setIndeterminate(true);
-            textArea.setText("Please wait, I'm reading...");
-            panel.add(pb, BorderLayout.NORTH);
-            String content;
-            try{
-              //GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(job);
-              RandomAccessFile f = new RandomAccessFile(filesPaths[finalI], "r");
-              byte [] b  = new byte [(int)f.length()];
-              f.readFully(b);
-              content = new String(b);
-              f.close();
+    if(filesPaths==null){
+      String content = "This job definition does not appear to have any associated scripts.";
+      JTextArea textArea = new JTextArea();
+      textArea.setForeground(Color.gray);
+      textArea.setText(content);
+      JPanel panel = new JPanel(new BorderLayout());
+      panel.add(textArea);
+      outputs.add(panel, "No scripts");
+    }
+    else{
+      for(int i=0; i<filesPaths.length; ++i){
+        if(filesPaths[i]!=null){
+          final JPanel panel = new JPanel(new BorderLayout());
+          JLabel label = new JLabel(filesPaths[i]);
+          final JTextArea textArea = new JTextArea();
+          textArea.setLineWrap(true);
+          textArea.setWrapStyleWord(true);
+          textArea.setEditable(false);
+          JScrollPane scrollPane = new JScrollPane(textArea);
+          panel.add(scrollPane, BorderLayout.CENTER);
+          panel.add(label, BorderLayout.SOUTH);
+          String tabName = filesPaths[i].substring(
+              filesPaths[i].lastIndexOf("/") + 1);
+          outputs.add(panel, tabName);
+          final int finalI = i;
+          Thread t = new Thread(){
+            public void run(){
+              JProgressBar pb = new JProgressBar();
+              pb.setIndeterminate(true);
+              textArea.setText("Please wait, I'm reading...");
+              panel.add(pb, BorderLayout.NORTH);
+              String content;
+              try{
+                //GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(job);
+                RandomAccessFile f = new RandomAccessFile(filesPaths[finalI], "r");
+                byte [] b  = new byte [(int)f.length()];
+                f.readFully(b);
+                content = new String(b);
+                f.close();
+              }
+              catch(FileNotFoundException e){
+                content = "This file (" + filesPaths[finalI] + ") doesn't exist";
+                textArea.setForeground(Color.gray);
+              }
+              catch(IOException e){
+                content = "IOExeption during reading of file " +
+                    filesPaths[finalI] + " : " +
+                    e.getMessage();
+                textArea.setForeground(Color.gray);
+              }
+              textArea.setText(content);
+              panel.remove(pb);
+              panel.updateUI();
+              Debug.debug("end of thread for " + filesPaths[finalI], 2);
             }
-            catch (FileNotFoundException e){
-              content = "This file (" + filesPaths[finalI] + ") doesn't exist";
-              textArea.setForeground(Color.gray);
-            }
-            catch(IOException e){
-              content = "IOExeption during reading of file " +
-                  filesPaths[finalI] + " : " +
-                  e.getMessage();
-              textArea.setForeground(Color.gray);
-            }
-            textArea.setText(content);
-            panel.remove(pb);
-            panel.updateUI();
-            Debug.debug("end of thread for " + filesPaths[finalI], 2);
-          }
-        };
-        t.start();
-        threads.add(t);
+          };
+          t.start();
+          threads.add(t);
+        }
       }
     }
 
