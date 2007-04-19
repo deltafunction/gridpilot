@@ -66,6 +66,7 @@ public class GPSSComputingSystem implements ComputingSystem{
   });
 
   public GPSSComputingSystem(String _csName){
+    finalRuntimesLocal = new HashSet();
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
     localRuntimeDBs = GridPilot.getClassMgr().getConfigFile().getValues(
@@ -124,6 +125,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     DBRecord jobDefinition = null;
     DBRecord dataset = null;
     String datasetID = null;
+    String datasetName = null;
     DBRecord transformation = null;
     String transformationName = null;
     String transformationVersion = null;
@@ -135,6 +137,7 @@ public class GPSSComputingSystem implements ComputingSystem{
       jobDefinition = dbPluginMgr.getJobDefinition(job.getJobDefId());
       datasetID = dbPluginMgr.getJobDefDatasetID(job.getJobDefId());
       dataset = dbPluginMgr.getDataset(datasetID);
+      datasetName = (String) dataset.getValue(Util.getNameField(dbPluginMgr.getDBName(), "dataset"));
       transformationName = dbPluginMgr.getDatasetTransformationName(datasetID);
       transformationVersion = dbPluginMgr.getDatasetTransformationVersion(datasetID);
       transformationID = dbPluginMgr.getTransformationID(transformationName, transformationVersion);
@@ -147,24 +150,25 @@ public class GPSSComputingSystem implements ComputingSystem{
     }
     try{
       // Create the transformation if necessary
-      transformationID = remoteMgr.getTransformationID(transformationName, transformationVersion);
-      if(transformationID==null || transformationID.equals("-1")){
+      String remoteTransformationID = remoteMgr.getTransformationID(transformationName, transformationVersion);
+      if(remoteTransformationID==null || remoteTransformationID.equals("-1") ||
+          remoteTransformationID.equals("-1")){
         remoteMgr.createTrans(transformation.fields, transformation.values);
       }
       // Tag it for deletion
-      tagDeleteTransformation(remoteMgr, transformationID);
+      tagDeleteTransformation(remoteMgr, transformationName, transformationVersion);
       // Create the dataset if necessary
-      String datasetName = null;
+      String remoteDatasetID = null;
       try{
-        datasetName = remoteMgr.getDatasetName(datasetID);
+        remoteDatasetID = remoteMgr.getDatasetID(datasetName);
       }
       catch(Exception ee){
       }
-      if(datasetName==null || datasetName.equals("")){
+      if(remoteDatasetID==null || remoteDatasetID.equals("-1") || remoteDatasetID.equals("")){
         remoteMgr.createDataset("dataset", dataset.fields, dataset.values);
       }
       // Tag it for deletion
-      tagDeleteDataset(remoteMgr, datasetID);
+      tagDeleteDataset(remoteMgr, datasetName);
       // Modify and write the jobDefinition
       jobDefinition.setValue("csStatus", PullJobsDaemon.STATUS_READY);
       try{
@@ -188,14 +192,16 @@ public class GPSSComputingSystem implements ComputingSystem{
     DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
     String localJobDefID = job.getJobDefId();
     String name = job.getName();
-    String dsName = dbPluginMgr.getJobDefDatasetID(localJobDefID);
+    String localDatasetID = dbPluginMgr.getJobDefDatasetID(localJobDefID);
+    String dsName = dbPluginMgr.getDatasetName(localDatasetID);
     String remoteNameField = Util.getNameField(remoteMgr.getDBName(), "jobDefinition");
     String remoteIdField = Util.getIdentifierField(remoteMgr.getDBName(), "jobDefinition");
     String [] remoteJobDefDSRef = Util.getJobDefDatasetReference(remoteMgr.getDBName());
     // The remote DB will be a MySQL DB
     DBResult remoteJobDefinitions = remoteMgr.select(
-        "SELECT "+remoteIdField+" FROM jobDefinition WHERE "+remoteNameField+" = "+name+
-        " AND "+remoteJobDefDSRef[1]+" = "+dsName, remoteIdField, false);
+        "SELECT "+remoteIdField+" FROM jobDefinition WHERE "+remoteNameField+" = '"+name+
+        "' AND "+remoteJobDefDSRef[1]+" = '"+dsName+"' AND csStatus != '' AND " +
+            "userInfo = '"+user+"'", remoteIdField, false);
     if(remoteJobDefinitions.values.length>1){
       error = "ERROR: more than one jobDefinition with the same name!";
       throw new IOException(error);
@@ -285,7 +291,8 @@ public class GPSSComputingSystem implements ComputingSystem{
   
   /**
    * Updates the URLs of the input/output files and stdout/stderr to be in the
-   * defined remoted directory.
+   * defined remoted directory. Also sets 'userInfo'. This is to be able
+   * to identify 'our' jobDefinitions. Also sets status to 'defined'.
    * @param job definition
    * @return The updated job definition
    * @throws Exception
@@ -316,6 +323,8 @@ public class GPSSComputingSystem implements ComputingSystem{
     jobDefinition.setValue("outFileMapping", Util.arrayToString(outFileMapping));
     jobDefinition.setValue("stdoutDest", stdoutDest);
     jobDefinition.setValue("stderrDest", stderrDest);
+    jobDefinition.setValue("userInfo", user);
+    jobDefinition.setValue("status", "defined");
     return jobDefinition;
   }
 
@@ -373,7 +382,8 @@ public class GPSSComputingSystem implements ComputingSystem{
    * If the transformation happens to be used by other GPSS jobs, this is
    * taken into account - i.e. it is not deleted until the last one has finished.
    */
-  private void tagDeleteTransformation(DBPluginMgr remoteMgr, String transformationID){
+  private void tagDeleteTransformation(DBPluginMgr remoteMgr, String transName, String transVersion){
+    String transformationID = remoteMgr.getTransformationID(transName, transVersion);
     String comment = (String) remoteMgr.getTransformation(transformationID).getValue("comment");
     if(comment!=null && comment.startsWith("volatile:")){
       if(!comment.matches("volatile::'"+user+"'.*") &&
@@ -384,6 +394,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     else{
       comment = "volatile::'"+user+"'";
     }
+    remoteMgr.updateTransformation(transformationID, new String [] {"comment"}, new String [] {comment});
   }
 
   /**
@@ -410,7 +421,8 @@ public class GPSSComputingSystem implements ComputingSystem{
    * If the dataset happens to be used by other GPSS jobs, this is
    * taken into account - i.e. it is not deleted until the last one has finished.
    */
-  private void tagDeleteDataset(DBPluginMgr remoteMgr, String datasetID){
+  private void tagDeleteDataset(DBPluginMgr remoteMgr, String datasetName){
+    String datasetID = remoteMgr.getDatasetID(datasetName);
     String metaData = (String) remoteMgr.getDataset(datasetID).getValue("metaData");
     if(metaData!=null && metaData.startsWith("volatile:")){
       if(!metaData.matches("volatile::'"+user+"'.*") &&
@@ -421,6 +433,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     else{
       metaData = "volatile::'"+user+"'";
     }
+    remoteMgr.updateDataset(datasetID, new String [] {"metaData"}, new String [] {metaData});
   }
 
   /**
@@ -616,6 +629,19 @@ public class GPSSComputingSystem implements ComputingSystem{
         Debug.debug(error, 2);
       }
     }
+    String remoteID = null;
+    try{
+      remoteID = getRemoteJobdefID(job);
+    }
+    catch(IOException e){
+      e.printStackTrace();
+      error = "ERROR: could not get remote jobDefinition ID";
+      logFile.addMessage(error, e);
+      return;
+    }
+    DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
+    Debug.debug("Deleting remote job definition "+remoteID, 2);
+    remoteMgr.deleteJobDefinition(remoteID, false);
   }
 
   /**
