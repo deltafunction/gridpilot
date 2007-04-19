@@ -44,8 +44,7 @@ public class ForkComputingSystem implements ComputingSystem{
   private String publicCertificate = null;
   private String remotePullDB = null;
   private String [] localRuntimeDBs = null;
-  private HashSet finalRuntimesLocal = null;
-  private HashSet finalRuntimesRemote = null;
+  private HashSet toCleanupRTEs = null;
 
   public ForkComputingSystem(String _csName){
     csName = _csName;
@@ -347,81 +346,14 @@ public class ForkComputingSystem implements ComputingSystem{
       }
     }
     
-    finalRuntimesLocal = new HashSet();
-    finalRuntimesRemote = new HashSet();
+    String name = null;
+    String cert = getCertificate();
+    String url = getUrl();
+    
+    toCleanupRTEs = new HashSet();
     HashSet runtimes = shellMgr.listFilesRecursively(runtimeDirectory);
     if(runtimes!=null && runtimes.size()>0){
-      String fil = null;
-      String hostName = null;
-      
-      String name = null;
-      String cert = null;
-      String url = null;
-      
-      // Get the URL.
-      // The URL is only for allowing the submitter to
-      // download stdout/stderr
-      try{
-        hostName = InetAddress.getLocalHost().getCanonicalHostName();
-      }
-      catch(Exception e){
-        e.printStackTrace();
-      }
-      // unqualified names are of no use
-      if(hostName.indexOf(".")<0){
-        hostName = null;
-      }
-      if(hostName==null){
-        try{
-          hostName = InetAddress.getLocalHost().getHostAddress();
-        }
-        catch(Exception e){
-          e.printStackTrace();
-        }
-      }
-      if(hostName==null){
-        try{
-          hostName = Util.getIPNumber();
-        }
-        catch(Exception e){
-          e.printStackTrace();
-        }
-      }
-      // if we cannot get the host name, try to get the IP address
-      if(hostName==null){
-        try{
-          hostName = Util.getIPAddress();
-        }
-        catch(Exception e){
-          e.printStackTrace();
-        }
-      }
-      if(hostName!=null){
-        url = "gsiftp://"+hostName+"/";
-      }
-      Debug.debug("url: "+url, 3);
-      
-      if(publicCertificate!=null){
-        // get the certificate
-        try{
-          cert = shellMgr.readFile(publicCertificate);
-          // TODO: check if certificate includes private key
-          // and discard the key if so
-        }
-        catch(Exception e){
-          e.printStackTrace();
-        }
-      }
-
-      String [] runtimeEnvironmentFields = null;
-      String [] rtVals = null;
-      
-      if(localDBMgr!=null){
-        runtimeEnvironmentFields =
-          localDBMgr.getFieldNames("runtimeEnvironment");
-        rtVals = new String [runtimeEnvironmentFields.length];
-      }
-      
+      String fil = null;      
       for(Iterator it=runtimes.iterator(); it.hasNext();){
         
         name = null;
@@ -430,132 +362,18 @@ public class ForkComputingSystem implements ComputingSystem{
         // Get the name
         Debug.debug("File found: "+runtimeDirectory+":"+fil, 3);
         name = fil.substring(runtimeDirectory.length()+1);
-        
-        if(name!=null && name.length()>0 &&
-            /*url!=null && url.length()>0 && */runtimeEnvironmentFields!=null){
+                
+        if(name!=null && name.length()>0){
           // Write the entry in the local DB
-          Debug.debug("runtimeEnvironmentFields: "+runtimeEnvironmentFields.length, 3);
-          for(int i=0; i<runtimeEnvironmentFields.length; ++i){
-            if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
-              rtVals[i] = name;
-            }
-            else if(runtimeEnvironmentFields[i].equalsIgnoreCase("url")){
-              rtVals[i] = url;
-            }
-            else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
-              rtVals[i] = csName;
-            }
-            else{
-              rtVals[i] = "";
-            }
-          }
-          Debug.debug("localDBMgr: "+localDBMgr, 3);
-          if(localDBMgr!=null){
-            boolean rteExistsLocally = false;
-            if(localDBMgr!=null){
-              try{
-                String rtId = localDBMgr.getRuntimeEnvironmentID(name, csName);
-                if(rtId!=null && !rtId.equals("-1")){
-                  rteExistsLocally = true;
-                }
-              }
-              catch(Exception e){
-                e.printStackTrace();
-              }
-            }
-                    
-            // create if not there
-            Debug.debug("rteExistsLocally: "+rteExistsLocally, 3);
-            if(!rteExistsLocally){
-              try{
-                if(localDBMgr.createRuntimeEnvironment(rtVals)){
-                  finalRuntimesLocal.add(name);
-                }
-              }
-              catch(Exception e){
-                e.printStackTrace();
-              }
-            }
-            // tag for deletion in any case
-            else{
-              finalRuntimesLocal.add(name);
-            }
-            // Register with local DB with CS "GPSS"
-            if(cert!=null && cert.length()>0){
-              rteExistsLocally = false;
-              if(localDBMgr!=null){
-                try{
-                  String rtId = localDBMgr.getRuntimeEnvironmentID(name, "GPSS");
-                  if(rtId!=null && !rtId.equals("-1")){
-                    rteExistsLocally = true;
-                  }
-                }
-                catch(Exception e){
-                  e.printStackTrace();
-                }
-                Debug.debug("rteExistsLocally: "+rteExistsLocally, 3);
-                if(!rteExistsLocally){
-                  try{
-                    if(localDBMgr.createRuntimeEnvironment(rtVals)){
-                      finalRuntimesLocal.add(name);
-                    }
-                  }
-                  catch(Exception e){
-                    e.printStackTrace();
-                  }
-                }
-              }
-            }
-          }
-          
-          // Register with remote DB and register again with local DB with CS "GPSS"
-          if(cert!=null && cert.length()>0){
-            // Write the entry in the remote DB
-            for(int i=0; i<runtimeEnvironmentFields.length; ++i){
-              if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
-                rtVals[i] = "GPSS";
-              }
-              else if(runtimeEnvironmentFields[i].equalsIgnoreCase("certificate")){
-                rtVals[i] = cert;
-              }
-              else if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
-                rtVals[i] = name;
-              }
-              else if(runtimeEnvironmentFields[i].equalsIgnoreCase("url")){
-                rtVals[i] = url;
-              }
-              else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
-                rtVals[i] = csName;
-              }
-              else{
-                rtVals[i] = "";
-              }
-            }
-            try{
-              boolean rteExistsRemotely = false;
-              if(remoteDBMgr!=null){
-                try{
-                  String rtId = remoteDBMgr.getRuntimeEnvironmentID(name, "GPSS");
-                  if(rtId!=null && !rtId.equals("-1")){
-                    rteExistsRemotely = true;
-                  }
-                }
-                catch(Exception e){
-                  e.printStackTrace();
-                }
-              }
-              // Only create and tag for deletion if not already there.
-              if(!rteExistsRemotely && remoteDBMgr.createRuntimeEnvironment(rtVals)){
-                finalRuntimesRemote.add(name);
-              }
-            }
-            catch(Exception e){
-              logFile.addMessage("WARNING: could not access "+remotePullDB+". Disabling" +
-                  "remote registration of runtime environments");
-            }
-          }
+          Debug.debug("Writing RTE in local DB "+localDBMgr.getDBName(), 3);
+          createRTE(localDBMgr, name, csName, null, null);
+          // Register with local and remote DB with CS "GPSS"
+          if(cert!=null && cert.length()>0 && remoteDBMgr!=null){
+            createRTE(localDBMgr, name, "GPSS", cert, null);
+            createRTE(remoteDBMgr, name, "GPSS", cert, url);
+          }         
           else{
-            logFile.addMessage("WARNING: no certificate. Disabling remote registration of " +
+            logFile.addMessage("WARNING: no certificate or no remote DB. Disabling remote registration of " +
                     "runtime environments.");
           }
         }
@@ -563,6 +381,135 @@ public class ForkComputingSystem implements ComputingSystem{
     }
     else{
       Debug.debug("WARNING: no runtime environment scripts found", 1);
+    }
+  }
+  
+  private String getUrl(){
+    String hostName = null;
+    String url = null;
+    // Get the URL - not used at the moment
+    try{
+      hostName = InetAddress.getLocalHost().getCanonicalHostName();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    // unqualified names are of no use
+    if(hostName.indexOf(".")<0){
+      hostName = null;
+    }
+    if(hostName==null){
+      try{
+        hostName = InetAddress.getLocalHost().getHostAddress();
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    if(hostName==null){
+      try{
+        hostName = Util.getIPNumber();
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    // if we cannot get the host name, try to get the IP address
+    if(hostName==null){
+      try{
+        hostName = Util.getIPAddress();
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    if(hostName!=null){
+      url = "gsiftp://"+hostName+"/";
+    }
+    Debug.debug("url: "+url, 3);
+    return url;
+  }
+  
+  private String getCertificate(){
+    String cert = null;
+    if(publicCertificate!=null){
+      // get the certificate
+      try{
+        cert = shellMgr.readFile(publicCertificate);
+        // TODO: check if certificate includes private key
+        // and discard the key if so
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    return cert;
+  }
+  
+  private void createRTE(DBPluginMgr dbPluginMgr, String name, String csName,
+      String cert, String url){
+    if(dbPluginMgr==null){
+      return;
+    }
+    String [] runtimeEnvironmentFields = null;
+    String [] rtVals = null;
+    try{
+      runtimeEnvironmentFields = dbPluginMgr.getFieldNames("runtimeEnvironment");
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    if(runtimeEnvironmentFields==null){
+      return;
+    }
+    rtVals = new String [runtimeEnvironmentFields.length];
+    Debug.debug("runtimeEnvironmentFields: "+runtimeEnvironmentFields.length, 3);
+    for(int i=0; i<runtimeEnvironmentFields.length; ++i){
+      if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
+        rtVals[i] = name;
+      }
+      else if(runtimeEnvironmentFields[i].equalsIgnoreCase("url") && url!=null){
+        rtVals[i] = url;
+      }
+      else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
+        rtVals[i] = csName;
+      }
+      else if(runtimeEnvironmentFields[i].equalsIgnoreCase("certificate") && cert!=null){
+        rtVals[i] = cert;
+      }
+      else{
+        rtVals[i] = "";
+      }
+    }
+    boolean rteExists = false;
+    if(dbPluginMgr!=null){
+      try{
+        String rtId = dbPluginMgr.getRuntimeEnvironmentID(name, csName);
+        if(rtId!=null && !rtId.equals("-1")){
+          rteExists = true;
+        }
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    // create if not there
+    Debug.debug("rteExists: "+rteExists, 3);
+    if(!rteExists){
+      try{
+        if(dbPluginMgr.createRuntimeEnvironment(rtVals)){
+          toCleanupRTEs.add(new String [] {name, csName, dbPluginMgr.getDBName()});
+        }
+      }
+      catch(Exception e){
+        logFile.addMessage("WARNING: could not access "+dbPluginMgr.getDBName()+". Disabling" +
+        "registration of runtime environments");
+        e.printStackTrace();
+      }
+    }
+    // tag for deletion in any case
+    else{
+      toCleanupRTEs.add(new String [] {name, csName, dbPluginMgr.getDBName()});
     }
   }
   
@@ -748,75 +695,48 @@ public class ForkComputingSystem implements ComputingSystem{
 
   public void exit(){
     String runtimeName = null;
+    String myCSName = null;
     String initText = null;
     String id = "-1";
     boolean ok = true;
-    DBPluginMgr localDBMgr = null;
-    for(int i=0; i<localRuntimeDBs.length; ++i){
-      localDBMgr = null;
+    DBPluginMgr dbPluginMgr = null;
+    String [] triplet = null;
+    for(Iterator itt = toCleanupRTEs.iterator(); itt.hasNext();){
+      triplet = (String []) itt.next();
       try{
-        localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
-            localRuntimeDBs[i]);
-      }
-      catch(Exception e){
-        Debug.debug("Could not load local runtime DB "+localRuntimeDBs[i]+"."+e.getMessage(), 1);
-      }
-      if(localDBMgr!=null){
-        for(Iterator it=finalRuntimesLocal.iterator(); it.hasNext();){
+        dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(triplet[2]);
+        if(dbPluginMgr!=null){
           ok = true;
-          runtimeName = (String )it.next();
+          runtimeName = triplet[0];
+          myCSName = triplet[1];
           // Don't delete records with a non-empty initText.
           // These can only have been created by hand.
-          initText = localDBMgr.getRuntimeInitText(runtimeName, csName);
+          initText = null;
+          try{
+            initText = dbPluginMgr.getRuntimeInitText(runtimeName, myCSName);
+          }
+          catch(Exception e){
+          }
           if(initText!=null && !initText.equals("")){
             continue;
           }
-          id = localDBMgr.getRuntimeEnvironmentID(runtimeName, csName);
+          id = dbPluginMgr.getRuntimeEnvironmentID(runtimeName, myCSName);
           if(!id.equals("-1")){
-            ok = localDBMgr.deleteRuntimeEnvironment(id);
+            ok = dbPluginMgr.deleteRuntimeEnvironment(id);
           }
           else{
             ok = false;
           }
           if(!ok){
             Debug.debug("WARNING: could not delete runtime environment " +
-                runtimeName+
-                " from database "+
-                localDBMgr.getDBName(), 1);
+                runtimeName+" from database "+triplet[2], 1);
           }
         }
-      }
-    }
-    if(remotePullDB!=null){
-      DBPluginMgr remoteDBMgr = null;
-      try{
-        remoteDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
-          remotePullDB);
       }
       catch(Exception e){
-      }
-      if(remoteDBMgr!=null){
-        for(Iterator it=finalRuntimesRemote.iterator(); it.hasNext();){
-          ok = true;
-          runtimeName = (String) it.next();
-          // Don't delete records with a non-empty initText.
-          // These can only have been created by hand.
-          initText = remoteDBMgr.getRuntimeInitText(runtimeName, csName);
-          if(initText!=null && !initText.equals("")){
-            continue;
-          }
-          id = remoteDBMgr.getRuntimeEnvironmentID(runtimeName, csName);
-          if(!id.equals("-1")){
-            ok = remoteDBMgr.deleteRuntimeEnvironment(id);
-          }
-          else{
-            ok = false;
-          }
-          if(!ok){
-            Debug.debug("WARNING: could not delete runtime environment " +
-                runtimeName+" from database "+remoteDBMgr.getDBName(), 1);
-          }
-        }
+        e.printStackTrace();
+        Debug.debug("WARNING: could not delete runtime environment " +
+            runtimeName+" from database "+triplet[2], 1);
       }
     }
   }
