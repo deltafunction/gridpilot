@@ -987,12 +987,17 @@ public class GPSSComputingSystem implements ComputingSystem{
     return res;
   }
 
+  /**
+   * Finds requested jobs, checks if provider is allowed to run them;
+   * if so, sets permissions on input files accordingly.
+   */
   public void updateStatus(Vector jobs){
     for(int i=0; i<jobs.size(); ++i)
       updateStatus((JobInfo) jobs.get(i));
   }
 
   private void updateStatus(JobInfo job){
+    // TODO
   }
 
   public String[] getScripts(JobInfo job){

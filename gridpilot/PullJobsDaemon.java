@@ -28,12 +28,13 @@ public class PullJobsDaemon{
   private String cacheDir = null;
   // Map of JobInfo -> (Vector of TransferInfos)
   private HashMap runningTransfers = new HashMap();
-  private static int WAIT_TRIES = 20;
+  private static int WAIT_TRIES = 5;
   private static int WAIT_SLEEP = 10000;
   private static boolean CLEANUP_CACHE_ON_EXIT = true;
   
   public static String STATUS_READY = "ready";
   public static String STATUS_REQUESTED = "requested";
+  public static String STATUS_PREPARED = "prepared";
   public static String STATUS_DOWNLOADING = "downloading";
   public static String STATUS_SUBMITTED = "submitted";
   public static String STATUS_REQUESTED_KILLED = "requestKill";
@@ -160,16 +161,17 @@ public class PullJobsDaemon{
     }
 
     DBRecord [] candidates = findEligibleJobs();
-    Vector okJobs = new Vector();
+    Vector jobsVector = new Vector();
     for(int i=0; i<candidates.length; ++i){
       if(checkRequirements(candidates[i])){
-        okJobs.add(candidates[i]);
+        jobsVector.add(candidates[i]);
       }
     }
-    DBRecord [] okCandidates = new DBRecord [okJobs.size()];
+    DBRecord [] okCandidates = new DBRecord[jobsVector.size()];
     for(int i=0; i<okCandidates.length; ++i){
-      okCandidates[i] = (DBRecord) okJobs.get(i);
+      okCandidates[i] = (DBRecord) jobsVector.get(i);
     }
+    Debug.debug("Found "+okCandidates.length+" suitable jobs.", 1);
     okCandidates = rankJobs(okCandidates);
     for(int i=0; i<okCandidates.length; ++i){
       Debug.debug("Requesting job  "+okCandidates[i].getValue(
@@ -250,10 +252,9 @@ public class PullJobsDaemon{
     Vector eligibleJobs = new Vector(); //DBRecords
     for(int i=0; i<allJobDefinitions.values.length; ++i){
       DBRecord jobRecord = allJobDefinitions.getRow(i);
-      if(checkRequirements(jobRecord)){
-        eligibleJobs.add(jobRecord);
-      }
+      eligibleJobs.add(jobRecord);
     }
+    Debug.debug("Found "+eligibleJobs.size()+" candidate jobs.", 1);
     DBRecord [] ret = new DBRecord[eligibleJobs.size()];
     for(int i=0; i<ret.length; ++i){
       ret[i] = (DBRecord) eligibleJobs.get(i);
@@ -262,22 +263,24 @@ public class PullJobsDaemon{
   }
   
   private boolean checkRequirements(DBRecord jobRecord){
-    Debug.debug("Checking job  "+jobRecord.getValue(
+    Debug.debug("Checking job "+jobRecord.getValue(
         Util.getNameField(dbPluginMgr.getDBName(), "jobDefinition")), 2);
     // We only consider jobs that have been explicitly submitted to GPSS
-    String csName = jobRecord.getValue("computingSystem").toString();
-    if(csName!=null || !csName.equalsIgnoreCase("gpss")){
+    String csName = (String) jobRecord.getValue("computingSystem");
+    if(csName!=null && !csName.equalsIgnoreCase("gpss")){
+      Debug.debug("Not a GPSS job. "+csName, 3);
       return false;
     }
-    String userInfo = (String) jobRecord.getValue("userInfo");
-    // If userInfo is set, the job is already taken.
-    if(userInfo!=null && !userInfo.equals("")){
-      //user = GridPilot.getClassMgr().getCSPluginMgr().getUserInfo(csName);
+    String providerInfo = (String) jobRecord.getValue("providerInfo");
+    // If providerInfo is set, the job is already taken.
+    if(providerInfo!=null && !providerInfo.equals("") && !providerInfo.equalsIgnoreCase("null")){
+      Debug.debug("providerInfo already set, job is taken. "+providerInfo, 3);
       return false;
     }
     // We only consider jobs that have csStatus ready or ready:n, n<maxRetries
     String status = (String) jobRecord.getValue("csStatus");
     if(status==null || !status.startsWith(STATUS_READY)){
+      Debug.debug("job csStatus not ready. "+status, 3);
       return false;
     }
     if(jobRecord!=null){
@@ -287,6 +290,7 @@ public class PullJobsDaemon{
         String retriesString = status.substring(index+1);
         retries = Integer.parseInt(retriesString);
         if(retries>GridPilot.maxPullRerun){
+          Debug.debug("Max rerun exceeded; not running job. "+retries, 2);
           return false;
         }
       }
@@ -424,8 +428,8 @@ public class PullJobsDaemon{
       try{
         jobDefID = (String) jobRecord.getValue(idField);
         status = dbPluginMgr.getJobDefValue(jobDefID, "csStatus");
-        if(status.equalsIgnoreCase("Prepared")){
-          Debug.debug("Job "+jobDefID+" prepared",  2);
+        if(status.equalsIgnoreCase(STATUS_PREPARED)){
+          Debug.debug("Job "+jobDefID+STATUS_PREPARED,  2);
           return true;
         }
         Debug.debug("Waiting for job to be prepared...",  2);

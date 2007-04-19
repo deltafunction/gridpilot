@@ -76,6 +76,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   public JobStatusUpdateControl statusUpdateControl;
   private SubmissionControl submissionControl;
   private HashMap pullDaemons = new HashMap();
+  private boolean isPulling = false;
   
   private Timer timerRefresh = new Timer(0, new ActionListener (){
     public void actionPerformed(ActionEvent e){
@@ -236,12 +237,22 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     
     bPull.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-          PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-          if(!daemon.pullJob()){
-            break;
+        if(isPulling){
+          return;
+        }
+        MyThread t = new MyThread(){
+          public void run(){
+            isPulling = true;
+            for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
+              PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
+              if(!daemon.pullJob()){
+                break;
+              }
+            }
+            isPulling = false;
           }
-        }  
+        };
+        t.start();
       }
     });
     bRefresh.setToolTipText("Pull an eligible job");
