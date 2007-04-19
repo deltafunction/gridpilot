@@ -87,9 +87,17 @@ public class ForkScriptGenerator extends ScriptGenerator{
     String [][] outputFiles = job.getUploadFiles();
     if(inputFiles!=null && inputFiles.length>0 || outputFiles!=null && outputFiles.length>0){
       if(requiredRuntimeEnv!=null && requiredRuntimeEnv.length()>0){
+        Debug.debug("Adding sourcing of required RTEs: "+requiredRuntimeEnv, 2);
         // requiredRuntimeEnv is only needed to get input files from
         // remote sources or copy ouput files to final destinations
-        String initTxt = dbPluginMgr.getRuntimeInitText(requiredRuntimeEnv, csName).toString();
+        String initTxt = null;
+        try{
+          initTxt = dbPluginMgr.getRuntimeInitText(requiredRuntimeEnv, csName).toString();
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          logFile.addMessage("WARNING: could not find required runtime environment "+requiredRuntimeEnv, e);
+        }
         writeLine(buf, initTxt);
         writeLine(buf, ("source "+Util.clearFile(runtimeDirectory)+
             "/"+requiredRuntimeEnv).replaceAll("//", "/"));
