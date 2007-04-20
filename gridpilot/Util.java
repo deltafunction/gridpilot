@@ -969,8 +969,8 @@ public class Util{
       BufferedWriter out = new BufferedWriter(new FileWriter(tempFile));
       int c;
 
-      while((c = in.read()) != -1){
-        if(c != '\r'){
+      while((c=in.read())!=-1){
+        if(c!='\r'){
           out.write(c); 
         }
       }
@@ -1918,5 +1918,73 @@ public class Util{
     return true;
   }
   
+  /**
+   * Reads the lines of a text file on a web server (or locally),
+   * ignoring empty lines and lines starting with '#'.
+   */
+  public static String [] readURL(String urlString) throws Exception{
+    String [] ret = null;
+    if(urlString.startsWith("http:") || urlString.startsWith("http:") ||
+        urlString.startsWith("ftp:") || urlString.startsWith("file:")){
+      if(urlString.startsWith("file:")){
+        urlString = clearTildeLocally(clearFile(urlString));
+      }
+      URL url = new URL(urlString);
+      BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
+      String line = null;
+      Vector vec = new Vector();
+      while((line=in.readLine())!=null){
+        if(line!=null && !line.startsWith("#") && !line.equals("")){
+          vec.add(line);
+        }
+      }
+      in.close();
+      ret = new String[vec.size()];
+      Enumeration en = vec.elements();
+      int i = 0;
+      while(en.hasMoreElements()){
+        ret[i] = (String) en.nextElement();
+        ++i;
+      }
+    }
+    else if(urlString.startsWith("gsiftp:") || urlString.startsWith("srm:")){
+      File tmpFile = File.createTempFile("GridPilot-", "");
+      TransferControl.download(urlString, tmpFile,
+          GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+      ret = readURL(tmpFile.toURL().toExternalForm());
+      tmpFile.delete();
+    }
+    return ret;
+  }
+
+  /**
+   * Reads the lines of a text file on a web server (or locally),
+   * and saves them to a file, ignoring empty lines.
+   */
+  public static File getURL(String urlString) throws Exception{
+    File tmpFile = File.createTempFile("GridPilot-", "");
+    if(urlString.startsWith("http:") || urlString.startsWith("http:") ||
+        urlString.startsWith("ftp:") || urlString.startsWith("file:")){
+      if(urlString.startsWith("file:")){
+        urlString = clearTildeLocally(clearFile(urlString));
+      }
+      URL url = new URL(urlString);
+      BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
+      BufferedWriter out = new BufferedWriter(new FileWriter(tmpFile));
+      String line = null;
+      while((line=in.readLine())!=null){
+        if(line!=null && !line.equals("")){
+          out.write(line+"\n");
+        }
+      }
+      in.close();
+      out.close();
+    }
+    else if(urlString.startsWith("gsiftp:") || urlString.startsWith("srm:")){
+      TransferControl.download(urlString, tmpFile,
+          GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+    }
+    return tmpFile;
+  }
 
 }
