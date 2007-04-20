@@ -194,9 +194,11 @@ public class PullJobsDaemon{
               startDownloadInputs(job);
             }
             catch(Exception e){
+              statusBar.setLabel("Failed to start downloading input files.");
               throw e;
             }
             try{
+              statusBar.setLabel("Starting to download input files.");
               dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
                   new String [] {STATUS_DOWNLOADING});
              }
@@ -207,6 +209,7 @@ public class PullJobsDaemon{
           }
         }
         Debug.debug("Failed requesting job, forgetting "+okCandidates[i], 2);
+        statusBar.setLabel("Timed out waiting for job.");
         unRequestJob(okCandidates[i]);
       }
       catch(Exception e){
@@ -526,7 +529,7 @@ public class PullJobsDaemon{
    * Finds job ready to be run and starts it.
    * @return true if successful, false otherwise.
    */
-  private void runJob(){
+  public void runJob(){
     boolean ok = true;
     JobInfo job = null;
     Vector toSubmitJobs = null;
@@ -539,17 +542,18 @@ public class PullJobsDaemon{
       for(Iterator itt=transfers.iterator(); itt.hasNext();){
         TransferInfo transfer = (TransferInfo) itt.next();
         if(TransferControl.isRunning(transfer)){
+          Debug.debug("Transfer is still running: "+transfer.getTransferID(), 2);
           ok = false;
           break;
         }
       }
       if(ok){
-        statusBar.setLabel("Submitting pulled job");
         try{
           // Submitting implies the creation of a new JobInfo object, now representing
           // a running job and a record on the job monitor. This can be accessed with
           // JobMgr.getJob().
           jobDefID = (String) job.getValue(idField);
+          statusBar.setLabel("Submitting pulled job "+jobDefID);
           toSubmitJobs.add(dbPluginMgr.getJobDefinition(jobDefID));
           GridPilot.getClassMgr().getSubmissionControl().submitJobDefinitions(toSubmitJobs,
               csName, dbPluginMgr);
@@ -576,7 +580,7 @@ public class PullJobsDaemon{
    * Detects a finished job and calls finishJob(JobInfo).
    * @return true if successful, false otherwise.
    */
-  private boolean finishJob(){
+  public boolean finishJob(){
     
     JobInfo [] doneJobs = findDoneJobs();
     for(int i=0; i<doneJobs.length; ++i){
