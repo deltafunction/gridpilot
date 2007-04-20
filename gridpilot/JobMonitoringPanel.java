@@ -240,19 +240,38 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         if(isPulling){
           return;
         }
-        MyThread t = new MyThread(){
-          public void run(){
-            isPulling = true;
-            for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-              PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-              if(!daemon.pullJob()){
-                break;
+        else{
+          Thread t = new MyThread(){
+            public void run(){
+              isPulling = true;
+              for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
+                PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
+                if(daemon.pullJob()){
+                  break;
+                }
               }
+              for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
+                PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
+                try{
+                  daemon.runJob();
+                  break;
+                }
+                catch(Exception e){
+                  e.printStackTrace();
+                  continue;
+                }
+              }
+              for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
+                PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
+                if(daemon.finishJob()){
+                  break;
+                }
+              }
+              isPulling = false;
             }
-            isPulling = false;
-          }
-        };
-        t.start();
+          };
+          t.start();
+        }
       }
     });
     bRefresh.setToolTipText("Pull an eligible job");
