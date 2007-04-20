@@ -1353,7 +1353,7 @@ public class HSQLDBDatabase implements Database{
         if(i>0){
           req += " OR ";
         }
-        req += " csStatus = '"+csStatusList[i]+"'";
+        req += " csStatus LIKE '"+csStatusList[i]+"%'";
       }
       req += ")";
     }
