@@ -5,6 +5,7 @@ import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -23,6 +24,7 @@ import org.globus.util.GlobusURL;
 import org.ietf.jgss.GSSCredential;
 
 import gridpilot.ComputingSystem;
+import gridpilot.ConfigFile;
 import gridpilot.DBPluginMgr;
 import gridpilot.DBRecord;
 import gridpilot.DBResult;
@@ -48,6 +50,7 @@ public class GPSSComputingSystem implements ComputingSystem{
   private String user = null;
   private String remoteDir = null;
   private GSIFTPFileTransfer gsiftpFileTransfer = null;
+  private Vector allowedSubjects = null;
   
   // RTEs are refreshed from entries written by pull nodes in remote database
   // every RTE_SYNC_DELAY milliseconds.
@@ -66,15 +69,13 @@ public class GPSSComputingSystem implements ComputingSystem{
   });
 
   public GPSSComputingSystem(String _csName){
+    ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     finalRuntimesLocal = new HashSet();
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
-    localRuntimeDBs = GridPilot.getClassMgr().getConfigFile().getValues(
-        csName, "runtime databases");
-    remoteDB = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "remote database");
-    remoteDir = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "remote directory");
+    localRuntimeDBs = configFile.getValues(csName, "runtime databases");
+    remoteDB = configFile.getValue(csName, "remote database");
+    remoteDir = configFile.getValue(csName, "remote directory");
     timerSyncRTEs.setDelay(RTE_SYNC_DELAY);
     // Set user
     try{
@@ -107,6 +108,25 @@ public class GPSSComputingSystem implements ComputingSystem{
       remoteDir = remoteDir + dir + "/";
       // Create the directory
       mkRemoteDir(remoteDir);
+      // Set up list of trusted subjects
+      String subjects = configFile.getValue(csName, "Allowed subjects");
+      String [] subjectsArray = Util.splitUrls(subjects);
+      allowedSubjects = new Vector();
+      for(int i=0; i<subjectsArray.length; ++i){
+        if(subjectsArray[i].matches("/.*=.*/.*")){
+          // assume this is a subject
+          allowedSubjects.add(subjectsArray[i]);
+        }
+        else{
+          // assume this is a URL
+          try{
+            Collections.addAll(allowedSubjects, Util.readURL(subjectsArray[i]));
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+        }
+      }
     }
     catch(Exception ioe){
       error = "ERROR during initialization of GPSS plugin\n" +
@@ -997,7 +1017,125 @@ public class GPSSComputingSystem implements ComputingSystem{
   }
 
   private void updateStatus(JobInfo job){
+    String remoteID = null;
+    try{
+      remoteID = getRemoteJobdefID(job);
+    }
+    catch (IOException e){
+      e.printStackTrace();
+    }
+    DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
+    String csStatus = remoteMgr.getJobDefValue(remoteID, "csStatus");
+    String remoteStatus = remoteMgr.getJobDefValue(remoteID, "status");
+    if(csStatus!=null){
+      logFile.addMessage("ERROR: no csStatus for remote job "+job);
+      return;
+    }
+    if(csStatus.startsWith(PullJobsDaemon.STATUS_REQUESTED)){
+      String dn = remoteMgr.getJobDefValue(remoteID, "providerInfo");
+      if(checkProvider(dn)){
+        String rDir = null;
+        try{
+          rDir = getRemoteDir(job.getName());
+          setJobDirPermission(rDir, dn);
+        }
+        catch(Exception e){
+          error = "WARNING: could not set r/w permission for "+
+          dn+" on directory "+rDir;
+          logFile.addMessage(error, e);
+        }
+      }
+      remoteMgr.updateJobDefinition(remoteID, new String [] {"csStatus"}, new String [] {PullJobsDaemon.STATUS_PREPARED});
+      job.setJobStatus("Assigned");
+      job.setInternalStatus(ComputingSystem.STATUS_WAIT);
+    }
+    else if(csStatus.startsWith(PullJobsDaemon.STATUS_EXECUTED)){
+      String rDir = null;
+      try{
+        rDir = getRemoteDir(job.getName());
+        if(checkUploadedFiles(new GlobusURL(rDir), job)){
+          job.setInternalStatus(ComputingSystem.STATUS_DONE);
+        }
+        job.setJobStatus(csStatus);
+      }
+      catch(Exception e){
+        error = "WARNING: could check uploaded files in directory "+rDir;
+        logFile.addMessage(error, e);
+      }
+    }
+    else if(csStatus.startsWith(PullJobsDaemon.STATUS_PREPARED)){
+      job.setJobStatus(csStatus);
+      job.setInternalStatus(ComputingSystem.STATUS_WAIT);
+    }
+    else if(csStatus.startsWith(PullJobsDaemon.STATUS_DOWNLOADING)){
+      job.setJobStatus(csStatus);
+      job.setInternalStatus(ComputingSystem.STATUS_WAIT);
+    }
+    else if(csStatus.startsWith(PullJobsDaemon.STATUS_REQUESTED_KILLED)){
+      job.setJobStatus(csStatus);
+    }
+    else if(csStatus.startsWith(PullJobsDaemon.STATUS_FAILED) ||
+        remoteStatus.matches("(?i).*failed.*")){
+      job.setJobStatus(csStatus);
+      job.setInternalStatus(ComputingSystem.STATUS_FAILED);
+    }
+    else if(csStatus.startsWith(PullJobsDaemon.STATUS_SUBMITTED)){
+      job.setJobStatus(csStatus);
+      job.setInternalStatus(ComputingSystem.STATUS_RUNNING);
+    }
+    else{
+      error = "WARNING: unrecognized status "+csStatus;
+      Debug.debug(error, 1);
+    }
+  }
+  
+  /**
+   * Check that the owner of the certificate with this DN is
+   * allowed to run my jobs.
+   */
+  private boolean checkProvider(String dn){
+    String subject = null;
+    for(Iterator it=allowedSubjects.iterator(); it.hasNext();){
+      subject = (String) it.next();
+      Debug.debug("Matching provider DN "+dn+" with "+subject, 3);
+      if(dn.equals(subject)){
+        Debug.debug("Match!", 2);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Sets this gridftp directory to be read/writable only by me and the
+   * owner of the certificate of the given DN.
+   * NOTICE: we assume that this is a GACL controlled directory.
+   */
+  private void setJobDirPermission(String rDir, String dn){
+    try{
+      String [] gaclLines = Util.readURL(rDir+".gacl");
+      if(gaclLines==null || gaclLines.equals("")){
+        throw new IOException("empty or non-existing file");
+      }
+      if(!gaclLines[gaclLines.length-1].matches("(?i).*</gacl>\\S*")){
+        throw new IOException("file not in GACL format: "+gaclLines[gaclLines.length-1]);
+      }
+      gaclLines[gaclLines.length-1] =
+        gaclLines[gaclLines.length-1].replaceFirst("(?i)</gacl>",
+        "<entry><person><dn>"+dn+"</dn></person>" +
+        "<allow><read/><list/><write/><admin/>" +
+        "</allow></entry></gacl>");
+      // TODO
+      //TransferControl.upload(file, uploadUrl, frame)
+    }
+    catch(Exception e){
+      Debug.debug("Failed reading .gacl file, trying to write fresh one. "+e.getMessage(), 3);
+    }
+  }
+  
+  private boolean checkUploadedFiles(GlobusURL dir, JobInfo job){
     // TODO
+    return false;
   }
 
   public String[] getScripts(JobInfo job){
