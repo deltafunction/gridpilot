@@ -330,8 +330,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
           cstAttributesNames[i].equalsIgnoreCase("errtmp") ||
           cstAttributesNames[i].equalsIgnoreCase("validationResult") ||
           cstAttributesNames[i].equalsIgnoreCase("jobID") ||
-          cstAttributesNames[i].equalsIgnoreCase("providerInfo") ||
-          cstAttributesNames[i].equalsIgnoreCase("csStatus") ||
+          //cstAttributesNames[i].equalsIgnoreCase("providerInfo") ||
+          //cstAttributesNames[i].equalsIgnoreCase("csStatus") ||
           cstAttributesNames[i].equalsIgnoreCase("computingSystem")){
         Util.setJEditable(tcCstAttributes[i], false);
       }
