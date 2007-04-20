@@ -275,9 +275,9 @@ public class PullJobsDaemon{
       return false;
     }
     String providerInfo = (String) jobRecord.getValue("providerInfo");
-    // If providerInfo is set, the job is already taken.
-    if(providerInfo!=null && !providerInfo.equals("") && !providerInfo.equalsIgnoreCase("null")){
-      Debug.debug("providerInfo already set, job is taken. "+providerInfo, 3);
+    // If providerInfo is set to our dn, we have already unsuccessfully trid to get the job.
+    if(providerInfo!=null && !providerInfo.equalsIgnoreCase(userInfo)){
+      Debug.debug("providerInfo set; we already tried to run this job. Skipping. "+providerInfo, 3);
       return false;
     }
     // We only consider jobs that have csStatus ready or ready:n, n<maxRetries

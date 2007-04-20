@@ -120,7 +120,9 @@ public class GPSSComputingSystem implements ComputingSystem{
         else{
           // assume this is a URL
           try{
-            Collections.addAll(allowedSubjects, Util.readURL(subjectsArray[i]));
+            File tmpFile = File.createTempFile("GridPilot-", "");
+            Collections.addAll(allowedSubjects, Util.readURL(subjectsArray[i],tmpFile));
+            tmpFile.delete();
           }
           catch(Exception e){
             e.printStackTrace();
@@ -1035,19 +1037,26 @@ public class GPSSComputingSystem implements ComputingSystem{
       String dn = remoteMgr.getJobDefValue(remoteID, "providerInfo");
       if(checkProvider(dn)){
         String rDir = null;
-        try{
-          rDir = getRemoteDir(job.getName());
-          setJobDirPermission(rDir, dn);
+        rDir = getRemoteDir(job.getName());
+        if(setJobDirPermission(rDir, dn)){
+          remoteMgr.updateJobDefinition(remoteID, new String [] {"csStatus"}, new String [] {PullJobsDaemon.STATUS_PREPARED});
+          job.setJobStatus("Assigned");
+          job.setInternalStatus(ComputingSystem.STATUS_WAIT);
         }
-        catch(Exception e){
-          error = "WARNING: could not set r/w permission for "+
-          dn+" on directory "+rDir;
-          logFile.addMessage(error, e);
+        else{
+          // back out if we cannot set permissions
+          remoteMgr.updateJobDefinition(remoteID, new String [] {"csStatus"}, new String [] {PullJobsDaemon.STATUS_FAILED});
+          job.setJobStatus(DBPluginMgr.getStatusName(DBPluginMgr.FAILED));
+          job.setInternalStatus(ComputingSystem.STATUS_FAILED);
         }
       }
-      remoteMgr.updateJobDefinition(remoteID, new String [] {"csStatus"}, new String [] {PullJobsDaemon.STATUS_PREPARED});
-      job.setJobStatus("Assigned");
-      job.setInternalStatus(ComputingSystem.STATUS_WAIT);
+      else{
+        // set job back to 'ready' if provider is not allowed to run it
+        Debug.debug("Not allowing provider to run job "+remoteID+". Setting it back to 'Defined'.", 1);
+        remoteMgr.updateJobDefinition(remoteID, new String [] {"csStatus"}, new String [] {PullJobsDaemon.STATUS_READY});
+        job.setJobStatus(DBPluginMgr.getStatusName(DBPluginMgr.DEFINED));
+        job.setInternalStatus(ComputingSystem.STATUS_WAIT);
+      }
     }
     else if(csStatus.startsWith(PullJobsDaemon.STATUS_EXECUTED)){
       String rDir = null;
@@ -1110,32 +1119,96 @@ public class GPSSComputingSystem implements ComputingSystem{
    * Sets this gridftp directory to be read/writable only by me and the
    * owner of the certificate of the given DN.
    * NOTICE: we assume that this is a GACL controlled directory.
+   * @throws IOException 
+   * @throws FTPException 
    */
-  private void setJobDirPermission(String rDir, String dn){
+  private boolean setJobDirPermission(String rDir, String dn){
+    File tmpFile = null;
     try{
-      String [] gaclLines = Util.readURL(rDir+".gacl");
-      if(gaclLines==null || gaclLines.equals("")){
-        throw new IOException("empty or non-existing file");
+      tmpFile = File.createTempFile("GridPilot-", "");
+      String [] gaclLines = null;
+      String gaclEntries =
+        "<entry><person><dn>"+dn+"</dn></person>\n"+
+        "<allow>\n" +
+        "<read/><list/><write/><admin/>\n"+
+        "</allow>\n"+
+        "</entry>\n"+
+        "<entry><person><dn>"+user+"</dn></person>\n"+
+        "<allow>\n" +
+        "<read/><list/><write/><admin/>\n"+
+        "</allow>\n"+
+        "</entry>\n";
+      try{
+        gaclLines = Util.readURL(rDir+".gacl", tmpFile);
+        if(gaclLines==null || gaclLines.equals("")){
+          throw new IOException("empty or non-existing file");
+        }
       }
-      if(!gaclLines[gaclLines.length-1].matches("(?i).*</gacl>\\S*")){
-        throw new IOException("file not in GACL format: "+gaclLines[gaclLines.length-1]);
+      catch(Exception e){
+        Debug.debug("Failed reading .gacl file, trying to write fresh one. "+e.getMessage(), 3);
       }
-      gaclLines[gaclLines.length-1] =
-        gaclLines[gaclLines.length-1].replaceFirst("(?i)</gacl>",
-        "<entry><person><dn>"+dn+"</dn></person>" +
-        "<allow><read/><list/><write/><admin/>" +
-        "</allow></entry></gacl>");
-      // TODO
-      //TransferControl.upload(file, uploadUrl, frame)
+      if(gaclLines==null || gaclLines.length==0){
+        String gaclString = "<?xml version=\"1.0\"?>" +
+              "<gacl version=\"0.0.1\">"+gaclEntries+
+              "</gacl>";
+        LocalStaticShellMgr.writeFile(tmpFile.getCanonicalPath(), gaclString, false);
+      }
+      else if(!gaclLines[gaclLines.length-1].matches("(?i).*</gacl>\\S*")){
+        throw new IOException(".gacl file not in GACL format: "+gaclLines[gaclLines.length-1]);
+      }
+      else{
+        gaclLines[gaclLines.length-1] =
+          gaclLines[gaclLines.length-1].replaceFirst("(?i)</gacl>",
+              gaclEntries+"</gacl>");
+        LocalStaticShellMgr.writeFile(tmpFile.getCanonicalPath(), Util.arrayToString(gaclLines, "\n"), false);
+      }
+      TransferControl.upload(tmpFile, rDir+".gacl",
+          GridPilot.getClassMgr().getGlobalFrame().getContentPane());
     }
     catch(Exception e){
-      Debug.debug("Failed reading .gacl file, trying to write fresh one. "+e.getMessage(), 3);
+      error = "WARNING: could not set r/w permission for "+
+      dn+" on directory "+rDir;
+      logFile.addMessage(error);
+      return false;
     }
+    finally{
+      tmpFile.delete();
+    }
+    return true;
   }
   
   private boolean checkUploadedFiles(GlobusURL dir, JobInfo job){
-    // TODO
-    return false;
+    try{
+      DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+      DBRecord jobDefinition = dbPluginMgr.getJobDefinition(job.getJobDefId());
+      String [] outFileMapping = Util.splitUrls((String) jobDefinition.getValue("outFileMapping"));
+      String [] checkFiles = new String [outFileMapping.length/2+2];
+      int j = 0;
+      for(int i=0; i<outFileMapping.length; ++i){
+        if((i+1)%2==0){
+          checkFiles[j] = outFileMapping[i];
+          ++j;
+        }
+      }
+      checkFiles[j] = (String) jobDefinition.getValue("stdoutDest");
+      ++j;
+      checkFiles[j] = (String) jobDefinition.getValue("stderrDest");
+      Vector fileVector = null;
+      for(int i=0; i<checkFiles.length; ++i){
+        fileVector = gsiftpFileTransfer.list(new GlobusURL(checkFiles[i]), null, null);
+        if(fileVector==null || fileVector.size()<1){
+          throw new IOException("File "+checkFiles[i]+" not found.");
+        }
+        else if(fileVector.size()>1){
+          throw new IOException("More than one file "+checkFiles[i]+" found... "+fileVector.size());
+        }
+      }
+    }
+    catch(Exception e){
+      logFile.addMessage("Chcking uploaded file failed.", e);
+      return false;
+    }
+    return true;
   }
 
   public String[] getScripts(JobInfo job){
