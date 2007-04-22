@@ -241,7 +241,8 @@ public class CSPluginMgr implements ComputingSystem{
         String id = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()
         ).getRuntimeEnvironmentID(rtes[i], job.getCSName());
         if(id==null || id.equals("-1")){
-          throw new IOException("Runtime environment "+rtes[i]+" not found.");
+          throw new IOException("Runtime environment "+rtes[i]+" not found. "+job.getCSName()+
+              ":"+job.getDBName()+":"+id);
         }
       }
       catch(Exception e){

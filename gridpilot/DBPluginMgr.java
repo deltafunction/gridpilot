@@ -878,11 +878,17 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
-          res = db.getJobDefinition(jobDefID).getValue(key).toString();
+          Object ret = db.getJobDefinition(jobDefID).getValue(key);
+          if(ret!=null){
+            res = (String) ret;
+          }
+          else{
+            res = null;
+          }
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName + " " +
+                             " from plugin " + dbName + " " +jobDefID+":"+key+":"+
                              jobDefID, t);
         }
       }

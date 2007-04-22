@@ -365,6 +365,11 @@ public class GSIFTPFileTransfer implements FileTransfer {
   public void deleteFiles(GlobusURL [] globusUrls) throws
      IOException, FTPException{
     
+    if(globusUrls==null || globusUrls.length==0){
+      Debug.debug("No files to delete. "+globusUrls, 2);
+      return;
+    }
+    
     for(int i=0; i<globusUrls.length; ++i){
       if(!globusUrls[i].getHost().equals(globusUrls[0].getHost())){
         throw new IOException("ERROR: all files to be deleted must be on the same server. "+
@@ -779,7 +784,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
   }  
 
   /**
-   * List files and/or directories on gridftp server.
+   * List files and/or directories in a *directory* on gridftp server.
    */
   public Vector list(GlobusURL globusUrl, String filter,
       StatusBar statusBar) throws IOException, FTPException{
@@ -912,7 +917,9 @@ public class GSIFTPFileTransfer implements FileTransfer {
   }
   
   public long getFileBytes(GlobusURL url) throws Exception {
-    Vector listVector = list(url, null, null);
+    String file = url.getPath().replaceFirst(".*/([^/]+)", "$1");
+    String dir = url.getPath().replaceFirst("(.*)/[^/]+", "$1");
+    Vector listVector = list(new GlobusURL(dir), file, null);
     String line = (String) listVector.get(0);
     String [] entries = Util.split(line);
     return Long.parseLong(entries[1]);

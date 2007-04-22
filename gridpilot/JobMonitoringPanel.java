@@ -238,43 +238,54 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     bPull.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         if(isPulling){
+          Debug.debug("already pulling jobs...", 2);
           return;
         }
         else{
           Thread t = new MyThread(){
             public void run(){
-              isPulling = true;
-              for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-                PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-                if(daemon.pullJob()){
-                  break;
+              try{
+                isPulling = true;
+                Debug.debug("trying to pull jobs...", 2);
+                for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
+                  PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
+                  if(daemon.pullJob()){
+                    break;
+                  }
+                }
+                Debug.debug("trying to run jobs...", 2);
+                for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
+                  PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
+                  try{
+                    daemon.runJob();
+                    break;
+                  }
+                  catch(Exception e){
+                    e.printStackTrace();
+                    continue;
+                  }
+                }
+                Debug.debug("trying to finish jobs...", 2);
+                for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
+                  PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
+                  if(daemon.finishJob()){
+                    break;
+                  }
                 }
               }
-              for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-                PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-                try{
-                  daemon.runJob();
-                  break;
-                }
-                catch(Exception e){
-                  e.printStackTrace();
-                  continue;
-                }
+              catch(Exception e){
+                e.printStackTrace();
               }
-              for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-                PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-                if(daemon.finishJob()){
-                  break;
-                }
-              }
-              isPulling = false;
+              finally{
+                isPulling = false;
+              }              
             }
           };
           t.start();
         }
       }
     });
-    bRefresh.setToolTipText("Pull an eligible job");
+    bPull.setToolTipText("Pull an eligible job");
     cbAutoPull.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         cbAutoPull_clicked();

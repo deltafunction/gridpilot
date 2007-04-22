@@ -497,6 +497,8 @@ public class JobMgr{
         "  Status GridPilot \t: " + statusGridPilot + "\n" +
         "  StdOut \t: " + job.getStdOut() + "\n" +
         "  StdErr \t: " + job.getStdErr() + "\n" +
+        (job.getDownloadFiles()==null?"":"  Download files \t: " + Util.arrayToString(job.getDownloadFiles()) + "\n") +
+        (job.getUploadFiles()==null?"":"  Upload files \t: " + Util.arrayToString(job.getUploadFiles()) + "\n") +
         "  Row \t: " + job.getTableRow() + "\n" +
         "  Updatable \t: " + job.needToBeRefreshed() ;
   }

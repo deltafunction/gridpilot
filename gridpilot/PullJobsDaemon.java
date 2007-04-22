@@ -31,12 +31,16 @@ public class PullJobsDaemon{
   private static int WAIT_TRIES = 5;
   private static int WAIT_SLEEP = 10000;
   private static boolean CLEANUP_CACHE_ON_EXIT = true;
+  // If this is set to false, we will not try and pick up
+  // the same job twice.
+  private static boolean ALLOW_USER_RERUN = false;
   
   public static String STATUS_READY = "ready";
   public static String STATUS_REQUESTED = "requested";
   public static String STATUS_PREPARED = "prepared";
   public static String STATUS_DOWNLOADING = "downloading";
   public static String STATUS_SUBMITTED = "submitted";
+  public static String STATUS_RUNNING = "running";
   public static String STATUS_REQUESTED_KILLED = "requestKill";
   public static String STATUS_REQUESTED_STDOUT = "requestStdout";
   public static String STATUS_FAILED = "failed";
@@ -251,7 +255,7 @@ public class PullJobsDaemon{
     // We only reqest jobs that are "Defined" and "ready"
     String [] statusList = new String [] {DBPluginMgr.getStatusName(DBPluginMgr.DEFINED)};
     DBResult allJobDefinitions = dbPluginMgr.getJobDefinitions("-1", allFields,
-        statusList, new String [] {"ready"});
+        statusList, new String [] {STATUS_READY});
     Vector eligibleJobs = new Vector(); //DBRecords
     for(int i=0; i<allJobDefinitions.values.length; ++i){
       DBRecord jobRecord = allJobDefinitions.getRow(i);
@@ -276,21 +280,21 @@ public class PullJobsDaemon{
     }
     String providerInfo = (String) jobRecord.getValue("providerInfo");
     // If providerInfo is set to our dn, we have already unsuccessfully trid to get the job.
-    if(providerInfo!=null && !providerInfo.equalsIgnoreCase(userInfo)){
+    if(ALLOW_USER_RERUN && providerInfo!=null && providerInfo.equalsIgnoreCase(userInfo)){
       Debug.debug("providerInfo set; we already tried to run this job. Skipping. "+providerInfo, 3);
       return false;
     }
     // We only consider jobs that have csStatus ready or ready:n, n<maxRetries
-    String status = (String) jobRecord.getValue("csStatus");
-    if(status==null || !status.startsWith(STATUS_READY)){
-      Debug.debug("job csStatus not ready. "+status, 3);
+    String csStatus = (String) jobRecord.getValue("csStatus");
+    if(csStatus==null || !csStatus.startsWith(STATUS_READY)){
+      Debug.debug("job csStatus not ready. "+csStatus, 3);
       return false;
     }
     if(jobRecord!=null){
       int retries = 0;
-      int index = status.indexOf(":");
+      int index = csStatus.indexOf(":");
       if(index>0){
-        String retriesString = status.substring(index+1);
+        String retriesString = csStatus.substring(index+1);
         retries = Integer.parseInt(retriesString);
         if(retries>GridPilot.maxPullRerun){
           Debug.debug("Max rerun exceeded; not running job. "+retries, 2);
@@ -487,12 +491,13 @@ public class PullJobsDaemon{
           destFile = File.createTempFile(
               (new File(cacheDir, fileName)).getCanonicalPath(), "");
           destFileName = destFile.getCanonicalPath();
-          downloadVector.add(destFileName/*inputFiles[i]*/);
           destFileName = destFileName.replaceFirst("^/", "");
           destFileName = "file:////"+destFileName;
+          downloadVector.add(destFileName);
           destUrl = new GlobusURL(destFileName);
           destFile.delete();
           TransferInfo transfer = new TransferInfo(srcUrl, destUrl);
+          Debug.debug("Adding transfer: "+transfer, 2);
           transferVector.add(transfer);
         }
         catch(Exception e){
@@ -552,12 +557,13 @@ public class PullJobsDaemon{
           // Submitting implies the creation of a new JobInfo object, now representing
           // a running job and a record on the job monitor. This can be accessed with
           // JobMgr.getJob().
-          jobDefID = (String) job.getValue(idField);
+          jobDefID = job.getJobDefId();
           statusBar.setLabel("Submitting pulled job "+jobDefID);
+          Debug.debug("Submitting pulled job "+jobDefID, 2);
           toSubmitJobs.add(dbPluginMgr.getJobDefinition(jobDefID));
           GridPilot.getClassMgr().getSubmissionControl().submitJobDefinitions(toSubmitJobs,
               csName, dbPluginMgr);
-          dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
+          dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
               new String [] {STATUS_SUBMITTED});
           break;
         }
@@ -612,19 +618,28 @@ public class PullJobsDaemon{
     DBRecord jobRecord = null;
     while(en.hasMoreElements()){
       job = (JobInfo) en.nextElement();
+      // TODO: only take action if the status has changed
       String jobDefID = job.getJobDefId();
       jobRecord = dbPluginMgr.getJobDefinition(jobDefID);
-      if(!job.getCSName().equalsIgnoreCase("gpss") ||
-          !jobRecord.getValue("providerInfo").equals(userInfo)){
+      if(!job.getDBName().equalsIgnoreCase(dbPluginMgr.getDBName()) ||
+          jobRecord.getValue("providerInfo")==null ||
+         !jobRecord.getValue("providerInfo").equals(userInfo)){
         continue;
       }
       // Add jobs that have been set as done by JobStatusUpdateControl,
       // i.e. normal GridPilot running.
-      if(job.getInternalStatus()==ComputingSystem.STATUS_DONE ||
+      if(job.getInternalStatus()==ComputingSystem.STATUS_DONE &&
+          job.getDBStatus()==DBPluginMgr.VALIDATED ||
          job.getInternalStatus()==ComputingSystem.STATUS_FAILED /*||
          job.getInternalStatus()==ComputingSystem.STATUS_ERROR*/){
+        Debug.debug("Found done job. "+jobDefID, 2);
         doneJobs.add(job);
       }
+      else if(job.getInternalStatus()==ComputingSystem.STATUS_RUNNING){
+         Debug.debug("Found running job. "+jobDefID, 2);
+         dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
+             new String [] {STATUS_RUNNING});
+       }
       if(jobRecord.getValue("csStatus").equals(STATUS_REQUESTED_KILLED)){
         Vector killJobs = new Vector();
         // Temporarily change the CS name from GPSS to the local one,
@@ -639,7 +654,7 @@ public class PullJobsDaemon{
         }
         job.setCSName("GPSS");
         // Don't wait for any confirmation, just assume the job has been killed
-        dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
+        dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
             new String [] {STATUS_FAILED+": "+"job killed. "});
       }
       else if(jobRecord.getValue("csStatus").equals(STATUS_REQUESTED_STDOUT)){
@@ -691,7 +706,8 @@ public class PullJobsDaemon{
    * @return true if successful, false otherwise.
    */
   private boolean finishJob(JobInfo job){
-    statusBar.setLabel("Pulled job done");
+    statusBar.setLabel("Pulled job done: "+job.getJobDefId());
+    Debug.debug("Pulled job done: "+job.getJobDefId(), 2);
     try{
       GridPilot.getClassMgr().clearJobCS(job.getJobDefId());
       if(!dbPluginMgr.updateJobDefinition(job.getJobDefId(), new String [] {"csStatus"},

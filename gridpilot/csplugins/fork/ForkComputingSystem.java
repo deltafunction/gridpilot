@@ -371,6 +371,7 @@ public class ForkComputingSystem implements ComputingSystem{
           if(cert!=null && cert.length()>0 && remoteDBMgr!=null){
             createRTE(localDBMgr, name, "GPSS", cert, null);
             createRTE(remoteDBMgr, name, "GPSS", cert, url);
+            createRTE(remoteDBMgr, name, csName, null, null);
           }         
           else{
             logFile.addMessage("WARNING: no certificate or no remote DB. Disabling remote registration of " +
@@ -916,8 +917,9 @@ public class ForkComputingSystem implements ComputingSystem{
     // CONVENTION: if job has already had remote input files downloaded (by PullJobsDaemon),
     // job.getDownloadFiles() will be set (to local files). These files should then be copied to the
     // run directory along with any local input files.
-    // Moreover, the remote files from jobInputFiles should be ignored.
+    // Moreover, the remote files from transInputFiles and jobInputFiles should be ignored.
     String [] pullInputFiles = new String [] {};
+    boolean ignoreRemoteInputs = false;
     if(job.getDownloadFiles()!=null && job.getDownloadFiles().length>0){
       pullInputFiles = job.getDownloadFiles();
       Vector jobInputFilesVector = new Vector();
@@ -930,6 +932,7 @@ public class ForkComputingSystem implements ComputingSystem{
       for(int i=0; i<jobInputFiles.length; ++i){
         jobInputFiles[i] = (String) jobInputFilesVector.get(i);
       }
+      ignoreRemoteInputs = true;
     }
     job.setDownloadFiles(new String [] {});
     
@@ -969,9 +972,9 @@ public class ForkComputingSystem implements ComputingSystem{
           // If source starts with /, just use the remote file.
           else if(inputFiles[i].startsWith("/")){
           }
-          // If source is remote, have the job script get it
+          // If source is remote and the job is not pulled, have the job script get it
           // (assuming that e.g. the runtime environment ARC has been required)
-          else if(Util.urlIsRemote(inputFiles[i])){
+          else if(!ignoreRemoteInputs && Util.urlIsRemote(inputFiles[i])){
             downloadVector.add(inputFiles[i]);
           }
           // Relative paths are not supported
@@ -1015,7 +1018,7 @@ public class ForkComputingSystem implements ComputingSystem{
             }
           }
           // If source is remote, get it
-          else if(Util.urlIsRemote(inputFiles[i])){
+          else if(!ignoreRemoteInputs && Util.urlIsRemote(inputFiles[i])){
             try{
               TransferControl.download(urlDir + fileName,
                   new File(runDir(job)), GridPilot.getClassMgr().getGlobalFrame().getContentPane());

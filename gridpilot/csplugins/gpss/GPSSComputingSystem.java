@@ -213,17 +213,23 @@ public class GPSSComputingSystem implements ComputingSystem{
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
     String localJobDefID = job.getJobDefId();
+    if(localJobDefID==null || Integer.parseInt(localJobDefID)<0){
+      throw new IOException("Could not get local jobDefinition ID");
+    }
     String name = job.getName();
     String localDatasetID = dbPluginMgr.getJobDefDatasetID(localJobDefID);
     String dsName = dbPluginMgr.getDatasetName(localDatasetID);
     String remoteNameField = Util.getNameField(remoteMgr.getDBName(), "jobDefinition");
     String remoteIdField = Util.getIdentifierField(remoteMgr.getDBName(), "jobDefinition");
     String [] remoteJobDefDSRef = Util.getJobDefDatasetReference(remoteMgr.getDBName());
+    String providerInfo = dbPluginMgr.getJobDefValue(localJobDefID, "providerInfo");
     // The remote DB will be a MySQL DB
     DBResult remoteJobDefinitions = remoteMgr.select(
         "SELECT "+remoteIdField+" FROM jobDefinition WHERE "+remoteNameField+" = '"+name+
-        "' AND "+remoteJobDefDSRef[1]+" = '"+dsName+"' AND csStatus != '' AND " +
-            "userInfo = '"+user+"'", remoteIdField, false);
+        "' AND "+remoteJobDefDSRef[1]+" = '"+dsName+"' AND csStatus != '' AND (" +
+        "userInfo = '"+user+"'" + 
+        (providerInfo!=null&&!providerInfo.equals("null")?
+            " OR providerInfo = '"+providerInfo+"')":")"), remoteIdField, false);
     if(remoteJobDefinitions.values.length>1){
       error = "ERROR: more than one jobDefinition with the same name!";
       throw new IOException(error);
@@ -312,7 +318,7 @@ public class GPSSComputingSystem implements ComputingSystem{
   }
   
   /**
-   * Updates the URLs of the input/output files and stdout/stderr to be in the
+   * Updates the URLs of local input/output files and stdout/stderr to be in the
    * defined remoted directory. Also sets 'userInfo'. This is to be able
    * to identify 'our' jobDefinitions. Also sets status to 'defined'.
    * @param job definition
@@ -321,8 +327,11 @@ public class GPSSComputingSystem implements ComputingSystem{
    */
   private DBRecord updateURLs(DBRecord jobDefinition) throws Exception{
     String nameField = Util.getNameField(remoteDB, "jobDefinition");
+    // TODO: consider moving ALL input files to remote directory.
+    // TransferControl should be able to handle third-party transfers.
+    //String replacePattern = "^[a-z][a-z]+:.+/([^/]+)"
     String rDir = getRemoteDir((String) jobDefinition.getValue(nameField));
-    String replacePattern = "^[a-z]+:/.+/([^/]+)";
+    String replacePattern = "^file:.+/([^/]+)";
     String [] inputFileNames = Util.splitUrls((String) jobDefinition.getValue("inputFileNames"));
     String newInputFileName = null;
     for(int i=0; i<inputFileNames.length; ++i){
@@ -346,18 +355,24 @@ public class GPSSComputingSystem implements ComputingSystem{
     jobDefinition.setValue("stdoutDest", stdoutDest);
     jobDefinition.setValue("stderrDest", stderrDest);
     jobDefinition.setValue("userInfo", user);
+    jobDefinition.setValue("providerInfo", user);
     jobDefinition.setValue("status", "defined");
+    Debug.debug("Updated URLs:" +Util.arrayToString(inputFileNames)+" :: "+
+        Util.arrayToString(outFileMapping)+" :: "+stdoutDest+" :: "+stderrDest, 2);
     return jobDefinition;
   }
 
   /**
-   * Uploads input files to the defined remote directory.
+   * Uploads local input files to the defined remote directory.
    * @param job definition
    * @return The updated job definition
    * @throws Exception
    */
   private void uploadLocalInputFiles(DBRecord jobDefinition, String rDir) throws Exception{
-    String replacePattern = "^[a-z]+:/.+/([^/]+)";
+    // TODO: consider moving ALL input files to remote directory.
+    // TransferControl should be able to handle third-party transfers.
+    //String replacePattern = "^[a-z][a-z]+:.+/([^/]+)"
+    String replacePattern = "^file:.+/([^/]+)";
     String [] inputFileNames = Util.splitUrls((String) jobDefinition.getValue("inputFileNames"));
     String newInputFileName = null;
     TransferInfo transfer = null;
@@ -699,7 +714,7 @@ public class GPSSComputingSystem implements ComputingSystem{
       try{
         remoteName = remoteMgr.getJobDefOutRemoteName(remoteID, outputNames[i]);
         origDest = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputNames[i]);
-        if(origDest.startsWith("file:")){
+        if(!remoteName.equals(origDest)/*origDest.startsWith("file:")*/){
           transfer = new TransferInfo(
               new GlobusURL(remoteName),
               new GlobusURL(origDest.replaceFirst("file:/+", "file:////")));
@@ -1029,16 +1044,23 @@ public class GPSSComputingSystem implements ComputingSystem{
     DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
     String csStatus = remoteMgr.getJobDefValue(remoteID, "csStatus");
     String remoteStatus = remoteMgr.getJobDefValue(remoteID, "status");
-    if(csStatus!=null){
-      logFile.addMessage("ERROR: no csStatus for remote job "+job);
+    Debug.debug("Updating status of job "+job.getName()+" : "+job.getJobStatus()+" : "+csStatus+" : "+remoteStatus, 2);
+    if(csStatus==null || csStatus.equals("")){
+      logFile.addMessage("ERROR: no csStatus for remote job "+remoteID+"--->"+job);
       return;
     }
+    // TODO: only take action if the status has changed
     if(csStatus.startsWith(PullJobsDaemon.STATUS_REQUESTED)){
       String dn = remoteMgr.getJobDefValue(remoteID, "providerInfo");
       if(checkProvider(dn)){
         String rDir = null;
         rDir = getRemoteDir(job.getName());
         if(setJobDirPermission(rDir, dn)){
+          Debug.debug("Setting job "+remoteID+" to prepared", 2);
+          DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+          // This is only so we can identify this job later (match it to a local GPSS job). I.e. remote jobs are uniquely identified
+          // by name+userInfo before being picked up and by name+providerInfo after being picked up
+          dbPluginMgr.updateJobDefinition(job.getJobDefId(), new String [] {"providerInfo"}, new String [] {dn});
           remoteMgr.updateJobDefinition(remoteID, new String [] {"csStatus"}, new String [] {PullJobsDaemon.STATUS_PREPARED});
           job.setJobStatus("Assigned");
           job.setInternalStatus(ComputingSystem.STATUS_WAIT);
@@ -1062,14 +1084,20 @@ public class GPSSComputingSystem implements ComputingSystem{
       String rDir = null;
       try{
         rDir = getRemoteDir(job.getName());
+        Debug.debug("Checking uploaded files in "+rDir, 3);
         if(checkUploadedFiles(new GlobusURL(rDir), job)){
           job.setInternalStatus(ComputingSystem.STATUS_DONE);
+        }
+        else{
+          job.setInternalStatus(ComputingSystem.STATUS_FAILED);
         }
         job.setJobStatus(csStatus);
       }
       catch(Exception e){
         error = "WARNING: could check uploaded files in directory "+rDir;
         logFile.addMessage(error, e);
+        job.setJobStatus(csStatus);
+        job.setInternalStatus(ComputingSystem.STATUS_FAILED);
       }
     }
     else if(csStatus.startsWith(PullJobsDaemon.STATUS_PREPARED)){
@@ -1090,7 +1118,17 @@ public class GPSSComputingSystem implements ComputingSystem{
     }
     else if(csStatus.startsWith(PullJobsDaemon.STATUS_SUBMITTED)){
       job.setJobStatus(csStatus);
+      job.setInternalStatus(ComputingSystem.STATUS_WAIT);
+    }
+    else if(csStatus.startsWith(PullJobsDaemon.STATUS_RUNNING)){
+      job.setJobStatus(csStatus);
       job.setInternalStatus(ComputingSystem.STATUS_RUNNING);
+    }
+    else if(csStatus.startsWith(PullJobsDaemon.STATUS_READY)){
+      if(job.getJobStatus()!=null && job.getJobStatus().equals(PullJobsDaemon.STATUS_REQUESTED_KILLED)){
+         job.setInternalStatus(ComputingSystem.STATUS_FAILED);
+      }
+      job.setJobStatus(csStatus);
     }
     else{
       error = "WARNING: unrecognized status "+csStatus;
@@ -1103,9 +1141,11 @@ public class GPSSComputingSystem implements ComputingSystem{
    * allowed to run my jobs.
    */
   private boolean checkProvider(String dn){
+    dn = dn.replaceFirst("^\"(.*)\"$", "$1");
     String subject = null;
     for(Iterator it=allowedSubjects.iterator(); it.hasNext();){
       subject = (String) it.next();
+      subject = subject.replaceFirst("^\"(.*)\"$", "$1");
       Debug.debug("Matching provider DN "+dn+" with "+subject, 3);
       if(dn.equals(subject)){
         Debug.debug("Match!", 2);
@@ -1179,8 +1219,21 @@ public class GPSSComputingSystem implements ComputingSystem{
   
   private boolean checkUploadedFiles(GlobusURL dir, JobInfo job){
     try{
-      DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-      DBRecord jobDefinition = dbPluginMgr.getJobDefinition(job.getJobDefId());
+      
+      DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
+      String remoteID = null;
+      try{
+        remoteID = getRemoteJobdefID(job);
+      }
+      catch(IOException e){
+        e.printStackTrace();
+        error = "ERROR: could not get remote jobDefinition ID";
+        logFile.addMessage(error, e);
+        return false;
+      }
+      remoteMgr.getJobDefValue(remoteID, "csStatus");
+
+      DBRecord jobDefinition = remoteMgr.getJobDefinition(remoteID);
       String [] outFileMapping = Util.splitUrls((String) jobDefinition.getValue("outFileMapping"));
       String [] checkFiles = new String [outFileMapping.length/2+2];
       int j = 0;
@@ -1194,18 +1247,41 @@ public class GPSSComputingSystem implements ComputingSystem{
       ++j;
       checkFiles[j] = (String) jobDefinition.getValue("stderrDest");
       Vector fileVector = null;
+      String urlDir = null;
+      String oldUrlDir = null;
+      boolean ok = false;
       for(int i=0; i<checkFiles.length; ++i){
-        fileVector = gsiftpFileTransfer.list(new GlobusURL(checkFiles[i]), null, null);
+        ok = false;
+        // don't list the same dir two times after each other
+        urlDir = checkFiles[i].replaceFirst("(.*/)[^/]+", "$1");
+        if(oldUrlDir==null || !urlDir.equals(oldUrlDir)){
+          Debug.debug("Checking dir "+urlDir, 2);
+          fileVector = gsiftpFileTransfer.list(new GlobusURL(urlDir), null, null);
+          oldUrlDir = urlDir;
+        }
         if(fileVector==null || fileVector.size()<1){
           throw new IOException("File "+checkFiles[i]+" not found.");
         }
-        else if(fileVector.size()>1){
-          throw new IOException("More than one file "+checkFiles[i]+" found... "+fileVector.size());
+        else{
+          String file = checkFiles[i].replaceFirst(".*/([^/]+)", "$1");
+          String line = null;
+          for(Iterator it=fileVector.iterator(); it.hasNext();){
+            line = (String) it.next();
+            Debug.debug("Comparing: "+line+" <-> "+file, 3);
+            if(line.matches("^"+file+"\\s+.*")){
+              ok = true;
+              break;
+            }
+          }
+        }
+        if(!ok){
+          logFile.addMessage("Uploaded file "+checkFiles[i]+" not present.");
+          return false;
         }
       }
     }
     catch(Exception e){
-      logFile.addMessage("Chcking uploaded file failed.", e);
+      logFile.addMessage("Checking uploaded file failed.", e);
       return false;
     }
     return true;

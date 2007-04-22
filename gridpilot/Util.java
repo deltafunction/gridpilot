@@ -137,7 +137,12 @@ public class Util{
       return "(null)";
     }
     for(int i=0; i<values.length ; ++i){
-      res += (values[i]==null ? "null" : values[i].toString());
+      if(values[i]!=null && values[i].getClass().isInstance(new String [] {})){
+        res += arrayToString((Object []) values[i]);
+      }
+      else{
+        res += (values[i]==null ? "null" : values[i].toString());
+      }
       if(i<values.length-1){
         res += " ";
       }
@@ -1824,6 +1829,25 @@ public class Util{
 
   public static boolean copyOutputFile(String src, String dest,
       ShellMgr shellMgr, String error, LogFile logFile){
+    
+    // If the shell is not local, first get the source to a local temp file and change src
+    String tempFileName = null;
+    if(!shellMgr.isLocal()){
+      File tempFile;
+      try{
+        tempFile=File.createTempFile("GridPilot-", "");
+        tempFileName = tempFile.getCanonicalPath();
+        tempFile.delete();
+        shellMgr.download(src, tempFileName);
+        src = tempFileName;
+        //  hack to have the file deleted on exit
+        GridPilot.tmpConfFile.put(tempFileName, new File(tempFileName));
+      }
+      catch(IOException e){
+        e.printStackTrace();
+      }
+    }
+    
     // Local destination
     if(/*Linux local file*/(dest.matches("^file:~[^:]*") || dest.matches("^file:/[^:]*") || dest.startsWith("/")) ||
         /*Windows local file*/(dest.matches("\\w:.*") || dest.matches("^file:/*\\w:.*")) && shellMgr.isLocal()){

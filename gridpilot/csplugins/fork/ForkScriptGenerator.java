@@ -160,13 +160,14 @@ public class ForkScriptGenerator extends ScriptGenerator{
     writeLine(buf, "");
     
     // Output files section
-    if(outputFiles!=null && outputFiles.length>0){
+    // This should not be necessary any longer.
+    /*if(outputFiles!=null && outputFiles.length>0){
       writeBloc(buf, "Output files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
       for(int i=0; i<outputFiles.length; ++i){
         writeLine(buf, remoteCopyCommand+" "+outputFiles[i][0]+" "+outputFiles[i][1]);
       }
       writeLine(buf, "");
-    }
+    }*/
 
     try{
       shellMgr.writeFile(workingDir+"/"+fileName, buf.toString(), false);

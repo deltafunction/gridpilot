@@ -136,7 +136,16 @@ public class SubmissionControl{
       for(int i=0; i<selectedJobs.size(); ++i){
         DBRecord jobDef = ((DBRecord) selectedJobs.get(i));
         String jobDefID = jobDef.getValue(jobDefIdentifier).toString();
-        if(dbPluginMgr.reserveJobDefinition(jobDefID, "", csName)){
+        String userInfo = null;
+        try{
+          jobDef.getValue("userInfo").toString();
+        }
+        catch(Exception e){
+        }
+        if(userInfo==null){
+          userInfo = "";
+        }
+        if(dbPluginMgr.reserveJobDefinition(jobDefID, userInfo, csName)){
           // checks if this partition has not been monitored (and is Submitted,
           // otherwise reservation doesn't work)
           JobInfo job = null;
