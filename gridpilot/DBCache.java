@@ -33,7 +33,7 @@ public class DBCache{
   }
   
   public DBResult executeQuery(String sql) throws SQLException{
-    Debug.debug("Caching: "+useCaching, 3);
+    Debug.debug("Caching: "+dbName+":"+useCaching, 3);
     if(useCaching && queryResults.containsKey(sql)){
       Debug.debug("Returning cached result", 2);
       DBResult rset = (DBResult) queryResults.get(sql);
