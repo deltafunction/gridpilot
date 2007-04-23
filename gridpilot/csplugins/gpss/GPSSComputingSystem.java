@@ -195,6 +195,9 @@ public class GPSSComputingSystem implements ComputingSystem{
       jobDefinition.setValue("csStatus", PullJobsDaemon.STATUS_READY);
       try{
         jobDefinition = updateURLs(jobDefinition);
+        // TODO: look into this...
+        /*job.setOutputs((String) jobDefinition.getValue("stdoutDest"),
+            (String) jobDefinition.getValue("stderrDest"));*/
       }
       catch(Exception ee){
         error = "WARNING: could not update input/output file URLs of job";
