@@ -214,17 +214,21 @@ public class GSIFTPFileTransfer implements FileTransfer {
     Debug.debug("Directory: "+localDir, 3);
 
     Debug.debug("Getting "+fileName, 3);
-    statusBar.setLabel("Getting "+fileName);
-    pb.addMouseListener(new MouseAdapter(){
-      public void mouseClicked(MouseEvent e){
-        try{
-          getGridftpClient().abort();
+    if(statusBar!=null){
+      statusBar.setLabel("Getting "+fileName);
+    }
+    if(pb!=null){
+      pb.addMouseListener(new MouseAdapter(){
+        public void mouseClicked(MouseEvent e){
+          try{
+            getGridftpClient().abort();
+          }
+          catch(Exception ee){
+          }
         }
-        catch(Exception ee){
-        }
-      }
-    });
-    pb.setToolTipText("Click here to cancel download");
+      });
+      pb.setToolTipText("Click here to cancel download");
+    }
 
     try{
       gridFtpClient = connect(host, port);
@@ -259,7 +263,9 @@ public class GSIFTPFileTransfer implements FileTransfer {
       gridFtpClient.close();
      
       // if we don't get an exception, the file got downloaded
-      statusBar.setLabel("Download of "+fileName+" done");
+      if(statusBar!=null){
+        statusBar.setLabel("Download of "+fileName+" done");
+      }
       Debug.debug(fileName+" downloaded.", 2);
     }
     catch(FTPException e){

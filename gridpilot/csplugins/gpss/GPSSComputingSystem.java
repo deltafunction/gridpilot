@@ -196,8 +196,8 @@ public class GPSSComputingSystem implements ComputingSystem{
       try{
         jobDefinition = updateURLs(jobDefinition);
         // TODO: look into this...
-        /*job.setOutputs((String) jobDefinition.getValue("stdoutDest"),
-            (String) jobDefinition.getValue("stderrDest"));*/
+        job.setOutputs((String) jobDefinition.getValue("stdoutDest"),
+            (String) jobDefinition.getValue("stderrDest"));
       }
       catch(Exception ee){
         error = "WARNING: could not update input/output file URLs of job";
@@ -824,7 +824,7 @@ public class GPSSComputingSystem implements ComputingSystem{
       }
     }
     // Clean up temporary transformation, dataset and jobDefinition
-    DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
     String remoteID = null;
     try{
       remoteID = getRemoteJobdefID(job);
@@ -916,7 +916,7 @@ public class GPSSComputingSystem implements ComputingSystem{
         else if(Util.urlIsRemote(finalStdOut)){
           try{
             gsiftpFileTransfer.getFile(new GlobusURL(finalStdOut), tmpStdout.getParentFile(),
-                null, null);
+                GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar, null);
           }
           catch(Exception e){
             e.printStackTrace();
@@ -934,7 +934,7 @@ public class GPSSComputingSystem implements ComputingSystem{
           boolean ok = true;
           try{
             gsiftpFileTransfer.getFile(new GlobusURL(finalStdErr), tmpStdErr.getParentFile(),
-                null, null);
+                GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar, null);
           }
           catch(Exception e){
             ok = false;
