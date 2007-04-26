@@ -787,10 +787,12 @@ public class NGComputingSystem implements ComputingSystem{
     return result;
   }
 
-  public String [] getCurrentOutputs(JobInfo job, boolean resyncFirst) throws IOException{
+  public String [] getCurrentOutputs(JobInfo job) throws IOException{
     
     String stdOutFile = job.getStdOut();
     String stdErrFile = job.getStdErr();
+    
+    boolean resyncFirst = true;
 
     if(resyncFirst){
 

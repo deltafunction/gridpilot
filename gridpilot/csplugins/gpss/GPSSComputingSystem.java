@@ -812,8 +812,8 @@ public class GPSSComputingSystem implements ComputingSystem{
         if(!rDir.endsWith("/")){
           rDir += "/";
         }
-        // Download files
-        copyToFinalDest(job);
+        // Download files - not necessary, already done by updateStatus
+        //copyToFinalDest(job);
         // Delete remote directory
         deleteRemoteDir(rDir);
       }
@@ -883,7 +883,19 @@ public class GPSSComputingSystem implements ComputingSystem{
    * then resets csStatus to its previous value.
    * If job is done, just reads finalStdout and finalStderr.
    */
-  public String[] getCurrentOutputs(JobInfo job, boolean resyncFirst)
+  public String[] getCurrentOutputs(JobInfo job) throws IOException {
+    return getCurrentOutputs(job, false);
+  }
+  
+  /**
+   * jobDone should be set true only when the job is done.
+   * This is in order to allow local validation to be done.
+   * copyToFinalDest is usually called by postProcess, but
+   * here we don't keep a local run dir and thus no local
+   * cache (only a tmp file), so we call copyToFinalDest
+   * here instead.
+   */
+  public String[] getCurrentOutputs(JobInfo job, boolean jobDone)
       throws IOException{
     String status = getFullStatus(job);
     
@@ -910,6 +922,7 @@ public class GPSSComputingSystem implements ComputingSystem{
       if(status.equals(PullJobsDaemon.STATUS_EXECUTED) || status.equals(PullJobsDaemon.STATUS_FAILED)){
         String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
         String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+        // stdout
         if(finalStdOut.startsWith("file:")){
           res[0] = LocalStaticShellMgr.readFile(finalStdOut);
         }
@@ -927,6 +940,7 @@ public class GPSSComputingSystem implements ComputingSystem{
         else{
           throw new IOException("Cannot access local files on remote system");
         }
+        // stderr
         if(finalStdErr.startsWith("file:")){
           res[0] = LocalStaticShellMgr.readFile(finalStdErr);
         }
@@ -948,6 +962,9 @@ public class GPSSComputingSystem implements ComputingSystem{
         else{
           throw new IOException("Cannot access local files on remote system");
         }
+        if(jobDone){
+          copyToFinalDest(job);
+        }
       }
       else if(status.equals(PullJobsDaemon.STATUS_SUBMITTED)){
         String origFinalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
@@ -955,55 +972,37 @@ public class GPSSComputingSystem implements ComputingSystem{
         String remoteFinalStdOut = remoteMgr.getStdOutFinalDest(remoteID);
         String remoteFinalStdErr = remoteMgr.getStdErrFinalDest(remoteID);      
         String oldStatus = remoteMgr.getJobDefValue(remoteID, "csStatus");
+        String dlStdout = null;
+        String dlStderr = null;
         if(Util.urlIsRemote(origFinalStdOut)){
-          // Final stdout/stderr remote, delete from remote dir
-          TransferControl.deleteFiles(new GlobusURL [] {new GlobusURL(origFinalStdOut),
-              new GlobusURL(remoteFinalStdErr)});
-          // Request new ones
-          remoteMgr.setJobDefsField(new String [] {remoteID}, "csStatus", PullJobsDaemon.STATUS_REQUESTED_STDOUT);
-          // Re-download
-          Thread.sleep(sleepT);
-          while(sleepN*sleepT<STDOUT_WAIT){
-            ++sleepN;
-            try{
-              TransferControl.download(origFinalStdOut, tmpStdout,
-                  GridPilot.getClassMgr().getGlobalFrame().getContentPane());
-              TransferControl.download(origFinalStdErr, tmpStdErr,
-                  GridPilot.getClassMgr().getGlobalFrame().getContentPane());
-              break;
-            }
-            catch(Exception e){
-              Debug.debug("Waiting for stdout...", 2);
-            }
-            // Wait
-            Thread.sleep(sleepT);
-          }
+          dlStdout = origFinalStdOut;
+          dlStderr = origFinalStdErr;
         }
         else{
-          // Final stdout/stderr local, delete from remote dir
-          TransferControl.deleteFiles(new GlobusURL [] {new GlobusURL(remoteFinalStdOut),
-              new GlobusURL(remoteFinalStdErr)});
-          // Request new ones
-          remoteMgr.setJobDefsField(new String [] {remoteID}, "csStatus", PullJobsDaemon.STATUS_REQUESTED_STDOUT);
-          // Wait
-          Thread.sleep(STDOUT_WAIT);
-          // Re-download
-          Thread.sleep(sleepT);
-          while(sleepN*sleepT<STDOUT_WAIT){
-            ++sleepN;
-            try{
-              TransferControl.download(remoteFinalStdOut, tmpStdout,
-                  GridPilot.getClassMgr().getGlobalFrame().getContentPane());
-              TransferControl.download(remoteFinalStdErr, tmpStdErr,
-                  GridPilot.getClassMgr().getGlobalFrame().getContentPane());
-              break;
-            }
-            catch(Exception e){
-              Debug.debug("Waiting for stdout...", 2);
-            }
-            // Wait
-            Thread.sleep(sleepT);
+          dlStdout = remoteFinalStdOut;
+          dlStderr = remoteFinalStdErr;
+        }
+        // Final stdout/stderr remote, delete from remote dir
+        TransferControl.deleteFiles(new GlobusURL [] {new GlobusURL(dlStdout),
+            new GlobusURL(dlStderr)});
+        // Request new ones
+        remoteMgr.setJobDefsField(new String [] {remoteID}, "csStatus", PullJobsDaemon.STATUS_REQUESTED_STDOUT);
+        // Re-download
+        Thread.sleep(sleepT);
+        while(sleepN*sleepT<STDOUT_WAIT){
+          ++sleepN;
+          try{
+            TransferControl.download(dlStdout, tmpStdout,
+                GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+            TransferControl.download(dlStderr, tmpStdErr,
+                GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+            break;
           }
+          catch(Exception e){
+            Debug.debug("Waiting for stdout...", 2);
+          }
+          // Wait
+          Thread.sleep(sleepT);
         }
         remoteMgr.setJobDefsField(new String [] {remoteID}, "csStatus", oldStatus);
       }
@@ -1095,6 +1094,7 @@ public class GPSSComputingSystem implements ComputingSystem{
           job.setInternalStatus(ComputingSystem.STATUS_FAILED);
         }
         job.setJobStatus(csStatus);
+        getCurrentOutputs(job, true);
       }
       catch(Exception e){
         error = "WARNING: could check uploaded files in directory "+rDir;

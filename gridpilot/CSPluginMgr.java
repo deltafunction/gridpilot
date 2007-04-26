@@ -528,7 +528,7 @@ public class CSPluginMgr implements ComputingSystem{
    * Gets the current outputs of the specified job on its ComputingSystem.
    * @see ComputingSystem#getCurrentOutputs(JobInfo)
    */
-  public String[] getCurrentOutputs(final JobInfo job, final boolean resyncFirst){
+  public String[] getCurrentOutputs(final JobInfo job){
     final String csName = job.getCSName();
     if(csName==null || csName.equals("")){
       return null;
@@ -538,7 +538,7 @@ public class CSPluginMgr implements ComputingSystem{
       String [] res = new String[]{null,null};
       public void run(){
         try{
-          res = ((ComputingSystem) cs.get(csName)).getCurrentOutputs(job, resyncFirst);
+          res = ((ComputingSystem) cs.get(csName)).getCurrentOutputs(job);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
