@@ -956,7 +956,7 @@ public class GPSSComputingSystem implements ComputingSystem{
         String remoteFinalStdErr = remoteMgr.getStdErrFinalDest(remoteID);      
         String oldStatus = remoteMgr.getJobDefValue(remoteID, "csStatus");
         if(Util.urlIsRemote(origFinalStdOut)){
-          // Final stdout/stderr remote, delete
+          // Final stdout/stderr remote, delete from remote dir
           TransferControl.deleteFiles(new GlobusURL [] {new GlobusURL(origFinalStdOut),
               new GlobusURL(remoteFinalStdErr)});
           // Request new ones
