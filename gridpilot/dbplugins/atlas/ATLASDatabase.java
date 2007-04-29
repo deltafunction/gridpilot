@@ -39,6 +39,7 @@ import javax.xml.rpc.ServiceException;
 import org.globus.util.GlobusURL;
 
 import gridpilot.ConfigFile;
+import gridpilot.DBCache;
 import gridpilot.DBRecord;
 import gridpilot.DBResult;
 import gridpilot.Database;
@@ -49,7 +50,7 @@ import gridpilot.MyThread;
 import gridpilot.TransferControl;
 import gridpilot.Util;
 
-public class ATLASDatabase implements Database{
+public class ATLASDatabase extends DBCache implements Database{
   
   private String error;
   private String dq2Server;

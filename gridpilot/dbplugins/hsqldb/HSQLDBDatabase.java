@@ -22,6 +22,7 @@ import org.logicalcobwebs.proxool.ProxoolFacade;
 import org.safehaus.uuid.UUIDGenerator;
 
 import gridpilot.ConfigFile;
+import gridpilot.DBCache;
 import gridpilot.DBPluginMgr;
 import gridpilot.Database;
 import gridpilot.Debug;
@@ -33,7 +34,7 @@ import gridpilot.Util;
 import gridpilot.DBResult;
 import gridpilot.DBRecord;
 
-public class HSQLDBDatabase implements Database{
+public class HSQLDBDatabase extends DBCache implements Database{
   
   private String driver = "";
   private String database = "";
