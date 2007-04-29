@@ -307,7 +307,7 @@ public class GPSSComputingSystem implements ComputingSystem{
       for(int i=0; i<fileURLs.length; ++i){
         line = (String) files.get(i);
         entryArr = Util.split(line);
-        fileName = entryArr[entryArr.length-1];
+        fileName = entryArr[0];
         fileURLs[i] = new GlobusURL(url+fileName);
       }
     }
@@ -675,7 +675,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     }
     catch(IOException e){
       e.printStackTrace();
-      error = "ERROR: could not get remote jobDefinition ID";
+      error = "WARNING: could not get remote jobDefinition ID";
       logFile.addMessage(error, e);
       return;
     }
@@ -718,9 +718,11 @@ public class GPSSComputingSystem implements ComputingSystem{
         remoteName = remoteMgr.getJobDefOutRemoteName(remoteID, outputNames[i]);
         origDest = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputNames[i]);
         if(!remoteName.equals(origDest)/*origDest.startsWith("file:")*/){
+          origDest = "file:///"+Util.clearTildeLocally(Util.clearFile(origDest));
+          Debug.debug("Getting: "+remoteName+" --> "+origDest, 3);
           transfer = new TransferInfo(
               new GlobusURL(remoteName),
-              new GlobusURL(origDest.replaceFirst("file:/+", "file:////")));
+              new GlobusURL(origDest));
           transferVector.add(transfer);
         }
       }
@@ -751,6 +753,8 @@ public class GPSSComputingSystem implements ComputingSystem{
         remoteFinalStdOut!=null && remoteFinalStdOut.trim().length()>0 &&
         !origFinalStdOut.equals(remoteFinalStdOut) && !Util.urlIsRemote(origFinalStdOut)){
       try{
+        origFinalStdOut = Util.clearTildeLocally(Util.clearFile(origFinalStdOut));
+        Debug.debug("Getting: "+remoteFinalStdOut+" --> "+origFinalStdOut, 3);
         TransferControl.download(remoteFinalStdOut, new File(origFinalStdOut),
             GridPilot.getClassMgr().getGlobalFrame().getContentPane());
       }
@@ -775,6 +779,8 @@ public class GPSSComputingSystem implements ComputingSystem{
         remoteFinalStdErr!=null && remoteFinalStdErr.trim().length()>0 &&
         !origFinalStdErr.equals(remoteFinalStdErr) && !Util.urlIsRemote(origFinalStdErr)){
       try{
+        origFinalStdErr = Util.clearTildeLocally(Util.clearFile(origFinalStdErr));
+        Debug.debug("Getting: "+remoteFinalStdErr+" --> "+origFinalStdErr, 3);
         TransferControl.download(remoteFinalStdErr, new File(origFinalStdErr),
             GridPilot.getClassMgr().getGlobalFrame().getContentPane());
       }
@@ -818,8 +824,8 @@ public class GPSSComputingSystem implements ComputingSystem{
         deleteRemoteDir(rDir);
       }
       catch(Exception e){
-        ok = false;
-        error = "ERROR: could not delete directory or remote files. ";
+        //ok = false;
+        error = "WARNING: could not delete directory or remote files. ";
         logFile.addMessage(error, e);
       }
     }
