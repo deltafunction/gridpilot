@@ -1208,7 +1208,8 @@ public class TransferControl{
           public void run(){
             try{
               GlobusURL globusUrl = new GlobusURL(url);
-              GSIFTPFileTransfer gsiftpFileTransfer = new GSIFTPFileTransfer();
+              //GSIFTPFileTransfer gsiftpFileTransfer = new GSIFTPFileTransfer();
+              GSIFTPFileTransfer gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
               JProgressBar pb = new JProgressBar();
               GridPilot.getClassMgr().getStatusBar().setProgressBar(pb);
               gsiftpFileTransfer.getFile(globusUrl, dName, GridPilot.getClassMgr().getStatusBar(),
@@ -1339,7 +1340,8 @@ public class TransferControl{
         GlobusURL globusUrl = new GlobusURL(uploadUrlDir+uploadFileName);
         JProgressBar pb = new JProgressBar();
         GridPilot.getClassMgr().getStatusBar().setProgressBar(pb);
-        GSIFTPFileTransfer gsiftpFileTransfer = new GSIFTPFileTransfer();
+        //GSIFTPFileTransfer gsiftpFileTransfer = new GSIFTPFileTransfer();
+        GSIFTPFileTransfer gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
         gsiftpFileTransfer.putFile(file, globusUrl,
             GridPilot.getClassMgr().getStatusBar(), new JProgressBar());
         GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);

@@ -618,7 +618,6 @@ public class PullJobsDaemon{
     DBRecord jobRecord = null;
     while(en.hasMoreElements()){
       job = (JobInfo) en.nextElement();
-      // TODO: only take action if the status has changed
       String jobDefID = job.getJobDefId();
       jobRecord = dbPluginMgr.getJobDefinition(jobDefID);
       if(!job.getDBName().equalsIgnoreCase(dbPluginMgr.getDBName()) ||
@@ -637,6 +636,8 @@ public class PullJobsDaemon{
       }
       else if(job.getInternalStatus()==ComputingSystem.STATUS_RUNNING){
          Debug.debug("Found running job. "+jobDefID, 2);
+         // Update, so lastModified is updated to avoid that the job is timed out by
+         // the GPSSComputingSystem of the submitter     
          dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
              new String [] {STATUS_RUNNING});
        }

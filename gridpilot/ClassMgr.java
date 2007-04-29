@@ -44,7 +44,7 @@ public class ClassMgr{
   private Vector submittedTransfers = new Vector();
   private SubmissionControl submissionControl;
   private TransferControl transferControl;
-  private GSIFTPFileTransfer gsiftpFileSystem;
+  private GSIFTPFileTransfer gsiftpFileTransfer;
   private Vector urlList = new Vector();
   private HashMap shellMgrs = new HashMap();
   private static String caCertsTmpdir = null;
@@ -479,16 +479,6 @@ public class ClassMgr{
     return credential;
   }
 
-  // Sort of breaks the plugin concept.
-  // TODO: improve
-  public GSIFTPFileTransfer getGSIFTPFileTransfer(){
-    if(gsiftpFileSystem==null){
-      Debug.debug("gsiftpFileSystem null", 3);
-      gsiftpFileSystem = new GSIFTPFileTransfer();
-    }
-    return gsiftpFileSystem;
-  }
-  
   //timeouts in milliseconds
   public void sqlConnection(String dbName, String driver, String databaseUrl,
       String user, String passwd, boolean gridAuth, String connectionTimeout,

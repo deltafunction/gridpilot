@@ -43,6 +43,8 @@ public class GSIFTPFileTransfer implements FileTransfer {
   private String user = null;
   private HashMap jobs = null;
   private HashMap urlCopyTransferListeners = null;
+  private String currentHost = null;
+  private int currentPort = -1;
   
   private static String pluginName;
   
@@ -115,6 +117,17 @@ public class GSIFTPFileTransfer implements FileTransfer {
    * Connect to gridftp server and set environment.
    */
   public GridFTPClient connect(String host, int port) throws IOException, FTPException{
+    // If there happens to be a thread connected to this host and port,
+    // reuse the connection.
+    if(gridFtpClient!=null && currentHost!=null && host.equals(currentHost) &&
+        port==currentPort){
+      try{
+        gridFtpClient.getCurrentDir();
+        return gridFtpClient;
+      }
+      catch(Exception e){
+      }
+    }
     try{
       GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
       gridFtpClient = new GridFTPClient(host, port);
@@ -125,6 +138,9 @@ public class GSIFTPFileTransfer implements FileTransfer {
       e.printStackTrace();
       throw new IOException(e.getMessage());
     }
+    
+    currentHost = host;
+    currentPort = port;
     
     // NorduGrid variant
     /*try{

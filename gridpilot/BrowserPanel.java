@@ -98,7 +98,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
     setModal(modal);
     
     if(!localFS){
-      gsiftpFileTransfer = new GSIFTPFileTransfer();
+      //gsiftpFileTransfer = new GSIFTPFileTransfer();
+      gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
     }
     
     String urlHistory = null;

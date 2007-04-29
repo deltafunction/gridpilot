@@ -5,6 +5,8 @@ import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -51,6 +53,7 @@ public class GPSSComputingSystem implements ComputingSystem{
   private String remoteDir = null;
   private GSIFTPFileTransfer gsiftpFileTransfer = null;
   private Vector allowedSubjects = null;
+  private long providerTimeout = -1;
   
   // RTEs are refreshed from entries written by pull nodes in remote database
   // every RTE_SYNC_DELAY milliseconds.
@@ -129,6 +132,8 @@ public class GPSSComputingSystem implements ComputingSystem{
           }
         }
       }
+      String providerTimeoutStr = configFile.getValue(csName, "provider update timeout");
+      providerTimeout = 1000*Long.parseLong(providerTimeoutStr);
     }
     catch(Exception ioe){
       error = "ERROR during initialization of GPSS plugin\n" +
@@ -268,7 +273,8 @@ public class GPSSComputingSystem implements ComputingSystem{
     }
     GlobusURL globusUrl= new GlobusURL(url);
     if(gsiftpFileTransfer==null){
-      gsiftpFileTransfer = new GSIFTPFileTransfer();
+      //gsiftpFileTransfer = new GSIFTPFileTransfer();
+      gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
     }
     // First, check if directory already exists.
     try{
@@ -1142,6 +1148,47 @@ public class GPSSComputingSystem implements ComputingSystem{
     else{
       error = "WARNING: unrecognized status "+csStatus;
       Debug.debug(error, 1);
+    }
+    
+    // Set jobs that have been untouched too long in remote DB as failed
+    if(job.getInternalStatus()!=ComputingSystem.STATUS_DONE &&
+        job.getInternalStatus()!=ComputingSystem.STATUS_FAILED){
+      try{
+        String lastModifiedStr = remoteMgr.getJobDefValue(job.getJobDefId(), "lastModified");
+        long lastUpdateMillis = getDateInSeconds(lastModifiedStr);
+        long nowMillis = getDateInSeconds(null);
+        if(nowMillis-lastUpdateMillis>providerTimeout){
+          job.setInternalStatus(ComputingSystem.STATUS_FAILED);
+          job.setJobStatus(csStatus);
+          //getCurrentOutputs(job, true);
+          error = "WARNING: job timed out: "+job.getJobDefId();
+          logFile.addMessage(error);
+        }
+      }
+      catch(Exception e){
+        error = "WARNING: could not check lastModified of job. "+job;
+        logFile.addMessage(error);
+      }
+    }
+  }
+  
+  private long getDateInSeconds(String dateInput){
+    try{
+      SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
+      long millis = -1;
+      if(dateInput == null || dateInput.equals("") || dateInput.equals("''")){
+        millis = Calendar.getInstance().getTime().getTime();
+      }
+      else{
+        java.util.Date date = df.parse(dateInput);
+        millis = date.getTime();
+      }
+      return millis;
+    }
+    catch(Throwable e){
+      Debug.debug("Could not set date. "+e.getMessage(), 1);
+      e.printStackTrace();
+      return -1;
     }
   }
   
