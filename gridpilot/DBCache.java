@@ -33,7 +33,15 @@ public class DBCache{
   }
   
   public DBResult executeQuery(String sql) throws SQLException{
-    Debug.debug("Caching: "+dbName+":"+useCaching, 3);
+    return executeQuery(null, sql);
+  }
+  
+  public DBResult executeQuery(String _dbName, String sql) throws SQLException{
+    String thisDbName = dbName;
+    if(_dbName!=null){
+      thisDbName = _dbName;
+    }
+    Debug.debug("Caching: "+thisDbName+":"+useCaching, 3);
     if(useCaching && queryResults.containsKey(sql)){
       Debug.debug("Returning cached result", 2);
       DBResult rset = (DBResult) queryResults.get(sql);
@@ -42,7 +50,7 @@ public class DBCache{
     }
     String [] row = null;
     Vector valuesVector = new Vector();
-    Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+    Connection conn = GridPilot.getClassMgr().getDBConnection(thisDbName);
     Statement stmt = conn.createStatement();
     ResultSet rset = stmt.executeQuery(sql);
     ResultSetMetaData md = rset.getMetaData();

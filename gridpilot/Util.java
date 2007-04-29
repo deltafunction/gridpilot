@@ -1523,8 +1523,8 @@ public class Util{
     Vector resultVector = new Vector();
     String [][] resultArray = null;
     try{
-      Debug.debug(">> "+req, 3);
-      DBResult rset = GridPilot.getClassMgr().getDBPluginMgr(dbName).executeQuery(req);
+      Debug.debug(dbName+" >> "+req, 3);
+      DBResult rset = GridPilot.getClassMgr().getDBPluginMgr(dbName).executeQuery(dbName, req);
       while(rset.next()){
         for(int i=0; i<fields.length;i++){
           values[i] = rset.getString(fields[i]);
