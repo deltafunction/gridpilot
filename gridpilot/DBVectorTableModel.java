@@ -188,7 +188,9 @@ public class DBVectorTableModel extends AbstractTableModel {
     Debug.debug("Records now "+theRecords.size()+" : "+
         getRowCount(), 2);
     fireTableStructureChanged();
+    Debug.debug("fireTableDataChanged", 3);
     fireTableDataChanged();
+    Debug.debug("fireTableDataChanged done", 3);
   }
 
   synchronized public void setTable(String [] _columnNames){

@@ -821,6 +821,30 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     selectPanel.setConstraint(Util.getNameField(dbPluginMgr.getDBName(), tableName), "", 1);
     selectPanel.updateUI();
   }
+  
+  private boolean waitForWorking(){
+    for(int i=0; i<1; ++i){
+      if(!getWorking()){
+        // retry 3 times with 3 seconds in between
+        statusBar.setLabel("Busy, please wait...");
+        try{
+          Thread.sleep(3000);
+        }
+        catch(Exception e){
+        }
+        if(i==2){
+          return false;
+        }
+        else{
+          continue;
+        }
+      }
+      else{
+        break;
+      }
+    }
+    return true;
+  }
 
   /**
    * Request DBPluginMgr for select request from SelectPanel, and fill tableResults
@@ -833,25 +857,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         
     workThread = new Thread(){
       public void run(){
-        for(int i=0; i<1; ++i){
-          if(!getWorking()){
-            // retry 3 times with 3 seconds in between
-            statusBar.setLabel("Busy, please wait...");
-            try{
-              Thread.sleep(3000);
-            }
-            catch(Exception e){
-            }
-            if(i==2){
-              return;
-            }
-            else{
-              continue;
-            }
-          }
-          else{
-            break;
-          }
+        if(!waitForWorking()){
+          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, search not performed");
+          return;
         }
         statusBar.setLabel("Searching, please wait...");
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -1106,8 +1114,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     };
 
-    workThread.start();
-
+    //workThread.start();
+    SwingUtilities.invokeLater(workThread);
+    
   }
   
   public void searchRequest(){
@@ -1735,6 +1744,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Refresh search results.
    */ 
   public void refresh(){
+    if(!waitForWorking()){
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, search not performed");
+      return;
+    }
     Debug.debug("Refreshing search results", 3);
     if(tableResults==null /*|| tableResults.getRowCount()==0*/){
       searchRequest();
@@ -2595,25 +2608,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void submit(final ActionEvent e){
     workThread = new Thread(){
       public void run(){
-        for(int i=0; i<1; ++i){
-          if(!getWorking()){
-            // retry 3 times with 3 seconds in between
-            statusBar.setLabel("Busy, please wait...");
-            try{
-              Thread.sleep(3000);
-            }
-            catch(Exception e){
-            }
-            if(i==2){
-              return;
-            }
-            else{
-              continue;
-            }
-          }
-          else{
-            break;
-          }
+        if(!waitForWorking()){
+          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, search not performed");
+          return;
         }
         statusBar.setLabel("Preparing jobs, please wait...");
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -2805,7 +2802,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * @param datasetName    only relevant for job definitions and files
    * @throws Exception
    */
-  public void insertRecord(String sourceDB, String sourceTable,
+  private void insertRecord(String sourceDB, String sourceTable,
       String id, String name, String datasetName) throws Exception{
     
     DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(sourceDB);
@@ -2885,7 +2882,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
   }
   
-  public boolean insertJobDefinition(DBPluginMgr sourceMgr, DBRecord jobDef) throws Exception{  
+  private boolean insertJobDefinition(DBPluginMgr sourceMgr, DBRecord jobDef) throws Exception{  
     try{
       // Check if parent dataset exists
       String sourceJobDefIdentifier = Util.getIdentifierField(sourceMgr.getDBName(), "jobDefinition");
@@ -2928,7 +2925,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return true;
   }
   
-  public boolean insertDataset(DBRecord dataset, DBPluginMgr sourceMgr,
+  private boolean insertDataset(DBRecord dataset, DBPluginMgr sourceMgr,
       String name, String id) throws Exception{
     try{
       boolean ok = false;
@@ -3062,7 +3059,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return true;
   }
   
-  public boolean insertTransformation(DBRecord transformation, DBPluginMgr sourceMgr)
+  private boolean insertTransformation(DBRecord transformation, DBPluginMgr sourceMgr)
      throws Exception{
     try{
       // Check if referenced runtime environment exists
@@ -3093,7 +3090,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return true;
   }
   
-  public boolean insertRuntimeEnvironment(DBRecord pack) throws Exception{
+  private boolean insertRuntimeEnvironment(DBRecord pack) throws Exception{
     try{
       dbPluginMgr.createRuntimeEnv(pack.fields, pack.values);
     }
@@ -3103,7 +3100,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return true;
   }
   
-  public void deleteRecord(String sourceDB, String sourceTable, String id) throws Exception{
+  private void deleteRecord(String sourceDB, String sourceTable, String id) throws Exception{
     DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(sourceDB);
     if(tableName.equalsIgnoreCase("jobDefinition")){
       try{
