@@ -920,6 +920,9 @@ public class GPSSComputingSystem implements ComputingSystem{
     int sleepN = 0;
     try{
       if(status.equals(PullJobsDaemon.STATUS_EXECUTED) || status.equals(PullJobsDaemon.STATUS_FAILED)){
+        if(jobDone){
+          copyToFinalDest(job);
+        }
         String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
         String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
         // stdout
@@ -961,9 +964,6 @@ public class GPSSComputingSystem implements ComputingSystem{
         }
         else{
           throw new IOException("Cannot access local files on remote system");
-        }
-        if(jobDone){
-          copyToFinalDest(job);
         }
       }
       else if(status.equals(PullJobsDaemon.STATUS_SUBMITTED)){
