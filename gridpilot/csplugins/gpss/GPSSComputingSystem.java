@@ -38,6 +38,7 @@ import gridpilot.LogFile;
 import gridpilot.PullJobsDaemon;
 import gridpilot.TransferControl;
 import gridpilot.TransferInfo;
+import gridpilot.TransferStatusUpdateControl;
 import gridpilot.Util;
 import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 
@@ -60,6 +61,8 @@ public class GPSSComputingSystem implements ComputingSystem{
   private static int RTE_SYNC_DELAY = 60000;
   // Wait max 60 seconds for all input files to be uploaded
   private static int MAX_UPLOAD_WAIT = 60000;
+  // Wait max 240 seconds for all output files to be downloaded
+  private static int MAX_DOWNLOAD_WAIT = 240000;
   // Time to wait for stdout/stderr to be uploaded
   private static int STDOUT_WAIT = 20000;
   
@@ -300,7 +303,8 @@ public class GPSSComputingSystem implements ComputingSystem{
     }
     GlobusURL globusUrl= new GlobusURL(url);
     if(gsiftpFileTransfer==null){
-      gsiftpFileTransfer = new GSIFTPFileTransfer();
+      //gsiftpFileTransfer = new GSIFTPFileTransfer();
+      gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
     }
     // First, check if directory exists.
     GlobusURL [] fileURLs = null;
@@ -401,8 +405,11 @@ public class GPSSComputingSystem implements ComputingSystem{
     boolean transfersDone = false;
     int sleepT = 3000;
     int waitT = 0;
+    TransferStatusUpdateControl statusUpdateControl = GridPilot.getClassMgr().getGlobalFrame(
+       ).monitoringPanel.transferMonitor.statusUpdateControl;
     while(!transfersDone && waitT*sleepT<MAX_UPLOAD_WAIT){
       transfersDone = true;
+      statusUpdateControl.updateStatus(null);
       for(Iterator itt=transferVector.iterator(); itt.hasNext();){
         transfer = (TransferInfo) itt.next();
         if(TransferControl.isRunning(transfer)){
@@ -414,9 +421,10 @@ public class GPSSComputingSystem implements ComputingSystem{
         break;
       }
       Thread.sleep(sleepT);
+      Debug.debug("Waiting for transfer(s)...", 2);
       ++ waitT;
     }
-    if(!true){
+    if(!transfersDone){
       TransferControl.cancel(transferVector);
       throw new TimeLimitExceededException("Upload took too long, aborting.");
     }
@@ -695,7 +703,7 @@ public class GPSSComputingSystem implements ComputingSystem{
    * job.StdOut and job.StdErr are then set to these final values. <p>
    * @return <code>true</code> if the move went ok, <code>false</code> otherwise.
    */
-  private boolean copyToFinalDest(JobInfo job){
+  private boolean copyToFinalDest(JobInfo job) throws Exception{
     
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     DBPluginMgr remoteMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
@@ -725,11 +733,15 @@ public class GPSSComputingSystem implements ComputingSystem{
         origDest = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputNames[i]);
         if(!remoteName.equals(origDest)/*origDest.startsWith("file:")*/){
           origDest = "file:///"+Util.clearTildeLocally(Util.clearFile(origDest));
-          Debug.debug("Getting: "+remoteName+" --> "+origDest, 3);
+          Debug.debug("Getting: "+remoteName+" --> "+origDest, 2);
           transfer = new TransferInfo(
               new GlobusURL(remoteName),
               new GlobusURL(origDest));
           transferVector.add(transfer);
+        }
+        else{
+          logFile.addInfo("Same final destination for local and remote job " +origDest+
+                "/"+remoteName+". Not copying.");
         }
       }
       catch(Exception e){
@@ -745,6 +757,35 @@ public class GPSSComputingSystem implements ComputingSystem{
     if(!ok){
       return ok;
     }
+    GridPilot.getClassMgr().getTransferControl().queue(transferVector);
+    // Wait for transfers to finish
+    boolean transfersDone = false;
+    int sleepT = 3000;
+    int waitT = 0;
+    TransferStatusUpdateControl statusUpdateControl = GridPilot.getClassMgr().getGlobalFrame(
+    ).monitoringPanel.transferMonitor.statusUpdateControl;
+    while(!transfersDone && waitT*sleepT<MAX_DOWNLOAD_WAIT){
+      transfersDone = true;
+      statusUpdateControl.updateStatus(null);
+      for(Iterator itt=transferVector.iterator(); itt.hasNext();){
+        transfer = (TransferInfo) itt.next();
+        if(TransferControl.isRunning(transfer)){
+          transfersDone = false;
+          break;
+        }
+      }
+      if(transfersDone){
+        break;
+      }
+      Debug.debug("Waiting for transfer(s)...", 2);
+      Thread.sleep(sleepT);
+      ++ waitT;
+    }
+    if(!transfersDone){
+      TransferControl.cancel(transferVector);
+      throw new TimeLimitExceededException("Download took too long, aborting.");
+    }
+
     
     // Stdout/stderr
     String origFinalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
@@ -1154,7 +1195,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     if(job.getInternalStatus()!=ComputingSystem.STATUS_DONE &&
         job.getInternalStatus()!=ComputingSystem.STATUS_FAILED){
       try{
-        String lastModifiedStr = remoteMgr.getJobDefValue(job.getJobDefId(), "lastModified");
+        String lastModifiedStr = remoteMgr.getJobDefValue(remoteID, "lastModified");
         long lastUpdateMillis = getDateInSeconds(lastModifiedStr);
         long nowMillis = getDateInSeconds(null);
         if(nowMillis-lastUpdateMillis>providerTimeout){
@@ -1166,6 +1207,7 @@ public class GPSSComputingSystem implements ComputingSystem{
         }
       }
       catch(Exception e){
+        e.printStackTrace();
         error = "WARNING: could not check lastModified of job. "+job;
         logFile.addMessage(error);
       }
