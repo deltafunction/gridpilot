@@ -22,7 +22,6 @@ import java.net.URLDecoder;
 import java.util.ListIterator;
 import java.util.Vector;
 
-import org.globus.ftp.GridFTPClient;
 import org.globus.ftp.exception.FTPException;
 import org.globus.util.GlobusURL;
 
@@ -65,6 +64,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private boolean localFS = false;
   
   public static int HISTORY_SIZE = 15;
+  private static int MAX_FILE_EDIT_BYTES = 500000;
 
   public BrowserPanel(JFrame _parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
@@ -698,70 +698,19 @@ public class BrowserPanel extends JDialog implements ActionListener{
      FTPException{
     Debug.debug("setGsiftpTextEdit "+url, 3);
     jtFilter.setEnabled(false);
-    
-    String localPath = null;
-    String host = null;
-    String hostAndPath = null;
-    String port = "2811";
-    String hostAndPort = null;
     File tmpFile = null;
-    String localDir = null;
-    if(url.startsWith("gsiftp://")){
-      hostAndPath = url.substring(9);
-    }
-    else if(url.startsWith("gsiftp:/")){
-      hostAndPath = url.substring(8);
-    }
-    else{
-      return;
-    }
-    Debug.debug("Host+path: "+hostAndPath, 3);
-    hostAndPort = hostAndPath.substring(0, hostAndPath.indexOf("/"));
-    int colonIndex=hostAndPort.indexOf(":");
-    if(colonIndex>0){
-      host = hostAndPort.substring(0, hostAndPort.indexOf(":"));
-      port = hostAndPort.substring(hostAndPort.indexOf(":")+1);
-    }
-    else{
-      host = hostAndPort;
-      port = "2811";
-    }
-    localPath = hostAndPath.substring(hostAndPort.length(), hostAndPath.length());
-    localPath = localPath.replaceFirst("/[^\\/]*/\\.\\.", "");
-    int lastSlash = localPath.lastIndexOf("/");
-    if(lastSlash>0){
-      localDir = localPath.substring(0, lastSlash);
-    }
-    else{
-      localDir = "/";
-    }
-    Debug.debug("Host: "+host, 3);
-    Debug.debug("Port: "+port, 3);
-    Debug.debug("Path: "+localPath, 3);
-    Debug.debug("Directory: "+localDir, 3);
     tmpFile = File.createTempFile("gridpilot-", ".txt");
     Debug.debug("Created temp file "+tmpFile, 3);
-    GridFTPClient gridFtpClient = null;
     try{
-      gridFtpClient = gsiftpFileTransfer.connect(host, Integer.parseInt(port));
-    }
-    catch(Exception e){
-      Debug.debug("Could not connect. "+
-         e.getMessage(), 1);
-      e.printStackTrace();
-      throw new IOException(e.getMessage());
-    }
-    try{
-      gridFtpClient.changeDir(localDir);
-      if(gridFtpClient.getSize(localPath)>500000){
+      if(gsiftpFileTransfer.getFileBytes(new GlobusURL(url))>MAX_FILE_EDIT_BYTES){
         throw new IOException("File too big");
       }
-      gridFtpClient.get(localPath, tmpFile);
+      gsiftpFileTransfer.getFile(new GlobusURL(url), tmpFile, statusBar, null);
     }
     catch(Exception e){
-      Debug.debug("Could not read "+localPath, 1);
+      Debug.debug("Could not read "+url, 1);
       e.printStackTrace();
-      String error = "ERROR!\n\nThe file "+localPath+" could not be read. "+
+      String error = "ERROR!\n\nThe file "+url+" could not be read. "+
       "\n\nIf it is a directory, please end with a /. "+
       e.getMessage();
       ep.setText(error);
@@ -1028,10 +977,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
     Debug.debug("Path: "+localPath, 3);
     Debug.debug("Directory: "+localDir, 3);
     try{
-      GridFTPClient gridFtpClient = gsiftpFileTransfer.connect(host, Integer.parseInt(port));
       try{
-        gridFtpClient.changeDir(localDir);
-        if(gridFtpClient.getSize(localPath)==0){
+        if(gsiftpFileTransfer.getFileBytes(new GlobusURL(url))==0){
           throw new IOException("File is empty");
         }
         ep.setText("File found");

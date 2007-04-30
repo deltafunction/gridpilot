@@ -39,12 +39,10 @@ import gridpilot.Util;
 
 public class GSIFTPFileTransfer implements FileTransfer {
   
-  private GridFTPClient gridFtpClient = null;
   private String user = null;
   private HashMap jobs = null;
   private HashMap urlCopyTransferListeners = null;
-  private String currentHost = null;
-  private int currentPort = -1;
+  private HashMap fileTransfers = null;
   
   private static String pluginName;
   
@@ -64,6 +62,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
     
     jobs = new HashMap();
     urlCopyTransferListeners = new HashMap();
+    fileTransfers = new HashMap();
     
     // The log4j root logger. All class loggers used
     // by cog and jarclib inherit from this and none
@@ -109,38 +108,26 @@ public class GSIFTPFileTransfer implements FileTransfer {
           ));
   }
 
-  private GridFTPClient getGridftpClient(){
-    return gridFtpClient;
-  }
-
   /**
    * Connect to gridftp server and set environment.
+   * This method must be synchronized: before there were problems with
+   * simultaneous GPSS submissions, i.e. connecting in parallel to the same
+   * host.
    */
-  public GridFTPClient connect(String host, int port) throws IOException, FTPException{
-    // If there happens to be a thread connected to this host and port,
-    // reuse the connection.
-    if(gridFtpClient!=null && currentHost!=null && host.equals(currentHost) &&
-        port==currentPort){
-      try{
-        gridFtpClient.getCurrentDir();
-        return gridFtpClient;
-      }
-      catch(Exception e){
-      }
-    }
+  public synchronized GridFTPClient connect(String host, int port) throws IOException, FTPException{
+    
+    GridFTPClient gridFtpClient = null;
+    
     try{
       GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
       gridFtpClient = new GridFTPClient(host, port);
       gridFtpClient.authenticate(credential);
     }
     catch(Exception e){
-      Debug.debug("Could not connect"+e.getMessage(), 1);
+      Debug.debug("Could not connect "+e.getMessage(), 1);
       e.printStackTrace();
       throw new IOException(e.getMessage());
     }
-    
-    currentHost = host;
-    currentPort = port;
     
     // NorduGrid variant
     /*try{
@@ -162,7 +149,11 @@ public class GSIFTPFileTransfer implements FileTransfer {
         //Debug.debug(gridFtpClient.quote("MODE E").getMessage(), 3);// S
         //gridFtpClient.setMode(GridFTPSession.MODE_EBLOCK);
         //Debug.debug(gridFtpClient.quote("Type I").getMessage(), 3);
-        gridFtpClient.setType(GridFTPSession.TYPE_IMAGE);
+        try{
+          gridFtpClient.setType(GridFTPSession.TYPE_IMAGE);
+        }
+        catch(Exception ee){
+        }
         //Debug.debug(gridFtpClient.quote("PBSZ 16384").getMessage(), 3);
         gridFtpClient.setProtectionBufferSize(16384);
         //Debug.debug(gridFtpClient.quote("DCAU N").getMessage(), 3);// N, A
@@ -190,7 +181,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
     return gridFtpClient;
   }
 
-  public void getFile(GlobusURL globusUrl, File downloadDir,
+  public void getFile(GlobusURL globusUrl, File downloadDirOrFile,
       StatusBar statusBar, JProgressBar pb)
      throws ClientException, ServerException, FTPException, IOException {
     
@@ -228,6 +219,8 @@ public class GSIFTPFileTransfer implements FileTransfer {
     Debug.debug("Port: "+port, 3);
     Debug.debug("Path: "+localPath, 3);
     Debug.debug("Directory: "+localDir, 3);
+    
+    final String id = globusUrl.getURL()+"::"+downloadDirOrFile.getCanonicalPath();
 
     Debug.debug("Getting "+fileName, 3);
     if(statusBar!=null){
@@ -237,7 +230,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
       pb.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent e){
           try{
-            getGridftpClient().abort();
+            abortTransfer(id);
           }
           catch(Exception ee){
           }
@@ -246,8 +239,11 @@ public class GSIFTPFileTransfer implements FileTransfer {
       pb.setToolTipText("Click here to cancel download");
     }
 
+    GridFTPClient gridFtpClient = null;
+    
     try{
       gridFtpClient = connect(host, port);
+      fileTransfers.put(id, gridFtpClient);
     }
     catch(FTPException e){
       Debug.debug("Could not connect to "+globusUrl.getURL()+". "+
@@ -272,10 +268,15 @@ public class GSIFTPFileTransfer implements FileTransfer {
       client.extendedGet(remoteFile, size, sink, null);
       */
       
-      Debug.debug("Downloading "+localPath+"->"+
-          (new File(downloadDir.getAbsolutePath(), fileName).getAbsolutePath()), 3);
-      gridFtpClient.get(localPath,
-          new File(downloadDir.getAbsolutePath(), fileName));
+      File downloadFile = null;
+      if(downloadDirOrFile.isDirectory()){
+        downloadFile = new File(downloadDirOrFile.getAbsolutePath(), fileName);
+      }
+      else{
+        downloadFile = downloadDirOrFile;
+      }
+      Debug.debug("Downloading "+localPath+"->"+downloadFile.getAbsolutePath(), 3);
+      gridFtpClient.get(localPath, downloadFile);
       gridFtpClient.close();
      
       // if we don't get an exception, the file got downloaded
@@ -340,10 +341,12 @@ public class GSIFTPFileTransfer implements FileTransfer {
     Debug.debug("Path: "+localPath, 3);
     Debug.debug("Directory: "+localDir, 3);
     
+    final String id = file.getCanonicalPath() +"::"+ globusFileUrl.getURL();
+    
     pb.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent e){
         try{
-          getGridftpClient().abort();
+          abortTransfer(id);
         }
         catch(Exception ee){
         }
@@ -351,8 +354,11 @@ public class GSIFTPFileTransfer implements FileTransfer {
     });
     pb.setToolTipText("Click here to cancel upload");
     
+    GridFTPClient gridFtpClient = null;
+    
     try{
       gridFtpClient = connect(host, port);
+      fileTransfers.put(id, gridFtpClient);
     }
     catch(FTPException e){
       Debug.debug("Could not connect to "+globusFileUrl.getURL()+". "+
@@ -379,6 +385,20 @@ public class GSIFTPFileTransfer implements FileTransfer {
       catch(Exception e){
       }
     }
+  }
+  
+  /**
+   * Cancels a running transfer from fileTransfers.
+   * These are transfers initiated by getFile or putFile.
+   * @param id the ID of the transfer.
+   * @throws IOException 
+   * @throws ServerException 
+   */
+  private void abortTransfer(String id) throws ServerException, IOException{
+    GridFTPClient gridftpClient = ((GridFTPClient) fileTransfers.get(id));
+    gridftpClient.abort();
+    gridftpClient.close(true);
+    fileTransfers.remove(id);
   }
   
   /**
@@ -417,7 +437,8 @@ public class GSIFTPFileTransfer implements FileTransfer {
     if(port<0){
       port = 2811;
     }
-
+    
+    GridFTPClient gridFtpClient = null;
     try{
       gridFtpClient = connect(host, port);
     }
@@ -555,6 +576,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
     Debug.debug("Path: "+localPath, 3);
     Debug.debug("Directory: "+localDir, 3);
     File tmpFile = null;
+    GridFTPClient gridFtpClient = null;
     try{
       gridFtpClient = connect(host, port);
     }
@@ -678,6 +700,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
       Debug.debug("File: "+localFile, 3);
 
       // Populate urlSet
+      GridFTPClient gridFtpClient = null;
       try{
         gridFtpClient = connect(host, Integer.parseInt(port));
       }
@@ -940,12 +963,27 @@ public class GSIFTPFileTransfer implements FileTransfer {
   
   public long getFileBytes(GlobusURL url) throws Exception {
     String file = url.getPath().replaceFirst(".*/([^/]+)", "$1");
-    String dir = url.getPath().replaceFirst("(.*)/[^/]+", "$1");
+    String dir = url.getURL().replaceFirst("(.*/)[^/]+", "$1");
     Vector listVector = list(new GlobusURL(dir), file, null);
     String line = (String) listVector.get(0);
     String [] entries = Util.split(line);
     return Long.parseLong(entries[1]);
   }
+  
+  // This should work, but NG servers do not support getSize...
+  public long getFileBytesNoGood(GlobusURL url) throws Exception {
+    GridFTPClient gridFtpClient = null;
+    try{
+      gridFtpClient = connect(url.getHost(), url.getPort());
+    }
+    catch(FTPException e){
+      Debug.debug("Could not connect to "+url.getURL()+". "+
+         e.getMessage(), 1);
+      throw e;
+    }
+    return gridFtpClient.getSize(url.getPath());
+  }
+  
 
   public String[] startCopyFiles(GlobusURL[] srcUrls, GlobusURL[] destUrls)
      throws UrlCopyException {
