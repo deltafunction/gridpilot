@@ -34,7 +34,10 @@ public class PullJobsDaemon{
   // If this is set to false, we will not try and pick up
   // the same job twice.
   private static boolean ALLOW_USER_RERUN = false;
-  
+  // List of done jobs: needed to avoid having findDoneJobs trying to get
+  // the DB record of jobs that have been deleted by GPSSComputingSystem of the submitter.
+  private Vector allDoneJobs = null;
+   
   public static String STATUS_READY = "ready";
   public static String STATUS_REQUESTED = "requested";
   public static String STATUS_PREPARED = "prepared";
@@ -68,6 +71,7 @@ public class PullJobsDaemon{
     csName = _csName;
     dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
     statusBar = _statusBar;
+    allDoneJobs = new Vector();
     logFile = GridPilot.getClassMgr().getLogFile();
     idField = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
     // The grid certificate subject, used by the pull job manager to encrypt files
@@ -619,9 +623,12 @@ public class PullJobsDaemon{
     while(en.hasMoreElements()){
       job = (JobInfo) en.nextElement();
       String jobDefID = job.getJobDefId();
-      jobRecord = dbPluginMgr.getJobDefinition(jobDefID);
       if(!job.getDBName().equalsIgnoreCase(dbPluginMgr.getDBName()) ||
-          jobRecord.getValue("providerInfo")==null ||
+          allDoneJobs.contains(job)){
+        continue;
+      }
+      jobRecord = dbPluginMgr.getJobDefinition(jobDefID);
+      if(jobRecord.getValue("providerInfo")==null ||
          !jobRecord.getValue("providerInfo").equals(userInfo)){
         continue;
       }
@@ -633,6 +640,7 @@ public class PullJobsDaemon{
          job.getInternalStatus()==ComputingSystem.STATUS_ERROR*/){
         Debug.debug("Found done job. "+jobDefID, 2);
         doneJobs.add(job);
+        allDoneJobs.add(job);
       }
       else if(job.getInternalStatus()==ComputingSystem.STATUS_RUNNING){
          Debug.debug("Found running job. "+jobDefID, 2);
@@ -640,7 +648,9 @@ public class PullJobsDaemon{
          // the GPSSComputingSystem of the submitter     
          dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
              new String [] {STATUS_RUNNING});
-       }
+         // Just in case a done job has been resubmitted
+         allDoneJobs.remove(job);
+      }
       if(jobRecord.getValue("csStatus").equals(STATUS_REQUESTED_KILLED)){
         Vector killJobs = new Vector();
         // Temporarily change the CS name from GPSS to the local one,
@@ -668,6 +678,8 @@ public class PullJobsDaemon{
     JobInfo [] ret = new JobInfo[doneJobs.size()];
     for(int i=0; i<ret.length; ++i){
       ret[i] = (JobInfo) doneJobs.get(i);
+      // This breaks JobMgr.updateDBStatus
+      //allRunningJobs.remove(ret[i]);
     }
     return ret;
   }
