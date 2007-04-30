@@ -51,6 +51,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JButton bKill = new JButton("Kill");
   private JButton bRefresh = new JButton("Refresh");
   private JButton bPull = new JButton("Pull");
+  private JButton bUpdate = new JButton("Update");
   // auto refresh
   private JCheckBox cbAutoRefresh = new JCheckBox("each");
   private JCheckBox cbAutoPull = new JCheckBox("each");
@@ -286,6 +287,50 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
     bPull.setToolTipText("Pull an eligible job");
+    bUpdate.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        if(isPulling){
+          Debug.debug("already pulling jobs...", 2);
+          return;
+        }
+        else{
+          Thread t = new MyThread(){
+            public void run(){
+              try{
+                isPulling = true;
+                Debug.debug("trying to run jobs...", 2);
+                for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
+                  PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
+                  try{
+                    daemon.runJob();
+                    break;
+                  }
+                  catch(Exception e){
+                    e.printStackTrace();
+                    continue;
+                  }
+                }
+                Debug.debug("trying to finish jobs...", 2);
+                for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
+                  PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
+                  if(daemon.finishJob()){
+                    break;
+                  }
+                }
+              }
+              catch(Exception e){
+                e.printStackTrace();
+              }
+              finally{
+                isPulling = false;
+              }              
+            }
+          };
+          t.start();
+        }
+      }
+    });
+    bUpdate.setToolTipText("Update pulled job(s)");
     cbAutoPull.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         cbAutoPull_clicked();
@@ -308,6 +353,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     //pButtons.add(bKill);
 
     pButtons.add(bPull);
+    pButtons.add(bUpdate);
     pButtons.add(cbAutoPull);
     pButtons.add(sAutoPull);
     pButtons.add(cbPullUnits);
@@ -343,6 +389,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       cbAutoPull.setSelected(false);
     }
     bPull.setEnabled(ok);
+    bUpdate.setEnabled(ok);
     cbAutoPull.setEnabled(ok);
     sAutoPull.setEnabled(ok);
     cbPullUnits.setEnabled(ok);
