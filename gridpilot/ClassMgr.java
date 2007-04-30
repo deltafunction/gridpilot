@@ -18,8 +18,6 @@ import org.globus.common.CoGProperties;
 import org.ietf.jgss.GSSCredential;
 import org.logicalcobwebs.proxool.ProxoolFacade;
 
-import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
-
 /**
  * This class allows access to all global objects in gridpilot.
  */
@@ -44,7 +42,6 @@ public class ClassMgr{
   private Vector submittedTransfers = new Vector();
   private SubmissionControl submissionControl;
   private TransferControl transferControl;
-  private GSIFTPFileTransfer gsiftpFileTransfer;
   private Vector urlList = new Vector();
   private HashMap shellMgrs = new HashMap();
   private static String caCertsTmpdir = null;
