@@ -296,7 +296,7 @@ public class SubmissionControl{
         shell = GridPilot.getClassMgr().getShellMgr(job);
       }
       catch(Exception e){
-        Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
+        Debug.debug("WARNING: no shell manager: "+e.getMessage(), 1);
       }
 
       if(job.getDBStatus()!=DBPluginMgr.FAILED &&
@@ -315,21 +315,21 @@ public class SubmissionControl{
       boolean stdOutExists = false;
       boolean stdErrExists = false;
       try{
-        stdOutExists = job.getStdOut() != null &&
-        shell.existsFile(job.getStdOut());
+        stdOutExists = job.getStdOut()!=null &&
+           shell.existsFile(job.getStdOut());
       }
       catch(Exception e){
         Debug.debug("ERROR checking for stdout: "+e.getMessage(), 2);
-        logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
+        //logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
         //throw e;
       }
       try{
         stdErrExists = job.getStdErr() != null &&
-        shell.existsFile(job.getStdErr());
+           shell.existsFile(job.getStdErr());
       }
       catch(Exception e){
-        Debug.debug("ERROR checking for stdout: "+e.getMessage(), 2);
-        logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
+        Debug.debug("ERROR checking for stderr: "+e.getMessage(), 2);
+        //logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
         //throw e;
       }
 
