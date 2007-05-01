@@ -30,6 +30,10 @@ public class JobInfo extends DBRecord{
   private String host="";
   private boolean needUpdate;
   private int tableRow = -1;
+  // -1 means this job will not be automatically resubmitted.
+  // 0 means this job will be resubmitted on failure.
+  // On each resubmit, resubmitCount is incremented with one.
+  private int resubmitCount;
   /**
    * These are the fields of the runtime DB table
    * The method getRunInfo of the db plugin must fill in values
@@ -53,6 +57,7 @@ public class JobInfo extends DBRecord{
     jobDefID = _jobDefID;
     cs = _cs;
     db = _db;
+    resubmitCount = 0;
     
     //fields = Fields;
     
@@ -132,6 +137,10 @@ public class JobInfo extends DBRecord{
 
   public int getInternalStatus(){
     return internalStatus;
+  }
+  
+  public int getResubmitCount(){
+    return resubmitCount;
   }
 
   /**
@@ -216,6 +225,10 @@ public class JobInfo extends DBRecord{
   public void setInternalStatus(int _internalStatus){
     internalStatus = _internalStatus;
     //setValues();
+  }
+  
+  public void incrementResubmitCount(){
+    ++resubmitCount;
   }
 
   public void setNeedToBeRefreshed(boolean _needUpdate){

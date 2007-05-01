@@ -559,6 +559,21 @@ public class JobMgr{
                          " this job is put back updatable", job);
       job.setNeedToBeRefreshed(true);
     }
+    else{
+      // Resubmit job if value of resubmit spinner is larger than job.getResubmitCount().
+      Integer resubmit = (Integer) GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.sAutoResubmit.getValue();
+      int resubmitNr = resubmit.intValue();
+      Debug.debug("Checking if job should be resubmitted, "+job.getResubmitCount()+":"+resubmitNr, 2);
+      if(job.getResubmitCount()>-1 && job.getResubmitCount()<resubmitNr){
+        job.incrementResubmitCount();
+        logFile.addInfo("Auto-resubmitting job "+job.getJobDefId()+" : "+job.getResubmitCount()+":"+resubmitNr);
+        // TODO: consider doing this in a thread...
+        SubmissionControl submissionControl = GridPilot.getClassMgr().getSubmissionControl();
+        Vector jobVector = new Vector();
+        jobVector.add(job);
+        submissionControl.resubmit(jobVector);
+      }
+    }
   }
 
   /********************************************************

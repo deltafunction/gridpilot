@@ -57,7 +57,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JCheckBox cbAutoPull = new JCheckBox("each");
   private JSpinner sAutoRefresh = new JSpinner();
   private JSpinner sAutoPull = new JSpinner();
-  private JSpinner sAutoResubmit = new JSpinner();
+  public JSpinner sAutoResubmit = new JSpinner();
   private JComboBox cbRefreshUnits = new JComboBox(new Object []{"sec", "min"});
   private JComboBox cbPullUnits = new JComboBox(new Object []{"sec", "min"});
   private int MIN = 1;
@@ -923,7 +923,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         statusStrings[j] = DBPluginMgr.getStatusName(statusList[j]);
       }
       allJobDefinitions = dbPluginMgr.getJobDefinitions(
-            /*datasetID*/"-1", shownFields, statusStrings, new String [] {""});
+            /*datasetID*/"-1", shownFields, statusStrings, null);
       Debug.debug ("number of jobs for "+GridPilot.dbNames[ii]+
           ": "+allJobDefinitions.values.length, 2);
 
