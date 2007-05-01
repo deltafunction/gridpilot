@@ -699,7 +699,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     Debug.debug("setGsiftpTextEdit "+url, 3);
     jtFilter.setEnabled(false);
     File tmpFile = null;
-    tmpFile = File.createTempFile("gridpilot-", ".txt");
+    tmpFile = File.createTempFile("GridPilot-", ".txt");
     Debug.debug("Created temp file "+tmpFile, 3);
     try{
       if(gsiftpFileTransfer.getFileBytes(new GlobusURL(url))>MAX_FILE_EDIT_BYTES){

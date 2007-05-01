@@ -741,7 +741,7 @@ public class Util{
   public static String setupDefaultCACertificates() throws IOException {
     try{
       // get a temp name
-      File tmpFile = File.createTempFile(/*prefix*/"certificates", /*suffix*/"");
+      File tmpFile = File.createTempFile(/*prefix*/"GridPilot-certificates", /*suffix*/"");
       String tmpDir = tmpFile.getAbsolutePath();
       tmpFile.delete();
       LocalStaticShellMgr.mkdirs(tmpDir);
@@ -1204,7 +1204,7 @@ public class Util{
     // We save the keystore to a temporary file.
     // This seems to be the only way to get connector/j to use it...
     // get a temp name
-    File tmpFile = File.createTempFile(/*prefix*/"keystore", /*suffix*/"");
+    File tmpFile = File.createTempFile(/*prefix*/"GridPilot-keystore", /*suffix*/"");
     String keystorePath = tmpFile.getAbsolutePath();
     // hack to have the diretory deleted on exit
     GridPilot.tmpConfFile.put(keystorePath, new File(keystorePath));
@@ -1312,7 +1312,7 @@ public class Util{
     // The truststore will be saved to a temporary file.
     // This seems to be the only way to get connector/j to use it...
     // get a temp name
-    tmpFile = File.createTempFile(/*prefix*/"truststore", /*suffix*/"");
+    tmpFile = File.createTempFile(/*prefix*/"GridPilot-truststore", /*suffix*/"");
     String truststorePath = tmpFile.getAbsolutePath();
     // hack to have the diretory deleted on exit
     GridPilot.tmpConfFile.put(truststorePath, new File(truststorePath));

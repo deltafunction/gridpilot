@@ -224,7 +224,7 @@ public class SecureShellMgr implements ShellMgr{
 
     InputStream is = new ByteArrayInputStream(content.getBytes());
     BufferedReader in = new BufferedReader(new InputStreamReader(is));
-    File tmpFile = File.createTempFile("gridpilot-", "");
+    File tmpFile = File.createTempFile("GridPilot-", "");
     PrintWriter out = new PrintWriter(new FileWriter(tmpFile)); 
     String line;
     while((line = in.readLine())!=null){
