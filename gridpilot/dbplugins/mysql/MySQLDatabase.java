@@ -1560,8 +1560,10 @@ public class MySQLDatabase extends DBCache implements Database {
     }
     catch(Exception e){
       execok = false;
-      Debug.debug(e.getMessage(), 2);
-      error = e.getMessage();
+      e.printStackTrace();
+      error = "ERROR: could not create dataset. "+e.getMessage();
+      Debug.debug(error, 2);
+      GridPilot.getClassMgr().getLogFile().addMessage(error, e);
     }
     return execok;
   }
