@@ -86,7 +86,7 @@ public class PullJobsDaemon{
       }
     }
     cacheDir = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "pull cache directory");
-    if(cacheDir!=null){
+    if(cacheDir==null){
       try{
         File tmpFile = File.createTempFile(/*prefix*/"GridPilot-pull-cache", /*suffix*/"");
         String tmpDir = tmpFile.getAbsolutePath();
@@ -207,8 +207,8 @@ public class PullJobsDaemon{
             }
             try{
               statusBar.setLabel("Starting to download input files.");
-              dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
-                  new String [] {STATUS_DOWNLOADING});
+              dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus", "lastModified"},
+                  new String [] {STATUS_DOWNLOADING, ""});
              }
             catch(Exception e){
               logFile.addMessage("WARNING: could not set csStatus to downloading for job "+jobDefID, e);
@@ -327,8 +327,8 @@ public class PullJobsDaemon{
     String jobDefID = (String) jobRecord.getValue(idField);
     boolean ok = false;
     try{
-      ok = dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus", "providerInfo"},
-          new String [] {STATUS_REQUESTED, userInfo});
+      ok = dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus", "providerInfo", "lastModified"},
+          new String [] {STATUS_REQUESTED, userInfo, ""});
       GridPilot.getClassMgr().setJobCS(jobDefID, csName);
      }
     catch(Exception e){
@@ -359,7 +359,7 @@ public class PullJobsDaemon{
         ++retries;
       }
       GridPilot.getClassMgr().clearJobCS(jobDefID);
-      ok = dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus", "providerInfo"},
+      ok = dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus", "providerInfo", "lastModified"},
           new String [] {STATUS_READY+":"+retries, ""});
     }
     catch(Exception e){
@@ -443,8 +443,8 @@ public class PullJobsDaemon{
           Debug.debug("Job "+jobDefID+STATUS_PREPARED,  2);
           return true;
         }
-        Debug.debug("Waiting for job to be prepared...",  2);
-        statusBar.setLabel("Waiting for requested job...");
+        Debug.debug("Waiting for job "+jobDefID+" to be prepared...",  2);
+        statusBar.setLabel("Waiting for requested job, "+jobDefID+" ...");
         Thread.sleep(WAIT_SLEEP);
       }
       catch(Exception e){
@@ -492,8 +492,9 @@ public class PullJobsDaemon{
           srcUrl = new GlobusURL(inputFiles[i]);
           lastSlash = inputFiles[i].lastIndexOf("/");
           fileName = inputFiles[i].substring(lastSlash + 1);
-          destFile = File.createTempFile(
-              (new File(cacheDir, fileName)).getCanonicalPath(), "");
+          // TODO: implement real caching: right now, if two input files have the
+          // same name we're in trouble...
+          destFile = new File(cacheDir, fileName);
           destFileName = destFile.getCanonicalPath();
           destFileName = destFileName.replaceFirst("^/", "");
           destFileName = "file:////"+destFileName;
@@ -506,7 +507,7 @@ public class PullJobsDaemon{
         }
         catch(Exception e){
           logFile.addMessage("ERROR: could not get input file "+inputFiles[i]+
-              ".", e);
+              " --> "+destFileName, e);
           throw e;
         }
       }
@@ -543,6 +544,11 @@ public class PullJobsDaemon{
     JobInfo job = null;
     Vector toSubmitJobs = null;
     String jobDefID = null;
+    String transferStatus = null;
+    String transferID = null;
+    TransferStatusUpdateControl statusUpdateControl = GridPilot.getClassMgr().getGlobalFrame(
+       ).monitoringPanel.transferMonitor.statusUpdateControl;
+    statusUpdateControl.updateStatus(null);
     for(Iterator it=runningTransfers.keySet().iterator(); it.hasNext();){
       toSubmitJobs = new Vector();
       job = (JobInfo) it.next();
@@ -554,6 +560,51 @@ public class PullJobsDaemon{
           Debug.debug("Transfer is still running: "+transfer.getTransferID(), 2);
           ok = false;
           break;
+        }
+        // Check for failed downloading of input files
+        try{
+          transferID = transfer.getTransferID();
+          if(transferID==null){
+            Debug.debug("Transfer has no id: "+transfer.getTransferID(), 2);
+            ok = false;
+            break;
+          }
+          transferStatus = TransferControl.getStatus(transferID);
+          if(TransferControl.getInternalStatus(transfer.getTransferID(), transferStatus)==
+            FileTransfer.STATUS_FAILED){
+            logFile.addMessage("ERROR: failed downloading input file for job "+job);
+            // Running the job failed, flag it as failed - i.e. don't try to run it again.
+            dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
+                new String [] {STATUS_FAILED+": "+"failed downloading input file. "});
+            ok = false;
+            runningTransfers.remove(job);
+            break;
+          }
+          else if(TransferControl.getInternalStatus(transfer.getTransferID(), transferStatus)==
+            FileTransfer.STATUS_ERROR){
+            // Download error status sometimes occurs right after starting a transfer, but
+            // changes later.
+            logFile.addMessage("WARNING: error downloading input file for job "+job+
+                ". Waiting 15 seconds and checking again...");
+            Thread.sleep(15000);
+            transferStatus = TransferControl.getStatus(transfer.getTransferID());
+            if(TransferControl.getInternalStatus(transfer.getTransferID(), transferStatus)==
+              FileTransfer.STATUS_ERROR){
+              // Running the job failed, flag it as failed - i.e. don't try to run it again.
+              dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
+                  new String [] {STATUS_FAILED+": "+"failed downloading input file. "});
+              ok = false;
+              runningTransfers.remove(job);
+              break;
+            }
+          }
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
+              new String [] {STATUS_FAILED+": "+"failed downloading input file. "});
+          ok = false;
+          runningTransfers.remove(job);
         }
       }
       if(ok){
@@ -567,8 +618,8 @@ public class PullJobsDaemon{
           toSubmitJobs.add(dbPluginMgr.getJobDefinition(jobDefID));
           GridPilot.getClassMgr().getSubmissionControl().submitJobDefinitions(toSubmitJobs,
               csName, dbPluginMgr);
-          dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
-              new String [] {STATUS_SUBMITTED});
+          dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus", "lastModified"},
+              new String [] {STATUS_SUBMITTED, ""});
           break;
         }
         catch(Exception e){
@@ -646,8 +697,8 @@ public class PullJobsDaemon{
          Debug.debug("Found running job. "+jobDefID, 2);
          // Update, so lastModified is updated to avoid that the job is timed out by
          // the GPSSComputingSystem of the submitter     
-         dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
-             new String [] {STATUS_RUNNING});
+         dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus", "lastModified"},
+             new String [] {STATUS_RUNNING, ""});
          // Just in case a done job has been resubmitted
          allDoneJobs.remove(job);
       }
