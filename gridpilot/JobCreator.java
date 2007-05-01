@@ -650,7 +650,7 @@ public class JobCreator{
             inputDatasetID = (String) datasetNameIds.get(inputDataset);
             inputRecords = inputMgr.getJobDefinitions(inputDatasetID, 
                     new String [] {inputDBJobDefIdentifierField, "eventMin", "eventMax"},
-                    null, new String [] {""});
+                    null, null);
             inputIds = new String[inputRecords.values.length];
             for(int i=0; i<inputIds.length; ++i){
               inputIds[i] = (String) inputRecords.getValue(i,
