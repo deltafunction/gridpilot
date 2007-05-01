@@ -24,28 +24,31 @@ import gridpilot.Util;
 
 public class ForkComputingSystem implements ComputingSystem{
 
-  String [] env = {
+  protected String [] env = {
     "STATUS_WAIT="+ComputingSystem.STATUS_WAIT,
     "STATUS_RUNNING="+ComputingSystem.STATUS_RUNNING,
     "STATUS_DONE="+ComputingSystem.STATUS_DONE,
     "STATUS_ERROR="+ComputingSystem.STATUS_ERROR,
     "STATUS_FAILED="+ComputingSystem.STATUS_FAILED};
 
-  private LogFile logFile;
-  private String csName;
-  private ShellMgr shellMgr;
-  private String workingDir;
-  private String commandSuffix;
-  private String defaultUser;
-  private String userName;
-  private String error = "";
-  private String runtimeDirectory = null;
-  private String transformationDirectory = null;
-  private String publicCertificate = null;
-  private String remotePullDB = null;
-  private String [] localRuntimeDBs = null;
-  private HashSet toCleanupRTEs = null;
+  protected LogFile logFile;
+  protected String csName;
+  protected ShellMgr shellMgr;
+  protected String workingDir;
+  protected String commandSuffix;
+  protected String defaultUser;
+  protected String userName;
+  protected String error = "";
+  protected String runtimeDirectory = null;
+  protected String transformationDirectory = null;
+  protected String publicCertificate = null;
+  protected String remotePullDB = null;
+  protected String [] localRuntimeDBs = null;
+  protected HashSet toCleanupRTEs = null;
 
+  public ForkComputingSystem(){
+  }
+  
   public ForkComputingSystem(String _csName){
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
@@ -130,7 +133,7 @@ public class ForkComputingSystem implements ComputingSystem{
     }
   }
 
-  private void createTestTransformation(String transformationDirectory, String localRuntimeDB){
+  protected void createTestTransformation(String transformationDirectory, String localRuntimeDB){
     // If we are running on Linux and a transformation directory is
     // specified in the config file, copy there a test transformation
     
@@ -260,7 +263,7 @@ public class ForkComputingSystem implements ComputingSystem{
     }
   }
   
-  private String runDir(JobInfo job){
+  protected String runDir(JobInfo job){
     return workingDir +"/"+job.getName();
   }
   
@@ -385,7 +388,7 @@ public class ForkComputingSystem implements ComputingSystem{
     }
   }
   
-  private String getUrl(){
+  protected String getUrl(){
     String hostName = null;
     String url = null;
     // Get the URL - not used at the moment
@@ -431,7 +434,7 @@ public class ForkComputingSystem implements ComputingSystem{
     return url;
   }
   
-  private String getCertificate(){
+  protected String getCertificate(){
     String cert = null;
     if(publicCertificate!=null){
       // get the certificate
@@ -447,7 +450,7 @@ public class ForkComputingSystem implements ComputingSystem{
     return cert;
   }
   
-  private void createRTE(DBPluginMgr dbPluginMgr, String name, String csName,
+  protected void createRTE(DBPluginMgr dbPluginMgr, String name, String csName,
       String cert, String url){
     if(dbPluginMgr==null){
       return;
@@ -527,7 +530,7 @@ public class ForkComputingSystem implements ComputingSystem{
     
     try{
       String id = shellMgr.submit(cmd, runDir(job), stdoutFile, stderrFile);
-      job.setJobId(id!=null?id:"");   
+      job.setJobId(id!=null?id:"");
     }
     catch(Exception ioe){
       ioe.printStackTrace();
@@ -545,7 +548,7 @@ public class ForkComputingSystem implements ComputingSystem{
       updateStatus((JobInfo) jobs.get(i));
   }
   
-  private void updateStatus(JobInfo job){
+  protected void updateStatus(JobInfo job){
     
     // Host.
     job.setHost("localhost");
@@ -845,7 +848,7 @@ public class ForkComputingSystem implements ComputingSystem{
     return setRemoteOutputFiles(job) && getInputFiles(job);
   }
   
-  private void writeUserProxy() throws IOException{
+  protected void writeUserProxy() throws IOException{
     try{
       StringBuffer stdout = new StringBuffer();
       StringBuffer stderr = new StringBuffer();
@@ -868,7 +871,7 @@ public class ForkComputingSystem implements ComputingSystem{
    * @param job description of the computing job
    * @return True if the operation completes, false otherwise
    */
-  private boolean setRemoteOutputFiles(JobInfo job){
+  protected boolean setRemoteOutputFiles(JobInfo job){
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String [] outputFiles = dbPluginMgr.getOutputFiles(job.getJobDefId());
     Vector remoteNamesVector = new Vector();
@@ -903,7 +906,7 @@ public class ForkComputingSystem implements ComputingSystem{
    * Copies input files to run directory.
    * Assumes job.stdout points to a file in the run directory.
    */
-  private boolean getInputFiles(JobInfo job){
+  protected boolean getInputFiles(JobInfo job){
     
     boolean ok = true;
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
@@ -1058,7 +1061,7 @@ public class ForkComputingSystem implements ComputingSystem{
    * job.StdOut and job.StdErr are then set to these final values. <p>
    * @return <code>true</code> if the move went ok, <code>false</code> otherwise.
    */
-  private boolean copyToFinalDest(JobInfo job){
+  protected boolean copyToFinalDest(JobInfo job){
     
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     
