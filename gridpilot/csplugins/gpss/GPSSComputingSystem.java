@@ -24,6 +24,7 @@ import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.util.GlobusURL;
 import org.ietf.jgss.GSSCredential;
+import org.safehaus.uuid.UUIDGenerator;
 
 import gridpilot.ComputingSystem;
 import gridpilot.ConfigFile;
@@ -31,6 +32,7 @@ import gridpilot.DBPluginMgr;
 import gridpilot.DBRecord;
 import gridpilot.DBResult;
 import gridpilot.Debug;
+import gridpilot.FileTransfer;
 import gridpilot.GridPilot;
 import gridpilot.JobInfo;
 import gridpilot.LocalStaticShellMgr;
@@ -195,6 +197,9 @@ public class GPSSComputingSystem implements ComputingSystem{
       catch(Exception ee){
       }
       if(remoteDatasetID==null || remoteDatasetID.equals("-1") || remoteDatasetID.equals("")){
+        // This is to avoid trying to create dataset with already existing identifier.
+        // Setting identifier to null will trigger a uuid to be generated.
+        dataset.setValue(Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset"), null);
         remoteMgr.createDataset("dataset", dataset.fields, dataset.values);
       }
       // Tag it for deletion
@@ -203,7 +208,6 @@ public class GPSSComputingSystem implements ComputingSystem{
       jobDefinition.setValue("csStatus", PullJobsDaemon.STATUS_READY);
       try{
         jobDefinition = updateURLs(jobDefinition);
-        // TODO: look into this...
         job.setOutputs((String) jobDefinition.getValue("stdoutDest"),
             (String) jobDefinition.getValue("stderrDest"));
       }
@@ -211,7 +215,21 @@ public class GPSSComputingSystem implements ComputingSystem{
         error = "WARNING: could not update input/output file URLs of job";
         logFile.addMessage(error, ee);
       }
+      // If this is a resubmit, first delete the old remote jobDefinition
+      String remoteJobdefID = null;
+      try{
+        remoteJobdefID = getRemoteJobdefID(job);
+        if(remoteJobdefID!=null && remoteJobdefID.length()>0){
+          remoteMgr.deleteJobDefinition(remoteJobdefID, false);
+        }
+      }
+      catch(Exception e){
+      }
       remoteMgr.createJobDef(jobDefinition.fields, jobDefinition.values);
+      // Assign a random ID to the job. It'll not be used for anything,
+      // but JobMgr fails job it on restarting GridPilot if it doesn't have and ID.
+      String id = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+      job.setJobId(id);
     }
     catch(Exception e){
       error = "ERROR: could not write to 'remote' database. "+e.getMessage();
@@ -394,8 +412,9 @@ public class GPSSComputingSystem implements ComputingSystem{
     for(int i=0; i<inputFileNames.length; ++i){
       if(inputFileNames[i].startsWith("file:")){
         newInputFileName = inputFileNames[i].replaceFirst(replacePattern, rDir+"$1");
+        inputFileNames[i] = "file:///"+Util.clearTildeLocally(Util.clearFile(inputFileNames[i]));
         transfer = new TransferInfo(
-            new GlobusURL(inputFileNames[i].replaceFirst("file:/+", "file:////")),
+            new GlobusURL(inputFileNames[i]),
             new GlobusURL(newInputFileName));
         transferVector.add(transfer);
       }
@@ -403,6 +422,8 @@ public class GPSSComputingSystem implements ComputingSystem{
     GridPilot.getClassMgr().getTransferControl().queue(transferVector);
     // Wait for transfers to finish
     boolean transfersDone = false;
+    String transferStatus = null;
+    String transferID = null;
     int sleepT = 3000;
     int waitT = 0;
     TransferStatusUpdateControl statusUpdateControl = GridPilot.getClassMgr().getGlobalFrame(
@@ -413,6 +434,22 @@ public class GPSSComputingSystem implements ComputingSystem{
       for(Iterator itt=transferVector.iterator(); itt.hasNext();){
         transfer = (TransferInfo) itt.next();
         if(TransferControl.isRunning(transfer)){
+          transfersDone = false;
+          break;
+        }
+        // Check for failed uploading of input files
+        transferID = transfer.getTransferID();
+        if(transferID==null){
+          transfersDone = false;
+          break;
+        }
+        transferStatus = TransferControl.getStatus(transferID);
+        if(TransferControl.getInternalStatus(transfer.getTransferID(), transferStatus)==
+          FileTransfer.STATUS_FAILED){
+          throw new IOException("Upload failed.");
+        }
+        if(TransferControl.getInternalStatus(transfer.getTransferID(), transferStatus)==
+          FileTransfer.STATUS_ERROR){
           transfersDone = false;
           break;
         }
