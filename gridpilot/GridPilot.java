@@ -179,13 +179,13 @@ public class GridPilot extends JApplet{
             continue;
           }
           String host = getClassMgr().getConfigFile().getValue(csNames[i], "host");
-          if(host!=null && !host.endsWith("localhost")){
+          if(host!=null && !host.startsWith("localhost") && !host.equals("127.0.0.1")){
             String user = getClassMgr().getConfigFile().getValue(csNames[i], "user");
             String password = getClassMgr().getConfigFile().getValue(csNames[i], "password");
             getClassMgr().setShellMgr(csNames[i],
                new SecureShellMgr(host, user, password));
            }
-          else if(host!=null && host.endsWith("localhost")){
+          else if(host!=null && (host.startsWith("localhost") || host.equals("127.0.0.1"))){
             getClassMgr().setShellMgr(csNames[i], new LocalShellMgr());
           }
           else{
