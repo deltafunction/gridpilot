@@ -1385,4 +1385,256 @@ public class TransferControl{
       throw e;
     }
   }
+  
+  public static boolean copyInputFile(String src, String dest,
+      ShellMgr shellMgr, String error, LogFile logFile){
+    
+    if(error==null){
+      error = new String();
+    }
+    
+    // If the shell is not local, first get the source to a local temp file and change dest
+    // temporarily
+    String tempFileName = dest;
+    if(!shellMgr.isLocal()){
+      File tempFile;
+      try{
+        tempFile=File.createTempFile("GridPilot-", "");
+        tempFileName = tempFile.getCanonicalPath();
+        tempFile.delete();
+        //  hack to have the file deleted on exit
+        GridPilot.tmpConfFile.put(tempFileName, new File(tempFileName));
+      }
+      catch(IOException e){
+        e.printStackTrace();
+      }
+    }
+    
+    // Local src
+    if(/*Linux local file*/(src.matches("^file:~[^:]*") || src.matches("^file:/[^:]*") || src.startsWith("/")) ||
+        /*Windows local file*/(src.matches("\\w:.*") || src.matches("^file:/*\\w:.*")) && shellMgr.isLocal()){
+      try{
+        if(!shellMgr.existsFile(src)){
+          error = "File " + src + " doesn't exist";
+          logFile.addMessage(error);
+          return false;
+        }
+      }
+      catch(Throwable e){
+        error = "ERROR checking for "+src+": "+e.getMessage();
+        Debug.debug(error, 2);
+        logFile.addMessage(error);
+        return false;
+      }
+      // by convention, if the destination starts with file:, we get the file to the local disk
+      if(tempFileName.startsWith("file:") && !shellMgr.isLocal()){
+        Debug.debug("getting " + src + " -> " + tempFileName, 2);
+        try{
+          String realDest = Util.clearTildeLocally(Util.clearFile(tempFileName));
+          File realParentDir = (new File(realDest)).getParentFile();
+          Debug.debug("real locations: " + src + " -> " + realDest, 2);
+          // Check if parent dir exists, create if not
+          if(!realParentDir.exists()){
+            try{
+              if(!realParentDir.mkdir()){
+                throw new Exception("Error creating directory "+realParentDir.getAbsolutePath());
+              }
+            }
+            catch(Exception e){
+              error = "ERROR: could not create directory for job outputs.";
+              logFile.addMessage(error, e);
+              return false;
+            }
+          }
+          if(!shellMgr.download(src, realDest)){
+            error = "Cannot get \n\t" +
+            src + "\n to \n\t" + dest;
+            logFile.addMessage(error);
+            return false;
+          }
+        }
+        catch(Throwable e){
+          error = "ERROR getting "+src+": "+e.getMessage();
+          Debug.debug(error, 2);
+          logFile.addMessage(error);
+          return false;
+        }
+      }
+      // if we have a fully qualified name (and for Windows a local shell), we just copy it with the shellMgr
+      else{
+        Debug.debug("renaming " + src + " in " + tempFileName, 2);
+        try{
+          if(!shellMgr.copyFile(src, tempFileName)){
+            error = "Cannot move \n\t" + src +
+            "\n into \n\t" + tempFileName;
+            logFile.addMessage(error);
+            return false;
+          }
+        }
+        catch(Throwable e){
+          error = "ERROR copying "+src+" -> "+tempFileName+": "+e.getMessage();
+          Debug.debug(error, 2);
+          logFile.addMessage(error);
+          return false;
+        }
+      }
+    }
+    // Remote src
+    else if(Util.urlIsRemote(src)){
+      try{
+        TransferControl.download(
+            src,
+            new File(Util.clearTildeLocally(Util.clearFile(tempFileName))),
+            GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+      }
+      catch(Exception e){
+        error = "ERROR copying "+src+" -> "+tempFileName+": "+e.getMessage();
+        Debug.debug(error, 2);
+        logFile.addMessage(error);
+        return false;
+      }
+    }
+    // relative paths or getting files (via ssh) from a Windows server is not supported
+    else{
+      error = "ERROR copying : unqualified paths or putting files on a " +
+          "Windows server is not supported.";
+      logFile.addMessage(error);
+      return false;
+    }
+    
+    // if a temp file was written, copy it to the real remote destination via ssh
+    if(!tempFileName.equals(dest)){
+      try{
+        shellMgr.upload(tempFileName, dest);
+      }
+      catch(Exception e){
+        error = "ERROR copying "+tempFileName+" -> "+dest+": "+e.getMessage();
+        Debug.debug(error, 2);
+        logFile.addMessage(error);
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
+  public static boolean copyOutputFile(String src, String dest,
+      ShellMgr shellMgr, String error, LogFile logFile){
+    
+    if(error==null){
+      error = new String();
+    }
+
+    // If the shell is not local, first get the source to a local temp file and change src
+    String tempFileName = null;
+    if(!shellMgr.isLocal()){
+      File tempFile;
+      try{
+        tempFile=File.createTempFile("GridPilot-", "");
+        tempFileName = tempFile.getCanonicalPath();
+        tempFile.delete();
+        shellMgr.download(src, tempFileName);
+        src = tempFileName;
+        //  hack to have the file deleted on exit
+        GridPilot.tmpConfFile.put(tempFileName, new File(tempFileName));
+      }
+      catch(IOException e){
+        e.printStackTrace();
+      }
+    }
+    
+    // Local destination
+    if(/*Linux local file*/(dest.matches("^file:~[^:]*") || dest.matches("^file:/[^:]*") || dest.startsWith("/")) ||
+        /*Windows local file*/(dest.matches("\\w:.*") || dest.matches("^file:/*\\w:.*")) && shellMgr.isLocal()){
+      try{
+        if(!shellMgr.existsFile(src)){
+          error = "File " + src + " doesn't exist";
+          logFile.addMessage(error);
+          return false;
+        }
+      }
+      catch(Throwable e){
+        error = "ERROR checking for "+src+": "+e.getMessage();
+        Debug.debug(error, 2);
+        logFile.addMessage(error);
+        return false;
+      }
+      // by convention, if the destination starts with file:, we get the file to the local disk
+      if(dest.startsWith("file:") && !shellMgr.isLocal()){
+        Debug.debug("putting " + src + " -> " + dest, 2);
+        try{
+          String realDest = Util.clearTildeLocally(Util.clearFile(dest));
+          File realParentDir = (new File(realDest)).getParentFile();
+          Debug.debug("real locations: " + src + " -> " + realDest, 2);
+          // Check if parent dir exists, create if not
+          if(!realParentDir.exists()){
+            try{
+              if(!realParentDir.mkdir()){
+                throw new Exception("Error creating directory "+realParentDir.getAbsolutePath());
+              }
+            }
+            catch(Exception e){
+              error = "ERROR: could not create directory for job outputs.";
+              logFile.addMessage(error, e);
+              return false;
+            }
+          }
+          if(!shellMgr.download(src, realDest)){
+            error = "Cannot get \n\t" +
+            src + "\n to \n\t" + dest;
+            logFile.addMessage(error);
+            return false;
+          }
+        }
+        catch(Throwable e){
+          error = "ERROR getting "+src+": "+e.getMessage();
+          Debug.debug(error, 2);
+          logFile.addMessage(error);
+          return false;
+        }
+      }
+      // if we have a fully qualified name (and for Windows a local shell), we just copy it with the shellMgr
+      else{
+        Debug.debug("renaming " + src + " in " + dest, 2);
+        try{
+          if(!shellMgr.copyFile(src, dest)){
+            error = "Cannot move \n\t" + src +
+            "\n into \n\t" + dest;
+            logFile.addMessage(error);
+            return false;
+          }
+        }
+        catch(Throwable e){
+          error = "ERROR copying "+src+" -> "+dest+": "+e.getMessage();
+          Debug.debug(error, 2);
+          logFile.addMessage(error);
+          return false;
+        }
+      }
+    }
+    // Remote destination
+    else if(Util.urlIsRemote(dest)){
+      try{
+        TransferControl.upload(
+            new File(Util.clearTildeLocally(Util.clearFile(src))),
+            dest,
+            GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+      }
+      catch(Exception e){
+        error = "ERROR copying "+src+" -> "+dest+": "+e.getMessage();
+        Debug.debug(error, 2);
+        logFile.addMessage(error);
+        return false;
+      }
+    }
+    // relative paths or copying files (via ssh) to a Windows server is not supported
+    else{
+      error = "ERROR copying : unqualified paths or putting files on a " +
+          "Windows server is not supported.";
+      logFile.addMessage(error);
+      return false;
+    }
+    return true;
+  }
+
 }
