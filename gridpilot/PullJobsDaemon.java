@@ -572,13 +572,8 @@ public class PullJobsDaemon{
           transferStatus = TransferControl.getStatus(transferID);
           if(TransferControl.getInternalStatus(transfer.getTransferID(), transferStatus)==
             FileTransfer.STATUS_FAILED){
-            logFile.addMessage("ERROR: failed downloading input file for job "+job);
             // Running the job failed, flag it as failed - i.e. don't try to run it again.
-            dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
-                new String [] {STATUS_FAILED+": "+"failed downloading input file. "});
-            ok = false;
-            runningTransfers.remove(job);
-            break;
+            throw new IOException("ERROR: failed downloading input file for job "+job);
           }
           else if(TransferControl.getInternalStatus(transfer.getTransferID(), transferStatus)==
             FileTransfer.STATUS_ERROR){
@@ -591,20 +586,18 @@ public class PullJobsDaemon{
             if(TransferControl.getInternalStatus(transfer.getTransferID(), transferStatus)==
               FileTransfer.STATUS_ERROR){
               // Running the job failed, flag it as failed - i.e. don't try to run it again.
-              dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
-                  new String [] {STATUS_FAILED+": "+"failed downloading input file. "});
-              ok = false;
-              runningTransfers.remove(job);
-              break;
+              throw new IOException("ERROR: failed downloading input file for job "+job);
             }
           }
         }
         catch(Exception e){
           e.printStackTrace();
-          dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
-              new String [] {STATUS_FAILED+": "+"failed downloading input file. "});
+          //dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
+          //    new String [] {STATUS_FAILED+": "+"failed downloading input file. "});
           ok = false;
           runningTransfers.remove(job);
+          unRequestJob(job);
+          logFile.addMessage("ERROR: failed downloading input file for job "+job);
         }
       }
       if(ok){
@@ -625,8 +618,9 @@ public class PullJobsDaemon{
         catch(Exception e){
           logFile.addMessage("ERROR: failed starting job "+job, e);
           // Running the job failed, flag it as failed - i.e. don't try to run it again.
-          dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
-              new String [] {STATUS_FAILED+": "+"failed starting job. "+e.getMessage()});
+          //dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
+          //    new String [] {STATUS_FAILED+": "+"failed starting job. "+e.getMessage()});
+          unRequestJob(job);
         }
       }
     }
