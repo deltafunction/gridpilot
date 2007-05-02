@@ -13,6 +13,7 @@ import gridpilot.JobInfo;
 import gridpilot.GridPilot;
 import gridpilot.ScriptGenerator;
 import gridpilot.ShellMgr;
+import gridpilot.TransferControl;
 import gridpilot.Util;
 
 /**
@@ -38,7 +39,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     requiredRuntimeEnv = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "required runtime environment");
   }
-
+  
   public boolean createWrapper(ShellMgr shellMgr, JobInfo job, String fileName){
     
     String jobDefID = job.getJobDefId();
@@ -83,9 +84,10 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
 
     // Input files section
+    // Notice: job.getDownloadFiles() will only be non-empty if downloading failed.
     String [] inputFiles = job.getDownloadFiles();
-    String [][] outputFiles = job.getUploadFiles();
-    if(inputFiles!=null && inputFiles.length>0 || outputFiles!=null && outputFiles.length>0){
+    //String [][] outputFiles = job.getUploadFiles();
+    if(inputFiles!=null && inputFiles.length>0 /*|| outputFiles!=null && outputFiles.length>0*/){
       if(requiredRuntimeEnv!=null && requiredRuntimeEnv.length()>0){
         Debug.debug("Adding sourcing of required RTEs: "+requiredRuntimeEnv, 2);
         // requiredRuntimeEnv is only needed to get input files from
@@ -149,13 +151,24 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
     writeLine(buf, "");
     writeBloc(buf, "transformation script call", ScriptGenerator.TYPE_SUBSECTION, commentStart);
-    line = dbPluginMgr.getTransformationScript(jobDefID) + " " +
-      Util.arrayToString(actualParam);
-    line = Util.clearFile(line);
+    String scriptSrc = dbPluginMgr.getTransformationScript(jobDefID);
+    String scriptDest = Util.clearFile(scriptSrc);
+    scriptDest = scriptDest.replaceAll("\\\\", "/");
+    scriptDest = workingDir + scriptDest.replaceFirst(".*(/[^/]+)", "$1");
     // Don't think we need this...
     /*if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
       line = line.replaceAll("/", "\\\\");
     }*/
+    // Copy the script to the working directory
+    try{
+      TransferControl.copyInputFile(scriptSrc, scriptDest, shellMgr, null, logFile);
+    }
+    catch(Exception e){
+      logFile.addMessage("ERROR: transformation script could not be copied. "+
+          "Cannot proceed with "+job);
+      return false;
+    }
+    line = Util.clearFile(scriptDest) + " " + Util.arrayToString(actualParam);
     writeLine(buf, line);
     writeLine(buf, "");
     
@@ -184,9 +197,14 @@ public class ForkScriptGenerator extends ScriptGenerator{
           logFile.addMessage("Could not set job executable. "+stderr);
           throw new FileNotFoundException(stderr.toString());
         }
+        shellMgr.exec("chmod +x "+Util.clearTildeLocally(Util.clearFile(scriptDest)), stdout, stderr);
+        if(stderr!=null && stderr.length()!=0){
+          logFile.addMessage("Could not set transformation executable. "+stderr);
+          throw new FileNotFoundException(stderr.toString());
+        }
       }
       catch(Exception e){
-        Debug.debug("Warning: NOT setting file executable. " +
+        Debug.debug("Warning: NOT setting files executable. " +
             "Probably not on UNIX. "+e.getMessage(), 2);
       }
     }
