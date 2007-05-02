@@ -128,12 +128,12 @@ public class ForkComputingSystem implements ComputingSystem{
         }
       }
       for(int i=0; i<localRuntimeDBs.length; ++i){  
-        createTestTransformation(transformationDirectory, localRuntimeDBs[i]);
+        createTestTransformation(transformationDirectory, localRuntimeDBs[i], shellMgr);
       }
     }
   }
 
-  protected void createTestTransformation(String transformationDirectory, String localRuntimeDB){
+  protected void createTestTransformation(String transformationDirectory, String localRuntimeDB, ShellMgr shellMgr){
     // If we are running on Linux and a transformation directory is
     // specified in the config file, copy there a test transformation
     
@@ -350,7 +350,7 @@ public class ForkComputingSystem implements ComputingSystem{
     }
     
     String name = null;
-    String cert = getCertificate();
+    String cert = getCertificate(shellMgr);
     String url = getUrl();
     
     toCleanupRTEs = new HashSet();
@@ -434,7 +434,7 @@ public class ForkComputingSystem implements ComputingSystem{
     return url;
   }
   
-  protected String getCertificate(){
+  protected String getCertificate(ShellMgr shellMgr){
     String cert = null;
     if(publicCertificate!=null){
       // get the certificate
@@ -545,10 +545,10 @@ public class ForkComputingSystem implements ComputingSystem{
 
   public void updateStatus(Vector jobs){
     for(int i=0; i<jobs.size(); ++i)
-      updateStatus((JobInfo) jobs.get(i));
+      updateStatus((JobInfo) jobs.get(i), shellMgr);
   }
   
-  protected void updateStatus(JobInfo job){
+  protected void updateStatus(JobInfo job, ShellMgr shellMgr){
     
     // Host.
     job.setHost("localhost");
@@ -806,7 +806,7 @@ public class ForkComputingSystem implements ComputingSystem{
     Debug.debug("Post processing job " + job.getName(), 2);
     String runDir = runDir(job);
     boolean ok = true;
-    if(copyToFinalDest(job)){
+    if(copyToFinalDest(job, shellMgr)){
       // Delete the run directory
       try{
         ok = shellMgr.deleteDir(runDir);
@@ -839,16 +839,16 @@ public class ForkComputingSystem implements ComputingSystem{
     }    
     if(!shellMgr.isLocal()){
       try{
-        writeUserProxy();
+        writeUserProxy(shellMgr);
       }
       catch(Exception e){
-        logFile.addMessage("WARNING: could not cwrite user proxy.", e);
+        logFile.addMessage("WARNING: could not write user proxy.", e);
       }
     }
-    return setRemoteOutputFiles(job) && getInputFiles(job);
+    return setRemoteOutputFiles(job) && getInputFiles(job, shellMgr);
   }
   
-  protected void writeUserProxy() throws IOException{
+  protected void writeUserProxy(ShellMgr shellMgr) throws IOException{
     try{
       StringBuffer stdout = new StringBuffer();
       StringBuffer stderr = new StringBuffer();
@@ -906,7 +906,7 @@ public class ForkComputingSystem implements ComputingSystem{
    * Copies input files to run directory.
    * Assumes job.stdout points to a file in the run directory.
    */
-  protected boolean getInputFiles(JobInfo job){
+  protected boolean getInputFiles(JobInfo job, ShellMgr shellMgr){
     
     boolean ok = true;
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
@@ -952,6 +952,7 @@ public class ForkComputingSystem implements ComputingSystem{
     }
     Vector downloadVector = new Vector();
     String [] downloadFiles = null;
+    // TODO: clean up this mess!
     for(int i=0; i<inputFiles.length; ++i){
       Debug.debug("Pre-processing : Getting " + inputFiles[i], 2);
       String fileName = inputFiles[i];
@@ -978,7 +979,18 @@ public class ForkComputingSystem implements ComputingSystem{
           // If source is remote and the job is not pulled, have the job script get it
           // (assuming that e.g. the runtime environment ARC has been required)
           else if(!ignoreRemoteInputs && Util.urlIsRemote(inputFiles[i])){
-            downloadVector.add(inputFiles[i]);
+            try{
+              TransferControl.copyInputFile(urlDir + fileName,
+                 runDir(job), shellMgr, error, logFile);
+            }
+            catch(Exception ioe){
+              logFile.addMessage("WARNING: GridPilot could not get input file "+inputFiles[i]+
+                  ".", ioe);
+              ioe.printStackTrace();
+              // If we could not get file natively, as a last resort, try and
+              // have the job script get it (assuming that e.g. the runtime environment ARC has been required)
+              downloadVector.add(inputFiles[i]);
+            }
           }
           // Relative paths are not supported
           else{
@@ -1030,8 +1042,8 @@ public class ForkComputingSystem implements ComputingSystem{
               logFile.addMessage("WARNING: GridPilot could not get input file "+inputFiles[i]+
                   ".", ioe);
               ioe.printStackTrace();
-              // If we could not get file natively, have the job script get it
-              // (assuming that e.g. the runtime environment ARC has been required)
+              // If we could not get file natively, as a last resort, try and
+              // have the job script get it (assuming that e.g. the runtime environment ARC has been required)
               downloadVector.add(inputFiles[i]);
             }
           }
@@ -1061,7 +1073,7 @@ public class ForkComputingSystem implements ComputingSystem{
    * job.StdOut and job.StdErr are then set to these final values. <p>
    * @return <code>true</code> if the move went ok, <code>false</code> otherwise.
    */
-  protected boolean copyToFinalDest(JobInfo job){
+  protected boolean copyToFinalDest(JobInfo job, ShellMgr shellMgr){
     
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     
@@ -1078,7 +1090,7 @@ public class ForkComputingSystem implements ComputingSystem{
             outputNames[i]);
         localName = Util.clearFile(localName);
         remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputNames[i]);
-        ok = ok && Util.copyOutputFile(localName, remoteName, shellMgr, error, logFile);
+        ok = ok && TransferControl.copyOutputFile(localName, remoteName, shellMgr, error, logFile);
       }
       catch(Exception e){
         job.setJobStatus("Error");
@@ -1102,7 +1114,7 @@ public class ForkComputingSystem implements ComputingSystem{
      * move temp StdOut -> finalStdOut
      */
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
-      if(Util.copyOutputFile(job.getStdOut(), finalStdOut, shellMgr, error, logFile)){
+      if(TransferControl.copyOutputFile(job.getStdOut(), finalStdOut, shellMgr, error, logFile)){
         job.setStdOut(finalStdOut);
       }
       else{
@@ -1114,7 +1126,7 @@ public class ForkComputingSystem implements ComputingSystem{
      * move temp StdErr -> finalStdErr
      */
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
-      if(Util.copyOutputFile(job.getStdErr(), finalStdErr, shellMgr, error, logFile)){
+      if(TransferControl.copyOutputFile(job.getStdErr(), finalStdErr, shellMgr, error, logFile)){
         job.setStdErr(finalStdErr);
       }
       else{
