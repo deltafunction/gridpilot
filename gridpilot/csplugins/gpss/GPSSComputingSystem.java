@@ -1477,7 +1477,7 @@ public class GPSSComputingSystem implements ComputingSystem{
         }
         try{
           // Clear the certificate,
-          // in order to avoid confusion and have the record delete on exit.
+          // in order to avoid confusion and have the record deleted on exit.
           rte.setValue("certificate", "");
           localDBMgr.createRuntimeEnv(rte.fields, rte.values);
         }
