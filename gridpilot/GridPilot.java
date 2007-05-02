@@ -178,14 +178,19 @@ public class GridPilot extends JApplet{
               !enabled.equalsIgnoreCase("true")){
             continue;
           }
-          String host = getClassMgr().getConfigFile().getValue(csNames[i], "host");
-          if(host!=null && !host.startsWith("localhost") && !host.equals("127.0.0.1")){
-            String user = getClassMgr().getConfigFile().getValue(csNames[i], "user");
-            String password = getClassMgr().getConfigFile().getValue(csNames[i], "password");
+          // The first in the list of hosts is considere *the* host,
+          // i.e. used when scanning for RTEs, etc.
+          String [] hosts = getClassMgr().getConfigFile().getValues(csNames[i], "hosts");
+          if(hosts!=null && hosts.length>0 && hosts[0]!=null &&
+              !hosts[0].startsWith("localhost") && !hosts[0].equals("127.0.0.1")){
+            String [] users = getClassMgr().getConfigFile().getValues(csNames[i], "user names");
+            String [] passwords = getClassMgr().getConfigFile().getValues(csNames[i], "passwords");
             getClassMgr().setShellMgr(csNames[i],
-               new SecureShellMgr(host, user, password));
+               new SecureShellMgr(hosts[0], users!=null&&users.length>0?users[0]:null,
+                   passwords!=null&&passwords.length>0?passwords[0]:null));
            }
-          else if(host!=null && (host.startsWith("localhost") || host.equals("127.0.0.1"))){
+          else if(hosts!=null && hosts.length>0 && hosts[0]!=null &&
+              (hosts[0].startsWith("localhost") || hosts[0].equals("127.0.0.1"))){
             getClassMgr().setShellMgr(csNames[i], new LocalShellMgr());
           }
           else{
