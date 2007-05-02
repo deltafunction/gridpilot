@@ -745,13 +745,13 @@ public class PullJobsDaemon{
       e.printStackTrace();
     }
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
-      if(Util.copyOutputFile(job.getStdOut(), finalStdOut, shellMgr, "", logFile)){
+      if(TransferControl.copyOutputFile(job.getStdOut(), finalStdOut, shellMgr, "", logFile)){
         ok = true;
       }
     }
     ok = false;   
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
-      if(Util.copyOutputFile(job.getStdErr(), finalStdErr, shellMgr, "", logFile)){
+      if(TransferControl.copyOutputFile(job.getStdErr(), finalStdErr, shellMgr, "", logFile)){
         ok = true;
       }
     }
