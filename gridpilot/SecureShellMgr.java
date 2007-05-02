@@ -24,6 +24,7 @@ public class SecureShellMgr implements ShellMgr{
   private String host;
   private String user;
   private String password;
+  private int port;
   private LogFile logFile;
   private ConfigFile configFile;
   private Session session;
@@ -36,6 +37,11 @@ public class SecureShellMgr implements ShellMgr{
     BasicConfigurator.configure();
     Logger.getRootLogger().setLevel(Level.ERROR);
     host = _host;
+    port = 22;
+    if(host.indexOf(":")>0){
+      port = Integer.parseInt(host.substring(host.indexOf(":")+1));
+      host = host.substring(0, host.indexOf(":"));
+    }
     user = _user;
     password = _password;
     logFile = GridPilot.getClassMgr().getLogFile();
@@ -50,7 +56,7 @@ public class SecureShellMgr implements ShellMgr{
       UserInfo ui = new MyUserInfo();
       boolean showDialog = true;
       // if global frame is set, this is a reload
-      if(GridPilot.getClassMgr().getGlobalFrame()==null){
+      if(GridPilot.getClassMgr().getGlobalFrame()!=null){
         showDialog = false;
       }
       boolean gridAuth = false;
@@ -70,7 +76,7 @@ public class SecureShellMgr implements ShellMgr{
           }
         }
         try{
-          session = jsch.getSession(user, host, 22);
+          session = jsch.getSession(user, host, port);
           session.setHost(host);
           session.setPassword(password);
           session.setUserInfo(ui);
@@ -110,8 +116,12 @@ public class SecureShellMgr implements ShellMgr{
     }
   }
 
+  public boolean isConnected(){
+    return session!=null && session.isConnected();
+  }
+
   public void reconnect(){
-    if(session.isConnected()){
+    if(session!=null && session.isConnected()){
       session.disconnect();
     }
     connect();
