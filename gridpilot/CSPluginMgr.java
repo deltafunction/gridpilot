@@ -753,6 +753,7 @@ public class CSPluginMgr implements ComputingSystem{
           res = ((ComputingSystem) cs.get(job.getCSName())).preProcess(job);
         }
         catch(Throwable t){
+          t.printStackTrace();
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + job.getCSName() +
                              " during preProcessing", t);

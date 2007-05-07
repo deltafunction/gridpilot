@@ -291,7 +291,7 @@ public class SecureShellMgr implements ShellMgr{
         return false;
       }
 
-      // send a content of lfile
+      // send content of lfile
       is = new FileInputStream(lFile);
       byte[] buf = new byte[1024];
       while(true){

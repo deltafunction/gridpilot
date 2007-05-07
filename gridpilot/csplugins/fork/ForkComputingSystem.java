@@ -63,12 +63,13 @@ public class ForkComputingSystem implements ComputingSystem{
     
     defaultUser = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "default user");
     userName = shellMgr.getUserName();
-
+    
     workingDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "working directory");
     if(workingDir==null || workingDir.equals("")){
       workingDir = "~";
     }
-    if(shellMgr.isLocal() && workingDir!=null && workingDir.startsWith("~")){
+    if(System.getProperty("os.name").toLowerCase().startsWith("windows") &&
+        shellMgr.isLocal() && workingDir!=null && workingDir.startsWith("~")){
       workingDir = System.getProperty("user.home")+workingDir.substring(1);
     }
     if(workingDir!=null && workingDir.endsWith("/") || workingDir.endsWith("\\")){
@@ -88,7 +89,8 @@ public class ForkComputingSystem implements ComputingSystem{
         csName, "runtime directory");   
     if(runtimeDirectory!=null && runtimeDirectory.startsWith("~")){
       // Expand ~. Should work for both local and remote shells...
-      if(shellMgr.isLocal()){
+      if(System.getProperty("os.name").toLowerCase().startsWith("windows") &&
+          shellMgr.isLocal()){
         runtimeDirectory = System.getProperty("user.home")+runtimeDirectory.substring(1);
       }
       else{
@@ -193,7 +195,7 @@ public class ForkComputingSystem implements ComputingSystem{
         localRuntimeDB);
     }
     catch(Exception e){
-      logFile.addMessage("WARNING: Could not create test transformation in DB"+localRuntimeDB,
+      logFile.addMessage("WARNING: Could not create test transformation in DB "+localRuntimeDB,
           e);
       return;
     }
@@ -967,7 +969,7 @@ public class ForkComputingSystem implements ComputingSystem{
         if(!shellMgr.isLocal()){
           // If source starts with file:/, scp the file from local disk.
           if(inputFiles[i].matches("^file:/*[^/]+.*")){
-            inputFiles[i] = Util.clearFile(inputFiles[i]);
+            inputFiles[i] = Util.clearTildeLocally(Util.clearFile(inputFiles[i]));
             ok = shellMgr.upload(inputFiles[i], runDir(job)+"/"+fileName);
             if(!ok){
               logFile.addMessage("ERROR: could not put input file "+inputFiles[i]);
