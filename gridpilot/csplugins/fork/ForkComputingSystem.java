@@ -14,6 +14,7 @@ import java.util.Vector;
 
 import gridpilot.ComputingSystem;
 import gridpilot.DBPluginMgr;
+import gridpilot.DBRecord;
 import gridpilot.Debug;
 import gridpilot.JobInfo;
 import gridpilot.LogFile;
@@ -322,14 +323,14 @@ public class ForkComputingSystem implements ComputingSystem{
 
   /**
    * Scan runtime environment directory for runtime environment setup scripts;
-   * register the found RTEs in local database with computing system "Fork";
+   * register the found RTEs in local database with computing system cs;
    * register them in remote database (if defined) with computing system "GPSS".
    * @param localDBMgr Local DBPluginMgr
    * @param remoteDBMgr Remote DBPluginMgr
-   * @param csName Computing system name
+   * @param cs Computing system name
    */
   public void setupRuntimeEnvironments(DBPluginMgr localDBMgr, DBPluginMgr remoteDBMgr,
-      String csName){
+      String cs){
 
     if(shellMgr.isLocal() &&
         System.getProperty("os.name").toLowerCase().startsWith("linux") ||
@@ -371,12 +372,12 @@ public class ForkComputingSystem implements ComputingSystem{
         if(name!=null && name.length()>0){
           // Write the entry in the local DB
           Debug.debug("Writing RTE in local DB "+localDBMgr.getDBName(), 3);
-          createRTE(localDBMgr, name, csName, null, null);
+          createRTE(localDBMgr, name, cs, null, null);
           // Register with local and remote DB with CS "GPSS"
           if(cert!=null && cert.length()>0 && remoteDBMgr!=null){
             createRTE(localDBMgr, name, "GPSS", cert, null);
             createRTE(remoteDBMgr, name, "GPSS", cert, url);
-            createRTE(remoteDBMgr, name, csName, null, null);
+            createRTE(remoteDBMgr, name, cs, null, null);
           }         
           else{
             logFile.addMessage("WARNING: no certificate or no remote DB. Disabling remote registration of " +
@@ -386,7 +387,7 @@ public class ForkComputingSystem implements ComputingSystem{
       }
     }
     else{
-      Debug.debug("WARNING: no runtime environment scripts found", 1);
+      Debug.debug("WARNING: no local runtime environment scripts found", 1);
     }
   }
   
@@ -847,7 +848,8 @@ public class ForkComputingSystem implements ComputingSystem{
         logFile.addMessage("WARNING: could not write user proxy.", e);
       }
     }
-    return setRemoteOutputFiles(job) && getInputFiles(job, shellMgr);
+    return setupRemoteJobRTEs(job, shellMgr) &&
+       setRemoteOutputFiles(job) && getInputFiles(job, shellMgr);
   }
   
   protected void writeUserProxy(ShellMgr shellMgr) throws IOException{
@@ -902,6 +904,33 @@ public class ForkComputingSystem implements ComputingSystem{
       ok = false;
     }
     return ok;
+  }
+  
+  /**
+   * If a setup script for an RTE required by job is not present
+   * and the corresponding tarball URL is set, the tarball is downloaded
+   * and extracted/installed and a setup script is written in the runtime directory.
+   * @param job
+   * @param shellMgr
+   * @return false if a required RTE is not present and could not be downloaded.
+   */
+  protected boolean setupRemoteJobRTEs(JobInfo job, ShellMgr shellMgr){
+    if(runtimeDirectory==null || runtimeDirectory.length()==0 ||
+        !(new File(runtimeDirectory)).exists()){
+      logFile.addMessage("ERROR: could not download RTE to "+runtimeDirectory);
+      return false;
+    }
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    String jobDefId = job.getJobDefId();
+    String transID = dbPluginMgr.getJobDefTransformationID(jobDefId);
+    DBRecord transformation = dbPluginMgr.getTransformation(transID);
+    String rteNamesString = (String) transformation.getValue(
+        Util.getTransformationRuntimeReference(job.getDBName())[1]);
+    String [] rteNames = Util.split(rteNamesString);
+    String rteName = null;
+    
+    // TODO
+    return false;
   }
 
   /**
