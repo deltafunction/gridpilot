@@ -50,6 +50,24 @@ public class DBRecord{
     throw new Exception("no such field "+col);
   }
   
+  public void remove(String col){
+    String [] newFields = new String[fields.length-1];
+    String [] newValues = new String[values.length-1];
+    int j = 0;
+    for(int i=0; i<fields.length; i++){
+      if(!col.equalsIgnoreCase(fields[i])){
+        newFields[j] = fields[i];
+        newValues[j] = values[i];
+        ++j;
+      }
+      else{
+        continue;
+      }
+    }
+    fields = newFields;
+    values = newValues;
+  }
+  
   public String toString(){
     return Util.arrayToString(fields)+"-->"+Util.arrayToString(values);
   }
