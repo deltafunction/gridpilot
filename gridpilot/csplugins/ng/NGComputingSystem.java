@@ -191,7 +191,7 @@ public class NGComputingSystem implements ComputingSystem{
     catch(Exception e){
       Debug.debug("ERROR getting runtime database: "+e.getMessage(), 1);
     }
-    if(runtimeDBs!=null && !runtimeDBs.equals("")){
+    if(runtimeDBs!=null && runtimeDBs.length>0){
       setupRuntimeEnvironments(csName);
     }    
   }
