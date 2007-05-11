@@ -294,25 +294,26 @@ public class PullJobsDaemon{
       Debug.debug("job csStatus not ready. "+csStatus, 3);
       return false;
     }
-    if(jobRecord!=null){
-      int retries = 0;
-      int index = csStatus.indexOf(":");
-      if(index>0){
-        String retriesString = csStatus.substring(index+1);
-        retries = Integer.parseInt(retriesString);
-        if(retries>GridPilot.maxPullRerun){
-          Debug.debug("Max rerun exceeded; not running job. "+retries, 2);
-          return false;
-        }
+    int retries = 0;
+    int index = csStatus.indexOf(":");
+    if(index>0){
+      String retriesString = csStatus.substring(index+1);
+      retries = Integer.parseInt(retriesString);
+      if(retries>GridPilot.maxPullRerun){
+        Debug.debug("Max rerun exceeded; not running job. "+retries, 2);
+        return false;
       }
     }
+        
     //TODO: extend jobDefinition schema according to 3.1 of KnowARC virtualization proposal (T1.5)
-    // and include corresponding checks. E.g. of allowedVOs and runtimeEnvironments.
+    // and include corresponding checks. E.g. of allowedVOs and gridTime.
     return true;
   }
 
   private DBRecord [] rankJobs(DBRecord [] jobs){
-    // TODO
+    // TODO: if the required RTEs are present without URLs and the pull providers
+    // that put them there are not busy, put the job at the end of the list.
+    // If the required RTEs are not present, discard the job.
     return jobs;
   }
 
