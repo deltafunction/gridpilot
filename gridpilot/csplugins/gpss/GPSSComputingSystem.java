@@ -57,6 +57,9 @@ public class GPSSComputingSystem implements ComputingSystem{
   private GSIFTPFileTransfer gsiftpFileTransfer = null;
   private Vector allowedSubjects = null;
   private long providerTimeout = -1;
+  // List of urls of created RTEs in remote database.
+  // This is to be able to clean up on exit.
+  private HashSet rteUrls = null;
   
   // RTEs are refreshed from entries written by pull nodes in remote database
   // every RTE_SYNC_DELAY milliseconds.
@@ -68,11 +71,13 @@ public class GPSSComputingSystem implements ComputingSystem{
   // Time to wait for stdout/stderr to be uploaded
   private static int STDOUT_WAIT = 20000;
   
+  private static boolean CLEANUP_CACHE_ON_EXIT = true;
+  
   private Timer timerSyncRTEs = new Timer(0, new ActionListener(){
     public void actionPerformed(ActionEvent e){
       Debug.debug("Syncing RTEs", 2);
       cleanupRuntimeEnvironments();
-      setupRuntimeEnvironments();
+      syncRTEsFromRemoteDB();
     }
   });
 
@@ -84,6 +89,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     localRuntimeDBs = configFile.getValues(csName, "runtime databases");
     remoteDB = configFile.getValue(csName, "remote database");
     remoteDir = configFile.getValue(csName, "remote directory");
+    rteUrls = new HashSet();
     timerSyncRTEs.setDelay(RTE_SYNC_DELAY);
     // Set user
     try{
@@ -393,18 +399,32 @@ public class GPSSComputingSystem implements ComputingSystem{
     return jobDefinition;
   }
 
+
+  private String getRemoteRTEDir(){
+    return remoteDir;
+  }
+  
   /**
    * Uploads local input files to the defined remote directory.
-   * @param job definition
+   * The extra files will be uploaded to the top level remote directory.
+   * @param extraFiles extra files to be uploaded
+   * @param jobDefinition job definition
    * @return The updated job definition
    * @throws Exception
    */
-  private void uploadLocalInputFiles(DBRecord jobDefinition, String rDir) throws Exception{
+  private void uploadLocalInputFiles(String [] extraFiles, DBRecord jobDefinition, String rDir) throws Exception{
     // TODO: consider moving ALL input files to remote directory.
     // TransferControl should be able to handle third-party transfers.
     //String replacePattern = "^[a-z][a-z]+:.+/([^/]+)"
     String replacePattern = "^file:.+/([^/]+)";
-    String [] inputFileNames = Util.splitUrls((String) jobDefinition.getValue("inputFileNames"));
+    String inputFiles = (String) jobDefinition.getValue("inputFileNames");
+    String [] inputFileNames = null;
+    if(inputFiles!=null && inputFiles.length()>0){
+      inputFileNames = Util.splitUrls(inputFiles);
+    }
+    else{
+      inputFileNames = new String [] {};
+    }
     String newInputFileName = null;
     TransferInfo transfer = null;
     Vector transferVector = new Vector();
@@ -415,6 +435,18 @@ public class GPSSComputingSystem implements ComputingSystem{
         inputFileNames[i] = "file:///"+Util.clearTildeLocally(Util.clearFile(inputFileNames[i]));
         transfer = new TransferInfo(
             new GlobusURL(inputFileNames[i]),
+            new GlobusURL(newInputFileName));
+        transferVector.add(transfer);
+      }
+    }
+    String rteDir = getRemoteRTEDir();
+    for(int i=0; i<extraFiles.length; ++i){
+      if(extraFiles[i].startsWith("file:")){
+        Debug.debug("Uploading RTE tarball "+extraFiles[i]+" to "+rteDir, 2);
+        newInputFileName = extraFiles[i].replaceFirst(replacePattern, rteDir+"$1");
+        extraFiles[i] = "file:///"+Util.clearTildeLocally(Util.clearFile(extraFiles[i]));
+        transfer = new TransferInfo(
+            new GlobusURL(extraFiles[i]),
             new GlobusURL(newInputFileName));
         transferVector.add(transfer);
       }
@@ -618,11 +650,13 @@ public class GPSSComputingSystem implements ComputingSystem{
    * - Uploads any local input files and sets inputFiles accordingly.
    */
   public boolean preProcess(JobInfo job){
-    // IF the job has local input or output files, create the remote temporary directory
+    // Iff the job has local input or output files, create the remote temporary directory
     // and upload input files.
-    if(hasLocalFiles(job)){
-      String rDir = null;
-      try{
+    try{
+      // RTE tarballs
+      String [] extraFiles = downloadJobRTEs(job);
+      if(hasLocalFiles(job) || extraFiles!=null && extraFiles.length>0){
+        String rDir = null;
         rDir = getRemoteDir(job.getName());
         if(!rDir.endsWith("/")){
           rDir += "/";
@@ -630,13 +664,13 @@ public class GPSSComputingSystem implements ComputingSystem{
         mkRemoteDir(rDir);
         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
         DBRecord jobDefinition = dbPluginMgr.getJobDefinition(job.getJobDefId());
-        uploadLocalInputFiles(jobDefinition, rDir);
+        uploadLocalInputFiles(extraFiles, jobDefinition, rDir);
       }
-      catch(Exception e){
-        error = "ERROR: could not create directory or upload remote files. "+e.getMessage();
-        logFile.addMessage("could not create directory for remote output files", e);
-        return false;
-      }
+    }
+    catch(Exception e){
+      error = "ERROR: could not upload requested files. "+e.getMessage();
+      logFile.addMessage(error, e);
+      return false;
     }
     return true;
   }
@@ -800,7 +834,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     int sleepT = 3000;
     int waitT = 0;
     TransferStatusUpdateControl statusUpdateControl = GridPilot.getClassMgr().getGlobalFrame(
-    ).monitoringPanel.transferMonitor.statusUpdateControl;
+       ).monitoringPanel.transferMonitor.statusUpdateControl;
     while(!transfersDone && waitT*sleepT<MAX_DOWNLOAD_WAIT){
       transfersDone = true;
       statusUpdateControl.updateStatus(null);
@@ -1436,14 +1470,173 @@ public class GPSSComputingSystem implements ComputingSystem{
   }
 
   public void setupRuntimeEnvironments(String csName){
-    setupRuntimeEnvironments();
+    syncRTEsFromRemoteDB();
+    syncRTEsFromCatalog();
   }
   
   /**
-   * Simply copies over runtime environment records from the defined
+   * If a "runtime catalog URL" is defined, copies records from it
+   * to the 'local' runtime DBs. The copying is done even if there's
+   * already a record with the same name and CS "GPSS", but empty URL
+   * (this will be a copy of a record put in the remote DB by one of the
+   * pull providers).
+   * The pull brokering takes this into account, giving preference to jobs requiring
+   * already present RTEs.
+    */
+  private void syncRTEsFromCatalog(){
+    // TODO
+  }
+  
+  /**
+   * Checks if an RTE required by a job is present in the remote DB;
+   * if not, the local DB is scanned for a matching RTE with non-empty URL.
+   * If a match is found, the tarball is downloaded. A runtimeEnvironment
+   * record with a modified URL is written in the remote DB (and tagged for
+   * deletion on exit). The tarball will be uploaded to the remote directory
+   * by uploadLocalInputFiles.
+   * 
+   * Returns a list of the downloaded tarballs or null if no download/upload
+   * was necessary (because the RTE was already present).
+   * Throws an exception if it was not possible to find the RTE or
+   * the upload failed.
+   */
+  private String [] downloadJobRTEs(JobInfo job) throws Exception {
+    String rteID = null;
+    String url = null;
+    String [] dlFiles = null;
+    Vector transferVector = new Vector();
+    DBPluginMgr remoteDBMgr = null;
+    DBPluginMgr localDBMgr = null;
+    TransferInfo transfer = null;
+    remoteDBMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
+    localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    String jobDefId = job.getJobDefId();
+    String transID = localDBMgr.getJobDefTransformationID(jobDefId);
+    DBRecord transformation = localDBMgr.getTransformation(transID);
+    String rteNamesString = (String) transformation.getValue(
+        Util.getTransformationRuntimeReference(job.getDBName())[1]);
+    String [] rteNames = Util.split(rteNamesString);
+    String rteName = null;
+    
+    // Where to download the tarballs
+    String cacheDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "RTE cache directory");
+    if(cacheDir==null){
+      try{
+        File tmpFile = File.createTempFile(/*prefix*/"GridPilot-pull-cache", /*suffix*/"");
+        String tmpDir = tmpFile.getAbsolutePath();
+        tmpFile.delete();
+        LocalStaticShellMgr.mkdirs(tmpDir);
+        if(CLEANUP_CACHE_ON_EXIT){
+          // hack to have the diretory deleted on exit
+          GridPilot.tmpConfFile.put(tmpDir, new File(tmpDir));
+        }
+        cacheDir = tmpDir;
+      }
+      catch(IOException e){
+        e.printStackTrace();
+      }
+    }
+    else{
+      cacheDir = Util.clearTildeLocally(Util.clearFile(cacheDir));
+    }
+    // Construct the download transfer vector.
+    File dlFile = null;
+    dlFiles = new String [rteNames.length];
+    DBRecord [] rtes = new DBRecord[rteNames.length];
+    for(int i=0; i<rteNames.length; ++i){
+      rteName = rteNames[i];
+      rteID = remoteDBMgr.getRuntimeEnvironmentID(rteName, csName);
+      DBRecord rte = remoteDBMgr.getRuntimeEnvironment(rteID);
+      url = (String) rte.getValue("url");
+      if(rteID!=null && Integer.parseInt(rteID)>-1 && url!=null && url.length()>0){
+        // The record is already there - with a URL
+        rtes[i] = null;
+        continue;
+      }
+      else{
+        // add to the transfer vector
+        rteID = localDBMgr.getRuntimeEnvironmentID(rteName, csName);
+        rtes[i] = localDBMgr.getRuntimeEnvironment(rteID);
+        url = (String) rtes[i].getValue("url");
+        if(url!=null && url.length()>0){
+          dlFile = new File(cacheDir, url.replaceFirst("^.*/([^/]+)$", "$1"));
+          Debug.debug("Getting: "+url+" --> "+dlFile.getCanonicalPath(), 2);
+          transfer = new TransferInfo(
+              new GlobusURL(url),
+              new GlobusURL("file:///"+dlFile.getCanonicalPath()));
+          transferVector.add(transfer);
+          dlFiles[i] = "file:///"+dlFile.getCanonicalPath();
+        }
+        else{
+          throw new IOException("URL not found for "+rteName);
+        }
+      }
+    }
+    // Carry out the transfers.
+    GridPilot.getClassMgr().getTransferControl().queue(transferVector);
+    // Wait for transfers to finish
+    boolean transfersDone = false;
+    int sleepT = 3000;
+    int waitT = 0;
+    TransferStatusUpdateControl statusUpdateControl = GridPilot.getClassMgr().getGlobalFrame(
+       ).monitoringPanel.transferMonitor.statusUpdateControl;
+    while(!transfersDone && waitT*sleepT<MAX_DOWNLOAD_WAIT){
+      transfersDone = true;
+      statusUpdateControl.updateStatus(null);
+      for(Iterator itt=transferVector.iterator(); itt.hasNext();){
+        transfer = (TransferInfo) itt.next();
+        if(TransferControl.isRunning(transfer)){
+          transfersDone = false;
+          break;
+        }
+      }
+      if(transfersDone){
+        break;
+      }
+      Debug.debug("Waiting for transfer(s)...", 2);
+      Thread.sleep(sleepT);
+      ++ waitT;
+    }
+    if(!transfersDone){
+      TransferControl.cancel(transferVector);
+      throw new TimeLimitExceededException("Download took too long, aborting.");
+    }
+    // Register the new RTE locations in the remote db
+    String rteDir = getRemoteRTEDir();
+    String newUrl = null;
+    String oldUrl = null;
+    for(int i=0; i<rtes.length; ++i){
+      try{
+        if(rtes[i]==null){
+          continue;
+        }
+        // Clear the certificate,
+        // in order to avoid confusion and have the record deleted on exit.
+        rtes[i].setValue("certificate", "");
+        oldUrl = (String) rtes[i].getValue("url");
+        newUrl = oldUrl.replaceFirst("^.*/([^/]+)$", rteDir+"$1");
+        rtes[i].setValue("url", newUrl);
+        rtes[i].remove(Util.getIdentifierField(localDBMgr.getDBName(), "runtimeEnvironment"));
+        remoteDBMgr.createRuntimeEnv(rtes[i].fields, rtes[i].values);
+        // Tag for deletion
+        rteUrls.add(newUrl);
+      }
+      catch(Exception e1){
+        e1.printStackTrace();
+        error = "WARNING: could not create runtime environment " +
+        rtes[i].getValue("name")+" in database "+remoteDBMgr.getDBName();
+        Debug.debug(error, 1);
+        continue;
+      }
+    }
+    return dlFiles;
+  }
+
+    /**
+   * Copies over runtime environment records from the defined
    * "remote database" to the defined "runtime databases".
    */
-  public void setupRuntimeEnvironments(){
+  public void syncRTEsFromRemoteDB(){
     String certificate = null;
     DBResult rtes = null;
     DBPluginMgr remoteDBMgr = null;
@@ -1458,7 +1651,7 @@ public class GPSSComputingSystem implements ComputingSystem{
       return;
     }
     rtes = remoteDBMgr.getRuntimeEnvironments();
-    // Write records in the 'local' runtime DBs,
+    // Copy over records from the remote to the 'local' runtime DBs,
     // clearing the certificate.
     for(int ii=0; ii<localRuntimeDBs.length; ++ii){
       try{
@@ -1479,6 +1672,7 @@ public class GPSSComputingSystem implements ComputingSystem{
           // Clear the certificate,
           // in order to avoid confusion and have the record deleted on exit.
           rte.setValue("certificate", "");
+          rte.remove(Util.getIdentifierField(localDBMgr.getDBName(), "runtimeEnvironment"));
           localDBMgr.createRuntimeEnv(rte.fields, rte.values);
         }
         catch(Exception e1){
@@ -1546,6 +1740,54 @@ public class GPSSComputingSystem implements ComputingSystem{
             Debug.debug(error, 1);
           }
         }
+      }
+    }
+    // Delete proxied RTEs
+    String url = null;
+    DBPluginMgr remoteDBMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
+    DBResult res = null;
+    String idField = Util.getIdentifierField(
+        remoteDBMgr.getDBName(), "runtimeEnvironment");
+    for(Iterator it=rteUrls.iterator(); it.hasNext();){
+      ok = true;
+      url = (String) it.next();
+      // Delete the physical file
+      try{
+        TransferControl.deleteFiles(new String [] {url});
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        error = "WARNING: could not delete file " + url+
+        ". If the file exists, please delete it  by hand"+
+        ". Deleting entry from database "+remoteDBMgr.getDBName();
+        Debug.debug(error, 1);
+      }
+      // Delete the DB entry
+      res = remoteDBMgr.select("SELECT "+idField+" FROM runtimeEnvironment "+
+          " WHERE url = '"+url+"'", idField, false);
+      id = null;
+      try{
+        id = (String) res.getValue(0, idField);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+      if(id!=null && !id.equals("-1")){
+        // Don't delete records with a non-empty certificate.
+        // These were put there by pull clients.
+        certificate = (String) localDBMgr.getRuntimeEnvironment(id).getValue("certificate");
+        if(certificate!=null && !certificate.equals("")){
+          continue;
+        }
+        ok = remoteDBMgr.deleteRuntimeEnvironment(id);
+      }
+      else{
+        ok = false;
+      }
+      if(!ok){
+        error = "WARNING: could not delete runtime environment " +
+        runtimeName+" from database "+remoteDBMgr.getDBName();
+        Debug.debug(error, 1);
       }
     }
   }
