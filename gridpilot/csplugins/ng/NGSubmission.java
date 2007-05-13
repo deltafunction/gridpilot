@@ -53,7 +53,6 @@ public class NGSubmission{
     logFile = GridPilot.getClassMgr().getLogFile();
     csName = _csName;
     resources = _resources;
-    scriptGenerator =  new NGScriptGenerator(csName);
     rankResources(resources);
   }
 
