@@ -691,9 +691,10 @@ public class ATLASDatabase extends DBCache implements Database{
           guid = record[0].replaceAll("'", "");
           lfn = record[1].replaceAll("'", "");
           
+          String catalog = "";
           if(findPFNs){
             try{
-              findPFNs(vuid, lfn, findAll);
+              catalog = findPFNs(vuid, lfn, findAll);
             }
             catch(Exception e){
               e.printStackTrace();
@@ -708,7 +709,8 @@ public class ATLASDatabase extends DBCache implements Database{
           exCheck = true;
           for(int k=0; k<fields.length; ++k){
             if(fields[k].equalsIgnoreCase("lfn")){
-              recordVector.add(lfn);
+              //recordVector.add(lfn);
+              recordVector.add((lfn.startsWith("/")?"":"/")+makeAtlasPath(lfn));
             }
             else if(fields[k].equalsIgnoreCase("dsn")){
               recordVector.add(dsn);
@@ -721,6 +723,9 @@ public class ATLASDatabase extends DBCache implements Database{
             }
             else if(fields[k].equalsIgnoreCase("vuid")){
               recordVector.add(vuid);
+            }
+            else if(fields[k].equalsIgnoreCase("catalog")){
+              recordVector.add(catalog);
             }
             else{
               recordVector.add("");
@@ -979,7 +984,7 @@ public class ATLASDatabase extends DBCache implements Database{
    * csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103._00001.pool.root.
    */
   
-  private String [] getPFNs(final String _catalogServer, final String lfn, final boolean findAll){
+  private String [] lookupPFNs(final String _catalogServer, final String lfn, final boolean findAll){
     MyThread t = new MyThread(){
       String [] res = null;
       public String [] getString2Res(){
@@ -990,7 +995,7 @@ public class ATLASDatabase extends DBCache implements Database{
           return;
         }
         try{
-          res = getPFNs0(_catalogServer, lfn, findAll);
+          res = doLookupPFNs(_catalogServer, lfn, findAll);
         }
         catch(Exception e){
           e.printStackTrace();
@@ -1008,7 +1013,7 @@ public class ATLASDatabase extends DBCache implements Database{
 
   
   
-  private String [] getPFNs0(String _catalogServer, String lfn, boolean findAll)
+  private String [] doLookupPFNs(String _catalogServer, String lfn, boolean findAll)
      throws RemoteException, ServiceException, MalformedURLException, SQLException {
     String [] pfns = null;
     // get rid of the :/, which GlobusURL doesn't like
@@ -1657,19 +1662,21 @@ public class ATLASDatabase extends DBCache implements Database{
   
   /**
    * Fill the vector pfnVector with PFNs registered for lfn.
+   * Returns the first catalogServer (i.e. 'closest', using the ranking defined).
    */
-  private void findPFNs(String vuid, String lfn, boolean findAll){
+  private String findPFNs(String vuid, String lfn, boolean findAll){
     // Query all with a timeout of 5 seconds.    
     // First try the home server if configured
     // Next try the locations with complete datasets, then the incomplete
     String lfName = lfn;
     Vector locations = getOrderedLocations(vuid);
     Object [] locationsArray = locations.toArray();
+    String ret = "";
     try{
       clearPFNs();
       for(int i=0; i<locationsArray.length; ++i){
         if(getStop()){
-          return;
+          return "";
         }
         String [] pfns = null;
         try{
@@ -1695,15 +1702,19 @@ public class ATLASDatabase extends DBCache implements Database{
           GridPilot.getClassMgr().getStatusBar().setLabel("Querying "+catalogServer);
           try{
             try{
-              pfns = getPFNs(catalogServer, lfName, findAll);
+              pfns = lookupPFNs(catalogServer, lfName, findAll);
             }
             catch(Exception e){
               e.printStackTrace();
             }
             if(tryAgain!=null && (pfns==null || pfns.length==0)){
-              pfns = getPFNs(tryAgain, lfName, findAll);
+              pfns = lookupPFNs(tryAgain, lfName, findAll);
+              catalogServer = tryAgain;
             }
             if(pfns!=null){
+              if(ret.equals("")){
+                ret = catalogServer;
+              }
               for(int n=0; n<pfns.length; ++n){
                 addPFN(pfns[n]);
               }
@@ -1758,6 +1769,7 @@ public class ATLASDatabase extends DBCache implements Database{
     catch(Exception e){
       e.printStackTrace();
     }
+    return ret;
   }
 
   public String getDatasetName(String datasetID){
@@ -1802,7 +1814,7 @@ public class ATLASDatabase extends DBCache implements Database{
     try{
       Debug.debug("getFieldNames for table "+table, 3);
       if(table.equalsIgnoreCase("file")){
-        return new String [] {"dsn", "lfn", "pfns", "guid"};
+        return new String [] {"dsn", "lfn", "catalog", "pfns", "guid"};
       }
       else if(table.equalsIgnoreCase("dataset")){
         return new String [] {"dsn", "vuid", "incomplete", "complete"};
@@ -1852,15 +1864,16 @@ public class ATLASDatabase extends DBCache implements Database{
     // Get the pfns
     Vector pfnVector = new Vector();
     String pfns = "";
+    String catalog = "";
     if(findAllPFNs!=0){
-      findPFNs(vuid, lfn, findAllPFNs==2);
+      catalog = findPFNs(vuid, lfn, findAllPFNs==2);
       for(int j=0; j<getPFNs().length; ++j){
         pfnVector.add((String) getPFNs()[j]);
       }
       pfns = Util.arrayToString(pfnVector.toArray());
     }
         
-    return new DBRecord(fields, new String [] {dsn, lfn, pfns, fileID});
+    return new DBRecord(fields, new String [] {dsn, lfn, catalog, pfns, fileID});
 
   }
 
@@ -2002,11 +2015,11 @@ public class ATLASDatabase extends DBCache implements Database{
           try{
             // if we're using an alias
             if(homeServerMysqlAlias!=null){
-              Collections.addAll(pfns, getPFNs(homeServerMysqlAlias, toDeleteLfns[i], true));
+              Collections.addAll(pfns, lookupPFNs(homeServerMysqlAlias, toDeleteLfns[i], true));
             }
             // otherwise, it is assumed that we're using a mysql catalog
             else{
-              Collections.addAll(pfns, getPFNs(homeSite, toDeleteLfns[i], true));
+              Collections.addAll(pfns, lookupPFNs(homeSite, toDeleteLfns[i], true));
             }
           }
           catch(Exception e){
