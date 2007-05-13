@@ -4,11 +4,14 @@ import gridpilot.DBPluginMgr;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.JobInfo;
+import gridpilot.LocalStaticShellMgr;
 import gridpilot.ScriptGenerator;
 import gridpilot.Util;
 
 import java.io.*;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Vector;
 
 public class GLiteScriptGenerator extends ScriptGenerator {
 
@@ -16,17 +19,26 @@ public class GLiteScriptGenerator extends ScriptGenerator {
   String reRun = null;
   List localInputFilesList = null;
   List remoteInputFilesList = null;
+  List lcfInputFilesList = null;
+  String vo = null;
+  String replicaCatalog = null;
 
   public GLiteScriptGenerator(String _csName) {
     super(_csName);
     csName = _csName;
     cpuTime = configFile.getValue(csName, "CPU time");
     reRun = configFile.getValue(csName, "Max rerun");
+    vo = configFile.getValue(csName, "Virtual organization");
+    replicaCatalog = configFile.getValue(csName, "ReplicaCatalog");
+    localInputFilesList = new Vector();
+    remoteInputFilesList = new Vector();
+    lcfInputFilesList = new Vector();
+
   }
 
-  public boolean createJDL(JobInfo job, String exeFileName, String jdlFileName){
+  public List createJDL(JobInfo job, String exeFileName, String jdlFileName){
 
-    String line;
+    String jdlLine;
     String jobDefID = job.getJobDefId();
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String [] formalParam = dbPluginMgr.getTransformationArguments(jobDefID);
@@ -45,141 +57,263 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       localInputFilesList.add(Util.clearTildeLocally(Util.clearFile(scriptFileName)));
     }
 
-    //create jdl file
-    RandomAccessFile out=null;
+    String shortExeFileName = new File(exeFileName).getName();
+    String jdlExeFileName = Util.clearTildeLocally(Util.clearFile(exeFileName));
+    Debug.debug("shortName : " + shortExeFileName, 3);
+    localInputFilesList.add(jdlExeFileName);
+
+    String inputFileURL = null;
+
+    // create jdl file
+    StringBuffer bufJdl = new StringBuffer();
     try{
-      if(!new File(jdlFileName).getParentFile().exists())
-        new File(jdlFileName).getParentFile().mkdir();
-      out = new RandomAccessFile(jdlFileName, "rw");
-      out.setLength(0);
+      writeLine(bufJdl, "Executable = \"/usr/bin/sh\";");
+      writeLine(bufJdl, "Arguments = \""+scriptFileName+"\";");
+      writeLine(bufJdl, "StdOutput = \"stdout\";");
+      writeLine(bufJdl, "StdError = \"stderr\";");
+      
+      // Input files: scripts
+      jdlLine = "InputSandbox = {";
+      if(scriptFileName.startsWith("file:")){
+        jdlLine += "\"" + Util.clearTildeLocally(Util.clearFile(scriptFileName)) + "\", ";
+      }
+      jdlLine += "\"" + exeFileName + "\", ";
 
-      writeLine(out, "Executable = \"/usr/bin/sh\";");
-      writeLine(out, "Arguments = \""+scriptFileName+"\";");
-      writeLine(out, "StdOutput = \"stdout\";");
-      writeLine(out, "StdError = \"stderr\";");
-      line = "InputSandbox = {"+
-             "\"" + scriptFileName + "\", "+
-             "\"" + TDef + "\", "+
-             "\"" + "./atlasprod.rc.conf" + "\"};" ;
-      writeLine(out,line);
-      writeLine(out, "OutputSandbox = {\"stdout\", \"stderr\"};");
-      line = "InputData = {";
-      for(int i=0; i< formalParam.length; ++i){
-        if(formalParam[i].startsWith("LFN:")) {
-          line += "\"LF:"+actualParam[i]+"\", " ;
+      // Input files.
+      String[] inputFiles1 = new String [] {};
+      String [] inputs = dbPluginMgr.getJobDefInputFiles(jobDefID);
+      Debug.debug("input files: "+inputs.length+" "+Util.arrayToString(inputs), 3);
+      if(inputs!=null && inputs.length>0){
+        inputFiles1 = inputs;
+      }
+      // Input files from transformation definition
+      // (typically a tarball with code)
+      String[] inputFiles2 = new String [] {};
+      inputs = dbPluginMgr.getTransformationInputs(
+          dbPluginMgr.getJobDefTransformationID(jobDefID));
+      Debug.debug("input files: "+inputs.length+" "+Util.arrayToString(inputs), 3);
+      if(inputs!=null && inputs.length>0){
+        inputFiles2 = inputs;
+      }
+      String [] inputFiles = new String[inputFiles1.length+inputFiles2.length];
+      System.arraycopy(inputFiles1, 0, inputFiles, 0, inputFiles1.length);
+      System.arraycopy(inputFiles2, 0, inputFiles, inputFiles1.length, inputFiles2.length);
+            
+      for(int i=0; i<inputFiles.length; ++i){
+        inputFileURL = null;
+        if(inputFiles[i].startsWith("http://") ||
+            inputFiles[i].startsWith("https://") ||
+            inputFiles[i].startsWith("gsiftp://") ||
+            inputFiles[i].startsWith("ftp://")){
+          inputFileURL = inputFiles[i];
+        }
+        else{
+          // URL is full path of input file
+          inputFileURL = Util.clearTildeLocally(Util.clearFile(inputFiles[i]));
+        }
+        Debug.debug("Input file physical name: "+inputFileURL, 3);
+       
+        // Add local files to the return value.
+        // Files starting with / are assumed to already be on the server.
+        if(inputFiles[i].startsWith("file:")){
+          jdlLine += "\"" + inputFileURL + "\", ";
+          localInputFilesList.add(inputFileURL);
+        }
+        else if(inputFiles[i].startsWith("/")){
+          // do nothing
+        }
+        else if(inputFiles[i].toLowerCase().startsWith("lfn:")){
+          lcfInputFilesList.add(inputFileURL);
+        }
+        else{
+          //line += "\"" + inputFileURL + "\", ";
+          remoteInputFilesList.add(inputFileURL);
         }
       }
-      line += "};";
-      line = line.replaceFirst(", }","  }") ;
-      //TODO fix ending comma
-      writeLine(out, line);
-      writeLine(out, "DataAccessProtocol = \"gridftp\";");
-      writeLine(out,"Requirements = Member(\"VO-atlas-production-12.0.5\", " +
-            "other.GlueHostApplicationSoftwareRunTimeEnvironment);");
-      try{
-        out.close();
+      jdlLine += "\"};" ;
+      jdlLine = jdlLine.replaceFirst(", }","  }") ;
+      writeLine(bufJdl, jdlLine);
+      
+      String [] remoteInputFilesArray = new String [remoteInputFilesList.size()];
+      for(int i=0; i<remoteInputFilesList.size(); ++i){
+        remoteInputFilesArray[i] = (String) remoteInputFilesList.get(i);
       }
-      catch(IOException ioe){
-        Debug.debug("cannot close "+ out.toString(), 1);
+      // job.getDownloadFiles is not used; we set it just for aesthetics...
+      // remoteInputFilesArray will be downloaded by the job script
+      job.setDownloadFiles(remoteInputFilesArray);
+
+      if(!lcfInputFilesList.isEmpty()){
+        jdlLine = "InputData = {";
+        String lfcHost = null;
+        String oldLfcHost = null;
+        String cat = null;
+        for(Iterator it=lcfInputFilesList.iterator(); it.hasNext();){
+          cat = (String) it.next();
+          if(cat.startsWith("lfc:")){
+            lfcHost = cat.replaceFirst("lfc:/*(.*)[:/]", "$1");
+            jdlLine += "\"lfn:"+cat+"\", ";
+            if(oldLfcHost!=null && !lfcHost.equals(oldLfcHost)){
+              throw new IOException("ERROR: cannot use more than one catalog per job. "+
+                  lfcHost+"!="+oldLfcHost);
+            }
+            oldLfcHost = lfcHost;
+          }
+        }
+        jdlLine += "};";
+        jdlLine = jdlLine.replaceFirst(", }","  }") ;
+        writeLine(bufJdl, jdlLine);
+        if(lfcHost!=null){
+          writeLine(bufJdl, "DataCatalog = \""+lfcHost+"\";");
+        }
+      }
+      
+      // Various options
+      writeLine(bufJdl, "DataAccessProtocol =  {\"rfio\", \"gsiftp\", \"gsidcap\"};");
+      writeLine(bufJdl, "Requirements = other.GlueCEPolicyMaxCPUTime > "+cpuTime+";");
+      writeLine(bufJdl, "VirtualOrganisation = \"" + vo + "\";");
+      writeLine(bufJdl, "RetryCount  = \"0\";");
+      writeLine(bufJdl, "ShallowRetryCount = \"" + reRun + "\";");
+      
+      // Runtime environments
+      String [] uses = dbPluginMgr.getRuntimeEnvironments(jobDefID);
+      if(uses!=null && uses.length>0 && uses[0]!=null){
+        for(int i=0; i<uses.length; ++i){
+          // At least for now, we only have Linux resources on LCG
+          if(uses[i].equals("Linux")){
+            continue;
+          }
+          writeLine(bufJdl,"Requirements = Member(\""+Util.dos2unix(uses[i])+"\", " +
+          "other.GlueHostApplicationSoftwareRunTimeEnvironment);");
+        }
       }
 
-      //create job script
+      // create job script
 
-      out=null;
-      try{
-        if(!new File(scriptFileName).getParentFile().exists())
-          new File(scriptFileName).getParentFile().mkdir();
-
-        out = new RandomAccessFile(scriptFileName, "rw");
-        out.setLength(0);
-      }
-      catch(IOException ioe){System.out.println(ioe.getMessage()); return false;}
-
+      String scriptLine = "";
       // Header
-      writeLine(out,"#!/usr/bin/sh");
-      writeLine(out,"# Script generated by AtCom");
-      writeBloc(out, csName + " wrapper script", 0, "#");
+      StringBuffer bufScript = new StringBuffer();
+      writeLine(bufScript, "#!" + configFile.getValue(csName, "Shell"));
+      writeLine(bufScript,"# Script generated by GridPilot/GLiteScriptGenerator");
+      writeBloc(bufScript, csName + " wrapper script", 0, "# ");
 
-      // Runtime environment dependencies. Text from runtimeEnvironment.init
-      writeBloc(out, "packages dependencies", 1, "#");
-
-      String [] uses = amiMgt.getPartTransUses(partitionIdentifier);
-
+      // Runtime environment dependencies. Text from runtimeEnvironment.initText
+      writeBloc(bufScript, "runtime environment dependencies", 1, "# ");
       for(int i=0; i<uses.length; ++i){
-        writeBloc(out, "use "+ uses[i], 2, "#");
-        String initTxt = amiMgt.getPackInitText(uses[i], systemName) ;
-        writeLine(out, initTxt.replace('\r',' '));
-        writeLine(out, "");
+        writeBloc(bufScript, "use "+ uses[i], 2, "# ");
+        String initTxt = dbPluginMgr.getRuntimeInitText(uses[i], csName).toString();
+        writeLine(bufScript, Util.dos2unix(initTxt));
+        writeLine(bufScript, "");
       }
 
-      // parameter translation
-
-      writeBloc(out, "parameter translation", 1, "#");
-
-      line ="PARAM";
+      // Get remote input files
+      writeBloc(bufScript, "input files download", 1, "# ");
+      for(int i=0; i<lcfInputFilesList.size(); ++i){
+        writeLine(bufScript, "lcg-cp "+lcfInputFilesList.get(i)+
+            "file://`pwd`/"+
+            (lcfInputFilesList.get(i).toString().replaceFirst("^.*/([^/]+)", "$1")));
+      }
+      for(int i=0; i<remoteInputFilesList.size(); ++i){
+        writeLine(bufScript, "lcg-cp "+remoteInputFilesList.get(i)+
+            "file://`pwd`/"+
+            (remoteInputFilesList.get(i).toString().replaceFirst("^.*/([^/]+)", "$1")));
+      }
+      
+      // Parameter translation
+      writeBloc(bufScript, "parameter translation", 1, "# ");
+      scriptLine ="PARAM";
       for(int i=0; i<formalParam.length; ++i){
-        line += " "+formalParam[i];
+        scriptLine += " "+formalParam[i];
       }
-      writeBloc(out, line, 1, "#");
-
-      for(int i=0; i< formalParam.length; ++i){
-        if(formalParam[i].startsWith("LFN:")) {
-          writeLine(out, "p"+(i+1)+"=`edg-replica-manager-getBestFile "+ actualParam[i] +" $CLSE`");
-          writeLine(out, "if [ $? -ne 0 ] ; then echo '>>ERROR:' could not find signal file ; exit 1 ; fi");
+      writeBloc(bufScript, scriptLine, 1, "# ");
+      String [] tmpParams = null;
+      // Use actualParam.length instead of formalParam.length.
+      // This way, if not all parameters are filled in the first will
+      // be used and the rest just left empty.
+      for(int i=0; i</*formalParam.length*/actualParam.length; ++i){
+        try{
+          // replace spaces with commas
+          tmpParams = Util.split(actualParam[i]);
+          writeLine(bufScript, "p"+(i+1)+"="+Util.arrayToString(tmpParams, ","));
         }
-        else
-          writeLine(out, "p"+(i+1)+"="+actualParam[i]);
+        catch(Exception ex){
+            logFile.addMessage("Warning: problem with job parameter "+i);
+          Debug.debug("WARNING: problem with job parameter "+i+": "+ex.getMessage(), 1);
+          ex.printStackTrace();
+        }
       }
-
-      writeLine(out, "");
+      writeLine(bufScript, "");
 
       // core script call
-
-      writeBloc(out, "core script call", 1, "#");
-
-      line = amiMgt.getPartTransDefinition(partitionIdentifier);
-      int lastSlash = line.lastIndexOf("/");
-      if (lastSlash > -1) line = line.substring(lastSlash + 1);
-      //!!! chop off leading path
+      writeBloc(bufScript, "core script call", 1, "# ");
+      
+      // workaround for bug in NG on Condor
+      writeLine(bufScript, "chmod +x "+shortScriptName);
+      scriptLine = "./"+shortScriptName ;
       for(int i=0; i<formalParam.length; ++i)
-        line += " $p"+(i+1);
-      writeLine(out, line);
-      writeLine(out, "");
-
-      // output file copy
-
-      writeBloc(out, "output file copy", 1, "#");
-
-      String [] outputMapping = amiMgt.getPartTransOutputs(partitionIdentifier);
+        scriptLine += " $p"+(i+1);
+      writeLine(bufScript, scriptLine);
+      writeLine(bufScript, "");
+      
+      // Output files
+      jdlLine = "OutputSandbox = {\"stdout\", \"stderr\"";
+      // upload output files
+      String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
       String localName;
-      String logicalName;
-      String logicalDir;
-
-      writeLine(out, "MYHOST=`hostname --long`");
-      writeLine(out, "CURDIR=`pwd`");
-
-      for(int i=0; i< outputMapping.length ; ++i){
-        localName = amiMgt.getPartOutLocalName(partitionIdentifier, outputMapping[i]);
-        logicalName = amiMgt.getPartOutRemoteName(partitionIdentifier, outputMapping[i]);
-
-        String [] dblLine = {localName, " -> " + logicalName};
-        writeBloc(out, dblLine, 1, "#");
-        line = "edg-rm-creg "+
-               " -l " + logicalName +
-               " -c atlasprod.rc.conf "+
-               " -s $MYHOST/$CURDIR/"+localName +
-               " -d lxshare0393.cern.ch";
-        writeLine(out, line);
-        writeLine(out, "if [ $? -ne 0 ] ; then  echo '>>ERROR:' could not creg output file ; exit 1 ; fi");
+      String remoteName;
+      // output file copy
+      for(int i=0; i<outputFileNames.length; ++i){
+        localName = dbPluginMgr.getJobDefOutLocalName(job.getJobDefId(), outputFileNames[i]);
+        remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFileNames[i]);
+        if(remoteName.startsWith("/") || remoteName.matches("^\\w:.*")){
+          // In analogy with ForkComputingSystem, this should trigger
+          // copying the file to a place on the file system on the server.
+          // There should not be any reason to support this
+          // (if needed we could add a cp command to the job script).
+          throw new IOException("ERROR: copying files locally on the worker node" +
+                " is not supported. "+remoteName);
+        }
+        else if(remoteName.startsWith("file:")){
+          // These are copied back to the client by jarclib and GridPilot
+          // moves them locally on the client to their final destination
+          jdlLine += ", \""+localName+"\"";
+        }
+        else if(remoteName.toLowerCase().startsWith("lfn:")){
+          writeLine(bufScript, "lcg-cr -l "+remoteName+" file://`pwd`/"+localName+" "+remoteName);
+        }
+        else if(remoteName.startsWith("srm:") || remoteName.startsWith("gsiftp:")){
+          writeLine(bufScript, "lcg-cp file://`pwd`/"+localName+" "+remoteName);
+        }
+        Debug.debug("remote name: "+remoteName,3);
+        scriptLine += "(\""+localName+"\" \""+remoteName+"\")" ;
       }
+      jdlLine += "};";
+      writeLine(bufScript, scriptLine);
+      writeLine(bufJdl, jdlLine);
 
       try{
-        out.close();
+        LocalStaticShellMgr.writeFile(exeFileName,
+            bufScript.toString(), false);
+        Util.dos2unix(new File(exeFileName));
+        LocalStaticShellMgr.writeFile(jdlFileName,
+            bufJdl.toString(), false);
+        Util.dos2unix(new File(exeFileName));
       }
-      catch(IOException ioe){System.err.print("cannot close "+ out.toString());}
-
-      return true;
+      catch(FileNotFoundException fnfe){
+        System.err.print(fnfe.getMessage());
+        Debug.debug("Could not write file. "+fnfe.getMessage(), 1);
+        return null;
+      }
+      catch(Exception ioe){
+        Debug.debug(ioe.getMessage(), 1);
+        ioe.printStackTrace();
+        return null;
+      }
+      // These files will be uploaded to the sandbox.
+      return localInputFilesList;
     }
-    catch(IOException ioe){System.out.println(ioe.getMessage()); return false;}
+    catch(IOException ioe){
+      logFile.addMessage("ERROR generating job scripts", ioe);
+      return null;
+    }
   }
 }
