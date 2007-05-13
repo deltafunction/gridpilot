@@ -779,7 +779,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   public void search(){
     if(tableResults==null){
-      searchRequest();
+      searchRequest(true);
     }
     else{
       DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
@@ -854,6 +854,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   public void searchRequest(final int sortColumn, final boolean isAscending,
       final int [] columnWidths){
+    searchRequest(sortColumn, isAscending, columnWidths, true);
+  }
+
+  public void searchRequest(final int sortColumn, final boolean isAscending,
+      final int [] columnWidths, boolean invokeLater){
         
     workThread = new Thread(){
       public void run(){
@@ -1114,15 +1119,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     };
 
-    //workThread.start();
-    SwingUtilities.invokeLater(workThread);
-    
+    if(invokeLater){
+      SwingUtilities.invokeLater(workThread);
+    }
+    else{
+      workThread.start();
+    }
   }
   
-  public void searchRequest(){
+  public void searchRequest(boolean invokeLater){
     DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
     tableModel.ascending = true;
-    searchRequest(-1, tableModel.ascending, null);
+    searchRequest(-1, tableModel.ascending, null, invokeLater);
   }
  
   /**
@@ -1750,7 +1758,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     Debug.debug("Refreshing search results", 3);
     if(tableResults==null /*|| tableResults.getRowCount()==0*/){
-      searchRequest();
+      searchRequest(true);
       //return;
     }
     else{
@@ -1952,7 +1960,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             dbPanel.selectPanel.setConstraint(datasetColumn,
                 dbPluginMgr.getDataset(id).getValue(
                     fileDatasetReference[0]).toString(), 0);
-            dbPanel.searchRequest();
+            dbPanel.searchRequest(false);
             dbPanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
             GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                   
           }
@@ -1984,7 +1992,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                 dbPluginMgr.getDataset(id).getValue(
                     jobDefDatasetReference[0]).toString(),
                 0);
-            dbPanel.searchRequest();           
+            dbPanel.searchRequest(true);           
             GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                   
           }
           catch(Exception e){
