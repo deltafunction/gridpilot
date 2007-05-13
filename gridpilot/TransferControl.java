@@ -1203,7 +1203,9 @@ public class TransferControl{
         final File dName = downloadDir;
         final String destFName = destFileName;
         final String srcFName = srcFileName;
-        frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        if(frame!=null){
+          frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        }
         (new MyThread(){
           public void run(){
             try{
@@ -1234,7 +1236,9 @@ public class TransferControl{
               return;
             }
             finally{
-              frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+              if(frame!=null){
+                frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+              }
             }
           }
         }).run();               
@@ -1248,7 +1252,9 @@ public class TransferControl{
         Debug.debug("Downloading from "+url+" to "+dirPath+destFileName, 2);
         final String fName = destFileName;
         final String dName = dirPath;
-        frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        if(frame!=null){
+          frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        }
         (new MyThread(){
           public void run(){
             try{
@@ -1271,7 +1277,9 @@ public class TransferControl{
               e.printStackTrace();
             }
             finally{
-              frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+              if(frame!=null){
+                frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+              }
             }
           }
         }).run();               
@@ -1338,13 +1346,19 @@ public class TransferControl{
           throw(new IOException("Upload location must be a directory. "+uploadUrl));
         }
         GlobusURL globusUrl = new GlobusURL(uploadUrlDir+uploadFileName);
+        if(frame!=null){
+          frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        }
         JProgressBar pb = new JProgressBar();
         GridPilot.getClassMgr().getStatusBar().setProgressBar(pb);
         //GSIFTPFileTransfer gsiftpFileTransfer = new GSIFTPFileTransfer();
         GSIFTPFileTransfer gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
         gsiftpFileTransfer.putFile(file, globusUrl,
-            GridPilot.getClassMgr().getStatusBar(), new JProgressBar());
+            GridPilot.getClassMgr().getStatusBar(), pb);
         GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
+        if(frame!=null){
+          frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        }
       }
       else{
         throw(new IOException("Unknown protocol for "+uploadUrl));
@@ -1359,6 +1373,11 @@ public class TransferControl{
     catch(FTPException e){
       Debug.debug("Could not save to URL "+uploadUrl+". "+e.getMessage(), 1);
       throw e;
+    }
+    finally{
+      if(frame!=null){
+        frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+      }
     }
   }
   
@@ -1615,7 +1634,7 @@ public class TransferControl{
     // Remote destination
     else if(Util.urlIsRemote(dest)){
       try{
-        TransferControl.upload(
+        upload(
             new File(Util.clearTildeLocally(Util.clearFile(src))),
             dest,
             GridPilot.getClassMgr().getGlobalFrame().getContentPane());
