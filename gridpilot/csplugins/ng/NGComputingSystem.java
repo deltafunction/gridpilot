@@ -83,7 +83,7 @@ public class NGComputingSystem implements ComputingSystem{
   
   private static String csName;
   private static LogFile logFile;
-  private static boolean confirmDirectoryCreation = false;
+  private static boolean CONFIRM_RUN_DIR_CREATION = false;
   
   
   public NGComputingSystem(String _csName){
@@ -1047,20 +1047,21 @@ public class NGComputingSystem implements ComputingSystem{
     return resourcesArray;
   }
 
-  // Copy stdout+stderr to local files
-  public boolean syncCurrentOutputs(JobInfo job){
+  /**
+   * Checks if runDir(job) exists. If not, attempts to create it. 
+   * Returns true if the directory didn't exist and has been successfully
+   * created.
+   */
+  private boolean createMissingWorkingDir(JobInfo job){
+    // First check if working directory is there. If not, we may be
+    // checking from another machine than the one we submitted from.
+    // We just create it...
+    boolean getFromfinalDest = false;
     try{
-      Debug.debug("Syncing " + job.getName() + ":" + job.getJobId(), 3);
-      ARCGridFTPJob gridJob = getGridJob(job);
       String dirName = runDir(job);
-      
-      // First check if working directory is there. If not, we may be
-      // checking from another machine than the one we submitted from.
-      // We just create it...
-      boolean getFromfinalDest = false;
       if(!LocalStaticShellMgr.existsFile(dirName)){
         int choice = -1;
-        if(confirmDirectoryCreation){
+        if(CONFIRM_RUN_DIR_CREATION){
           choice = (new ConfirmBox(JOptionPane.getRootFrame())).getConfirm(
               "Confirm create directory",
               "The working directory, "+dirName+",  of this job was not found. \n" +
@@ -1090,17 +1091,34 @@ public class NGComputingSystem implements ComputingSystem{
         }
         else{
           logFile.addMessage("WARNING: Directory "+dirName+" does not exist. Cannot proceed.");
-          return false;
+          getFromfinalDest = false;
         }
       }
+    }
+    catch(Exception ae){
+      error = "Exception during get stdout of " + job.getName() + ":" + job.getJobId() + ":\n" +
+      "\tException\t: " + ae.getMessage();
+      getFromfinalDest = false;
+    }
+    return getFromfinalDest;
+  }
+  
+  // Copy stdout+stderr to local files
+  public boolean syncCurrentOutputs(JobInfo job){
+    try{
+      Debug.debug("Syncing " + job.getName() + ":" + job.getJobId(), 3);
+      ARCGridFTPJob gridJob = getGridJob(job);
+      
+      String dirName = runDir(job);
 
       DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
       String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
       String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
 
+      boolean getFromfinalDest = createMissingWorkingDir(job);
       if(!(getFromfinalDest || job.getJobStatus().equals(NG_STATUS_FINISHED) ||
           job.getDBStatus()==DBPluginMgr.UNDECIDED)){
-        Debug.debug("Downloading stdout/err of: " + job.getName() + " : " + job.getJobId() +
+        Debug.debug("Downloading stdout/err of running job: " + job.getName() + " : " + job.getJobId() +
             " : " + job.getJobStatus()+" to " + dirName, 3);
         try{
           gridJob.getOutputFile("stdout", dirName);
@@ -1237,7 +1255,7 @@ public class NGComputingSystem implements ComputingSystem{
     
     /**
      * move downloaded output files to their final destinations -
-     * IF these destainations have the format file:...
+     * Iff these destinations have the format file:...
      */
     String jobID = job.getJobId().substring(job.getJobId().lastIndexOf("/"));
     int lastSlash = job.getJobId().lastIndexOf("/");
