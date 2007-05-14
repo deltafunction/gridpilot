@@ -19,7 +19,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
   String reRun = null;
   List localInputFilesList = null;
   List remoteInputFilesList = null;
-  List lcfInputFilesList = null;
+  List lfcInputFilesList = null;
   String vo = null;
   String replicaCatalog = null;
 
@@ -32,7 +32,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     replicaCatalog = configFile.getValue(csName, "ReplicaCatalog");
     localInputFilesList = new Vector();
     remoteInputFilesList = new Vector();
-    lcfInputFilesList = new Vector();
+    lfcInputFilesList = new Vector();
 
   }
 
@@ -123,7 +123,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
           // do nothing
         }
         else if(inputFiles[i].toLowerCase().startsWith("lfn:")){
-          lcfInputFilesList.add(inputFileURL);
+          lfcInputFilesList.add(inputFileURL);
         }
         else{
           //line += "\"" + inputFileURL + "\", ";
@@ -142,12 +142,12 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       // remoteInputFilesArray will be downloaded by the job script
       job.setDownloadFiles(remoteInputFilesArray);
 
-      if(!lcfInputFilesList.isEmpty()){
+      if(!lfcInputFilesList.isEmpty()){
         jdlLine = "InputData = {";
         String lfcHost = null;
         String oldLfcHost = null;
         String cat = null;
-        for(Iterator it=lcfInputFilesList.iterator(); it.hasNext();){
+        for(Iterator it=lfcInputFilesList.iterator(); it.hasNext();){
           cat = (String) it.next();
           if(cat.startsWith("lfc:")){
             lfcHost = cat.replaceFirst("lfc:/*(.*)[:/]", "$1");
@@ -207,10 +207,10 @@ public class GLiteScriptGenerator extends ScriptGenerator {
 
       // Get remote input files
       writeBloc(bufScript, "input files download", 1, "# ");
-      for(int i=0; i<lcfInputFilesList.size(); ++i){
-        writeLine(bufScript, "lcg-cp "+lcfInputFilesList.get(i)+
+      for(int i=0; i<lfcInputFilesList.size(); ++i){
+        writeLine(bufScript, "lcg-cp "+lfcInputFilesList.get(i)+
             "file://`pwd`/"+
-            (lcfInputFilesList.get(i).toString().replaceFirst("^.*/([^/]+)", "$1")));
+            (lfcInputFilesList.get(i).toString().replaceFirst("^.*/([^/]+)", "$1")));
       }
       for(int i=0; i<remoteInputFilesList.size(); ++i){
         writeLine(bufScript, "lcg-cp "+remoteInputFilesList.get(i)+
@@ -260,6 +260,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
       String localName;
       String remoteName;
+      Vector uploadVector = new Vector();
       // output file copy
       for(int i=0; i<outputFileNames.length; ++i){
         localName = dbPluginMgr.getJobDefOutLocalName(job.getJobDefId(), outputFileNames[i]);
@@ -273,9 +274,10 @@ public class GLiteScriptGenerator extends ScriptGenerator {
                 " is not supported. "+remoteName);
         }
         else if(remoteName.startsWith("file:")){
-          // These are copied back to the client by jarclib and GridPilot
+          // These are copied back to the client and GridPilot
           // moves them locally on the client to their final destination
           jdlLine += ", \""+localName+"\"";
+          uploadVector.add(new String [] {localName, remoteName});
         }
         else if(remoteName.toLowerCase().startsWith("lfn:")){
           writeLine(bufScript, "lcg-cr -l "+remoteName+" file://`pwd`/"+localName+" "+remoteName);
@@ -284,8 +286,16 @@ public class GLiteScriptGenerator extends ScriptGenerator {
           writeLine(bufScript, "lcg-cp file://`pwd`/"+localName+" "+remoteName);
         }
         Debug.debug("remote name: "+remoteName,3);
-        scriptLine += "(\""+localName+"\" \""+remoteName+"\")" ;
+        scriptLine += "(\""+localName+"\" \""+remoteName+"\")";
       }
+      
+      // job.getUploadFiles is not used; we set it just for aesthetics...
+      String [][] uploadFiles = new String [uploadVector.size()][2];
+      for(int i=0; i<uploadVector.size(); ++i){
+        uploadFiles[i] = (String []) uploadVector.get(i);
+      }
+      job.setUploadFiles(uploadFiles);
+
       jdlLine += "};";
       writeLine(bufScript, scriptLine);
       writeLine(bufJdl, jdlLine);

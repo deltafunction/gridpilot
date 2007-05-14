@@ -12,8 +12,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
 
+import javax.swing.JOptionPane;
+
 import gridpilot.ComputingSystem;
 import gridpilot.ConfigFile;
+import gridpilot.ConfirmBox;
 import gridpilot.DBPluginMgr;
 import gridpilot.Debug;
 import gridpilot.JobInfo;
@@ -61,6 +64,7 @@ public class GLiteComputingSystem implements ComputingSystem{
   private HashSet rteScriptMappings = null;
   private String defaultUser;
   
+  private static boolean CONFIRM_RUN_DIR_CREATION = false;
   private static String BDII_PORT = "2170";
   private static String BDII_BASE_DN = "mds-vo-name=local,o=grid";
 
@@ -552,25 +556,7 @@ public class GLiteComputingSystem implements ComputingSystem{
         try{
           // get stdout and stderr and any other sandbox files
           gliteJob.getOutput(runDir(job));
-          // upload stdout and stderr
-          DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-          String stdoutDest = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
-          String stderrDest = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
-          if(stdoutDest!=null && !stdoutDest.startsWith("/") &&
-              !stdoutDest.startsWith("\\\\")){
-            TransferControl.upload(
-                new File(Util.clearTildeLocally(Util.clearFile(job.getStdOut()))),
-                stdoutDest,
-                GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor);
-          }
-          if(stderrDest!=null && !stderrDest.startsWith("/") &&
-              !stderrDest.startsWith("\\\\")){
-            TransferControl.upload(
-                new File(Util.clearTildeLocally(Util.clearFile(job.getStdErr()))),
-                stderrDest,
-                GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor);
-          }
-          // if all went well we can set the status to done
+          // if this went well we can set the status to done
           if(status.getValInt(JobStatus.DONE_CODE)==0){
             job.setInternalStatus(ComputingSystem.STATUS_DONE);
           }
@@ -748,12 +734,133 @@ public class GLiteComputingSystem implements ComputingSystem{
   }
 
   /**
+   * Checks if runDir(job) exists. If not, attempts to create it. 
+   * Returns true if the directory didn't exist and has been successfully
+   * created.
+   */
+  private boolean createMissingWorkingDir(JobInfo job){
+    // First check if working directory is there. If not, we may be
+    // checking from another machine than the one we submitted from.
+    // We just create it...
+    boolean getFromfinalDest = false;
+    try{
+      String dirName = runDir(job);
+      if(!LocalStaticShellMgr.existsFile(dirName)){
+        int choice = -1;
+        if(CONFIRM_RUN_DIR_CREATION){
+          choice = (new ConfirmBox(JOptionPane.getRootFrame())).getConfirm(
+              "Confirm create directory",
+              "The working directory, "+dirName+",  of this job was not found. \n" +
+              "The job was probably submitted from another machine or has already been validated. \n" +
+              "Click OK to create the directory " +
+              "(stdout/stder will be synchronized, scripts will not).", new Object[] {"OK",  "Skip"});
+        }
+        else{
+          choice = 0;
+        }
+        if(choice==0){
+          LocalStaticShellMgr.mkdirs(dirName);
+          final String stdoutFile = unparsedWorkingDir+"/"+job.getName() + "/" + job.getName() + ".stdout";
+          final String stderrFile = unparsedWorkingDir+"/"+job.getName() + "/" + job.getName() + ".stderr";
+          job.setOutputs(stdoutFile, stderrFile);
+          DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+          if(!dbPluginMgr.updateJobDefinition(
+              job.getJobDefId(),
+              new String []{job.getUser(), job.getJobId(), job.getName(),
+              job.getStdOut(), job.getStdErr()})){
+            logFile.addMessage("DB update(" + job.getJobDefId() + ", " +
+                           job.getJobId() + ", " + job.getName() + ", " +
+                           job.getStdOut() + ", " + job.getStdErr() +
+                           ") failed", job);    
+          }
+          getFromfinalDest = true;
+        }
+        else{
+          logFile.addMessage("WARNING: Directory "+dirName+" does not exist. Cannot proceed.");
+          getFromfinalDest = false;
+        }
+      }
+    }
+    catch(Exception ae){
+      error = "Exception during get stdout of " + job.getName() + ":" + job.getJobId() + ":\n" +
+      "\tException\t: " + ae.getMessage();
+      getFromfinalDest = false;
+    }
+    return getFromfinalDest;
+  }
+  
+  /**
    * This will only work after the job has finished. We just read
    * the stdout/stderr downloaded from the sandbox to the working dir.
    */
   public String[] getCurrentOutputs(JobInfo job) throws IOException{
-    // TODO Auto-generated method stub
-    return null;
+    // if the job is done, get the files from their final destination
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+    String stdOutFile = job.getStdOut();
+    String stdErrFile = job.getStdErr();
+    String [] res = new String[2];
+    boolean getFromfinalDest = createMissingWorkingDir(job);
+    // stdout/stderr of running jobs are not accessible
+    // Get stdout/stderr of done jobs
+    if(getFromfinalDest || job.getDBStatus()==DBPluginMgr.VALIDATED ||
+        job.getDBStatus()==DBPluginMgr.UNDECIDED){
+      if(!finalStdOut.startsWith("file:")){
+        Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
+            " from final destination "+finalStdOut+" to " +
+            Util.clearTildeLocally(Util.clearFile(stdOutFile)), 3);
+        try {
+          TransferControl.download(finalStdOut, new File(Util.clearTildeLocally(Util.clearFile(stdOutFile))),
+              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+      }
+      if(!finalStdErr.startsWith("file:")){
+        Debug.debug("Downloading stderr of: " + job.getName() + ":" + job.getJobId()+
+            " from final destination "+finalStdErr+" to " +
+            Util.clearTildeLocally(Util.clearFile(stdErrFile)), 3);
+        try{
+          TransferControl.download(finalStdErr, new File(Util.clearTildeLocally(Util.clearFile(stdErrFile))),
+              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+      }
+    }
+    if(stdOutFile!=null && !stdOutFile.equals("")){
+      // read stdout
+      try{
+        res[0] = LocalStaticShellMgr.readFile(stdOutFile);
+       }
+       catch(IOException ae){
+         error = "Exception during getCurrentOutputs (stdout) for " + job.getName() + ":" + job.getJobId() + ":\n" +
+         "\nException: " + ae.getMessage();
+         res[0] = "*** Could not read stdout ***\n Probably the job has not started yet, " +
+                "did never start or got deleted.";
+         GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("ERROR: "+ae.getMessage());
+         logFile.addMessage(error, ae);
+         //throw ae;
+       }
+    }
+    if(stdErrFile!=null && !stdErrFile.equals("")){
+      // read stderr
+      try{
+        res[1] = LocalStaticShellMgr.readFile(stdErrFile);
+       }
+       catch(Exception ae){
+         error = "Exception during getCurrentOutputs (stderr) for " + job.getName() + ":" + job.getJobId() + ":\n" +
+         "\nException: " + ae.getMessage();
+         //logFile.addMessage(error, ae);
+         //ae.printStackTrace();
+         res[1] = "*** Could not read stderr ***\n Probably the job has not started yet, " +
+         "did never start or got deleted.";
+       }
+    }
+    return res;
   }
 
   public String[] getScripts(JobInfo job){
@@ -790,14 +897,113 @@ public class GLiteComputingSystem implements ComputingSystem{
     return user;
   }
 
+  /**
+   * Moves job.StdOut and job.StdErr to final destination specified in the DB. <p>
+   * job.StdOut and job.StdErr are then set to these final values. <p>
+   * @return <code>true</code> if the move went ok, <code>false</code> otherwise.
+   * (from AtCom1)
+   */
+  private boolean copyToFinalDest(JobInfo job){
+    boolean ok = true;
+    /**
+     * move downloaded output files to their final destinations -
+     * Iff these destinations have the format file:...
+     */
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
+    String localName = null;
+    String remoteName = null;
+    for(int i=0; i<outputFileNames.length; ++i){
+      try{
+        localName = dbPluginMgr.getJobDefOutLocalName(job.getJobDefId(), outputFileNames[i]);
+        remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFileNames[i]);
+        if(remoteName.startsWith("file:")){
+          TransferControl.upload(
+              new File(runDir(job)+File.separator+localName),
+              remoteName,
+              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+        }
+      }
+      catch(Exception e){
+        error = "ERROR copying file "+localName+" -> "+remoteName+
+        " to final destination: "+e.getMessage();
+        logFile.addMessage(error, e);
+        ok = false;
+      }
+    }
+    // upload stdout and stderr
+    String stdoutDest = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+    String stderrDest = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+    try{
+      if(stdoutDest!=null && !stdoutDest.startsWith("/") &&
+          !stdoutDest.startsWith("\\\\")){
+        TransferControl.upload(
+            new File(Util.clearTildeLocally(Util.clearFile(job.getStdOut()))),
+            stdoutDest,
+            GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor);
+        String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+        job.setStdOut(finalStdOut);
+      }
+      if(stderrDest!=null && !stderrDest.startsWith("/") &&
+          !stderrDest.startsWith("\\\\")){
+        TransferControl.upload(
+            new File(Util.clearTildeLocally(Util.clearFile(job.getStdErr()))),
+            stderrDest,
+            GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor);
+        String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+        job.setStdOut(finalStdErr);
+      }
+    }
+    catch(Exception e){
+      logFile.addMessage("ERROR: could not upload stdout/stderr of "+job, e);
+      e.printStackTrace();
+      ok = false;
+    }
+    return ok;
+  }
   public boolean postProcess(JobInfo job){
-    // TODO Auto-generated method stub
-    return false;
+    Debug.debug("PostProcessing for job " + job.getName(), 2);
+    if(copyToFinalDest(job)){
+      try{
+        // Delete the local run directory
+        String runDir = runDir(job);
+        LocalStaticShellMgr.deleteDir(new File(runDir));
+      }
+      catch(Exception e){
+        error = e.getMessage();
+        return false;
+      }
+      // Clean the job off the grid
+      try{
+        try{
+          Debug.debug("Cleaning : " + job.getName() + ":" + job.getJobId(), 3);
+          wmProxyAPI.jobPurge(job.getJobId());
+        }
+        catch(Exception ae){
+          logFile.addMessage("Exception during purging of " + job.getName() + ":" + job.getJobId() + ":\n" +
+                             "\tException\t: " + ae.getMessage(), ae);
+          ae.printStackTrace();
+        }
+      }
+      catch(Exception e){
+        Debug.debug("Could not clean job. Probably already deleted. "+
+            job.getName()+". "+e.getMessage(), 3);
+        e.printStackTrace();
+        //return false;
+      }
+      return true;
+    }
+    else{
+      return false;
+    }
   }
 
   public boolean preProcess(JobInfo job){
-    // TODO Auto-generated method stub
-    return false;
+    // preserve ~ in tmp stdout/stderr, so checking from another machine might work
+    final String stdoutFile = unparsedWorkingDir+"/"+job.getName() + "/" + "stdout";
+    final String stderrFile = unparsedWorkingDir+"/"+job.getName() + "/" + "stderr";
+    job.setOutputs(stdoutFile, stderrFile);
+    return true;
   }
 
   public String getError(String csName){
