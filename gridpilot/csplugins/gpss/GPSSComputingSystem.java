@@ -1475,13 +1475,13 @@ public class GPSSComputingSystem implements ComputingSystem{
   }
   
   /**
-   * If a "runtime catalog URL" is defined, copies records from it
+   * If "runtime catalog URLs" is defined, copies records from them
    * to the 'local' runtime DBs. The copying is done even if there's
    * already a record with the same name and CS "GPSS", but empty URL
    * (this will be a copy of a record put in the remote DB by one of the
    * pull providers).
    * The pull brokering takes this into account, giving preference to jobs requiring
-   * already present RTEs.
+   * already present RTEs (no URL).
     */
   private void syncRTEsFromCatalog(){
     // TODO
