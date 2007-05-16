@@ -23,6 +23,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -49,6 +50,7 @@ import java.util.Iterator;
 import java.util.Random;
 import java.util.StringTokenizer;
 import java.util.Vector;
+import java.util.zip.GZIPInputStream;
 
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -89,6 +91,9 @@ import org.gridforum.jgss.ExtendedGSSCredential;
 import org.gridforum.jgss.ExtendedGSSManager;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
+
+import com.ice.tar.TarEntry;
+import com.ice.tar.TarInputStream;
 
 /**
  * @author Frederik.Orellana@cern.ch
@@ -1866,4 +1871,47 @@ public class Util{
      }
     return ret;
   }
+  
+  public static void gunzip(File source, File target)
+     throws FileNotFoundException, IOException{
+    // Open the compressed file
+    GZIPInputStream in = new GZIPInputStream(new FileInputStream(source));
+    // Open the output file
+    OutputStream out = new FileOutputStream(target);
+    // Transfer bytes from the compressed file to the output file
+    byte[] buf = new byte[1024];
+    int len;
+    while((len=in.read(buf))>0){
+        out.write(buf, 0, len);
+    }
+    // Close the file and stream
+    in.close();
+    out.close();
+  }
+  
+  public static void unTar(File source, File untarDir) throws IOException{
+    FileInputStream in = new FileInputStream(source);
+    TarInputStream tin = new TarInputStream(in);
+    TarEntry tarEntry = tin.getNextEntry();
+    if(untarDir.exists() && untarDir.isDirectory()){
+      while(tarEntry!=null){
+        File destPath = new File(untarDir, tarEntry.getName());
+        Debug.debug("Processing " + destPath.getAbsoluteFile(), 3);
+        if(!tarEntry.isDirectory()){
+           FileOutputStream fout = new FileOutputStream(destPath);
+           tin.copyEntryContents(fout);
+           fout.close();
+        }
+        else{
+           destPath.mkdir();
+        }
+        tarEntry = tin.getNextEntry();
+     }
+     tin.close();
+    }
+    else{
+       throw new IOException("That destination directory doesn't exist! " + untarDir);
+    }
+  }
+  
 }
