@@ -9,6 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Vector;
@@ -58,8 +59,13 @@ public class GPSSComputingSystem implements ComputingSystem{
   private Vector allowedSubjects = null;
   private long providerTimeout = -1;
   // List of urls of created RTEs in remote database.
-  // This is to be able to clean up on exit.
+  // This is to be able to clean up proxied RTEs on exit.
   private HashSet rteUrls = null;
+  // Map of id -> DBPluginMgr.
+  // This is to be able to clean up RTEs from catalogs on exit.
+  private HashMap toDeleteRtes = null;
+  // List of (Janitor) catalogs from where to get RTEs
+  private String [] rteCatalogUrls = null;
   
   // RTEs are refreshed from entries written by pull nodes in remote database
   // every RTE_SYNC_DELAY milliseconds.
@@ -89,6 +95,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     localRuntimeDBs = configFile.getValues(csName, "runtime databases");
     remoteDB = configFile.getValue(csName, "remote database");
     remoteDir = configFile.getValue(csName, "remote directory");
+    rteCatalogUrls = configFile.getValues(csName, "runtime catalog URLs");
     rteUrls = new HashSet();
     timerSyncRTEs.setDelay(RTE_SYNC_DELAY);
     // Set user
@@ -1471,7 +1478,7 @@ public class GPSSComputingSystem implements ComputingSystem{
 
   public void setupRuntimeEnvironments(String csName){
     syncRTEsFromRemoteDB();
-    syncRTEsFromCatalog();
+    syncRTEsFromCatalogs();
   }
   
   /**
@@ -1483,8 +1490,43 @@ public class GPSSComputingSystem implements ComputingSystem{
    * The pull brokering takes this into account, giving preference to jobs requiring
    * already present RTEs (no URL).
     */
-  private void syncRTEsFromCatalog(){
-    // TODO
+  private void syncRTEsFromCatalogs(){
+    if(rteCatalogUrls==null){
+      return;
+    }
+    DBPluginMgr localDBMgr = null;
+    RteRdfParser rteRdfParser = new RteRdfParser(rteCatalogUrls);
+    String id = null;
+    String rteNameField = null;
+    String newId = null;
+    for(int ii=0; ii<localRuntimeDBs.length; ++ii){
+      try{
+        localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);
+        DBResult rtes = rteRdfParser.getDBResult(localDBMgr);
+        id = null;
+        for(int i=0; i<rtes.values.length; ++i){
+          // Check if RTE already exists
+          rteNameField = Util.getNameField(
+              localDBMgr.getDBName(), "runtimeEnvironment");
+          id = localDBMgr.getRuntimeEnvironmentID(
+              (String) rtes.getRow(i).getValue(rteNameField), "GPSS");
+          if(id==null || id.equals("-1")){
+            if(localDBMgr.createRuntimeEnvironment(rtes.getRow(i).values)){
+              // Tag for deletion
+              newId = localDBMgr.getRuntimeEnvironmentID(
+                  (String) rtes.getRow(i).getValue(rteNameField), "GPSS");
+              if(newId!=null && !id.equals("-1")){
+                toDeleteRtes.put(newId, localDBMgr.getDBName());
+              }
+            }
+          }
+        }
+      }
+      catch(Exception e){
+        error = "Could not load local runtime DB "+localRuntimeDBs[ii]+"."+e.getMessage();
+        Debug.debug(error, 1);
+      }
+    }
   }
   
   /**
@@ -1741,7 +1783,21 @@ public class GPSSComputingSystem implements ComputingSystem{
           }
         }
       }
+      
+      // Delete RTEs from catalog(s)
+      for(Iterator it=toDeleteRtes.keySet().iterator(); it.hasNext();){
+        id = (String) it.next();
+        if(toDeleteRtes.get(id).equals(localRuntimeDBs[i])){
+          ok = localDBMgr.deleteRuntimeEnvironment(id);
+          if(!ok){
+            error = "WARNING: could not delete runtime environment " +
+            id+" from database "+localDBMgr.getDBName();
+            Debug.debug(error, 1);
+          }
+        }
+      }
     }
+    
     // Delete proxied RTEs
     String url = null;
     DBPluginMgr remoteDBMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
