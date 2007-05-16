@@ -1499,18 +1499,23 @@ public class GPSSComputingSystem implements ComputingSystem{
     String id = null;
     String rteNameField = null;
     String newId = null;
+    String url = null;
     for(int ii=0; ii<localRuntimeDBs.length; ++ii){
       try{
         localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);
         DBResult rtes = rteRdfParser.getDBResult(localDBMgr);
-        id = null;
         for(int i=0; i<rtes.values.length; ++i){
+          id = null;
+          url = null;
           // Check if RTE already exists
           rteNameField = Util.getNameField(
               localDBMgr.getDBName(), "runtimeEnvironment");
           id = localDBMgr.getRuntimeEnvironmentID(
               (String) rtes.getRow(i).getValue(rteNameField), "GPSS");
-          if(id==null || id.equals("-1")){
+          if(id!=null && !id.equals("-1")){
+            url = (String) localDBMgr.getRuntimeEnvironment(id).getValue("url");
+          }
+          if(id==null || id.equals("-1") || url==null || url.equals("")){
             if(localDBMgr.createRuntimeEnvironment(rtes.getRow(i).values)){
               // Tag for deletion
               newId = localDBMgr.getRuntimeEnvironmentID(
