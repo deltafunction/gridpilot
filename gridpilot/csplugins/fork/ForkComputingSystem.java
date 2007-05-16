@@ -1,9 +1,13 @@
 package gridpilot.csplugins.fork;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.DataInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.URL;
@@ -172,7 +176,7 @@ public class ForkComputingSystem implements ComputingSystem{
             GridPilot.resourcesPath+testScriptName);
         in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
         String line = null;
-        while((line = in.readLine())!=null){
+        while((line=in.readLine())!=null){
           fileStr.append(line+"\n");
         }
         in.close();
@@ -353,6 +357,7 @@ public class ForkComputingSystem implements ComputingSystem{
     }
     
     String name = null;
+    String deps = "";
     String cert = getCertificate(shellMgr);
     String url = getUrl();
     
@@ -368,16 +373,41 @@ public class ForkComputingSystem implements ComputingSystem{
         // Get the name
         Debug.debug("File found: "+runtimeDirectory+":"+fil, 3);
         name = fil.substring(runtimeDirectory.length()+1);
-                
+        // Read dependencies from the file.
+        // The notation is:
+        // # ARC_RTE_DEP=<RTE name 1>
+        // # ARC_RTE_DEP=<RTE name 2>
+        // ...
+        DataInputStream dis = null;
+        try{
+          dis = new DataInputStream(new FileInputStream(new File(runtimeDirectory, fil)));
+          BufferedReader in = new BufferedReader(new InputStreamReader(dis));
+          String line = null;
+          String depPattern = "^\\S*#\\sARC_RTE_DEP=([^#]+).*";
+          while((line=in.readLine())!=null){
+            if(line.matches(depPattern)){
+              if(deps.length()>0){
+                deps += " ";
+              }
+              deps += line.replaceFirst(depPattern, "$1");
+            }
+          }
+          in.close();
+        }
+        catch(IOException e){
+          String error = "Could not open "+runtimeDirectory+"/"+fil;
+          e.printStackTrace();
+          Debug.debug(error, 2);
+        }
         if(name!=null && name.length()>0){
           // Write the entry in the local DB
           Debug.debug("Writing RTE in local DB "+localDBMgr.getDBName(), 3);
-          createRTE(localDBMgr, name, cs, null, null);
+          createRTE(localDBMgr, name, cs, deps, null, null);
           // Register with local and remote DB with CS "GPSS"
           if(cert!=null && cert.length()>0 && remoteDBMgr!=null){
-            createRTE(localDBMgr, name, "GPSS", cert, null);
-            createRTE(remoteDBMgr, name, "GPSS", cert, url);
-            createRTE(remoteDBMgr, name, cs, null, null);
+            createRTE(localDBMgr, name, "GPSS", deps, cert, null);
+            createRTE(remoteDBMgr, name, "GPSS", deps, cert, url);
+            createRTE(remoteDBMgr, name, cs, deps, null, null);
           }         
           else{
             logFile.addMessage("WARNING: no certificate or no remote DB. Disabling remote registration of " +
@@ -454,7 +484,7 @@ public class ForkComputingSystem implements ComputingSystem{
   }
   
   protected void createRTE(DBPluginMgr dbPluginMgr, String name, String csName,
-      String cert, String url){
+      String depends, String cert, String url){
     if(dbPluginMgr==null){
       return;
     }
@@ -480,6 +510,9 @@ public class ForkComputingSystem implements ComputingSystem{
       }
       else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
         rtVals[i] = csName;
+      }
+      else if(runtimeEnvironmentFields[i].equalsIgnoreCase("depends") && depends!=null){
+        rtVals[i] = depends;
       }
       else if(runtimeEnvironmentFields[i].equalsIgnoreCase("certificate") && cert!=null){
         rtVals[i] = cert;
