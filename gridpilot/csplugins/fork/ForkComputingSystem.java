@@ -1,13 +1,11 @@
 package gridpilot.csplugins.fork;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.URL;
@@ -373,6 +371,9 @@ public class ForkComputingSystem implements ComputingSystem{
         // Get the name
         Debug.debug("File found: "+runtimeDirectory+":"+fil, 3);
         name = fil.substring(runtimeDirectory.length()+1);
+        if(name.startsWith("softwareCache")){
+          continue;
+        }
         // Read dependencies from the file.
         // The notation is:
         // # ARC_RTE_DEP=<RTE name 1>
@@ -881,7 +882,7 @@ public class ForkComputingSystem implements ComputingSystem{
         logFile.addMessage("WARNING: could not write user proxy.", e);
       }
     }
-    return setupRemoteJobRTEs(job, shellMgr) &&
+    return setupJobRTEs(job, shellMgr) &&
        setRemoteOutputFiles(job) && getInputFiles(job, shellMgr);
   }
   
@@ -947,7 +948,7 @@ public class ForkComputingSystem implements ComputingSystem{
    * @param shellMgr
    * @return false if a required RTE is not present and could not be downloaded.
    */
-  protected boolean setupRemoteJobRTEs(JobInfo job, ShellMgr shellMgr){
+  protected boolean setupJobRTEs(JobInfo job, ShellMgr shellMgr){
     if(runtimeDirectory==null || runtimeDirectory.length()==0 ||
         !(new File(runtimeDirectory)).exists()){
       logFile.addMessage("ERROR: could not download RTE to "+runtimeDirectory);
@@ -960,9 +961,58 @@ public class ForkComputingSystem implements ComputingSystem{
     String rteNamesString = (String) transformation.getValue(
         Util.getTransformationRuntimeReference(job.getDBName())[1]);
     String [] rteNames = Util.split(rteNamesString);
+    String rteId = null;
+    DBRecord rteRecord = null;
+    RteInstaller rteInstaller = null;
+    String url = null;
+    String [] deps = null;
     String rteName = null;
-    
-    // TODO
+    for(int i=0; i<rteNames.length; ++i){
+      try{
+        deps = Util.splitUrls((String) rteRecord.getValue("depends"));
+        for(int j=0; j<deps.length+1; ++j){
+          // First see if the dependencies are there or will install.
+          // Then, install the RTE.
+          if(j==deps.length){
+            rteName = rteNames[i];
+          }
+          else{
+            rteName = deps[i];
+          }
+          rteId = dbPluginMgr.getRuntimeEnvironmentID(rteName, job.getCSName());
+          if(rteId==null || rteId.equals("-1")){
+            logFile.addMessage("ERROR: RTE "+rteNames[i]+" not found.");
+            return false;
+          }
+          if(toCleanupRTEs.contains(rteNames[i])){
+            continue;
+          }
+          rteRecord = dbPluginMgr.getRuntimeEnvironment(rteId);
+          url = (String) rteRecord.getValue("url");
+          if(url!=null && !url.equals("null") && !url.equals("")){
+            rteInstaller = new RteInstaller(url, runtimeDirectory, rteNames[i], shellMgr);
+            try{
+              rteInstaller.install();
+            }
+            catch(Exception e){
+              e.printStackTrace();
+              logFile.addMessage("ERROR: RTE "+rteNames[i]+" could not be installed.", e);
+              return false;
+            }
+          }
+          else{
+            logFile.addMessage("ERROR: RTE "+rteNames[i]+" cannot be installed " +
+                  "dynamically; no URL found.");
+            return false;
+          }
+        }
+      }
+      catch(Exception e){
+        logFile.addMessage("ERROR: could not install RTE "+rteNames[i], e);
+        e.printStackTrace();
+        return false;
+      }
+    }
     return false;
   }
 
