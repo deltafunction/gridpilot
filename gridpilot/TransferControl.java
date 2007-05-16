@@ -299,6 +299,9 @@ public class TransferControl{
           Util.arrayToString(srcUrls)+"->"+Util.arrayToString(destUrls));
     }
     
+    // TODO: caching: check if srcUrls have already been downloaded and
+    // if they have changed
+    
     // Start the transfers
     ids = GridPilot.getClassMgr().getFTPlugin(
         ftPluginName).startCopyFiles(srcUrls, destUrls);
