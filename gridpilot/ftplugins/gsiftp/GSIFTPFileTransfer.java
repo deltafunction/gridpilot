@@ -5,6 +5,10 @@ import java.awt.event.MouseEvent;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.TreeSet;
 import java.util.Vector;
@@ -35,6 +39,7 @@ import gridpilot.FileTransfer;
 import gridpilot.LocalStaticShellMgr;
 import gridpilot.GridPilot;
 import gridpilot.StatusBar;
+import gridpilot.TransferControl;
 import gridpilot.Util;
 
 public class GSIFTPFileTransfer implements FileTransfer {
@@ -984,12 +989,103 @@ public class GSIFTPFileTransfer implements FileTransfer {
     return gridFtpClient.getSize(url.getPath());
   }
   
+  private Date makeDate(String dateInput){
+    Date date = null;
+    try{
+      SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
+      date = df.parse(dateInput);
+    }
+    catch(Throwable e){
+      Debug.debug("Could not set date. "+e.getMessage(), 1);
+      e.printStackTrace();
+    }
+    return date;
+  }
+
+  private String makeDateString(Date date){
+    String dateString =  null;
+    try{
+      SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
+      dateString = df.format(date);
+    }
+    catch(Throwable e){
+      Debug.debug("Could not parse date. "+e.getMessage(), 1);
+      e.printStackTrace();
+    }
+    return dateString;
+  }
+
+  /**
+   * Checks if a given source has already been downloaded and is still there
+   * and if so, if the source has changed since the download (date and size).
+   */
+  private boolean checkCache(GridFTPClient client, UrlCopy urlCopy){
+    File destinationFile = new File(urlCopy.getDestinationUrl().getPath());
+    File cacheInfoDir = new File(destinationFile.getParentFile().getAbsolutePath(), ".gridpilot_info");
+    File cacheInfoFile = new File(cacheInfoDir, destinationFile.getName());
+    long cachedSize = -1;
+    Date cachedDate = null;
+    boolean cacheOk = false;
+    try{
+      if(!cacheInfoDir.exists()){
+        cacheInfoDir.mkdir();
+      }
+      long fileSize = client.getSize(urlCopy.getDestinationUrl().getPath());
+      Date modificationDate = client.getLastModified(urlCopy.getDestinationUrl().getPath());
+      if(cacheInfoFile.exists()){
+        // Parse the file. It has the format:
+        // date: <date>
+        // size: <size>
+        RandomAccessFile cacheRAF = new RandomAccessFile(cacheInfoFile.getAbsolutePath(), "rw");
+        String line = "";
+        while(line!=null){
+           line = cacheRAF.readLine();
+           if(line.startsWith("date: ")){
+             cachedDate = makeDate(line.replaceFirst("date: (.*)", "$1"));
+           }
+           if(line.startsWith("size: ")){
+             cachedSize = Long.parseLong(line.replaceFirst("size: (.*)", "$1"));
+           }
+        }
+        cacheRAF.close();
+      }
+      if(destinationFile.exists() && cachedDate!=null && cachedSize>-1){
+        if(modificationDate!=null && fileSize>-1){
+          if(cachedDate.equals(modificationDate) && cachedSize==fileSize){
+            cacheOk = true;
+          }
+          else{
+            // if the file is there, but not up to date, move it out of the way
+            try{
+              destinationFile.renameTo(new File(destinationFile.getAbsolutePath()+".bk"));
+            }
+            catch(Exception e){
+            }
+          }
+        }
+      }
+      if(!cacheOk && modificationDate!=null && fileSize>-1){
+        // write the file size and modification date to .gridpilot_cache/.<file name>
+        LocalStaticShellMgr.writeFile(cacheInfoFile.getAbsolutePath(),
+            "date: "+makeDateString(modificationDate), false);
+        LocalStaticShellMgr.writeFile(cacheInfoFile.getAbsolutePath(),
+            "size: "+Long.toString(fileSize), true);
+      }
+    }
+    catch(Exception e){
+      cacheOk = false;
+      e.printStackTrace();
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: problem checking cache. File will be downloaded.", e);
+    }
+    return cacheOk;
+  }
 
   public String[] startCopyFiles(GlobusURL[] srcUrls, GlobusURL[] destUrls)
      throws UrlCopyException {
     Debug.debug("", 2);
     UrlCopyTransferListener urlCopyTransferListener = null;
     String [] ret = new String[srcUrls.length];
+    GridFTPClient srcClient = null;
     Debug.debug("Copying "+srcUrls.length+" files", 2);
     for(int i=0; i<srcUrls.length; ++i){
       try{
@@ -1000,7 +1096,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
         if(srcUrls[i].getProtocol().equalsIgnoreCase("gsiftp") &&
             destUrls[i].getProtocol().equalsIgnoreCase("gsiftp")){
           urlCopy.setUseThirdPartyCopy(true);
-          GridFTPClient srcClient = connect(srcUrls[i].getHost(), srcUrls[i].getPort());
+          srcClient = connect(srcUrls[i].getHost(), srcUrls[i].getPort());
           GridFTPClient dstClient = connect(destUrls[i].getHost(), destUrls[i].getPort());
           Authorization srcAuth = srcClient.getAuthorization();
           Authorization dstAuth = dstClient.getAuthorization();
@@ -1017,12 +1113,26 @@ public class GSIFTPFileTransfer implements FileTransfer {
         jobs.put(id, urlCopy);
         urlCopyTransferListeners.put(id, urlCopyTransferListener);
         ret[i] = id;
+        final GridFTPClient checkClient = srcClient;
         Thread t = new Thread(){
           public void run(){
             try{
-              Debug.debug("Starting the actual transfer...", 2);
-              urlCopy.copy();
-              ((UrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferCompleted();
+              // Check if file is cached and the cache is up to date
+              if(urlCopy.getSourceUrl().getProtocol().equalsIgnoreCase("gsiftp") &&
+                  urlCopy.getDestinationUrl().getProtocol().equalsIgnoreCase("file")){
+                Debug.debug("Checking cache...", 2);
+                if(checkCache(checkClient, urlCopy)){
+                  Debug.debug("Cache ok, not starting the actual transfer...", 2);
+                  //urlCopy.cancel();
+                  ((UrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferCompleted();
+                }
+                else{
+                  // Start the transfer.
+                  Debug.debug("Starting the actual transfer...", 2);
+                  urlCopy.copy();
+                  ((UrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferCompleted();
+                }
+              }
             }
             catch(UrlCopyException ue){
               try{
