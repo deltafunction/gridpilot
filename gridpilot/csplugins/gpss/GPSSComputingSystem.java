@@ -294,7 +294,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     }
     checksum.update(name.getBytes());
     String dir = checksum.getFormattedValue();
-    Debug.debug("Using directory name from cksum of jobDefinition name: "+dir, 2);
+    Debug.debug("Using directory name from cksum of name: "+dir, 2);
     if(!remoteDir.endsWith("/")){
       remoteDir += "/";
     }

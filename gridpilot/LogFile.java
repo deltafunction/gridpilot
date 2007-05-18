@@ -76,11 +76,12 @@ public class LogFile {
     }
     try{
       String line = file.readLine();
-      if(line == null)
+      if(line==null){
         return null;
+      }
       String res = "";
 
-      while(line != null && !line.trim().equals(messagesSeparator)){
+      while(line!=null && !line.trim().equals(messagesSeparator)){
         // read file until next separator is reached
         res += line + "\n";
         line = file.readLine();
