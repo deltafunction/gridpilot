@@ -169,10 +169,10 @@ public class TransferControl{
             }
             
             TransferInfo transfer = (TransferInfo) toSubmitTransfers.remove(0);
-            //statusBar.setLabel("Queueing "+transfer.getSource().getURL()+"->"+
+            //statusBar.setLabel("Queueing "+transfer.getSourceURL()+"->"+
             //    transfer.getDestination().getURL());
             submittingTransfers.add(transfer);
-            Debug.debug("Removed "+transfer.getSource().getURL(), 3);
+            Debug.debug("Removed "+transfer.getSourceURL(), 3);
             Debug.debug("with id "+transfer.getTransferID(), 3);
             Debug.debug("Now toSubmitTransfers has "+toSubmitTransfers.size()+" elements", 3);
             Debug.debug("Now submittingTransfers has "+submittingTransfers.size()+" elements", 3);
@@ -271,7 +271,6 @@ public class TransferControl{
    * @param   srcUrls    Array of source URLs.
    * @param   destUrls   Array of destination URLs.
    */
-  // TODO: caching
   public static String [] startCopyFiles(GlobusURL [] srcUrls, GlobusURL [] destUrls)
      throws Exception {
 
@@ -449,7 +448,7 @@ public class TransferControl{
 
       transfers[i].setInternalStatus(FileTransfer.STATUS_WAIT);
 
-      statusTable.setValueAt(transfers[i].getSource().getURL(),
+      statusTable.setValueAt(transfers[i].getSourceURL(),
           transfers[i].getTableRow(), TransferInfo.FIELD_SOURCE);
       statusTable.setValueAt(transfers[i].getDestination().getURL(),
           transfers[i].getTableRow(), TransferInfo.FIELD_DESTINATION);
@@ -481,7 +480,7 @@ public class TransferControl{
       for(int i=0; i<sourceListLen; ++i){
         Debug.debug("trial --->"+i, 3);
 
-        try{
+        try{          
           ids = GridPilot.getClassMgr().getFTPlugin(ftPlugin).startCopyFiles(
               sources, destinations);          
           if(ids.length!=transfers.length){
@@ -493,7 +492,10 @@ public class TransferControl{
         catch(Exception ee){
           // try on csc11.005145.PythiaZmumu.recon.AOD.v11004205
           ee.printStackTrace();
-          // make sure we don't try this source again
+          // Make sure we don't try this source again... In fact we make sure
+          // none of the sources of this batch are tried again. Perhaps a bit overkill...
+          // If the reason is that a server is down it's fine, but if the reason is that
+          // a single file is simply missing on this server, we could have gotten all the others.
           if(i<sourceListLen-1){
             for(int j=0; j<transfers.length; ++j){
               transfers[j].removeSource(transfers[j].getSource());
@@ -501,9 +503,13 @@ public class TransferControl{
               Debug.debug("Retrying transfer, sources left: " +
                   transfers[j].getSources().length+
                   ". Closest source is now: "+
-                  transfers[j].getSource().getURL(), 2);
+                  transfers[j].getSourceURL(), 2);
               logFile.addMessage("WARNING: retrying transfer, closest source is now: "+
-                  transfers[j].getSource().getURL(), ee);
+                  transfers[j].getSourceURL(), ee);
+            }
+            for(int j=0; j<transfers.length; ++j){
+              sources[j] = transfers[j].getSource();
+              destinations[j] = transfers[j].getDestination();
             }
           }
           continue;
@@ -512,7 +518,7 @@ public class TransferControl{
       }
       
       if(ids==null){
-        throw new IOException("Starting transfer failed with all sources.");
+        throw new IOException("Starting transfer failed for all transfers in this batch.");
       }
 
       String userInfo = GridPilot.getClassMgr().getFTPlugin(
@@ -539,7 +545,7 @@ public class TransferControl{
         try{
           statusTable.setValueAt("NOT started!", transfers[i].getTableRow(),
               TransferInfo.FIELD_TRANSFER_ID);
-          statusTable.setValueAt(transfers[i].getSource().getURL(), transfers[i].getTableRow(),
+          statusTable.setValueAt(transfers[i].getSourceURL(), transfers[i].getTableRow(),
               TransferInfo.FIELD_SOURCE);
           statusTable.setValueAt(transfers[i].getDestination().getURL(), transfers[i].getTableRow(),
               TransferInfo.FIELD_DESTINATION);
@@ -705,7 +711,7 @@ public class TransferControl{
       TransferInfo transfer = (TransferInfo) e.nextElement();
       statusTable.setValueAt("Transfer not queued (cancelled)!",
           transfer.getTableRow(), TransferInfo.FIELD_TRANSFER_ID);
-      statusTable.setValueAt(transfer.getSource().getURL(), transfer.getTableRow(),
+      statusTable.setValueAt(transfer.getSourceURL(), transfer.getTableRow(),
           TransferInfo.FIELD_SOURCE);
       statusTable.setValueAt(transfer.getDestination().getURL(), transfer.getTableRow(),
           TransferInfo.FIELD_DESTINATION);
@@ -1658,5 +1664,5 @@ public class TransferControl{
     }
     return true;
   }
-
+  
 }
