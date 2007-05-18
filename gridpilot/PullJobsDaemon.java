@@ -4,12 +4,16 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
 
 import javax.swing.Timer;
+
+import jonelo.jacksum.JacksumAPI;
+import jonelo.jacksum.algorithm.AbstractChecksum;
 
 import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
@@ -486,6 +490,7 @@ public class PullJobsDaemon{
     GlobusURL destUrl = null;
     int lastSlash = -1;
     String fileName = null;
+    String cacheSubdir = null;
     for(int i=0; i<inputFiles.length; ++i){
       // Get the remote input file URLs.
       if(Util.urlIsRemote(inputFiles[i])){
@@ -493,15 +498,23 @@ public class PullJobsDaemon{
           srcUrl = new GlobusURL(inputFiles[i]);
           lastSlash = inputFiles[i].lastIndexOf("/");
           fileName = inputFiles[i].substring(lastSlash + 1);
-          // TODO: implement real caching: right now, if two input files have the
-          // same name we're in trouble...
-          destFile = new File(cacheDir, fileName);
+          
+          // Generate unique name of subdir to hold file.
+          // This is to avoid problems if two input files have the same name.
+          AbstractChecksum checksum;
+          checksum = JacksumAPI.getChecksumInstance("cksum");
+          checksum.update(inputFiles[i].getBytes());
+          String subDir = checksum.getFormattedValue();
+          Debug.debug("Using directory name from cksum of URL: "+subDir, 2);
+          
+          destFile = new File(cacheDir, subDir);
+          destFile.mkdir();
+          destFile = new File(destFile, fileName);
           destFileName = destFile.getCanonicalPath();
           destFileName = destFileName.replaceFirst("^/", "");
           destFileName = "file:////"+destFileName;
           downloadVector.add(destFileName);
           destUrl = new GlobusURL(destFileName);
-          destFile.delete();
           TransferInfo transfer = new TransferInfo(srcUrl, destUrl);
           Debug.debug("Adding transfer: "+transfer, 2);
           transferVector.add(transfer);
