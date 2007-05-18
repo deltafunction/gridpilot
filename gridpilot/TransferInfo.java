@@ -101,6 +101,15 @@ public class TransferInfo extends DBRecord{
     return source;
   }
   
+  public String getSourceURL(){
+   if(source==null){
+     return "";
+   }
+   else{
+     return source.getURL();
+   }
+  }
+  
   public GlobusURL [] getSources(){
     GlobusURL [] srcs = new GlobusURL[sources.size()];
     int i = 0;
@@ -136,6 +145,9 @@ public class TransferInfo extends DBRecord{
   }
 
   public void removeSource(GlobusURL _source){
+    if(_source==null || sources==null || sources.isEmpty()){
+      return;
+    }
     Debug.debug("Removing source "+_source.getURL()+
         " from "+sources.size(), 3);
     StringBuffer debugSources = new StringBuffer("");
