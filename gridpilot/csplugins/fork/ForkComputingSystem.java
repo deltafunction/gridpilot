@@ -381,7 +381,7 @@ public class ForkComputingSystem implements ComputingSystem{
         // ...
         DataInputStream dis = null;
         try{
-          dis = new DataInputStream(new FileInputStream(new File(runtimeDirectory, fil)));
+          dis = new DataInputStream(new FileInputStream(fil));
           BufferedReader in = new BufferedReader(new InputStreamReader(dis));
           String line = null;
           String depPattern = "^\\S*#\\sARC_RTE_DEP=([^#]+).*";
