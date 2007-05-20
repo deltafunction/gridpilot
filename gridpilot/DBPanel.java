@@ -1368,14 +1368,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     Debug.debug("Creating job definition(s), "+getSelectedIdentifiers().length, 3);
     //JobDefCreationPanel panel = new JobDefCreationPanel(dbName, jobMgr, this, false);
     JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, this);
-    CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true);
+    CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true, false);
     pDialog.setTitle("jobDefinition");
   }
 
   private void createJobDefinitions(){
     Debug.debug("Creating job definition(s), "+getSelectedIdentifiers().length, 3);
     JobDefCreationPanel panel = new JobDefCreationPanel(dbName, null, this, new Boolean(false));
-    CreateEditDialog pDialog = new CreateEditDialog(panel, false, false, true);
+    CreateEditDialog pDialog = new CreateEditDialog(panel, false, false, true, true);
     pDialog.setTitle("jobDefinition");
   }
 
@@ -1392,7 +1392,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     JobDefCreationPanel panel = null;
     panel = new JobDefCreationPanel(dbName, selectedDatasetID, this,
         new Boolean(true));
-    CreateEditDialog pDialog = new CreateEditDialog(panel, true, false, true);
+    CreateEditDialog pDialog = new CreateEditDialog(panel, true, false, true, true);
     pDialog.setTitle(displayName!=null?displayName:tableName);
     //pDialog.setVisible(true);
   }
@@ -1650,7 +1650,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */ 
   private void createDatasets(){
     CreateEditDialog pDialog = new CreateEditDialog(
-        new DatasetCreationPanel(dbPluginMgr, this, false), false, false, true);
+        new DatasetCreationPanel(dbPluginMgr, this, false), false, false, true, false);
     pDialog.setTitle(tableName);
  }
   
@@ -1659,7 +1659,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */ 
  private void editDataset(){
    CreateEditDialog pDialog = new CreateEditDialog(
-     new DatasetCreationPanel(dbPluginMgr, this, true), true, false, true);
+     new DatasetCreationPanel(dbPluginMgr, this, true), true, false, true, false);
    pDialog.setTitle(tableName);
  }
 
@@ -1780,7 +1780,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void createTransformation(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new TransformationCreationPanel(dbPluginMgr, this, false),
-       false, false, true);
+       false, false, true, false);
     pDialog.setTitle(tableName);
   }
   /**
@@ -1789,21 +1789,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void createRuntimeEnvironment(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new RuntimeCreationPanel(dbPluginMgr, this, false),
-       false, false, true);
+       false, false, true, false);
     pDialog.setTitle(tableName);
   }
 
   private void editTransformation(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new TransformationCreationPanel(dbPluginMgr, this, true),
-       true, false, true);
+       true, false, true, false);
     pDialog.setTitle(tableName);
   }
   
   private void editRuntimeEnvironment(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new RuntimeCreationPanel(dbPluginMgr, this, true),
-       true, false, true);
+       true, false, true, false);
     pDialog.setTitle(tableName);
   }
 

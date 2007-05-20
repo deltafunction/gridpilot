@@ -31,9 +31,13 @@ public class JobCreationPanel extends CreateEditPanel{
   private Vector tcConstant = new Vector(); // contains all text components
   private String dbName = null;
   private ArrayList detailFields = new ArrayList();
-  ArrayList datasetFields = null;
+  private ArrayList datasetFields = null;
+  private HashMap metaData = null;
   // TODO: make this configurable?
   private String [] stdOutputNames = {"stdout", "stderr"};
+  
+  private static String LOCAL_NAME_STRING = " : Local name : ";
+  private static String REMOTE_NAME_STRING = " -> Remote name : ";
 
   // TODO: use JobMgr, move some functionality from here to there.
   
@@ -255,12 +259,12 @@ public class JobCreationPanel extends CreateEditPanel{
 
     JLabel [] jobAttributeLabels = new JLabel[jobParamNames.length];
 
-    // metadata information from the metadata field of the dataset
-    // we display nothing, jobCreator will take care of filling in
+    // metadata information from the metadata field of the dataset.
+    // We display nothing, jobCreator will take care of filling in
     // - IF the field is left empty
     String metaDataString = (String) dbPluginMgr.getDataset(
         datasetIDs[0]).getValue("metaData");
-    HashMap metaData = Util.parseMetaData(metaDataString);
+    metaData = Util.parseMetaData(metaDataString);
     HashSet metadatakeys = new HashSet(metaData.keySet());
     String key = null;
     for(Iterator it=metadatakeys.iterator(); it.hasNext();){
@@ -290,11 +294,17 @@ public class JobCreationPanel extends CreateEditPanel{
       if(jobParamNames[i].equalsIgnoreCase("nEvents") ||
           jobParamNames[i].equalsIgnoreCase("eventMin") ||
           jobParamNames[i].equalsIgnoreCase("eventMax") ||
-          jobParamNames[i].equalsIgnoreCase("inputFileNames") ||
-          metaData.containsKey(jobParamNames[i].toLowerCase())){
+          jobParamNames[i].equalsIgnoreCase("inputFileNames")){
         detailFields.add(jobAttributeLabels[i]);
         detailFields.add(tcJobParam[i]);
         tcJobParam[i].setText("");
+      }
+      // The metaData field of the job definition can be used to store
+      // default settings for the fields of jobCreation.
+      else if(metaData.containsKey(jobParamNames[i].toLowerCase())){
+        detailFields.add(jobAttributeLabels[i]);
+        detailFields.add(tcJobParam[i]);
+        tcJobParam[i].setText((String) metaData.get(jobParamNames[i].toLowerCase()));
       }
       else if(jobParamNames[i].equalsIgnoreCase("castorInput")){
         detailFields.add(jobAttributeLabels[i]);
@@ -355,7 +365,7 @@ public class JobCreationPanel extends CreateEditPanel{
     String extension = "";
     String [] fullNameStrings;
     for(int i=0; i<outputMapNames.length; ++i, ++row){
-      pAttributes.add(new JLabel(outputMapNames[i] + " : Local name : "),
+      pAttributes.add(new JLabel(outputMapNames[i] + LOCAL_NAME_STRING),
           new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
               GridBagConstraints.CENTER,
               GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
@@ -378,7 +388,7 @@ public class JobCreationPanel extends CreateEditPanel{
               GridBagConstraints.CENTER,
               GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
 
-      pAttributes.add(new JLabel(" -> Remote name : "),
+      pAttributes.add(new JLabel(REMOTE_NAME_STRING),
           new GridBagConstraints(2, row, 1, 1, 0.0, 0.0,
               GridBagConstraints.CENTER,
               GridBagConstraints.BOTH, new Insets(5, 5, 5, 5), 0, 0));
@@ -513,6 +523,28 @@ public class JobCreationPanel extends CreateEditPanel{
     for(int i=0; i<tcStdOutput.length; ++i){
       tcStdOutput[i].setEnabled(show);
     }
+  }
+  
+  // TODO
+  public void saveSettings(){
+    // get all field:values of the form
+    for(int i=0; i<pAttributes.getComponentCount()-1; ++i){
+      if(pAttributes.getComponent(i).getClass().isInstance(JLabel.class) &&
+          (pAttributes.getComponent(i+1).getClass().isInstance(JTextComponent.class) ||
+              pAttributes.getComponent(i+1).getClass().isInstance(JTextArea.class))){
+        // outputMapping, <>:<local name>:<>:<remote name>
+        if(((JLabel) pAttributes.getComponent(i)).getText().endsWith(LOCAL_NAME_STRING)){
+        }
+        else if(((JLabel) pAttributes.getComponent(i)).getText().equals(REMOTE_NAME_STRING)){
+        }
+        // Normal, field\::value
+        else{
+        }
+      }
+    }
+    
+    
+    dbPluginMgr.getDataset(datasetIDs[0]).getValue("metaData");
   }
   
 }

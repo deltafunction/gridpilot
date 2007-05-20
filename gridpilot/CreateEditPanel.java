@@ -25,4 +25,10 @@ public abstract class CreateEditPanel extends JPanel{
   public void windowClosing(){
   }
 
+  // This is relevant only for JobDefCreationPanel, which has
+  // a method for saving the settings in the text fields as metadata
+  // in the dataset record.
+  public void saveSettings(){
+  }
+
 }

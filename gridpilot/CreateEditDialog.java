@@ -7,23 +7,26 @@ import java.awt.event.*;
 public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
 
   private static final long serialVersionUID = 1L;
-  private final int BCLOSE = 0;
-  private final int BCREATEUPDATE = 1;
-  private final int BCLEAR = 2;
+  private static final int BCLOSE = 0;
+  private static final int BCREATEUPDATE = 1;
+  private static final int BCLEAR = 2;
+  private static final int BSAVE_SETTINGS = 3;
   private JPanel pCreateEdit = new JPanel(new BorderLayout());
   private CreateEditPanel createEditPanel;
   private boolean editing;
   private JButton bClose = new JButton("Close");
   private JButton bCreateUpdate = null;
+  private JButton bSaveSettings = new JButton("Save these values");
   private JButton bClear = new JButton("Clear");
-  private JCheckBox cbShowResults = new JCheckBox("Show before writing to DB", true);
+  private JCheckBox cbShowResults = new JCheckBox("Confirm before writing", true);
   private boolean showDetailsCheckBox = false;
   private boolean showButtons = false;
+  private boolean showSaveSettings = false;
   private JCheckBox cbShowDetails = null;
   private JPanel buttonPanel = new JPanel();
 
   public CreateEditDialog(CreateEditPanel _panel, boolean _editing,
-      boolean _showDetailsCheckBox, boolean _showButtons){
+      boolean _showDetailsCheckBox, boolean _showButtons, boolean _showSaveSettings){
     
     super();
     
@@ -33,6 +36,7 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
     showButtons = _showButtons;
     createEditPanel = _panel;
     editing = _editing;
+    showSaveSettings = _showSaveSettings;
     
     this.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
     this.addWindowListener(new WindowAdapter(){
@@ -111,11 +115,18 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
       }
     });
 
+    bSaveSettings.setMnemonic(BSAVE_SETTINGS);
+    bSaveSettings.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        button_actionPerformed(e);
+      }
+    });
+
     pCreateEdit.add(createEditPanel, BorderLayout.CENTER);
 
     if(showButtons){
       if(showDetailsCheckBox){
-        cbShowDetails = new JCheckBox("Show Details", false);
+        cbShowDetails = new JCheckBox("Show details", false);
         cbShowDetails.addActionListener(new ActionListener(){
           public void actionPerformed(ActionEvent e){
             try{
@@ -133,7 +144,11 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
       buttonPanel.add(cbShowResults);
       buttonPanel.add(bClose);
       buttonPanel.add(bClear);
+      buttonPanel.add(new JLabel("|"));
       buttonPanel.add(bCreateUpdate);
+      if(showSaveSettings){
+        buttonPanel.add(bSaveSettings);
+      }
 
       pCreateEdit.add(buttonPanel, BorderLayout.SOUTH);
     }
@@ -164,6 +179,14 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
         new Thread(){
           public void run(){
             createEditPanel.create(cbShowResults.isSelected(), editing);
+          }
+        }.start();
+        break;
+
+      case BSAVE_SETTINGS :
+        new Thread(){
+          public void run(){
+            createEditPanel.saveSettings();
           }
         }.start();
         break;

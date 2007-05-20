@@ -574,7 +574,7 @@ public class GlobalFrame extends GPFrame{
     try{
       if(pDialog==null){
         Debug.debug("Creating new monitoring dialog", 2);
-        pDialog = new CreateEditDialog(monitoringPanel, false, false, false);
+        pDialog = new CreateEditDialog(monitoringPanel, false, false, false, false);
         pDialog.setTitle("Monitor");
         pDialog.pack();
         pDialog.setVisible(true);
@@ -597,7 +597,7 @@ public class GlobalFrame extends GPFrame{
     try{
       if(pDialog==null){
         Debug.debug("Creating new monitoring dialog", 2);
-        pDialog = new CreateEditDialog(monitoringPanel, false, false, false);
+        pDialog = new CreateEditDialog(monitoringPanel, false, false, false, false);
         pDialog.setTitle("Monitor");
         pDialog.pack();
       }

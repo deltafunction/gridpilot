@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -1792,6 +1793,39 @@ public class Util{
       e.printStackTrace();
     }
     return hm;
+  }
+  
+  public static String getNonMetaData(String str){
+    StringBuffer sb = new StringBuffer();
+    try{
+      InputStream is = new ByteArrayInputStream(str.getBytes());
+      BufferedReader in = new BufferedReader(new InputStreamReader(is));
+      String line;
+      while((line = in.readLine())!=null){
+        if(!line.matches("^\\w+: .+$")){
+          sb.append(line);
+          sb.append("\n");
+        }
+      }
+      in.close();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    sb.trimToSize();
+    return sb.toString();
+  }
+  
+  public static String generateMetaDataText(HashMap data){
+    StringBuffer sb = new StringBuffer();
+    for(Iterator it=data.keySet().iterator(); it.hasNext();){
+      sb.append((String) it.next());
+      sb.append(": ");
+      sb.append(data.get((String) it.next()));
+      sb.append("\n");
+    }
+    sb.trimToSize();
+    return sb.toString();
   }
 
   public static String getTableName(String sql){
