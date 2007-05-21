@@ -16,7 +16,7 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
   private boolean editing;
   private JButton bClose = new JButton("Close");
   private JButton bCreateUpdate = null;
-  private JButton bSaveSettings = new JButton("Save these values");
+  private JButton bSaveSettings = new JButton("Save values");
   private JButton bClear = new JButton("Clear");
   private JCheckBox cbShowResults = new JCheckBox("Confirm before writing", true);
   private boolean showDetailsCheckBox = false;

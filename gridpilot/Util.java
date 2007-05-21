@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -195,7 +194,9 @@ public class Util{
    */
   public static String getJTextOrEmptyString(JComponent comp){
     String text = "";
-    if(comp.getClass().isInstance(new JTextArea())){
+    if(comp.getClass().isInstance(new JTextArea()) ||
+        comp.getClass().isInstance(createTextArea()) ||
+        comp.getClass().isInstance(Util.createTextArea())){
       text = ((JTextComponent) comp).getText();
     }
     else if(comp.getClass().isInstance(new JTextField())){
@@ -1795,7 +1796,11 @@ public class Util{
     return hm;
   }
   
-  public static String getNonMetaData(String str){
+  /**
+   * This method extracts the lines of a multi-line string
+   * that are not of the form <field>: <value>
+   */
+  public static String getMetadataComments(String str){
     StringBuffer sb = new StringBuffer();
     try{
       InputStream is = new ByteArrayInputStream(str.getBytes());

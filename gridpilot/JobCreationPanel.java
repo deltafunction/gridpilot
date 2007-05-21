@@ -36,8 +36,9 @@ public class JobCreationPanel extends CreateEditPanel{
   // TODO: make this configurable?
   private String [] stdOutputNames = {"stdout", "stderr"};
   
-  private static String LOCAL_NAME_STRING = " : Local name : ";
-  private static String REMOTE_NAME_STRING = " -> Remote name : ";
+  private static String LOCAL_NAME_LABEL = " : Local name : ";
+  private static String REMOTE_NAME_LABEL = " -> Remote name : ";
+  private static String LABEL_END = " : ";
 
   // TODO: use JobMgr, move some functionality from here to there.
   
@@ -207,8 +208,10 @@ public class JobCreationPanel extends CreateEditPanel{
     }
     
     JLabel [] constantAttributeLabels = new JLabel [cstAttributesNames.length];
+    boolean isInMetadata = false;
     for(int i=0; i<cstAttributesNames.length; ++i, ++row){
-      constantAttributeLabels[i] = new JLabel(cstAttributesNames[i] + " : ");
+      isInMetadata = false;
+      constantAttributeLabels[i] = new JLabel(cstAttributesNames[i] + LABEL_END);
       pAttributes.add(constantAttributeLabels[i],
           new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
               GridBagConstraints.CENTER,
@@ -216,6 +219,9 @@ public class JobCreationPanel extends CreateEditPanel{
 
       if(!reuseTextFields || tcCstAttributes[i]==null){
         tcCstAttributes[i] = Util.createTextArea();
+      }
+      if(metaData!=null && metaData.containsKey(cstAttributesNames[i].toLowerCase())){
+        isInMetadata = true;
       }
       if(cstAttributesNames[i].equalsIgnoreCase("name")){
         // Set the name of the job description to <dataset name>.<number>
@@ -242,6 +248,11 @@ public class JobCreationPanel extends CreateEditPanel{
         detailFields.add(tcCstAttributes[i]);
         detailFields.add(constantAttributeLabels[i]);
         tcCstAttributes[i].setText("$"+datasetFields.indexOf(cstAttributesNames[i].toLowerCase()));
+      }
+      
+      // Override field values by metadata settings
+      if(isInMetadata){
+        tcCstAttributes[i].setText((String) metaData.get(cstAttributesNames[i].toLowerCase()));
       }
 
       pAttributes.add(tcCstAttributes[i], new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
@@ -273,7 +284,11 @@ public class JobCreationPanel extends CreateEditPanel{
     }
     
     for(int i=0; i<jobParamNames.length; ++i, ++row){
-      jobAttributeLabels[i] = new JLabel(jobParamNames[i] + " : ");
+      isInMetadata = false;
+      if(metaData!=null && metaData.containsKey(jobParamNames[i].toLowerCase())){
+        isInMetadata = true;
+      }
+      jobAttributeLabels[i] = new JLabel(jobParamNames[i] + LABEL_END);
       pAttributes.add(jobAttributeLabels[i],
           new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
               GridBagConstraints.CENTER,
@@ -298,10 +313,14 @@ public class JobCreationPanel extends CreateEditPanel{
         detailFields.add(jobAttributeLabels[i]);
         detailFields.add(tcJobParam[i]);
         tcJobParam[i].setText("");
+        // Override field values by metadata settings
+        if(isInMetadata){
+          tcJobParam[i].setText((String) metaData.get(jobParamNames[i].toLowerCase()));
+        }
       }
       // The metaData field of the job definition can be used to store
       // default settings for the fields of jobCreation.
-      else if(metaData.containsKey(jobParamNames[i].toLowerCase())){
+      else if(metaData!=null && metaData.containsKey(jobParamNames[i].toLowerCase())){
         detailFields.add(jobAttributeLabels[i]);
         detailFields.add(tcJobParam[i]);
         tcJobParam[i].setText((String) metaData.get(jobParamNames[i].toLowerCase()));
@@ -356,6 +375,23 @@ public class JobCreationPanel extends CreateEditPanel{
     }
 
     // OutputMapping
+    // Read from metadata if there
+    isInMetadata = false;
+    String [] outputMapValues = null;
+    if(metaData!=null && metaData.containsKey("outfilemapping")){
+      try{
+        String om = metaData.get("outfilemapping").toString();
+        String [] outMap = Util.splitUrls(om);
+        for(int i=0; i<outMap.length; i=i+2){
+          outputMapNames[i] = outMap[i];
+          outputMapValues[i] = outMap[i+1];
+        }
+        isInMetadata = true;
+      }
+      catch(Exception e) {
+         e.printStackTrace();
+      }
+    }
     pAttributes.add(new JLabel("Output mapping"),
         new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
             GridBagConstraints.CENTER,
@@ -365,7 +401,7 @@ public class JobCreationPanel extends CreateEditPanel{
     String extension = "";
     String [] fullNameStrings;
     for(int i=0; i<outputMapNames.length; ++i, ++row){
-      pAttributes.add(new JLabel(outputMapNames[i] + LOCAL_NAME_STRING),
+      pAttributes.add(new JLabel(outputMapNames[i] + LOCAL_NAME_LABEL),
           new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
               GridBagConstraints.CENTER,
               GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
@@ -388,7 +424,7 @@ public class JobCreationPanel extends CreateEditPanel{
               GridBagConstraints.CENTER,
               GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5), 0, 0));
 
-      pAttributes.add(new JLabel(REMOTE_NAME_STRING),
+      pAttributes.add(new JLabel(REMOTE_NAME_LABEL),
           new GridBagConstraints(2, row, 1, 1, 0.0, 0.0,
               GridBagConstraints.CENTER,
               GridBagConstraints.BOTH, new Insets(5, 5, 5, 5), 0, 0));
@@ -397,7 +433,12 @@ public class JobCreationPanel extends CreateEditPanel{
         tcOutputMap[i][1] = Util.createTextArea();
       }
       
-      tcOutputMap[i][1].setText("$o/$n.${i:5}"+extension);
+      if(isInMetadata){
+        tcOutputMap[i][1].setText(outputMapValues[i]);
+      }
+      else{
+        tcOutputMap[i][1].setText("$o/$n.${i:5}"+extension);
+      }
       tcOutputMap[i][1].setEnabled(false);
 
       pAttributes.add(tcOutputMap[i][1],
@@ -416,7 +457,7 @@ public class JobCreationPanel extends CreateEditPanel{
     }
 
     for(int i=0; i<stdOutputNames.length; ++i, ++row){
-      pAttributes.add(new JLabel(stdOutputNames[i] + " : "),
+      pAttributes.add(new JLabel(stdOutputNames[i] + LABEL_END),
           new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
               GridBagConstraints.CENTER,
               GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
@@ -425,7 +466,12 @@ public class JobCreationPanel extends CreateEditPanel{
         tcStdOutput[i] = Util.createTextArea();
       }
 
-      tcStdOutput[i].setText("$o/$n.${i:5}."+stdOutputNames[i]);
+      if(metaData!=null && metaData.containsKey(stdOutputNames[i])){
+        tcStdOutput[i].setText((String) metaData.get(stdOutputNames[i]));
+      }
+      else{
+        tcStdOutput[i].setText("$o/$n.${i:5}."+stdOutputNames[i]);
+      }
       tcStdOutput[i].setEnabled(false);
 
       pAttributes.add(tcStdOutput[i],
@@ -525,26 +571,52 @@ public class JobCreationPanel extends CreateEditPanel{
     }
   }
   
-  // TODO
   public void saveSettings(){
-    // get all field:values of the form
+    HashMap settings = new HashMap();
+    // get all field:values from the form
+    String field = null;
+    String value = null;
+    Vector outMapping = new Vector();
     for(int i=0; i<pAttributes.getComponentCount()-1; ++i){
-      if(pAttributes.getComponent(i).getClass().isInstance(JLabel.class) &&
-          (pAttributes.getComponent(i+1).getClass().isInstance(JTextComponent.class) ||
-              pAttributes.getComponent(i+1).getClass().isInstance(JTextArea.class))){
+      field = null;
+      value = null;
+      if(pAttributes.getComponent(i).getClass().isInstance(new JLabel()) &&
+          (pAttributes.getComponent(i+1).getClass().isInstance(new JTextField()) ||
+              pAttributes.getComponent(i+1).getClass().isInstance(Util.createTextArea()))){
+        field = ((JLabel) pAttributes.getComponent(i)).getText().replaceFirst(LABEL_END+"$", "");
+        Debug.debug("field: "+field, 3);
+        value = Util.getJTextOrEmptyString((JComponent) pAttributes.getComponent(i+1));
         // outputMapping, <>:<local name>:<>:<remote name>
-        if(((JLabel) pAttributes.getComponent(i)).getText().endsWith(LOCAL_NAME_STRING)){
+        if(((JLabel) pAttributes.getComponent(i)).getText().endsWith(LOCAL_NAME_LABEL)){
+          field = null;
+          outMapping.add(value);
         }
-        else if(((JLabel) pAttributes.getComponent(i)).getText().equals(REMOTE_NAME_STRING)){
+        else if(((JLabel) pAttributes.getComponent(i)).getText().equals(REMOTE_NAME_LABEL)){
+          field = null;
+          outMapping.add(value);
         }
         // Normal, field\::value
-        else{
+        if(field!=null && !field.equals("") && value!=null && !value.equals("")){
+          settings.put(field, value);
+        }
+      }
+      if(!outMapping.isEmpty()){
+        value = Util.arrayToString(outMapping.toArray(), " ");
+        if(!value.trim().equals("")){
+          settings.put("outFileMapping", value);
         }
       }
     }
-    
-    
-    dbPluginMgr.getDataset(datasetIDs[0]).getValue("metaData");
+    String origMetadata = (String) dbPluginMgr.getDataset(datasetIDs[0]).getValue("metaData");
+    String nonFieldValueMetadata = Util.getMetadataComments(origMetadata);
+    String newMetadata = nonFieldValueMetadata;
+    String key = null;
+    for(Iterator it=settings.keySet().iterator(); it.hasNext();){
+      key = (String) it.next();
+      newMetadata += key + ": " + settings.get(key) + "\n";
+    }
+    Debug.debug("Saving jobDefinition defaults in dataset: "+newMetadata, 1);
+    dbPluginMgr.updateDataset(datasetIDs[0], new String [] {"metaData"}, new String []{newMetadata});
   }
   
 }
