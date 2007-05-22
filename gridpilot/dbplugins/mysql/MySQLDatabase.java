@@ -1788,35 +1788,40 @@ public class MySQLDatabase extends DBCache implements Database {
           fields.length+">"+datasetFields.length, 1);
     }
 
+    Debug.debug("Updating: "+Util.arrayToString(fields)+" --> "+Util.arrayToString(values), 2);
+    
     String sql = "UPDATE dataset SET ";
     int addedFields = 0;
     for(int i=0; i<fields.length; ++i){
+      Debug.debug("Checking field: "+fields[i], 2);
+      Debug.debug("Value: "+values[i], 2);
       if(!((values[i]==null || values[i].toString().equals("''") || values[i].toString().equals(""))) &&
-          !datasetFields[i].equalsIgnoreCase(idField)){
+          !fields[i].equalsIgnoreCase(idField)){
+        Debug.debug("Checking dataset fields: "+Util.arrayToString(datasetFields), 2);
         for(int j=0; j<datasetFields.length; ++j){
           // only add if present in datasetFields
           if(fields[i].equalsIgnoreCase(datasetFields[j])){
             if(fields[i].equalsIgnoreCase("created")){
               try{
-                values[j] = makeDate(values[j].toString());
+                values[i] = makeDate(values[i].toString());
               }
               catch(Exception e){
-                values[j] = makeDate("");
+                values[i] = makeDate("");
               }
             }
             else if(fields[i].equalsIgnoreCase("lastModified")){
-              values[j] = makeDate("");
+              values[i] = makeDate("");
             }
             else{
-              values[j] = "'"+values[j]+"'";
+              values[i] = "'"+values[i]+"'";
             }
             
             if(addedFields>0){
               sql += ",";
             }
-            sql += fields[j];
+            sql += fields[i];
             sql += "=";
-            sql += values[j];
+            sql += values[i];
             ++addedFields;
             break;
           }
