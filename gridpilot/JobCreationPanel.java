@@ -382,9 +382,13 @@ public class JobCreationPanel extends CreateEditPanel{
       try{
         String om = metaData.get("outfilemapping").toString();
         String [] outMap = Util.splitUrls(om);
-        for(int i=0; i<outMap.length; i=i+2){
-          outputMapNames[i] = outMap[i];
-          outputMapValues[i] = outMap[i+1];
+        String [] outputMapNames = new String [outMap.length/2];
+        outputMapValues = new String [outMap.length/2];
+        Debug.debug("Got outfilemapping: "+Util.arrayToString(outMap, "-->"), 2);
+        for(int i=0; i<outMap.length/2; ++i){
+          Debug.debug(i+":"+outMap.length, 2);
+          outputMapNames[i] = outMap[2*i];
+          outputMapValues[i] = outMap[2*i+1];
         }
         isInMetadata = true;
       }
@@ -616,7 +620,7 @@ public class JobCreationPanel extends CreateEditPanel{
       newMetadata += key + ": " + settings.get(key) + "\n";
     }
     Debug.debug("Saving jobDefinition defaults in dataset: "+newMetadata, 1);
-    dbPluginMgr.updateDataset(datasetIDs[0], new String [] {"metaData"}, new String []{newMetadata});
+    dbPluginMgr.updateDataset(datasetIDs[0], new String [] {"metaData"}, new String [] {newMetadata});
   }
   
 }

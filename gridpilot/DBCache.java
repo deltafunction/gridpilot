@@ -101,13 +101,14 @@ public class DBCache{
         thisTableName = Util.getTableName(thisSql);
         Debug.debug("Checking cache: "+thisTableName+"<->"+table, 2);
         if(thisTableName.equalsIgnoreCase(table)){
+          Debug.debug("Removing from cache: "+thisSql, 2);
           deleteKeys.add(thisSql);
         }
       }
       Debug.debug("Clearing cache entries", 2);
       for(Iterator it=deleteKeys.iterator(); it.hasNext();){
         thisSql = (String) it.next();
-        Debug.debug("--> "+thisSql, 3);
+        Debug.debug("--> "+thisSql, 2);
         queryResults.remove(thisSql);
       }
     }
