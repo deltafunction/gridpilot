@@ -1967,22 +1967,22 @@ public class HSQLDBDatabase extends DBCache implements Database{
           if(fields[i].equalsIgnoreCase(datasetFields[j])){
             if(fields[i].equalsIgnoreCase("created")){
               try{
-                values[j] = makeDate(values[j].toString());
+                values[i] = makeDate(values[j].toString());
               }
               catch(Exception e){
-                values[j] = makeDate("");
+                values[i] = makeDate("");
               }
             }
             else if(fields[i].equalsIgnoreCase("lastModified")){
-              values[j] = makeDate("");
+              values[i] = makeDate("");
             }
             else{
-              values[j] = "'"+values[j]+"'";
+              values[i] = "'"+values[i]+"'";
             }
             
-            sql += fields[j];
+            sql += fields[i];
             sql += "=";
-            sql += values[j];
+            sql += values[i];
             ++addedFields;
             break;
           }
