@@ -600,7 +600,7 @@ public class JobCreationPanel extends CreateEditPanel{
           outMapping.add(value);
         }
         // Normal, field\::value
-        if(field!=null && !field.equals("") && value!=null && !value.equals("")){
+        if(field!=null && !field.equals("") && value!=null/* && !value.equals("")*/){
           settings.put(field, value);
         }
       }
