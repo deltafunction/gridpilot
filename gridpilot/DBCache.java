@@ -99,7 +99,7 @@ public class DBCache{
       for(Iterator it=queryResults.keySet().iterator(); it.hasNext();){
         thisSql = (String) it.next();
         thisTableName = Util.getTableName(thisSql);
-        Debug.debug("Checking cache: "+thisTableName+"<->"+table, 2);
+        Debug.debug("Checking cache: "+thisTableName+"<->"+table+":", 2);
         if(thisTableName.equalsIgnoreCase(table)){
           Debug.debug("Removing from cache: "+thisSql, 2);
           deleteKeys.add(thisSql);
