@@ -691,10 +691,10 @@ public class ATLASDatabase extends DBCache implements Database{
           guid = record[0].replaceAll("'", "");
           lfn = record[1].replaceAll("'", "");
           
-          String catalog = "";
+          String catalogs = "";
           if(findPFNs){
             try{
-              catalog = findPFNs(vuid, lfn, findAll);
+              catalogs = Util.arrayToString(findPFNs(vuid, lfn, findAll).toArray());
             }
             catch(Exception e){
               e.printStackTrace();
@@ -724,8 +724,8 @@ public class ATLASDatabase extends DBCache implements Database{
             else if(fields[k].equalsIgnoreCase("vuid")){
               recordVector.add(vuid);
             }
-            else if(fields[k].equalsIgnoreCase("catalog")){
-              recordVector.add(catalog);
+            else if(fields[k].equalsIgnoreCase("catalogs")){
+              recordVector.add(catalogs);
             }
             else{
               recordVector.add("");
@@ -925,6 +925,7 @@ public class ATLASDatabase extends DBCache implements Database{
     
     String atlasLpn = null;
     String [] lfnMetaData = Util.split(lfn, "\\.");
+    Debug.debug("lfnMetaData: "+ lfnMetaData.length+":"+Util.arrayToString(lfnMetaData), 2);
     
     switch(pathConvention){
     
@@ -1004,7 +1005,7 @@ public class ATLASDatabase extends DBCache implements Database{
     };
     t.start();              
     if(!Util.waitForThread(t, dbName, fileCatalogTimeout, "lookup pfns", new Boolean(false))){
-      error = "WARNING: timed out.";
+      error = "WARNING: timed out for "+lfn+" on "+_catalogServer;
       logFile.addMessage(error);
       GridPilot.getClassMgr().getStatusBar().setLabel(error);
     }
@@ -1510,8 +1511,10 @@ public class ATLASDatabase extends DBCache implements Database{
           catalogSite = line.replaceFirst("^\\W*'(\\w*)':.*", "$1");
           Debug.debug("Catalog site: "+catalogSite, 3);
         }
-        if(line.indexOf("SITES")<0 && line.indexOf("TIER1S")<0 && 
-            line.indexOf("LRC")<0 && line.indexOf("LFC")<0 && (
+        if(line.indexOf("SITES")<0 && line.indexOf("'TIER1S': [")<0 && 
+            line.indexOf("'ALL': [")<0  && line.indexOf("'alternateName' : [")<0 && 
+            line.indexOf("LRC")<0 && line.indexOf("LFC")<0 &&
+            line.indexOf("'alternateName' : [")<0&& (
                 parentSite!=null &&
                 line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+parentSite+"\\W+.*") ||
                 line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+name+"\\W+.*"))
@@ -1662,21 +1665,22 @@ public class ATLASDatabase extends DBCache implements Database{
   
   /**
    * Fill the vector pfnVector with PFNs registered for lfn.
-   * Returns the first catalogServer (i.e. 'closest', using the ranking defined).
+   * Returns a Vector of catalogServers corresponding to the
+   * Vector of PFNs.
    */
-  private String findPFNs(String vuid, String lfn, boolean findAll){
+  private Vector findPFNs(String vuid, String lfn, boolean findAll){
     // Query all with a timeout of 5 seconds.    
     // First try the home server if configured
     // Next try the locations with complete datasets, then the incomplete
     String lfName = lfn;
     Vector locations = getOrderedLocations(vuid);
+    Vector catalogs = new Vector();
     Object [] locationsArray = locations.toArray();
-    String ret = "";
     try{
       clearPFNs();
       for(int i=0; i<locationsArray.length; ++i){
         if(getStop()){
-          return "";
+          return catalogs;
         }
         String [] pfns = null;
         try{
@@ -1711,10 +1715,8 @@ public class ATLASDatabase extends DBCache implements Database{
               pfns = lookupPFNs(tryAgain, lfName, findAll);
               catalogServer = tryAgain;
             }
-            if(pfns!=null){
-              if(ret.equals("")){
-                ret = catalogServer;
-              }
+            if(pfns!=null && pfns.length>0){
+              catalogs.add(catalogServer);
               for(int n=0; n<pfns.length; ++n){
                 addPFN(pfns[n]);
               }
@@ -1746,7 +1748,6 @@ public class ATLASDatabase extends DBCache implements Database{
           int len = tl.size();
           Debug.debug("Deprecating location: "+locationsArray[i]+" -->"+
               j+":"+len+":"+(-len+j+1), 2);
-          // TODO: get this to work!
           Collections.rotate(((Vector) dqLocationsCache.get(vuid)).subList(j, len),
               len-j-1);
           Debug.debug("New location cache for "+vuid+
@@ -1769,7 +1770,7 @@ public class ATLASDatabase extends DBCache implements Database{
     catch(Exception e){
       e.printStackTrace();
     }
-    return ret;
+    return catalogs;
   }
 
   public String getDatasetName(String datasetID){
@@ -1814,7 +1815,7 @@ public class ATLASDatabase extends DBCache implements Database{
     try{
       Debug.debug("getFieldNames for table "+table, 3);
       if(table.equalsIgnoreCase("file")){
-        return new String [] {"dsn", "lfn", "catalog", "pfns", "guid"};
+        return new String [] {"dsn", "lfn", "catalogs", "pfns", "guid"};
       }
       else if(table.equalsIgnoreCase("dataset")){
         return new String [] {"dsn", "vuid", "incomplete", "complete"};
@@ -1857,6 +1858,7 @@ public class ATLASDatabase extends DBCache implements Database{
       Debug.debug("matching fileID "+fileID, 3);
       if(files.getValue(i, "guid").toString().equals(fileID)){
         lfn = files.getValue(i, "lfn").toString();
+        lfn = lfn.replaceFirst(".*/([^/]+)", "$1");
         break;
       };
     }
@@ -1864,24 +1866,25 @@ public class ATLASDatabase extends DBCache implements Database{
     // Get the pfns
     Vector pfnVector = new Vector();
     String pfns = "";
-    String catalog = "";
+    String catalogs = "";
     if(findAllPFNs!=0){
-      catalog = findPFNs(vuid, lfn, findAllPFNs==2);
+      catalogs = Util.arrayToString(findPFNs(vuid, lfn, findAllPFNs==2).toArray());
       for(int j=0; j<getPFNs().length; ++j){
         pfnVector.add((String) getPFNs()[j]);
       }
       pfns = Util.arrayToString(pfnVector.toArray());
     }
         
-    return new DBRecord(fields, new String [] {dsn, lfn, catalog, pfns, fileID});
+    return new DBRecord(fields, new String [] {dsn, lfn, catalogs, pfns, fileID});
 
   }
 
-  public String [] getFileURLs(String datasetName, String fileID, boolean findAll){
-    String [] ret = null;
+  public String [][] getFileURLs(String datasetName, String fileID, boolean findAll){
+    String [][] ret = null;
     try{
       DBRecord file = getFile(datasetName, fileID, findAll?2:1);
-      ret = Util.splitUrls(file.getValue("pfns").toString());
+      ret[0] = Util.splitUrls(file.getValue("catalogs").toString());
+      ret[1] = Util.splitUrls(file.getValue("pfns").toString());
     }
     catch(Exception e){
       Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
