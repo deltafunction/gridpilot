@@ -2165,11 +2165,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           datasetColumn = fileDatasetReference[1];
         }
         String pfnsColumn = Util.getPFNsField(dbName);
+        String catalogsColumn = "catalogs";
         Debug.debug("PFNs column name: "+pfnsColumn, 2);
         for(int i=0; i<selectedFileIdentifiers.length; ++i){
           // Get the datasetName from the table.            
           HashMap values = new HashMap();
           int pfnsColumnIndex = -1;
+          int catalogsColumnIndex = -1;
           for(int j=0; j<fieldNames.length; ++j){
             // Not displayed colums
             for(int k=0; k<tableResults.getColumnCount(); ++k){
@@ -2181,6 +2183,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             if(fieldNames[j].equalsIgnoreCase(pfnsColumn)){
               pfnsColumnIndex = j;
             }
+            if(fieldNames[j].equalsIgnoreCase(catalogsColumn)){
+              catalogsColumnIndex = j;
+            }
           }
           String datasetName = null;
           try{
@@ -2190,9 +2195,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-          String [] pfns = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i],
+          String [][] catsPfns = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i],
               findAll());
-          tableResults.setValueAt(Util.arrayToString(pfns), selectedRows[i], pfnsColumnIndex);
+          if(catalogsColumnIndex>-1){
+            tableResults.setValueAt(Util.arrayToString(catsPfns[0]), selectedRows[i], catalogsColumnIndex);
+          }
+          tableResults.setValueAt(Util.arrayToString(catsPfns[1]), selectedRows[i], pfnsColumnIndex);
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
       }
@@ -2429,7 +2437,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           name = file.getValue(nameField).toString();
         }
         if(urls==null){
-          urls = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i], findAll());
+          urls = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i], findAll())[1];
         }
         if(datasetName==null){
           datasetName = file.getValue(datasetColumn).toString();

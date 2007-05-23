@@ -29,6 +29,10 @@ public class MyThread extends Thread{
     throw new UnsupportedOperationException("getString2Res not implemented !");
   }
   
+  public String[][] getString3Res(){
+    throw new UnsupportedOperationException("getString2Res not implemented !");
+  }
+  
   public DBRecord getDBRes(){
     throw new UnsupportedOperationException("getDBRes not implemented !");
   }

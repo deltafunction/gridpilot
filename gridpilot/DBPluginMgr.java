@@ -1641,7 +1641,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
     String datasetID = sourceMgr.getDatasetID(datasetName);
     //String id = sourceMgr.getFileID(datasetName, fileName);
-    String [] urls = sourceMgr.getFileURLs(datasetName, id, true);
+    String [] urls = sourceMgr.getFileURLs(datasetName, id, true)[1];
     
     String uuid = id;
     // In case the file was copied from a virtual table from a job repository,
@@ -2863,12 +2863,12 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String [] getFileURLs(final String datasetName, final String fileID,
+  public String [][] getFileURLs(final String datasetName, final String fileID,
       final boolean findAll){
     Debug.debug("Getting field names for file # "+fileID, 3);
    
     MyThread t = new MyThread(){
-      String [] res = null;
+      String [][] res = null;
       public void requestStop(){
         db.requestStop();
       }
@@ -2885,7 +2885,7 @@ public class DBPluginMgr extends DBCache implements Database{
                              fileID, t);
         }
       }
-      public String [] getString2Res(){
+      public String [][] getString3Res(){
         return res;
       }
     };
@@ -2893,7 +2893,7 @@ public class DBPluginMgr extends DBCache implements Database{
     t.start();
   
     if(Util.waitForThread(t, dbName, dbTimeOut, "getFileURLs")){
-      return t.getString2Res();
+      return t.getString3Res();
     }
     else{
       return null;

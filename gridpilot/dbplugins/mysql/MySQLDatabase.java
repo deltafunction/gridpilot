@@ -1,6 +1,7 @@
 package gridpilot.dbplugins.mysql;
 
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
@@ -2290,7 +2291,7 @@ public class MySQLDatabase extends DBCache implements Database {
 
   // Take different actions depending on whether or not
   // t_lfn, etc. are present
-  public String [] getFileURLs(String datasetName, String fileID, boolean findAll){
+  public String [][] getFileURLs(String datasetName, String fileID, boolean findAll){
     if(isFileCatalog()){
       String ret = null;
       try{
@@ -2300,9 +2301,11 @@ public class MySQLDatabase extends DBCache implements Database {
       catch(Exception e){
         Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
       }
-      String [] urls = null;
+      String [][] urls = new String [2][];
       try{
-        urls = Util.splitUrls(ret);
+        urls[1] = Util.splitUrls(ret);
+        urls[0] = new String[urls[1].length];
+        Arrays.fill(urls[0], "");
       }
       catch (Exception e) {
         e.printStackTrace();
@@ -2318,7 +2321,7 @@ public class MySQLDatabase extends DBCache implements Database {
       catch(Exception e){
         Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
       }
-      return new String [] {ret};
+      return new String [][] {{""}, {ret}};
     }
   }
 
@@ -2442,9 +2445,9 @@ public class MySQLDatabase extends DBCache implements Database {
     else{
       Debug.debug("Registering URL "+url, 2);
       // If the url is already registered, skip
-      String [] urls = getFileURLs(datasetName, fileID, true);
+      String [][] urls = getFileURLs(datasetName, fileID, true);
       for(int i=0; i<urls.length; ++i){
-        if(urls[i].equals(url)){
+        if(urls[1][i].equals(url)){
           error = "WARNING: URL "+url+" already registered for file "+lfn+". Skipping.";
           GridPilot.getClassMgr().getLogFile().addMessage(error);
           return;
