@@ -2197,7 +2197,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
           String [][] catsPfns = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i],
               findAll());
-          if(catalogsColumnIndex>-1){
+          if(catalogsColumnIndex>-1 && catsPfns[0]!=null){
             tableResults.setValueAt(Util.arrayToString(catsPfns[0]), selectedRows[i], catalogsColumnIndex);
           }
           tableResults.setValueAt(Util.arrayToString(catsPfns[1]), selectedRows[i], pfnsColumnIndex);
