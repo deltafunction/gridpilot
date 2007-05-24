@@ -62,6 +62,7 @@ public class ATLASDatabase extends DBCache implements Database{
   private String toa;
   private String homeSite;
   private String [] preferredSites;
+  private String [] skipSites;
   private String homeServerMysqlAlias;
   private LogFile logFile;
   private File toaFile;
@@ -127,6 +128,8 @@ public class ATLASDatabase extends DBCache implements Database{
 
     // Set preferred download sites
     preferredSites = configFile.getValues(dbName, "preferred sites");
+    // Set download sites to be ignored
+    skipSites = configFile.getValues(dbName, "ignored sites");
     // Set home server and possible mysql alias
     homeSite = configFile.getValue(dbName, "home site");
     if(homeSite!=null){
@@ -839,6 +842,13 @@ public class ATLASDatabase extends DBCache implements Database{
       locations[0] = locations[0].replaceFirst("'\\]$", "");
       locations[1] = locations[1].replaceFirst("^\\['", "");
       locations[1] = locations[1].replaceFirst("'\\]$", "");
+      // Now, take out skip locations
+      if(skipSites!=null && skipSites.length>0){
+        for(int j=0; j<skipSites.length; ++j){
+          locations[0] = locations[0].replaceFirst(skipSites[j], "");
+          locations[1] = locations[1].replaceFirst(skipSites[j], "");
+        }
+      }
       Debug.debug("incomplete: "+locations[0], 3);
       Debug.debug("complete: "+locations[1], 3);
       String [] incompleteArr = null;
@@ -1679,6 +1689,9 @@ public class ATLASDatabase extends DBCache implements Database{
     try{
       clearPFNs();
       for(int i=0; i<locationsArray.length; ++i){
+        if(locationsArray[i]==null || ((String) locationsArray[i]).matches("\\s*")){
+          continue;
+        }
         if(getStop()){
           return catalogs;
         }
@@ -1880,13 +1893,15 @@ public class ATLASDatabase extends DBCache implements Database{
   }
 
   public String [][] getFileURLs(String datasetName, String fileID, boolean findAll){
-    String [][] ret = null;
+    String [][] ret = new String [2][];
     try{
       DBRecord file = getFile(datasetName, fileID, findAll?2:1);
-      ret[0] = Util.splitUrls(file.getValue("catalogs").toString());
-      ret[1] = Util.splitUrls(file.getValue("pfns").toString());
+      Debug.debug("catalogs: "+file.getValue("catalogs"), 2);
+      ret[0] = Util.split((String) file.getValue("catalogs"));
+      ret[1] = Util.splitUrls((String) file.getValue("pfns"));
     }
     catch(Exception e){
+      e.printStackTrace();
       Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
     }
     return ret;

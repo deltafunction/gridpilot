@@ -2197,10 +2197,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
           String [][] catsPfns = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i],
               findAll());
-          if(catalogsColumnIndex>-1 && catsPfns[0]!=null){
+          if(catalogsColumnIndex>-1 && catsPfns!=null && catsPfns[0]!=null){
             tableResults.setValueAt(Util.arrayToString(catsPfns[0]), selectedRows[i], catalogsColumnIndex);
           }
-          tableResults.setValueAt(Util.arrayToString(catsPfns[1]), selectedRows[i], pfnsColumnIndex);
+          if(pfnsColumnIndex>-1 && catsPfns!=null && catsPfns[1]!=null){
+            tableResults.setValueAt(Util.arrayToString(catsPfns[1]), selectedRows[i], pfnsColumnIndex);
+          }
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
       }
@@ -2346,8 +2348,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * file locations.
    * @return
    */
-  private boolean startDownload(final String _dlUrl,
-      final DBPluginMgr regDBPluginMgr){
+  private boolean startDownload(final String _dlUrl, final DBPluginMgr regDBPluginMgr){
     boolean ret = false;
     String [] selectedFileIdentifiers = getSelectedIdentifiers();
     int [] selectedRows = tableResults.getSelectedRows();
@@ -2409,14 +2410,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       catch(Exception e){
       }
       try{
-        // Non-general.
-        // TODO: perhaps make this configurable like identifier and name,
-        // dbPluginMgr.getPfnsField("file");
-        String urlsString = values.get("pfns").toString();
+        String pfnsColumn = Util.getPFNsField(dbName);
+        String urlsString = values.get(pfnsColumn).toString();
+        // If the PFNs have not been lookup up, do it.
+        Debug.debug("urlsString: "+urlsString, 2);
+        if(urlsString==null || urlsString.equals("")){
+          lookupPFNs();
+          urlsString = values.get(pfnsColumn).toString();
+        }
+        // If no PFNs were found, skip this transfer (an exception will be thrown and catched).
         urls = Util.splitUrls(urlsString);
       }
       catch(Exception e){
       }
+      // Just in case "pfns field" is not set in the config file and there is a "url" 
+      // column...
       if(urls==null){
         try{
           String urlsString = values.get("url").toString();
@@ -2534,9 +2542,19 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           continue;
         }
       }
-      Util.setClosestSource(transfer);
-      Debug.debug("adding transfer "+transfer.getSource().getURL()+" ---> "+transfer.getDestination().getURL(), 2);
-      transfers.add(transfer);
+      try{
+        Util.setClosestSource(transfer);
+        Debug.debug("adding transfer "+transfer.getSource().getURL()+" ---> "+transfer.getDestination().getURL(), 2);
+        transfers.add(transfer);
+      }
+      catch(Exception e){
+        String error = "WARNING: could not download file "+
+        name+". Failed with all sources. "+e.getMessage();
+        GridPilot.getClassMgr().getLogFile().addMessage(error);
+        Debug.debug(error, 1);
+        e.printStackTrace();
+        continue;
+      }
     }
     if(!transfers.isEmpty()){
       try{
