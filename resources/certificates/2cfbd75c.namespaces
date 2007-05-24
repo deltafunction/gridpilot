@@ -1,0 +1,5 @@
+TO Issuer "/C=DK/ST=Aarhus/L=Aarhus/O=CABO/CN=CABO" \
+  PERMIT Subject "/C=DK/ST=Aarhus/L=Aarhus/O=CABO/.*"
+
+TO Issuer "/C=DK/ST=Aarhus/L=Aarhus/O=CABO/CN=CABO" \
+  PERMIT Subject "/C=CH/ST=Geneva/L=Geneva/O=University of Geneva/OU=DPNC/.*"

@@ -1,6 +1,6 @@
 access_id_CA            X509    '/C=DK/ST=Aarhus/L=Aarhus/O=CABO/CN=CABO'
 pos_rights              globus  CA:sign
-cond_subjects           globus  '"/C=DK/ST=Aarhus/L=Aarhus/O=CABO/*" "/C=CH/ST=Geneva/L=Geneva/O=University of Geneva/OU=DPNC/*"'
+cond_subjects           globus  '/C=DK/ST=Aarhus/L=Aarhus/O=CABO/*'
 
 access_id_CA            X509    '/C=DK/ST=Aarhus/L=Aarhus/O=CABO/CN=CABO'
 pos_rights              globus  CA:sign

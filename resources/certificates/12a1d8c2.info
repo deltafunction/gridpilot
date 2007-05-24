@@ -1,5 +1,5 @@
 #
-# @(#)$Id: 12a1d8c2.info,v 1.1 2006/11/21 17:16:31 fjob Exp $
+# @(#)$Id: 12a1d8c2.info,v 1.2 2007/05/24 20:55:39 fjob Exp $
 # Information for CA CNRS-Grid-FR
 #   obtained from 12a1d8c2 in CNRS-Grid-FR/
 alias = CNRS-Grid-FR
@@ -9,5 +9,5 @@ crl_url = http://crls.services.cnrs.fr/GRID-FR/getpem.crl
 requires = CNRS-Projets
 status = accredited:classic
 url = http://igc.services.cnrs.fr/GRID-FR/
-version = 1.10
+version = 1.13
 sha1fp.0 = 93:7E:8E:9E:9E:B4:37:18:44:A3:C4:16:20:4A:92:CD:F3:28:E6:80

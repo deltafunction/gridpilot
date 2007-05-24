@@ -1,5 +1,5 @@
 # EACL HellasGrid Root CA
-# @(#)$Id: 28a58577.signing_policy,v 1.1 2006/11/21 17:16:32 fjob Exp $
+# @(#)$Id: 28a58577.signing_policy,v 1.2 2007/05/24 20:55:39 fjob Exp $
 #
 access_id_CA  X509   '/C=GR/O=HellasGrid/OU=Certification Authorities/CN=HellasGrid Root CA 2006'
 pos_rights    globus CA:sign

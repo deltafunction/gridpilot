@@ -1,5 +1,5 @@
 #
-# @(#)$Id: ede78092.info,v 1.1 2006/11/21 17:16:35 fjob Exp $
+# @(#)$Id: ede78092.info,v 1.2 2007/05/24 20:55:41 fjob Exp $
 # Information for CA HellasGrid
 #   obtained from ede78092 in HellasGrid/
 alias = HellasGrid
@@ -7,5 +7,5 @@ url = http://pki.physics.auth.gr/hellasgrid-ca/
 crl_url = http://pki.physics.auth.gr/hellasgrid-ca/CRL/ede78092.r0
 email = skanct@physics.auth.gr
 status = accredited:classic
-version = 1.10
+version = 1.13
 sha1fp.0 = 36:12:69:64:31:35:FD:E1:FA:9B:6B:9C:4F:31:32:B5:B3:20:13:B5

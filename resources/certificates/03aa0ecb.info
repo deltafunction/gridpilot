@@ -1,5 +1,5 @@
 #
-# @(#)$Id: 03aa0ecb.info,v 1.1 2006/11/21 17:16:33 fjob Exp $
+# @(#)$Id: 03aa0ecb.info,v 1.2 2007/05/24 20:55:40 fjob Exp $
 # Information for CA BEGrid
 #   obtained from 03aa0ecb in BEGrid/
 alias = BEGrid
@@ -7,5 +7,5 @@ url = http://www.begrid.be/index.php?module=pagemaster&PAGE_user_op=view_page&PA
 crl_url = https://gridra.belnet.be/pub/crl/cacrl.pem
 email = gridca@belnet.be
 status = accredited:classic
-version = 1.10
+version = 1.13
 sha1fp.0 = 76:D6:39:F7:6C:12:45:9B:DE:8D:0C:6F:32:51:39:D2:18:C2:4C:0D

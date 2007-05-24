@@ -1,4 +1,4 @@
 # @(#)policy-igtf-slcs.info - IGTF slcs authorities
-# Generated Monday, 16 Oct, 2006
-version = 1.10
-requires = 
+# Generated Tuesday, 13 Mar, 2007
+version = 1.13
+requires = SWITCHslcs = 1.13

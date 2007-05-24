@@ -1,5 +1,5 @@
 #
-# @(#)$Id: 1c3f2ca8.info,v 1.1 2006/11/21 17:16:31 fjob Exp $
+# @(#)$Id: 1c3f2ca8.info,v 1.2 2007/05/24 20:55:37 fjob Exp $
 # Information for CA DOEGrids
 #   obtained from 1c3f2ca8 in DOEGrids/
 alias = DOEGrids
@@ -8,5 +8,5 @@ crl_url = http://pki1.doegrids.org/CRL/1c3f2ca8.r0
 email = trouble@es.net
 requires = ESnet
 status = accredited:classic
-version = 1.10
-sha1fp.0 = 18:B9:75:4F:1D:61:AB:07:0A:8E:9B:1E:4F:A7:44:92:88:FA:D0:96
+version = 1.13
+sha1fp.0 = 2D:7C:01:FE:A8:40:6A:D0:2E:80:F5:08:E4:D2:EB:A3:A8:84:F8:90

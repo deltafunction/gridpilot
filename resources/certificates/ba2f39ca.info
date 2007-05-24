@@ -1,5 +1,5 @@
 #
-# @(#)$Id: ba2f39ca.info,v 1.1 2006/11/21 17:16:31 fjob Exp $
+# @(#)$Id: ba2f39ca.info,v 1.2 2007/05/24 20:55:36 fjob Exp $
 # Information for CA IHEP
 #   obtained from ba2f39ca in APGrid/
 alias = IHEP
@@ -8,5 +8,5 @@ crl_url = http://gridca.ihep.ac.cn/cacrl.pem
 email = gridca@ihep.ac.cn
 status = accredited:classic
 url = https://gridca.ihep.ac.cn/
-version = 1.10
+version = 1.13
 sha1fp.0 = A8:44:99:DE:0E:EA:A3:68:BF:4A:29:15:BD:D7:C0:59:B6:04:FB:BB

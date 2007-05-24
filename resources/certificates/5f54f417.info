@@ -1,5 +1,5 @@
 #
-# @(#)$Id: 5f54f417.info,v 1.1 2006/11/21 17:16:35 fjob Exp $
+# @(#)$Id: 5f54f417.info,v 1.2 2007/05/24 20:55:39 fjob Exp $
 # Information for CA GridCanada
 #   obtained from 5f54f417 in GridCanada/
 alias = GridCanada-old
@@ -7,5 +7,5 @@ crl_url = http://www.gridcanada.ca/ca/5f54f417.r0
 url = http://www.gridcanada.ca/ca
 email = ca@gridcanada.ca
 status = accredited:classic
-version = 1.10
+version = 1.13
 sha1fp.0 = 5B:A5:92:81:D1:0B:D5:75:4F:F8:D1:95:6E:B2:0E:69:32:50:C6:3B

@@ -1,5 +1,5 @@
 # EACL DFN-GridGermany-Server
-# $Id: fe102e03.signing_policy,v 1.1 2006/11/21 17:16:28 fjob Exp $
+# $Id: fe102e03.signing_policy,v 1.2 2007/05/24 20:55:41 fjob Exp $
 # The DFN-GridGermany-Server CA signs end-entity certificates
 #
 access_id_CA  X509   '/C=DE/O=DFN-Verein/OU=DFN-PKI/CN=DFN-Verein Server CA Grid - G01'
