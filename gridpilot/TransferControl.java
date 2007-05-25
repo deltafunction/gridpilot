@@ -89,8 +89,8 @@ public class TransferControl{
       timer.stop();
       return;
     }
-    /*synchronized(toSubmitTransfers)*/{
-      /*synchronized(submittingTransfers)*/{
+    synchronized(toSubmitTransfers){
+      synchronized(submittingTransfers){
         // use status bar on monitoring frame
         statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
 
