@@ -2612,4 +2612,10 @@ public class MySQLDatabase extends DBCache implements Database {
     return getFileID(name);
   }
 
+  public void requestStopLookup() {
+  }
+
+  public void clearRequestStopLookup() {
+  }
+
 }

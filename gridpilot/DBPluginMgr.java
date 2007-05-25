@@ -2900,10 +2900,20 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
+  public void requestStopLookup(){
+    db.requestStopLookup();
+  }
+  
+  public void clearRequestStopLookup(){
+    db.clearRequestStopLookup();
+  }
+  
   public void requestStop(){
+    db.requestStop();
   }
   
   public void clearRequestStop(){
+    db.clearRequestStop();
   }
   
 }

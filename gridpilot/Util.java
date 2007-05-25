@@ -65,6 +65,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -1954,4 +1955,37 @@ public class Util{
     }
   }
   
+  /**
+   * This method is used for putting a progress bar on the main panel
+   * when doing PFN lookups.
+   */
+  public static JProgressBar setProgressBar(int maxVal, final String dbName){
+    JProgressBar pb = new JProgressBar();
+    pb.setMaximum(maxVal);
+    ImageIcon cancelIcon;
+    URL imgURL=null;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "stop.png");
+      cancelIcon = new ImageIcon(imgURL);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "stop.png", 3);
+      cancelIcon = new ImageIcon();
+    }
+    GridPilot.getClassMgr().getStatusBar().setProgressBar(pb);
+    JButton bCancel = new JButton(cancelIcon);
+    bCancel.setToolTipText("click here to stop PFN lookup");
+    bCancel.addMouseListener(new MouseAdapter(){
+      public void mouseClicked(MouseEvent me){
+        GridPilot.getClassMgr().getDBPluginMgr(dbName).requestStopLookup();
+      }
+    });
+    JPanel jpCancel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+    jpCancel.add(bCancel);
+    jpCancel.setPreferredSize(new java.awt.Dimension(6, 4));
+    jpCancel.setSize(new java.awt.Dimension(6, 4));
+    GridPilot.getClassMgr().getStatusBar().setCenterComponent(jpCancel);
+    pb.validate();
+    return pb;
+  }
 }

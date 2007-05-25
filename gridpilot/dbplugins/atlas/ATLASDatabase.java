@@ -1,6 +1,5 @@
 package gridpilot.dbplugins.atlas;
 
-import java.awt.FlowLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.BufferedInputStream;
@@ -30,9 +29,6 @@ import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.xml.rpc.ServiceException;
 
@@ -189,9 +185,18 @@ public class ATLASDatabase extends DBCache implements Database{
   }
 
   public void requestStop(){
+    setFindPFNs(false);
     stop = true;
   }
   
+  public void requestStopLookup(){
+    setFindPFNs(false);
+  }
+  
+  public void clearRequestStopLookup(){
+    setFindPFNs(true);
+  }
+
   public void clearRequestStop(){
     stop = false;
   }
@@ -234,6 +239,7 @@ public class ATLASDatabase extends DBCache implements Database{
       return null;
     }
     
+    JProgressBar pb = null;
     String req = selectRequest;
     Pattern patt;
     Matcher matcher;
@@ -653,37 +659,17 @@ public class ATLASDatabase extends DBCache implements Database{
       
       Vector valuesVector = new Vector();
       String [] record = null;
-      JProgressBar pb = new JProgressBar();
-      pb.setMaximum((records.length));
-      ImageIcon cancelIcon;
-      URL imgURL=null;
-      try{
-        imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "stop.png");
-        cancelIcon = new ImageIcon(imgURL);
+      if(!GridPilot.getClassMgr().getStatusBar().isCenterComponentSet()){
+        pb = Util.setProgressBar(records.length, dbName);
       }
-      catch(Exception e){
-        Debug.debug("Could not find image "+ GridPilot.resourcesPath + "stop.png", 3);
-        cancelIcon = new ImageIcon();
-      }
-      GridPilot.getClassMgr().getStatusBar().setProgressBar(pb);
-      JButton bCancel = new JButton(cancelIcon);
-      bCancel.setToolTipText("click here to stop PFN lookup");
-      bCancel.addMouseListener(new MouseAdapter(){
-        public void mouseClicked(MouseEvent me){
-          setFindPFNs(false);
-        }
-      });
-      JPanel jpCancel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-      jpCancel.add(bCancel);
-      jpCancel.setPreferredSize(new java.awt.Dimension(6, 4));
-      jpCancel.setSize(new java.awt.Dimension(6, 4));
-      GridPilot.getClassMgr().getStatusBar().setCenterComponent(jpCancel);
       for(int i=0; i<records.length; ++i){
         if(getStop()){
           break;
         }
         GridPilot.getClassMgr().getStatusBar().setLabel("Record "+(i+1)+" : "+records.length);
-        pb.setValue(i+1);
+        if(pb!=null){
+          pb.setValue(i+1);
+        }
         Vector recordVector = new Vector();
         boolean exCheck = true;
         record = Util.split(records[i], ": ");
@@ -749,8 +735,10 @@ public class ATLASDatabase extends DBCache implements Database{
         }     
       }
       setFindPFNs(true);
-      GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
-      GridPilot.getClassMgr().getStatusBar().clearCenterComponent();
+      if(pb!=null){
+        GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
+        GridPilot.getClassMgr().getStatusBar().clearCenterComponent();
+      }
       values = new String[valuesVector.size()][fields.length];
       for(int i=0; i<valuesVector.size(); ++i){
         for(int j=0; j<fields.length; ++j){
@@ -995,7 +983,7 @@ public class ATLASDatabase extends DBCache implements Database{
         return res;
       }
       public void run(){
-        if(getStop()){
+        if(getStop() || !findPFNs){
           return;
         }
         try{
@@ -1033,6 +1021,9 @@ public class ATLASDatabase extends DBCache implements Database{
       URL dliUrl = new URL("http://"+host+":8085");
       Debug.debug("Connecting to DLI web service at "+dliUrl.toExternalForm(), 2);
       for(int i=0; i<pathConventions; ++i){
+        if(getStop() || !findPFNs){
+          return null;
+        }
         String atlasLPN = basePath+makeAtlasPath(lfn);
         Debug.debug("LPN: "+atlasLPN, 2);
         try{
@@ -1097,6 +1088,11 @@ public class ATLASDatabase extends DBCache implements Database{
       Debug.debug(">> "+req, 3);
       rset = conn.createStatement().executeQuery(req);
       while(rset.next()){
+        if(getStop() || !findPFNs){
+          rset.close();
+          conn.close();
+          return null;
+        }
         // Don't display records flagged for deletion
         if(homeSite!=null && homeServerMysqlAlias!=null &&
             catalogServer.equalsIgnoreCase(homeServerMysqlAlias) &&
@@ -1123,6 +1119,11 @@ public class ATLASDatabase extends DBCache implements Database{
       resultVector = new Vector();
       String [] res = null;
       while(rset.next()){
+        if(getStop() || !findPFNs){
+          rset.close();
+          conn.close();
+          return null;
+        }
         res = Util.split(rset.getString("pfname"));
         for(int i=0; i<res.length; ++i){
           resultVector.add(res[i]);
@@ -1707,7 +1708,7 @@ public class ATLASDatabase extends DBCache implements Database{
         if(locationsArray[i]==null || ((String) locationsArray[i]).matches("\\s*")){
           continue;
         }
-        if(getStop()){
+        if(getStop() || !findPFNs){
           return catalogs;
         }
         String [] pfns = null;

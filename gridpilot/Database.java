@@ -125,5 +125,8 @@ public interface Database{
   // method used by DBPluginMgr to request stopping all queries
   public void requestStop();
   public void clearRequestStop();
+  // Method used for DBs (ATLAS) that have time consuming PFN lookups.
+  public void requestStopLookup();
+  public void clearRequestStopLookup();
  
 }

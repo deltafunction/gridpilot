@@ -1124,9 +1124,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     };
     
     if(waitForThread){
+      workThread.start();
       Util.waitForThread(workThread, dbName, 0, "searchRequest");
+      return;
     }
-
     if(invokeLater){
       SwingUtilities.invokeLater(workThread);
     }
@@ -1183,17 +1184,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                 defaultURL = dlUrl;
               }
               GridPilot.fileRows = 0;
+              Debug.debug("Creating new files panel", 2);
+              dbPluginMgr.requestStopLookup();
               DBPanel filesPanel = viewFiles(true);
-              Thread.sleep(3000);
+              dbPluginMgr.clearRequestStopLookup();
+              //Debug.debug("Waiting 3 seconds...", 2);
+              //Thread.sleep(3000);
+              // TODO: consider selecting only rows with non-empty pfns column
+              Debug.debug("Selecting all", 2);
               filesPanel.tableResults.selectAll();
+              Debug.debug("Starting download of "+filesPanel.tableResults.getSelectedRowCount()+
+                  " files.", 2);
               filesPanel.download(dlUrl, targetDBsPanel);
               GridPilot.fileRows = origFileRows;
             }
             catch(IOException e){
-              GridPilot.fileRows = origFileRows;
-              e.printStackTrace();
-            }
-            catch(InterruptedException e){
               GridPilot.fileRows = origFileRows;
               e.printStackTrace();
             }
@@ -1297,7 +1302,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       public void actionPerformed(ActionEvent e){
         new Thread(){
           public void run(){               
-            lookupPFNs();
+            lookupPFNs(null, null);
           }
         }.start();
       }
@@ -2234,11 +2239,20 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }.start();
   }
 
-  private void lookupPFNs(){
+  private void lookupPFNs(int [] rows, String [] identifiers){
     //new Thread(){
-      //public void run(){               
-        String [] selectedFileIdentifiers = getSelectedIdentifiers();
-        int [] selectedRows = tableResults.getSelectedRows();
+      //public void run(){
+        String [] selectedFileIdentifiers = null;
+        int [] selectedRows = null;
+        if(rows==null){
+          selectedFileIdentifiers = getSelectedIdentifiers();
+          selectedRows = tableResults.getSelectedRows();
+        }
+        else{
+          selectedFileIdentifiers = identifiers;
+          selectedRows = rows;
+
+        }
         // We assume that the dataset name is used as reference...
         // TODO: improve this
         String datasetColumn = "dsn";
@@ -2247,10 +2261,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         if(fileDatasetReference!=null){
           datasetColumn = fileDatasetReference[1];
         }
+        dbPluginMgr.clearRequestStopLookup();
         String pfnsColumn = Util.getPFNsField(dbName);
         String catalogsColumn = "catalogs";
         Debug.debug("PFNs column name: "+pfnsColumn, 2);
+        JProgressBar pb = Util.setProgressBar(selectedFileIdentifiers.length, dbName);
         for(int i=0; i<selectedFileIdentifiers.length; ++i){
+          pb.setValue(i+1);
           // Get the datasetName from the table.            
           HashMap values = new HashMap();
           int pfnsColumnIndex = -1;
@@ -2288,6 +2305,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
+        GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
+        GridPilot.getClassMgr().getStatusBar().clearCenterComponent();
       //}
     //}.start();
   }
@@ -2479,7 +2498,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(fileDatasetReference!=null){
       datasetColumn = fileDatasetReference[1];
     }
+    JProgressBar pb = Util.setProgressBar(selectedFileIdentifiers.length, dbName);
     for(int i=0; i<selectedFileIdentifiers.length; ++i){
+      pb.setValue(i+1);
       String [] urls = null;
       String guid = null;
       String name = null;
@@ -2505,10 +2526,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       try{
         String pfnsColumn = Util.getPFNsField(dbName);
         String urlsString = values.get(pfnsColumn).toString();
-        // If the PFNs have not been lookup up, do it.
+        // If the PFNs have not been looked up, do it.
         Debug.debug("urlsString: "+urlsString, 2);
         if(urlsString==null || urlsString.equals("")){
-          lookupPFNs();
+          lookupPFNs(new int [] {selectedRows[i]}, new String [] {selectedFileIdentifiers[i]});
           values = getValues(selectedRows[i]);
           urlsString = values.get(pfnsColumn).toString();
           Debug.debug("new urlsString: "+urlsString, 2);
@@ -2651,6 +2672,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         continue;
       }
     }
+    GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
+    GridPilot.getClassMgr().getStatusBar().clearCenterComponent();
     if(!transfers.isEmpty()){
       try{
         //Queue the transfers

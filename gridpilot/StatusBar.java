@@ -69,7 +69,7 @@ public class StatusBar extends JPanel {
   }
 
   public /*synchronized*/ void clearCenterComponent(){
-
+    Debug.debug("Trying to clear center component", 2);
     if(statusBarActive){
       return;
     }
@@ -79,6 +79,17 @@ public class StatusBar extends JPanel {
     add(comp, BorderLayout.CENTER);
     updateUI();
     statusBarActive = false;
+    Debug.debug("Center component cleared", 2);
+  }
+  
+  public boolean isCenterComponentSet(){
+    try{
+      JLabel jComp = ((JLabel) comp);
+      return !jComp.getText().equals("");
+    }
+    catch(Exception e){
+      return true;
+    }
   }
 
  /**
