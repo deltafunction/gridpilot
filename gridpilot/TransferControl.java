@@ -54,6 +54,8 @@ public class TransferControl{
   private Vector toSubmitTransfers = new Vector();
   /** All transfers for which the submission is in progress */
   private Vector submittingTransfers = new Vector();
+  /** All running transfers */
+  protected Vector runningTransfers = new Vector();
  /** Maximum number of simulaneous threads for submission. <br>
    * It is not the maximum number of running transfers on the storage system */
   private int maxSimultaneousTransfers = 5;
@@ -89,132 +91,133 @@ public class TransferControl{
       timer.stop();
       return;
     }
-    synchronized(toSubmitTransfers){
-      synchronized(submittingTransfers){
-        // use status bar on monitoring frame
-        statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+    synchronized(runningTransfers){
+      synchronized(toSubmitTransfers){
+        synchronized(submittingTransfers){
+          // use status bar on monitoring frame
+          statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
 
-        GlobusURL firstSrc = ((TransferInfo) toSubmitTransfers.get(0)).getSource();
-        GlobusURL firstDest = ((TransferInfo) toSubmitTransfers.get(0)).getDestination();
-        
-        Debug.debug("First transfer: "+((TransferInfo) toSubmitTransfers.get(0)), 3);
-        
-        String [] fts = GridPilot.ftNames;
-        String pluginName = null;
-        Vector transferVector = null;
-        GlobusURL [] theseSources = null;
-        GlobusURL [] theseDestinations = null;
-        TransferInfo [] theseTransfers = null;
-        GlobusURL [] checkSources = null;
-        GlobusURL [] checkDestinations = null;
-        
-        boolean brokenOut = false;
-        try{
-          // Select first plugin that supports the protocol of the next transfer
-          for(int i=0; i<fts.length; ++i){
-            Debug.debug("Checking plugin "+fts[i], 3);
-            checkSources = new GlobusURL [] {firstSrc};
-            checkDestinations = new GlobusURL [] {firstDest};
-            try{
-              if(GridPilot.getClassMgr().getFTPlugin(
-                  fts[i]).checkURLs(checkSources, checkDestinations)){
-                pluginName = fts[i];
-                break;
-              };      
-            }
-            catch(Exception e){
-              e.printStackTrace();
-            }
-          }
-          if(pluginName==null){
-            throw new IOException("ERROR: protocol not supported or plugin initialization " +
-                "failed.\n"+firstSrc+"\n->\n\n"+firstDest);
-          }
-          Debug.debug("plugin selected: "+pluginName, 3);
+          GlobusURL firstSrc = ((TransferInfo) toSubmitTransfers.get(0)).getSource();
+          GlobusURL firstDest = ((TransferInfo) toSubmitTransfers.get(0)).getDestination();
           
-          // Transfer jobs from toSubmitJobs to submittingJobs.
-          // First construct uniform batch.
-          transferVector = new Vector();
-          while(submittingTransfers.size()<maxSimultaneousTransfers &&
-              !toSubmitTransfers.isEmpty()){
-            
-            // break if next transfer is not uniform with the previous ones (in this batch)
-            transferVector.add(((TransferInfo) toSubmitTransfers.get(0)));
-            theseSources = new GlobusURL[transferVector.size()];
-            theseDestinations = new GlobusURL[transferVector.size()];
-            theseTransfers = new TransferInfo[transferVector.size()];
-            TransferInfo tmpTransfer = null;
-            for(int i=0; i<theseDestinations.length; ++i){
-              tmpTransfer = (TransferInfo) transferVector.get(i);
-              theseSources[i] = tmpTransfer.getSource();
-              theseDestinations[i] = tmpTransfer.getDestination();
-              theseTransfers[i] = tmpTransfer;
-            }
-            try{
-              if(!GridPilot.getClassMgr().getFTPlugin(pluginName).checkURLs(
-                  theseSources, theseDestinations)){
-                brokenOut = true;
-                Debug.debug("Breaking because of non-uniform URLs", 2);
-                break;
+          Debug.debug("First transfer: "+((TransferInfo) toSubmitTransfers.get(0)), 3);
+          
+          String [] fts = GridPilot.ftNames;
+          String pluginName = null;
+          Vector transferVector = null;
+          GlobusURL [] theseSources = null;
+          GlobusURL [] theseDestinations = null;
+          TransferInfo [] theseTransfers = null;
+          GlobusURL [] checkSources = null;
+          GlobusURL [] checkDestinations = null;
+          
+          boolean brokenOut = false;
+          try{
+            // Select first plugin that supports the protocol of the next transfer
+            for(int i=0; i<fts.length; ++i){
+              Debug.debug("Checking plugin "+fts[i], 3);
+              checkSources = new GlobusURL [] {firstSrc};
+              checkDestinations = new GlobusURL [] {firstDest};
+              try{
+                if(GridPilot.getClassMgr().getFTPlugin(
+                    fts[i]).checkURLs(checkSources, checkDestinations)){
+                  pluginName = fts[i];
+                  break;
+                };      
+              }
+              catch(Exception e){
+                e.printStackTrace();
               }
             }
-            catch(Exception e){
-              brokenOut = true;
-              Debug.debug("Problem checking URLs", 2);
-              logFile.addMessage("WARNING: there was a problem queueing all " +
-                    "transfers.", e);
-              e.printStackTrace();
-              toSubmitTransfers.removeAllElements();
-              break;
+            if(pluginName==null){
+              throw new IOException("ERROR: protocol not supported or plugin initialization " +
+                  "failed.\n"+firstSrc+"\n->\n\n"+firstDest);
             }
+            Debug.debug("plugin selected: "+pluginName, 3);
             
-            TransferInfo transfer = (TransferInfo) toSubmitTransfers.remove(0);
-            //statusBar.setLabel("Queueing "+transfer.getSourceURL()+"->"+
-            //    transfer.getDestination().getURL());
-            submittingTransfers.add(transfer);
-            Debug.debug("Removed "+transfer.getSourceURL(), 3);
-            Debug.debug("with id "+transfer.getTransferID(), 3);
-            Debug.debug("Now toSubmitTransfers has "+toSubmitTransfers.size()+" elements", 3);
-            Debug.debug("Now submittingTransfers has "+submittingTransfers.size()+" elements", 3);
-          }
-        }
-        catch(Exception e){
-          toSubmitTransfers.removeAllElements();
-          statusBar.setLabel("ERROR: queueing transfer(s) failed.");
-          logFile.addMessage("ERROR: queueing transfer(s) failed:\n"+
-              ((transferVector==null||transferVector.toArray()==null)?"":Util.arrayToString(transferVector.toArray())), e);
-          return;
-        }
-        
-        // Remove the wrongly added last transfer from theseTransfers before submitting
-        if(brokenOut && theseTransfers.length>1){
-          TransferInfo [] tmpTransfers = new TransferInfo [theseTransfers.length-1];
-          for(int i=0; i<theseTransfers.length-1; ++i){
-            tmpTransfers[i] = theseTransfers[i];
-          }
-          theseTransfers = tmpTransfers;
-        }
-        final TransferInfo [] finalTransfers = theseTransfers;
-        final String finalPluginName = pluginName;
-        
-        new Thread(){
-          public void run(){
-            // use status bar on monitoring frame
-            statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
-            try{
-              submit(finalPluginName, finalTransfers);
+            // Transfer jobs from toSubmitJobs to submittingJobs.
+            // First construct uniform batch.
+            transferVector = new Vector();
+            while(runningTransfers.size()+submittingTransfers.size()<maxSimultaneousTransfers &&
+                !toSubmitTransfers.isEmpty()){
+              
+              // break if next transfer is not uniform with the previous ones (in this batch)
+              transferVector.add(((TransferInfo) toSubmitTransfers.get(0)));
+              theseSources = new GlobusURL[transferVector.size()];
+              theseDestinations = new GlobusURL[transferVector.size()];
+              theseTransfers = new TransferInfo[transferVector.size()];
+              TransferInfo tmpTransfer = null;
+              for(int i=0; i<theseDestinations.length; ++i){
+                tmpTransfer = (TransferInfo) transferVector.get(i);
+                theseSources[i] = tmpTransfer.getSource();
+                theseDestinations[i] = tmpTransfer.getDestination();
+                theseTransfers[i] = tmpTransfer;
+              }
+              try{
+                if(!GridPilot.getClassMgr().getFTPlugin(pluginName).checkURLs(
+                    theseSources, theseDestinations)){
+                  brokenOut = true;
+                  Debug.debug("Breaking because of non-uniform URLs", 2);
+                  break;
+                }
+              }
+              catch(Exception e){
+                brokenOut = true;
+                Debug.debug("Problem checking URLs", 2);
+                logFile.addMessage("WARNING: there was a problem queueing all " +
+                      "transfers.", e);
+                e.printStackTrace();
+                toSubmitTransfers.removeAllElements();
+                break;
+              }
+              
+              TransferInfo transfer = (TransferInfo) toSubmitTransfers.remove(0);
+              //statusBar.setLabel("Queueing "+transfer.getSourceURL()+"->"+
+              //    transfer.getDestination().getURL());
+              submittingTransfers.add(transfer);
+              Debug.debug("Removed "+transfer.getSourceURL(), 3);
+              Debug.debug("with id "+transfer.getTransferID(), 3);
+              Debug.debug("Now toSubmitTransfers has "+toSubmitTransfers.size()+" elements", 3);
+              Debug.debug("Now submittingTransfers has "+submittingTransfers.size()+" elements", 3);
             }
-            catch(Exception e){
-              statusBar.setLabel("ERROR: starting transfer(s) failed. "+
-                  e.getMessage());
-              logFile.addMessage("ERROR: starting transfer(s) failed.", e);
-              e.printStackTrace();
-            }
           }
-        }.start();
+          catch(Exception e){
+            toSubmitTransfers.removeAllElements();
+            statusBar.setLabel("ERROR: queueing transfer(s) failed.");
+            logFile.addMessage("ERROR: queueing transfer(s) failed:\n"+
+                ((transferVector==null||transferVector.toArray()==null)?"":Util.arrayToString(transferVector.toArray())), e);
+            return;
+          }
+          
+          // Remove the wrongly added last transfer from theseTransfers before submitting
+          if(brokenOut && theseTransfers.length>1){
+            TransferInfo [] tmpTransfers = new TransferInfo [theseTransfers.length-1];
+            for(int i=0; i<theseTransfers.length-1; ++i){
+              tmpTransfers[i] = theseTransfers[i];
+            }
+            theseTransfers = tmpTransfers;
+          }
+          final TransferInfo [] finalTransfers = theseTransfers;
+          final String finalPluginName = pluginName;
+          
+          new Thread(){
+            public void run(){
+              // use status bar on monitoring frame
+              statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+              try{
+                submit(finalPluginName, finalTransfers);
+              }
+              catch(Exception e){
+                statusBar.setLabel("ERROR: starting transfer(s) failed. "+
+                    e.getMessage());
+                logFile.addMessage("ERROR: starting transfer(s) failed.", e);
+                e.printStackTrace();
+              }
+            }
+          }.start();
+        }
       }
-    }
-    
+    }    
   }
   
   /**
@@ -562,6 +565,7 @@ public class TransferControl{
     finally{
       for(int i=0; i<transfers.length; ++i){
         submittingTransfers.remove(transfers[i]);
+        runningTransfers.add(transfers[i]);
         // remove iconSubmitting
         statusTable.setValueAt(null, transfers[i].getTableRow(), TransferInfo.FIELD_CONTROL);
       }
@@ -747,6 +751,7 @@ public class TransferControl{
           for(int i=0; i<transfers.size(); ++i){
             try{             
               transfer = (TransferInfo) transfers.get(i);
+              GridPilot.getClassMgr().getTransferControl().runningTransfers.remove(transfer);
               // skip if not running
               boolean isRunning = false;
               for(int j=0; j<submittedTransfers.size(); ++j){
@@ -1051,6 +1056,7 @@ public class TransferControl{
    * like registering the new location.
    */
   public static void transferDone(TransferInfo transfer){
+    GridPilot.getClassMgr().getTransferControl().runningTransfers.remove(transfer);
     // Do plugin-specific finalization. E.g. for SRM, set the status to Done.
     String id = null;
     try{
