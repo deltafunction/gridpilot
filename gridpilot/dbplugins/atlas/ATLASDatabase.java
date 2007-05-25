@@ -842,13 +842,6 @@ public class ATLASDatabase extends DBCache implements Database{
       locations[0] = locations[0].replaceFirst("'\\]$", "");
       locations[1] = locations[1].replaceFirst("^\\['", "");
       locations[1] = locations[1].replaceFirst("'\\]$", "");
-      // Now, take out skip locations
-      if(skipSites!=null && skipSites.length>0){
-        for(int j=0; j<skipSites.length; ++j){
-          locations[0] = locations[0].replaceFirst(skipSites[j], "");
-          locations[1] = locations[1].replaceFirst(skipSites[j], "");
-        }
-      }
       Debug.debug("incomplete: "+locations[0], 3);
       Debug.debug("complete: "+locations[1], 3);
       String [] incompleteArr = null;
@@ -1591,6 +1584,22 @@ public class ATLASDatabase extends DBCache implements Database{
     return pfnVector.toArray();
   }
   
+  /**
+   * Checks if a site is in the list of ignored sites.
+   * @param site
+   * @return true if the site should be skipped.
+   */
+  private boolean checkSkip(String site){
+    if(skipSites!=null && skipSites.length>0){
+      for(int j=0; j<skipSites.length; ++j){
+        if(site.equals(skipSites[j])){
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  
 
   /**
    * Find the locations of a given dataset.
@@ -1617,26 +1626,29 @@ public class ATLASDatabase extends DBCache implements Database{
     
     // construct vector of all locations
     Vector locations = new Vector();
-    // make sure homeServer is first in the list
+    // make sure homeServer is first in the list, excluding ignored sites
     for(int i=0; i<dqLocations.getComplete().length; ++i){
-      if(dqLocations.getComplete()[i].equalsIgnoreCase(homeSite)){
+      if(dqLocations.getComplete()[i].equalsIgnoreCase(homeSite) &&
+          !checkSkip(homeSite)){
         locations.add(homeSite);
         break;
       }
     }
     for(int i=0; i<dqLocations.getIncomplete().length; ++i){
-      if(dqLocations.getIncomplete()[i].equalsIgnoreCase(homeSite)){
+      if(dqLocations.getIncomplete()[i].equalsIgnoreCase(homeSite) &&
+          !checkSkip(homeSite)){
         locations.add(homeSite);
         break;
       }
     }
-    // add the preferred sites if there
+    // add the preferred sites if there, excluding ignored sites
     boolean added = false;
     for(int ii=0; ii<preferredSites.length; ++ii){
       added = false;
       for(int i=0; i<dqLocations.getComplete().length; ++i){
         if(!dqLocations.getComplete()[i].equalsIgnoreCase(homeSite) &&
-            dqLocations.getComplete()[i].equalsIgnoreCase(preferredSites[ii])){
+            dqLocations.getComplete()[i].equalsIgnoreCase(preferredSites[ii]) &&
+            !checkSkip(preferredSites[ii])){
           locations.add(preferredSites[ii]);
           added = true;
           break;
@@ -1647,24 +1659,27 @@ public class ATLASDatabase extends DBCache implements Database{
       }
       for(int i=0; i<dqLocations.getIncomplete().length; ++i){
         if(!dqLocations.getIncomplete()[i].equalsIgnoreCase(homeSite) &&
-            dqLocations.getIncomplete()[i].equalsIgnoreCase(preferredSites[ii])){
+            dqLocations.getIncomplete()[i].equalsIgnoreCase(preferredSites[ii]) &&
+            !checkSkip(preferredSites[ii])){
           locations.add(preferredSites[ii]);
           break;
         }
       }
     }
-    // add the rest
+    // add the rest, excluding ignored sites
     HashSet preferredSet = new HashSet();
     Collections.addAll(preferredSet, preferredSites);
     for(int i=0; i<dqLocations.getComplete().length; ++i){
       if(!dqLocations.getComplete()[i].equalsIgnoreCase(homeSite) &&
-          !preferredSet.contains(dqLocations.getComplete()[i])){
+          !preferredSet.contains(dqLocations.getComplete()[i]) &&
+          !checkSkip(dqLocations.getComplete()[i])){
         locations.add(dqLocations.getComplete()[i]);
       }
     }
     for(int i=0; i<dqLocations.getIncomplete().length; ++i){
       if(!dqLocations.getIncomplete()[i].equalsIgnoreCase(homeSite) &&
-          !preferredSet.contains(dqLocations.getIncomplete()[i])){
+          !preferredSet.contains(dqLocations.getIncomplete()[i]) &&
+          !checkSkip(dqLocations.getIncomplete()[i])){
         locations.add(dqLocations.getIncomplete()[i]);
       }
     }
