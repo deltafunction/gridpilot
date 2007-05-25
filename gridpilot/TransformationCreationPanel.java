@@ -272,7 +272,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
             Util.getNameField(dbPluginMgr.getDBName(), "runtimeEnvironment");
           dbPanel.selectPanel.setConstraint(nameField,
               runtimeEnvironmentName, 0);
-          dbPanel.searchRequest(true);           
+          dbPanel.searchRequest(true, false);           
           GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);
         }
         catch(Exception e){

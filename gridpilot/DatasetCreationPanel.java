@@ -611,7 +611,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
               transformationVersion);
           dbPanel.selectPanel.setConstraint(idField,
               id, 0);
-          dbPanel.searchRequest(true);           
+          dbPanel.searchRequest(true, false);           
           GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);
         }
         catch(Exception e){

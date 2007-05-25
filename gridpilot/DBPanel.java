@@ -77,7 +77,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JMenuItem menuEditCopy = null;
   private JMenuItem menuEditCut = null;
   private JMenuItem menuEditPaste = null;
-  private Thread workThread;
+  private MyThread workThread;
   // WORKING THREAD SEMAPHORE
   // The idea is to ignore new requests when working on a request
   private boolean working = false;
@@ -449,7 +449,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       
       bViewFiles.addActionListener(new java.awt.event.ActionListener(){
         public void actionPerformed(ActionEvent e){
-          viewFiles();
+          new Thread(){
+            public void run(){
+              viewFiles(false);
+            }
+          }.start();
         }
       }
       );
@@ -522,7 +526,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
       bDownload.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          download();
+          download(null, null);
         }
       });
             
@@ -779,7 +783,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   public void search(){
     if(tableResults==null){
-      searchRequest(true);
+      searchRequest(true, false);
     }
     else{
       DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
@@ -854,13 +858,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   public void searchRequest(final int sortColumn, final boolean isAscending,
       final int [] columnWidths){
-    searchRequest(sortColumn, isAscending, columnWidths, true);
+    searchRequest(sortColumn, isAscending, columnWidths, true, false);
   }
 
   public void searchRequest(final int sortColumn, final boolean isAscending,
-      final int [] columnWidths, boolean invokeLater){
+      final int [] columnWidths, boolean invokeLater, boolean waitForThread){
         
-    workThread = new Thread(){
+    workThread = new MyThread(){
       public void run(){
         if(!waitForWorking()){
           GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, search not performed");
@@ -1118,6 +1122,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         stopWorking();
       }
     };
+    
+    if(waitForThread){
+      Util.waitForThread(workThread, dbName, 0, "searchRequest");
+    }
 
     if(invokeLater){
       SwingUtilities.invokeLater(workThread);
@@ -1127,10 +1135,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
   }
   
-  public void searchRequest(boolean invokeLater){
+  public void searchRequest(boolean invokeLater, boolean waitForThread){
     DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
     tableModel.ascending = true;
-    searchRequest(-1, tableModel.ascending, null, invokeLater);
+    searchRequest(-1, tableModel.ascending, null, invokeLater, waitForThread);
   }
  
   /**
@@ -1153,7 +1161,44 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     JMenuItem miViewFiles = new JMenuItem("Show file(s)");
     miViewFiles.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        viewFiles();
+        new Thread(){
+          public void run(){
+            viewFiles(false);
+          }
+        }.start();
+;
+      }
+    });
+    JMenuItem miDownloadDataset = new JMenuItem("Replicate file(s)");
+    miDownloadDataset.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        final int origFileRows = GridPilot.fileRows;
+        new Thread(){
+          public void run(){
+            try{
+              TargetDBsPanel targetDBsPanel = makeTargetDBsPanel();
+              JPanel pTargetDBs = targetDBsPanel.pTargetDBs;
+              String dlUrl = getReplicaURL(defaultURL, pTargetDBs);
+              if(dlUrl.startsWith("file:")){
+                defaultURL = dlUrl;
+              }
+              GridPilot.fileRows = 0;
+              DBPanel filesPanel = viewFiles(true);
+              Thread.sleep(3000);
+              filesPanel.tableResults.selectAll();
+              filesPanel.download(dlUrl, targetDBsPanel);
+              GridPilot.fileRows = origFileRows;
+            }
+            catch(IOException e){
+              GridPilot.fileRows = origFileRows;
+              e.printStackTrace();
+            }
+            catch(InterruptedException e){
+              GridPilot.fileRows = origFileRows;
+              e.printStackTrace();
+            }
+          }
+        }.start();
       }
     });
     JMenuItem miDelete = new JMenuItem("Delete");
@@ -1170,6 +1215,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     });
     miImportFiles.setEnabled(dbPluginMgr.isFileCatalog());
     miViewFiles.setEnabled(true);
+    miDownloadDataset.setEnabled(true);
     miViewJobDefinitions.setEnabled(dbPluginMgr.isJobRepository());
     miDelete.setEnabled(true);
     miEdit.setEnabled(true);
@@ -1177,6 +1223,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     tableResults.addMenuItem(miImportFiles);
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miViewFiles);
+    tableResults.addMenuItem(miDownloadDataset);
     tableResults.addMenuItem(miViewJobDefinitions);
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miEdit);
@@ -1243,12 +1290,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     });
     miDownload.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        download();
+        download(null, null);
       }
     });
     miLookupPFNs.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        lookupPFNs();
+        new Thread(){
+          public void run(){               
+            lookupPFNs();
+          }
+        }.start();
       }
     });
     miCopyPFNs.addActionListener(new ActionListener(){
@@ -1464,7 +1515,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         e.printStackTrace();
         return;
       }
-      workThread = new Thread(){
+      workThread = new MyThread(){
         public void run(){
           if(!getWorking()){
             return;
@@ -1587,7 +1638,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       return;
     }
 
-    workThread = new Thread(){
+    workThread = new MyThread(){
       public void run(){
         if(!getWorking()){
           return;
@@ -1670,7 +1721,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   public void deleteDatasets(){
     statusBar.setLabel("Deleting dataset(s).");
     final HashSet deleted = new HashSet();
-    workThread = new Thread(){
+    workThread = new MyThread(){
       public void run(){
         if(!getWorking()){
           return;
@@ -1758,7 +1809,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     Debug.debug("Refreshing search results", 3);
     if(tableResults==null /*|| tableResults.getRowCount()==0*/){
-      searchRequest(true);
+      searchRequest(true, false);
       //return;
     }
     else{
@@ -1830,7 +1881,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(choice==JOptionPane.NO_OPTION){
       return;
     }
-    workThread = new Thread(){
+    workThread = new MyThread(){
       public void run(){
         if(!getWorking()){
           return;
@@ -1895,7 +1946,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(choice==JOptionPane.NO_OPTION){
       return;
     }
-    workThread = new Thread(){
+    workThread = new MyThread(){
       public void run(){
         if(!getWorking()){
           return;
@@ -1942,10 +1993,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   /**
    * Open new pane with list of files.
    */
-  private void viewFiles(){
+  private DBPanel viewFiles(boolean waitForThread){
     if(!getSelectedIdentifier().equals("-1")){
-      new Thread(){
-        public void run(){
+      //new Thread(){
+        //public void run(){
           try{
             // Create new panel with jobDefinitions.         
             String id = getSelectedIdentifier();
@@ -1960,17 +2011,22 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             dbPanel.selectPanel.setConstraint(datasetColumn,
                 dbPluginMgr.getDataset(id).getValue(
                     fileDatasetReference[0]).toString(), 0);
-            dbPanel.searchRequest(false);
+            dbPanel.searchRequest(false, waitForThread);
             dbPanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-            GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                   
+            GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);
+            return dbPanel;
           }
           catch(Exception e){
             Debug.debug("Couldn't create panel for dataset " + "\n" +
                                "\tException\t : " + e.getMessage(), 2);
             e.printStackTrace();
+            return null;
           }
-        }
-      }.start();
+        //}
+      //}.start();
+    }
+    else{
+      return null;
     }
   }
  
@@ -1992,7 +2048,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                 dbPluginMgr.getDataset(id).getValue(
                     jobDefDatasetReference[0]).toString(),
                 0);
-            dbPanel.searchRequest(true);           
+            dbPanel.searchRequest(true, false);           
             GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                   
           }
           catch(Exception e){
@@ -2086,56 +2142,83 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
   }
   
+  private class TargetDBsPanel{
+    protected JPanel pTargetDBs = null;
+    protected JComboBox cbTargetDBSelection = null;
+    TargetDBsPanel(JPanel _pTargetDBs, JComboBox _cbTargetDBSelection){
+      pTargetDBs = _pTargetDBs;
+      cbTargetDBSelection = _cbTargetDBSelection;
+    }
+  }
+  
+  private TargetDBsPanel makeTargetDBsPanel(){
+    JPanel pTargetDBs = null;
+    JComboBox cbTargetDBSelection = null;
+    try{
+      pTargetDBs = new JPanel();
+      cbTargetDBSelection = new JComboBox();           
+      cbTargetDBSelection.addItem("");
+      for(int i=0; i<GridPilot.dbNames.length; ++i){
+        // If this DB has a job definition table, registration should not be done.
+        // Files are defined by the jobDefinition table.
+        try{
+          if(!GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[i]).isFileCatalog()){
+            continue;
+          }
+        }
+        catch(Exception e){
+        }
+        cbTargetDBSelection.addItem(GridPilot.dbNames[i]);
+      }
+      JLabel jlTargetDBSelection = new JLabel("Register new locations in DB:");
+      pTargetDBs.add(jlTargetDBSelection, null);
+      pTargetDBs.add(cbTargetDBSelection, null);
+      if(cbTargetDBSelection.getItemCount()<2){
+        pTargetDBs = null;
+      }
+    }
+    catch(Exception e){
+      pTargetDBs = null;
+    }
+    return new TargetDBsPanel(pTargetDBs, cbTargetDBSelection);
+  }
+  
   /**
    * Called when mouse is pressed on the Download button
    */
-  private void download(){
+  private void download(final String _dlUrl, final TargetDBsPanel _targetDBsPanel){
     new Thread(){
       public void run(){        
         // if the table jobDefinition is present, we are using
         // the native tables and only one url/pfn per jobDefinition/file
         // is allowed, thus no db combobox needed
-        JPanel pTargetDBs = null;
-        JComboBox cbTargetDBSelection = null;
-        try{
-          pTargetDBs = new JPanel();
-          cbTargetDBSelection = new JComboBox();           
-          cbTargetDBSelection.addItem("");
-          for(int i=0; i<GridPilot.dbNames.length; ++i){
-            // If this DB has a job definition table, registration should not be done.
-            // Files are defined by the jobDefinition table.
-            try{
-              if(!GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[i]).isFileCatalog()){
-                continue;
-              }
-            }
-            catch(Exception e){
-            }
-            cbTargetDBSelection.addItem(GridPilot.dbNames[i]);
-          }
-          JLabel jlTargetDBSelection = new JLabel("Register new locations in DB:");
-          pTargetDBs.add(jlTargetDBSelection, null);
-          pTargetDBs.add(cbTargetDBSelection, null);
-          if(cbTargetDBSelection.getItemCount()<2){
-            pTargetDBs = null;
-          }
+        TargetDBsPanel targetDBsPanel = null;
+        if(_targetDBsPanel!=null){
+          targetDBsPanel = _targetDBsPanel;
         }
-        catch(Exception e){
-          pTargetDBs = null;
+        else{
+          targetDBsPanel = makeTargetDBsPanel();
         }
+        JPanel pTargetDBs = targetDBsPanel.pTargetDBs;
+        JComboBox cbTargetDBSelection = targetDBsPanel.cbTargetDBSelection;
 
         String dlUrl = null;
-        try{
-          dlUrl = getReplicaURL(defaultURL, pTargetDBs);
-          if(dlUrl.startsWith("file:")){
-            defaultURL = dlUrl;
-          }
+        if(_dlUrl!=null){
+          dlUrl = _dlUrl;
         }
-        catch(Exception e){
-          String error = "ERROR: not a valid directory: "+dlUrl;
-          Debug.debug(error, 1);
-          GridPilot.getClassMgr().getStatusBar().setLabel(error);
-          return;
+        else{
+          try{
+            dlUrl = getReplicaURL(defaultURL, pTargetDBs);
+            if(dlUrl.startsWith("file:")){
+              defaultURL = dlUrl;
+            }
+          }
+          catch(Exception e){
+            String error = "ERROR: not a valid directory: "+dlUrl;
+            Debug.debug(error, 1);
+            GridPilot.getClassMgr().getStatusBar().setLabel(error);
+            return;
+          }
         }
         // queue downloads, if drop-down of DBs is set, request registering new locations
         // by passing on corresponding dbPluginMgr
@@ -2152,8 +2235,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   private void lookupPFNs(){
-    new Thread(){
-      public void run(){               
+    //new Thread(){
+      //public void run(){               
         String [] selectedFileIdentifiers = getSelectedIdentifiers();
         int [] selectedRows = tableResults.getSelectedRows();
         // We assume that the dataset name is used as reference...
@@ -2205,8 +2288,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
-      }
-    }.start();
+      //}
+    //}.start();
   }
 
   private void copyPFNs(){
@@ -2342,6 +2425,25 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   /**
+   * Lookup the values of a row in the displayed table.
+   * @param row
+   * @return
+   */
+  private HashMap getValues(int row){
+    HashMap values = new HashMap();
+    for(int j=0; j<fieldNames.length; ++j){
+      // Not displayed colums
+      for(int k=0; k<tableResults.getColumnCount(); ++k){
+        if(tableResults.getColumnName(k).equalsIgnoreCase(fieldNames[j])){
+          values.put(fieldNames[j], tableResults.getUnsortedValueAt(row, k).toString());
+          break;
+        }
+      }
+    }
+    return values;
+  }
+  
+  /**
    * Starts the download of the selected files to the directory _dlUrl.
    * @param _dlUrl download directory.
    * @param regDBPluginMgr if not null, DBPluginMgr to use to register the new
@@ -2384,16 +2486,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       String datasetName = null;
       String datasetID = null;
       // First try and get the values from the table.            
-      HashMap values = new HashMap();
-      for(int j=0; j<fieldNames.length; ++j){
-        // Not displayed colums
-        for(int k=0; k<tableResults.getColumnCount(); ++k){
-          if(tableResults.getColumnName(k).equalsIgnoreCase(fieldNames[j])){
-            values.put(fieldNames[j], tableResults.getUnsortedValueAt(selectedRows[i], k).toString());
-            break;
-          }
-        }
-      }
+      HashMap values = getValues(selectedRows[i]);
       try{
         guid = values.get(idField).toString();
       }
@@ -2416,7 +2509,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         Debug.debug("urlsString: "+urlsString, 2);
         if(urlsString==null || urlsString.equals("")){
           lookupPFNs();
+          values = getValues(selectedRows[i]);
           urlsString = values.get(pfnsColumn).toString();
+          Debug.debug("new urlsString: "+urlsString, 2);
         }
         // If no PFNs were found, skip this transfer (an exception will be thrown and catched).
         urls = Util.splitUrls(urlsString);
@@ -2640,7 +2735,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Submits all selected logicalFiles (partitions) in computing system chosen in the popupMenu
    */
   private void submit(final ActionEvent e){
-    workThread = new Thread(){
+    workThread = new MyThread(){
       public void run(){
         if(!waitForWorking()){
           GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, search not performed");

@@ -1041,6 +1041,7 @@ public class Util{
 
   /**
    * Waits the specified <code>MyThread</code> during maximum <code>timeOut</code> ms.
+   * 0 means wait forever.
    * @return true if <code>t</code> ended normally, false if <code>t</code> has been interrupted
    * @throws InterruptedException 
    */
