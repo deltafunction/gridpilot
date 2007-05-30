@@ -14,6 +14,8 @@ import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.ListPanel;
 import gridpilot.IconProxy;
+import gridpilot.wizards.beginning.BeginningWizard;
+import gridpilot.wizards.run_one_job.RunOneJobWizard;
 
 /**
  * Main frame of GridPilot application.
@@ -552,14 +554,32 @@ public class GlobalFrame extends GPFrame{
 
     //Help
     JMenu menuHelp = new JMenu("Help");
-    JMenuItem menuHelpAbout = new JMenuItem("About");
+    JMenuItem menuHelpAbout = new JMenuItem("About GridPilot");
     menuHelpAbout.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         menuHelpAbout_actionPerformed();
       }
     });
-
     menuHelp.add(menuHelpAbout);
+    menuHelp.addSeparator();
+    JMenuItem menuHelpBeginning = new JMenuItem("Wizard: Starting with GridPilot");
+    menuHelpBeginning.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        (new MyThread(){
+          public void run(){
+            new BeginningWizard(false);
+          }
+        }).start();
+      }
+    });
+    menuHelp.add(menuHelpBeginning);
+    JMenuItem menuHelpRunOneJob = new JMenuItem("Wizard: Prepare and run a single job");
+    menuHelpRunOneJob.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        new RunOneJobWizard();
+      }
+    });
+    menuHelp.add(menuHelpRunOneJob);
     
     menuBar.add(menuFile);
     menuBar.add(menuEdit);

@@ -1,5 +1,7 @@
 package gridpilot;
 
+import gridpilot.wizards.beginning.BeginningWizard;
+
 import java.awt.*;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -66,6 +68,7 @@ public class GridPilot extends JApplet{
   public static boolean editingPrefs = false;
   public static boolean pullEnabled = false;
   public static int maxPullRerun = 0;
+  public static boolean firstRun = false;
 
   /**
    * Constructor
@@ -90,10 +93,11 @@ public class GridPilot extends JApplet{
         confFile = new ConfigFile(exConfFile);
       }
       catch(Exception ee){
-        System.out.println("WARNING: could not load external configuration file, " +
-                "using default config file.");
+        System.out.println("WARNING: could not load user configuration file, " +
+                "using defaults.");
         ee.printStackTrace();
         confFile = new ConfigFile(confFileName);
+        firstRun = true;
       }      
       getClassMgr().setConfigFile(confFile);
       loadConfigValues();
@@ -104,6 +108,9 @@ public class GridPilot extends JApplet{
       splash.stopSplash();
       splash = null;
       getClassMgr().getLogFile().addInfo("GridPilot loaded");
+      if(firstRun){
+        new BeginningWizard(firstRun);
+      }
     }
     catch(Throwable e){
       if(e instanceof Error){
