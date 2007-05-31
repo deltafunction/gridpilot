@@ -22,7 +22,6 @@ public class GridPilot extends JApplet{
   private static final long serialVersionUID = 1L;
   private boolean packFrame = false;
   private GlobalFrame frame;
-  private static String confFileName = "gridpilot.conf";
   private static String userConfFileName = ".gridpilot";
   private static ClassMgr classMgr = new ClassMgr();
   private static boolean applet = true;  
@@ -32,6 +31,7 @@ public class GridPilot extends JApplet{
   private static JLabel exitPanel = new JLabel();
   private static JPanel topExitPanel = new JPanel();
   
+  public static String defaultConfFileName = "gridpilot.conf";
   public static String [] preferredFileServers = null;
   public static int fileRows = 300;
   public static HashMap tmpConfFile = new HashMap();
@@ -69,6 +69,7 @@ public class GridPilot extends JApplet{
   public static boolean pullEnabled = false;
   public static int maxPullRerun = 0;
   public static boolean firstRun = false;
+  public static File userConfFile = null;
 
   /**
    * Constructor
@@ -79,24 +80,26 @@ public class GridPilot extends JApplet{
       getClassMgr().setLogFile(new LogFile(logFileName));
       // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
       if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
-        userConfFileName = confFileName;
+        userConfFileName = defaultConfFileName;
       }
       ConfigFile confFile = null;
+      userConfFile = new File(System.getProperty("user.home") + File.separator +
+          userConfFileName);
       try{
-        File exConfFile = new File(System.getProperty("user.home") + File.separator +
-            userConfFileName);
-        if(!exConfFile.exists()){
+        confFile = new ConfigFile(userConfFile);
+        if(!userConfFile.exists()){
           throw new FileNotFoundException("WARNING: Configuration file "+
-              exConfFile.getAbsolutePath()+" not found.");
+              userConfFile.getAbsolutePath()+" not found.");
         }
-        System.out.println("Trying to load configuration file "+exConfFile);
-        confFile = new ConfigFile(exConfFile);
+        System.out.println("Trying to load configuration file "+userConfFile);
       }
       catch(Exception ee){
         System.out.println("WARNING: could not load user configuration file, " +
                 "using defaults.");
-        ee.printStackTrace();
-        confFile = new ConfigFile(confFileName);
+        //ee.printStackTrace();
+        //confFile = new ConfigFile(defaultConfFileName);
+        new BeginningWizard(firstRun);
+        confFile = new ConfigFile(userConfFile);
         firstRun = true;
       }      
       getClassMgr().setConfigFile(confFile);
@@ -108,9 +111,6 @@ public class GridPilot extends JApplet{
       splash.stopSplash();
       splash = null;
       getClassMgr().getLogFile().addInfo("GridPilot loaded");
-      if(firstRun){
-        new BeginningWizard(firstRun);
-      }
     }
     catch(Throwable e){
       if(e instanceof Error){
@@ -580,7 +580,7 @@ public class GridPilot extends JApplet{
             break;
           }
           else{
-            confFileName = args[i+1];
+            defaultConfFileName = args[i+1];
             ++i;
           }
         }
@@ -620,7 +620,7 @@ public class GridPilot extends JApplet{
     
     // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
     if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
-      userConfFileName = confFileName;
+      userConfFileName = defaultConfFileName;
     }
     ConfigFile confFile = null;
     try{
@@ -637,7 +637,7 @@ public class GridPilot extends JApplet{
       System.out.println("WARNING: could not load external configuration file, " +
               "using default config file.");
       ee.printStackTrace();
-      confFile = new ConfigFile(confFileName);
+      confFile = new ConfigFile(defaultConfFileName);
     }
     getClassMgr().setConfigFile(confFile);
     
@@ -648,7 +648,7 @@ public class GridPilot extends JApplet{
     }
     catch(Exception e){
     }
-    getClassMgr().getConfigFile().makeTmpConfigFile();
+    //getClassMgr().getConfigFile().makeTmpConfigFile();
     loadConfigValues();
     getClassMgr().getJobValidation().loadValues();
     getClassMgr().getSubmissionControl().loadValues();

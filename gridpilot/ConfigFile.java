@@ -42,14 +42,20 @@ public class ConfigFile{
    */
   private ConfigNode configuration;
   private Vector sectionsVector;
+  private File configFile = null;
 
   /**
    * Constructor. Initalizes this configuration file manager with the file 'configFile'
    */
-  public ConfigFile(File configFile){
+  public ConfigFile(File _configFile){
+    configFile = _configFile;
     configFileName = configFile.getAbsolutePath();
     inJar = false;
     init();
+  }
+  
+  public File getFile(){
+    return configFile;
   }
   
   private void init(){
@@ -259,7 +265,7 @@ public class ConfigFile{
     inJar = true;
   }
   
-  public void makeTmpConfigFile(){
+  public File makeTmpConfigFile(){
     InputStream is =  null;
     BufferedReader in = null;
     PrintWriter out = null;
@@ -309,6 +315,7 @@ public class ConfigFile{
           e.getMessage(), 1);
       e.printStackTrace();
     }
+    return (File) GridPilot.tmpConfFile.get(configFileName);
   }
 
   /**

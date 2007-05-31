@@ -18,17 +18,25 @@ public class ConfirmBox extends JDialog implements ActionListener {
    enableEvents(AWTEvent.WINDOW_EVENT_MASK);
   }
 
-  public int getConfirm(String title, String text, Object[] showResultsOptions ) throws Exception {
+  public int getConfirm(String title, String text, Object[] showResultsOptions) throws Exception {
+    return getConfirm(title, text, showResultsOptions, null, null);
+  }
+  
+  public int getConfirm(String title, Object text, Object[] showResultsOptions,
+      Icon icon, Color bgColor) throws Exception {
     JOptionPane op = new JOptionPane(
          text,
          JOptionPane.QUESTION_MESSAGE,
          JOptionPane.YES_NO_CANCEL_OPTION,
-         null,
+         icon,
          showResultsOptions,
          showResultsOptions[0]);
-
+    
     JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), title);
     dialog.setResizable(true);
+    if(bgColor!=null){
+      recolor(dialog.getContentPane(), bgColor);
+    }
     dialog.pack();
     dialog.setVisible(true);
     dialog.dispose();
@@ -44,6 +52,15 @@ public class ConfirmBox extends JDialog implements ActionListener {
       }
     }
     return JOptionPane.CLOSED_OPTION;
+  }
+
+  private static void recolor(Component component, Color color) {
+    component.setBackground(color);
+    if(component instanceof Container){
+        Container container = (Container) component;
+        for(int i=0, ub=container.getComponentCount(); i<ub; ++i)
+            recolor(container.getComponent(i), color);
+    }
   }
 
   //Overridden so we can exit when window is closed
