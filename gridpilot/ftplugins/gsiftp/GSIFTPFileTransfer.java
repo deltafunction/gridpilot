@@ -7,7 +7,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.TreeSet;
@@ -39,7 +38,6 @@ import gridpilot.FileTransfer;
 import gridpilot.LocalStaticShellMgr;
 import gridpilot.GridPilot;
 import gridpilot.StatusBar;
-import gridpilot.TransferControl;
 import gridpilot.Util;
 
 public class GSIFTPFileTransfer implements FileTransfer {
@@ -53,17 +51,19 @@ public class GSIFTPFileTransfer implements FileTransfer {
   
   public GSIFTPFileTransfer(){
     pluginName = "gsiftp";
-    GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-    GlobusCredential globusCred = null;
-    if(credential instanceof GlobusGSSCredentialImpl){
-      globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+    if(!GridPilot.firstRun){
+      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+      GlobusCredential globusCred = null;
+      if(credential instanceof GlobusGSSCredentialImpl){
+        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+      }
+      Debug.debug("getting identity", 3);
+      user = globusCred.getIdentity();
+      /* remove leading whitespace */
+      user = user.replaceAll("^\\s+", "");
+      /* remove trailing whitespace */
+      user = user.replaceAll("\\s+$", "");
     }
-    Debug.debug("getting identity", 3);
-    user = globusCred.getIdentity();
-    /* remove leading whitespace */
-    user = user.replaceAll("^\\s+", "");
-    /* remove trailing whitespace */
-    user = user.replaceAll("\\s+$", "");
     
     jobs = new HashMap();
     urlCopyTransferListeners = new HashMap();

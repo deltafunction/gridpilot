@@ -5,6 +5,7 @@ import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -60,7 +61,6 @@ import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -314,7 +314,7 @@ public class Util{
     }
   }
  
- public static void launchCheckBrowser(final JFrame frame, String url,
+ public static void launchCheckBrowser(final Frame frame, String url,
      final JTextComponent jt, final boolean localFS){
    if(url.equals("http://check/")){
      String httpScript = jt.getText();
@@ -384,8 +384,11 @@ public class Util{
              }
            }
            catch(Exception eee){
+             eee.printStackTrace();
              Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
-             GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
+             if(!GridPilot.firstRun){
+               GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
+             }
              ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
              try{
                confirmBox.getConfirm("URL could not be opened",
@@ -421,7 +424,7 @@ public class Util{
  }
  
  public static JEditorPane createCheckPanel(
-      final JFrame frame, 
+      final Frame frame, 
       final String name, final JTextComponent jt){
     //final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
     String markup = "<font size=-1 face=sans-serif><b>"+name+" : </b></font><br>"+

@@ -63,17 +63,19 @@ public class SRMFileTransfer implements FileTransfer {
 
   public SRMFileTransfer(){
     pluginName = "srm";
-    GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-    GlobusCredential globusCred = null;
-    if(credential instanceof GlobusGSSCredentialImpl){
-      globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+    if(!GridPilot.firstRun){
+      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+      GlobusCredential globusCred = null;
+      if(credential instanceof GlobusGSSCredentialImpl){
+        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+      }
+      Debug.debug("getting identity", 3);
+      user = globusCred.getIdentity();
+      /* remove leading whitespace */
+      user = user.replaceAll("^\\s+", "");
+      /* remove trailing whitespace */
+      user = user.replaceAll("\\s+$", "");      
     }
-    Debug.debug("getting identity", 3);
-    user = globusCred.getIdentity();
-    /* remove leading whitespace */
-    user = user.replaceAll("^\\s+", "");
-    /* remove trailing whitespace */
-    user = user.replaceAll("\\s+$", "");      
 
     //System.setProperty("X509_CERT_DIR",
     //    Util.getProxyFile().getParentFile().getAbsolutePath());

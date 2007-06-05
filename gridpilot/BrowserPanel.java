@@ -66,7 +66,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   public static int HISTORY_SIZE = 15;
   private static int MAX_FILE_EDIT_BYTES = 500000;
 
-  public BrowserPanel(JFrame _parent, String title, String url, 
+  public BrowserPanel(Frame _parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
       boolean _withNavigation, JComponent _jBox, String _filter,
       boolean _localFS) throws Exception{
@@ -321,27 +321,33 @@ public class BrowserPanel extends JDialog implements ActionListener{
     JPanel topPanel = new JPanel(new GridBagLayout()); 
     
     if(withNavigation){
-      ImageIcon homeIcon;
-      URL imgURL=null;
+      ImageIcon homeIcon = null;
+      URL imgURL = null;
       try{
         imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "folder_home2.png");
         homeIcon = new ImageIcon(imgURL);
       }
       catch(Exception e){
         Debug.debug("Could not find image "+ GridPilot.resourcesPath + "folder_home2.png", 3);
-        homeIcon = new ImageIcon();
+        //homeIcon = new ImageIcon();
       }
-      ImageIcon enterIcon;
+      ImageIcon enterIcon = null;
       imgURL=null;
       try{
         imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "key_enter.png");
-        enterIcon = new ImageIcon(imgURL);
+        //enterIcon = new ImageIcon(imgURL);
       }
       catch(Exception e){
         Debug.debug("Could not find image "+ GridPilot.resourcesPath + "key_enter.png", 3);
         enterIcon = new ImageIcon();
       }
-      JButton bHome = new JButton(homeIcon);
+      JButton bHome = null;
+      if(homeIcon!=null){
+        bHome = new JButton(homeIcon);
+      }
+      else{
+        bHome = new JButton("home");
+      }
       bHome.setToolTipText("go to grid home-URL");
       bHome.setPreferredSize(new java.awt.Dimension(22, 22));
       bHome.setSize(new java.awt.Dimension(22, 22));
@@ -366,7 +372,13 @@ public class BrowserPanel extends JDialog implements ActionListener{
           SwingUtilities.invokeLater(t);
         }
       });
-      JButton bEnter = new JButton(enterIcon);
+      JButton bEnter = null;
+      if(enterIcon!=null){
+        bEnter = new JButton(enterIcon);
+      }
+      else{
+        bEnter = new JButton("<");
+      }
       bEnter.setToolTipText("go!");
       bEnter.setPreferredSize(new java.awt.Dimension(22, 22));
       bEnter.setSize(new java.awt.Dimension(22, 22));
@@ -394,7 +406,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       });
 
       JPanel jpNavigation = new JPanel(new GridBagLayout());
-      jpNavigation.add(bHome);
+      if(!GridPilot.firstRun){
+        jpNavigation.add(bHome);
+      }
       jpNavigation.add(new JLabel(" "));
       jpNavigation.add(new JLabel("URL: "));
       jpNavigation.add(currentUrlBox);

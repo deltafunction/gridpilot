@@ -92,17 +92,17 @@ public class GridPilot extends JApplet{
               userConfFile.getAbsolutePath()+" not found.");
         }
         System.out.println("Trying to load configuration file "+userConfFile);
+        getClassMgr().setConfigFile(confFile);
       }
       catch(Exception ee){
         System.out.println("WARNING: could not load user configuration file, " +
                 "using defaults.");
         //ee.printStackTrace();
         //confFile = new ConfigFile(defaultConfFileName);
-        new BeginningWizard(firstRun);
-        confFile = new ConfigFile(userConfFile);
         firstRun = true;
+        new BeginningWizard(firstRun);
+        firstRun = false;
       }      
-      getClassMgr().setConfigFile(confFile);
       loadConfigValues();
       loadDBs();
       loadFTs();
@@ -347,7 +347,9 @@ public class GridPilot extends JApplet{
         continue;
       }
       try{
-        splashShow("Loading file transfer system: "+ftNames[i]);
+        if(!GridPilot.firstRun){
+          splashShow("Loading file transfer system: "+ftNames[i]);
+        }
       }
       catch(Exception e){
         // if we cannot show text on splash, just silently ignore
