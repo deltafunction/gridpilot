@@ -28,11 +28,14 @@ import javax.swing.SwingUtilities;
 public class BeginningWizard{
 
   private ImageIcon icon = null;
+  private ConfigFile configFile = null;
+  private boolean changes = false;
   private static int TEXTFIELDWIDTH = 32;
 
   public BeginningWizard(boolean firstRun){
     
     URL imgURL = null;
+    changes = false;
     
     try{
       imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "aviateur.png");
@@ -70,7 +73,14 @@ public class BeginningWizard{
       
       // TODO: give report on which directories were created, etc.
       
-      endGreeting(firstRun);
+      if(endGreeting(firstRun) && changes){
+        try{
+          GridPilot.reloadConfigValues();
+        }
+        catch(Exception e1){
+          e1.printStackTrace();
+        }
+      }
 
     }
     catch(Exception e){
@@ -82,8 +92,7 @@ public class BeginningWizard{
       catch(Exception e1){
         e1.printStackTrace();
       }
-    }
-    
+    }    
   }
   
   private boolean welcome(boolean firstRun) throws Exception{
@@ -111,14 +120,16 @@ public class BeginningWizard{
   
   private boolean endGreeting(boolean firstRun) throws Exception{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-    String confirmString = "Please notice that only the most basic parameters,\n" +
+    String confirmString = "Configuring GridPilot is now done.\n" +
+        "Click \"OK\" to save your settings to " +configFile.getFile().getCanonicalPath()+
+        ".\n\n"+
+        "Please notice that only the most basic parameters,\n" +
             "necessary to get you up and running have been set.\n" +
             "You can modify these and set many others in \"Edit\" -> \"Preferences\"." +
             (firstRun?"\n\nThanks for using GridPilot and have fun!":"");
     int choice = -1;
-    choice = confirmBox.getConfirm("Starting with GridPilot",
-        confirmString, new Object[] {"Continue",  "Cancel"}, icon, Color.WHITE);
-    
+    confirmBox.getConfirm("Setup completed!",
+        confirmString, new Object[] {"OK",  "Cancel"}, icon, Color.WHITE);   
     if(choice!=0){
       return false;
     }
@@ -139,16 +150,26 @@ public class BeginningWizard{
    */
   private boolean checkDirs(boolean firstRun) throws IOException{
     JPanel jPanel = new JPanel(new GridBagLayout());
-    File userConfDir = new File(System.getProperty("user.home") + File.separator +
-      "GridPilot");
-    File [] dirs = new File [] {
-        userConfDir,
-        new File(userConfDir, "cache"),
-        new File(userConfDir, "jobs"),
-        new File(userConfDir, "runtimeEnvironments"),
-        new File(userConfDir, "transformations")
+    String [] names = new String [] {
+        "Database directory",
+        "Cache directory",
+        "Working directory",
+        "Software directory",
+        "Transformations directory"
         };
-    JTextField [] jtFields = new JTextField [dirs.length];
+    String dbDir = "~/GridPilot";
+    String cacheDir = configFile.getValue("GridPilot", "pull cache directory");
+    String workingDir = configFile.getValue("Fork", "working directory");
+    String runtimeDir = configFile.getValue("Fork", "runtime directory");
+    String transDir = configFile.getValue("Fork", "transformation directory");
+    String [] defDirs = new String [] {
+        dbDir,
+        cacheDir==null?dbDir+"/cache":cacheDir,
+        workingDir==null?dbDir+"/jobs":workingDir,
+        runtimeDir==null?dbDir+"/runtimeEnvironments":runtimeDir,
+        transDir==null?dbDir+"/transformations":transDir
+        };
+    JTextField [] jtFields = new JTextField [defDirs.length];
     if(firstRun){
       jPanel.add(new JLabel("A configuration file "+GridPilot.userConfFile.getCanonicalPath()+
           " will be created."),
@@ -162,13 +183,13 @@ public class BeginningWizard{
             new Insets(5, 5, 5, 5), 0, 0));
     JPanel row = null;
     JPanel subRow = null;
-    for(int i=0; i<dirs.length; ++i){
+    for(int i=0; i<defDirs.length; ++i){
       jtFields[i] = new JTextField(TEXTFIELDWIDTH);
-      jtFields[i].setText(dirs[i].getAbsolutePath());
+      jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout());
       row.add(Util.createCheckPanel(
           (JFrame) SwingUtilities.getWindowAncestor(GridPilot.getClassMgr().getGlobalFrame().getRootPane()),
-          dirs[i].getName(), jtFields[i]), BorderLayout.WEST);
+          names[i], jtFields[i]), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout());
       subRow.add(jtFields[i], BorderLayout.CENTER);
       subRow.add(new JLabel("   "), BorderLayout.SOUTH);
@@ -183,7 +204,7 @@ public class BeginningWizard{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = -1;
     try{
-      choice = confirmBox.getConfirm("Setting up GridPilot configuration",
+      choice = confirmBox.getConfirm("Setting up GridPilot",
           jPanel, new Object[] {"Continue",  "Cancel"}, icon, Color.WHITE);
     }
     catch(Exception e){
@@ -195,24 +216,26 @@ public class BeginningWizard{
     }
     
     // Create missing directories
-    for(int i=0; i<dirs.length; ++i){
-      Debug.debug("Checking directory "+dirs[i], 2);
-      dirs[i] = new File(jtFields[i].getText());
-      if(dirs[i].exists()){
-        if(!dirs[i].isDirectory()){
-          throw new IOException("The directory "+userConfDir.getCanonicalPath()+" cannot be created.");
+    String [] newDirs = new String [defDirs.length];
+    File [] newDirFiles = new File[newDirs.length];
+    for(int i=0; i<defDirs.length; ++i){
+      newDirs[i] = jtFields[i].getText();
+      Debug.debug("Checking directory "+newDirs[i], 2);
+      newDirFiles[i] = new File(Util.clearTildeLocally(Util.clearFile(newDirs[i])));
+      if(newDirFiles[i].exists()){
+        if(!newDirFiles[i].isDirectory()){
+          throw new IOException("The directory "+newDirFiles[i].getCanonicalPath()+" cannot be created.");
         }
       }
       else{
-        Debug.debug("Creating directory "+dirs[i], 2);
-        dirs[i].mkdir();
+        Debug.debug("Creating directory "+newDirs[i], 2);
+        newDirFiles[i].mkdir();
       }
+      newDirs[i] = Util.replaceWithTildeLocally(Util.clearFile(newDirs[i]));
     }
-
-    ConfigFile tmpConfigFile = null;
     
     if(firstRun){
-      tmpConfigFile = new ConfigFile(GridPilot.defaultConfFileName);
+      configFile = new ConfigFile(GridPilot.defaultConfFileName);
       // Make temporary config file
       File tmpConfFile = (File) GridPilot.tmpConfFile.get(GridPilot.defaultConfFileName);       
        // Copy over config file
@@ -220,22 +243,44 @@ public class BeginningWizard{
        tmpConfFile.delete();
     }
     else{
-      tmpConfigFile = GridPilot.getClassMgr().getConfigFile();
+      configFile = GridPilot.getClassMgr().getConfigFile();
     }
     
-    // Set config entries
-    /* [GridPilot] pull cache directory = ~/GridPilot/cache
-     * [My_DB_local] database = hsql://localhost/~/GridPilot/My_DB
-     * [Fork] working directory = ~/GridPilot/jobs
-     * [Fork] runtime directory = ~/GridPilot/runtimeEnvironments
-     * [Fork] transformation directory = ~/GridPilot/transformations
-     * */
-     tmpConfigFile.setAttributes(
-         new String [] {"GridPilot", "My_DB_local", "Fork", "Fork", "Fork"},
-         new String [] {"pull cache directory", "database", "working directory", "runtime directory", "transformation directory"},
-         new String [] {dirs[0].getCanonicalPath(), (new File(dirs[1], "My_DB_local")).getCanonicalPath(), dirs[2].getCanonicalPath(), dirs[3].getCanonicalPath(), dirs[4].getCanonicalPath()}
-     );
+    if(!defDirs[0].equals(newDirs[0]) ||
+       !defDirs[1].equals(newDirs[1]) ||
+       !defDirs[2].equals(newDirs[2]) ||
+       !defDirs[3].equals(newDirs[3]) ||
+       !defDirs[4].equals(newDirs[4])){
+      // Set config entries
+      /* [GridPilot] pull cache directory = ~/GridPilot/cache
+       * [My_DB_local] database = hsql://localhost/~/GridPilot/My_DB
+       * [Fork] working directory = ~/GridPilot/jobs
+       * [Fork] runtime directory = ~/GridPilot/runtimeEnvironments
+       * [Fork] transformation directory = ~/GridPilot/transformations
+        
+        userConfDir,
+        userConfDir+"/cache",
+        userConfDir+"/jobs",
+        userConfDir+"/runtimeEnvironments",
+        userConfDir+"/transformations"
 
+       */
+      configFile.setAttributes(
+          new String [] {"GridPilot", "My_DB_local", "Fork", "Fork", "Fork"},
+          new String [] {"pull cache directory", "database", "working directory", "runtime directory", "transformation directory"},
+          new String [] {
+              newDirs[1],
+              "hsql://localhost"+
+                 (Util.clearFile(newDirs[0]).startsWith("/")?"":"/")+
+                 Util.clearFile(newDirs[0])+
+                 (Util.clearFile(newDirs[0]).endsWith("/")?"":"/")+
+                 "My_DB",
+              newDirs[2],
+              newDirs[3],
+              newDirs[4]}
+      );
+      changes = true;
+    }
     
     return true;
   }

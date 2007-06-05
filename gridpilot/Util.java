@@ -336,6 +336,9 @@ public class Util{
              if(urls[i].startsWith("/")){
                urls[i] = (new File(urls[i])).toURI().toURL().toExternalForm();
              }
+             else if(urls[i].startsWith("~")){
+               urls[i] = (new File(Util.clearTildeLocally(urls[i]))).toURI().toURL().toExternalForm();
+             }
              else if(urls[i].startsWith("file://")){
                urls[i] = (new File(urls[i].substring(6))).toURI().toURL().toExternalForm();
              }
@@ -561,6 +564,23 @@ public class Util{
     }
     if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
       str =str.replaceAll("/", "\\\\");
+    }
+    return str;
+  }
+
+  /**
+   * Replaces the home directory path with ~.
+   * @param str
+   */
+  public static String replaceWithTildeLocally(String str){
+    if(str==null){
+      return str;
+    }
+    if(str.startsWith(System.getProperty("user.home"))){
+      str = "~"+str.substring(System.getProperty("user.home").length());
+    }
+    if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
+      str =str.replaceAll("\\\\", "/");
     }
     return str;
   }
