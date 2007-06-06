@@ -452,7 +452,7 @@ public class BeginningWizard{
     JPanel jPanel = new JPanel(new GridBagLayout());
     String homeUrl = configFile.getValue("GridPilot", "Grid home url");
     String [] defDirs = new String [] {homeUrl,
-                                       HOMEGRID_URL+Util.getGridDatabaseUser1()+"/",
+                                       HOMEGRID_URL+Util.getGridDatabaseUser()+"/",
                                        homeUrl};
     String [] names = new String [] {"Use your own grid or local home URL",
                                      "Use default grid home URL",
