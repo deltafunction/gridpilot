@@ -559,13 +559,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
     catch (UnsupportedEncodingException e){
       e.printStackTrace();
     }
-    String newUrl = url;
+    String newUrl = url.trim();
     GridPilot.getClassMgr().removeUrl("");
     Vector urlList = GridPilot.getClassMgr().getUrlList();
-    /* remove leading whitespace */
-    newUrl = newUrl.replaceAll("^\\s+", "");
-    /* remove trailing whitespace */
-    newUrl = newUrl.replaceAll("\\s+$", "");
     newUrl = newUrl.replaceAll("\\\\", "/");
     newUrl = newUrl.replaceAll("file:C", "file:/C");
     
