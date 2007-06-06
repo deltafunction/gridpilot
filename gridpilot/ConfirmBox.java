@@ -19,11 +19,11 @@ public class ConfirmBox extends JDialog implements ActionListener {
   }
 
   public int getConfirm(String title, String text, Object[] showResultsOptions) throws Exception {
-    return getConfirm(title, text, showResultsOptions, null, null);
+    return getConfirm(title, text, showResultsOptions, null, null, true);
   }
   
   public int getConfirm(String title, Object text, Object[] showResultsOptions,
-      Icon icon, Color bgColor) throws Exception {
+      Icon icon, Color bgColor, boolean isResizable) throws Exception {
     JOptionPane op = new JOptionPane(
          text,
          JOptionPane.QUESTION_MESSAGE,
@@ -33,7 +33,7 @@ public class ConfirmBox extends JDialog implements ActionListener {
          showResultsOptions[0]);
     
     JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), title);
-    dialog.setResizable(true);
+    dialog.setResizable(isResizable);
     if(bgColor!=null){
       recolor(dialog.getContentPane(), bgColor);
     }
