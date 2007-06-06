@@ -601,7 +601,7 @@ public class ConfigFile{
           if(line.trim().startsWith("["+sections[i]+"]")){
             inSection = true;
           }
-          if(inSection && line.trim().matches("^"+attributes[i]+"\\s*=.*")){
+          if(inSection && line.trim().toLowerCase().matches("^"+attributes[i].toLowerCase()+"\\s*=.*")){
             Debug.debug("match "+sections[i]+"=="+attributes[i]+" --> "+values[i], 2);
             line = attributes[i].trim()+" = "+values[i].trim();
             linesVector.set(j, line);
