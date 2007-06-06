@@ -1680,22 +1680,82 @@ public class Util{
     return ret;
   }
   
-  public static String getGridDatabaseUser(){
-    GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-    GlobusCredential globusCred = null;
-    if(credential instanceof GlobusGSSCredentialImpl){
-      globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-    }
-    String user = null;
-    Debug.debug("getting identity", 3);
-    String subject = globusCred.getIdentity();
-    /* remove leading whitespace */
-    subject = subject.replaceAll("^\\s+", "");
-    /* remove trailing whitespace */
-    subject = subject.replaceAll("\\s+$", "");
-    
-    AbstractChecksum checksum = null;
+  /**
+   * Get the DN of the grid certificate.
+   * Here we use the proxy to get it. This means that
+   * a proxy will be created if needed.
+   * Globus uses the format /C=.../.../...
+   */
+  public static String getGridSubject(){
+    String subject = null;
     try{
+      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+      GlobusCredential globusCred = null;
+      if(credential instanceof GlobusGSSCredentialImpl){
+        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+      }
+      Debug.debug("getting identity", 3);
+      subject = globusCred.getIdentity();
+      /* remove leading whitespace */
+      subject = subject.replaceAll("^\\s+", "");
+      /* remove trailing whitespace */
+      subject = subject.replaceAll("\\s+$", "");
+      Debug.debug("--->"+subject, 3);
+    }
+    catch(Exception nsae){
+      String error = "ERROR: could get grid user subject. "+nsae.getMessage();
+      nsae.printStackTrace();
+      GridPilot.getClassMgr().getLogFile().addMessage(error, nsae);
+    }
+    return subject;
+  }
+  
+  /**
+   * Get the DN of the grid certificate.
+   * Here we simply use the certificate - no proxy involved.
+   * Java uses the format ...,...,C=...
+   * We translate to the format /C=.../.../...
+   * Attention: this may go wrong if the DN contains slashes and/or commas...
+   */
+  public static String getGridSubject1(){
+    String subject = null;
+    try{
+      Debug.debug("getting identity", 3);
+      X509Certificate userCert = CertUtil.loadCertificate(
+          clearTildeLocally(GridPilot.certFile));
+      subject = userCert.getSubjectX500Principal().getName();
+      Debug.debug("--->"+subject, 3);
+      /* remove leading whitespace */
+      subject = subject.replaceAll("^\\s+", "");
+      /* remove trailing whitespace */
+      subject = subject.replaceAll("\\s+$", "");
+      String [] items = split(subject, ",");
+      String [] newItems = new String[items.length];
+      int j = 0;
+      for(int i=items.length-1; i>-1; --i){
+        newItems[j] = items[i];
+        ++j;
+      }
+      subject = "/"+arrayToString(newItems, "/");
+    }
+    catch(Exception nsae){
+      String error = "ERROR: could get grid user subject. "+nsae.getMessage();
+      nsae.printStackTrace();
+      GridPilot.getClassMgr().getLogFile().addMessage(error, nsae);
+    }
+    return subject;
+  }
+  
+  /**
+   * Generate a unique string, from the user's grid certificate subject,
+   * which is usable as a MySQL user name.
+   */
+  public static String getGridDatabaseUser(){
+    String user = null;
+    try{
+      String subject = Util.getGridSubject();
+      
+      AbstractChecksum checksum = null;
       checksum = JacksumAPI.getChecksumInstance("cksum");
       
       /*
@@ -1726,6 +1786,9 @@ public class Util{
       Debug.debug("Wanted Hash: "+
           Long.valueOf("806d2203", 16), 3);
       */
+      checksum.update(subject.getBytes());
+      user = checksum.getFormattedValue();
+      Debug.debug("Using user name from cksum of grid subject: "+user, 2);
     }
     catch(Exception nsae){
       String error = "ERROR: could not generate grid user name. "+nsae.getMessage();
@@ -1733,9 +1796,31 @@ public class Util{
       GridPilot.getClassMgr().getLogFile().addMessage(error, nsae);
       return null;
     }
-    checksum.update(subject.getBytes());
-    user = checksum.getFormattedValue();
-    Debug.debug("Using user name from cksum of grid subject: "+user, 2);
+    return user;
+  }
+  
+  /**
+   * The same method as above, except for using getGridSubject1 instead
+   * of getGridSubject.
+   */
+  public static String getGridDatabaseUser1(){
+    String user = null;
+    try{
+      String subject = Util.getGridSubject1();
+      
+      AbstractChecksum checksum = null;
+      checksum = JacksumAPI.getChecksumInstance("cksum");
+      
+      checksum.update(subject.getBytes());
+      user = checksum.getFormattedValue();
+      Debug.debug("Using user name from cksum of grid subject: "+user, 2);
+    }
+    catch(Exception nsae){
+      String error = "ERROR: could not generate grid user name. "+nsae.getMessage();
+      nsae.printStackTrace();
+      GridPilot.getClassMgr().getLogFile().addMessage(error, nsae);
+      return null;
+    }
     return user;
   }
   
