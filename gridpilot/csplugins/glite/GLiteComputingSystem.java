@@ -5,7 +5,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -30,14 +29,10 @@ import gridpilot.csplugins.ng.NGComputingSystem;
 import org.glite.wms.wmproxy.JobIdStructType;
 import org.glite.wms.wmproxy.WMProxyAPI;
 import org.glite.wmsui.apij.*;
-import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.GlobusCredentialException;
-import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.mds.MDS;
 import org.globus.mds.MDSException;
 import org.globus.mds.MDSResult;
-import org.ietf.jgss.GSSCredential;
-import org.nordugrid.gridftp.ARCGridFTPJob;
 import org.safehaus.uuid.UUIDGenerator;
 
 /**
@@ -872,18 +867,7 @@ public class GLiteComputingSystem implements ComputingSystem{
   public String getUserInfo(String csName){
     String user = null;
     try{
-      Debug.debug("getting credential", 3);
-      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-      GlobusCredential globusCred = null;
-      if(credential instanceof GlobusGSSCredentialImpl){
-        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-      }
-      Debug.debug("getting identity", 3);
-      user = globusCred.getIdentity();
-      /* remove leading whitespace */
-      user = user.replaceAll("^\\s+", "");
-      /* remove trailing whitespace */
-      user = user.replaceAll("\\s+$", "");      
+      user = Util.getGridSubject();
     }
     catch(Exception ioe){
       error = "Exception during getUserInfo\n" +

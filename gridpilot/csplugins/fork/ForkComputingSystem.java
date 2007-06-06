@@ -825,11 +825,7 @@ public class ForkComputingSystem implements ComputingSystem{
     }
     String user = null;
     try{
-      user = System.getProperty("user.name");
-      /* remove leading whitespace */
-      user = user.replaceAll("^\\s+", "");
-      /* remove trailing whitespace */
-      user = user.replaceAll("\\s+$", "");      
+      user = System.getProperty("user.name").trim();
     }
     catch(Exception ioe){
       error = "Exception during getUserInfo\n" +

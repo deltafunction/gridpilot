@@ -108,11 +108,7 @@ public class Util{
     int len = tok.countTokens();
     String [] res = new String[len];
     for (int i=0; i<len ; i++){
-      res[i] = tok.nextToken();
-      /* remove leading whitespace */
-      res[i] = res[i].replaceAll("^\\s+", "");
-      /* remove trailing whitespace */
-      res[i] = res[i].replaceAll("\\s+$", "");
+      res[i] = tok.nextToken().trim();
     }
     return res ;
   }
@@ -124,11 +120,7 @@ public class Util{
     String [] res = s.split(delim);
     int len = res.length;
     for (int i=0 ; i<len ; i++){
-      //res[i] = tok.nextToken();
-      /* remove leading whitespace */
-      res[i] = res[i].replaceAll("^\\s+", "");
-      /* remove trailing whitespace */
-      res[i] = res[i].replaceAll("\\s+$", "");
+      res[i] = res[i].trim();
     }
     return res ;
   }
@@ -1686,7 +1678,7 @@ public class Util{
    * a proxy will be created if needed.
    * Globus uses the format /C=.../.../...
    */
-  public static String getGridSubject(){
+  public static String getGridSubject0(){
     String subject = null;
     try{
       GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
@@ -1695,11 +1687,7 @@ public class Util{
         globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
       }
       Debug.debug("getting identity", 3);
-      subject = globusCred.getIdentity();
-      /* remove leading whitespace */
-      subject = subject.replaceAll("^\\s+", "");
-      /* remove trailing whitespace */
-      subject = subject.replaceAll("\\s+$", "");
+      subject = globusCred.getIdentity().trim();
       Debug.debug("--->"+subject, 3);
     }
     catch(Exception nsae){
@@ -1717,18 +1705,14 @@ public class Util{
    * We translate to the format /C=.../.../...
    * Attention: this may go wrong if the DN contains slashes and/or commas...
    */
-  public static String getGridSubject1(){
+  public static String getGridSubject(){
     String subject = null;
     try{
       Debug.debug("getting identity", 3);
       X509Certificate userCert = CertUtil.loadCertificate(
           clearTildeLocally(GridPilot.certFile));
-      subject = userCert.getSubjectX500Principal().getName();
+      subject = userCert.getSubjectX500Principal().getName().trim();
       Debug.debug("--->"+subject, 3);
-      /* remove leading whitespace */
-      subject = subject.replaceAll("^\\s+", "");
-      /* remove trailing whitespace */
-      subject = subject.replaceAll("\\s+$", "");
       String [] items = split(subject, ",");
       String [] newItems = new String[items.length];
       int j = 0;
@@ -1803,10 +1787,10 @@ public class Util{
    * The same method as above, except for using getGridSubject1 instead
    * of getGridSubject.
    */
-  public static String getGridDatabaseUser1(){
+  public static String getGridDatabaseUser0(){
     String user = null;
     try{
-      String subject = Util.getGridSubject1();
+      String subject = Util.getGridSubject0();
       
       AbstractChecksum checksum = null;
       checksum = JacksumAPI.getChecksumInstance("cksum");

@@ -21,10 +21,7 @@ import jonelo.jacksum.JacksumAPI;
 import jonelo.jacksum.algorithm.AbstractChecksum;
 
 import org.globus.ftp.exception.FTPException;
-import org.globus.gsi.GlobusCredential;
-import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.util.GlobusURL;
-import org.ietf.jgss.GSSCredential;
 import org.safehaus.uuid.UUIDGenerator;
 
 import gridpilot.ComputingSystem;
@@ -100,29 +97,9 @@ public class GPSSComputingSystem implements ComputingSystem{
     timerSyncRTEs.setDelay(RTE_SYNC_DELAY);
     // Set user
     try{
-      Debug.debug("getting credential", 3);
-      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-      GlobusCredential globusCred = null;
-      if(credential instanceof GlobusGSSCredentialImpl){
-        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-      }
-      Debug.debug("getting identity", 3);
-      user = globusCred.getIdentity();
-      /* remove leading whitespace */
-      user = user.replaceAll("^\\s+", "");
-      /* remove trailing whitespace */
-      user = user.replaceAll("\\s+$", "");
-      
+      user = Util.getGridSubject();      
       // Append hash of the user subject to the remote directory name
-      AbstractChecksum checksum = null;
-      try{
-        checksum = JacksumAPI.getChecksumInstance("cksum");
-      }
-      catch(NoSuchAlgorithmException e){
-        e.printStackTrace();
-      }
-      checksum.update(user.getBytes());
-      String dir = checksum.getFormattedValue();
+      String dir = Util.getGridDatabaseUser();
       if(!remoteDir.endsWith("/")){
         remoteDir += "/";
       }

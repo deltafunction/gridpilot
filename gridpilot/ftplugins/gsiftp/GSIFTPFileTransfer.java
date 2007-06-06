@@ -23,8 +23,6 @@ import org.globus.ftp.GridFTPSession;
 import org.globus.ftp.exception.ClientException;
 import org.globus.ftp.exception.FTPException;
 import org.globus.ftp.exception.ServerException;
-import org.globus.gsi.GlobusCredential;
-import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.gsi.gssapi.auth.Authorization;
 import org.globus.io.urlcopy.UrlCopy;
 import org.globus.io.urlcopy.UrlCopyException;
@@ -52,17 +50,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
   public GSIFTPFileTransfer(){
     pluginName = "gsiftp";
     if(!GridPilot.firstRun){
-      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-      GlobusCredential globusCred = null;
-      if(credential instanceof GlobusGSSCredentialImpl){
-        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-      }
-      Debug.debug("getting identity", 3);
-      user = globusCred.getIdentity();
-      /* remove leading whitespace */
-      user = user.replaceAll("^\\s+", "");
-      /* remove trailing whitespace */
-      user = user.replaceAll("\\s+$", "");
+      user = Util.getGridSubject();
     }
     
     jobs = new HashMap();

@@ -663,12 +663,7 @@ public class NGComputingSystem implements ComputingSystem{
       
       try{
         //status = gridJob.state();
-        status = gridJob.getOutputFile("log/status");
-        /* remove leading whitespace */
-        status = status.replaceAll("^\\s+", "");
-        /* remove trailing whitespace */
-        status = status.replaceAll("\\s+$", "");      
-
+        status = gridJob.getOutputFile("log/status").trim();
       }
       catch(Exception ioe){
         error = "Exception during job " + job.getName() + " getFullStatus :\n" +
@@ -1169,18 +1164,7 @@ public class NGComputingSystem implements ComputingSystem{
   public String getUserInfo(String csName){
     String user = null;
     try{
-      Debug.debug("getting credential", 3);
-      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-      GlobusCredential globusCred = null;
-      if(credential instanceof GlobusGSSCredentialImpl){
-        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-      }
-      Debug.debug("getting identity", 3);
-      user = globusCred.getIdentity();
-      /* remove leading whitespace */
-      user = user.replaceAll("^\\s+", "");
-      /* remove trailing whitespace */
-      user = user.replaceAll("\\s+$", "");      
+      user = Util.getGridSubject();
     }
     catch(Exception ioe){
       error = "Exception during getUserInfo\n" +

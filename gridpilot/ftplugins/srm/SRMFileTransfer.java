@@ -11,10 +11,7 @@ import java.util.Vector;
 import org.globus.ftp.exception.ClientException;
 import org.globus.ftp.exception.FTPException;
 import org.globus.ftp.exception.ServerException;
-import org.globus.gsi.GlobusCredential;
-import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.util.GlobusURL;
-import org.ietf.jgss.GSSCredential;
 
 import org.dcache.srm.SRMException;
 import org.dcache.srm.client.SRMClientV1;
@@ -64,17 +61,7 @@ public class SRMFileTransfer implements FileTransfer {
   public SRMFileTransfer(){
     pluginName = "srm";
     if(!GridPilot.firstRun){
-      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-      GlobusCredential globusCred = null;
-      if(credential instanceof GlobusGSSCredentialImpl){
-        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-      }
-      Debug.debug("getting identity", 3);
-      user = globusCred.getIdentity();
-      /* remove leading whitespace */
-      user = user.replaceAll("^\\s+", "");
-      /* remove trailing whitespace */
-      user = user.replaceAll("\\s+$", "");      
+      user = Util.getGridSubject();
     }
 
     //System.setProperty("X509_CERT_DIR",

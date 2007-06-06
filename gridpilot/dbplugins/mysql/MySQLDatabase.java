@@ -116,12 +116,7 @@ public class MySQLDatabase extends DBCache implements Database {
       if(credential instanceof GlobusGSSCredentialImpl){
         globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
       }
-      Debug.debug("getting identity", 3);
-      String subject = globusCred.getIdentity();
-      /* remove leading whitespace */
-      subject = subject.replaceAll("^\\s+", "");
-      /* remove trailing whitespace */
-      subject = subject.replaceAll("\\s+$", "");
+      String subject = globusCred.getIdentity().trim();
       
       if(user==null || user.equals("")){
         user = Util.getGridDatabaseUser();
