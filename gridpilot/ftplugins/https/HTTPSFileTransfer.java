@@ -75,13 +75,13 @@ public class HTTPSFileTransfer implements FileTransfer {
     UrlCopy urlCopy = null;
     
     try{
-      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+      /*GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
       if(srcUrl.getProtocol().equalsIgnoreCase("https")){
         urlCopy.setSourceCredentials(credential);
       }
       if(destUrl.getProtocol().equalsIgnoreCase("https")){
         urlCopy.setDestinationCredentials(credential);
-      }
+      }*/
       urlCopy = new UrlCopy();
       urlCopy.setSourceUrl(srcUrl);
       urlCopy.setDestinationUrl(destUrl);
@@ -109,11 +109,11 @@ public class HTTPSFileTransfer implements FileTransfer {
     MyUrlCopy urlCopy = null;
     
     try{
-      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+      urlCopy = new MyUrlCopy();
+      /*GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
       if(srcUrl.getProtocol().equalsIgnoreCase("https")){
         urlCopy.setSourceCredentials(credential);
-      }
-      urlCopy = new MyUrlCopy();
+      }*/
       urlCopy.setSourceUrl(srcUrl);
     }
     catch(Exception e){
@@ -293,8 +293,16 @@ public class HTTPSFileTransfer implements FileTransfer {
   }
   
   public long getFileBytes(GlobusURL url) throws Exception {
-    UrlCopy urlCopy = myConnect(url);
-    return urlCopy.getSourceLength();
+    try{
+      Vector vec = list(url, null, null);
+      String line = (String) vec.get(0);
+      String [] arr = Util.split(line);
+      return Long.parseLong(arr[0]);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return -1;
+    }
   }
   
   private Date makeDate(String dateInput){
@@ -553,10 +561,33 @@ public class HTTPSFileTransfer implements FileTransfer {
     return ret;
   }
 
+  /**
+   * Parses the XML returned by webdav for PROPFIND
+   * ("Depth: 1" is printed in the header by MyHTTPProtocol).
+   */
   public Vector list(GlobusURL globusUrl, String filter, StatusBar statusBar) throws Exception {
-    UrlCopy urlCopy = myConnect(globusUrl);
-    //TODO
-    return null;
+    MyUrlCopy urlCopy = myConnect(globusUrl);
+    urlCopy.execute("PROPFIND");
+    String res = urlCopy.getResult();
+    String [] lines = Util.split(res, "(?s)[\n\r]");
+    Vector resVec = new Vector();
+    String hrefPattern = "(?i)<d:href>(.*)</d:href>";
+    String sizePattern = "(?i)<lp1:getcontentlength>(.*)</lp1:getcontentlength>";
+    String line = null;
+    for(int i=0; i<lines.length; ++i){
+      if(lines[i].matches(hrefPattern)){
+        line = lines[i].replaceFirst(hrefPattern, "$1").trim();
+        if(line.endsWith("/")){
+          line += " " + "4096";
+          resVec.add(line);
+        }
+      }
+      if(lines[i].matches(sizePattern)){
+        line += " " + lines[i].replaceFirst(sizePattern, "$1").trim();
+        resVec.add(line);
+      }
+    }
+    return resVec;
   }
 
 }
