@@ -337,11 +337,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
       imgURL=null;
       try{
         imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "key_enter.png");
-        //enterIcon = new ImageIcon(imgURL);
+        enterIcon = new ImageIcon(imgURL);
       }
       catch(Exception e){
         Debug.debug("Could not find image "+ GridPilot.resourcesPath + "key_enter.png", 3);
-        enterIcon = new ImageIcon();
+        //enterIcon = new ImageIcon();
       }
       JButton bHome = null;
       if(homeIcon!=null){
@@ -379,7 +379,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         bEnter = new JButton(enterIcon);
       }
       else{
-        bEnter = new JButton("<");
+        bEnter = new JButton("<-");
       }
       bEnter.setToolTipText("go!");
       bEnter.setPreferredSize(new java.awt.Dimension(22, 22));
@@ -625,7 +625,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       Debug.debug("Checking URL, "+url, 3);
       // browse remote web directory
       if((url.startsWith("http://") ||
-          url.startsWith("https://") ||
+          //url.startsWith("https://") ||
           url.startsWith("ftp://")) &&
          url.endsWith("/")){
         setHttpDirDisplay(url);
@@ -641,8 +641,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
           url.endsWith("/")){
         setRemoteDirDisplay(url, gsiftpFileTransfer, "gsiftp");
       }
-      // remote gsiftp directory - this will not be reached - and would probably
-      // not work, since the listing may have unpredictable format
       else if(url.startsWith("https://") &&
           url.endsWith("/")){
         setRemoteDirDisplay(url, httpsFileTransfer, "gsiftp");
@@ -732,7 +730,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
     Debug.debug("Created temp file "+tmpFile, 3);
     try{
       if(ft.getFileBytes(new GlobusURL(url))>MAX_FILE_EDIT_BYTES){
-        throw new IOException("File too big");
+        tmpFile.delete();
+        throw new IOException("File too big "+ft.getFileBytes(new GlobusURL(url)));
       }
       ft.getFile(new GlobusURL(url), tmpFile, statusBar, null);
     }
