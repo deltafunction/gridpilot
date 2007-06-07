@@ -451,28 +451,14 @@ public class GSIFTPFileTransfer implements FileTransfer {
           localPath = "/" + localPath;
         }
         localPath = localPath.replaceAll("/[^\\/]*/\\.\\.", "");
-        String localDir = null;
-        int lastSlash = localPath.lastIndexOf("/");
-
-        if(lastSlash>0 && lastSlash<localPath.length() - 1){
-          localDir = localPath.substring(0, lastSlash);
-        }
-        else if(lastSlash>0 && lastSlash==localPath.length() - 1){
-          //throw new IOException("ERROR: directory delete not supported. "+localPath);
-        }
-        else{
-          localDir = "/";
-        }
 
         Debug.debug("Host: "+host, 3);
         Debug.debug("Port: "+port, 3);
         Debug.debug("Path: "+localPath, 3);
-        Debug.debug("Directory: "+localDir, 3);
 
         try{
           Debug.debug("Current dir: "+gridFtpClient.getCurrentDir(), 3);
-          gridFtpClient.changeDir(localDir);
-          if(lastSlash>0 && lastSlash==localPath.length() - 1){
+          if(localPath.endsWith("/")){
             gridFtpClient.deleteDir(localPath);
           }
           else{
