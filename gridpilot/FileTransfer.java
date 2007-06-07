@@ -1,5 +1,10 @@
 package gridpilot;
 
+import java.io.File;
+import java.util.Vector;
+
+import javax.swing.JProgressBar;
+
 import org.globus.util.GlobusURL;
 
 /**
@@ -115,4 +120,25 @@ public interface FileTransfer {
    */
   public void deleteFiles(GlobusURL [] destUrls) throws Exception;
 
+  /**
+   * Quick and dirty method to just get a file - bypassing
+   * caching, queueing and monitoring. Notice, that it does NOT
+   * start a separate thread.
+   * @param   globusUrl    URL of file to download.
+   * @param   downloadDirOrFile    destination file or directory.
+   * @param   statusBar    StatusBar for displaying messages. Can be null.
+   * @param   pb    JProgressBar for displaying progress. Can be null.
+   */
+  public void getFile(GlobusURL globusUrl, File downloadDirOrFile,
+      StatusBar statusBar, JProgressBar pb)
+     throws Exception;
+
+  /**
+   * List files and/or directories in a *directory* on a server.
+   * @param   globusUrl    URL of directory.
+   * @param   filter    regular expression for filtering out entries.
+   * @param   statusBar    StatusBar for displaying messages. Can be null.
+   */
+  public Vector list(GlobusURL globusUrl, String filter,
+      StatusBar statusBar) throws Exception;
 }
