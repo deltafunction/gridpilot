@@ -591,13 +591,13 @@ public class GSIFTPFileTransfer implements FileTransfer {
         String fileName = (new File(localPath)).getName();
         Debug.debug("Uploading "+tmpFile.getAbsolutePath()+" --> "+fileName, 3);
         // just in case the file is already there
-        try{
+        /*try{
           gridFtpClient.deleteFile(fileName);
         }
         catch(Exception e){
           Debug.debug("Checked, but "+fileName+" not there", 3);
           //e.printStackTrace();
-        }
+        }*/
         // it would be better to first rename the remote file and then delete it,
         // but rename doesn't work...
         //gridFtpClient.rename(fileName, fileName+".tmp");
