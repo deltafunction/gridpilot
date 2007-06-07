@@ -25,7 +25,7 @@ public class MyHTTPInputStream extends HTTPInputStream {
   
       String msg = MyGASSProtocol.EXECUTE(file, host + ":" + port, cmd);
 
-      try {
+      try{
         out.write( msg.getBytes() );
         out.flush();
           
@@ -33,7 +33,7 @@ public class MyHTTPInputStream extends HTTPInputStream {
           
         hd = new HttpResponse(input);
       }
-      catch(IOException e) {
+      catch(IOException e){
         abort();
         throw e;
       }
@@ -41,9 +41,9 @@ public class MyHTTPInputStream extends HTTPInputStream {
       if (hd.httpCode == 200 || hd.httpCode == 204) {
         break;
       }
-      else {
+      else{
         abort();
-        switch(hd.httpCode) {
+        switch(hd.httpCode){
         case 404:
             throw new FileNotFoundException(
                                 "File " + file + " not found on the server."
