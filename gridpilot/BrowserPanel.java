@@ -26,6 +26,7 @@ import org.globus.ftp.exception.FTPException;
 import org.globus.util.GlobusURL;
 
 import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
+import gridpilot.ftplugins.https.HTTPSFileTransfer;
 
 
 /**
@@ -57,6 +58,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private String currentUrlString = "";
   private JComboBox currentUrlBox = null;
   private GSIFTPFileTransfer gsiftpFileTransfer = null;
+  private HTTPSFileTransfer httpsFileTransfer = null;
   private boolean ok = true;
   private boolean saveUrlHistory = false;
   private boolean doingSearch = false;
@@ -98,8 +100,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
     setModal(modal);
     
     if(!localFS){
-      //gsiftpFileTransfer = new GSIFTPFileTransfer();
       gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
+      httpsFileTransfer = (HTTPSFileTransfer) GridPilot.getClassMgr().getFTPlugin("https");
     }
     
     String urlHistory = null;
@@ -637,13 +639,25 @@ public class BrowserPanel extends JDialog implements ActionListener{
       // remote gsiftp directory
       else if(url.startsWith("gsiftp://") &&
           url.endsWith("/")){
-        setGsiftpDirDisplay(url);
+        setRemoteDirDisplay(url, gsiftpFileTransfer, "gsiftp");
+      }
+      // remote gsiftp directory - this will not be reached - and would probably
+      // not work, since the listing may have unpredictable format
+      else if(url.startsWith("https://") &&
+          url.endsWith("/")){
+        setRemoteDirDisplay(url, httpsFileTransfer, "gsiftp");
       }
       // remote gsiftp text file
       else if(url.startsWith("gsiftp://") &&
           !url.endsWith("/") && !url.endsWith("htm") &&
           !url.endsWith("html") && !url.endsWith("gz")){
-        setGsiftpTextEdit(url);
+        setRemoteTextEdit(url, gsiftpFileTransfer);
+      }
+      // remote https text file
+      else if(url.startsWith("https://") &&
+          !url.endsWith("/") && !url.endsWith("htm") &&
+          !url.endsWith("html") && !url.endsWith("gz")){
+        setRemoteTextEdit(url, httpsFileTransfer);
       }
       // html document
       else if((url.endsWith("htm") ||
@@ -654,12 +668,17 @@ public class BrowserPanel extends JDialog implements ActionListener{
       // tarball on disk or web server
       else if(url.endsWith("gz") &&
           (url.startsWith("http://") || url.startsWith("file:"))){
-        setGzipDisplay(url);
+        setFileConfirmDisplay(url);
       }
       // tarball on gridftp server
       else if(url.endsWith("gz") &&
           (url.startsWith("gsiftp:/"))){
-        setGsiftpGzipDisplay(url);
+        setRemoteFileConfirmDisplay(url, gsiftpFileTransfer);
+      }
+      // tarball on https server
+      else if(url.endsWith("gz") &&
+          (url.startsWith("https:/"))){
+        setRemoteFileConfirmDisplay(url, httpsFileTransfer);
       }
       // text document on disk or web server
       else if(!url.endsWith("htm") &&
@@ -704,18 +723,18 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Set the EditorPane to display the text page file url.
    * The page can then be edited and saved (when clicking bSave).
    */
-  private void setGsiftpTextEdit(String url) throws IOException,
+  private void setRemoteTextEdit(String url, FileTransfer ft) throws IOException,
      FTPException{
-    Debug.debug("setGsiftpTextEdit "+url, 3);
+    Debug.debug("setRemoteTextEdit "+url, 3);
     jtFilter.setEnabled(false);
     File tmpFile = null;
     tmpFile = File.createTempFile("GridPilot-", ".txt");
     Debug.debug("Created temp file "+tmpFile, 3);
     try{
-      if(gsiftpFileTransfer.getFileBytes(new GlobusURL(url))>MAX_FILE_EDIT_BYTES){
+      if(ft.getFileBytes(new GlobusURL(url))>MAX_FILE_EDIT_BYTES){
         throw new IOException("File too big");
       }
-      gsiftpFileTransfer.getFile(new GlobusURL(url), tmpFile, statusBar, null);
+      ft.getFile(new GlobusURL(url), tmpFile, statusBar, null);
     }
     catch(Exception e){
       Debug.debug("Could not read "+url, 1);
@@ -895,7 +914,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Set the EditorPane to display a confirmation or disconfirmation
    * of the existence of the URL url.
    */
-  private void setGzipDisplay(String url) throws IOException{
+  private void setFileConfirmDisplay(String url) throws IOException{
     Debug.debug("setGzipDisplay "+url, 3);
     jtFilter.setEnabled(false);
     try{
@@ -935,9 +954,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
   /**
    * Set the EditorPane to display a confirmation or disconfirmation
    * of the existence of the URL url.
+   * 
+   * TODO: consider doing 
+   *  TransferControl.startCopyFiles(new GlobusURL [] {new GlobusURL(url)},
+      new GlobusURL [] {new GlobusURL("file:///"+tmpFile.getCanonicalPath())});
+
    */
-  private void setGsiftpGzipDisplay(String url) throws IOException{
-    Debug.debug("setGsiftpGzipDisplay "+url, 3);
+  private void setRemoteFileConfirmDisplay(String url, FileTransfer ft) throws IOException{
+    Debug.debug("setRemoteFileConfirmDisplay "+url, 3);
     jtFilter.setEnabled(false);
     
     bSave.setEnabled(false);
@@ -988,7 +1012,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     Debug.debug("Directory: "+localDir, 3);
     try{
       try{
-        if(gsiftpFileTransfer.getFileBytes(new GlobusURL(url))==0){
+        if(ft.getFileBytes(new GlobusURL(url))==0){
           throw new IOException("File is empty");
         }
         ep.setText("File found");
@@ -1125,8 +1149,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Set the EditorPane to display a directory listing
    * of the URL url.
    */
-  private void setGsiftpDirDisplay(String url) throws Exception{
-    Debug.debug("setGsiftpDirDisplay "+url, 3);
+  private void setRemoteDirDisplay(String url, FileTransfer ft, String protocol) throws Exception{
+    Debug.debug("setRemoteDirDisplay "+url, 3);
     
     jtFilter.setEnabled(true);
     String filter = jtFilter.getText();
@@ -1151,11 +1175,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       String host = globusUrl.getHost();
       int port = globusUrl.getPort();
-      if(port<0){
-        port = 2811;
-      }
       
-      Vector textVector = gsiftpFileTransfer.list(globusUrl, filter,
+      Vector textVector = ft.list(globusUrl, filter,
           this.statusBar);
 
       String text = "";
@@ -1190,19 +1211,19 @@ public class BrowserPanel extends JDialog implements ActionListener{
           name = longName;
           bytes = "";
         }
-        text += "<a href=\"gsiftp://"+host+":"+port+localPath+name+"\">"+
+        text += "<a href=\""+protocol+"://"+host+(port>-1?":"+port:"")+localPath+name+"\">"+
         /*"gsiftp://"+host+":"+port+localPath+*/name+"</a> "+bytes;
         if(i<length-1){
           text += "<br>\n";
         }
-        lastUrlList[i] = "gsiftp://"+host+":"+port+localPath+name;
+        lastUrlList[i] = protocol+"://"+host+":"+port+localPath+name;
         Debug.debug(textVector.get(i).toString(), 3);
       }
       ep.setContentType("text/html");
       htmlText = "<html>\n";
       
       if(!localPath.equals("/")){
-        htmlText += "<a href=\"gsiftp://"+host+":"+port+localPath+"../\">"+/*"gsiftp://"+host+":"+port+localPath+*/"../</a><br>\n";
+        htmlText += "<a href=\""+protocol+"://"+host+":"+port+localPath+"../\">"+/*"gsiftp://"+host+":"+port+localPath+*/"../</a><br>\n";
       }
       htmlText += text;
       if(textVector.size()>maxEntries){
@@ -1424,7 +1445,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         //pButton.updateUI();
       }
     }
-    else if(thisUrl.startsWith("gsiftp://")){
+    else if(thisUrl.startsWith("gsiftp://") || thisUrl.startsWith("https://")){
       String fullName = null;
       GlobusURL globusUrl = null;
       if(!thisUrl.endsWith("/") && !thisUrl.startsWith("/")){
@@ -1435,7 +1456,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       try{
         globusUrl = new GlobusURL(fullName);
-        gsiftpFileTransfer.deleteFile(globusUrl);
+        if(thisUrl.startsWith("gsiftp://")){
+          gsiftpFileTransfer.deleteFile(globusUrl);
+        }
+        else if(thisUrl.startsWith("https://")){
+          httpsFileTransfer.deleteFile(globusUrl);
+        }
         statusBar.setLabel(globusUrl.getPath()+" deleted");
         try{
           setDisplay(thisUrl);
@@ -1491,6 +1517,15 @@ public class BrowserPanel extends JDialog implements ActionListener{
             Document.StreamDescriptionProperty, null);
         setDisplay(thisUrl);
       }
+      // remote https/webdav directory
+      else if(thisUrl.startsWith("https://")){
+        Debug.debug("Creating file in "+thisUrl, 3);
+        GlobusURL globusUrl = new GlobusURL(thisUrl);
+        ret = httpsFileTransfer.create(globusUrl);
+        ep.getDocument().putProperty(
+            Document.StreamDescriptionProperty, null);
+        setDisplay(thisUrl);
+      }
       else{
         throw(new IOException("Unknown protocol for "+thisUrl));
       }
@@ -1524,6 +1559,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
         else if(thisUrl.startsWith("gsiftp://")){
           GlobusURL globusUrl = new GlobusURL(thisUrl);
           gsiftpFileTransfer.write(globusUrl, ep.getText());
+        }
+        else if(thisUrl.startsWith("https://")){
+          GlobusURL globusUrl = new GlobusURL(thisUrl);
+          httpsFileTransfer.write(globusUrl, ep.getText());
         }
         else{
           throw(new IOException("Unknown protocol for "+thisUrl));
