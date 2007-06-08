@@ -41,6 +41,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private JButton bDelete = new JButton();
   private JButton bUpload = new JButton();
   private JButton bDownload = new JButton();
+  private JButton bRegister = new JButton();
   private JButton bSave = new JButton();
   protected JButton bCancel = new JButton();
   private JLabel currentUrlLabel = new JLabel("");
@@ -64,6 +65,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private boolean doingSearch = false;
   private JComponent jBox = null;
   private boolean localFS = false;
+  private JPopupMenu popupMenu = new JPopupMenu();
+  private JMenuItem miDownload = new JMenuItem("Download file");
+  private JMenuItem miRegister = new JMenuItem("Register file");
   
   public static int HISTORY_SIZE = 15;
   private static int MAX_FILE_EDIT_BYTES = 500000;
@@ -283,6 +287,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
     bDownload.setText("Get");
     bDownload.addActionListener(this);
     
+    bRegister.setText("Register");
+    bRegister.addActionListener(this);
+    
     bSave.setText("Save");
     bSave.addActionListener(this);
     
@@ -296,6 +303,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     pButton.add(bNew);
     pButton.add(bUpload);
     pButton.add(bDownload);
+    pButton.add(bRegister);
     pButton.add(bDelete);
     pButton.add(bSave);
     pButton.add(bCancel);
@@ -304,6 +312,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     bNew.setEnabled(false);
     bUpload.setEnabled(false);
     bDownload.setEnabled(false);
+    bRegister.setEnabled(false);
     bDelete.setEnabled(false);
     bSave.setEnabled(false);
 
@@ -476,8 +485,43 @@ public class BrowserPanel extends JDialog implements ActionListener{
             }).run();               
           }
         }
+        else if(e.getEventType()==HyperlinkEvent.EventType.ENTERED){
+          statusBar.setLabel(e.getURL().toExternalForm());
+          miDownload.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ev){
+              downloadFile(e.getURL().toExternalForm());
+            }
+          });
+          miDownload.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ev){
+              registerFile(e.getURL().toExternalForm());
+            }
+          });
+          if(bDownload.isEnabled()){
+            popupMenu.add(miDownload);
+          }
+          if(bRegister.isEnabled()){
+            popupMenu.add(miRegister);
+          }
+        }
+        else if(e.getEventType()==HyperlinkEvent.EventType.EXITED){
+          statusBar.setLabel("");
+          try{
+            popupMenu.remove(miDownload);
+            popupMenu.remove(miRegister);
+          }
+          catch(Exception ee){
+          }
+        }
       }
-    } );
+    });
+    
+    ep.addMouseListener(new java.awt.event.MouseAdapter() {
+      public void mousePressed(MouseEvent e) {
+        if (e.getButton()!=MouseEvent.BUTTON1) // right button
+          popupMenu.show(e.getComponent(), e.getX(), e.getY());
+      }
+    });
     
     statusBar = new StatusBar();
     this.getContentPane().add(statusBar, BorderLayout.SOUTH);
@@ -549,6 +593,68 @@ public class BrowserPanel extends JDialog implements ActionListener{
       setUrl(url);
     }
 
+  }
+  
+  /**
+   * Download a single file.
+   */
+  private void downloadFile(final String url){
+    final File dir = Util.getDownloadDir(this);      
+    if(dir==null){
+      return;
+    }
+    MyThread t = (new MyThread(){
+      public void run(){
+        Debug.debug("Getting file : "+url+" -> "+dir.getAbsolutePath(), 3);
+        try{
+          statusBar.setLabel("Downloading "+url);
+          TransferControl.download(url, dir, ep);
+          statusBar.setLabel("Download done");
+        }
+        catch(Exception ioe){
+          statusBar.setLabel("Download failed");
+          ioe.printStackTrace();
+        }
+        try{
+          ep.getDocument().putProperty(
+              Document.StreamDescriptionProperty, null);
+          setDisplay(thisUrl);
+        }
+        catch(Exception ioe){
+          ioe.printStackTrace();
+        }
+      }
+    });     
+    SwingUtilities.invokeLater(t);
+  }
+  
+  /**
+   * Register a single file.
+   */
+  private void registerFile(final String url){
+    // TODO: get the DB name
+    MyThread t = (new MyThread(){
+      public void run(){
+        try{
+          statusBar.setLabel("Registering "+url);
+          // TODO register
+          statusBar.setLabel("Registering done");
+        }
+        catch(Exception ioe){
+          statusBar.setLabel("Registering failed");
+          ioe.printStackTrace();
+        }
+        try{
+          ep.getDocument().putProperty(
+              Document.StreamDescriptionProperty, null);
+          setDisplay(thisUrl);
+        }
+        catch(Exception ioe){
+          ioe.printStackTrace();
+        }
+      }
+    });     
+    SwingUtilities.invokeLater(t);
   }
   
   /**
@@ -643,7 +749,13 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       else if(url.startsWith("https://") &&
           url.endsWith("/")){
-        setRemoteDirDisplay(url, httpsFileTransfer, "gsiftp");
+        try{
+          setRemoteDirDisplay(url, httpsFileTransfer, "https");
+        }
+        catch(Exception ee){
+          ee.printStackTrace();
+          setHttpDirDisplay(url);
+        }
       }
       // remote gsiftp text file
       else if(url.startsWith("gsiftp://") &&
@@ -660,7 +772,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       // html document
       else if((url.endsWith("htm") ||
           url.endsWith("html")) &&
-          (url.startsWith("http://") || url.startsWith("file:"))){
+          (url.startsWith("http://") || url.startsWith("https://") ||
+              url.startsWith("file:"))){
         setHtmlDisplay(url);
       }
       // tarball on disk or web server
@@ -733,7 +846,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         tmpFile.delete();
         throw new IOException("File too big "+ft.getFileBytes(new GlobusURL(url)));
       }
-      ft.getFile(new GlobusURL(url), tmpFile, statusBar, null);
+      ft.getFile(new GlobusURL(url), tmpFile, statusBar);
     }
     catch(Exception e){
       Debug.debug("Could not read "+url, 1);
@@ -775,6 +888,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bDelete.setEnabled(false);
       bUpload.setEnabled(false);
       bDownload.setEnabled(false);
+      bRegister.setEnabled(false);
       
       Debug.debug("Setting thisUrl, "+url, 3);
       thisUrl = url;
@@ -802,6 +916,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bDelete.setEnabled(false);
       bUpload.setEnabled(false);
       bDownload.setEnabled(false);
+      bRegister.setEnabled(false);
       BufferedReader in = new BufferedReader(
         new InputStreamReader((new URL(url)).openStream()));
       String text = "";
@@ -852,6 +967,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bDelete.setEnabled(false);
       bUpload.setEnabled(false);
       bDownload.setEnabled(false);
+      bRegister.setEnabled(false);
       BufferedReader in = new BufferedReader(
         new InputStreamReader((new URL(url)).openStream()));
       String text = "";
@@ -894,6 +1010,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bDelete.setEnabled(false);
       bUpload.setEnabled(false);
       bDownload.setEnabled(false);
+      bRegister.setEnabled(false);
       ep.setPage(url);
       ep.setEditable(false);
       pButton.updateUI();
@@ -922,6 +1039,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bDelete.setEnabled(false);
       bUpload.setEnabled(false);
       bDownload.setEnabled(false);
+      bRegister.setEnabled(false);
       ep.setEditable(false);
       try {
         URLConnection connection = (new URL(url)).openConnection();
@@ -968,6 +1086,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     bDelete.setEnabled(false);
     bUpload.setEnabled(false);
     bDownload.setEnabled(false);
+    bRegister.setEnabled(false);
     ep.setEditable(false);
 
     String localPath = null;
@@ -1072,6 +1191,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bDelete.setEnabled(true);
       bUpload.setEnabled(true);
       bDownload.setEnabled(true);
+      bRegister.setEnabled(false);
       String htmlText = "";
       try{
         String [] text = LocalStaticShellMgr.listFiles(localPath);
@@ -1161,6 +1281,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bDelete.setEnabled(true);
       bUpload.setEnabled(true);
       bDownload.setEnabled(true);
+      bRegister.setEnabled(true);
 
       url = url.replaceFirst("/[^\\/]*/\\.\\.", "");
       GlobusURL globusUrl = new GlobusURL(url);
@@ -1222,7 +1343,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       htmlText = "<html>\n";
       
       if(!localPath.equals("/")){
-        htmlText += "<a href=\""+protocol+"://"+host+":"+port+localPath+"../\">"+/*"gsiftp://"+host+":"+port+localPath+*/"../</a><br>\n";
+        htmlText += "<a href=\""+protocol+"://"+host+":"+port+localPath+"../\">"+
+        /*"gsiftp://"+host+":"+port+localPath+*/"../</a><br>\n";
       }
       htmlText += text;
       if(textVector.size()>maxEntries){
@@ -1261,6 +1383,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bDelete.setEnabled(false);
       bUpload.setEnabled(false);
       bDownload.setEnabled(true);
+      bRegister.setEnabled(false);
       ep.setPage(url);
       // workaround for bug in java < 1.5
       // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4492274
@@ -1577,6 +1700,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       else if(e.getSource()==bUpload){
         File file = getInputFile();
+        if(file==null){
+          return;
+        }
+        // TODO: use TransferControl.startCopyFiles
         TransferControl.upload(file, thisUrl, ep);
         try{
           ep.getDocument().putProperty(
@@ -1589,18 +1716,55 @@ public class BrowserPanel extends JDialog implements ActionListener{
         statusBar.setLabel(thisUrl+" uploaded");
       }
       else if(e.getSource()==bDownload){
-        File dir = Util.getDownloadDir(this);      
+        final File dir = Util.getDownloadDir(this);      
+        if(dir==null){
+          return;
+        }
+        final String fileNames = Util.getFileName(jtFilter.getText());
+        if(fileNames==null || fileNames.equals("")){
+          return;
+        }
+        Debug.debug("Getting file : "+thisUrl+fileNames+" -> "+dir.getAbsolutePath(), 3);
+        MyThread t = (new MyThread(){
+          public void run(){
+            try{
+              // TODO: parse wildcards in fileNames and use TransferControl.startCopyFiles
+              TransferControl.download(thisUrl+fileNames, dir, ep);
+            }
+            catch(Exception e){
+              e.printStackTrace();
+            }
+            try{
+              ep.getDocument().putProperty(
+                  Document.StreamDescriptionProperty, null);
+              setDisplay(thisUrl);
+            }
+            catch(Exception ioe){
+              ioe.printStackTrace();
+            }
+          }
+        });
+        SwingUtilities.invokeLater(t);
+      }
+      else if(e.getSource()==bRegister){
         String fileName = Util.getFileName(jtFilter.getText());
-        Debug.debug("Getting file : "+thisUrl+fileName+" -> "+dir.getAbsolutePath(), 3);
-        TransferControl.download(thisUrl+fileName, dir, ep);
-        try{
-          ep.getDocument().putProperty(
-              Document.StreamDescriptionProperty, null);
-          setDisplay(thisUrl);
+        if(fileName==null || fileName.equals("")){
+          return;
         }
-        catch(Exception ioe){
-          ioe.printStackTrace();
-        }
+        MyThread t = (new MyThread(){
+          public void run(){
+            // TODO: parse wildcards in fileNames and register
+            try{
+              ep.getDocument().putProperty(
+                  Document.StreamDescriptionProperty, null);
+              setDisplay(thisUrl);
+            }
+            catch(Exception ioe){
+              ioe.printStackTrace();
+            }
+          }
+        });
+        SwingUtilities.invokeLater(t);
       }
     }
     catch(Exception ex){
