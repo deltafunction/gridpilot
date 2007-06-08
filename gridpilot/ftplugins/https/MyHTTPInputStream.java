@@ -38,7 +38,7 @@ public class MyHTTPInputStream extends HTTPInputStream {
         throw e;
       }
   
-      if (hd.httpCode == 200 || hd.httpCode == 204) {
+      if (hd.httpCode == 200 || hd.httpCode == 201 || hd.httpCode == 204 || hd.httpCode == 207) {
         break;
       }
       else{
@@ -73,7 +73,6 @@ public class MyHTTPInputStream extends HTTPInputStream {
       size = hd.contentLength;    
     }      
   }
-    
     
 }
 

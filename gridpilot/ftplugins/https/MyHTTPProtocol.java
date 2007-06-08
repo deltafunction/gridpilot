@@ -5,9 +5,11 @@ import org.globus.util.http.HTTPProtocol;
 public class MyHTTPProtocol extends HTTPProtocol {
   
   private final static String DEPTH = "1";
+  private final static String MY_USER_AGENT = "GridPilot";
   
   public static String createCmdHeader(String path, String host, String cmd) {
     String newPath = null;
+    
     
     newPath = "/" + path;    
     StringBuffer head = new StringBuffer();
@@ -17,7 +19,7 @@ public class MyHTTPProtocol extends HTTPProtocol {
     }
     head.append(HTTPProtocol.HOST + host + HTTPProtocol.CRLF);
     head.append(HTTPProtocol.CONNECTION_CLOSE);
-    head.append(USER_AGENT + USER_AGENT + HTTPProtocol.CRLF);
+    head.append(USER_AGENT + MY_USER_AGENT + HTTPProtocol.CRLF);
     head.append(HTTPProtocol.CRLF);
 
     return head.toString();

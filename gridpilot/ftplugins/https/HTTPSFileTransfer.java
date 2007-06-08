@@ -13,6 +13,9 @@ import javax.swing.JProgressBar;
 import org.globus.ftp.exception.ClientException;
 import org.globus.ftp.exception.FTPException;
 import org.globus.ftp.exception.ServerException;
+import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
+import org.globus.gsi.gssapi.auth.HostAuthorization;
+import org.globus.gsi.gssapi.auth.IdentityAuthorization;
 import org.globus.io.urlcopy.UrlCopy;
 import org.globus.io.urlcopy.UrlCopyException;
 import org.globus.util.GlobusURL;
@@ -78,10 +81,16 @@ public class HTTPSFileTransfer implements FileTransfer {
       /*GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
       if(srcUrl.getProtocol().equalsIgnoreCase("https")){
         urlCopy.setSourceCredentials(credential);
+        urlCopy.setSourceAuthorization(new IdentityAuthorization(
+            ((GlobusGSSCredentialImpl)credential).getGlobusCredential().getIdentity()));
       }
       if(destUrl.getProtocol().equalsIgnoreCase("https")){
         urlCopy.setDestinationCredentials(credential);
+        urlCopy.setDestinationAuthorization(new IdentityAuthorization(
+            ((GlobusGSSCredentialImpl)credential).getGlobusCredential().getIdentity()));
       }*/
+      urlCopy.setSourceAuthorization(null);
+      urlCopy.setDestinationAuthorization(null);
       urlCopy = new UrlCopy();
       urlCopy.setSourceUrl(srcUrl);
       urlCopy.setDestinationUrl(destUrl);
@@ -106,15 +115,24 @@ public class HTTPSFileTransfer implements FileTransfer {
    */
   private synchronized MyUrlCopy myConnect(GlobusURL srcUrl) throws IOException{
     
+    Debug.debug("Connecting to "+srcUrl.getURL(), 2);
+    
     MyUrlCopy urlCopy = null;
     
     try{
       urlCopy = new MyUrlCopy();
-      /*GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+      urlCopy.setSourceUrl(srcUrl);
+      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
       if(srcUrl.getProtocol().equalsIgnoreCase("https")){
         urlCopy.setSourceCredentials(credential);
-      }*/
-      urlCopy.setSourceUrl(srcUrl);
+        //urlCopy.setDestinationCredentials(credential);
+        urlCopy.setSourceAuthorization(null);
+        //urlCopy.setSourceAuthorization(new IdentityAuthorization(
+        //"/O=GRID-FR/C=CH/O=CSCS/OU=CC-LCG/CN=grid00.unige.ch"));
+        //urlCopy.setDestinationAuthorization(new IdentityAuthorization(
+        //    ((GlobusGSSCredentialImpl)credential).getGlobusCredential().getIdentity()));
+        //urlCopy.setDestinationAuthorization(HostAuthorization.getInstance());
+      }
     }
     catch(Exception e){
       Debug.debug("Could not connect "+e.getMessage(), 1);
@@ -566,6 +584,35 @@ public class HTTPSFileTransfer implements FileTransfer {
    * ("Depth: 1" is printed in the header by MyHTTPProtocol).
    */
   public Vector list(GlobusURL globusUrl, String filter, StatusBar statusBar) throws Exception {
+
+    String baseDir = "";
+    
+    // jglobus does not like URLs like https://grid00.unige.ch/
+    // - we append ./
+    if(globusUrl.getURL().endsWith("/") && globusUrl.getPath()==null){
+      globusUrl = new GlobusURL(globusUrl.getURL()+"./");
+      baseDir = "^/";
+    }
+    else{
+      baseDir = "^/"+globusUrl.getPath();
+    }
+    
+    boolean onlyDirs = false;
+    if(filter==null || filter.equals("")){
+      filter = "*";
+    }
+    else{
+      onlyDirs = filter.endsWith("/");
+      if(onlyDirs){
+        filter = filter.substring(0, filter.length()-1);
+      }
+    }
+    
+    filter = filter.replaceAll("\\.", "\\\\.");
+    filter = filter.replaceAll("\\*", ".*");
+    Debug.debug("Filtering with "+filter, 3);
+    Debug.debug("Using baseDir "+baseDir, 2);
+
     MyUrlCopy urlCopy = myConnect(globusUrl);
     urlCopy.execute("PROPFIND");
     String res = urlCopy.getResult();
@@ -574,18 +621,35 @@ public class HTTPSFileTransfer implements FileTransfer {
     String hrefPattern = "(?i)<d:href>(.*)</d:href>";
     String sizePattern = "(?i)<lp1:getcontentlength>(.*)</lp1:getcontentlength>";
     String line = null;
+    int directories = 0;
+    int files = 0;
     for(int i=0; i<lines.length; ++i){
       if(lines[i].matches(hrefPattern)){
         line = lines[i].replaceFirst(hrefPattern, "$1").trim();
-        if(line.endsWith("/")){
+        if(line.endsWith("/") && line.matches(filter)){
           line += " " + "4096";
+          line = line.replaceFirst(baseDir, "");
+          Debug.debug("Line: "+lines[i], 2);
+          if(line.length()==0){
+            continue;
+          }
           resVec.add(line);
+          ++directories;
         }
       }
-      if(lines[i].matches(sizePattern)){
+      if(line!=null && !onlyDirs && line.matches(filter) && lines[i].matches(sizePattern)){
         line += " " + lines[i].replaceFirst(sizePattern, "$1").trim();
+        line = line.replaceFirst(baseDir, "");
+        Debug.debug("Line: "+lines[i], 2);
+        if(line.length()==0){
+          continue;
+        }
         resVec.add(line);
+        ++files;
       }
+    }
+    if(statusBar!=null){
+      statusBar.setLabel(directories+" directories, "+files+" files");
     }
     return resVec;
   }

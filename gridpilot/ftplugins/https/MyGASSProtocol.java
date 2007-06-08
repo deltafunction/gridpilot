@@ -14,7 +14,8 @@ public class MyGASSProtocol extends GASSProtocol {
      * gass server
      */
     public static String EXECUTE(String path, String host, String cmd) {
-	   return MyHTTPProtocol.createCmdHeader("/" + path, host, cmd);
+      path = path.replaceFirst("^/+", "");
+      return MyHTTPProtocol.createCmdHeader(path, host, cmd);
     }
     
 }

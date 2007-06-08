@@ -9,6 +9,7 @@ import java.io.IOException;
 import org.globus.io.streams.GlobusInputStream;
 import org.globus.io.urlcopy.UrlCopy;
 import org.globus.io.urlcopy.UrlCopyException;
+import org.globus.util.GlobusURL;
 import org.globus.gsi.gssapi.auth.Authorization;
 import org.globus.gsi.gssapi.auth.SelfAuthorization;
 
@@ -110,7 +111,15 @@ public class MyUrlCopy extends UrlCopy implements Runnable {
     if(fromP.equalsIgnoreCase("https")){
       Authorization auth = getSourceAuthorization();
       if (auth == null){
-        auth = SelfAuthorization.getInstance();
+        
+        // NOTICE: host authorization disabled!
+        // This is because I cannot get a normal Apache+mod_gridsite
+        // to work. jglobus tries to verify the host (target) subject
+        // with my (expected target) subject name (or vice versa - don't remember).
+        // Perhaps related to globus allowing gass servers to be started with
+        // user certificates...
+        
+        //auth = SelfAuthorization.getInstance();
       }
       in = new MyGassInputStream(getSourceCredentials(),
                                auth,
