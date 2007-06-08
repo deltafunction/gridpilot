@@ -1,7 +1,5 @@
 package gridpilot.ftplugins.gsiftp;
 
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -9,11 +7,7 @@ import java.io.RandomAccessFile;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.TreeSet;
 import java.util.Vector;
-
-import javax.swing.JOptionPane;
-import javax.swing.JProgressBar;
 
 import org.globus.ftp.Buffer;
 import org.globus.ftp.DataChannelAuthentication;
@@ -30,11 +24,11 @@ import org.globus.util.GlobusURL;
 import org.ietf.jgss.GSSCredential;
 import org.apache.log4j.*;
 
-import gridpilot.ConfirmBox;
 import gridpilot.Debug;
 import gridpilot.FileTransfer;
 import gridpilot.LocalStaticShellMgr;
 import gridpilot.GridPilot;
+import gridpilot.MyThread;
 import gridpilot.StatusBar;
 import gridpilot.Util;
 
@@ -45,10 +39,10 @@ public class GSIFTPFileTransfer implements FileTransfer {
   private HashMap urlCopyTransferListeners = null;
   private HashMap fileTransfers = null;
   
-  private static String pluginName;
+  private static String PLUGIN_NAME;
   
   public GSIFTPFileTransfer(){
-    pluginName = "gsiftp";
+    PLUGIN_NAME = "gsiftp";
     if(!GridPilot.firstRun){
       user = Util.getGridSubject();
     }
@@ -174,8 +168,8 @@ public class GSIFTPFileTransfer implements FileTransfer {
     return gridFtpClient;
   }
 
-  public void getFile(GlobusURL globusUrl, File downloadDirOrFile,
-      StatusBar statusBar, JProgressBar pb)
+  public void getFile(final GlobusURL globusUrl, File downloadDirOrFile,
+      final StatusBar statusBar)
      throws ClientException, ServerException, FTPException, IOException {
     
     // TODO: implement wildcard *
@@ -216,21 +210,13 @@ public class GSIFTPFileTransfer implements FileTransfer {
     final String id = globusUrl.getURL()+"::"+downloadDirOrFile.getCanonicalPath();
 
     Debug.debug("Getting "+fileName, 3);
-    if(statusBar!=null){
-      statusBar.setLabel("Getting "+fileName);
-    }
-    if(pb!=null){
-      pb.addMouseListener(new MouseAdapter(){
-        public void mouseClicked(MouseEvent e){
-          try{
-            abortTransfer(id);
-          }
-          catch(Exception ee){
-          }
+    (new MyThread(){
+      public void run(){
+        if(statusBar!=null){
+          statusBar.setLabel("Getting "+globusUrl.getURL());
         }
-      });
-      pb.setToolTipText("Click here to cancel download");
-    }
+      }
+    }).run();               
 
     GridFTPClient gridFtpClient = null;
     
@@ -279,6 +265,10 @@ public class GSIFTPFileTransfer implements FileTransfer {
       Debug.debug(fileName+" downloaded.", 2);
     }
     catch(FTPException e){
+      if(statusBar!=null){
+        statusBar.setLabel("Download of "+fileName+" failed");
+      }
+      Debug.debug(fileName+" downloaded.", 2);
       //e.printStackTrace();
       Debug.debug("Could not read "+localPath, 1);
       throw e;
@@ -295,9 +285,8 @@ public class GSIFTPFileTransfer implements FileTransfer {
   /**
    * Upload file to gridftp server.
    */
-  public void putFile(File file, GlobusURL globusFileUrl,
-      StatusBar statusBar, JProgressBar pb)
-    throws IOException, FTPException{
+  public void putFile(File file, final GlobusURL globusFileUrl,
+      final StatusBar statusBar) throws IOException, FTPException{
     
     Debug.debug("put "+globusFileUrl.getURL(), 3);
     
@@ -336,16 +325,13 @@ public class GSIFTPFileTransfer implements FileTransfer {
     
     final String id = file.getCanonicalPath() +"::"+ globusFileUrl.getURL();
     
-    pb.addMouseListener(new MouseAdapter(){
-      public void mouseClicked(MouseEvent e){
-        try{
-          abortTransfer(id);
-        }
-        catch(Exception ee){
+    (new MyThread(){
+      public void run(){
+        if(statusBar!=null){
+          statusBar.setLabel("Uploading to "+globusFileUrl.getURL());
         }
       }
-    });
-    pb.setToolTipText("Click here to cancel upload");
+    }).run();               
     
     GridFTPClient gridFtpClient = null;
     
@@ -365,8 +351,14 @@ public class GSIFTPFileTransfer implements FileTransfer {
       gridFtpClient.put(file, localPath, false);     
       // if we don't get an exception, the file got written...
       Debug.debug("File or directory "+globusFileUrl.getURL()+" written.", 2);
+      if(statusBar!=null){
+        statusBar.setLabel("Upload of "+globusFileUrl.getURL()+" done");
+      }
     }
     catch(FTPException e){
+      if(statusBar!=null){
+        statusBar.setLabel("Upload of "+globusFileUrl.getURL()+" done");
+      }
       //e.printStackTrace();
       Debug.debug("Could not read "+localPath, 1);
       throw e;
@@ -387,7 +379,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
    * @throws IOException 
    * @throws ServerException 
    */
-  private void abortTransfer(String id) throws ServerException, IOException{
+  public void abortTransfer(String id) throws ServerException, IOException{
     GridFTPClient gridftpClient = ((GridFTPClient) fileTransfers.get(id));
     gridftpClient.abort();
     gridftpClient.close(true);
@@ -613,201 +605,6 @@ public class GSIFTPFileTransfer implements FileTransfer {
   }
 
   /**
-   * Argument: a space separated list of URL strings.
-   * If each URL given is a directory, return list of files in the
-   * directory as a set of GlobusURLs.
-   * If each URL contains a *, return the matching files as a set of
-   * GlobusURLs.
-   */
-  public TreeSet resolveWildCardUrls(String remoteUrl) throws IOException{
-    
-    String [] urls = Util.split(remoteUrl);
-    String url = null;
-    String localPath = null;
-    String host = null;
-    String hostAndPath = null;
-    String port = "2811";
-    String hostAndPort = null;
-    String localDir = null;
-    String localFile = null;
-    Object [] textArr = null;
-    TreeSet urlSet = new TreeSet();
-    Vector failedUrls = new Vector();
-    GlobusURL globusUrl = null;
-
-    for(int i=0; i<urls.length; ++i){
-      // Find host, port, dir name and file name.
-      url =urls[i];
-      Debug.debug("gsiftpGetFile "+url, 3);
-      
-      if(url.startsWith("gsiftp://")){
-        hostAndPath = url.substring(9);
-      }
-      else if(url.startsWith("gsiftp:/")){
-        hostAndPath = url.substring(8);
-      }
-      else{
-        Debug.debug("ERROR: protocol not supported: "+url, 1);
-        return null;
-      }
-      Debug.debug("Host+path: "+hostAndPath, 3);
-      hostAndPort = hostAndPath.substring(0, hostAndPath.indexOf("/"));
-      int colonIndex=hostAndPort.indexOf(":");
-      if(colonIndex>0){
-        host = hostAndPort.substring(0, hostAndPort.indexOf(":"));
-        port = hostAndPort.substring(hostAndPort.indexOf(":")+1);
-      }
-      else{
-        host = hostAndPort;
-        port = "2811";
-      }
-      localPath = hostAndPath.substring(hostAndPort.length(), hostAndPath.length());
-      localPath = localPath.replaceAll("/[^\\/]*/\\.\\.", "");
-      int lastSlash = localPath.lastIndexOf("/");
-      if(lastSlash>0){
-        localDir = localPath.substring(0, lastSlash);
-        localFile = localPath.substring(lastSlash+1);
-      }
-      else{
-        localDir = "/";
-        localFile = localPath;
-      }
-      Debug.debug("Host: "+host, 3);
-      Debug.debug("Port: "+port, 3);
-      Debug.debug("Path: "+localPath, 3);
-      Debug.debug("Directory: "+localDir, 3);
-      Debug.debug("File: "+localFile, 3);
-
-      // Populate urlSet
-      GridFTPClient gridFtpClient = null;
-      try{
-        gridFtpClient = connect(host, Integer.parseInt(port));
-      }
-      catch(Exception e){
-        Debug.debug("Could not donnect "+localPath+". "+
-           e.getMessage(), 1);
-        e.printStackTrace();
-        failedUrls.add(url);
-        continue;
-        //throw new IOException(e.getMessage());
-      }
-      try{
-        gridFtpClient.changeDir(localDir);
-                
-        Debug.debug("Current dir: "+gridFtpClient.getCurrentDir(), 3);
-                
-        // List all files in directory localDir on server.
-        // NorduGrid variant
-        try{
-          textArr = gridFtpClient.mlsd().toArray();
-        }
-        catch(FTPException ee){
-          ee.printStackTrace();
-          // LCG variant
-          try{
-            textArr = gridFtpClient.list().toArray();
-          }
-          catch(FTPException e){
-            e.printStackTrace();
-          }
-        }
-        
-        final ByteArrayOutputStream received2 = new ByteArrayOutputStream(100000);
-        DataSink dataSink = new DataSink(){
-          public void write(Buffer buffer) 
-          throws IOException{
-            Debug.debug("received " + buffer.getLength() +
-               " bytes of directory listing", 1);
-               received2.write(buffer.getBuffer(),
-               0,
-               buffer.getLength());
-            return;
-          }
-          public void close() throws IOException{
-            Debug.debug("closing", 1);
-          };                
-        };
-        gridFtpClient.list("", "", dataSink);
-        textArr = Util.split(received2.toString(), "\n");
-
-        // Find the files matching localFile
-        if(localFile.indexOf("*")>-1){
-          // Parse wildcard
-          Debug.debug("Parsing wildcard", 3);
-          String [] text = new String[textArr.length];
-          String [] entryArr = null;
-          for(int j=0; j<textArr.length; ++j){
-            text[j] = textArr[j].toString();
-            //Debug.debug(text[j], 3);
-            entryArr = Util.split(text[j]);
-            text[j] = entryArr[entryArr.length-1];
-          }
-          localFile = localFile.replaceAll("\\.", "\\\\.");
-          localFile = localFile.replaceAll("\\*", ".*");
-          Debug.debug("Matching "+localFile, 3);
-          for(int j=0; j<text.length; ++j){
-            if(text[j].matches(localFile)){
-              try{
-                globusUrl = new GlobusURL(host+":"+port+localDir+"/"+text[j]);
-                urlSet.add(globusUrl);
-              }
-              catch(Exception e){
-                e.printStackTrace();
-                failedUrls.add(url);
-              }
-            }
-          }
-        }
-        else{
-          globusUrl = new GlobusURL(host+":"+port+localDir+"/"+localFile);
-          urlSet.add(globusUrl);
-        }
-      }
-      catch(Exception e){
-        e.printStackTrace();
-        Debug.debug("Error while adding "+localPath, 1);
-        failedUrls.add(url);
-        continue;
-      }
-      finally{
-        try{
-          gridFtpClient.close();
-        }
-        catch(ServerException e){
-        }
-      }
-    }
-    if(!urlSet.isEmpty() && !failedUrls.isEmpty()){
-      int choice = 1;
-      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
-      try{
-        String confirmString = "WARNING: " + failedUrls.size() + " out of " +
-        (urlSet.size() + failedUrls.size()) + " could not be resolved.\n\n" +
-        "The following URLs could not be " +
-            "resolved: "+Util.arrayToString(failedUrls.toArray(), ", ") +
-            ".\n\nDo you want to continue?";
-        choice = confirmBox.getConfirm("Confirm continue",
-            confirmString, new Object[] {"OK",  "Cancel"});        
-      }
-      catch(java.lang.Exception e){
-        Debug.debug("Could not get confirmation, "+e.getMessage(), 1);
-      }
-      if(choice==0){
-        return urlSet;
-      }
-      else{
-        return null;
-      }
-    }
-    else if(urlSet.isEmpty() && !failedUrls.isEmpty()){
-      return null;
-    }
-    else{
-      return urlSet;
-    }
-  }  
-
-  /**
    * List files and/or directories in a *directory* on gridftp server.
    */
   public Vector list(GlobusURL globusUrl, String filter,
@@ -1005,7 +802,13 @@ public class GSIFTPFileTransfer implements FileTransfer {
         cacheInfoDir.mkdir();
       }
       long fileSize = client.getSize(urlCopy.getDestinationUrl().getPath());
-      Date modificationDate = client.getLastModified(urlCopy.getDestinationUrl().getPath());
+      Date modificationDate = null;
+      try{
+        modificationDate = client.getLastModified(urlCopy.getDestinationUrl().getPath());
+      }
+      catch(Exception ee){
+        ee.printStackTrace();
+      }
       if(cacheInfoFile.exists()){
         // Parse the file. It has the format:
         // date: <date>
@@ -1082,7 +885,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
         }
         urlCopy.addUrlCopyListener(urlCopyTransferListener);
         // The transfer id is chosen to be "gsiftp-{get|put|copy}::'srcUrl' 'destUrl'"
-        final String id = pluginName + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
+        final String id = PLUGIN_NAME + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
         Debug.debug("ID: "+id, 3);
         jobs.put(id, urlCopy);
         urlCopyTransferListeners.put(id, urlCopyTransferListener);

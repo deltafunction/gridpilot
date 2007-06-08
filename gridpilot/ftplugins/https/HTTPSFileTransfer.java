@@ -8,14 +8,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Vector;
 
-import javax.swing.JProgressBar;
-
-import org.globus.ftp.exception.ClientException;
 import org.globus.ftp.exception.FTPException;
 import org.globus.ftp.exception.ServerException;
-import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
-import org.globus.gsi.gssapi.auth.HostAuthorization;
-import org.globus.gsi.gssapi.auth.IdentityAuthorization;
 import org.globus.io.urlcopy.UrlCopy;
 import org.globus.io.urlcopy.UrlCopyException;
 import org.globus.util.GlobusURL;
@@ -25,6 +19,7 @@ import gridpilot.Debug;
 import gridpilot.FileTransfer;
 import gridpilot.LocalStaticShellMgr;
 import gridpilot.GridPilot;
+import gridpilot.MyThread;
 import gridpilot.StatusBar;
 import gridpilot.Util;
 
@@ -35,10 +30,12 @@ public class HTTPSFileTransfer implements FileTransfer {
   private HashMap urlCopyTransferListeners = null;
   private HashMap fileTransfers = null;
   
-  private static String pluginName;
+  //Thu, 07 Jun 2007 20:37:24 GMT
+  private static String DATE_FORMAT = "EEE, dd MMM yyyy HH:mm:ss z";
+  private static String PLUGIN_NAME;
   
   public HTTPSFileTransfer(){
-    pluginName = "https";
+    PLUGIN_NAME = "https";
     if(!GridPilot.firstRun){
       Debug.debug("getting identity", 3);
       user = Util.getGridSubject();
@@ -73,9 +70,9 @@ public class HTTPSFileTransfer implements FileTransfer {
    * simultaneous GPSS submissions, i.e. connecting in parallel to the same
    * host.
    */
-  private synchronized UrlCopy connect(GlobusURL srcUrl, GlobusURL destUrl) throws IOException{
+  private synchronized MyUrlCopy myConnect(GlobusURL srcUrl, GlobusURL destUrl) throws IOException{
     
-    UrlCopy urlCopy = null;
+    MyUrlCopy urlCopy = null;
     
     try{
       /*GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
@@ -88,10 +85,10 @@ public class HTTPSFileTransfer implements FileTransfer {
         urlCopy.setDestinationCredentials(credential);
         urlCopy.setDestinationAuthorization(new IdentityAuthorization(
             ((GlobusGSSCredentialImpl)credential).getGlobusCredential().getIdentity()));
-      }*/
+      }
       urlCopy.setSourceAuthorization(null);
-      urlCopy.setDestinationAuthorization(null);
-      urlCopy = new UrlCopy();
+      urlCopy.setDestinationAuthorization(null);*/
+      urlCopy = new MyUrlCopy();
       urlCopy.setSourceUrl(srcUrl);
       urlCopy.setDestinationUrl(destUrl);
       if(srcUrl.getProtocol().equalsIgnoreCase("https") &&
@@ -125,8 +122,8 @@ public class HTTPSFileTransfer implements FileTransfer {
       GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
       if(srcUrl.getProtocol().equalsIgnoreCase("https")){
         urlCopy.setSourceCredentials(credential);
-        //urlCopy.setDestinationCredentials(credential);
-        urlCopy.setSourceAuthorization(null);
+        urlCopy.setDestinationCredentials(credential);
+        //urlCopy.setSourceAuthorization(null);
         //urlCopy.setSourceAuthorization(new IdentityAuthorization(
         //"/O=GRID-FR/C=CH/O=CSCS/OU=CC-LCG/CN=grid00.unige.ch"));
         //urlCopy.setDestinationAuthorization(new IdentityAuthorization(
@@ -147,9 +144,11 @@ public class HTTPSFileTransfer implements FileTransfer {
    * caching, queueing and monitoring. Notice, that it does NOT
    * start a separate thread.
    */
-  public void getFile(GlobusURL globusUrl, File downloadDirOrFile,
-      StatusBar statusBar, JProgressBar pb)
-     throws ClientException, ServerException, UrlCopyException, IOException {
+  public void getFile(final GlobusURL globusUrl, File downloadDirOrFile,
+      final StatusBar statusBar)
+     throws Exception {
+    
+    // TODO: implement wildcard
     
     if(globusUrl.getURL().endsWith("/")){
       throw new IOException("ERROR: cannot download a directory. ");
@@ -157,8 +156,17 @@ public class HTTPSFileTransfer implements FileTransfer {
     
     Debug.debug("Get "+globusUrl.getURL(), 3);
 
-    String id = globusUrl.getURL()+"::"+downloadDirOrFile.getCanonicalPath();
+    final String id = globusUrl.getURL()+"::"+downloadDirOrFile.getCanonicalPath();
     
+    Debug.debug("Getting "+globusUrl.getURL(), 3);
+    (new MyThread(){
+      public void run(){
+        if(statusBar!=null){
+          statusBar.setLabel("Getting "+globusUrl.getURL());
+        }
+      }
+    }).run();               
+
     File downloadFile = null;
     String fileName = globusUrl.getPath().replaceFirst(".*/([^/]+)", "$1");
     if(downloadDirOrFile.isDirectory()){
@@ -168,11 +176,19 @@ public class HTTPSFileTransfer implements FileTransfer {
       downloadFile = downloadDirOrFile;
     }
     
-    UrlCopy urlCopy = connect(globusUrl, new GlobusURL("file:///"+downloadFile.getCanonicalPath()));
-    fileTransfers.put(id, urlCopy);
+    try{
+      MyUrlCopy urlCopy = myConnect(globusUrl, new GlobusURL("file:///"+downloadFile.getCanonicalPath()));
+      fileTransfers.put(id, urlCopy);
 
-    Debug.debug("Downloading "+globusUrl.getURL()+"->"+downloadFile.getAbsolutePath(), 3);
-    urlCopy.copy();
+      Debug.debug("Downloading "+globusUrl.getURL()+"->"+downloadFile.getAbsolutePath(), 3);
+      urlCopy.copy();
+    }
+    catch(Exception e){
+      if(statusBar!=null){
+        statusBar.setLabel("Download failed");
+      }
+      throw e;
+    }
    
     // if we don't get an exception, the file got downloaded
     if(statusBar!=null){
@@ -186,11 +202,19 @@ public class HTTPSFileTransfer implements FileTransfer {
    * caching, queueing and monitoring. Notice, that it does NOT
    * start a separate thread.
    */
-  public void putFile(File file, GlobusURL globusFileUrl,
-      StatusBar statusBar, JProgressBar pb) throws UrlCopyException, IOException{
+  public void putFile(File file, final GlobusURL globusFileUrl,
+      final StatusBar statusBar) throws Exception{
     
-    String id = file.getCanonicalPath() +"::"+ globusFileUrl.getURL();
+    final String id = file.getCanonicalPath() +"::"+ globusFileUrl.getURL();
     
+    (new MyThread(){
+      public void run(){
+        if(statusBar!=null){
+          statusBar.setLabel("Getting "+globusFileUrl.getURL());
+        }
+      }
+    }).run();               
+
     String fileName = file.getName();
     GlobusURL uploadUrl = null;
     if(globusFileUrl.getURL().endsWith("/")){
@@ -201,11 +225,23 @@ public class HTTPSFileTransfer implements FileTransfer {
     }
     Debug.debug("put "+uploadUrl.getURL(), 3);
     
-    UrlCopy urlCopy = connect(new GlobusURL("file:///"+file.getCanonicalPath()),
-        uploadUrl);
-    fileTransfers.put(id, urlCopy);
-    urlCopy.copy();
-    // if we don't get an exception, the file got written...
+    try{
+      MyUrlCopy urlCopy = myConnect(new GlobusURL("file:///"+file.getCanonicalPath()),
+          uploadUrl);
+      fileTransfers.put(id, urlCopy);
+      urlCopy.copy();
+    }
+    catch(Exception e){
+      if(statusBar!=null){
+        statusBar.setLabel("Upload failed");
+      }
+      throw e;
+    }
+ 
+    // if we don't get an exception, the file got written.
+    if(statusBar!=null){
+      statusBar.setLabel("Upload done");
+    }
     Debug.debug("File or directory "+globusFileUrl.getURL()+" written.", 2);
   }
   
@@ -216,8 +252,8 @@ public class HTTPSFileTransfer implements FileTransfer {
    * @throws IOException 
    * @throws ServerException 
    */
-  private void abortTransfer(String id) throws ServerException, IOException{
-    UrlCopy urlCopy = ((UrlCopy) fileTransfers.get(id));
+  public void abortTransfer(String id) throws ServerException, IOException{
+    MyUrlCopy urlCopy = ((MyUrlCopy) fileTransfers.get(id));
     urlCopy.cancel();
     fileTransfers.remove(id);
   }
@@ -287,7 +323,7 @@ public class HTTPSFileTransfer implements FileTransfer {
         Debug.debug("Created temp file "+tmpFile, 3);
         String fileName = globusUrl.getPath().replaceFirst(".*/([^/]+)", "$1");
         Debug.debug("Uploading "+tmpFile.getAbsolutePath()+" --> "+fileName, 3);
-        putFile(tmpFile, globusUrl, null, null);
+        putFile(tmpFile, globusUrl, null);
         tmpFile.delete();
       }
       else{
@@ -326,7 +362,7 @@ public class HTTPSFileTransfer implements FileTransfer {
   private Date makeDate(String dateInput){
     Date date = null;
     try{
-      SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
+      SimpleDateFormat df = new SimpleDateFormat(DATE_FORMAT);
       date = df.parse(dateInput);
     }
     catch(Throwable e){
@@ -365,8 +401,7 @@ public class HTTPSFileTransfer implements FileTransfer {
         cacheInfoDir.mkdir();
       }
       long fileSize = urlCopy.getSourceLength();
-      // TODO:
-      //Date modificationDate = getLastModified(urlCopy.getDestinationUrl().getPath());
+      Date modificationDate = getLastModified(urlCopy.getDestinationUrl());
       if(cacheInfoFile.exists()){
         // Parse the file. It has the format:
         // date: <date>
@@ -385,8 +420,8 @@ public class HTTPSFileTransfer implements FileTransfer {
         cacheRAF.close();
       }
       if(destinationFile.exists() && cachedDate!=null && cachedSize>-1){
-        //if(modificationDate!=null && fileSize>-1){
-          if(/*cachedDate.equals(modificationDate) &&*/ cachedSize==fileSize){
+        if(modificationDate!=null && fileSize>-1){
+          if(cachedDate.equals(modificationDate) && cachedSize==fileSize){
             cacheOk = true;
           }
           else{
@@ -397,12 +432,12 @@ public class HTTPSFileTransfer implements FileTransfer {
             catch(Exception e){
             }
           }
-        //}
+        }
       }
-      if(!cacheOk /*&& modificationDate!=null*/ && fileSize>-1){
+      if(!cacheOk && modificationDate!=null && fileSize>-1){
         // write the file size and modification date to .gridpilot_cache/.<file name>
         LocalStaticShellMgr.writeFile(cacheInfoFile.getAbsolutePath(),
-            "date: "/*+makeDateString(modificationDate)*/, false);
+            "date: "+makeDateString(modificationDate), false);
         LocalStaticShellMgr.writeFile(cacheInfoFile.getAbsolutePath(),
             "size: "+Long.toString(fileSize), true);
       }
@@ -415,6 +450,39 @@ public class HTTPSFileTransfer implements FileTransfer {
     return cacheOk;
   }
 
+  private Date getLastModified(GlobusURL globusUrl) throws IOException, UrlCopyException{
+    try{
+      String path = "/"+globusUrl.getPath();
+      MyUrlCopy urlCopy = myConnect(globusUrl);
+      urlCopy.execute("PROPFIND");
+      String res = urlCopy.getResult();
+      String [] lines = Util.split(res, "(?s)[\n\r]");
+      String hrefPattern = "(?i)<d:href>"+path+"</d:href>";
+      String datePattern = "(?i)<lp1:getlastmodified>(.*)</lp1:getlastmodified>";
+      String date = null;
+      boolean ok = false;
+      for(int i=0; i<lines.length; ++i){
+        if(lines[i].matches(hrefPattern)){
+          ok = true;
+          Debug.debug("Line: "+lines[i], 3);
+        }
+        if(ok && lines[i].matches(datePattern)){
+          date += lines[i].replaceFirst(datePattern, "$1").trim();
+          Debug.debug("Date: "+date, 2);
+        }
+      }
+      if(date!=null){
+        return makeDate(date);
+      }
+    }
+    catch(Exception e){
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not get " +
+            "modification date of "+globusUrl, e);
+      e.printStackTrace();
+    }
+    return null;
+  }
+
   public String[] startCopyFiles(GlobusURL[] srcUrls, GlobusURL[] destUrls)
      throws UrlCopyException {
     Debug.debug("", 2);
@@ -423,11 +491,11 @@ public class HTTPSFileTransfer implements FileTransfer {
     Debug.debug("Copying "+srcUrls.length+" files", 2);
     for(int i=0; i<srcUrls.length; ++i){
       try{
-        final UrlCopy urlCopy = connect(srcUrls[i], destUrls[i]);
+        final MyUrlCopy urlCopy = myConnect(srcUrls[i], destUrls[i]);
         urlCopyTransferListener = new UrlCopyTransferListener();
         urlCopy.addUrlCopyListener(urlCopyTransferListener);
         // The transfer id is chosen to be "https-{get|put|copy}::'srcUrl' 'destUrl'"
-        final String id = pluginName + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
+        final String id = PLUGIN_NAME + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
         Debug.debug("ID: "+id, 3);
         jobs.put(id, urlCopy);
         urlCopyTransferListeners.put(id, urlCopyTransferListener);
@@ -526,7 +594,7 @@ public class HTTPSFileTransfer implements FileTransfer {
 
   public void cancel(String fileTransferID) throws Exception {
     if(!((UrlCopy) jobs.get(fileTransferID)).isCanceled()){
-      Debug.debug("Cancelling gsiftp transfer "+fileTransferID, 2);
+      Debug.debug("Cancelling https transfer "+fileTransferID, 2);
       ((UrlCopy) jobs.get(fileTransferID)).cancel();
       jobs.remove(fileTransferID);
     }
@@ -626,13 +694,13 @@ public class HTTPSFileTransfer implements FileTransfer {
     for(int i=0; i<lines.length; ++i){
       if(lines[i].matches(hrefPattern)){
         line = lines[i].replaceFirst(hrefPattern, "$1").trim();
+        line = line.replaceFirst(baseDir, "");
+        Debug.debug("Line: "+lines[i], 3);
+        if(line.length()==0){
+          continue;
+        }
         if(line.endsWith("/") && line.matches(filter)){
           line += " " + "4096";
-          line = line.replaceFirst(baseDir, "");
-          Debug.debug("Line: "+lines[i], 2);
-          if(line.length()==0){
-            continue;
-          }
           resVec.add(line);
           ++directories;
         }

@@ -1,10 +1,10 @@
 package gridpilot;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Vector;
 
-import javax.swing.JProgressBar;
-
+import org.globus.ftp.exception.ServerException;
 import org.globus.util.GlobusURL;
 
 /**
@@ -127,11 +127,21 @@ public interface FileTransfer {
    * @param   globusUrl    URL of file to download.
    * @param   downloadDirOrFile    destination file or directory.
    * @param   statusBar    StatusBar for displaying messages. Can be null.
-   * @param   pb    JProgressBar for displaying progress. Can be null.
    */
   public void getFile(GlobusURL globusUrl, File downloadDirOrFile,
-      StatusBar statusBar, JProgressBar pb)
-     throws Exception;
+      StatusBar statusBar) throws Exception;
+  
+  /**
+   * Quick and dirty method to just upload a file - bypassing
+   * caching, queueing and monitoring. Notice, that it does NOT
+   * start a separate thread.
+   * @param   globusUrl    URL of file to download.
+   * @param   downloadDirOrFile    destination file or directory.
+   * @param   statusBar    StatusBar for displaying messages. Can be null.
+   */
+  public void putFile(File file, final GlobusURL globusFileUrl,
+      final StatusBar statusBar) throws Exception;
+
 
   /**
    * List files and/or directories in a *directory* on a server.
@@ -141,4 +151,14 @@ public interface FileTransfer {
    */
   public Vector list(GlobusURL globusUrl, String filter,
       StatusBar statusBar) throws Exception;
+  
+  /**
+   * Cancels a running transfer from fileTransfers.
+   * These are transfers initiated by getFile or putFile.
+   * @param id the ID of the transfer.
+   * @throws IOException 
+   * @throws ServerException 
+   */
+  public void abortTransfer(String id) throws ServerException, IOException;
+
 }

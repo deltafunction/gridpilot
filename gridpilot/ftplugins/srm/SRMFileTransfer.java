@@ -8,8 +8,6 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Vector;
 
-import javax.swing.JProgressBar;
-
 import org.globus.ftp.exception.ClientException;
 import org.globus.ftp.exception.FTPException;
 import org.globus.ftp.exception.ServerException;
@@ -1146,14 +1144,23 @@ public class SRMFileTransfer implements FileTransfer {
     return ret;
   }
 
-  public void getFile(GlobusURL globusUrl, File downloadDirOrFile, StatusBar statusBar, JProgressBar pb) throws Exception {
+  public void getFile(GlobusURL globusUrl, File downloadDirOrFile, StatusBar statusBar) throws Exception {
     // No point in implementing this. SRM is anyway not browsable.
     throw new IOException("getFile not supported by SRM plugin.");
+  }
+
+  public void putFile(File file, GlobusURL globusFileUrl, StatusBar statusBar) throws Exception {
+      // No point in implementing this. SRM is anyway not browsable.
+     throw new IOException("getFile not supported by SRM plugin.");
   }
 
   public Vector list(GlobusURL globusUrl, String filter, StatusBar statusBar) throws Exception {
     // No point in implementing this. SRM is anyway not browsable.
     throw new IOException("list not supported by SRM plugin.");
+  }
+  
+  public void abortTransfer(String id) throws ServerException, IOException {
+    //  No point in implementing this. SRM is anyway not browsable.
   }
 
 }

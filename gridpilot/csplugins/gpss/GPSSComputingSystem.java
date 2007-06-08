@@ -1040,7 +1040,7 @@ public class GPSSComputingSystem implements ComputingSystem{
         else if(Util.urlIsRemote(finalStdOut)){
           try{
             gsiftpFileTransfer.getFile(new GlobusURL(finalStdOut), tmpStdout.getParentFile(),
-                GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar, null);
+                GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar);
           }
           catch(Exception e){
             e.printStackTrace();
@@ -1059,7 +1059,7 @@ public class GPSSComputingSystem implements ComputingSystem{
           boolean ok = true;
           try{
             gsiftpFileTransfer.getFile(new GlobusURL(finalStdErr), tmpStdErr.getParentFile(),
-                GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar, null);
+                GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar);
           }
           catch(Exception e){
             ok = false;

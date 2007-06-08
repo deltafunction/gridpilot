@@ -5,12 +5,25 @@ import gridpilot.GridPilot;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.URLDecoder;
 
+import org.globus.io.streams.FTPInputStream;
+import org.globus.io.streams.FTPOutputStream;
+import org.globus.io.streams.GassInputStream;
+import org.globus.io.streams.GassOutputStream;
+import org.globus.io.streams.GlobusFileInputStream;
+import org.globus.io.streams.GlobusFileOutputStream;
 import org.globus.io.streams.GlobusInputStream;
+import org.globus.io.streams.GlobusOutputStream;
+import org.globus.io.streams.GridFTPInputStream;
+import org.globus.io.streams.GridFTPOutputStream;
+import org.globus.io.streams.HTTPInputStream;
+import org.globus.io.streams.HTTPOutputStream;
 import org.globus.io.urlcopy.UrlCopy;
 import org.globus.io.urlcopy.UrlCopyException;
-import org.globus.util.GlobusURL;
+
 import org.globus.gsi.gssapi.auth.Authorization;
+import org.globus.gsi.gssapi.auth.HostAuthorization;
 import org.globus.gsi.gssapi.auth.SelfAuthorization;
 
 public class MyUrlCopy extends UrlCopy implements Runnable {
@@ -19,7 +32,7 @@ public class MyUrlCopy extends UrlCopy implements Runnable {
 
     
   /**
-   * Deletes the source URL.
+   * Executes the command cmd.
    * Currently, https is supported.
    * 
    * @throws UrlCopyException in case of an error.
@@ -59,7 +72,7 @@ public class MyUrlCopy extends UrlCopy implements Runnable {
   }
     
   /**
-   * This function performs the actual delete.
+   * This function performs the actual action.
    */
   private boolean execute(GlobusInputStream in) throws IOException {
     
@@ -85,7 +98,7 @@ public class MyUrlCopy extends UrlCopy implements Runnable {
     
     result = out.toString();
     
-    Debug.debug("The server returned "+result, 1);
+    Debug.debug("The server returned "+result, 3);
     
     return true;
   }
@@ -98,9 +111,6 @@ public class MyUrlCopy extends UrlCopy implements Runnable {
     return result;
   }
 
-  /**
-   * Returns input stream based on the source url
-   */
   protected GlobusInputStream getInputStream(String cmd) 
      throws Exception {
     
@@ -135,4 +145,116 @@ public class MyUrlCopy extends UrlCopy implements Runnable {
     return in;
   }
 
+
+  protected GlobusInputStream getInputStream() 
+  throws Exception {
+  
+    GlobusInputStream in = null;
+    String fromP         = srcUrl.getProtocol();
+    String fromFile      = srcUrl.getPath();
+    
+    if (fromP.equalsIgnoreCase("file")) {
+        fromFile = URLDecoder.decode(fromFile);
+        in = new GlobusFileInputStream(fromFile);
+    } else if (fromP.equalsIgnoreCase("ftp")) {
+        fromFile = URLDecoder.decode(fromFile);
+        in = new FTPInputStream(srcUrl.getHost(),
+                                srcUrl.getPort(),
+                                srcUrl.getUser(),
+                                srcUrl.getPwd(),
+                                fromFile);
+    } else if (fromP.equalsIgnoreCase("gsiftp") ||
+               fromP.equalsIgnoreCase("gridftp")) {
+        Authorization auth = getSourceAuthorization();
+        if (auth == null) {
+            //auth = HostAuthorization.getInstance();
+        }
+        fromFile = URLDecoder.decode(fromFile);
+        in = new GridFTPInputStream(getSourceCredentials(),
+                                    auth,
+                                    srcUrl.getHost(),
+                                    srcUrl.getPort(),
+                                    fromFile,
+                                    getDCAU());
+        
+    } else if (fromP.equalsIgnoreCase("https")) {
+        Authorization auth = getSourceAuthorization();
+        if (auth == null) {
+            //auth = SelfAuthorization.getInstance();
+        }
+        in = new GassInputStream(getSourceCredentials(), 
+                                 auth,
+                                 srcUrl.getHost(),
+                                 srcUrl.getPort(),
+                                 fromFile);
+    } else if (fromP.equalsIgnoreCase("http")) {
+        in = new HTTPInputStream(srcUrl.getHost(),
+                                 srcUrl.getPort(),
+                                 fromFile);
+    } else {
+        throw new Exception("Source protocol: " + fromP + 
+                            " not supported!");
+    }
+    
+    return in;
+  }
+
+  protected GlobusOutputStream getOutputStream(long size) 
+  throws Exception {
+
+    GlobusOutputStream out = null;
+    String toP             = dstUrl.getProtocol();
+    String toFile          = dstUrl.getPath();
+    
+    if (toP.equalsIgnoreCase("file")) {
+        toFile = URLDecoder.decode(toFile);
+        out = new GlobusFileOutputStream(toFile, appendMode);
+    } else if (toP.equalsIgnoreCase("ftp")) {
+        toFile = URLDecoder.decode(toFile);
+        out = new FTPOutputStream(dstUrl.getHost(),
+                                  dstUrl.getPort(),
+                                  dstUrl.getUser(),
+                                  dstUrl.getPwd(),
+                                  toFile,
+                                  appendMode);
+    } else if (toP.equalsIgnoreCase("gsiftp") ||
+               toP.equalsIgnoreCase("gridftp")) {
+        Authorization auth = getDestinationAuthorization();
+        if (auth == null) {
+            //auth = HostAuthorization.getInstance();
+        }
+        toFile = URLDecoder.decode(toFile);
+        out = new GridFTPOutputStream(getDestinationCredentials(),
+                                      auth,
+                                      dstUrl.getHost(),
+                                      dstUrl.getPort(),
+                                      toFile,
+                                      appendMode,
+                                      getDCAU());
+    } else if (toP.equalsIgnoreCase("https")) {
+        Authorization auth = getDestinationAuthorization();
+        if (auth == null) {
+            //auth = SelfAuthorization.getInstance();
+        }
+        out = new GassOutputStream(getDestinationCredentials(),
+                                   auth,
+                                   dstUrl.getHost(),
+                                   dstUrl.getPort(),
+                                   toFile,
+                                   size,
+                                   appendMode);
+    } else if (toP.equalsIgnoreCase("http")) {
+        out = new HTTPOutputStream(dstUrl.getHost(),
+                                   dstUrl.getPort(),
+                                   toFile,
+                                   size,
+                                   appendMode);
+    } else {
+        throw new Exception("Destination protocol: " + toP + 
+                            " not supported!");
+    }
+    
+    return out;
+  }
+  
 }
