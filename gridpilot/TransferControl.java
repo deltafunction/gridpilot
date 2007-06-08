@@ -1211,8 +1211,8 @@ public class TransferControl{
           return;
         }
       }
-      // remote gsiftp directory
-      else if(srcUrlDir.startsWith("gsiftp://")){
+      // remote gsiftp or https/webdav directory
+      else if(srcUrlDir.startsWith("gsiftp://") || srcUrlDir.startsWith("https://")){
         Debug.debug("Downloading to "+downloadDir.getAbsolutePath(), 3);        
         Debug.debug("Downloading "+destFileName+" from "+srcUrlDir, 3);
         final File dName = downloadDir;
@@ -1221,17 +1221,13 @@ public class TransferControl{
         if(frame!=null){
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         }
-        (new MyThread(){
-          public void run(){
+        //(new MyThread(){
+          //public void run(){
             try{
               GlobusURL globusUrl = new GlobusURL(url);
-              //GSIFTPFileTransfer gsiftpFileTransfer = new GSIFTPFileTransfer();
-              GSIFTPFileTransfer gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
-              JProgressBar pb = new JProgressBar();
-              GridPilot.getClassMgr().getStatusBar().setProgressBar(pb);
-              gsiftpFileTransfer.getFile(globusUrl, dName, GridPilot.getClassMgr().getStatusBar(),
-                  pb);
-              GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
+              FileTransfer gsiftpFileTransfer = (GSIFTPFileTransfer)
+                 GridPilot.getClassMgr().getFTPlugin(url.replaceFirst("^(\\w+):/", "$1"));
+              gsiftpFileTransfer.getFile(globusUrl, dName, GridPilot.getClassMgr().getStatusBar());
               GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
               if(!destFName.equals(srcFName)){
                 LocalStaticShellMgr.moveFile((new File(dName, srcFName)).getAbsolutePath(),
@@ -1239,12 +1235,13 @@ public class TransferControl{
               }
             }
             catch(IOException e){
+              GridPilot.getClassMgr().getStatusBar().setLabel("Failed downloading "+url);
               Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
               GridPilot.getClassMgr().getLogFile().addMessage("ERROR: download failed. "+e.getMessage());
               e.printStackTrace();
               return;
             }
-            catch(FTPException e){
+            catch(Exception e){
               Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
               GridPilot.getClassMgr().getLogFile().addMessage("ERROR: download failed. "+e.getMessage());
               e.printStackTrace();
@@ -1255,10 +1252,10 @@ public class TransferControl{
                 frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
               }
             }
-          }
-        }).run();               
+          //}
+        //}).run();               
       }
-      else if(srcUrlDir.startsWith("http://") || srcUrlDir.startsWith("https://")){
+      else if(srcUrlDir.startsWith("http://")){
         Debug.debug("Downloading file to "+downloadDir.getAbsolutePath(), 3);        
         String dirPath = downloadDir.getAbsolutePath();
         if(!dirPath.endsWith("/") && !destFileName.startsWith("/")){
@@ -1270,8 +1267,8 @@ public class TransferControl{
         if(frame!=null){
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         }
-        (new MyThread(){
-          public void run(){
+        //(new MyThread(){
+          //public void run(){
             try{
               InputStream is = (new URL(url)).openStream();
               DataInputStream dis = new DataInputStream(new BufferedInputStream(is));
@@ -1296,8 +1293,8 @@ public class TransferControl{
                 frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
               }
             }
-          }
-        }).run();               
+          //}
+        //}).run();               
       }
       else{
         throw(new IOException("Unknown protocol for "+url));
@@ -1364,13 +1361,8 @@ public class TransferControl{
         if(frame!=null){
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         }
-        JProgressBar pb = new JProgressBar();
-        GridPilot.getClassMgr().getStatusBar().setProgressBar(pb);
-        //GSIFTPFileTransfer gsiftpFileTransfer = new GSIFTPFileTransfer();
         GSIFTPFileTransfer gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
-        gsiftpFileTransfer.putFile(file, globusUrl,
-            GridPilot.getClassMgr().getStatusBar(), pb);
-        GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
+        gsiftpFileTransfer.putFile(file, globusUrl, GridPilot.getClassMgr().getStatusBar());
         if(frame!=null){
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
