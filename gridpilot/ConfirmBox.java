@@ -18,7 +18,7 @@ public class ConfirmBox extends JDialog implements ActionListener {
    enableEvents(AWTEvent.WINDOW_EVENT_MASK);
   }
 
-  public int getConfirm(String title, String text, Object[] showResultsOptions) throws Exception {
+  public int getConfirm(String title, Object text, Object[] showResultsOptions) throws Exception {
     return getConfirm(title, text, showResultsOptions, null, null, true);
   }
   

@@ -24,6 +24,7 @@ import java.util.Vector;
 
 import org.globus.ftp.exception.FTPException;
 import org.globus.util.GlobusURL;
+import org.safehaus.uuid.UUIDGenerator;
 
 import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 import gridpilot.ftplugins.https.HTTPSFileTransfer;
@@ -67,10 +68,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private boolean localFS = false;
   private JPopupMenu popupMenu = new JPopupMenu();
   private JMenuItem miDownload = new JMenuItem("Download file");
-  private JMenuItem miRegister = new JMenuItem("Register file");
+  private JMenu miRegister = new JMenu("Register file");
   
   public static int HISTORY_SIZE = 15;
   private static int MAX_FILE_EDIT_BYTES = 500000;
+  private static int TEXTFIELDWIDTH = 32;
 
   public BrowserPanel(Frame _parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
@@ -315,6 +317,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
     bRegister.setEnabled(false);
     bDelete.setEnabled(false);
     bSave.setEnabled(false);
+    
+    for(int i=0; i<GridPilot.dbNames.length; ++i){
+      miRegister.add(new JMenuItem(GridPilot.dbNames[i]));
+    }
 
     JScrollPane sp = new JScrollPane();
 
@@ -492,20 +498,23 @@ public class BrowserPanel extends JDialog implements ActionListener{
               downloadFile(e.getURL().toExternalForm());
             }
           });
-          miDownload.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ev){
-              registerFile(e.getURL().toExternalForm());
-            }
-          });
-          if(bDownload.isEnabled()){
+          if(bDownload.isEnabled() && !e.getURL().toExternalForm().endsWith("/")){
             popupMenu.add(miDownload);
           }
-          if(bRegister.isEnabled()){
+          if(bRegister.isEnabled() && !e.getURL().toExternalForm().endsWith("/")){
+            for(int i=0; i<GridPilot.dbNames.length; ++i){
+              final int ii = i;
+              miRegister.getItem(i).addActionListener(new ActionListener(){
+                public void actionPerformed(ActionEvent ev){
+                  registerFile(e.getURL().toExternalForm(), GridPilot.dbNames[ii]);
+                }
+              });
+            }
             popupMenu.add(miRegister);
           }
         }
         else if(e.getEventType()==HyperlinkEvent.EventType.EXITED){
-          statusBar.setLabel("");
+          statusBar.setLabel(" ");
           try{
             popupMenu.remove(miDownload);
             popupMenu.remove(miRegister);
@@ -524,6 +533,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     });
     
     statusBar = new StatusBar();
+    statusBar.setLabel(" ");
     this.getContentPane().add(statusBar, BorderLayout.SOUTH);
     setDisplay(url);
     if(withNavigation){
@@ -628,16 +638,96 @@ public class BrowserPanel extends JDialog implements ActionListener{
     SwingUtilities.invokeLater(t);
   }
   
+  
+  /**
+   * Choose a dataset and an LFN
+   */
+  private String [] selectLFNAndDS(String pfn, final DBPluginMgr dbPluginMgr){
+    // Construct suggestion for LFN
+    String lfn = pfn.replaceFirst(".*/([^/]+)","$1");
+    String confirmString =
+      "Please choose the dataset in which you want to register the file;\n" +
+      "then type a name (logical file name ) to use to identify the file in the dataset.";
+    JPanel jPanel = new JPanel(new GridBagLayout());
+    jPanel.add(new JLabel("<html>"+confirmString.replaceAll("\n", "<br>")+"</html>"),
+        new GridBagConstraints(0, 0, 2, 2, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
+    JPanel row = null;
+    final JTextField dsField = new JTextField(TEXTFIELDWIDTH);
+    JButton jbLookup = new JButton("Look up");
+    jbLookup.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        String idField = Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
+        String nameField = Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
+        String str = dsField.getText();
+        if(str==null || str.equals("")){
+          return;
+        }
+        DBResult dbRes = dbPluginMgr.select("SELECT "+nameField+" FROM dataset" +
+                "WHERE "+nameField+" CONTAINS "+str,
+            idField, false);
+        // TODO: construct popup menu of datasets
+        //if(ds!=null){
+        //  dsField.setText(ds);
+        //}
+      }
+    });
+    jbLookup.setToolTipText("Search results for this request");
+    row = new JPanel(new BorderLayout());
+    row.add(new JLabel("Dataset: "), BorderLayout.WEST);
+    row.add(dsField, BorderLayout.CENTER);
+    row.add(jbLookup, BorderLayout.EAST);
+    jPanel.add(row, new GridBagConstraints(0, 4, 1, 1, 0.0, 0.0,
+        GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+        new Insets(0, 0, 0, 0), 0, 0));
+    JTextField lfnField = new JTextField(TEXTFIELDWIDTH);
+    lfnField.setText(lfn);
+    row = new JPanel(new BorderLayout());
+    row.add(new JLabel("Logical file name: "), BorderLayout.WEST);
+    row.add(lfnField, BorderLayout.CENTER);
+    jPanel.add(row, new GridBagConstraints(0, 4, 1, 1, 0.0, 0.0,
+        GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+        new Insets(0, 0, 0, 0), 0, 0));
+    jPanel.validate();
+    
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    int choice = -1;
+    try{
+      choice = confirmBox.getConfirm("Register file in dataset",
+          jPanel, new Object[] {"OK", "Cancel"});
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return null;
+    }
+    if(choice!=0){
+      return null;
+    }
+    return new String [] {dsField.getText(), lfnField.getText()};
+  }
+  
+  
   /**
    * Register a single file.
    */
-  private void registerFile(final String url){
-    // TODO: get the DB name
+  private void registerFile(final String url, final String dbName){
     MyThread t = (new MyThread(){
       public void run(){
         try{
-          statusBar.setLabel("Registering "+url);
-          // TODO register
+          DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
+          String [] dsLfn = selectLFNAndDS(url, dbPluginMgr);
+          if(dsLfn==null || dsLfn[0]==null || dsLfn[1]==null){
+            Debug.debug("Not registering", 2);
+            return;
+          }
+          String datasetName = dsLfn[0];
+          String datasetID = dbPluginMgr.getDatasetID(datasetName);
+          String lfn = dsLfn[1];
+          String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+          statusBar.setLabel("Registering "+url+" in "+dbName);
+          dbPluginMgr.registerFileLocation(
+              datasetID, datasetName, uuid, lfn, url, false);
           statusBar.setLabel("Registering done");
         }
         catch(Exception ioe){
@@ -894,7 +984,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       thisUrl = url;
       lastUrlList = new String [] {thisUrl};
       setUrl(thisUrl);
-      statusBar.setLabel("");
+      statusBar.setLabel(" ");
     }
     catch(IOException e){
       Debug.debug("Could not set text editor for url "+url+". "+
@@ -945,7 +1035,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       thisUrl = url;
       setUrl(thisUrl);
       lastUrlList = new String [] {thisUrl};
-      statusBar.setLabel("");
+      statusBar.setLabel(" ");
     }
     catch(IOException e){
       Debug.debug("Could not set text editor for url "+url+". "+

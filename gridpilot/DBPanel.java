@@ -2745,9 +2745,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     }
     // if a jobDefinition is selected, shows the menu with computing systems
-    if(getSelectedIdentifiers().length != 0){
+    if(getSelectedIdentifiers().length!=0){
       pmSubmitMenu.show(this, 0, 0); // without this, pmSubmitMenu.getWidth == 0
-
       pmSubmitMenu.show(bSubmit, -pmSubmitMenu.getWidth(),
                         -pmSubmitMenu.getHeight() + bSubmit.getHeight());
     }
