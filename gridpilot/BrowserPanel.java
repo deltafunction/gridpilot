@@ -28,6 +28,7 @@ import org.safehaus.uuid.UUIDGenerator;
 
 import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 import gridpilot.ftplugins.https.HTTPSFileTransfer;
+import gridpilot.ftplugins.https.MyUrlCopy;
 
 
 /**
@@ -46,6 +47,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   protected JButton bCancel = new JButton();
   private JLabel currentUrlLabel = new JLabel("");
   private JTextField jtFilter = new JTextField("", 24);
+  private JCheckBox jcbFilter = new JCheckBox();
   private JPanel pButton = new JPanel(new FlowLayout());
   private JEditorPane ep = new JEditorPane();
   private StatusBar statusBar = null;
@@ -77,6 +79,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   public static int HISTORY_SIZE = 15;
   private static int MAX_FILE_EDIT_BYTES = 500000;
   private static int TEXTFIELDWIDTH = 32;
+  private static int HTTP_TIMEOUT = 10000;
 
   public BrowserPanel(Frame _parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
@@ -454,6 +457,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       jpFilter.add(new JLabel("Filter: "));
       jpFilter.add(jtFilter);
+      jpFilter.add(new JLabel(" Show hidden"));
+      jpFilter.add(jcbFilter);
       topPanel.add(jpFilter, new GridBagConstraints(0, 1, 1, 1, 1.0, 1.0,
           GridBagConstraints.WEST, GridBagConstraints.BOTH,
           new Insets(0, 5, 0, 5), 0, 0));
@@ -1343,7 +1348,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
         Debug.debug("Filtering with "+filter, 3);
         Vector lastUrlVector = new Vector();
         for(int j=0; j<text.length; ++j){
-          if(text[j].substring(localPath.length()).matches(filter)){
+          if((jcbFilter.isSelected() ||
+              !text[j].substring(localPath.length()).matches("^\\.[^\\.].+")) &&
+              text[j].substring(localPath.length()).matches(filter)){
             if(LocalStaticShellMgr.isDirectory(text[j])){
               ++directories;
             }
@@ -1465,6 +1472,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
           name = longName;
           bytes = "";
         }
+        if(!jcbFilter.isSelected() && name.matches("^\\.[^\\.].+")){
+          continue;
+        }
         text += "<a href=\""+protocol+"://"+host+(port>-1?":"+port:"")+localPath+name+"\">"+
         /*"gsiftp://"+host+":"+port+localPath+*/name+"</a> "+bytes;
         if(i<length-1){
@@ -1508,7 +1518,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Set the EditorPane to display a directory listing
    * of the URL url.
    */
-  private void setHttpDirDisplay(String url) throws IOException{
+  private void setHttpDirDisplay(final String url) throws IOException{
     Debug.debug("setHttpDirDisplay "+url, 3);
     jtFilter.setEnabled(false);
     try{
@@ -1517,7 +1527,34 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bUpload.setEnabled(false);
       bDownload.setEnabled(true);
       bRegister.setEnabled(false);
-      ep.setPage(url);
+     
+      MyThread t = new MyThread(){
+        String res = null;
+        MyUrlCopy urlCopy = null;
+        public void run(){
+          try{
+            ep.setPage(url);
+          }
+          catch(Exception e){
+            e.printStackTrace();
+            this.setException(e);
+            return;
+          }
+          res = urlCopy.getResult();
+          Debug.debug("List result: ", 2);
+        }
+        public String getStringRes(){
+          return res;
+        }
+      };
+      t.start();
+      if(!Util.waitForThread(t, "https", HTTP_TIMEOUT, "list", new Boolean(true))){
+        if(statusBar!=null){
+          statusBar.setLabel("List cancelled");
+        }
+        throw new IOException("List timed out");
+      }
+      
       // workaround for bug in java < 1.5
       // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4492274
       // Doesn't work...
