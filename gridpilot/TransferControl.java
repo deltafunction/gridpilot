@@ -1225,9 +1225,9 @@ public class TransferControl{
           //public void run(){
             try{
               GlobusURL globusUrl = new GlobusURL(url);
-              FileTransfer gsiftpFileTransfer = (GSIFTPFileTransfer)
-                 GridPilot.getClassMgr().getFTPlugin(url.replaceFirst("^(\\w+):/", "$1"));
-              gsiftpFileTransfer.getFile(globusUrl, dName, GridPilot.getClassMgr().getStatusBar());
+              FileTransfer fileTransfer =
+                 GridPilot.getClassMgr().getFTPlugin(url.replaceFirst("^(\\w+):/.*", "$1"));
+              fileTransfer.getFile(globusUrl, dName, GridPilot.getClassMgr().getStatusBar());
               GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
               if(!destFName.equals(srcFName)){
                 LocalStaticShellMgr.moveFile((new File(dName, srcFName)).getAbsolutePath(),
@@ -1315,7 +1315,7 @@ public class TransferControl{
    * @throws IOException
    * @throws FTPException
    */
-  public static void upload(File file, final String uploadUrl, final Container frame) throws IOException, FTPException{
+  public static void upload(File file, final String uploadUrl, final Container frame) throws Exception, FTPException{
     try{
       
       String uploadUrlDir = null;
@@ -1353,7 +1353,7 @@ public class TransferControl{
         localCopy(file, fsPath);
       }
       // remote gsiftp directory
-      else if(uploadUrlDir.startsWith("gsiftp://")){
+      else if(uploadUrlDir.startsWith("gsiftp://") || uploadUrlDir.startsWith("https")){
         if(!uploadUrlDir.endsWith("/")){
           throw(new IOException("Upload location must be a directory. "+uploadUrl));
         }
@@ -1361,8 +1361,8 @@ public class TransferControl{
         if(frame!=null){
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         }
-        GSIFTPFileTransfer gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
-        gsiftpFileTransfer.putFile(file, globusUrl, GridPilot.getClassMgr().getStatusBar());
+        FileTransfer fileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
+        fileTransfer.putFile(file, globusUrl, GridPilot.getClassMgr().getStatusBar());
         if(frame!=null){
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
