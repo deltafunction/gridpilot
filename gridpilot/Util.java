@@ -70,6 +70,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
+import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
@@ -195,7 +196,8 @@ public class Util{
     else if(comp.getClass().isInstance(new JTextField())){
       text = ((JTextField) comp).getText();
     }
-    else if(comp.getClass().isInstance(new JComboBox())){
+    else if(comp.getClass().isInstance(new JComboBox()) ||
+        comp.getClass().isInstance(new JExtendedComboBox())){
       text = ((JComboBox) comp).getSelectedItem().toString();
     }
     else{
@@ -623,7 +625,7 @@ public class Util{
       }
     }
 
-    JPasswordField passwordField = new JPasswordField(password, 24);
+    final JPasswordField passwordField = new JPasswordField(password, 24);
     final JTextField keyField = new JTextField(keyFile, 24);
     final JTextField certField = new JTextField(certFile, 24);
 
@@ -637,7 +639,7 @@ public class Util{
     panel.add(passwordField, new GridBagConstraints(1, 1, 1, 1, 1.0, 1.0,
         GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5),
         0, 0));
-    
+        
     ImageIcon browseIcon;
     URL imgURL=null;
     try{
@@ -702,6 +704,15 @@ public class Util{
       GridPilot.splash.hide();
     }
     
+    // TODO: doens't work... Cannot set focus in password field.
+    SwingUtilities.invokeLater(
+        new Runnable(){
+          public void run(){
+            passwordField.requestFocusInWindow();
+          }
+        }
+    );
+    passwordField.requestFocusInWindow();
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
         "Enter grid password", JOptionPane.OK_CANCEL_OPTION);
     Debug.debug("showing dialog done", 3);
