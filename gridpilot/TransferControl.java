@@ -1,7 +1,5 @@
 package gridpilot;
 
-import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
-
 import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.event.ActionEvent;

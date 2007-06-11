@@ -1330,7 +1330,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bSave.setEnabled(false);
       bNew.setEnabled(true);
       bUpload.setEnabled(true);
-      bDownload.setEnabled(true);
       bRegister.setEnabled(false);
       String htmlText = "";
       try{
@@ -1386,6 +1385,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         thisUrl = (new File(localPath)).toURI().toURL().toExternalForm();
         setUrl(thisUrl);
         statusBar.setLabel(directories+" directories, "+files+" files");
+        bDownload.setEnabled(files>0);
         return;
       }
       catch(Exception e){
@@ -1421,8 +1421,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bSave.setEnabled(false);
       bNew.setEnabled(true);
       bUpload.setEnabled(true);
-      bDownload.setEnabled(true);
-      bRegister.setEnabled(true);
 
       url = url.replaceFirst("/[^\\/]*/\\.\\.", "");
       GlobusURL globusUrl = new GlobusURL(url);
@@ -1451,6 +1449,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       String longName = null;
       String [] nameAndBytes = null;
       lastUrlList = new String [length];
+      int directories = 0;
+      int files = 0;
       for(int i=0; i<length; ++i){
         nameAndBytes = null;
         longName = textVector.get(i).toString();
@@ -1474,6 +1474,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
         }
         if(!jcbFilter.isSelected() && name.matches("^\\.[^\\.].+")){
           continue;
+        }
+        if(name.endsWith("/")){
+          ++directories;
+        }
+        else{
+          ++files;
         }
         text += "<a href=\""+protocol+"://"+host+(port>-1?":"+port:"")+localPath+name+"\">"+
         /*"gsiftp://"+host+":"+port+localPath+*/name+"</a> "+bytes;
@@ -1499,10 +1505,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
       ep.setText(htmlText);
       ep.setEditable(false);
       // if we don't get an exception, the directory got read...
-      //Debug.debug("Directory "+localPath+" read", 2);
-      //Debug.debug("Setting thisUrl, "+localPath, 3);
       //thisUrl = (new File(localPath)).toURL().toExternalForm();
       thisUrl = url;
+      statusBar.setLabel(directories+" directories, "+files+" files");
+      bDownload.setEnabled(true);
+      bRegister.setEnabled(true);
       setUrl(thisUrl);
     }
     catch(Exception e){
