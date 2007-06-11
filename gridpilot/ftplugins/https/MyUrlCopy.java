@@ -10,7 +10,6 @@ import java.net.URLDecoder;
 import org.globus.io.streams.FTPInputStream;
 import org.globus.io.streams.FTPOutputStream;
 import org.globus.io.streams.GassInputStream;
-import org.globus.io.streams.GassOutputStream;
 import org.globus.io.streams.GlobusFileInputStream;
 import org.globus.io.streams.GlobusFileOutputStream;
 import org.globus.io.streams.GlobusInputStream;
