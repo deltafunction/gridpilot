@@ -18,6 +18,8 @@ import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
+import javax.swing.SwingUtilities;
+
 import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.ietf.jgss.GSSCredential;
@@ -33,6 +35,7 @@ import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.LogFile;
 import gridpilot.MessagePane;
+import gridpilot.MyThread;
 import gridpilot.TransferControl;
 import gridpilot.Util;
 import gridpilot.DBResult;
@@ -2337,9 +2340,15 @@ public class MySQLDatabase extends DBCache implements Database {
     
     // if this is not a file catalog we don't have to do anything
     if(!isFileCatalog()){
-      String msg = "This is a virtual file catalog - it cannot be modified directly.";
-      String title = "Table cannot be modified";
-      MessagePane.showMessage(msg, title);
+      final String msg = "This is a virtual file catalog - it cannot be modified directly.";
+      final String title = "Table cannot be modified";
+      SwingUtilities.invokeLater(
+          new MyThread(){
+            public void run(){
+              MessagePane.showMessage(msg, title);
+            }
+          }
+      );
       return;
     }
     
