@@ -210,7 +210,7 @@ public class HTTPSFileTransfer implements FileTransfer {
     (new MyThread(){
       public void run(){
         if(statusBar!=null){
-          statusBar.setLabel("Getting "+globusFileUrl.getURL());
+          statusBar.setLabel("Uploading "+globusFileUrl.getURL());
         }
       }
     }).run();               
@@ -223,11 +223,11 @@ public class HTTPSFileTransfer implements FileTransfer {
     else{
       uploadUrl = globusFileUrl;
     }
-    Debug.debug("put "+uploadUrl.getURL(), 3);
+    GlobusURL fileURL = new GlobusURL("file:///"+file.getCanonicalPath());
+    Debug.debug("put "+fileURL.getURL()+" --> "+uploadUrl.getURL(), 3);
     
     try{
-      MyUrlCopy urlCopy = myConnect(new GlobusURL("file:///"+file.getCanonicalPath()),
-          uploadUrl);
+      MyUrlCopy urlCopy = myConnect(fileURL, uploadUrl);
       fileTransfers.put(id, urlCopy);
       urlCopy.copy();
     }
@@ -486,13 +486,13 @@ public class HTTPSFileTransfer implements FileTransfer {
   public String[] startCopyFiles(GlobusURL[] srcUrls, GlobusURL[] destUrls)
      throws UrlCopyException {
     Debug.debug("", 2);
-    UrlCopyTransferListener urlCopyTransferListener = null;
+    MyUrlCopyTransferListener urlCopyTransferListener = null;
     String [] ret = new String[srcUrls.length];
     Debug.debug("Copying "+srcUrls.length+" files", 2);
     for(int i=0; i<srcUrls.length; ++i){
       try{
         final MyUrlCopy urlCopy = myConnect(srcUrls[i], destUrls[i]);
-        urlCopyTransferListener = new UrlCopyTransferListener();
+        urlCopyTransferListener = new MyUrlCopyTransferListener();
         urlCopy.addUrlCopyListener(urlCopyTransferListener);
         // The transfer id is chosen to be "https-{get|put|copy}::'srcUrl' 'destUrl'"
         final String id = PLUGIN_NAME + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
@@ -510,13 +510,13 @@ public class HTTPSFileTransfer implements FileTransfer {
                 if(checkCache(urlCopy)){
                   Debug.debug("Cache ok, not starting the actual transfer...", 2);
                   //urlCopy.cancel();
-                  ((UrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferCompleted();
+                  ((MyUrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferCompleted();
                 }
                 else{
                   // Start the transfer.
                   Debug.debug("Starting the actual transfer...", 2);
                   urlCopy.copy();
-                  ((UrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferCompleted();
+                  ((MyUrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferCompleted();
                 }
               }
             }
@@ -526,7 +526,7 @@ public class HTTPSFileTransfer implements FileTransfer {
                 GridPilot.getClassMgr().getLogFile().addMessage((ue instanceof Exception ? "Exception" : "Error") +
                     " from plugin https" +
                     " while starting download", ue);
-                ((UrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferError(ue);
+                ((MyUrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferError(ue);
                 //this.finalize();
               }
               catch(Throwable ee){
@@ -558,7 +558,7 @@ public class HTTPSFileTransfer implements FileTransfer {
     Debug.debug("Getting status for transfer "+fileTransferID, 2);
     Debug.debug("urlCopyTransferListeners: "+
         Util.arrayToString(urlCopyTransferListeners.entrySet().toArray()), 2);
-    String ret = ((UrlCopyTransferListener) 
+    String ret = ((MyUrlCopyTransferListener) 
         urlCopyTransferListeners.get(fileTransferID)).getStatus();
     Debug.debug("Got status "+ret, 2);
     // TODO: consider returning "Wait" instead of "Error" to avoid the initial "errors".
@@ -569,9 +569,9 @@ public class HTTPSFileTransfer implements FileTransfer {
   }
 
   public String getFullStatus(String fileTransferID) throws Exception {
-    String ret = "Status: "+((UrlCopyTransferListener) 
+    String ret = "Status: "+((MyUrlCopyTransferListener) 
         urlCopyTransferListeners.get(fileTransferID)).getStatus();
-    String error = ((UrlCopyTransferListener) 
+    String error = ((MyUrlCopyTransferListener) 
         urlCopyTransferListeners.get(fileTransferID)).getError();
     if(error!=null && error.length()>0){
       ret += "\nError: "+error;
@@ -580,14 +580,14 @@ public class HTTPSFileTransfer implements FileTransfer {
   }
 
   public int getPercentComplete(String fileTransferID) throws Exception {
-    long comp = ((UrlCopyTransferListener) 
+    long comp = ((MyUrlCopyTransferListener) 
         urlCopyTransferListeners.get(fileTransferID)).getPercentComplete();
     Debug.debug("Got percent complete "+comp, 3);
     return (int) comp;
   }
 
   public long getBytesTransferred(String fileTransferID) throws Exception {
-    long comp = ((UrlCopyTransferListener) 
+    long comp = ((MyUrlCopyTransferListener) 
         urlCopyTransferListeners.get(fileTransferID)).getBytesTransferred();
     return comp;
   }
