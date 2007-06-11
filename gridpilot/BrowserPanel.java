@@ -39,7 +39,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private JPanel panel = new JPanel(new BorderLayout());
   private JButton bOk = new JButton();
   private JButton bNew = new JButton();
-  private JButton bDelete = new JButton();
   private JButton bUpload = new JButton();
   private JButton bDownload = new JButton();
   private JButton bRegister = new JButton();
@@ -68,7 +67,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private boolean localFS = false;
   private JPopupMenu popupMenu = new JPopupMenu();
   private JMenuItem miDownload = new JMenuItem("Download file");
+  private JMenuItem miDelete = new JMenuItem("Delete file");
   private JMenu miRegister = new JMenu("Register file");
+  // File registration semaphor
+  private boolean registering = false;
+  private JComponent dsField = new JTextField(TEXTFIELDWIDTH);
+
   
   public static int HISTORY_SIZE = 15;
   private static int MAX_FILE_EDIT_BYTES = 500000;
@@ -275,27 +279,31 @@ public class BrowserPanel extends JDialog implements ActionListener{
     this.setTitle(title);
     
     bOk.setText("OK");
+    bOk.setToolTipText("Continue");
     bOk.addActionListener(this);
     
     bNew.setText("New");
+    bNew.setToolTipText("Create new file");
     bNew.addActionListener(this);
     
-    bDelete.setText("Delete");
-    bDelete.addActionListener(this);
-
     bUpload.setText("Put");
+    bUpload.setToolTipText("Upload file");
     bUpload.addActionListener(this);
     
-    bDownload.setText("Get");
+    bDownload.setText("Get all");
+    bDownload.setToolTipText("Download all files in this directory");
     bDownload.addActionListener(this);
     
-    bRegister.setText("Register");
+    bRegister.setText("Register all");
+    bRegister.setToolTipText("Register all files in this directory");
     bRegister.addActionListener(this);
     
     bSave.setText("Save");
+    bSave.setToolTipText("Save this document");
     bSave.addActionListener(this);
     
     bCancel.setText("Cancel");
+    bCancel.setToolTipText("Go back to directory / close window");
     bCancel.addActionListener(this);
 
     if(jBox!=null){
@@ -306,7 +314,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     pButton.add(bUpload);
     pButton.add(bDownload);
     pButton.add(bRegister);
-    pButton.add(bDelete);
     pButton.add(bSave);
     pButton.add(bCancel);
     panel.add(pButton, BorderLayout.SOUTH);
@@ -315,7 +322,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     bUpload.setEnabled(false);
     bDownload.setEnabled(false);
     bRegister.setEnabled(false);
-    bDelete.setEnabled(false);
     bSave.setEnabled(false);
     
     for(int i=0; i<GridPilot.dbNames.length; ++i){
@@ -493,31 +499,54 @@ public class BrowserPanel extends JDialog implements ActionListener{
         }
         else if(e.getEventType()==HyperlinkEvent.EventType.ENTERED){
           statusBar.setLabel(e.getURL().toExternalForm());
-          miDownload.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent ev){
-              downloadFile(e.getURL().toExternalForm());
-            }
-          });
-          if(bDownload.isEnabled() && !e.getURL().toExternalForm().endsWith("/")){
-            popupMenu.add(miDownload);
-          }
           if(bRegister.isEnabled() && !e.getURL().toExternalForm().endsWith("/")){
             for(int i=0; i<GridPilot.dbNames.length; ++i){
-              final int ii = i;
+              Debug.debug("addActionListener "+i, 3);
               miRegister.getItem(i).addActionListener(new ActionListener(){
                 public void actionPerformed(ActionEvent ev){
-                  registerFile(e.getURL().toExternalForm(), GridPilot.dbNames[ii]);
+                  Debug.debug("registerFile "+((JMenuItem) ev.getSource()).getText(), 3);
+                  registerFile(e.getURL().toExternalForm(), ((JMenuItem) ev.getSource()).getText());
                 }
               });
             }
             popupMenu.add(miRegister);
           }
+          if(bDownload.isEnabled() && !e.getURL().toExternalForm().endsWith("/")){
+            miDownload.addActionListener(new ActionListener(){
+              public void actionPerformed(ActionEvent ev){
+                downloadFile(e.getURL().toExternalForm());
+              }
+            });
+            miDelete.addActionListener(new ActionListener(){
+              public void actionPerformed(ActionEvent ev){
+                deleteFile(e.getURL().toExternalForm());
+              }
+            });
+            popupMenu.add(miDownload);
+            popupMenu.add(miDelete);
+          }
         }
         else if(e.getEventType()==HyperlinkEvent.EventType.EXITED){
           statusBar.setLabel(" ");
           try{
-            popupMenu.remove(miDownload);
+            for(int i=0; i<GridPilot.dbNames.length; ++i){
+              Debug.debug("addActionListener "+i, 3);
+              ActionListener [] acls = miRegister.getItem(i).getActionListeners();
+              for(int j=0; j<acls.length; ++j){
+                miRegister.getItem(i).removeActionListener(acls[j]);
+              }
+            }
+            ActionListener [] acls = miDownload.getActionListeners();
+            for(int j=0; j<acls.length; ++j){
+              miDownload.removeActionListener(acls[j]);
+            }
+            acls = miDelete.getActionListeners();
+            for(int j=0; j<acls.length; ++j){
+              miDelete.removeActionListener(acls[j]);
+            }
             popupMenu.remove(miRegister);
+            popupMenu.remove(miDownload);
+            popupMenu.remove(miDelete);
           }
           catch(Exception ee){
           }
@@ -648,47 +677,63 @@ public class BrowserPanel extends JDialog implements ActionListener{
     String confirmString =
       "Please choose the dataset in which you want to register the file;\n" +
       "then type a name (logical file name ) to use to identify the file in the dataset.";
-    JPanel jPanel = new JPanel(new GridBagLayout());
+    final JPanel jPanel = new JPanel(new GridBagLayout());
     jPanel.add(new JLabel("<html>"+confirmString.replaceAll("\n", "<br>")+"</html>"),
         new GridBagConstraints(0, 0, 2, 2, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
-    JPanel row = null;
-    final JTextField dsField = new JTextField(TEXTFIELDWIDTH);
-    JButton jbLookup = new JButton("Look up");
-    jbLookup.addActionListener(new java.awt.event.ActionListener(){
-      public void actionPerformed(ActionEvent e){
+    final JPanel dsRow = new JPanel(new BorderLayout());
+    final JButton jbLookup = new JButton("Look up");
+    dsRow.add(new JLabel("Dataset: "), BorderLayout.WEST);
+    dsRow.add(dsField, BorderLayout.CENTER);
+    dsRow.add(jbLookup, BorderLayout.EAST);
+    dsRow.updateUI();
+    jPanel.add(dsRow, new GridBagConstraints(0, 4, 1, 1, 0.0, 0.0,
+        GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+        new Insets(10, 10, 10, 10), 0, 0));
+    jPanel.updateUI();
+    jbLookup.addMouseListener(new MouseAdapter(){
+      public void mouseClicked(MouseEvent e){
+        if(e.getButton()!=MouseEvent.BUTTON1){
+          return;
+        }
         String idField = Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
-        String nameField = Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
-        String str = dsField.getText();
+        String nameField = Util.getNameField(dbPluginMgr.getDBName(), "dataset");
+        String str = Util.getJTextOrEmptyString(dsField);
         if(str==null || str.equals("")){
           return;
         }
         DBResult dbRes = dbPluginMgr.select("SELECT "+nameField+" FROM dataset" +
-                "WHERE "+nameField+" CONTAINS "+str,
+                (str!=null&&!str.equals("")?" WHERE "+nameField+" CONTAINS "+str:""),
             idField, false);
-        // TODO: construct popup menu of datasets
-        //if(ds!=null){
-        //  dsField.setText(ds);
-        //}
+        dsField = new JExtendedComboBox();
+        for(int i=0; i<dbRes.values.length; ++i){
+          ((JExtendedComboBox) dsField).addItem(dbRes.getValue(i, nameField));
+        }
+        ((JExtendedComboBox) dsField).setEditable(true);
+        dsField.updateUI();
+        dsRow.removeAll();
+        dsRow.add(new JLabel("Dataset: "), BorderLayout.WEST);
+        dsRow.add(dsField, BorderLayout.CENTER);
+        dsRow.add(jbLookup, BorderLayout.EAST);
+        dsRow.updateUI();
+        dsRow.add(dsField, BorderLayout.CENTER);
+        dsRow.updateUI();
+        dsRow.validate();
+        jPanel.updateUI();
+        jPanel.validate();
       }
     });
     jbLookup.setToolTipText("Search results for this request");
-    row = new JPanel(new BorderLayout());
-    row.add(new JLabel("Dataset: "), BorderLayout.WEST);
-    row.add(dsField, BorderLayout.CENTER);
-    row.add(jbLookup, BorderLayout.EAST);
-    jPanel.add(row, new GridBagConstraints(0, 4, 1, 1, 0.0, 0.0,
-        GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
-        new Insets(0, 0, 0, 0), 0, 0));
+    
     JTextField lfnField = new JTextField(TEXTFIELDWIDTH);
     lfnField.setText(lfn);
-    row = new JPanel(new BorderLayout());
-    row.add(new JLabel("Logical file name: "), BorderLayout.WEST);
-    row.add(lfnField, BorderLayout.CENTER);
-    jPanel.add(row, new GridBagConstraints(0, 4, 1, 1, 0.0, 0.0,
+    JPanel lfnRow = new JPanel(new BorderLayout());
+    lfnRow.add(new JLabel("Logical file name: "), BorderLayout.WEST);
+    lfnRow.add(lfnField, BorderLayout.CENTER);
+    jPanel.add(lfnRow, new GridBagConstraints(0, 5, 1, 1, 0.0, 0.0,
         GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
-        new Insets(0, 0, 0, 0), 0, 0));
+        new Insets(10, 10, 10, 10), 0, 0));
     jPanel.validate();
     
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
@@ -704,7 +749,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(choice!=0){
       return null;
     }
-    return new String [] {dsField.getText(), lfnField.getText()};
+    return new String [] {Util.getJTextOrEmptyString(dsField), lfnField.getText()};
   }
   
   
@@ -712,13 +757,18 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Register a single file.
    */
   private void registerFile(final String url, final String dbName){
+    if(registering){
+      return;
+    }
     MyThread t = (new MyThread(){
       public void run(){
+        registering = true;
         try{
           DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
           String [] dsLfn = selectLFNAndDS(url, dbPluginMgr);
           if(dsLfn==null || dsLfn[0]==null || dsLfn[1]==null){
             Debug.debug("Not registering", 2);
+            registering = false;
             return;
           }
           String datasetName = dsLfn[0];
@@ -729,8 +779,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
           dbPluginMgr.registerFileLocation(
               datasetID, datasetName, uuid, lfn, url, false);
           statusBar.setLabel("Registering done");
+          registering = false;
         }
         catch(Exception ioe){
+          registering = false;
           statusBar.setLabel("Registering failed");
           ioe.printStackTrace();
         }
@@ -975,7 +1027,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bSave.setEnabled(true);
       bOk.setEnabled(ok);
       bNew.setEnabled(false);
-      bDelete.setEnabled(false);
       bUpload.setEnabled(false);
       bDownload.setEnabled(false);
       bRegister.setEnabled(false);
@@ -1003,7 +1054,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     try{
       bSave.setEnabled(true);
       bNew.setEnabled(false);
-      bDelete.setEnabled(false);
       bUpload.setEnabled(false);
       bDownload.setEnabled(false);
       bRegister.setEnabled(false);
@@ -1054,7 +1104,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     try{
       bSave.setEnabled(false);
       bNew.setEnabled(false);
-      bDelete.setEnabled(false);
       bUpload.setEnabled(false);
       bDownload.setEnabled(false);
       bRegister.setEnabled(false);
@@ -1097,7 +1146,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     try{
       bSave.setEnabled(false);
       bNew.setEnabled(false);
-      bDelete.setEnabled(false);
       bUpload.setEnabled(false);
       bDownload.setEnabled(false);
       bRegister.setEnabled(false);
@@ -1126,7 +1174,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     try{
       bSave.setEnabled(false);
       bNew.setEnabled(false);
-      bDelete.setEnabled(false);
       bUpload.setEnabled(false);
       bDownload.setEnabled(false);
       bRegister.setEnabled(false);
@@ -1173,7 +1220,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     
     bSave.setEnabled(false);
     bNew.setEnabled(false);
-    bDelete.setEnabled(false);
     bUpload.setEnabled(false);
     bDownload.setEnabled(false);
     bRegister.setEnabled(false);
@@ -1278,7 +1324,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     try{
       bSave.setEnabled(false);
       bNew.setEnabled(true);
-      bDelete.setEnabled(true);
       bUpload.setEnabled(true);
       bDownload.setEnabled(true);
       bRegister.setEnabled(false);
@@ -1368,7 +1413,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     try{
       bSave.setEnabled(false);
       bNew.setEnabled(true);
-      bDelete.setEnabled(true);
       bUpload.setEnabled(true);
       bDownload.setEnabled(true);
       bRegister.setEnabled(true);
@@ -1470,7 +1514,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     try{
       bSave.setEnabled(false);
       bNew.setEnabled(false);
-      bDelete.setEnabled(false);
       bUpload.setEnabled(false);
       bDownload.setEnabled(true);
       bRegister.setEnabled(false);
@@ -1610,90 +1653,62 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Delete file or directory.
    * Ask for the name.
    */
-  private void delete() throws IOException{
-    String fileName = Util.getFileName(""/*jtFilter.getText()*/);
-    if(fileName==null){
+  private void deleteFile(String url){
+    if(url==null){
       return;
-    }  
-    if(thisUrl.startsWith("file:") || thisUrl.startsWith("/")){
-      URL url = ep.getPage();
-      String rootUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/"));
-      String fsPath = rootUrl;
-      fsPath = fsPath.replaceFirst("^file://", "/");
-      fsPath = fsPath.replaceFirst("^file:/", "/");
-      fsPath = fsPath.replaceFirst("^file:", "");
-      fsPath = fsPath.replaceFirst("^/(\\w):", "$1:");
-      Debug.debug("Deleting file in "+fsPath, 3);
-      if(fsPath==null || fileName==null){
+    }
+    String msg = "Are you sure you want to delete the file "+url+"?";
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    try{
+      int choice = confirmBox.getConfirm("Confirm delete",
+          msg, new Object[] {"OK", "Cancel"});
+      if(choice!=0){
         return;
-      }  
-      if(!fsPath.endsWith("/") && !fileName.startsWith("/")){
-        fsPath = fsPath+"/";
-      }
-      try{
-        localDeleteFile(fsPath+fileName);
-        statusBar.setLabel(fsPath+" deleted");
-        try{
-          ep.getDocument().putProperty(
-              Document.StreamDescriptionProperty, null);
-          if(url!=null){
-            setDisplay(url.toExternalForm());
-          }
-          else{
-            setDisplay((new URL("file:"+fsPath)).toExternalForm());
-          }
-        }
-        catch(Exception ioe){
-          ioe.printStackTrace();
-        }
-      }
-      catch(Exception e){
-        Debug.debug("ERROR: could not delete "+fsPath+fileName+". "+e.getMessage(), 1);
-        e.printStackTrace();
-        ep.setText("ERROR!\n\nThe file "+fsPath+fileName+" could not be deleted.\n\n"+
-            //"If it is a directory, delete all files within first.\n\n"+
-            e.getMessage());
-        statusBar.setLabel("ERROR: The file "+fsPath+fileName+" could not be deleted.");
-        //pButton.updateUI();
       }
     }
-    else if(thisUrl.startsWith("gsiftp://") || thisUrl.startsWith("https://")){
-      String fullName = null;
-      GlobusURL globusUrl = null;
-      if(!thisUrl.endsWith("/") && !thisUrl.startsWith("/")){
-        fullName = thisUrl+"/"+fileName;
+    catch(Exception e){
+      e.printStackTrace();
+      return;
+    }
+    String baseUrl = url.replaceFirst("(.*/)[^/]+", "$1");
+    try{
+      if(url.startsWith("file:") || url.startsWith("/")){
+        Debug.debug("Deleting file "+url, 3);
+        localDeleteFile(url);
+        statusBar.setLabel(url+" deleted");
       }
-      else{
-        fullName = thisUrl+fileName;
-      }
-      try{
-        globusUrl = new GlobusURL(fullName);
-        if(thisUrl.startsWith("gsiftp://")){
+      else if(url.startsWith("gsiftp://") || url.startsWith("https://")){
+        GlobusURL globusUrl = new GlobusURL(url);
+        if(url.startsWith("gsiftp://")){
           gsiftpFileTransfer.deleteFile(globusUrl);
         }
-        else if(thisUrl.startsWith("https://")){
+        else if(url.startsWith("https://")){
           httpsFileTransfer.deleteFile(globusUrl);
         }
         statusBar.setLabel(globusUrl.getPath()+" deleted");
-        try{
-          setDisplay(thisUrl);
-        }
-        catch(Exception e){
-          Debug.debug("WARNING: could not display "+thisUrl, 1);
-        }
       }
-      catch(Exception e){
-        Debug.debug("ERROR: could not delete "+fullName+". "+e.getMessage(), 1);
-        e.printStackTrace();
-        ep.setText("ERROR!\n\nThe file "+fullName+" could not be deleted.\n\n"+
-            //"If it is a directory, delete all files within first.\n\n"+
-            e.getMessage());
-        statusBar.setLabel("ERROR: The file "+fullName+" could not be deleted.");
-        //pButton.updateUI();
+      else{
+        throw(new IOException("Unknown protocol for "+thisUrl));
+      }
+      try{
+        ep.getDocument().putProperty(
+            Document.StreamDescriptionProperty, null);
+        setDisplay(baseUrl);
+        //setDisplay(thisUrl);
+      }
+      catch(Exception ioe){
+        Debug.debug("WARNING: could not display "+thisUrl, 1);
+        ioe.printStackTrace();
       }
     }
-    else{
-      throw(new IOException("Unknown protocol for "+thisUrl));
+    catch(Exception e){
+      Debug.debug("ERROR: could not delete "+url+". "+e.getMessage(), 1);
+      e.printStackTrace();
+      ep.setText("ERROR!\n\nThe file "+url+" could not be deleted.\n\n"+
+          //"If it is a directory, delete all files within first.\n\n"+
+          e.getMessage());
+      statusBar.setLabel("ERROR: The file "+url+" could not be deleted.");
+      //pButton.updateUI();
     }
   }
   
@@ -1784,9 +1799,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
       else if(e.getSource()==bNew){
         String newFileOrDir = createNew();
         statusBar.setLabel(/*thisUrl+*/newFileOrDir+" created");
-      }
-      else if(e.getSource()==bDelete){
-        delete();
       }
       else if(e.getSource()==bUpload){
         File file = getInputFile();
