@@ -1,34 +1,20 @@
 package gridpilot.ftplugins.https;
 
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.IOException;
-import java.net.Socket;
 
 import org.globus.io.gass.client.internal.GASSProtocol;
-import org.globus.io.gass.client.GassException;
-import org.globus.io.streams.GlobusOutputStream;
-import org.globus.net.SocketFactory;
+import org.globus.io.streams.HTTPOutputStream;
 import org.globus.util.http.HttpResponse;
-import org.globus.common.ChainedIOException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-public class MyHTTPOutputStream extends GlobusOutputStream {
+public class MyHTTPOutputStream extends HTTPOutputStream {
 
     private static Log logger =
         LogFactory.getLog(MyHTTPOutputStream.class.getName());
 
-    private static final byte[] CRLF = "\r\n".getBytes();
     private static final int DEFAULT_TIME = 3000;
-
-    protected OutputStream output;
-    protected InputStream in;
-    protected Socket socket;
-    protected long size = -1;
-    protected boolean append = false;
-
 
     private void sleep(int time) {
 	try {
