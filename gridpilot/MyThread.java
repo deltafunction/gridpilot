@@ -6,8 +6,23 @@ import gridpilot.DBResult;
 import gridpilot.DBRecord;
 
 public class MyThread extends Thread{
+  
+  private Exception ex;
+  
+  public void run(){
+    ex = null;
+    super.run();
+  }
     
   public void requestStop(){
+  }
+  
+  public Exception getException(){
+    return ex;
+  }
+
+  public void setException(Exception _ex){
+    ex = _ex;
   }
 
   public void clearRequestStop(){
