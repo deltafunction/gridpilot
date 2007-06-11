@@ -23,8 +23,6 @@ import org.globus.io.urlcopy.UrlCopy;
 import org.globus.io.urlcopy.UrlCopyException;
 
 import org.globus.gsi.gssapi.auth.Authorization;
-import org.globus.gsi.gssapi.auth.HostAuthorization;
-import org.globus.gsi.gssapi.auth.SelfAuthorization;
 
 public class MyUrlCopy extends UrlCopy implements Runnable {
   
@@ -236,7 +234,7 @@ public class MyUrlCopy extends UrlCopy implements Runnable {
         if (auth == null) {
             //auth = SelfAuthorization.getInstance();
         }
-        out = new GassOutputStream(getDestinationCredentials(),
+        out = new MyGassOutputStream(getDestinationCredentials(),
                                    auth,
                                    dstUrl.getHost(),
                                    dstUrl.getPort(),
