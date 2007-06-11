@@ -33,6 +33,7 @@ public class HTTPSFileTransfer implements FileTransfer {
   //Thu, 07 Jun 2007 20:37:24 GMT
   private static String DATE_FORMAT = "EEE, dd MMM yyyy HH:mm:ss z";
   private static String PLUGIN_NAME;
+  private static int COPY_TIMEOUT = 10000;
   
   public HTTPSFileTransfer(){
     PLUGIN_NAME = "https";
@@ -145,8 +146,7 @@ public class HTTPSFileTransfer implements FileTransfer {
    * start a separate thread.
    */
   public void getFile(final GlobusURL globusUrl, File downloadDirOrFile,
-      final StatusBar statusBar)
-     throws Exception {
+      final StatusBar statusBar) throws Exception {
     
     // TODO: implement wildcard
     
@@ -175,19 +175,37 @@ public class HTTPSFileTransfer implements FileTransfer {
     else{
       downloadFile = downloadDirOrFile;
     }
-    
-    try{
-      MyUrlCopy urlCopy = myConnect(globusUrl, new GlobusURL("file:///"+downloadFile.getCanonicalPath()));
-      fileTransfers.put(id, urlCopy);
+        
+    final MyUrlCopy urlCopy = myConnect(globusUrl, new GlobusURL("file:///"+downloadFile.getCanonicalPath()));
+    fileTransfers.put(id, urlCopy);
 
-      Debug.debug("Downloading "+globusUrl.getURL()+"->"+downloadFile.getAbsolutePath(), 3);
-      urlCopy.copy();
+    // Leave this outside of thread to avoid deadlock when querying for password.
+    GridPilot.getClassMgr().getGridCredential();
+
+    Debug.debug("Downloading "+globusUrl.getURL()+"->"+downloadFile.getAbsolutePath(), 3);
+    MyThread t = new MyThread(){
+      public void run(){
+        try{
+          urlCopy.copy();
+        }
+        catch(UrlCopyException e){
+          this.setException(e);
+          e.printStackTrace();
+        }
+      }
+    };
+    t.start();
+    if(!Util.waitForThread(t, "https", COPY_TIMEOUT, "getFile")){
+      if(statusBar!=null){
+        statusBar.setLabel("Download cancelled");
+      }
+      return;
     }
-    catch(Exception e){
+    if(t.getException()!=null){
       if(statusBar!=null){
         statusBar.setLabel("Download failed");
       }
-      throw e;
+      throw t.getException();
     }
    
     // if we don't get an exception, the file got downloaded
@@ -225,19 +243,37 @@ public class HTTPSFileTransfer implements FileTransfer {
     }
     GlobusURL fileURL = new GlobusURL("file:///"+file.getCanonicalPath());
     Debug.debug("put "+fileURL.getURL()+" --> "+uploadUrl.getURL(), 3);
-    
-    try{
-      MyUrlCopy urlCopy = myConnect(fileURL, uploadUrl);
-      fileTransfers.put(id, urlCopy);
-      urlCopy.copy();
+ 
+    final MyUrlCopy urlCopy = myConnect(fileURL, uploadUrl);
+
+//  Leave this outside of thread to avoid deadlock when querying for password.
+    GridPilot.getClassMgr().getGridCredential();
+
+    MyThread t = new MyThread(){
+      public void run(){
+        try{
+          fileTransfers.put(id, urlCopy);
+          urlCopy.copy();
+        }
+        catch(Exception e){
+          this.setException(e);
+        }
+      }
+    };
+    t.start();
+    if(!Util.waitForThread(t, "https", COPY_TIMEOUT, "putFile")){
+      if(statusBar!=null){
+        statusBar.setLabel("Upload cancelled");
+      }
+      return;
     }
-    catch(Exception e){
+    if(t.getException()!=null){
       if(statusBar!=null){
         statusBar.setLabel("Upload failed");
       }
-      throw e;
+      throw t.getException();
     }
- 
+
     // if we don't get an exception, the file got written.
     if(statusBar!=null){
       statusBar.setLabel("Upload done");
@@ -665,6 +701,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       baseDir = "^/"+globusUrl.getPath();
     }
     
+    final GlobusURL url = globusUrl;
     boolean onlyDirs = false;
     if(filter==null || filter.equals("")){
       filter = "*";
@@ -680,10 +717,44 @@ public class HTTPSFileTransfer implements FileTransfer {
     filter = filter.replaceAll("\\*", ".*");
     Debug.debug("Filtering with "+filter, 3);
     Debug.debug("Using baseDir "+baseDir, 2);
-
-    MyUrlCopy urlCopy = myConnect(globusUrl);
-    urlCopy.execute("PROPFIND");
-    String res = urlCopy.getResult();
+    
+//  Leave this outside of thread to avoid deadlock when querying for password.
+    GridPilot.getClassMgr().getGridCredential();
+    
+    MyThread t = new MyThread(){
+      String res = null;
+      MyUrlCopy urlCopy = null;
+      public void run(){
+        try{
+          urlCopy = myConnect(url);
+          urlCopy.execute("PROPFIND");
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          this.setException(e);
+          return;
+        }
+        res = urlCopy.getResult();
+        Debug.debug("List result: ", 2);
+      }
+      public String getStringRes(){
+        return res;
+      }
+    };
+    t.start();
+    if(!Util.waitForThread(t, "https", COPY_TIMEOUT, "list", new Boolean(true))){
+      if(statusBar!=null){
+        statusBar.setLabel("List cancelled");
+      }
+      throw new IOException("List timed out");
+    }
+    if(t.getException()!=null){
+      if(statusBar!=null){
+        statusBar.setLabel("List failed");
+      }
+      throw t.getException();
+    }
+    String res = t.getStringRes();
     String [] lines = Util.split(res, "(?s)[\n\r]");
     Vector resVec = new Vector();
     String hrefPattern = "(?i)<d:href>(.*)</d:href>";
