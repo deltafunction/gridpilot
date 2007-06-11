@@ -619,7 +619,7 @@ public class TransferControl{
       if(toDeleteFiles[i].matches("^\\w+:.*") &&
           !toDeleteFiles[i].toLowerCase().matches("\\w:.*") &&
           !toDeleteFiles[i].toLowerCase().startsWith("file:")){
-        protocol = toDeleteFiles[i].replaceFirst("^(\\w+):", "$1");
+        protocol = toDeleteFiles[i].replaceFirst("^(\\w+):.*", "$1");
         if(remoteFiles.get(protocol)==null){
           remoteFiles.put(protocol, new HashSet());
         }
@@ -685,8 +685,7 @@ public class TransferControl{
     // Select first plugin that supports the protocol of the these transfers
     for(int i=0; i<fts.length; ++i){
       Debug.debug("Checking plugin "+fts[i], 3);
-      if(GridPilot.getClassMgr().getFTPlugin(
-          fts[i]).checkURLs(srcUrls, urls)){
+      if(GridPilot.getClassMgr().getFTPlugin(fts[i]).checkURLs(srcUrls, urls)){
         ftPluginName = fts[i];
         Debug.debug("Selected plugin "+fts[i], 3);
         break;
@@ -1361,7 +1360,8 @@ public class TransferControl{
         if(frame!=null){
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         }
-        FileTransfer fileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
+        FileTransfer fileTransfer = (FileTransfer) GridPilot.getClassMgr(
+            ).getFTPlugin(uploadUrlDir.replaceFirst("^(\\w+):/.*", "$1"));
         fileTransfer.putFile(file, globusUrl, GridPilot.getClassMgr().getStatusBar());
         if(frame!=null){
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
