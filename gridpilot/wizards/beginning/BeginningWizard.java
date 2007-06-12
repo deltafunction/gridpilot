@@ -384,7 +384,7 @@ public class BeginningWizard{
     if(choice!=0){
       return choice;
     }
-
+  
     // Create missing directories
     String [] newDirs = new String[defDirs.length];
     File [] newDirFiles = new File[newDirs.length];
@@ -415,7 +415,7 @@ public class BeginningWizard{
     if(!keyFile.exists()){
       throw new FileNotFoundException(keyFile.getCanonicalPath());
     }
-
+  
     // Set config entries
     if(!defDirs[0].equals(newDirs[0]) ||
         !defDirs[1].equals(newDirs[1]) ||
@@ -430,7 +430,116 @@ public class BeginningWizard{
       );
       changes = true;
     }
+  
+    return choice;
+  }
+  
+  private int setGridFileCatalog(boolean firstRun) throws Exception{
+    return -1;
+  }
 
+  /**
+   * If a remote server is specified, assume that a database with name corresponding
+   * to the DN exists on the specified server and is writeable;
+   * enable My_DB_Remote and Regional_DB with database 'production'; disable GP_DB.
+   * If the default remote database is chosen, disable My_DB_Remote and Regional_DB;
+   * enable GP_DB with database production; this will then be both job DB and file catalog.
+   */
+  private int setGridJobDB(boolean firstRun) throws Exception{
+    String confirmString =
+      "GridPilot allows you to keep track of your grid life:\n" +
+      "the jobs you have running or have run and the files you've produced.\n\n" +
+      "You can keep this information in your local database or you have\n" +
+      "write access to a remote database, you can keep the information there.\n\n" +
+      "If you choose to use a remote database, you must specify the IP address\n" +
+      "of the server hosting it. Please notice that the database must be a\n" +
+      "GridPilot-enabled MySQL database.\n\n" +
+      "If you choose to use the default remote database, please notice that\n" +
+      "anything you write there is world readable and that the service is\n" +
+      "provided by gridpilot.org with absolutely no guarantee that data will\n" +
+      "not be deleted at any time.\n\n";
+    JPanel jPanel = new JPanel(new GridBagLayout());
+    String homeUrl = configFile.getValue("GridPilot", "Grid home url");
+    String [] defDirs = new String [] {homeUrl,
+                                       HOMEGRID_URL+Util.getGridDatabaseUser()+"/",
+                                       homeUrl};
+    String [] names = new String [] {"Use local database",
+                                     "Use remote database server",
+                                     "Use default remote database"};
+    JTextField [] jtFields = new JTextField [defDirs.length];
+    jPanel.add(new JLabel("<html>"+confirmString.replaceAll("\n", "<br>")+"</html>"),
+        new GridBagConstraints(0, (firstRun?1:0), 2, 2, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
+    JPanel row = null;
+    JPanel subRow = null;
+    jtbs = new JRadioButton[defDirs.length];
+    RadioListener myListener = new RadioListener();
+    for(int i=0; i<defDirs.length; ++i){
+      jtFields[i] = new JTextField(TEXTFIELDWIDTH);
+      jtFields[i].setText(defDirs[i]);
+      jtbs[i] = new JRadioButton();
+      jtbs[i].addActionListener(myListener);
+      row = new JPanel(new BorderLayout());
+      row.add(jtbs[i], BorderLayout.WEST);
+      if(i==0){
+        row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
+            names[i], jtFields[i]), BorderLayout.CENTER);
+      }
+      else{
+        row.add(new JLabel(names[i]), BorderLayout.CENTER);
+        jtFields[i].setEditable(false);
+      }
+      subRow = new JPanel(new BorderLayout());
+      subRow.add(jtFields[i], BorderLayout.CENTER);
+      subRow.add(new JLabel("   "), BorderLayout.SOUTH);
+      subRow.add(new JLabel("   "), BorderLayout.NORTH);
+      row.add(subRow, BorderLayout.EAST);
+      jPanel.add(row, new GridBagConstraints(0, i+(firstRun?5:4), 1, 1, 0.0, 0.0,
+          GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+          new Insets(0, 0, 0, 0), 0, 0));
+    }
+    jPanel.validate();
+    
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    int choice = -1;
+    try{
+      choice = confirmBox.getConfirm("Setting up home database",
+          jPanel, new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, false);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    
+    if(choice!=0){
+      return choice;
+    }
+  
+    // Get field values
+    String [] newDirs = new String[defDirs.length];
+    int sel = -1;
+    for(int i=0; i<newDirs.length; ++i){
+      if(jtbs[i].isSelected()){
+        sel = i;
+      }
+      else{
+        continue;
+      }
+      newDirs[i] = jtFields[i].getText();
+    }
+      
+    // Set config entries
+    if(sel>-1 && newDirs[sel]!=null &&
+        (defDirs[0]==null || !defDirs[0].equals(newDirs[sel]))){
+      Debug.debug("Setting "+sel+":"+newDirs[sel], 2);
+      configFile.setAttributes(
+          new String [] {"GridPilot"},
+          new String [] {"Grid home url"},
+          new String [] {newDirs[sel]}
+      );
+      changes = true;
+    }
+  
     return choice;
   }
 
