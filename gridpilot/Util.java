@@ -486,10 +486,6 @@ public class Util{
     return ret;
   }
 
-  public static String getFileName(String str){
-    return getName("Enter file name", str);
-  }
-  
   public static String getName(String message, String str){
 
     JPanel panel = new JPanel(new GridBagLayout());

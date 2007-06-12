@@ -1919,10 +1919,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
         if(dir==null){
           return;
         }
-        /*final String listedUrls = Util.getFileName(jtFilter.getText());
-        if(listedUrls==null || listedUrls.equals("")){
-          return;
-        }*/
         MyThread t = (new MyThread(){
           public void run(){
             String href = null;
