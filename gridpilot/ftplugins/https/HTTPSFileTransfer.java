@@ -253,7 +253,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       public void run(){
         try{
           fileTransfers.put(id, urlCopy);
-          urlCopy.copy();
+          urlCopy.myCopy();
         }
         catch(Exception e){
           this.setException(e);

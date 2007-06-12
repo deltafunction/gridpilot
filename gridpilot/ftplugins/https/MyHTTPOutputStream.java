@@ -2,6 +2,8 @@ package gridpilot.ftplugins.https;
 
 import java.io.IOException;
 
+import org.globus.common.ChainedIOException;
+import org.globus.io.gass.client.GassException;
 import org.globus.io.gass.client.internal.GASSProtocol;
 import org.globus.io.streams.HTTPOutputStream;
 import org.globus.util.http.HttpResponse;
@@ -14,7 +16,22 @@ public class MyHTTPOutputStream extends HTTPOutputStream {
     private static Log logger =
         LogFactory.getLog(MyHTTPOutputStream.class.getName());
 
+    private static final byte[] CRLF = "\r\n".getBytes();
     private static final int DEFAULT_TIME = 3000;
+    
+    public MyHTTPOutputStream(String host, 
+        int port, 
+        String file, 
+        long length, 
+        boolean append)
+       throws GassException, IOException {
+    super(host, port, file, length, append);
+  }
+    
+    protected MyHTTPOutputStream() {
+    }
+
+
 
     private void sleep(int time) {
 	try {
@@ -67,12 +84,51 @@ public class MyHTTPOutputStream extends HTTPOutputStream {
 	    logger.trace("REPLY: " + reply);
 	}
 	
-	if (reply.httpCode != 100 && reply.httpCode != 201 && reply.httpCode != 200) {
+	if (reply.httpCode != 100 && reply.httpCode != 200 && reply.httpCode != 201) {
 	    abort();
 	    throw new IOException("Gass PUT failed: " + reply.httpMsg);
 	} else {
 	    logger.debug("Received continuation reply");
 	}
     }
+
+    public void close() 
+    throws IOException {
+    
+    // is there a way to get rid of that wait for final reply?
+    
+    finish();
+    
+    HttpResponse hd = new HttpResponse(in);
+
+    closeSocket();
+    
+    if (logger.isTraceEnabled()) {
+        logger.trace("REPLY: " + hd);
+    }
+    
+    if (hd.httpCode != 100 && hd.httpCode != 200 && hd.httpCode != 201) {
+        throw new ChainedIOException("Gass close failed.",
+             new GassException("Gass PUT failed: " + hd.httpMsg));
+    }
+      }
+
+    private void finish() throws IOException {
+      if (size == -1) {
+          String lHex = Integer.toHexString(0);
+          output.write(lHex.getBytes());
+          output.write(CRLF);
+          output.write(CRLF);
+      }
+      output.flush();
+        }
+
+    private void closeSocket() {
+      try {
+          if (socket != null) socket.close();
+          if (in != null) in.close();
+          if (output != null) output.close();
+      } catch(Exception e) {}
+        }
 
 }

@@ -9,15 +9,12 @@ import java.net.URLDecoder;
 
 import org.globus.io.streams.FTPInputStream;
 import org.globus.io.streams.FTPOutputStream;
-import org.globus.io.streams.GassInputStream;
 import org.globus.io.streams.GlobusFileInputStream;
 import org.globus.io.streams.GlobusFileOutputStream;
 import org.globus.io.streams.GlobusInputStream;
 import org.globus.io.streams.GlobusOutputStream;
 import org.globus.io.streams.GridFTPInputStream;
 import org.globus.io.streams.GridFTPOutputStream;
-import org.globus.io.streams.HTTPInputStream;
-import org.globus.io.streams.HTTPOutputStream;
 import org.globus.io.urlcopy.UrlCopy;
 import org.globus.io.urlcopy.UrlCopyException;
 
@@ -27,6 +24,10 @@ public class MyUrlCopy extends UrlCopy implements Runnable {
   
   private String result;
 
+  public void myCopy() 
+  throws UrlCopyException {
+    copy();
+  }
     
   /**
    * Executes the command cmd.
@@ -179,13 +180,13 @@ public class MyUrlCopy extends UrlCopy implements Runnable {
         if (auth == null) {
             //auth = SelfAuthorization.getInstance();
         }
-        in = new GassInputStream(getSourceCredentials(), 
+        in = new MyGassInputStream(getSourceCredentials(), 
                                  auth,
                                  srcUrl.getHost(),
                                  srcUrl.getPort(),
                                  fromFile);
     } else if (fromP.equalsIgnoreCase("http")) {
-        in = new HTTPInputStream(srcUrl.getHost(),
+        in = new MyHTTPInputStream(srcUrl.getHost(),
                                  srcUrl.getPort(),
                                  fromFile);
     } else {
@@ -241,7 +242,7 @@ public class MyUrlCopy extends UrlCopy implements Runnable {
                                    size,
                                    appendMode);
     } else if (toP.equalsIgnoreCase("http")) {
-        out = new HTTPOutputStream(dstUrl.getHost(),
+        out = new MyHTTPOutputStream(dstUrl.getHost(),
                                    dstUrl.getPort(),
                                    toFile,
                                    size,

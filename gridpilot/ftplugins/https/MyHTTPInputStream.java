@@ -14,6 +14,16 @@ import org.globus.util.GlobusURL;
 
 public class MyHTTPInputStream extends HTTPInputStream {
 
+
+  public MyHTTPInputStream(String host, int port, String file) 
+     throws IOException {
+    get(host, port, file);
+  }
+  
+  protected MyHTTPInputStream() {
+  }
+
+  
   protected void execute(String host, int port, String file, String cmd) throws IOException {
 	
     HttpResponse hd = null;
