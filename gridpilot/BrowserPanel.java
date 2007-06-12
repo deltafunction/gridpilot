@@ -79,6 +79,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private JComponent dsField = new JTextField(TEXTFIELDWIDTH);
   // Keep track of which files we are listing.
   private Vector listedUrls = null;
+  private boolean allowRegister = false;
 
   
   public static int HISTORY_SIZE = 15;
@@ -202,6 +203,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
   public void okSetEnabled(boolean _ok){
     ok = _ok;
     bOk.setEnabled(ok);
+  }
+  
+  public void setAllowRegister(boolean _ok){
+    bRegister.setEnabled(_ok);
+    allowRegister = _ok;
   }
   
   private void addUrlKeyListener(){
@@ -1557,7 +1563,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       statusBar.setLabel(directories+" directorie"+(directories==1?"":"s")+"," +
           ""+files+" file"+(files==1?"":"s"));
       bDownload.setEnabled(listedUrls!=null && listedUrls.size()>0);
-      bRegister.setEnabled(listedUrls!=null && listedUrls.size()>0);
+      bRegister.setEnabled(allowRegister && listedUrls!=null && listedUrls.size()>0);
       setUrl(thisUrl);
     }
     catch(Exception e){

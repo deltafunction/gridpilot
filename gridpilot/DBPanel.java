@@ -2363,6 +2363,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                       null,
                       "",
                       false);
+      wb.setAllowRegister(false);
     }
     catch(Exception eee){
       Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
