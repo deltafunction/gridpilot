@@ -81,22 +81,39 @@ public class BeginningWizard{
       if(setGridHomeDir(firstRun)==2){
         return;
       }
-
+      
+      if(setGridJobDB(firstRun)==2){
+        return;
+      }
+      
+      if(setGridFileCatalog(firstRun)==2){
+        return;
+      }
+      
       // TODO: Set grid file catalog - fallback to homegrid.dyndns.org
+            
+      //        --->  set ATLAS home site - present list - ask for mysql alias
       
-      // TODO: Set grid job DB - fallback to homegrid.dyndns.org
+      // TODO: ask on which computing systems should be enabled
+      //       - where the user is allowed
       
-      // TODO: set ATLAS home site - present list - ask for mysql alias
+      //        --->  set NG clusters
+
+      //        --->  set gLite VO (virtual organization, runtime vos)
+
+      //        --->  set gLite clusters to scan for VO software
+
+      //        --->  set GPSS DB - present list, fallback to homegrid.dyndns.org
+            
+      //        --->  configure ssh pool
       
-      // TODO: set pull and GPSS DB - present list, fallback to homegrid.dyndns.org
-      
-      // TODO: ask on which grids the user is allowed
-      
-      // TODO: ask if an ssh pool should be configured
-      
+      // TODO: set pull DB - present list, fallback to homegrid.dyndns.org
+
       // TODO: give report on which directories were created, etc.
       
-      if(endGreeting(firstRun)==0 && changes){
+      endGreeting(firstRun);
+      
+      if(changes){
         try{
           GridPilot.reloadConfigValues();
         }
@@ -148,7 +165,7 @@ public class BeginningWizard{
             (firstRun?"\n\nThanks for using GridPilot and have fun!":"");
     int choice = -1;
     confirmBox.getConfirm("Setup completed!",
-        confirmString, new Object[] {"OK",  "Cancel"}, icon, Color.WHITE, false);   
+        confirmString, new Object[] {"OK"}, icon, Color.WHITE, false);   
     return choice;
   }
   
@@ -200,7 +217,7 @@ public class BeginningWizard{
         "Software directory",
         "Transformations directory"
         };
-    String dbDir = configFile.getValue("My_DB_local", "database");
+    String dbDir = configFile.getValue("My_DB_local", "Database");
     if(dbDir==null){
       dbDir = "~/GridPilot";
     }
@@ -236,10 +253,10 @@ public class BeginningWizard{
     for(int i=0; i<defDirs.length; ++i){
       jtFields[i] = new JTextField(TEXTFIELDWIDTH);
       jtFields[i].setText(defDirs[i]);
-      row = new JPanel(new BorderLayout());
+      row = new JPanel(new BorderLayout(8, 0));
       row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
           names[i], jtFields[i]), BorderLayout.WEST);
-      subRow = new JPanel(new BorderLayout());
+      subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
       subRow.add(new JLabel("   "), BorderLayout.SOUTH);
       subRow.add(new JLabel("   "), BorderLayout.NORTH);
@@ -331,10 +348,10 @@ public class BeginningWizard{
       "in which case a default set of CAs will be trusted.\n\n" +
       "Specified, but non-existing directories will be created.\n\n";
     JPanel jPanel = new JPanel(new GridBagLayout());
-    String certPath = configFile.getValue("GridPilot", "key file");
-    String keyPath = configFile.getValue("GridPilot", "certificate file");
-    String proxyDir = configFile.getValue("GridPilot", "grid proxy directory");
-    String caCertsDir = configFile.getValue("GridPilot", "ca certificates");
+    String certPath = configFile.getValue("GridPilot", "Key file");
+    String keyPath = configFile.getValue("GridPilot", "Certificate file");
+    String proxyDir = configFile.getValue("GridPilot", "Grid proxy directory");
+    String caCertsDir = configFile.getValue("GridPilot", "CA certificates");
     String [] defDirs = new String [] {
         certPath,
         keyPath,
@@ -357,10 +374,10 @@ public class BeginningWizard{
     for(int i=0; i<defDirs.length; ++i){
       jtFields[i] = new JTextField(TEXTFIELDWIDTH);
       jtFields[i].setText(defDirs[i]);
-      row = new JPanel(new BorderLayout());
+      row = new JPanel(new BorderLayout(8, 0));
       row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
           names[i], jtFields[i]), BorderLayout.WEST);
-      subRow = new JPanel(new BorderLayout());
+      subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
       subRow.add(new JLabel("   "), BorderLayout.SOUTH);
       subRow.add(new JLabel("   "), BorderLayout.NORTH);
@@ -434,38 +451,38 @@ public class BeginningWizard{
     return choice;
   }
   
-  private int setGridFileCatalog(boolean firstRun) throws Exception{
-    return -1;
-  }
-
   /**
-   * If a remote server is specified, assume that a database with name corresponding
-   * to the DN exists on the specified server and is writeable;
-   * enable My_DB_Remote and Regional_DB with database 'production'; disable GP_DB.
-   * If the default remote database is chosen, disable My_DB_Remote and Regional_DB;
-   * enable GP_DB with database production; this will then be both job DB and file catalog.
+   * If a remote server is specified, assume that a database 'production'
+   * exists on the specified server and is writeable;
+   * enable Regional_DB with database 'replicas'; disable GP_DB.
+   * If the default remote database is chosen, disable Regional_DB;
+   * enable GP_DB with database 'production'; this will then be the default file catalog
+   * (while perhaps also the default job database).
    */
-  private int setGridJobDB(boolean firstRun) throws Exception{
+  private int setGridFileCatalog(boolean firstRun) throws Exception{
     String confirmString =
-      "GridPilot allows you to keep track of your grid life:\n" +
-      "the jobs you have running or have run and the files you've produced.\n\n" +
-      "You can keep this information in your local database or you have\n" +
-      "write access to a remote database, you can keep the information there.\n\n" +
-      "If you choose to use a remote database, you must specify the IP address\n" +
-      "of the server hosting it. Please notice that the database must be a\n" +
-      "GridPilot-enabled MySQL database.\n\n" +
-      "If you choose to use the default remote database, please notice that\n" +
-      "anything you write there is world readable and that the service is\n" +
-      "provided by gridpilot.org with absolutely no guarantee that data will\n" +
-      "not be deleted at any time.\n\n";
+      "The files you produce will be registered in the job database you chose in the\n" +
+      "previous step. You may want to register them also in a 'real' file catalog,\n" +
+      "which is readable by other clients than GridPilot.\n\n" +
+      "Your local database is already such a file catalog and if you have write access\n" +
+      "to a file catalog, you can use this too.\n\n" +
+      "If you choose to use a remote database, you must specify the name of the server\n" +
+      "hosting it. Please notice that the database must be a GridPilot-enabled MySQL database.\n\n" +
+      "If you choose to use the default remote database, please notice that anything you\n" +
+      "write there is world readable and that the service is provided by gridpilot.org with\n" +
+      "absolutely no guarantee that data will not be deleted at any time.\n\n" +
+      "You also have the option to enable the 'ATLAS' database plugin. If you don't work\n" +
+      "in the ATLAS collaboration of CERN, this is probably of no relevance to you and you\n" +
+      "can leave it disabled\n\n.";
     JPanel jPanel = new JPanel(new GridBagLayout());
-    String homeUrl = configFile.getValue("GridPilot", "Grid home url");
-    String [] defDirs = new String [] {homeUrl,
-                                       HOMEGRID_URL+Util.getGridDatabaseUser()+"/",
-                                       homeUrl};
+    String remoteDB = configFile.getValue("Regional_DB", "Database");
+    String host = remoteDB.replaceFirst(".*mysql://(.*)/.*","$1");
+    String [] defDirs = new String [] {"",
+                                       "db.gridpilot.dk",
+                                       host};
     String [] names = new String [] {"Use local database",
-                                     "Use remote database server",
-                                     "Use default remote database"};
+                                     "Use default remote database host",
+                                     "Use custom remote database host:"};
     JTextField [] jtFields = new JTextField [defDirs.length];
     jPanel.add(new JLabel("<html>"+confirmString.replaceAll("\n", "<br>")+"</html>"),
         new GridBagConstraints(0, (firstRun?1:0), 2, 2, 0.0, 0.0,
@@ -480,17 +497,16 @@ public class BeginningWizard{
       jtFields[i].setText(defDirs[i]);
       jtbs[i] = new JRadioButton();
       jtbs[i].addActionListener(myListener);
-      row = new JPanel(new BorderLayout());
+      row = new JPanel(new BorderLayout(8, 0));
       row.add(jtbs[i], BorderLayout.WEST);
-      if(i==0){
-        row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
-            names[i], jtFields[i]), BorderLayout.CENTER);
+      if(i==2){
+        row.add(new JLabel(names[i]), BorderLayout.CENTER);
       }
       else{
         row.add(new JLabel(names[i]), BorderLayout.CENTER);
         jtFields[i].setEditable(false);
       }
-      subRow = new JPanel(new BorderLayout());
+      subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
       subRow.add(new JLabel("   "), BorderLayout.SOUTH);
       subRow.add(new JLabel("   "), BorderLayout.NORTH);
@@ -503,60 +519,284 @@ public class BeginningWizard{
     
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = -1;
-    try{
-      choice = confirmBox.getConfirm("Setting up home database",
-          jPanel, new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, false);
-    }
-    catch(Exception e){
-      e.printStackTrace();
+    boolean goOn = false;
+    int sel = -1;
+    String [] newDirs = new String[defDirs.length];
+    String title = "Setting up file catalog";
+    while(!goOn){
+      if(goOn){
+        break;
+      }
+      try{
+        choice = confirmBox.getConfirm(title, jPanel,
+            new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, false);
+
+        if(choice==0){
+          // Get field values
+          for(int i=0; i<newDirs.length; ++i){
+            if(jtbs[i].isSelected()){
+              sel = i;
+              newDirs[i] = jtFields[i].getText();
+              break;
+            }
+            else{
+              continue;
+            }
+          }
+          if(sel!=1 || newDirs[sel]!=null && !newDirs[sel].equals("")){
+            goOn = true;
+          }
+          else{
+            confirmBox.getConfirm(title, "Please fill in the host name of the remote file catalog server",
+                new Object[] {"OK"}, icon, Color.WHITE, false);
+          }
+        }
+        else{
+          goOn = true;
+        }
+      }
+      catch(Exception e){
+        goOn = true;
+        e.printStackTrace();
+      }
     }
     
     if(choice!=0){
       return choice;
     }
   
-    // Get field values
-    String [] newDirs = new String[defDirs.length];
-    int sel = -1;
-    for(int i=0; i<newDirs.length; ++i){
-      if(jtbs[i].isSelected()){
-        sel = i;
-      }
-      else{
-        continue;
-      }
-      newDirs[i] = jtFields[i].getText();
-    }
-      
-    // Set config entries
-    if(sel>-1 && newDirs[sel]!=null &&
-        (defDirs[0]==null || !defDirs[0].equals(newDirs[sel]))){
-      Debug.debug("Setting "+sel+":"+newDirs[sel], 2);
-      configFile.setAttributes(
-          new String [] {"GridPilot"},
-          new String [] {"Grid home url"},
-          new String [] {newDirs[sel]}
-      );
+    if(sel==0 && !firstRun){
+      // If this is the first run, this should already be the set
+
+      // Local DB, enable My_DB_Local, disable Regional_DB and GP_DB.
+       configFile.setAttributes(
+          new String [] {"My_DB_Local", "Regional_DB"},
+          new String [] {"Enabled", "Enabled"},
+          new String [] {"yes", "no"}
+      );  
       changes = true;
     }
+    else if(sel==1){
+      // gridpilot.dk, enable GP_DB, My_DB_Local, disable Regional_DB.
+      configFile.setAttributes(
+          new String [] {"My_DB_Local", "Regional_DB", "GP_DB"},
+          new String [] {"Enabled", "Enabled", "Enabled",},
+          new String [] {"yes", "no", "yes"}
+      );  
+      changes = true;
+    }
+    else if(sel==2){
+      // remote DB, enable Regional_DB, My_DB_Local, disable GP_DB.
+      // Ask for Regional_DB:description
+      String origDbDesc = configFile.getValue("Regional_DB", "Description");
+      String dbDesc = Util.getName(
+          "Please enter a short (~ 5 words) description of the remote file catalog", "");
+      if(dbDesc==null || dbDesc.equals("")){
+        dbDesc = origDbDesc;
+      }
+      configFile.setAttributes(
+          new String [] {"My_DB_Local", "Regional_DB", "GP_DB",
+              "My_DB_Remote", "My_DB_Remote"},
+          new String [] {"Enabled", "Enabled", "Enabled",
+              "Database", "Description"},
+          new String [] {"yes", "yes", "no",
+              "jdbc:mysql://"+newDirs[sel].trim()+":3306/production", dbDesc}
+      );  
+      changes = true;
+    }
+      
+    return choice;
+  }
+
+  /**
+   * If a remote server is specified, assume that a database with name corresponding
+   * to the DN exists on the specified server and is writeable;
+   * enable My_DB_Remote disable GP_DB.
+   * If the default remote database is chosen, disable My_DB_Remote;
+   * enable GP_DB with database 'production'; this will then be the job DB for remote CSs.
+   */
+  private int setGridJobDB(boolean firstRun) throws Exception{
+    String confirmString =
+      "GridPilot allows you to keep track of your grid life:\n" +
+      "the jobs you have running or have run and the files you've produced.\n\n" +
+      "You can keep this information in your local database or if you have write access\n" +
+      "to a remote database, you can keep the information there.\n\n" +
+      "If you choose to use a remote database, you must specify the name of the server\n" +
+      "hosting it. Please notice that the database must be a GridPilot-enabled MySQL database.\n\n" +
+      "If you choose to use the default remote database, please notice that anything you\n" +
+      "write there is world readable and that the service is provided by gridpilot.org with\n" +
+      "absolutely no guarantee that data will not be deleted at any time.\n\n";
+    JPanel jPanel = new JPanel(new GridBagLayout());
+    String remoteDB = configFile.getValue("My_DB_Remote", "Database");
+    String host = remoteDB.replaceFirst(".*mysql://(.*)/.*","$1");
+    String [] defDirs = new String [] {"",
+                                       "db.gridpilot.dk",
+                                       host};
+    String [] names = new String [] {"Use local database",
+                                     "Use default remote database host",
+                                     "Use custom remote database host:"};
+    JTextField [] jtFields = new JTextField [defDirs.length];
+    jPanel.add(new JLabel("<html>"+confirmString.replaceAll("\n", "<br>")+"</html>"),
+        new GridBagConstraints(0, (firstRun?1:0), 2, 2, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
+    JPanel row = null;
+    JPanel subRow = null;
+    jtbs = new JRadioButton[defDirs.length];
+    RadioListener myListener = new RadioListener();
+    for(int i=0; i<defDirs.length; ++i){
+      jtFields[i] = new JTextField(TEXTFIELDWIDTH);
+      jtFields[i].setText(defDirs[i]);
+      jtbs[i] = new JRadioButton();
+      jtbs[i].addActionListener(myListener);
+      row = new JPanel(new BorderLayout(8, 0));
+      row.add(jtbs[i], BorderLayout.WEST);
+      if(i==2){
+        row.add(new JLabel(names[i]), BorderLayout.CENTER);
+      }
+      else{
+        row.add(new JLabel(names[i]), BorderLayout.CENTER);
+        jtFields[i].setEditable(false);
+      }
+      subRow = new JPanel(new BorderLayout(8, 0));
+      subRow.add(jtFields[i], BorderLayout.CENTER);
+      subRow.add(new JLabel("   "), BorderLayout.SOUTH);
+      subRow.add(new JLabel("   "), BorderLayout.NORTH);
+      row.add(subRow, BorderLayout.EAST);
+      jPanel.add(row, new GridBagConstraints(0, i+(firstRun?5:4), 1, 1, 0.0, 0.0,
+          GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+          new Insets(0, 0, 0, 0), 0, 0));
+    }
+    jPanel.validate();
+    
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    int choice = -1;
+    boolean goOn = false;
+    int sel = -1;
+    String [] newDirs = new String[defDirs.length];
+    String title = "Setting up job database";
+    while(!goOn){
+      if(goOn){
+        break;
+      }
+      try{
+        choice = confirmBox.getConfirm(title, jPanel,
+            new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, false);
+
+        if(choice==0){
+          // Get field values
+          for(int i=0; i<newDirs.length; ++i){
+            if(jtbs[i].isSelected()){
+              sel = i;
+              newDirs[i] = jtFields[i].getText();
+              break;
+            }
+            else{
+              continue;
+            }
+          }
+          if(sel!=1 || newDirs[sel]!=null && !newDirs[sel].equals("")){
+            goOn = true;
+          }
+          else{
+            confirmBox.getConfirm(title, "Please fill in the host name of the remote database server",
+                new Object[] {"OK"}, icon, Color.WHITE, false);
+          }
+        }
+        else{
+          goOn = true;
+        }
+      }
+      catch(Exception e){
+        goOn = true;
+        e.printStackTrace();
+      }
+    }
+    
+    if(choice!=0){
+      return choice;
+    }
   
+    if(sel==0 && !firstRun){
+      // If this is the first run, this should already be the set
+
+      // Local DB, enable My_DB_Local, disable My_DB_Remote and GP_DB.
+      // Set GPSS:remote database = GP_DB
+      // Set Fork:remote pull database = GP_DB
+      // Set [Fork|GPSS|SSH|SSH_POOL|NG|GLite]:runtime databases = My_DB_Local
+       configFile.setAttributes(
+          new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
+              "GPSS", "Fork",
+              "Fork", "GPSS", "SSH", "SSH_POOL", "NG", "GLite"},
+          new String [] {"Enabled", "Enabled", "Enabled",
+              "Remote database", "Remote pull database",
+              "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases"},
+          new String [] {"yes", "no", "no",
+              "GP_DB", "GP_DB",
+              "My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Local"}
+      );  
+      changes = true;
+    }
+    else if(sel==1){
+      // gridpilot.dk, enable GP_DB, My_DB_Local, disable My_DB_Remote.
+      // Set GPSS:remote database = GP_DB
+      // Set GP_DB:database = production
+      // Set Fork:remote pull database = GP_DB
+      // Set [Fork|GPSS|SSH|SSH_POOL|NG|GLite]:runtime databases = GP_DB My_DB_Local
+      configFile.setAttributes(
+          new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
+              "GPSS", "Fork", "GP_DB",
+              "Fork", "GPSS", "SSH", "SSH_POOL", "NG", "GLite"},
+          new String [] {"Enabled", "Enabled", "Enabled",
+              "Remote database", "Remote pull database", "Database",
+              "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases"},
+          new String [] {"yes", "no", "yes",
+              "GP_DB", "GP_DB", "jdbc:mysql://db.gridpilot.dk:3306/production",
+              "My_DB_Local", "GP_DB My_DB_Local", "My_DB_Local", "My_DB_Local", "GP_DB My_DB_Local", "GP_DB My_DB_Local"}
+      );  
+      changes = true;
+    }
+    else if(sel==2){
+      // remote DB, enable My_DB_Remote, My_DB_Local, disable GP_DB.
+      // Ask for My_DB_Remote:description
+      // Set GPSS:remote database = My_DB_Remote
+      // Set Fork:remote pull database = My_DB_Remote
+      // Set [Fork|GPSS|SSH|SSH_POOL|NG|GLite]:runtime databases = My_DB_Remote My_DB_Local
+      String origDbDesc = configFile.getValue("My_DB_Remote", "Description");
+      String dbDesc = Util.getName(
+          "Please enter a short (~ 5 words) description of the remote database", "");
+      if(dbDesc==null || dbDesc.equals("")){
+        dbDesc = origDbDesc;
+      }
+      configFile.setAttributes(
+          new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
+              "GPSS", "Fork", "My_DB_Remote", "My_DB_Remote",
+              "Fork", "GPSS", "SSH", "SSH_POOL", "NG", "GLite"},
+          new String [] {"Enabled", "Enabled", "Enabled",
+              "Remote database", "Remote pull database", "Database", "Description",
+              "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases"},
+          new String [] {"yes", "yes", "no",
+              "My_DB_Remote", "My_DB_Remote", "jdbc:mysql://"+newDirs[sel].trim()+":3306/", dbDesc,
+              "My_DB_Local", "My_DB_Remote My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Remote My_DB_Local", "My_DB_Remote My_DB_Local"}
+      );  
+      changes = true;
+    }
+      
     return choice;
   }
 
   private int setGridHomeDir(boolean firstRun) throws Exception{
     String confirmString =
-      "When running jobs on a grid it is useful to have the jobs upload\n" +
-      "output files to a directory on a server that's always on.\n\n" +
-      "For this to be possible GridPilot needs to know a gridftp or\n" +
-      "https URL where you have read/write permission with the X509\n" +
-      "certificate you specified previously.\n\n" +
-      "If you don't know any such URL or you don't understand the above,\n" +
-      "you may use the default grid home URL given below. But please\n" +
-      "notice that this is but a temporary solution and that the files on\n" +
-      "this location may be read, overwritten or deleted by others at any time.\n\n"+
-      "You may also choose a local directory, but in this case, output files\n" +
-      "will stay on the resource where a job has run until GridPilot\n" +
-      "downloads them.\n\n"+
+      "When running jobs on a grid it is useful to have the jobs upload output files to \n" +
+      "a directory on a server that's always on.\n\n" +
+      "For this to be possible GridPilot needs to know a gridftp or https URL where you\n" +
+      "have read/write permission with the X509 certificate you specified previously.\n\n" +
+      "If you don't know any such URL or you don't understand the above, you may use\n" +
+      "the default grid home URL given below. But please notice that this is but a temporary\n" +
+      "solution and that the files on this location may be read, overwritten or deleted at\n" +
+      "any time.\n\n"+
+      "You may also choose a local directory, but in this case, output files will stay on the\n" +
+      "resource where a job has run until GridPilot downloads them.\n\n"+
       "A specified, local, but non-existing directory will be created.\n\n";
     JPanel jPanel = new JPanel(new GridBagLayout());
     String homeUrl = configFile.getValue("GridPilot", "Grid home url");
@@ -580,7 +820,7 @@ public class BeginningWizard{
       jtFields[i].setText(defDirs[i]);
       jtbs[i] = new JRadioButton();
       jtbs[i].addActionListener(myListener);
-      row = new JPanel(new BorderLayout());
+      row = new JPanel(new BorderLayout(8, 0));
       row.add(jtbs[i], BorderLayout.WEST);
       if(i==0){
         row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
@@ -590,7 +830,7 @@ public class BeginningWizard{
         row.add(new JLabel(names[i]), BorderLayout.CENTER);
         jtFields[i].setEditable(false);
       }
-      subRow = new JPanel(new BorderLayout());
+      subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
       subRow.add(new JLabel("   "), BorderLayout.SOUTH);
       subRow.add(new JLabel("   "), BorderLayout.NORTH);
