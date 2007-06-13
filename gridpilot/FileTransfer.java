@@ -161,4 +161,13 @@ public interface FileTransfer {
    */
   public void abortTransfer(String id) throws ServerException, IOException;
 
+  /**
+   * Write file containing text <text> on server,
+   * or, if <text> is null or empty and <url> ends with /,
+   * create directory
+   * @param   globusUrl    URL of file or directory.
+   * @param   text    text to be written (if globusUrl is not a directory).
+   */
+  public void write(GlobusURL globusUrl, String text) throws Exception;
+
 }

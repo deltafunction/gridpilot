@@ -20,7 +20,6 @@ import javax.swing.Timer;
 import jonelo.jacksum.JacksumAPI;
 import jonelo.jacksum.algorithm.AbstractChecksum;
 
-import org.globus.ftp.exception.FTPException;
 import org.globus.util.GlobusURL;
 import org.safehaus.uuid.UUIDGenerator;
 
@@ -40,7 +39,6 @@ import gridpilot.TransferControl;
 import gridpilot.TransferInfo;
 import gridpilot.TransferStatusUpdateControl;
 import gridpilot.Util;
-import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 
 public class GPSSComputingSystem implements ComputingSystem{
 
@@ -52,7 +50,7 @@ public class GPSSComputingSystem implements ComputingSystem{
   private HashSet finalRuntimesLocal = null;
   private String user = null;
   private String remoteDir = null;
-  private GSIFTPFileTransfer gsiftpFileTransfer = null;
+  private FileTransfer fileTransfer = null;
   private Vector allowedSubjects = null;
   private long providerTimeout = -1;
   // List of urls of created RTEs in remote database.
@@ -108,22 +106,25 @@ public class GPSSComputingSystem implements ComputingSystem{
       mkRemoteDir(remoteDir);
       // Set up list of trusted subjects
       String subjects = configFile.getValue(csName, "Allowed subjects");
-      String [] subjectsArray = Util.splitUrls(subjects);
-      allowedSubjects = new Vector();
-      for(int i=0; i<subjectsArray.length; ++i){
-        if(subjectsArray[i].matches("/.*=.*/.*")){
-          // assume this is a subject
-          allowedSubjects.add(subjectsArray[i]);
-        }
-        else{
-          // assume this is a URL
-          try{
-            File tmpFile = File.createTempFile("GridPilot-", "");
-            Collections.addAll(allowedSubjects, Util.readURL(subjectsArray[i],tmpFile));
-            tmpFile.delete();
+      if(subjects!=null && !subjects.equals("")){
+        String [] subjectsArray = Util.split(subjects, "' ");
+        allowedSubjects = new Vector();
+        for(int i=0; i<subjectsArray.length; ++i){
+          subjectsArray[i] = subjectsArray[i].replaceAll("'", "").trim();
+          if(subjectsArray[i].matches("/.*=.*/.*")){
+            // assume this is a subject
+            allowedSubjects.add(subjectsArray[i]);
           }
-          catch(Exception e){
-            e.printStackTrace();
+          else{
+            // assume this is a URL
+            try{
+              File tmpFile = File.createTempFile("GridPilot-", "");
+              Collections.addAll(allowedSubjects, Util.readURL(subjectsArray[i],tmpFile));
+              tmpFile.delete();
+            }
+            catch(Exception e){
+              e.printStackTrace();
+            }
           }
         }
       }
@@ -278,25 +279,24 @@ public class GPSSComputingSystem implements ComputingSystem{
     return remoteDir+dir+"/";
   }
   
-  private void mkRemoteDir(String url) throws IOException, FTPException{
+  private void mkRemoteDir(String url) throws Exception{
     if(!url.endsWith("/")){
       throw new IOException("Directory URL: "+url+" does not end with a slash.");
     }
     GlobusURL globusUrl= new GlobusURL(url);
-    if(gsiftpFileTransfer==null){
-      //gsiftpFileTransfer = new GSIFTPFileTransfer();
-      gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
+    if(fileTransfer==null){
+      fileTransfer = GridPilot.getClassMgr().getFTPlugin(globusUrl.getProtocol());
     }
     // First, check if directory already exists.
     try{
-      gsiftpFileTransfer.list(globusUrl, null, null);
+      fileTransfer.list(globusUrl, null, null);
       return;
     }
     catch(Exception e){
     }
     // If not, create it.
     Debug.debug("Creating directory "+globusUrl.getURL(), 2);
-    gsiftpFileTransfer.write(globusUrl, "");
+    fileTransfer.write(globusUrl, "");
   }
   
   /**
@@ -310,9 +310,8 @@ public class GPSSComputingSystem implements ComputingSystem{
       throw new IOException("Directory URL: "+url+" does not end with a slash.");
     }
     GlobusURL globusUrl= new GlobusURL(url);
-    if(gsiftpFileTransfer==null){
-      //gsiftpFileTransfer = new GSIFTPFileTransfer();
-      gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
+    if(fileTransfer==null){
+      fileTransfer = GridPilot.getClassMgr().getFTPlugin(globusUrl.getProtocol());
     }
     // First, check if directory exists.
     GlobusURL [] fileURLs = null;
@@ -320,7 +319,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     String [] entryArr = null;
     String line;
     try{
-      Vector files = gsiftpFileTransfer.list(globusUrl, null, null);
+      Vector files = fileTransfer.list(globusUrl, null, null);
       fileURLs = new GlobusURL [files.size()];
       for(int i=0; i<fileURLs.length; ++i){
         line = (String) files.get(i);
@@ -334,8 +333,8 @@ public class GPSSComputingSystem implements ComputingSystem{
       return;
     }
     // If it does, delete the files then the directory.
-    gsiftpFileTransfer.deleteFiles(fileURLs);
-    gsiftpFileTransfer.deleteFile(globusUrl);
+    fileTransfer.deleteFiles(fileURLs);
+    fileTransfer.deleteFiles(new GlobusURL [] {globusUrl});
   }
   
   /**
@@ -1039,7 +1038,7 @@ public class GPSSComputingSystem implements ComputingSystem{
         }
         else if(Util.urlIsRemote(finalStdOut)){
           try{
-            gsiftpFileTransfer.getFile(new GlobusURL(finalStdOut), tmpStdout.getParentFile(),
+            fileTransfer.getFile(new GlobusURL(finalStdOut), tmpStdout.getParentFile(),
                 GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar);
           }
           catch(Exception e){
@@ -1058,7 +1057,7 @@ public class GPSSComputingSystem implements ComputingSystem{
         else if(Util.urlIsRemote(finalStdErr)){
           boolean ok = true;
           try{
-            gsiftpFileTransfer.getFile(new GlobusURL(finalStdErr), tmpStdErr.getParentFile(),
+            fileTransfer.getFile(new GlobusURL(finalStdErr), tmpStdErr.getParentFile(),
                 GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar);
           }
           catch(Exception e){
@@ -1294,6 +1293,9 @@ public class GPSSComputingSystem implements ComputingSystem{
    * allowed to run my jobs.
    */
   private boolean checkProvider(String dn){
+    if(allowedSubjects==null){
+      return true;
+    }
     dn = dn.replaceFirst("^\"(.*)\"$", "$1");
     String subject = null;
     for(Iterator it=allowedSubjects.iterator(); it.hasNext();){
@@ -1312,8 +1314,7 @@ public class GPSSComputingSystem implements ComputingSystem{
    * Sets this gridftp directory to be read/writable only by me and the
    * owner of the certificate of the given DN.
    * NOTICE: we assume that this is a GACL controlled directory.
-   * @throws IOException 
-   * @throws FTPException 
+   * @throws Exception 
    */
   private boolean setJobDirPermission(String rDir, String dn){
     File tmpFile = null;
@@ -1409,7 +1410,7 @@ public class GPSSComputingSystem implements ComputingSystem{
         urlDir = checkFiles[i].replaceFirst("(.*/)[^/]+", "$1");
         if(oldUrlDir==null || !urlDir.equals(oldUrlDir)){
           Debug.debug("Checking dir "+urlDir, 2);
-          fileVector = gsiftpFileTransfer.list(new GlobusURL(urlDir), null, null);
+          fileVector = fileTransfer.list(new GlobusURL(urlDir), null, null);
           oldUrlDir = urlDir;
         }
         if(fileVector==null || fileVector.size()<1){

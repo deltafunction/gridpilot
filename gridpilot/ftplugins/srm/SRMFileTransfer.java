@@ -1163,4 +1163,8 @@ public class SRMFileTransfer implements FileTransfer {
     //  No point in implementing this. SRM is anyway not browsable.
   }
 
+  public void write(GlobusURL globusUrl, String text) throws Exception {
+    //  No point in implementing this. SRM is anyway not browsable.
+  }
+
 }
