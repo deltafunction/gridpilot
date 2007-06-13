@@ -12,6 +12,7 @@ public class ConfirmBox extends JDialog implements ActionListener {
   private static final long serialVersionUID = 1L;
   private JButton bOk = new JButton();
   private JButton bCancel = new JButton();
+  private JDialog dialog = null;
 
   public ConfirmBox(Frame parent){
     super(parent);
@@ -20,6 +21,10 @@ public class ConfirmBox extends JDialog implements ActionListener {
 
   public int getConfirm(String title, Object text, Object[] showResultsOptions) throws Exception {
     return getConfirm(title, text, showResultsOptions, null, null, true);
+  }
+  
+  public JDialog getDialog(){
+    return dialog;
   }
   
   public int getConfirm(String title, Object text, Object[] showResultsOptions,
@@ -32,7 +37,7 @@ public class ConfirmBox extends JDialog implements ActionListener {
          showResultsOptions,
          showResultsOptions[0]);
     
-    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), title);
+    dialog = op.createDialog(JOptionPane.getRootFrame(), title);
     dialog.setResizable(isResizable);
     if(bgColor!=null){
       recolor(dialog.getContentPane(), bgColor);
