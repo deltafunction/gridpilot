@@ -326,7 +326,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
             GridBagConstraints.CENTER,
             GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
-    panelSelectPanel.add(new JLabel(dbPluginMgr.getDBDescription()),
+    panelSelectPanel.add(new JLabel(dbName+"  :  "+dbPluginMgr.getDBDescription()),
         new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0,
             GridBagConstraints.WEST,
             GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
@@ -2870,6 +2870,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             if(!GridPilot.getClassMgr().getDBPluginMgr(dbName).getDatasetID(name).equals("-1")){            
               name = Util.getName("Cannot overwrite, please give new name",
                 "new-"+name);
+              if(name==null || name.equals("")){
+                return;
+              }
             }
           }
           else if(tableName.equalsIgnoreCase("file")){
@@ -3058,7 +3061,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   public boolean insertFile(DBPluginMgr sourceMgr, String name, String datasetName,
       String fileID) throws Exception{
     if(!dbPluginMgr.isFileCatalog()){
-      throw new SQLException("Cannot create file(s) in virtual table.");
+      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+      String msg = "Cannot create file(s) in virtual table.";
+      confirmBox.getConfirm("Confirm delete", msg, new Object[] {"OK"});
+      throw new SQLException(msg);
     }
     try{
       // Check if parent dataset exists - NO, not necessary, it will be created...
@@ -3079,134 +3085,129 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   
   private boolean insertDataset(DBRecord dataset, DBPluginMgr sourceMgr,
       String name, String id) throws Exception{
+    boolean ok = false;
+    boolean success = true;
     try{
-      boolean ok = false;
-      boolean success = true;
-      try{
-        // If there are no transformations in source or target, there's no point
-        // in checking
-        if(!sourceMgr.isJobRepository() || !dbPluginMgr.isJobRepository()){
-          ok = true;
-        }
-        else{
-          // Check if referenced transformation exists     
-          String sourceTransName = sourceMgr.getDatasetTransformationName(
-              dataset.getValue(Util.getIdentifierField(sourceMgr.getDBName(),
-                  "dataset")).toString());
-          String sourceTransVersion = sourceMgr.getDatasetTransformationVersion(
-              dataset.getValue(Util.getIdentifierField(sourceMgr.getDBName(),
-                  "dataset")).toString());          
-          DBResult targetTransformations = dbPluginMgr.getTransformations();
-          Vector transVec = new Vector();
-          for(int i=0; i<targetTransformations.values.length; ++i){
-            if(targetTransformations.getValue(i, Util.getNameField(dbPluginMgr.getDBName(),
-                "transformation")).toString(
-                ).equalsIgnoreCase(sourceTransName)){
-              transVec.add(targetTransformations.getRow(i));
-            }
-          }
-          for(int i=0; i<transVec.size(); ++i){
-            if(((DBRecord) transVec.get(i)).getValue(Util.getVersionField(dbPluginMgr.getDBName(),
-                "transformation")).toString().equalsIgnoreCase(sourceTransVersion)){
-              ok = true;
-              break;
-            }
-          }
-        }
-      }
-      catch(Exception ee){
-        ee.printStackTrace();
-      }
-      // only if this is a job-only database (no file catalog) do we deny creating
-      // orphaned datasets (data provenance enforcement).
-      if(ok || dbPluginMgr.isFileCatalog()){
-        
-        ////
-        String [] targetFields = dbPluginMgr.getFieldNames("dataset");
-        String [] targetValues = new String[targetFields.length];
-        String [] sourceFields = sourceMgr.getFieldNames("dataset");
-        String [] sourceValues = new String[sourceFields.length];
-        for(int j=0; j<targetFields.length; ++j){ 
-          targetValues[j] = "";
-          //Do the mapping.
-          for(int k=0; k<sourceFields.length; ++k){
-            if(sourceFields[k].equalsIgnoreCase(targetFields[j])){
-              targetValues[j] = sourceValues[k];
-              break;
-            }
-          }
-          // see if attribute is in target dataset and set. If not, ignore.
-          if(targetValues[j]==null || targetValues[j].equals("")){
-            boolean fieldPresent = false;
-            for(int l=0; l<sourceFields.length; ++l){
-              if(targetFields[j].equalsIgnoreCase(sourceFields[l])){
-                fieldPresent = true;
-                break;
-              }
-            }
-            if(fieldPresent){
-              try{
-                if(dataset.getValue(targetFields[j])!=null){
-                  targetValues[j] = (String) dataset.getValue(targetFields[j]);
-                }
-              }
-              catch(Exception e){
-                e.printStackTrace();
-              }
-            }
-          }
-        }
-        dataset = new DBRecord(targetFields, targetValues);
-        ////
-        
-        Debug.debug("Creating dataset: " + Util.arrayToString(dataset.fields, ":") + " ---> " +
-            Util.arrayToString(dataset.values, ":"), 3);
-        try{
-          // if name is specified, use it
-          if(name!=null && !name.equals("")){
-            Debug.debug("Setting name "+name, 3);
-            dataset.setValue(Util.getNameField(dbPluginMgr.getDBName(), "dataset"),
-                name);
-          }
-        }
-        catch(Exception e){
-          Debug.debug("WARNING: Could not set dataset name "+name, 3);
-          e.printStackTrace();
-        }
-        try{
-          // If id is specified, use it - except when copying from a
-          // job-only database - in which case the id will be a useless
-          // autoincremented number or if source and target db are the same
-          // - in which case we clear the id
-          if(id!=null && !id.equals("")){
-            if(sourceMgr.getDBName().equals(dbPluginMgr.getDBName())){
-              Debug.debug("Clearing id", 3);
-              dataset.setValue(Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset"),
-                  "''");
-            }
-            else if(sourceMgr.isFileCatalog()){
-              Debug.debug("Setting id "+id, 3);
-              dataset.setValue(Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset"),
-                  id);
-            }
-          }
-        }
-        catch(Exception e){
-          Debug.debug("WARNING: Could not set dataset id "+id, 3);
-          e.printStackTrace();
-        }
-        success = dbPluginMgr.createDataset("dataset", dataset.fields, dataset.values);
-        if(!success){
-          throw(new Exception("ERROR: "+dbPluginMgr.getError()));
-        }
+      // If there are no transformations in source or target, there's no point
+      // in checking
+      if(!sourceMgr.isJobRepository() || !dbPluginMgr.isJobRepository()){
+        ok = true;
       }
       else{
-        String error = "ERROR: transformation for dataset does not exist.";
-        throw(new Exception(error));
+        // Check if referenced transformation exists     
+        String sourceTransName = sourceMgr.getDatasetTransformationName(
+            dataset.getValue(Util.getIdentifierField(sourceMgr.getDBName(),
+                "dataset")).toString());
+        String sourceTransVersion = sourceMgr.getDatasetTransformationVersion(
+            dataset.getValue(Util.getIdentifierField(sourceMgr.getDBName(),
+                "dataset")).toString());          
+        DBResult targetTransformations = dbPluginMgr.getTransformations();
+        Vector transVec = new Vector();
+        for(int i=0; i<targetTransformations.values.length; ++i){
+          if(targetTransformations.getValue(i, Util.getNameField(dbPluginMgr.getDBName(),
+              "transformation")).toString(
+              ).equalsIgnoreCase(sourceTransName)){
+            transVec.add(targetTransformations.getRow(i));
+          }
+        }
+        for(int i=0; i<transVec.size(); ++i){
+          if(((DBRecord) transVec.get(i)).getValue(Util.getVersionField(dbPluginMgr.getDBName(),
+              "transformation")).toString().equalsIgnoreCase(sourceTransVersion)){
+            ok = true;
+            break;
+          }
+        }
       }
     }
-    catch(Exception e){
-      throw e;
+    catch(Exception ee){
+      ee.printStackTrace();
+    }
+    // only if this is a job-only database (no file catalog) do we deny creating
+    // orphaned datasets (data provenance enforcement).
+    if(ok || dbPluginMgr.isFileCatalog()){
+      
+      ////
+      String [] targetFields = dbPluginMgr.getFieldNames("dataset");
+      String [] targetValues = new String[targetFields.length];
+      String [] sourceFields = sourceMgr.getFieldNames("dataset");
+      String [] sourceValues = new String[sourceFields.length];
+      for(int j=0; j<targetFields.length; ++j){ 
+        targetValues[j] = "";
+        //Do the mapping.
+        for(int k=0; k<sourceFields.length; ++k){
+          if(sourceFields[k].equalsIgnoreCase(targetFields[j])){
+            targetValues[j] = sourceValues[k];
+            break;
+          }
+        }
+        // see if attribute is in target dataset and set. If not, ignore.
+        if(targetValues[j]==null || targetValues[j].equals("")){
+          boolean fieldPresent = false;
+          for(int l=0; l<sourceFields.length; ++l){
+            if(targetFields[j].equalsIgnoreCase(sourceFields[l])){
+              fieldPresent = true;
+              break;
+            }
+          }
+          if(fieldPresent){
+            try{
+              if(dataset.getValue(targetFields[j])!=null){
+                targetValues[j] = (String) dataset.getValue(targetFields[j]);
+              }
+            }
+            catch(Exception e){
+              e.printStackTrace();
+            }
+          }
+        }
+      }
+      dataset = new DBRecord(targetFields, targetValues);
+      ////
+      
+      Debug.debug("Creating dataset: " + Util.arrayToString(dataset.fields, ":") + " ---> " +
+          Util.arrayToString(dataset.values, ":"), 3);
+      try{
+        // if name is specified, use it
+        if(name!=null && !name.equals("")){
+          Debug.debug("Setting name "+name, 3);
+          dataset.setValue(Util.getNameField(dbPluginMgr.getDBName(), "dataset"),
+              name);
+        }
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: Could not set dataset name "+name, 3);
+        e.printStackTrace();
+      }
+      try{
+        // If id is specified, use it - except when copying from a
+        // job-only database - in which case the id will be a useless
+        // autoincremented number or if source and target db are the same
+        // - in which case we clear the id
+        if(id!=null && !id.equals("")){
+          if(sourceMgr.getDBName().equals(dbPluginMgr.getDBName())){
+            Debug.debug("Clearing id", 3);
+            dataset.setValue(Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset"),
+                "''");
+          }
+          else if(sourceMgr.isFileCatalog()){
+            Debug.debug("Setting id "+id, 3);
+            dataset.setValue(Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset"),
+                id);
+          }
+        }
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: Could not set dataset id "+id, 3);
+        e.printStackTrace();
+      }
+      success = dbPluginMgr.createDataset("dataset", dataset.fields, dataset.values);
+      if(!success){
+        throw(new Exception("ERROR: "+dbPluginMgr.getError()));
+      }
+    }
+    else{
+      String error = "ERROR: transformation for dataset does not exist.";
+      throw(new Exception(error));
     }
     return true;
   }
