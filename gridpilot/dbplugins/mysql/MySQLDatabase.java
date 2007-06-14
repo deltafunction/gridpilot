@@ -6,6 +6,8 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.TimeZone;
 import java.util.Vector;
 import java.util.regex.Matcher;
@@ -747,10 +749,25 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(">>> sql string is: "+req, 3);
     
     try{
-      String table = Util.getTableName(req);
-      String[] fields = null;
+      String [] tables = Util.getTableNames(req);
+      String [] fields = null;
       if(withStar){
-        fields = getFieldNames(table);
+        String [] tmpFields = null;
+        Vector fieldsSet = new Vector();
+        for(int i=0; i<tables.length; ++i){
+          tmpFields = getFieldNames(tables[i]);
+          for(int j=0; j<tmpFields.length; ++j){
+            if(!fieldsSet.contains(tmpFields[j])){
+              fieldsSet.add(tmpFields[j]);
+            }
+          }
+        }
+        fields = new String [fieldsSet.size()];
+        int count = 0;
+        for(Iterator it=fieldsSet.iterator(); it.hasNext();){
+          fields[count] = (String) it.next();
+          ++count;
+        }
         Debug.debug("found fields: "+Util.arrayToString(fields), 3);
       }
       else{
@@ -2477,7 +2494,6 @@ public class MySQLDatabase extends DBCache implements Database {
     url + "', '" + fileID + "'); ";
     Debug.debug(sql, 2);
     boolean execok1 = true;
-    Connection conn = null;
     try{
       executeUpdate(sql);
     }
@@ -2506,10 +2522,10 @@ public class MySQLDatabase extends DBCache implements Database {
     boolean execok3 = true;
     try{
       executeUpdate(sql);
-      conn.close();
     }
     catch(Exception e){
       execok3 = false;
+      e.printStackTrace();
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
     }

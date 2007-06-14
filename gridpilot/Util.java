@@ -1934,27 +1934,27 @@ public class Util{
     return sb.toString();
   }
 
-  public static String getTableName(String sql){
+  public static String [] getTableNames(String sql){
     String table = null;
-    table = sql.replaceFirst("^(?i)(?s)SELECT .* FROM (\\S+)$", "$1");
+    table = sql.replaceFirst("^(?i)(?s)SELECT .* FROM (.+)$", "$1");
     if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
-      return table;
+      return split(table, ",");
     }
-    table = sql.replaceFirst("^(?i)(?s)SELECT .* FROM (\\S+) WHERE .*$", "$1");
+    table = sql.replaceFirst("^(?i)(?s)SELECT .* FROM (.+) WHERE .*$", "$1");
     if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
-      return table;
+      return split(table, ",");
     }
     table = sql.replaceFirst("^(?i)(?s)INSERT INTO (\\S+) .*$", "$1");
     if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
-      return table;
+      return new String []{table};
     }
     table = sql.replaceFirst("^(?i)(?s)UPDATE (\\S+) .*$", "$1");
     if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
-      return table;
+      return new String []{table};
     }
     table = sql.replaceFirst("^(?i)(?s)DELETE FROM (\\S+) .*$", "$1");
     if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
-      return table;
+      return new String []{table};
     }
     return null;
   }

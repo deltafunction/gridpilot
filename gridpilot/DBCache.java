@@ -92,17 +92,37 @@ public class DBCache{
     int execok = -1;
     Connection conn = null;
     if(useCaching){
-      String table = Util.getTableName(sql);
+      String [] tables = Util.getTableNames(sql);
+      if(tables==null){
+        Debug.debug("WARNING: could not get table name for "+sql, 1);
+        return execok;
+      }
       String thisSql = null;
-      String thisTableName = null;
+      String [] theseTableNames = null;
       HashSet deleteKeys = new HashSet();
       for(Iterator it=queryResults.keySet().iterator(); it.hasNext();){
         thisSql = (String) it.next();
-        thisTableName = Util.getTableName(thisSql);
-        Debug.debug("Checking cache: "+thisTableName+"<->"+table+":", 2);
-        if(thisTableName.equalsIgnoreCase(table)){
-          Debug.debug("Removing from cache: "+thisSql, 2);
-          deleteKeys.add(thisSql);
+        theseTableNames = Util.getTableNames(thisSql);
+        if(theseTableNames==null){
+          Debug.debug("WARNING: could not get table name for "+thisSql, 1);
+          continue;
+        }
+        for(int i=0; i<tables.length; ++i){
+          if(tables[i]==null || tables[i].equals("")){
+            Debug.debug("WARNING: could not get table name for "+sql, 1);
+            continue;
+          }
+          for(int j=0; j<theseTableNames.length; ++j){
+            Debug.debug("Checking cache: "+theseTableNames[j]+"<->"+tables[i]+":", 2);
+            if(theseTableNames[j]==null || theseTableNames[j].equals("")){
+              Debug.debug("WARNING: could not get table name for "+thisSql, 1);
+              continue;
+            }
+            if(theseTableNames[j].equalsIgnoreCase(tables[i])){
+              Debug.debug("Removing from cache: "+thisSql, 2);
+              deleteKeys.add(thisSql);
+            }
+          }
         }
       }
       Debug.debug("Clearing cache entries", 2);
@@ -116,15 +136,16 @@ public class DBCache{
       conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       execok = stmt.executeUpdate(sql);
-      conn.close();
     }
     catch(SQLException e){
+      throw e;
+    }
+    finally{
       try{
         conn.close();
       }
       catch(Exception ee){
       }
-      throw e;
     }
     return execok;
   }

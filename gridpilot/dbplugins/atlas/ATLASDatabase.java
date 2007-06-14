@@ -2750,14 +2750,24 @@ public class ATLASDatabase extends DBCache implements Database{
       return;
     }
     String thisSql = null;
-    String thisTableName = null;
+    String [] theseTableNames = null;
     HashSet deleteKeys = new HashSet();
     for(Iterator it=queryResults.keySet().iterator(); it.hasNext();){
       thisSql = (String) it.next();
-      thisTableName = Util.getTableName(thisSql);
-      Debug.debug("Checking cache: "+thisTableName+"<->"+table, 2);
-      if(thisTableName.equalsIgnoreCase(table)){
-        deleteKeys.add(thisSql);
+      theseTableNames = Util.getTableNames(thisSql);
+      if(theseTableNames==null){
+        Debug.debug("WARNING: could not get table name for "+thisSql, 1);
+        continue;
+      }
+      for(int i=0; i<theseTableNames.length; ++i){
+        if(theseTableNames[i]==null || theseTableNames[i].equals("")){
+          Debug.debug("WARNING: could not get table name for "+thisSql, 1);
+          continue;
+        }
+        Debug.debug("Checking cache: "+theseTableNames[i]+"<->"+table, 2);
+        if(theseTableNames[i].equalsIgnoreCase(table)){
+          deleteKeys.add(thisSql);
+        }
       }
     }
     Debug.debug("Clearing cache entries", 2);
