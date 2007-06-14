@@ -19,6 +19,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLDecoder;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.ListIterator;
 import java.util.Vector;
@@ -79,8 +80,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private JComponent dsField = new JTextField(TEXTFIELDWIDTH);
   // Keep track of which files we are listing.
   private Vector listedUrls = null;
-  private boolean allowRegister = false;
-
+  private boolean allowRegister = true;
+  private HashSet excludeDBs = new HashSet();
   
   public static int HISTORY_SIZE = 15;
   private static int MAX_FILE_EDIT_BYTES = 500000;
@@ -339,10 +340,17 @@ public class BrowserPanel extends JDialog implements ActionListener{
     bSave.setEnabled(false);
     
     for(int i=0; i<GridPilot.dbNames.length; ++i){
+      if(!GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[i]).isFileCatalog()){
+        excludeDBs.add(Integer.toString(i));
+        continue;
+      }
       miRegister.add(new JMenuItem(GridPilot.dbNames[i]));
     }
     JMenuItem [] jmiRegisterAll = new JMenuItem[GridPilot.dbNames.length];
     for(int i=0; i<GridPilot.dbNames.length; ++i){
+      if(excludeDBs.contains(Integer.toString(i))){
+        continue;
+      }
       jmiRegisterAll[i] = new JMenuItem(GridPilot.dbNames[i]);
       jmiRegisterAll[i].addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent ev){
@@ -526,14 +534,19 @@ public class BrowserPanel extends JDialog implements ActionListener{
         else if(e.getEventType()==HyperlinkEvent.EventType.ENTERED){
           statusBar.setLabel(e.getURL().toExternalForm());
           if(bRegister.isEnabled() && !e.getURL().toExternalForm().endsWith("/")){
+            int ii = 0;
             for(int i=0; i<GridPilot.dbNames.length; ++i){
-              Debug.debug("addActionListener "+i, 3);
-              miRegister.getItem(i).addActionListener(new ActionListener(){
+              if(excludeDBs.contains(Integer.toString(i))){
+                continue;
+              }
+              Debug.debug("addActionListener "+Util.arrayToString(excludeDBs.toArray())+":"+i, 3);
+              miRegister.getItem(ii).addActionListener(new ActionListener(){
                 public void actionPerformed(ActionEvent ev){
                   Debug.debug("registerFile "+((JMenuItem) ev.getSource()).getText(), 3);
                   registerFile(e.getURL().toExternalForm(), ((JMenuItem) ev.getSource()).getText());
                 }
               });
+              ++ii;
             }
             popupMenu.add(miRegister);
           }
@@ -555,12 +568,17 @@ public class BrowserPanel extends JDialog implements ActionListener{
         else if(e.getEventType()==HyperlinkEvent.EventType.EXITED){
           statusBar.setLabel(" ");
           try{
+            int ii = 0;
             for(int i=0; i<GridPilot.dbNames.length; ++i){
-              Debug.debug("addActionListener "+i, 3);
-              ActionListener [] acls = miRegister.getItem(i).getActionListeners();
-              for(int j=0; j<acls.length; ++j){
-                miRegister.getItem(i).removeActionListener(acls[j]);
+              if(excludeDBs.contains(Integer.toString(i))){
+                continue;
               }
+              Debug.debug("addActionListener "+i, 3);
+              ActionListener [] acls = miRegister.getItem(ii).getActionListeners();
+              for(int j=0; j<acls.length; ++j){
+                miRegister.getItem(ii).removeActionListener(acls[j]);
+              }
+              ++ii;
             }
             ActionListener [] acls = miDownload.getActionListeners();
             for(int j=0; j<acls.length; ++j){
