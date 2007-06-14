@@ -107,8 +107,8 @@ public class NGComputingSystem implements ComputingSystem{
 
     logFile = GridPilot.getClassMgr().getLogFile();  
     
-    defaultUser = configFile.getValue("GridPilot", "user");
-    String useInfoSys = configFile.getValue(csName, "use information system");
+    defaultUser = configFile.getValue("GridPilot", "Default user");
+    String useInfoSys = configFile.getValue(csName, "Use information system");
     useInfoSystem = useInfoSys.equalsIgnoreCase("true") || useInfoSys.equalsIgnoreCase("yes");
     clusters = configFile.getValues(csName, "clusters");
     giises = configFile.getValues(csName, "giises");

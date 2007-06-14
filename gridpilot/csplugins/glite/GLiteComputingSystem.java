@@ -67,8 +67,8 @@ public class GLiteComputingSystem implements ComputingSystem{
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
     configFile = GridPilot.getClassMgr().getConfigFile();
-    defaultUser = configFile.getValue("GridPilot", "user");
-    unparsedWorkingDir= configFile.getValue(csName, "working directory");
+    defaultUser = configFile.getValue("GridPilot", "Default user");
+    unparsedWorkingDir= configFile.getValue(csName, "Working directory");
     if(unparsedWorkingDir==null || unparsedWorkingDir.equals("")){
       unparsedWorkingDir = "~";
     }
