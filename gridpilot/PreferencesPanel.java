@@ -144,7 +144,7 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
     if(configNode.getDescription()!=null && configNode.getDescription().length()>0){
       JEditorPane ep = new JEditorPane();
       ep.setContentType("text/html");
-      ep.setText("<font size=-1>"+configNode.getDescription()+"</font>");
+      ep.setText("<html><font size=-1>"+configNode.getDescription()+"</font></html>");
       ep.setEditable(false);
       configPanel.add(ep, BorderLayout.NORTH);
       configPanel.add(createConfigPanel(configNode), BorderLayout.CENTER);
@@ -232,7 +232,7 @@ public class PreferencesPanel extends JPanel implements TreeSelectionListener, A
       jpRow.add(jlAttribute, BorderLayout.WEST);
       jpRow.add(jtcValue, BorderLayout.CENTER);
       if(node.getDescription()!=null){
-        jpRow.setToolTipText(node.getDescription().replaceAll("<br>", ""));
+        jpRow.setToolTipText("<html>"+node.getDescription()+"</html>"/*.replaceAll("<br>", "")*/);
       }
       configPanel.add(jpRow, new GridBagConstraints(0, row, 1, 1, 1.0, 0.0,
           GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,

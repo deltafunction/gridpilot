@@ -36,7 +36,7 @@ public class ConfigFile{
    * List of items that will not be included in the GUI editor.
    */
   private String [] excludeItems = {"Systems", "*field*", "class", "driver",
-      "parameters", "randomized", "* name", "* identifier", "* reference"};
+      "parameters", "randomized", "* name", "* identifier", "* reference", "default user"};
   /**
    * Tree of ConfigNodes
    */
@@ -186,10 +186,12 @@ public class ConfigFile{
           if(line.indexOf('#')>-1 && line.indexOf('#')==line.indexOf('\\')+1){
             line = line.substring(line.indexOf('#')+1);
             if(addBelowItemDescription){
-              belowItemDescription += "<br>\n"+line;
+              belowItemDescription +=
+                (belowItemDescription.equals("")?"":"<br>\n")+line;
             }
             else{
-              aboveItemDescription += "<br>\n"+line;
+              aboveItemDescription +=
+                (aboveItemDescription.equals("")?"":"<br>\n")+line;
             }
           }
           isIndex = line.indexOf('=');
