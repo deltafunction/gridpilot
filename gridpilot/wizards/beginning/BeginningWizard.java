@@ -6,6 +6,7 @@ import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
@@ -237,7 +238,10 @@ public class BeginningWizard{
               GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
               new Insets(5, 5, 5, 5), 0, 0)) ;
     }
-    jPanel.add(new JLabel("The following directories will be created if they don't already exist: "),
+    String msg = "GridPilot needs a few directories to store information. Below you see the default paths.\n" +
+    "If you choose to click 'skip', the directories will not be created and GridPilot will not function\n" +
+    "properly. If the directories already exist you can safely click 'skip'.";
+    jPanel.add(new JLabel("<html>"+msg.replaceAll("\n", "<br>")+"</html>" ),
         new GridBagConstraints(0, (firstRun?1:0), 2, 2, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
@@ -251,6 +255,7 @@ public class BeginningWizard{
           names[i], jtFields[i]), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
+      subRow.add(new JLabel("   "), BorderLayout.EAST);
       subRow.add(new JLabel("   "), BorderLayout.SOUTH);
       subRow.add(new JLabel("   "), BorderLayout.NORTH);
       row.add(subRow, BorderLayout.EAST);
@@ -328,10 +333,10 @@ public class BeginningWizard{
   
   private int checkCertificate(boolean firstRun) throws Exception{
     String confirmString =
-      "To access grid resources you need a valid X509 certificate.\n\n" +
+      "To access grid resources you need a valid grid certificate.\n\n" +
       "If you don't have one, please get one from your grid certificate authority (and run this wizard again).\n" +
       "GridPilot can still be started, but you can only run jobs and access files on your local machine or\n" +
-      "machines on which you have an ssh account.\n\n" +
+      "machines to which you ssh access.\n\n" +
       "If you have a certificate, please indicate its path as well as the path of the associated key and the\n" +
       "directory where you want to store temporary credentials (proxies).\n\n" +
       "Optionally, you can also specify a directory with the certificates of the certificate authories (CAs)\n" +
@@ -369,6 +374,7 @@ public class BeginningWizard{
           names[i], jtFields[i]), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
+      subRow.add(new JLabel("   "), BorderLayout.EAST);
       subRow.add(new JLabel("   "), BorderLayout.SOUTH);
       subRow.add(new JLabel("   "), BorderLayout.NORTH);
       row.add(subRow, BorderLayout.EAST);
@@ -456,8 +462,8 @@ public class BeginningWizard{
       "GridPilot.\n\n" +
       "Your local database is already such a file catalog and if you have write access to a file catalog,\n" +
       "you can use this too.\n\n" +
-      "If you choose to use a remote database, you must specify the name of the server hosting it. Please\n" +
-      "notice that the database must be a GridPilot-enabled MySQL database.\n\n" +
+      "If you choose to use a remote file catalog, you must specify the name of the server hosting it.\n" +
+      "Please notice that the database must be a GridPilot-enabled MySQL database.\n\n" +
       "If you choose to use the default remote database, please notice that anything you write there is world\n" +
       "readable and that the service is provided by gridpilot.org with absolutely no guarantee that data will\n" +
       "not be deleted at any time.\n\n" +
@@ -498,6 +504,7 @@ public class BeginningWizard{
       }
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
+      subRow.add(new JLabel("   "), BorderLayout.EAST);
       subRow.add(new JLabel("   "), BorderLayout.SOUTH);
       subRow.add(new JLabel("   "), BorderLayout.NORTH);
       row.add(subRow, BorderLayout.EAST);
@@ -523,15 +530,16 @@ public class BeginningWizard{
     String atlasString = "\n" +
     "When looking up files, in principle all ATLAS file catalogs may be queried. In order to always give\n" +
     "preference to one catalog, you can specify a \"home catalog site\". This should be one of the ATLAS\n" +
-    "site acronyms from the file TiersOfATLAS; e.g. NDGFT1DISK, CSCS, FZKDISK, LYONDISK, CERNCAF or CERNPROD.\n" +
+    "site acronyms from the file TiersOfATLAS; e.g. NDGFT1DISK, CSCS, FZKDISK, LYONDISK, CERNCAF\n" +
+    "or CERNPROD.\n\n" +
     "In order to be able to write ATLAS file catalog entries, the \"home catalog site\" must be specified\n" +
-    "<i>and</i> a \"home catalog site MySQL database\" must be given. This must be a full MySQL URL and you must have\n" +
-    "write permission there, either via a user name and password given in the URL, like e.g.\n" +
-    "mysql://dq2user:dqpwd@grid00.unige.ch:3306/localreplicas, or via your certificate,\n" +
-    "in which case you should give no user name or password in the URL, e.g.\n" +
-    "mysql://grid00.unige.ch:3306/localreplicas.\n\n" +
-    "If you don't understand the above or don't have write access to a valid MySQL database, you can safely\n" +
-    "leave the two fields empty. Then you will have only read access.";
+    "<i>and</i> a \"home catalog site MySQL database\" must be given. This must be a full MySQL URL and\n" +
+    "you must have write permission there, either via a user name and password given in the URL, like\n" +
+    "e.g. mysql://dq2user:dqpwd@grid00.unige.ch:3306/localreplicas, or via your certificate, in which\n" +
+    "case you should give no user name or password in the URL,\n" +
+    "e.g. mysql://grid00.unige.ch:3306/localreplicas.\n\n" +
+    "If you don't understand the above or don't have write access to a valid MySQL database, you can\n" +
+    "safely leave the two fields empty. Then you will have only read access.";
     atlasDetails.add(new JLabel("<html>"+atlasString.replaceAll("\n", "<br>")+"</html>"),
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -558,13 +566,19 @@ public class BeginningWizard{
     cbAtlas.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         try{
+          confirmBox.getDialog().getContentPane().setMaximumSize(new Dimension(
+              Toolkit.getDefaultToolkit().getScreenSize().width,
+              Toolkit.getDefaultToolkit().getScreenSize().height-200));
+          Dimension currentSize = confirmBox.getDialog().getSize();
           if(cbAtlas.isSelected()){
             atlasDetails.setVisible(true);
+            confirmBox.getDialog().setSize(currentSize.width+8, currentSize.height+200);
           }
           else{
             atlasDetails.setVisible(false);
+            confirmBox.getDialog().setSize(currentSize.width+8, currentSize.height-200);
           }
-          confirmBox.getDialog().pack();
+          //confirmBox.getDialog().pack();
         }
         catch(Exception ex){
           Debug.debug("Could not show details", 2);
@@ -849,13 +863,19 @@ public class BeginningWizard{
       jcbs[i].addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           try{
+            confirmBox.getDialog().getContentPane().setMaximumSize(new Dimension(
+                Toolkit.getDefaultToolkit().getScreenSize().width,
+                Toolkit.getDefaultToolkit().getScreenSize().height-200));
+            Dimension currentSize = confirmBox.getDialog().getSize();
             if(((JCheckBox) e.getSource()).isSelected()){
               csPanels[((JCheckBox) e.getSource()).getMnemonic()].setVisible(true);
+              confirmBox.getDialog().setSize(currentSize.width+8, currentSize.height+100);
             }
             else{
               csPanels[((JCheckBox) e.getSource()).getMnemonic()].setVisible(false);
+              confirmBox.getDialog().setSize(currentSize.width+8, currentSize.height-100);
             }
-            confirmBox.getDialog().pack();
+            //confirmBox.getDialog().pack();
           }
           catch(Exception ex){
             Debug.debug("Could not show details", 2);
@@ -970,6 +990,7 @@ public class BeginningWizard{
       }
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
+      subRow.add(new JLabel("   "), BorderLayout.EAST);
       subRow.add(new JLabel("   "), BorderLayout.SOUTH);
       subRow.add(new JLabel("   "), BorderLayout.NORTH);
       row.add(subRow, BorderLayout.EAST);
@@ -1098,9 +1119,9 @@ public class BeginningWizard{
   private int setGridHomeDir(boolean firstRun) throws Exception{
     String confirmString =
       "When running jobs on a grid it is useful to have the jobs upload output files to a directory on a server\n" +
-      "that's always on.\n\n" +
+      "that's always on-line.\n\n" +
       "For this to be possible GridPilot needs to know a gridftp or https URL where you have read/write permission\n" +
-      "with the X509 certificate you specified previously.\n\n" +
+      "with the grid certificate you specified previously.\n\n" +
       "If you don't know any such URL or you don't understand the above, you may use the default grid home URL\n" +
       "given below. But please notice that this is but a temporary solution and that the files on this location may\n" +
       "be read, overwritten or deleted at any time.\n\n"+
@@ -1141,6 +1162,7 @@ public class BeginningWizard{
       }
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
+      subRow.add(new JLabel("   "), BorderLayout.EAST);
       subRow.add(new JLabel("   "), BorderLayout.SOUTH);
       subRow.add(new JLabel("   "), BorderLayout.NORTH);
       row.add(subRow, BorderLayout.EAST);
