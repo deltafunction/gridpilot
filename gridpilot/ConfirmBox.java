@@ -29,8 +29,24 @@ public class ConfirmBox extends JDialog implements ActionListener {
   
   public int getConfirm(String title, Object text, Object[] showResultsOptions,
       Icon icon, Color bgColor, boolean isResizable) throws Exception {
+    
+    JComponent area = null;
+    Object pane = null;
+    boolean plainText = false;
+    
+    try{
+      area = (JComponent) text;
+      pane = new JScrollPane(area);
+    }
+    catch(ClassCastException e){
+      plainText = true;
+      pane = text;
+    }
+    
+    //pane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+    
     JOptionPane op = new JOptionPane(
-         text,
+         pane,
          JOptionPane.QUESTION_MESSAGE,
          JOptionPane.YES_NO_CANCEL_OPTION,
          icon,
@@ -42,6 +58,12 @@ public class ConfirmBox extends JDialog implements ActionListener {
     if(bgColor!=null){
       recolor(dialog.getContentPane(), bgColor);
     }
+    
+    if(!plainText){
+      dialog.getContentPane().setMaximumSize(new Dimension(area.getPreferredSize().width+20,
+          Toolkit.getDefaultToolkit().getScreenSize().height-200));
+    }
+    
     dialog.pack();
     dialog.setVisible(true);
     dialog.dispose();
