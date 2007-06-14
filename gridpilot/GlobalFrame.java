@@ -15,6 +15,7 @@ import gridpilot.GridPilot;
 import gridpilot.ListPanel;
 import gridpilot.IconProxy;
 import gridpilot.wizards.beginning.BeginningWizard;
+import gridpilot.wizards.publish_software.PublishSoftwareWizard;
 import gridpilot.wizards.run_one_job.RunOneJobWizard;
 
 /**
@@ -570,6 +571,13 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuHelp.add(menuHelpRunOneJob);
+    JMenuItem menuHelpPublishSoftware = new JMenuItem("Wizard: Make software available on a grid");
+    menuHelpPublishSoftware.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        new PublishSoftwareWizard();
+      }
+    });
+    menuHelp.add(menuHelpPublishSoftware);
     
     menuBar.add(menuFile);
     menuBar.add(menuEdit);
