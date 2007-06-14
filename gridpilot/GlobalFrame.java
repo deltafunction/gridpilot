@@ -406,119 +406,109 @@ public class GlobalFrame extends GPFrame{
     
     menuView.addSeparator();
     
-    JMenu miNewRuntimeEnvironmentTab = new JMenu("runtimeEnvironment");
-    JMenuItem [] miNewRuntimeEnvironmentTabs = new JMenuItem[GridPilot.dbNames.length];
-    menuView.add(miNewRuntimeEnvironmentTab);
     for(i=0; i<GridPilot.dbNames.length; ++i){
+      
+      final JMenu mDB = new JMenu(GridPilot.dbNames[i]);
+      
       // Check if there is a runtimeEnvironment table in this database
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.dbNames[i]).getFieldNames("runtimeEnvironment")==null)){
-          continue;
+            GridPilot.dbNames[i]).getFieldNames("runtimeEnvironment")!=null)){
+          JMenuItem miNewTab = new JMenuItem("runtimeEnvironment");
+          miNewTab.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent e){
+              try{
+                addPanel(new DBPanel(mDB.getText(), "runtimeEnvironment"), "runtime environments");          
+              }
+              catch(Exception ex){
+                Debug.debug("Could not add panel ", 1);
+                ex.printStackTrace();
+              }
+              selectedPanel = tabbedPane.getSelectedIndex();
+            }
+          });
+          mDB.add(miNewTab);
         }
       }
       catch(Exception e){
-        continue;
       }
-      miNewRuntimeEnvironmentTabs[i] = new JMenuItem(GridPilot.dbNames[i]);
-      miNewRuntimeEnvironmentTabs[i].addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          try{
-            addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(), "runtimeEnvironment"), "runtime environments");          
-          }
-          catch(Exception ex){
-            Debug.debug("Could not add panel ", 1);
-            ex.printStackTrace();
-          }
-          selectedPanel = tabbedPane.getSelectedIndex();
-        }
-      });
-      miNewRuntimeEnvironmentTab.add(miNewRuntimeEnvironmentTabs[i]);
-    }
 
-    JMenu miNewTransformationTab = new JMenu("transformation");
-    JMenuItem [] miNewTransformationTabTabs = new JMenuItem[GridPilot.dbNames.length];
-    menuView.add(miNewTransformationTab);
-    for(i=0; i<GridPilot.dbNames.length; ++i){
       // Check if there is a transformation table in this database
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.dbNames[i]).getFieldNames("transformation")==null)){
-          continue;
+            GridPilot.dbNames[i]).getFieldNames("transformation")!=null)){
+          JMenuItem miNewTab = new JMenuItem("transformation");
+          miNewTab.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent e){
+              try{
+                addPanel(new DBPanel(mDB.getText(), "transformation"), "transformations");          
+              }
+              catch(Exception ex){
+                Debug.debug("Could not add panel ", 1);
+                ex.printStackTrace();
+              }
+              selectedPanel = tabbedPane.getSelectedIndex();
+            }
+          });
+          mDB.add(miNewTab);
         }
       }
       catch(Exception e){
-        continue;
       }
-      miNewTransformationTabTabs[i] = new JMenuItem(GridPilot.dbNames[i]);
-      miNewTransformationTabTabs[i].addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          try{
-            addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(), "transformation"), "transformations");          
-          }
-          catch(Exception ex){
-            Debug.debug("Could not add panel ", 1);
-            ex.printStackTrace();
-          }
-          selectedPanel = tabbedPane.getSelectedIndex();
+      
+      // Check if there is a dataset table in this database
+      try{
+        Debug.debug("Checking for dataset in "+GridPilot.dbNames[i], 2);
+        if((GridPilot.getClassMgr().getDBPluginMgr(
+            GridPilot.dbNames[i]).getFieldNames("dataset")!=null)){
+          Debug.debug("---> ok, adding", 2);
+          JMenuItem miNewTab = new JMenuItem("dataset");
+          miNewTab.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent e){
+              try{
+                addPanel(new DBPanel(mDB.getText(), "dataset"), "datasets");          
+              }
+              catch(Exception ex){
+                Debug.debug("Could not add panel ", 1);
+                ex.printStackTrace();
+              }
+              selectedPanel = tabbedPane.getSelectedIndex();
+            }
+          });
+          mDB.add(miNewTab);
         }
-      });
-      miNewTransformationTab.add(miNewTransformationTabTabs[i]);
-    }
-
-    JMenu miNewTaskTab = new JMenu("dataset");
-    JMenuItem [] miNewTaskTabs = new JMenuItem[GridPilot.dbNames.length];
-    menuView.add(miNewTaskTab);
-    for(i=0; i<GridPilot.dbNames.length; ++i){
-      miNewTaskTabs[i] = new JMenuItem(GridPilot.dbNames[i]);
-      miNewTaskTabs[i].addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          try{
-            addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(), "dataset"), "datasets");          
-          }
-          catch(Exception ex){
-            Debug.debug("Could not add panel ", 1);
-            ex.printStackTrace();
-          }
-          selectedPanel = tabbedPane.getSelectedIndex();
-        }
-      });
-      miNewTaskTab.add(miNewTaskTabs[i]);
-    }
-    
-    JMenu miNewJobDefTab = new JMenu("jobDefinition");
-    JMenuItem [] miNewJobDefTabs = new JMenuItem[GridPilot.dbNames.length];
-    menuView.add(miNewJobDefTab);
-    
-    for(i=0; i<GridPilot.dbNames.length; ++i){
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+      
       // Check if there is a jobDefinition table in this database
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.dbNames[i]).getFieldNames("jobDefinition")==null)){
-          continue;
+            GridPilot.dbNames[i]).getFieldNames("jobDefinition")!=null)){
+          JMenuItem miNewTab = new JMenuItem("jobDefinition");
+          miNewTab.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent e){
+              try{
+                addPanel(new DBPanel(mDB.getText(), "jobDefinition"), "jobDefinitions");          
+              }
+              catch(Exception ex){
+                Debug.debug("Could not add panel ", 1);
+                ex.printStackTrace();
+              }
+              selectedPanel = tabbedPane.getSelectedIndex();
+            }
+          });
+          mDB.add(miNewTab);
         }
       }
       catch(Exception e){
-        continue;
       }
-      miNewJobDefTabs[i] = new JMenuItem(GridPilot.dbNames[i]);
-      miNewJobDefTabs[i].addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          try{
-            addPanel(new DBPanel(
-                ((JMenuItem)e.getSource()).getText(), "jobDefinition"), "job definitions");          
-          }
-          catch(Exception ex){
-            Debug.debug("Could not add panel ", 1);
-            ex.printStackTrace();
-          }
-          selectedPanel = tabbedPane.getSelectedIndex();
-        }
-      });
-      miNewJobDefTab.add(miNewJobDefTabs[i]);
+      
+      if(mDB.getMenuComponentCount()>0){
+        menuView.add(mDB);
+      }
+
     }
     
     cbMonitor.addActionListener(new ActionListener(){
