@@ -133,8 +133,8 @@ public class BeginningWizard{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String confirmString = "Welcome!\n\n" +
             (firstRun?"This appears to be the first time you run GridPilot.\n":"") +
-            "On the next windows you will be guided through some simple steps to setup GridPilot.\n" +
-            "You will be asked to confirm the creation of a configuration file, etc.\n\n" +
+            "On the next windows you will be guided through 6  steps to setup GridPilot.\n" +
+            "Your configuration will be stored to a file in your home directory.\n\n" +
             "Click \"Continue\" to move on or \"Cancel\" to exit this wizard.\n\n" +
             "Notice that you can always run this wizard again by choosing it from " +
             "the \"Help\" menu.";
@@ -268,7 +268,7 @@ public class BeginningWizard{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = -1;
     try{
-      choice = confirmBox.getConfirm("Setting up GridPilot directories",
+      choice = confirmBox.getConfirm("Step 1/6: Setting up GridPilot directories",
           jPanel, new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, false);
     }
     catch(Exception e){
@@ -333,11 +333,12 @@ public class BeginningWizard{
   
   private int checkCertificate(boolean firstRun) throws Exception{
     String confirmString =
-      "To access grid resources you need a valid grid certificate.\n\n" +
+      "To access grid resources you need a valid grid certificate and a corresponding key.\n\n" +
       "If you don't have one, please get one from your grid certificate authority (and run this wizard again).\n" +
       "GridPilot can still be started, but you can only run jobs and access files on your local machine or\n" +
       "machines to which you ssh access.\n\n" +
-      "If you have a certificate, please indicate its path as well as the path of the associated key and the\n" +
+      "The fields below are pre-filled with the standard locations of grid credentials on Linux system. If your\n" +
+      "credentials are stored in a non-standard location, please the corresponding paths as well the path of the\n" +
       "directory where you want to store temporary credentials (proxies).\n\n" +
       "Optionally, you can also specify a directory with the certificates of the certificate authories (CAs)\n" +
       "that you trust. This can safely be left unspecified, in which case a default set of CAs will be trusted.\n\n" +
@@ -387,7 +388,7 @@ public class BeginningWizard{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = -1;
     try{
-      choice = confirmBox.getConfirm("Setting up grid credentials",
+      choice = confirmBox.getConfirm("Step 2/6: Setting up grid credentials",
           jPanel, new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, false);
     }
     catch(Exception e){
@@ -464,9 +465,9 @@ public class BeginningWizard{
       "you can use this too.\n\n" +
       "If you choose to use a remote file catalog, you must specify the name of the server hosting it.\n" +
       "Please notice that the database must be a GridPilot-enabled MySQL database.\n\n" +
-      "If you choose to use the default remote database, please notice that anything you write there is world\n" +
-      "readable and that the service is provided by gridpilot.org with absolutely no guarantee that data will\n" +
-      "not be deleted at any time.\n\n" +
+      "If you choose to use the default remote database, please notice that anything you write there is\n" +
+      "world readable and that the service is provided by gridpilot.org with absolutely no guarantee that\n" +
+      "data will not be deleted at any time.\n\n" +
       "You also have the option to enable the 'ATLAS' database plugin. If you don't work in the ATLAS\n" +
       "collaboration of CERN, this is probably of no relevance to you and you can leave it disabled.\n\n";
     final JPanel jPanel = new JPanel(new GridBagLayout());
@@ -512,6 +513,7 @@ public class BeginningWizard{
           GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
           new Insets(0, 0, 0, 0), 0, 0));
     }
+    jrbs[0].setSelected(true);
     
     final JCheckBox cbAtlas = new JCheckBox();
     JPanel atlasRow = new JPanel(new BorderLayout(8, 0));
@@ -546,6 +548,7 @@ public class BeginningWizard{
             new Insets(5, 5, 5, 5), 0, 0));
     row = new JPanel(new BorderLayout(8, 0));
     row.add(new JLabel("Home catalog site: "), BorderLayout.WEST);
+    row.add(new JLabel("   "), BorderLayout.EAST);
     JTextField tfHomeSite = new JTextField(TEXTFIELDWIDTH);
     tfHomeSite.setText("");
     row.add(tfHomeSite, BorderLayout.CENTER);
@@ -555,6 +558,7 @@ public class BeginningWizard{
             new Insets(5, 5, 5, 5), 0, 0));
     row = new JPanel(new BorderLayout(8, 0));
     row.add(new JLabel("Home catalog site MySQL database: "), BorderLayout.WEST);
+    row.add(new JLabel("   "), BorderLayout.EAST);
     JTextField tfHomeSiteAlias = new JTextField(TEXTFIELDWIDTH);
     tfHomeSiteAlias.setText("");
     row.add(tfHomeSiteAlias, BorderLayout.CENTER);
@@ -572,11 +576,11 @@ public class BeginningWizard{
           Dimension currentSize = confirmBox.getDialog().getSize();
           if(cbAtlas.isSelected()){
             atlasDetails.setVisible(true);
-            confirmBox.getDialog().setSize(currentSize.width+8, currentSize.height+200);
+            confirmBox.getDialog().setSize(currentSize.width+10, currentSize.height+200);
           }
           else{
             atlasDetails.setVisible(false);
-            confirmBox.getDialog().setSize(currentSize.width+8, currentSize.height-200);
+            confirmBox.getDialog().setSize(currentSize.width-10, currentSize.height-200);
           }
           //confirmBox.getDialog().pack();
         }
@@ -598,7 +602,7 @@ public class BeginningWizard{
     boolean goOn = false;
     int sel = -1;
     String [] newDirs = new String[defDirs.length];
-    String title = "Setting up file catalog";
+    String title = "Step 5/6: Setting up file catalog";
     while(!goOn){
       if(goOn){
         break;
@@ -750,14 +754,18 @@ public class BeginningWizard{
       "GLite is the middleware used by the EGEE grid. EGEE is a project driven by European instutions, in particular CERN.\n" +
       "If you're not a member of an EGEE virtual organization, you will probably not be able to run jobs on this backend.\n\n" +
       "SSH_POOL is a backend that runs jobs on a pool of Linux machines accessed via ssh. The scheduling is done by\n" +
-      "a very simplistic FIFO algorithm.\n\n";
+      "a very simplistic FIFO algorithm.\n\n" +
+      "GPSS (GridPilot Submission System) is the native submission system of GridPilot. It is still experimental, but it\n" +
+      "should be possible to try it out. The submission is done by writing job definitions in another database controlled\n" +
+      "by another GridPilot. From this database, the job descriptions will then be picked up and run (locally) by other\n" +
+      "GridPilots.\n\n";
     JPanel jPanel = new JPanel(new GridBagLayout());
     jPanel.add(new JLabel("<html>"+confirmString.replaceAll("\n", "<br>")+"</html>"),
         new GridBagConstraints(0, (firstRun?1:0), 2, 2, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     JPanel row = null;
-    String [] names = new String [] {"NG", "GLite", "SSH_POOL"};
+    String [] names = new String [] {"NG", "GLite", "SSH_POOL", "GPSS"};
     JPanel [] csRows = new JPanel [names.length];
     final JPanel [] csPanels = new JPanel [names.length];
     jcbs = new JCheckBox[names.length];
@@ -767,9 +775,10 @@ public class BeginningWizard{
     // NorduGrid
     csPanels[0] = new JPanel(new GridBagLayout());
     String ngString =
-      "If you fill in the field 'clusters', you choose to submit only to a selected set of clusters. This will\n" +
-      "typically save you a significant amount of time. The field must be filled with a space-separated list of\n" +
-      "host names. If you leave it empty all available resources will be queried on each job submission.\n\n";
+      "If you fill in the field 'clusters', you choose to submit only to a selected set of clusters. This\n" +
+      "will typically save you a significant amount of time. The field must be filled with a space-\n" +
+      "separated list of host names. If you leave it empty all available resources will be queried on each\n" +
+      "job submission.\n\n";
     csPanels[0].add(new JLabel("<html>"+ngString.replaceAll("\n", "<br>")+"</html>"),
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -787,9 +796,9 @@ public class BeginningWizard{
     // gLite
     csPanels[1] = new JPanel(new GridBagLayout());
     String gLiteString =
-      "Filling in the field 'virtual organization' is mandatory. It must be filled in with the name of the virtual organization\n" +
-      "whose resources you wish to use, e.g. ATLAS. If it is not filled in, you will be able to load the computing system\n" +
-      "backend, but your jobs will be rejected on the resources.\n\n";
+      "Filling in the field 'virtual organization' is mandatory. It must be filled in with the name of the\n" +
+      "virtual organization whose resources you wish to use, e.g. ATLAS. If it is not filled in, you will\n" +
+      "be able to load the computing system backend, but your jobs will be rejected on the resources.\n\n";
     csPanels[1].add(new JLabel("<html>"+gLiteString.replaceAll("\n", "<br>")+"</html>"),
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -844,6 +853,53 @@ public class BeginningWizard{
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));    
     
+    // GPSS
+    csPanels[3] = new JPanel(new GridBagLayout());
+    String gpssString =
+      "For GPSS to work, you need to have write access to a remote database. You moreover need write\n" +
+      "access to a remote directory, where input and output files of your jobs can be staged.\n\n";
+    csPanels[3].add(new JLabel("<html>"+gpssString.replaceAll("\n", "<br>")+"</html>"),
+        new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
+    row = new JPanel(new BorderLayout(8, 0));
+    row.add(new JLabel("Submit database: "), BorderLayout.WEST);
+    JTextField tfGpssDB = new JTextField(TEXTFIELDWIDTH);
+    String remoteDB = configFile.getValue("GPSS", "Remote database");
+    if(remoteDB!=null && !remoteDB.equals("")){
+      tfGpssDB.setText(remoteDB);
+      tfGpssDB.setEditable(false);
+    }
+    else{
+      tfGpssDB.setText("");
+    }
+    row.add(tfGpssDB, BorderLayout.CENTER);
+    csPanels[3].add(row,
+        new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
+    row = new JPanel(new BorderLayout(8, 0));
+    JTextField tfGpssDir = new JTextField(TEXTFIELDWIDTH);
+    JPanel subRow = new JPanel(new BorderLayout(8, 0));
+    subRow.add(tfGpssDir, BorderLayout.CENTER);
+    subRow.add(new JLabel("   "), BorderLayout.EAST);
+    subRow.add(new JLabel("   "), BorderLayout.SOUTH);
+    subRow.add(new JLabel("   "), BorderLayout.NORTH);
+    row.add(subRow, BorderLayout.EAST);
+    row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
+        "Remote job staging directory", tfGpssDir), BorderLayout.WEST);
+    String remoteDir = configFile.getValue("GPSS", "Remote directory");
+    if(remoteDB!=null && !remoteDB.equals("")){
+      tfGpssDir.setText(remoteDir);
+    }
+    else{
+      tfGpssDir.setText("");
+    }
+    csPanels[3].add(row,
+        new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
+    
     for(i=0; i<names.length; ++i){
       csRows[i] = new JPanel(new BorderLayout(8, 0));
       jcbs[i] = new JCheckBox();
@@ -887,7 +943,7 @@ public class BeginningWizard{
     
     // Get confirmation
     int choice = -1;
-    String title = "Setting up computing systems";
+    String title = "Step 6/6: Setting up computing systems";
     choice = confirmBox.getConfirm(title, jPanel,
         new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, false);
 
@@ -898,24 +954,38 @@ public class BeginningWizard{
     // Set configuration values
     if(jcbs[0].isSelected() && tfClusters.getText()!=null && !tfClusters.getText().equals("")){
       configFile.setAttributes(
+          new String [] {"NG", "NG"},
+          new String [] {"Enabled", "Clusters"},
+          new String [] {"yes", tfClusters.getText().trim()}
+          );
+    }
+    else{
+      configFile.setAttributes(
           new String [] {"NG"},
-          new String [] {"Clusters"},
-          new String [] {tfClusters.getText().trim()}
+          new String [] {"Enabled"},
+          new String [] {"no"}
           );
     }
     if(jcbs[1].isSelected() && tfVO.getText()!=null && !tfVO.getText().equals("")){
       configFile.setAttributes(
-          new String [] {"GLite", "GLite"},
-          new String [] {"Virtual organization", "Runtime vos"},
-          new String [] {tfVO.getText().trim(), tfVO.getText().trim()}
+          new String [] {"GLite", "GLite", "GLite"},
+          new String [] {"Enabled", "Virtual organization", "Runtime vos"},
+          new String [] {"yes", tfVO.getText().trim(), tfVO.getText().trim()}
+          );
+    }
+    else{
+      configFile.setAttributes(
+          new String [] {"GLite"},
+          new String [] {"Enabled"},
+          new String [] {"no"}
           );
     }
     if(jcbs[2].isSelected() && tfHosts.getText()!=null && !tfHosts.getText().equals("")){
       configFile.setAttributes(
           // We use the first of the given hosts as master host
-          new String [] {"SSH_Pool", "SSH_Pool"},
-          new String [] {"Hosts", "Host"},
-          new String [] {tfHosts.getText().trim(), Util.split(tfHosts.getText())[0]}
+          new String [] {"SSH_Pool", "SSH_Pool", "SSH_Pool"},
+          new String [] {"Enabled", "Hosts", "Host"},
+          new String [] {"yes", tfHosts.getText().trim(), Util.split(tfHosts.getText())[0]}
           );
       if(tfUsers.getText()!=null && !tfUsers.getText().equals("")){
         configFile.setAttributes(
@@ -933,6 +1003,29 @@ public class BeginningWizard{
             new String [] {tfPasswords.getText().trim(), Util.split(tfPasswords.getText())[0]}
             );
       }
+    }
+    else{
+      configFile.setAttributes(
+          new String [] {"SSH_Pool"},
+          new String [] {"Enabled"},
+          new String [] {"no"}
+          );
+    }
+    if(jcbs[3].isSelected() && tfGpssDB.getText()!=null && !tfGpssDB.getText().equals("") &&
+        tfGpssDir.getText()!=null && !tfGpssDir.getText().equals("")){
+      configFile.setAttributes(
+          // We use the first of the given hosts as master host
+          new String [] {"GPSS", "GPSS", "GPSS", "GPSS"},
+          new String [] {"Enabled", "Remote database", "Runtime databases", "Remote directory"},
+          new String [] {"yes", tfGpssDB.getText().trim(), tfGpssDB.getText().trim(), tfGpssDir.getText().trim()}
+          );
+    }
+    else{
+      configFile.setAttributes(
+          new String [] {"GPSS"},
+          new String [] {"Enabled"},
+          new String [] {"no"}
+          );
     }
     
     return choice;
@@ -953,9 +1046,9 @@ public class BeginningWizard{
       "you can keep the information there.\n\n" +
       "If you choose to use a remote database, you must specify the name of the server hosting it. Please notice\n" +
       "that the database must be a GridPilot-enabled MySQL database.\n\n" +
-      "If you choose to use the default remote database, please notice that anything you write there is world\n" +
-      "readable and that the service is provided by gridpilot.org with absolutely no guarantee that data will not\n" +
-      "be deleted at any time.\n\n";
+      "If you choose to use the default remote database, please notice that anything you write there is\n" +
+      "world readable and that the service is provided by gridpilot.org with absolutely no guarantee that\n" +
+      "data will not be deleted at any time.\n\n";
     JPanel jPanel = new JPanel(new GridBagLayout());
     String remoteDB = configFile.getValue("My_DB_Remote", "Database");
     String host = remoteDB.replaceFirst(".*mysql://(.*)/.*","$1");
@@ -998,6 +1091,7 @@ public class BeginningWizard{
           GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
           new Insets(0, 0, 0, 0), 0, 0));
     }
+    jrbs[0].setSelected(true);
     jPanel.validate();
     
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
@@ -1005,7 +1099,7 @@ public class BeginningWizard{
     boolean goOn = false;
     int sel = -1;
     String [] newDirs = new String[defDirs.length];
-    String title = "Setting up job database";
+    String title = "Step 4/6: Setting up job database";
     while(!goOn){
       if(goOn){
         break;
@@ -1170,12 +1264,13 @@ public class BeginningWizard{
           GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
           new Insets(0, 0, 0, 0), 0, 0));
     }
+    jrbs[0].setSelected(true);
     jPanel.validate();
     
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = -1;
     try{
-      choice = confirmBox.getConfirm("Setting up home directory",
+      choice = confirmBox.getConfirm("Step 3/6: Setting up grid home directory",
           jPanel, new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, false);
     }
     catch(Exception e){
