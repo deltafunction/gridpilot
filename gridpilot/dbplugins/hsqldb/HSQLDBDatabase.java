@@ -114,10 +114,17 @@ public class HSQLDBDatabase extends DBCache implements Database{
           database = up[2];
         }
       }
-      if(connect()!=null){
-        break;
+      try{
+        if(connect()!=null){
+          break;
+        }
       }
-      Debug.debug("WARNING: connection to HSQLDB failed, retrying.", 1);
+      catch(Exception e){
+        if(rep==2){
+          e.printStackTrace();
+        }
+      }
+      System.out.println("WARNING: connection to HSQLDB failed, retrying. SERVER_RUNNING: "+SERVER_RUNNING);
       try{
         Thread.sleep(5000);
       }
@@ -197,12 +204,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
     return jobRepository;
   }
   
-  public String connect(){
+  public String connect() throws Exception {
     try{
       Class.forName(driver).newInstance();
     }
     catch(Exception e){
-      Debug.debug("Could not load the driver "+driver, 3);
+      Debug.debug("Could not load the driver "+driver, 1);
       e.printStackTrace();
       return null;
     }
@@ -247,16 +254,20 @@ public class HSQLDBDatabase extends DBCache implements Database{
               false, null, null, MAX_CONNECTIONS);
         }
       }
+      getFieldNamesConn = GridPilot.getClassMgr().getDBConnection(dbName);
+      selectConn = GridPilot.getClassMgr().getDBConnection(dbName);
+      if(!getFieldNamesConn.isClosed()){
+        return "";
+      }
     }
     catch(Exception e){
       Debug.debug("Could not connect to db "+database+
           ", "+user+", "+passwd+" : "+e, 3);
+      SERVER_RUNNING = "no";
       e.printStackTrace();
       return null;
     }
-    getFieldNamesConn = GridPilot.getClassMgr().getDBConnection(dbName);
-    selectConn = GridPilot.getClassMgr().getDBConnection(dbName);
-    return "";
+    return null;
   }
   
   private boolean checkTable(String table){
