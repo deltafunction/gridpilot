@@ -26,9 +26,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.URL;
+import java.net.URLDecoder;
 //import java.net.Socket;
 //import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
@@ -309,7 +311,7 @@ public class Util{
   }
  
  public static void launchCheckBrowser(final Frame frame, String url,
-     final JTextComponent jt, final boolean localFS){
+     final JTextComponent jt, final boolean localFS, final boolean oneUrl){
    if(url.equals("http://check/")){
      String httpScript = jt.getText();
      if(frame!=null){
@@ -321,10 +323,25 @@ public class Util{
        public void run(){
          BrowserPanel wb = null;
          
-         String [] urls = split(finUrl);
+         String[] urls = null;
+         if(oneUrl){
+           urls = new String [] {finUrl};
+         }
+         else{
+           try{
+             urls = splitUrls(finUrl);
+           }
+           catch(Exception e){
+             Debug.debug("Could not open URL(s) "+finUrl+". "+e.getMessage(), 1);
+             e.printStackTrace();
+             GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL(s) "+finUrl);
+             return;
+           }
+         }
          if(urls.length==0){
            urls = new String [] {""};
          }
+         boolean ok = true;
          for(int i=0; i<urls.length; ++i){
            try{
              if(urls[i].startsWith("/")){
@@ -347,7 +364,6 @@ public class Util{
              return;
            }
            Debug.debug("URL: "+urls[i], 3);
-           
            try{
              if(frame!=null){
                wb = new BrowserPanel(//GridPilot.getClassMgr().getGlobalFrame(),
@@ -378,6 +394,7 @@ public class Util{
              }
            }
            catch(Exception eee){
+             ok = false;
              eee.printStackTrace();
              Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
              if(!GridPilot.firstRun){
@@ -394,8 +411,7 @@ public class Util{
              }
            }
                             
-           if(wb!=null && wb.lastURL!=null &&
-               wb.lastURL.startsWith(finBaseUrl)){
+           if(wb!=null && wb.lastURL!=null && wb.lastURL.startsWith(finBaseUrl)){
              // Set the text: the URL browsed to with base URL removed
              //jt.setText(wb.lastURL.substring(finBaseUrl.length()));
              urls[i] = wb.lastURL.substring(finBaseUrl.length());
@@ -403,11 +419,14 @@ public class Util{
            }
            else{
              // Don't do anything if we cannot get a URL
+             ok = false;
              Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
            }
          }
          
-         jt.setText(arrayToString(urls));
+         if(ok){
+           jt.setText(arrayToString(urls));
+         }
          if(frame!=null){
            frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
          }
@@ -419,7 +438,7 @@ public class Util{
  
  public static JEditorPane createCheckPanel(
       final Frame frame, 
-      final String name, final JTextComponent jt){
+      final String name, final JTextComponent jt, final boolean oneUrl){
     //final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
     String markup = "<font size=-1 face=sans-serif><b>"+name+" : </b></font><br>"+
       "<a href=\"http://check/\">browse</a>";
@@ -430,7 +449,7 @@ public class Util{
       new HyperlinkListener(){
       public void hyperlinkUpdate(HyperlinkEvent e){
         if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
-          launchCheckBrowser(frame, e.getURL().toExternalForm(), jt, false);
+          launchCheckBrowser(frame, e.getURL().toExternalForm(), jt, false, oneUrl);
         }
       }
     });
@@ -659,12 +678,12 @@ public class Util{
     
     bBrowse1.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        launchCheckBrowser(null, "http://check/", keyField, true);
+        launchCheckBrowser(null, "http://check/", keyField, true, true);
       }
     });
     bBrowse2.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        launchCheckBrowser(null, "http://check/", certField, true);
+        launchCheckBrowser(null, "http://check/", certField, true, true);
       }
     });
     
@@ -858,7 +877,8 @@ public class Util{
     
   public static File getProxyFile(){
     String proxyDirectory = clearTildeLocally(GridPilot.proxyDir);
-    if(proxyDirectory!=null && (new File(proxyDirectory)).exists()){
+    if(proxyDirectory!=null && (new File(proxyDirectory)).exists() &&
+        (new File(proxyDirectory)).isDirectory()){
       return new File(proxyDirectory+"/x509up_"+System.getProperty("user.name"));
     }
     return new File("/tmp/x509up_"+System.getProperty("user.name"));
@@ -2087,4 +2107,15 @@ public class Util{
     pb.validate();
     return pb;
   }
+  
+  public static String urlDecode(String urlString){
+    try {
+      return URLDecoder.decode(urlString, "utf-8");
+    }
+    catch(UnsupportedEncodingException e){
+      e.printStackTrace();
+      return urlString;
+    }
+  }
+
 }
