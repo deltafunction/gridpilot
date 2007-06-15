@@ -55,7 +55,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private StatusBar statusBar = null;
   private String thisUrl;
   private String baseUrl;
-  private String origUrl;
+  //private String origUrl;
   private boolean withFilter = false;
   private boolean withNavigation = false;
   protected String lastURL = null;
@@ -107,7 +107,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       String _baseUrl, boolean modal, boolean _withFilter,
       boolean _withNavigation, JComponent _jBox, String _filter, boolean _localFS) throws Exception{
     baseUrl = _baseUrl;
-    origUrl = url;
+    //origUrl = url;
     withFilter = _withFilter;
     withNavigation = _withNavigation;
     jBox = _jBox;
@@ -215,7 +215,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     // Listen for enter key in text field
     JTextComponent editor = (JTextComponent) currentUrlBox.getEditor().getEditorComponent();
     editor.addKeyListener(new KeyAdapter(){
-      public void keyReleased(KeyEvent e){
+      public void keyPressed(KeyEvent e){
         if(!doingSearch && e.getKeyCode()==KeyEvent.VK_ENTER){
           doingSearch = true;
           Debug.debug("Detected ENTER", 3);
@@ -250,7 +250,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private void addFilterKeyListener(){
     // Listen for enter key in text field
     jtFilter.addKeyListener(new KeyAdapter(){
-      public void keyReleased(KeyEvent e){
+      public void keyPressed(KeyEvent e){
         if(!getUrl().endsWith("/")){
           return;
         }
@@ -339,25 +339,27 @@ public class BrowserPanel extends JDialog implements ActionListener{
     bRegister.setEnabled(false);
     bSave.setEnabled(false);
     
-    for(int i=0; i<GridPilot.dbNames.length; ++i){
-      if(!GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[i]).isFileCatalog()){
-        excludeDBs.add(Integer.toString(i));
-        continue;
-      }
-      miRegister.add(new JMenuItem(GridPilot.dbNames[i]));
-    }
-    JMenuItem [] jmiRegisterAll = new JMenuItem[GridPilot.dbNames.length];
-    for(int i=0; i<GridPilot.dbNames.length; ++i){
-      if(excludeDBs.contains(Integer.toString(i))){
-        continue;
-      }
-      jmiRegisterAll[i] = new JMenuItem(GridPilot.dbNames[i]);
-      jmiRegisterAll[i].addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent ev){
-          registerAll(((JMenuItem) ev.getSource()).getText());
+    if(GridPilot.dbNames!=null){
+      for(int i=0; i<GridPilot.dbNames.length; ++i){
+        if(!GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[i]).isFileCatalog()){
+          excludeDBs.add(Integer.toString(i));
+          continue;
         }
-      });
-      bmiRegister.add(jmiRegisterAll[i]);
+        miRegister.add(new JMenuItem(GridPilot.dbNames[i]));
+      }
+      JMenuItem [] jmiRegisterAll = new JMenuItem[GridPilot.dbNames.length];
+      for(int i=0; i<GridPilot.dbNames.length; ++i){
+        if(excludeDBs.contains(Integer.toString(i))){
+          continue;
+        }
+        jmiRegisterAll[i] = new JMenuItem(GridPilot.dbNames[i]);
+        jmiRegisterAll[i].addActionListener(new ActionListener(){
+          public void actionPerformed(ActionEvent ev){
+            registerAll(((JMenuItem) ev.getSource()).getText());
+          }
+        });
+        bmiRegister.add(jmiRegisterAll[i]);
+      }
     }
 
     JScrollPane sp = new JScrollPane();
@@ -432,7 +434,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         bEnter = new JButton(enterIcon);
       }
       else{
-        bEnter = new JButton("<-");
+        bEnter = new JButton();
       }
       bEnter.setToolTipText("go!");
       bEnter.setPreferredSize(new java.awt.Dimension(22, 22));
@@ -550,49 +552,58 @@ public class BrowserPanel extends JDialog implements ActionListener{
             }
             popupMenu.add(miRegister);
           }
-          if(bDownload.isEnabled() && !e.getURL().toExternalForm().endsWith("/")){
-            miDownload.addActionListener(new ActionListener(){
-              public void actionPerformed(ActionEvent ev){
-                downloadFile(e.getURL().toExternalForm());
-              }
-            });
+          if(bDownload.isEnabled()){
+            if(e.getURL().toExternalForm().endsWith("/")){
+              miDelete.setText("Delete directory");
+            }
+            else{
+              miDownload.addActionListener(new ActionListener(){
+                public void actionPerformed(ActionEvent ev){
+                  downloadFile(e.getURL().toExternalForm());
+                }
+              });
+              popupMenu.add(miDownload);
+            }
             miDelete.addActionListener(new ActionListener(){
               public void actionPerformed(ActionEvent ev){
                 deleteFile(e.getURL().toExternalForm());
               }
             });
-            popupMenu.add(miDownload);
             popupMenu.add(miDelete);
           }
         }
         else if(e.getEventType()==HyperlinkEvent.EventType.EXITED){
           statusBar.setLabel(" ");
           try{
-            int ii = 0;
-            for(int i=0; i<GridPilot.dbNames.length; ++i){
-              if(excludeDBs.contains(Integer.toString(i))){
-                continue;
+            if(GridPilot.dbNames!=null){
+              int ii = 0;
+              for(int i=0; i<GridPilot.dbNames.length; ++i){
+                if(excludeDBs.contains(Integer.toString(i))){
+                  continue;
+                }
+                Debug.debug("addActionListener "+i, 3);
+                ActionListener [] acls = miRegister.getItem(ii).getActionListeners();
+                for(int j=0; j<acls.length; ++j){
+                  miRegister.getItem(ii).removeActionListener(acls[j]);
+                }
+                ++ii;
               }
-              Debug.debug("addActionListener "+i, 3);
-              ActionListener [] acls = miRegister.getItem(ii).getActionListeners();
+              ActionListener [] acls = miDownload.getActionListeners();
               for(int j=0; j<acls.length; ++j){
-                miRegister.getItem(ii).removeActionListener(acls[j]);
+                miDownload.removeActionListener(acls[j]);
               }
-              ++ii;
+              acls = miDelete.getActionListeners();
+              for(int j=0; j<acls.length; ++j){
+                miDelete.removeActionListener(acls[j]);
+              }
+              miDelete.setText("Delete file");
+              popupMenu.remove(miRegister);
+              popupMenu.remove(miDownload);
+              popupMenu.remove(miDelete);
             }
-            ActionListener [] acls = miDownload.getActionListeners();
-            for(int j=0; j<acls.length; ++j){
-              miDownload.removeActionListener(acls[j]);
-            }
-            acls = miDelete.getActionListeners();
-            for(int j=0; j<acls.length; ++j){
-              miDelete.removeActionListener(acls[j]);
-            }
-            popupMenu.remove(miRegister);
-            popupMenu.remove(miDownload);
-            popupMenu.remove(miDelete);
           }
           catch(Exception ee){
+            ee.printStackTrace();
           }
         }
       }
@@ -1013,10 +1024,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       // text document on disk
       else if(!url.endsWith("htm") &&
-         !url.endsWith("html") &&
-         !url.endsWith("/") &&
-          (url.startsWith("file:") || url.startsWith("/")   
-          )){
+              !url.endsWith("html") &&
+              !url.endsWith("/") &&
+              (url.startsWith("file:") || url.startsWith("/") || url.matches("^\\w:.*"))
+              ){
+        if(url.matches("^\\w:.*")){
+          Debug.debug("Fixing URL "+url, 2);
+          url = "file:"+url;
+        }
         if(!setLocalTextEdit(url)){
           setFileConfirmDisplay(url);
         }
@@ -1031,6 +1046,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
       // reset cursor to default
       if(url.endsWith("/")){
         ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+      }
+      else if(url.equals("") || url.matches(" *")){
+        ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        statusBar.setLabel(" ");
       }
     }
     catch(Exception e){
@@ -1123,7 +1142,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * be edited directly.
    */
   private boolean setLocalTextEdit(String url) throws IOException{
-    Debug.debug("setTextEdit "+url, 3);
+    Debug.debug("setTextEdit "+url, 2);
     jtFilter.setEnabled(false);
     try{
       bSave.setEnabled(true);
@@ -1670,14 +1689,15 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
     super.processWindowEvent(e);
   }
-
+  
   //Close the dialog
   void cancel(){
     if(thisUrl==null || thisUrl.endsWith("/")){
+      //lastURL = Util.urlDecode(origUrl);
+      lastURL = null;
+      lastUrlList = null;
       saveHistory();
       dispose();
-      lastURL = origUrl;
-      lastUrlList = null;
     }
     else{
       try{
@@ -1688,9 +1708,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       catch(Exception ioe){
         ioe.printStackTrace();
-        dispose();
         lastUrlList = null;
-        lastURL = origUrl;
+        //lastURL = Util.urlDecode(origUrl);
+        lastURL = null;
+        dispose();
       }
     }
   }
@@ -1699,7 +1720,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   void exit(){
     //GridPilot.lastURL = ep.getPage();
     Debug.debug("Setting lastURL, "+thisUrl, 3);
-    lastURL = thisUrl;
+    lastURL = Util.urlDecode(thisUrl);
     saveHistory();
     dispose();
   }
@@ -1786,7 +1807,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       e.printStackTrace();
       return;
     }
-    String baseUrl = url.replaceFirst("(.*/)[^/]+", "$1");
+    String baseUrl = url.replaceFirst("/$", "").replaceFirst("(.*/)[^/]+$", "$1");
+    Debug.debug("baseUrl: "+baseUrl, 3);
     try{
       if(url.startsWith("file:") || url.startsWith("/")){
         Debug.debug("Deleting file "+url, 3);
