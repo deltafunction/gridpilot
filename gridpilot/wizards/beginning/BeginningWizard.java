@@ -36,11 +36,16 @@ public class BeginningWizard{
   private boolean changes = false;
   private JRadioButton [] jrbs = null;
   private JCheckBox [] jcbs = null;
+  private boolean dirsOk = true;
+  private Dimension catalogPanelSize = null;
+  private Dimension gridsPanelSize = null;
+
   private static int TEXTFIELDWIDTH = 32;
-  private static String HOMEGRID_URL = "https://homegrid.dyndns.org/";
+  private static String HOMEGRID_URL = "https://www.gridpilot.dk/users/";
 
   public BeginningWizard(boolean firstRun){
     
+    dirsOk = true;
     URL imgURL = null;
     changes = false;
     
@@ -68,41 +73,98 @@ public class BeginningWizard{
       }
       
       ret = checkDirs(firstRun);
-      if(ret!=0 && ret!=1){
-        return;
+      if(ret==2 || ret==-1){
+        if(firstRun){
+          GridPilot.userConfFile.delete();
+          System.out.println("Deleting new configuration file.");
+          System.exit(-1);
+        }
+        else{
+          return;
+        }
+      }
+      else if(ret==1){
+        if(!dirsOk){
+          showError("Without these directories setup cannot continue. Exiting wizard.");
+          if(firstRun){
+            GridPilot.userConfFile.delete();
+            System.out.println("Deleting new configuration file.");
+            System.exit(-1);
+          }
+          else{
+            return;
+          }
+        }
       }
       
       try{
         ret = checkCertificate(firstRun);
-        if(ret!=0 && ret!=1){
-          return;
+        if(ret==2 || ret==-1){
+          ret = partialSetupMessage(firstRun);
+          if(firstRun && ret==1){
+            System.exit(-1);
+          }
+          else{
+            return;
+          }
         }
       }
       catch(FileNotFoundException ee){
         showError(ee.getMessage());
-        if(checkCertificate(firstRun)==2){
-          return;
+        ret = checkCertificate(firstRun);
+        if(ret==2 || ret==-1){
+          ret = partialSetupMessage(firstRun);
+          if(firstRun && ret==1){
+            System.exit(-1);
+          }
+          else{
+            return;
+          }
         }
       }
       
       ret = setGridHomeDir(firstRun);
-      if(ret!=0 && ret!=1){
-        return;
+      if(ret==2 || ret==-1){
+        ret = partialSetupMessage(firstRun);
+        if(firstRun && ret==1){
+          System.exit(-1);
+        }
+        else{
+          return;
+        }
       }
       
       ret = setGridJobDB(firstRun);
-      if(ret!=0 && ret!=1){
-        return;
+      if(ret==2 || ret==-1){
+        ret = partialSetupMessage(firstRun);
+        if(firstRun && ret==1){
+          System.exit(-1);
+        }
+        else{
+          return;
+        }
       }
       
       ret = setGridFileCatalog(firstRun);
-      if(ret!=0 && ret!=1){
-        return;
+      if(ret==2 || ret==-1){
+        ret = partialSetupMessage(firstRun);
+        if(firstRun && ret==1){
+          System.exit(-1);
+        }
+        else{
+          return;
+        }
       }
       
       ret = configureComputingSystems(firstRun);
-      if(ret!=0 && ret!=1){
-        return;
+      if(ret==2 || ret==-1){
+        ret = partialSetupMessage(firstRun);
+        if(firstRun && ret==1){
+          System.exit(-1);
+        }
+        else{
+          return;
+        }
       }
       
       endGreeting(firstRun);
@@ -160,6 +222,27 @@ public class BeginningWizard{
     int choice = -1;
     confirmBox.getConfirm("Setup completed!",
         confirmString, new Object[] {"OK"}, icon, Color.WHITE, false);   
+    return choice;
+  }
+  
+  private int partialSetupMessage(boolean firstRun) throws Exception{
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    String confirmString =
+        "Configuring GridPilot is only partially done.\n" +
+        "Your settings have been saved in\n"+
+        configFile.getFile().getCanonicalPath()+
+        ".\n\n"+
+        "Notice that you can set the remaining configuration\n" +
+        "parameters in \"Edit\" -> \"Preferences\"." +
+        (firstRun?"\n\n" +
+        "Click \"OK\" to try to start GridPilot anyway or \"Cancel\"\n" +
+         "to exit.\n\n" +
+         "Thanks for using GridPilot!\n\n":"");
+    int choice = -1;
+    choice = confirmBox.getConfirm("Setup completed!", confirmString,
+        firstRun?(new Object[] {"OK", "Cancel"}):
+          (new Object[] {"OK"}),
+        icon, Color.WHITE, false);   
     return choice;
   }
   
@@ -252,7 +335,7 @@ public class BeginningWizard{
       jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout(8, 0));
       row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
-          names[i], jtFields[i]), BorderLayout.WEST);
+          names[i], jtFields[i], true), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
       subRow.add(new JLabel("   "), BorderLayout.EAST);
@@ -275,17 +358,18 @@ public class BeginningWizard{
       e.printStackTrace();
     }
     
-    if(choice!=0){
-      if(firstRun){
-        // If no config file is present, there's no point in continuing.
-        return 2;
-      }
+    String [] newDirs = new String [defDirs.length];
+    File [] newDirFiles = new File[newDirs.length];
+
+    boolean doCreate = true;
+    if(choice==2){
       return choice;
+    }
+    else if(choice==1){
+      doCreate = false;
     }
     
     // Create missing directories
-    String [] newDirs = new String [defDirs.length];
-    File [] newDirFiles = new File[newDirs.length];
     for(int i=0; i<defDirs.length; ++i){
       newDirs[i] = jtFields[i].getText();
       Debug.debug("Checking directory "+newDirs[i], 2);
@@ -293,23 +377,29 @@ public class BeginningWizard{
       if(newDirs[i]!=null && !newDirs[i].equals("")){
         if(newDirFiles[i].exists()){
           if(!newDirFiles[i].isDirectory()){
-            throw new IOException("The directory "+newDirFiles[i].getCanonicalPath()+" cannot be created.");
+            dirsOk = false;
+            throw new IOException(newDirFiles[i].getCanonicalPath()+" already exists and is not a directory.");
           }
         }
         else{
-          Debug.debug("Creating directory "+newDirs[i], 2);
-          newDirFiles[i].mkdir();
+          if(doCreate){
+            Debug.debug("Creating directory "+newDirs[i], 2);
+            dirsOk = dirsOk && newDirFiles[i].mkdir();
+          }
+          else{
+            dirsOk = false;
+          }
         }
       }
       newDirs[i] = Util.replaceWithTildeLocally(Util.clearFile(newDirs[i]));
     }
     
     // Set config entries
-    if(!defDirs[0].equals(newDirs[0]) ||
+    if(doCreate && (!defDirs[0].equals(newDirs[0]) ||
        !defDirs[1].equals(newDirs[1]) ||
        !defDirs[2].equals(newDirs[2]) ||
        !defDirs[3].equals(newDirs[3]) ||
-       !defDirs[4].equals(newDirs[4])){
+       !defDirs[4].equals(newDirs[4]))){
       configFile.setAttributes(
           new String [] {"GridPilot", "My_DB_local", "Fork", "Fork", "Fork"},
           new String [] {"pull cache directory", "database", "working directory",
@@ -372,7 +462,7 @@ public class BeginningWizard{
       jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout(8, 0));
       row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
-          names[i], jtFields[i]), BorderLayout.WEST);
+          names[i], jtFields[i], true), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
       subRow.add(new JLabel("   "), BorderLayout.EAST);
@@ -449,11 +539,11 @@ public class BeginningWizard{
   }
   
   /**
-   * If a remote server is specified, assume that a database 'production'
+   * If a remote server is specified, assume that a database 'local_production'
    * exists on the specified server and is writeable;
    * enable Regional_DB with database 'replicas'; disable GP_DB.
    * If the default remote database is chosen, disable Regional_DB;
-   * enable GP_DB with database 'production'; this will then be the default file catalog
+   * enable GP_DB with database 'local_production'; this will then be the default file catalog
    * (while perhaps also the default job database).
    */
   private int setGridFileCatalog(boolean firstRun) throws Exception{
@@ -570,17 +660,29 @@ public class BeginningWizard{
     cbAtlas.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         try{
-          confirmBox.getDialog().getContentPane().setMaximumSize(new Dimension(
-              Toolkit.getDefaultToolkit().getScreenSize().width,
-              Toolkit.getDefaultToolkit().getScreenSize().height-200));
+          if(catalogPanelSize==null){
+            catalogPanelSize = confirmBox.getDialog().getSize();
+          }
+          int maxHeight = Toolkit.getDefaultToolkit().getScreenSize().height-100;
+          int maxWidth = Toolkit.getDefaultToolkit().getScreenSize().width-100;
+          confirmBox.getDialog().getContentPane().setMaximumSize(
+              new Dimension(maxWidth, maxHeight));
           Dimension currentSize = confirmBox.getDialog().getSize();
           if(cbAtlas.isSelected()){
             atlasDetails.setVisible(true);
-            confirmBox.getDialog().setSize(currentSize.width+10, currentSize.height+200);
+            int newHeight = currentSize.height+200;
+            int newWidth = currentSize.width+5;
+            confirmBox.getDialog().setSize(
+                newWidth>maxWidth?maxWidth:newWidth,
+                newHeight>maxHeight?maxHeight:newHeight);
           }
           else{
+            int newHeight = currentSize.height-200;
+            int newWidth = currentSize.width-5;
             atlasDetails.setVisible(false);
-            confirmBox.getDialog().setSize(currentSize.width-10, currentSize.height-200);
+            confirmBox.getDialog().setSize(
+                newWidth<catalogPanelSize.width?catalogPanelSize.width:newWidth,
+                newHeight<catalogPanelSize.height?catalogPanelSize.height:newHeight);
           }
           //confirmBox.getDialog().pack();
         }
@@ -595,7 +697,7 @@ public class BeginningWizard{
         GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
         new Insets(0, 0, 0, 0), 0, 0));
     atlasDetails.setVisible(false);
-    
+        
     jPanel.validate();
     
     int choice = -1;
@@ -680,7 +782,7 @@ public class BeginningWizard{
           new String [] {"Enabled", "Enabled", "Enabled",
               "Database", "Description"},
           new String [] {"yes", "yes", "no",
-              "jdbc:mysql://"+newDirs[sel].trim()+":3306/production", dbDesc}
+              "jdbc:mysql://"+newDirs[sel].trim()+":3306/local_production", dbDesc}
       );  
       changes = true;
     }
@@ -887,7 +989,7 @@ public class BeginningWizard{
     subRow.add(new JLabel("   "), BorderLayout.NORTH);
     row.add(subRow, BorderLayout.EAST);
     row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
-        "Remote job staging directory", tfGpssDir), BorderLayout.WEST);
+        "Remote job staging directory", tfGpssDir, true), BorderLayout.WEST);
     String remoteDir = configFile.getValue("GPSS", "Remote directory");
     if(remoteDB!=null && !remoteDB.equals("")){
       tfGpssDir.setText(remoteDir);
@@ -919,17 +1021,29 @@ public class BeginningWizard{
       jcbs[i].addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           try{
-            confirmBox.getDialog().getContentPane().setMaximumSize(new Dimension(
-                Toolkit.getDefaultToolkit().getScreenSize().width,
-                Toolkit.getDefaultToolkit().getScreenSize().height-200));
+            if(gridsPanelSize==null){
+              gridsPanelSize = confirmBox.getDialog().getSize();
+           }
+            int maxHeight = Toolkit.getDefaultToolkit().getScreenSize().height-100;
+            int maxWidth = Toolkit.getDefaultToolkit().getScreenSize().width-100;
+            confirmBox.getDialog().getContentPane().setMaximumSize(
+                new Dimension(maxWidth, maxHeight));
             Dimension currentSize = confirmBox.getDialog().getSize();
             if(((JCheckBox) e.getSource()).isSelected()){
               csPanels[((JCheckBox) e.getSource()).getMnemonic()].setVisible(true);
-              confirmBox.getDialog().setSize(currentSize.width+8, currentSize.height+100);
+              int newHeight = currentSize.height+100;
+              int newWidth = currentSize.width+5;
+              confirmBox.getDialog().setSize(
+                  newWidth>maxWidth?maxWidth:newWidth,
+                  newHeight>maxHeight?maxHeight:newHeight);
             }
             else{
+              int newHeight = currentSize.height-100;
+              int newWidth = currentSize.width-5;
               csPanels[((JCheckBox) e.getSource()).getMnemonic()].setVisible(false);
-              confirmBox.getDialog().setSize(currentSize.width+8, currentSize.height-100);
+              confirmBox.getDialog().setSize(
+                  newWidth<gridsPanelSize.width?gridsPanelSize.width:newWidth,
+                  newHeight<gridsPanelSize.height?gridsPanelSize.height:newHeight);
             }
             //confirmBox.getDialog().pack();
           }
@@ -940,7 +1054,7 @@ public class BeginningWizard{
         }
       });
     }
-    
+        
     // Get confirmation
     int choice = -1;
     String title = "Step 6/6: Setting up computing systems";
@@ -1036,7 +1150,7 @@ public class BeginningWizard{
    * to the DN exists on the specified server and is writeable;
    * enable My_DB_Remote disable GP_DB.
    * If the default remote database is chosen, disable My_DB_Remote;
-   * enable GP_DB with database 'production'; this will then be the job DB for remote CSs.
+   * enable GP_DB with database 'local_production'; this will then be the job DB for remote CSs.
    */
   private int setGridJobDB(boolean firstRun) throws Exception{
     String confirmString =
@@ -1165,7 +1279,7 @@ public class BeginningWizard{
     else if(sel==1){
       // gridpilot.dk, enable GP_DB, My_DB_Local, disable My_DB_Remote.
       // Set GPSS:remote database = GP_DB
-      // Set GP_DB:database = production
+      // Set GP_DB:database = local_production
       // Set Fork:remote pull database = GP_DB
       // Set [Fork|GPSS|SSH|SSH_POOL|NG|GLite]:runtime databases = GP_DB My_DB_Local
       configFile.setAttributes(
@@ -1176,7 +1290,7 @@ public class BeginningWizard{
               "Remote database", "Remote pull database", "Database",
               "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases"},
           new String [] {"yes", "no", "yes",
-              "GP_DB", "GP_DB", "jdbc:mysql://db.gridpilot.dk:3306/production",
+              "GP_DB", "GP_DB", "jdbc:mysql://db.gridpilot.dk:3306/local_production",
               "My_DB_Local", "GP_DB My_DB_Local", "My_DB_Local", "My_DB_Local", "GP_DB My_DB_Local", "GP_DB My_DB_Local"}
       );  
       changes = true;
@@ -1211,6 +1325,10 @@ public class BeginningWizard{
   }
 
   private int setGridHomeDir(boolean firstRun) throws Exception{
+    GridPilot.proxyDir = configFile.getValue("GridPilot", "Grid proxy directory");
+    GridPilot.caCerts = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot",
+       "ca certificates");
+    GridPilot.resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "resources");
     String confirmString =
       "When running jobs on a grid it is useful to have the jobs upload output files to a directory on a server\n" +
       "that's always on-line.\n\n" +
@@ -1248,7 +1366,7 @@ public class BeginningWizard{
       row.add(jrbs[i], BorderLayout.WEST);
       if(i==0){
         row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
-            names[i], jtFields[i]), BorderLayout.CENTER);
+            names[i], jtFields[i], true), BorderLayout.CENTER);
       }
       else{
         row.add(new JLabel(names[i]), BorderLayout.CENTER);
