@@ -13,7 +13,6 @@ import java.util.*;
  */
 public class TransformationCreationPanel extends CreateEditPanel{
 
-  private static final long serialVersionUID = 1L;
   private DBPluginMgr dbPluginMgr;
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
@@ -23,7 +22,6 @@ public class TransformationCreationPanel extends CreateEditPanel{
   private String [] cstAttributesNames;
   private String [] cstAttr = null;
   private String transformationIdentifier;
-  private static int TEXTFIELDWIDTH = 32;
   private boolean reuseTextFields = true;
   private Vector tcConstant = new Vector(); // contains all text components
   private DBPanel panel = null;
@@ -34,6 +32,10 @@ public class TransformationCreationPanel extends CreateEditPanel{
   private DBRecord transformation = null;
   private DBResult runtimeEnvironments = null;
   private String [] transformationFields = null;
+  private JButton jbEditTrans = new JButton("view");
+
+  private static final long serialVersionUID = 1L;
+  private static int TEXTFIELDWIDTH = 32;
 
   public JTextComponent [] tcCstAttributes;
 
@@ -210,6 +212,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
 
     if(runtimeEnvironmentNames.length==0){
       pRuntimeEnvironment.add(new JLabel("No runtime environments found."));
+      jbEditTrans.setEnabled(false);
     }
     else if(runtimeEnvironmentNames.length==1){
       runtimeEnvironmentName = runtimeEnvironmentNames[0];
@@ -237,7 +240,6 @@ public class TransformationCreationPanel extends CreateEditPanel{
     ct.gridheight=1;
     add(pRuntimeEnvironment, ct);
     
-    JButton jbEditTrans = new JButton("view");
     jbEditTrans.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         viewRuntimeEnvironments();
@@ -317,13 +319,20 @@ public class TransformationCreationPanel extends CreateEditPanel{
         }
       }
       if(cstAttributesNames[i].equalsIgnoreCase("definition") ||
-          cstAttributesNames[i].equalsIgnoreCase("inputFiles") ||
          cstAttributesNames[i].equalsIgnoreCase("script") ||
          cstAttributesNames[i].equalsIgnoreCase("validationScript") ||
          cstAttributesNames[i].equalsIgnoreCase("extractionScript")){
         pAttributes.add(Util.createCheckPanel(
             (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
-            cstAttributesNames[i], tcCstAttributes[i]),
+            cstAttributesNames[i], tcCstAttributes[i], true),
+            new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
+                GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                new Insets(5, 22, 5, 5), 0, 0));
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("inputFiles")){
+        pAttributes.add(Util.createCheckPanel(
+            (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
+            cstAttributesNames[i], tcCstAttributes[i], false),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                 new Insets(5, 22, 5, 5), 0, 0));

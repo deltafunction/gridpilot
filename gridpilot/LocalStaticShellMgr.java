@@ -195,7 +195,7 @@ public class LocalStaticShellMgr{
   }
 
   public static void writeFile(String _name, String content, boolean append) throws IOException {
-    String name = Util.clearTildeLocally(Util.clearFile(_name));
+    String name = Util.clearTildeLocally(Util.clearFile(Util.urlDecode(_name)));
     Debug.debug("name : " + name + "\nappend : " + append + "\ncontent : \n" + content, 1);
     File parent = new File(name).getParentFile();
     if(parent!=null && !parent.exists()){
@@ -214,18 +214,20 @@ public class LocalStaticShellMgr{
   }
 
   public static boolean mkdirs(String _dir){
-    String dir = Util.clearTildeLocally(Util.clearFile(_dir));
+    String dir = Util.clearTildeLocally(Util.clearFile(Util.urlDecode(_dir)));
     Debug.debug("making dirs "+dir, 3);
     try{
-      (new File(dir)).mkdirs();
+      File file = (new File(dir));
+      if(file.exists() && file.isDirectory()){
+        return true;
+      }
+      return file.mkdirs();
     }
     catch(Exception e){
       e.printStackTrace();
       return false;
     }
-    return true;
   }
-
   
   /** 
    * Deletes all files and subdirectories under dir.
