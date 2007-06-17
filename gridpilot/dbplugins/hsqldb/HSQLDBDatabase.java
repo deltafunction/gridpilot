@@ -417,13 +417,17 @@ public class HSQLDBDatabase extends DBCache implements Database{
           getFieldNamesConn.close();
           selectConn.close();
           Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-          //Statement stmt = conn.createStatement();
-          //stmt.executeUpdate("SHUTDOWN");
-          try{
+          Statement stmt = conn.createStatement();
+          // This must be done before exiting. Changes are done in memory
+          // and only committed to disk when the compact command is issued.
+          // If disk space/performance becomes an issue, consider issuing this
+          // command regularly.
+          stmt.executeUpdate("SHUTDOWN COMPACT");
+          /*try{
             conn.close();
           }
           catch(Exception ee){
-          }
+          }*/
         }
         catch(Exception e){
           Debug.debug("Shutting down server failed. "+
