@@ -96,12 +96,12 @@ public class GPSSComputingSystem implements ComputingSystem{
     // Set user
     try{
       user = Util.getGridSubject();      
-      // Append hash of the user subject to the remote directory name
-      String dir = Util.getGridDatabaseUser();
       if(!remoteDir.endsWith("/")){
         remoteDir += "/";
       }
-      remoteDir = remoteDir + dir + "/";
+      // Append hash of the user subject to the remote directory name - dropped
+      //String dir = Util.getGridDatabaseUser();
+      //remoteDir = remoteDir + dir + "/";
       // Create the directory
       mkRemoteDir(remoteDir);
       // Set up list of trusted subjects
@@ -1768,14 +1768,16 @@ public class GPSSComputingSystem implements ComputingSystem{
       }
       
       // Delete RTEs from catalog(s)
-      for(Iterator it=toDeleteRtes.keySet().iterator(); it.hasNext();){
-        id = (String) it.next();
-        if(toDeleteRtes.get(id).equals(localRuntimeDBs[i])){
-          ok = localDBMgr.deleteRuntimeEnvironment(id);
-          if(!ok){
-            error = "WARNING: could not delete runtime environment " +
-            id+" from database "+localDBMgr.getDBName();
-            Debug.debug(error, 1);
+      if(toDeleteRtes!=null && toDeleteRtes.keySet()!=null){
+        for(Iterator it=toDeleteRtes.keySet().iterator(); it.hasNext();){
+          id = (String) it.next();
+          if(toDeleteRtes.get(id).equals(localRuntimeDBs[i])){
+            ok = localDBMgr.deleteRuntimeEnvironment(id);
+            if(!ok){
+              error = "WARNING: could not delete runtime environment " +
+              id+" from database "+localDBMgr.getDBName();
+              Debug.debug(error, 1);
+            }
           }
         }
       }
