@@ -98,9 +98,10 @@ public class ForkComputingSystem implements ComputingSystem{
       }
       else{
         // remote shells are always non-Windows, so just discard c: and replace \ -> /
-        runtimeDirectory = (new File(shellMgr.listFiles(runtimeDirectory)[0])
+        // Hmm, and if the directory is empty...
+        /*runtimeDirectory = (new File(shellMgr.listFiles(runtimeDirectory)[0])
             ).getParentFile().getAbsolutePath().replaceAll("\\\\", "/"
-                ).replaceFirst("^\\w:", "");
+                ).replaceFirst("^\\w:", "");*/
       }
     }
 
