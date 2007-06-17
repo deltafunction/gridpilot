@@ -229,6 +229,22 @@ public class LocalStaticShellMgr{
     }
   }
   
+  public static boolean mkdir(String _dir){
+    String dir = Util.clearTildeLocally(Util.clearFile(Util.urlDecode(_dir)));
+    Debug.debug("making dir "+dir, 3);
+    try{
+      File file = (new File(dir));
+      if(file.exists() && file.isDirectory()){
+        return true;
+      }
+      return file.mkdir();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return false;
+    }
+  }
+  
   /** 
    * Deletes all files and subdirectories under dir.
    * Returns true if all deletions were successful.
