@@ -371,8 +371,10 @@ public class ForkComputingSystem implements ComputingSystem{
         
         // Get the name
         Debug.debug("File found: "+runtimeDirectory+":"+fil, 3);
-        name = fil.substring(runtimeDirectory.length()+1);
-        if(name.startsWith("softwareCache")){
+        name = fil.substring(Util.clearTildeLocally(Util.clearFile(runtimeDirectory)).length()+1);
+        if(name.toLowerCase().endsWith(".gz") || name.toLowerCase().endsWith(".tar") ||
+            name.toLowerCase().endsWith(".tgz") || name.toLowerCase().endsWith(".zip") ||
+            shellMgr.isDirectory(name)){
           continue;
         }
         // Read dependencies from the file.
@@ -403,7 +405,7 @@ public class ForkComputingSystem implements ComputingSystem{
         }
         if(name!=null && name.length()>0){
           // Write the entry in the local DB
-          Debug.debug("Writing RTE in local DB "+localDBMgr.getDBName(), 3);
+          Debug.debug("Writing RTE "+name+" in local DB "+localDBMgr.getDBName(), 3);
           createRTE(localDBMgr, name, cs, deps, null, null);
           // Register with local and remote DB with CS "GPSS"
           if(cert!=null && cert.length()>0 && remoteDBMgr!=null){
