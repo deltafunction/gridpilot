@@ -130,6 +130,9 @@ public class GPSSComputingSystem implements ComputingSystem{
       }
       String providerTimeoutStr = configFile.getValue(csName, "provider update timeout");
       providerTimeout = 1000*Long.parseLong(providerTimeoutStr);
+      
+      setupRuntimeEnvironments(csName);
+      
     }
     catch(Exception ioe){
       error = "ERROR during initialization of GPSS plugin\n" +
@@ -1478,11 +1481,14 @@ public class GPSSComputingSystem implements ComputingSystem{
     String rteNameField = null;
     String newId = null;
     String url = null;
+    Debug.debug("Syncing RTEs from catalogs to DBs: "+Util.arrayToString(localRuntimeDBs), 2);
     for(int ii=0; ii<localRuntimeDBs.length; ++ii){
       try{
         localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);
         DBResult rtes = rteRdfParser.getDBResult(localDBMgr);
+        Debug.debug("Checking RTEs "+rtes.values.length, 3);
         for(int i=0; i<rtes.values.length; ++i){
+          Debug.debug("Checking RTE "+Util.arrayToString(rtes.getRow(i).values), 3);
           id = null;
           url = null;
           // Check if RTE already exists
@@ -1495,6 +1501,7 @@ public class GPSSComputingSystem implements ComputingSystem{
           }
           if(id==null || id.equals("-1") || url==null || url.equals("")){
             if(localDBMgr.createRuntimeEnvironment(rtes.getRow(i).values)){
+              Debug.debug("Creating RTE "+Util.arrayToString(rtes.getRow(i).values), 2);
               // Tag for deletion
               newId = localDBMgr.getRuntimeEnvironmentID(
                   (String) rtes.getRow(i).getValue(rteNameField), "GPSS");
@@ -1508,6 +1515,7 @@ public class GPSSComputingSystem implements ComputingSystem{
       catch(Exception e){
         error = "Could not load local runtime DB "+localRuntimeDBs[ii]+"."+e.getMessage();
         Debug.debug(error, 1);
+        e.printStackTrace();
       }
     }
   }
@@ -1671,7 +1679,7 @@ public class GPSSComputingSystem implements ComputingSystem{
       remoteDBMgr = GridPilot.getClassMgr().getDBPluginMgr(remoteDB);
     }
     catch(Exception e){
-      error = "Could not load remote runtime DB "+remoteDB+"."+e.getMessage();
+      error = "WARNING: Could not load remote runtime DB "+remoteDB+"."+e.getMessage();
       Debug.debug(error, 1);
       return;
     }
