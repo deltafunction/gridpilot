@@ -15,7 +15,7 @@ import gridpilot.GridPilot;
 import gridpilot.ListPanel;
 import gridpilot.IconProxy;
 import gridpilot.wizards.beginning.BeginningWizard;
-import gridpilot.wizards.publish_software.PublishSoftwareWizard;
+import gridpilot.wizards.manage_software.ManageSoftwareWizard;
 import gridpilot.wizards.run_one_job.RunOneJobWizard;
 
 /**
@@ -564,6 +564,13 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuHelp.add(menuHelpBeginning);
+    JMenuItem menuHelpPublishSoftware = new JMenuItem("Wizard: Manage software");
+    menuHelpPublishSoftware.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        new ManageSoftwareWizard();
+      }
+    });
+    menuHelp.add(menuHelpPublishSoftware);
     JMenuItem menuHelpRunOneJob = new JMenuItem("Wizard: Prepare and run a single job");
     menuHelpRunOneJob.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -571,13 +578,6 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuHelp.add(menuHelpRunOneJob);
-    JMenuItem menuHelpPublishSoftware = new JMenuItem("Wizard: Make software available on a grid");
-    menuHelpPublishSoftware.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        new PublishSoftwareWizard();
-      }
-    });
-    menuHelp.add(menuHelpPublishSoftware);
     
     menuBar.add(menuFile);
     menuBar.add(menuEdit);
