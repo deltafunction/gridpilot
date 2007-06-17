@@ -415,7 +415,7 @@ public class GlobalFrame extends GPFrame{
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
             GridPilot.dbNames[i]).getFieldNames("runtimeEnvironment")!=null)){
-          JMenuItem miNewTab = new JMenuItem("runtimeEnvironment");
+          JMenuItem miNewTab = new JMenuItem("runtimeEnvironments");
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
@@ -438,7 +438,7 @@ public class GlobalFrame extends GPFrame{
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
             GridPilot.dbNames[i]).getFieldNames("transformation")!=null)){
-          JMenuItem miNewTab = new JMenuItem("transformation");
+          JMenuItem miNewTab = new JMenuItem("transformations");
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
@@ -463,7 +463,7 @@ public class GlobalFrame extends GPFrame{
         if((GridPilot.getClassMgr().getDBPluginMgr(
             GridPilot.dbNames[i]).getFieldNames("dataset")!=null)){
           Debug.debug("---> ok, adding", 2);
-          JMenuItem miNewTab = new JMenuItem("dataset");
+          JMenuItem miNewTab = new JMenuItem("datasets");
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
@@ -487,7 +487,7 @@ public class GlobalFrame extends GPFrame{
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
             GridPilot.dbNames[i]).getFieldNames("jobDefinition")!=null)){
-          JMenuItem miNewTab = new JMenuItem("jobDefinition");
+          JMenuItem miNewTab = new JMenuItem("jobDefinitions");
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
