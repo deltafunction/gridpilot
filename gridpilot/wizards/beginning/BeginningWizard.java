@@ -2,11 +2,13 @@ package gridpilot.wizards.beginning;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
@@ -14,20 +16,30 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
 
+import gridpilot.BrowserPanel;
 import gridpilot.ConfigFile;
 import gridpilot.ConfirmBox;
 import gridpilot.Debug;
+import gridpilot.FileTransfer;
 import gridpilot.GridPilot;
+import gridpilot.JExtendedComboBox;
 import gridpilot.LocalStaticShellMgr;
+import gridpilot.MyThread;
 import gridpilot.Util;
 
 import javax.swing.ImageIcon;
 import javax.swing.JCheckBox;
+import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
+
+import org.globus.util.GlobusURL;
 
 public class BeginningWizard{
 
@@ -41,7 +53,7 @@ public class BeginningWizard{
   private Dimension gridsPanelSize = null;
 
   private static int TEXTFIELDWIDTH = 32;
-  private static String HOMEGRID_URL = "https://www.gridpilot.dk/users/";
+  private static String HOME_URL = "https://www.gridpilot.dk/";
 
   public BeginningWizard(boolean firstRun){
     
@@ -169,7 +181,7 @@ public class BeginningWizard{
       
       endGreeting(firstRun);
       
-      if(changes){
+      if(!firstRun && changes){
         try{
           GridPilot.reloadConfigValues();
         }
@@ -554,15 +566,22 @@ public class BeginningWizard{
       "Your local database is already such a file catalog and if you have write access to a file catalog,\n" +
       "you can use this too.\n\n" +
       "If you choose to use a remote file catalog, you must specify the name of the server hosting it.\n" +
-      "Please notice that the database must be a GridPilot-enabled MySQL database.\n\n" +
+      "Please notice that the database must be a " +
+      "<a href=\""+HOME_URL+"info/gridpilot+mysql_howto.txt\">GridPilot-enabled MySQL database</a>.\n\n" +
       "If you choose to use the default remote database, please notice that anything you write there is\n" +
       "world readable and that the service is provided by gridpilot.org with absolutely no guarantee that\n" +
       "data will not be deleted at any time.\n\n" +
       "You also have the option to enable the 'ATLAS' database plugin. If you don't work in the ATLAS\n" +
       "collaboration of CERN, this is probably of no relevance to you and you can leave it disabled.\n\n";
     final JPanel jPanel = new JPanel(new GridBagLayout());
+    JEditorPane pane = new JEditorPane("text/html", "<html>"+confirmString.replaceAll("\n", "<br>")+"</html>");
+    pane.setEditable(false);
+    pane.setOpaque(false);
+    addHyperLinkListener(pane, jPanel);
     String remoteDB = configFile.getValue("Regional_DB", "Database");
     String host = remoteDB.replaceFirst(".*mysql://(.*)/.*","$1");
+    // TODO: now we assume that mysql always runs on port 3306 - generalize.
+    host = host.replaceFirst("(.*):\\d+", "$1");
     String [] defDirs = new String [] {"",
                                        "db.gridpilot.dk",
                                        host};
@@ -570,7 +589,7 @@ public class BeginningWizard{
                                      "Use default remote database host",
                                      "Use custom remote database host:"};
     JTextField [] jtFields = new JTextField [defDirs.length];
-    jPanel.add(new JLabel("<html>"+confirmString.replaceAll("\n", "<br>")+"</html>"),
+    jPanel.add(pane,
         new GridBagConstraints(0, (firstRun?1:0), 2, 2, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
@@ -622,7 +641,9 @@ public class BeginningWizard{
     String atlasString = "\n" +
     "When looking up files, in principle all ATLAS file catalogs may be queried. In order to always give\n" +
     "preference to one catalog, you can specify a \"home catalog site\". This should be one of the ATLAS\n" +
-    "site acronyms from the file TiersOfATLAS; e.g. NDGFT1DISK, CSCS, FZKDISK, LYONDISK, CERNCAF\n" +
+    "site acronyms from the file " +
+    "<a href=\"http://atlas.web.cern.ch/Atlas/GROUPS/DATABASE/project/ddm/releases/TiersOfATLASCache.py\">TiersOfATLAS</a>" +
+    " - e.g. NDGFT1DISK, CSCS, FZKDISK, LYONDISK, CERNCAF\n" +
     "or CERNPROD.\n\n" +
     "In order to be able to write ATLAS file catalog entries, the \"home catalog site\" must be specified\n" +
     "<i>and</i> a \"home catalog site MySQL database\" must be given. This must be a full MySQL URL and\n" +
@@ -631,8 +652,12 @@ public class BeginningWizard{
     "case you should give no user name or password in the URL,\n" +
     "e.g. mysql://grid00.unige.ch:3306/localreplicas.\n\n" +
     "If you don't understand the above or don't have write access to a valid MySQL database, you can\n" +
-    "safely leave the two fields empty. Then you will have only read access.";
-    atlasDetails.add(new JLabel("<html>"+atlasString.replaceAll("\n", "<br>")+"</html>"),
+    "safely leave the two fields empty. Then you will have only read access.\n";
+    JEditorPane atlasLabel = new JEditorPane("text/html", "<html>"+atlasString.replaceAll("\n", "<br>")+"</html>");
+    atlasLabel.setEditable(false);
+    atlasLabel.setOpaque(false);
+    addHyperLinkListener(atlasLabel, jPanel);
+    atlasDetails.add(atlasLabel,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
@@ -669,16 +694,16 @@ public class BeginningWizard{
               new Dimension(maxWidth, maxHeight));
           Dimension currentSize = confirmBox.getDialog().getSize();
           if(cbAtlas.isSelected()){
-            atlasDetails.setVisible(true);
+            atlasDetails.setVisible(true);            
             int newHeight = currentSize.height+200;
-            int newWidth = currentSize.width+5;
+            int newWidth = currentSize.width+100;
             confirmBox.getDialog().setSize(
                 newWidth>maxWidth?maxWidth:newWidth,
                 newHeight>maxHeight?maxHeight:newHeight);
           }
           else{
             int newHeight = currentSize.height-200;
-            int newWidth = currentSize.width-5;
+            int newWidth = currentSize.width-100;
             atlasDetails.setVisible(false);
             confirmBox.getDialog().setSize(
                 newWidth<catalogPanelSize.width?catalogPanelSize.width:newWidth,
@@ -697,7 +722,7 @@ public class BeginningWizard{
         GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
         new Insets(0, 0, 0, 0), 0, 0));
     atlasDetails.setVisible(false);
-        
+            
     jPanel.validate();
     
     int choice = -1;
@@ -810,6 +835,48 @@ public class BeginningWizard{
     return choice;
   }
 
+  private void addHyperLinkListener(JEditorPane pane, final JPanel jPanel){
+    pane.addHyperlinkListener(
+        new HyperlinkListener(){
+        public void hyperlinkUpdate(final HyperlinkEvent e){
+          if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
+            System.out.println("Launching browser...");
+            final Window window = (Window) SwingUtilities.getWindowAncestor(jPanel.getRootPane());
+            window.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            MyThread t = new MyThread(){
+              public void run(){
+                try{
+                  new BrowserPanel(
+                        window,
+                        "Browser",
+                        e.getURL().toString(),
+                        null,
+                        true,
+                        /*filter*/false,
+                        /*navigation*/true,
+                        null,
+                        null,
+                        false,
+                        false);
+                }
+                catch(Exception e){
+                  e.printStackTrace();
+                  try{
+                    window.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+                    showError("WARNING: could not open URL. "+e.getMessage());
+                  }
+                  catch(Exception e2){
+                    e2.printStackTrace();
+                  }
+                }
+              }
+            };
+            SwingUtilities.invokeLater(t);
+          }
+        }
+      });
+  }
+
   /* Configure computing systems
   
   --->  configure NG
@@ -880,8 +947,13 @@ public class BeginningWizard{
       "If you fill in the field 'clusters', you choose to submit only to a selected set of clusters. This\n" +
       "will typically save you a significant amount of time. The field must be filled with a space-\n" +
       "separated list of host names. If you leave it empty all available resources will be queried on each\n" +
-      "job submission.\n\n";
-    csPanels[0].add(new JLabel("<html>"+ngString.replaceAll("\n", "<br>")+"</html>"),
+      "job submission. You can find a list of participating clusters at " +
+      "<a href=\"http://www.nordugrid.org/monitor/\">www.nordugrid.org</a>.\n\n";
+    JEditorPane pane = new JEditorPane("text/html", "<html>"+ngString.replaceAll("\n", "<br>")+"</html>");
+    pane.setEditable(false);
+    pane.setOpaque(false);
+    addHyperLinkListener(pane, jPanel);
+    csPanels[0].add(pane,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
@@ -899,9 +971,15 @@ public class BeginningWizard{
     csPanels[1] = new JPanel(new GridBagLayout());
     String gLiteString =
       "Filling in the field 'virtual organization' is mandatory. It must be filled in with the name of the\n" +
-      "virtual organization whose resources you wish to use, e.g. ATLAS. If it is not filled in, you will\n" +
-      "be able to load the computing system backend, but your jobs will be rejected on the resources.\n\n";
-    csPanels[1].add(new JLabel("<html>"+gLiteString.replaceAll("\n", "<br>")+"</html>"),
+      "EGEE virtual organization whose resources you wish to use, e.g. ATLAS. If it is not filled in, you\n" +
+      "will be able to load the computing system backend, but your jobs will be rejected on the resources.\n" +
+      "You can find a list of virtual organizations at " +
+      "<a href=\"http://cic.gridops.org/index.php?section=home&page=volist\">cic.gridops.org</a>\n\n";
+    pane = new JEditorPane("text/html", "<html>"+gLiteString.replaceAll("\n", "<br>")+"</html>");
+    pane.setEditable(false);
+    pane.setOpaque(false);
+    addHyperLinkListener(pane, jPanel);
+    csPanels[1].add(pane,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
@@ -959,23 +1037,32 @@ public class BeginningWizard{
     csPanels[3] = new JPanel(new GridBagLayout());
     String gpssString =
       "For GPSS to work, you need to have write access to a remote database. You moreover need write\n" +
-      "access to a remote directory, where input and output files of your jobs can be staged.\n\n";
+      "access to a remote directory, where input and output files of your jobs can be staged.\n" +
+      "If you don't have any remote database configured you should not enable this computing system.\n\n";
     csPanels[3].add(new JLabel("<html>"+gpssString.replaceAll("\n", "<br>")+"</html>"),
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     row = new JPanel(new BorderLayout(8, 0));
     row.add(new JLabel("Submit database: "), BorderLayout.WEST);
-    JTextField tfGpssDB = new JTextField(TEXTFIELDWIDTH);
+    JPanel jpGpssDB = new JPanel();
+    JExtendedComboBox cbGpssDB = new JExtendedComboBox();
+    jpGpssDB.add(cbGpssDB);
     String remoteDB = configFile.getValue("GPSS", "Remote database");
+    String my_db_remote_enabled = configFile.getValue("My_DB_Remote", "Enabled");
+    String gp_db_enabled = configFile.getValue("GP_DB", "Enabled");
+    if(my_db_remote_enabled!=null && (my_db_remote_enabled.equalsIgnoreCase("yes") ||
+        my_db_remote_enabled.equalsIgnoreCase("true"))){
+      cbGpssDB.addItem("My_DB_Remote");
+    }
+    if(gp_db_enabled!=null && (gp_db_enabled.equalsIgnoreCase("yes") ||
+        gp_db_enabled.equalsIgnoreCase("true"))){
+      cbGpssDB.addItem("GP_DB");
+    }
     if(remoteDB!=null && !remoteDB.equals("")){
-      tfGpssDB.setText(remoteDB);
-      tfGpssDB.setEditable(false);
+      cbGpssDB.setSelectedItem(remoteDB);
     }
-    else{
-      tfGpssDB.setText("");
-    }
-    row.add(tfGpssDB, BorderLayout.CENTER);
+    row.add(jpGpssDB, BorderLayout.CENTER);
     csPanels[3].add(row,
         new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -990,8 +1077,10 @@ public class BeginningWizard{
     row.add(subRow, BorderLayout.EAST);
     row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
         "Remote job staging directory", tfGpssDir, true), BorderLayout.WEST);
-    String remoteDir = configFile.getValue("GPSS", "Remote directory");
+    //String remoteDir = configFile.getValue("GPSS", "Remote directory");
+    String remoteDir = configFile.getValue("GridPilot", "Grid home url");
     if(remoteDB!=null && !remoteDB.equals("")){
+      remoteDir += (remoteDir.endsWith("/")?"":"/")+"gpss/";
       tfGpssDir.setText(remoteDir);
     }
     else{
@@ -1125,13 +1214,15 @@ public class BeginningWizard{
           new String [] {"no"}
           );
     }
-    if(jcbs[3].isSelected() && tfGpssDB.getText()!=null && !tfGpssDB.getText().equals("") &&
+    if(jcbs[3].isSelected() && Util.getJTextOrEmptyString(cbGpssDB)!=null &&
+        !Util.getJTextOrEmptyString(cbGpssDB).equals("") &&
         tfGpssDir.getText()!=null && !tfGpssDir.getText().equals("")){
       configFile.setAttributes(
           // We use the first of the given hosts as master host
           new String [] {"GPSS", "GPSS", "GPSS", "GPSS"},
           new String [] {"Enabled", "Remote database", "Runtime databases", "Remote directory"},
-          new String [] {"yes", tfGpssDB.getText().trim(), tfGpssDB.getText().trim(), tfGpssDir.getText().trim()}
+          new String [] {"yes", Util.getJTextOrEmptyString(cbGpssDB).trim(),
+              Util.getJTextOrEmptyString(cbGpssDB).trim(), tfGpssDir.getText().trim()}
           );
     }
     else{
@@ -1159,13 +1250,19 @@ public class BeginningWizard{
       "You can keep this information in your local database or if you have write access to a remote database,\n" +
       "you can keep the information there.\n\n" +
       "If you choose to use a remote database, you must specify the name of the server hosting it. Please notice\n" +
-      "that the database must be a GridPilot-enabled MySQL database.\n\n" +
+      "that the database must be a <a href=\""+HOME_URL+"info/gridpilot+mysql_howto.txt\">GridPilot-enabled MySQL database</a>.\n\n" +
       "If you choose to use the default remote database, please notice that anything you write there is\n" +
       "world readable and that the service is provided by gridpilot.org with absolutely no guarantee that\n" +
       "data will not be deleted at any time.\n\n";
     JPanel jPanel = new JPanel(new GridBagLayout());
+    JEditorPane pane = new JEditorPane("text/html", "<html>"+confirmString.replaceAll("\n", "<br>")+"</html>");
+    pane.setEditable(false);
+    pane.setOpaque(false);
+    addHyperLinkListener(pane, jPanel);
     String remoteDB = configFile.getValue("My_DB_Remote", "Database");
     String host = remoteDB.replaceFirst(".*mysql://(.*)/.*","$1");
+    // TODO: now we assume that mysql always runs on port 3306 - generalize.
+    host = host.replaceFirst("(.*):\\d+", "$1");
     String [] defDirs = new String [] {"",
                                        "db.gridpilot.dk",
                                        host};
@@ -1173,7 +1270,7 @@ public class BeginningWizard{
                                      "Use default remote database host",
                                      "Use custom remote database host:"};
     JTextField [] jtFields = new JTextField [defDirs.length];
-    jPanel.add(new JLabel("<html>"+confirmString.replaceAll("\n", "<br>")+"</html>"),
+    jPanel.add(pane,
         new GridBagConstraints(0, (firstRun?1:0), 2, 2, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
@@ -1256,9 +1353,7 @@ public class BeginningWizard{
       return choice;
     }
   
-    if(sel==0 && !firstRun){
-      // If this is the first run, this should already be the set
-
+    if(sel==0){
       // Local DB, enable My_DB_Local, disable My_DB_Remote and GP_DB.
       // Set GPSS:remote database = GP_DB
       // Set Fork:remote pull database = GP_DB
@@ -1332,8 +1427,9 @@ public class BeginningWizard{
     String confirmString =
       "When running jobs on a grid it is useful to have the jobs upload output files to a directory on a server\n" +
       "that's always on-line.\n\n" +
-      "For this to be possible GridPilot needs to know a gridftp or https URL where you have read/write permission\n" +
-      "with the grid certificate you specified previously.\n\n" +
+      "For this to be possible GridPilot needs to know a URL on a " +
+      "<a href=\""+HOME_URL+"info/gridftp+https_howto.txt\">grid-enabled ftp or http server</a> where you have\n" +
+      "read/write permission with the grid certificate you specified previously.\n\n" +
       "If you don't know any such URL or you don't understand the above, you may use the default grid home URL\n" +
       "given below. But please notice that this is but a temporary solution and that the files on this location may\n" +
       "be read, overwritten or deleted at any time.\n\n"+
@@ -1341,15 +1437,19 @@ public class BeginningWizard{
       "has run until GridPilot downloads them.\n\n"+
       "A specified, local, but non-existing directory will be created.\n\n";
     JPanel jPanel = new JPanel(new GridBagLayout());
+    JEditorPane pane = new JEditorPane("text/html", "<html>"+confirmString.replaceAll("\n", "<br>")+"</html>");
+    pane.setEditable(false);
+    pane.setOpaque(false);
+    addHyperLinkListener(pane, jPanel);
     String homeUrl = configFile.getValue("GridPilot", "Grid home url");
     String [] defDirs = new String [] {homeUrl,
-                                       HOMEGRID_URL+Util.getGridDatabaseUser()+"/",
+                                       HOME_URL+"users/"+Util.getGridDatabaseUser()+"/",
                                        homeUrl};
     String [] names = new String [] {"Use your own grid or local home URL",
                                      "Use default grid home URL",
                                      "Use default local home URL"};
     JTextField [] jtFields = new JTextField [defDirs.length];
-    jPanel.add(new JLabel("<html>"+confirmString.replaceAll("\n", "<br>")+"</html>"),
+    jPanel.add(pane,
         new GridBagConstraints(0, (firstRun?1:0), 2, 2, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
@@ -1426,10 +1526,19 @@ public class BeginningWizard{
       }
       newDirs[i] = Util.replaceWithTildeLocally(Util.clearFile(newDirs[i]));
     }
-      
+
     // Set config entries
     if(sel>-1 && newDirs[sel]!=null &&
         (defDirs[0]==null || !defDirs[0].equals(newDirs[sel]))){
+      // Create the homedir if it doesn't exist
+      if(Util.urlIsRemote(newDirs[sel])){
+        mkRemoteDir(newDirs[sel]);
+      }
+      else{
+        if(!LocalStaticShellMgr.mkdir(newDirs[sel])){
+          throw new IOException("Could not create directory "+newDirs[sel]);
+        }
+      }
       Debug.debug("Setting "+sel+":"+newDirs[sel], 2);
       configFile.setAttributes(
           new String [] {"GridPilot", "GPSS"},
@@ -1440,6 +1549,24 @@ public class BeginningWizard{
     }
   
     return choice;
+  }
+  
+  private void mkRemoteDir(String url) throws Exception{
+    if(!url.endsWith("/")){
+      throw new IOException("Directory URL: "+url+" does not end with a slash.");
+    }
+    GlobusURL globusUrl= new GlobusURL(url);
+    FileTransfer fileTransfer = GridPilot.getClassMgr().getFTPlugin(globusUrl.getProtocol());
+    // First, check if directory already exists.
+    try{
+      fileTransfer.list(globusUrl, null, null);
+      return;
+    }
+    catch(Exception e){
+    }
+    // If not, create it.
+    Debug.debug("Creating directory "+globusUrl.getURL(), 2);
+    fileTransfer.write(globusUrl, "");
   }
   
 

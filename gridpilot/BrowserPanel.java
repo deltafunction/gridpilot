@@ -88,24 +88,36 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private static int TEXTFIELDWIDTH = 32;
   private static int HTTP_TIMEOUT = 10000;
 
-  public BrowserPanel(Frame _parent, String title, String url, 
+  public BrowserPanel(Frame parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
       boolean _withNavigation, JComponent _jBox, String _filter,
       boolean _localFS) throws Exception{
-    super(_parent);
-    init(title, url, _baseUrl, modal, _withFilter, _withNavigation, _jBox, _filter, _localFS);
+    super(parent);
+    init(parent, title, url, _baseUrl, modal, _withFilter, _withNavigation, _jBox, _filter,
+        _localFS, true);
   }
   
+  public BrowserPanel(Window parent, String title, String url, 
+      String _baseUrl, boolean modal, boolean _withFilter,
+      boolean _withNavigation, JComponent _jBox, String _filter,
+      boolean _localFS, boolean cancelEnabled) throws Exception{
+    init(parent, title, url, _baseUrl, modal, _withFilter, _withNavigation, _jBox, _filter,
+        _localFS, cancelEnabled);
+    Debug.debug("Setting default cursor", 2);
+  }
+
   public BrowserPanel(String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
       boolean _withNavigation, JComponent _jBox, String _filter,
       boolean _localFS) throws Exception{
-    init(title, url, _baseUrl, modal, _withFilter, _withNavigation, _jBox, _filter, _localFS);
+    init(null, title, url, _baseUrl, modal, _withFilter, _withNavigation, _jBox, _filter,
+        _localFS, true);
   }
   
-  public void init(String title, String url, 
+  public void init(Window parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
-      boolean _withNavigation, JComponent _jBox, String _filter, boolean _localFS) throws Exception{
+      boolean _withNavigation, JComponent _jBox, String _filter,
+      boolean _localFS, boolean cancelEnabled) throws Exception{
     baseUrl = _baseUrl;
     //origUrl = url;
     withFilter = _withFilter;
@@ -193,7 +205,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     setUrl(url);
     
     try{
-      initGUI(title, url);
+      initGUI(parent, title, url, cancelEnabled);
     }
     catch(IOException e){
       //e.printStackTrace();
@@ -282,8 +294,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
     });
   }
   
-  //Component initialization
-  private void initGUI(String title, String url) throws Exception{
+  /**
+   * Component initialization.
+   * If parent is not null, it gets its cursor set to the default after loading url.
+   * If cancelEnabled is false, the cancel button is disabled.
+   */
+  private void initGUI(final Window parent, String title, String url, boolean cancelEnabled) throws Exception{
     
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     this.getContentPane().setLayout(new BorderLayout());
@@ -616,12 +632,23 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
     });
     
+    // Load the actual page
     statusBar = new StatusBar();
     statusBar.setLabel(" ");
     this.getContentPane().add(statusBar, BorderLayout.SOUTH);
     setDisplay(url);
     if(withNavigation){
       statusBar.setLabel("Type in URL and hit return");
+    }
+    
+    // Fix up things if this was e.g. called from a wizard.
+    if(parent!=null){
+      Debug.debug("Resetting cursor", 2);
+      parent.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+    }
+    if(!cancelEnabled){
+      Debug.debug("Disabling cancel button", 2);
+       bCancel.setEnabled(false);
     }
         
     ep.addPropertyChangeListener(new PropertyChangeListener(){
