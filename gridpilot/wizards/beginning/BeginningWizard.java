@@ -1221,7 +1221,7 @@ public class BeginningWizard{
           // We use the first of the given hosts as master host
           new String [] {"GPSS", "GPSS", "GPSS", "GPSS"},
           new String [] {"Enabled", "Remote database", "Runtime databases", "Remote directory"},
-          new String [] {"yes", Util.getJTextOrEmptyString(cbGpssDB).trim(),
+          new String [] {"yes", ("My_DB_Local "+Util.getJTextOrEmptyString(cbGpssDB)).trim(),
               Util.getJTextOrEmptyString(cbGpssDB).trim(), tfGpssDir.getText().trim()}
           );
     }
