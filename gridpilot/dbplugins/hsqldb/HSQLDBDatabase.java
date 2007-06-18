@@ -1481,7 +1481,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     return res;
   }
   
-  public synchronized boolean createJobDefinition(String [] values){
+  public synchronized boolean createJobDefinition(String [] _values){
+    
+    Object [] values = (Object []) _values.clone();
     
     if(jobDefFields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -1742,7 +1744,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     return execok;
   }
 
-  public synchronized boolean createTransformation(Object [] values){
+  public synchronized boolean createTransformation(Object [] _values){
+    
+    Object [] values = (Object []) _values.clone();
 
     String sql = "INSERT INTO transformation (";
     for(int i=1; i<transformationFields.length; ++i){
@@ -1791,7 +1795,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     return execok;
   }
 
-  public synchronized boolean createRuntimeEnvironment(Object [] values){
+  public synchronized boolean createRuntimeEnvironment(Object [] _values){
+    
+    Object [] values = (Object []) _values.clone();
   
     String sql = "INSERT INTO runtimeEnvironment (";
     for(int i=1; i<runtimeEnvironmentFields.length; ++i){

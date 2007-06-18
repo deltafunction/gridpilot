@@ -6,7 +6,6 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.TimeZone;
 import java.util.Vector;
@@ -1357,7 +1356,9 @@ public class MySQLDatabase extends DBCache implements Database {
     return res;
   }
   
-  public synchronized boolean createJobDefinition(String [] values){
+  public synchronized boolean createJobDefinition(String [] _values){
+    
+    String [] values = (String []) _values.clone();
     
     if(jobDefFields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -1584,7 +1585,9 @@ public class MySQLDatabase extends DBCache implements Database {
     return execok;
   }
 
-  public synchronized boolean createTransformation(Object [] values){
+  public synchronized boolean createTransformation(Object [] _values){
+    
+    Object [] values = (Object []) _values.clone();
 
     String sql = "INSERT INTO transformation (";
     for(int i=1; i<transformationFields.length; ++i){
@@ -1629,53 +1632,56 @@ public class MySQLDatabase extends DBCache implements Database {
     return execok;
   }
   
-  public synchronized boolean createRuntimeEnvironment(Object [] values){
+  public synchronized boolean createRuntimeEnvironment(Object [] _values){
     
-      String sql = "INSERT INTO runtimeEnvironment (";
-      for(int i=1; i<runtimeEnvironmentFields.length; ++i){
-        sql += runtimeEnvironmentFields[i];
-        if(runtimeEnvironmentFields.length>2 && i<runtimeEnvironmentFields.length - 1){
-          sql += ",";
-        }
+    Object [] values = (Object []) _values.clone();
+
+    String sql = "INSERT INTO runtimeEnvironment (";
+    for(int i=1; i<runtimeEnvironmentFields.length; ++i){
+      sql += runtimeEnvironmentFields[i];
+      if(runtimeEnvironmentFields.length>2 && i<runtimeEnvironmentFields.length - 1){
+        sql += ",";
       }
-      sql += ") VALUES (";
-      for(int i=1; i<runtimeEnvironmentFields.length; ++i){
-        if(runtimeEnvironmentFields[i].equalsIgnoreCase("created")){
-          try{
-            values[i] = makeDate((String) values[i]);
-          }
-          catch(Exception e){
-            values[i] = makeDate("");
-          }
+    }
+    sql += ") VALUES (";
+    for(int i=1; i<runtimeEnvironmentFields.length; ++i){
+      if(runtimeEnvironmentFields[i].equalsIgnoreCase("created")){
+        try{
+          values[i] = makeDate((String) values[i]);
         }
-        else if(runtimeEnvironmentFields[i].equalsIgnoreCase("lastModified")){
+        catch(Exception e){
           values[i] = makeDate("");
         }
-        else if(values[i]==null){
-          values[i] = "''";
-        }
-        else{
-          values[i] = "'"+values[i]+"'";
-        }
-    
-        sql += values[i];
-        if(runtimeEnvironmentFields.length>1 && i<runtimeEnvironmentFields.length - 1){
-          sql += ",";
-        }
       }
-      sql += ")";
-      Debug.debug(sql, 2);
-      boolean execok = true;
-      try{
-        executeUpdate(sql);
+      else if(runtimeEnvironmentFields[i].equalsIgnoreCase("lastModified")){
+        values[i] = makeDate("");
       }
-      catch(Exception e){
-        execok = false;
-        Debug.debug(e.getMessage(), 2);
-        error = e.getMessage();
+      else if(values[i]==null){
+        values[i] = "''";
       }
-      return execok;
+      else{
+        values[i] = "'"+values[i]+"'";
+      }
+  
+      sql += values[i];
+      if(runtimeEnvironmentFields.length>1 && i<runtimeEnvironmentFields.length - 1){
+        sql += ",";
+      }
     }
+    sql += ")";
+    Debug.debug(sql, 2);
+    boolean execok = true;
+    try{
+      executeUpdate(sql);
+    }
+    catch(Exception e){
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+    }
+    return execok;
+
+  }
     
   public synchronized boolean setJobDefsField(String [] identifiers,
       String field, String value){
