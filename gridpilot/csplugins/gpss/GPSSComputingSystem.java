@@ -93,6 +93,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     rteCatalogUrls = configFile.getValues(csName, "runtime catalog URLs");
     rteUrls = new HashSet();
     timerSyncRTEs.setDelay(RTE_SYNC_DELAY);
+    toDeleteRtes = new HashMap();
     // Set user
     try{
       user = Util.getGridSubject();      
@@ -1503,11 +1504,15 @@ public class GPSSComputingSystem implements ComputingSystem{
             if(localDBMgr.createRuntimeEnvironment(rtes.getRow(i).values)){
               Debug.debug("Creating RTE "+Util.arrayToString(rtes.getRow(i).values), 2);
               // Tag for deletion
-              newId = localDBMgr.getRuntimeEnvironmentID(
-                  (String) rtes.getRow(i).getValue(rteNameField), "GPSS");
-              if(newId!=null && !id.equals("-1")){
+              String name = (String) rtes.getRow(i).getValue(rteNameField);
+              newId = localDBMgr.getRuntimeEnvironmentID(name , "GPSS");
+              if(newId!=null && !newId.equals("-1")){
+                Debug.debug("Tagging for deletion "+name+":"+newId, 3);
                 toDeleteRtes.put(newId, localDBMgr.getDBName());
               }
+            }
+            else{
+              Debug.debug("WARNING: Failed creating RTE "+Util.arrayToString(rtes.getRow(i).values), 2);
             }
           }
         }
@@ -1752,40 +1757,52 @@ public class GPSSComputingSystem implements ComputingSystem{
       }
       if(localDBMgr!=null){
         for(Iterator it=finalRuntimesLocal.iterator(); it.hasNext();){
-          ok = true;
-          runtimeName = (String) it.next();
-          id = localDBMgr.getRuntimeEnvironmentID(runtimeName, csName);
-          if(!id.equals("-1")){
-            // Don't delete records with a non-empty certificate.
-            // These were put there by pull clients.
-            certificate = (String) localDBMgr.getRuntimeEnvironment(id).getValue("certificate");
-            if(certificate!=null && !certificate.equals("")){
-              continue;
+          try{
+            ok = true;
+            runtimeName = (String) it.next();
+            id = localDBMgr.getRuntimeEnvironmentID(runtimeName, csName);
+            if(!id.equals("-1")){
+              // Don't delete records with a non-empty certificate.
+              // These were put there by pull clients.
+              certificate = (String) localDBMgr.getRuntimeEnvironment(id).getValue("certificate");
+              if(certificate!=null && !certificate.equals("")){
+                continue;
+              }
+              ok = localDBMgr.deleteRuntimeEnvironment(id);
             }
-            ok = localDBMgr.deleteRuntimeEnvironment(id);
+            else{
+              ok = false;
+            }
+            if(!ok){
+              error = "WARNING: could not delete runtime environment " +
+              runtimeName+" from database "+localDBMgr.getDBName();
+              Debug.debug(error, 1);
+            }
           }
-          else{
-            ok = false;
-          }
-          if(!ok){
-            error = "WARNING: could not delete runtime environment " +
-            runtimeName+" from database "+localDBMgr.getDBName();
-            Debug.debug(error, 1);
+          catch(Exception e){
+            e.printStackTrace();
           }
         }
       }
       
       // Delete RTEs from catalog(s)
+      Debug.debug("Cleaning up catalog RTEs "+Util.arrayToString(toDeleteRtes.keySet().toArray()), 3);
       if(toDeleteRtes!=null && toDeleteRtes.keySet()!=null){
         for(Iterator it=toDeleteRtes.keySet().iterator(); it.hasNext();){
-          id = (String) it.next();
-          if(toDeleteRtes.get(id).equals(localRuntimeDBs[i])){
-            ok = localDBMgr.deleteRuntimeEnvironment(id);
-            if(!ok){
-              error = "WARNING: could not delete runtime environment " +
-              id+" from database "+localDBMgr.getDBName();
-              Debug.debug(error, 1);
+          try{
+            id = (String) it.next();
+            if(toDeleteRtes.get(id).equals(localRuntimeDBs[i])){
+              Debug.debug("Deleting "+id, 3);
+              ok = localDBMgr.deleteRuntimeEnvironment(id);
+              if(!ok){
+                error = "WARNING: could not delete runtime environment " +
+                id+" from database "+localDBMgr.getDBName();
+                Debug.debug(error, 1);
+              }
             }
+          }
+          catch(Exception e){
+            e.printStackTrace();
           }
         }
       }
