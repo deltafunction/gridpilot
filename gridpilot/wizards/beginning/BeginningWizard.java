@@ -11,10 +11,18 @@ import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.URL;
+import java.nio.CharBuffer;
+import java.util.HashSet;
 
 import gridpilot.BrowserPanel;
 import gridpilot.ConfigFile;
@@ -61,6 +69,7 @@ public class BeginningWizard{
     URL imgURL = null;
     changes = false;
     
+    // Make things look nice
     try{
       imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "aviateur.png");
       icon = new ImageIcon(imgURL);
@@ -405,6 +414,28 @@ public class BeginningWizard{
       }
       newDirs[i] = Util.replaceWithTildeLocally(Util.clearFile(newDirs[i]));
     }
+    
+    // Now copy over the software catalog
+    URL fileURL = null;
+    BufferedReader in = null;
+    try{
+      fileURL = GridPilot.class.getResource(GridPilot.resourcesPath+"rtes.rdf");
+      in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
+    }
+    catch(Exception e){
+      fileURL = GridPilot.class.getResource("/resources/rtes.rdf");
+      in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
+    }
+    BufferedWriter out =  new BufferedWriter(new FileWriter(
+        new File(Util.clearTildeLocally(Util.clearFile(newDirs[0])), "rtes.rdf")));
+    int c;
+    while((c=in.read())!=-1){
+      if(c!='\r'){
+        out.write(c); 
+      }
+    }
+    in.close();
+    out.close();
     
     // Set config entries
     if(doCreate && (!defDirs[0].equals(newDirs[0]) ||
@@ -803,7 +834,7 @@ public class BeginningWizard{
       }
       configFile.setAttributes(
           new String [] {"My_DB_Local", "Regional_DB", "GP_DB",
-              "My_DB_Remote", "My_DB_Remote"},
+              "Regional_DB", "Regional_DB"},
           new String [] {"Enabled", "Enabled", "Enabled",
               "Database", "Description"},
           new String [] {"yes", "yes", "no",
@@ -1218,11 +1249,10 @@ public class BeginningWizard{
         !Util.getJTextOrEmptyString(cbGpssDB).equals("") &&
         tfGpssDir.getText()!=null && !tfGpssDir.getText().equals("")){
       configFile.setAttributes(
-          // We use the first of the given hosts as master host
           new String [] {"GPSS", "GPSS", "GPSS", "GPSS"},
           new String [] {"Enabled", "Remote database", "Runtime databases", "Remote directory"},
-          new String [] {"yes", ("My_DB_Local "+Util.getJTextOrEmptyString(cbGpssDB)).trim(),
-              Util.getJTextOrEmptyString(cbGpssDB).trim(), tfGpssDir.getText().trim()}
+          new String [] {"yes", Util.getJTextOrEmptyString(cbGpssDB).trim(),
+             ("My_DB_Local "+Util.getJTextOrEmptyString(cbGpssDB)).trim(), tfGpssDir.getText().trim()}
           );
     }
     else{
