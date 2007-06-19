@@ -15,8 +15,10 @@ import gridpilot.GridPilot;
 import gridpilot.ListPanel;
 import gridpilot.IconProxy;
 import gridpilot.wizards.beginning.BeginningWizard;
-import gridpilot.wizards.manage_software.ManageSoftwareWizard;
-import gridpilot.wizards.run_one_job.RunOneJobWizard;
+import gridpilot.wizards.manage_software.CreateSoftwarePackageWizard;
+import gridpilot.wizards.manage_software.SynchronizeSoftwareWizard;
+import gridpilot.wizards.run_jobs.RunMultipleJobsWizard;
+import gridpilot.wizards.run_jobs.RunOneJobWizard;
 
 /**
  * Main frame of GridPilot application.
@@ -351,6 +353,32 @@ public class GlobalFrame extends GPFrame{
       }
     });
 
+    JMenuItem miDbRefreshRTEs = new JMenuItem("Refresh runtimeEnvironments");
+    miDbRefreshRTEs.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        /*
+         Call setupRuntimeEnvironments() on all CSs
+         */
+        MyThread t = new MyThread(){
+          public void run(){
+            try{
+              for(int i=0; i<GridPilot.csNames.length; ++i){
+                GridPilot.getClassMgr().getCSPluginMgr().cleanupRuntimeEnvironments(
+                    GridPilot.csNames[i]);
+                GridPilot.getClassMgr().getCSPluginMgr().setupRuntimeEnvironments(
+                    GridPilot.csNames[i]);
+              }
+            }
+            catch(Exception ex){
+              Debug.debug("WARNING: could not create refresh runtimeEnvironments.", 1);
+              ex.printStackTrace();
+            }
+          }
+        };     
+        SwingUtilities.invokeLater(t);        
+      }
+    });
+
     menuDB.add(miDbClearCaches);
     menuDB.add(miDbReconnect);
     menuFile.add(menuDB);
@@ -564,10 +592,20 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuHelp.add(menuHelpBeginning);
-    JMenuItem menuHelpPublishSoftware = new JMenuItem("Wizard: Manage software");
+    JMenuItem menuHelpCreateSoftwarePackage = new JMenuItem("Wizard: Create software package (runtime environment)");
+    menuHelpCreateSoftwarePackage.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        JFrame frame = new CreateSoftwarePackageWizard();
+        frame.pack();
+        frame.setVisible(true);
+
+      }
+    });
+    menuHelp.add(menuHelpCreateSoftwarePackage);
+    JMenuItem menuHelpPublishSoftware = new JMenuItem("Wizard: Synchronize software lists with external catalogs");
     menuHelpPublishSoftware.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        new ManageSoftwareWizard();
+        new SynchronizeSoftwareWizard();
       }
     });
     menuHelp.add(menuHelpPublishSoftware);
@@ -578,6 +616,13 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuHelp.add(menuHelpRunOneJob);
+    JMenuItem menuHelpRunMultipleJobs = new JMenuItem("Wizard: Prepare and run multiple jobs");
+    menuHelpRunOneJob.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        new RunMultipleJobsWizard();
+      }
+    });
+    menuHelp.add(menuHelpRunMultipleJobs);
     
     menuBar.add(menuFile);
     menuBar.add(menuEdit);
