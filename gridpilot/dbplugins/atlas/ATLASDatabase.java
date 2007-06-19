@@ -15,7 +15,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.rmi.RemoteException;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -348,7 +347,8 @@ public class ATLASDatabase extends DBCache implements Database{
         incomplete = get.replaceFirst("(?i).*\\bincomplete=(\\S+).*", "$1");
       }
       
-      get = dq2Url+"ws_repository/dataset?version=0&"+get;
+      //get = dq2Url+"ws_repository/dataset?version=0&"+get;
+      get = dq2Url+"ws_repository/rpc?operation=queryDatasetByName&version=0&API=0_3_0&"+get;
 
       Debug.debug(">>> get string was : "+get, 3);
             
@@ -627,11 +627,10 @@ public class ATLASDatabase extends DBCache implements Database{
         logFile.addMessage(error);
       }
       
-      get = dq2Url+"ws_content/files?"+get;
-
-      Debug.debug(">>> get string was : "+get, 3);
+      //get = dq2Url+"ws_content/files?"+get;
+      //Debug.debug(">>> get string was : "+get, 3);
       
-      URL url = null;
+      /*URL url = null;
       try{
         url = new URL(get);
       }
@@ -642,7 +641,19 @@ public class ATLASDatabase extends DBCache implements Database{
       }
 
       // Get the DQ result
-      String str = readGetUrl(url);
+      String str = readGetUrl(url);*/
+      String str;
+      try{
+        DQ2Access dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
+        str = dq2Access.getDatasetFiles("['"+vuid+"']");
+        // get rid of time stamp.
+        str = str.replaceFirst("\\((.*),[^,]+\\)", "$1").trim();
+      }
+      catch(IOException e1){
+        error = "Could not get file names for "+vuid;
+        Debug.debug(error, 2);
+        return null;
+      }
       // Check if the result is of the form {...}
       if(!str.matches("^\\{.*\\}$")){
         Debug.debug("WARNING: search returned an error "+str, 1);
@@ -769,17 +780,19 @@ public class ATLASDatabase extends DBCache implements Database{
     "dsns=%5B%5D" --data "vuids=%5B%27cdced2bd-5217-423a-9690-8b2bb5b48fa8%27%5D"
     http://atlddmpro.cern.ch:8000/dq2/ws_location/dataset
     dsns=[]&vuids=['cdced2bd-5217-423a-9690-8b2bb5b48fa8']*/
-    String url = dq2Url+"ws_location/dataset?"+
-       "dsns=[]&vuids="+URLEncoder.encode("["+vuidsString+"]", "utf-8");
+    //String url = dq2Url+"ws_location/rpc?"+
+    //   "operation=queryDatasetLocations&API=0_3_0&dsns=[]&vuids="+URLEncoder.encode("["+vuidsString+"]", "utf-8");
     String ret = null;
     try{
-      Debug.debug(">>> get string was : "+dq2Url+"ws_location/dataset?"+
-          "dsns=[]&vuids="+"["+vuidsString+"]", 3);
-      ret = readGetUrl(new URL(url));
-      ret = URLDecoder.decode(ret, "utf-8");
+      //Debug.debug(">>> get string was : "+dq2Url+"ws_location/rpc?"+
+      //    "operation=queryDatasetLocations&API=0_3_0&dsns=[]&vuids="+"["+vuidsString+"]", 3);
+      //ret = readGetUrl(new URL(url));
+      //ret = URLDecoder.decode(ret, "utf-8");
+      DQ2Access dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
+      ret = dq2Access.getDatasetLocations("["+vuidsString+"]");
     }
     catch(Exception e){
-      error = "WARNING: problem with URL "+url+". "+e.getMessage();
+      error = "WARNING: problem with getLocations. "+e.getMessage();
       throw new IOException(error);
     }
     // Check if the result is of the form {...}
@@ -882,20 +895,6 @@ public class ATLASDatabase extends DBCache implements Database{
       Debug.debug(error, 2);
       return null;
     }
-    String dec = "";
-    try{
-      dec = URLDecoder.decode(str.toString(), "utf-8");
-      // remove blank lines
-      dec = dec.replaceAll("\\n^\\s+$", "");
-      dec = dec.replaceAll("\\r\\n^\\s+$", "");
-      if(dec.lastIndexOf("\n")==dec.length()-1){
-        dec = dec.substring(0, dec.length()-1);
-      }
-      Debug.debug("Decoded result: :"+dec+":", 3);
-    }
-    catch(UnsupportedEncodingException e){
-      e.printStackTrace();
-    }
     finally{
       try{
         dis.close();
@@ -908,9 +907,27 @@ public class ATLASDatabase extends DBCache implements Database{
       catch(Exception ee){
       }
     }
+    return decodeReply(str.toString());
+  }
+
+  private String decodeReply(String str){
+    String dec = "";
+    try{
+      dec = URLDecoder.decode(str, "utf-8");
+      // remove blank lines
+      dec = dec.replaceAll("\\n^\\s+$", "");
+      dec = dec.replaceAll("\\r\\n^\\s+$", "");
+      if(dec.lastIndexOf("\n")==dec.length()-1){
+        dec = dec.substring(0, dec.length()-1);
+      }
+      Debug.debug("Decoded result: :"+dec+":", 3);
+    }
+    catch(UnsupportedEncodingException e){
+      e.printStackTrace();
+    }
     return dec;
   }
-  
+
   // Construct path following ATLAS conventions
   private String makeAtlasPath(String lfn){
     
