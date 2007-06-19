@@ -2013,9 +2013,26 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             if(fileDatasetReference!=null){
               datasetColumn = fileDatasetReference[1];
             }
-            dbPanel.selectPanel.setConstraint(datasetColumn,
-                dbPluginMgr.getDataset(id).getValue(
-                    fileDatasetReference[0]).toString(), 0);
+            // Try to save a database lookup (which DQ2 cannot handle anyway):
+            // use the dataset name if it is displayed. Otherwise look it up from the id.
+            String datasetName = null;
+            int datasetNameIndex = -1;
+            try{
+              for(int i=0; i<tableResults.getColumnNames().length; ++i){
+                if(tableResults.getColumnNames()[i].equalsIgnoreCase(datasetColumn)){
+                  datasetNameIndex = i;
+                  break;
+                }
+              }
+              datasetName = (String) tableResults.getValueAt(tableResults.getSelectedRow(), datasetNameIndex);
+            }
+            catch(Exception e){
+            }
+            if(datasetName==null || datasetName.equals("")){
+              datasetName = dbPluginMgr.getDataset(id).getValue(
+                  fileDatasetReference[0]).toString();
+            }
+            dbPanel.selectPanel.setConstraint(datasetColumn, datasetName, 0);
             dbPanel.searchRequest(false, waitForThread);
             dbPanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
             GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);
