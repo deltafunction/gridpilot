@@ -221,4 +221,9 @@ public interface ComputingSystem{
    */
   public void setupRuntimeEnvironments(String csName);
 
+  /**
+   * Clear entries written by setupRuntimeEnvironments. <br>
+   */
+  public void cleanupRuntimeEnvironments(String csName);
+
 }

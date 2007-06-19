@@ -511,6 +511,10 @@ public class NGComputingSystem implements ComputingSystem{
   }
 
   public void exit(){
+    cleanupRuntimeEnvironments(csName);
+  }
+  
+  public void cleanupRuntimeEnvironments(String csName){
     String runtimeName = null;
     String initText = null;
     String id = "-1";

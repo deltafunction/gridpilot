@@ -77,7 +77,7 @@ public class GPSSComputingSystem implements ComputingSystem{
   private Timer timerSyncRTEs = new Timer(0, new ActionListener(){
     public void actionPerformed(ActionEvent e){
       Debug.debug("Syncing RTEs", 2);
-      cleanupRuntimeEnvironments();
+      cleanupRuntimeEnvironments(csName);
       syncRTEsFromRemoteDB();
     }
   });
@@ -1733,13 +1733,13 @@ public class GPSSComputingSystem implements ComputingSystem{
   }
 
   public void exit(){
-    cleanupRuntimeEnvironments();
+    cleanupRuntimeEnvironments(csName);
   }
   
   /**
    * Clean up runtime environment records copied from "remote database".
    */
-  public void cleanupRuntimeEnvironments(){
+  public void cleanupRuntimeEnvironments(String csName){
     String runtimeName = null;
     String certificate = null;
     String id = "-1";

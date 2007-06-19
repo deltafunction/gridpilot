@@ -775,10 +775,6 @@ public class CSPluginMgr implements ComputingSystem{
     }
   }
   
-  /**
-   * Update the status of this job on the computing system specified by job.ComputingSystem
-   * @see ComputingSystem#updateStatus(Vector)
-   */
   public void setupRuntimeEnvironments(final String csName){
     if(csName==null || csName.equals("")){
       return;
@@ -799,6 +795,28 @@ public class CSPluginMgr implements ComputingSystem{
     t.start();
 
     Util.waitForThread(t, csName, setupTimeOut, "setupRuntimeEnvironments");
+  }
+
+  public void cleanupRuntimeEnvironments(final String csName){
+    if(csName==null || csName.equals("")){
+      return;
+    }
+    MyThread t = new MyThread(){
+      public void run(){
+        try{
+          ((ComputingSystem) cs.get(csName)).cleanupRuntimeEnvironments(csName);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + csName +
+                             " during cleanupRuntimeEnvironments", t);
+        }
+      }
+    };
+
+    t.start();
+
+    Util.waitForThread(t, csName, setupTimeOut, "cleanupRuntimeEnvironments");
   }
 
   /**

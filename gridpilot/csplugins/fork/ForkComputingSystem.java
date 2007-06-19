@@ -738,6 +738,10 @@ public class ForkComputingSystem implements ComputingSystem{
   }
 
   public void exit(){
+    cleanupRuntimeEnvironments(csName);
+  }
+  
+  public void cleanupRuntimeEnvironments(String csName){
     String runtimeName = null;
     String myCSName = null;
     String initText = null;
@@ -1254,5 +1258,4 @@ public class ForkComputingSystem implements ComputingSystem{
   public String getError(String csName){
     return error;
   }
-
 }
