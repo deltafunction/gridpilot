@@ -1762,8 +1762,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Open dialog with dataset creation panel in editing mode
    */ 
  private void editDataset(){
-   CreateEditDialog pDialog = new CreateEditDialog(
-     new DatasetCreationPanel(dbPluginMgr, this, true), true, false, true, false);
+   DatasetCreationPanel dscp = new DatasetCreationPanel(dbPluginMgr, this, true);
+   CreateEditDialog pDialog = new CreateEditDialog(dscp, true, false, true, false);
+   if(!dscp.editable){
+     pDialog.setBCreateUpdateEnabled(false);
+   }
    pDialog.setTitle(tableName);
  }
 

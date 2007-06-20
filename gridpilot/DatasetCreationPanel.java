@@ -51,6 +51,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private String [] datasetTransformationReference;
   private String [] datasetTransformationVersionReference;
   private JButton jbEditTrans = new JButton("view");
+  
+  public boolean editable = true;
 
   /**
    * Constructor
@@ -66,6 +68,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     cstAttr = new String[cstAttributesNames.length];
     datasetIdentifier = Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
     transformations = dbPluginMgr.getTransformations();
+    editable = true;
     
     datasetTransformationReference =
       Util.getDatasetTransformationReference(dbPluginMgr.getDBName());
@@ -127,6 +130,28 @@ public class DatasetCreationPanel extends CreateEditPanel{
       }
       catch(Exception e){
         // nothing
+      }
+      // in case the database does not support lookup on dataset id; then the values
+      // will be null and we have to take those we can directly from the tableResults
+      if(editing && (datasetName==null || datasetName.equals(""))){
+        try{
+          Table tableResults = panel.getTable();
+          if(tableResults.getSelectedRows().length==1){
+            for(int k=0; k<tableResults.getColumnCount(); ++k){
+              if(tableResults.getColumnName(k).equalsIgnoreCase(Util.getNameField(dbPluginMgr.getDBName(), "dataset"))){
+                datasetName = tableResults.getUnsortedValueAt(tableResults.getSelectedRow(), k).toString();
+                break;
+              }
+            }
+          }
+          if(datasetName==null){
+            editable = false;
+          }
+        }
+        catch(Exception e){
+          editable = false;
+          e.printStackTrace();
+        }
       }
       title = "Edit dataset " + 
         (datasetName.length()>32 ? datasetName.substring(0, 28)+"..." : datasetName);
@@ -216,7 +241,35 @@ public class DatasetCreationPanel extends CreateEditPanel{
         if(!editing && !reuseTextFields || tcCstAttributes[i]==null){
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
         }
-      }      
+      }
+      // in case the database does not support lookup on dataset id (like DQ2);
+      // then the values will be null and we have to take those we can directly from tableResults.
+      // If we cannot get all values, we will not allow editing.
+      if(editing && (cstAttr[i]==null || cstAttr[i].equals(""))){
+        try{
+          Table tableResults = panel.getTable();
+          if(tableResults.getSelectedRows().length==1){
+            boolean ok = false;
+            for(int k=0; k<tableResults.getColumnCount(); ++k){
+              if(tableResults.getColumnName(k).equalsIgnoreCase(cstAttributesNames[i])){
+                cstAttr[i] = tableResults.getUnsortedValueAt(tableResults.getSelectedRow(), k).toString();
+                ok = true;
+                break;
+              }
+            }
+            if(!ok){
+              editable = false;
+            }
+          }
+          else{
+            editable = false;
+          }
+        }
+        catch(Exception e){
+          editable = false;
+          e.printStackTrace();
+        }
+      }
       if(cstAttr[i]!=null && !cstAttr[i].equals("")){
         Debug.debug("Setting cstAttr["+i+"]: "+cstAttr[i], 3);
         Util.setJText(tcCstAttributes[i], cstAttr[i]);

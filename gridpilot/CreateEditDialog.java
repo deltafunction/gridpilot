@@ -164,6 +164,10 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
     
     pack();
   }
+  
+  public void setBCreateUpdateEnabled(boolean ok){
+    bCreateUpdate.setEnabled(ok);
+  }
 
   /**
    * Called when a button is clicked
