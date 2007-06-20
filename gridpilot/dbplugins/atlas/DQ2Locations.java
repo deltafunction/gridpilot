@@ -1,6 +1,6 @@
 package gridpilot.dbplugins.atlas;
 
-import gridpilot.Debug;
+//import gridpilot.Debug;
 
 import java.util.Vector;
 
@@ -37,7 +37,7 @@ public class DQ2Locations{
     String [] tmpArr = new String[incomplete.size()];
     for(int i=0; i<tmpArr.length; ++i){
       tmpArr[i] = (String) incomplete.get(i);
-      Debug.debug("Found incomplete location "+tmpArr[i], 3);
+      //Debug.debug("Found incomplete location "+tmpArr[i], 3);
     }
     return tmpArr;
   }
@@ -46,7 +46,7 @@ public class DQ2Locations{
     String [] tmpArr = new String[complete.size()];
     for(int i=0; i<tmpArr.length; ++i){
       tmpArr[i] = (String) complete.get(i);
-      Debug.debug("Found complete location "+tmpArr[i], 3);
+      //Debug.debug("Found complete location "+tmpArr[i], 3);
     }
     return tmpArr;
   }
