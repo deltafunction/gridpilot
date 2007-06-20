@@ -344,7 +344,19 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         switch(e.getKeyCode()){
           case KeyEvent.VK_ENTER:
             cursor = -1;
-            search();
+            MyThread t = (new MyThread(){
+              public void run(){
+                try{
+                  search();
+                }
+                catch(Exception ee){
+                  statusBar.setLabel("ERROR: could not search "+ee.getMessage());
+                  Debug.debug("ERROR: could not search. "+ee.getMessage(), 1);
+                  ee.printStackTrace();
+                }
+              }
+            });     
+            SwingUtilities.invokeLater(t);
         }
         if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c") ||
             KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("x")){
@@ -400,21 +412,57 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bSearch.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         cursor = -1;
-        search();
+        MyThread t = (new MyThread(){
+          public void run(){
+            try{
+              search();
+            }
+            catch(Exception ee){
+              statusBar.setLabel("ERROR: could not search "+ee.getMessage());
+              Debug.debug("ERROR: could not search. "+ee.getMessage(), 1);
+              ee.printStackTrace();
+            }
+          }
+        });     
+        SwingUtilities.invokeLater(t);
       }
     });
     bSearch.setToolTipText("Search results for this request");
     bNext.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         cursor = cursor+GridPilot.fileRows;
-        search();
+        MyThread t = (new MyThread(){
+          public void run(){
+            try{
+              search();
+            }
+            catch(Exception ee){
+              statusBar.setLabel("ERROR: could not search "+ee.getMessage());
+              Debug.debug("ERROR: could not search. "+ee.getMessage(), 1);
+              ee.printStackTrace();
+            }
+          }
+        });     
+        SwingUtilities.invokeLater(t);
       }
     });
     bNext.setToolTipText("Next search results for this request");
     bPrevious.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         cursor = cursor-GridPilot.fileRows;
-        search();
+        MyThread t = (new MyThread(){
+          public void run(){
+            try{
+              search();
+            }
+            catch(Exception ee){
+              statusBar.setLabel("ERROR: could not search "+ee.getMessage());
+              Debug.debug("ERROR: could not search. "+ee.getMessage(), 1);
+              ee.printStackTrace();
+            }
+          }
+        });     
+        SwingUtilities.invokeLater(t);
       }
     });
     bPrevious.setToolTipText("Previous search results for this request");
