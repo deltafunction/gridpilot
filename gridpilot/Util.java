@@ -1956,7 +1956,7 @@ public class Util{
 
   public static String [] getTableNames(String sql){
     String table = null;
-    table = sql.replaceFirst("^(?i)(?s)SELECT .* FROM (.+)$", "$1");
+    table = sql.replaceFirst("^(?i)(?s)SELECT .* FROM (\\S+)$", "$1");
     if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
       return split(table, ",");
     }
