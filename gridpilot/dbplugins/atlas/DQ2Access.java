@@ -27,10 +27,11 @@ public class DQ2Access {
 	private final String addFilesToDatasetURL = "ws_location/rpc?operation=addFilesToDataset&API=0_3_0";
 	private final String createDatasetURL = "ws_location/rpc?operation=registerNewDataset&API=0_3_0";
 	private final String deleteDatasetURL = "ws_location/rpc?operation=eraseDataset&API=0_3_0";
-    private final String getLocationsURL = "ws_location/rpc?operation=queryDatasetLocations&API=0_3_0";
-    private final String getFilesURL = "ws_content/rpc?operation=queryFilesInDataset&API=0_3_0";
-    private final String addLocationsURL = "ws_location/rpc?operation=registerDatasetLocations&API=0_3_0";
-    private final String deleteLocationsURL = "ws_location/rpc?operation=deleteDatasetReplica&API=0_3_0";
+  private final String getLocationsURL = "ws_location/rpc?operation=queryDatasetLocations&API=0_3_0";
+  private final String getDatasetsURL = "ws_location/rpc?operation=queryDatasetByVUIDs&API=0_3_0";
+  private final String getFilesURL = "ws_content/rpc?operation=queryFilesInDataset&API=0_3_0";
+  private final String addLocationsURL = "ws_location/rpc?operation=registerDatasetLocations&API=0_3_0";
+  private final String deleteLocationsURL = "ws_location/rpc?operation=deleteDatasetReplica&API=0_3_0";
 	/**
 	 * Instantiates a DQ2Acces object
 	 * @param httpServer insecure DQ2WebServer   
@@ -93,56 +94,70 @@ public class DQ2Access {
       return ret;
 	}
 
-    /**
-     * Find the locations of a dataset
-     * @param dsn The Name of the DataSet to be located
-     * returns the raw response from the DQ2 web server  
-     */
-    public String getDatasetLocations(String vuidsString) throws IOException
-    {
-      String keys[]={"vuids"};
-      String values[]={vuidsString};
-      Debug.debug("Finding dataset locations with web service on "+getLocationsURL, 1);
-      String response = wsSecure.post(getLocationsURL, keys, values);
-      return response;
-    }
+  /**
+   * Find the locations of a dataset
+   * @param dsn The Name of the DataSet to be located
+   * returns the raw response from the DQ2 web server  
+   */
+  public String getDatasets(String vuidString) throws IOException
+  {
+    String keys[]={"vuids"};
+    String values[]={vuidString};
+    Debug.debug("Finding dataset locations with web service on "+getLocationsURL, 1);
+    String response = wsSecure.post(getDatasetsURL, keys, values);
+    return response;
+  }
 
-    /**
-     * Find the LFNs of a dataset
-     * @param vuid The VUID of the DataSet
-     * returns the raw response from the DQ2 web server  
-     */
-    public String getDatasetFiles(String vuidsString) throws IOException
-    {
-      String keys[]={"vuids"};
-      String values[]={vuidsString};
-      Debug.debug("Finding files of "+vuidsString+" with web service on "+getLocationsURL, 1);
-      String response = wsSecure.post(getFilesURL, keys, values);
-      return response;
-    }
+  /**
+   * Find the locations of a dataset
+   * @param dsn The Name of the DataSet to be located
+   * returns the raw response from the DQ2 web server  
+   */
+  public String getDatasetLocations(String vuidsString) throws IOException
+  {
+    String keys[]={"vuids"};
+    String values[]={vuidsString};
+    Debug.debug("Finding dataset locations with web service on "+getLocationsURL, 1);
+    String response = wsSecure.post(getLocationsURL, keys, values);
+    return response;
+  }
 
-    /**
-     * creates Dataset
-     * @param dsn The Name of the DataSet to be created
-     * @param vuid The ID of the DataSet to be created
-     * NOTICE: this does not work: the vuid is ignored
-     */
-    public String createDataset(String dsn, String vuid) throws IOException
-    {
-        String keys[]={"dsn", "vuid"};
-        String values[]={dsn, vuid};
-    Debug.debug("Creating dataset with web service on "+createDatasetURL, 1);
-        String response=wsSecure.post(createDatasetURL, keys, values);
-    String ret = parseVuid(URLDecoder.decode(response, "utf-8"));
-    if(ret.indexOf("DQDatasetExistsException")>-1 && ret.indexOf("'")>-1){
-      throw new IOException("ERROR: Dataset exists");
-    }
-    else if(ret.indexOf("Exception")>-1 && ret.indexOf("'")>-1){
-      throw new IOException("ERROR: exception from DQ2: "+
-          ret.replaceFirst(".*\\W+(\\w*Exception).*", "$1"));
-    }    
-    return ret;
-    }
+  /**
+   * Find the LFNs of a dataset
+   * @param vuid The VUID of the DataSet
+   * returns the raw response from the DQ2 web server  
+   */
+  public String getDatasetFiles(String vuidsString) throws IOException
+  {
+    String keys[]={"vuids"};
+    String values[]={vuidsString};
+    Debug.debug("Finding files of "+vuidsString+" with web service on "+getLocationsURL, 1);
+    String response = wsSecure.post(getFilesURL, keys, values);
+    return response;
+  }
+
+  /**
+   * creates Dataset
+   * @param dsn The Name of the DataSet to be created
+   * @param vuid The ID of the DataSet to be created
+   * NOTICE: this does not work: the vuid is ignored
+   */
+  public String createDataset(String dsn, String vuid) throws IOException
+  {
+      String keys[]={"dsn", "vuid"};
+      String values[]={dsn, vuid};
+  Debug.debug("Creating dataset with web service on "+createDatasetURL, 1);
+      String response=wsSecure.post(createDatasetURL, keys, values);
+  String ret = parseVuid(URLDecoder.decode(response, "utf-8"));
+  if(ret.indexOf("DQDatasetExistsException")>-1 && ret.indexOf("'")>-1){
+    throw new IOException("ERROR: Dataset exists");
+  }
+  else if(ret.indexOf("Exception")>-1 && ret.indexOf("'")>-1){
+    throw new IOException("ERROR: exception from DQ2: "+
+        ret.replaceFirst(".*\\W+(\\w*Exception).*", "$1"));
+  }    
+  return ret;
+  }
 
 	/**
 	 * adds Files to Dataset

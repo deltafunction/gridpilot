@@ -319,8 +319,9 @@ public class ATLASDatabase extends DBCache implements Database{
       String complete = "";
       String incomplete = "";
 
-      // Construct get string
-      get = conditions.replaceAll("(?i)\\bdsn = (\\S+)", "dsn=$1");
+      // Construct get string. Previously this worked for dsn= and vuid= requests.
+      // With v0.3 it works only with dsn= requests.
+      get = conditions.replaceAll("(?i)\\bdsn = (\\S+)", "dsn=$1");      
       get = get.replaceAll("(?i)\\bvuid = (\\S+)", "vuid=$1");
       get = get.replaceAll("(?i)\\bcomplete = (\\S+)", "complete=$1");
       get = get.replaceAll("(?i)\\bincomplete = (\\S+)", "incomplete=$1");
@@ -347,26 +348,50 @@ public class ATLASDatabase extends DBCache implements Database{
         incomplete = get.replaceFirst("(?i).*\\bincomplete=(\\S+).*", "$1");
       }
       
-      //get = dq2Url+"ws_repository/dataset?version=0&"+get;
-      get = dq2Url+"ws_repository/rpc?operation=queryDatasetByName&version=0&API=0_3_0&"+get;
-
-      Debug.debug(">>> get string was : "+get, 3);
-            
-      URL url = null;
-      try{
-        url = new URL(get);
+      String str = null;
+      Debug.debug("dsn, vuid, complete, incomplete: "+
+          dsn+", "+vuid+", "+complete+", "+incomplete, 2);
+      // dsns can be looked up with simple GET
+      if(complete.equals("") && incomplete.equals("")){
+        if(vuid.equals("")){
+          get = dq2Url+"ws_repository/rpc?operation=queryDatasetByName&version=0&API=0_3_0&"+get;
+          Debug.debug(">>> get string was : "+get, 3);        
+          URL url = null;
+          try{
+            url = new URL(get);
+          }
+          catch(MalformedURLException e){
+            error = "Could not construct "+get;
+            Debug.debug(error, 2);
+            return null;
+          }
+          // Get the DQ result
+          str = readGetUrl(url);
+        }
+        else if(dsn.equals("")){
+          try{
+            //Debug.debug(">>> get string was : "+dq2Url+"ws_location/rpc?"+
+            //    "operation=queryDatasetLocations&API=0_3_0&dsns=[]&vuids="+"["+vuidsString+"]", 3);
+            //ret = readGetUrl(new URL(url));
+            //ret = URLDecoder.decode(ret, "utf-8");
+            DQ2Access dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
+            str = dq2Access.getDatasets("['"+vuid+"']");
+          }
+          catch(Exception e){
+            Debug.debug("WARNING: search returned an error "+str, 1);
+            return new DBResult(fields, new String[0][fields.length]);
+          }
+        }
+        // Check if the result is of the form {...}
+        if(str==null || !str.matches("^\\{.*\\}$") || str.matches("^\\{\\}$")){
+          Debug.debug("WARNING: search returned an error "+str, 1);
+          return new DBResult(fields, new String[0][fields.length]);
+        }
       }
-      catch(MalformedURLException e){
-        error = "Could not construct "+get;
-        Debug.debug(error, 2);
-        return null;
-      }
-
-      // Get the DQ result
-      String str = readGetUrl(url);
-      // Check if the result is of the form {...}
-      if(str==null || !str.matches("^\\{.*\\}$") || str.matches("^\\{\\}$")){
-        Debug.debug("WARNING: search returned an error "+str, 1);
+      // DQ2 cannot handle other searches.
+      if(str==null){
+        error = "WARNING: cannot perform search "+get;
+        Debug.debug(error, 1);
         return new DBResult(fields, new String[0][fields.length]);
       }
       
