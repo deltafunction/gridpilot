@@ -648,6 +648,7 @@ public class ATLASDatabase extends DBCache implements Database{
         str = dq2Access.getDatasetFiles("['"+vuid+"']");
         // get rid of time stamp.
         str = str.replaceFirst("\\((.*),[^,]+\\)", "$1").trim();
+        Debug.debug("Found files : "+str, 3);
       }
       catch(IOException e1){
         error = "Could not get file names for "+vuid;
@@ -656,18 +657,17 @@ public class ATLASDatabase extends DBCache implements Database{
       }
       // Check if the result is of the form {...}
       if(!str.matches("^\\{.*\\}$")){
-        Debug.debug("WARNING: search returned an error "+str, 1);
+        Debug.debug("ERROR: cannot parse search result "+str, 1);
         return new DBResult(fields, new String[0][fields.length]);
       }
       // Now parse the DQ string and construct DBRecords
       str = str.replaceFirst("^\\{", "");
       str = str.replaceFirst("\\}$", "");
-      String [] records = Util.split(str, ", ");
+      String [] records = Util.split(str, "\\}, ");
       if(records==null || records.length==0){
         Debug.debug("WARNING: no records found with "+str, 2);
         return new DBResult(fields, new String[0][fields.length]);
-      }
-      
+      }    
       Vector valuesVector = new Vector();
       String [] record = null;
       if(!GridPilot.getClassMgr().getStatusBar().isCenterComponentSet()){
@@ -683,67 +683,68 @@ public class ATLASDatabase extends DBCache implements Database{
         }
         Vector recordVector = new Vector();
         boolean exCheck = true;
-        record = Util.split(records[i], ": ");
-        
-        if(record!=null && record.length>1){
-          // If the string is the result of a vuid=... request, the
-          // split went ok and this should work:
-          guid = record[0].replaceAll("'", "");
-          lfn = record[1].replaceAll("'", "");
-          
-          String catalogs = "";
-          if(findPFNs){
-            try{
-              catalogs = Util.arrayToString(findPFNs(vuid, lfn, findAll).toArray());
-            }
-            catch(Exception e){
-              e.printStackTrace();
-            }
-            pfns = getPFNsString();
+        record = Util.split(records[i], ": \\{");
+        if(record==null || record.length==0){
+          Debug.debug("WARNING: could not parse record "+record, 2);
+          continue;
+        }
+        // If the string is the result of a vuid=... request, the
+        // split went ok and this should work:
+        guid = record[0].replaceAll("'", "").trim();
+        lfn = record[1].replaceAll(".*'lfn': '([^']*)'.*", "$1").trim();
+        String catalogs = "";
+        if(findPFNs){
+          try{
+            catalogs = Util.arrayToString(findPFNs(vuid, lfn, findAll).toArray());
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+          pfns = getPFNsString();
+        }
+        else{
+          pfns = "";
+        }
+ 
+        recordVector = new Vector();
+        exCheck = true;
+        for(int k=0; k<fields.length; ++k){
+          if(fields[k].equalsIgnoreCase("lfn")){
+            //recordVector.add(lfn);
+            recordVector.add((lfn.startsWith("/")?"":"/")+makeAtlasPath(lfn));
+          }
+          else if(fields[k].equalsIgnoreCase("dsn")){
+            recordVector.add(dsn);
+          }
+          else if(fields[k].equalsIgnoreCase("pfns")){
+            recordVector.add(pfns);
+          }
+          else if(fields[k].equalsIgnoreCase("guid")){
+            recordVector.add(guid);
+          }
+          else if(fields[k].equalsIgnoreCase("vuid")){
+            recordVector.add(vuid);
+          }
+          else if(fields[k].equalsIgnoreCase("catalogs")){
+            recordVector.add(catalogs);
           }
           else{
-            pfns = "";
+            recordVector.add("");
           }
-   
-          recordVector = new Vector();
-          exCheck = true;
-          for(int k=0; k<fields.length; ++k){
-            if(fields[k].equalsIgnoreCase("lfn")){
-              //recordVector.add(lfn);
-              recordVector.add((lfn.startsWith("/")?"":"/")+makeAtlasPath(lfn));
-            }
-            else if(fields[k].equalsIgnoreCase("dsn")){
-              recordVector.add(dsn);
-            }
-            else if(fields[k].equalsIgnoreCase("pfns")){
-              recordVector.add(pfns);
-            }
-            else if(fields[k].equalsIgnoreCase("guid")){
-              recordVector.add(guid);
-            }
-            else if(fields[k].equalsIgnoreCase("vuid")){
-              recordVector.add(vuid);
-            }
-            else if(fields[k].equalsIgnoreCase("catalogs")){
-              recordVector.add(catalogs);
-            }
-            else{
-              recordVector.add("");
-            }
-            if(excludeMap.containsKey(fields[k]) &&
-                recordVector.get(k).toString().matches(
-                    excludeMap.get(fields[k]).toString())){
-              exCheck = false;
-            }
+          if(excludeMap.containsKey(fields[k]) &&
+              recordVector.get(k).toString().matches(
+                  excludeMap.get(fields[k]).toString())){
+            exCheck = false;
           }
-          if(exCheck){
-            Debug.debug("Adding record "+Util.arrayToString(recordVector.toArray()), 3);
-            valuesVector.add(recordVector.toArray());
-          }
-          else{
-            Debug.debug("Excluding record ", 2);
-          }       
-        }     
+        }
+        if(exCheck){
+          Debug.debug("Adding record "+Util.arrayToString(recordVector.toArray()), 3);
+          valuesVector.add(recordVector.toArray());
+        }
+        else{
+          Debug.debug("Excluding record ", 2);
+        }       
+
       }
       setFindPFNs(true);
       if(pb!=null){
