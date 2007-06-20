@@ -550,8 +550,20 @@ public class BrowserPanel extends JDialog implements ActionListener{
           }
         }
         else if(e.getEventType()==HyperlinkEvent.EventType.ENTERED){
-          statusBar.setLabel(e.getURL().toExternalForm());
-          if(bRegister.isEnabled() && !e.getURL().toExternalForm().endsWith("/")){
+          String linkUrl = null;
+          if(e.getURL()!=null){
+            linkUrl = e.getURL().toExternalForm();
+          }
+          else if(e.getDescription()!=null){
+            linkUrl = e.getDescription();
+          }
+          if(linkUrl==null){
+            Debug.debug("No URL available.", 2);
+            return;
+          }
+          final String url = linkUrl;
+          statusBar.setLabel(url);
+          if(bRegister.isEnabled() && !url.endsWith("/")){
             int ii = 0;
             for(int i=0; i<GridPilot.dbNames.length; ++i){
               if(excludeDBs.contains(Integer.toString(i))){
@@ -561,7 +573,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
               miRegister.getItem(ii).addActionListener(new ActionListener(){
                 public void actionPerformed(ActionEvent ev){
                   Debug.debug("registerFile "+((JMenuItem) ev.getSource()).getText(), 3);
-                  registerFile(e.getURL().toExternalForm(), ((JMenuItem) ev.getSource()).getText());
+                  registerFile(url, ((JMenuItem) ev.getSource()).getText());
                 }
               });
               ++ii;
@@ -569,20 +581,20 @@ public class BrowserPanel extends JDialog implements ActionListener{
             popupMenu.add(miRegister);
           }
           if(bDownload.isEnabled()){
-            if(e.getURL().toExternalForm().endsWith("/")){
+            if(url.endsWith("/")){
               miDelete.setText("Delete directory");
             }
             else{
               miDownload.addActionListener(new ActionListener(){
                 public void actionPerformed(ActionEvent ev){
-                  downloadFile(e.getURL().toExternalForm());
+                  downloadFile(url);
                 }
               });
               popupMenu.add(miDownload);
             }
             miDelete.addActionListener(new ActionListener(){
               public void actionPerformed(ActionEvent ev){
-                deleteFile(e.getURL().toExternalForm());
+                deleteFile(url);
               }
             });
             popupMenu.add(miDelete);
@@ -724,8 +736,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(dir==null){
       return;
     }
-    MyThread t = (new MyThread(){
-      public void run(){
+    //MyThread t = (new MyThread(){
+      //public void run(){
         Debug.debug("Getting file : "+url+" -> "+dir.getAbsolutePath(), 3);
         try{
           statusBar.setLabel("Downloading "+url);
@@ -735,6 +747,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         catch(Exception ioe){
           statusBar.setLabel("Download failed");
           ioe.printStackTrace();
+          showError("Could not download "+url+" : "+ioe.getMessage());
         }
         try{
           ep.getDocument().putProperty(
@@ -744,11 +757,22 @@ public class BrowserPanel extends JDialog implements ActionListener{
         catch(Exception ioe){
           ioe.printStackTrace();
         }
-      }
-    });     
-    SwingUtilities.invokeLater(t);
+      //}
+    //});     
+    //SwingUtilities.invokeLater(t);
   }
   
+  private void showError(String str){
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    String title = "Browser error";
+    try {
+      confirmBox.getConfirm(title,
+          str, new Object[] {"OK"});
+    }
+    catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
   
   /**
    * Choose a dataset and an LFN
@@ -1001,7 +1025,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       // remote gsiftp text file
       else if(url.startsWith("gsiftp://") &&
           !url.endsWith("/") && !url.endsWith("htm") &&
-          !url.endsWith("html") && !url.endsWith("gz")){
+          !url.endsWith("html") && !url.endsWith("gz") &&
+          url.indexOf(".root")<0){
         if(!setRemoteTextEdit(url, gsiftpFileTransfer)){
           setRemoteFileConfirmDisplay(url, gsiftpFileTransfer);
         }
@@ -1063,6 +1088,16 @@ public class BrowserPanel extends JDialog implements ActionListener{
           setFileConfirmDisplay(url);
         }
       }
+      // confirm that file exists
+      else if(url.startsWith("http:") || url.startsWith("file:")){
+        setFileConfirmDisplay(url);
+      }
+      else if(url.startsWith("https:")){
+        setRemoteFileConfirmDisplay(url, httpsFileTransfer);
+      }
+      else if(url.startsWith("gsiftp:")){
+        setRemoteFileConfirmDisplay(url, gsiftpFileTransfer);
+      }
       // blank page
       else if(url.equals("") && withNavigation){
       }
@@ -1081,7 +1116,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
     catch(Exception e){
       ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-      Debug.debug("Could not initialize panel with URL "+url+". "+e.getMessage(), 1);
+      String msg = "Could not initialize panel with URL "+url+". "+e.getMessage();
+      showError(msg);
+      Debug.debug(msg, 1);
       throw e;
     }
   }
@@ -1291,7 +1328,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * of the existence of the URL url.
    */
   private void setFileConfirmDisplay(String url) throws IOException{
-    Debug.debug("setGzipDisplay "+url, 3);
+    Debug.debug("setFileConfirmDisplay "+url, 3);
     jtFilter.setEnabled(false);
     try{
       bSave.setEnabled(false);
@@ -1313,9 +1350,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
         thisUrl = url;
       }
       catch(MalformedURLException me){
+        me.printStackTrace();
         ep.setText("File "+url+" NOT found");
       }
       catch(IOException ioe){
+        ioe.printStackTrace();
         ep.setText("File "+url+" NOT found");
       }
       pButton.updateUI();
@@ -1539,7 +1578,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
       url = url.replaceFirst("/[^\\/]*/\\.\\.", "");
       GlobusURL globusUrl = new GlobusURL(url);
-      Debug.debug("Opening directory on gridftp server\n"+globusUrl.toString(), 3);
+      Debug.debug("Opening directory on remote server\n"+globusUrl.toString(), 3);
       String localPath = "/";
       if(globusUrl.getPath()!=null){
         localPath = globusUrl.getPath();
