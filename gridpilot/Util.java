@@ -483,7 +483,7 @@ public class Util{
     bBrowse1.setSize(new java.awt.Dimension(22, 22));
     bBrowse1.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        launchCheckBrowser(GridPilot.getClassMgr().getGlobalFrame(), "http://check/", jt, false, oneUrl);
+        launchCheckBrowser(frame, "http://check/", jt, false, oneUrl);
       }
     });
 
@@ -729,16 +729,21 @@ public class Util{
       }
     });
     
+    JPanel jpk = new JPanel(new BorderLayout());
     JPanel jpKey = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-    jpKey.add(new JLabel("Key:           "));
     jpKey.add(bBrowse1);
+    jpk.add(new JLabel("Key: "), BorderLayout.WEST);
+    jpk.add(new JLabel(""), BorderLayout.CENTER);
+    jpk.add(jpKey, BorderLayout.EAST);
 
+    JPanel jpc = new JPanel(new BorderLayout());
     JPanel jpCert = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-    jpCert.add(new JLabel("Certificate: "));
     jpCert.add(bBrowse2);
-   
+    jpc.add(new JLabel("Certificate: "), BorderLayout.WEST);
+    jpc.add(new JLabel(""), BorderLayout.CENTER);
+    jpc.add(jpCert, BorderLayout.EAST);
 
-    panel.add(jpKey,
+    panel.add(jpk,
         new GridBagConstraints(0, 2, 1, 1, 1.0, 1.0,
         GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5),
         0, 0)
@@ -747,7 +752,7 @@ public class Util{
         GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5),
         0, 0));
 
-    panel.add(jpCert,
+    panel.add(jpc,
         new GridBagConstraints(0, 3, 1, 1, 1.0, 1.0,
         GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(5, 5, 5, 5),
         0, 0));
