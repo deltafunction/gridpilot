@@ -25,7 +25,7 @@ public class DQ2Access {
     // all this has to be retested and fixed
 
 	private final String addFilesToDatasetURL = "ws_location/rpc?operation=addFilesToDataset&API=0_3_0";
-	private final String createDatasetURL = "ws_location/rpc?operation=registerNewDataset&API=0_3_0";
+	private final String createDatasetURL = "ws_location/rpc?operation=addDataset&API=0_3_0";
 	private final String deleteDatasetURL = "ws_location/rpc?operation=eraseDataset&API=0_3_0";
   private final String getLocationsURL = "ws_location/rpc?operation=queryDatasetLocations&API=0_3_0";
   private final String getDatasetsURL = "ws_location/rpc?operation=queryDatasetByVUIDs&API=0_3_0";
@@ -83,6 +83,7 @@ public class DQ2Access {
       String values[]={dsn};
       Debug.debug("Creating dataset with web service on "+createDatasetURL, 1);
       String response=wsSecure.post(createDatasetURL, keys, values);
+      Debug.debug("createDataset response: "+response, 3);
       String ret = parseVuid(URLDecoder.decode(response, "utf-8"));
       if(ret.indexOf("DQDatasetExistsException")>-1 && ret.indexOf("'")>-1){
         throw new IOException("ERROR: Dataset exists");
@@ -144,19 +145,29 @@ public class DQ2Access {
    */
   public String createDataset(String dsn, String vuid) throws IOException
   {
-      String keys[]={"dsn", "vuid"};
-      String values[]={dsn, vuid};
-  Debug.debug("Creating dataset with web service on "+createDatasetURL, 1);
-      String response=wsSecure.post(createDatasetURL, keys, values);
-  String ret = parseVuid(URLDecoder.decode(response, "utf-8"));
-  if(ret.indexOf("DQDatasetExistsException")>-1 && ret.indexOf("'")>-1){
-    throw new IOException("ERROR: Dataset exists");
-  }
-  else if(ret.indexOf("Exception")>-1 && ret.indexOf("'")>-1){
-    throw new IOException("ERROR: exception from DQ2: "+
-        ret.replaceFirst(".*\\W+(\\w*Exception).*", "$1"));
-  }    
-  return ret;
+    /*
+    curl --user-agent "dqcurl" --silent --insecure --cert /tmp/x509up_u3804 --key /tmp/x509up_u3804 --config 8f543c27-ec95-4c02-9294-338cc4e29a36 https://atlddmcat.cern.ch:443/dq2/ws_repository/rpc
+    data="vuid=b2a80235-0be0-4b9d-9785-b12565c21fcd"
+    data="duid=e6304c8a-8cb6-4af1-885c-343f141903b7"
+    data="update=yes"
+    data="dsn=user.FrederikOrellana5894-ATLAS.csc11.002.Gee_500_pythia_photos_reson"
+    data="API=0_3_0"
+    data="tuid=ac25f251-2afd-493e-a642-102e7c908135"
+    data="operation=addDataset"
+   */
+    String keys[] = {"dsn", "vuid"};
+    String values[] = {dsn, vuid};
+    Debug.debug("Creating dataset with web service on "+createDatasetURL, 1);
+    String response = wsSecure.post(createDatasetURL, keys, values);
+    String ret = parseVuid(URLDecoder.decode(response, "utf-8"));
+    if(ret.indexOf("DQDatasetExistsException")>-1 && ret.indexOf("'")>-1){
+      throw new IOException("ERROR: Dataset exists");
+    }
+    else if(ret.indexOf("Exception")>-1 && ret.indexOf("'")>-1){
+      throw new IOException("ERROR: exception from DQ2: "+
+          ret.replaceFirst(".*\\W+(\\w*Exception).*", "$1"));
+    }    
+    return ret;
   }
 
 	/**

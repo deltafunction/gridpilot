@@ -2507,7 +2507,7 @@ public class ATLASDatabase extends DBCache implements Database{
       }
       
       // Unfortunately DQ2 does not use the supplied vuid when creating,
-      // but generated a new one.
+      // but generates a new one.
       // So we have to update and change the vuid.
       if(vuid!=null && !vuid.equals("")){
         assignedVuid = dq2Access.createDataset(dsn, vuid);
