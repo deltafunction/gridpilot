@@ -1,5 +1,6 @@
 package gridpilot;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
@@ -436,6 +437,11 @@ public class Util{
    }
  }
  
+ /**
+  * Create a JLabel with the text 'name' and a 'Browse' hyperlink
+  * that fires up a browser for selecting a file (local or remote).
+  * The JTextComponent 'jt' is filled with the selected file path.
+  */
  public static JEditorPane createCheckPanel(
       final Frame frame, 
       final String name, final JTextComponent jt, final boolean oneUrl){
@@ -456,6 +462,42 @@ public class Util{
     return checkPanel;
   }
   
+ /**
+  * Like createCheckPanel, but with an button with an icon instead of a hyperlink.
+  */
+  public static JPanel createCheckPanel1(
+     final Frame frame, final String name, final JTextComponent jt, final boolean oneUrl){
+    ImageIcon browseIcon;
+    URL imgURL=null;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "folder_blue_open.png");
+      browseIcon = new ImageIcon(imgURL);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "folder_blue_open.png", 3);
+      browseIcon = new ImageIcon();
+    }
+    JButton bBrowse1 = new JButton(browseIcon);
+    bBrowse1.setToolTipText("browse file system");
+    bBrowse1.setPreferredSize(new java.awt.Dimension(22, 22));
+    bBrowse1.setSize(new java.awt.Dimension(22, 22));
+    bBrowse1.addMouseListener(new MouseAdapter(){
+      public void mouseClicked(MouseEvent me){
+        launchCheckBrowser(GridPilot.getClassMgr().getGlobalFrame(), "http://check/", jt, false, oneUrl);
+      }
+    });
+
+   JPanel fPanel = new JPanel(new BorderLayout());
+   JPanel checkPanel = new JPanel(new FlowLayout());
+   JLabel jlName = new JLabel(name);
+   fPanel.add(jlName, BorderLayout.WEST);
+   fPanel.add(new JLabel("   "));
+   checkPanel.add(bBrowse1);
+   fPanel.add(checkPanel, BorderLayout.EAST);
+   fPanel.add(new JLabel(""));
+   return fPanel;
+ }
+ 
   /**
    * Loads class.
    * @argument className     name of the class
