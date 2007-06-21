@@ -17,16 +17,16 @@ import org.ietf.jgss.GSSCredential;
  */
 public class DQ2Access {
 
-	//private WebServiceConnection wsPlain;
-	private SecureWebServiceConnection wsSecure;
-	private String baseUrl="dq2/";
-    
-    // TODO TODO TODO TODO : I've tried to adapt to v 0.3, but not tested,
-    // all this has to be retested and fixed
+  //private WebServiceConnection wsPlain;
+  private SecureWebServiceConnection wsSecure;
+  private String baseUrl="dq2/";
 
-	private final String addFilesToDatasetURL = "ws_location/rpc?operation=addFilesToDataset&API=0_3_0";
-	private final String createDatasetURL = "ws_location/rpc?operation=addDataset&API=0_3_0";
-	private final String deleteDatasetURL = "ws_location/rpc?operation=eraseDataset&API=0_3_0";
+  //TODO TODO TODO TODO : I've tried to adapt to v 0.3, but not tested,
+  //all this has to be retested and fixed
+
+  private final String addFilesToDatasetURL = "ws_location/rpc?operation=addFilesToDataset&API=0_3_0";
+  private final String createDatasetURL = "ws_location/rpc?operation=addDataset&API=0_3_0";
+  private final String deleteDatasetURL = "ws_location/rpc?operation=eraseDataset&API=0_3_0";
   private final String getLocationsURL = "ws_location/rpc?operation=queryDatasetLocations&API=0_3_0";
   private final String getDatasetsURL = "ws_location/rpc?operation=queryDatasetByVUIDs&API=0_3_0";
   private final String getFilesURL = "ws_content/rpc?operation=queryFilesInDataset&API=0_3_0";
