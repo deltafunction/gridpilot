@@ -356,8 +356,16 @@ public class BrowserPanel extends JDialog implements ActionListener{
     bSave.setEnabled(false);
     
     if(GridPilot.dbNames!=null){
+      DBPluginMgr dbPluginMgr = null;
       for(int i=0; i<GridPilot.dbNames.length; ++i){
-        if(!GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[i]).isFileCatalog()){
+        dbPluginMgr = null;
+        try{
+          dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[i]);
+          if(dbPluginMgr==null || !dbPluginMgr.isFileCatalog()){
+            throw new Exception();
+          }
+        }
+        catch(Exception e){
           excludeDBs.add(Integer.toString(i));
           continue;
         }
