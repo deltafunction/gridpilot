@@ -55,6 +55,7 @@ import java.util.Random;
 import java.util.StringTokenizer;
 import java.util.Vector;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -99,6 +100,7 @@ import org.ietf.jgss.GSSException;
 
 import com.ice.tar.TarEntry;
 import com.ice.tar.TarInputStream;
+import com.ice.tar.TarOutputStream;
 
 /**
  * @author Frederik.Orellana@cern.ch
@@ -312,7 +314,8 @@ public class Util{
   }
  
  public static void launchCheckBrowser(final Frame frame, String url,
-     final JTextComponent jt, final boolean localFS, final boolean oneUrl){
+     final JTextComponent jt, final boolean localFS, final boolean oneUrl,
+     final boolean withNavigation){
    if(url.equals("http://check/")){
      String httpScript = jt.getText();
      if(frame!=null){
@@ -374,8 +377,8 @@ public class Util{
                    urls[i],
                    finBaseUrl,
                    true,
-                   /*filter*/true,
-                   /*navigation*/true,
+                   /*filter*/withNavigation,
+                   /*navigation*/withNavigation,
                    null,
                    null,
                    localFS);
@@ -387,8 +390,8 @@ public class Util{
                    urls[i],
                    finBaseUrl,
                    true,
-                   /*filter*/false,
-                   /*navigation*/false,
+                   /*filter*/withNavigation,
+                   /*navigation*/withNavigation,
                    null,
                    null,
                    localFS);
@@ -444,7 +447,8 @@ public class Util{
   */
  public static JEditorPane createCheckPanel(
       final Frame frame, 
-      final String name, final JTextComponent jt, final boolean oneUrl){
+      final String name, final JTextComponent jt, final boolean oneUrl,
+      final boolean withNavigation){
     //final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
     String markup = "<font size=-1 face=sans-serif><b>"+name+" : </b></font><br>"+
       "<a href=\"http://check/\">browse</a>";
@@ -455,7 +459,8 @@ public class Util{
       new HyperlinkListener(){
       public void hyperlinkUpdate(HyperlinkEvent e){
         if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
-          launchCheckBrowser(frame, e.getURL().toExternalForm(), jt, false, oneUrl);
+          launchCheckBrowser(frame, e.getURL().toExternalForm(), jt, false, oneUrl,
+              withNavigation);
         }
       }
     });
@@ -466,7 +471,8 @@ public class Util{
   * Like createCheckPanel, but with an button with an icon instead of a hyperlink.
   */
   public static JPanel createCheckPanel1(
-     final Frame frame, final String name, final JTextComponent jt, final boolean oneUrl){
+     final Frame frame, final String name, final JTextComponent jt, final boolean oneUrl,
+     final boolean withNavigation){
     ImageIcon browseIcon;
     URL imgURL=null;
     try{
@@ -483,7 +489,7 @@ public class Util{
     bBrowse1.setSize(new java.awt.Dimension(22, 22));
     bBrowse1.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        launchCheckBrowser(frame, "http://check/", jt, false, oneUrl);
+        launchCheckBrowser(frame, "http://check/", jt, false, oneUrl, withNavigation);
       }
     });
 
@@ -720,12 +726,12 @@ public class Util{
     
     bBrowse1.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        launchCheckBrowser(null, "http://check/", keyField, true, true);
+        launchCheckBrowser(null, "http://check/", keyField, true, true, false);
       }
     });
     bBrowse2.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        launchCheckBrowser(null, "http://check/", certField, true, true);
+        launchCheckBrowser(null, "http://check/", certField, true, true, false);
       }
     });
     
@@ -2079,8 +2085,20 @@ public class Util{
     return ret;
   }
   
-  public static void gunzip(File source, File target)
-     throws FileNotFoundException, IOException{
+  public static void gzip(String inFilename, String gzipFileName) throws FileNotFoundException, IOException{
+    GZIPOutputStream out = new GZIPOutputStream(new FileOutputStream(gzipFileName));
+    FileInputStream in = new FileInputStream(inFilename);
+    byte[] buf = new byte[1024];
+    int len;
+    while((len = in.read(buf))>0){
+      out.write(buf, 0, len);
+    }
+    in.close();
+    out.finish();
+    out.close();
+  }
+  
+  public static void gunzip(File source, File target) throws FileNotFoundException, IOException{
     // Open the compressed file
     GZIPInputStream in = new GZIPInputStream(new FileInputStream(source));
     // Open the output file
@@ -2094,6 +2112,58 @@ public class Util{
     // Close the file and stream
     in.close();
     out.close();
+  }
+  
+  public static void tar(File archiveFile, File tarDir) throws IOException{
+    
+    Vector fileList = LocalStaticShellMgr.listFilesRecursively(tarDir.getCanonicalPath());
+    
+    byte buffer[] = new byte[1024];
+    if(fileList!=null){
+      // Open archive file
+      FileOutputStream stream = new FileOutputStream(archiveFile);
+      TarOutputStream out = new TarOutputStream(stream);
+
+      for(int i=0; i<fileList.size(); i++){
+        String filename = (String)fileList.get(i);
+        File file = new File(filename);
+        if(file==null||!file.exists()|| file.isDirectory()){
+          continue;
+        }
+        Debug.debug("<" + file.getName() + "> Added to the archive.", 2);
+
+        // Add archive entry
+        TarEntry tarAdd = new TarEntry(file);
+        tarAdd.setModTime(file.lastModified());
+        
+        if(!System.getProperty("os.name").toLowerCase().startsWith("windows")){
+          /*
+          // Don't know if permissions are set or how to set them ...
+          // This would get us the octal representation of the permissions.
+          StringBuffer stdOut = new StringBuffer();
+          StringBuffer stdErr = new StringBuffer();
+          LocalStaticShellMgr.exec("stat --printf=%a "+file.getCanonicalPath(), stdOut, stdErr);
+          */
+          tarAdd.setUnixTarFormat();
+        }
+             
+        tarAdd.setName(file.getName());
+        out.putNextEntry(tarAdd);
+        // Write file to archive
+        FileInputStream in = new FileInputStream(file);
+        while (true){
+          int nRead = in.read(buffer, 0, buffer.length);
+          if (nRead <= 0)
+            break;
+          out.write(buffer, 0, nRead);
+        }
+        in.close();       
+        out.closeEntry();
+      }     
+      out.close();
+      stream.close();
+      Debug.debug( "<" + archiveFile + "> Tar Archive created successfully.", 2);
+    }
   }
   
   public static void unTar(File source, File untarDir) throws IOException{
@@ -2162,6 +2232,17 @@ public class Util{
     catch(UnsupportedEncodingException e){
       e.printStackTrace();
       return urlString;
+    }
+  }
+  
+  public static void showError(String text){
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    String confirmString = text;
+    try {
+      confirmBox.getConfirm("ERROR", confirmString, new Object[] {"OK"});
+    }
+    catch (Exception e) {
+      e.printStackTrace();
     }
   }
 

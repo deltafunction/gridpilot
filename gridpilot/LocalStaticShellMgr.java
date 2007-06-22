@@ -315,7 +315,7 @@ public class LocalStaticShellMgr{
     return new File(Util.clearTildeLocally(Util.clearFile(dir))).isDirectory();
   }
   
-  private static HashSet listFilesRecursively(File fileOrDir, HashSet files, int depth){
+  private static Vector listFilesRecursively(File fileOrDir, Vector files, int depth){
     Debug.debug("Listing "+fileOrDir.getAbsolutePath()+":"+fileOrDir.isFile()+":"+
         fileOrDir.isDirectory()+":"+depth, 3);
     if(fileOrDir.isFile()){
@@ -331,8 +331,48 @@ public class LocalStaticShellMgr{
     return files;
   }
   
-  public static HashSet listFilesRecursively(String fileOrDir){
-    return listFilesRecursively(new File(Util.clearTildeLocally(Util.clearFile(fileOrDir))), new HashSet(), 1);
+  public static Vector listFilesRecursively(String fileOrDir){
+    return listFilesRecursively(new File(Util.clearTildeLocally(Util.clearFile(fileOrDir))), new Vector(), 1);
+  }
+  
+  // From http://www.roseindia.net/java/example/java/io/CopyDirectory.shtml
+  public static void copyDirectory(File srcPath, File dstPath) throws IOException{
+    if (srcPath.isDirectory())
+    {
+      if (!dstPath.exists())
+      {
+        dstPath.mkdir();
+      }
+
+      String files[] = srcPath.list();
+      for(int i = 0; i < files.length; i++)
+      {
+        copyDirectory(new File(srcPath, files[i]), new File(dstPath, files[i]));
+      }
+    }
+    else
+    {
+      if(!srcPath.exists())
+      {
+        Debug.debug("File or directory does not exist.", 1);
+        return;
+      }
+      else
+      {
+        InputStream in = new FileInputStream(srcPath);
+            OutputStream out = new FileOutputStream(dstPath);
+    
+        // Transfer bytes from in to out
+            byte[] buf = new byte[1024];
+        int len;
+            while ((len = in.read(buf)) > 0) {
+          out.write(buf, 0, len);
+        }
+        in.close();
+            out.close();
+      }
+    }
+    Debug.debug("Directory copied.", 2);
   }
     
 }

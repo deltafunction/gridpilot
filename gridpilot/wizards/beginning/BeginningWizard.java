@@ -102,7 +102,7 @@ public class BeginningWizard{
       }
       else if(ret==1){
         if(!dirsOk){
-          showError("Without these directories setup cannot continue. Exiting wizard.");
+          Util.showError("Without these directories setup cannot continue. Exiting wizard.");
           if(firstRun){
             GridPilot.userConfFile.delete();
             System.out.println("Deleting new configuration file.");
@@ -127,7 +127,7 @@ public class BeginningWizard{
         }
       }
       catch(FileNotFoundException ee){
-        showError(ee.getMessage());
+        Util.showError(ee.getMessage());
         ret = checkCertificate(firstRun);
         if(ret==2 || ret==-1){
           ret = partialSetupMessage(firstRun);
@@ -200,7 +200,7 @@ public class BeginningWizard{
       e.printStackTrace();
       GridPilot.getClassMgr().getLogFile().addMessage("ERROR: could not run setup wizard", e);
       try{
-        showError(e.getMessage());
+        Util.showError(e.getMessage());
       }
       catch(Exception e1){
         e1.printStackTrace();
@@ -261,15 +261,7 @@ public class BeginningWizard{
           (new Object[] {"OK"}),
         icon, Color.WHITE, false);   
     return choice;
-  }
-  
-  private void showError(String text) throws Exception{
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-    String confirmString = "ERROR: could not set up GridPilot. "+text;
-    confirmBox.getConfirm("Failed setting up GridPilot",
-        confirmString, new Object[] {"OK"}, icon, Color.WHITE, false);
-  }
-  
+  }  
   
   /**
    * Create the config file and some directories and set
@@ -352,7 +344,7 @@ public class BeginningWizard{
       jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout(8, 0));
       row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
-          names[i], jtFields[i], true), BorderLayout.WEST);
+          names[i], jtFields[i], true, false), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
       subRow.add(new JLabel("   "), BorderLayout.EAST);
@@ -501,7 +493,7 @@ public class BeginningWizard{
       jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout(8, 0));
       row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
-          names[i], jtFields[i], true), BorderLayout.WEST);
+          names[i], jtFields[i], true, false), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
       subRow.add(new JLabel("   "), BorderLayout.EAST);
@@ -890,7 +882,7 @@ public class BeginningWizard{
                   e.printStackTrace();
                   try{
                     window.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-                    showError("WARNING: could not open URL. "+e.getMessage());
+                    Util.showError("WARNING: could not open URL. "+e.getMessage());
                   }
                   catch(Exception e2){
                     e2.printStackTrace();
@@ -1103,7 +1095,7 @@ public class BeginningWizard{
     subRow.add(new JLabel("   "), BorderLayout.NORTH);
     row.add(subRow, BorderLayout.EAST);
     row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
-        "Remote job staging directory", tfGpssDir, true), BorderLayout.WEST);
+        "Remote job staging directory", tfGpssDir, true, true), BorderLayout.WEST);
     //String remoteDir = configFile.getValue("GPSS", "Remote directory");
     String remoteDir = configFile.getValue("GridPilot", "Grid home url");
     if(remoteDB!=null && !remoteDB.equals("")){
@@ -1492,7 +1484,7 @@ public class BeginningWizard{
       row.add(jrbs[i], BorderLayout.WEST);
       if(i==0){
         row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
-            names[i], jtFields[i], true), BorderLayout.CENTER);
+            names[i], jtFields[i], true, true), BorderLayout.CENTER);
       }
       else{
         row.add(new JLabel(names[i]), BorderLayout.CENTER);

@@ -324,7 +324,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
          cstAttributesNames[i].equalsIgnoreCase("extractionScript")){
         pAttributes.add(Util.createCheckPanel(
             (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
-            cstAttributesNames[i], tcCstAttributes[i], true),
+            cstAttributesNames[i], tcCstAttributes[i], true, true),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                 new Insets(5, 22, 5, 5), 0, 0));
@@ -332,7 +332,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
       else if(cstAttributesNames[i].equalsIgnoreCase("inputFiles")){
         pAttributes.add(Util.createCheckPanel(
             (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
-            cstAttributesNames[i], tcCstAttributes[i], false),
+            cstAttributesNames[i], tcCstAttributes[i], false, true),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                 new Insets(5, 22, 5, 5), 0, 0));

@@ -1108,6 +1108,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       // blank page
       else if(url.equals("") && withNavigation){
+        Debug.debug("Setting blank page", 2);
+        ep.setEditable(false);
       }
       // unknown protocol
       else{
@@ -1125,7 +1127,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     catch(Exception e){
       ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       String msg = "Could not initialize panel with URL "+url+". "+e.getMessage();
-      showError(msg);
+      //showError(msg);
       Debug.debug(msg, 1);
       throw e;
     }
