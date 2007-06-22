@@ -2114,7 +2114,9 @@ public class Util{
     out.close();
   }
   
-  public static void tar(File archiveFile, File tarDir) throws IOException{
+  public static void tar(File archiveFile, File tarDir, boolean includeTopDir) throws IOException{
+    
+    // TODO: check if empty directories are included and how to include top level directory
     
     Vector fileList = LocalStaticShellMgr.listFilesRecursively(tarDir.getCanonicalPath());
     
@@ -2127,7 +2129,7 @@ public class Util{
       for(int i=0; i<fileList.size(); i++){
         String filename = (String)fileList.get(i);
         File file = new File(filename);
-        if(file==null||!file.exists()|| file.isDirectory()){
+        if(file==null || !file.exists() || file.isDirectory()){
           continue;
         }
         Debug.debug("<" + file.getName() + "> Added to the archive.", 2);
@@ -2151,10 +2153,11 @@ public class Util{
         out.putNextEntry(tarAdd);
         // Write file to archive
         FileInputStream in = new FileInputStream(file);
-        while (true){
+        while(true){
           int nRead = in.read(buffer, 0, buffer.length);
-          if (nRead <= 0)
+          if(nRead <= 0){
             break;
+          }
           out.write(buffer, 0, nRead);
         }
         in.close();       

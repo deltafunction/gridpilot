@@ -202,6 +202,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
         updateComponentTreeUI0(namePanel, false);
         int x = jp.getPreferredSize().width;
         int y = sp.getViewport().getViewPosition().y;
+        // TODO: find out how to scroll to an element and do it smoothly
         sp.getViewport().setViewPosition(new Point(x, y+340));
       }
     }
