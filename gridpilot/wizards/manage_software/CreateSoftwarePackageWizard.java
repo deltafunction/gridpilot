@@ -1,8 +1,12 @@
 package gridpilot.wizards.manage_software;
 
+import gridpilot.Debug;
 import gridpilot.GPFrame;
 import gridpilot.GridPilot;
+import gridpilot.JExtendedComboBox;
 import gridpilot.LocalStaticShellMgr;
+import gridpilot.RteRdfParser;
+import gridpilot.TransferControl;
 import gridpilot.Util;
 
 import java.awt.Color;
@@ -17,6 +21,9 @@ import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -51,6 +58,8 @@ public class CreateSoftwarePackageWizard extends GPFrame{
   private String shortName = null;
   private File dir = null;
   private File tmpDir = null;
+  private String catalogUrl = null;
+  private JExtendedComboBox rteBox = new JExtendedComboBox();
 
   private JTextField jtfInstall =  new JTextField(TEXTFIELDWIDTH);
   private JTextField jtfRuntime =  new JTextField(TEXTFIELDWIDTH);
@@ -186,7 +195,9 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     panel.add(new JLabel("Name"), ct);
     ct.gridx = 1;
     ct.gridheight = 1;
+    ct.ipady = -10;
     panel.add(textPanel, ct);
+    ct.ipady = -5;
     
     JButton continueButton = new JButton("Continue");
     continueButton.addActionListener(new java.awt.event.ActionListener(){
@@ -208,7 +219,9 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     }
     );
     ct.gridx = 2;
-    panel.add(continueButton, ct);
+    JPanel pCont = new JPanel();
+    pCont.add(continueButton);
+    panel.add(pCont, ct);
 
     ct.gridx = 3;
     ct.weightx = 10;
@@ -224,8 +237,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     panel.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
         Color.white, new Color(165, 163, 151)), "Step 2/4: consolidate all files in a directory"));
     String msg = "If all files this software needs are not already in a single directory,\n" +
-            "to one directory, please copy them to one directory.\n\n" +
-        "Below, give the path to the directory containing all files of this software.\n\n";
+            "please copy them to one directory. Below, give the path to this directory.\n\n";
     JLabel jlDirInstructions = new JLabel("<html>"+msg.replaceAll("\n", "<br>")+"</html>");
     final JTextField jtf =  new JTextField(TEXTFIELDWIDTH);
     JPanel textPanel = new JPanel();
@@ -246,8 +258,8 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     ct.gridy = ct.gridy+1;;
     ct.gridwidth = 1;
     ct.gridheight = 2;
-    panel.add(Util.createCheckPanel1(this,
-        "Directory containing software", jtf, true, true), ct);    
+    JPanel checkPanel = Util.createCheckPanel1(this, "Directory containing software", jtf, true, true, true);
+    panel.add(checkPanel, ct);    
     ct.gridx = 1;
     ct.gridheight = 1;    panel.add(textPanel, ct);    
     JButton continueButton = new JButton("Continue");
@@ -290,7 +302,9 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     );
     
     ct.gridx = 2;
-    panel.add(continueButton, ct);
+    JPanel pCont = new JPanel();
+    pCont.add(continueButton);
+    panel.add(pCont, ct);
     ct.gridx = 3;
     ct.weightx = 10;
     panel.add(new JLabel(" "), ct);
@@ -317,16 +331,20 @@ public class CreateSoftwarePackageWizard extends GPFrame{
   private void packageInTmpDir() throws IOException {
     // copy data files to tmp dir
     LocalStaticShellMgr.copyDirectory(dir, new File(tmpDir, "data"));
-    // TODO: tar without including top-level folder
     File tarFile = new File(tmpDir, shortName+".tar");
-    File zipFile = new File(tmpDir, shortName+".tar.gz");
-    Util.tar(tarFile, tmpDir, false);
-    Util.gzip(tarFile.getCanonicalPath(), zipFile.getCanonicalPath());
+    File gzipFile = new File(tmpDir, shortName+".tar.gz");
+    Util.tar(tarFile, tmpDir);
+    Util.gzip(tarFile.getCanonicalPath(), gzipFile.getCanonicalPath());
     tarFile.delete();
   }
   
-  private void uploadAndRegister() throws IOException {
-    // TODO
+  private void registerInCatalog() throws Exception {
+        
+    // If the catalog URL is remote, download temporary copy of the catalog
+       
+    // Add the entry to the catalog
+    
+    // Upload the catalog
   }
 
   private void createTemplateScripts() throws IOException {
@@ -413,9 +431,9 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     tRuntime.add(jtfRuntime);
     JPanel tRemove = new JPanel();
     tRemove.add(jtfRemove);
-    JPanel jpInstall = Util.createCheckPanel1(this, "Install script", jtfInstall, true, false);
-    JPanel jpRuntime = Util.createCheckPanel1(this, "Runtime script", jtfRuntime, true, false);
-    JPanel jpRemove = Util.createCheckPanel1(this, "Remove script", jtfRemove, true, false);
+    JPanel jpInstall = Util.createCheckPanel1(this, "Install script", jtfInstall, true, false, false);
+    JPanel jpRuntime = Util.createCheckPanel1(this, "Runtime script", jtfRuntime, true, false, false);
+    JPanel jpRemove = Util.createCheckPanel1(this, "Remove script", jtfRemove, true, false, false);
 
     GridBagConstraints ct = new GridBagConstraints();
     ct.fill = GridBagConstraints.BOTH;
@@ -481,7 +499,9 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     }
     );
     ct.gridx = 2;
-    panel.add(continueButton, ct);
+    JPanel pCont = new JPanel();
+    pCont.add(continueButton);
+    panel.add(pCont, ct);
     
     ct.gridx = 3;
     ct.weightx = 10;
@@ -504,13 +524,40 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     JPanel tUrl = new JPanel();
     tUrl.add(jtfUrl);
     final JTextField jtfCatalog =  new JTextField(TEXTFIELDWIDTH);
+    String catalogUrlsString = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "Runtime catalog URLs");
+    if(catalogUrlsString!=null && !catalogUrlsString.equals("")){
+      String[] catalogUrls;
+      catalogUrls = null;
+      try{
+        catalogUrls = Util.splitUrls(catalogUrlsString);
+      }
+      catch (Exception e1){
+        e1.printStackTrace();
+        try{
+          catalogUrls = Util.split(catalogUrlsString);
+        }
+        catch (Exception e2){
+          e2.printStackTrace();
+          catalogUrls = new String [] {catalogUrlsString};
+        }
+      }
+      // Fill in the first of the configured runtime catalog URLs
+      jtfCatalog.setText(catalogUrls[0]);
+    }
     JPanel tCatalog = new JPanel();
     tCatalog.add(jtfCatalog);
-    JPanel jpUrl = Util.createCheckPanel1(this,
-        "URL to upload tarball", jtfUrl, true, true);
-    JPanel jpCatalog = Util.createCheckPanel1(this,
-        "Catalog URL", jtfCatalog, true, true);
-
+    JPanel jpUrl = Util.createCheckPanel1(this, "URL to upload tarball", jtfUrl, true, true, false);
+    JPanel jpCatalog = Util.createCheckPanel1(this, "Catalog URL", jtfCatalog, true, true, false);
+    JPanel pRefresh = new JPanel();
+    JButton bRefreshRTEs = new JButton("Refresh list");
+    pRefresh.add(bRefreshRTEs);
+    bRefreshRTEs.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        // refresh the list on rteBox
+        refreshRTEs(catalogUrl);
+      }
+    }
+    );
     GridBagConstraints ct = new GridBagConstraints();
     ct.fill = GridBagConstraints.BOTH;
     ct.anchor = GridBagConstraints.WEST;
@@ -544,6 +591,19 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     ct.gridx = 2;
     panel.add(new JLabel(" "), ct);    
         
+    ct.gridy = ct.gridy+2;
+    ct.gridx = 0;
+    ct.gridwidth = 1;
+    ct.gridheight = 2;
+    JPanel pRTEs = new JPanel();
+    pRTEs.add(rteBox);
+    panel.add(pRTEs, ct);    
+    ct.gridx = 1;
+    ct.gridheight = 1;
+    panel.add(pRefresh, ct); 
+    ct.gridx = 2;
+    panel.add(new JLabel(" "), ct);    
+        
     JButton continueButton = new JButton("Continue");
     continueButton.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -556,9 +616,13 @@ public class CreateSoftwarePackageWizard extends GPFrame{
             Util.showError("You must specify a catalog URL");
             return;
           }
-          uploadAndRegister();
+          // Upload the tarball
+          File gzipFile = new File(tmpDir, shortName+".tar.gz");
+          TransferControl.upload(gzipFile, jtfUrl.getText(), thisFrame);
+          catalogUrl = jtfCatalog.getText();
+          registerInCatalog();
         }
-        catch(IOException e1){
+        catch(Exception e1){
           e1.printStackTrace();
           Util.showError("Could upload package files. "+e1.getMessage());
         }
@@ -568,13 +632,42 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     }
     );
     ct.gridx = 2;
-    panel.add(continueButton, ct);
+    JPanel pCont = new JPanel();
+    pCont.add(continueButton);
+    panel.add(pCont, ct);
     
     ct.gridx = 3;
     ct.weightx = 10;
     panel.add(new JLabel(" "), ct);
     
     return panel;
+  }
+  
+  private void refreshRTEs(String catalogUrl){
+    String [] rteCatalogUrls =
+      GridPilot.getClassMgr().getConfigFile().getValues("GridPilot", "runtime catalog URLs");
+    HashSet catalogUrlsSet = new HashSet();
+    if(rteCatalogUrls!=null){
+      Collections.addAll(catalogUrlsSet, rteCatalogUrls);
+    }
+    catalogUrlsSet.add(catalogUrl);
+    String [] catalogUrls = new String [catalogUrlsSet.size()];
+    int i = 0;
+    for(Iterator it=catalogUrlsSet.iterator(); it.hasNext();){
+      catalogUrls[i] = (String) it.next();
+      if(catalogUrls[i]==null){
+        continue;
+      }
+      Debug.debug("Adding catalog "+catalogUrls[i], 2);
+      ++i;
+    }
+    RteRdfParser rteRdfParser = new RteRdfParser(catalogUrls);
+    HashSet rtesList = rteRdfParser.metaPackages;
+    rteBox.removeAllItems();
+    for(Iterator it=rtesList.iterator(); it.hasNext();){
+      rteBox.addItem(((RteRdfParser.MetaPackage)it.next()).name);
+    }
+    rteBox.updateUI();
   }
   
   private static void updateComponentTreeUI0(Component c, boolean enabled){

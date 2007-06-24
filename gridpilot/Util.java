@@ -315,7 +315,7 @@ public class Util{
  
  public static void launchCheckBrowser(final Frame frame, String url,
      final JTextComponent jt, final boolean localFS, final boolean oneUrl,
-     final boolean withNavigation){
+     final boolean withNavigation, final boolean onlyDirs){
    if(url.equals("http://check/")){
      String httpScript = jt.getText();
      if(frame!=null){
@@ -377,10 +377,10 @@ public class Util{
                    urls[i],
                    finBaseUrl,
                    true,
-                   /*filter*/withNavigation,
+                   /*filter*/!onlyDirs && withNavigation,
                    /*navigation*/withNavigation,
                    null,
-                   null,
+                   onlyDirs?"*/":null,
                    localFS);
              }
              else{
@@ -390,10 +390,10 @@ public class Util{
                    urls[i],
                    finBaseUrl,
                    true,
-                   /*filter*/withNavigation,
+                   /*filter*/!onlyDirs && withNavigation,
                    /*navigation*/withNavigation,
                    null,
-                   null,
+                   onlyDirs?"*/":null,
                    localFS);
              }
            }
@@ -460,7 +460,7 @@ public class Util{
       public void hyperlinkUpdate(HyperlinkEvent e){
         if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
           launchCheckBrowser(frame, e.getURL().toExternalForm(), jt, false, oneUrl,
-              withNavigation);
+              withNavigation, false);
         }
       }
     });
@@ -472,7 +472,7 @@ public class Util{
   */
   public static JPanel createCheckPanel1(
      final Frame frame, final String name, final JTextComponent jt, final boolean oneUrl,
-     final boolean withNavigation){
+     final boolean withNavigation, final boolean onlyDirs){
     ImageIcon browseIcon;
     URL imgURL=null;
     try{
@@ -489,7 +489,7 @@ public class Util{
     bBrowse1.setSize(new java.awt.Dimension(22, 22));
     bBrowse1.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        launchCheckBrowser(frame, "http://check/", jt, false, oneUrl, withNavigation);
+        launchCheckBrowser(frame, "http://check/", jt, false, oneUrl, withNavigation, onlyDirs);
       }
     });
 
@@ -726,12 +726,12 @@ public class Util{
     
     bBrowse1.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        launchCheckBrowser(null, "http://check/", keyField, true, true, false);
+        launchCheckBrowser(null, "http://check/", keyField, true, true, false, false);
       }
     });
     bBrowse2.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        launchCheckBrowser(null, "http://check/", certField, true, true, false);
+        launchCheckBrowser(null, "http://check/", certField, true, true, false, false);
       }
     });
     
@@ -2114,25 +2114,25 @@ public class Util{
     out.close();
   }
   
-  public static void tar(File archiveFile, File tarDir, boolean includeTopDir) throws IOException{
-    
-    // TODO: check if empty directories are included and how to include top level directory
+  public static void tar(File archiveFile, File tarDir) throws IOException{
     
     Vector fileList = LocalStaticShellMgr.listFilesRecursively(tarDir.getCanonicalPath());
+    int baseDirLen = (tarDir.getAbsolutePath()+File.separator).length();
     
     byte buffer[] = new byte[1024];
     if(fileList!=null){
       // Open archive file
       FileOutputStream stream = new FileOutputStream(archiveFile);
       TarOutputStream out = new TarOutputStream(stream);
+      String name = null;
 
       for(int i=0; i<fileList.size(); i++){
-        String filename = (String)fileList.get(i);
-        File file = new File(filename);
+        File file = (File)fileList.get(i);
         if(file==null || !file.exists() || file.isDirectory()){
           continue;
         }
-        Debug.debug("<" + file.getName() + "> Added to the archive.", 2);
+        name = file.getAbsolutePath().substring(baseDirLen);
+        System.out.println("<" + name + "> Added to the archive.");
 
         // Add archive entry
         TarEntry tarAdd = new TarEntry(file);
@@ -2149,13 +2149,13 @@ public class Util{
           tarAdd.setUnixTarFormat();
         }
              
-        tarAdd.setName(file.getName());
+        tarAdd.setName(name);
         out.putNextEntry(tarAdd);
         // Write file to archive
         FileInputStream in = new FileInputStream(file);
         while(true){
           int nRead = in.read(buffer, 0, buffer.length);
-          if(nRead <= 0){
+          if(nRead<=0){
             break;
           }
           out.write(buffer, 0, nRead);
@@ -2165,7 +2165,7 @@ public class Util{
       }     
       out.close();
       stream.close();
-      Debug.debug( "<" + archiveFile + "> Tar Archive created successfully.", 2);
+      System.out.println("<" + archiveFile + "> Tar Archive created successfully.");
     }
   }
   
