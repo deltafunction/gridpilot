@@ -592,6 +592,7 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuHelp.add(menuHelpBeginning);
+    menuHelp.addSeparator();
     JMenuItem menuHelpCreateSoftwarePackage = new JMenuItem("Wizard: Create software package (runtime environment)");
     menuHelpCreateSoftwarePackage.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -602,7 +603,7 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuHelp.add(menuHelpCreateSoftwarePackage);
-    JMenuItem menuHelpPublishSoftware = new JMenuItem("Wizard: Synchronize software lists with external catalogs");
+    JMenuItem menuHelpPublishSoftware = new JMenuItem("Wizard: Synchronize runtime environments with external catalogs");
     menuHelpPublishSoftware.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         new SynchronizeSoftwareWizard();
@@ -615,6 +616,7 @@ public class GlobalFrame extends GPFrame{
         new RunOneJobWizard();
       }
     });
+    menuHelp.addSeparator();
     menuHelp.add(menuHelpRunOneJob);
     JMenuItem menuHelpRunMultipleJobs = new JMenuItem("Wizard: Prepare and run multiple jobs");
     menuHelpRunOneJob.addActionListener(new ActionListener(){
