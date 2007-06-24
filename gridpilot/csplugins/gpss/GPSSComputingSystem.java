@@ -35,6 +35,7 @@ import gridpilot.JobInfo;
 import gridpilot.LocalStaticShellMgr;
 import gridpilot.LogFile;
 import gridpilot.PullJobsDaemon;
+import gridpilot.RteRdfParser;
 import gridpilot.TransferControl;
 import gridpilot.TransferInfo;
 import gridpilot.TransferStatusUpdateControl;
@@ -90,7 +91,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     localRuntimeDBs = configFile.getValues(csName, "runtime databases");
     remoteDB = configFile.getValue(csName, "remote database");
     remoteDir = configFile.getValue(csName, "remote directory");
-    rteCatalogUrls = configFile.getValues(csName, "runtime catalog URLs");
+    rteCatalogUrls = configFile.getValues("GridPilot", "runtime catalog URLs");
     rteUrls = new HashSet();
     timerSyncRTEs.setDelay(RTE_SYNC_DELAY);
     toDeleteRtes = new HashMap();
