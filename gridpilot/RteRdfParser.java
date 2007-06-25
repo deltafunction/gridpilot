@@ -140,14 +140,14 @@ public class RteRdfParser {
   }
   
   private String [] parseFile(String src) throws IOException{
+    String [] res = new String [] {};
     if(src==null || src.equals("")){
-      return new String [] {};
+      return res;
     }
     if(!Util.urlIsRemote(src)){
       src = "file:"+Util.clearTildeLocally(Util.clearFile(src));
     }
     URL url = new URL(src);
-    String [] res = null;
     InputStream is = null;
     DataInputStream dis = null;
     StringBuffer str = new StringBuffer("");
@@ -209,7 +209,7 @@ public class RteRdfParser {
               Debug.debug("Parsed TarPackage "+tp.toString(), 3);
             }
             else{
-              unparsed.append("\n"+head+body);
+              unparsed.append("\n"+head+" "+body);
             }
             str = new StringBuffer(str.toString().replaceFirst(pattern, "$3"));
           }
@@ -473,16 +473,16 @@ public class RteRdfParser {
     return null;
   }
   
-  protected class BaseSystem {
-    String id;
-    String name;
-    String url;
-    String description;
-    String distribution;
-    String lastupdate;
-    String immutable;
-    String [] labels;
-    BaseSystem(String _id, String _name, String _url, String _description,
+  public class BaseSystem {
+    public String id;
+    public String name;
+    public String url;
+    public String description;
+    public String distribution;
+    public String lastupdate;
+    public String immutable;
+    public String [] labels;
+    public BaseSystem(String _id, String _name, String _url, String _description,
         String _distribution, String _lastupdate, String _immutable, String [] _labels){
       name = _name;
       id = _id;
@@ -505,15 +505,15 @@ public class RteRdfParser {
     public String toXML(){
       String xml = "<kb:BaseSystem " +
           (id.equals("")?"":"rdf:about=\""+BASE_URL+""+id+"\" ") +
-          (distribution.equals("")?"":"kb:distribution=\""+distribution+"\" ") +
-          (url.equals("")?"":"kb:url=\""+url+"\" ") +
-          (lastupdate.equals("")?"":"kb:lastupdated=\""+lastupdate+"\" ") +
-          (immutable.equals("")?"":"kb:immutable=\""+immutable+"\" ") +
+          (distribution!=null&&distribution.equals("")?"":"kb:distribution=\""+distribution+"\" ") +
+          (url!=null&&url.equals("")?"":"kb:url=\""+url+"\" ") +
+          (lastupdate!=null&&lastupdate.equals("")?"":"kb:lastupdated=\""+lastupdate+"\" ") +
+          (immutable!=null&&immutable.equals("")?"":"kb:immutable=\""+immutable+"\" ") +
           (name.equals("")?"":"kb:name=\""+name+"\"") +
            ">";
-      xml += (description.equals("")?"":"\n  <kb:description>"+description+"</kb:description>");
-      for(int i=0; i<labels.length; ++i){
-      xml += "\n  <rdfs:label>"+labels[i]+"</rdfs:label>";
+      xml += (description!=null&&description.equals("")?"":"\n  <kb:description>"+description+"</kb:description>");
+      for(int i=0; i<(labels==null?0:labels.length); ++i){
+        xml += "\n  <rdfs:label>"+labels[i]+"</rdfs:label>";
       }
       xml += "\n</kb:BaseSystem>";
       return xml;
@@ -521,15 +521,15 @@ public class RteRdfParser {
   }
 
   public class MetaPackage {
-    String id;
+    public String id;
     public String name;
-    String homepage;
-    String description;
-    String lastupdate;
-    String [] instances;
-    String [] tags;
-    String [] labels;
-    MetaPackage(String _id, String _name, String _homepage, String _description,
+    public String homepage;
+    public String description;
+    public String lastupdate;
+    public String [] instances;
+    public String [] tags;
+    public String [] labels;
+    public MetaPackage(String _id, String _name, String _homepage, String _description,
         String _lastupdate, String [] _instances, String [] _tags, String [] _labels){
       name = _name;
       id = _id;
@@ -554,17 +554,17 @@ public class RteRdfParser {
     public String toXML(){
       String xml = "<kb:MetaPackage " +
       (id.equals("")?"":"rdf:about=\""+BASE_URL+""+id+"\" ") +
-      (description.equals("")?"":"kb:description=\""+description+"\" ") +
-      (lastupdate.equals("")?"":"kb:lastupdated=\""+lastupdate+"\" ") +
+      (description!=null&&description.equals("")?"":"kb:description=\""+description+"\" ") +
+      (lastupdate!=null&&lastupdate.equals("")?"":"kb:lastupdated=\""+lastupdate+"\" ") +
       (name.equals("")?"":"kb:name=\""+name+"\"") +
        ">";
-      for(int i=0; i<labels.length; ++i){
+      for(int i=0; i<(labels==null?0:labels.length); ++i){
       xml += "\n  <rdfs:label>"+labels[i]+"</rdfs:label>";
       }
-      for(int i=0; i<tags.length; ++i){
+      for(int i=0; i<(tags==null?0:tags.length); ++i){
         xml += "\n  <kb:tag>"+tags[i]+"</kb:tag>";
       }
-      for(int i=0; i<instances.length; ++i){
+      for(int i=0; i<(instances==null?0:instances.length); ++i){
         xml += "\n  <kb:instance rdf:resource=\""+BASE_URL+""+instances[i]+"\"/>";
       }
       xml += "\n</kb:MetaPackage>";
@@ -572,16 +572,16 @@ public class RteRdfParser {
     }
   }
   
-  protected class Package {
-    String id;
-    String baseSystem;
-    String [] depends;
-    String [] labels;
+  public class Package {
+    public String id;
+    public String baseSystem;
+    public String [] depends;
+    public String [] labels;
   }
   
-  protected class TarPackage extends Package{
-    String url;
-    TarPackage(String _id, String _baseSystem, String [] _depends, String _url,
+  public class TarPackage extends Package{
+    public String url;
+    public TarPackage(String _id, String _baseSystem, String [] _depends, String _url,
         String [] _labels){
       id = _id;
       baseSystem = _baseSystem;
@@ -602,11 +602,11 @@ public class RteRdfParser {
           (id.equals("")?"":"rdf:about=\""+BASE_URL+""+id+"\" ") +
           (url.equals("")?"":"kb:url=\""+url+"\" ") +
            ">";
-      for(int i=0; i<labels.length; ++i){
-      xml += "\n  <rdfs:label>"+labels[i]+"</rdfs:label>";
+      for(int i=0; i<(labels==null?0:labels.length); ++i){
+        xml += "\n  <rdfs:label>"+labels[i]+"</rdfs:label>";
       }
       xml += (baseSystem.equals("")?"":"<kb:basesystem rdf:resource=\""+BASE_URL+""+baseSystem+"\"/> ");
-      for(int i=0; i<depends.length; ++i){
+      for(int i=0; i<(depends==null?0:depends.length); ++i){
         xml += "\n  <kb:depends rdf:resource=\""+BASE_URL+""+depends[i]+"\"/>"; 
       }
       xml += "\n</kb:TarPackage>";
@@ -614,7 +614,7 @@ public class RteRdfParser {
     }
   }
   
-  protected class Debian extends Package{
+  public class DebianPackage extends Package{
     // TODO
   }
 }
