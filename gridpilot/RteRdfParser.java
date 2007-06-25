@@ -140,6 +140,9 @@ public class RteRdfParser {
   }
   
   private String [] parseFile(String src) throws IOException{
+    if(src==null || src.equals("")){
+      return new String [] {};
+    }
     if(!Util.urlIsRemote(src)){
       src = "file:"+Util.clearTildeLocally(Util.clearFile(src));
     }

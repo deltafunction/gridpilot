@@ -3,7 +3,6 @@ package gridpilot.wizards.manage_software;
 import gridpilot.Debug;
 import gridpilot.GPFrame;
 import gridpilot.GridPilot;
-import gridpilot.JExtendedComboBox;
 import gridpilot.LocalStaticShellMgr;
 import gridpilot.RteRdfParser;
 import gridpilot.TransferControl;
@@ -59,7 +58,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
   private File dir = null;
   private File tmpDir = null;
   private String catalogUrl = null;
-  private JExtendedComboBox rteBox = new JExtendedComboBox();
+  private MultiPicker rteBox = null;
 
   private JTextField jtfInstall =  new JTextField(TEXTFIELDWIDTH);
   private JTextField jtfRuntime =  new JTextField(TEXTFIELDWIDTH);
@@ -100,6 +99,9 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     updateComponentTreeUI0(dirPanel, false);
     updateComponentTreeUI0(scriptsPanel, false);
     updateComponentTreeUI0(uploadPanel, false);
+    
+    rteBox = new MultiPicker();
+    rteBox.setPreferredSize(new Dimension(100, 200));
     
     int maxHeight = Toolkit.getDefaultToolkit().getScreenSize().height-10;
     int maxWidth = Toolkit.getDefaultToolkit().getScreenSize().width-10;
@@ -171,7 +173,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
             "First, you have to choose a name for the software package.\n" +
             "If you plan to publish it in a runtime environment catalog, you should follow the convention of\n" +
             "of scoping the name and giving it a versions number. E.g. version 12.0.6 of the ATLAS software\n" +
-            "package used in High Energy Physics is named \"APP/HEP/ATLAS/ATLAS-12.0.6\"\n\n";
+            "package used in High Energy Physics is named \"APPS/HEP/ATLAS/ATLAS-12.0.6\"\n\n";
     JLabel jlDirInstructions = new JLabel("<html>"+msg.replaceAll("\n", "<br>")+"</html>");
     final JTextField jtf = new JTextField(TEXTFIELDWIDTH);
     JPanel textPanel = new JPanel();
@@ -517,8 +519,11 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     setTitle(title);
     panel.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
         Color.white, new Color(165, 163, 151)), "Step 4/4: upload runtime environment and publish the URL in a catalog"));
-    String msg = "The software has now been packaged and is ready to be uploaded to a\n" +
-        "remote URL. This URL will then be published in the catalog you choose.\n\n";
+    String msg =
+        "The runtime environment has now been packaged and is ready to be uploaded to a\n" +
+        "remote URL. This URL will then be published in the catalog you choose.\n\n" +
+        "Optionally, you can specify if the runtime environment depends on other\n" +
+        "runtime environments\n\n";
     JLabel jlInstructions = new JLabel("<html>"+msg.replaceAll("\n", "<br>")+"</html>");
     final JTextField jtfUrl =  new JTextField(TEXTFIELDWIDTH);
     JPanel tUrl = new JPanel();
@@ -595,14 +600,15 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     ct.gridx = 0;
     ct.gridwidth = 1;
     ct.gridheight = 2;
-    JPanel pRTEs = new JPanel();
-    pRTEs.add(rteBox);
-    panel.add(pRTEs, ct);    
+    panel.add(new JLabel("Dependencies"), ct);    
     ct.gridx = 1;
     ct.gridheight = 1;
-    panel.add(pRefresh, ct); 
+    JPanel pRTEs = new JPanel();
+    JScrollPane spRtes = new JScrollPane(rteBox);
+    pRTEs.add(spRtes);
+    panel.add(pRTEs, ct);    
     ct.gridx = 2;
-    panel.add(new JLabel(" "), ct);    
+    panel.add(pRefresh, ct); 
         
     JButton continueButton = new JButton("Continue");
     continueButton.addActionListener(new java.awt.event.ActionListener(){
@@ -655,18 +661,12 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     int i = 0;
     for(Iterator it=catalogUrlsSet.iterator(); it.hasNext();){
       catalogUrls[i] = (String) it.next();
-      if(catalogUrls[i]==null){
-        continue;
-      }
       Debug.debug("Adding catalog "+catalogUrls[i], 2);
       ++i;
     }
     RteRdfParser rteRdfParser = new RteRdfParser(catalogUrls);
     HashSet rtesList = rteRdfParser.metaPackages;
-    rteBox.removeAllItems();
-    for(Iterator it=rtesList.iterator(); it.hasNext();){
-      rteBox.addItem(((RteRdfParser.MetaPackage)it.next()).name);
-    }
+    rteBox.setListData(rtesList.toArray());
     rteBox.updateUI();
   }
   
