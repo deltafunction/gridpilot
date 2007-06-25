@@ -352,98 +352,125 @@ public class CreateSoftwarePackageWizard extends GPFrame{
   private void registerInCatalog(String system, String [] depends) throws Exception {
     
     // TODO: add support for lastupdate, tags, homePage, description, etc.
+    
+    String catalogName = catalogUrl.replaceFirst("^.*/([^/]+)$", "$1");
+    File lockFile = new File(tmpDir, catalogName+".lock");
+    String lockUrl = catalogUrl+".lock";
+
+    // Check that catalog is not locked
+    try{
+      TransferControl.download(lockUrl, lockFile, this);
+    }
+    catch(Exception e){
+    }
+    
+    if(lockFile.exists()){
+      throw new Exception("Catalog is being edited by someone else. Please try again later. \n" +
+            "If this persists, delete "+lockUrl);
+    }
         
-    // Download temporary copy of the catalog
-    //TransferControl.download(catalogUrl, tmpDir, this);
-    
-    // Add the entry to the catalog: name, url, depends.
-    RteRdfParser rteRdfParser = new RteRdfParser(new String [] {catalogUrl});
-    
-    // Check if name is already in catalog. At the same time, find highest ID
-    long highestID = 0;
-    long tmpID = 0;
-    RteRdfParser.MetaPackage mp = null;
-    for(Iterator it=rteRdfParser.metaPackages.iterator(); it.hasNext();){
-      mp = (RteRdfParser.MetaPackage) it.next();
-      if(mp.name.equalsIgnoreCase(name)){
-        throw new Exception("RTE "+name+" already exists in catalog. Cannot proceed.");
+    // Upload temporary lock on the catalog
+    LocalStaticShellMgr.writeFile(lockFile.getCanonicalPath(), "", false);
+    TransferControl.upload(lockFile, lockUrl, this);
+        
+    try{
+      // Add the entry to the catalog: name, url, depends.
+      RteRdfParser rteRdfParser = new RteRdfParser(new String [] {catalogUrl});
+      
+      // Check if name is already in catalog. At the same time, find highest ID
+      long highestID = 0;
+      long tmpID = 0;
+      RteRdfParser.MetaPackage mp = null;
+      for(Iterator it=rteRdfParser.metaPackages.iterator(); it.hasNext();){
+        mp = (RteRdfParser.MetaPackage) it.next();
+        if(mp.name.equalsIgnoreCase(name)){
+          throw new Exception("RTE "+name+" already exists in catalog. Cannot proceed.");
+        }
+        tmpID = Long.parseLong(mp.id);
+        if(tmpID>highestID){
+          highestID = tmpID;
+        }
       }
-      tmpID = Long.parseLong(mp.id);
-      if(tmpID>highestID){
-        highestID = tmpID;
+      // Try to match the base system
+      String baseSystem = "";
+      String baseSystemID = "";
+      RteRdfParser.BaseSystem bs = null;
+      for(Iterator it=rteRdfParser.baseSystems.iterator(); it.hasNext();){
+        bs = (RteRdfParser.BaseSystem) it.next();
+        if(bs.name.matches(".*"+system+".*") &&
+            (bs==null || bs.name.length()>baseSystem.length())){
+          baseSystem = bs.name;
+          baseSystemID = bs.id;
+        }
+        tmpID = Long.parseLong(bs.id);
+        if(tmpID>highestID){
+          highestID = tmpID;
+        }
       }
-    }
-    // Try to match the base system
-    String baseSystem = "";
-    String baseSystemID = "";
-    RteRdfParser.BaseSystem bs = null;
-    for(Iterator it=rteRdfParser.baseSystems.iterator(); it.hasNext();){
-      bs = (RteRdfParser.BaseSystem) it.next();
-      if(bs.name.matches(".*"+system+".*") &&
-          (bs==null || bs.name.length()>baseSystem.length())){
-        baseSystem = bs.name;
-        baseSystemID = bs.id;
+      if(baseSystemID.equals("")){
+        baseSystemID = "0";
       }
-      tmpID = Long.parseLong(bs.id);
-      if(tmpID>highestID){
-        highestID = tmpID;
+      // This is just to be sure to have the highest id
+      // TODO: propose Daniel to use UUIDs instead of incremented integers.
+      //       This in order to use several or distributed catalogs
+      RteRdfParser.TarPackage tp = null;
+      for(Iterator it=rteRdfParser.tarPackages.iterator(); it.hasNext();){
+        tp = (RteRdfParser.TarPackage) it.next();
+        tmpID = Long.parseLong(tp.id);
+        if(tmpID>highestID){
+          highestID = tmpID;
+        }
       }
-    }
-    if(baseSystemID.equals("")){
-      // TODO: we assume Debian Etch has ID 0...
-      baseSystemID = "0";
-    }
-    // This is just to be sure to have the highest id
-    // TODO: propose Daniel to use UUIDs instead of incremented integers.
-    //       This in order to use several or distributed catalogs
-    RteRdfParser.TarPackage tp = null;
-    for(Iterator it=rteRdfParser.tarPackages.iterator(); it.hasNext();){
-      tp = (RteRdfParser.TarPackage) it.next();
-      tmpID = Long.parseLong(tp.id);
-      if(tmpID>highestID){
-        highestID = tmpID;
+      
+      // The TarPackage instance
+      RteRdfParser.TarPackage tarPackage =
+        rteRdfParser.new TarPackage(/*id*/Long.toString(highestID+1), /*baseSystem*/baseSystemID, /*depends*/depends,
+             /*url*/tarballUrl, /*labels*/null);
+      rteRdfParser.tarPackages.add(tarPackage);
+      
+      RteRdfParser.MetaPackage metaPackage =
+        rteRdfParser.new MetaPackage(/*id*/Long.toString(highestID+2), name, /*homepage*/null,  /*description*/"",
+         /*lastupdate*/null, /*instances*/new String []{tarPackage.id},
+         /*tags*/null, /*labels*/null);
+      rteRdfParser.metaPackages.add(metaPackage);
+      
+      // Generate the new catalog
+      String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+
+     "<!DOCTYPE rdf:RDF [\n"+
+     "<!ENTITY rdf 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'>\n"+
+     "<!ENTITY kb 'http://knowarc.eu/kb#'>\n"+
+     "<!ENTITY rdfs 'http://www.w3.org/2000/01/rdf-schema#'>]>\n"+
+     "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" " +
+     "xmlns:kb=\"http://knowarc.eu/kb#\" xmlns:rdfs=\"http://www.w3.org/2000/01/rdf-schema#\">\n\n";
+      
+      for(Iterator it=rteRdfParser.baseSystems.iterator(); it.hasNext();){
+        bs = (RteRdfParser.BaseSystem) it.next();
+        xml += mp.toXML()+"\n";
+      }    
+      for(Iterator it=rteRdfParser.metaPackages.iterator(); it.hasNext();){
+        mp = (RteRdfParser.MetaPackage) it.next();
+        xml += mp.toXML()+"\n";
+      }    
+      for(Iterator it=rteRdfParser.tarPackages.iterator(); it.hasNext();){
+        tp = (RteRdfParser.TarPackage) it.next();
+        xml += mp.toXML()+"\n";
       }
+      
+      xml += rteRdfParser.getUnparsed() + "\n\n</rdf:RDF>";
+      
+      // Upload the catalog
+      File newCatalog = new File(tmpDir, "newCatalog.rdf");
+      LocalStaticShellMgr.writeFile(newCatalog.getCanonicalPath(), xml, false);
+      TransferControl.upload(newCatalog, catalogUrl, this);
+      lockFile.delete();
+      newCatalog.delete();
     }
-    
-    // The TarPackage instance
-    RteRdfParser.TarPackage tarPackage =
-      rteRdfParser.new TarPackage(/*id*/Long.toString(highestID+1), /*baseSystem*/baseSystemID, /*depends*/depends,
-           /*url*/tarballUrl, /*labels*/null);
-    rteRdfParser.tarPackages.add(tarPackage);
-    
-    RteRdfParser.MetaPackage metaPackage =
-      rteRdfParser.new MetaPackage(/*id*/Long.toString(highestID+2), name, /*homepage*/null,  /*description*/"",
-       /*lastupdate*/null, /*instances*/new String []{tarPackage.id},
-       /*tags*/null, /*labels*/null);
-    rteRdfParser.metaPackages.add(metaPackage);
-    
-    // Generate the new catalog
-    String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+
-   "<!DOCTYPE rdf:RDF [\n"+
-   "<!ENTITY rdf 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'>\n"+
-   "<!ENTITY kb 'http://knowarc.eu/kb#'>\n"+
-   "<!ENTITY rdfs 'http://www.w3.org/2000/01/rdf-schema#'>]>\n"+
-   "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" " +
-   "xmlns:kb=\"http://knowarc.eu/kb#\" xmlns:rdfs=\"http://www.w3.org/2000/01/rdf-schema#\">\n\n";
-    
-    for(Iterator it=rteRdfParser.baseSystems.iterator(); it.hasNext();){
-      bs = (RteRdfParser.BaseSystem) it.next();
-      xml += mp.toXML()+"\n";
-    }    
-    for(Iterator it=rteRdfParser.metaPackages.iterator(); it.hasNext();){
-      mp = (RteRdfParser.MetaPackage) it.next();
-      xml += mp.toXML()+"\n";
-    }    
-    for(Iterator it=rteRdfParser.tarPackages.iterator(); it.hasNext();){
-      tp = (RteRdfParser.TarPackage) it.next();
-      xml += mp.toXML()+"\n";
+    catch(Exception e){
+      throw e;
     }
-    
-    xml += rteRdfParser.getUnparsed() + "\n\n</rdf:RDF>";
-    
-    // Upload the catalog
-    LocalStaticShellMgr.writeFile((new File(tmpDir, "newCatalog.rdf")).getCanonicalPath(), xml, false);
-    // TODO
+    finally{
+      TransferControl.deleteFiles(new String [] {lockUrl});
+    }
     
   }
 
@@ -777,6 +804,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
         catch(Exception e1){
           e1.printStackTrace();
           Util.showError("Could upload package files. "+e1.getMessage());
+          return;
         }
         updateComponentTreeUI0(uploadPanel, false);
         cancelButton.setEnabled(false);
