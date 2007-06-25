@@ -362,6 +362,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
       TransferControl.download(lockUrl, lockFile, this);
     }
     catch(Exception e){
+      lockFile.delete();
     }
     
     if(lockFile.exists()){
@@ -481,7 +482,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
       "## that needs to be unpacked in order for the software to run." +
       "set -e\n" +
       "MY_ZIP=\"my_software.zip\"\n" +
-      "unzip $MY_ZIPP\n" +
+      "unzip $MY_ZIP\n" +
       "rm -f $MY_ZIP\n" +
       "#eof";
     String runtimeStr = "#!/bin/sh\n"+
