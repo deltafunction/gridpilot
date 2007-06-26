@@ -45,7 +45,9 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -1430,7 +1432,7 @@ public class Util{
         continue;
       }
       caCertFile =  new File(caCertsTmpdir, fileName);
-      Debug.debug("loading "+caCertFile.getCanonicalPath(), 3);
+      Debug.debug("loading "+caCertFile.getAbsolutePath(), 3);
       try{
         fis = new FileInputStream(caCertFile);
         cf = CertificateFactory.getInstance("X.509");
@@ -2116,7 +2118,7 @@ public class Util{
   
   public static void tar(File archiveFile, File tarDir) throws IOException{
     
-    Vector fileList = LocalStaticShellMgr.listFilesRecursively(tarDir.getCanonicalPath());
+    Vector fileList = LocalStaticShellMgr.listFilesRecursively(tarDir.getAbsolutePath());
     int baseDirLen = (tarDir.getAbsolutePath()+File.separator).length();
     
     byte buffer[] = new byte[1024];
@@ -2144,7 +2146,7 @@ public class Util{
           // This would get us the octal representation of the permissions.
           StringBuffer stdOut = new StringBuffer();
           StringBuffer stdErr = new StringBuffer();
-          LocalStaticShellMgr.exec("stat --printf=%a "+file.getCanonicalPath(), stdOut, stdErr);
+          LocalStaticShellMgr.exec("stat --printf=%a "+file.getAbsolutePath(), stdOut, stdErr);
           */
           tarAdd.setUnixTarFormat();
         }
@@ -2239,13 +2241,37 @@ public class Util{
   }
   
   public static void showError(String text){
+    showMessage("ERROR", text);
+  }
+
+  public static void showMessage(String title, String text){
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String confirmString = text;
     try {
-      confirmBox.getConfirm("ERROR", confirmString, new Object[] {"OK"});
+      confirmBox.getConfirm(title, confirmString, new Object[] {"OK"});
     }
     catch (Exception e) {
       e.printStackTrace();
+    }
+  }
+
+  public static long getDateInSeconds(String dateInput){
+    try{
+      SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
+      long millis = -1;
+      if(dateInput == null || dateInput.equals("") || dateInput.equals("''")){
+        millis = Calendar.getInstance().getTime().getTime();
+      }
+      else{
+        java.util.Date date = df.parse(dateInput);
+        millis = date.getTime();
+      }
+      return millis;
+    }
+    catch(Throwable e){
+      Debug.debug("Could not set date. "+e.getMessage(), 1);
+      e.printStackTrace();
+      return -1;
     }
   }
 
