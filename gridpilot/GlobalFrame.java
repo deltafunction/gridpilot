@@ -16,7 +16,6 @@ import gridpilot.ListPanel;
 import gridpilot.IconProxy;
 import gridpilot.wizards.beginning.BeginningWizard;
 import gridpilot.wizards.manage_software.CreateSoftwarePackageWizard;
-import gridpilot.wizards.manage_software.SynchronizeSoftwareWizard;
 import gridpilot.wizards.run_jobs.RunMultipleJobsWizard;
 import gridpilot.wizards.run_jobs.RunOneJobWizard;
 
@@ -381,6 +380,7 @@ public class GlobalFrame extends GPFrame{
 
     menuDB.add(miDbClearCaches);
     menuDB.add(miDbReconnect);
+    menuDB.add(miDbRefreshRTEs);
     menuFile.add(menuDB);
 
     //CS
@@ -603,13 +603,6 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuHelp.add(menuHelpCreateSoftwarePackage);
-    JMenuItem menuHelpPublishSoftware = new JMenuItem("Wizard: Synchronize runtime environments with external catalogs");
-    menuHelpPublishSoftware.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        new SynchronizeSoftwareWizard();
-      }
-    });
-    menuHelp.add(menuHelpPublishSoftware);
     JMenuItem menuHelpRunOneJob = new JMenuItem("Wizard: Prepare and run a single job");
     menuHelpRunOneJob.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
