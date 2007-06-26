@@ -61,7 +61,7 @@ public class DQ2Access {
 			}
 
       //wsSecure.loadGlobusCredentialCertificate(globusCred);
-      wsSecure.loadLocalProxyCertificate(Util.getProxyFile().getCanonicalPath());
+      wsSecure.loadLocalProxyCertificate(Util.getProxyFile().getAbsolutePath());
 			wsSecure.trustWrongHostName();
 			wsSecure.trustAllCerts();
 			wsSecure.init();

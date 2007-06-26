@@ -156,7 +156,7 @@ public class HTTPSFileTransfer implements FileTransfer {
     
     Debug.debug("Get "+globusUrl.getURL(), 3);
 
-    final String id = globusUrl.getURL()+"::"+downloadDirOrFile.getCanonicalPath();
+    final String id = globusUrl.getURL()+"::"+downloadDirOrFile.getAbsolutePath();
     
     Debug.debug("Getting "+globusUrl.getURL(), 3);
     (new MyThread(){
@@ -176,7 +176,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       downloadFile = downloadDirOrFile;
     }
         
-    final MyUrlCopy urlCopy = myConnect(globusUrl, new GlobusURL("file:///"+downloadFile.getCanonicalPath()));
+    final MyUrlCopy urlCopy = myConnect(globusUrl, new GlobusURL("file:///"+downloadFile.getAbsolutePath()));
     fileTransfers.put(id, urlCopy);
 
     // Leave this outside of thread to avoid deadlock when querying for password.
@@ -223,7 +223,7 @@ public class HTTPSFileTransfer implements FileTransfer {
   public void putFile(File file, final GlobusURL globusFileUrl,
       final StatusBar statusBar) throws Exception{
     
-    final String id = file.getCanonicalPath() +"::"+ globusFileUrl.getURL();
+    final String id = file.getAbsolutePath() +"::"+ globusFileUrl.getURL();
     
     (new MyThread(){
       public void run(){
@@ -246,7 +246,7 @@ public class HTTPSFileTransfer implements FileTransfer {
  
     final MyUrlCopy urlCopy = myConnect(fileURL, uploadUrl);
 
-//  Leave this outside of thread to avoid deadlock when querying for password.
+    // Leave this outside of thread to avoid deadlock when querying for password.
     GridPilot.getClassMgr().getGridCredential();
 
     MyThread t = new MyThread(){

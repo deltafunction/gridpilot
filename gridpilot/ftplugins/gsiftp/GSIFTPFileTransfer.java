@@ -207,7 +207,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
     Debug.debug("Path: "+localPath, 3);
     Debug.debug("Directory: "+localDir, 3);
     
-    final String id = globusUrl.getURL()+"::"+downloadDirOrFile.getCanonicalPath();
+    final String id = globusUrl.getURL()+"::"+downloadDirOrFile.getAbsolutePath();
 
     Debug.debug("Getting "+fileName, 3);
     (new MyThread(){
@@ -323,7 +323,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
     Debug.debug("Path: "+localPath, 3);
     Debug.debug("Directory: "+localDir, 3);
     
-    final String id = file.getCanonicalPath() +"::"+ globusFileUrl.getURL();
+    final String id = file.getAbsolutePath() +"::"+ globusFileUrl.getURL();
     
     (new MyThread(){
       public void run(){

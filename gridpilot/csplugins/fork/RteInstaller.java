@@ -140,7 +140,7 @@ public class RteInstaller {
     Vector transferVector = new Vector();
     TransferInfo transfer = new TransferInfo(
               new GlobusURL(url),
-              new GlobusURL("file:///"+(new File(downloadDir.getCanonicalPath(),
+              new GlobusURL("file:///"+(new File(downloadDir.getAbsolutePath(),
                   tarBallName)).getAbsolutePath()));
     transferVector.add(transfer);
     // Carry out the transfers.

@@ -230,7 +230,7 @@ public class BeginningWizard{
   private int endGreeting(boolean firstRun) throws Exception{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String confirmString = "Configuring GridPilot is now done.\n" +
-        "Your settings have been saved in " +configFile.getFile().getCanonicalPath()+
+        "Your settings have been saved in " +configFile.getFile().getAbsolutePath()+
         ".\n\n"+
         "Please notice that only the most basic parameters,\n" +
             "necessary to get you up and running have been set.\n" +
@@ -247,7 +247,7 @@ public class BeginningWizard{
     String confirmString =
         "Configuring GridPilot is only partially done.\n" +
         "Your settings have been saved in\n"+
-        configFile.getFile().getCanonicalPath()+
+        configFile.getFile().getAbsolutePath()+
         ".\n\n"+
         "Notice that you can set the remaining configuration\n" +
         "parameters in \"Edit\" -> \"Preferences\"." +
@@ -276,8 +276,8 @@ public class BeginningWizard{
       // Make temporary config file
       File tmpConfFile = (File) GridPilot.tmpConfFile.get(GridPilot.defaultConfFileName);       
        // Copy over config file
-       LocalStaticShellMgr.copyFile(tmpConfFile.getCanonicalPath(),
-           GridPilot.userConfFile.getCanonicalPath());
+       LocalStaticShellMgr.copyFile(tmpConfFile.getAbsolutePath(),
+           GridPilot.userConfFile.getAbsolutePath());
        tmpConfFile.delete();
        try{
          configFile = new ConfigFile(GridPilot.userConfFile);
@@ -324,7 +324,7 @@ public class BeginningWizard{
         };
     JTextField [] jtFields = new JTextField [defDirs.length];
     if(firstRun){
-      jPanel.add(new JLabel("A configuration file "+GridPilot.userConfFile.getCanonicalPath()+
+      jPanel.add(new JLabel("A configuration file "+GridPilot.userConfFile.getAbsolutePath()+
           " has been created."),
           new GridBagConstraints(0, 0, 2, 1, 0.0, 0.0,
               GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -387,7 +387,7 @@ public class BeginningWizard{
         if(newDirFiles[i].exists()){
           if(!newDirFiles[i].isDirectory()){
             dirsOk = false;
-            throw new IOException(newDirFiles[i].getCanonicalPath()+" already exists and is not a directory.");
+            throw new IOException(newDirFiles[i].getAbsolutePath()+" already exists and is not a directory.");
           }
         }
         else{
@@ -530,7 +530,7 @@ public class BeginningWizard{
         newDirFiles[i] = new File(Util.clearTildeLocally(Util.clearFile(newDirs[i])));
         if(newDirFiles[i].exists()){
           if(!newDirFiles[i].isDirectory()){
-            throw new IOException("The directory "+newDirFiles[i].getCanonicalPath()+" cannot be created.");
+            throw new IOException("The directory "+newDirFiles[i].getAbsolutePath()+" cannot be created.");
           }
         }
         else{
@@ -544,11 +544,11 @@ public class BeginningWizard{
     // Check if certificate and key exist
     File certFile = new File(Util.clearTildeLocally(Util.clearFile(newDirs[0])));
     if(!certFile.exists()){
-      throw new FileNotFoundException(certFile.getCanonicalPath());
+      throw new FileNotFoundException(certFile.getAbsolutePath());
     }
     File keyFile = new File(Util.clearTildeLocally(Util.clearFile(newDirs[1])));
     if(!keyFile.exists()){
-      throw new FileNotFoundException(keyFile.getCanonicalPath());
+      throw new FileNotFoundException(keyFile.getAbsolutePath());
     }
   
     // Set config entries
@@ -1534,7 +1534,7 @@ public class BeginningWizard{
         newDirFiles[i] = new File(Util.clearTildeLocally(Util.clearFile(newDirs[i])));
         if(newDirFiles[i].exists()){
           if(!newDirFiles[i].isDirectory()){
-            throw new IOException("The directory "+newDirFiles[i].getCanonicalPath()+" cannot be created.");
+            throw new IOException("The directory "+newDirFiles[i].getAbsolutePath()+" cannot be created.");
           }
         }
         else{

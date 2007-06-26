@@ -495,7 +495,7 @@ public class PullJobsDaemon{
           destFile = new File(cacheDir, subDir);
           destFile.mkdir();
           destFile = new File(destFile, fileName);
-          destFileName = destFile.getCanonicalPath();
+          destFileName = destFile.getAbsolutePath();
           destFileName = destFileName.replaceFirst("^/", "");
           destFileName = "file:////"+destFileName;
           downloadVector.add(destFileName);

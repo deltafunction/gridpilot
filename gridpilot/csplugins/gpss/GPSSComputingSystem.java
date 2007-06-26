@@ -5,8 +5,6 @@ import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -1050,7 +1048,7 @@ public class GPSSComputingSystem implements ComputingSystem{
             e.printStackTrace();
             throw new IOException("ERROR: could not download stdout. "+e.getMessage());
           }
-          res[0] = LocalStaticShellMgr.readFile(tmpStdout.getCanonicalPath());
+          res[0] = LocalStaticShellMgr.readFile(tmpStdout.getAbsolutePath());
         }
         else{
           throw new IOException("Cannot access local files on remote system");
@@ -1071,7 +1069,7 @@ public class GPSSComputingSystem implements ComputingSystem{
             throw new IOException("ERROR: could not download stderr. "+e.getMessage());
           }
           if(ok){
-            res[1] = LocalStaticShellMgr.readFile(tmpStdErr.getCanonicalPath());
+            res[1] = LocalStaticShellMgr.readFile(tmpStdErr.getAbsolutePath());
           }
         }
         else{
@@ -1125,8 +1123,8 @@ public class GPSSComputingSystem implements ComputingSystem{
     }
     finally{
       try{
-        if(!LocalStaticShellMgr.deleteFile(tmpStdout.getCanonicalPath()) ||
-            !LocalStaticShellMgr.deleteFile(tmpStdErr.getCanonicalPath())){
+        if(!LocalStaticShellMgr.deleteFile(tmpStdout.getAbsolutePath()) ||
+            !LocalStaticShellMgr.deleteFile(tmpStdErr.getAbsolutePath())){
            error = "WARNING: could not delete stdout or stderr temp file.";
            logFile.addMessage(error);
          }
@@ -1255,8 +1253,8 @@ public class GPSSComputingSystem implements ComputingSystem{
         job.getInternalStatus()!=ComputingSystem.STATUS_FAILED){
       try{
         String lastModifiedStr = remoteMgr.getJobDefValue(remoteID, "lastModified");
-        long lastUpdateMillis = getDateInSeconds(lastModifiedStr);
-        long nowMillis = getDateInSeconds(null);
+        long lastUpdateMillis = Util.getDateInSeconds(lastModifiedStr);
+        long nowMillis = Util.getDateInSeconds(null);
         if(nowMillis-lastUpdateMillis>providerTimeout){
           job.setInternalStatus(ComputingSystem.STATUS_FAILED);
           job.setJobStatus(csStatus);
@@ -1270,26 +1268,6 @@ public class GPSSComputingSystem implements ComputingSystem{
         error = "WARNING: could not check lastModified of job. "+job;
         logFile.addMessage(error);
       }
-    }
-  }
-  
-  private long getDateInSeconds(String dateInput){
-    try{
-      SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
-      long millis = -1;
-      if(dateInput == null || dateInput.equals("") || dateInput.equals("''")){
-        millis = Calendar.getInstance().getTime().getTime();
-      }
-      else{
-        java.util.Date date = df.parse(dateInput);
-        millis = date.getTime();
-      }
-      return millis;
-    }
-    catch(Throwable e){
-      Debug.debug("Could not set date. "+e.getMessage(), 1);
-      e.printStackTrace();
-      return -1;
     }
   }
   
@@ -1350,7 +1328,7 @@ public class GPSSComputingSystem implements ComputingSystem{
         String gaclString = "<?xml version=\"1.0\"?>" +
               "<gacl version=\"0.0.1\">"+gaclEntries+
               "</gacl>";
-        LocalStaticShellMgr.writeFile(tmpFile.getCanonicalPath(), gaclString, false);
+        LocalStaticShellMgr.writeFile(tmpFile.getAbsolutePath(), gaclString, false);
       }
       else if(!gaclLines[gaclLines.length-1].matches("(?i).*</gacl>\\S*")){
         throw new IOException(".gacl file not in GACL format: "+gaclLines[gaclLines.length-1]);
@@ -1359,7 +1337,7 @@ public class GPSSComputingSystem implements ComputingSystem{
         gaclLines[gaclLines.length-1] =
           gaclLines[gaclLines.length-1].replaceFirst("(?i)</gacl>",
               gaclEntries+"</gacl>");
-        LocalStaticShellMgr.writeFile(tmpFile.getCanonicalPath(), Util.arrayToString(gaclLines, "\n"), false);
+        LocalStaticShellMgr.writeFile(tmpFile.getAbsolutePath(), Util.arrayToString(gaclLines, "\n"), false);
       }
       TransferControl.upload(tmpFile, rDir+".gacl",
           GridPilot.getClassMgr().getGlobalFrame().getContentPane());
@@ -1599,12 +1577,12 @@ public class GPSSComputingSystem implements ComputingSystem{
         url = (String) rtes[i].getValue("url");
         if(url!=null && url.length()>0){
           dlFile = new File(cacheDir, url.replaceFirst("^.*/([^/]+)$", "$1"));
-          Debug.debug("Getting: "+url+" --> "+dlFile.getCanonicalPath(), 2);
+          Debug.debug("Getting: "+url+" --> "+dlFile.getAbsolutePath(), 2);
           transfer = new TransferInfo(
               new GlobusURL(url),
-              new GlobusURL("file:///"+dlFile.getCanonicalPath()));
+              new GlobusURL("file:///"+dlFile.getAbsolutePath()));
           transferVector.add(transfer);
-          dlFiles[i] = "file:///"+dlFile.getCanonicalPath();
+          dlFiles[i] = "file:///"+dlFile.getAbsolutePath();
         }
         else{
           throw new IOException("URL not found for "+rteName);
