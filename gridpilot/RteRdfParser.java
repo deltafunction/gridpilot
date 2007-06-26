@@ -3,6 +3,7 @@ package gridpilot;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -17,7 +18,7 @@ import java.util.Iterator;
 
 public class RteRdfParser {
   
-  private String [] catalogURLs;
+  public String [] catalogURLs;
   public HashSet baseSystems;
   public HashSet metaPackages;
   public HashSet tarPackages;
@@ -139,13 +140,26 @@ public class RteRdfParser {
     return res;
   }
   
-  private String [] parseFile(String src) throws IOException{
+  private String [] parseFile(String _src) throws IOException{
+    String src = _src;
     String [] res = new String [] {};
     if(src==null || src.equals("")){
       return res;
     }
+    File tmpFile = null;
     if(!Util.urlIsRemote(src)){
       src = "file:"+Util.clearTildeLocally(Util.clearFile(src));
+    }
+    else if(!src.startsWith("http://")){
+      tmpFile = File.createTempFile("GridPilot-", "");
+      try{
+        TransferControl.download(src, tmpFile, null);
+        src = "file:"+tmpFile.getAbsolutePath();
+      }
+      catch(Exception e) {
+        e.printStackTrace();
+        throw new IOException("Could not download catalog to temp file.");
+      }
     }
     URL url = new URL(src);
     InputStream is = null;
@@ -218,8 +232,19 @@ public class RteRdfParser {
     }
     catch(IOException e){
       String error = "Could not open "+url;
-      e.printStackTrace();
+      //e.printStackTrace();
       Debug.debug(error, 2);
+      throw e;
+    }
+    finally{
+      if(tmpFile!=null){
+        try{
+          tmpFile.delete();
+        }
+        catch(Exception ee){
+          ee.printStackTrace();
+        }
+      }
     }
     return res;
   }
@@ -343,12 +368,24 @@ public class RteRdfParser {
         labels);
   }
   
-  TarPackage getTarPackage(String id){
+  public TarPackage getTarPackage(String id){
     TarPackage pack = null;
     for(Iterator it=tarPackages.iterator(); it.hasNext();){
       pack = (TarPackage) it.next();
       Debug.debug("Looking for "+id+" "+pack.id, 3);
       if(pack.id.equals(id)){
+        return pack;
+      }
+    }
+    return null;
+  }
+  
+  public MetaPackage getMetaPackage(String name){
+    MetaPackage pack = null;
+    for(Iterator it=metaPackages.iterator(); it.hasNext();){
+      pack = (MetaPackage) it.next();
+      Debug.debug("Looking for "+name+" "+pack.name, 3);
+      if(pack.name.equals(name)){
         return pack;
       }
     }
@@ -505,13 +542,13 @@ public class RteRdfParser {
     public String toXML(){
       String xml = "<kb:BaseSystem " +
           (id.equals("")?"":"rdf:about=\""+BASE_URL+""+id+"\" ") +
-          (distribution!=null&&distribution.equals("")?"":"kb:distribution=\""+distribution+"\" ") +
-          (url!=null&&url.equals("")?"":"kb:url=\""+url+"\" ") +
-          (lastupdate!=null&&lastupdate.equals("")?"":"kb:lastupdated=\""+lastupdate+"\" ") +
-          (immutable!=null&&immutable.equals("")?"":"kb:immutable=\""+immutable+"\" ") +
+          (distribution==null||distribution.equals("")?"":"kb:distribution=\""+distribution+"\" ") +
+          (url==null||url.equals("")?"":"kb:url=\""+url+"\" ") +
+          (lastupdate==null||lastupdate.equals("")?"":"kb:lastupdated=\""+lastupdate+"\" ") +
+          (immutable==null||immutable.equals("")?"":"kb:immutable=\""+immutable+"\" ") +
           (name.equals("")?"":"kb:name=\""+name+"\"") +
            ">";
-      xml += (description!=null&&description.equals("")?"":"\n  <kb:description>"+description+"</kb:description>");
+      xml += (description==null||description.equals("")?"":"\n  <kb:description>"+description+"</kb:description>");
       for(int i=0; i<(labels==null?0:labels.length); ++i){
         xml += "\n  <rdfs:label>"+labels[i]+"</rdfs:label>";
       }
@@ -554,8 +591,8 @@ public class RteRdfParser {
     public String toXML(){
       String xml = "<kb:MetaPackage " +
       (id.equals("")?"":"rdf:about=\""+BASE_URL+""+id+"\" ") +
-      (description!=null&&description.equals("")?"":"kb:description=\""+description+"\" ") +
-      (lastupdate!=null&&lastupdate.equals("")?"":"kb:lastupdated=\""+lastupdate+"\" ") +
+      (description==null||description.equals("")?"":"kb:description=\""+description+"\" ") +
+      (lastupdate==null||lastupdate.equals("")?"":"kb:lastupdated=\""+lastupdate+"\" ") +
       (name.equals("")?"":"kb:name=\""+name+"\"") +
        ">";
       for(int i=0; i<(labels==null?0:labels.length); ++i){

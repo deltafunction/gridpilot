@@ -1,5 +1,6 @@
 package gridpilot.wizards.manage_software;
 
+import gridpilot.ConfirmBox;
 import gridpilot.Debug;
 import gridpilot.GPFrame;
 import gridpilot.GridPilot;
@@ -24,11 +25,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Vector;
 
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
@@ -37,6 +40,25 @@ import javax.swing.border.TitledBorder;
 
 import org.safehaus.uuid.UUID;
 import org.safehaus.uuid.UUIDGenerator;
+
+/**
+ * GridPilot can collect information about installed or installable software from
+ * 4 differenc sources:
+ * 1) Setup scripts on the local hard disk.
+ * 2) RTE catalog files located either on the local disk or on a web server.
+ * 3) The NorduGrid information system (which incidentally may also have its
+ *    information from an RDF catalog).
+ * 4) The EGEE information system.
+ * 
+ * For all cases, the information is collected on startup by the computing system
+ * that is able to use the software in question and cached in the GridPilot's own
+ * databases in the 'runtimeEnvironments' tables with 'computingSystem' set accordingly.
+ * On exit, the database entries are deleted.
+ * 
+ * When generating jobs, GridPilot then consults its databases and looks for requested
+ * software available for the chosen computing system.
+ * 
+ */
 
 public class CreateSoftwarePackageWizard extends GPFrame{
   
@@ -64,11 +86,14 @@ public class CreateSoftwarePackageWizard extends GPFrame{
   private MultiPicker rteBox = null;
   private MultiPicker bsBox = null;
   private RteRdfParser rteRdfParser = null;
-  HashMap baseSystemMap = null;
+  private HashMap baseSystemMap = null;
 
   private JTextField jtfInstall =  new JTextField(TEXTFIELDWIDTH);
   private JTextField jtfRuntime =  new JTextField(TEXTFIELDWIDTH);
   private JTextField jtfRemove =  new JTextField(TEXTFIELDWIDTH);
+  
+  // milliseconds after which a lock on the catalog is considered a lost lock
+  private static long LOCK_TIMEOUT = 3*60*60*1000;
 
 
   /**
@@ -345,7 +370,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     File tarFile = new File(tmpDir, shortName+".tar");
     File gzipFile = new File(tmpDir, shortName+".tar.gz");
     Util.tar(tarFile, tmpDir);
-    Util.gzip(tarFile.getCanonicalPath(), gzipFile.getCanonicalPath());
+    Util.gzip(tarFile.getAbsolutePath(), gzipFile.getAbsolutePath());
     tarFile.delete();
   }
   
@@ -359,30 +384,79 @@ public class CreateSoftwarePackageWizard extends GPFrame{
 
     // Check that catalog is not locked
     try{
-      TransferControl.download(lockUrl, lockFile, this);
-    }
-    catch(Exception e){
       lockFile.delete();
     }
+    catch(Throwable e){
+    }
+    try{
+      TransferControl.download(lockUrl, lockFile, this);
+    }
+    catch(Throwable e){
+      try{
+        lockFile.delete();
+      }
+      catch(Throwable ee){
+      }
+    }
+    
+    // The current date
+    long nowMillis = Util.getDateInSeconds(null);
     
     if(lockFile.exists()){
-      throw new Exception("Catalog is being edited by someone else. Please try again later. \n" +
-            "If this persists, delete "+lockUrl);
+      String lastLock = LocalStaticShellMgr.readFile(lockFile.getAbsolutePath());
+      if(lastLock!=null && !lastLock.equals("")){
+        String lastLockTime = lastLock.replaceFirst("^(\\d+):.*$", "$1");
+        String lastLockUser = lastLock.replaceFirst("^\\d+:(.*)$", "$1");
+        long lastUpdateMillis = Long.parseLong(lastLockTime);
+        if(nowMillis-lastUpdateMillis<LOCK_TIMEOUT){
+          throw new Exception("Catalog is being edited by "+lastLockUser+". Please try again later. \n" +
+              "If this persists, delete "+lockUrl);
+        }
+        else{
+          GridPilot.getClassMgr().getLogFile().addInfo("Removing stale lock file: "+lockUrl+" ---> "+lastLock);
+        }
+      }
+      else{
+        try{
+          lockFile.delete();
+        }
+        catch(Throwable ee){
+        }
+      }
     }
         
     // Upload temporary lock on the catalog
-    LocalStaticShellMgr.writeFile(lockFile.getCanonicalPath(), "", false);
+    LocalStaticShellMgr.writeFile(lockFile.getAbsolutePath(), Long.toString(nowMillis)+":"+Util.getGridSubject(), false);
     TransferControl.upload(lockFile, lockUrl, this);
         
     try{
       // Add the entry to the catalog: name, url, depends.
-      RteRdfParser rteRdfParser = new RteRdfParser(new String [] {catalogUrl});
+      RteRdfParser rdf = new RteRdfParser(new String [] {catalogUrl});
+      
+      if(rdf.baseSystems.isEmpty() && rdf.metaPackages.isEmpty() && rdf.tarPackages.isEmpty()){
+        ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+        int choice = -1;
+        try{
+          choice = confirmBox.getConfirm("No catalog found",
+              "The URL you gave does not point to a valid runtime environment catalog\n" +
+              "or it points to an empty catalog.\n\n" +
+              "You have the following choices:\n\n",
+              new Object[] {"Add RTEs from other catalogs", "Create new catalog"});
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        
+        if(choice==0){
+          rdf = rteRdfParser;
+        }
+      }
       
       // Check if name is already in catalog. At the same time, find highest ID
       long highestID = 0;
       long tmpID = 0;
       RteRdfParser.MetaPackage mp = null;
-      for(Iterator it=rteRdfParser.metaPackages.iterator(); it.hasNext();){
+      for(Iterator it=rdf.metaPackages.iterator(); it.hasNext();){
         mp = (RteRdfParser.MetaPackage) it.next();
         if(mp.name.equalsIgnoreCase(name)){
           throw new Exception("RTE "+name+" already exists in catalog. Cannot proceed.");
@@ -396,10 +470,10 @@ public class CreateSoftwarePackageWizard extends GPFrame{
       String baseSystem = "";
       String baseSystemID = "";
       RteRdfParser.BaseSystem bs = null;
-      for(Iterator it=rteRdfParser.baseSystems.iterator(); it.hasNext();){
+      for(Iterator it=rdf.baseSystems.iterator(); it.hasNext();){
         bs = (RteRdfParser.BaseSystem) it.next();
-        if(bs.name.matches(".*"+system+".*") &&
-            (bs==null || bs.name.length()>baseSystem.length())){
+        Debug.debug("Checking basesystem "+bs.name+"<-->"+system, 3);
+        if(bs.name.indexOf(system)>-1 && bs.name.length()>baseSystem.length()){
           baseSystem = bs.name;
           baseSystemID = bs.id;
         }
@@ -409,13 +483,16 @@ public class CreateSoftwarePackageWizard extends GPFrame{
         }
       }
       if(baseSystemID.equals("")){
+        Util.showMessage("Unresolved dependencies", "WARNING: could not resolve base system \""+
+            system+"\" in catalog(s) "+Util.arrayToString(rdf.catalogURLs)+
+            ". Writing catalog "+catalogUrl+" anyway - with basesystem 0.");
         baseSystemID = "0";
       }
       // This is just to be sure to have the highest id
       // TODO: propose Daniel to use UUIDs instead of incremented integers.
       //       This in order to use several or distributed catalogs
       RteRdfParser.TarPackage tp = null;
-      for(Iterator it=rteRdfParser.tarPackages.iterator(); it.hasNext();){
+      for(Iterator it=rdf.tarPackages.iterator(); it.hasNext();){
         tp = (RteRdfParser.TarPackage) it.next();
         tmpID = Long.parseLong(tp.id);
         if(tmpID>highestID){
@@ -424,16 +501,31 @@ public class CreateSoftwarePackageWizard extends GPFrame{
       }
       
       // The TarPackage instance
+      Vector resolvedDepends = new Vector();
+      for(int i=0; i<depends.length; ++i){
+        if(rdf.getMetaPackage(depends[i])!=null){
+          resolvedDepends.add(rdf.getMetaPackage(depends[i]).id);
+        }
+        else{
+          Util.showMessage("Unresolved dependencies", "WARNING: could not resolve depencency "+
+              depends[i]+" in catalog(s) "+Util.arrayToString(rdf.catalogURLs)+
+              ". Writing catalog "+catalogUrl+" anyway.");
+        }
+      }
+      String [] resDeps = new String[resolvedDepends.size()];
+      for(int i=0; i<resDeps.length; ++i){
+        resDeps[i] = (String) resolvedDepends.get(i);
+      }
       RteRdfParser.TarPackage tarPackage =
-        rteRdfParser.new TarPackage(/*id*/Long.toString(highestID+1), /*baseSystem*/baseSystemID, /*depends*/depends,
+        rdf.new TarPackage(/*id*/Long.toString(highestID+1), /*baseSystem*/baseSystemID, /*depends*/resDeps,
              /*url*/tarballUrl, /*labels*/null);
-      rteRdfParser.tarPackages.add(tarPackage);
+      rdf.tarPackages.add(tarPackage);
       
       RteRdfParser.MetaPackage metaPackage =
-        rteRdfParser.new MetaPackage(/*id*/Long.toString(highestID+2), name, /*homepage*/null,  /*description*/"",
+        rdf.new MetaPackage(/*id*/Long.toString(highestID+2), name, /*homepage*/null,  /*description*/"",
          /*lastupdate*/null, /*instances*/new String []{tarPackage.id},
          /*tags*/null, /*labels*/null);
-      rteRdfParser.metaPackages.add(metaPackage);
+      rdf.metaPackages.add(metaPackage);
       
       // Generate the new catalog
       String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+
@@ -444,24 +536,24 @@ public class CreateSoftwarePackageWizard extends GPFrame{
      "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" " +
      "xmlns:kb=\"http://knowarc.eu/kb#\" xmlns:rdfs=\"http://www.w3.org/2000/01/rdf-schema#\">\n\n";
       
-      for(Iterator it=rteRdfParser.baseSystems.iterator(); it.hasNext();){
+      for(Iterator it=rdf.baseSystems.iterator(); it.hasNext();){
         bs = (RteRdfParser.BaseSystem) it.next();
-        xml += mp.toXML()+"\n";
+        xml += bs.toXML()+"\n";
       }    
-      for(Iterator it=rteRdfParser.metaPackages.iterator(); it.hasNext();){
+      for(Iterator it=rdf.metaPackages.iterator(); it.hasNext();){
         mp = (RteRdfParser.MetaPackage) it.next();
         xml += mp.toXML()+"\n";
       }    
-      for(Iterator it=rteRdfParser.tarPackages.iterator(); it.hasNext();){
+      for(Iterator it=rdf.tarPackages.iterator(); it.hasNext();){
         tp = (RteRdfParser.TarPackage) it.next();
-        xml += mp.toXML()+"\n";
+        xml += tp.toXML()+"\n";
       }
       
-      xml += rteRdfParser.getUnparsed() + "\n\n</rdf:RDF>";
+      xml += rdf.getUnparsed() + "\n\n</rdf:RDF>";
       
       // Upload the catalog
       File newCatalog = new File(tmpDir, "newCatalog.rdf");
-      LocalStaticShellMgr.writeFile(newCatalog.getCanonicalPath(), xml, false);
+      LocalStaticShellMgr.writeFile(newCatalog.getAbsolutePath(), xml, false);
       TransferControl.upload(newCatalog, catalogUrl, this);
       lockFile.delete();
       newCatalog.delete();
@@ -470,7 +562,12 @@ public class CreateSoftwarePackageWizard extends GPFrame{
       throw e;
     }
     finally{
-      TransferControl.deleteFiles(new String [] {lockUrl});
+      try{
+        TransferControl.deleteFiles(new String [] {lockUrl});
+      }
+      catch(Exception eee){
+        eee.printStackTrace();
+      }
     }
     
   }
@@ -523,13 +620,13 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     
     File controlDir = new File(tmpDir, "control");
     
-    LocalStaticShellMgr.writeFile((new File(controlDir, "install")).getCanonicalPath(), installStr, false);
-    LocalStaticShellMgr.writeFile((new File(controlDir, "runtime")).getCanonicalPath(), runtimeStr, false);
-    LocalStaticShellMgr.writeFile((new File(controlDir, "remove")).getCanonicalPath(), removeStr, false);
+    LocalStaticShellMgr.writeFile((new File(controlDir, "install")).getAbsolutePath(), installStr, false);
+    LocalStaticShellMgr.writeFile((new File(controlDir, "runtime")).getAbsolutePath(), runtimeStr, false);
+    LocalStaticShellMgr.writeFile((new File(controlDir, "remove")).getAbsolutePath(), removeStr, false);
 
-    jtfInstall.setText((new File(controlDir, "install")).getCanonicalPath());
-    jtfRuntime.setText((new File(controlDir, "runtime")).getCanonicalPath());
-    jtfRemove.setText((new File(controlDir, "remove")).getCanonicalPath());
+    jtfInstall.setText((new File(controlDir, "install")).getAbsolutePath());
+    jtfRuntime.setText((new File(controlDir, "runtime")).getAbsolutePath());
+    jtfRemove.setText((new File(controlDir, "remove")).getAbsolutePath());
   
   }
   
@@ -689,16 +786,32 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     bRefreshBSs.setToolTipText("Refresh the list of base systems");
     bRefreshBSs.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
-        // refresh the list on bsBox
-        refreshBSs(catalogUrl);
+        Debug.debug("Checking for catalog URL change: "+catalogUrl+"<-->"+jtfCatalog.getText(), 3);
+        if(catalogUrl!=null && jtfCatalog.getText()!=null && !catalogUrl.equals(jtfCatalog.getText())){
+          catalogUrl = jtfCatalog.getText();
+          // refresh the list on bsBox
+          refreshBSs(catalogUrl, true);
+        }
+        else{
+          catalogUrl = jtfCatalog.getText();
+          refreshBSs(catalogUrl, false);
+        }
       }
     }
     );
-    bRefreshRTEs.setToolTipText("Refresh the list of base systems");
+    bRefreshRTEs.setToolTipText("Refresh the list of runtime environments");
     bRefreshRTEs.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
-        // refresh the list on rteBox
-        refreshRTEs(catalogUrl);
+        if(catalogUrl!=null && jtfCatalog.getText()!=null && !catalogUrl.equals(jtfCatalog.getText())){
+          Debug.debug("Checking for catalog URL change: "+catalogUrl+"<-->"+jtfCatalog.getText(), 3);
+          catalogUrl = jtfCatalog.getText();
+          // refresh the list on rteBox
+          refreshRTEs(catalogUrl, true);
+        }
+        else{
+          catalogUrl = jtfCatalog.getText();
+          refreshRTEs(catalogUrl, false);
+        }
       }
     }
     );
@@ -793,18 +906,29 @@ public class CreateSoftwarePackageWizard extends GPFrame{
           // Upload the tarball
           File gzipFile = new File(tmpDir, shortName+".tar.gz");
           TransferControl.upload(gzipFile, jtfUrl.getText(), thisFrame);
+          String shortName = gzipFile.getName();
           tarballUrl = jtfUrl.getText();
+          if(tarballUrl.endsWith("/")){
+            tarballUrl = tarballUrl+shortName;
+          }
           catalogUrl = jtfCatalog.getText();
-          baseSystem = (String) baseSystemMap.get((String) bsBox.getSelectedValue());
+          baseSystem = (String) bsBox.getSelectedValue();
           String [] depends = new String[rteBox.getSelectedValues().length];
           for(int j=0; j<depends.length; ++j){
             depends[j] = (String) rteBox.getSelectedValues()[j];
           }
           registerInCatalog(baseSystem, depends);
+          Util.showMessage("Software package creation completed!",
+              "Congratulations!\n\n" +
+              "You have successfully created a software package and made\n" +
+              "it available to other grid users.\n\n" +
+              "To start using the software, restart GridPilot or choose\n" +
+              "\"File\" -> \"Databases\" -> \"Refresh runtime environments\".");
+          exit();
         }
         catch(Exception e1){
           e1.printStackTrace();
-          Util.showError("Could upload package files. "+e1.getMessage());
+          Util.showError("Problem uploading or registering. "+e1.getMessage());
           return;
         }
         updateComponentTreeUI0(uploadPanel, false);
@@ -837,9 +961,9 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     rteRdfParser = new RteRdfParser(catalogUrls);
   }
   
-  private void refreshBSs(String catalogUrl){
+  private void refreshBSs(String catalogUrl, boolean forceUpdate){
     int i = 0;
-    if(rteRdfParser==null){
+    if(rteRdfParser==null || forceUpdate){
       parseCatalogs();
     }
     String [] listData = new String [rteRdfParser.baseSystems.size()];
@@ -857,9 +981,9 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     bsBox.updateUI();
   }
   
-  private void refreshRTEs(String catalogUrl){
+  private void refreshRTEs(String catalogUrl, boolean forceUpdate){
     int i = 0;
-    if(rteRdfParser==null){
+    if(rteRdfParser==null || forceUpdate){
       parseCatalogs();
     }
     String [] listData = new String [rteRdfParser.metaPackages.size()];
