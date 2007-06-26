@@ -558,6 +558,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
           }
         }
         else if(e.getEventType()==HyperlinkEvent.EventType.ENTERED){
+          if(popupMenu.isShowing()){
+            return;
+          }
           String linkUrl = null;
           if(e.getURL()!=null){
             linkUrl = e.getURL().toExternalForm();
@@ -588,7 +591,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
             }
             popupMenu.add(miRegister);
           }
-          if(bDownload.isEnabled()){
+          //if(bDownload.isEnabled()){
+          if(!url.startsWith("http://") && url.indexOf("/..")<0){
             if(url.endsWith("/")){
               miDelete.setText("Delete directory");
             }
@@ -1545,8 +1549,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
         Debug.debug("Setting thisUrl, "+localPath, 3);
         thisUrl = (new File(localPath)).toURI().toURL().toExternalForm();
         setUrl(thisUrl);
-        statusBar.setLabel(directories+" directorie"+(directories==1?"":"s")+"," +
-            ""+files+" file"+(files==1?"":"s"));
+        statusBar.setLabel(directories+" director"+(directories==1?"y":"ies")+", " +
+            files+" file"+(files==1?"":"s"));
         bDownload.setEnabled(files>0);
         return;
       }
