@@ -1189,7 +1189,7 @@ public class TransferControl{
 
       Debug.debug("Downloading file from "+srcUrlDir, 3);
       // local directory
-      if(srcUrlDir.startsWith("file:")){
+      if(!Util.urlIsRemote(srcUrlDir)/*srcUrlDir.startsWith("file:")*/){
         String fsPath = Util.clearTildeLocally(Util.clearFile(url));
         Debug.debug("Downloading file to "+downloadDir.getAbsolutePath(), 3);        
         if(fsPath==null || downloadDir==null){
@@ -1224,12 +1224,12 @@ public class TransferControl{
               GlobusURL globusUrl = new GlobusURL(url);
               FileTransfer fileTransfer =
                  GridPilot.getClassMgr().getFTPlugin(url.replaceFirst("^(\\w+):/.*", "$1"));
-              fileTransfer.getFile(globusUrl, dName, GridPilot.getClassMgr().getStatusBar());
+              fileTransfer.getFile(globusUrl, destination/*dName*/, GridPilot.getClassMgr().getStatusBar());
               GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
-              if(!destFName.equals(srcFName)){
+              /*if(!destFName.equals(srcFName)){
                 LocalStaticShellMgr.moveFile((new File(dName, srcFName)).getAbsolutePath(),
                     (new File(dName, destFName)).getAbsolutePath());
-              }
+              }*/
             }
             catch(IOException e){
               GridPilot.getClassMgr().getStatusBar().setLabel("Failed downloading "+url);
@@ -1341,7 +1341,7 @@ public class TransferControl{
       
       Debug.debug("Uploading file "+file+" to directory "+uploadUrlDir, 3);
       // local directory
-      if(uploadUrlDir.startsWith("file:")){
+      if(!Util.urlIsRemote(uploadUrlDir)/*uploadUrlDir.startsWith("file:")*/){
         String fsPath = Util.clearTildeLocally(Util.clearFile(uploadUrl));
         Debug.debug("Local directory path: "+fsPath, 3);        
         if(fsPath==null || uploadFileName==null || file==null){
@@ -1424,7 +1424,7 @@ public class TransferControl{
       File tempFile;
       try{
         tempFile=File.createTempFile("GridPilot-", "");
-        tempFileName = tempFile.getCanonicalPath();
+        tempFileName = tempFile.getAbsolutePath();
         tempFile.delete();
         //  hack to have the file deleted on exit
         GridPilot.tmpConfFile.put(tempFileName, new File(tempFileName));
@@ -1555,7 +1555,7 @@ public class TransferControl{
       File tempFile;
       try{
         tempFile=File.createTempFile("GridPilot-", "");
-        tempFileName = tempFile.getCanonicalPath();
+        tempFileName = tempFile.getAbsolutePath();
         tempFile.delete();
         shellMgr.download(src, tempFileName);
         src = tempFileName;
