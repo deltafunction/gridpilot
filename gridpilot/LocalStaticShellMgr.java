@@ -291,7 +291,8 @@ public class LocalStaticShellMgr{
         return false;
       }
     }
-    return new File(src).renameTo(destFile);
+    File srcFile = new File(src);
+    return srcFile.renameTo(destFile) && destFile.exists();
   }
 
   public static String[] listFiles(String dir){
