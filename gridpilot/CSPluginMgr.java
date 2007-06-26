@@ -782,6 +782,14 @@ public class CSPluginMgr implements ComputingSystem{
     MyThread t = new MyThread(){
       public void run(){
         try{
+          if(!configFile.getValue(csName, "Enabled").equalsIgnoreCase("yes")){
+            return;
+          }
+        }
+        catch(Exception e){
+          return;
+        }
+        try{
           ((ComputingSystem) cs.get(csName)).setupRuntimeEnvironments(csName);
         }
         catch(Throwable t){
@@ -804,6 +812,14 @@ public class CSPluginMgr implements ComputingSystem{
     MyThread t = new MyThread(){
       public void run(){
         try{
+          try{
+            if(!configFile.getValue(csName, "Enabled").equalsIgnoreCase("yes")){
+              return;
+            }
+          }
+          catch(Exception e){
+            return;
+          }
           ((ComputingSystem) cs.get(csName)).cleanupRuntimeEnvironments(csName);
         }
         catch(Throwable t){
