@@ -60,6 +60,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private boolean withNavigation = false;
   protected String lastURL = null;
   protected String [] lastUrlList = null;
+  protected String [] lastSizesList = null;
   private String currentUrlString = "";
   private JComboBox currentUrlBox = null;
   private GSIFTPFileTransfer gsiftpFileTransfer = null;
@@ -80,6 +81,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private JComponent dsField = new JTextField(TEXTFIELDWIDTH);
   // Keep track of which files we are listing.
   private Vector listedUrls = null;
+  private Vector listedSizes = null;
   private boolean allowRegister = true;
   private HashSet excludeDBs = new HashSet();
   
@@ -909,8 +911,18 @@ public class BrowserPanel extends JDialog implements ActionListener{
           }
           String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
           statusBar.setLabel("Registering "+url+" in "+dbName);
+          // get the size if possible
+          String size = null;
+          if(lastSizesList!=null){
+            for(int i=0; i<lastSizesList.length; ++i){
+              if(lastUrlList[i].equals(url)){
+                size = lastSizesList[i];
+                break;
+              }
+            }
+          }
           dbPluginMgr.registerFileLocation(
-              datasetID, datasetName, uuid, lfn, url, false);
+              datasetID, datasetName, uuid, lfn, url, size, null, false);
           statusBar.setLabel("Registration done");
           registering = false;
         }
@@ -996,7 +1008,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private void setDisplay(String url) throws Exception{
     try{
       lastUrlList = null;
-      // TODO: implement lastUrlList for other than gsiftp - that is, http - will have to wait...
+      lastSizesList = null;
       if(url.startsWith("file:/~")){
         url = "file:"+System.getProperty("user.home")+url.substring(7);
       }
@@ -1579,7 +1591,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private void setRemoteDirDisplay(String url, FileTransfer ft, String protocol) throws Exception{
     Debug.debug("setRemoteDirDisplay "+url, 3);
     
-    listedUrls = new Vector();   
+    listedUrls = new Vector();
+    listedSizes = new Vector();
     jtFilter.setEnabled(true);
     String filter = jtFilter.getText();
     String htmlText = "";
@@ -1617,6 +1630,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       String longName = null;
       String [] nameAndBytes = null;
       lastUrlList = new String [length];
+      lastSizesList = new String [length];
       int directories = 0;
       int files = 0;
       for(int i=0; i<length; ++i){
@@ -1650,6 +1664,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         else{
           ++files;
           listedUrls.add(href);
+          listedSizes.add(bytes);
         }
         text += "<a href=\""+href+"\">"+
         /*"gsiftp://"+host+":"+port+localPath+*/name+"</a> "+bytes;
@@ -1657,6 +1672,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           text += "<br>\n";
         }
         lastUrlList[i] = protocol+"://"+host+":"+port+localPath+name;
+        lastSizesList[i] = bytes;
         Debug.debug(textVector.get(i).toString(), 3);
       }
       ep.setContentType("text/html");
@@ -2104,14 +2120,17 @@ public class BrowserPanel extends JDialog implements ActionListener{
           }
           String href = null;
           String lfn = null;
+          String size = null;
+          Iterator itt=listedSizes.iterator();
           for(Iterator it=listedUrls.iterator(); it.hasNext();){
             href = (String) it.next();
+            size = (String) itt.next();
             Debug.debug("Registering file : "+href+" in "+datasetName, 3);
             String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
             statusBar.setLabel("Registering "+href+" in "+dbName);
             lfn = href.replaceFirst(".*/([^/]+)$", "$1");
             dbPluginMgr.registerFileLocation(
-                datasetID, datasetName, uuid, lfn, href, false);
+                datasetID, datasetName, uuid, lfn, href, size, null, false);
           }
           statusBar.setLabel("Registration done");
           registering = false;
