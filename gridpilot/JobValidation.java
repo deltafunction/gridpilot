@@ -328,17 +328,43 @@ public class JobValidation{
       attributes.add(attr);
       values.add(val);
     }
+    
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    String [] jobDefFields = dbPluginMgr.getFieldNames("jobDefintion");
+    for(int i=0; i<jobDefFields.length ; ++i){
+      jobDefFields[i] = jobDefFields[i].toLowerCase();
+    }
+    HashSet fieldsSet = new HashSet();
+    Collections.addAll(fieldsSet, jobDefFields);
 
     Debug.debug("attr : "+ attributes.toString() + "\nvalues : "+ values.toString(), 2);
-    String [] attrArray = new String[attributes.size()];
-    String [] valuesArray = new String[values.size()];
-    for(int i=0; i< attrArray.length ; ++i){
-      attrArray[i] = attributes.get(i).toString();
-      valuesArray[i] = values.get(i).toString();
+    // We lump all non-existing attribute-values into the metaData field.
+    HashMap attrValMap = new HashMap();
+    attrValMap.put("metaData", "");
+    for(int i=0; i<attributes.size(); ++i){
+      if(fieldsSet.contains(((String) attributes.get(i)).toLowerCase()) &&
+          !((String) attributes.get(i)).equalsIgnoreCase("metadata")){
+        attrValMap.put((String) attributes.get(i), (String) values.get(i));
+      }
+      else{
+        String newMeta = (String) attrValMap.get("metaData");
+        if(!newMeta.equals("")){
+          newMeta += "\n";
+        }
+        newMeta += (String) attributes.get(i)+": "+(String) values.get(i);
+        attrValMap.put("metaData", newMeta);
+      }
+    }
+    String [] attrArray = new String[attrValMap.size()];
+    String [] valuesArray = new String[attrValMap.size()];
+    Object [] keys = attrValMap.keySet().toArray();
+    for(int i=0; i<attrValMap.size(); ++i){
+      attrArray[i] = (String) keys[i];
+      valuesArray[i] = (String) attrValMap.get(keys[i]);
     }
 
-    if(attrArray.length>0 &&
-        !GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).updateJobDefinition(job.getJobDefId(), attrArray, valuesArray)){
+    if((attrArray.length>1 || !((String) attrValMap.get("metaData")).equals("")) &&
+        !dbPluginMgr.updateJobDefinition(job.getJobDefId(), attrArray, valuesArray)){
       logFile.addMessage("Unable to update DB for job " + job.getName() + "\n"+
                          "attributes : " + Util.arrayToString(attrArray) + "\n" +
                          "values : " + Util.arrayToString(valuesArray), job);
