@@ -1699,6 +1699,28 @@ public class Util{
   }
 
   /**
+   * Get the name of the column holding the file size.
+   */
+  public static String getFileSizeField(String dbName){
+    String ret = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "Bytes field");
+    if(ret==null || ret.equals("")){
+      ret = "bytes";
+    }
+    return ret;
+  }
+
+  /**
+   * Get the name of the column holding the file checksum.
+   */
+  public static String getChecksumField(String dbName){
+    String ret = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "Checksum field");
+    if(ret==null || ret.equals("")){
+      ret = "checksum";
+    }
+    return ret;
+  }
+
+  /**
    * Get the name of the column holding the version.
    */
   public static String getVersionField(String dbName, String table){
@@ -1962,6 +1984,7 @@ public class Util{
           value = line.replaceFirst("^\\w+: (.+)$", "$1");
           Debug.debug("Adding metadata "+key+":"+value, 2);
           hm.put(key, value);
+          hm.put(key.toLowerCase(), value);
         }
       }
       in.close();
@@ -2037,6 +2060,8 @@ public class Util{
   public static String [] getColumnNames(String sql){
     String fields = null;
     fields = sql.replaceFirst("^(?i)SELECT (.*) FROM .*", "$1");
+    // get rid of e.g. t_lfn in t_lfn.guid
+    fields = fields.replaceAll("\\w+\\.(\\w+)", "$1");
     if(fields!=null){
       return split(fields, ",");
     }
