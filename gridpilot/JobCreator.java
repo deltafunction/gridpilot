@@ -895,13 +895,6 @@ public class JobCreator{
     String metaDataString = (String) dbPluginMgr.getDataset(
         datasetIdentifiers[currentDataset]).getValue("metaData");
     HashMap metaData = Util.parseMetaData(metaDataString);
-    HashSet metadatakeys = new HashSet(metaData.keySet());
-    String key = null;
-    for(Iterator it=metadatakeys.iterator(); it.hasNext();){
-      key = it.next().toString();
-      metaData.put(key.toLowerCase(), metaData.get(key));
-    }
-    
     for(int i=0; i<resJobParam.length; ++i){
       Debug.debug("param #"+i+" : "+jobParamNames[i]+" -> "+
           metaData.containsKey(jobParamNames[i].toLowerCase())+ " : "+

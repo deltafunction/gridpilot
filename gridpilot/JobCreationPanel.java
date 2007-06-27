@@ -275,14 +275,7 @@ public class JobCreationPanel extends CreateEditPanel{
     // - IF the field is left empty
     String metaDataString = (String) dbPluginMgr.getDataset(
         datasetIDs[0]).getValue("metaData");
-    metaData = Util.parseMetaData(metaDataString);
-    HashSet metadatakeys = new HashSet(metaData.keySet());
-    String key = null;
-    for(Iterator it=metadatakeys.iterator(); it.hasNext();){
-      key = it.next().toString();
-      metaData.put(key.toLowerCase(), metaData.get(key));
-    }
-    
+    metaData = Util.parseMetaData(metaDataString);    
     for(int i=0; i<jobParamNames.length; ++i, ++row){
       isInMetadata = false;
       if(metaData!=null && metaData.containsKey(jobParamNames[i].toLowerCase())){
