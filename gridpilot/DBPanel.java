@@ -2075,7 +2075,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                   break;
                 }
               }
-              datasetName = (String) tableResults.getValueAt(tableResults.getSelectedRow(), datasetNameIndex);
+              datasetName = (String) tableResults.getUnsortedValueAt(tableResults.getSelectedRow(), datasetNameIndex);
             }
             catch(Exception e){
             }
@@ -2168,8 +2168,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           String datasetName = dbPluginMgr.getDatasetName(datasetID);
           // Find the list of files
           String [] regUrls = null;
+          String [] regSizes = null;
           try{
-            regUrls = getImportFiles();
+            regUrls = getImportFiles()[0];
+            regSizes = getImportFiles()[1];
           }
           catch(Exception e){
             String error = "ERROR: could not get URLs to register";
@@ -2183,9 +2185,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             String uuid = null;
             String lfn = null;
             String pfn = null;
+            String size = null;
             for(int i=0; i<regUrls.length; ++i){
               try{
                 pfn = regUrls[i];
+                size = regSizes[i];
                 int lastSlash = pfn.lastIndexOf("/");
                 lfn = pfn;
                 if(lastSlash>-1){
@@ -2196,7 +2200,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                 GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
                 GridPilot.getClassMgr().getLogFile().addInfo(message);
                 dbPluginMgr.registerFileLocation(
-                    datasetID, datasetName, uuid, lfn, pfn, false);
+                    datasetID, datasetName, uuid, lfn, pfn, size, null, false);
               }
               catch(Exception e){
                 GridPilot.getClassMgr().getLogFile().addMessage(
@@ -2413,7 +2417,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     GridPilot.getClassMgr().getGlobalFrame().cutting = false;
   }
 
-  private String [] getImportFiles() throws IOException{
+  // Returns a 2xn array of URLs and sizes
+  private String [][] getImportFiles() throws IOException{
     JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
     frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     final String finUrl = "";
@@ -2457,8 +2462,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     //GridPilot.getClassMgr().getStatusBar().setLabel("");
-    String [] ret = wb.lastUrlList;
-    Debug.debug("Returning last URL list "+Util.arrayToString(ret), 2);
+    String [][] ret = new String [2][];
+    ret[0] = wb.lastUrlList;
+    ret[1] = wb.lastSizesList;
+    Debug.debug("Returning last URL list "+Util.arrayToString(ret[0])+
+        Util.arrayToString(ret[1]), 2);
     return ret;
   }
   
@@ -2573,6 +2581,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       String [] urls = null;
       String guid = null;
       String name = null;
+      String bytes = null;
+      String checksum = null;
       String datasetName = null;
       String datasetID = null;
       // First try and get the values from the table.            
@@ -2593,6 +2603,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       catch(Exception e){
       }
       try{
+        bytes = (String) values.get(Util.getFileSizeField(dbName));
+      }
+      catch(Exception e){
+      }
+      try{
+        checksum = (String) values.get(Util.getChecksumField(dbName));
+      }
+      catch(Exception e){
+      }
+      try{
         String pfnsColumn = Util.getPFNsField(dbName);
         String urlsString = values.get(pfnsColumn).toString();
         // If the PFNs have not been looked up, do it.
@@ -2602,8 +2622,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           values = getValues(selectedRows[i]);
           urlsString = values.get(pfnsColumn).toString();
           Debug.debug("new urlsString: "+urlsString, 2);
+          // This may also cause some missing bytes and checksums to be filled in
+          if(bytes==null || bytes.equals("")){
+            bytes = (String) values.get(Util.getFileSizeField(dbName));
+          }
+          if(checksum==null || checksum.equals("")){
+            checksum = (String) values.get(Util.getChecksumField(dbName));
+          }
         }
-        // If no PFNs were found, skip this transfer (an exception will be thrown and catched).
+        // If no PFNs were found, skip this transfer (an exception will be thrown and caught).
         urls = Util.splitUrls(urlsString);
       }
       catch(Exception e){
@@ -2619,7 +2646,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       }
       DBRecord file = null;
-      if(guid==null || name==null || urls==null || datasetName==null){
+      if(guid==null || name==null || urls==null || datasetName==null || bytes==null || checksum==null){
         file = dbPluginMgr.getFile(datasetName, selectedFileIdentifiers[i], 0);
         // In the case of DQ2 these are too slow or will fail and return null.
         // All information must be in the table...
@@ -2634,6 +2661,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         if(datasetName==null){
           datasetName = file.getValue(datasetColumn).toString();
+        }
+        if(bytes==null){
+          bytes = (String) file.getValue(Util.getFileSizeField(dbName));
+        }
+        if(checksum==null){
+          checksum = (String) file.getValue(Util.getChecksumField(dbName));
         }
       }
       try{
@@ -2657,10 +2690,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         String error = "WARNING: guid not found for "+name;
         GridPilot.getClassMgr().getLogFile().addMessage(error);
       }
-      if(regDBPluginMgr!=null && guid==null){
-        String error = "WARNING: guid not found for "+name;
-        GridPilot.getClassMgr().getLogFile().addMessage(error);
-      }
       if(regDBPluginMgr!=null && datasetName==null){
         String error = "WARNING: dataset name not found for "+name;
         GridPilot.getClassMgr().getLogFile().addMessage(error);
@@ -2672,6 +2701,19 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       String realUrl = null;
       transfer = null;
       for(int j=0; j<urls.length; ++j){
+        if(bytes==null){
+          // lookup size the hard way
+          try{
+            // TODO generalize beyound gsiftp and https
+            if(urls[j].startsWith("https:") || urls[j].startsWith("gsiftp:")){
+              GlobusURL globusUrl = new GlobusURL(urls[j]);
+              bytes = Long.toString(GridPilot.getClassMgr().getFTPlugin(
+                  globusUrl.getProtocol()).getFileBytes(globusUrl));
+            }
+          }
+          catch(Exception e){
+          }
+        }
         try{
           if(urls[j].startsWith("file:")){
             realUrl = urls[j].replaceFirst("^file:/+", "file:////");
@@ -2702,12 +2744,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             // If the file is in a file catalog, we should reuse the lfn, guid
             // and the dataset name and id if possible.
             if(dbPluginMgr.isFileCatalog()){
-              // This file query may fail (in the case of DQ2).
               transfer.setGUID(guid);
             }
-            // The LFN we always reuse.
-            // This file query may fail (in the case of DQ2).
+            // The LFN, size and checksum we always (try to) reuse.
             transfer.setLFN(name);
+            transfer.setBytes(bytes);
+            transfer.setChecksum(checksum);
             transfer.setDatasetName(datasetName);
             transfer.setDatasetID(datasetID);
             transfer.addSource(srcUrl);
@@ -3090,8 +3132,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     else if(tableName.equalsIgnoreCase("file")){
       try{
-        //record = sourceMgr.getFile(datasetName, id);
-        // TODO: copy also file metadata?
         insertFile(sourceMgr, name, datasetName, id);
       }
       catch(Exception e){
