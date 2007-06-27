@@ -79,8 +79,8 @@ public class DQ2Access {
 	 */
 	public String createDataset(String dsn) throws IOException
 	{
-      String keys[]={"dsn"};
-      String values[]={dsn};
+      String keys[]={"dsn", "update"};
+      String values[]={dsn, "yes"};
       Debug.debug("Creating dataset with web service on "+createDatasetURL, 1);
       String response=wsSecure.post(createDatasetURL, keys, values);
       Debug.debug("createDataset response: "+response, 3);
@@ -96,15 +96,15 @@ public class DQ2Access {
 	}
 
   /**
-   * Find the locations of a dataset
-   * @param dsn The Name of the DataSet to be located
+   * Find dataset names
+   * @param vuidString The vuid of the DataSet to be located
    * returns the raw response from the DQ2 web server  
    */
   public String getDatasets(String vuidString) throws IOException
   {
     String keys[]={"vuids"};
     String values[]={vuidString};
-    Debug.debug("Finding dataset locations with web service on "+getLocationsURL, 1);
+    Debug.debug("Finding datasets with web service on "+getLocationsURL, 1);
     String response = wsSecure.post(getDatasetsURL, keys, values);
     return response;
   }
@@ -132,7 +132,7 @@ public class DQ2Access {
   {
     String keys[]={"vuids"};
     String values[]={vuidsString};
-    Debug.debug("Finding files of "+vuidsString+" with web service on "+getLocationsURL, 1);
+    Debug.debug("Finding files of "+vuidsString+" with web service on "+getFilesURL, 1);
     String response = wsSecure.post(getFilesURL, keys, values);
     return response;
   }
@@ -172,28 +172,43 @@ public class DQ2Access {
 
 	/**
 	 * adds Files to Dataset
+     * @param vuid Version Unique Identifier of the Dataset to add the Files
+     * @param guids Grid Unique Identfiers
 	 * @param lfns Logical File Names
-	 * @param guids Grid Unique Identfiers
-	 * @param vuid Version Unique Identifier of the Dataset to add the Files
+     * @param sizes File sizes in bytes. May be null
+     * @param checkSums <checksum type>:<checksum>. May be null
 	 */
-	public boolean addLFNsToDataset(String[] lfns, String[] guids, String vuid) throws IOException
+	public boolean addLFNsToDataset(String vuid, String[] lfns, String[] guids,
+        String[] sizes, String [] checkSums) throws IOException
 	{	
 		if (lfns.length!=guids.length) 
 			throw new IOException("Number of LFNs must be the same as Number of GUIDs. " +
 					"Was "+lfns.length+" vs "+guids.length);
 		
-		StringBuffer data=new StringBuffer("");
-		for (int c=0; c<guids.length; c++)
-		{
-			data.append(lfns[c]+"@"+guids[c]);
-			if (c!=guids.length-1) data.append("@");
+		/* e.g. files=[{'checksum': 'md5:68589db6b28b0758e96a0e07444c44fc', 
+         * 'guid': 'ee8ffcb3-a97f-4b77-8e8c-11f923648b82', 
+         * 'lfn': 'user.FrederikOrellana5894-ATLAS.testdataset1-some.file.1', 
+         * 'size': 41943040L}]
+        */
+
+        StringBuffer data=new StringBuffer("[");
+		for(int c=0; c<guids.length; c++){
+            data.append("{");
+			data.append("'guid': '"+guids[c]+"'");
+            data.append(", 'lfn': '"+lfns[c]);
+            if(sizes!=null && sizes[c]!=null && !sizes[c].equals("")){
+              // the size is of the form <bytes>L
+              data.append(", 'size': '"+sizes[c]+(sizes[c].endsWith("L")?"":"L"));
+            }
+            if(checkSums!=null && checkSums[c]!=null && !checkSums[c].equals("")){
+              data.append(", 'checksum': '"+checkSums[c]);
+            }
+            data.append("}");
 		}
-		String keys[]={"vuid","data","update"};
+        data.append("]");
+		String keys[]={"vuid","files","update"};
 		String values[]={vuid,data.toString(),"yes"};
-		
-		//DQ2Client claims it to be a PUT request, but it is actually a POST request with update=yes
-		//se DQCurl at lxplus: /afs/cern.ch/atlas/offline/external/GRID/ddm/pro02/common/client/DQCurl.py
-		
+        
 		wsSecure.post(addFilesToDatasetURL, keys, values);
 		return true;
 	}	
