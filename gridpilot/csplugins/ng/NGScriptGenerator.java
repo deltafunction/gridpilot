@@ -303,10 +303,22 @@ public class NGScriptGenerator extends ScriptGenerator{
         line += " $p"+(i+1);
       writeLine(bufScript, line);
       writeLine(bufScript, "");
+      
+      // Print the size and md5sum of the output file for validation to pick up
+      // and write in the job DB or file catalog.
+      // NOTICE that we assume one output file per job. There is nothing
+      // in principle preventing multiple output files per job, but as it is now,
+      // only the first of the output files will be registered.
+      // TODO: reconsider
+      writeBloc(bufScript, "Output files", ScriptGenerator.TYPE_SUBSECTION);
+      for(int i=0; i<outputFileNames.length; ++i){
+        writeLine(bufScript, "echo GRIDPILOT METADATA: bytes = `du -b "+outputFileNames[i]+" | awk '{print $1}'`");
+        writeLine(bufScript, "echo GRIDPILOT METADATA: checksum = md5:`md5sum "+outputFileNames[i]+" | awk '{print $1}'`");
+        break;
+      }
 
       try{
-        LocalStaticShellMgr.writeFile(exeFileName,
-            bufScript.toString(), false);
+        LocalStaticShellMgr.writeFile(exeFileName, bufScript.toString(), false);
         Util.dos2unix(new File(exeFileName));
       }
       catch(FileNotFoundException fnfe){

@@ -25,6 +25,8 @@ public class TransferInfo extends DBRecord{
   private String datasetID = null;
   private String lfn = null;
   private String guid = null;
+  private String bytes = null;
+  private String checksum = null;
   
   //       transferStatusFields = new String [] {
   // " ", "Transfer ID", "Source", "Destination", "User", "Status", "Transferred"};
@@ -76,6 +78,14 @@ public class TransferInfo extends DBRecord{
 
   public String getGUID(){
     return guid;
+  }
+
+  public String getBytes(){
+    return bytes;
+  }
+
+  public String getChecksum(){
+    return checksum;
   }
 
   public int getInternalStatus(){
@@ -189,6 +199,14 @@ public class TransferInfo extends DBRecord{
 
   public void setGUID(String _guid){
     guid = _guid;
+  }
+
+  public void setBytes(String _bytes){
+    bytes = _bytes;
+  }
+
+  public void setChecksum(String _checksum){
+    checksum = _checksum;
   }
 
   public String toString(){

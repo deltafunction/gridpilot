@@ -101,7 +101,7 @@ public interface Database{
   // datasetComplete is ignored by other than ATLAS
   public DBResult getFiles(String datasetID) throws InterruptedException;
   public void registerFileLocation(String datasetID, String datasetName,
-      String fileID, String lfn, String url, boolean datasetComplete) throws Exception;
+      String fileID, String lfn, String url, String size, String checksum, boolean datasetComplete) throws Exception;
   public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) throws InterruptedException;
   
   // ####### Job execution

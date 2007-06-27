@@ -713,13 +713,15 @@ public class CSPluginMgr implements ComputingSystem{
             String [] nameArray = Util.split(remoteName, "\\\\");
             nameArray = Util.split(nameArray[nameArray.length-1], "/");
             String lfn = nameArray[nameArray.length-1];
+            String size = dbPluginMgr.getFileBytes(datasetName, job.getJobDefId());
+            String checksum = dbPluginMgr.getFileChecksum(datasetName, job.getJobDefId());
             String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
             String message = "Registering UUID "+uuid.toString()+" and LFN "+lfn+
                " for new location "+remoteName;
             GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
             Debug.debug(message, 2);
             dbPluginMgr.registerFileLocation(datasetID, datasetName,
-                uuid, lfn, remoteName, false);
+                uuid, lfn, remoteName, size, checksum, false);
             message = "Registration done";
             GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
           }

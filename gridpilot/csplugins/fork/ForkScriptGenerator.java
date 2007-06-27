@@ -86,7 +86,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     // Input files section
     // Notice: job.getDownloadFiles() will only be non-empty if downloading failed.
     String [] inputFiles = job.getDownloadFiles();
-    //String [][] outputFiles = job.getUploadFiles();
+    String [][] outputFiles = job.getUploadFiles();
     if(inputFiles!=null && inputFiles.length>0 /*|| outputFiles!=null && outputFiles.length>0*/){
       if(requiredRuntimeEnv!=null && requiredRuntimeEnv.length()>0){
         Debug.debug("Adding sourcing of required RTEs: "+requiredRuntimeEnv, 2);
@@ -181,6 +181,18 @@ public class ForkScriptGenerator extends ScriptGenerator{
       }
       writeLine(buf, "");
     }*/
+    // Print the size and md5sum of the output file for validation to pick up
+    // and write in the job DB or file catalog.
+    // NOTICE that we assume one output file per job. There is nothing
+    // in principle preventing multiple output files per job, but as it is now,
+    // only the first of the output files will be registered.
+    // TODO: reconsider
+    writeBloc(buf, "Output files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
+    for(int i=0; i<outputFiles.length; ++i){
+      writeLine(buf, "echo GRIDPILOT METADATA: bytes = `du -b "+outputFiles[i][0]+" | awk '{print $1}'`");
+      writeLine(buf, "echo GRIDPILOT METADATA: checksum = md5:`md5sum "+outputFiles[i][0]+" | awk '{print $1}'`");
+      break;
+    }
 
     try{
       shellMgr.writeFile(workingDir+"/"+fileName, buf.toString(), false);

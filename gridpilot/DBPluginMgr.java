@@ -28,9 +28,6 @@ public class DBPluginMgr extends DBCache implements Database{
   private String dbName;
   private String description;
   
-  // TODO: cache here??
-  //private HashMap partInfoCacheId = null ;
-
   // Time out in ms used if neither the specific time out nor "default timeout" is
   // defined in configFile
   private int dbTimeOut = 60*1000;
@@ -1620,6 +1617,87 @@ public class DBPluginMgr extends DBCache implements Database{
       throw new IOException("ERROR: createRuntimeEnvironment failed");
     }
   }
+  
+  public String getFileBytes(String datasetName, String fileId) throws InterruptedException{
+    String size = null;
+    // Try and get the size from the source catalog.
+    // For a file catalog, just get the size
+    if(db.isFileCatalog()){
+      try{
+        size = (String) db.getFile(datasetName, fileId, 0).getValue(Util.getFileSizeField(dbName));
+      }
+      catch(Exception e){
+      }
+    }
+    // For a jobDefinition table, size and md5sum may have been inserted
+    // by the CS+validation.
+    if(size==null && !db.isFileCatalog() && db.isJobRepository()){
+      try{
+        String metaData = null;
+        DBRecord jobDef = db.getJobDefinition(fileId);
+        size = (String) jobDef.getValue("outputFileBytes");
+        if(size==null || size.equals("")){
+          metaData = (String) jobDef.getValue("metaData");
+          size = (String) Util.parseMetaData(metaData).get(Util.getFileSizeField(dbName));
+        }
+        if(size==null || size.equals("")){
+          size = (String) Util.parseMetaData(metaData).get("bytes");
+        }
+        if(size==null || size.equals("")){
+          size = (String) Util.parseMetaData(metaData).get("size");
+        }
+        if(size==null || size.equals("")){
+          size = (String) Util.parseMetaData(metaData).get("fsize");
+        }
+        if(size!=null){
+          size = size.replaceFirst("(\\d+)L", "$1");
+        }
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    return size;
+  }
+
+  public String getFileChecksum(String datasetName, String fileId) throws InterruptedException{
+    String checksum = null;
+    // Try and get the checksum from the source catalog
+    // For a file catalog, just get the size
+    if(db.isFileCatalog()){
+      try{
+        checksum = (String) db.getFile(datasetName, fileId, 0).getValue(Util.getChecksumField(dbName));
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    // For a jobDefinition table, size and md5sum may have been inserted
+    // by the CS+validation.
+    if(checksum==null && !db.isFileCatalog() && db.isJobRepository()){
+      try{
+        String metaData = null;
+        DBRecord jobDef = db.getJobDefinition(fileId);
+        checksum = (String) jobDef.getValue("outputFileChecksum");
+        if(checksum==null || checksum.equals("")){
+          metaData = (String) jobDef.getValue("metaData");
+          checksum = (String) Util.parseMetaData(metaData).get(Util.getChecksumField(dbName));
+        }
+        if(checksum==null || checksum.equals("")){
+          checksum = (String) Util.parseMetaData(metaData).get("checksum");
+        }
+        if(checksum==null || checksum.equals("")){
+          checksum = (String) Util.parseMetaData(metaData).get("md5sum");
+        }
+      }
+      catch(Exception e){
+      }
+    }
+    if(checksum!=null && !checksum.matches("\\w+:.*")){
+      checksum = "md5:"+checksum;
+    }
+    return checksum;
+  }
 
   /**
    * Create a new record in a file table.The idea is to pass on
@@ -1652,12 +1730,15 @@ public class DBPluginMgr extends DBCache implements Database{
       GridPilot.getClassMgr().getLogFile().addInfo(message);
     }
     
+    String size = getFileBytes(datasetName, id);
+    String checksum = getFileChecksum(datasetName, id);
+    
     boolean ok = true;
     boolean finalOk = true;
     for(int i=0; i<urls.length; ++i){
       try{
         registerFileLocation(datasetID, datasetName, uuid, name, urls[i],
-            false);
+            size, checksum, false);
         finalOk = finalOk || ok;
         ok = true;
       }
@@ -2616,7 +2697,7 @@ public class DBPluginMgr extends DBCache implements Database{
 
   public synchronized void registerFileLocation(final String datasetID,
       final String datasetName, final String fileID, final String lfn,
-      final String url, final boolean datasetComplete){
+      final String url, final String size, final String checksum, final boolean datasetComplete){
     
     MyThread t = new MyThread(){
       public void requestStop(){
@@ -2627,7 +2708,7 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
-           db.registerFileLocation(datasetID, datasetName, fileID, lfn, url, datasetComplete);
+           db.registerFileLocation(datasetID, datasetName, fileID, lfn, url, size, checksum, datasetComplete);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
