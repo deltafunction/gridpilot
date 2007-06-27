@@ -61,7 +61,15 @@ public class ATLASDatabase extends DBCache implements Database{
   private String homeServerMysqlAlias;
   private LogFile logFile;
   private File toaFile;
+  // This same object is used for each PFN lookup.
+  // Although the lookups are running in threads, they are not
+  // running in parallel. Running them in parallel would
+  // require a reengineering of the select method, which does
+  // everything serially.
   private Vector pfnVector = null;
+  // The same goes for fileBytes and fileChecksum
+  private String fileBytes = null;
+  private String fileChecksum = null;
   private int fileCatalogTimeout = 1000;
   // Hash of catalog server mappings found in TiersOfAtlas
   private HashMap fileCatalogs = new HashMap();
@@ -596,12 +604,14 @@ public class ATLASDatabase extends DBCache implements Database{
     }
    //---------------------------------------------------------------------
     else if(table.equalsIgnoreCase("file")){
-      // "dsn", "lfn", "pfns", "guid" - to save lookups allow also search on vuid
+      // "dsn", "lfn", "pfns", "guid", "bytes", "checksum" - to save lookups allow also search on vuid
       String dsn = "";
       String lfn = "";
       String pfns = "";
       String guid = "";      
       String vuid = "";
+      String bytes = "";
+      String checksum = "";
 
       // Construct get string
       get = conditions.replaceAll("(?i)\\bvuid = (\\S+)", "vuid=$1");
@@ -609,12 +619,16 @@ public class ATLASDatabase extends DBCache implements Database{
       get = get.replaceAll("(?i)\\blfn = (\\S+)", "lfn=$1");
       get = get.replaceAll("(?i)\\bpfns = (\\S+)", "pfns=$1");
       get = get.replaceAll("(?i)\\bguid = (\\S+)", "guid=$1");
+      get = get.replaceAll("(?i)\\bbytes = (\\S+)", "bytes=$1");
+      get = get.replaceAll("(?i)\\bchecksum = (\\S+)", "checksum=$1");
       
       get = get.replaceAll("(?i)\\bvuid CONTAINS (\\S+)", "vuid=*$1*");
       get = get.replaceAll("(?i)\\bdsn CONTAINS (\\S+)", "dsn=*$1*");
       get = get.replaceAll("(?i)\\blfn CONTAINS (\\S+)", "lfn=*$1*");
       get = get.replaceAll("(?i)\\bpfns CONTAINS (\\S+)", "pfns=*$1*");
       get = get.replaceAll("(?i)\\bguid CONTAINS (\\S+)", "guid=*$1*");
+      get = get.replaceAll("(?i)\\bbytes CONTAINS (\\S+)", "bytes=*$1*");
+      get = get.replaceAll("(?i)\\bchecksum CONTAINS (\\S+)", "checksum=*$1*");
 
       get = get.replaceAll(" AND ", "&");
       
@@ -632,6 +646,12 @@ public class ATLASDatabase extends DBCache implements Database{
       }
       if(get.matches("(?i).*\\bguid=(\\S+).*")){
         guid = get.replaceFirst("(?i).*\\bguid=(\\S+).*", "$1");
+      }
+      if(get.matches("(?i).*\\bbytes=(\\S+).*")){
+        bytes = get.replaceFirst("(?i).*\\bbytes=(\\S+).*", "$1");
+      }
+      if(get.matches("(?i).*\\bchecksum=(\\S+).*")){
+        checksum = get.replaceFirst("(?i).*\\bchecksum=(\\S+).*", "$1");
       }
       
       if((vuid==null || vuid.equals("") || vuid.indexOf("*")>-1) &&
@@ -717,15 +737,19 @@ public class ATLASDatabase extends DBCache implements Database{
         // split went ok and this should work:
         guid = record[0].replaceAll("'", "").trim();
         lfn = record[1].replaceAll(".*'lfn': '([^']*)'.*", "$1").trim();
+        bytes = record[1].replaceAll(".*'size': '([^']*)'.*", "$1").trim();
+        checksum = record[1].replaceAll(".*'checksum': '([^']*)'.*", "$1").trim();
         String catalogs = "";
         if(findPFNs){
           try{
             catalogs = Util.arrayToString(findPFNs(vuid, lfn, findAll).toArray());
+            bytes = (fileBytes==null?"":fileBytes);
+            checksum = (fileChecksum==null?"":fileChecksum);
           }
           catch(Exception e){
             e.printStackTrace();
           }
-          pfns = getPFNsString();
+          pfns = Util.arrayToString(pfnVector.toArray());
         }
         else{
           pfns = "";
@@ -752,6 +776,12 @@ public class ATLASDatabase extends DBCache implements Database{
           }
           else if(fields[k].equalsIgnoreCase("catalogs")){
             recordVector.add(catalogs);
+          }
+          else if(fields[k].equalsIgnoreCase("bytes")){
+            recordVector.add(bytes);
+          }
+          else if(fields[k].equalsIgnoreCase("checksum")){
+            recordVector.add(checksum);
           }
           else{
             recordVector.add("");
@@ -1006,7 +1036,7 @@ public class ATLASDatabase extends DBCache implements Database{
   }
   
   /**
-   * Returns an array of SURLs for the given file name (lfn).
+   * Returns an array of: size, checksum, SURL1, SURL2, ... for the given file name (lfn).
    * The catalog server string must be of the form
    * lfc://lfc-fzk.gridka.de:/grid/atlas/ or
    * mysql://dsdb-reader:dsdb-reader1@db1.usatlas.bnl.gov:3306/localreplicas .
@@ -1048,9 +1078,22 @@ public class ATLASDatabase extends DBCache implements Database{
 
   
   
+  /**
+   * 
+   * @param _catalogServer
+   * @param lfn
+   * @param findAll
+   * @return an array where the first two entries are bytes, checksums, then
+   * follows the PFNs. Bytes and checksum may each be null.
+   * @throws RemoteException
+   * @throws ServiceException
+   * @throws MalformedURLException
+   * @throws SQLException
+   */
   private String [] doLookupPFNs(String _catalogServer, String lfn, boolean findAll)
      throws RemoteException, ServiceException, MalformedURLException, SQLException {
     String [] pfns = null;
+    String [] ret = null;
     // get rid of the :/, which GlobusURL doesn't like
     String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
     GlobusURL catalogUrl = new GlobusURL(catalogServer);
@@ -1091,6 +1134,12 @@ public class ATLASDatabase extends DBCache implements Database{
           break;
         }
       }
+      ret = new String [pfns.length+2];
+      ret[0] = null;
+      ret[1] = null;
+      for(int i=0; i<pfns.length; ++i){
+        ret[i+2] = pfns[i];
+      }
     }
     else if(catalogUrl.getProtocol().equals("mysql")){
       // Set parameters
@@ -1127,7 +1176,7 @@ public class ATLASDatabase extends DBCache implements Database{
       }
       ResultSet rset = null;
       String guid = null;
-      Vector resultVector = new Vector();
+      Vector guidVector = new Vector();
       Debug.debug(">> "+req, 3);
       rset = conn.createStatement().executeQuery(req);
       while(rset.next()){
@@ -1142,24 +1191,32 @@ public class ATLASDatabase extends DBCache implements Database{
             rset.getString("sync").equals("delete")){
           continue;
         }
-        resultVector.add(rset.getString("guid"));
+        guidVector.add(rset.getString("guid"));
       }
-      if(resultVector.size()==0){
+      if(guidVector.size()==0){
         rset.close();
         conn.close();
         pfns = new String [] {};
-        return pfns;
+        ret = new String [pfns.length+2];
+        ret[0] = null;
+        ret[1] = null;
+        for(int i=0; i<pfns.length; ++i){
+          ret[i+2] = pfns[i];
+        }
+        return ret;
       }
-      else if(resultVector.size()>1){
-        error = "WARNING: More than one ("+resultVector.size()+") guids with found for lfn "+lfn;
+      else if(guidVector.size()>1){
+        error = "WARNING: More than one ("+guidVector.size()+") guids with found for lfn "+lfn;
         Debug.debug(error, 1);
       }
-      guid = (String) resultVector.get(0);
+      guid = (String) guidVector.get(0);
       // Now query the t_pfn table to get the pfn
-      req = "SELECT pfname FROM t_pfn WHERE guid ='"+guid+"'";
+      req = "SELECT pfname, fsize, md5sum FROM t_pfn, t_meta WHERE t_pfn.guid ='"+guid+"'";
       Debug.debug(">> "+req, 3);
       rset = conn.createStatement().executeQuery(req);
-      resultVector = new Vector();
+      Vector resultVector = new Vector();
+      String bytes = null;
+      String checksum = null;
       String [] res = null;
       while(rset.next()){
         if(getStop() || !findPFNs){
@@ -1170,6 +1227,15 @@ public class ATLASDatabase extends DBCache implements Database{
         res = Util.split(rset.getString("pfname"));
         for(int i=0; i<res.length; ++i){
           resultVector.add(res[i]);
+        }
+        if(bytes==null){
+          bytes = rset.getString("fsize");
+        }
+        if(checksum==null){
+          checksum = rset.getString("md5sum");
+          if(!checksum.matches("\\w+:.*")){
+            checksum = "md5:"+checksum;
+          }
         }
       }
       if(resultVector.size()==0){
@@ -1189,13 +1255,19 @@ public class ATLASDatabase extends DBCache implements Database{
       if(!findAll && pfns!=null && pfns.length>1){
         pfns = new String [] {pfns[0]};
       }
+      ret = new String [pfns.length+2];
+      ret[0] = null;
+      ret[1] = null;
+      for(int i=0; i<pfns.length; ++i){
+        ret[i+2] = pfns[i];
+      }
     }
     else{
       error = "ERROR: protocol not supported: "+catalogUrl.getProtocol();
       Debug.debug(error, 1);
       throw new MalformedURLException(error);
     }
-    return pfns;
+    return ret;
   }
 
   /**
@@ -1610,25 +1682,6 @@ public class ATLASDatabase extends DBCache implements Database{
   }
 
   /**
-   * Help functions, needed because we query the file catalogs in threads.
-   */
-  private void addPFN(String pfn){
-    pfnVector.add(pfn);
-  }
-
-  private void clearPFNs(){
-    pfnVector.clear();
-  }
-  
-  private String getPFNsString(){
-    return Util.arrayToString(pfnVector.toArray());
-  }
-  
-  private Object [] getPFNs(){
-    return pfnVector.toArray();
-  }
-  
-  /**
    * Checks if a site is in the list of ignored sites.
    * @param site
    * @return true if the site should be skipped.
@@ -1746,7 +1799,9 @@ public class ATLASDatabase extends DBCache implements Database{
     Vector catalogs = new Vector();
     Object [] locationsArray = locations.toArray();
     try{
-      clearPFNs();
+      pfnVector.clear();
+      fileBytes = null;
+      fileChecksum = null;
       for(int i=0; i<locationsArray.length; ++i){
         if(locationsArray[i]==null || ((String) locationsArray[i]).matches("\\s*")){
           continue;
@@ -1787,10 +1842,12 @@ public class ATLASDatabase extends DBCache implements Database{
               pfns = lookupPFNs(tryAgain, lfName, findAll);
               catalogServer = tryAgain;
             }
-            if(pfns!=null && pfns.length>0){
+            if(pfns!=null && pfns.length>2){
               catalogs.add(catalogServer);
-              for(int n=0; n<pfns.length; ++n){
-                addPFN(pfns[n]);
+              fileBytes = pfns[0];
+              fileChecksum = pfns[1];
+              for(int n=2; n<pfns.length; ++n){
+                pfnVector.add(pfns[n]);
               }
             }
           }
@@ -1887,7 +1944,7 @@ public class ATLASDatabase extends DBCache implements Database{
     try{
       Debug.debug("getFieldNames for table "+table, 3);
       if(table.equalsIgnoreCase("file")){
-        return new String [] {"dsn", "lfn", "catalogs", "pfns", "guid"};
+        return new String [] {"dsn", "lfn", "catalogs", "pfns", "guid", "bytes", "checksum"};
       }
       else if(table.equalsIgnoreCase("dataset")){
         return new String [] {"dsn", "vuid", "incomplete", "complete"};
@@ -1936,18 +1993,22 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     
     // Get the pfns
-    Vector pfnVector = new Vector();
+    Vector resultVector = new Vector();
     String pfns = "";
     String catalogs = "";
+    String bytes = "";
+    String checksum = "";
     if(findAllPFNs!=0){
       catalogs = Util.arrayToString(findPFNs(vuid, lfn, findAllPFNs==2).toArray());
-      for(int j=0; j<getPFNs().length; ++j){
-        pfnVector.add((String) getPFNs()[j]);
+      for(int j=2; j<pfnVector.size(); ++j){
+        resultVector.add((String) pfnVector.get(j));
       }
-      pfns = Util.arrayToString(pfnVector.toArray());
+      bytes = (fileBytes==null?"":fileBytes);
+      checksum = (fileBytes==null?"":fileChecksum);
+      pfns = Util.arrayToString(resultVector.toArray());
     }
         
-    return new DBRecord(fields, new String [] {dsn, lfn, catalogs, pfns, fileID});
+    return new DBRecord(fields, new String [] {dsn, lfn, catalogs, pfns, fileID, bytes, checksum});
 
   }
 
@@ -1980,8 +2041,10 @@ public class ATLASDatabase extends DBCache implements Database{
     
     // Find the LFNs to keep and those to delete.
     String [] toDeleteLfns = null;
-    String [] toKeepLfns = null;
     String [] toKeepGuids = null;
+    String [] toKeepLfns = null;
+    String [] toKeepSizes = null;
+    String [] toKeepChecksums = null;
     // NOTICE: we are assuming that there is a one-to-one mapping between
     //         lfns and guids. This is not necessarily the case...
     // TODO: improve
@@ -1991,6 +2054,8 @@ public class ATLASDatabase extends DBCache implements Database{
       toDeleteLfns = new String[fileIDs.length];
       toKeepGuids = new String[currentFiles.values.length-fileIDs.length];
       toKeepLfns = new String[currentFiles.values.length-fileIDs.length];
+      toKeepSizes = new String[currentFiles.values.length-fileIDs.length];
+      toKeepChecksums = new String[currentFiles.values.length-fileIDs.length];
       int count = 0;
       int count1 = 0;
       boolean staysThere = false;
@@ -2005,6 +2070,8 @@ public class ATLASDatabase extends DBCache implements Database{
         if(!staysThere){
           toKeepGuids[count] = currentFiles.getValue(i, "guid").toString();
           toKeepLfns[count] = currentFiles.getValue(i, "lfn").toString();
+          toKeepSizes[count] = currentFiles.getValue(i, "size").toString();
+          toKeepChecksums[count] = currentFiles.getValue(i, "checksum").toString();
           if(toKeepGuids[count]==null || toKeepLfns[count]==null ||
               toKeepGuids[count].equals("") || toKeepLfns[count].equals("")){
             error = "ERROR: no guid/lfn for "+toKeepGuids[count]+"/"+toKeepLfns[count]+
@@ -2084,8 +2151,8 @@ public class ATLASDatabase extends DBCache implements Database{
         // Get the pfns
         if(DELETE_FROM_SITES_ON_ALL_CATALOGS){
           findPFNs(datasetID, toDeleteLfns[i], false);
-          for(int j=0; j<getPFNs().length; ++j){
-            pfns.add((String) getPFNs()[j]);
+          for(int j=2; j<pfnVector.size(); ++j){
+            pfns.add((String) pfnVector.get(j));
           }
         }
         else{
@@ -2245,7 +2312,8 @@ public class ATLASDatabase extends DBCache implements Database{
         // Add the lfns we don't delete
         Debug.debug("Re-adding original LFNs "+Util.arrayToString(toKeepLfns), 2);
         if(toKeepLfns.length>0 && toKeepGuids.length>0){
-          dq2Access.addLFNsToDataset(toKeepLfns, toKeepGuids, datasetID);
+          dq2Access.addLFNsToDataset(datasetID, toKeepGuids, toKeepLfns, toKeepSizes,
+              toKeepChecksums);
         }
         // Re-register all locations
         Debug.debug("Re-registering original locations "+Util.arrayToString(toKeepLfns), 2);
@@ -2324,7 +2392,7 @@ public class ATLASDatabase extends DBCache implements Database{
   }
 
   public void registerFileLocation(String vuid, String dsn, String guid,
-      String lfn, String url, boolean datasetComplete) throws Exception {
+      String lfn, String url, String size, String checksum, boolean datasetComplete) throws Exception {
 
     DQ2Access dq2Access = null;
     try{
@@ -2374,12 +2442,23 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     
     if(datasetExists){
+      if(size!=null && !size.endsWith("L")){
+        // The DQ2 conventions seems to be that the file size is like e.g. 41943040L 
+        size = size+"L";
+      }
+      if(checksum!=null && !checksum.matches("\\w+:.*")){
+        // If no type is given, we assume it's an md5 sum.
+        checksum = "md5:"+checksum;
+      }
+      
       String [] guids = new String[] {guid};
       String [] lfns = new String[] {lfn};
+      String [] sizes = new String[] {size};
+      String [] checksums = new String[] {checksum};
       try{
         GridPilot.getClassMgr().getStatusBar().setLabel("Registering new lfn " +lfn+
           " with DQ2");
-        dq2Access.addLFNsToDataset(lfns, guids, vuid);
+        dq2Access.addLFNsToDataset(vuid, lfns, guids, sizes, checksums);
       }
       catch(Exception e){
         error = "WARNING: could not update dataset "+dsn+" in DQ2 "+

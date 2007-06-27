@@ -720,15 +720,38 @@ public class MySQLDatabase extends DBCache implements Database {
       // The "file" table is a pseudo table constructed from "jobDefinitions".
       // We replace "url" with "outFileMapping" and parse the values of
       // outFileMapping later.
+      // We replace "bytes" "outputFileBytes" and "checksum" with "outputFileChecksum".
+      String sizeField = Util.getFileSizeField(dbName);
+      String checksumField = Util.getChecksumField(dbName);
       if(req.matches("SELECT (.+) url\\, (.+) FROM file\\b(.*)")){
         patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
         req = matcher.replaceFirst("SELECT $1 outFileMapping, $2 FROM file $3");
       }
-      if(req.matches("SELECT (.+) url FROM file\\b(.*)")){
+      else if(req.matches("SELECT (.+) url FROM file\\b(.*)")){
         patt = Pattern.compile("SELECT (.+) url FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
         req = matcher.replaceFirst("SELECT $1 outFileMapping FROM file $2");
+      }
+      if(req.matches("SELECT (.+) "+sizeField+"\\, (.+) FROM file\\b(.*)")){
+        patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceFirst("SELECT $1 outputFileBytes, $2 FROM file $3");
+      }
+      else if(req.matches("SELECT (.+) "+sizeField+" FROM file\\b(.*)")){
+        patt = Pattern.compile("SELECT (.+) url FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceFirst("SELECT $1 outputFileBytes FROM file $2");
+      }
+      if(req.matches("SELECT (.+) "+checksumField+"\\, (.+) FROM file\\b(.*)")){
+        patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceFirst("SELECT $1 outputFileChecksum, $2 FROM file $3");
+      }
+      else if(req.matches("SELECT (.+) "+checksumField+" FROM file\\b(.*)")){
+        patt = Pattern.compile("SELECT (.+) url FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceFirst("SELECT $1 outputFileChecksum FROM file $2");
       }
       if(req.matches("SELECT (.+) FROM file\\b(.*)")){
         fileTable = true;
@@ -802,6 +825,10 @@ public class MySQLDatabase extends DBCache implements Database {
       DBResult rset = executeQuery(req);
       String [][] values = new String[rset.values.length][fields.length];
       int i=0;
+      if(rset.fields.length!=fields.length){
+        Debug.debug("ERROR: inconsistent number of fields "+rset.fields.length+"!="+fields.length, 1);
+        return new DBResult(); 
+      }
       while(rset.next()){
         for(int j=0; j<rset.fields.length; ++j){
           Debug.debug("sorting "+withStar+" "+identifierColumn+" "+
@@ -1386,7 +1413,7 @@ public class MySQLDatabase extends DBCache implements Database {
       else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
         values[i] = makeDate("");
       }
-      else if((jobDefFields[i].equalsIgnoreCase("outputFileKilobytes") ||
+      else if((jobDefFields[i].equalsIgnoreCase("outputFileBytes") ||
           jobDefFields[i].equalsIgnoreCase("cpuSeconds")) &&
           (values[i]==null || values[i].equals(""))){
         values[i] = "'0'";
@@ -1758,7 +1785,7 @@ public class MySQLDatabase extends DBCache implements Database {
             else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
               values[j] = makeDate("");
             }
-            else if((jobDefFields[i].equalsIgnoreCase("outputFileKilobytes") ||
+            else if((jobDefFields[i].equalsIgnoreCase("outputFileBytes") ||
                 jobDefFields[i].equalsIgnoreCase("cpuSeconds")) &&
                 (values[j]==null || values[j].equals(""))){
               values[j] = "'0'";
@@ -2356,7 +2383,8 @@ public class MySQLDatabase extends DBCache implements Database {
   }
 
   public void registerFileLocation(String datasetID, String datasetName,
-      String fileID, String lfn, String url, boolean datasetComplete) throws Exception {
+      String fileID, String lfn, String url, String size, String checksum,
+      boolean datasetComplete) throws Exception {
     
     Debug.debug("Registering URL "+url+" for file "+
         datasetID+":"+datasetName+":"+fileID+":"+lfn, 2);
@@ -2455,7 +2483,7 @@ public class MySQLDatabase extends DBCache implements Database {
       Debug.debug("Creating file "+lfn, 2);
       try{
         GridPilot.getClassMgr().getStatusBar().setLabel("Creating new file "+lfn);
-        if(!createFile(datasetName, fileID, lfn, url)){
+        if(!createFile(datasetName, fileID, lfn, url, size, checksum)){
           throw new SQLException("create file failed");
         }
         GridPilot.getClassMgr().getLogFile().addInfo("Created new file "+lfn+
@@ -2495,7 +2523,16 @@ public class MySQLDatabase extends DBCache implements Database {
   
   // This is only to be used if this is a file catalog.
   private synchronized boolean createFile(String datasetName, String fileID,
-      String lfn, String url){
+      String lfn, String url, String size, String checksum){
+    if(size==null){
+      size = "";
+    }
+    String chksum = "";
+    if(checksum!=null){
+      chksum = checksum;
+      // Other checksum types than md5 we still use, but keep the "<type>:" tag.
+      chksum = chksum.replaceFirst("^md5:", "");
+    }
     String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
     url + "', '" + fileID + "'); ";
     Debug.debug(sql, 2);
@@ -2521,8 +2558,8 @@ public class MySQLDatabase extends DBCache implements Database {
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
     }
-    sql = "INSERT INTO t_meta (guid, dsname) VALUES ('"+
-    fileID + "', '" + datasetName +
+    sql = "INSERT INTO t_meta (guid, dsname, fsize, md5sum) VALUES ('" +
+    fileID + "', '" + datasetName + "', '" + size+ "', '" + chksum +
     "')";
     Debug.debug(sql, 2);
     boolean execok3 = true;
