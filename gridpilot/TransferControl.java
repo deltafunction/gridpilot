@@ -24,6 +24,9 @@ import javax.swing.ImageIcon;
 import javax.swing.JProgressBar;
 import javax.swing.Timer;
 
+import jonelo.jacksum.JacksumAPI;
+import jonelo.jacksum.algorithm.AbstractChecksum;
+
 import org.globus.ftp.exception.FTPException;
 import org.globus.util.GlobusURL;
 import org.safehaus.uuid.UUIDGenerator;
@@ -1119,9 +1122,41 @@ public class TransferControl{
         GridPilot.getClassMgr().getLogFile().addMessage("WARNING: dataset name not found. "+
             "This file, "+lfn+", may not keep its dataset association.");
       }
+      String fileBytes = transfer.getBytes();
+      String checksum = transfer.getChecksum();
+      // lookup size the hard way
+      if(fileBytes==null || fileBytes.equals("") || fileBytes.equals("-1")){
+        // TODO generalize beyound gsiftp and https
+        try{
+          if(destination.startsWith("https:") || destination.startsWith("gsiftp:")){
+            GlobusURL globusUrl = new GlobusURL(destination);
+            fileBytes = Long.toString(GridPilot.getClassMgr().getFTPlugin(
+                globusUrl.getProtocol()).getFileBytes(globusUrl));
+          }
+          else if(!Util.urlIsRemote(destination)){
+            File fil = new File(Util.clearTildeLocally(Util.clearFile(destination)));
+            fileBytes = Long.toString(fil.length());
+          }
+        }
+        catch(Exception e){
+        }
+      }
+      // If there's no checksum, calculate the md5sum
+      if((checksum==null || checksum.equals("") || checksum.equals("-1")) &&
+          !Util.urlIsRemote(destination)){
+        try{
+          AbstractChecksum cs = JacksumAPI.getChecksumInstance("md5");
+          cs.update(LocalStaticShellMgr.readFile(
+              Util.clearTildeLocally(Util.clearFile(destination))).getBytes());
+          checksum = "md5:"+cs.getFormattedValue();
+        }
+        catch(Exception e){
+        }
+      }
+      // Now register the file
       try{
         transfer.getDBPluginMgr().registerFileLocation(
-            datasetID, datasetName, guid, lfn, destination, false);
+            datasetID, datasetName, guid, lfn, destination, fileBytes, checksum, false);
       }
       catch(Exception e){
         GridPilot.getClassMgr().getLogFile().addMessage(
@@ -1212,9 +1247,9 @@ public class TransferControl{
       else if(srcUrlDir.startsWith("gsiftp://") || srcUrlDir.startsWith("https://")){
         Debug.debug("Downloading to "+downloadDir.getAbsolutePath(), 3);        
         Debug.debug("Downloading "+destFileName+" from "+srcUrlDir, 3);
-        final File dName = downloadDir;
+        /*final File dName = downloadDir;
         final String destFName = destFileName;
-        final String srcFName = srcFileName;
+        final String srcFName = srcFileName;*/
         if(frame!=null){
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         }
@@ -1226,6 +1261,7 @@ public class TransferControl{
                  GridPilot.getClassMgr().getFTPlugin(url.replaceFirst("^(\\w+):/.*", "$1"));
               fileTransfer.getFile(globusUrl, destination/*dName*/, GridPilot.getClassMgr().getStatusBar());
               GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
+              // Why was this introduced?? Easier to just download file to final destination...
               /*if(!destFName.equals(srcFName)){
                 LocalStaticShellMgr.moveFile((new File(dName, srcFName)).getAbsolutePath(),
                     (new File(dName, destFName)).getAbsolutePath());
