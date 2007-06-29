@@ -119,7 +119,7 @@ public class GPSSComputingSystem implements ComputingSystem{
             // assume this is a URL
             try{
               File tmpFile = File.createTempFile("GridPilot-", "");
-              Collections.addAll(allowedSubjects, Util.readURL(subjectsArray[i],tmpFile));
+              Collections.addAll(allowedSubjects, Util.readURL(subjectsArray[i], tmpFile, "#"));
               tmpFile.delete();
             }
             catch(Exception e){
@@ -1316,7 +1316,7 @@ public class GPSSComputingSystem implements ComputingSystem{
         "</allow>\n"+
         "</entry>\n";
       try{
-        gaclLines = Util.readURL(rDir+".gacl", tmpFile);
+        gaclLines = Util.readURL(rDir+".gacl", tmpFile, "#");
         if(gaclLines==null || gaclLines.equals("")){
           throw new IOException("empty or non-existing file");
         }

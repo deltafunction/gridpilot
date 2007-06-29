@@ -2071,12 +2071,16 @@ public class Util{
   public static boolean urlIsRemote(String url){
     return !url.matches("^file:/*[^/]+.*") && url.matches("^[a-z]+:/*[^/]+.*");
   }
-    
+  
   /**
-   * Reads the lines of a text file on a web server (or locally),
-   * ignoring empty lines and lines starting with '#'.
+   * Reads the lines of a text file on a web server (or locally).
+   * @param urlString the URL to read
+   * @param tmpFile local download location. If left empty, nothing is written to disk
+   * @param commentTag a string like "#". If specified, lines starting with this string will be ignored
+   * as will empty lines. If null, all lines will be kept.
+   * @return an array of the lines of text
    */
-  public static String [] readURL(String urlString, File tmpFile) throws Exception{
+  public static String [] readURL(String urlString, File tmpFile, String commentTag) throws Exception{
     String [] ret = null;
     if(urlString.startsWith("http:") || urlString.startsWith("http:") ||
         urlString.startsWith("ftp:") || urlString.startsWith("file:")){
@@ -2085,17 +2089,24 @@ public class Util{
       }
       URL url = new URL(urlString);
       BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
-      BufferedWriter out = new BufferedWriter(new FileWriter(tmpFile));
+      BufferedWriter out = null;
+      if(tmpFile!=null){
+        out = new BufferedWriter(new FileWriter(tmpFile));
+      }
       String line = null;
       Vector vec = new Vector();
       while((line=in.readLine())!=null){
-        if(line!=null && !line.startsWith("#") && !line.equals("")){
+        if(line!=null && (commentTag==null || !line.startsWith(commentTag) && !line.equals(""))){
           vec.add(line);
-          out.write(line+"\n");
+          if(tmpFile!=null){
+            out.write(line+"\n");
+          }
         }
       }
       in.close();
-      out.close();
+      if(tmpFile!=null){
+        out.close();
+      }
       ret = new String[vec.size()];
       Enumeration en = vec.elements();
       int i = 0;
@@ -2107,7 +2118,7 @@ public class Util{
     else if(urlString.startsWith("gsiftp:") || urlString.startsWith("srm:")){
       TransferControl.download(urlString, tmpFile,
           GridPilot.getClassMgr().getGlobalFrame().getContentPane());
-      ret = readURL(tmpFile.toURL().toExternalForm(), tmpFile);
+      ret = readURL(tmpFile.toURL().toExternalForm(), tmpFile, commentTag);
      }
     return ret;
   }
