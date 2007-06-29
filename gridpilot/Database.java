@@ -61,7 +61,8 @@ public interface Database{
   public String getDatasetID(String datasetName) throws InterruptedException;
   public String getRunNumber(String datasetID) throws InterruptedException;
   public boolean createDataset(String targetTable, String[] fields, Object [] values) throws InterruptedException;
-  public boolean updateDataset(String datasetID, String [] fields, String [] values) throws InterruptedException;
+  // the parameter datasetName is redundant and is only used by AtlasDatabase - because DQ2 cannot lookup dsn name by vuid...
+  public boolean updateDataset(String datasetID, String datasetName, String [] fields, String [] values) throws InterruptedException;
   public boolean deleteDataset(String datasetID, boolean cleanup) throws InterruptedException;
   public DBRecord getDataset(String datasetID) throws InterruptedException;
   public String getDatasetTransformationName(String datasetID) throws InterruptedException;

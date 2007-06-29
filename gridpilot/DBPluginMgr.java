@@ -1964,7 +1964,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public synchronized boolean updateDataset(final String datasetID,
+  public synchronized boolean updateDataset(final String datasetID, final String datasetName,
       final String [] fields, final String [] values){
     
       MyThread t = new MyThread(){
@@ -1977,7 +1977,7 @@ public class DBPluginMgr extends DBCache implements Database{
         }
         public void run(){
           try{
-            res = db.updateDataset(datasetID, fields, values);
+            res = db.updateDataset(datasetID, datasetName, fields, values);
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +

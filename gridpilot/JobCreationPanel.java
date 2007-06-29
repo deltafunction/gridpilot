@@ -613,7 +613,8 @@ public class JobCreationPanel extends CreateEditPanel{
       newMetadata += key + ": " + settings.get(key) + "\n";
     }
     Debug.debug("Saving jobDefinition defaults in dataset: "+newMetadata, 1);
-    dbPluginMgr.updateDataset(datasetIDs[0], new String [] {"metaData"}, new String [] {newMetadata});
+    // It should be safe to use null for datasetName, as ATLAS is the only DB that uses it.
+    dbPluginMgr.updateDataset(datasetIDs[0], null, new String [] {"metaData"}, new String [] {newMetadata});
   }
   
 }

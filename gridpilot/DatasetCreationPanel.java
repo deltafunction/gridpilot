@@ -51,6 +51,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private String [] datasetTransformationReference;
   private String [] datasetTransformationVersionReference;
   private JButton jbEditTrans = new JButton("view");
+  private String datasetName = "";
   
   public boolean editable = true;
 
@@ -124,7 +125,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
     
     String title = "";
     if(editing){
-      String datasetName = "";
       try{
         datasetName = dbPluginMgr.getDatasetName(datasetID);
       }
@@ -415,7 +415,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
           showResults,
           cstAttr,
           cstAttributesNames,
-          datasetID
+          datasetID,
+          datasetName
           );
       // TODO: refresh results on panel showing datasets from the db - if such a panel is shown
       if(dsu.anyCreated && panel.dbName.equalsIgnoreCase(dbPluginMgr.getDBName())){

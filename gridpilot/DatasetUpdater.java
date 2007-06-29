@@ -9,6 +9,7 @@ import java.awt.*;
 public class DatasetUpdater{
 
   private String identifier;
+  private String name;
   private boolean showResults;
   private String [] cstAttr;
   private StatusBar statusBar;
@@ -21,10 +22,12 @@ public class DatasetUpdater{
                           boolean _showResults,
                           String [] _cstAttr,
                           String [] _cstAttrNames,
-                          String _identifier
+                          String _identifier,
+                          String _name
                           ){
 
     identifier = _identifier;
+    name = _name;
     showResults = _showResults;
     cstAttr = _cstAttr;
     cstAttrNames =  _cstAttrNames;
@@ -55,7 +58,7 @@ public class DatasetUpdater{
   }
 
   private void updateDBDataset(){
-    if(!dbPluginMgr.updateDataset(identifier, cstAttrNames, cstAttr)){
+    if(!dbPluginMgr.updateDataset(identifier, name, cstAttrNames, cstAttr)){
       JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
           "ERROR: dataset cannot be updated.\n"+
           dbPluginMgr.getError(),
