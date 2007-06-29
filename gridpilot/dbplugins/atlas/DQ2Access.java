@@ -104,7 +104,7 @@ public class DQ2Access {
   {
     String keys[]={"vuids"};
     String values[]={vuidString};
-    Debug.debug("Finding datasets with web service on "+getLocationsURL, 1);
+    Debug.debug("Finding datasets with web service on "+getDatasetsURL, 1);
     String response = wsSecure.post(getDatasetsURL, keys, values);
     return response;
   }
