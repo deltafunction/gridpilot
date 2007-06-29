@@ -542,12 +542,12 @@ public class GPSSComputingSystem implements ComputingSystem{
     else{
       metaData = "volatile::'"+user+"'";
     }
-    remoteMgr.updateDataset(datasetID, new String [] {"metaData"}, new String [] {metaData});
+    remoteMgr.updateDataset(datasetID, datasetName, new String [] {"metaData"}, new String [] {metaData});
   }
 
   /**
-   * Deletes transformation tagged for deletion.
-   * If a transformation happens to be used by other GPSS jobs, this is
+   * Deletes dataset tagged for deletion.
+   * If a dataset happens to be used by other GPSS jobs, this is
    * taken into account - i.e. it is not deleted until the last one has finished.
    */
   private void deleteTaggedDataset(DBPluginMgr remoteMgr, String datasetID){
@@ -558,7 +558,7 @@ public class GPSSComputingSystem implements ComputingSystem{
       }
       else{
         metaData = metaData.replaceFirst("::'"+user+"'", "");
-        remoteMgr.updateDataset(datasetID, new String [] {"metaData"}, new String [] {metaData});
+        remoteMgr.updateDataset(datasetID, null, new String [] {"metaData"}, new String [] {metaData});
       }
     }
   }

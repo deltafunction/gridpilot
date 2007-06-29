@@ -2411,7 +2411,7 @@ public class ATLASDatabase extends DBCache implements Database{
         valueArray[i] = (String) valueStrings.get(i);
       }
       try{
-        if(!updateDataset(vuid, fieldArray, valueArray)){
+        if(!updateDataset(vuid, dsn, fieldArray, valueArray)){
           throw new IOException("Update failed.");
         }
       }
@@ -2432,7 +2432,7 @@ public class ATLASDatabase extends DBCache implements Database{
    * Notice: DQ2 site or file registrations are not touched. Neither are
    *         file catalog entries or physical files.
    */
-  public boolean updateDataset(String vuid, String[] fields, String[] values){
+  public boolean updateDataset(String vuid, String dsn, String[] fields, String[] values){
     
     if(getStop()){
       return false;
@@ -2450,21 +2450,20 @@ public class ATLASDatabase extends DBCache implements Database{
       return false;
     }
     
-    String dsn = null;
     boolean exists = false;
     try{
-      dsn = getDatasetName(vuid);
-      if(dsn!=null && !dsn.equals("")){
+      String checkVuid = getDatasetID(dsn);
+      if(checkVuid!=null && checkVuid.equals(vuid)){
         exists = true;
       }
     }
     catch(Exception e){
-      exists =false;
+      exists = false;
     }
     
     // If the dataset does not exist, abort
     if(!exists){
-      error = "ERROR: dataset "+dsn+" does not exist, cannot update.";
+      error = "ERROR: dataset "+dsn+" does not exist or has wrong vuid. Cannot update.";
       logFile.addMessage(error);
       return false;
     }

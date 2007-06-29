@@ -1820,7 +1820,7 @@ public class MySQLDatabase extends DBCache implements Database {
     return execok;
   }
   
-  public synchronized boolean updateDataset(String datasetID, String [] fields,
+  public synchronized boolean updateDataset(String datasetID, /*not used*/String datasetName, String [] fields,
       String [] values){
     
     String idField = Util.getIdentifierField(dbName, "dataset");
