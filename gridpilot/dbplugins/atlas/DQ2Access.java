@@ -24,13 +24,16 @@ public class DQ2Access {
   //TODO TODO TODO TODO : I've tried to adapt to v 0.3, but not tested,
   //all this has to be retested and fixed
 
-  private final String addFilesToDatasetURL = "ws_location/rpc?operation=addFilesToDataset&API=0_3_0";
+  private final String addFilesToDatasetURL = "ws_content/rpc?operation=addFilesToDataset&API=0_3_0";
   private final String createDatasetURL = "ws_location/rpc?operation=addDataset&API=0_3_0";
-  private final String deleteDatasetURL = "ws_location/rpc?operation=eraseDataset&API=0_3_0";
+  //private final String deleteDatasetURL = "ws_repository/rpc?operation=eraseDataset&API=0_3_0";
+  private final String deleteDatasetURL = "repository/dataset";
+  //private final String deleteDatasetURL1 = "ws_content/rpc?operation=deleteDataset&API=0_3_0";
+  //private final String deleteDatasetURL2 = "ws_location/rpc?operation=deleteDataset&API=0_3_0";
   private final String getLocationsURL = "ws_location/rpc?operation=queryDatasetLocations&API=0_3_0";
-  private final String getDatasetsURL = "ws_location/rpc?operation=queryDatasetByVUIDs&API=0_3_0";
+  private final String getDatasetsURL = "ws_repository/rpc?operation=queryDatasetByVUIDs&API=0_3_0";
   private final String getFilesURL = "ws_content/rpc?operation=queryFilesInDataset&API=0_3_0";
-  private final String addLocationsURL = "ws_location/rpc?operation=registerDatasetLocations&API=0_3_0";
+  private final String addLocationsURL = "ws_location/rpc?operation=addDatasetReplica&API=0_3_0";
   private final String deleteLocationsURL = "ws_location/rpc?operation=deleteDatasetReplica&API=0_3_0";
 	/**
 	 * Instantiates a DQ2Acces object
@@ -50,7 +53,7 @@ public class DQ2Access {
 		try 
 		{
 			//wsPlain = new WebServiceConnection(httpServer, httpPort, baseUrl);
-      Debug.debug("New web service connection: "+httpsServer+" - "+httpsPort+" - "+path, 1);
+            Debug.debug("New web service connection: "+httpsServer+" - "+httpsPort+" - "+path, 1);
 			wsSecure = new SecureWebServiceConnection(httpsServer, httpsPort, path);
 
 			GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
@@ -60,8 +63,8 @@ public class DQ2Access {
 					((GlobusGSSCredentialImpl)credential).getGlobusCredential();
 			}
 
-      //wsSecure.loadGlobusCredentialCertificate(globusCred);
-      wsSecure.loadLocalProxyCertificate(Util.getProxyFile().getAbsolutePath());
+            //wsSecure.loadGlobusCredentialCertificate(globusCred);
+            wsSecure.loadLocalProxyCertificate(Util.getProxyFile().getAbsolutePath());
 			wsSecure.trustWrongHostName();
 			wsSecure.trustAllCerts();
 			wsSecure.init();
@@ -194,20 +197,26 @@ public class DQ2Access {
         StringBuffer data=new StringBuffer("[");
 		for(int c=0; c<guids.length; c++){
             data.append("{");
-			data.append("'guid': '"+guids[c]+"'");
-            data.append(", 'lfn': '"+lfns[c]);
+            if(checkSums!=null && checkSums[c]!=null && !checkSums[c].equals("")){
+              data.append("'checksum': '"+checkSums[c]+"'");
+            }
+            else{
+              data.append("'checksum': None");
+            }
+			data.append(", 'guid': '"+guids[c]+"'");
+            data.append(", 'lfn': '"+lfns[c]+"'");
             if(sizes!=null && sizes[c]!=null && !sizes[c].equals("")){
               // the size is of the form <bytes>L
-              data.append(", 'size': '"+sizes[c]+(sizes[c].endsWith("L")?"":"L"));
+              data.append(", 'size': "+sizes[c]+(sizes[c].endsWith("L")?"":"L"));
             }
-            if(checkSums!=null && checkSums[c]!=null && !checkSums[c].equals("")){
-              data.append(", 'checksum': '"+checkSums[c]);
+            else{
+              data.append(", 'size': None");
             }
             data.append("}");
 		}
         data.append("]");
-		String keys[]={"vuid","files","update"};
-		String values[]={vuid,data.toString(),"yes"};
+		String keys[]={"files","vuid","vuids","update"};
+		String values[]={data.toString(),vuid,"[]","yes"};
         
 		wsSecure.post(addFilesToDatasetURL, keys, values);
 		return true;
@@ -217,13 +226,18 @@ public class DQ2Access {
 	 * deletes a Dataset
 	 * @param lfn Logical Dataset Name of the Dataset to erase
 	 */
-	public boolean deleteDataset(String dsn) throws IOException
+	public boolean deleteDataset(String dsn, String vuid) throws IOException
 	{
-		String keys[]= {"dsn","delete"};
-		String values[] = {dsn,"yes"};
-    Debug.debug("Deleting "+dsn, 2);
-    Debug.debug(" on "+deleteDatasetURL+" : "+wsSecure.protocolname, 2);
-		wsSecure.get(deleteDatasetURL, keys, values);
+		// Delete from each catalog
+        String [] keys= new String [] {"dsn"};
+        String [] values = new String [] {dsn};
+        Debug.debug("Deleting "+dsn, 2);
+        Debug.debug(" on "+deleteDatasetURL+" : "+wsSecure.protocolname, 2);
+		wsSecure.delete(deleteDatasetURL, keys, values);
+        //keys = new String [] {"vuid","delete"};
+        //values = new String [] {vuid,"yes"};
+        //wsSecure.post(deleteDatasetURL1, keys, values);
+        //wsSecure.post(deleteDatasetURL2, keys, values);
 		return true;
 	}
 

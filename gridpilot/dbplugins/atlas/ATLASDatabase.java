@@ -337,7 +337,7 @@ public class ATLASDatabase extends DBCache implements Database{
             return null;
           }
           // Get the DQ result
-          str = readGetUrl(url);
+          str = readGetUrl(url).trim();
         }
         else if(dsn.equals("")){
           try{
@@ -346,7 +346,7 @@ public class ATLASDatabase extends DBCache implements Database{
             //ret = readGetUrl(new URL(url));
             //ret = URLDecoder.decode(ret, "utf-8");
             DQ2Access dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
-            str = dq2Access.getDatasets("['"+vuid+"']");
+            str = dq2Access.getDatasets("['"+vuid+"']").trim();
           }
           catch(Exception e){
             Debug.debug("WARNING: search returned an error "+str, 1);
@@ -354,8 +354,10 @@ public class ATLASDatabase extends DBCache implements Database{
           }
         }
         // Check if the result is of the form {...}
+        // We expect something like
+        // "{'user.FrederikOrellana5894-ATLAS.testdataset': [1]}"
         if(str==null || !str.matches("^\\{.*\\}$") || str.matches("^\\{\\}$")){
-          Debug.debug("WARNING: search returned an error "+str, 1);
+          Debug.debug("WARNING: search returned an error:"+str+":", 1);
           return new DBResult(fields, new String[0][fields.length]);
         }
       }
@@ -486,17 +488,20 @@ public class ATLASDatabase extends DBCache implements Database{
               e.printStackTrace();
               logFile.addMessage(error, e);
             }
-            record = Util.split(records[i], "'dsn': ");
-            String name = record[1].replaceFirst(", 'version': \\d+\\}", "");
-            name = name.replaceAll("'", "");
+            //record = Util.split(records[i], "'dsn': ");
+            //{'user.FrederikOrellana5894-ATLAS.testdataset': [1]}
+            record = Util.split(records[i], "'[^']+': ");
+            String name = records[i].replaceFirst(".*'([^']+)': \\[\\d+\\].*", "$1");
+            if(name.equals(records[i])){
+              name = "";
+            }
             // If some selection boxes have been set, use patterns for restricting.
             complete = complete.replaceAll("\\*", ".*");
             incomplete = incomplete.replaceAll("\\*", ".*");
             dsn = dsn.replaceAll("\\*", ".*");
             for(int k=0; k<fields.length; ++k){
               if(fields[k].equalsIgnoreCase("dsn")){
-                if(dsn==null || dsn.equals("") ||
-                    name.matches("(?i)"+dsn)){
+                if(dsn.equals("") || name.matches("(?i)"+dsn)){
                   recordVector.add(name);
                 }
                 else{
@@ -2646,7 +2651,7 @@ public class ATLASDatabase extends DBCache implements Database{
 
     // Now, delete the dataset
     try{
-      dq2Access.deleteDataset(dsn);
+      dq2Access.deleteDataset(dsn, datasetID);
     }
     catch(IOException e){
       error = "ERROR: Could not delete dataset "+dsn;

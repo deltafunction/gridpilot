@@ -163,6 +163,73 @@ public class WebServiceConnection {
 	}
 
 	
+    /**
+     * Use http DELETE method to access the Webservice
+     * @param   theURL   URL to connect to
+     * @param   data   urlencoded data
+     */
+    private String delete(URL theURL, String data) throws IOException
+    {
+    Debug.debug(theURL.toString() + " " + data, 2);
+        
+        
+        huc = getConnectiontoUrl(theURL); 
+        
+    Debug.debug(huc.toString(), 2);
+        
+        huc.setRequestMethod("DELETE");
+        huc.setDoInput(true);
+        huc.setDoOutput(true);
+        
+        OutputStream aout = huc.getOutputStream(); 
+        DataOutputStream out = new DataOutputStream(aout);
+        out.writeBytes (data);
+        out.flush ();
+        out.close ();
+
+        StringBuffer result=new StringBuffer(); 
+        InputStream is=null;
+        try  {  is = huc.getInputStream();  } catch (IOException e)
+        {
+      Debug.debug(e.getMessage(), 2);
+            is=huc.getErrorStream();
+        }
+
+        int code = huc.getResponseCode(); 
+    
+        BufferedReader in=null;
+        in = new BufferedReader(new InputStreamReader(is));
+        String line=null;
+        while ((line = in.readLine()) != null) {
+            result.append(line+"\n");
+        }
+    
+    in.close();
+    huc.disconnect();
+    if (code != HttpURLConnection.HTTP_OK) { 
+      throw new IOException (result.toString());
+    }
+
+        return result.toString();
+    
+    }
+    
+    /**
+     * Use http DELETE method to access the Webservice with key=>value
+     * @param   path   the path on the Webservice that provides the information (can be absolute, realtiv or NULL)
+     * @param   keys   Array of Strings, prooviding the keys for the data
+     * @param   values Array os Strings, providing the data belongig to the keys (not urlencoded)
+     */
+    public String delete(String path, String[] keys, String[] values) throws IOException
+    {
+        String params = urlencodeArray(keys, values);
+        String physicalAccessName = createFullPath(path);
+        Debug.debug("Using delete URL "+physicalAccessName, 3);
+        URL postURL = new URL(physicalAccessName);
+        return delete(postURL,params);        
+
+    }
+
 	/**
 	 * Use http POST method to access the Webservice
 	 * @param   theURL   URL to connect to
