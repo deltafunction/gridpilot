@@ -96,15 +96,15 @@ public class BrowserPanel extends JDialog implements ActionListener{
       boolean _localFS) throws Exception{
     super(parent);
     init(parent, title, url, _baseUrl, modal, _withFilter, _withNavigation, _jBox, _filter,
-        _localFS, true);
+        _localFS, true, true);
   }
   
   public BrowserPanel(Window parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
       boolean _withNavigation, JComponent _jBox, String _filter,
-      boolean _localFS, boolean cancelEnabled) throws Exception{
+      boolean _localFS, boolean cancelEnabled, boolean registrationEnabled) throws Exception{
     init(parent, title, url, _baseUrl, modal, _withFilter, _withNavigation, _jBox, _filter,
-        _localFS, cancelEnabled);
+        _localFS, cancelEnabled, registrationEnabled);
     Debug.debug("Setting default cursor", 2);
   }
 
@@ -113,13 +113,13 @@ public class BrowserPanel extends JDialog implements ActionListener{
       boolean _withNavigation, JComponent _jBox, String _filter,
       boolean _localFS) throws Exception{
     init(null, title, url, _baseUrl, modal, _withFilter, _withNavigation, _jBox, _filter,
-        _localFS, true);
+        _localFS, true, true);
   }
   
   public void init(Window parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
       boolean _withNavigation, JComponent _jBox, String _filter,
-      boolean _localFS, boolean cancelEnabled) throws Exception{
+      boolean _localFS, boolean cancelEnabled, boolean registrationEnabled) throws Exception{
     baseUrl = _baseUrl;
     //origUrl = url;
     withFilter = _withFilter;
@@ -207,7 +207,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     setUrl(url);
     
     try{
-      initGUI(parent, title, url, cancelEnabled);
+      initGUI(parent, title, url, cancelEnabled, registrationEnabled);
     }
     catch(IOException e){
       //e.printStackTrace();
@@ -215,14 +215,15 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
   }
   
+  // These methods are of no use with modal BrowserPanels
   public void okSetEnabled(boolean _ok){
     ok = _ok;
     bOk.setEnabled(ok);
   }
   
-  public void setAllowRegister(boolean _ok){
-    bRegister.setEnabled(_ok);
+  public void registerSetEnabled(boolean _ok){
     allowRegister = _ok;
+    bRegister.setEnabled(_ok);
   }
   
   private void addUrlKeyListener(){
@@ -301,7 +302,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * If parent is not null, it gets its cursor set to the default after loading url.
    * If cancelEnabled is false, the cancel button is disabled.
    */
-  private void initGUI(final Window parent, String title, String url, boolean cancelEnabled) throws Exception{
+  private void initGUI(final Window parent, String title, String url,
+      boolean cancelEnabled, boolean registrationEnabled) throws Exception{
     
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     this.getContentPane().setLayout(new BorderLayout());
@@ -591,7 +593,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
               });
               ++ii;
             }
-            popupMenu.add(miRegister);
+            if(allowRegister){
+              popupMenu.add(miRegister);
+            }
           }
           //if(bDownload.isEnabled()){
           if(!url.startsWith("http://") && url.indexOf("/..")<0){
@@ -675,6 +679,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(!cancelEnabled){
       Debug.debug("Disabling cancel button", 2);
        bCancel.setEnabled(false);
+    }
+    if(!registrationEnabled){
+      Debug.debug("Disabling registration", 2);
+       registerSetEnabled(false);
     }
         
     ep.addPropertyChangeListener(new PropertyChangeListener(){

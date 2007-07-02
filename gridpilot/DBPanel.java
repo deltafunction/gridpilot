@@ -1522,7 +1522,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         // This would work if all file catalogs would support searches on individual files.
         // DQ2 doesn't
-        /*values[j] = dbPluginMgr.getFile(tableResults.getValueAt(i,
+        /*values[j] = dbPluginMgr.getFile(tableResults.getUnsortedValueAt(i,
             // the identifier is the last column
             tableResults.getColumnCount()-1).toString()).getValue(fieldNames[j]).toString();*/
       }
@@ -1590,7 +1590,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           String dsn = null;
           // Group the file IDs by dataset name
           for(int i=0; i<allIds.length; ++i){
-            dsn = (String) tableResults.getValueAt(rows[i], fileDatasetNameColumn);
+            dsn = (String) tableResults.getUnsortedValueAt(rows[i], fileDatasetNameColumn);
             if(!datasetNameAndIds.containsKey(dsn)){
               datasetNameAndIds.put(dsn, new Vector());
             }
@@ -2156,7 +2156,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
  
   /**
-   * Called when mouse is pressed on the Import button
+   * Called from the right-click menu
    */
   private void importFiles(){
     if(!getSelectedIdentifier().equals("-1") && !importingFiles){
@@ -2165,13 +2165,25 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           importingFiles = true;
           // Get the dataset name and id
           String datasetID = getSelectedIdentifier();
-          String datasetName = dbPluginMgr.getDatasetName(datasetID);
+          // Well, again: DQ2 cannot lookup dataset name from id...
+          //String datasetName = dbPluginMgr.getDatasetName(datasetID);
+          String [] datasetNameFields = Util.getFileDatasetReference(dbPluginMgr.getDBName());
+          String datasetNameField = datasetNameFields[1];
+          int datasetNameIndex = -1;
+          for(int i=0; i<tableResults.getColumnNames().length; ++i){
+            if(tableResults.getColumnNames()[i].equalsIgnoreCase(datasetNameField)){
+              datasetNameIndex = i;
+              break;
+            }
+          }
+          String datasetName = tableResults.getUnsortedValueAt(tableResults.getSelectedRow(), datasetNameIndex).toString();
           // Find the list of files
           String [] regUrls = null;
           String [] regSizes = null;
           try{
-            regUrls = getImportFiles()[0];
-            regSizes = getImportFiles()[1];
+            String [][] importFiles = getImportFiles();
+            regUrls = importFiles[0];
+            regSizes = importFiles[1];
           }
           catch(Exception e){
             String error = "ERROR: could not get URLs to register";
@@ -2406,7 +2418,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
       frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-      pfns[i] = tableResults.getValueAt(selectedRows[i], pfnsColumnIndex);
+      pfns[i] = tableResults.getUnsortedValueAt(selectedRows[i], pfnsColumnIndex);
       frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     }
     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
@@ -2426,17 +2438,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     BrowserPanel wb = null;
     try{
       wb = new BrowserPanel(
-                      GridPilot.getClassMgr().getGlobalFrame(),
-                      "Choose files",
-                      finUrl,
-                      finBaseUrl,
-                      true,
-                      true,
-                      true,
-                      null,
-                      "",
-                      false);
-      wb.setAllowRegister(false);
+           GridPilot.getClassMgr().getGlobalFrame(),
+           "Choose files",
+           finUrl,
+           finBaseUrl,
+           true,
+           /*filter*/true,
+           /*navigation*/true,
+           null,
+           null,
+           false,
+           true,
+           false);
+
+      
+      Debug.debug("Disabling registering", 2);
     }
     catch(Exception eee){
       Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
@@ -2909,6 +2925,20 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     int [] rows = tableResults.getSelectedRows();
     String [] ids = getSelectedIdentifiers();
     String [] copyObjects = new String [ids.length];
+    if(tableName.equalsIgnoreCase("dataset")){
+      String nameField = Util.getNameField(dbPluginMgr.getDBName(), "dataset");
+      int nameIndex = -1;
+      for(int i=0; i<tableResults.getColumnNames().length; ++i){
+        if(tableResults.getColumnNames()[i].equalsIgnoreCase(nameField)){
+          nameIndex = i;
+        }
+      }
+      for(int i=0; i<ids.length; ++i){
+        copyObjects[i] = 
+          "'"+tableResults.getUnsortedValueAt(rows[i], nameIndex).toString()+"'::'"+
+          ids[i]+"'";
+      }
+    }
     if(tableName.equalsIgnoreCase("file")){
       String nameField = Util.getNameField(dbPluginMgr.getDBName(), "file");
       String [] datasetNameFields = Util.getFileDatasetReference(dbPluginMgr.getDBName());
@@ -2925,8 +2955,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       for(int i=0; i<ids.length; ++i){
         copyObjects[i] = 
-          "'"+tableResults.getValueAt(rows[i], datasetNameIndex).toString()+"'::'"+
-          tableResults.getValueAt(rows[i], nameIndex).toString()+"'::'"+
+          "'"+tableResults.getUnsortedValueAt(rows[i], datasetNameIndex).toString()+"'::'"+
+          tableResults.getUnsortedValueAt(rows[i], nameIndex).toString()+"'::'"+
           ids[i]+"'";
       }
     }
@@ -2952,7 +2982,30 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   public void paste(){
     String clip = getClipboardContents();
     Debug.debug("Pasting "+clip, 3);
-    String [] records = Util.split(clip);
+    // check if this is a 'normal' clipboard of the form <db> <table> <id1> <id2> ...
+    // or the more fancy <db> <table> 'dsname1'::'id1' 'dsname2'::'id2' ...
+    // or <db> <table> 'dsname1'::'name1'::'id1' 'dsname2'::'name2'::'id2' ...
+    String [] records = null;
+    if(clip.indexOf("'")>0){
+      String [] recs = Util.split(clip, "' '");
+      records = new String [recs.length+2];
+      String [] head = Util.split(recs[0]);
+      if(head.length<3){
+        return;
+      }
+      records[0] = head[0];
+      records[1] = head[1];
+      records[2] = head[2]+"'";
+      for(int i=1; i<recs.length-1; ++i){
+        records[i+2] = "'"+recs[i]+"'";
+      }
+      if(recs.length>1){
+        records[recs.length+1] = "'"+recs[recs.length-1];
+      }
+    }
+    else{
+      records = Util.split(clip);
+    }
     if(records.length<3){
       return;
     }
@@ -2975,8 +3028,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         // Only datasets have unique names.
         try{
           if(tableName.equalsIgnoreCase("dataset")){
-            name = GridPilot.getClassMgr().getDBPluginMgr(records[0]).getDatasetName(
-                records[i]);
+            // Now, DQ2 cannot even lookup dataset names from ID...
+            // Another ugly hack: we pass both id and name
+            // e.g. ATLAS dataset b2a80235-0be0-4b9d-9785-b12565c21fcd user.FrederikOrellana5894-ATLAS.csc11.002.Gee_500_pythia_photos_reson
+            //name = GridPilot.getClassMgr().getDBPluginMgr(records[0]).getDatasetName(
+            //    records[i]);
+            int index = records[i].indexOf("'::'");
+            datasetName = records[i].substring(1, index);
+            String rest = records[i].substring(index+4);
+            index = rest.indexOf("'::'");
+            id = rest.substring(0, index);
             if(!GridPilot.getClassMgr().getDBPluginMgr(dbName).getDatasetID(name).equals("-1")){            
               name = Util.getName("Cannot overwrite, please give new name",
                 "new-"+name);
@@ -2995,7 +3056,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             index = rest.indexOf("'::'");
             name = rest.substring(0, index);
             id = rest.substring(index+4, rest.length()-1);
-            
           }
           insertRecord(records[0], records[1], id, name, datasetName);
         }
