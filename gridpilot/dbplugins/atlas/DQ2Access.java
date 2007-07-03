@@ -27,7 +27,7 @@ public class DQ2Access {
   private final String addFilesToDatasetURL = "ws_content/rpc?operation=addFilesToDataset&API=0_3_0";
   private final String createDatasetURL = "ws_location/rpc?operation=addDataset&API=0_3_0";
   //private final String deleteDatasetURL = "ws_repository/rpc?operation=eraseDataset&API=0_3_0";
-  private final String deleteDatasetURL = "repository/dataset";
+  private final String deleteDatasetURL = "ws_content/rpc?operation=deleteDataset&API=0_3_0";
   //private final String deleteDatasetURL1 = "ws_content/rpc?operation=deleteDataset&API=0_3_0";
   //private final String deleteDatasetURL2 = "ws_location/rpc?operation=deleteDataset&API=0_3_0";
   private final String getLocationsURL = "ws_location/rpc?operation=queryDatasetLocations&API=0_3_0";
@@ -229,11 +229,11 @@ public class DQ2Access {
 	public boolean deleteDataset(String dsn, String vuid) throws IOException
 	{
 		// Delete from each catalog
-        String [] keys= new String [] {"dsn"};
-        String [] values = new String [] {dsn};
+        String [] keys= new String [] {"vuids"};
+        String [] values = new String [] {"['"+vuid+"']"};
         Debug.debug("Deleting "+dsn, 2);
         Debug.debug(" on "+deleteDatasetURL+" : "+wsSecure.protocolname, 2);
-		wsSecure.delete(deleteDatasetURL, keys, values);
+		    wsSecure.post(deleteDatasetURL, keys, values);
         //keys = new String [] {"vuid","delete"};
         //values = new String [] {vuid,"yes"};
         //wsSecure.post(deleteDatasetURL1, keys, values);
