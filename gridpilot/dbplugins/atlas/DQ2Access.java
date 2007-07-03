@@ -10,6 +10,7 @@ import gridpilot.Util;
 //import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.ietf.jgss.GSSCredential;
+import org.safehaus.uuid.UUIDGenerator;
 
 /**
  * Methods for manipulating DQ2 database records.
@@ -25,11 +26,13 @@ public class DQ2Access {
   //all this has to be retested and fixed
 
   private final String addFilesToDatasetURL = "ws_content/rpc?operation=addFilesToDataset&API=0_3_0";
-  private final String createDatasetURL = "ws_location/rpc?operation=addDataset&API=0_3_0";
-  //private final String deleteDatasetURL = "ws_repository/rpc?operation=eraseDataset&API=0_3_0";
+  private final String createDatasetURL = "ws_repository/rpc?operation=addDataset&API=0_3_0";
+  // delete all files of this dataset in DQ2
   private final String deleteDatasetURL = "ws_content/rpc?operation=deleteDataset&API=0_3_0";
-  //private final String deleteDatasetURL1 = "ws_content/rpc?operation=deleteDataset&API=0_3_0";
-  //private final String deleteDatasetURL2 = "ws_location/rpc?operation=deleteDataset&API=0_3_0";
+  // delete all locations of this dataset in DQ2
+  private final String deleteDatasetURL1 = "ws_location/rpc";
+  // Clears all dataset, dataset versions and dataset metadata for the given dataset
+  private final String deleteDatasetURL2 = "ws_repository/rpc";
   private final String getLocationsURL = "ws_location/rpc?operation=queryDatasetLocations&API=0_3_0";
   private final String getDatasetsURL = "ws_repository/rpc?operation=queryDatasetByVUIDs&API=0_3_0";
   private final String getFilesURL = "ws_content/rpc?operation=queryFilesInDataset&API=0_3_0";
@@ -73,29 +76,6 @@ public class DQ2Access {
 		{
 			e.printStackTrace();
 		}
-	}
-
-	/**
-	 * creates Dataset
-	 * @param dsn The Name of the DataSet to be created
-	 * returns the vuid of the created Dataset   
-	 */
-	public String createDataset(String dsn) throws IOException
-	{
-      String keys[]={"dsn", "update"};
-      String values[]={dsn, "yes"};
-      Debug.debug("Creating dataset with web service on "+createDatasetURL, 1);
-      String response=wsSecure.post(createDatasetURL, keys, values);
-      Debug.debug("createDataset response: "+response, 3);
-      String ret = parseVuid(URLDecoder.decode(response, "utf-8"));
-      if(ret.indexOf("DQDatasetExistsException")>-1 && ret.indexOf("'")>-1){
-        throw new IOException("ERROR: Dataset exists");
-      }
-      else if(ret.indexOf("Exception")>-1 && ret.indexOf("'")>-1){
-        throw new IOException("ERROR: exception from DQ2: "+
-            ret.replaceFirst(".*\\W+(\\w*Exception).*", "$1"));
-      }    
-      return ret;
 	}
 
   /**
@@ -146,7 +126,7 @@ public class DQ2Access {
    * @param vuid The ID of the DataSet to be created
    * NOTICE: this does not work: the vuid is ignored
    */
-  public String createDataset(String dsn, String vuid) throws IOException
+  public String createDataset(String dsn, String duid, String vuid) throws IOException
   {
     /*
     curl --user-agent "dqcurl" --silent --insecure --cert /tmp/x509up_u3804 --key /tmp/x509up_u3804 --config 8f543c27-ec95-4c02-9294-338cc4e29a36 https://atlddmcat.cern.ch:443/dq2/ws_repository/rpc
@@ -157,9 +137,15 @@ public class DQ2Access {
     data="API=0_3_0"
     data="tuid=ac25f251-2afd-493e-a642-102e7c908135"
     data="operation=addDataset"
-   */
-    String keys[] = {"dsn", "vuid"};
-    String values[] = {dsn, vuid};
+    */
+    if(vuid==null || vuid.equals("")){
+      vuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+    }
+    if(duid==null || duid.equals("")){
+      duid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+    }
+    String keys[] = {"dsn", "duid", "vuid"};
+    String values[] = {dsn, duid, vuid};
     Debug.debug("Creating dataset with web service on "+createDatasetURL, 1);
     String response = wsSecure.post(createDatasetURL, keys, values);
     String ret = parseVuid(URLDecoder.decode(response, "utf-8"));
@@ -170,7 +156,7 @@ public class DQ2Access {
       throw new IOException("ERROR: exception from DQ2: "+
           ret.replaceFirst(".*\\W+(\\w*Exception).*", "$1"));
     }    
-    return ret;
+    return vuid;
   }
 
 	/**
@@ -233,27 +219,15 @@ public class DQ2Access {
         String [] values = new String [] {"['"+vuid+"']"};
         Debug.debug("Deleting "+dsn, 2);
         Debug.debug(" on "+deleteDatasetURL+" : "+wsSecure.protocolname, 2);
-		    wsSecure.post(deleteDatasetURL, keys, values);
-        //keys = new String [] {"vuid","delete"};
-        //values = new String [] {vuid,"yes"};
-        //wsSecure.post(deleteDatasetURL1, keys, values);
-        //wsSecure.post(deleteDatasetURL2, keys, values);
+		wsSecure.post(deleteDatasetURL, keys, values);
+        keys = new String [] {"operation", "API", "vuids"};
+        values = new String [] {"deleteDataset", "0_3_0", "['"+vuid+"']"};
+        wsSecure.get(deleteDatasetURL1, keys, values);
+        keys = new String [] {"operation", "API", "dsn"};
+        values = new String [] {"trashDataset", "0_3_0", dsn};
+        wsSecure.get(deleteDatasetURL2, keys, values);
 		return true;
 	}
-
-  /**
-   * deletes a Dataset version
-   * @param vuid VUID of the Dataset to erase
-   */
-  public boolean deleteDatasetVersion(String vuid) throws IOException
-  {
-    String keys[]= {"vuid","delete"};
-    String values[] = {vuid,"yes"};
-    Debug.debug("Deleting "+vuid, 2);
-    Debug.debug(" on "+deleteDatasetURL+" : "+wsSecure.protocolname, 2);
-    wsSecure.get(deleteDatasetURL, keys, values);
-    return true;
-  }
 
 	/**
 	 * registers Dataset in Location
@@ -277,12 +251,12 @@ public class DQ2Access {
 	 */
 	public String parseVuid(String toParse)
 	{
-    // We have to parse something like
-    // {'version': 1, 'vuid': '709b2ae9-f827-4800-b577-e3a38a763983', 'duid': 'b98adabc-c7f5-4354-a0ac-7d65d95c2f16'}
-    Debug.debug("Parsing "+toParse, 3);
-    String ret = toParse.replaceFirst(".*'vuid': '([^']+)'.*", "$1");
-    Debug.debug("--> "+ret, 3);
-    return(ret);
+        // We have to parse something like
+        // {'version': 1, 'vuid': '709b2ae9-f827-4800-b577-e3a38a763983', 'duid': 'b98adabc-c7f5-4354-a0ac-7d65d95c2f16'}
+        Debug.debug("Parsing "+toParse, 3);
+        String ret = toParse.replaceFirst(".*'vuid': '([^']+)'.*", "$1");
+        Debug.debug("--> "+ret, 3);
+        return(ret);
 	}
 
 	/**
@@ -306,9 +280,9 @@ public class DQ2Access {
    */
 	public void deleteFromSite(String vuid, String site) throws IOException
 	{
-		String keys[]= {"vuid","site","delete"};
-		String values[] = {vuid,"[\"" + site + "\"]","yes"};
-		wsSecure.get(deleteLocationsURL, keys, values);	
+		String keys[]= {"vuid", "sites"};
+		String values[] = {vuid, "[\"" + site + "\"]"};
+		wsSecure.post(deleteLocationsURL, keys, values);	
 	}
 
 }

@@ -116,21 +116,21 @@ public class WebServiceConnection {
 		InputStream is=null;
 		try  {	is = huc.getInputStream(); 	} catch (IOException e)
 		{
-      Debug.debug(e.getMessage(), 2);
+            Debug.debug(e.getMessage(), 2);
 			is=huc.getErrorStream();
 		}
 		
 		int code = huc.getResponseCode(); 
-    BufferedReader in=null;
-    in = new BufferedReader(new InputStreamReader(is));
-    String line=null;
-    while ((line = in.readLine()) != null) {
-      result.append(line+"\n");
-    }
-    in.close();
-    huc.disconnect();
+        BufferedReader in=null;
+        in = new BufferedReader(new InputStreamReader(is));
+        String line=null;
+        while ((line = in.readLine()) != null) {
+          result.append(line+"\n");
+        }
+        in.close();
+        huc.disconnect();
 		if (code != HttpURLConnection.HTTP_OK) { 
-      throw new IOException (result.toString());
+            throw new IOException (result.toString());
 		}
 		return result.toString();
 	}
@@ -170,12 +170,12 @@ public class WebServiceConnection {
      */
     private String delete(URL theURL, String data) throws IOException
     {
-    Debug.debug(theURL.toString() + " " + data, 2);
+       Debug.debug(theURL.toString() + " " + data, 2);
         
         
         huc = getConnectiontoUrl(theURL); 
         
-    Debug.debug(huc.toString(), 2);
+        Debug.debug(huc.toString(), 2);
         
         huc.setRequestMethod("DELETE");
         huc.setDoInput(true);
@@ -191,7 +191,7 @@ public class WebServiceConnection {
         InputStream is=null;
         try  {  is = huc.getInputStream();  } catch (IOException e)
         {
-      Debug.debug(e.getMessage(), 2);
+            Debug.debug(e.getMessage(), 2);
             is=huc.getErrorStream();
         }
 
@@ -203,12 +203,12 @@ public class WebServiceConnection {
         while ((line = in.readLine()) != null) {
             result.append(line+"\n");
         }
-    
-    in.close();
-    huc.disconnect();
-    if (code != HttpURLConnection.HTTP_OK) { 
-      throw new IOException (result.toString());
-    }
+        
+        in.close();
+        huc.disconnect();
+        if (code != HttpURLConnection.HTTP_OK) { 
+          throw new IOException (result.toString());
+        }
 
         return result.toString();
     
@@ -237,12 +237,12 @@ public class WebServiceConnection {
 	 */
 	private String post(URL theURL, String data) throws IOException
 	{
-    Debug.debug(theURL.toString() + " " + data, 2);
+        Debug.debug(theURL.toString() + " " + data, 2);
 		
 		
 		huc = getConnectiontoUrl(theURL); 
 		
-    Debug.debug(huc.toString(), 2);
+        Debug.debug(huc.toString(), 2);
 		
 		huc.setRequestMethod("POST");
 		huc.setDoInput(true);
@@ -259,7 +259,7 @@ public class WebServiceConnection {
 		InputStream is=null;
 		try  {	is = huc.getInputStream(); 	} catch (IOException e)
 		{
-      Debug.debug(e.getMessage(), 2);
+            Debug.debug(e.getMessage(), 2);
 			is=huc.getErrorStream();
 		}
 
@@ -271,12 +271,12 @@ public class WebServiceConnection {
 		while ((line = in.readLine()) != null) {
 			result.append(line+"\n");
 		}
-    
-    in.close();
-    huc.disconnect();
-    if (code != HttpURLConnection.HTTP_OK) { 
-      throw new IOException (result.toString());
-    }
+        
+        in.close();
+        huc.disconnect();
+        if (code != HttpURLConnection.HTTP_OK) { 
+          throw new IOException (result.toString());
+        }
 
 		return result.toString();
 	
@@ -305,7 +305,7 @@ public class WebServiceConnection {
 	{
 		String params = urlencodeArray(keys, values);
 		String physicalAccessName = createFullPath(path);
-    Debug.debug("Using post URL "+physicalAccessName, 3);
+        Debug.debug("Using post URL "+physicalAccessName, 3);
 		URL postURL = new URL(physicalAccessName);
 		return post(postURL,params);		
 

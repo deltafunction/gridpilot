@@ -2232,7 +2232,7 @@ public class ATLASDatabase extends DBCache implements Database{
     if(!datasetExists){
       try{
         GridPilot.getClassMgr().getStatusBar().setLabel("Creating new dataset "+dsn);
-        vuid = dq2Access.createDataset(dsn);
+        vuid = dq2Access.createDataset(dsn, null, null);
         datasetExists = true;
       }
       catch(Exception e){
@@ -2352,7 +2352,6 @@ public class ATLASDatabase extends DBCache implements Database{
     
     String dsn = null;
     String vuid = null;
-    String assignedVuid = null;
     Vector fieldStrings = new Vector();
     Vector valueStrings = new Vector();
     
@@ -2386,21 +2385,7 @@ public class ATLASDatabase extends DBCache implements Database{
       if(getStop()){
         return false;
       }
-      
-      // Unfortunately DQ2 does not use the supplied vuid when creating,
-      // but generates a new one.
-      // So we have to update and change the vuid.
-      if(vuid!=null && !vuid.equals("")){
-        assignedVuid = dq2Access.createDataset(dsn, vuid);
-        if(assignedVuid!=null && !assignedVuid.equals(vuid)){
-          fieldStrings.add("vuid");
-          valueStrings.add(vuid);
-          vuid = assignedVuid;
-        }
-      }
-      else{
-        vuid = dq2Access.createDataset(dsn);
-      }
+      vuid = dq2Access.createDataset(dsn, vuid, null);
     }
     catch(Exception e){
       error = "ERROR: could not connect to DQ2 dataset at "+dq2Server+" on port "+dq2SecurePort+
