@@ -64,19 +64,14 @@ public class ATLASDatabase extends DBCache implements Database{
   private String fileBytes = null;
   private String fileChecksum = null;
   private int fileCatalogTimeout = 1000;
-  // If forceDelete is set to true, files will be attempted deleted on
-  // all physical locations and on the home catalog server MySQL alias
-  // and the home server will be de-registered in DQ, even if other
-  // catalog sites are registered in DQ than the home catalog or if there
-  // is no home catalog set.
   private HashMap dqLocationsCache = new HashMap();
   private HashMap queryResults = new HashMap();
   private boolean useCaching = false;
   private TiersOfAtlas toa = null;
   private HashSet httpSwitches = new HashSet();
-
-  private static boolean forceDelete = false;
-  private static boolean DELETE_FROM_SITES_ON_ALL_CATALOGS = false;
+  // when creating user datasets, this will be prepended with /grid/atlas
+  private String lfcUserBasePath = null;
+  private boolean forceFileDelete = false;
 
   public String connectTimeout = "10000";
   public String socketTimeout = "30000";
@@ -94,7 +89,9 @@ public class ATLASDatabase extends DBCache implements Database{
     logFile = GridPilot.getClassMgr().getLogFile();
     dbName = _dbName;
     
-    String useCachingStr = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "cache search results");
+    lfcUserBasePath = "/user/"+Util.getGridDatabaseUser()+"/";
+    
+    String useCachingStr = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "Cache search results");
     if(useCachingStr==null || useCachingStr.equalsIgnoreCase("")){
       useCaching = false;
     }
@@ -142,11 +139,11 @@ public class ATLASDatabase extends DBCache implements Database{
       }
     }
     // Get and cache the TOA file
-    String toaLocation = configFile.getValue(dbName, "tiers of atlas");
+    String toaLocation = configFile.getValue(dbName, "Tiers of atlas");
     toa = new TiersOfAtlas(toaLocation);
     
     // Set the timeout for querying file catalogs
-    String timeout = configFile.getValue(dbName, "file catalog timeout");
+    String timeout = configFile.getValue(dbName, "File catalog timeout");
     if(timeout!=null){
       try{
         fileCatalogTimeout = Integer.parseInt(timeout);
@@ -155,6 +152,16 @@ public class ATLASDatabase extends DBCache implements Database{
         logFile.addMessage("WARNING: could not parse file catalog timeout", e);
       }
     }
+    
+    String forceDeleteStr = null;
+    try{
+      forceDeleteStr = configFile.getValue(dbName, "Force file deletion");
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    
+    forceFileDelete = (forceDeleteStr!=null && forceDeleteStr.equalsIgnoreCase("yes"));
   }
 
   public void requestStop(){
@@ -1312,7 +1319,7 @@ public class ATLASDatabase extends DBCache implements Database{
    * LFC is not supported.
    */
   private void registerLFNs(String _catalogServer, String [] guids,
-      String [] lfns, String [] pfns, boolean sync)
+      String [] lfns, String [] pfns, String [] lfcPaths, boolean sync)
      throws RemoteException, ServiceException, MalformedURLException, SQLException {
     
     if(getStop()){
@@ -1395,8 +1402,8 @@ public class ATLASDatabase extends DBCache implements Database{
           if(sync){
             // First, just try and create the metadata entry - in case it's not there already
             try{
-              req = "INSERT INTO t_meta (sync, guid) VALUES " +
-                 "('', '"+guids[i]+"')";
+              req = "INSERT INTO t_meta (sync, guid, path) VALUES " +
+                 "('', '"+guids[i]+"', '"+lfcPaths[i]+"')";
               Debug.debug(">> "+req, 3);
               rowsAffected = conn.createStatement().executeUpdate(req);
               Debug.debug("rowsAffected "+rowsAffected, 3);
@@ -1813,12 +1820,8 @@ public class ATLASDatabase extends DBCache implements Database{
     
     clearCacheEntries("file");
     
-    // Find the LFNs to keep and those to delete.
+    // Find the LFNs to delete.
     String [] toDeleteLfns = null;
-    String [] toKeepGuids = null;
-    String [] toKeepLfns = null;
-    String [] toKeepSizes = null;
-    String [] toKeepChecksums = null;
     // NOTICE: we are assuming that there is a one-to-one mapping between
     //         lfns and guids. This is not necessarily the case...
     // TODO: improve
@@ -1826,46 +1829,8 @@ public class ATLASDatabase extends DBCache implements Database{
       GridPilot.getClassMgr().getStatusBar().setLabel("Finding LFNs...");
       DBResult currentFiles = getFiles(datasetID);
       toDeleteLfns = new String[fileIDs.length];
-      toKeepGuids = new String[currentFiles.values.length-fileIDs.length];
-      toKeepLfns = new String[currentFiles.values.length-fileIDs.length];
-      toKeepSizes = new String[currentFiles.values.length-fileIDs.length];
-      toKeepChecksums = new String[currentFiles.values.length-fileIDs.length];
-      int count = 0;
-      int count1 = 0;
-      boolean staysThere = false;
       for(int i=0; i<currentFiles.values.length; ++i){
-        staysThere = false;
-        for(int j=0; j<fileIDs.length; ++j){
-          if(currentFiles.getValue(i, "guid").toString().equalsIgnoreCase(fileIDs[j])){
-            staysThere = true;
-            break;
-          }
-        }
-        if(!staysThere){
-          toKeepGuids[count] = currentFiles.getValue(i, "guid").toString();
-          toKeepLfns[count] = currentFiles.getValue(i, "lfn").toString();
-          toKeepSizes[count] = currentFiles.getValue(i, "size").toString();
-          toKeepChecksums[count] = currentFiles.getValue(i, "checksum").toString();
-          if(toKeepGuids[count]==null || toKeepLfns[count]==null ||
-              toKeepGuids[count].equals("") || toKeepLfns[count].equals("")){
-            error = "ERROR: no guid/lfn for "+toKeepGuids[count]+"/"+toKeepLfns[count]+
-            ". Aborting delete; nothing deleted.";
-            logFile.addMessage(error);
-            GridPilot.getClassMgr().getStatusBar().setLabel(error);
-            return false;
-          }
-          ++count;
-        }
-        else{
-          toDeleteLfns[count1] = currentFiles.getValue(i, "lfn").toString();
-          ++count1;
-        }
-      }
-      if(count!=currentFiles.values.length-fileIDs.length){
-        error = "ERROR: inconsistency, cannot delete. Aborting; nothing deleted";
-        logFile.addMessage(error);
-        GridPilot.getClassMgr().getStatusBar().setLabel(error);
-        return false;
+        toDeleteLfns[i] = currentFiles.getValue(i, "lfn").toString();
       }
     }
     catch(Exception e){
@@ -1879,31 +1844,26 @@ public class ATLASDatabase extends DBCache implements Database{
 
     // First, if cleanup is true, check if files are ONLY registered in home file catalogue;
     // if so, delete the physical files and clean up the home file catalogue.
-    boolean complete = false;
-    boolean atLeastOneDeleted = false;
     boolean deletePhysOk = true;
     DQ2Locations locations = null;
     boolean deleteFromCatalogOK = true;
-    if(cleanup){
-      if(!forceDelete){
-        try{
-          locations = getLocations("'"+datasetID+"'")[0];
-          if(checkIfOnlyOneLocation(locations)){
-            complete = (locations.getComplete().length>0);
-          }
-          else{
-            return false;
-          }
-        }
-        catch(Exception e){
-          error = "WARNING: problem with locations. There may be orphaned LFNs in DQ2, " +
-          "and/or wrongly registered locations in DQ2 and/or " +
-          "wrongly registered file catalog entries.";
-          logFile.addMessage(error, e);
-          return false;
+    try{
+      locations = getLocations("'"+datasetID+"'")[0];
+      if(cleanup){
+        if(!forceFileDelete){
+          checkIfOnlyOneLocation(locations);
         }
       }
-
+    }
+    catch(Exception e){
+      error = "WARNING: problem with locations of "+Util.arrayToString(fileIDs)+
+      ". There may be orphaned LFNs in DQ2, " +
+      "and/or wrongly registered locations in DQ2 and/or " +
+      "wrongly registered file catalog entries.";
+      logFile.addMessage(error, e);
+      return false;
+    }
+    if(cleanup){
       // Delete physical files
       int deleted = 0;
       try{
@@ -1912,7 +1872,6 @@ public class ATLASDatabase extends DBCache implements Database{
       catch(Exception e){
         deletePhysOk = false;
       }
-      atLeastOneDeleted = (deleted>0);
       deletePhysOk = (deleted==toDeleteLfns.length);
       
       if(getStop()){
@@ -1940,29 +1899,29 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     
     boolean eraseFromDQ2Ok = true;
-    if(forceDelete || !cleanup){
-      eraseFromDQ2Ok = eraseFromDQ2(datasetID, complete, atLeastOneDeleted, deletePhysOk,
-          toKeepGuids, toKeepLfns, toKeepSizes, toKeepChecksums, locations);
+    if(forceFileDelete || !cleanup){
+      eraseFromDQ2Ok = eraseFromDQ2(datasetID, deletePhysOk, fileIDs, locations);
     }
     return eraseFromDQ2Ok && deletePhysOk && deleteFromCatalogOK;
   }
   
   /**
    * Checks if the home catalog is the only registered location.
-   * If not, throws an exception, if yes, returns a list containing
-   * only the location to delete.
-   * @throws Exception 
+   * @throws Exception if more than one catalog is registered or 
+   * only one is registered and it is not the home catalog.
    */
-  private boolean checkIfOnlyOneLocation(DQ2Locations locations) throws Exception{
+  private void checkIfOnlyOneLocation(DQ2Locations locations) throws Exception{
     //GridPilot.getClassMgr().getStatusBar().setLabel("Finding locations...");
     // Check that there is only one location registered,
     // that it is the homeServer and that it has a MySQL Alias
+    Debug.debug("Checking locations "+Util.arrayToString(locations.getComplete())+
+        " -- "+Util.arrayToString(locations.getIncomplete())+
+        (locations.getIncomplete().length+locations.getComplete().length), 2);
     if(locations.getIncomplete().length+locations.getComplete().length>1){
       error = "More than one location registered: "+
       Util.arrayToString(locations.getIncomplete())+" "+
       Util.arrayToString(locations.getComplete());
-      logFile.addMessage(error);
-      return false;
+      throw new Exception(error);
     }
     String location = null;
     if(locations.getIncomplete().length==1){
@@ -1974,123 +1933,34 @@ public class ATLASDatabase extends DBCache implements Database{
     if(!location.equalsIgnoreCase(homeSite) || homeServerMysqlAlias==null ||
         homeServerMysqlAlias.equals("")){
       error = "Can only delete files on home catalog server MySQL alias. Ignoring "+location;
-      logFile.addMessage(error);
-      return false;
+      throw new Exception(error);
     }
-    return true;
   }
   
   // Deregister the LFNs from this vuid on DQ2.
   // NOTICE that this changes the vuid of the dataset...
-  private boolean eraseFromDQ2(String datasetID, boolean complete, boolean atLeastOneDeleted,
-      boolean deletePhysOk, String [] toKeepGuids, String [] toKeepLfns, String [] toKeepSizes,
-      String [] toKeepChecksums, DQ2Locations locations){
-    String dsn = null;
-    dsn = getDatasetName(datasetID);
+  private boolean eraseFromDQ2(String datasetID, boolean deletePhysOk,
+      String [] fileIDs,
+      DQ2Locations locations){
     DQ2Access dq2Access = null;
-    String [] completeLocations = null;
-    String [] incompleteLocations = null;
     try{
       dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
-      try{
-        completeLocations = locations.getComplete();
-        // Delete all locations from old vuid (a new vuid will be created)
-        for(int i=0; i<completeLocations.length; ++i){
-          if(getStop()){
-            return false;
-          }
-          try{
-            dq2Access.deleteFromSite(datasetID, locations.getComplete()[i]);
-          }
-          catch(Exception e){
-          }
+      // If all files were deleted clear the locations (or the home location)
+      if(deletePhysOk){
+        // If only the home location is registered and files have been deleted
+        // succesfully, remove the files from DQ2
+        if(!forceFileDelete){
+          checkIfOnlyOneLocation(locations);
         }
-      }
-      catch(Exception ee){
-        ee.printStackTrace();
-      }
-      try{
-        incompleteLocations = locations.getIncomplete();
-        for(int i=0; i<incompleteLocations.length; ++i){
-          if(getStop()){
-            return false;
-          }
-          try{
-            dq2Access.deleteFromSite(datasetID, locations.getComplete()[i]);
-          }
-          catch(Exception e){
-          }
-        }
-      }
-      catch(Exception ee){
-        ee.printStackTrace();
-      }
-      // Clear the lfns by creating new dataset with the same dsn
-      Debug.debug("Creating new version of dataset "+dsn, 2);
-      dq2Access.createNewDatasetVersion(dsn);
-      // Add the lfns we don't delete
-      Debug.debug("Re-adding original LFNs "+Util.arrayToString(toKeepLfns), 2);
-      if(toKeepLfns.length>0 && toKeepGuids.length>0){
-        dq2Access.addLFNsToDataset(datasetID, toKeepGuids, toKeepLfns, toKeepSizes,
-            toKeepChecksums);
-      }
-      // Re-register all locations
-      Debug.debug("Re-registering original locations "+Util.arrayToString(toKeepLfns), 2);
-      if(completeLocations!=null && completeLocations.length>0){
-        for(int i=0; i<completeLocations.length; ++i){
-          if(getStop()){
-            return false;
-          }
-          try{
-            if(locations.getComplete()[i].equalsIgnoreCase(homeSite)){
-              continue;
-            }
-            dq2Access.registerLocation(datasetID, dsn,
-                true, completeLocations[i]);
-          }
-          catch(Exception e){
-          }
-        }
-      }
-      if(incompleteLocations!=null && incompleteLocations.length>0){
-        for(int i=0; i<incompleteLocations.length; ++i){
-          if(getStop()){
-            return false;
-          }
-          try{
-            if(locations.getIncomplete()[i].equalsIgnoreCase(homeSite)){
-              continue;
-            }
-            dq2Access.registerLocation(datasetID, dsn,
-                false, incompleteLocations[i]);
-          }
-          catch(Exception e){
-          }
-        }
-      }
-      // Re-register home location if we failed to delete all files
-      if(!deletePhysOk || toKeepGuids.length>0){
-        try{
-          dq2Access.registerLocation(datasetID, dsn,
-              (complete && !atLeastOneDeleted), homeSite);
-        }
-        catch(Exception ee){
-          ee.printStackTrace();
-        }
-      }
-      else{
-        // Otherwise clear the home location
-        try{
-          dq2Access.deleteFromSite(datasetID, homeSite);
-        }
-        catch(Exception ee){
-        }
+        // This will only be reached if the deletion of the physical files went well
+        // or cleanup was not selected.
+        dq2Access.deleteFiles(datasetID, fileIDs);
+        dq2Access.deleteFromSite(datasetID, homeSite);
       }
     }
     catch(Exception eee){
       eee.printStackTrace();
-      error = "WARNING: could not connect to "+dq2Url+" on port "+dq2SecurePort+". Writing " +
-         "not possible";
+      error = "WARNING: could not connect delete files from DQ2.";
       logFile.addMessage(error, eee);
       return false;
     }
@@ -2108,28 +1978,20 @@ public class ATLASDatabase extends DBCache implements Database{
         throw new InterruptedException();
       }
       // Get the pfns
-      if(DELETE_FROM_SITES_ON_ALL_CATALOGS){
-        findPFNs(datasetID, toDeleteLfns[i], false);
-        for(int j=2; j<pfnVector.size(); ++j){
-          pfns.add((String) pfnVector.get(j));
+      try{
+        // if we're using an alias
+        if(homeServerMysqlAlias!=null){
+          Collections.addAll(pfns, lookupPFNs(homeServerMysqlAlias, toDeleteLfns[i], true));
+        }
+        // otherwise, it is assumed that we're using a mysql catalog
+        else{
+          Collections.addAll(pfns, lookupPFNs(homeSite, toDeleteLfns[i], true));
         }
       }
-      else{
-        try{
-          // if we're using an alias
-          if(homeServerMysqlAlias!=null){
-            Collections.addAll(pfns, lookupPFNs(homeServerMysqlAlias, toDeleteLfns[i], true));
-          }
-          // otherwise, it is assumed that we're using a mysql catalog
-          else{
-            Collections.addAll(pfns, lookupPFNs(homeSite, toDeleteLfns[i], true));
-          }
-        }
-        catch(Exception e){
-          logFile.addMessage("WARNING: failed to find PFNs to delete, "+
-              Util.arrayToString(toDeleteLfns)+
-              " on "+homeServerMysqlAlias+" or "+homeSite+". Please delete them by hand.");
-        }
+      catch(Exception e){
+        logFile.addMessage("WARNING: failed to find PFNs to delete, "+
+            Util.arrayToString(toDeleteLfns)+
+            " on "+homeServerMysqlAlias+" or "+homeSite+". Please delete them by hand.");
       }
     }      
     // Then construct a HashMap of Vectors of files on the same server.
@@ -2299,15 +2161,28 @@ public class ATLASDatabase extends DBCache implements Database{
           " in file catalog "+homeServerMysqlAlias);
       
       try{
-        // if we're using an alias, write in alias and flag for writing
+        // If we're using an alias, write in alias and flag for writing.
+        // Also, in this case, remember to write the path, so it can be
+        // synced to LFC
+        // if lfn is not an lpn, i.e. has no slashes, prepend the user path
+        String path;
+        int lastSlash = lfn.lastIndexOf("/");
+        if(lastSlash<0){
+          path = lfcUserBasePath;
+        }
+        else{
+          path = lfn.substring(0, lastSlash);
+          path = (path.startsWith("/")?"":"/")+path+((path.endsWith("/")?"":"/"));
+          
+        }
         if(homeServerMysqlAlias!=null){
           registerLFNs(homeServerMysqlAlias, new String [] {guid},
-              new String [] {lfn}, new String [] {url}, true);
+              new String [] {lfn}, new String [] {url}, new String [] {path}, true);
         }
         // otherwise, assume that home server is a mysql server and just write there
         else{
           registerLFNs(toa.getFileCatalogServer(homeSite, false), new String [] {guid},
-              new String [] {lfn}, new String [] {url}, false);
+              new String [] {lfn}, new String [] {url}, null, false);
         }
       }
       catch(Exception e){

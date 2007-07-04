@@ -38,6 +38,7 @@ public class DQ2Access {
   private final String getFilesURL = "ws_content/rpc?operation=queryFilesInDataset&API=0_3_0";
   private final String addLocationsURL = "ws_location/rpc?operation=addDatasetReplica&API=0_3_0";
   private final String deleteLocationsURL = "ws_location/rpc?operation=deleteDatasetReplica&API=0_3_0";
+  private final String deleteFilesURL = "ws_content/rpc?operation=deleteFilesFromDataset&API=0_3_0";
   /**
    * Instantiates a DQ2Acces object
    * @param httpServer insecure DQ2WebServer   
@@ -260,29 +261,42 @@ public class DQ2Access {
   }
 
   /**
-   * deletes files from dataset by creating a new version returns new vuid
-   * 
-   * @param dsn Dataset name
-   */
-  public String createNewDatasetVersion(String dsn) throws IOException
-  {
-    String keys[]= {"dsn","update"};
-    String values[] = {dsn,"yes"};
-    String newvuidmess = wsSecure.post(deleteDatasetURL, keys, values);
-    return  parseVuid(newvuidmess);
-  }
-  
-  /**
-   * deletes a site registered with a dataset identified by vuid
+   * Deletes a site registered with a dataset identified by vuid.
+   * If site is "ALL_SITES", all sites are deleted.
    * 
    * @param vuid    Dataset identifier
    * @param site    Site name
    */
   public void deleteFromSite(String vuid, String site) throws IOException
   {
-    String keys[]= {"vuid", "sites"};
-    String values[] = {vuid, "[\"" + site + "\"]"};
-    wsSecure.post(deleteLocationsURL, keys, values);
+    String [] keys= null;
+    String [] values = null;
+    if(site.equals("ALL_SITES")){
+      keys = new String [] {"operation", "API", "vuids"};
+      values = new String [] {"deleteDataset", "0_3_0", "['"+vuid+"']"};
+      wsSecure.get(deleteDatasetURL1, keys, values);
+
+    }
+    else{
+      keys = new String [] {"vuid", "sites"};
+      values = new String [] {vuid, "[\"" + site + "\"]"};
+      wsSecure.post(deleteLocationsURL, keys, values);
+    }
   }
+  
+  /**
+   * Deletes a site registered with a dataset identified by vuid.
+   * If site is "ALL_SITES", all sites are deleted.
+   * 
+   * @param vuid    Dataset identifier
+   * @param site    Site name
+   */
+  public void deleteFiles(String vuid, String [] guids) throws IOException
+  {
+    String [] keys = new String [] {"vuid", "guids"};
+    String [] values = new String [] {vuid, "['" + Util.arrayToString(guids, "', '") + "']"};
+    wsSecure.post(deleteFilesURL, keys, values);
+  }
+
 
 }
