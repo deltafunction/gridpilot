@@ -2190,6 +2190,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             Debug.debug(error, 1);
             GridPilot.getClassMgr().getStatusBar().setLabel(error);
             GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+            importingFiles = false;
             return;
           }         
           if(regUrls!=null){
@@ -2198,6 +2199,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             String lfn = null;
             String pfn = null;
             String size = null;
+            boolean ok = true;
             for(int i=0; i<regUrls.length; ++i){
               try{
                 pfn = regUrls[i];
@@ -2215,17 +2217,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                     datasetID, datasetName, uuid, lfn, pfn, size, null, false);
               }
               catch(Exception e){
+                ok = false;
                 GridPilot.getClassMgr().getLogFile().addMessage(
                     "ERROR: could not register "+pfn+" for file "+
                     lfn+" in dataset "+datasetName, e);
-                GridPilot.getClassMgr().getGlobalFrame(
-                ).monitoringPanel.statusBar.setLabel("ERROR: could not register "+pfn);
+                //GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("ERROR: could not register "+pfn);
               }
             }
-            GridPilot.getClassMgr().getGlobalFrame(
-               ).monitoringPanel.statusBar.setLabel("Registration done");
-            importingFiles = false;
+            if(ok){
+              //GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Registration done");
+            }
           }
+          importingFiles = false;
         }
       }.start();
     }

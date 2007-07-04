@@ -837,16 +837,16 @@ public class BeginningWizard{
     if(cbAtlas.isSelected() && tfHomeSite.getText()!=null && !tfHomeSite.getText().equals("")){
       if(tfHomeSiteAlias.getText()!=null && !tfHomeSiteAlias.getText().equals("")){
         configFile.setAttributes(
-            new String [] {"ATLAS"},
-            new String [] {"home site"},
-            new String [] {tfHomeSite.getText().trim()+" "+tfHomeSiteAlias.getText().trim()}
+            new String [] {"ATLAS", "ATLAS"},
+            new String [] {"Enabled", "home site"},
+            new String [] {"yes", tfHomeSite.getText().trim()+" "+tfHomeSiteAlias.getText().trim()}
             );
       }
       else{
         configFile.setAttributes(
-            new String [] {"ATLAS"},
-            new String [] {"home site"},
-            new String [] {tfHomeSite.getText().trim()}
+            new String [] {"ATLAS", "ATLAS"},
+            new String [] {"Enabled", "home site"},
+            new String [] {"yes", tfHomeSite.getText().trim()}
             );
       }
     }
