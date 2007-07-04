@@ -38,45 +38,45 @@ public class DQ2Access {
   private final String getFilesURL = "ws_content/rpc?operation=queryFilesInDataset&API=0_3_0";
   private final String addLocationsURL = "ws_location/rpc?operation=addDatasetReplica&API=0_3_0";
   private final String deleteLocationsURL = "ws_location/rpc?operation=deleteDatasetReplica&API=0_3_0";
-	/**
-	 * Instantiates a DQ2Acces object
-	 * @param httpServer insecure DQ2WebServer   
-	 * @param httpPort insecure Server Port
-	 * @param httpsServer secure DQ2WebServer
-	 * @param httpsPort secure Server Port
-	 */
+  /**
+   * Instantiates a DQ2Acces object
+   * @param httpServer insecure DQ2WebServer   
+   * @param httpPort insecure Server Port
+   * @param httpsServer secure DQ2WebServer
+   * @param httpsPort secure Server Port
+   */
   public DQ2Access(/*String httpServer, int httpPort,*/
       String httpsServer, int httpsPort)
   {
     new DQ2Access(httpsServer, httpsPort, baseUrl);
   }
-	public DQ2Access(/*String httpServer, int httpPort,*/
-			String httpsServer, int httpsPort, String path)
-	{
-		try 
-		{
-			//wsPlain = new WebServiceConnection(httpServer, httpPort, baseUrl);
+  public DQ2Access(/*String httpServer, int httpPort,*/
+      String httpsServer, int httpsPort, String path)
+  {
+    try 
+    {
+      //wsPlain = new WebServiceConnection(httpServer, httpPort, baseUrl);
             Debug.debug("New web service connection: "+httpsServer+" - "+httpsPort+" - "+path, 1);
-			wsSecure = new SecureWebServiceConnection(httpsServer, httpsPort, path);
+      wsSecure = new SecureWebServiceConnection(httpsServer, httpsPort, path);
 
-			GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-			//GlobusCredential globusCred = null;
-			if(credential instanceof GlobusGSSCredentialImpl){
-				//globusCred =
-					((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-			}
+      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+      //GlobusCredential globusCred = null;
+      if(credential instanceof GlobusGSSCredentialImpl){
+        //globusCred =
+          ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+      }
 
             //wsSecure.loadGlobusCredentialCertificate(globusCred);
             wsSecure.loadLocalProxyCertificate(Util.getProxyFile().getAbsolutePath());
-			wsSecure.trustWrongHostName();
-			wsSecure.trustAllCerts();
-			wsSecure.init();
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-		}
-	}
+      wsSecure.trustWrongHostName();
+      wsSecure.trustAllCerts();
+      wsSecure.init();
+    }
+    catch (Exception e)
+    {
+      e.printStackTrace();
+    }
+  }
 
   /**
    * Find dataset names
@@ -159,29 +159,29 @@ public class DQ2Access {
     return vuid;
   }
 
-	/**
-	 * adds Files to Dataset
+  /**
+   * adds Files to Dataset
      * @param vuid Version Unique Identifier of the Dataset to add the Files
      * @param guids Grid Unique Identfiers
-	 * @param lfns Logical File Names
+   * @param lfns Logical File Names
      * @param sizes File sizes in bytes. May be null
      * @param checkSums <checksum type>:<checksum>. May be null
-	 */
-	public boolean addLFNsToDataset(String vuid, String[] lfns, String[] guids,
+   */
+  public boolean addLFNsToDataset(String vuid, String[] lfns, String[] guids,
         String[] sizes, String [] checkSums) throws IOException
-	{	
-		if (lfns.length!=guids.length) 
-			throw new IOException("Number of LFNs must be the same as Number of GUIDs. " +
-					"Was "+lfns.length+" vs "+guids.length);
-		
-		/* e.g. files=[{'checksum': 'md5:68589db6b28b0758e96a0e07444c44fc', 
+  {  
+    if (lfns.length!=guids.length) 
+      throw new IOException("Number of LFNs must be the same as Number of GUIDs. " +
+          "Was "+lfns.length+" vs "+guids.length);
+    
+    /* e.g. files=[{'checksum': 'md5:68589db6b28b0758e96a0e07444c44fc', 
          * 'guid': 'ee8ffcb3-a97f-4b77-8e8c-11f923648b82', 
          * 'lfn': 'user.FrederikOrellana5894-ATLAS.testdataset1-some.file.1', 
          * 'size': 41943040L}]
         */
 
         StringBuffer data=new StringBuffer("[");
-		for(int c=0; c<guids.length; c++){
+    for(int c=0; c<guids.length; c++){
             data.append("{");
             if(checkSums!=null && checkSums[c]!=null && !checkSums[c].equals("")){
               data.append("'checksum': '"+checkSums[c]+"'");
@@ -189,7 +189,7 @@ public class DQ2Access {
             else{
               data.append("'checksum': None");
             }
-			data.append(", 'guid': '"+guids[c]+"'");
+            data.append(", 'guid': '"+guids[c]+"'");
             data.append(", 'lfn': '"+lfns[c]+"'");
             if(sizes!=null && sizes[c]!=null && !sizes[c].equals("")){
               // the size is of the form <bytes>L
@@ -199,90 +199,90 @@ public class DQ2Access {
               data.append(", 'size': None");
             }
             data.append("}");
-		}
+    }
         data.append("]");
-		String keys[]={"files","vuid","vuids","update"};
-		String values[]={data.toString(),vuid,"[]","yes"};
+    String keys[]={"files","vuid","vuids","update"};
+    String values[]={data.toString(),vuid,"[]","yes"};
         
-		wsSecure.post(addFilesToDatasetURL, keys, values);
-		return true;
-	}	
+    wsSecure.post(addFilesToDatasetURL, keys, values);
+    return true;
+  }  
 
-	/**
-	 * deletes a Dataset
-	 * @param lfn Logical Dataset Name of the Dataset to erase
-	 */
-	public boolean deleteDataset(String dsn, String vuid) throws IOException
-	{
-		// Delete from each catalog
+  /**
+   * deletes a Dataset
+   * @param lfn Logical Dataset Name of the Dataset to erase
+   */
+  public boolean deleteDataset(String dsn, String vuid) throws IOException
+  {
+    // Delete from each catalog
         String [] keys= new String [] {"vuids"};
         String [] values = new String [] {"['"+vuid+"']"};
         Debug.debug("Deleting "+dsn, 2);
         Debug.debug(" on "+deleteDatasetURL+" : "+wsSecure.protocolname, 2);
-		wsSecure.post(deleteDatasetURL, keys, values);
+        wsSecure.post(deleteDatasetURL, keys, values);
         keys = new String [] {"operation", "API", "vuids"};
         values = new String [] {"deleteDataset", "0_3_0", "['"+vuid+"']"};
         wsSecure.get(deleteDatasetURL1, keys, values);
         keys = new String [] {"operation", "API", "dsn"};
         values = new String [] {"trashDataset", "0_3_0", dsn};
         wsSecure.get(deleteDatasetURL2, keys, values);
-		return true;
-	}
+        return true;
+  }
 
-	/**
-	 * registers Dataset in Location
-	 * @param vuid the vuid of the dataset being registered in a site
-	 * @param complete set the complete Status to yes (true) or no(false)
-	 */
-	public boolean registerLocation(String vuid, String dsn, boolean complete, String location) throws IOException
-	{
-		String com;
-		if (complete) com = "1";
-		else com = "0";
-		String keys[]={"complete","vuid","dsn","site"};
-		String values[]={com,vuid,dsn,location};
-		wsSecure.post(addLocationsURL, keys, values);
-		return true;
-	}
-	  
-	/**
-	 * parses one vuid out of a dq2 output
-	 * @param toParse String output from dq webserice access
-	 */
-	public String parseVuid(String toParse)
-	{
+  /**
+   * registers Dataset in Location
+   * @param vuid the vuid of the dataset being registered in a site
+   * @param complete set the complete Status to yes (true) or no(false)
+   */
+  public boolean registerLocation(String vuid, String dsn, boolean complete, String location) throws IOException
+  {
+    String com;
+    if (complete) com = "1";
+    else com = "0";
+    String keys[]={"complete","vuid","dsn","site"};
+    String values[]={com,vuid,dsn,location};
+    wsSecure.post(addLocationsURL, keys, values);
+    return true;
+  }
+    
+  /**
+   * parses one vuid out of a dq2 output
+   * @param toParse String output from dq webserice access
+   */
+  public String parseVuid(String toParse)
+  {
         // We have to parse something like
         // {'version': 1, 'vuid': '709b2ae9-f827-4800-b577-e3a38a763983', 'duid': 'b98adabc-c7f5-4354-a0ac-7d65d95c2f16'}
         Debug.debug("Parsing "+toParse, 3);
         String ret = toParse.replaceFirst(".*'vuid': '([^']+)'.*", "$1");
         Debug.debug("--> "+ret, 3);
         return(ret);
-	}
+  }
 
-	/**
-	 * deletes files from dataset by creating a new version returns new vuid
-	 * 
-	 * @param dsn Dataset name
-	 */
-	public String createNewDatasetVersion(String dsn) throws IOException
-	{
-		String keys[]= {"dsn","update"};
-		String values[] = {dsn,"yes"};
-		String newvuidmess = wsSecure.post(deleteDatasetURL, keys, values);
-		return	parseVuid(newvuidmess);	
-	}
-	
+  /**
+   * deletes files from dataset by creating a new version returns new vuid
+   * 
+   * @param dsn Dataset name
+   */
+  public String createNewDatasetVersion(String dsn) throws IOException
+  {
+    String keys[]= {"dsn","update"};
+    String values[] = {dsn,"yes"};
+    String newvuidmess = wsSecure.post(deleteDatasetURL, keys, values);
+    return  parseVuid(newvuidmess);
+  }
+  
   /**
    * deletes a site registered with a dataset identified by vuid
    * 
    * @param vuid    Dataset identifier
    * @param site    Site name
    */
-	public void deleteFromSite(String vuid, String site) throws IOException
-	{
-		String keys[]= {"vuid", "sites"};
-		String values[] = {vuid, "[\"" + site + "\"]"};
-		wsSecure.post(deleteLocationsURL, keys, values);	
-	}
+  public void deleteFromSite(String vuid, String site) throws IOException
+  {
+    String keys[]= {"vuid", "sites"};
+    String values[] = {vuid, "[\"" + site + "\"]"};
+    wsSecure.post(deleteLocationsURL, keys, values);
+  }
 
 }
