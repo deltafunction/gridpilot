@@ -26,7 +26,10 @@ import java.util.regex.Pattern;
 import javax.swing.JProgressBar;
 import javax.xml.rpc.ServiceException;
 
+import org.globus.gsi.GlobusCredential;
+import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.util.GlobusURL;
+import org.ietf.jgss.GSSCredential;
 
 import gridpilot.ConfigFile;
 import gridpilot.DBCache;
@@ -1337,6 +1340,20 @@ public class ATLASDatabase extends DBCache implements Database{
         if(user.equals("")){
           gridAuth = true;
           user = Util.getGridDatabaseUser();
+          GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+          GlobusCredential globusCred = null;
+          if(credential instanceof GlobusGSSCredentialImpl){
+            globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+          }
+          if(gridAuth){
+            try{
+              Util.activateSsl(globusCred);
+            }
+            catch(Exception e){
+              Debug.debug("ERROR: "+e.getMessage(), 1);
+              throw e;
+            }
+          }
         }
         // Make the connection
         GridPilot.getClassMgr().sqlConnection(
@@ -2265,7 +2282,10 @@ public class ATLASDatabase extends DBCache implements Database{
       catch(Exception e){
         error = "WARNING: could not update dataset "+dsn+" in DQ2 "+
         ". Registration of "+lfn+" in DQ2 NOT done";
+        GridPilot.getClassMgr().getStatusBar().setLabel("Registration of " +lfn+
+        " with DQ2 FAILED!");
         logFile.addMessage(error, e);
+        throw e;
       }
     }
     
