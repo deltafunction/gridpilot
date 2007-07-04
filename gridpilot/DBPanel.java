@@ -1555,7 +1555,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       msg += "?";
       
-      final JCheckBox cbCleanup = new JCheckBox("Delete physical files", true);
+      final JCheckBox cbCleanup = new JCheckBox("Delete physical file(s)", true);
       ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
       try{
         int choice = confirmBox.getConfirm("Confirm delete",
@@ -1677,7 +1677,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     msg += "?";
 
-    final JCheckBox cbCleanup = new JCheckBox("Delete physical files", true);
+    final JCheckBox cbCleanup = new JCheckBox("Delete physical file(s)", true);
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     try{
       int choice = confirmBox.getConfirm("Confirm delete",
