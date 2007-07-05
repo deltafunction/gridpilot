@@ -1693,7 +1693,7 @@ public class DBPluginMgr extends DBCache implements Database{
       catch(Exception e){
       }
     }
-    if(checksum!=null && !checksum.matches("\\w+:.*")){
+    if(checksum!=null && !checksum.equals("") && !checksum.matches("\\w+:.*")){
       checksum = "md5:"+checksum;
     }
     return checksum;
@@ -1720,6 +1720,8 @@ public class DBPluginMgr extends DBCache implements Database{
     String datasetID = sourceMgr.getDatasetID(datasetName);
     //String id = sourceMgr.getFileID(datasetName, fileName);
     String [] urls = sourceMgr.getFileURLs(datasetName, id, true)[1];
+    Debug.debug("Creating new file "+id+":"+name+" in dataset "+
+        datasetID+":"+datasetName+" with PFNs: "+Util.arrayToString(urls), 2);
     
     String uuid = id;
     // In case the file was copied from a virtual table from a job repository,
@@ -1735,17 +1737,29 @@ public class DBPluginMgr extends DBCache implements Database{
     
     boolean ok = true;
     boolean finalOk = true;
-    for(int i=0; i<urls.length; ++i){
-      try{
-        registerFileLocation(datasetID, datasetName, uuid, name, urls[i],
-            size, checksum, false);
-        finalOk = finalOk || ok;
-        ok = true;
-      }
-      catch(Exception e){
-        logFile.addMessage("ERROR: could not register "+urls[i]+" for file "+
-            name+" in dataset "+datasetName, e);
-        ok = false;
+    if(urls.length==0){
+      logFile.addMessage("WARNING: no URLs for file "+name+". Inserting anyway.");
+      Debug.debug("Registering new file: "+datasetID+":"+datasetName+":"+uuid+":"+name+":"+":"+
+          size+":"+checksum, 2);
+      registerFileLocation(datasetID, datasetName, uuid, name, "",
+          size, checksum, false);
+      finalOk = true;
+    }
+    else{
+      for(int i=0; i<urls.length; ++i){
+        try{
+          Debug.debug("Registering new file: "+datasetID+":"+datasetName+":"+uuid+":"+name+":"+urls[i]+":"+
+              size+":"+checksum, 2);
+          registerFileLocation(datasetID, datasetName, uuid, name, urls[i],
+              size, checksum, false);
+          finalOk = finalOk || ok;
+          ok = true;
+        }
+        catch(Exception e){
+          logFile.addMessage("ERROR: could not register "+urls[i]+" for file "+
+              name+" in dataset "+datasetName, e);
+          ok = false;
+        }
       }
     }
     if(!finalOk){
