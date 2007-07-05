@@ -1645,8 +1645,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               //tableResults.removeRow(rows[i]);
             }
             tableResults.tableModel.fireTableDataChanged();
-            GridPilot.getClassMgr().getStatusBar().setLabel(
-               "Deleting file(s) done.");
+            //GridPilot.getClassMgr().getStatusBar().setLabel("Deleting file(s) done.");
             statusBar.removeProgressBar(pb);
           }
           stopWorking();
@@ -3042,8 +3041,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             index = rest.indexOf("'::'");
             id = rest.substring(0, index);
             if(!GridPilot.getClassMgr().getDBPluginMgr(dbName).getDatasetID(name).equals("-1")){            
-              name = Util.getName("Cannot overwrite, please give new name",
-                "new-"+name);
+              name = Util.getName("Cannot overwrite, please give new name", "new-"+name);
               if(name==null || name.equals("")){
                 return;
               }
@@ -3058,7 +3056,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             String rest = records[i].substring(index+4);
             index = rest.indexOf("'::'");
             name = rest.substring(0, index);
-            id = rest.substring(index+4, rest.length()-1);
+            id = rest.substring(index+4, rest.length()-2);
           }
           insertRecord(records[0], records[1], id, name, datasetName);
         }
@@ -3295,7 +3293,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     // only if this is a job-only database (no file catalog) do we deny creating
     // orphaned datasets (data provenance enforcement).
-    if(ok || dbPluginMgr.isFileCatalog()){
+    if(ok || dbPluginMgr.isFileCatalog() && !dbPluginMgr.isJobRepository()){
       
       ////
       String [] targetFields = dbPluginMgr.getFieldNames("dataset");

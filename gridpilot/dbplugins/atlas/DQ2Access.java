@@ -3,13 +3,13 @@ package gridpilot.dbplugins.atlas;
 import java.io.IOException;
 import java.net.URLDecoder;
 
+import javax.swing.SwingUtilities;
+
 import gridpilot.Debug;
 import gridpilot.GridPilot;
+import gridpilot.MyThread;
 import gridpilot.Util;
 
-//import org.globus.gsi.GlobusCredential;
-import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
-import org.ietf.jgss.GSSCredential;
 import org.safehaus.uuid.UUIDGenerator;
 
 /**
@@ -21,9 +21,6 @@ public class DQ2Access {
   //private WebServiceConnection wsPlain;
   private SecureWebServiceConnection wsSecure;
   private String baseUrl="dq2/";
-
-  //TODO TODO TODO TODO : I've tried to adapt to v 0.3, but not tested,
-  //all this has to be retested and fixed
 
   private final String addFilesToDatasetURL = "ws_content/rpc?operation=addFilesToDataset&API=0_3_0";
   private final String createDatasetURL = "ws_repository/rpc?operation=addDataset&API=0_3_0";
@@ -39,6 +36,8 @@ public class DQ2Access {
   private final String addLocationsURL = "ws_location/rpc?operation=addDatasetReplica&API=0_3_0";
   private final String deleteLocationsURL = "ws_location/rpc?operation=deleteDatasetReplica&API=0_3_0";
   private final String deleteFilesURL = "ws_content/rpc?operation=deleteFilesFromDataset&API=0_3_0";
+  private boolean checkingProxy = false;
+  private boolean proxyOk = false;
   /**
    * Instantiates a DQ2Acces object
    * @param httpServer insecure DQ2WebServer   
@@ -59,16 +58,6 @@ public class DQ2Access {
       //wsPlain = new WebServiceConnection(httpServer, httpPort, baseUrl);
             Debug.debug("New web service connection: "+httpsServer+" - "+httpsPort+" - "+path, 1);
       wsSecure = new SecureWebServiceConnection(httpsServer, httpsPort, path);
-
-      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-      //GlobusCredential globusCred = null;
-      if(credential instanceof GlobusGSSCredentialImpl){
-        //globusCred =
-          ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-      }
-
-            //wsSecure.loadGlobusCredentialCertificate(globusCred);
-            wsSecure.loadLocalProxyCertificate(Util.getProxyFile().getAbsolutePath());
       wsSecure.trustWrongHostName();
       wsSecure.trustAllCerts();
       wsSecure.init();
@@ -78,14 +67,51 @@ public class DQ2Access {
       e.printStackTrace();
     }
   }
+  
+  private void checkProxy() throws Exception{
+    MyThread t = (new MyThread(){
+      public void run(){
+        if(checkingProxy){
+          while(!proxyOk){
+            try{
+              this.wait(1000);
+            }
+            catch (InterruptedException e) {
+              e.printStackTrace();
+              return;
+            }
+          }
+          return;
+        }
+        else{
+          checkingProxy = true;
+          proxyOk = false;
+        }
+        try{
+          GridPilot.getClassMgr().getGridCredential();
+          wsSecure.loadLocalProxyCertificate(Util.getProxyFile().getAbsolutePath());
+        }
+        catch(Exception ee){
+          ee.printStackTrace();
+        }
+        finally{
+          checkingProxy = false;
+          proxyOk = true;
+        }
+      }
+    });     
+    Util.waitForThread(t, "checkProxy", 0, "checkProxy");
+  }
 
   /**
    * Find dataset names
    * @param vuidString The vuid of the DataSet to be located
    * returns the raw response from the DQ2 web server  
    */
-  public String getDatasets(String vuidString) throws IOException
+  public String getDatasets(String vuidString) throws Exception
   {
+    Debug.debug("Checking proxy", 3);
+    checkProxy();
     String keys[]={"vuids"};
     String values[]={vuidString};
     Debug.debug("Finding datasets with web service on "+getDatasetsURL, 1);
@@ -98,8 +124,10 @@ public class DQ2Access {
    * @param dsn The Name of the DataSet to be located
    * returns the raw response from the DQ2 web server  
    */
-  public String getDatasetLocations(String vuidsString) throws IOException
+  public String getDatasetLocations(String vuidsString) throws Exception
   {
+    Debug.debug("Checking proxy", 3);
+    checkProxy();
     String keys[]={"vuids"};
     String values[]={vuidsString};
     Debug.debug("Finding dataset locations with web service on "+getLocationsURL, 1);
@@ -112,8 +140,10 @@ public class DQ2Access {
    * @param vuid The VUID of the DataSet
    * returns the raw response from the DQ2 web server  
    */
-  public String getDatasetFiles(String vuidsString) throws IOException
+  public String getDatasetFiles(String vuidsString) throws Exception
   {
+    Debug.debug("Checking proxy", 3);
+    checkProxy();
     String keys[]={"vuids"};
     String values[]={vuidsString};
     Debug.debug("Finding files of "+vuidsString+" with web service on "+getFilesURL, 1);
@@ -127,8 +157,10 @@ public class DQ2Access {
    * @param vuid The ID of the DataSet to be created
    * NOTICE: this does not work: the vuid is ignored
    */
-  public String createDataset(String dsn, String duid, String vuid) throws IOException
+  public String createDataset(String dsn, String duid, String vuid) throws Exception
   {
+    Debug.debug("Checking proxy", 3);
+    checkProxy();
     /*
     curl --user-agent "dqcurl" --silent --insecure --cert /tmp/x509up_u3804 --key /tmp/x509up_u3804 --config 8f543c27-ec95-4c02-9294-338cc4e29a36 https://atlddmcat.cern.ch:443/dq2/ws_repository/rpc
     data="vuid=b2a80235-0be0-4b9d-9785-b12565c21fcd"
@@ -167,10 +199,13 @@ public class DQ2Access {
    * @param lfns Logical File Names
      * @param sizes File sizes in bytes. May be null
      * @param checkSums <checksum type>:<checksum>. May be null
+   * @throws Exception 
    */
   public boolean addLFNsToDataset(String vuid, String[] lfns, String[] guids,
-        String[] sizes, String [] checkSums) throws IOException
-  {  
+        String[] sizes, String [] checkSums) throws Exception
+  {
+    Debug.debug("Checking proxy", 3);
+    checkProxy();
     if (lfns.length!=guids.length) 
       throw new IOException("Number of LFNs must be the same as Number of GUIDs. " +
           "Was "+lfns.length+" vs "+guids.length);
@@ -181,25 +216,25 @@ public class DQ2Access {
          * 'size': 41943040L}]
         */
 
-        StringBuffer data=new StringBuffer("[");
+    StringBuffer data=new StringBuffer("[");
     for(int c=0; c<guids.length; c++){
-            data.append("{");
-            if(checkSums!=null && checkSums[c]!=null && !checkSums[c].equals("")){
-              data.append("'checksum': '"+checkSums[c]+"'");
-            }
-            else{
-              data.append("'checksum': None");
-            }
-            data.append(", 'guid': '"+guids[c]+"'");
-            data.append(", 'lfn': '"+lfns[c]+"'");
-            if(sizes!=null && sizes[c]!=null && !sizes[c].equals("")){
-              // the size is of the form <bytes>L
-              data.append(", 'size': "+sizes[c]+(sizes[c].endsWith("L")?"":"L"));
-            }
-            else{
-              data.append(", 'size': None");
-            }
-            data.append("}");
+      data.append("{");
+      if(checkSums!=null && checkSums[c]!=null && !checkSums[c].equals("")){
+        data.append("'checksum': '"+checkSums[c]+"'");
+      }
+      else{
+        data.append("'checksum': None");
+      }
+      data.append(", 'guid': '"+guids[c]+"'");
+      data.append(", 'lfn': '"+lfns[c]+"'");
+      if(sizes!=null && sizes[c]!=null && !sizes[c].equals("")){
+        // the size is of the form <bytes>L
+        data.append(", 'size': "+sizes[c]+(sizes[c].endsWith("L")?"":"L"));
+      }
+      else{
+        data.append(", 'size': None");
+      }
+      data.append("}");
     }
         data.append("]");
     String keys[]={"files","vuid","vuids","update"};
@@ -213,21 +248,23 @@ public class DQ2Access {
    * deletes a Dataset
    * @param lfn Logical Dataset Name of the Dataset to erase
    */
-  public boolean deleteDataset(String dsn, String vuid) throws IOException
+  public boolean deleteDataset(String dsn, String vuid) throws Exception
   {
+    Debug.debug("Checking proxy", 3);
+    checkProxy();
     // Delete from each catalog
-        String [] keys= new String [] {"vuids"};
-        String [] values = new String [] {"['"+vuid+"']"};
-        Debug.debug("Deleting "+dsn, 2);
-        Debug.debug(" on "+deleteDatasetURL+" : "+wsSecure.protocolname, 2);
-        wsSecure.post(deleteDatasetURL, keys, values);
-        keys = new String [] {"operation", "API", "vuids"};
-        values = new String [] {"deleteDataset", "0_3_0", "['"+vuid+"']"};
-        wsSecure.get(deleteDatasetURL1, keys, values);
-        keys = new String [] {"operation", "API", "dsn"};
-        values = new String [] {"trashDataset", "0_3_0", dsn};
-        wsSecure.get(deleteDatasetURL2, keys, values);
-        return true;
+    String [] keys= new String [] {"vuids"};
+    String [] values = new String [] {"['"+vuid+"']"};
+    Debug.debug("Deleting "+dsn, 2);
+    Debug.debug(" on "+deleteDatasetURL+" : "+wsSecure.protocolname, 2);
+    wsSecure.post(deleteDatasetURL, keys, values);
+    keys = new String [] {"operation", "API", "vuids"};
+    values = new String [] {"deleteDataset", "0_3_0", "['"+vuid+"']"};
+    wsSecure.get(deleteDatasetURL1, keys, values);
+    keys = new String [] {"operation", "API", "dsn"};
+    values = new String [] {"trashDataset", "0_3_0", dsn};
+    wsSecure.get(deleteDatasetURL2, keys, values);
+    return true;
   }
 
   /**
@@ -235,8 +272,11 @@ public class DQ2Access {
    * @param vuid the vuid of the dataset being registered in a site
    * @param complete set the complete Status to yes (true) or no(false)
    */
-  public boolean registerLocation(String vuid, String dsn, boolean complete, String location) throws IOException
+  public boolean registerLocation(String vuid, String dsn, boolean complete, String location)
+     throws Exception
   {
+    Debug.debug("Checking proxy", 3);
+    checkProxy();
     String com;
     if (complete) com = "1";
     else com = "0";
@@ -252,12 +292,12 @@ public class DQ2Access {
    */
   public String parseVuid(String toParse)
   {
-        // We have to parse something like
-        // {'version': 1, 'vuid': '709b2ae9-f827-4800-b577-e3a38a763983', 'duid': 'b98adabc-c7f5-4354-a0ac-7d65d95c2f16'}
-        Debug.debug("Parsing "+toParse, 3);
-        String ret = toParse.replaceFirst(".*'vuid': '([^']+)'.*", "$1");
-        Debug.debug("--> "+ret, 3);
-        return(ret);
+    // We have to parse something like
+    // {'version': 1, 'vuid': '709b2ae9-f827-4800-b577-e3a38a763983', 'duid': 'b98adabc-c7f5-4354-a0ac-7d65d95c2f16'}
+    Debug.debug("Parsing "+toParse, 3);
+    String ret = toParse.replaceFirst(".*'vuid': '([^']+)'.*", "$1");
+    Debug.debug("--> "+ret, 3);
+    return(ret);
   }
 
   /**
@@ -267,8 +307,10 @@ public class DQ2Access {
    * @param vuid    Dataset identifier
    * @param site    Site name
    */
-  public void deleteFromSite(String vuid, String site) throws IOException
+  public void deleteFromSite(String vuid, String site) throws Exception
   {
+    Debug.debug("Checking proxy", 3);
+    checkProxy();
     String [] keys= null;
     String [] values = null;
     if(site.equals("ALL_SITES")){
@@ -291,8 +333,10 @@ public class DQ2Access {
    * @param vuid    Dataset identifier
    * @param site    Site name
    */
-  public void deleteFiles(String vuid, String [] guids) throws IOException
+  public void deleteFiles(String vuid, String [] guids) throws Exception
   {
+    Debug.debug("Checking proxy", 3);
+    checkProxy();
     String [] keys = new String [] {"vuid", "guids"};
     String [] values = new String [] {vuid, "['" + Util.arrayToString(guids, "', '") + "']"};
     wsSecure.post(deleteFilesURL, keys, values);

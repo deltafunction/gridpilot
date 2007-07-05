@@ -39,6 +39,9 @@ public class MySQLLookupPFN  extends LookupPFN {
     GridPilot.getClassMgr().sqlConnection(
         alias, driver, database, user, passwd, gridAuth,
         db.connectTimeout, db.socketTimeout, db.lrcPoolSize);
+    if(gridAuth){
+      ATLASDatabase.activateSsl();
+    }
     Connection conn = GridPilot.getClassMgr().getDBConnection(alias);
     // First query the t_lfn table to get the guid
     String req = null;

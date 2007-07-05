@@ -25,6 +25,16 @@ public class LFCLookupPFN extends LookupPFN {
     Debug.debug("Connecting to DLI web service at "+dliUrl.toExternalForm(), 2);
     String [] pfns = null;
     String [] ret = null;
+    // If the LFN starts with "user." assume lfcUserBasePath
+    if(lfn.startsWith("user.")){
+      String atlasLPN = basePath+db.lfcUserBasePath+lfn;
+      try{
+        pfns = dli.getDataLocationInterface(dliUrl).listReplicas(
+            "lfn", atlasLPN);
+      }
+      catch(Exception e){
+      }
+    }
     for(int i=0; i<db.pathConventions; ++i){
       if(db.getStop() || !db.findPFNs){
         return null;

@@ -69,10 +69,13 @@ public class ATLASDatabase extends DBCache implements Database{
   private boolean useCaching = false;
   private TiersOfAtlas toa = null;
   private HashSet httpSwitches = new HashSet();
-  // when creating user datasets, this will be prepended with /grid/atlas
-  private String lfcUserBasePath = null;
   private boolean forceFileDelete = false;
+  private DQ2Access dq2Access = null;
+ 
+  private static boolean sslActivated = false;
 
+  // when creating user datasets, this will be prepended with /grid/atlas
+  public String lfcUserBasePath = null;
   public String connectTimeout = "10000";
   public String socketTimeout = "30000";
   public String lrcPoolSize = "5";
@@ -89,7 +92,7 @@ public class ATLASDatabase extends DBCache implements Database{
     logFile = GridPilot.getClassMgr().getLogFile();
     dbName = _dbName;
     
-    lfcUserBasePath = "/user/"+Util.getGridDatabaseUser()+"/";
+    lfcUserBasePath = "/users/"+Util.getGridDatabaseUser()+"/";
     
     String useCachingStr = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "Cache search results");
     if(useCachingStr==null || useCachingStr.equalsIgnoreCase("")){
@@ -120,6 +123,15 @@ public class ATLASDatabase extends DBCache implements Database{
     dq2Url = "http://"+dq2Server+(dq2Port==null?"":":"+dq2Port)+
        (dq2Path.startsWith("/")?dq2Path:"/"+dq2Path)+(dq2Path.endsWith("/")?"":"/");
     error = "";
+
+    try{
+      dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
+    }
+    catch(Exception e){
+      error = "ERROR: could connect to DQ2 at "+dq2Url+" on port "+dq2SecurePort;
+      logFile.addMessage(error, e);
+    }
+    
     pfnVector = new Vector();
 
     // Set preferred download sites
@@ -355,7 +367,6 @@ public class ATLASDatabase extends DBCache implements Database{
             //    "operation=queryDatasetLocations&API=0_3_0&dsns=[]&vuids="+"["+vuidsString+"]", 3);
             //ret = readGetUrl(new URL(url));
             //ret = URLDecoder.decode(ret, "utf-8");
-            DQ2Access dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
             str = dq2Access.getDatasets("['"+vuid+"']").trim();
           }
           catch(Exception e){
@@ -667,13 +678,12 @@ public class ATLASDatabase extends DBCache implements Database{
       String str = readGetUrl(url);*/
       String str;
       try{
-        DQ2Access dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
         str = dq2Access.getDatasetFiles("['"+vuid+"']");
         // get rid of time stamp.
         str = str.replaceFirst("\\((.*),[^,]+\\)", "$1").trim();
         Debug.debug("Found files : "+str, 3);
       }
-      catch(IOException e1){
+      catch(Exception e1){
         error = "Could not get file names for "+vuid;
         Debug.debug(error, 2);
         return null;
@@ -724,6 +734,7 @@ public class ATLASDatabase extends DBCache implements Database{
           checksum = "";
         }
         String catalogs = "";
+        Debug.debug("Finding PFNs "+findPFNs, 2);
         if(findPFNs){
           try{
             catalogs = Util.arrayToString(findPFNs(vuid, lfn, findAll).toArray());
@@ -744,7 +755,7 @@ public class ATLASDatabase extends DBCache implements Database{
         for(int k=0; k<fields.length; ++k){
           if(fields[k].equalsIgnoreCase("lfn")){
             //recordVector.add(lfn);
-            recordVector.add((lfn.startsWith("/")?"":"/")+makeAtlasPath(lfn));
+            recordVector.add(/*(lfn.startsWith("/")?"":"/")+*//*makeAtlasPath(lfn)*/lfn);
           }
           else if(fields[k].equalsIgnoreCase("dsn")){
             recordVector.add(dsn);
@@ -828,10 +839,10 @@ public class ATLASDatabase extends DBCache implements Database{
       //    "operation=queryDatasetLocations&API=0_3_0&dsns=[]&vuids="+"["+vuidsString+"]", 3);
       //ret = readGetUrl(new URL(url));
       //ret = URLDecoder.decode(ret, "utf-8");
-      DQ2Access dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
       ret = dq2Access.getDatasetLocations("["+vuidsString+"]");
     }
     catch(Exception e){
+      e.printStackTrace();
       error = "WARNING: problem with getLocations. "+e.getMessage();
       throw new IOException(error);
     }
@@ -1125,13 +1136,11 @@ public class ATLASDatabase extends DBCache implements Database{
    * LFC is not supported.
    */
   private void deleteLFNs(String _catalogServer, String [] lfns)
-     throws RemoteException, ServiceException, MalformedURLException, SQLException {
+     throws Exception {
     
     if(getStop()){
       return;
     }
-    
-    clearCacheEntries("file");
     
     // get rid of the :/, which GlobusURL doesn't like
     String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
@@ -1152,6 +1161,7 @@ public class ATLASDatabase extends DBCache implements Database{
       if(user.equals("")){
         gridAuth = true;
         user = Util.getGridDatabaseUser();
+        activateSsl();
       }
       // Make the connection
       GridPilot.getClassMgr().sqlConnection(
@@ -1229,7 +1239,7 @@ public class ATLASDatabase extends DBCache implements Database{
    * Flags a set of LFNs to be deleted on a MySQL alias catalog.
    */
   private void setDeleteLFNs(String _catalogServer, String [] lfns)
-     throws RemoteException, ServiceException, MalformedURLException, SQLException {
+     throws Exception {
     
     if(getStop()){
       return;
@@ -1259,6 +1269,9 @@ public class ATLASDatabase extends DBCache implements Database{
       GridPilot.getClassMgr().sqlConnection(
           alias, driver, database, user, passwd, gridAuth,
           connectTimeout, socketTimeout, lrcPoolSize);
+      if(gridAuth){
+        activateSsl();
+      }
       Connection conn = GridPilot.getClassMgr().getDBConnection(alias);
       String lfn = null;
       int rowsAffected = 0;
@@ -1270,6 +1283,8 @@ public class ATLASDatabase extends DBCache implements Database{
         
         try{
           lfn = lfns[i];
+          // get rid of the path if any
+          lfn = lfn.replaceFirst("^.*/([^/]+)$", "$1");
           // First query the t_lfn table to get the guid
           String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
           ResultSet rset = null;
@@ -1299,6 +1314,7 @@ public class ATLASDatabase extends DBCache implements Database{
           }
         }
         catch(Exception e){
+          e.printStackTrace();
           error = "WARNING: problem deleting lfn "+lfns[i]+" on "+catalogServer;
           logFile.addMessage(error);
         }
@@ -1310,6 +1326,19 @@ public class ATLASDatabase extends DBCache implements Database{
       Debug.debug(error, 1);
       throw new MalformedURLException(error);
     }
+  }
+  
+  public static void activateSsl() throws Exception{
+    if(sslActivated){
+      return;
+    }
+    GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+    GlobusCredential globusCred = null;
+    if(credential instanceof GlobusGSSCredentialImpl){
+      globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+    }
+    Util.activateSsl(globusCred);
+    sslActivated = true;
   }
   
   /**
@@ -1347,20 +1376,7 @@ public class ATLASDatabase extends DBCache implements Database{
         if(user.equals("")){
           gridAuth = true;
           user = Util.getGridDatabaseUser();
-          GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-          GlobusCredential globusCred = null;
-          if(credential instanceof GlobusGSSCredentialImpl){
-            globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-          }
-          if(gridAuth){
-            try{
-              Util.activateSsl(globusCred);
-            }
-            catch(Exception e){
-              Debug.debug("ERROR: "+e.getMessage(), 1);
-              throw e;
-            }
-          }
+          activateSsl();
         }
         // Make the connection
         GridPilot.getClassMgr().sqlConnection(
@@ -1565,7 +1581,9 @@ public class ATLASDatabase extends DBCache implements Database{
       pfnVector.clear();
       fileBytes = null;
       fileChecksum = null;
+      Debug.debug("Checking locations "+Util.arrayToString(locationsArray), 3);
       for(int i=0; i<locationsArray.length; ++i){
+        Debug.debug("Checking location "+locationsArray[i], 3);
         if(locationsArray[i]==null || ((String) locationsArray[i]).matches("\\s*")){
           continue;
         }
@@ -1818,19 +1836,24 @@ public class ATLASDatabase extends DBCache implements Database{
       return false;
     }
     
-    clearCacheEntries("file");
-    
     // Find the LFNs to delete.
     String [] toDeleteLfns = null;
     // NOTICE: we are assuming that there is a one-to-one mapping between
     //         lfns and guids. This is not necessarily the case...
     // TODO: improve
+    DBResult allFiles = null;
+    int count = 0;
     try{
-      GridPilot.getClassMgr().getStatusBar().setLabel("Finding LFNs...");
-      DBResult currentFiles = getFiles(datasetID);
+      allFiles = getFiles(datasetID);
       toDeleteLfns = new String[fileIDs.length];
-      for(int i=0; i<currentFiles.values.length; ++i){
-        toDeleteLfns[i] = currentFiles.getValue(i, "lfn").toString();
+      for(int i=0; i<allFiles.values.length; ++i){
+        for(int j=0; j<fileIDs.length; ++j){
+          if(fileIDs[j].equalsIgnoreCase((String) allFiles.getValue(i, "guid"))){
+            toDeleteLfns[count] = allFiles.getValue(i, "lfn").toString();
+            ++count;
+            break;
+          }
+        }
       }
     }
     catch(Exception e){
@@ -1898,10 +1921,15 @@ public class ATLASDatabase extends DBCache implements Database{
       }
     }
     
+    boolean allFilesDeleted = (allFiles.values.length==fileIDs.length);
     boolean eraseFromDQ2Ok = true;
     if(forceFileDelete || !cleanup){
-      eraseFromDQ2Ok = eraseFromDQ2(datasetID, deletePhysOk, fileIDs, locations);
+      eraseFromDQ2Ok = eraseFromDQ2(datasetID, deletePhysOk, fileIDs, allFilesDeleted, locations);
     }
+    
+    clearCacheEntries("file");
+    clearCacheEntries("dataset");
+    
     return eraseFromDQ2Ok && deletePhysOk && deleteFromCatalogOK;
   }
   
@@ -1932,7 +1960,7 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     if(!location.equalsIgnoreCase(homeSite) || homeServerMysqlAlias==null ||
         homeServerMysqlAlias.equals("")){
-      error = "Can only delete files on home catalog server MySQL alias. Ignoring "+location;
+      error = "Can only delete files on home catalog server or MySQL alias. Ignoring "+location;
       throw new Exception(error);
     }
   }
@@ -1940,11 +1968,8 @@ public class ATLASDatabase extends DBCache implements Database{
   // Deregister the LFNs from this vuid on DQ2.
   // NOTICE that this changes the vuid of the dataset...
   private boolean eraseFromDQ2(String datasetID, boolean deletePhysOk,
-      String [] fileIDs,
-      DQ2Locations locations){
-    DQ2Access dq2Access = null;
+      String [] fileIDs, boolean allFilesDeleted, DQ2Locations locations){
     try{
-      dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
       // If all files were deleted clear the locations (or the home location)
       if(deletePhysOk){
         // If only the home location is registered and files have been deleted
@@ -1955,7 +1980,9 @@ public class ATLASDatabase extends DBCache implements Database{
         // This will only be reached if the deletion of the physical files went well
         // or cleanup was not selected.
         dq2Access.deleteFiles(datasetID, fileIDs);
-        dq2Access.deleteFromSite(datasetID, homeSite);
+        if(allFilesDeleted){
+          dq2Access.deleteFromSite(datasetID, homeSite);
+        }
       }
     }
     catch(Exception eee){
@@ -2075,15 +2102,6 @@ public class ATLASDatabase extends DBCache implements Database{
   public void registerFileLocation(String vuid, String dsn, String guid,
       String lfn, String url, String size, String checksum, boolean datasetComplete) throws Exception {
 
-    DQ2Access dq2Access = null;
-    try{
-      dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
-    }
-    catch(Exception e){
-      error = "WARNING: could not connect to DQ2 at "+dq2Url+" on port "+dq2SecurePort+
-      ". Registration of "+lfn+" in DQ2 will NOT be done";
-      logFile.addMessage(error, e);
-    }
     boolean datasetExists = false;
     // Check if dataset already exists and has the same id
     try{
@@ -2123,17 +2141,20 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     
     if(datasetExists){
-      if(size!=null && !size.endsWith("L")){
+      if(size!=null && !size.equals("") && !size.endsWith("L")){
         // The DQ2 conventions seems to be that the file size is like e.g. 41943040L 
         size = size+"L";
       }
-      if(checksum!=null && !checksum.matches("\\w+:.*")){
+      if(checksum!=null && !checksum.equals("") && !checksum.matches("\\w+:.*")){
         // If no type is given, we assume it's an md5 sum.
         checksum = "md5:"+checksum;
       }
       
+      // Strip off the path - DQ2 LFNs don't have a path - the path is only
+      // used by LFC
+      String shortLfn = lfn.replaceFirst("^.*/([^/]+)$", "$1");
       String [] guids = new String[] {guid};
-      String [] lfns = new String[] {lfn};
+      String [] lfns = new String[] {shortLfn};
       String [] sizes = new String[] {size};
       String [] checksums = new String[] {checksum};
       try{
@@ -2172,7 +2193,9 @@ public class ATLASDatabase extends DBCache implements Database{
         }
         else{
           path = lfn.substring(0, lastSlash);
-          path = (path.startsWith("/")?"":"/")+path+((path.endsWith("/")?"":"/"));
+          if(!path.equals("")){
+            path = (path.startsWith("/")?"":"/")+path+((path.endsWith("/")?"":"/"));
+          }
           
         }
         if(homeServerMysqlAlias!=null){
@@ -2256,9 +2279,7 @@ public class ATLASDatabase extends DBCache implements Database{
       logFile.addMessage(error);
       return false;
     }
-    DQ2Access dq2Access = null;
     try{
-      dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
       for(int i=0; i<values.length; ++i){
         if(fields[i].equalsIgnoreCase("dsn")){
           dsn = (String) values[i];
@@ -2324,17 +2345,7 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     
     clearCacheEntries("dataset");
-    
-    DQ2Access dq2Access = null;
-    try{
-      dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
-    }
-    catch(Exception e){
-      error = "ERROR: could connect to DQ2 at "+dq2Url+" on port "+dq2SecurePort;
-      logFile.addMessage(error, e);
-      return false;
-    }
-    
+        
     boolean exists = false;
     try{
       String checkVuid = getDatasetID(dsn);
@@ -2374,14 +2385,14 @@ public class ATLASDatabase extends DBCache implements Database{
       if(fields[i].equalsIgnoreCase("vuid")){
         error = "WARNING: cannot change vuid";
         //GridPilot.getClassMgr().getStatusBar().setLabel(error);
-        logFile.addMessage(error+" "+vuid);
+        Debug.debug(error+" "+vuid, 1);
         //return false;
       }
       // dsn
       else if(fields[i].equalsIgnoreCase("dsn")){
         error = "WARNING: cannot change dsn";
         //GridPilot.getClassMgr().getStatusBar().setLabel(error);
-        logFile.addMessage(error+" "+dsn);
+        Debug.debug(error+" "+dsn, 1);
         //return false;
       }
       // complete, incomplete
@@ -2450,7 +2461,7 @@ public class ATLASDatabase extends DBCache implements Database{
               }
             }
           }
-          catch(IOException e){
+          catch(Exception e){
             error = "WARNING: could not update locations for "+vuid;
             GridPilot.getClassMgr().getStatusBar().setLabel(error);
             e.printStackTrace();
@@ -2470,17 +2481,7 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     
     clearCacheEntries("dataset");
-    
-    DQ2Access dq2Access = null;
-    try{
-      dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
-    }
-    catch(Exception e){
-      error = "ERROR: could connect to DQ2 at "+dq2Url+" on port "+dq2SecurePort;
-      logFile.addMessage(error, e);
-      return false;
-    }
-    
+        
     String dsn = null;
     boolean exists = false;
     try{
@@ -2533,7 +2534,7 @@ public class ATLASDatabase extends DBCache implements Database{
     try{
       dq2Access.deleteDataset(dsn, datasetID);
     }
-    catch(IOException e){
+    catch(Exception e){
       error = "ERROR: Could not delete dataset "+dsn;
       logFile.addMessage(error, e);
       GridPilot.getClassMgr().getStatusBar().setLabel(error);
