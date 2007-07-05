@@ -47,6 +47,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JCheckBox cbFindAllFiles = new JCheckBox();
   private JButton bDownload = new JButton("Replicate file(s)");
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
+  private JPopupMenu pmCreateDSMenu = new JPopupMenu();
+  private JMenuItem miWithInput = new JMenuItem("with selected input dataset(s)");
+  private JMenuItem miWithoutInput = new JMenuItem("from scratch");
   private JButton bSubmit = new JButton("Submit job(s)");
   private JButton bMonitor = new JButton("Monitor job(s)");
   private JButton bDeleteRecord = new JButton("Delete record(s)");
@@ -480,6 +483,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     
     if(tableName.equalsIgnoreCase("dataset")){
       
+      
+      miWithInput.addActionListener(new ActionListener(){
+        public void actionPerformed(final ActionEvent e){
+          createDatasets(true);
+        }});
+      miWithoutInput.addActionListener(new ActionListener(){
+        public void actionPerformed(final ActionEvent e){
+          createDatasets(false);
+        }});
+      pmCreateDSMenu.add(miWithInput);
+      pmCreateDSMenu.add(miWithoutInput);
+      
       tableResults.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent e){
           if(e.getClickCount()==2){
@@ -515,7 +530,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       
       bCreateRecords.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          createDatasets();
+          bCreateDatasets_mousePressed();
         }
       });
 
@@ -1751,7 +1766,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   /**
    * Open dialog with dataset creation panel in creation mode
    */ 
-  private void createDatasets(){
+  private void createDatasets(boolean withInput){
+    if(!withInput && tableResults.getSelectedRowCount()>0){
+      tableResults.clearSelection();
+    }
     CreateEditDialog pDialog = new CreateEditDialog(
         new DatasetCreationPanel(dbPluginMgr, this, false), false, false, true, false);
     pDialog.setTitle(tableName);
@@ -2859,6 +2877,24 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     }.start();
   }
+  
+  /**
+   * Called when mouse is pressed on Define button on a dataset tab
+   */
+  private void bCreateDatasets_mousePressed(){
+    // check if anything is selected
+    String [] selectedDatasetIdentifiers = getSelectedIdentifiers();
+    // if a dataset is selected, show the menu
+    if(selectedDatasetIdentifiers.length!=0){
+      pmCreateDSMenu.show(this, 0, 0); // without this, pmSubmitMenu.getWidth == 0
+      pmCreateDSMenu.show(bCreateRecords, -pmCreateDSMenu.getWidth(),
+                        -pmCreateDSMenu.getHeight() + bCreateRecords.getHeight());
+    }
+    else{
+      createDatasets(false);
+    }
+  }
+  
 
   /**
    * Called when mouse is pressed on Submit button
@@ -2873,7 +2909,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         return;
       }
     }
-    // if a jobDefinition is selected, shows the menu with computing systems
+    // if a jobDefinition is selected, show the menu with computing systems
     if(getSelectedIdentifiers().length!=0){
       pmSubmitMenu.show(this, 0, 0); // without this, pmSubmitMenu.getWidth == 0
       pmSubmitMenu.show(bSubmit, -pmSubmitMenu.getWidth(),
