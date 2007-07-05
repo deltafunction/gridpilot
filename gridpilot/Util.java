@@ -775,14 +775,14 @@ public class Util{
     }
     
     // TODO: doens't work... Cannot set focus in password field.
-    SwingUtilities.invokeLater(
+    /*SwingUtilities.invokeLater(
         new Runnable(){
           public void run(){
             passwordField.requestFocusInWindow();
           }
         }
     );
-    passwordField.requestFocusInWindow();
+    passwordField.requestFocusInWindow();*/
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
         "Enter grid password", JOptionPane.OK_CANCEL_OPTION);
     Debug.debug("showing dialog done", 3);
