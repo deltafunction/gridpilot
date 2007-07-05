@@ -92,7 +92,8 @@ public class MySQLLookupPFN  extends LookupPFN {
     }
     guid = (String) guidVector.get(0);
     // Now query the t_pfn table to get the pfn
-    req = "SELECT pfname, fsize, md5sum FROM t_pfn, t_meta WHERE t_pfn.guid ='"+guid+"'";
+    req = "SELECT pfname, fsize, md5sum FROM t_pfn, t_meta WHERE t_pfn.guid = '"+guid+"' AND " +
+            "t_pfn.guid = t_meta.guid";
     Debug.debug(">> "+req, 3);
     rset = conn.createStatement().executeQuery(req);
     Vector resultVector = new Vector();

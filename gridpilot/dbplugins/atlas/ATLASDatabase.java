@@ -63,7 +63,7 @@ public class ATLASDatabase extends DBCache implements Database{
   // The same goes for fileBytes and fileChecksum
   private String fileBytes = null;
   private String fileChecksum = null;
-  private int fileCatalogTimeout = 1000;
+  private int fileCatalogTimeout = 2000;
   private HashMap dqLocationsCache = new HashMap();
   private HashMap queryResults = new HashMap();
   private boolean useCaching = false;
@@ -92,8 +92,6 @@ public class ATLASDatabase extends DBCache implements Database{
     logFile = GridPilot.getClassMgr().getLogFile();
     dbName = _dbName;
     
-    lfcUserBasePath = "/users/"+Util.getGridDatabaseUser()+"/";
-    
     String useCachingStr = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "Cache search results");
     if(useCachingStr==null || useCachingStr.equalsIgnoreCase("")){
       useCaching = false;
@@ -107,6 +105,14 @@ public class ATLASDatabase extends DBCache implements Database{
     dq2Port = configFile.getValue(dbName, "DQ2 port");
     dq2SecurePort = configFile.getValue(dbName, "DQ2 secure port");
     dq2Path = configFile.getValue(dbName, "DQ2 path");
+    String lfcUserPath = configFile.getValue(dbName, "User path");
+    if(lfcUserPath==null || lfcUserPath.equals("")){
+      lfcUserBasePath = "/users/"+Util.getGridDatabaseUser()+"/";
+      logFile.addInfo("Notice: will register new files under path "+lfcUserBasePath+" in LFC.");
+    }
+    else{
+      lfcUserBasePath = lfcUserPath;
+    }
     
     if(dq2SecurePort==null){
       error = "WARNING: DQ2 secure port not ocnfigured. Write access disabled.";    
@@ -727,7 +733,10 @@ public class ATLASDatabase extends DBCache implements Database{
         lfn = record[1].replaceAll(".*'lfn': '([^']*)'.*", "$1").trim();
         bytes = record[1].replaceAll(".*'filesize': '([^']*)'.*", "$1").trim();
         if(bytes.equals(record[1])){
-          bytes = "";
+          bytes = record[1].replaceAll(".*'filesize': (\\w+)[\\W]*.*", "$1").trim();
+          if(bytes.equals(record[1])){
+            bytes = "";
+          }
         }
         checksum = record[1].replaceAll(".*'checksum': '([^']*)'.*", "$1").trim();
         if(checksum.equals(record[1])){
@@ -1087,8 +1096,14 @@ public class ATLASDatabase extends DBCache implements Database{
         }
       }
     };
-    t.start();              
-    if(!Util.waitForThread(t, dbName, fileCatalogTimeout, "lookup pfns", new Boolean(false))){
+    t.start();
+    // If we have to get grid password and decrypt private key, better
+    // wait a long time
+    int pfnTimeout = fileCatalogTimeout;
+    if(!sslActivated){
+      pfnTimeout = 0;
+    }
+    if(!Util.waitForThread(t, dbName, pfnTimeout, "lookup pfns", new Boolean(false))){
       error = "WARNING: timed out for "+lfn+" on "+_catalogServer;
       logFile.addMessage(error);
       GridPilot.getClassMgr().getStatusBar().setLabel(error);
@@ -1348,7 +1363,8 @@ public class ATLASDatabase extends DBCache implements Database{
    * LFC is not supported.
    */
   private void registerLFNs(String _catalogServer, String [] guids,
-      String [] lfns, String [] pfns, String [] lfcPaths, boolean sync)
+      String [] lfns, String [] pfns, String [] lfcPaths, String [] sizes,
+      String [] checksums, boolean sync)
      throws RemoteException, ServiceException, MalformedURLException, SQLException {
     
     if(getStop()){
@@ -1415,31 +1431,53 @@ public class ATLASDatabase extends DBCache implements Database{
             logFile.addMessage(error, e);
             GridPilot.getClassMgr().getStatusBar().setLabel(error);
           }
-          if(sync){
-            // First, just try and create the metadata entry - in case it's not there already
-            try{
-              req = "INSERT INTO t_meta (sync, guid, path) VALUES " +
-                 "('', '"+guids[i]+"', '"+lfcPaths[i]+"')";
-              Debug.debug(">> "+req, 3);
-              rowsAffected = conn.createStatement().executeUpdate(req);
-              Debug.debug("rowsAffected "+rowsAffected, 3);
+          // First, just try and create the metadata entry - in case it's not there already
+          try{ 
+            req = "INSERT INTO t_meta (sync, guid, path) VALUES " +
+               "('', '"+guids[i]+"', '"+lfcPaths[i]+"')";
+            Debug.debug(">> "+req, 3);
+            rowsAffected = conn.createStatement().executeUpdate(req);
+            Debug.debug("rowsAffected "+rowsAffected, 3);
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+          try{
+            req = "UPDATE t_meta SET ";
+            boolean comma = false;
+            // if a size or a checksum is specified, use it
+            if(sizes!=null && sizes[i]!=null && !sizes[i].equals("")){
+              req += "fsize = '"+sizes[i]+"'";
+              comma = true;
             }
-            catch(Exception e){
+            if(checksums!=null && checksums[i]!=null && checksums[i].startsWith("md5:")){
+              if(comma){
+                req += ", ";
+              }
+              req += "md5sum = '"+checksums[i].substring(4)+"'";
+              comma = true;
             }
-            try{
+            if(sync){
+              if(comma){
+                req += ", ";
+              }
               // Now flag this guid for write in t_meta
-              req = "UPDATE t_meta SET sync = 'write' WHERE guid ='"+guids[i]+"'";
+              req += "sync = 'write'";
               Debug.debug(">> "+req, 3);
+              comma = true;
+            }
+            if(comma){
+              req += " WHERE guid ='"+guids[i]+"'";
               rowsAffected = conn.createStatement().executeUpdate(req);
-              if(rowsAffected==0){
+              if(sync && rowsAffected==0){
                 error = "WARNING: could flag guid "+guids[i]+" for write in t_meta on "+catalogServer;
                 logFile.addMessage(error);
               }
             }
-            catch(Exception e){
-              error = "WARNING: could flag guid "+guids[i]+" for write in t_meta on "+catalogServer;
-              logFile.addMessage(error);
-            }
+          }
+          catch(Exception e){
+            error = "WARNING: could flag guid "+guids[i]+" for write in t_meta on "+catalogServer;
+            logFile.addMessage(error);
           }
         }
         conn.close();
@@ -1923,7 +1961,7 @@ public class ATLASDatabase extends DBCache implements Database{
     
     boolean allFilesDeleted = (allFiles.values.length==fileIDs.length);
     boolean eraseFromDQ2Ok = true;
-    if(forceFileDelete || !cleanup){
+    if(forceFileDelete || !cleanup || deleteFromCatalogOK){
       eraseFromDQ2Ok = eraseFromDQ2(datasetID, deletePhysOk, fileIDs, allFilesDeleted, locations);
     }
     
@@ -2000,6 +2038,7 @@ public class ATLASDatabase extends DBCache implements Database{
     // Delete the physical files.
     // First store them all in a Vector.
     Vector pfns = new Vector();
+    String [] pfnsArr = null;
     for(int i=0; i<toDeleteLfns.length; ++i){
       if(getStop()){
         throw new InterruptedException();
@@ -2008,11 +2047,19 @@ public class ATLASDatabase extends DBCache implements Database{
       try{
         // if we're using an alias
         if(homeServerMysqlAlias!=null){
-          Collections.addAll(pfns, lookupPFNs(homeServerMysqlAlias, toDeleteLfns[i], true));
+          pfnsArr = lookupPFNs(homeServerMysqlAlias, toDeleteLfns[i], true);
         }
         // otherwise, it is assumed that we're using a mysql catalog
         else{
-          Collections.addAll(pfns, lookupPFNs(homeSite, toDeleteLfns[i], true));
+          pfnsArr = lookupPFNs(homeSite, toDeleteLfns[i], true);
+        }
+        if(pfnsArr!=null && pfnsArr.length>2){
+          for(int j=2; j<pfnsArr.length; ++j){
+            Debug.debug("Will delete "+pfnsArr[j], 2);
+            if(pfnsArr[j]!=null && !pfnsArr[j].equals("")){
+              pfns.add(pfnsArr[j]);
+            }
+          }
         }
       }
       catch(Exception e){
@@ -2074,8 +2121,7 @@ public class ATLASDatabase extends DBCache implements Database{
         for(Iterator itt=hostPFNs.iterator(); itt.hasNext(); ++j){
           urls[j] = new GlobusURL((String) itt.next());
         }
-        GridPilot.getClassMgr().getStatusBar().setLabel("Deleting "+
-           Util.arrayToString(urls));
+        GridPilot.getClassMgr().getStatusBar().setLabel("Deleting physical file(s)");
         TransferControl.deleteFiles(urls);
         deleted = deleted+urls.length;
       }
@@ -2158,8 +2204,8 @@ public class ATLASDatabase extends DBCache implements Database{
       String [] sizes = new String[] {size};
       String [] checksums = new String[] {checksum};
       try{
-        GridPilot.getClassMgr().getStatusBar().setLabel("Registering new lfn " +lfn+
-          " with DQ2");
+        Debug.debug("Registering new lfn " +shortLfn+
+          " with DQ2, "+size+", "+checksum, 2);
         dq2Access.addLFNsToDataset(vuid, lfns, guids, sizes, checksums);
       }
       catch(Exception e){
@@ -2200,18 +2246,21 @@ public class ATLASDatabase extends DBCache implements Database{
         }
         if(homeServerMysqlAlias!=null){
           registerLFNs(homeServerMysqlAlias, new String [] {guid},
-              new String [] {lfn}, new String [] {url}, new String [] {path}, true);
+              new String [] {lfn}, new String [] {url}, new String [] {path},
+              new String [] {size}, new String [] {checksum}, true);
         }
         // otherwise, assume that home server is a mysql server and just write there
         else{
           registerLFNs(toa.getFileCatalogServer(homeSite, false), new String [] {guid},
-              new String [] {lfn}, new String [] {url}, null, false);
+              new String [] {lfn}, new String [] {url}, null,
+              new String [] {size}, new String [] {checksum}, false);
         }
       }
       catch(Exception e){
         logFile.addMessage("WARNING: failed to register LFN "+lfn+
             " on "+homeServerMysqlAlias+". Please delete them by hand.", e);
       }
+      clearCacheEntries("file");
     }
     catch(Exception e){
       //error = "ERROR: cannot register "+url+" in file catalog. "+e.getMessage();
@@ -2247,6 +2296,7 @@ public class ATLASDatabase extends DBCache implements Database{
         else{
           GridPilot.getClassMgr().getStatusBar().setLabel("Yes!");
         }
+        clearCacheEntries("dataset");
       }
       catch(Exception e){
         error = "WARNING: could not update dataset "+dsn+" in DQ2 "+
