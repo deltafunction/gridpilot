@@ -114,6 +114,14 @@ public class GLiteComputingSystem implements ComputingSystem{
       bdiiHost = GridPilot.getClassMgr().getConfigFile().getValue(
           csName, "BDII host");
       
+      // setup proxy if not there
+      try{
+        GridPilot.getClassMgr().getGridCredential();
+      }
+      catch(Exception ee){
+        ee.printStackTrace();
+      }
+
       wmProxyAPI = new WMProxyAPI(wmUrl,
             Util.getProxyFile().getAbsolutePath(),
             GridPilot.getClassMgr().getCaCertsTmpDir());
@@ -126,6 +134,7 @@ public class GLiteComputingSystem implements ComputingSystem{
       }
       catch(Exception e){
         Debug.debug("ERROR getting runtime database: "+e.getMessage(), 1);
+        e.printStackTrace();
       }
       if(runtimeDBs!=null && runtimeDBs.length>0){
         setupRuntimeEnvironments(csName);
