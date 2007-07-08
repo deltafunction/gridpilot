@@ -59,8 +59,6 @@ public class HTTPSFileTransfer implements FileTransfer {
         srcUrls[0].getProtocol().equalsIgnoreCase("https") &&
            destUrls[0].getProtocol().equalsIgnoreCase("file") ||
         srcUrls[0].getProtocol().equalsIgnoreCase("file") &&
-           destUrls[0].getProtocol().equalsIgnoreCase("https") ||
-        srcUrls[0].getProtocol().equalsIgnoreCase("https") &&
            destUrls[0].getProtocol().equalsIgnoreCase("https")
           ));
   }
