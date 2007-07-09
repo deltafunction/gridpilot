@@ -34,7 +34,13 @@ public class HTTPSFileTransfer implements FileTransfer {
   private static String DATE_FORMAT = "EEE, dd MMM yyyy HH:mm:ss z";
   private static String PLUGIN_NAME;
   private static int COPY_TIMEOUT = 10000;
-  
+
+  protected final static String STATUS_WAIT = "Wait";
+  protected final static String STATUS_TRANSFER = "Transfer";
+  protected final static String STATUS_DONE = "Done";
+  protected final static String STATUS_ERROR = "Error";
+
+
   public HTTPSFileTransfer(){
     PLUGIN_NAME = "https";
     if(!GridPilot.firstRun){
@@ -51,16 +57,27 @@ public class HTTPSFileTransfer implements FileTransfer {
   }
   
   public boolean checkURLs(GlobusURL [] srcUrls, GlobusURL [] destUrls){
+    String firstSrcProtocol = srcUrls[0].getProtocol();
+    String firstDestProtocol = destUrls[0].getProtocol();
     Debug.debug("srcUrls.length: "+srcUrls.length, 3);
     Debug.debug("destUrls.length: "+destUrls.length, 3);
-    Debug.debug("srcUrls[0].getProtocol(): "+srcUrls[0].getProtocol(), 3);
-    Debug.debug("destUrls[0].getProtocol(): "+destUrls[0].getProtocol(), 3);
-    return (srcUrls.length==destUrls.length && (
-        srcUrls[0].getProtocol().equalsIgnoreCase("https") &&
-           destUrls[0].getProtocol().equalsIgnoreCase("file") ||
-        srcUrls[0].getProtocol().equalsIgnoreCase("file") &&
-           destUrls[0].getProtocol().equalsIgnoreCase("https")
-          ));
+    Debug.debug("firstSrcProtocol: "+firstSrcProtocol, 3);
+    Debug.debug("firstDestProtocol: "+firstDestProtocol, 3);
+    if(srcUrls.length!=destUrls.length || !(
+        firstSrcProtocol.equalsIgnoreCase("https") &&
+        firstDestProtocol.equalsIgnoreCase("file") ||
+           firstSrcProtocol.equalsIgnoreCase("file") &&
+           firstDestProtocol.equalsIgnoreCase("https")
+          )){
+      return false;
+    }
+    for(int i=0; i<srcUrls.length; ++i){
+      if(!firstSrcProtocol.equalsIgnoreCase(srcUrls[0].getProtocol()) ||
+             !firstDestProtocol.equalsIgnoreCase(destUrls[0].getProtocol())){
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -206,7 +223,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       throw t.getException();
     }
    
-    // if we don't get an exception, the file got downloaded
+    // if we didn't get an exception, the file got downloaded
     if(statusBar!=null){
       statusBar.setLabel("Download done");
     }
@@ -234,7 +251,7 @@ public class HTTPSFileTransfer implements FileTransfer {
     String fileName = file.getName();
     GlobusURL uploadUrl = null;
     if(globusFileUrl.getURL().endsWith("/")){
-      uploadUrl = new  GlobusURL(globusFileUrl.getURL()+fileName);
+      uploadUrl = new GlobusURL(globusFileUrl.getURL()+fileName);
     }
     else{
       uploadUrl = globusFileUrl;
@@ -272,7 +289,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       throw t.getException();
     }
 
-    // if we don't get an exception, the file got written.
+    // if we didn't get an exception, the file got written.
     if(statusBar!=null){
       statusBar.setLabel("Upload done");
     }
@@ -309,7 +326,7 @@ public class HTTPSFileTransfer implements FileTransfer {
         GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete "+globusUrls[i], e);
         e.printStackTrace();
       }
-      // if we don't get an exception, the file got deleted
+      // if we didn't get an exception, the file got deleted
       Debug.debug("File or directory "+globusUrl.getURL()+" deleted.", 2);
     }
   }
@@ -363,7 +380,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       else{
         throw new IOException("ERROR: Cannot write text to a directory.");
       }
-      // if we don't get an exception, the file got written...
+      // if we didn't get an exception, the file got written...
       Debug.debug("File or directory "+globusUrl.getURL()+" written.", 2);
       return;
     }
@@ -597,7 +614,7 @@ public class HTTPSFileTransfer implements FileTransfer {
     Debug.debug("Got status "+ret, 2);
     // TODO: consider returning "Wait" instead of "Error" to avoid the initial "errors".
     if(ret==null){
-      ret = "Error";
+      ret = STATUS_ERROR;
     }
     return ret;
   }
@@ -663,19 +680,20 @@ public class HTTPSFileTransfer implements FileTransfer {
       // TODO: Should this be STATUS_ERROR?
       ret = FileTransfer.STATUS_WAIT;
     }
-    else if(ftStatus==null || ftStatus.equalsIgnoreCase("Error")){
+    else if(ftStatus==null || ftStatus.equalsIgnoreCase(STATUS_ERROR)){
       ret = FileTransfer.STATUS_ERROR;
     }
+    // Not used I believe...
     else if(ftStatus==null || ftStatus.equalsIgnoreCase("Cancelled")){
       ret = FileTransfer.STATUS_ERROR;
     }
-    else if(ftStatus==null || ftStatus.equalsIgnoreCase("Wait")){
+    else if(ftStatus==null || ftStatus.equalsIgnoreCase(STATUS_WAIT)){
       ret = FileTransfer.STATUS_WAIT;
     }
-    else if(ftStatus==null || ftStatus.equalsIgnoreCase("Transfer")){
+    else if(ftStatus==null || ftStatus.equalsIgnoreCase(STATUS_TRANSFER)){
       ret = FileTransfer.STATUS_RUNNING;
     }
-    else if(ftStatus==null || ftStatus.equalsIgnoreCase("Done")){
+    else if(ftStatus==null || ftStatus.equalsIgnoreCase(STATUS_DONE)){
       ret = FileTransfer.STATUS_DONE;
     }
     return ret;

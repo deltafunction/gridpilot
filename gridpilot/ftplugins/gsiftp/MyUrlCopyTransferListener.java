@@ -7,11 +7,6 @@ import org.globus.io.urlcopy.UrlCopyListener;
 
 public class MyUrlCopyTransferListener implements UrlCopyListener {
     
-  private final String STATUS_WAIT = "Wait";
-  private final String STATUS_TRANSFER = "Transfer";
-  private final String STATUS_DONE = "Done";
-  private final String STATUS_ERROR = "Error";
-
   private Exception exception;
   private String status;
   private String error = "";
@@ -45,33 +40,33 @@ public class MyUrlCopyTransferListener implements UrlCopyListener {
       if(current==-1){
         //JOptionPane.showMessageDialog(null, "The server does not support third party");
         Debug.debug("Transfer not started: "+current, 3);
-        status = STATUS_WAIT;
+        status = GSIFTPFileTransfer.STATUS_WAIT;
       }
       else{
-        status = STATUS_TRANSFER;
+        status = GSIFTPFileTransfer.STATUS_TRANSFER;
       }
     }
     else{
-      status = STATUS_TRANSFER;
+      status = GSIFTPFileTransfer.STATUS_TRANSFER;
     }
   }
 
   public void transferError(Exception e){
     exception = e;
     error = e.getMessage();
-    status = STATUS_ERROR;
+    status = GSIFTPFileTransfer.STATUS_ERROR;
   }
 
   public void transferCompleted(){
     if(exception==null){
         Debug.debug("Transfer completed successfully", 2);
-        status = STATUS_DONE;
+        status = GSIFTPFileTransfer.STATUS_DONE;
     }
     else{
       String error = "Transfer failed: "+exception.getMessage();
       GridPilot.getClassMgr().getLogFile().addMessage(error);
       Debug.debug(error, 2);
-      status = STATUS_ERROR;
+      status = GSIFTPFileTransfer.STATUS_ERROR;
     }
   }
 }

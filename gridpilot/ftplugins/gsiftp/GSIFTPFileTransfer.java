@@ -40,7 +40,13 @@ public class GSIFTPFileTransfer implements FileTransfer {
   private HashMap fileTransfers = null;
   
   private static String PLUGIN_NAME;
-  
+
+  protected final static String STATUS_WAIT = "Wait";
+  protected final static String STATUS_TRANSFER = "Transfer";
+  protected final static String STATUS_DONE = "Done";
+  protected final static String STATUS_ERROR = "Error";
+
+
   public GSIFTPFileTransfer(){
     PLUGIN_NAME = "gsiftp";
     if(!GridPilot.firstRun){
@@ -80,19 +86,29 @@ public class GSIFTPFileTransfer implements FileTransfer {
   }
   
   public boolean checkURLs(GlobusURL [] srcUrls, GlobusURL [] destUrls){
+    String firstSrcProtocol = srcUrls[0].getProtocol();
+    String firstDestProtocol = destUrls[0].getProtocol();
     Debug.debug("srcUrls.length: "+srcUrls.length, 3);
     Debug.debug("destUrls.length: "+destUrls.length, 3);
-    Debug.debug("srcUrls[0].getProtocol(): "+srcUrls[0].getProtocol(), 3);
-    Debug.debug("destUrls[0].getProtocol(): "+destUrls[0].getProtocol(), 3);
-    // We only allow copying one file at a time - hmm, why...?
-    return (srcUrls.length==destUrls.length && /*srcUrls.length==1 &&*/ (
-        srcUrls[0].getProtocol().equalsIgnoreCase("gsiftp") &&
-           destUrls[0].getProtocol().equalsIgnoreCase("file") ||
-        srcUrls[0].getProtocol().equalsIgnoreCase("file") &&
-           destUrls[0].getProtocol().equalsIgnoreCase("gsiftp") ||
-        srcUrls[0].getProtocol().equalsIgnoreCase("gsiftp") &&
-           destUrls[0].getProtocol().equalsIgnoreCase("gsiftp")
-          ));
+    Debug.debug("firstSrcProtocol: "+firstSrcProtocol, 3);
+    Debug.debug("firstDestProtocol: "+firstDestProtocol, 3);
+    if(srcUrls.length!=destUrls.length && !(
+        firstSrcProtocol.equalsIgnoreCase("gsiftp") &&
+        firstDestProtocol.equalsIgnoreCase("file") ||
+           firstSrcProtocol.equalsIgnoreCase("file") &&
+           firstDestProtocol.equalsIgnoreCase("gsiftp") ||
+           firstSrcProtocol.equalsIgnoreCase("gsiftp") &&
+           firstDestProtocol.equalsIgnoreCase("gsiftp")
+          )){
+      return false;
+    }
+    for(int i=0; i<srcUrls.length; ++i){
+      if(!firstSrcProtocol.equalsIgnoreCase(srcUrls[0].getProtocol()) ||
+             !firstDestProtocol.equalsIgnoreCase(destUrls[0].getProtocol())){
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -258,7 +274,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
       gridFtpClient.get(localPath, downloadFile);
       gridFtpClient.close();
      
-      // if we don't get an exception, the file got downloaded
+      // if we didn't get an exception, the file got downloaded
       if(statusBar!=null){
         statusBar.setLabel("Download of "+fileName+" done");
       }
@@ -349,7 +365,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
       Debug.debug("Current dir: "+gridFtpClient.getCurrentDir(), 3);
       gridFtpClient.changeDir(localDir);
       gridFtpClient.put(file, localPath, false);     
-      // if we don't get an exception, the file got written...
+      // if we didn't get an exception, the file got written...
       Debug.debug("File or directory "+globusFileUrl.getURL()+" written.", 2);
       if(statusBar!=null){
         statusBar.setLabel("Upload of "+globusFileUrl.getURL()+" done");
@@ -456,7 +472,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
           else{
             gridFtpClient.deleteFile(localPath);       
           }
-          // if we don't get an exception, the file got deleted
+          // if we didn't get an exception, the file got deleted
           Debug.debug("File or directory "+globusUrl.getURL()+" deleted.", 2);
         }
         catch(FTPException e){
@@ -586,7 +602,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
       else{
         throw new IOException("ERROR: Cannot write text to a directory.");
       }
-      // if we don't get an exception, the file got written...
+      // if we didn't get an exception, the file got written...
       Debug.debug("File or directory "+globusUrl.getURL()+" written.", 2);
       return;
     }
@@ -954,7 +970,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
     Debug.debug("Got status "+ret, 2);
     // TODO: consider returning "Wait" instead of "Error" to avoid the initial "errors".
     if(ret==null){
-      ret = "Error";
+      ret = STATUS_ERROR;
     }
     return ret;
   }
@@ -1014,19 +1030,20 @@ public class GSIFTPFileTransfer implements FileTransfer {
       // TODO: Should this be STATUS_ERROR?
       ret = FileTransfer.STATUS_WAIT;
     }
-    else if(ftStatus==null || ftStatus.equalsIgnoreCase("Error")){
+    else if(ftStatus==null || ftStatus.equalsIgnoreCase(STATUS_ERROR)){
       ret = FileTransfer.STATUS_ERROR;
     }
+    // Not used I believe...
     else if(ftStatus==null || ftStatus.equalsIgnoreCase("Cancelled")){
       ret = FileTransfer.STATUS_ERROR;
     }
-    else if(ftStatus==null || ftStatus.equalsIgnoreCase("Wait")){
+    else if(ftStatus==null || ftStatus.equalsIgnoreCase(STATUS_WAIT)){
       ret = FileTransfer.STATUS_WAIT;
     }
-    else if(ftStatus==null || ftStatus.equalsIgnoreCase("Transfer")){
+    else if(ftStatus==null || ftStatus.equalsIgnoreCase(STATUS_TRANSFER)){
       ret = FileTransfer.STATUS_RUNNING;
     }
-    else if(ftStatus==null || ftStatus.equalsIgnoreCase("Done")){
+    else if(ftStatus==null || ftStatus.equalsIgnoreCase(STATUS_DONE)){
       ret = FileTransfer.STATUS_DONE;
     }
     return ret;
