@@ -2,15 +2,22 @@ package gridpilot.ftplugins.sss;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +55,7 @@ import gridpilot.Debug;
 import gridpilot.FileTransfer;
 import gridpilot.GridPilot;
 import gridpilot.LogFile;
+import gridpilot.MyThread;
 import gridpilot.StatusBar;
 import gridpilot.Util;
 
@@ -70,17 +78,31 @@ public class SSSFileTransfer implements FileTransfer{
   private Map s3DownloadObjectsMap = null;
   private Map filesForUploadMap = null;
   private Map s3ExistingObjectsMap = null;
+  // Map of listener objctes. One object for each batch of transfers:
+  // {id1, id2, id3, ...} -> s3ServiceEventListener, i.e. the keys are arrays of ids
   private HashMap s3ServiceEventListeners = null;
-  private HashMap fileTransfers = null;
   private HashMap myBuckets = null;
   private S3Object[] existingObjects = new S3Object [] {};
+  private String accessKey = null;
+  // Use to keep track of single-threaded transfers
+  private HashSet fileTransfers = null;
   
+  private static String PLUGIN_NAME;
+  private static int COPY_TIMEOUT = 10000;
+
+  protected final static String STATUS_WAIT = "Wait";
+  protected final static String STATUS_TRANSFER = "Transfer";
+  protected final static String STATUS_DONE = "Done";
+  protected final static String STATUS_ERROR = "Error";
+
   // Load the AWS credentials. 3s does not support X509 credentials..
   public SSSFileTransfer(){
+    PLUGIN_NAME = "sss";
     logFile = GridPilot.getClassMgr().getLogFile();
+    fileTransfers = new HashSet();
+    myBuckets = new HashMap();
     s3ServiceEventListeners = new HashMap();
-    fileTransfers = new HashMap();
-    String accessKey = GridPilot.getClassMgr().getConfigFile().getValue("SSS",
+    accessKey = GridPilot.getClassMgr().getConfigFile().getValue("SSS",
        "AWS access key id");
     String secretKey = GridPilot.getClassMgr().getConfigFile().getValue("SSS",
        "AWS secret access key");
@@ -107,24 +129,41 @@ public class SSSFileTransfer implements FileTransfer{
     Debug.debug("Number of buckets in S3? " + myBucketsArr.length, 1);
     // Check if the bucket specified in the config files exists, if not, try to create it
     S3Bucket bucket = null;
+    boolean bucketOk = false;
     for(int i=0; i<myBucketsArr.length; ++i){
       if(myBucketsArr[i].getName().equals(bucketName)){
         bucket = myBucketsArr[i];
         myBuckets.put(bucketName, bucket);
+        bucketOk = true;
         break;
       }
+    }
+    if(!bucketOk){
+      logFile.addInfo("Creating bucket "+bucketName);
+      s3Service.createBucket(bucketName);
     }
     return bucket;
   }
 
   public boolean checkURLs(GlobusURL[] srcUrls, GlobusURL[] destUrls)
       throws Exception{
-    return (srcUrls.length==destUrls.length && (
-        srcUrls[0].getProtocol().equalsIgnoreCase("sss") &&
-           destUrls[0].getProtocol().equalsIgnoreCase("file") ||
-        srcUrls[0].getProtocol().equalsIgnoreCase("file") &&
-           destUrls[0].getProtocol().equalsIgnoreCase("sss")
-          ));
+    String firstSrcProtocol = srcUrls[0].getProtocol();
+    String firstDestProtocol = destUrls[0].getProtocol();
+    if(srcUrls.length!=destUrls.length || !(
+        firstSrcProtocol.equalsIgnoreCase("sss") &&
+        firstDestProtocol.equalsIgnoreCase("file") ||
+           firstSrcProtocol.equalsIgnoreCase("file") &&
+           firstDestProtocol.equalsIgnoreCase("sss")
+          )){
+      return false;
+    }
+    for(int i=0; i<srcUrls.length; ++i){
+      if(!firstSrcProtocol.equalsIgnoreCase(srcUrls[0].getProtocol()) ||
+             !firstDestProtocol.equalsIgnoreCase(destUrls[0].getProtocol())){
+        return false;
+      }
+    }
+    return true;
   }
  
 
@@ -133,76 +172,439 @@ public class SSSFileTransfer implements FileTransfer{
    */
   public String[] startCopyFiles(GlobusURL[] srcUrls, GlobusURL[] destUrls)
       throws Exception{
-
-    //prepareForFilesUpload(File[] uploadFiles, StatusBar statusBar, final S3Bucket bucket);
     
-    //prepareForObjectsDownload(S3Object [] s3Objects, StatusBar statusBar, final S3Bucket bucket)
-        
-    // TODO Auto-generated method stub
-    return null;
+    S3Bucket bucket = null;
+    String [] ids = new String[srcUrls.length];
+    String id = null;
+    // Choose upload or download. We assume uniformity of URLs (should've been taken
+    // care of by TransferControl via checkUrls).
+    if(srcUrls.length==0){
+      return new String [] {};
+    }
+    if(srcUrls[0].getProtocol().equalsIgnoreCase("file") &&
+        destUrls[0].getProtocol().equalsIgnoreCase("sss")){
+      // Check that all are destined for the same bucket
+      bucket = getBucket(destUrls[0].getHost());
+      S3Bucket tmpbucket = null;
+      for(int i=0; i<destUrls.length; ++i){
+        tmpbucket = getBucket(destUrls[i].getHost());
+        if(tmpbucket==null || !tmpbucket.equals(bucket)){
+          throw new IOException("All uploads must be to the same bucket. "+tmpbucket);
+        }
+      }
+      // Construct Files
+      File [] uploadFiles = new File[srcUrls.length];
+      for(int i=0; i<srcUrls.length; ++i){
+        id = PLUGIN_NAME + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
+        ids[i] = id;
+        uploadFiles[i] = new File(Util.clearFile(srcUrls[i].getURL()));
+      }
+      prepareForFilesUpload(uploadFiles, GridPilot.getClassMgr().getStatusBar(), bucket, ids);
+    }
+    else if(srcUrls[0].getProtocol().equalsIgnoreCase("sss") &&
+        destUrls[0].getProtocol().equalsIgnoreCase("file")){
+      // The URLs are of the form sss://bucket/some/file/name
+      // getHost() --> bucket, getPath() --> some/file/name
+      Vector objectsVec = new Vector();
+      S3Object [] tmpObjects = null;
+      String error = "";
+      for(int i=0; i<srcUrls.length; ++i){
+        bucket = getBucket(srcUrls[i].getHost());
+        if(bucket==null){
+          error = "WARNING: bucket not found: "+srcUrls[i].getHost();
+          logFile.addMessage(error);
+        }
+        tmpObjects = s3Service.listObjects(bucket, srcUrls[i].getPath(), null);
+        if(tmpObjects.length>1){
+          error = "WARNING: Downloading directories should not be done with this method. " +
+              bucket+" : "+srcUrls[i].getPath();
+          throw new IOException(error);
+        }
+        Collections.addAll(objectsVec, tmpObjects);
+        id = PLUGIN_NAME + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
+        ids[i] = id;
+      }
+      S3Object [] objectsOnServer = (S3Object []) objectsVec.toArray(new S3Object[srcUrls.length]);
+      prepareForObjectsDownload(objectsOnServer, GridPilot.getClassMgr().getStatusBar(), bucket,
+          ids);
+    }
+    else{
+      throw new IOException("Only download or upload is supported by this plugin.");
+    }
+    return ids;
   }
 
   public String getUserInfo() throws Exception{
-    // TODO Auto-generated method stub
-    return null;
+    return accessKey;
   }
 
   public String getFullStatus(String fileTransferID) throws Exception{
-    // TODO Auto-generated method stub
-    return null;
+    String [] ids = null;
+    String ret = "";
+    MyS3ServiceEventListener s3Listener = null;
+    for(Iterator it=s3ServiceEventListeners.keySet().iterator(); it.hasNext();){
+      ids = (String []) it.next();
+      for(int i=0; i<ids.length; ++i){
+        if(ids[i].equals(fileTransferID)){
+          s3Listener = ((MyS3ServiceEventListener) s3ServiceEventListeners.get(ids));
+          ret += "Status: "+s3Listener.getStatus();
+          ret += "\nThreads: "+s3Listener.getThreadWatcher().getThreadCount();
+          ret += "\nCompleted threads: "+s3Listener.getThreadWatcher().getCompletedThreads();
+          if(s3Listener.getThreadWatcher().isBytesPerSecondAvailable()){
+            ret += "\nBytes per second: "+s3Listener.getThreadWatcher().getBytesPerSecond();
+          }
+          if(s3Listener.getThreadWatcher().isBytesTransferredInfoAvailable()){
+            ret += "\nBytes total: "+s3Listener.getThreadWatcher().getBytesTotal();
+          }
+          if(s3Listener.getThreadWatcher().isBytesTransferredInfoAvailable()){
+            ret += "\nBytes transferred: "+s3Listener.getThreadWatcher().getBytesTransferred();
+          }
+          if(s3Listener.getThreadWatcher().isTimeRemainingAvailable()){
+            ret += "\nTime remaining: "+s3Listener.getThreadWatcher().getTimeRemaining();
+          }
+          return ret;
+        }
+      }
+    }
+    Debug.debug("WARNING: no status found for file transfer "+fileTransferID, 1);
+    return "Status: "+STATUS_ERROR;
   }
 
   public String getStatus(String fileTransferID) throws Exception{
-    // TODO Auto-generated method stub
+    String [] ids = null;
+    for(Iterator it=s3ServiceEventListeners.keySet().iterator(); it.hasNext();){
+      ids = (String []) it.next();
+      for(int i=0; i<ids.length; ++i){
+        if(ids[i].equals(fileTransferID)){
+          return ((MyS3ServiceEventListener) s3ServiceEventListeners.get(ids)).getStatus();
+        }
+      }
+    }
+    Debug.debug("WARNING: no status found for file transfer "+fileTransferID, 1);
     return null;
   }
 
-  public int getInternalStatus(String fileTransferID,String status)
+  public int getInternalStatus(String id, String ftStatus)
       throws Exception{
-    // TODO Auto-generated method stub
-    return 0;
+    Debug.debug("Mapping status "+ftStatus, 2);
+    int ret = -1;
+    if(ftStatus==null || ftStatus.equals("")){
+      // TODO: Should this be STATUS_ERROR?
+      ret = FileTransfer.STATUS_WAIT;
+    }
+    else if(ftStatus==null || ftStatus.equalsIgnoreCase(STATUS_ERROR)){
+      ret = FileTransfer.STATUS_ERROR;
+    }
+    else if(ftStatus==null || ftStatus.equalsIgnoreCase(STATUS_WAIT)){
+      ret = FileTransfer.STATUS_WAIT;
+    }
+    else if(ftStatus==null || ftStatus.equalsIgnoreCase(STATUS_TRANSFER)){
+      ret = FileTransfer.STATUS_RUNNING;
+    }
+    else if(ftStatus==null || ftStatus.equalsIgnoreCase(STATUS_DONE)){
+      ret = FileTransfer.STATUS_DONE;
+    }
+    return ret;
   }
 
-  public long getFileBytes(GlobusURL url) throws Exception{
-    // TODO Auto-generated method stub
-    return 0;
+  public long getFileBytes(GlobusURL globusUrl) throws Exception{
+    S3Bucket bucket = getBucket(globusUrl.getHost());
+    if(bucket==null){
+      String error = "WARNING: bucket not found: "+globusUrl.getHost();
+      Debug.debug(error, 1);
+      return 0;
+    }
+    S3Object [] objects = s3Service.listObjects(bucket, globusUrl.getPath(), null);
+    if(objects==null || objects.length==0){
+      String error = "WARNING: object not found: "+globusUrl.getPath();
+      Debug.debug(error, 1);
+      return 0;
+    }
+    if(objects==null || objects.length>1){
+      String error = "WARNING: object ambiguous: "+globusUrl.getPath();
+      Debug.debug(error, 1);
+      return 0;
+    }
+    return objects[0].getContentLength();
   }
 
   public long getBytesTransferred(String fileTransferID) throws Exception{
-    // TODO Auto-generated method stub
-    return 0;
+    String [] ids = null;
+    long ret = 0;
+    MyS3ServiceEventListener s3Listener = null;
+    for(Iterator it=s3ServiceEventListeners.keySet().iterator(); it.hasNext();){
+      ids = (String []) it.next();
+      for(int i=0; i<ids.length; ++i){
+        if(ids[i].equals(fileTransferID)){
+          s3Listener = ((MyS3ServiceEventListener) s3ServiceEventListeners.get(ids));
+          if(s3Listener.getThreadWatcher().isBytesTransferredInfoAvailable()){
+            ret = s3Listener.getThreadWatcher().getBytesTransferred();
+            break;
+          }
+        }
+      }
+    }
+    return ret;
   }
 
   public int getPercentComplete(String fileTransferID) throws Exception{
-    // TODO Auto-generated method stub
-    return 0;
+    String [] ids = null;
+    long transferredBytes = 0;
+    long totalBytes = 0;
+    MyS3ServiceEventListener s3Listener = null;
+    for(Iterator it=s3ServiceEventListeners.keySet().iterator(); it.hasNext();){
+      ids = (String []) it.next();
+      for(int i=0; i<ids.length; ++i){
+        if(ids[i].equals(fileTransferID)){
+          s3Listener = ((MyS3ServiceEventListener) s3ServiceEventListeners.get(ids));
+          if(s3Listener.getThreadWatcher().isBytesTransferredInfoAvailable()){
+            transferredBytes = s3Listener.getThreadWatcher().getBytesTransferred();
+            totalBytes = s3Listener.getThreadWatcher().getBytesTotal();
+            break;
+          }
+        }
+      }
+    }
+    return (int) (100*transferredBytes/totalBytes);
   }
 
   public void cancel(String fileTransferID) throws Exception{
-    // TODO Auto-generated method stub
-
+    String [] ids = null;
+    MyS3ServiceEventListener s3Listener = null;
+    for(Iterator it=s3ServiceEventListeners.keySet().iterator(); it.hasNext();){
+      ids = (String []) it.next();
+      for(int i=0; i<ids.length; ++i){
+        if(ids[i].equals(fileTransferID)){
+          s3Listener = ((MyS3ServiceEventListener) s3ServiceEventListeners.get(ids));
+          s3Listener.getThreadWatcher().cancelTask();
+          return;
+        }
+      }
+    }
+    Debug.debug("WARNING: transfer with id "+fileTransferID+" not found. Cannot cancel.", 1);
   }
 
   public void finalize(String fileTransferID) throws Exception{
-    // TODO Auto-generated method stub
-
+    String [] ids = null;
+    for(Iterator it=s3ServiceEventListeners.keySet().iterator(); it.hasNext();){
+      ids = (String []) it.next();
+      for(int i=0; i<ids.length; ++i){
+        if(ids[i].equals(fileTransferID)){
+          break;
+        }
+      }
+    }
+    s3ServiceEventListeners.remove(ids);
   }
 
-  public void deleteFiles(GlobusURL[] destUrls) throws Exception{
-    // TODO Auto-generated method stub
-
+  public void deleteFiles(GlobusURL [] destUrls) throws Exception{
+    GlobusURL globusUrl = null;
+    S3Bucket bucket = null;
+    for(int i=0; i<destUrls.length; ++i){
+      globusUrl = destUrls[i];
+      bucket = getBucket(globusUrl.getHost());
+      if(bucket==null){
+        String error = "WARNING: bucket not found: "+globusUrl.getHost();
+        Debug.debug(error, 1);
+        return;
+      }
+      S3Object [] objects = s3Service.listObjects(bucket, globusUrl.getPath(), null);
+      if(objects==null || objects.length==0){
+        String error = "WARNING: object not found: "+globusUrl.getPath()+". Backing out.";
+        Debug.debug(error, 1);
+        return;
+      }
+      if(objects==null || objects.length>1){
+        String error = "WARNING: object ambiguous: "+globusUrl.getPath()+". Backing out.";
+        Debug.debug(error, 1);
+        return;
+      }
+      s3Service.deleteObject(bucket, objects[0].getKey());
+    }
   }
 
-  public void getFile(GlobusURL globusUrl,File downloadDirOrFile,
-      StatusBar statusBar) throws Exception{
-    // TODO Auto-generated method stub
+  /**
+   * Quick and dirty method to just get a file - bypassing
+   * caching, queueing and monitoring. Notice, that it does NOT
+   * start a separate thread.
+   */
+  public void getFile(final GlobusURL globusUrl, File downloadDirOrFile,
+      final StatusBar statusBar) throws Exception{
+    
+    if(globusUrl.getURL().endsWith("/")){
+      throw new IOException("ERROR: cannot download a directory. ");
+    }
+    
+    Debug.debug("Get "+globusUrl.getURL(), 3);
 
+    Debug.debug("Getting "+globusUrl.getURL(), 3);
+    (new MyThread(){
+      public void run(){
+        if(statusBar!=null){
+          statusBar.setLabel("Getting "+globusUrl.getURL());
+        }
+      }
+    }).run();               
+
+    File downloadFile = null;
+    String fileName = globusUrl.getPath().replaceFirst(".*/([^/]+)", "$1");
+    if(downloadDirOrFile.isDirectory()){
+      downloadFile = new File(downloadDirOrFile.getAbsolutePath(), fileName);
+    }
+    else{
+      downloadFile = downloadDirOrFile;
+    }
+    final File dlFile = downloadFile;
+
+    final S3Bucket bucket = getBucket(globusUrl.getHost());
+    if(bucket==null){
+      String error = "WARNING: bucket not found: "+globusUrl.getHost();
+      Debug.debug(error, 1);
+      return;
+    }
+    S3Object [] objects = s3Service.listObjects(bucket, globusUrl.getPath(), null);
+    if(objects==null || objects.length==0){
+      String error = "WARNING: object not found: "+globusUrl.getPath()+". Backing out.";
+      Debug.debug(error, 1);
+      return;
+    }
+    if(objects==null || objects.length>1){
+      String error = "WARNING: object ambiguous: "+globusUrl.getPath()+". Backing out.";
+      Debug.debug(error, 1);
+      return;
+    }
+    final String objectKey = objects[0].getKey();
+
+    final String id = globusUrl.getURL()+"::"+downloadDirOrFile.getAbsolutePath();
+    fileTransfers.add(id);
+
+    Debug.debug("Downloading "+globusUrl.getURL()+"->"+downloadFile.getAbsolutePath(), 3);
+    
+    MyThread t = new MyThread(){
+      public void run(){
+        try{
+          S3Object s3Object = s3Service.getObject(bucket, objectKey);
+          BufferedReader reader = new BufferedReader(
+              new InputStreamReader(s3Object.getDataInputStream()));
+          String data = null;
+          PrintWriter out = new PrintWriter(new FileWriter(dlFile)); 
+          while((data = reader.readLine())!=null && fileTransfers.contains(id)){
+            out.println(data);
+          }
+          reader.close();
+          out.close();
+        }
+        catch(Exception e){
+          this.setException(e);
+          e.printStackTrace();
+        }
+      }
+    };
+    t.start();
+    
+    if(!Util.waitForThread(t, "sss", COPY_TIMEOUT, "getFile")){
+      if(statusBar!=null){
+        statusBar.setLabel("Download cancelled");
+      }
+      return;
+    }
+    if(t.getException()!=null){
+      if(statusBar!=null){
+        statusBar.setLabel("Download failed");
+      }
+      throw t.getException();
+    }
+   
+    // if we didn't get an exception, the file got downloaded
+    if(statusBar!=null){
+      statusBar.setLabel("Download done");
+    }
+    Debug.debug(globusUrl.getURL()+" downloaded.", 2);
   }
 
-  public void putFile(File file,GlobusURL globusFileUrl,StatusBar statusBar)
+  public void put(final GlobusURL globusFileUrl, final InputStream is, final StatusBar statusBar)
       throws Exception{
-    // TODO Auto-generated method stub
+    
+    (new MyThread(){
+      public void run(){
+        if(statusBar!=null){
+          statusBar.setLabel("Uploading "+globusFileUrl.getURL());
+        }
+      }
+    }).run();               
+ 
+    final S3Bucket bucket = getBucket(globusFileUrl.getHost());
+    if(bucket==null){
+      String error = "WARNING: bucket not found: "+globusFileUrl.getHost();
+      Debug.debug(error, 1);
+      return;
+    }
+    
+    MyThread t = new MyThread(){
+      public void run(){
+        // Notice: abortTransfer will not work here; there's no stream writing to interrupt...
+        try{
+          Debug.debug("Uploading object to "+globusFileUrl.getPath(), 2);
+          S3Object isObject = new S3Object(bucket, globusFileUrl.getPath());
+          isObject.setDataInputStream(is);
+          isObject.setContentLength(is.available());
+          s3Service.putObject(bucket, isObject);
+        }
+        catch(Exception e){
+          this.setException(e);
+        }
+      }
+    };
+    t.start();
+    if(!Util.waitForThread(t, "sss", COPY_TIMEOUT, "putFile")){
+      if(statusBar!=null){
+        statusBar.setLabel("Upload cancelled");
+      }
+      return;
+    }
+    if(t.getException()!=null){
+      if(statusBar!=null){
+        statusBar.setLabel("Upload failed");
+      }
+      throw t.getException();
+    }
 
+    // if we didn't get an exception, the file got written.
+    if(statusBar!=null){
+      statusBar.setLabel("Upload done");
+    }
+    Debug.debug("File or directory "+globusFileUrl.getURL()+" written.", 2);
+  }
+
+  public void abortTransfer(String id) throws ServerException,IOException{
+    fileTransfers.remove(id);
+  }
+
+  /**
+   * Quick and dirty method to just get a file - bypassing
+   * caching, queueing and monitoring. Notice, that it does NOT
+   * start a separate thread.
+   */
+  public void putFile(final File file, final GlobusURL globusFileUrl, final StatusBar statusBar)
+  throws Exception {
+    String fileName = file.getName();
+    GlobusURL uploadUrl = null;
+    if(globusFileUrl.getURL().endsWith("/")){
+      uploadUrl = new GlobusURL(globusFileUrl.getURL()+fileName);
+    }
+    else{
+      uploadUrl = globusFileUrl;
+    }
+    final GlobusURL upUrl = uploadUrl;
+    Debug.debug("put "+file.getAbsolutePath()+" --> "+uploadUrl.getURL(), 3);
+
+    FileInputStream fileIS = new FileInputStream(file);
+    put(upUrl, fileIS, statusBar);
+  }
+
+  public void write(final GlobusURL globusUrl, String text) throws Exception{
+    ByteArrayInputStream textIS = new ByteArrayInputStream(text.getBytes());
+    put(globusUrl, textIS, GridPilot.getClassMgr().getStatusBar());
   }
 
   public Vector list(GlobusURL globusUrl, String filter, StatusBar statusBar)
@@ -212,7 +614,7 @@ public class SSSFileTransfer implements FileTransfer{
     // getHost() --> bucket, getPath() --> some/file/name
     S3Bucket bucket = getBucket(globusUrl.getHost());
     if(bucket==null){
-      String error ="WARNING: bucket not found: "+globusUrl.getHost();
+      String error = "WARNING: bucket not found: "+globusUrl.getHost();
       Debug.debug(error, 1);
       return new Vector();
     }
@@ -233,49 +635,52 @@ public class SSSFileTransfer implements FileTransfer{
     Debug.debug("Filtering with "+filter, 3);
 
     Vector resVec = new Vector();
-    existingObjects = s3Service.listObjects(bucket, globusUrl.getPath(), null);
+    existingObjects = s3Service.listObjects(bucket, globusUrl.getPath(), "/");
     int directories = 0;
     int files = 0;
-    for(int o = 0; o<existingObjects.length; o++){
-      if(!existingObjects[o].getKey().matches(filter)){
+    String fName = null;
+    String type = null;
+    for(int i=0; i<existingObjects.length; i++){
+      // TODO: find out why this doesn't work.
+      type = existingObjects[i].getContentType();
+      Debug.debug("Listing "+existingObjects[i].getKey()+" : "+type, 3);
+      if(!existingObjects[i].getKey().matches(filter)){
         continue;
       }
-      if(existingObjects[o].getContentType().equals(Mimetypes.MIMETYPE_JETS3T_DIRECTORY) ||
-          existingObjects[o].getKey().endsWith("/")){
+      if(type==null ||
+          type!=null && type.equals(Mimetypes.MIMETYPE_JETS3T_DIRECTORY) ||
+          existingObjects[i].getKey().endsWith("/")){
         ++directories;
+        fName = existingObjects[i].getKey();
+        if(!fName.endsWith("/")){
+          fName += "/";
+        }
       }
       else{
         ++files;
+        fName = existingObjects[i].getKey();
       }
-      resVec.add(existingObjects[o].getKey() + " " + existingObjects[o].getContentLength()/*bytes*/);
+      fName = fName.replaceFirst("^"+globusUrl.getPath(), "");
+      resVec.add(fName + " " + existingObjects[i].getContentLength()/*bytes*/);
     }
     if(statusBar!=null){
       statusBar.setLabel(directories+" directories, "+files+" files");
     }
     return resVec;
   }
-
-  public void abortTransfer(String id) throws ServerException,IOException{
-    // TODO Auto-generated method stub
-
-  }
-
-  public void write(GlobusURL globusUrl,String text) throws Exception{
-    // TODO Auto-generated method stub
-
-  }
   
-  private void prepareForFilesUpload(File[] uploadFiles, StatusBar statusBar, final S3Bucket bucket){
+  private void prepareForFilesUpload(File[] uploadFiles, StatusBar statusBar, final S3Bucket bucket,
+      String [] ids){
     // Build map of files proposed for upload.
     filesForUploadMap = FileComparer.buildFileMap(uploadFiles);
                 
     // Build map of objects already existing in target S3 bucket with keys
     // matching the proposed upload keys.
     List objectsWithExistingKeys = new ArrayList();
-    for (int i = 0; i<existingObjects.length; i++) {
-        if(filesForUploadMap.keySet().contains(existingObjects[i].getKey())){
-            objectsWithExistingKeys.add(existingObjects[i]);
-        }
+    for(int i = 0; i<existingObjects.length; i++) {
+      if(filesForUploadMap.keySet().contains(existingObjects[i].getKey())){
+        objectsWithExistingKeys.add(existingObjects[i]);
+      }
     }
     existingObjects = (S3Object[]) objectsWithExistingKeys.toArray(
         new S3Object[objectsWithExistingKeys.size()]);
@@ -291,12 +696,12 @@ public class SSSFileTransfer implements FileTransfer{
     }
     else{
         compareRemoteAndLocalFiles(filesForUploadMap, s3ExistingObjectsMap, true,
-            statusBar, null, bucket);
+            statusBar, null, bucket, ids);
     }
   }
 
   private void prepareForObjectsDownload(S3Object [] s3Objects, StatusBar statusBar,
-      final S3Bucket bucket) throws IOException{
+      final S3Bucket bucket, final String [] ids) throws IOException{
     File downloadDirectory = Util.getDownloadDir(JOptionPane.getRootFrame());
 
     // Build map of existing local files.
@@ -333,20 +738,20 @@ public class SSSFileTransfer implements FileTransfer{
       // Retrieve details of potential clashes.
       final S3Object[] clashingObjects = (S3Object[])
           potentialClashingObjects.toArray(new S3Object[potentialClashingObjects.size()]);
-      (new Thread() {
-          public void run() {
-              retrieveObjectsDetails(clashingObjects, bucket);
-          }
+      (new Thread(){
+        public void run(){
+          retrieveObjectsDetails(clashingObjects, bucket);
+        }
       }).start();
     }
     else{
       compareRemoteAndLocalFiles(filesAlreadyInDownloadDirectoryMap, s3DownloadObjectsMap,
-          false, statusBar, downloadDirectory, bucket);
+          false, statusBar, downloadDirectory, bucket, ids);
     }
   }
   
   private void performFilesUpload(FileComparerResults comparisonResults,
-      Map uploadingFilesMap, StatusBar statusBar, final S3Bucket bucket) throws Exception {
+      Map uploadingFilesMap, StatusBar statusBar, final S3Bucket bucket, String [] ids) throws Exception {
     // Determine which files to upload, prompting user whether to over-write existing files
     List fileKeysForUpload = new ArrayList();
     fileKeysForUpload.addAll(comparisonResults.onlyOnClientKeys);
@@ -387,8 +792,8 @@ public class SSSFileTransfer implements FileTransfer{
 
       }
 
-      if (fileKeysForUpload.size()==0){
-          return;
+      if(fileKeysForUpload.size()==0){
+        return;
       }
       
       final JProgressBar pb = new JProgressBar();
@@ -430,7 +835,7 @@ public class SSSFileTransfer implements FileTransfer{
               newObject.setMd5Hash(ServiceUtils.computeMD5Hash(
                   new FileInputStream(fileToUpload)));
               
-              if (!fileToUpload.equals(file)) {
+              if(!fileToUpload.equals(file)){
                   // Compute the MD5 hash of the *original* file, if upload file has been altered
                   // through encryption or gzipping.
                   newObject.addMetadata(
@@ -447,10 +852,11 @@ public class SSSFileTransfer implements FileTransfer{
       
       S3ServiceEventListener s3Listener = new MyS3ServiceEventListener();
       final S3ServiceMulti s3ServiceMulti = new S3ServiceMulti(s3Service, s3Listener);
+      s3ServiceEventListeners.put(ids, s3Listener);
       
       // Upload the files.
-      Runnable r = new Runnable() {
-        public void run() {
+      Runnable r = new Runnable(){
+        public void run(){
           s3ServiceMulti.putObjects(bucket, objects);
         }
       };
@@ -458,7 +864,7 @@ public class SSSFileTransfer implements FileTransfer{
   }
 
   private void performObjectsDownload(FileComparerResults comparisonResults,
-      Map s3DownloadObjectsMap, File downloadDirectory, final S3Bucket bucket) throws Exception {        
+      Map s3DownloadObjectsMap, File downloadDirectory, final S3Bucket bucket, String [] ids) throws Exception {        
     // Determine which files to download, prompting user whether to over-write existing files
     List objectKeysForDownload = new ArrayList();
     objectKeysForDownload.addAll(comparisonResults.onlyOnServerKeys);
@@ -507,8 +913,8 @@ public class SSSFileTransfer implements FileTransfer{
     // Create array of objects for download.        
     S3Object[] objects = new S3Object[objectKeysForDownload.size()];
     int objectIndex = 0;
-    for (Iterator iter = objectKeysForDownload.iterator(); iter.hasNext();) {
-        objects[objectIndex++] = (S3Object) s3DownloadObjectsMap.get(iter.next()); 
+    for(Iterator iter = objectKeysForDownload.iterator(); iter.hasNext();){
+      objects[objectIndex++] = (S3Object) s3DownloadObjectsMap.get(iter.next()); 
     }
                 
     HashMap downloadObjectsToFileMap = new HashMap();
@@ -577,6 +983,7 @@ public class SSSFileTransfer implements FileTransfer{
     final DownloadPackage[] downloadPackagesArray = (DownloadPackage[])
         downloadPackageList.toArray(new DownloadPackage[downloadPackageList.size()]);            
     S3ServiceEventListener s3Listener = new MyS3ServiceEventListener();
+    s3ServiceEventListeners.put(ids, s3Listener);
     final S3ServiceMulti s3ServiceMulti = new S3ServiceMulti(s3Service, s3Listener);
     Runnable r = new Runnable(){
       public void run(){
@@ -587,7 +994,8 @@ public class SSSFileTransfer implements FileTransfer{
   }
   
   private void compareRemoteAndLocalFiles(final Map localFilesMap, final Map s3ObjectsMap,
-      final boolean upload, StatusBar statusBar, File downloadDirectory, S3Bucket bucket){
+      final boolean upload, StatusBar statusBar, File downloadDirectory, S3Bucket bucket,
+      String [] ids){
     final JProgressBar pb = new JProgressBar();
     try{
       // Compare objects being downloaded and existing local files.
@@ -629,10 +1037,10 @@ public class SSSFileTransfer implements FileTransfer{
       statusBar.removeProgressBar(pb); 
       
       if(upload){
-          performFilesUpload(comparisonResults, localFilesMap, statusBar, bucket);
+          performFilesUpload(comparisonResults, localFilesMap, statusBar, bucket, ids);
       }
       else{
-          performObjectsDownload(comparisonResults, s3ObjectsMap, downloadDirectory, bucket);                
+          performObjectsDownload(comparisonResults, s3ObjectsMap, downloadDirectory, bucket, ids);                
       }
     }
     catch(RuntimeException e){
@@ -722,22 +1130,22 @@ public class SSSFileTransfer implements FileTransfer{
   private void retrieveObjectsDetails(final S3Object[] candidateObjects, final S3Bucket bucket) {
     // Identify which of the candidate objects have incomplete metadata.
     ArrayList s3ObjectsIncompleteList = new ArrayList();
-    for (int i = 0; i < candidateObjects.length; i++) {
-        if (!candidateObjects[i].isMetadataComplete()) {
-            s3ObjectsIncompleteList.add(candidateObjects[i]);
-        }
+    for(int i = 0; i < candidateObjects.length; i++){
+      if(!candidateObjects[i].isMetadataComplete()){
+        s3ObjectsIncompleteList.add(candidateObjects[i]);
+      }
     }
     
     Debug.debug("Of " + candidateObjects.length + " object candidates for HEAD requests "
         + s3ObjectsIncompleteList.size() + " are incomplete, performing requests for these only", 1);
     
-    final S3Object[] incompleteObjects = (S3Object[]) s3ObjectsIncompleteList
-        .toArray(new S3Object[s3ObjectsIncompleteList.size()]);        
+    final S3Object[] incompleteObjects = (S3Object[]) s3ObjectsIncompleteList.toArray(
+        new S3Object[s3ObjectsIncompleteList.size()]);        
     (new Thread() {
         public void run() {
           S3ServiceEventListener s3Listener = new MyS3ServiceEventListener();
           S3ServiceMulti s3ServiceMulti = new S3ServiceMulti(s3Service, s3Listener);
-            s3ServiceMulti.getObjectsHeads(bucket, incompleteObjects);
+          s3ServiceMulti.getObjectsHeads(bucket, incompleteObjects);
         };
     }).start();
   }

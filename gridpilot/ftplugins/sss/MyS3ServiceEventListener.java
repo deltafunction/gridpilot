@@ -10,13 +10,8 @@ import org.jets3t.service.multithread.ThreadWatcher;
 
 public class MyS3ServiceEventListener extends S3ServiceEventAdaptor{
   
-  private final String STATUS_WAIT = "Wait";
-  private final String STATUS_TRANSFER = "Transfer";
-  private final String STATUS_DONE = "Done";
-  private final String STATUS_ERROR = "Error";
-
   private ThreadWatcher watcher = null;
-  private String status = STATUS_WAIT;
+  private String status = SSSFileTransfer.STATUS_WAIT;
   
   public ThreadWatcher getThreadWatcher(){
     return watcher;
@@ -30,21 +25,21 @@ public class MyS3ServiceEventListener extends S3ServiceEventAdaptor{
     super.s3ServiceEventPerformed(event);
     if(ServiceEvent.EVENT_STARTED==event.getEventCode()){    
       watcher = event.getThreadWatcher();
-      status = STATUS_TRANSFER;
+      status = SSSFileTransfer.STATUS_TRANSFER;
     }  
     else if (ServiceEvent.EVENT_IN_PROGRESS==event.getEventCode()){
       watcher = event.getThreadWatcher();  
-      status = STATUS_TRANSFER;
+      status = SSSFileTransfer.STATUS_TRANSFER;
     }
     else if (ServiceEvent.EVENT_COMPLETED==event.getEventCode()){
-      status = STATUS_DONE;
+      status = SSSFileTransfer.STATUS_DONE;
     }
     else if (ServiceEvent.EVENT_CANCELLED==event.getEventCode()){
-      status = STATUS_ERROR;
+      status = SSSFileTransfer.STATUS_ERROR;
     }
     else if (ServiceEvent.EVENT_ERROR==event.getEventCode()){
       String message = "Unable to download object(s)";
-      status = STATUS_ERROR;
+      status = SSSFileTransfer.STATUS_ERROR;
       GridPilot.getClassMgr().getLogFile().addMessage(message, event.getErrorCause());
     }
   }
@@ -53,21 +48,21 @@ public class MyS3ServiceEventListener extends S3ServiceEventAdaptor{
     super.s3ServiceEventPerformed(event);
     if(ServiceEvent.EVENT_STARTED==event.getEventCode()){    
       watcher = event.getThreadWatcher();
-      status = STATUS_TRANSFER;
+      status = SSSFileTransfer.STATUS_TRANSFER;
     }  
     else if (ServiceEvent.EVENT_IN_PROGRESS==event.getEventCode()){
       watcher = event.getThreadWatcher();  
-      status = STATUS_TRANSFER;
+      status = SSSFileTransfer.STATUS_TRANSFER;
     }
     else if (ServiceEvent.EVENT_COMPLETED==event.getEventCode()){
-      status = STATUS_DONE;
+      status = SSSFileTransfer.STATUS_DONE;
     }
     else if (ServiceEvent.EVENT_CANCELLED==event.getEventCode()){
-      status = STATUS_ERROR;
+      status = SSSFileTransfer.STATUS_ERROR;
     }
     else if (ServiceEvent.EVENT_ERROR==event.getEventCode()){
       String message = "Unable to upload object(s)";
-      status = STATUS_ERROR;
+      status = SSSFileTransfer.STATUS_ERROR;
       GridPilot.getClassMgr().getLogFile().addMessage(message, event.getErrorCause());
     }
   }

@@ -31,6 +31,7 @@ import org.safehaus.uuid.UUIDGenerator;
 import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 import gridpilot.ftplugins.https.HTTPSFileTransfer;
 import gridpilot.ftplugins.https.MyUrlCopy;
+import gridpilot.ftplugins.sss.SSSFileTransfer;
 
 
 /**
@@ -65,6 +66,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private JComboBox currentUrlBox = null;
   private GSIFTPFileTransfer gsiftpFileTransfer = null;
   private HTTPSFileTransfer httpsFileTransfer = null;
+  private SSSFileTransfer sssFileTransfer = null;
   private boolean ok = true;
   private boolean saveUrlHistory = false;
   private boolean doingSearch = false;
@@ -136,6 +138,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(!localFS){
       gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
       httpsFileTransfer = (HTTPSFileTransfer) GridPilot.getClassMgr().getFTPlugin("https");
+      sssFileTransfer = (SSSFileTransfer) GridPilot.getClassMgr().getFTPlugin("sss");
     }
     
     String urlHistory = null;
@@ -1038,7 +1041,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           url.endsWith("/")){
         setLocalDirDisplay(url);
       }
-      // remote gsiftp directory
+      // remote directory
       else if(url.startsWith("gsiftp://") &&
           url.endsWith("/")){
         setRemoteDirDisplay(url, gsiftpFileTransfer, "gsiftp");
@@ -1053,6 +1056,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
           //setHttpDirDisplay(url);
           setHtmlDisplay(url);
         }
+      }
+      else if(url.startsWith("sss://") &&
+          url.endsWith("/")){
+        setRemoteDirDisplay(url, sssFileTransfer, "sss");
       }
       // remote gsiftp text file
       else if(url.startsWith("gsiftp://") &&
@@ -1069,6 +1076,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
           !url.endsWith("html") && !url.endsWith("gz")){
         if(!setRemoteTextEdit(url, httpsFileTransfer)){
           setRemoteFileConfirmDisplay(url, httpsFileTransfer);
+        }
+      }
+      // remote 3s text file
+      else if(url.startsWith("sss://") &&
+          !url.endsWith("/") && !url.endsWith("htm") &&
+          !url.endsWith("html") && !url.endsWith("gz")){
+        if(!setRemoteTextEdit(url, sssFileTransfer)){
+          setRemoteFileConfirmDisplay(url, sssFileTransfer);
         }
       }
       // html document
@@ -1092,6 +1107,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
       else if(url.endsWith("gz") &&
           (url.startsWith("https:/"))){
         setRemoteFileConfirmDisplay(url, httpsFileTransfer);
+      }
+      // tarball on 3s server
+      else if(url.endsWith("gz") &&
+          (url.startsWith("sss:/"))){
+        setRemoteFileConfirmDisplay(url, sssFileTransfer);
       }
       // text document on disk or web server
       else if(!url.endsWith("htm") &&
@@ -1129,6 +1149,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       else if(url.startsWith("gsiftp:")){
         setRemoteFileConfirmDisplay(url, gsiftpFileTransfer);
+      }
+      else if(url.startsWith("sss:")){
+        setRemoteFileConfirmDisplay(url, sssFileTransfer);
       }
       // blank page
       else if(url.equals("") && withNavigation){
@@ -1701,8 +1724,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       // if we don't get an exception, the directory got read...
       //thisUrl = (new File(localPath)).toURL().toExternalForm();
       thisUrl = url;
-      statusBar.setLabel(directories+" directorie"+(directories==1?"":"s")+"," +
-          ""+files+" file"+(files==1?"":"s"));
+      statusBar.setLabel(directories+" director"+(directories==1?"y":"ies")+", " +
+          files+" file"+(files==1?"":"s"));
       bDownload.setEnabled(listedUrls!=null && listedUrls.size()>0);
       bRegister.setEnabled(allowRegister && listedUrls!=null && listedUrls.size()>0);
       setUrl(thisUrl);
