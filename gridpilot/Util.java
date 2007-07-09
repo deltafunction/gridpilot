@@ -601,9 +601,7 @@ public class Util{
     }
     String fileName = _url;
     fileName = fileName.replaceFirst("^file:/+(\\w:)", "$1");
-    fileName = fileName.replaceFirst("^file:///", "/");
-    fileName = fileName.replaceFirst("^file://", "/");
-    fileName = fileName.replaceFirst("^file:/", "/");
+    fileName = fileName.replaceFirst("^file:/+", "/");
     fileName = fileName.replaceFirst("^file:", "");
     return fileName;
   }
