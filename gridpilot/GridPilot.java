@@ -354,9 +354,9 @@ public class GridPilot extends JApplet{
       catch(Exception e){
         // if we cannot show text on splash, just silently ignore
       }
-      String fsClass = getClassMgr().getConfigFile().getValue(ftNames[i], "Class");
+      String ftClass = getClassMgr().getConfigFile().getValue(ftNames[i], "Class");
       getClassMgr().setFTPlugin(ftNames[i],
-          (FileTransfer) Util.loadClass(fsClass, new Class []{}, new Object []{}));
+          (FileTransfer) Util.loadClass(ftClass, new Class []{}, new Object []{}));
     }          
   }
     
