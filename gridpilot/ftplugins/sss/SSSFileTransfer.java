@@ -2,17 +2,13 @@ package gridpilot.ftplugins.sss;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -38,7 +34,6 @@ import org.apache.commons.httpclient.auth.NTLMScheme;
 import org.apache.commons.httpclient.auth.RFC2617Scheme;
 import org.globus.ftp.exception.ServerException;
 import org.globus.util.GlobusURL;
-import org.jets3t.gui.AuthenticationDialog;
 import org.jets3t.service.Constants;
 import org.jets3t.service.Jets3tProperties;
 import org.jets3t.service.S3Service;
@@ -546,7 +541,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     };
     t.start();
     
-    if(!Util.waitForThread(t, "sss", COPY_TIMEOUT, "getFile", true)){
+    if(!Util.waitForThread(t, "sss", COPY_TIMEOUT, "getFile", new Boolean(true))){
       throw new IOException("Download taking too long (>"+COPY_TIMEOUT+" ms). Cancelling.");
     }
     if(t.getException()!=null){
@@ -1214,41 +1209,36 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
    * 
    */
   public Credentials getCredentials(AuthScheme authscheme, String host, int port, boolean proxy) throws CredentialsNotAvailableException {
-      if (authscheme == null) {
-          return null;
+    if(authscheme==null){
+      return null;
+    }
+    try{
+      Credentials credentials = null;  
+      if(authscheme instanceof NTLMScheme){
+        String [] up = GridPilot.userPwd("Authentication Required.\n\n"+ 
+            "<html>Host <b>" + host + ":" + port + "</b> requires Windows authentication</html>",
+            new String [] {"User", "Password", "Host", "Domain"},
+            new String [] {"", "", host, ""});
+        credentials = new NTCredentials(up[0], up[1], up[2], up[3]);
       }
-      try {
-          Credentials credentials = null;
-          
-          if (authscheme instanceof NTLMScheme) {
-              AuthenticationDialog pwDialog = new AuthenticationDialog(
-                  JOptionPane.getRootFrame(), "Authentication Required", 
-                  "<html>Host <b>" + host + ":" + port + "</b> requires Windows authentication</html>", true);
-              pwDialog.setVisible(true);
-              if (pwDialog.getUser().length() > 0) {
-                  credentials = new NTCredentials(pwDialog.getUser(), pwDialog.getPassword(), 
-                      host, pwDialog.getDomain());
-              }
-              pwDialog.dispose();
-          } else
-          if (authscheme instanceof RFC2617Scheme) {
-              AuthenticationDialog pwDialog = new AuthenticationDialog(
-                  JOptionPane.getRootFrame(), "Authentication Required", 
-                  "<html><center>Host <b>" + host + ":" + port + "</b>" 
-                  + " requires authentication for the realm:<br><b>" + authscheme.getRealm() + "</b></center></html>", false);
-              pwDialog.setVisible(true);
-              if (pwDialog.getUser().length() > 0) {
-                  credentials = new UsernamePasswordCredentials(pwDialog.getUser(), pwDialog.getPassword());
-              }
-              pwDialog.dispose();
-          } else {
-              throw new CredentialsNotAvailableException("Unsupported authentication scheme: " +
-                  authscheme.getSchemeName());
-          }
-          return credentials;
-      } catch (IOException e) {
-          throw new CredentialsNotAvailableException(e.getMessage(), e);
+      else if(authscheme instanceof RFC2617Scheme){
+          String [] up = GridPilot.userPwd("Authentication Required.\n\n"+ 
+              "<html><center>Host <b>" + host + ":" + port + "</b>" 
+              + " requires authentication for the realm:<br><b>" + authscheme.getRealm() + "</b></center></html>",
+              new String [] {"User", "Password"},
+              new String [] {"", ""});
+          credentials = new UsernamePasswordCredentials(up[0], up[1]);
       }
+      else{
+          throw new CredentialsNotAvailableException("Unsupported authentication scheme: " +
+              authscheme.getSchemeName());
+      }
+      return credentials;     
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      throw new CredentialsNotAvailableException(e.getMessage(), e);
+    }
   }   
 
 }
