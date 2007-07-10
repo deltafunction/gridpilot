@@ -28,8 +28,17 @@ import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
 import javax.swing.SwingUtilities;
 
+import org.apache.commons.httpclient.Credentials;
+import org.apache.commons.httpclient.NTCredentials;
+import org.apache.commons.httpclient.UsernamePasswordCredentials;
+import org.apache.commons.httpclient.auth.AuthScheme;
+import org.apache.commons.httpclient.auth.CredentialsNotAvailableException;
+import org.apache.commons.httpclient.auth.CredentialsProvider;
+import org.apache.commons.httpclient.auth.NTLMScheme;
+import org.apache.commons.httpclient.auth.RFC2617Scheme;
 import org.globus.ftp.exception.ServerException;
 import org.globus.util.GlobusURL;
+import org.jets3t.gui.AuthenticationDialog;
 import org.jets3t.service.Constants;
 import org.jets3t.service.Jets3tProperties;
 import org.jets3t.service.S3Service;
@@ -65,10 +74,11 @@ import gridpilot.Util;
  *
  */
 
-public class SSSFileTransfer implements FileTransfer{
+public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   
   private AWSCredentials awsCredentials = null;
   private S3Service s3Service = null;
+  private S3ServiceMulti s3ServiceMulti = null;
   private LogFile logFile = null;
   private boolean filesWorldReadable = false;
   private boolean compressUploads = false;
@@ -89,6 +99,7 @@ public class SSSFileTransfer implements FileTransfer{
   
   private static String PLUGIN_NAME;
   private static int COPY_TIMEOUT = 10000;
+  public static final String APPLICATION_DESCRIPTION = "GridPilot";
 
   protected final static String STATUS_WAIT = "Wait";
   protected final static String STATUS_TRANSFER = "Transfer";
@@ -118,13 +129,21 @@ public class SSSFileTransfer implements FileTransfer{
        "Encryption password");
     encryptUploads = encryptionPassword!=null && !encryptionPassword.equalsIgnoreCase("");
     awsCredentials = new AWSCredentials(accessKey, secretKey);
+    try{
+      s3Service = new RestS3Service(awsCredentials, APPLICATION_DESCRIPTION, this);
+      S3ServiceEventListener s3Listener = new MyS3ServiceEventListener();
+      s3ServiceMulti = new S3ServiceMulti(s3Service, s3Listener);
+    }
+    catch(S3ServiceException e){
+      e.printStackTrace();
+      logFile.addMessage("Could not initialize S3 service with the given credentials.", e);
+    }
   }
   
   private S3Bucket getBucket(String bucketName) throws Exception{
     if(myBuckets.containsKey(bucketName)){
       return (S3Bucket) myBuckets.get(bucketName);
     }
-    s3Service = new RestS3Service(awsCredentials);
     S3Bucket [] myBucketsArr = s3Service.listAllBuckets();
     Debug.debug("Number of buckets in S3? " + myBucketsArr.length, 1);
     // Check if the bucket specified in the config files exists, if not, try to create it
@@ -173,6 +192,8 @@ public class SSSFileTransfer implements FileTransfer{
   public String[] startCopyFiles(GlobusURL[] srcUrls, GlobusURL[] destUrls)
       throws Exception{
     
+    // TODO: write and use checkCache method - like in HTTPSFileTransfer
+    
     S3Bucket bucket = null;
     String [] ids = new String[srcUrls.length];
     String id = null;
@@ -203,6 +224,20 @@ public class SSSFileTransfer implements FileTransfer{
     }
     else if(srcUrls[0].getProtocol().equalsIgnoreCase("sss") &&
         destUrls[0].getProtocol().equalsIgnoreCase("file")){
+      // We only support downloading to the same directory
+      String path = getLocalPath(destUrls[0]);
+      for(int i=0; i<destUrls.length; ++i){
+        if(!getLocalPath(destUrls[i]).equals(path)){
+          throw new IOException("Cannot download to different directories.");
+        }
+      }
+      File downloadDir = new File(path);
+      if(!downloadDir.isDirectory()){
+        throw new IOException("Download destination not a directory.");
+      }
+      if(!downloadDir.exists()){
+        throw new IOException("Download directory does not exist.");
+      }
       // The URLs are of the form sss://bucket/some/file/name
       // getHost() --> bucket, getPath() --> some/file/name
       Vector objectsVec = new Vector();
@@ -226,12 +261,21 @@ public class SSSFileTransfer implements FileTransfer{
       }
       S3Object [] objectsOnServer = (S3Object []) objectsVec.toArray(new S3Object[srcUrls.length]);
       prepareForObjectsDownload(objectsOnServer, GridPilot.getClassMgr().getStatusBar(), bucket,
-          ids);
+          ids, downloadDir);
     }
     else{
       throw new IOException("Only download or upload is supported by this plugin.");
     }
     return ids;
+  }
+  
+  private String getLocalPath(GlobusURL fileUrl){
+    String ret = Util.clearFile(
+      fileUrl.getPath().replaceFirst("(^.*)"+File.separator+"[^"+File.separator+"]+$", "$1"));
+    if(ret.equals("")){
+      ret = "/";
+    }
+    return ret;
   }
 
   public String getUserInfo() throws Exception{
@@ -484,14 +528,14 @@ public class SSSFileTransfer implements FileTransfer{
       public void run(){
         try{
           S3Object s3Object = s3Service.getObject(bucket, objectKey);
-          BufferedReader reader = new BufferedReader(
-              new InputStreamReader(s3Object.getDataInputStream()));
-          String data = null;
-          PrintWriter out = new PrintWriter(new FileWriter(dlFile)); 
-          while((data = reader.readLine())!=null && fileTransfers.contains(id)){
-            out.println(data);
+          InputStream in = s3Object.getDataInputStream();
+          byte[] buf = new byte[1024];
+          int len;
+          OutputStream out = new FileOutputStream(dlFile); 
+          while((len = in.read(buf))>0 && fileTransfers.contains(id)){
+            out.write(buf, 0, len);
           }
-          reader.close();
+          in.close();
           out.close();
         }
         catch(Exception e){
@@ -502,11 +546,8 @@ public class SSSFileTransfer implements FileTransfer{
     };
     t.start();
     
-    if(!Util.waitForThread(t, "sss", COPY_TIMEOUT, "getFile")){
-      if(statusBar!=null){
-        statusBar.setLabel("Download cancelled");
-      }
-      return;
+    if(!Util.waitForThread(t, "sss", COPY_TIMEOUT, "getFile", true)){
+      throw new IOException("Download taking too long (>"+COPY_TIMEOUT+" ms). Cancelling.");
     }
     if(t.getException()!=null){
       if(statusBar!=null){
@@ -636,31 +677,37 @@ public class SSSFileTransfer implements FileTransfer{
 
     Vector resVec = new Vector();
     existingObjects = s3Service.listObjects(bucket, globusUrl.getPath(), "/");
+    //retrieveObjectsDetails(existingObjects, bucket);
     int directories = 0;
     int files = 0;
     String fName = null;
     String type = null;
+    S3Object objectDetailsOnly = null;
     for(int i=0; i<existingObjects.length; i++){
       // TODO: find out why this doesn't work.
-      type = existingObjects[i].getContentType();
-      Debug.debug("Listing "+existingObjects[i].getKey()+" : "+type, 3);
-      if(!existingObjects[i].getKey().matches(filter)){
-        continue;
-      }
+      //type = existingObjects[i].getContentType();
+      //Debug.debug("Listing "+existingObjects[i].getKey()+" : "+type, 3);
+      objectDetailsOnly = s3Service.getObjectDetails(bucket, existingObjects[i].getKey());
+      Debug.debug("S3Object, details only: " + objectDetailsOnly, 3);
+      type = objectDetailsOnly.getContentType();
+      fName = existingObjects[i].getKey();
+      fName = fName.replaceFirst("^"+globusUrl.getPath(), "");
       if(type==null ||
           type!=null && type.equals(Mimetypes.MIMETYPE_JETS3T_DIRECTORY) ||
           existingObjects[i].getKey().endsWith("/")){
-        ++directories;
-        fName = existingObjects[i].getKey();
         if(!fName.endsWith("/")){
           fName += "/";
         }
       }
+      if(!fName.matches(filter)){
+        continue;
+      }
+      if(fName.endsWith("/")){
+        ++directories;
+      }
       else{
         ++files;
-        fName = existingObjects[i].getKey();
       }
-      fName = fName.replaceFirst("^"+globusUrl.getPath(), "");
       resVec.add(fName + " " + existingObjects[i].getContentLength()/*bytes*/);
     }
     if(statusBar!=null){
@@ -686,13 +733,13 @@ public class SSSFileTransfer implements FileTransfer{
         new S3Object[objectsWithExistingKeys.size()]);
     s3ExistingObjectsMap = FileComparer.populateS3ObjectMap("", existingObjects);
     if(existingObjects.length>0){
-        // Retrieve details of potential clashes.
-        final S3Object[] clashingObjects = existingObjects;
-        (new Thread() {
-            public void run() {
-                retrieveObjectsDetails(clashingObjects, bucket);
-            }
-        }).start();
+      // Retrieve details of potential clashes.
+      final S3Object[] clashingObjects = existingObjects;
+      (new Thread(){
+        public void run(){
+          retrieveObjectsDetails(clashingObjects, bucket);
+        }
+      }).start();
     }
     else{
         compareRemoteAndLocalFiles(filesForUploadMap, s3ExistingObjectsMap, true,
@@ -701,8 +748,9 @@ public class SSSFileTransfer implements FileTransfer{
   }
 
   private void prepareForObjectsDownload(S3Object [] s3Objects, StatusBar statusBar,
-      final S3Bucket bucket, final String [] ids) throws IOException{
-    File downloadDirectory = Util.getDownloadDir(JOptionPane.getRootFrame());
+      final S3Bucket bucket, final String [] ids, File downloadDirectory) throws IOException{
+    
+    Debug.debug("Preparing for download in "+downloadDirectory.getAbsolutePath(), 3);
 
     // Build map of existing local files.
     Map filesInDownloadDirectoryMap = FileComparer.buildFileMap(downloadDirectory, null);
@@ -716,25 +764,25 @@ public class SSSFileTransfer implements FileTransfer{
     ArrayList potentialClashingObjects = new ArrayList();
     Set existingFilesObjectKeys = filesInDownloadDirectoryMap.keySet();
     Iterator objectsIter = s3DownloadObjectsMap.entrySet().iterator();
-    while (objectsIter.hasNext()){
+    while(objectsIter.hasNext()){
       Map.Entry entry = (Map.Entry) objectsIter.next();
       String objectKey = (String) entry.getKey();
       S3Object object = (S3Object) entry.getValue();
       
-      if (object.getContentLength()==0 || existingFilesObjectKeys.contains(objectKey)){
+      if(object.getContentLength()==0 || existingFilesObjectKeys.contains(objectKey)){
         potentialClashingObjects.add(object);
       }
-      if (existingFilesObjectKeys.contains(objectKey)){
+      if(existingFilesObjectKeys.contains(objectKey)){
         filesAlreadyInDownloadDirectoryMap.put(
             objectKey, filesInDownloadDirectoryMap.get(objectKey));
       }
     }
     
-    if(potentialClashingObjects.size()>0){
-      logFile.addInfo("WARNING: overwriting files "+
-          Util.arrayToString(filesInDownloadDirectoryMap.keySet().toArray()));
+    if(filesAlreadyInDownloadDirectoryMap.size()>0/*potentialClashingObjects.size()>0*/){
+      logFile.addInfo("WARNING: overwriting "+
+          Util.arrayToString(filesAlreadyInDownloadDirectoryMap.keySet().toArray())+" in "+downloadDirectory);
     }
-    if(potentialClashingObjects.size()>0){
+    /*if(potentialClashingObjects.size()>0){
       // Retrieve details of potential clashes.
       final S3Object[] clashingObjects = (S3Object[])
           potentialClashingObjects.toArray(new S3Object[potentialClashingObjects.size()]);
@@ -744,10 +792,11 @@ public class SSSFileTransfer implements FileTransfer{
         }
       }).start();
     }
-    else{
+    else{*/
+      Debug.debug("Comparing remote and local files", 3);
       compareRemoteAndLocalFiles(filesAlreadyInDownloadDirectoryMap, s3DownloadObjectsMap,
           false, statusBar, downloadDirectory, bucket, ids);
-    }
+    //}
   }
   
   private void performFilesUpload(FileComparerResults comparisonResults,
@@ -905,9 +954,9 @@ public class SSSFileTransfer implements FileTransfer{
     
     }
 
-    Debug.debug("Downloading " + objectKeysForDownload.size() + " objects", 2);
+    Debug.debug("Downloading " + objectKeysForDownload.size() + " object(s)", 2);
     if(objectKeysForDownload.size()==0){
-        return;
+      return;
     }
                 
     // Create array of objects for download.        
@@ -922,7 +971,12 @@ public class SSSFileTransfer implements FileTransfer{
 
     // Setup files to write to, creating parent directories when necessary.
     for(int i=0; i<objects.length; i++){
-      File file = new File(downloadDirectory, objects[i].getKey());
+      File file = new File(downloadDirectory,
+          /*use this to download misc/file.txt to dldir/misc/file.txt*/
+          //objects[i].getKey()
+          /*use this to download misc/file.txt to dldir/file.txt*/
+          objects[i].getKey().replaceFirst("^.*/([^/]+)$", "$1")
+          );
       
       // Create directory corresponding to object, or parent directories of object.
       if(Mimetypes.MIMETYPE_JETS3T_DIRECTORY.equals(objects[i].getContentType())) {
@@ -953,7 +1007,7 @@ public class SSSFileTransfer implements FileTransfer{
         // Prompt user for the password, if necessary.
         if(encryptionPassword==null || encryptionPassword.equalsIgnoreCase("")){
           throw new S3ServiceException(
-              "One or more objects are encrypted. Cockpit cannot download encrypted "
+              "One or more objects are encrypted. GridPilot cannot download encrypted "
               + "objects unless the encyption password is set in Preferences");
         }
 
@@ -1071,7 +1125,7 @@ public class SSSFileTransfer implements FileTransfer{
       
       // File must be pre-processed. Process data from original file 
       // and write it to a temporary one ready for upload.
-      final File tempUploadFile = File.createTempFile("JetS3tCockpit",".tmp");
+      final File tempUploadFile = File.createTempFile("GridPilot-",".tmp");
       tempUploadFile.deleteOnExit();
       
       OutputStream outputStream = null;
@@ -1130,7 +1184,7 @@ public class SSSFileTransfer implements FileTransfer{
   private void retrieveObjectsDetails(final S3Object[] candidateObjects, final S3Bucket bucket) {
     // Identify which of the candidate objects have incomplete metadata.
     ArrayList s3ObjectsIncompleteList = new ArrayList();
-    for(int i = 0; i < candidateObjects.length; i++){
+    for(int i=0; i<candidateObjects.length; i++){
       if(!candidateObjects[i].isMetadataComplete()){
         s3ObjectsIncompleteList.add(candidateObjects[i]);
       }
@@ -1141,14 +1195,60 @@ public class SSSFileTransfer implements FileTransfer{
     
     final S3Object[] incompleteObjects = (S3Object[]) s3ObjectsIncompleteList.toArray(
         new S3Object[s3ObjectsIncompleteList.size()]);        
-    (new Thread() {
-        public void run() {
-          S3ServiceEventListener s3Listener = new MyS3ServiceEventListener();
-          S3ServiceMulti s3ServiceMulti = new S3ServiceMulti(s3Service, s3Listener);
-          s3ServiceMulti.getObjectsHeads(bucket, incompleteObjects);
-        };
-    }).start();
+    MyThread t = (new MyThread(){
+      public void run(){
+        //S3ServiceEventListener s3Listener = new MyS3ServiceEventListener();
+        //S3ServiceMulti s3ServiceMulti = new S3ServiceMulti(s3Service, s3Listener);
+        s3ServiceMulti.getObjectsHeads(bucket, incompleteObjects);
+      };
+    });
+    t.start();
+    //Util.waitForThread(t, "SSSFileTransfer", 20000, "retrieveObjectsDetails", false);
   }
 
+  /**
+   * Implementation method for the CredentialsProvider interface.
+   * <p>
+   * Based on sample code:  
+   * <a href="http://svn.apache.org/viewvc/jakarta/commons/proper/httpclient/trunk/src/examples/InteractiveAuthenticationExample.java?view=markup">InteractiveAuthenticationExample</a> 
+   * 
+   */
+  public Credentials getCredentials(AuthScheme authscheme, String host, int port, boolean proxy) throws CredentialsNotAvailableException {
+      if (authscheme == null) {
+          return null;
+      }
+      try {
+          Credentials credentials = null;
+          
+          if (authscheme instanceof NTLMScheme) {
+              AuthenticationDialog pwDialog = new AuthenticationDialog(
+                  JOptionPane.getRootFrame(), "Authentication Required", 
+                  "<html>Host <b>" + host + ":" + port + "</b> requires Windows authentication</html>", true);
+              pwDialog.setVisible(true);
+              if (pwDialog.getUser().length() > 0) {
+                  credentials = new NTCredentials(pwDialog.getUser(), pwDialog.getPassword(), 
+                      host, pwDialog.getDomain());
+              }
+              pwDialog.dispose();
+          } else
+          if (authscheme instanceof RFC2617Scheme) {
+              AuthenticationDialog pwDialog = new AuthenticationDialog(
+                  JOptionPane.getRootFrame(), "Authentication Required", 
+                  "<html><center>Host <b>" + host + ":" + port + "</b>" 
+                  + " requires authentication for the realm:<br><b>" + authscheme.getRealm() + "</b></center></html>", false);
+              pwDialog.setVisible(true);
+              if (pwDialog.getUser().length() > 0) {
+                  credentials = new UsernamePasswordCredentials(pwDialog.getUser(), pwDialog.getPassword());
+              }
+              pwDialog.dispose();
+          } else {
+              throw new CredentialsNotAvailableException("Unsupported authentication scheme: " +
+                  authscheme.getSchemeName());
+          }
+          return credentials;
+      } catch (IOException e) {
+          throw new CredentialsNotAvailableException(e.getMessage(), e);
+      }
+  }   
 
 }

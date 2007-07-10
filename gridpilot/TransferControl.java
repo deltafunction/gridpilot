@@ -1244,7 +1244,8 @@ public class TransferControl{
         }
       }
       // remote gsiftp or https/webdav directory
-      else if(srcUrlDir.startsWith("gsiftp://") || srcUrlDir.startsWith("https://")){
+      else if(srcUrlDir.startsWith("gsiftp://") || srcUrlDir.startsWith("https://") ||
+          srcUrlDir.startsWith("sss://")){
         Debug.debug("Downloading to "+downloadDir.getAbsolutePath(), 3);        
         Debug.debug("Downloading "+destFileName+" from "+srcUrlDir, 3);
         /*final File dName = downloadDir;
@@ -1385,8 +1386,9 @@ public class TransferControl{
         }
         localCopy(file, fsPath);
       }
-      // remote gsiftp directory
-      else if(uploadUrlDir.startsWith("gsiftp://") || uploadUrlDir.startsWith("https")){
+      // remote directory
+      else if(uploadUrlDir.startsWith("gsiftp://") || uploadUrlDir.startsWith("https") ||
+         uploadUrlDir.startsWith("sss")){
         if(!uploadUrlDir.endsWith("/")){
           throw(new IOException("Upload location must be a directory. "+uploadUrl));
         }

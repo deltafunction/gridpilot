@@ -88,7 +88,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private HashSet excludeDBs = new HashSet();
   
   public static int HISTORY_SIZE = 15;
-  private static int MAX_FILE_EDIT_BYTES = 500000;
+  private static int MAX_FILE_EDIT_BYTES = 100000;
   private static int TEXTFIELDWIDTH = 32;
   private static int HTTP_TIMEOUT = 10000;
 
@@ -1063,8 +1063,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       // remote gsiftp text file
       else if(url.startsWith("gsiftp://") &&
-          !url.endsWith("/") && !url.endsWith("htm") &&
-          !url.endsWith("html") && !url.endsWith("gz") &&
+          !url.endsWith("/") && /*!url.endsWith("htm") &&
+          !url.endsWith("html") &&*/ !url.endsWith("gz") &&
           url.indexOf(".root")<0){
         if(!setRemoteTextEdit(url, gsiftpFileTransfer)){
           setRemoteFileConfirmDisplay(url, gsiftpFileTransfer);
@@ -1073,15 +1073,17 @@ public class BrowserPanel extends JDialog implements ActionListener{
       // remote https text file
       else if(url.startsWith("https://") &&
           !url.endsWith("/") && !url.endsWith("htm") &&
-          !url.endsWith("html") && !url.endsWith("gz")){
+          !url.endsWith("html") && !url.endsWith("gz") &&
+          url.indexOf(".root")<0){
         if(!setRemoteTextEdit(url, httpsFileTransfer)){
           setRemoteFileConfirmDisplay(url, httpsFileTransfer);
         }
       }
       // remote 3s text file
       else if(url.startsWith("sss://") &&
-          !url.endsWith("/") && !url.endsWith("htm") &&
-          !url.endsWith("html") && !url.endsWith("gz")){
+          !url.endsWith("/") && /*!url.endsWith("htm") &&
+          !url.endsWith("html") &&*/ !url.endsWith("gz") &&
+          url.indexOf(".root")<0){
         if(!setRemoteTextEdit(url, sssFileTransfer)){
           setRemoteFileConfirmDisplay(url, sssFileTransfer);
         }
@@ -1195,8 +1197,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
     Debug.debug("Created temp file "+tmpFile, 3);
     try{
       if(ft.getFileBytes(new GlobusURL(url))>MAX_FILE_EDIT_BYTES){
-        tmpFile.delete();
         //throw new IOException("File too big "+ft.getFileBytes(new GlobusURL(url)));
+        tmpFile.delete();
         return false;
       }
       ft.getFile(new GlobusURL(url), tmpFile, statusBar);
@@ -1223,7 +1225,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
         text += line+"\n";
       }
       in.close();
-      tmpFile.delete();
       ep.setUI(new BasicEditorPaneUI());
       ep.setContentType("text/plain");
       ep.setText(text);
@@ -1242,6 +1243,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bDownload.setEnabled(false);
       bRegister.setEnabled(false);
       
+      tmpFile.delete();
+
       Debug.debug("Setting thisUrl, "+url, 3);
       thisUrl = url;
       lastUrlList = new String [] {thisUrl};
@@ -1438,23 +1441,44 @@ public class BrowserPanel extends JDialog implements ActionListener{
     bRegister.setEnabled(false);
     ep.setEditable(false);
 
+    try{
+      try{
+        if(ft.getFileBytes(new GlobusURL(url))==0){
+          throw new IOException("File is empty");
+        }
+        ep.setText("File found");
+        Debug.debug("Setting thisUrl, "+url, 3);
+        thisUrl = url;
+        setUrl(thisUrl);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        Debug.debug("Could not read "+url, 1);
+        ep.setText("ERROR!\n\nThe file "+url+" could not be read. "+
+            e.getMessage());
+      }
+      pButton.updateUI();
+      lastUrlList = new String [] {thisUrl};
+    }
+    catch(Exception e){
+      Debug.debug("Could not set confirm display of "+url+". "+
+         e.getMessage(), 1);
+      e.printStackTrace();
+      throw new IOException(e.getMessage());
+    }
+  }
+  
+  // TODO: this method can be deleted
+  private void setGsiftpConfirmDisplay(String url, FileTransfer ft) throws IOException{
     String localPath = null;
     String host = null;
     String hostAndPath = null;
     String port = "2811";
     String hostAndPort = null;
     String localDir = null;
-    if(url.startsWith("gsiftp://")){
-      hostAndPath = url.substring(9);
-    }
-    else if(url.startsWith("gsiftp:/")){
-      hostAndPath = url.substring(8);
-    }
-    else{
-      return;
-    }
     Debug.debug("Host+path: "+hostAndPath, 3);
     hostAndPort = hostAndPath.substring(0, hostAndPath.indexOf("/"));
+    hostAndPath = url.substring(9);
     int colonIndex=hostAndPort.indexOf(":");
     if(colonIndex>0){
       host = hostAndPort.substring(0, hostAndPort.indexOf(":"));
@@ -1497,7 +1521,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       lastUrlList = new String [] {thisUrl};
     }
     catch(Exception e){
-      Debug.debug("Could not set gzip display of "+localPath+". "+
+      Debug.debug("Could not set confirm display of "+localPath+". "+
          e.getMessage(), 1);
       e.printStackTrace();
       throw new IOException(e.getMessage());
@@ -1942,13 +1966,17 @@ public class BrowserPanel extends JDialog implements ActionListener{
         localDeleteFile(url);
         statusBar.setLabel(url+" deleted");
       }
-      else if(url.startsWith("gsiftp://") || url.startsWith("https://")){
+      else if(url.startsWith("gsiftp://") || url.startsWith("https://") ||
+          url.startsWith("sss://")){
         GlobusURL globusUrl = new GlobusURL(url);
         if(url.startsWith("gsiftp://")){
-          gsiftpFileTransfer.deleteFile(globusUrl);
+          gsiftpFileTransfer.deleteFiles(new GlobusURL [] {globusUrl});
         }
         else if(url.startsWith("https://")){
-          httpsFileTransfer.deleteFile(globusUrl);
+          httpsFileTransfer.deleteFiles(new GlobusURL [] {globusUrl});
+        }
+        else if(url.startsWith("sss://")){
+          sssFileTransfer.deleteFiles(new GlobusURL [] {globusUrl});
         }
         statusBar.setLabel(globusUrl.getPath()+" deleted");
       }
@@ -2018,6 +2046,16 @@ public class BrowserPanel extends JDialog implements ActionListener{
             Document.StreamDescriptionProperty, null);
         setDisplay(thisUrl);
       }
+      // remote Amazon s3 directory
+      else if(thisUrl.startsWith("sss://")){
+        Debug.debug("Creating file in "+thisUrl, 3);
+        GlobusURL globusUrl = new GlobusURL(thisUrl);
+        sssFileTransfer.write(globusUrl, "");
+        ret = thisUrl;
+        ep.getDocument().putProperty(
+            Document.StreamDescriptionProperty, null);
+        setDisplay(thisUrl);
+      }
       else{
         throw(new IOException("Unknown protocol for "+thisUrl));
       }
@@ -2055,6 +2093,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
         else if(thisUrl.startsWith("https://")){
           GlobusURL globusUrl = new GlobusURL(thisUrl);
           httpsFileTransfer.write(globusUrl, ep.getText());
+        }
+        else if(thisUrl.startsWith("sss://")){
+          GlobusURL globusUrl = new GlobusURL(thisUrl);
+          sssFileTransfer.write(globusUrl, ep.getText());
         }
         else{
           throw(new IOException("Unknown protocol for "+thisUrl));
