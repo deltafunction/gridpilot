@@ -574,13 +574,11 @@ public class SRMFileTransfer implements FileTransfer {
   }
 
   public boolean checkURLs(GlobusURL [] srcUrls, GlobusURL [] destUrls)
-  throws ClientException, ServerException, FTPException, IOException,
-  SRMException {
+     throws ClientException, ServerException, FTPException, IOException,
+     SRMException {
     
     int fromType = getUrlType(srcUrls[0]);
-    checkURLsUniformity(fromType, srcUrls, true);
     int toType = getUrlType(destUrls[0]);
-    checkURLsUniformity(toType, destUrls, false);
     
     if(getUrlType(srcUrls[0])==UNKNOWN_URL ||
         getUrlType(destUrls[0])==UNKNOWN_URL ||
@@ -588,6 +586,13 @@ public class SRMFileTransfer implements FileTransfer {
       return false;
     }
     else{
+      try{
+        checkURLsUniformity(fromType, srcUrls, true);
+        checkURLsUniformity(toType, destUrls, false);
+      }
+      catch(Exception e){
+        return false;
+      }
       return true;
     }
     
@@ -989,7 +994,7 @@ public class SRMFileTransfer implements FileTransfer {
     return rc;
   }
 
-  public static void  checkURLsUniformity(int type, GlobusURL urls[],
+  public static void checkURLsUniformity(int type, GlobusURL urls[],
       boolean areSources) throws IllegalArgumentException, IOException {
     int number_of_sources = urls.length;
     if (number_of_sources==0) { 

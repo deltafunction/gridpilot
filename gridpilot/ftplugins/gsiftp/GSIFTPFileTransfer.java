@@ -92,7 +92,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
     Debug.debug("destUrls.length: "+destUrls.length, 3);
     Debug.debug("firstSrcProtocol: "+firstSrcProtocol, 3);
     Debug.debug("firstDestProtocol: "+firstDestProtocol, 3);
-    if(srcUrls.length!=destUrls.length && !(
+    if(srcUrls.length!=destUrls.length || !(
         firstSrcProtocol.equalsIgnoreCase("gsiftp") &&
         firstDestProtocol.equalsIgnoreCase("file") ||
            firstSrcProtocol.equalsIgnoreCase("file") &&
@@ -817,14 +817,6 @@ public class GSIFTPFileTransfer implements FileTransfer {
       if(!cacheInfoDir.exists()){
         cacheInfoDir.mkdir();
       }
-      long fileSize = client.getSize(urlCopy.getDestinationUrl().getPath());
-      Date modificationDate = null;
-      try{
-        modificationDate = client.getLastModified(urlCopy.getDestinationUrl().getPath());
-      }
-      catch(Exception ee){
-        ee.printStackTrace();
-      }
       if(cacheInfoFile.exists()){
         // Parse the file. It has the format:
         // date: <date>
@@ -841,6 +833,18 @@ public class GSIFTPFileTransfer implements FileTransfer {
            }
         }
         cacheRAF.close();
+      }
+      long fileSize = -1;
+      try{
+        fileSize = urlCopy.getSourceLength();
+      }
+      catch(Exception e){
+      }
+      Date modificationDate = null;
+      try{
+        modificationDate = client.getLastModified(urlCopy.getDestinationUrl().getPath());
+      }
+      catch(Exception ee){
       }
       if(destinationFile.exists() && cachedDate!=null && cachedSize>-1){
         if(modificationDate!=null && fileSize>-1){

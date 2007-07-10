@@ -451,8 +451,6 @@ public class HTTPSFileTransfer implements FileTransfer {
       if(!cacheInfoDir.exists()){
         cacheInfoDir.mkdir();
       }
-      long fileSize = urlCopy.getSourceLength();
-      Date modificationDate = getLastModified(urlCopy.getDestinationUrl());
       if(cacheInfoFile.exists()){
         // Parse the file. It has the format:
         // date: <date>
@@ -469,6 +467,18 @@ public class HTTPSFileTransfer implements FileTransfer {
            }
         }
         cacheRAF.close();
+      }
+      long fileSize = -1;
+      try{
+        fileSize = urlCopy.getSourceLength();
+      }
+      catch(Exception e){
+      }
+      Date modificationDate = null;
+      try{
+        modificationDate = getLastModified(urlCopy.getDestinationUrl());
+      }
+      catch(Exception ee){
       }
       if(destinationFile.exists() && cachedDate!=null && cachedSize>-1){
         if(modificationDate!=null && fileSize>-1){
