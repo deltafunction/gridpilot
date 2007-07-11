@@ -1481,7 +1481,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
     
    /**
-   * Open dialog with jobDefintion creation panel (from datasets)
+   * Open dialog with jobDefinition creation panel (from datasets)
    */ 
   private void createJobDefs(){
     Debug.debug("Creating job definition(s), "+getSelectedIdentifiers().length, 3);
