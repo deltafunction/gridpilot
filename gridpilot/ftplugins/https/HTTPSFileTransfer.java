@@ -317,7 +317,6 @@ public class HTTPSFileTransfer implements FileTransfer {
     
     Debug.debug("delete "+Util.arrayToString(globusUrls), 3);
     
-    GlobusURL globusUrl = null;
     for(int i=0; i<globusUrls.length; ++i){
       try{
         deleteFile(globusUrls[i]);
@@ -327,7 +326,7 @@ public class HTTPSFileTransfer implements FileTransfer {
         e.printStackTrace();
       }
       // if we didn't get an exception, the file got deleted
-      Debug.debug("File or directory "+globusUrl.getURL()+" deleted.", 2);
+      Debug.debug("File or directory "+globusUrls[i].getURL()+" deleted.", 2);
     }
   }
 
