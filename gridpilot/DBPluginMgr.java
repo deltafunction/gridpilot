@@ -640,9 +640,10 @@ public class DBPluginMgr extends DBCache implements Database{
           res = db.getRunNumber(datasetID);
         }
         catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+          /*logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             datasetID, t);
+                             datasetID, t);*/
+          Debug.debug("Could not get runNumber for "+datasetID, 1);
         }
       }
       public String getStringRes(){
@@ -1849,7 +1850,14 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
-          res = db.createDataset(targetTable, fields, values);
+          String table = null;
+          if(targetTable==null){
+            table = "dataset";
+          }
+          else{
+            table = targetTable;
+          }
+          res = db.createDataset(table, fields, values);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
