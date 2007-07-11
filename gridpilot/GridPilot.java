@@ -70,6 +70,9 @@ public class GridPilot extends JApplet{
   public static int maxPullRerun = 0;
   public static boolean firstRun = false;
   public static File userConfFile = null;
+  public static String myDatasetName = "my_dataset";
+  public static String myTransformationName = "my_transformation";
+  public static String myTransformationVersion = "0.1";
 
   /**
    * Constructor
@@ -108,6 +111,13 @@ public class GridPilot extends JApplet{
       loadFTs();
       initDebug();
       initGUI();
+      try{
+        createMyTransformation();
+        createMyDataset();
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
       splash.stopSplash();
       splash = null;
       getClassMgr().getLogFile().addInfo("GridPilot loaded");
@@ -119,6 +129,91 @@ public class GridPilot extends JApplet{
       else{
         getClassMgr().getLogFile().addMessage("Exception during gridpilot loading", e);
         exit(-1);
+      }
+    }
+  }
+  
+  /**
+   * If the dataset "my_dataset" does not exist, create it.
+   */
+  public static void createMyDataset(){
+    DBPluginMgr dbPluginMgr = null;
+    try{
+      dbPluginMgr = getClassMgr().getDBPluginMgr("My_DB_Local");
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    if(dbPluginMgr!=null){
+      String id = dbPluginMgr.getDatasetID(myDatasetName);
+      if(id==null || id.equals("") || id.equals("-1")){
+        String [] fields = new String [] {
+            /*identifier cannot be null*/Util.getIdentifierField("My_DB_Local", "dataset"),
+            /*name*/Util.getNameField("My_DB_Local", "dataset"),
+            /*transformationname*/Util.getDatasetTransformationReference("My_DB_Local")[1],
+            /*transformationversion*/Util.getDatasetTransformationVersionReference("My_DB_Local")[1],
+            "totalFiles",
+            "outputLocation"};
+        String [] values = new String [] {
+            "",
+            myDatasetName,
+            myTransformationName,
+            myTransformationVersion,
+            "1",
+            gridHomeURL};
+        dbPluginMgr.createDataset(null, fields, values);
+      }
+    }
+  }
+
+  /**
+   * If the transformation "my_transformation" does not exist, create it.
+   * @throws Exception 
+   */
+  public static void createMyTransformation() throws Exception{
+    String transformationScriptName = "my_transformation.sh";
+    DBPluginMgr dbPluginMgr = null;
+    String transformationDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
+        "Fork", "transformation directory");
+    if(transformationDirectory!=null){
+      transformationDirectory = "file:~/GridPilot/transformations/";
+    }
+    if(!transformationDirectory.endsWith("/")){
+      transformationDirectory = transformationDirectory+"/";
+    }
+    try{
+      if(!LocalStaticShellMgr.existsFile(transformationDirectory+transformationScriptName)){
+        LocalStaticShellMgr.writeFile(transformationDirectory+transformationScriptName,
+            "#!/bin/sh\n#\n# Sample transformation.\n# Write any commands below.\n#", false);
+      }
+    }
+    catch(Exception e){
+      getClassMgr().getLogFile().addMessage("WARNING: could not create transformation script "+
+          transformationDirectory+transformationScriptName);
+      throw e;
+    }
+    try{
+      dbPluginMgr = getClassMgr().getDBPluginMgr("My_DB_Local");
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    if(dbPluginMgr!=null){
+      String id = dbPluginMgr.getTransformationID(myTransformationName, myTransformationVersion);
+      if(id==null || id.equals("") || id.equals("-1")){
+        String [] fields = new String [] {
+            /*identifier cannot be null*/Util.getIdentifierField("My_DB_Local", "transformation"),
+            /*name*/Util.getNameField("My_DB_Local", "transformation"),
+            /*version*/Util.getDatasetTransformationVersionReference("My_DB_Local")[0],
+            /*runtimeenvironmentname*/Util.getTransformationRuntimeReference("My_DB_Local")[1],
+            "script"};
+        String [] values = new String [] {
+            "",
+            myTransformationName,
+            myTransformationVersion,
+            "Linux",
+            transformationDirectory+transformationScriptName};
+        dbPluginMgr.createTrans(fields, values);
       }
     }
   }
