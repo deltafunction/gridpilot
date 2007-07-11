@@ -279,6 +279,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       //fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
     }
     catch(Exception e){
+      e.printStackTrace();
     }
     if(fields==null /*|| fieldTypes==null*/){
       return false;
@@ -684,7 +685,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
 
   public String getJobDefName(String jobDefinitionID){
-    String nameField = Util.getNameField(dbName, "jobDefintion");
+    String nameField = Util.getNameField(dbName, "jobDefinition");
     return getJobDefinition(jobDefinitionID).getValue(nameField).toString();
   }
 

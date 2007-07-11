@@ -330,7 +330,7 @@ public class JobValidation{
     }
     
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    String [] jobDefFields = dbPluginMgr.getFieldNames("jobDefintion");
+    String [] jobDefFields = dbPluginMgr.getFieldNames("jobDefinition");
     for(int i=0; i<jobDefFields.length ; ++i){
       jobDefFields[i] = jobDefFields[i].toLowerCase();
     }

@@ -592,7 +592,7 @@ public class MySQLDatabase extends DBCache implements Database {
   }
 
   public String getJobDefName(String jobDefinitionID){
-    String nameField = Util.getNameField(dbName, "jobDefintion");
+    String nameField = Util.getNameField(dbName, "jobDefinition");
     return (String) getJobDefinition(jobDefinitionID).getValue(nameField);
   }
 
