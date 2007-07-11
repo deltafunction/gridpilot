@@ -1969,6 +1969,9 @@ public class Util{
 
   public static HashMap parseMetaData(String str){
     HashMap hm = new HashMap();
+    if(str==null){
+      return hm;
+    }
     try{
       InputStream is = new ByteArrayInputStream(str.getBytes());
       BufferedReader in = new BufferedReader(new InputStreamReader(is));
