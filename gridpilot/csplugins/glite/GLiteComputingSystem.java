@@ -706,9 +706,9 @@ public class GLiteComputingSystem implements ComputingSystem{
           // Don't delete records with a non-empty initText.
           // These can only have been created by hand.
           initText = dbPluginMgr.getRuntimeInitText(runtimeName, csName);
-          if(initText!=null && !initText.equals("")){
+          /*if(initText!=null && !initText.equals("")){
             continue;
-          }
+          }*/
           id = dbPluginMgr.getRuntimeEnvironmentID(runtimeName, csName);
           if(!id.equals("-1")){
             ok = dbPluginMgr.deleteRuntimeEnvironment(id);
