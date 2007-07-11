@@ -86,7 +86,7 @@ public class MyHTTPOutputStream extends HTTPOutputStream {
 	
 	if (reply.httpCode != 100 && reply.httpCode != 200 && reply.httpCode != 201) {
 	    abort();
-	    throw new IOException("Gass PUT failed: " + reply.httpMsg);
+	    throw new IOException("Gass PUT failed: " + reply.httpMsg + ":" + reply.httpCode);
 	} else {
 	    logger.debug("Received continuation reply");
 	}
@@ -109,7 +109,7 @@ public class MyHTTPOutputStream extends HTTPOutputStream {
     
     if (hd.httpCode != 100 && hd.httpCode != 200 && hd.httpCode != 201) {
         throw new ChainedIOException("Gass close failed.",
-             new GassException("Gass PUT failed: " + hd.httpMsg));
+             new GassException("Gass PUT failed: " + hd.httpMsg + ":" + hd.httpCode));
     }
       }
 

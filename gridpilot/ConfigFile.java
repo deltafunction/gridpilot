@@ -361,14 +361,16 @@ public class ConfigFile{
     }
     if(searchSection(section)){
       result = searchAttribute(attribute);
+      if(result==null){
+        Debug.debug("WARNING: The attribute "+attribute+
+            " is not defined in section "+section+
+            " of the config file.", 1);
+      }
     }
     else{
       result = null; // this section doesn't exist
-    }
-    if(result==null){
-      Debug.debug("WARNING: The attribute "+attribute+
-          " is not defined in section "+section+
-          " of the config file.", 1);
+      Debug.debug("WARNING: The section "+section+
+          " is not defined in the config file.", 1);
     }
     try{
       file.close();
@@ -452,6 +454,14 @@ public class ConfigFile{
     if(!inJar){
       // ~/.gridpilot
       try{
+        Debug.debug("Opening config file "+configFileName, 3);
+        try{
+          if(file.getFD().valid()){
+            return true;
+          }
+        }
+        catch(Exception e){
+        }
         file = new RandomAccessFile(configFileName, "r");
       }
       catch(FileNotFoundException e){
@@ -463,6 +473,7 @@ public class ConfigFile{
     else{
       // see if a tmp file has been saved
       try{
+        Debug.debug("Opening config file "+GridPilot.tmpConfFile.get(configFileName), 3);
         file = new RandomAccessFile((File) GridPilot.tmpConfFile.get(configFileName), "r");
       }
       catch(FileNotFoundException ee){
