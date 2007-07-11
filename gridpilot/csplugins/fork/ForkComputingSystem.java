@@ -270,7 +270,7 @@ public class ForkComputingSystem implements ComputingSystem{
   }
   
   protected String runDir(JobInfo job){
-    return workingDir +"/"+job.getName();
+    return Util.clearTildeLocally(Util.clearFile(workingDir +"/"+job.getName()));
   }
   
   /**
@@ -569,7 +569,10 @@ public class ForkComputingSystem implements ComputingSystem{
     scriptGenerator.createWrapper(shellMgr, job, job.getName()+commandSuffix);
     
     try{
-      String id = shellMgr.submit(cmd, runDir(job), stdoutFile, stderrFile);
+      String id = shellMgr.submit(Util.clearTildeLocally(Util.clearFile(cmd)),
+                                  runDir(job),
+                                  Util.clearTildeLocally(Util.clearFile(stdoutFile)),
+                                  Util.clearTildeLocally(Util.clearFile(stderrFile)));
       job.setJobId(id!=null?id:"");
     }
     catch(Exception ioe){
@@ -953,7 +956,7 @@ public class ForkComputingSystem implements ComputingSystem{
    */
   protected boolean setupJobRTEs(JobInfo job, ShellMgr shellMgr){
     if(runtimeDirectory==null || runtimeDirectory.length()==0 ||
-        !(new File(runtimeDirectory)).exists()){
+        !(new File(Util.clearTildeLocally(Util.clearFile(runtimeDirectory)))).exists()){
       logFile.addMessage("ERROR: could not download RTE to "+runtimeDirectory);
       return false;
     }
@@ -972,6 +975,8 @@ public class ForkComputingSystem implements ComputingSystem{
     String rteName = null;
     for(int i=0; i<rteNames.length; ++i){
       try{
+        rteId = dbPluginMgr.getRuntimeEnvironmentID(rteNames[i], job.getCSName());
+        rteRecord = dbPluginMgr.getRuntimeEnvironment(rteId);
         deps = Util.splitUrls((String) rteRecord.getValue("depends"));
         for(int j=0; j<deps.length+1; ++j){
           // First see if the dependencies are there or will install.
@@ -999,15 +1004,17 @@ public class ForkComputingSystem implements ComputingSystem{
             }
             catch(Exception e){
               e.printStackTrace();
-              logFile.addMessage("ERROR: RTE "+rteNames[i]+" could not be installed.", e);
-              return false;
+              logFile.addInfo("ERROR: RTE "+rteNames[i]+" could not be installed. " +
+                  "Presumably it is already installed. Trying to run job...");
+              //return false;
             }
           }
-          else{
+          // If there's no URL the RTE is a local one
+          /*else{
             logFile.addMessage("ERROR: RTE "+rteNames[i]+" cannot be installed " +
                   "dynamically; no URL found.");
             return false;
-          }
+          }*/
         }
       }
       catch(Exception e){
@@ -1016,7 +1023,7 @@ public class ForkComputingSystem implements ComputingSystem{
         return false;
       }
     }
-    return false;
+    return true;
   }
 
   /**
@@ -1210,13 +1217,18 @@ public class ForkComputingSystem implements ComputingSystem{
         ok = ok && TransferControl.copyOutputFile(localName, remoteName, shellMgr, error, logFile);
       }
       catch(Exception e){
-        job.setJobStatus("Error");
-        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
-        error = "Exception during copying of output file(s) for job : " + job.getName() + "\n" +
-        "\tCommand\t: " + localName + ": -> " + remoteName +"\n" +
-        "\tException\t: " + e.getMessage();
-        logFile.addMessage(error, e);
-        ok = false;
+        // Horrible clutch because Globus gass copy fails on empty files...
+        if(remoteName.startsWith("https") && (new File(localName)).length()==0){
+        }
+        else{
+          job.setJobStatus("Error");
+          job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+          error = "Exception during copying of output file(s) for job : " + job.getName() + "\n" +
+          "\tCommand\t: " + localName + ": -> " + remoteName +"\n" +
+          "\tException\t: " + e.getMessage();
+          logFile.addMessage(error, e);
+          ok = false;
+        }
       }
     }
     if(!ok){
