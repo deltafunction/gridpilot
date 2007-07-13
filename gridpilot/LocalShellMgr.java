@@ -225,6 +225,8 @@ public class LocalShellMgr implements ShellMgr {
   }
 
   public boolean existsFile(String name){
+    Debug.debug("Checking if "+Util.clearTildeLocally(Util.clearFile(name))+
+    " exists...", 3);
     return new File(Util.clearTildeLocally(Util.clearFile(name))).exists();
   }
 
@@ -464,11 +466,14 @@ public class LocalShellMgr implements ShellMgr {
           if(pwo!=null){
             pwo.println(line);
             buffer.append(line+"\n");
+            pwo.flush();
+            os.flush();
             Debug.debug(type + ">" + line, 3);    
           }
         }
         if(pwo!=null){
           pwo.flush();
+          os.flush();
         }
       }
       catch (IOException ioe){
