@@ -704,10 +704,10 @@ public class CSPluginMgr implements ComputingSystem{
         // Register the new file if the db is a file catalog
         try{
           DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-          if(dbPluginMgr.isFileCatalog()){
+          String[] outputFiles = dbPluginMgr.getOutputFiles(job.getJobDefId());
+          if(outputFiles.length>0 && dbPluginMgr.isFileCatalog()){
             String datasetID = dbPluginMgr.getJobDefDatasetID(job.getJobDefId());
             String datasetName = dbPluginMgr.getDatasetName(datasetID);
-            String[] outputFiles = dbPluginMgr.getOutputFiles(job.getJobDefId());
             String remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(),
                 outputFiles[0]);
             String [] nameArray = Util.split(remoteName, "\\\\");
