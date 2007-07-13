@@ -16,8 +16,7 @@ import gridpilot.ListPanel;
 import gridpilot.IconProxy;
 import gridpilot.wizards.beginning.BeginningWizard;
 import gridpilot.wizards.manage_software.CreateSoftwarePackageWizard;
-import gridpilot.wizards.run_jobs.RunMultipleJobsWizard;
-import gridpilot.wizards.run_jobs.RunOneJobWizard;
+import gridpilot.wizards.run_jobs.RunCommandWizard;
 
 /**
  * Main frame of GridPilot application.
@@ -603,21 +602,14 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuHelp.add(menuHelpCreateSoftwarePackage);
-    JMenuItem menuHelpRunOneJob = new JMenuItem("Wizard: Prepare and run a single job");
+    JMenuItem menuHelpRunOneJob = new JMenuItem("Wizard: Run a Linux command");
     menuHelpRunOneJob.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        new RunOneJobWizard();
+        new RunCommandWizard();
       }
     });
     menuHelp.addSeparator();
     menuHelp.add(menuHelpRunOneJob);
-    JMenuItem menuHelpRunMultipleJobs = new JMenuItem("Wizard: Prepare and run multiple jobs");
-    menuHelpRunOneJob.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        new RunMultipleJobsWizard();
-      }
-    });
-    menuHelp.add(menuHelpRunMultipleJobs);
     
     menuBar.add(menuFile);
     menuBar.add(menuEdit);
