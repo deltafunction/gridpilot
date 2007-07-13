@@ -122,7 +122,6 @@ public class RunCommandWizard extends GPFrame{
         continue;
       }
       JMenuItem mi = new JMenuItem(GridPilot.csNames[i]);
-      //mi.setMnemonic(i);
       mi.addActionListener(new ActionListener(){
         public void actionPerformed(final ActionEvent e){
           runJob(e);
@@ -163,6 +162,7 @@ public class RunCommandWizard extends GPFrame{
           }
         });
         // Create the job definition
+        // TODO
         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr("My_DB_Local");
         String [] fields = new String [] {"datasetName", "name", "userInfo",
             "stdoutDest", "stderrDest"};
@@ -172,7 +172,7 @@ public class RunCommandWizard extends GPFrame{
         try{
           jobDefinition = dbPluginMgr.createJobDef(fields, values);
         }
-        catch (Exception e1) {
+        catch(Exception e1){
           e1.printStackTrace();
         }
         Vector jobDefinitions = new Vector();
