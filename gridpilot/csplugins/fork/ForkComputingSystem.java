@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
-import java.net.URL;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -124,149 +123,6 @@ public class ForkComputingSystem implements ComputingSystem{
     //if(shellMgr.isLocal() && transformationDirectory!=null && transformationDirectory.startsWith("~")){
     //  transformationDirectory = System.getProperty("user.home")+transformationDirectory.substring(1);
     //}
-    if(transformationDirectory!=null){
-      if(!shellMgr.existsFile(transformationDirectory)){
-        try{
-          shellMgr.mkdirs(transformationDirectory);
-        }
-        catch(Exception e){
-          e.printStackTrace();
-        }
-      }
-      for(int i=0; i<localRuntimeDBs.length; ++i){  
-        createTestTransformation(transformationDirectory, localRuntimeDBs[i], shellMgr);
-      }
-    }
-  }
-
-  protected void createTestTransformation(String transformationDirectory, String localRuntimeDB, ShellMgr shellMgr){
-    // If we are running on Linux and a transformation directory is
-    // specified in the config file, copy there a test transformation
-    
-    if(shellMgr.isLocal() && !System.getProperty("os.name").toLowerCase().startsWith("linux")){
-      return;
-    }
-    
-    // Create two dummy input files
-    if(!shellMgr.existsFile(transformationDirectory+"/data1.txt")){
-      try{
-        shellMgr.writeFile(transformationDirectory+"/data1.txt", "test data", false);
-      }
-      catch(Exception e){
-        e.printStackTrace();
-      }
-    }
-    if(!shellMgr.existsFile(transformationDirectory+"/data2.txt")){
-      try{
-        shellMgr.writeFile(transformationDirectory+"/data2.txt", "test data", false);
-      }
-      catch(Exception e){
-        e.printStackTrace();
-      }
-    }
-    
-    String testScriptName = "test.sh";
-    StringBuffer fileStr = new StringBuffer("");
-    
-    if(!shellMgr.existsFile(transformationDirectory+"/"+testScriptName)){
-      BufferedReader in = null;
-      try{
-        URL fileURL = GridPilot.class.getResource(
-            GridPilot.resourcesPath+testScriptName);
-        in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
-        String line = null;
-        while((line=in.readLine())!=null){
-          fileStr.append(line+"\n");
-        }
-        in.close();
-        shellMgr.writeFile(transformationDirectory+"/"+testScriptName, fileStr.toString(), false);
-      }
-      catch(IOException e){
-        logFile.addMessage("WARNING: Could not write test transformation", e);
-        return;
-      }
-      finally{
-        try{
-          in.close();
-        }
-        catch(Exception ee){
-        }
-      }
-    }
-    DBPluginMgr localDBMgr = null;
-    try{
-      localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
-        localRuntimeDB);
-    }
-    catch(Exception e){
-      logFile.addMessage("WARNING: Could not create test transformation in DB "+localRuntimeDB,
-          e);
-      return;
-    }
-    try{
-      StringBuffer stdout = new StringBuffer();
-      StringBuffer stderr = new StringBuffer();
-      String transDir = transformationDirectory;
-      if(shellMgr.isLocal()){
-        transDir = Util.clearTildeLocally(transDir);
-      }
-      /*else{
-        transDir = transDir.replaceFirst("~", "\\$HOME");
-      }*/
-      shellMgr.exec(
-          "chmod +x "+transDir+"/"+testScriptName, stdout, stderr);
-      if(stderr!=null && stderr.length()!=0){
-        logFile.addMessage("Could not set transformation executable. "+stderr);
-        throw new FileNotFoundException(stderr.toString());
-      }
-    }
-    catch(Exception e){
-      Debug.debug("Warning: NOT setting file executable. " +
-          "Probably not on UNIX. "+e.getMessage(), 2);
-    }
-
-    try{
-      if(localDBMgr.getTransformationID("test", "0.1")==null ||
-          localDBMgr.getTransformationID("test", "0.1").equals("-1")){
-        String [] fields = localDBMgr.getFieldNames("transformation");
-        String [] values = new String [fields.length];
-        for(int i=0; i<fields.length; ++i){
-          if(fields[i].equalsIgnoreCase("name")){
-            values[i] = "test";
-          }
-          else if(fields[i].equalsIgnoreCase("version")){
-            values[i] = "0.1";
-          }
-          else if(fields[i].equalsIgnoreCase("runtimeEnvironmentName")){
-            values[i] = "Linux";
-          }
-          else if(fields[i].equalsIgnoreCase("arguments")){
-            values[i] = "multiplier inputFileNames";
-          }
-          else if(fields[i].equalsIgnoreCase("inputFiles")){
-            values[i] = "file:"+transformationDirectory+"/data1.txt "+
-            "file:"+transformationDirectory+"/data2.txt";
-          }
-          else if(fields[i].equalsIgnoreCase("outputFiles")){
-            values[i] = "out.txt";
-          }
-          else if(fields[i].equalsIgnoreCase("script")){
-            values[i] = "file:"+transformationDirectory+"/"+testScriptName;
-          }
-          else if(fields[i].equalsIgnoreCase("comment")){
-            values[i] = "Transformation script to test running local GridPilot jobs on Linux.";
-          }
-          else{
-            values[i] = "";
-          }
-        }
-        localDBMgr.createTransformation(values);
-      }
-    }
-    catch(Exception e){
-      logFile.addMessage("WARNING: Could not create test transformation in DB"+localRuntimeDB,
-          e);
-    }
   }
   
   protected String runDir(JobInfo job){
@@ -1208,19 +1064,21 @@ public class ForkComputingSystem implements ComputingSystem{
     String localName = null;
     String remoteName = null;
     boolean ok = true;
+    // Horrible clutch because Globus gass copy fails on empty files...
+    boolean emptyFile = false;
     for(int i=0; i<outputNames.length; ++i){
+      emptyFile = remoteName.startsWith("https") && (new File(localName)).length()==0;
       try{
         localName = runDir(job) +"/"+dbPluginMgr.getJobDefOutLocalName(jobDefID,
             outputNames[i]);
         localName = Util.clearFile(localName);
         remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputNames[i]);
-        ok = ok && TransferControl.copyOutputFile(localName, remoteName, shellMgr, error, logFile);
+        ok = ok && (TransferControl.copyOutputFile(localName, remoteName, shellMgr, error, logFile) ||
+            emptyFile);
       }
       catch(Exception e){
         // Horrible clutch because Globus gass copy fails on empty files...
-        if(remoteName.startsWith("https") && (new File(localName)).length()==0){
-        }
-        else{
+        if(!emptyFile){
           job.setJobStatus("Error");
           job.setInternalStatus(ComputingSystem.STATUS_ERROR);
           error = "Exception during copying of output file(s) for job : " + job.getName() + "\n" +
@@ -1243,7 +1101,9 @@ public class ForkComputingSystem implements ComputingSystem{
      * move temp StdOut -> finalStdOut
      */
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
-      if(TransferControl.copyOutputFile(job.getStdOut(), finalStdOut, shellMgr, error, logFile)){
+      emptyFile = finalStdOut.startsWith("https") && (new File(job.getStdOut())).length()==0;
+      if(TransferControl.copyOutputFile(job.getStdOut(), finalStdOut, shellMgr, error, logFile) ||
+          emptyFile){
         job.setStdOut(finalStdOut);
       }
       else{
@@ -1255,7 +1115,9 @@ public class ForkComputingSystem implements ComputingSystem{
      * move temp StdErr -> finalStdErr
      */
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
-      if(TransferControl.copyOutputFile(job.getStdErr(), finalStdErr, shellMgr, error, logFile)){
+      emptyFile = finalStdErr.startsWith("https") && (new File(job.getStdErr())).length()==0;
+      if(TransferControl.copyOutputFile(job.getStdErr(), finalStdErr, shellMgr, error, logFile) ||
+          emptyFile){
         job.setStdErr(finalStdErr);
       }
       else{
