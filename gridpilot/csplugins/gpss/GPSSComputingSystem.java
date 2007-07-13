@@ -355,7 +355,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     //String replacePattern = "^[a-z][a-z]+:.+/([^/]+)"
     String rDir = getRemoteDir((String) jobDefinition.getValue(nameField));
     String replacePattern = "^file:.+/([^/]+)";
-    String [] inputFileNames = Util.splitUrls((String) jobDefinition.getValue("inputFileNames"));
+    String [] inputFileNames = Util.splitUrls((String) jobDefinition.getValue("inputFileURLs"));
     String newInputFileName = null;
     for(int i=0; i<inputFileNames.length; ++i){
       if(!Util.urlIsRemote(inputFileNames[i])){
@@ -373,7 +373,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     String stderrDest = (String) jobDefinition.getValue("stderrDest");
     stdoutDest = stdoutDest.replaceFirst(replacePattern, rDir+"$1");
     stderrDest = stderrDest.replaceFirst(replacePattern, rDir+"$1");
-    jobDefinition.setValue("inputFileNames", Util.arrayToString(inputFileNames));
+    jobDefinition.setValue("inputFileURLs", Util.arrayToString(inputFileNames));
     jobDefinition.setValue("outFileMapping", Util.arrayToString(outFileMapping));
     jobDefinition.setValue("stdoutDest", stdoutDest);
     jobDefinition.setValue("stderrDest", stderrDest);
@@ -403,7 +403,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     // TransferControl should be able to handle third-party transfers.
     //String replacePattern = "^[a-z][a-z]+:.+/([^/]+)"
     String replacePattern = "^file:.+/([^/]+)";
-    String inputFiles = (String) jobDefinition.getValue("inputFileNames");
+    String inputFiles = (String) jobDefinition.getValue("inputFileURLs");
     String [] inputFileNames = null;
     if(inputFiles!=null && inputFiles.length()>0){
       inputFileNames = Util.splitUrls(inputFiles);
@@ -597,7 +597,7 @@ public class GPSSComputingSystem implements ComputingSystem{
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     DBRecord jobDefinition = dbPluginMgr.getJobDefinition(job.getJobDefId());
     try{
-      String [] inputFileNames = Util.splitUrls((String) jobDefinition.getValue("inputFileNames"));
+      String [] inputFileNames = Util.splitUrls((String) jobDefinition.getValue("inputFileURLs"));
       String [] outFileMapping = Util.splitUrls((String) jobDefinition.getValue("outFileMapping"));
       String stdoutDest = (String) jobDefinition.getValue("stdoutDest");
       String stderrDest = (String) jobDefinition.getValue("stderrDest");

@@ -591,7 +591,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
 
   public String [] getJobDefInputFiles(String jobDefID){
-    String inputs = getJobDefinition(jobDefID).getValue("inputFileNames").toString();
+    String inputs = getJobDefinition(jobDefID).getValue("inputFileURLs").toString();
     return Util.split(inputs);
   }
 

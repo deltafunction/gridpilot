@@ -302,7 +302,7 @@ public class JobCreationPanel extends CreateEditPanel{
       if(jobParamNames[i].equalsIgnoreCase("nEvents") ||
           jobParamNames[i].equalsIgnoreCase("eventMin") ||
           jobParamNames[i].equalsIgnoreCase("eventMax") ||
-          jobParamNames[i].equalsIgnoreCase("inputFileNames")){
+          jobParamNames[i].equalsIgnoreCase("inputFileURLs")){
         detailFields.add(jobAttributeLabels[i]);
         detailFields.add(tcJobParam[i]);
         tcJobParam[i].setText("");

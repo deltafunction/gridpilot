@@ -502,7 +502,7 @@ public class MySQLDatabase extends DBCache implements Database {
   }
 
   public String [] getJobDefInputFiles(String jobDefID){
-    String inputs = (String) getJobDefinition(jobDefID).getValue("inputFileNames");
+    String inputs = (String) getJobDefinition(jobDefID).getValue("inputFileURLs");
     return Util.split(inputs);
   }
 

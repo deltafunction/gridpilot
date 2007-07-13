@@ -837,9 +837,9 @@ public class JobCreator{
       jobAttributeNames.add("nEvents");
       jobAttributes.add("0");
     }
-    if(!jobattributenames.contains("inputfilenames") &&
-        jobdefinitionFields.contains("inputfilenames")){
-      jobAttributeNames.add("inputFileNames");
+    if(!jobattributenames.contains("inputFileURLs") &&
+        jobdefinitionFields.contains("inputFileURLs")){
+      jobAttributeNames.add("inputFileURLs");
       jobAttributes.add("");
     }
     cstAttrNames = new String [jobAttributeNames.size()];
@@ -872,7 +872,7 @@ public class JobCreator{
         Debug.debug("setting event number", 3);
         resCstAttr[i] = Integer.toString(evtMax-evtMin+1);
       }
-      else if(cstAttrNames[i].equalsIgnoreCase("inputFileNames")){
+      else if(cstAttrNames[i].equalsIgnoreCase("inputFileURLs")){
         if(eventSplits!=null && eventSplits.length>1){
           resCstAttr[i] = inputFiles;
         }
@@ -910,7 +910,7 @@ public class JobCreator{
         resJobParam[i] = Integer.toString(evtMax-evtMin+1);
       }
       else if((jobParam[i]==null || jobParam[i].equals("")) &&
-          (jobParamNames[i].equalsIgnoreCase("inputFileNames"))){
+          (jobParamNames[i].equalsIgnoreCase("inputFileURLs"))){
         if(eventSplits!=null && eventSplits.length>1){
           resJobParam[i] = inputs;
         }
