@@ -11,8 +11,8 @@ public class TestDatasets {
   private ConfigFile configFile = null;
   private String transformationDirectory = null;
   
-  private static String myDatasetName = "no_files_dataset";
-  private static String myTransformationName = "no_files_transformation";
+  private static String myDatasetName = "my_dataset";
+  private static String myTransformationName = "my_transformation";
   private static String myTransformationVersion = "0.1";
   private static String testTransformationName = "test";
   private static String testTransformationVersion = "0.1";

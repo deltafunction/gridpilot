@@ -2283,10 +2283,10 @@ public class Util{
   public static void showMessage(String title, String text){
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String confirmString = text;
-    try {
+    try{
       confirmBox.getConfirm(title, confirmString, new Object[] {"OK"});
     }
-    catch (Exception e) {
+    catch(Exception e){
       e.printStackTrace();
     }
   }
