@@ -1319,7 +1319,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
           for(int j=0; j<jobDefFields.length; ++j){
             if(fieldname.equalsIgnoreCase(jobDefFields[j])){
               if((fieldname.endsWith("FK") || fieldname.endsWith("ID")) &&
-                  !fieldname.equalsIgnoreCase("jobid")){
+                  !fieldname.equalsIgnoreCase("jobid") && !fieldname.equalsIgnoreCase("guid")){
                 int tmp = rset.getInt(fieldname);
                 val = Integer.toString(tmp);
               }
@@ -1415,7 +1415,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
           for(int j=0; j<fieldNames.length; ++j){
             if(fieldname.equalsIgnoreCase(fieldNames[j])){
               if(fieldname.endsWith("FK") || fieldname.endsWith("ID") &&
-                  !fieldname.equalsIgnoreCase("jobID")){
+                  !fieldname.equalsIgnoreCase("jobID") && !fieldname.equalsIgnoreCase("guid")){
                 int tmp = rset.getInt(fieldname);
                 val = Integer.toString(tmp);
               }
@@ -1537,7 +1537,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
         values[i] = makeDate("");
       }
       else if((jobDefFields[i].equalsIgnoreCase("outputFileBytes") ||
-          jobDefFields[i].equalsIgnoreCase("cpuSeconds")) &&
+          jobDefFields[i].equalsIgnoreCase("cpuSeconds")||
+          jobDefFields[i].equalsIgnoreCase("guid") || 
+          jobDefFields[i].equalsIgnoreCase("number")||
+          jobDefFields[i].equalsIgnoreCase("eventMin")||
+          jobDefFields[i].equalsIgnoreCase("eventMax")||
+          jobDefFields[i].equalsIgnoreCase("nEvents")) &&
           (values[i]==null || values[i].equals(""))){
         values[i] = "'0'";
       }
@@ -1582,7 +1587,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     String trparsstr = "" ;
     //trparsstr = Util.webEncode(trpars);
     trparsstr = Util.arrayToString(trpars);
-    for (int i=0 ; i<ofmap.length ; i++){  
+    for(int i=0; i<ofmap.length; i++){  
       ofmapstr += ofmap[i] [0] + " " + ofmap[i] [1] + " ";
     }
     // Update DB with "request" and return success/failure
