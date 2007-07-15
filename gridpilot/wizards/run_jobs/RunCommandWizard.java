@@ -1,11 +1,12 @@
 package gridpilot.wizards.run_jobs;
 
-import gridpilot.BrowserPanel;
 import gridpilot.ConfirmBox;
 import gridpilot.DBPluginMgr;
 import gridpilot.DBRecord;
+import gridpilot.DBResult;
 import gridpilot.GPFrame;
 import gridpilot.GridPilot;
+import gridpilot.LocalStaticShellMgr;
 import gridpilot.MyThread;
 import gridpilot.Util;
 
@@ -17,11 +18,11 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Toolkit;
-import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Vector;
 
@@ -35,20 +36,26 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
 import javax.swing.border.LineBorder;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 
+import org.safehaus.uuid.UUID;
+import org.safehaus.uuid.UUIDGenerator;
+
 public class RunCommandWizard extends GPFrame{
   
   private static final long serialVersionUID=-722418889258036597L;
-  private JButton bSubmit = new JButton("Submit job(s)");
+  private JButton bSubmit = new JButton("Submit job");
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
   private RunCommandWizard thisFrame = this;
-  private JTextArea jtf = null;
+  private JTextArea tfCommand = null;
+  private JTextField tfOutputDir = null;
   private JScrollPane sp = new JScrollPane();
+  private InOutPanel inputsPanel = null;
+  private InOutPanel outputsPanel = null;
 
+  private static String DB_NAME = "My_DB_Local";
   private static int TEXTFIELDWIDTH = 40;
   private static String myDatasetName = "my_dataset";
   private static String myTransformationName = "my_transformation";
@@ -58,7 +65,7 @@ public class RunCommandWizard extends GPFrame{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String confirmString =
     "This wizard will modify the transformation "+myTransformationName+"-"+myTransformationVersion+ " and\n" +
-    "the dataset "+myDatasetName+" as well as any associated jobDefinitions.\n\n" +
+    "the dataset "+myDatasetName+" as well as any associated jobDefinition.\n\n" +
     "If you have made changes to any of these that you would like to keep,\n" +
     "you should click \"Cancel\". Otherwise, click \"OK\" to proceed.\n\n";
     try{
@@ -69,7 +76,8 @@ public class RunCommandWizard extends GPFrame{
     catch(Exception e){
       e.printStackTrace();
     }
-    jtf = Util.createTextArea(TEXTFIELDWIDTH);
+    tfCommand = Util.createTextArea(TEXTFIELDWIDTH);
+    tfOutputDir = new JTextField(TEXTFIELDWIDTH);
     
     JPanel jp = mkPanel();
     sp.getViewport().add(jp);
@@ -78,11 +86,46 @@ public class RunCommandWizard extends GPFrame{
     int maxHeight = Toolkit.getDefaultToolkit().getScreenSize().height-10;
     int maxWidth = Toolkit.getDefaultToolkit().getScreenSize().width-10;
     this.setMaximumSize(new Dimension(maxWidth, maxHeight>400?400:maxHeight));
-    this.setPreferredSize(new Dimension(660, 440));
+    this.setPreferredSize(new Dimension(660, 540));
     this.pack();
     setVisible(true);
   }
+  
+  private String getInitialCmdTxt(){
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(DB_NAME);
+    String transformationID = dbPluginMgr.getTransformationID(myTransformationName, myTransformationVersion);
+    String scriptFile = (String) dbPluginMgr.getTransformation(transformationID).getValue("script");
+    String txt = null;
+    try{
+      txt = LocalStaticShellMgr.readFile(Util.clearTildeLocally(Util.clearFile(scriptFile)));
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    if(txt==null || txt.equals("")){
+      txt = "echo \"hello world\"";
+    }
+    return txt;
+  }
 
+  private String getInitialOutputDir(){
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(DB_NAME);
+    String datasetID = dbPluginMgr.getDatasetID(myDatasetName);
+    String txt = "";
+    try{
+      txt = (String) dbPluginMgr.getDataset(datasetID).getValue("outputLocation");
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    if(txt==null || txt.equals("")){
+      if(GridPilot.gridHomeURL!=null && !GridPilot.gridHomeURL.equals("")){
+        txt = GridPilot.gridHomeURL;
+      }
+    }
+    return txt;
+  }
+  
   /**
    * - query for a command and a CS
    * - modify my_transformation script
@@ -97,9 +140,13 @@ public class RunCommandWizard extends GPFrame{
     setTitle("Run command");
     String msg = 
       "This wizard helps you run a UNIX/Linux commands on any of the supported computing systems.\n\n" +
-      "Type in a command, choose any input file(s) the command may need, type the names of any\n" +
-      "output files the command may produce, click \"Run\" and use right-click menu on the job\n" +
-      "monitoring panel to follow the progress of your job.\n\n";
+      "Type in a command, choose an output directory for the stdout/stderr and any output files\n" +
+      "the command may produce.\n\n" +
+      "If the job produces any output files (apart from stdout/stderr), click on \"Output files\"\n" +
+      "and fill in the names.\n\n" +
+      "If the job needs any input files, click on \"Input files\" and fill in the URLs.\n\n" +
+      "When you're done, click \"Submit job\" and use right-click menu on the job monitoring panel\n" +
+      "to follow the progress of your job.\n\n";
     JLabel jlDirInstructions = new JLabel("<html>"+msg.replaceAll("\n", "<br>")+"</html>");
 
     GridBagConstraints ct = new GridBagConstraints();
@@ -121,22 +168,19 @@ public class RunCommandWizard extends GPFrame{
     panel.add(new JLabel("Command(s) "), ct);
     ct.gridx = 1;
     ct.gridwidth = 2;
-    jtf.setText("echo \"hello world\"");
-    panel.add(jtf, ct);
+    tfCommand.setText(getInitialCmdTxt());
+    panel.add(tfCommand, ct);
         
     ct.gridwidth = 3;
     ct.gridx = 0;
     ct.gridy = ct.gridy+1;
     JPanel row = new JPanel(new BorderLayout());
     ct.gridy = ct.gridy+1;
-    JTextField field = new JTextField(TEXTFIELDWIDTH);
-    if(GridPilot.gridHomeURL!=null && !GridPilot.gridHomeURL.equals("")){
-      field.setText(GridPilot.gridHomeURL);
-    }
-    row.add(Util.createCheckPanel1(thisFrame, "Output directory", field,
+    tfOutputDir.setText(getInitialOutputDir());
+    row.add(Util.createCheckPanel1(thisFrame, "Output directory", tfOutputDir,
         true, true, true), BorderLayout.WEST);
     JPanel fieldPanel = new JPanel();
-    fieldPanel.add(field);
+    fieldPanel.add(tfOutputDir);
     row.add(fieldPanel, BorderLayout.CENTER);
     panel.add(row, ct);
     
@@ -144,7 +188,7 @@ public class RunCommandWizard extends GPFrame{
     ct.gridx = 0;
     ct.gridy = ct.gridy+1;
     //panel.add(new JLabel("Output file(s)"), ct);
-    InOutPanel outputsPanel = new InOutPanel(false);
+    outputsPanel = new InOutPanel(false);
     panel.add(createHyperLinkPanel("Output file(s)", outputsPanel), ct);
     outputsPanel.setVisible(false);
 
@@ -156,7 +200,7 @@ public class RunCommandWizard extends GPFrame{
     ct.gridx = 0;
     ct.gridy = ct.gridy+1;
     //panel.add(new JLabel("Input file(s)"), ct);
-    InOutPanel inputsPanel = new InOutPanel(true);
+    inputsPanel = new InOutPanel(true);
     panel.add(createHyperLinkPanel("Input file(s)", inputsPanel), ct);
     inputsPanel.setVisible(false);
 
@@ -321,13 +365,46 @@ public class RunCommandWizard extends GPFrame{
   }
   
   /**
+   * Create a string suited for insertion as outputFileMapping in a job record.
+   * @param names the output file names
+   * @param outDirUrl the directory where all files should end up
+   * @return the outputFileMapping String
+   */
+  private String createOutputMappingStr(String [] names, String outDirUrl){
+    String mapStr = "";
+    for(int i=0; i<names.length; ++i){
+      mapStr += (i>0?"":" ") + names[i] + " " +outDirUrl+(outDirUrl.endsWith("/")?"":"/")+names[i];
+    }
+    return mapStr;
+  }
+
+  private String [][] createOutputMapping(String [] names, String outDirUrl){
+    String [][] mapArr = new String [names.length][2];
+    for(int i=0; i<names.length; ++i){
+      mapArr[i][0] = names[i];
+      mapArr[i][1] = outDirUrl+(outDirUrl.endsWith("/")?"":"/")+names[i];
+    }
+    return mapArr;
+  }
+
+  /**
    * Create and submit job.
    */
   MyThread workThread = null;
   private void runJob(final ActionEvent e){
-    final String cmd = jtf.getText().trim();
-    // TODO: get the input file URLs
-    //final String [] inputURLs = jtf.getText().trim();
+    // get the command
+    final String cmd = tfCommand.getText().trim();
+    // get the output directory
+    final String outputDir = tfOutputDir.getText().trim()+
+       (tfOutputDir.getText().trim().endsWith("/")?"":"/");
+    // get the output file names
+    final String [] outputFiles;
+    if(outputsPanel.isVisible()){
+      outputFiles = (String []) outputsPanel.fieldMap.values().toArray(new String [outputsPanel.fieldMap.size()]);
+    }
+    else{
+      outputFiles = null;
+    }
     workThread = new MyThread(){
       public void run(){
         statusBar.setLabel("Preparing jobs, please wait...");
@@ -343,41 +420,100 @@ public class RunCommandWizard extends GPFrame{
             }
           }
         });        
-        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr("My_DB_Local");
+        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(DB_NAME);
         // write cmd in the transformation script
         String transformationID = dbPluginMgr.getTransformationID(myTransformationName, myTransformationVersion);
-        //dbPluginMgr.updateTransformation(transformationID);
-        // Create the job definition
+        String scriptFile = (String) dbPluginMgr.getTransformation(transformationID).getValue("script");
+        try{
+          LocalStaticShellMgr.writeFile(Util.clearTildeLocally(Util.clearFile(scriptFile)),
+              cmd, false);
+        }
+        catch(IOException e2){
+          e2.printStackTrace();
+          Util.showError("ERROR: could not write transformation script"+scriptFile+".\n" +
+                "Check permissions.");
+          return;
+        }
+        // update the my_dataset with the output location
+        String datasetID = null;
+        try{
+          datasetID = dbPluginMgr.getDatasetID(myDatasetName);
+          dbPluginMgr.updateDataset(datasetID, myDatasetName,
+              new String [] {"outputLocation"}, new String [] {outputDir});
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        // get the input file URLs
+        String [] inputURLs;
+        if(inputsPanel.isVisible()){
+          inputsPanel.fieldMap.put("transformation script", Util.clearTildeLocally(Util.clearFile(scriptFile)));
+          inputURLs = (String []) inputsPanel.fieldMap.values().toArray(new String [inputsPanel.fieldMap.size()]);
+        }
+        else{
+          inputURLs = new String [] {Util.clearTildeLocally(Util.clearFile(scriptFile))};
+        }
+        // create a guid. This will be used so we can get the identifier, which is needed
+        // to submit...
+        String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+        // create the job definition
         String [] fields = new String [] {
             "datasetName",
             "name",
-            "userInfo",
+            "guid",
+            "status",
             "inputFileURLs",
             "outFileMapping",
-            "transPars",
+            //"transPars",
             "stdoutDest",
             "stderrDest"};
-        Object [] values = new String [] {
-            "datasetName",
-            "name",
-            "userInfo",
-            "inputFileURLs",
-            "outFileMapping",
-            "transPars",
-            "stdoutDest",
-            "stderrDest"};
+        String [] values = new String [] {
+            myDatasetName,
+            myDatasetName+".1",
+            uuid,
+            "Defined",
+            Util.arrayToString(inputURLs),
+            outputFiles==null?"":createOutputMappingStr(outputFiles, outputDir),
+            //"transPars",
+            outputDir+myDatasetName+".1.stdout",
+            outputDir+myDatasetName+".1.stderr"};
         DBRecord jobDefinition = null;
         try{
           jobDefinition = dbPluginMgr.createJobDef(fields, values);
+          /*dbPluginMgr.createJobDefinition(
+              myDatasetName, fields, values, new String [] {},
+              outputFiles==null?new String [][] {}:createOutputMapping(outputFiles, outputDir),
+              outputDir+myDatasetName+".1.stdout",
+              outputDir+myDatasetName+".1.stderr");*/
+          // now get the identifier of the newly created jobDefinition record
+          String idField = Util.getIdentifierField(DB_NAME, "jobDefinition");
+          String id = null;
+          DBResult jobDefs = dbPluginMgr.getJobDefinitions(
+              datasetID,
+              new String [] {"guid", idField},
+              new String [] {"Defined"},
+              null);
+          Object checkGuid = null;
+          for(int i=0; i<jobDefs.values.length; ++i){
+            checkGuid = jobDefs.getValue(i, "guid");
+            if(checkGuid!=null && checkGuid.equals(uuid)){
+              id = (String) jobDefs.getValue(i,idField);
+              break;
+            }
+          }
+          if(id==null || id.equals("-1") || id.equals("")){
+            throw new Exception("ERROR: could not get identifier of new jobDefinition.");
+          }
+          jobDefinition.setValue(idField, id);
         }
         catch(Exception e1){
           e1.printStackTrace();
         }
         Vector jobDefinitions = new Vector();
         jobDefinitions.add(jobDefinition);
-        String csName = ((JMenuItem)e.getSource()).getText();
         // submit the jobs
         statusBar.setLabel("Submitting. Please wait...");
+        String csName = ((JMenuItem)e.getSource()).getText();
         GridPilot.getClassMgr().getSubmissionControl().submitJobDefinitions(jobDefinitions, csName, dbPluginMgr);
         statusBar.stopAnimation();
         statusBar.setLabel("");
@@ -388,51 +524,8 @@ public class RunCommandWizard extends GPFrame{
     workThread.start();
   }
 
-  private void addHyperLinkListener(JEditorPane pane, final JPanel jPanel){
-    pane.addHyperlinkListener(
-        new HyperlinkListener(){
-          public void hyperlinkUpdate(final HyperlinkEvent e){
-            if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
-              System.out.println("Launching browser...");
-              final Window window = (Window) SwingUtilities.getWindowAncestor(jPanel.getRootPane());
-              window.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-              MyThread t = new MyThread(){
-                public void run(){
-                  try{
-                    new BrowserPanel(
-                          window,
-                          "Browser",
-                          e.getURL().toString(),
-                          null,
-                          true,
-                          /*filter*/false,
-                          /*navigation*/true,
-                          null,
-                          null,
-                          false,
-                          false,
-                          false);
-                  }
-                  catch(Exception e){
-                    e.printStackTrace();
-                    try{
-                      window.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-                      Util.showError("WARNING: could not open URL. "+e.getMessage());
-                    }
-                    catch(Exception e2){
-                      e2.printStackTrace();
-                    }
-                  }
-                }
-              };
-              SwingUtilities.invokeLater(t);
-            }
-          }
-        });
-  }
-
   private void bSubmit_mousePressed(){
-    if(jtf.getText()==null || jtf.getText().equals("")){
+    if(tfCommand.getText()==null || tfCommand.getText().equals("")){
       Util.showError("You must give a command");
       return;
     }
