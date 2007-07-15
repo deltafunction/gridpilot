@@ -1692,7 +1692,7 @@ public class TransferControl{
     // relative paths or copying files (via ssh) to a Windows server is not supported
     else{
       error = "ERROR copying : unqualified paths or putting files on a " +
-          "Windows server is not supported.";
+          "Windows server is not supported. "+dest;
       logFile.addMessage(error);
       return false;
     }
