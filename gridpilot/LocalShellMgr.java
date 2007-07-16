@@ -386,14 +386,10 @@ public class LocalShellMgr implements ShellMgr {
           Process proc = Runtime.getRuntime().exec(cmd, null, 
               (workingDirectory==null ? null : new File(workingDirectory)));
           
-          //FileOutputStream fos = new FileOutputStream(stdOutFile);
-          BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(stdOutFile)/*, 100000*/);
-          StreamGobbler outputGobbler = new StreamGobbler(proc.getInputStream(), "OUTPUT", fos);
+          StreamGobbler outputGobbler = new StreamGobbler(proc.getInputStream(), "OUTPUT", stdOutFile);
           bufferedGobblers.put(stdOutFile, outputGobbler);
 
-          //FileOutputStream fes = new FileOutputStream(stdErrFile);
-          BufferedOutputStream fes = new BufferedOutputStream(new FileOutputStream(stdErrFile)/*, 100000*/);
-          StreamGobbler errorGobbler = new StreamGobbler(proc.getErrorStream(), "ERROR", fes);            
+          StreamGobbler errorGobbler = new StreamGobbler(proc.getErrorStream(), "ERROR", stdErrFile);            
           bufferedGobblers.put(stdErrFile, errorGobbler);
 
           errorGobbler.start();
@@ -403,11 +399,6 @@ public class LocalShellMgr implements ShellMgr {
           addProcess(cmd, id, proc);
 
           proc.waitFor();
-
-          fos.flush();
-          fos.close(); 
-          fes.flush();
-          fes.close();
           
           processes.remove(id);
           processNames.remove(cmd);
@@ -443,38 +434,29 @@ public class LocalShellMgr implements ShellMgr {
   class StreamGobbler extends Thread{
     InputStream is;
     String type;
-    OutputStream os;
+    File outFile = null;
     
-    StringBuffer buffer = new StringBuffer("");
+    StringBuffer buffer = new StringBuffer();
     
-    StreamGobbler(InputStream is, String type, OutputStream redirect){
+    StreamGobbler(InputStream is, String type, final String redirectFile) throws FileNotFoundException{
         this.is = is;
         this.type = type;
-        this.os = redirect;
+        outFile = new File(redirectFile);
     }     
-      
+    
     public void run(){
       try{
-        PrintWriter pwo = null;
-        if(os!=null){
-          pwo = new PrintWriter(os);
-        }
+        BufferedWriter bw = null;
+          bw = new BufferedWriter(new FileWriter(outFile));
         InputStreamReader isr = new InputStreamReader(is);
-        BufferedReader br = new BufferedReader(isr);
-        String line=null;
-        while((line = br.readLine())!=null){
-          if(pwo!=null){
-            pwo.println(line);
-            buffer.append(line+"\n");
-            pwo.flush();
-            os.flush();
-            Debug.debug(type + ">" + line, 3);    
+        int c;
+        while((c=isr.read())!=-1){
+          if(c!='\r'){
+            bw.write(c);
+            buffer.append((char)c);
           }
         }
-        if(pwo!=null){
-          pwo.flush();
-          os.flush();
-        }
+        bw.close();
       }
       catch (IOException ioe){
         ioe.printStackTrace();  
@@ -512,7 +494,7 @@ public class LocalShellMgr implements ShellMgr {
   }
 
   public String getUserName(){
-    return null;
+    return System.getProperty("user.name").trim();
   }
 
 }
