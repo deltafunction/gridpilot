@@ -683,7 +683,7 @@ public class ForkComputingSystem implements ComputingSystem{
     if(userName!=null && !userName.equals("")){
       return userName;
     }
-    if(defaultUser!=null){
+    else if(defaultUser!=null){
       return defaultUser;
     }
     else{
@@ -1067,12 +1067,12 @@ public class ForkComputingSystem implements ComputingSystem{
     // Horrible clutch because Globus gass copy fails on empty files...
     boolean emptyFile = false;
     for(int i=0; i<outputNames.length; ++i){
-      emptyFile = remoteName.startsWith("https") && (new File(localName)).length()==0;
       try{
         localName = runDir(job) +"/"+dbPluginMgr.getJobDefOutLocalName(jobDefID,
             outputNames[i]);
         localName = Util.clearFile(localName);
         remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputNames[i]);
+        emptyFile = remoteName.startsWith("https") && (new File(localName)).length()==0;
         ok = ok && (TransferControl.copyOutputFile(localName, remoteName, shellMgr, error, logFile) ||
             emptyFile);
       }
