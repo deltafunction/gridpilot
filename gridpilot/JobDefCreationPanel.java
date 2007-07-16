@@ -283,7 +283,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
         Util.setJText(tcCstAttributes[i], datasetID);
         tcCstAttributes[i].setEnabled(false);
       }
-      else if(cstAttributesNames[i].equalsIgnoreCase("outFileMapping")){
+      else if(cstAttributesNames[i].equalsIgnoreCase("outFileMapping") ||
+          cstAttributesNames[i].equalsIgnoreCase("metaData")){
         pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
         if(!reuseTextFields || tcCstAttributes[i]==null){
           tcCstAttributes[i] = Util.createTextArea(TEXTFIELDWIDTH);
