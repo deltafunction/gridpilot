@@ -786,6 +786,18 @@ public class HSQLDBDatabase extends DBCache implements Database{
         patt = Pattern.compile(" FROM (\\w+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
         req = matcher.replaceFirst(", "+identifier+" FROM "+"$1");
+        // get rid of multiple occurences of identifier
+        /*patt = Pattern.compile("(SELECT .*)"+identifier+", (.*"+identifier+" FROM .*)",
+            Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        String tmp = null;
+        while(tmp==null || !tmp.equals(req)){
+          tmp = req;
+          matcher = patt.matcher(req);
+          req = matcher.replaceFirst("$1 $2");
+          Debug.debug("req now "+req, 3);
+          Debug.debug("tmp now "+tmp, 3);
+        }*/
       }
     }
     
@@ -2459,8 +2471,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
           }
           else if(fields[i].equalsIgnoreCase("lfname")){
             // TODO: we're assuming a on-to-one lfn/guid mapping. Improve.
-            file.setValue(fields[i],
-                Util.getValues(dbName, "t_lfn", "guid", fileID, new String [] {"lfname"})[0][0]);
+            String [][] val = Util.getValues(dbName, "t_lfn", "guid", fileID, new String [] {"lfname"});
+            if(val!=null && val.length>0){
+              file.setValue(fields[i], val[0][0]);
+            }
           }
           else if(fields[i].equalsIgnoreCase("pfname")){
             String [] pfns = new String [0];
