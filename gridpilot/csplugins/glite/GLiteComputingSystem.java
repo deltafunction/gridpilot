@@ -229,6 +229,9 @@ public class GLiteComputingSystem implements ComputingSystem{
       e.printStackTrace();
     }
     
+    // At least for now, we only have Linux resources on NorduGrid
+    runtimes.add("Linux");
+    
     if(runtimes!=null && runtimes.size()>0){
       String name = null;
       DBPluginMgr dbPluginMgr = null;      
