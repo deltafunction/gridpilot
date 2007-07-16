@@ -1,6 +1,5 @@
 package gridpilot.wizards.run_jobs;
 
-import gridpilot.ConfirmBox;
 import gridpilot.DBPluginMgr;
 import gridpilot.DBRecord;
 import gridpilot.DBResult;
@@ -24,13 +23,13 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Vector;
 
 import javax.swing.JButton;
 import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
@@ -40,7 +39,6 @@ import javax.swing.border.LineBorder;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 
-import org.safehaus.uuid.UUID;
 import org.safehaus.uuid.UUIDGenerator;
 
 public class RunCommandWizard extends GPFrame{
@@ -62,10 +60,10 @@ public class RunCommandWizard extends GPFrame{
   private static String myTransformationVersion = "0.1";
   
   public RunCommandWizard() {
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    /*ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String confirmString =
-    "This wizard will modify the transformation "+myTransformationName+"-"+myTransformationVersion+ " and\n" +
-    "the dataset "+myDatasetName+" as well as any associated jobDefinition.\n\n" +
+    "NOTICE: This wizard allows you to modify the transformation "+myTransformationName+"-"+myTransformationVersion+"\n"+
+    "and the dataset "+myDatasetName+".\n\n" +
     "If you have made changes to any of these that you would like to keep,\n" +
     "you should click \"Cancel\". Otherwise, click \"OK\" to proceed.\n\n";
     try{
@@ -75,7 +73,7 @@ public class RunCommandWizard extends GPFrame{
     }
     catch(Exception e){
       e.printStackTrace();
-    }
+    }*/
     tfCommand = Util.createTextArea(TEXTFIELDWIDTH);
     tfOutputDir = new JTextField(TEXTFIELDWIDTH);
     
@@ -86,7 +84,7 @@ public class RunCommandWizard extends GPFrame{
     int maxHeight = Toolkit.getDefaultToolkit().getScreenSize().height-10;
     int maxWidth = Toolkit.getDefaultToolkit().getScreenSize().width-10;
     this.setMaximumSize(new Dimension(maxWidth, maxHeight>400?400:maxHeight));
-    this.setPreferredSize(new Dimension(660, 540));
+    this.setPreferredSize(new Dimension(660, 580));
     this.pack();
     setVisible(true);
   }
@@ -139,11 +137,11 @@ public class RunCommandWizard extends GPFrame{
     panel.setLayout(new GridBagLayout());
     setTitle("Run command");
     String msg = 
-      "This wizard helps you run a UNIX/Linux commands on any of the supported computing systems.\n\n" +
-      "Type in a command, choose an output directory for the stdout/stderr and any output files\n" +
-      "the command may produce.\n\n" +
-      "If the job produces any output files (apart from stdout/stderr), click on \"Output files\"\n" +
-      "and fill in the names.\n\n" +
+      "This wizard helps you run a UNIX/Linux script on any of the supported computing systems.\n\n" +
+      "Type in some commands, choose an output directory for the stdout/stderr and any output files\n" +
+      "the commands may produce.\n\n" +
+      "If the commands produce any output files (apart from stdout/stderr), click on \"Output files\"\n" +
+      "and fill in the names of these.\n\n" +
       "If the job needs any input files, click on \"Input files\" and fill in the URLs.\n\n" +
       "When you're done, click \"Submit job\" and use right-click menu on the job monitoring panel\n" +
       "to follow the progress of your job.\n\n";
@@ -400,7 +398,12 @@ public class RunCommandWizard extends GPFrame{
     // get the output file names
     final String [] outputFiles;
     if(outputsPanel.isVisible()){
-      outputFiles = (String []) outputsPanel.fieldMap.values().toArray(new String [outputsPanel.fieldMap.size()]);
+      outputFiles = new String [outputsPanel.fieldMap.values().size()];
+      int i = 0;
+      for(Iterator it=outputsPanel.fieldMap.values().iterator(); it.hasNext();){
+        outputFiles[i] = ((JTextField) it.next()).getText().trim();
+        ++i;
+      }
     }
     else{
       outputFiles = null;
@@ -434,21 +437,38 @@ public class RunCommandWizard extends GPFrame{
                 "Check permissions.");
           return;
         }
-        // update the my_dataset with the output location
+        // update my_dataset with the output location and
+        // my_transformation with the output files
         String datasetID = null;
         try{
           datasetID = dbPluginMgr.getDatasetID(myDatasetName);
           dbPluginMgr.updateDataset(datasetID, myDatasetName,
               new String [] {"outputLocation"}, new String [] {outputDir});
+          if(outputsPanel.isVisible()){
+            dbPluginMgr.updateTransformation(transformationID,
+                new String [] {"outputFiles"}, new String [] {Util.arrayToString(outputFiles)});
+          }
+          // If no output files are specified, zap the outputFiles of my_transformation
+          else{
+            dbPluginMgr.updateTransformation(transformationID,
+                new String [] {"outputFiles"}, new String [] {""});
+          }
         }
         catch(Exception e){
           e.printStackTrace();
+          return;
         }
         // get the input file URLs
         String [] inputURLs;
         if(inputsPanel.isVisible()){
-          inputsPanel.fieldMap.put("transformation script", Util.clearTildeLocally(Util.clearFile(scriptFile)));
-          inputURLs = (String []) inputsPanel.fieldMap.values().toArray(new String [inputsPanel.fieldMap.size()]);
+          inputsPanel.fieldMap.put("transformation script",
+              new JTextField(Util.clearTildeLocally(Util.clearFile(scriptFile))));
+          inputURLs = new String [inputsPanel.fieldMap.values().size()];
+          int i = 0;
+          for(Iterator it=inputsPanel.fieldMap.values().iterator(); it.hasNext();){
+            inputURLs[i] = ((JTextField) it.next()).getText().trim();
+            ++i;
+          }
         }
         else{
           inputURLs = new String [] {Util.clearTildeLocally(Util.clearFile(scriptFile))};
@@ -466,17 +486,19 @@ public class RunCommandWizard extends GPFrame{
             "outFileMapping",
             //"transPars",
             "stdoutDest",
-            "stderrDest"};
+            "stderrDest",
+            "outputFileBytes"};
         String [] values = new String [] {
             myDatasetName,
             myDatasetName+".1",
             uuid,
             "Defined",
-            Util.arrayToString(inputURLs),
-            outputFiles==null?"":createOutputMappingStr(outputFiles, outputDir),
+            Util.arrayToString(inputURLs).trim(),
+            outputFiles==null?"":createOutputMappingStr(outputFiles, outputDir).trim(),
             //"transPars",
             outputDir+myDatasetName+".1.stdout",
-            outputDir+myDatasetName+".1.stderr"};
+            outputDir+myDatasetName+".1.stderr",
+            "-1"};
         DBRecord jobDefinition = null;
         try{
           jobDefinition = dbPluginMgr.createJobDef(fields, values);
