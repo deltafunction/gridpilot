@@ -41,18 +41,21 @@ public class DBResult{
 
   // Here, 1 is the first column!
   public String getString(int column){
-    if (cursor>values.length-1){
-      return "no such row";
+    if(cursor>values.length-1){
+      Debug.debug("no such row: "+cursor, 1);
+      return null;
     }
     if(column>values[0].length){
-      return "no such column";
+      Debug.debug("no such column: "+column, 1);
+      return null;
     }
     return (String) values[cursor][column-1];
   }
 
   public String getString(String col){
     if(cursor>values.length-1){
-      return "no such row";
+      Debug.debug("no such row: "+cursor, 1);
+      return null;
     }
     Debug.debug("fields: "+Util.arrayToString(fields), 3);
     for(int i=0; i<fields.length; i++){
@@ -61,22 +64,26 @@ public class DBResult{
         return (String) values[cursor][i];
       }
     }
-    return "no such field";
+    Debug.debug("no such column: "+col, 1);
+    return null;
   }
 
   public Object getAt(int row, int column){
     if (row>values.length-1){
-      return "no such row";
+      Debug.debug("no such row: "+row, 1);
+      return null;
     }
     if(column>values[0].length-1){
-      return "no such column";
+      Debug.debug("no such column: "+column, 1);
+      return null;
     }
     return values[row][column];
   }
 
   public Object getValue(int row, String col){
     if(row>values.length-1){
-      return "no such row";
+      Debug.debug("no such row: "+row, 1);
+      return null;
     }
     Debug.debug("fields: "+Util.arrayToString(fields), 3);
     for(int i=0; i<fields.length; i++){
@@ -85,7 +92,8 @@ public class DBResult{
         return values[row][i];
       }
     }
-    return "no such field";
+    Debug.debug("no such field: "+col, 1);
+    return null;
   }
 
   public DBRecord getRow(int row){
