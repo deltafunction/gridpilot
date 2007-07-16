@@ -1628,16 +1628,17 @@ public class DBPluginMgr extends DBCache implements Database{
         size = (String) db.getFile(datasetName, fileId, 0).getValue(Util.getFileSizeField(dbName));
       }
       catch(Exception e){
+        //e.printStackTrace();
       }
     }
     // For a jobDefinition table, size and md5sum may have been inserted
     // by the CS+validation.
-    if(size==null && !db.isFileCatalog() && db.isJobRepository()){
+    if((size==null || Integer.parseInt(size)<0) && db.isJobRepository()){
       try{
         String metaData = null;
         DBRecord jobDef = db.getJobDefinition(fileId);
         size = (String) jobDef.getValue("outputFileBytes");
-        if(size==null || size.equals("")){
+        if(size==null || size.equals("") || Integer.parseInt(size)<0){
           metaData = (String) jobDef.getValue("metaData");
           size = (String) Util.parseMetaData(metaData).get(Util.getFileSizeField(dbName));
         }
@@ -1670,12 +1671,12 @@ public class DBPluginMgr extends DBCache implements Database{
         checksum = (String) db.getFile(datasetName, fileId, 0).getValue(Util.getChecksumField(dbName));
       }
       catch(Exception e){
-        e.printStackTrace();
+        //e.printStackTrace();
       }
     }
     // For a jobDefinition table, size and md5sum may have been inserted
     // by the CS+validation.
-    if(checksum==null && !db.isFileCatalog() && db.isJobRepository()){
+    if(checksum==null && db.isJobRepository()){
       try{
         String metaData = null;
         DBRecord jobDef = db.getJobDefinition(fileId);
