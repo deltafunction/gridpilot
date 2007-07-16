@@ -1529,7 +1529,7 @@ public class Util{
         noTextArea = false;
       }
       else{
-        jval = new JTextField(cstAttr[i].toString());
+        jval = new JTextField(cstAttr[i]==null?"":cstAttr[i]);
         ((JTextField) jval).setEditable(false);
       }
       pResult.add(new JLabel(cstAttrNames[i] + " : "),

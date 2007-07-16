@@ -1531,7 +1531,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         values[j] = "--- not displayed ---";
         for(int k=0; k<tableResults.getColumnCount(); ++k){
           if(tableResults.getColumnName(k).equalsIgnoreCase(fieldNames[j])){
-            values[j] = tableResults.getUnsortedValueAt(i, k).toString();
+            values[j] = (String) tableResults.getUnsortedValueAt(i, k);
             break;
           }
         }
