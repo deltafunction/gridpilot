@@ -461,6 +461,7 @@ public class ClassMgr{
         }
         else{
           prop.setCaCertLocations(GridPilot.caCerts);
+          caCertsTmpdir = GridPilot.caCerts;
         }
         // set the proxy default location
         prop.setProxyFile(Util.getProxyFile().getAbsolutePath());
