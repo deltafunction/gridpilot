@@ -809,7 +809,8 @@ public class Util{
     OpenSSLKey key;
 
     key = new BouncyCastleOpenSSLKey(userKeyFilename);
-
+    // This was a (vain) attempt to get gLite/WMProxy to work...
+    //System.setProperty("org.globus.gsi.version", "2");
    // get user certificate
     X509Certificate userCert = CertUtil.loadCertificate(userCertFilename);
     return createProxy(key, userCert, password, lifetime, strength);
