@@ -171,9 +171,9 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       
       // Various options
       writeLine(bufJdl, "DataAccessProtocol =  {\"rfio\", \"gsiftp\", \"gsidcap\"};");
-      writeLine(bufJdl, "Requirements = other.GlueCEPolicyMaxCPUTime > "+cpuTime+" &&" +
-          " other.GlueCEStateStatus == \"Production\";");
-      writeLine(bufJdl, "Rank = -other.GlueCEStateEstimatedResponseTime;");
+      writeLine(bufJdl, "Requirements = (other.GlueCEPolicyMaxCPUTime > "+cpuTime+") &&" +
+          " (other.GlueCEStateStatus == \"Production\");");
+      writeLine(bufJdl, "Rank = (-other.GlueCEStateEstimatedResponseTime);");
       writeLine(bufJdl, "VirtualOrganisation = \"" + vo + "\";");
       writeLine(bufJdl, "RetryCount  = 0;");
       writeLine(bufJdl, "ShallowRetryCount = " + reRun + ";");
