@@ -67,8 +67,10 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     // create jdl file
     StringBuffer bufJdl = new StringBuffer();
     try{
-      writeLine(bufJdl, "Executable = \"/usr/bin/sh\";");
-      writeLine(bufJdl, "Arguments = \""+scriptFileName+"\";");
+      writeLine(bufJdl, "Executable = \"/bin/sh\";");
+      writeLine(bufJdl, "Arguments = \""+
+          (new File(Util.clearTildeLocally(Util.clearFile(scriptFileName)))).getName()+
+          "\";");
       writeLine(bufJdl, "StdOutput = \"stdout\";");
       writeLine(bufJdl, "StdError = \"stderr\";");
       
@@ -130,8 +132,8 @@ public class GLiteScriptGenerator extends ScriptGenerator {
           remoteInputFilesList.add(inputFileURL);
         }
       }
-      jdlLine += "\"};" ;
-      jdlLine = jdlLine.replaceFirst(", }","  }") ;
+      jdlLine += "};" ;
+      jdlLine = jdlLine.replaceAll(",\\s*}", "}") ;
       writeLine(bufJdl, jdlLine);
       
       String [] remoteInputFilesArray = new String [remoteInputFilesList.size()];
@@ -169,10 +171,12 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       
       // Various options
       writeLine(bufJdl, "DataAccessProtocol =  {\"rfio\", \"gsiftp\", \"gsidcap\"};");
-      writeLine(bufJdl, "Requirements = other.GlueCEPolicyMaxCPUTime > "+cpuTime+";");
+      writeLine(bufJdl, "Requirements = other.GlueCEPolicyMaxCPUTime > "+cpuTime+" &&" +
+          " other.GlueCEStateStatus == \"Production\";");
+      writeLine(bufJdl, "Rank = -other.GlueCEStateEstimatedResponseTime;");
       writeLine(bufJdl, "VirtualOrganisation = \"" + vo + "\";");
-      writeLine(bufJdl, "RetryCount  = \"0\";");
-      writeLine(bufJdl, "ShallowRetryCount = \"" + reRun + "\";");
+      writeLine(bufJdl, "RetryCount  = 0;");
+      writeLine(bufJdl, "ShallowRetryCount = " + reRun + ";");
       
       // Runtime environments
       String [] uses = dbPluginMgr.getRuntimeEnvironments(jobDefID);
@@ -314,11 +318,9 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       writeLine(bufJdl, jdlLine);
 
       try{
-        LocalStaticShellMgr.writeFile(exeFileName,
-            bufScript.toString(), false);
+        LocalStaticShellMgr.writeFile(exeFileName, bufScript.toString(), false);
         Util.dos2unix(new File(exeFileName));
-        LocalStaticShellMgr.writeFile(jdlFileName,
-            bufJdl.toString(), false);
+        LocalStaticShellMgr.writeFile(jdlFileName, bufJdl.toString(), false);
         Util.dos2unix(new File(exeFileName));
       }
       catch(FileNotFoundException fnfe){

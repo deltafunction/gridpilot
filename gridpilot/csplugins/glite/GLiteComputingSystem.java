@@ -26,6 +26,7 @@ import gridpilot.TransferControl;
 import gridpilot.Util;
 import gridpilot.csplugins.ng.NGComputingSystem;
 
+import org.glite.jdl.JobAd;
 import org.glite.wms.wmproxy.JobIdStructType;
 import org.glite.wms.wmproxy.WMProxyAPI;
 import org.glite.wmsui.apij.*;
@@ -58,6 +59,7 @@ public class GLiteComputingSystem implements ComputingSystem{
   private String [] rteTags = null;
   private HashSet rteScriptMappings = null;
   private String defaultUser;
+  String delegationId = null;
   
   private static boolean CONFIRM_RUN_DIR_CREATION = false;
   private static String BDII_PORT = "2170";
@@ -122,6 +124,8 @@ public class GLiteComputingSystem implements ComputingSystem{
         ee.printStackTrace();
       }
 
+      Debug.debug("Creating new WMProxyAPI; "+Util.getProxyFile().getAbsolutePath()+
+          " : "+GridPilot.getClassMgr().getCaCertsTmpDir(), 2);
       wmProxyAPI = new WMProxyAPI(wmUrl,
             Util.getProxyFile().getAbsolutePath(),
             GridPilot.getClassMgr().getCaCertsTmpDir());
@@ -324,21 +328,23 @@ public class GLiteComputingSystem implements ComputingSystem{
   }
 
   public boolean submit(JobInfo job){
-    String delegationId = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
-    Debug.debug("using delegation id "+delegationId, 3);
-    String proxy;
     try{
-      // setup credentials
-      proxy=wmProxyAPI.grstGetProxyReq(delegationId);
-      wmProxyAPI.grstPutProxy(delegationId, proxy);
-
+      if(delegationId==null){
+        delegationId = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+        Debug.debug("using delegation id "+delegationId, 3);
+        // setup credentials
+        String proxy = wmProxyAPI.grstGetProxyReq(delegationId);
+        wmProxyAPI.grstPutProxy(delegationId, proxy);
+      }
       // create script and JDL
       GLiteScriptGenerator scriptGenerator =  new GLiteScriptGenerator(csName);
       String scriptName = runDir(job) + File.separator + job.getName() + ".job";
       String jdlName = runDir(job) + File.separator + job.getName() + ".jdl";
       List uploadFiles = scriptGenerator.createJDL(job, scriptName, jdlName);
-      String jdlString = LocalStaticShellMgr.readFile(jdlName);
-      Debug.debug("Registering job; "+jdlName+":"+scriptName, 2);
+      JobAd jad = new JobAd();
+      jad.fromFile(jdlName);
+      String jdlString = jad.toString();
+      Debug.debug("Registering job; "+scriptName+":"+jdlString, 2);
       JobIdStructType jobId = wmProxyAPI.jobRegister(jdlString, delegationId);
       // upload the sandbox
       String protocol = "gsiftp";
