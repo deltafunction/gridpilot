@@ -1,8 +1,10 @@
 package gridpilot.csplugins.glite;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -30,7 +32,11 @@ import org.glite.jdl.JobAd;
 import org.glite.wms.wmproxy.JobIdStructType;
 import org.glite.wms.wmproxy.WMProxyAPI;
 import org.glite.wmsui.apij.*;
+import org.globus.gsi.CertUtil;
+import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.GlobusCredentialException;
+import org.globus.gsi.bc.BouncyCastleCertProcessingFactory;
+import org.globus.gsi.bc.BouncyCastleOpenSSLKey;
 import org.globus.mds.MDS;
 import org.globus.mds.MDSException;
 import org.globus.mds.MDSResult;
@@ -332,10 +338,24 @@ public class GLiteComputingSystem implements ComputingSystem{
       if(delegationId==null){
         delegationId = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
         Debug.debug("using delegation id "+delegationId, 3);
+        String vmProxyVersion = wmProxyAPI.getVersion();
+        Debug.debug("wmProxyAPI version: "+vmProxyVersion, 3);
         // setup credentials
-        String proxy = wmProxyAPI.grstGetProxyReq(delegationId);
         Debug.debug("putting proxy", 3);
-        wmProxyAPI.grstPutProxy(delegationId, proxy);
+        //String proxy = wmProxyAPI.grstGetProxyReq(delegationId);
+        //wmProxyAPI.grstPutProxy(delegationId, proxy);
+        String proxy = wmProxyAPI.getProxyReq(delegationId);
+        Debug.debug("proxy req "+proxy, 3);
+        // Sign the request
+        BouncyCastleOpenSSLKey key = new BouncyCastleOpenSSLKey(Util.getProxyFile().getAbsolutePath());
+        // This was an vain attempt to get gLite/WMProxy to work...
+        System.setProperty("org.globus.gsi.version", "2");
+       // get user certificate
+        X509Certificate userCert = CertUtil.loadCertificate(new ByteArrayInputStream(proxy.getBytes()));
+        GlobusCredential newProxy = Util.createProxy(key, userCert, "", GridPilot.proxyTimeValid, GridPilot.PROXY_STRENGTH);
+        BouncyCastleCertProcessingFactory factory = BouncyCastleCertProcessingFactory.getDefault();
+        factory.createCertificate(arg0, arg1, arg2, arg3, arg4)
+        wmProxyAPI.putProxy(delegationId, /*proxy*/newProxy.toString());
       }
       // create script and JDL
       GLiteScriptGenerator scriptGenerator =  new GLiteScriptGenerator(csName);
