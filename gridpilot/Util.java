@@ -994,7 +994,7 @@ public class Util{
         try{
           Debug.debug("Creating proxy, "+arrayToString(credentials), 3);
           cred = createProxy(credentials[1], credentials[2],
-             credentials[0], GridPilot.proxyTimeValid, 512);
+             credentials[0], GridPilot.proxyTimeValid, GridPilot.PROXY_STRENGTH);
           credential = new GlobusGSSCredentialImpl(cred, GSSCredential.INITIATE_AND_ACCEPT) ;
           // Keep password in memory - needed by mysql plugin
           Debug.debug("Setting grid password to "+credentials[0], 3);

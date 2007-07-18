@@ -70,6 +70,7 @@ public class GridPilot extends JApplet{
   public static int maxPullRerun = 0;
   public static boolean firstRun = false;
   public static File userConfFile = null;
+  public static int PROXY_STRENGTH = 512;
 
   /**
    * Constructor
