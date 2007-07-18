@@ -334,6 +334,7 @@ public class GLiteComputingSystem implements ComputingSystem{
         Debug.debug("using delegation id "+delegationId, 3);
         // setup credentials
         String proxy = wmProxyAPI.grstGetProxyReq(delegationId);
+        Debug.debug("putting proxy", 3);
         wmProxyAPI.grstPutProxy(delegationId, proxy);
       }
       // create script and JDL
