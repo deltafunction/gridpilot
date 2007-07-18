@@ -492,23 +492,23 @@ public class MySQLDatabase extends DBCache implements Database {
 
   public String [] getTransformationJobParameters(String transformationID){
     String res = (String) getTransformation(transformationID).getValue("arguments"); 
-    return Util.split(res);
+    return (res!=null?Util.split(res):new String [] {});
   }
 
   public String [] getOutputFiles(String jobDefID){
     String transformationID = getJobDefTransformationID(jobDefID);
     String outputs = (String) getTransformation(transformationID).getValue("outputFiles");
-    return Util.split(outputs);
+    return (outputs!=null?Util.split(outputs):new String [] {});
   }
 
   public String [] getJobDefInputFiles(String jobDefID){
     String inputs = (String) getJobDefinition(jobDefID).getValue("inputFileURLs");
-    return Util.split(inputs);
+    return (inputs!=null?Util.split(inputs):new String [] {});
   }
 
   public String [] getJobDefTransPars(String jobDefID){
     String args = (String) getJobDefinition(jobDefID).getValue("transPars");
-    return Util.split(args);
+    return (args!=null?Util.split(args):new String [] {});
   }
 
   public String getJobDefOutLocalName(String jobDefID, String par){

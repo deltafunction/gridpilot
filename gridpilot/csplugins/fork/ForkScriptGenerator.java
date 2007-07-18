@@ -161,7 +161,9 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }*/
     // Copy the script to the working directory
     try{
-      TransferControl.copyInputFile(scriptSrc, scriptDest, shellMgr, null, logFile);
+      if(!TransferControl.copyInputFile(scriptSrc, scriptDest, shellMgr, null, logFile)){
+        throw new IOException("Copying transformation script to working dir failed.");
+      }
     }
     catch(Exception e){
       logFile.addMessage("ERROR: transformation script could not be copied. "+

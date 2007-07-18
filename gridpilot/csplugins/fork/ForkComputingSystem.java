@@ -419,12 +419,11 @@ public class ForkComputingSystem implements ComputingSystem{
     final String cmd = runDir(job)+"/"+job.getName()+commandSuffix;
     Debug.debug("Executing "+cmd, 2);
     job.setOutputs(stdoutFile, stderrFile);
-    ForkScriptGenerator scriptGenerator =
-      new ForkScriptGenerator(job.getCSName(), runDir(job));
-
-    scriptGenerator.createWrapper(shellMgr, job, job.getName()+commandSuffix);
-    
     try{
+      ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(job.getCSName(), runDir(job));
+      if(!scriptGenerator.createWrapper(shellMgr, job, job.getName()+commandSuffix)){
+        throw new IOException("Could not create wrapper script.");
+      }
       String id = shellMgr.submit(Util.clearTildeLocally(Util.clearFile(cmd)),
                                   runDir(job),
                                   Util.clearTildeLocally(Util.clearFile(stdoutFile)),

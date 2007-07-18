@@ -432,7 +432,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         }
         catch(Exception e){
           Debug.debug("Shutting down server failed. "+
-              e.getCause().toString()+"\n"+e.getMessage(),1);
+              e.getCause()+"\n"+e.getMessage(),1);
         }
         server.stop();
         SERVER_RUNNING = "no";
@@ -449,13 +449,13 @@ public class HSQLDBDatabase extends DBCache implements Database{
         }
         catch(Exception e){
           Debug.debug("Compacting database failed. "+
-              e.getCause().toString()+"\n"+e.getMessage(),1);
+              e.getCause()+"\n"+e.getMessage(),1);
         }
       }
     }
     catch(Exception e){
       Debug.debug("Closing connection failed. "+
-          e.getCause().toString()+"\n"+e.getMessage(),1);
+          e.getCause()+"\n"+e.getMessage(),1);
     }
   }
 
@@ -532,7 +532,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       return "-1";
     }
     else{
-      return vec.get(0).toString();
+      return (String) vec.get(0);
     }
   }
 
@@ -574,36 +574,35 @@ public class HSQLDBDatabase extends DBCache implements Database{
       return "-1";
     }
     else{
-      return vec.get(0).toString();
+      return (String) vec.get(0);
     }
   }
 
   public String [] getTransformationJobParameters(String transformationID){
-    String res = getTransformation(transformationID).getValue("arguments").toString(); 
-    return Util.split(res);
+    String res = (String) getTransformation(transformationID).getValue("arguments"); 
+    return (res!=null?Util.split(res):new String [] {});
   }
 
   public String [] getOutputFiles(String jobDefID){
     String transformationID = getJobDefTransformationID(jobDefID);
-    String outputs = getTransformation(
-        transformationID).getValue("outputFiles").toString();
-    return Util.split(outputs);
+    String outputs = (String) getTransformation(transformationID).getValue("outputFiles");
+    return (outputs!=null?Util.split(outputs):new String [] {});
   }
 
   public String [] getJobDefInputFiles(String jobDefID){
-    String inputs = getJobDefinition(jobDefID).getValue("inputFileURLs").toString();
-    return Util.split(inputs);
+    String inputs = (String) getJobDefinition(jobDefID).getValue("inputFileURLs");
+    return (inputs!=null?Util.split(inputs):new String [] {});
   }
 
   public String [] getJobDefTransPars(String jobDefID){
-    String args = getJobDefinition(jobDefID).getValue("transPars").toString();
-    return Util.split(args);
+    String args = (String) getJobDefinition(jobDefID).getValue("transPars");
+    return (args!=null?Util.split(args):new String [] {});
   }
 
   public String getJobDefOutLocalName(String jobDefID, String par){
     String transID = getJobDefTransformationID(jobDefID);
-    String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
-    String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
+    String [] fouts = Util.split((String) getTransformation(transID).getValue("outputFiles"));
+    String maps = (String) getJobDefinition(jobDefID).getValue("outFileMapping");
     String[] map = null;
     try{
       map = Util.splitUrls(maps);
@@ -623,8 +622,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
 
   public String getJobDefOutRemoteName(String jobDefID, String par){
     String transID = getJobDefTransformationID(jobDefID);
-    String [] fouts = Util.split(getTransformation(transID).getValue("outputFiles").toString());
-    String maps = getJobDefinition(jobDefID).getValue("outFileMapping").toString();
+    String [] fouts = Util.split((String) getTransformation(transID).getValue("outputFiles"));
+    String maps = (String) getJobDefinition(jobDefID).getValue("outFileMapping");
     Debug.debug("output file mapping: "+maps+" : "+Util.arrayToString(fouts), 3);
     String[] map = Util.split(maps);
     String name = "";
@@ -640,34 +639,33 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
   
   public String getStdOutFinalDest(String jobDefID){
-    return getJobDefinition(jobDefID).getValue("stdoutDest").toString();
+    return (String) getJobDefinition(jobDefID).getValue("stdoutDest");
   }
 
   public String getStdErrFinalDest(String jobDefID){
-    return getJobDefinition(jobDefID).getValue("stderrDest").toString();
+    return (String) getJobDefinition(jobDefID).getValue("stderrDest");
   }
 
   public String getTransformationScript(String jobDefID){
     String transformationID = getJobDefTransformationID(jobDefID);
-    String script = getTransformation(
-        transformationID).getValue("script").toString();
+    String script = (String) getTransformation(transformationID).getValue("script");
     return script;
   }
 
   public String [] getRuntimeEnvironments(String jobDefID){
     String transformationID = getJobDefTransformationID(jobDefID);
-    String rts = getTransformation(transformationID).getValue("runtimeEnvironmentName").toString();
+    String rts = (String) getTransformation(transformationID).getValue("runtimeEnvironmentName");
     return Util.split(rts);
   }
 
   public String [] getTransformationArguments(String jobDefID){
     String transformationID = getJobDefTransformationID(jobDefID);
-    String args =  getTransformation(transformationID).getValue("arguments").toString();
+    String args = (String) getTransformation(transformationID).getValue("arguments");
     return Util.split(args);
   }
 
   public String getTransformationRuntimeEnvironment(String transformationID){
-    return getTransformation(transformationID).getValue("runtimeEnvironmentName").toString();
+    return (String) getTransformation(transformationID).getValue("runtimeEnvironmentName");
   }
 
   public String getJobDefUserInfo(String jobDefinitionID){
@@ -676,24 +674,24 @@ public class HSQLDBDatabase extends DBCache implements Database{
       return "";
     }
     else{
-      return userInfo.toString();
+      return (String) userInfo;
     }
   }
 
   public String getJobDefStatus(String jobDefinitionID){
-    return getJobDefinition(jobDefinitionID).getValue("status").toString();
+    return (String) getJobDefinition(jobDefinitionID).getValue("status");
   }
 
   public String getJobDefName(String jobDefinitionID){
     String nameField = Util.getNameField(dbName, "jobDefinition");
-    return getJobDefinition(jobDefinitionID).getValue(nameField).toString();
+    return (String) getJobDefinition(jobDefinitionID).getValue(nameField);
   }
 
   public String getJobDefDatasetID(String jobDefinitionID){
-    String datasetName = getJobDefinition(jobDefinitionID).getValue("datasetName").toString();
+    String datasetName = (String) getJobDefinition(jobDefinitionID).getValue("datasetName");
     String datasetID = getDatasetID(datasetName);
     String idField = Util.getIdentifierField(dbName, "dataset");
-    return getDataset(datasetID).getValue(idField).toString();
+    return (String) getDataset(datasetID).getValue(idField);
   }
 
  public String getRuntimeInitText(String runTimeEnvironmentName, String csName){
@@ -707,8 +705,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
 
   public synchronized String getJobDefTransformationID(String jobDefinitionID){
     DBRecord dataset = getDataset(getJobDefDatasetID(jobDefinitionID));
-    String transformation = dataset.getValue("transformationName").toString();
-    String version = dataset.getValue("transformationVersion").toString();
+    String transformation = (String) dataset.getValue("transformationName");
+    String version = (String) dataset.getValue("transformationVersion");
     String transID = null;
     String idField = Util.getIdentifierField(dbName, "transformation");
     String nameField = Util.getNameField(dbName, "transformation");
@@ -1035,16 +1033,16 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
   
   public String getDatasetTransformationName(String datasetID){
-    return getDataset(datasetID).getValue("transformationName").toString();
+    return (String) getDataset(datasetID).getValue("transformationName");
   }
   
   public String getDatasetTransformationVersion(String datasetID){
-    return getDataset(datasetID).getValue("transformationVersion").toString();
+    return (String) getDataset(datasetID).getValue("transformationVersion");
   }
 
   public String getDatasetName(String datasetID){
     String nameField = Util.getNameField(dbName, "dataset");
-    return getDataset(datasetID).getValue(nameField).toString();
+    return (String) getDataset(datasetID).getValue(nameField);
   }
 
   public synchronized String getDatasetID(String datasetName){
@@ -1084,12 +1082,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
       return "-1";
     }
     else{
-      return vec.get(0).toString();
+      return (String) vec.get(0);
     }
   }
 
   public String getRunNumber(String datasetID){
-    return getDataset(datasetID).getValue("runNumber").toString();
+    return (String) getDataset(datasetID).getValue("runNumber");
   }
 
   public synchronized DBRecord getRuntimeEnvironment(String runtimeEnvironmentID){
@@ -1203,7 +1201,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   public String getRunInfo(String jobDefID, String key){
     DBRecord jobDef = getJobDefinition(jobDefID);
     Debug.debug("Getting value for key "+key, 3);
-    return jobDef.getValue(key).toString();
+    return (String) jobDef.getValue(key);
   }
 
   /*
@@ -1500,7 +1498,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
                 res.values[i][j] = "";
               }
               else{
-                res.values[i][j] = jt[i].getValue(fieldNames[j]).toString();
+                res.values[i][j] = (String) jt[i].getValue(fieldNames[j]);
               }
             }
             catch(Throwable e){
@@ -1741,7 +1739,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         // but here, locally, it should be ok.
         Debug.debug("Value of  "+fields[i]+": "+values[i], 3);
         try{
-          if(fields[i]!=null && (values[i]==null || values[i].toString().equals("") || values[i].toString().equals("''")) && 
+          if(fields[i]!=null && (values[i]==null || values[i].equals("") || values[i].equals("''")) && 
               (datasetFieldTypes.get(fields[i]).toString().toLowerCase().startsWith("int") ||
                datasetFieldTypes.get(fields[i]).toString().toLowerCase().startsWith("bigint") ||
                datasetFieldTypes.get(fields[i]).toString().toLowerCase().startsWith("tinyint") ||
@@ -2233,8 +2231,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
             // deleted when deleting the file catalog entry.
             String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
             toDeleteFiles = new String [outFiles.length+2-(outFiles.length>0?1:0)];
-            toDeleteFiles[0] = jobDef.getValue("stdoutDest").toString();
-            toDeleteFiles[1] = jobDef.getValue("stderrDest").toString();
+            toDeleteFiles[0] = (String) jobDef.getValue("stdoutDest");
+            toDeleteFiles[1] = (String) jobDef.getValue("stderrDest");
             for(int i=2; i<toDeleteFiles.length; ++i){
               toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-1]);
             }
@@ -2242,8 +2240,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
           else{
             String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
             toDeleteFiles = new String [outFiles.length+2];
-            toDeleteFiles[0] = jobDef.getValue("stdoutDest").toString();
-            toDeleteFiles[1] = jobDef.getValue("stderrDest").toString();
+            toDeleteFiles[0] = (String) jobDef.getValue("stdoutDest");
+            toDeleteFiles[1] = (String) jobDef.getValue("stderrDest");
             for(int i=2; i<toDeleteFiles.length; ++i){
               toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-2]);
             }
@@ -2408,18 +2406,18 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     String [] ret = new String[vec1.size()];
     for(int i=0; i<vec1.size(); ++i){
-      ret[i] = vec1.get(i).toString();
+      ret[i] = (String) vec1.get(i);
     }
     return ret;
   }
   
   public String [] getTransformationOutputs(String transformationID){    
-    String outputs = getTransformation(transformationID).getValue("outputFiles").toString();
+    String outputs = (String) getTransformation(transformationID).getValue("outputFiles");
     return Util.split(outputs);
   }
 
   public String [] getTransformationInputs(String transformationID){    
-    String inputs = getTransformation(transformationID).getValue("inputFiles").toString();
+    String inputs = (String) getTransformation(transformationID).getValue("inputFiles");
     return Util.split(inputs);
   }
   
@@ -2511,7 +2509,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
             " FROM file WHERE guid = "+fileID, "guid", true);
       for(int i=0; i<fieldsVector.size(); ++i){
         try{
-          file.setValue(fieldsVector.get(i).toString(),
+          file.setValue((String) fieldsVector.get(i),
               (String) res.getValue(0, (String) fieldsVector.get(i)));
         }
         catch(Exception e){
@@ -2526,7 +2524,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       DBRecord jobDef = getJobDefinition(fileID);
       for(int i=0; i<fields.length; ++i){
         try{
-          file.setValue(fields[i], jobDef.getValue(fields[i]).toString());
+          file.setValue(fields[i], (String) jobDef.getValue(fields[i]));
         }
         catch(Exception e){
           Debug.debug("WARNING: could not set field "+fields[i]+". "+e.getMessage(), 2);
@@ -2534,7 +2532,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
       for(int i=0; i<jobDef.fields.length; ++i){
         if(jobDef.fields[i].equalsIgnoreCase("outFileMapping")){
-          String [] map = Util.split(jobDef.getValue(jobDef.fields[i]).toString());
+          String [] map = Util.split((String) jobDef.getValue(jobDef.fields[i]));
           try{
             file.setValue("url", map[1]);
           }
@@ -2554,7 +2552,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       String ret = null;
       try{
         DBRecord file = getFile(datasetName, fileID, findAll?2:1);
-        ret = file.getValue("pfname").toString();
+        ret = (String) file.getValue("pfname");
       }
       catch(Exception e){
         Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
@@ -2574,7 +2572,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       String ret = null;
       try{
         DBRecord file = getFile(datasetName, fileID, findAll?2:1);
-        ret = file.getValue("url").toString();
+        ret = (String) file.getValue("url");
       }
       catch(Exception e){
         Debug.debug("WARNING: could not get URLs. "+e.getMessage(), 1);
@@ -2800,10 +2798,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
             String fileNames = null;
             try{
               if(isFileCatalog()){
-                fileNames = getFile(datasetID, fileIDs[i], 2).getValue("pfname").toString();
+                fileNames = (String) getFile(datasetID, fileIDs[i], 2).getValue("pfname");
               }
               else{
-                fileNames = getFile(datasetID, fileIDs[i], 2).getValue("url").toString();
+                fileNames = (String) getFile(datasetID, fileIDs[i], 2).getValue("url");
               }
               Debug.debug("Deleting files "+fileNames, 2);
               if(fileNames!=null && !fileNames.equals("no such field")){

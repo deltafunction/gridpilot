@@ -1473,7 +1473,7 @@ public class TransferControl{
     }
     
     // Local src
-    if(/*Linux local file*/(src.matches("^file:~[^:]*") || src.matches("^file:/[^:]*") || src.startsWith("/")) ||
+    if(/*Linux local file*/(src.matches("^file:~[^:]*") || src.matches("^file:/[^:]*") || src.startsWith("/") || src.startsWith("~")) ||
         /*Windows local file*/(src.matches("\\w:.*") || src.matches("^file:/*\\w:.*")) && shellMgr.isLocal()){
       try{
         if(!shellMgr.existsFile(src)){
@@ -1559,7 +1559,7 @@ public class TransferControl{
     // relative paths or getting files (via ssh) from a Windows server is not supported
     else{
       error = "ERROR copying : unqualified paths or putting files on a " +
-          "Windows server is not supported.";
+          "Windows server is not supported. "+src;
       logFile.addMessage(error);
       return false;
     }
