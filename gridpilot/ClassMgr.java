@@ -1,5 +1,8 @@
 package gridpilot;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.security.cert.X509Certificate;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -15,6 +18,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 import org.globus.common.CoGProperties;
+import org.globus.gsi.CertUtil;
 import org.ietf.jgss.GSSCredential;
 import org.logicalcobwebs.proxool.ProxoolFacade;
 
@@ -52,6 +56,7 @@ public class ClassMgr{
   // This map will be cleared on exit - also, all pulled
   // JobDefinitions will be set back to 'ready'.
   private HashMap jobCSMap = new HashMap();
+  private X509Certificate x509UserCert = null;
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
   public GSSCredential credential = null;
@@ -420,6 +425,11 @@ public class ClassMgr{
   
   public String getCaCertsTmpDir(){
     return caCertsTmpdir;
+  }
+  
+  public X509Certificate getX509UserCert() throws IOException, GeneralSecurityException{
+    x509UserCert = CertUtil.loadCertificate(Util.clearTildeLocally(GridPilot.certFile));
+    return x509UserCert;
   }
   
   public /*synchronized*/ GSSCredential getGridCredential(){

@@ -810,9 +810,10 @@ public class Util{
 
     key = new BouncyCastleOpenSSLKey(userKeyFilename);
     // This was an vain attempt to get gLite/WMProxy to work...
-    System.setProperty("org.globus.gsi.version", "2");
-   // get user certificate
-    X509Certificate userCert = CertUtil.loadCertificate(userCertFilename);
+    //System.setProperty("org.globus.gsi.version", "3");
+    // get user certificate
+    GridPilot.certFile = userCertFilename;
+    X509Certificate userCert = GridPilot.getClassMgr().getX509UserCert();
     return createProxy(key, userCert, password, lifetime, strength);
 
   }
@@ -1811,8 +1812,7 @@ public class Util{
     String subject = null;
     try{
       Debug.debug("getting identity", 3);
-      X509Certificate userCert = CertUtil.loadCertificate(
-          clearTildeLocally(GridPilot.certFile));
+      X509Certificate userCert = GridPilot.getClassMgr().getX509UserCert();
       subject = userCert.getSubjectX500Principal().getName().trim();
       Debug.debug("--->"+subject, 3);
       String [] items = split(subject, ",");
