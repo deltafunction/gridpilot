@@ -9,8 +9,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -33,11 +38,14 @@ import gridpilot.TransferControl;
 import gridpilot.Util;
 import gridpilot.csplugins.ng.NGComputingSystem;
 
+import org.bouncycastle.asn1.x509.X509Name;
 import org.bouncycastle.util.encoders.Base64;
+import org.bouncycastle.openssl.PEMReader;
 import org.glite.jdl.JobAd;
 import org.glite.wms.wmproxy.JobIdStructType;
 import org.glite.wms.wmproxy.WMProxyAPI;
 import org.glite.wmsui.apij.*;
+import org.glite.security.delegation.GrDPX509Util;
 import org.glite.security.delegation.GrDProxyGenerator;
 import org.globus.gsi.CertUtil;
 import org.globus.gsi.GSIConstants;
@@ -45,9 +53,11 @@ import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.GlobusCredentialException;
 import org.globus.gsi.bc.BouncyCastleCertProcessingFactory;
 import org.globus.gsi.bc.BouncyCastleOpenSSLKey;
+import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.mds.MDS;
 import org.globus.mds.MDSException;
 import org.globus.mds.MDSResult;
+import org.ietf.jgss.GSSCredential;
 import org.safehaus.uuid.UUIDGenerator;
 
 /**
@@ -340,6 +350,48 @@ public class GLiteComputingSystem implements ComputingSystem{
     }
     return ret;
   }
+  
+  private String extractProxyPrivateKey(String proxyFile) throws IOException{
+    StringBuffer bf = new StringBuffer();
+    InputStream is = new FileInputStream(proxyFile);
+    BufferedReader in = new BufferedReader(new InputStreamReader(is));
+    String line = null;
+    boolean ok = false;
+    while((line = in.readLine())!=null){
+      if(line.equalsIgnoreCase("-----BEGIN RSA PRIVATE KEY-----")){
+        ok = true;
+      }
+      if(ok){
+        bf.append(line+"\n");
+      }
+      if(line.equalsIgnoreCase("-----END RSA PRIVATE KEY-----")){
+        break;
+      }
+    }
+    in.close();
+    return bf.toString();
+  }
+
+  private String extractProxyCertificate(String proxyFile) throws IOException{
+    StringBuffer bf = new StringBuffer();
+    InputStream is = new FileInputStream(proxyFile);
+    BufferedReader in = new BufferedReader(new InputStreamReader(is));
+    String line = null;
+    boolean ok = false;
+    while((line = in.readLine())!=null){
+      if(line.equalsIgnoreCase("-----BEGIN CERTIFICATE-----")){
+        ok = true;
+      }
+      if(ok){
+        bf.append(line+"\n");
+      }
+      if(line.equalsIgnoreCase("-----END CERTIFICATE-----")){
+        break;
+      }
+    }
+    in.close();
+    return bf.toString();
+  }
 
   public boolean submit(JobInfo job){
     try{
@@ -352,28 +404,59 @@ public class GLiteComputingSystem implements ComputingSystem{
         Debug.debug("putting proxy", 3);
         //String proxy = wmProxyAPI.grstGetProxyReq(delegationId);
         //wmProxyAPI.grstPutProxy(delegationId, proxy);
-        String proxyReq = wmProxyAPI.getProxyReq(delegationId);
+        String proxyReq = wmProxyAPI.grstGetProxyReq(delegationId);
         Debug.debug("proxy req "+proxyReq, 3);
+        
         // Sign the request
-        X509Certificate userCert = GridPilot.getClassMgr().getX509UserCert();
+        GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+        GlobusCredential globusCred = null;
+        if(credential instanceof GlobusGSSCredentialImpl){
+          globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+        }
+        X509Certificate userCert = globusCred.getCertificateChain()[0];
+        X509Name prvSubjectDN = new X509Name(userCert.getSubjectDN().getName());
         // TODO: key password??
-        BouncyCastleOpenSSLKey key = new BouncyCastleOpenSSLKey(Util.clearTildeLocally(Util.clearFile(GridPilot.keyFile)));
+        //PrivateKey key = globusCred.getPrivateKey();
         // get user certificate
         //X509Certificate userCert = CertUtil.loadCertificate(new ByteArrayInputStream(proxy.getBytes()));
+        Debug.debug("signing with "+prvSubjectDN+"-->"+
+            extractProxyPrivateKey(Util.getProxyFile().getAbsolutePath()), 3);
+        
+        //PEMReader pemReader = new PEMReader(new InputStreamReader(new FileInputStream(Util.getProxyFile())), null, "BC");
+        PEMReader pemReader = new PEMReader(new InputStreamReader(new ByteArrayInputStream(extractProxyPrivateKey(Util.getProxyFile().getAbsolutePath()).getBytes())), null, "BC");
+        Object o = pemReader.readObject();
+        KeyPair pair = (KeyPair) o;
+        //KeyPair pair = new KeyPair(globusCred.getCertificateChain()[0].getPublicKey(), key);
+        PrivateKey privateKey = pair.getPrivate();
+        Debug.debug("read the private key " + privateKey.toString(), 2);
+        
+        X509Certificate [] reqUserCert = GrDPX509Util.loadCertificateChain(
+            new BufferedInputStream(new FileInputStream(Util.getProxyFile())));
+        Debug.debug("signing " + reqUserCert[0].getIssuerDN().getName()+":"+reqUserCert[0].getSerialNumber(), 2);
+        
         GrDProxyGenerator gpg = new GrDProxyGenerator();
         X509Certificate [] newProxy = gpg.createProxyFromCertReq(
-            getDERRequest(new ByteArrayInputStream(proxyReq.getBytes())),
-            new BufferedInputStream(new ByteArrayInputStream(userCert.toString().getBytes())),
-            new FileInputStream(Util.clearTildeLocally(Util.clearFile(GridPilot.keyFile))), "");
-        //GlobusCredential newProxy = Util.createProxy(key, userCert, "", GridPilot.proxyTimeValid, GridPilot.PROXY_STRENGTH);
+            new ByteArrayInputStream(proxyReq.getBytes()),
+            new BufferedInputStream(new ByteArrayInputStream(extractProxyCertificate(Util.getProxyFile().getAbsolutePath()).getBytes())),
+            new BufferedInputStream(new ByteArrayInputStream(extractProxyPrivateKey(Util.getProxyFile().getAbsolutePath()).getBytes())),
+            "");
         
-        /*
+       GlobusCredential newProxy1 = Util.createProxy(
+           new BouncyCastleOpenSSLKey(Util.getProxyFile().getAbsolutePath()),
+           userCert, "", GridPilot.proxyTimeValid, GridPilot.PROXY_STRENGTH);
+                
         BouncyCastleCertProcessingFactory factory = BouncyCastleCertProcessingFactory.getDefault();
-        X509Certificate newProxy = factory.createCertificate(
-            getDERRequest(new ByteArrayInputStream(proxyReq.getBytes())), userCert,
-            key.getPrivateKey(), GridPilot.proxyTimeValid, GSIConstants.DELEGATION_FULL);*/
-        Debug.debug("new proxy "+newProxy.toString(), 3);
-        wmProxyAPI.putProxy(delegationId, newProxy.toString());
+        X509Certificate newBCProxy = factory.createCertificate(
+            getDERRequest(new ByteArrayInputStream(proxyReq.getBytes())),
+            userCert,
+            globusCred.getPrivateKey(),
+            GridPilot.proxyTimeValid, GSIConstants.DELEGATION_FULL);
+        Debug.debug("new proxy "+newBCProxy.toString(), 3);
+        
+        // upload the signed proxy
+        //wmProxyAPI.grstPutProxy(delegationId, newProxy[0].toString());
+        //wmProxyAPI.grstPutProxy(delegationId, newBCProxy.toString());
+        wmProxyAPI.grstPutProxy(delegationId, proxyReq);
       }
       // create script and JDL
       GLiteScriptGenerator scriptGenerator =  new GLiteScriptGenerator(csName);
@@ -412,6 +495,7 @@ public class GLiteComputingSystem implements ComputingSystem{
       error = "ERROR: could not run job "+job;
       logFile.addMessage(error, e);
       e.printStackTrace();
+      delegationId = null;
       return false;
     }
     return true;
@@ -1073,5 +1157,54 @@ public class GLiteComputingSystem implements ComputingSystem{
           }
           return null;
       }
+  
+  
+  private String createProxyfromCertReq(java.lang.String certReq)
+  throws org.glite.wms.wmproxy.CredentialException {
+    byte[ ] proxy = null;
+    ByteArrayInputStream stream = null;
+    CertificateFactory cf = null;
+    X509Certificate cert = null ;
+    long lifetime = 0;
+    try{
+      // generator object   
+      GrDProxyGenerator generator = new GrDProxyGenerator ( );  
+      // user proxy 
+      String proxyStream = System.getProperty("gridProxyStream");
+      if(proxyStream==null){
+        throw new org.glite.wms.wmproxy.CredentialException  ( "proxy file not found " );
+        }
+      try{
+        // gets the local proxy as array of byte
+        proxy = proxyStream.getBytes();
+        // reads the proxy time-left
+        stream = new ByteArrayInputStream(proxy);
+        cf = CertificateFactory.getInstance("X.509");
+        cert = (X509Certificate)cf.generateCertificate(stream);
+        stream.close();
+        Date now = new Date ( );
+        lifetime = ( cert.getNotAfter().getTime ( ) - now.getTime() ) / 3600000  ; // in hour ! (TBC in secs)
+      }
+      catch (Exception exc){
+        String errmsg = "an error occured while loading the local proxy \n";
+        errmsg += exc.toString();
+        throw new org.glite.wms.wmproxy.CredentialException(errmsg);
+      }
+      // checks if the proxy is still valid
+      if (lifetime < 0 ){
+        throw new org.glite.wms.wmproxy.CredentialException ("the local proxy has expired " );
+      }
+      // sets the lifetime
+      generator.setLifetime ((int)lifetime);
+      // creates the new proxy
+      proxy =  generator.x509MakeProxyCert(certReq.getBytes( ) , proxy, "");
+      // converts the proxy from byte[] to String
+      return new String(proxy);
+    }
+    catch(Exception exc){
+      throw new org.glite.wms.wmproxy.CredentialException (exc.getMessage());
+    }
+}
+
 
 }
