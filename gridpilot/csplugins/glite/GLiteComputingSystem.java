@@ -1,9 +1,14 @@
 package gridpilot.csplugins.glite;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -28,11 +33,14 @@ import gridpilot.TransferControl;
 import gridpilot.Util;
 import gridpilot.csplugins.ng.NGComputingSystem;
 
+import org.bouncycastle.util.encoders.Base64;
 import org.glite.jdl.JobAd;
 import org.glite.wms.wmproxy.JobIdStructType;
 import org.glite.wms.wmproxy.WMProxyAPI;
 import org.glite.wmsui.apij.*;
+import org.glite.security.delegation.GrDProxyGenerator;
 import org.globus.gsi.CertUtil;
+import org.globus.gsi.GSIConstants;
 import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.GlobusCredentialException;
 import org.globus.gsi.bc.BouncyCastleCertProcessingFactory;
@@ -344,18 +352,28 @@ public class GLiteComputingSystem implements ComputingSystem{
         Debug.debug("putting proxy", 3);
         //String proxy = wmProxyAPI.grstGetProxyReq(delegationId);
         //wmProxyAPI.grstPutProxy(delegationId, proxy);
-        String proxy = wmProxyAPI.getProxyReq(delegationId);
-        Debug.debug("proxy req "+proxy, 3);
+        String proxyReq = wmProxyAPI.getProxyReq(delegationId);
+        Debug.debug("proxy req "+proxyReq, 3);
         // Sign the request
-        BouncyCastleOpenSSLKey key = new BouncyCastleOpenSSLKey(Util.getProxyFile().getAbsolutePath());
-        // This was an vain attempt to get gLite/WMProxy to work...
-        System.setProperty("org.globus.gsi.version", "2");
-       // get user certificate
-        X509Certificate userCert = CertUtil.loadCertificate(new ByteArrayInputStream(proxy.getBytes()));
-        GlobusCredential newProxy = Util.createProxy(key, userCert, "", GridPilot.proxyTimeValid, GridPilot.PROXY_STRENGTH);
+        X509Certificate userCert = GridPilot.getClassMgr().getX509UserCert();
+        // TODO: key password??
+        BouncyCastleOpenSSLKey key = new BouncyCastleOpenSSLKey(Util.clearTildeLocally(Util.clearFile(GridPilot.keyFile)));
+        // get user certificate
+        //X509Certificate userCert = CertUtil.loadCertificate(new ByteArrayInputStream(proxy.getBytes()));
+        GrDProxyGenerator gpg = new GrDProxyGenerator();
+        X509Certificate [] newProxy = gpg.createProxyFromCertReq(
+            getDERRequest(new ByteArrayInputStream(proxyReq.getBytes())),
+            new BufferedInputStream(new ByteArrayInputStream(userCert.toString().getBytes())),
+            new FileInputStream(Util.clearTildeLocally(Util.clearFile(GridPilot.keyFile))), "");
+        //GlobusCredential newProxy = Util.createProxy(key, userCert, "", GridPilot.proxyTimeValid, GridPilot.PROXY_STRENGTH);
+        
+        /*
         BouncyCastleCertProcessingFactory factory = BouncyCastleCertProcessingFactory.getDefault();
-        factory.createCertificate(arg0, arg1, arg2, arg3, arg4)
-        wmProxyAPI.putProxy(delegationId, /*proxy*/newProxy.toString());
+        X509Certificate newProxy = factory.createCertificate(
+            getDERRequest(new ByteArrayInputStream(proxyReq.getBytes())), userCert,
+            key.getPrivateKey(), GridPilot.proxyTimeValid, GSIConstants.DELEGATION_FULL);*/
+        Debug.debug("new proxy "+newProxy.toString(), 3);
+        wmProxyAPI.putProxy(delegationId, newProxy.toString());
       }
       // create script and JDL
       GLiteScriptGenerator scriptGenerator =  new GLiteScriptGenerator(csName);
@@ -1036,5 +1054,24 @@ public class GLiteComputingSystem implements ComputingSystem{
   public String getError(String csName){
     return error;
   }
+  
+  private static InputStream getDERRequest(InputStream in) throws IOException
+      {
+          BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+          String line = null;
+          StringBuffer buff = new StringBuffer();
+          boolean isReq = false;
+          while ((line = reader.readLine()) != null) {
+              if (line.indexOf("BEGIN CERTIFICATE REQUEST") != -1) {
+                  isReq = true;
+              } else if (isReq && line.indexOf("END CERTIFICATE REQUEST") != -1) {
+                  byte [] data = Base64.decode(buff.toString().getBytes());
+                  return new ByteArrayInputStream(data);
+              } else if (isReq) {
+                  buff.append(line);
+              }
+          }
+          return null;
+      }
 
 }
