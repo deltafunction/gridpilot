@@ -17,15 +17,28 @@ public class GLiteScriptGenerator extends ScriptGenerator {
 
   String cpuTime = null;
   String reRun = null;
-  List localInputFilesList = null;
   List remoteInputFilesList = null;
   List lfcInputFilesList = null;
   String vo = null;
   String replicaCatalog = null;
+  String [] uses = null;
+  DBPluginMgr dbPluginMgr = null;
+  JobInfo job = null;
+  String exeFileName = null;
+  String jdlFileName = null;
+  String [] outputFileNames = null;
+  String shortScriptName = null;
+  String jobDefID = null;
 
-  public GLiteScriptGenerator(String _csName) {
+  // These files will be uploaded to the sandbox.
+  protected List localInputFilesList = null;
+
+  public GLiteScriptGenerator(String _csName, JobInfo _job, String _exeFileName, String _jdlFileName) {
     super(_csName);
     csName = _csName;
+    job = _job;
+    exeFileName= _exeFileName;
+    jdlFileName = _jdlFileName;
     cpuTime = configFile.getValue(csName, "CPU time");
     reRun = configFile.getValue(csName, "Max rerun");
     vo = configFile.getValue(csName, "Virtual organization");
@@ -33,164 +46,23 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     localInputFilesList = new Vector();
     remoteInputFilesList = new Vector();
     lfcInputFilesList = new Vector();
-
-  }
-
-  public List createJDL(JobInfo job, String exeFileName, String jdlFileName){
-
-    String jdlLine;
-    String jobDefID = job.getJobDefId();
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    String [] formalParam = dbPluginMgr.getTransformationArguments(jobDefID);
-    String [] actualParam = dbPluginMgr.getJobDefTransPars(jobDefID);
-
-    // The transformation script
-    String scriptFileName = dbPluginMgr.getTransformationScript(jobDefID);
-    String shortScriptName = scriptFileName;
+    dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    jobDefID = job.getJobDefId();
+    uses = dbPluginMgr.getRuntimeEnvironments(jobDefID);
+    outputFileNames = dbPluginMgr.getOutputFiles(jobDefID);
+    shortScriptName = dbPluginMgr.getTransformationScript(jobDefID);
     int lastSlash = shortScriptName.replaceAll("\\\\", "/").lastIndexOf("/");
     if(lastSlash>-1){
       shortScriptName = shortScriptName.substring(lastSlash + 1);
     }
-    // names starting with file: will be uploaded, names starting with
-    // / or c:\ are considered to be locally available on the server
-    if(scriptFileName.startsWith("file:")){
-      localInputFilesList.add(Util.clearTildeLocally(Util.clearFile(scriptFileName)));
-    }
+  }
 
-    String shortExeFileName = new File(exeFileName).getName();
-    String jdlExeFileName = Util.clearTildeLocally(Util.clearFile(exeFileName));
-    Debug.debug("shortName : " + shortExeFileName, 3);
-    localInputFilesList.add(jdlExeFileName);
+  public void createScript(){
 
-    String inputFileURL = null;
+    String [] formalParam = dbPluginMgr.getTransformationArguments(jobDefID);
+    String [] actualParam = dbPluginMgr.getJobDefTransPars(jobDefID);
 
-    // create jdl file
-    StringBuffer bufJdl = new StringBuffer();
     try{
-      writeLine(bufJdl, "Executable = \"/bin/sh\";");
-      writeLine(bufJdl, "Arguments = \""+
-          (new File(Util.clearTildeLocally(Util.clearFile(scriptFileName)))).getName()+
-          "\";");
-      writeLine(bufJdl, "StdOutput = \"stdout\";");
-      writeLine(bufJdl, "StdError = \"stderr\";");
-      
-      // Input files: scripts
-      jdlLine = "InputSandbox = {";
-      if(scriptFileName.startsWith("file:")){
-        jdlLine += "\"" + Util.clearTildeLocally(Util.clearFile(scriptFileName)) + "\", ";
-      }
-      jdlLine += "\"" + exeFileName + "\", ";
-
-      // Input files.
-      String[] inputFiles1 = new String [] {};
-      String [] inputs = dbPluginMgr.getJobDefInputFiles(jobDefID);
-      Debug.debug("input files: "+inputs.length+" "+Util.arrayToString(inputs), 3);
-      if(inputs!=null && inputs.length>0){
-        inputFiles1 = inputs;
-      }
-      // Input files from transformation definition
-      // (typically a tarball with code)
-      String[] inputFiles2 = new String [] {};
-      inputs = dbPluginMgr.getTransformationInputs(
-          dbPluginMgr.getJobDefTransformationID(jobDefID));
-      Debug.debug("input files: "+inputs.length+" "+Util.arrayToString(inputs), 3);
-      if(inputs!=null && inputs.length>0){
-        inputFiles2 = inputs;
-      }
-      String [] inputFiles = new String[inputFiles1.length+inputFiles2.length];
-      System.arraycopy(inputFiles1, 0, inputFiles, 0, inputFiles1.length);
-      System.arraycopy(inputFiles2, 0, inputFiles, inputFiles1.length, inputFiles2.length);
-            
-      for(int i=0; i<inputFiles.length; ++i){
-        inputFileURL = null;
-        if(inputFiles[i].startsWith("http://") ||
-            inputFiles[i].startsWith("https://") ||
-            inputFiles[i].startsWith("gsiftp://") ||
-            inputFiles[i].startsWith("ftp://")){
-          inputFileURL = inputFiles[i];
-        }
-        else{
-          // URL is full path of input file
-          inputFileURL = Util.clearTildeLocally(Util.clearFile(inputFiles[i]));
-        }
-        Debug.debug("Input file physical name: "+inputFileURL, 3);
-       
-        // Add local files to the return value.
-        // Files starting with / are assumed to already be on the server.
-        if(inputFiles[i].startsWith("file:")){
-          jdlLine += "\"" + inputFileURL + "\", ";
-          localInputFilesList.add(inputFileURL);
-        }
-        else if(inputFiles[i].startsWith("/")){
-          // do nothing
-        }
-        else if(inputFiles[i].toLowerCase().startsWith("lfn:")){
-          lfcInputFilesList.add(inputFileURL);
-        }
-        else{
-          //line += "\"" + inputFileURL + "\", ";
-          remoteInputFilesList.add(inputFileURL);
-        }
-      }
-      jdlLine += "};" ;
-      jdlLine = jdlLine.replaceAll(",\\s*}", "}") ;
-      writeLine(bufJdl, jdlLine);
-      
-      String [] remoteInputFilesArray = new String [remoteInputFilesList.size()];
-      for(int i=0; i<remoteInputFilesList.size(); ++i){
-        remoteInputFilesArray[i] = (String) remoteInputFilesList.get(i);
-      }
-      // job.getDownloadFiles is not used; we set it just for aesthetics...
-      // remoteInputFilesArray will be downloaded by the job script
-      job.setDownloadFiles(remoteInputFilesArray);
-
-      if(!lfcInputFilesList.isEmpty()){
-        jdlLine = "InputData = {";
-        String lfcHost = null;
-        String oldLfcHost = null;
-        String cat = null;
-        for(Iterator it=lfcInputFilesList.iterator(); it.hasNext();){
-          cat = (String) it.next();
-          if(cat.startsWith("lfc:")){
-            lfcHost = cat.replaceFirst("lfc:/*(.*)[:/]", "$1");
-            jdlLine += "\"lfn:"+cat+"\", ";
-            if(oldLfcHost!=null && !lfcHost.equals(oldLfcHost)){
-              throw new IOException("ERROR: cannot use more than one catalog per job. "+
-                  lfcHost+"!="+oldLfcHost);
-            }
-            oldLfcHost = lfcHost;
-          }
-        }
-        jdlLine += "};";
-        jdlLine = jdlLine.replaceFirst(", }","  }") ;
-        writeLine(bufJdl, jdlLine);
-        if(lfcHost!=null){
-          writeLine(bufJdl, "DataCatalog = \""+lfcHost+"\";");
-        }
-      }
-      
-      // Various options
-      writeLine(bufJdl, "DataAccessProtocol =  {\"rfio\", \"gsiftp\", \"gsidcap\"};");
-      writeLine(bufJdl, "Requirements = (other.GlueCEPolicyMaxCPUTime > "+cpuTime+") &&" +
-          " (other.GlueCEStateStatus == \"Production\");");
-      writeLine(bufJdl, "Rank = (-other.GlueCEStateEstimatedResponseTime);");
-      writeLine(bufJdl, "VirtualOrganisation = \"" + vo + "\";");
-      writeLine(bufJdl, "RetryCount  = 0;");
-      writeLine(bufJdl, "ShallowRetryCount = " + reRun + ";");
-      
-      // Runtime environments
-      String [] uses = dbPluginMgr.getRuntimeEnvironments(jobDefID);
-      if(uses!=null && uses.length>0 && uses[0]!=null){
-        for(int i=0; i<uses.length; ++i){
-          // At least for now, we only have Linux resources on LCG
-          if(uses[i].equals("Linux")){
-            continue;
-          }
-          writeLine(bufJdl,"Requirements = Member(\""+Util.dos2unix(uses[i])+"\", " +
-          "other.GlueHostApplicationSoftwareRunTimeEnvironment);");
-        }
-      }
-
       // create job script
 
       String scriptLine = "";
@@ -264,24 +136,21 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       // in principle preventing multiple output files per job, but as it is now,
       // only the first of the output files will be registered.
       // TODO: reconsider
-      String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
       writeBloc(bufScript, "Output files", ScriptGenerator.TYPE_SUBSECTION);
       for(int i=0; i<outputFileNames.length; ++i){
         writeLine(bufScript, "echo GRIDPILOT METADATA: bytes = `du -b "+outputFileNames[i]+" | awk '{print $1}'`");
         writeLine(bufScript, "echo GRIDPILOT METADATA: checksum = md5:`md5sum "+outputFileNames[i]+" | awk '{print $1}'`");
         break;
-      }
+      }      
 
-      // Output files
-      jdlLine = "OutputSandbox = {\"stdout\", \"stderr\"";
       // upload output files
       String localName;
       String remoteName;
       Vector uploadVector = new Vector();
       // output file copy
       for(int i=0; i<outputFileNames.length; ++i){
-        localName = dbPluginMgr.getJobDefOutLocalName(job.getJobDefId(), outputFileNames[i]);
-        remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFileNames[i]);
+        localName = dbPluginMgr.getJobDefOutLocalName(jobDefID, outputFileNames[i]);
+        remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputFileNames[i]);
         if(remoteName.startsWith("/") || remoteName.matches("^\\w:.*")){
           // In analogy with ForkComputingSystem, this should trigger
           // copying the file to a place on the file system on the server.
@@ -293,7 +162,6 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         else if(remoteName.startsWith("file:")){
           // These are copied back to the client and GridPilot
           // moves them locally on the client to their final destination
-          jdlLine += ", \""+localName+"\"";
           uploadVector.add(new String [] {localName, remoteName});
         }
         else if(remoteName.toLowerCase().startsWith("lfn:")){
@@ -313,32 +181,214 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       }
       job.setUploadFiles(uploadFiles);
 
-      jdlLine += "};";
+      // this is for getStatus
+      writeLine(bufScript, "echo job "+jobDefID+" done");
+
       writeLine(bufScript, scriptLine);
-      writeLine(bufJdl, jdlLine);
 
       try{
         LocalStaticShellMgr.writeFile(exeFileName, bufScript.toString(), false);
-        Util.dos2unix(new File(exeFileName));
-        LocalStaticShellMgr.writeFile(jdlFileName, bufJdl.toString(), false);
         Util.dos2unix(new File(exeFileName));
       }
       catch(FileNotFoundException fnfe){
         System.err.print(fnfe.getMessage());
         Debug.debug("Could not write file. "+fnfe.getMessage(), 1);
-        return null;
+        return;
       }
       catch(Exception ioe){
         Debug.debug(ioe.getMessage(), 1);
         ioe.printStackTrace();
-        return null;
+        return;
       }
-      // These files will be uploaded to the sandbox.
-      return localInputFilesList;
     }
     catch(IOException ioe){
       logFile.addMessage("ERROR generating job scripts", ioe);
-      return null;
+      return;
+    }
+  }
+
+  public void createJDL(){
+  
+    String jdlLine;
+  
+    // The transformation script
+    String scriptFileName = dbPluginMgr.getTransformationScript(jobDefID);
+    // names starting with file: will be uploaded, names starting with
+    // / or c:\ are considered to be locally available on the server
+    if(scriptFileName.startsWith("file:")){
+      localInputFilesList.add(Util.clearTildeLocally(Util.clearFile(scriptFileName)));
+    }
+  
+    String shortExeFileName = new File(exeFileName).getName();
+    String jdlExeFileName = Util.clearTildeLocally(Util.clearFile(exeFileName));
+    Debug.debug("shortName : " + shortExeFileName, 3);
+    localInputFilesList.add(jdlExeFileName);
+  
+    String inputFileURL = null;
+  
+    // create jdl file
+    StringBuffer bufJdl = new StringBuffer();
+    try{
+      writeLine(bufJdl, "Executable = \"/bin/sh\";");
+      writeLine(bufJdl, "Arguments = \""+
+          (new File(Util.clearTildeLocally(Util.clearFile(scriptFileName)))).getName()+
+          "\";");
+      writeLine(bufJdl, "StdOutput = \"stdout\";");
+      writeLine(bufJdl, "StdError = \"stderr\";");
+      
+      // Input files: scripts
+      jdlLine = "InputSandbox = {";
+      if(scriptFileName.startsWith("file:")){
+        jdlLine += "\"" + Util.clearTildeLocally(Util.clearFile(scriptFileName)) + "\", ";
+      }
+      jdlLine += "\"" + exeFileName + "\", ";
+  
+      // Input files.
+      String[] inputFiles1 = new String [] {};
+      String [] inputs = dbPluginMgr.getJobDefInputFiles(jobDefID);
+      Debug.debug("input files: "+inputs.length+" "+Util.arrayToString(inputs), 3);
+      if(inputs!=null && inputs.length>0){
+        inputFiles1 = inputs;
+      }
+      // Input files from transformation definition
+      // (typically a tarball with code)
+      String[] inputFiles2 = new String [] {};
+      inputs = dbPluginMgr.getTransformationInputs(
+          dbPluginMgr.getJobDefTransformationID(jobDefID));
+      Debug.debug("input files: "+inputs.length+" "+Util.arrayToString(inputs), 3);
+      if(inputs!=null && inputs.length>0){
+        inputFiles2 = inputs;
+      }
+      String [] inputFiles = new String[inputFiles1.length+inputFiles2.length];
+      System.arraycopy(inputFiles1, 0, inputFiles, 0, inputFiles1.length);
+      System.arraycopy(inputFiles2, 0, inputFiles, inputFiles1.length, inputFiles2.length);
+            
+      for(int i=0; i<inputFiles.length; ++i){
+        inputFileURL = null;
+        if(inputFiles[i].startsWith("http://") ||
+            inputFiles[i].startsWith("https://") ||
+            inputFiles[i].startsWith("gsiftp://") ||
+            inputFiles[i].startsWith("ftp://")){
+          inputFileURL = inputFiles[i];
+        }
+        else{
+          // URL is full path of input file
+          inputFileURL = Util.clearTildeLocally(Util.clearFile(inputFiles[i]));
+        }
+        Debug.debug("Input file physical name: "+inputFileURL, 3);
+       
+        // Add local files to the return value.
+        // Files starting with / are assumed to already be on the server.
+        if(inputFiles[i].startsWith("file:")){
+          jdlLine += "\"" + inputFileURL + "\", ";
+          localInputFilesList.add(inputFileURL);
+        }
+        else if(inputFiles[i].startsWith("/")){
+          // do nothing
+        }
+        else if(inputFiles[i].toLowerCase().startsWith("lfn:")){
+          lfcInputFilesList.add(inputFileURL);
+        }
+        else{
+          //line += "\"" + inputFileURL + "\", ";
+          remoteInputFilesList.add(inputFileURL);
+        }
+      }
+      jdlLine += "};" ;
+      jdlLine = jdlLine.replaceAll(",\\s*}", "}") ;
+      writeLine(bufJdl, jdlLine);
+      
+      String [] remoteInputFilesArray = new String [remoteInputFilesList.size()];
+      for(int i=0; i<remoteInputFilesList.size(); ++i){
+        remoteInputFilesArray[i] = (String) remoteInputFilesList.get(i);
+      }
+      // job.getDownloadFiles is not used; we set it just for aesthetics...
+      // remoteInputFilesArray will be downloaded by the job script
+      job.setDownloadFiles(remoteInputFilesArray);
+  
+      if(!lfcInputFilesList.isEmpty()){
+        jdlLine = "InputData = {";
+        String lfcHost = null;
+        String oldLfcHost = null;
+        String cat = null;
+        for(Iterator it=lfcInputFilesList.iterator(); it.hasNext();){
+          cat = (String) it.next();
+          if(cat.startsWith("lfc:")){
+            lfcHost = cat.replaceFirst("lfc:/*(.*)[:/]", "$1");
+            jdlLine += "\"lfn:"+cat+"\", ";
+            if(oldLfcHost!=null && !lfcHost.equals(oldLfcHost)){
+              throw new IOException("ERROR: cannot use more than one catalog per job. "+
+                  lfcHost+"!="+oldLfcHost);
+            }
+            oldLfcHost = lfcHost;
+          }
+        }
+        jdlLine += "};";
+        jdlLine = jdlLine.replaceFirst(", }","  }") ;
+        writeLine(bufJdl, jdlLine);
+        if(lfcHost!=null){
+          writeLine(bufJdl, "DataCatalog = \""+lfcHost+"\";");
+        }
+      }
+      
+      // Various options
+      writeLine(bufJdl, "DataAccessProtocol =  {\"rfio\", \"gsiftp\", \"gsidcap\"};");
+      writeLine(bufJdl, "Requirements = (other.GlueCEPolicyMaxCPUTime > "+cpuTime+") &&" +
+          " (other.GlueCEStateStatus == \"Production\");");
+      writeLine(bufJdl, "Rank = (-other.GlueCEStateEstimatedResponseTime);");
+      writeLine(bufJdl, "VirtualOrganisation = \"" + vo + "\";");
+      writeLine(bufJdl, "RetryCount  = 0;");
+      writeLine(bufJdl, "ShallowRetryCount = " + reRun + ";");
+      
+      // Runtime environments
+      if(uses!=null && uses.length>0 && uses[0]!=null){
+        for(int i=0; i<uses.length; ++i){
+          // At least for now, we only have Linux resources on LCG
+          if(uses[i].equals("Linux")){
+            continue;
+          }
+          writeLine(bufJdl,"Requirements = Member(\""+Util.dos2unix(uses[i])+"\", " +
+          "other.GlueHostApplicationSoftwareRunTimeEnvironment);");
+        }
+      }
+    
+      // Output files
+      jdlLine = "OutputSandbox = {\"stdout\", \"stderr\"";
+      // upload output files
+      String localName;
+      String remoteName;
+      // output file copy
+      for(int i=0; i<outputFileNames.length; ++i){
+        localName = dbPluginMgr.getJobDefOutLocalName(jobDefID, outputFileNames[i]);
+        remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputFileNames[i]);
+        if(remoteName.startsWith("file:")){
+          // These are copied back to the client and GridPilot
+          // moves them locally on the client to their final destination
+          jdlLine += ", \""+localName+"\"";
+        }
+      }
+
+      jdlLine += "};";
+      writeLine(bufJdl, jdlLine);
+  
+      try{
+        LocalStaticShellMgr.writeFile(jdlFileName, bufJdl.toString(), false);
+        Util.dos2unix(new File(jdlFileName));
+      }
+      catch(FileNotFoundException fnfe){
+        System.err.print(fnfe.getMessage());
+        Debug.debug("Could not write file. "+fnfe.getMessage(), 1);
+        return;
+      }
+      catch(Exception ioe){
+        Debug.debug(ioe.getMessage(), 1);
+        ioe.printStackTrace();
+        return;
+      }
+    }
+    catch(IOException ioe){
+      logFile.addMessage("ERROR generating job scripts", ioe);
+      return;
     }
   }
 }
