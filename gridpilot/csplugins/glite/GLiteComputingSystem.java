@@ -3,15 +3,16 @@ package gridpilot.csplugins.glite;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Vector;
 
 import javax.swing.JOptionPane;
+import javax.xml.rpc.holders.LongHolder;
 
 import gridpilot.ComputingSystem;
 import gridpilot.ConfigFile;
@@ -31,7 +32,6 @@ import org.glite.wms.wmproxy.JobIdStructType;
 import org.glite.wms.wmproxy.StringAndLongList;
 import org.glite.wms.wmproxy.StringAndLongType;
 import org.glite.wms.wmproxy.WMProxyAPI;
-import org.glite.wmsui.apij.*;
 import org.globus.gsi.GlobusCredentialException;
 import org.globus.mds.MDS;
 import org.globus.mds.MDSException;
@@ -61,11 +61,18 @@ public class GLiteComputingSystem implements ComputingSystem{
   private String [] rteTags = null;
   private HashSet rteScriptMappings = null;
   private String defaultUser;
-  String delegationId = null;
+  private String delegationId = null;
   
   private static boolean CONFIRM_RUN_DIR_CREATION = false;
   private static String BDII_PORT = "2170";
   private static String BDII_BASE_DN = "mds-vo-name=local,o=grid";
+  private static String SANDBOX_PROTOCOL = "gsiftp";
+  
+  private static String STATUS_UNKNOWN = "Unknown";
+  private static String STATUS_DONE = "Done";
+  private static String STATUS_WAIT = "Wait";
+  private static String STATUS_ERROR = "Error";
+  private static String STATUS_RUNNING = "Running";
 
   public GLiteComputingSystem(String _csName){
     csName = _csName;
@@ -157,7 +164,7 @@ public class GLiteComputingSystem implements ComputingSystem{
    * Local directory to keep xrsl, shell script and temporary copies of stdin/stdout
    */
   private String runDir(JobInfo job){
-    return workingDir+"/"+job.getName();
+    return workingDir+File.separator+job.getName();
   }
 
   /**
@@ -343,25 +350,33 @@ public class GLiteComputingSystem implements ComputingSystem{
         wmProxyAPI.grstPutProxy(delegationId, proxyReq);
       }
       // create script and JDL
-      GLiteScriptGenerator scriptGenerator =  new GLiteScriptGenerator(csName);
       String scriptName = runDir(job) + File.separator + job.getName() + ".job";
       String jdlName = runDir(job) + File.separator + job.getName() + ".jdl";
-      List uploadFiles = scriptGenerator.createJDL(job, scriptName, jdlName);
+      GLiteScriptGenerator scriptGenerator =  new GLiteScriptGenerator(csName, job,
+          scriptName, jdlName);
+      scriptGenerator.createJDL();
+      scriptGenerator.createScript();
       JobAd jad = new JobAd();
       jad.fromFile(jdlName);
       String jdlString = jad.toString();
       // check if any resources match
-      StringAndLongList result = wmProxyAPI.jobListMatch(jdlString, delegationId);
+      StringAndLongList result = null;
+      try{
+        result = wmProxyAPI.jobListMatch(jdlString, delegationId);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }    
       if(result==null){
         logFile.addMessage("No Computing Element matching your job requirements has been found!");
-        return false;
+        //return false;
       }
       else{
         // list of CE's+their ranks
         StringAndLongType [] list = (StringAndLongType[ ]) result.getFile ();
         if (list != null) {
           int size = list.length ;
-          for (int i = 0; i<size ; i++) {
+          for(int i=0; i<size ; i++){
             String ce = list[i].getName();
             Debug.debug( "- " + ce + list[i].getSize(), 2);
           }
@@ -371,14 +386,13 @@ public class GLiteComputingSystem implements ComputingSystem{
       Debug.debug("Registering job; "+scriptName+":"+jdlString, 2);
       JobIdStructType jobId = wmProxyAPI.jobRegister(jdlString, delegationId);
       // upload the sandbox
-      String protocol = "gsiftp";
       org.glite.wms.wmproxy.StringList list =
-        wmProxyAPI.getSandboxDestURI(jobId.getId(), protocol);
+        wmProxyAPI.getSandboxDestURI(jobId.getId(), SANDBOX_PROTOCOL);
       String uri = list.getItem()[0];
       uri = uri+(uri.endsWith("/")?"":"/");
       Debug.debug("Uploading sandbox to "+uri, 2);
       String upFile;
-      for(Iterator it=uploadFiles.iterator(); it.hasNext();){
+      for(Iterator it=scriptGenerator.localInputFilesList.iterator(); it.hasNext();){
         upFile = (String) it.next();
         TransferControl.upload(new File(upFile), uri,
             GridPilot.getClassMgr().getGlobalFrame().getContentPane());
@@ -416,7 +430,7 @@ public class GLiteComputingSystem implements ComputingSystem{
     }
   }
   
-  private String statusCodeToString(int statusCode){
+  /*private String statusCodeToString(int statusCode){
     String ret = null;
     switch(statusCode){
     case JobStatus.SUBMITTED:
@@ -456,9 +470,9 @@ public class GLiteComputingSystem implements ComputingSystem{
       ret = "UNKNOWN";
     }
     return ret;
-  }
+  }*/
 
-    private String operationCodeToString(int statusCode){
+    /*private String operationCodeToString(int statusCode){
     String ret = null;
     switch(statusCode){
       case Result.SUCCESS:
@@ -546,43 +560,26 @@ public class GLiteComputingSystem implements ComputingSystem{
         ret = "UNKNOWN";
     }
     return ret;
-  }
+  }*/
 
   private void updateStatus(JobInfo job) throws
      UnsupportedOperationException, FileNotFoundException, GlobusCredentialException{
     
-    Job gliteJob = new Job(job.getJobId());
-    try{
-      gliteJob.setCredPath(Util.getProxyFile().getAbsoluteFile());
-    }
-    catch(Exception e){
-      error = "Could not set credentials for job "+job;
-      logFile.addMessage(error, e);
-      e.printStackTrace();
-    }
+    String status = getStatus(job);
     
-    Result result = gliteJob.getStatus() ;
-    if(result.getCode()!=Result.SUCCESS){
-        throw new UnsupportedOperationException(
-            "Unable to retrieve the status of the Job. "+result.getCode()+
-            "-->"+operationCodeToString(result.getCode()));
-    }
-    JobStatus status = (JobStatus) result.getResult();
-    
-    int statusCode = status.code();
-    if(statusCode<0){
-      job.setJobStatus(operationCodeToString(JobStatus.UNKNOWN));
+    // Update only if status has changed
+    boolean doUpdate = (job.getJobStatus()!=null &&
+        !status.equals(job.getJobStatus()));
+
+    if(status==null){
+      job.setJobStatus(STATUS_UNKNOWN);
       Debug.debug(
           "Status not found for job " + job.getName(), 2);
       return;
     }
     else{
-      job.setJobStatus(operationCodeToString(statusCode));
+      job.setJobStatus(status);
     }
-
-    // Update only if status has changed
-    boolean doUpdate = (job.getJobStatus()!=null &&
-        operationCodeToString(statusCode).equals(job.getJobStatus()));
 
     if(doUpdate){
       Debug.debug("Updating status of job "+job.getName(), 2);
@@ -590,12 +587,12 @@ public class GLiteComputingSystem implements ComputingSystem{
         Debug.debug("No status found for job "+job.getName(), 2);
         job.setInternalStatus(ComputingSystem.STATUS_ERROR);
       }
-      else if(job.getJobStatus().equals(statusCodeToString(JobStatus.DONE))){
+      else if(job.getJobStatus().equals(STATUS_DONE)){
         try{
           // get stdout and stderr and any other sandbox files
-          gliteJob.getOutput(runDir(job));
+          getOutputs(job);
           // if this went well we can set the status to done
-          if(status.getValInt(JobStatus.DONE_CODE)==0){
+          if(status.equals(STATUS_DONE)){
             job.setInternalStatus(ComputingSystem.STATUS_DONE);
           }
           else{
@@ -606,16 +603,12 @@ public class GLiteComputingSystem implements ComputingSystem{
           job.setInternalStatus(ComputingSystem.STATUS_ERROR);
         }
       }
-      else if(job.getJobStatus().equals(statusCodeToString(JobStatus.UNKNOWN)) ||
-          job.getJobStatus().equals(statusCodeToString(JobStatus.CLEARED)) ||
-          job.getJobStatus().equals(statusCodeToString(JobStatus.ABORTED)) ||
-          job.getJobStatus().equals(statusCodeToString(JobStatus.CANCELLED)) ||
-          job.getJobStatus().equals(statusCodeToString(JobStatus.PURGED))){
+      else if(job.getJobStatus().equals(STATUS_ERROR)){
         // try to clean up, just in case...
         //getOutput(job);
         job.setInternalStatus(ComputingSystem.STATUS_ERROR);
       }
-      else if(job.getJobStatus().equals(statusCodeToString(JobStatus.RUNNING))){
+      else if(job.getJobStatus().equals(STATUS_RUNNING)){
         job.setInternalStatus(ComputingSystem.STATUS_RUNNING);
       }
       //job.setInternalStatus(ComputingSystem.STATUS_WAIT);
@@ -762,17 +755,179 @@ public class GLiteComputingSystem implements ComputingSystem{
     }
   }
 
-  public String getFullStatus(JobInfo job){
-    Job gliteJob = new Job(job.getJobId());
+  // Download all sandbox output files to the local run directory.
+  public void getOutputs(JobInfo job) throws Exception{
+    String url = null;
+    StringAndLongList outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
+    StringAndLongType [] outs = outList.getFile();
+    for(int i=0; i<outs.length; ++i){
+      url = outs[i].getName();
+      if(url!=null){
+        if(url.endsWith("stdout")){
+          TransferControl.download(url, new File(job.getStdOut()), null);
+        }
+        else if(url.endsWith("stderr")){
+          TransferControl.download(url, new File(job.getStdErr()), null);
+        }
+        else{
+          TransferControl.download(url, new File(runDir(job)), null);
+        }
+      }
+    }
+  }
+  
+  // Copy stdout+stderr to local files
+  public boolean syncCurrentOutputs(JobInfo job){
     try{
-      gliteJob.setCredPath(Util.getProxyFile().getAbsoluteFile());
+      Debug.debug("Syncing " + job.getName() + ":" + job.getJobId(), 3);
+      
+      String dirName = runDir(job);
+
+      DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+      String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
+      String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+
+      boolean getFromfinalDest = createMissingWorkingDir(job);
+      if(!(getFromfinalDest || job.getJobStatus().equals(STATUS_DONE) ||
+          job.getDBStatus()==DBPluginMgr.UNDECIDED)){
+        Debug.debug("Downloading stdout/err of running job: " + job.getName() + " : " + job.getJobId() +
+            " : " + job.getJobStatus()+" to " + dirName, 3);
+        try{
+          String stdoutUrl = null;
+          String stderrUrl = null;
+          StringAndLongList outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
+          StringAndLongType [] outs = outList.getFile();
+          for(int i=0; i<outs.length; ++i){
+            if(outs[i].getName().endsWith("stdout")){
+              stdoutUrl = outs[i].getName();
+            }
+            else if(outs[i].getName().endsWith("stderr")){
+              stderrUrl = outs[i].getName();
+            }
+          }
+          if(stdoutUrl!=null){
+            TransferControl.download(stdoutUrl, new File(job.getStdOut()), null);
+          }
+          if(stderrUrl!=null){
+            TransferControl.download(stderrUrl, new File(job.getStdErr()), null);
+          }
+        }
+        catch(Exception e){
+          // if this fails, give it a try to get from final destination;
+          // it could be that the job is in NG_STATUS_FINISHED on the CE,
+          // but GridPilot does not know, because the job has not been
+          // refreshed yet
+          getFromfinalDest = true;
+          e.printStackTrace();
+        }
+      }
+      
+      if(getFromfinalDest || job.getJobStatus().equals(STATUS_DONE) ||
+          job.getDBStatus()==DBPluginMgr.UNDECIDED){
+        if(getFromfinalDest || !finalStdOut.startsWith("file:")){
+          Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
+              " from final destination "+finalStdOut+" to " +
+              Util.clearTildeLocally(Util.clearFile(job.getStdOut())), 3);
+          TransferControl.download(finalStdOut, new File(Util.clearTildeLocally(Util.clearFile(job.getStdOut()))),
+              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+        }
+        if(getFromfinalDest || !finalStdErr.startsWith("file:")){
+          Debug.debug("Downloading stderr of: " + job.getName() + ":" + job.getJobId()+
+              " from final destination "+finalStdErr+" to " +
+              Util.clearTildeLocally(Util.clearFile(job.getStdErr())), 3);
+          TransferControl.download(finalStdErr, new File(Util.clearTildeLocally(Util.clearFile(job.getStdErr()))),
+              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+        }
+      }
+    }
+    catch(Exception ae){
+      error = "Exception during get stdout of " + job.getName() + ":" + job.getJobId() + ":\n" +
+      "\tException\t: " + ae.getMessage();
+      //logFile.addMessage(error, ae);
+      //ae.printStackTrace();
+      return false;
+    }
+    return true;
+  }
+
+  public String getStatus(JobInfo job){
+    syncCurrentOutputs(job);
+    String stdoutFileName = job.getStdOut();
+    File stdoutFile = new File(Util.clearTildeLocally(Util.clearFile(stdoutFileName)));
+    if(stdoutFile.exists()){
+      boolean stdoutOK = false;
+      try{
+        RandomAccessFile raf = new RandomAccessFile(stdoutFile, "r");
+        String line = "";
+        while(line!=null){
+           line = raf.readLine();
+           if(line.equals("job "+job.getJobDefId()+" done")){
+             stdoutOK = true;
+             break;
+           }
+        }
+        raf.close();
+      }
+      catch(Exception e){
+        logFile.addMessage("Could not get status of job "+job, e);
+        return STATUS_ERROR;
+      }
+      if(stdoutOK){
+        return STATUS_DONE;
+      }
+    }
+    return STATUS_UNKNOWN;
+  }
+  
+  public String getFullStatus(JobInfo job){
+    String ret = "";
+    ret += "Job ID: "+job.getJobId()+"\n";
+    try{
+      ret += "Proxy info: "+wmProxyAPI.getJobProxyInfo(job.getJobId())+"\n";
     }
     catch(Exception e){
-      error = "Could not set credentials for job "+job;
-      logFile.addMessage(error, e);
       e.printStackTrace();
     }
-    return gliteJob.toString();
+    try{
+      StringAndLongList outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
+      StringAndLongType [] outs = outList.getFile();
+      String fileList = "";
+      for(int i=0; i<outs.length; ++i){
+        fileList += "    "+outs[i].getName() + outs[i].getSize() + "\n";
+      }
+      ret += "Sandbox output files:\n"+fileList;
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    try{
+      ret += "Input sandbox: "+wmProxyAPI.getSandboxDestURI(job.getJobId(), SANDBOX_PROTOCOL)+"\n";
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    try{
+      ret += "Transfer protocols: "+wmProxyAPI.getTransferProtocols()+"\n";
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    try{
+      LongHolder softLimit = new LongHolder();
+      LongHolder hardLimit = new LongHolder();
+      wmProxyAPI.getFreeQuota(softLimit, hardLimit);
+      ret += "Quota limits: "+softLimit.value+":"+hardLimit+"\n";
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    try{
+      ret += "WMProxy version: "+wmProxyAPI.getVersion()+"\n";
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    return ret;
   }
 
   /**
