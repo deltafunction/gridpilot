@@ -697,7 +697,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
         // Here we are assuming that there are no file names with spaces
         // on the gridftp server...
         // TODO: improve
-        if(line.length()==0){
+        if(line.length()==0 || line.matches("total \\d+")){
           continue;
         }
         else{

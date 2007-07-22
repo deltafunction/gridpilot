@@ -1272,6 +1272,9 @@ public class NGComputingSystem implements ComputingSystem{
       }
     }
     
+    // Horrible clutch because Globus gass copy fails on empty files...
+    boolean emptyFile = false;
+
     /**
      * move temp StdOut -> finalStdOut
      */
@@ -1280,7 +1283,8 @@ public class NGComputingSystem implements ComputingSystem{
             finalStdOut.startsWith("ftp://") ||
             finalStdOut.startsWith("rls://") ||
             finalStdOut.startsWith("se://") ||
-            finalStdOut.startsWith("httpg://"))){
+            finalStdOut.startsWith("httpg://") ||
+            finalStdOut.startsWith("https://"))){
       try{
         // this has already been done by doValidate --> getCurrentOutputs
         //syncCurrentOutputs(job);
@@ -1298,7 +1302,9 @@ public class NGComputingSystem implements ComputingSystem{
       }
       Debug.debug("Post-processing : Moving " + job.getStdOut() + " -> " + finalStdOut, 2);
       try{
-        TransferControl.upload(new File(Util.clearTildeLocally(Util.clearFile(job.getStdOut()))), finalStdOut,
+        File stdoutSourceFile = new File(Util.clearTildeLocally(Util.clearFile(job.getStdOut())));
+        emptyFile = finalStdOut.startsWith("https") && stdoutSourceFile.length()==0;
+        TransferControl.upload(stdoutSourceFile, finalStdOut,
             GridPilot.getClassMgr().getGlobalFrame().getContentPane());
         job.setStdOut(finalStdOut);
       }
@@ -1306,7 +1312,7 @@ public class NGComputingSystem implements ComputingSystem{
         error = "ERROR copying stdout: "+e.getMessage();
         Debug.debug(error, 2);
         logFile.addMessage(error, e);
-        ok = false;
+        ok = ok && emptyFile;
       }
     }
 
@@ -1319,7 +1325,8 @@ public class NGComputingSystem implements ComputingSystem{
             finalStdErr.startsWith("ftp://") ||
             finalStdErr.startsWith("rls://") ||
             finalStdErr.startsWith("se://") ||
-            finalStdErr.startsWith("httpg://"))){
+            finalStdErr.startsWith("httpg://") ||
+            finalStdOut.startsWith("https://"))){
       try{
         if(!LocalStaticShellMgr.existsFile(job.getStdErr())){
           logFile.addMessage("Post-processing : File " + job.getStdErr() + " doesn't exist");
@@ -1335,7 +1342,9 @@ public class NGComputingSystem implements ComputingSystem{
       }
       Debug.debug("Post processing : Moving " + job.getStdErr() + " -> " + finalStdErr,2);
       try{
-        TransferControl.upload(new File(Util.clearTildeLocally(Util.clearFile(job.getStdErr()))), finalStdErr,
+        File stderrSourceFile = new File(Util.clearTildeLocally(Util.clearFile(job.getStdErr())));
+        emptyFile = finalStdOut.startsWith("https") && stderrSourceFile.length()==0;
+        TransferControl.upload(stderrSourceFile, finalStdErr,
             GridPilot.getClassMgr().getGlobalFrame().getContentPane());
         job.setStdErr(finalStdErr);
       }
@@ -1343,7 +1352,7 @@ public class NGComputingSystem implements ComputingSystem{
         error = "ERROR copying stderr: "+e.getMessage();
         Debug.debug(error, 2);
         logFile.addMessage(error, e);
-        ok = false;
+        ok = ok && emptyFile;
       }
     }
     return ok;
