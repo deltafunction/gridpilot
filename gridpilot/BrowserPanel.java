@@ -1196,7 +1196,17 @@ public class BrowserPanel extends JDialog implements ActionListener{
     tmpFile = File.createTempFile("GridPilot-", ".txt");
     Debug.debug("Created temp file "+tmpFile, 3);
     try{
-      if(ft.getFileBytes(new GlobusURL(url))>MAX_FILE_EDIT_BYTES){
+      long bytes = -1;
+      try{
+        bytes = ft.getFileBytes(new GlobusURL(url));
+      }
+      catch(Exception e){
+        // Some gridftp servers (glite) list modification date as second field.
+        // This will cause an exception when trying to parse as long.
+        // Just assume the file is large.
+        e.printStackTrace();
+      }   
+      if(bytes==-1 || bytes>MAX_FILE_EDIT_BYTES){
         //throw new IOException("File too big "+ft.getFileBytes(new GlobusURL(url)));
         tmpFile.delete();
         return false;
@@ -1443,7 +1453,17 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
     try{
       try{
-        if(ft.getFileBytes(new GlobusURL(url))==0){
+        long bytes = -1;
+        try{
+          bytes = ft.getFileBytes(new GlobusURL(url));
+        }
+        catch(Exception e){
+          // Some gridftp servers (glite) list modification date as second field.
+          // This will cause an exception when trying to parse as long.
+          // Just assume the file is large.
+          e.printStackTrace();
+        }   
+        if(bytes==0){
           throw new IOException("File is empty");
         }
         ep.setText("File found");
