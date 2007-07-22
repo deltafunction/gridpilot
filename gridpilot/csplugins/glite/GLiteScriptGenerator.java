@@ -170,8 +170,12 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         else if(remoteName.startsWith("srm:") || remoteName.startsWith("gsiftp:")){
           writeLine(bufScript, "lcg-cp file://`pwd`/"+localName+" "+remoteName);
         }
-        Debug.debug("remote name: "+remoteName,3);
-        scriptLine += "(\""+localName+"\" \""+remoteName+"\")";
+        else if(remoteName.startsWith("https:")){
+          writeLine(bufScript, "lcg-cp file://`pwd`/"+localName+" "+remoteName);
+          writeLine(bufScript, "curl -k --cert /tmp/x509up_u`id -u` --key /tmp/x509up_u`id -u` " +
+                "--capath /etc/grid-security/certificates --upload-file "+
+                localName+" "+remoteName);
+        }
       }
       
       // job.getUploadFiles is not used; we set it just for aesthetics...
@@ -183,8 +187,6 @@ public class GLiteScriptGenerator extends ScriptGenerator {
 
       // this is for getStatus
       writeLine(bufScript, "echo job "+jobDefID+" done");
-
-      writeLine(bufScript, scriptLine);
 
       try{
         LocalStaticShellMgr.writeFile(exeFileName, bufScript.toString(), false);
@@ -215,9 +217,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     String scriptFileName = dbPluginMgr.getTransformationScript(jobDefID);
     // names starting with file: will be uploaded, names starting with
     // / or c:\ are considered to be locally available on the server
-    if(scriptFileName.startsWith("file:")){
-      localInputFilesList.add(Util.clearTildeLocally(Util.clearFile(scriptFileName)));
-    }
+    localInputFilesList.add(Util.clearTildeLocally(Util.clearFile(scriptFileName)));
   
     String shortExeFileName = new File(exeFileName).getName();
     String jdlExeFileName = Util.clearTildeLocally(Util.clearFile(exeFileName));
@@ -229,18 +229,15 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     // create jdl file
     StringBuffer bufJdl = new StringBuffer();
     try{
-      writeLine(bufJdl, "Executable = \"/bin/sh\";");
-      writeLine(bufJdl, "Arguments = \""+
-          (new File(Util.clearTildeLocally(Util.clearFile(scriptFileName)))).getName()+
-          "\";");
+      //writeLine(bufJdl, "Executable = \"/bin/sh\";");
+      //writeLine(bufJdl, "Arguments = \""+shortExeFileName+"\";");
+      writeLine(bufJdl, "Executable = \""+shortExeFileName+"\";");
       writeLine(bufJdl, "StdOutput = \"stdout\";");
       writeLine(bufJdl, "StdError = \"stderr\";");
       
       // Input files: scripts
       jdlLine = "InputSandbox = {";
-      if(scriptFileName.startsWith("file:")){
-        jdlLine += "\"" + Util.clearTildeLocally(Util.clearFile(scriptFileName)) + "\", ";
-      }
+      jdlLine += "\"" + Util.clearTildeLocally(Util.clearFile(scriptFileName)) + "\", ";
       jdlLine += "\"" + exeFileName + "\", ";
   
       // Input files.

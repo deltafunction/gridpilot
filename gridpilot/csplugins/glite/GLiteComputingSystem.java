@@ -66,7 +66,8 @@ public class GLiteComputingSystem implements ComputingSystem{
   private static boolean CONFIRM_RUN_DIR_CREATION = false;
   private static String BDII_PORT = "2170";
   private static String BDII_BASE_DN = "mds-vo-name=local,o=grid";
-  private static String SANDBOX_PROTOCOL = "gsiftp";
+  //private static String SANDBOX_PROTOCOL = "gsiftp";
+  private static String SANDBOX_PROTOCOL = "all";
   
   private static String STATUS_UNKNOWN = "Unknown";
   private static String STATUS_DONE = "Done";
@@ -394,7 +395,9 @@ public class GLiteComputingSystem implements ComputingSystem{
       String upFile;
       for(Iterator it=scriptGenerator.localInputFilesList.iterator(); it.hasNext();){
         upFile = (String) it.next();
-        TransferControl.upload(new File(upFile), uri,
+        TransferControl.upload(
+            new File(Util.clearTildeLocally(Util.clearFile(upFile))),
+            uri,
             GridPilot.getClassMgr().getGlobalFrame().getContentPane());
       }
       // start the job
@@ -764,13 +767,13 @@ public class GLiteComputingSystem implements ComputingSystem{
       url = outs[i].getName();
       if(url!=null){
         if(url.endsWith("stdout")){
-          TransferControl.download(url, new File(job.getStdOut()), null);
+          TransferControl.download(url, new File(Util.clearTildeLocally(Util.clearFile(job.getStdOut()))), null);
         }
         else if(url.endsWith("stderr")){
-          TransferControl.download(url, new File(job.getStdErr()), null);
+          TransferControl.download(url, new File(Util.clearTildeLocally(Util.clearFile(job.getStdErr()))), null);
         }
         else{
-          TransferControl.download(url, new File(runDir(job)), null);
+          TransferControl.download(url, new File(Util.clearTildeLocally(Util.clearFile(runDir(job)))), null);
         }
       }
     }
@@ -788,8 +791,8 @@ public class GLiteComputingSystem implements ComputingSystem{
       String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
 
       boolean getFromfinalDest = createMissingWorkingDir(job);
-      if(!(getFromfinalDest || job.getJobStatus().equals(STATUS_DONE) ||
-          job.getDBStatus()==DBPluginMgr.UNDECIDED)){
+      if(!getFromfinalDest && !job.getJobStatus().equals(STATUS_DONE) &&
+          job.getDBStatus()!=DBPluginMgr.UNDECIDED){
         Debug.debug("Downloading stdout/err of running job: " + job.getName() + " : " + job.getJobId() +
             " : " + job.getJobStatus()+" to " + dirName, 3);
         try{
@@ -797,19 +800,21 @@ public class GLiteComputingSystem implements ComputingSystem{
           String stderrUrl = null;
           StringAndLongList outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
           StringAndLongType [] outs = outList.getFile();
-          for(int i=0; i<outs.length; ++i){
-            if(outs[i].getName().endsWith("stdout")){
-              stdoutUrl = outs[i].getName();
-            }
-            else if(outs[i].getName().endsWith("stderr")){
-              stderrUrl = outs[i].getName();
+          if(outs!=null){
+            for(int i=0; i<outs.length; ++i){
+              if(outs[i].getName().endsWith("stdout")){
+                stdoutUrl = outs[i].getName();
+              }
+              else if(outs[i].getName().endsWith("stderr")){
+                stderrUrl = outs[i].getName();
+              }
             }
           }
           if(stdoutUrl!=null){
-            TransferControl.download(stdoutUrl, new File(job.getStdOut()), null);
+            TransferControl.download(stdoutUrl, new File(Util.clearTildeLocally(Util.clearFile(job.getStdOut()))), null);
           }
           if(stderrUrl!=null){
-            TransferControl.download(stderrUrl, new File(job.getStdErr()), null);
+            TransferControl.download(stderrUrl, new File(Util.clearTildeLocally(Util.clearFile(job.getStdErr()))), null);
           }
         }
         catch(Exception e){
@@ -821,9 +826,7 @@ public class GLiteComputingSystem implements ComputingSystem{
           e.printStackTrace();
         }
       }
-      
-      if(getFromfinalDest || job.getJobStatus().equals(STATUS_DONE) ||
-          job.getDBStatus()==DBPluginMgr.UNDECIDED){
+      else{
         if(getFromfinalDest || !finalStdOut.startsWith("file:")){
           Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
               " from final destination "+finalStdOut+" to " +
@@ -881,7 +884,20 @@ public class GLiteComputingSystem implements ComputingSystem{
   
   public String getFullStatus(JobInfo job){
     String ret = "";
-    ret += "Job ID: "+job.getJobId()+"\n";
+    //ret += "Job ID: "+job.getJobId()+"\n";
+    try{
+      ret += "Status: "+getStatus(job)+"\n";
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    /*try{
+      ret += "Stdout: "+job.getStdOut()+"\n";
+      ret += "Stderr: "+job.getStdErr()+"\n";
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }*/
     try{
       ret += "Proxy info: "+wmProxyAPI.getJobProxyInfo(job.getJobId())+"\n";
     }
@@ -901,7 +917,9 @@ public class GLiteComputingSystem implements ComputingSystem{
       e.printStackTrace();
     }
     try{
-      ret += "Input sandbox: "+wmProxyAPI.getSandboxDestURI(job.getJobId(), SANDBOX_PROTOCOL)+"\n";
+      ret += "Input sandbox: "+
+      Util.arrayToString(
+          wmProxyAPI.getSandboxDestURI(job.getJobId(), SANDBOX_PROTOCOL).getItem())+"\n";
     }
     catch(Exception e){
       e.printStackTrace();
@@ -916,7 +934,7 @@ public class GLiteComputingSystem implements ComputingSystem{
       LongHolder softLimit = new LongHolder();
       LongHolder hardLimit = new LongHolder();
       wmProxyAPI.getFreeQuota(softLimit, hardLimit);
-      ret += "Quota limits: "+softLimit.value+":"+hardLimit+"\n";
+      ret += "Quota limits: "+softLimit.value+":"+hardLimit.value+"\n";
     }
     catch(Exception e){
       e.printStackTrace();
@@ -1105,7 +1123,7 @@ public class GLiteComputingSystem implements ComputingSystem{
         remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFileNames[i]);
         if(remoteName.startsWith("file:")){
           TransferControl.upload(
-              new File(runDir(job)+File.separator+localName),
+              new File(new File(Util.clearTildeLocally(Util.clearFile(runDir(job))))+File.separator+localName),
               remoteName,
               GridPilot.getClassMgr().getGlobalFrame().getContentPane());
         }
@@ -1120,20 +1138,33 @@ public class GLiteComputingSystem implements ComputingSystem{
     // upload stdout and stderr
     String stdoutDest = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String stderrDest = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+    // Horrible clutch because Globus gass copy fails on empty files...
+    boolean emptyFile = false;
     try{
       if(stdoutDest!=null && !stdoutDest.startsWith("/") &&
           !stdoutDest.startsWith("\\\\")){
+        File stdoutSourceFile = new File(Util.clearTildeLocally(Util.clearFile(job.getStdOut())));
+        emptyFile = stdoutDest.startsWith("https") && stdoutSourceFile.length()==0;
         TransferControl.upload(
-            new File(Util.clearTildeLocally(Util.clearFile(job.getStdOut()))),
+            stdoutSourceFile,
             stdoutDest,
             GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor);
         String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
         job.setStdOut(finalStdOut);
       }
+    }
+    catch(Exception e){
+      logFile.addMessage("ERROR: could not upload stdout of "+job+". Probably empty.", e);
+      e.printStackTrace();
+      ok = ok && emptyFile;
+    }
+    try{
       if(stderrDest!=null && !stderrDest.startsWith("/") &&
           !stderrDest.startsWith("\\\\")){
+        File stderrSourceFile = new File(Util.clearTildeLocally(Util.clearFile(job.getStdErr())));
+        emptyFile = stdoutDest.startsWith("https") && stderrSourceFile.length()==0;
         TransferControl.upload(
-            new File(Util.clearTildeLocally(Util.clearFile(job.getStdErr()))),
+            stderrSourceFile,
             stderrDest,
             GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor);
         String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
@@ -1141,9 +1172,9 @@ public class GLiteComputingSystem implements ComputingSystem{
       }
     }
     catch(Exception e){
-      logFile.addMessage("ERROR: could not upload stdout/stderr of "+job, e);
+      logFile.addMessage("ERROR: could not upload stderr of "+job+". Probably empty.", e);
       e.printStackTrace();
-      ok = false;
+      ok = ok && emptyFile;
     }
     return ok;
   }
