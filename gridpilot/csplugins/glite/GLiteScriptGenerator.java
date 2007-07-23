@@ -88,10 +88,22 @@ public class GLiteScriptGenerator extends ScriptGenerator {
             "file://`pwd`/"+
             (lfcInputFilesList.get(i).toString().replaceFirst("^.*/([^/]+)", "$1")));
       }
+      String localName;
+      String remoteName;
       for(int i=0; i<remoteInputFilesList.size(); ++i){
-        writeLine(bufScript, "lcg-cp "+remoteInputFilesList.get(i)+
-            "file://`pwd`/"+
-            (remoteInputFilesList.get(i).toString().replaceFirst("^.*/([^/]+)", "$1")));
+        remoteName = (String) remoteInputFilesList.get(i);
+        localName = remoteName.replaceFirst("^.*/([^/]+)", "$1");
+        if(remoteName.startsWith("srm:")){
+          writeLine(bufScript, "lcg-cp "+remoteName+" file://`pwd`/"+localName);
+        }
+        else if(remoteName.startsWith("gsiftp:")){
+          writeLine(bufScript, "globus-url-copy "+remoteName+" file://`pwd`/"+localName);
+        }
+        else if(remoteName.startsWith("https:")){
+          writeLine(bufScript, "curl -k --cert $X509_USER_PROXY --key $X509_USER_PROXY " +
+                "--capath /etc/grid-security/certificates -o "+
+                localName+" "+remoteName);
+        }
       }
       
       // Parameter translation
@@ -144,8 +156,6 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       }      
 
       // upload output files
-      String localName;
-      String remoteName;
       Vector uploadVector = new Vector();
       // output file copy
       for(int i=0; i<outputFileNames.length; ++i){
@@ -167,12 +177,14 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         else if(remoteName.toLowerCase().startsWith("lfn:")){
           writeLine(bufScript, "lcg-cr -l "+remoteName+" file://`pwd`/"+localName+" "+remoteName);
         }
-        else if(remoteName.startsWith("srm:") || remoteName.startsWith("gsiftp:")){
+        else if(remoteName.startsWith("srm:")){
           writeLine(bufScript, "lcg-cp file://`pwd`/"+localName+" "+remoteName);
         }
+        else if(remoteName.startsWith("gsiftp:")){
+          writeLine(bufScript, "globus-url-copy file://`pwd`/"+localName+" "+remoteName);
+        }
         else if(remoteName.startsWith("https:")){
-          writeLine(bufScript, "lcg-cp file://`pwd`/"+localName+" "+remoteName);
-          writeLine(bufScript, "curl -k --cert /tmp/x509up_u`id -u` --key /tmp/x509up_u`id -u` " +
+          writeLine(bufScript, "curl -k --cert $X509_USER_PROXY --key $X509_USER_PROXY " +
                 "--capath /etc/grid-security/certificates --upload-file "+
                 localName+" "+remoteName);
         }
