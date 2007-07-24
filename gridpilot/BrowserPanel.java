@@ -1754,7 +1754,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       htmlText = "<html>\n";
       
       if(!localPath.equals("/")){
-        htmlText += "<a href=\""+protocol+"://"+host+":"+port+localPath+"../\">"+
+        htmlText += "<a href=\""+protocol+"://"+host+
+        (port>0?(":"+port):"")+
+        localPath+"../\">"+
         /*"gsiftp://"+host+":"+port+localPath+*/"../</a><br>\n";
       }
       htmlText += text;
@@ -2070,8 +2072,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       else if(thisUrl.startsWith("sss://")){
         Debug.debug("Creating file in "+thisUrl, 3);
         GlobusURL globusUrl = new GlobusURL(thisUrl);
-        sssFileTransfer.write(globusUrl, "");
-        ret = thisUrl;
+        ret = sssFileTransfer.create(globusUrl);
+        //ret = thisUrl;
         ep.getDocument().putProperty(
             Document.StreamDescriptionProperty, null);
         setDisplay(thisUrl);

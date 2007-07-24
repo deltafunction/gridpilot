@@ -32,8 +32,9 @@ import org.apache.commons.httpclient.auth.CredentialsNotAvailableException;
 import org.apache.commons.httpclient.auth.CredentialsProvider;
 import org.apache.commons.httpclient.auth.NTLMScheme;
 import org.apache.commons.httpclient.auth.RFC2617Scheme;
-import org.globus.ftp.exception.ServerException;
+
 import org.globus.util.GlobusURL;
+
 import org.jets3t.service.Constants;
 import org.jets3t.service.Jets3tProperties;
 import org.jets3t.service.S3Service;
@@ -92,6 +93,8 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   // Use to keep track of single-threaded transfers
   private HashSet fileTransfers = null;
   
+  private static boolean S3FOX_DIRECTORY_MODE = false;
+  private static String S3FOX_DIRECTORY_SUFFIX = "_$folder$";
   private static String PLUGIN_NAME;
   private static int COPY_TIMEOUT = 10000;
   public static final String APPLICATION_DESCRIPTION = "GridPilot";
@@ -116,6 +119,10 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
        "World readable files");
     filesWorldReadable = readableStr!=null &&
        (readableStr.equalsIgnoreCase("yes") || readableStr.equalsIgnoreCase("true"));
+    String s3foxMode = GridPilot.getClassMgr().getConfigFile().getValue("SSS",
+       "S3fox directory mode");
+    S3FOX_DIRECTORY_MODE = s3foxMode!=null &&
+       (s3foxMode.equalsIgnoreCase("yes") || s3foxMode.equalsIgnoreCase("true"));
     String compressUploadsStr = GridPilot.getClassMgr().getConfigFile().getValue("SSS",
        "Compress uploads");
     compressUploads = compressUploadsStr!=null &&
@@ -558,8 +565,18 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     Debug.debug(globusUrl.getURL()+" downloaded.", 2);
   }
 
-  public void put(final GlobusURL globusFileUrl, final InputStream is, final StatusBar statusBar)
+  public void put(GlobusURL _fileUrl, final InputStream is, final StatusBar statusBar)
       throws Exception{
+    
+    GlobusURL fileUrl = _fileUrl;
+    
+    if(S3FOX_DIRECTORY_MODE && fileUrl.getPath().endsWith("/")){
+      String urlStr = fileUrl.getURL();
+      urlStr = urlStr.substring(0, urlStr.length()-1)+S3FOX_DIRECTORY_SUFFIX;
+      fileUrl = new GlobusURL(urlStr);
+    }
+    
+    final GlobusURL globusFileUrl = fileUrl;
     
     (new MyThread(){
       public void run(){
@@ -580,8 +597,15 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       public void run(){
         // Notice: abortTransfer will not work here; there's no stream writing to interrupt...
         try{
-          Debug.debug("Uploading object to "+globusFileUrl.getPath(), 2);
-          S3Object isObject = new S3Object(bucket, globusFileUrl.getPath());
+          String path = null;
+          if(globusFileUrl.getPath()==null){
+            path = "/";
+          }
+          else{
+            path = globusFileUrl.getPath();
+          }
+          Debug.debug("Uploading object to "+path, 2);
+          S3Object isObject = new S3Object(bucket, path);
           isObject.setDataInputStream(is);
           isObject.setContentLength(is.available());
           s3Service.putObject(bucket, isObject);
@@ -612,7 +636,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     Debug.debug("File or directory "+globusFileUrl.getURL()+" written.", 2);
   }
 
-  public void abortTransfer(String id) throws ServerException,IOException{
+  public void abortTransfer(String id) throws IOException{
     fileTransfers.remove(id);
   }
 
@@ -636,6 +660,29 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
 
     FileInputStream fileIS = new FileInputStream(file);
     put(upUrl, fileIS, statusBar);
+  }
+
+  /**
+   * Creates an empty file or directory in the directory on the
+   * host specified by url.
+   * Asks for the name. Returns the name of the new file or
+   * directory.
+   * If a name ending with a / is typed in, a directory is created.
+   * (this path must match the URL url).
+   * @throws Exception 
+   */
+  public String create(GlobusURL globusUrlDir)
+     throws Exception{
+    String fileName = Util.getName("File name (end with a / to create a directory)", "");   
+    if(fileName==null){
+      return null;
+    }
+    String urlDir = globusUrlDir.getURL();
+    if(!urlDir.endsWith("/") && !fileName.startsWith("/")){
+      urlDir = urlDir+"/";
+    }
+    write(new GlobusURL(urlDir+fileName), "");
+    return fileName;
   }
 
   public void write(final GlobusURL globusUrl, String text) throws Exception{
@@ -689,7 +736,12 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       fName = fName.replaceFirst("^"+globusUrl.getPath(), "");
       if(type==null ||
           type!=null && type.equals(Mimetypes.MIMETYPE_JETS3T_DIRECTORY) ||
-          existingObjects[i].getKey().endsWith("/")){
+          fName.endsWith("/") ||
+          /*this is the convention of the S3 Organizer Firefox plugin (S3Fox)*/
+          S3FOX_DIRECTORY_MODE && fName.endsWith(S3FOX_DIRECTORY_SUFFIX)){
+        if(S3FOX_DIRECTORY_MODE && fName.endsWith(S3FOX_DIRECTORY_SUFFIX)){
+          fName = fName.substring(0, fName.length()-9);
+        }
         if(!fName.endsWith("/")){
           fName += "/";
         }
@@ -852,45 +904,51 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       final S3Object[] objects = new S3Object[fileKeysForUpload.size()];
       int objectIndex = 0;
       for(Iterator iter = fileKeysForUpload.iterator(); iter.hasNext();) {
-          String fileKey = iter.next().toString();
-          File file = (File) uploadingFilesMap.get(fileKey);
-          
-          S3Object newObject = new S3Object(fileKey);
-          
-          if(!filesWorldReadable){
-              newObject.setAcl(AccessControlList.REST_CANNED_PUBLIC_READ);
+        String fileKey = iter.next().toString();
+        File file = (File) uploadingFilesMap.get(fileKey);
+        
+        S3Object newObject = new S3Object(fileKey);
+                
+        if(file.isDirectory()){   
+          newObject.setContentType(Mimetypes.MIMETYPE_JETS3T_DIRECTORY);
+          /* This is to be compatible with the S3 Organizer Firefox plugin (S3Fox).
+          The plugin does not use setContentType but instead the hack
+          of appending "_$folder$" to the name in order to tag something
+          as a directory. */
+          if(S3FOX_DIRECTORY_MODE){
+            newObject = new S3Object(fileKey+S3FOX_DIRECTORY_SUFFIX);
           }
+        }
+        else{     
+          newObject.setContentType(Mimetypes.getInstance().getMimetype(file));
           
-          if(file.isDirectory()){
-              newObject.setContentType(Mimetypes.MIMETYPE_JETS3T_DIRECTORY);
+          // Do any necessary file pre-processing.
+          File fileToUpload = prepareUploadFile(file, newObject);
+          
+          newObject.addMetadata(Constants.METADATA_JETS3T_LOCAL_FILE_DATE, 
+              ServiceUtils.formatIso8601Date(new Date(file.lastModified())));
+          newObject.setContentLength(fileToUpload.length());
+          newObject.setDataInputFile(fileToUpload);
+          
+          // Compute the upload file's MD5 hash.
+          newObject.setMd5Hash(ServiceUtils.computeMD5Hash(
+              new FileInputStream(fileToUpload)));
+          
+          if(!fileToUpload.equals(file)){
+            // Compute the MD5 hash of the *original* file, if upload file has been altered
+            // through encryption or gzipping.
+            newObject.addMetadata(
+                S3Object.METADATA_HEADER_ORIGINAL_HASH_MD5,
+                ServiceUtils.toBase64(ServiceUtils.computeMD5Hash(new FileInputStream(file))));
           }
-          else{     
-              newObject.setContentType(Mimetypes.getInstance().getMimetype(file));
-              
-              // Do any necessary file pre-processing.
-              File fileToUpload = prepareUploadFile(file, newObject);
-              
-              newObject.addMetadata(Constants.METADATA_JETS3T_LOCAL_FILE_DATE, 
-                  ServiceUtils.formatIso8601Date(new Date(file.lastModified())));
-              newObject.setContentLength(fileToUpload.length());
-              newObject.setDataInputFile(fileToUpload);
-              
-              // Compute the upload file's MD5 hash.
-              newObject.setMd5Hash(ServiceUtils.computeMD5Hash(
-                  new FileInputStream(fileToUpload)));
-              
-              if(!fileToUpload.equals(file)){
-                  // Compute the MD5 hash of the *original* file, if upload file has been altered
-                  // through encryption or gzipping.
-                  newObject.addMetadata(
-                      S3Object.METADATA_HEADER_ORIGINAL_HASH_MD5,
-                      ServiceUtils.toBase64(ServiceUtils.computeMD5Hash(new FileInputStream(file))));
-              }
-              statusBar.setLabel("Prepared " + (objectIndex + 1) 
-                  + " of " + fileKeysForUpload.size() + " file(s) for upload");
-              pb.setMaximum((objectIndex + 1));
-          }
-          objects[objectIndex++] = newObject;
+          statusBar.setLabel("Prepared " + (objectIndex + 1) 
+              + " of " + fileKeysForUpload.size() + " file(s) for upload");
+          pb.setMaximum((objectIndex + 1));
+        }
+        if(!filesWorldReadable){
+          newObject.setAcl(AccessControlList.REST_CANNED_PUBLIC_READ);
+        }
+        objects[objectIndex++] = newObject;
       }
       statusBar.removeProgressBar(pb);
       
