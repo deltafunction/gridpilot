@@ -48,9 +48,6 @@ public class ForkComputingSystem implements ComputingSystem{
   protected String [] localRuntimeDBs = null;
   protected HashSet toCleanupRTEs = null;
 
-  public ForkComputingSystem(){
-  }
-  
   public ForkComputingSystem(String _csName){
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
