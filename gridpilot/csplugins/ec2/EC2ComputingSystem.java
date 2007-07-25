@@ -1,19 +1,36 @@
 package gridpilot.csplugins.ec2;
 
-import java.io.IOException;
 import java.util.Vector;
 
 import gridpilot.ComputingSystem;
+import gridpilot.GridPilot;
 import gridpilot.JobInfo;
+import gridpilot.csplugins.fork.ForkPoolComputingSystem;
 
-public class EC2ComputingSystem implements ComputingSystem {
+public class EC2ComputingSystem extends ForkPoolComputingSystem implements ComputingSystem {
 
-  public void cleanupRuntimeEnvironments(String csName) {
-    // TODO Auto-generated method stub
+  private EC2Mgr ec2mgr = null;
 
+  public EC2ComputingSystem(String _csName) {
+    super(_csName);
+    
+    String accessKey = GridPilot.getClassMgr().getConfigFile().getValue("EC2",
+       "AWS access key id");
+    String secretKey = GridPilot.getClassMgr().getConfigFile().getValue("EC2",
+       "AWS secret access key");
+    String sshAccessSubnet = GridPilot.getClassMgr().getConfigFile().getValue("EC2",
+       "SSH access subnet");
+    if(sshAccessSubnet==null || sshAccessSubnet.equals("")){
+      // Default to global access
+      sshAccessSubnet = "0.0.0.0/0";
+    }
+    ec2mgr = new EC2Mgr(accessKey, secretKey, sshAccessSubnet, this.getUserInfo(csName));
+ 
+    EC2MonitoringPanel panel = new EC2MonitoringPanel(ec2mgr);
+    panel.setVisible(true);
   }
 
-  public void clearOutputMapping(JobInfo job) {
+  public void cleanupRuntimeEnvironments(String csName) {
     // TODO Auto-generated method stub
 
   }
@@ -23,27 +40,7 @@ public class EC2ComputingSystem implements ComputingSystem {
 
   }
 
-  public String[] getCurrentOutputs(JobInfo job) throws IOException {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
-  public String getError(String csName) {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
   public String getFullStatus(JobInfo job) {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
-  public String[] getScripts(JobInfo job) {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
-  public String getUserInfo(String csName) {
     // TODO Auto-generated method stub
     return null;
   }
