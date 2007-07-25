@@ -369,7 +369,9 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    */
   private void selectionEvent(ListSelectionEvent e){
     //Ignore extra messages.
-    if (e.getValueIsAdjusting()) return;
+    if(e.getValueIsAdjusting()){
+      return;
+    }
 
     ListSelectionModel lsm = (ListSelectionModel)e.getSource();
     if(lsm.isSelectionEmpty()){
