@@ -90,12 +90,14 @@ public class EC2Mgr {
   /**
    * List available AMIs.
    */
-  public List<ImageDescription> listAvailableAMIs() throws EC2Exception{
-    List list = new ArrayList<ImageDescription>();
-    List<String> params = new ArrayList<String>();
-    List<ImageDescription> images = ec2.describeImages(params);
+  public List listAvailableAMIs() throws EC2Exception{
+    List list = new ArrayList();
+    List params = new ArrayList();
+    List images = ec2.describeImages(params);
     Debug.debug("Finding available Images", 3);
-    for(ImageDescription img : images){
+    ImageDescription img = null;
+    for(Iterator it=images.iterator(); it.hasNext();){
+      img = (ImageDescription) it.next();
       if(img.getImageState().equals("available")){
         list.add(img);
       }
