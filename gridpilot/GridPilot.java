@@ -43,6 +43,9 @@ public class GridPilot extends JApplet{
   public static String resourcesPath = "";
   public static String [] tabs = null;
   public static Splash splash;
+  // Allow plugins to add monitoring panels. Any Component in
+  // to extraMonitorTabs will be added by MonitoringPanel (called by initGUI).
+  public static Vector extraMonitorTabs = new Vector();
   public static int proxyTimeLeftLimit = 43200;
   public static int proxyTimeValid = 129600;
   public static String keyFile = "~/.globus/userkey.pem";

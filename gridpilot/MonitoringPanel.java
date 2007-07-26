@@ -3,6 +3,7 @@ package gridpilot;
 import javax.swing.*;
 
 import java.awt.*;
+import java.util.Iterator;
 
 /**
  * Tabbed panel with job, transfer and log monitors
@@ -46,6 +47,10 @@ public class MonitoringPanel extends CreateEditPanel {
     spLogView.setPreferredSize(new Dimension(700, 500));
     tpStatLog.addTab("Jobs", jobMonitor);
     tpStatLog.addTab("Transfers", transferMonitor);
+    // add any panels added by plugins
+    for(Iterator it=GridPilot.extraMonitorTabs.iterator(); it.hasNext();){
+      tpStatLog.addTab("Virtual machines", (Component) it.next());
+    }
     tpStatLog.addTab("Logs", spLogView);
 
     this.getTopLevelAncestor().add(tpStatLog, BorderLayout.CENTER);

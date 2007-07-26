@@ -29,8 +29,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
     ec2mgr = new EC2Mgr(accessKey, secretKey, sshAccessSubnet, this.getUserInfo(csName),
         runDir);
  
+    System.out.println("Adding EC2 monitor");
     EC2MonitoringPanel panel = new EC2MonitoringPanel(ec2mgr);
-    panel.setVisible(true);
+    GridPilot.extraMonitorTabs.add(panel);
   }
 
   public void cleanupRuntimeEnvironments(String csName) {

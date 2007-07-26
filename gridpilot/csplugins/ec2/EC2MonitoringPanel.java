@@ -1,7 +1,5 @@
 package gridpilot.csplugins.ec2;
 
-import gridpilot.Debug;
-import gridpilot.GPFrame;
 import gridpilot.GridPilot;
 import gridpilot.StatusBar;
 import gridpilot.Table;
@@ -10,14 +8,11 @@ import gridpilot.Util;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
 
 import javax.swing.JButton;
-import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -41,7 +36,7 @@ import com.xerox.amazonws.ec2.ReservationDescription.Instance;
  * Running images: <selectable list> [configure access] [stop]
  * 
  */
-public class EC2MonitoringPanel extends GPFrame {
+public class EC2MonitoringPanel extends JPanel {
 
   private static final long serialVersionUID = 1L;
   private Table amiTable = null;
@@ -71,6 +66,8 @@ public class EC2MonitoringPanel extends GPFrame {
 
   public void initGUI(){
     
+    this.setLayout(new BorderLayout());
+    
     statusBar = new StatusBar();
     
     JPanel jp = new JPanel(new BorderLayout());
@@ -92,7 +89,7 @@ public class EC2MonitoringPanel extends GPFrame {
     sp.getViewport().add(jp);
     this.add(sp);
 
-    this.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+    /*this.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
     this.addWindowListener(new WindowAdapter(){
       public void windowClosing(WindowEvent we){
         Debug.debug("Thwarted user attempt to close window.", 3);
@@ -100,7 +97,7 @@ public class EC2MonitoringPanel extends GPFrame {
     });
 
     jp.setPreferredSize(new Dimension(600, 300));
-    this.pack();
+    this.pack();*/
     splitPane.setDividerLocation(0.5);
     splitPane.setResizeWeight(0.5);
   }

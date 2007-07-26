@@ -54,7 +54,12 @@ public class EC2Mgr {
     // First check if the group "GridPilot" already exists.
     // If not, create it.
     try{
-      List groupList = ec2.describeSecurityGroups(new String [] {GROUP_NAME});
+      List groupList = null;
+      try{
+        groupList = ec2.describeSecurityGroups(new String [] {GROUP_NAME});
+      }
+      catch(EC2Exception e){
+      }
       if(groupList==null || groupList.isEmpty()){
         ec2.createSecurityGroup(GROUP_NAME, description);
         groupList = ec2.describeSecurityGroups(new String [] {GROUP_NAME});
