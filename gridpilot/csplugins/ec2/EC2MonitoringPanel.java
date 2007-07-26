@@ -5,6 +5,7 @@ import gridpilot.GPFrame;
 import gridpilot.GridPilot;
 import gridpilot.StatusBar;
 import gridpilot.Table;
+import gridpilot.Util;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -13,6 +14,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Vector;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -28,6 +30,8 @@ import javax.swing.event.ListSelectionListener;
 
 import com.xerox.amazonws.ec2.EC2Exception;
 import com.xerox.amazonws.ec2.ImageDescription;
+import com.xerox.amazonws.ec2.ReservationDescription;
+import com.xerox.amazonws.ec2.ReservationDescription.Instance;
 
 /**
  * Panel showing the status of EC2 and containing buttons for
@@ -43,13 +47,13 @@ public class EC2MonitoringPanel extends GPFrame {
   private Table amiTable = null;
   private Table instanceTable = null;
   private String [] amiColorMapping = null;  
-  private String [] amiFields = new String [] {"AMI ID", "Manifest", "State", "Owner"};
   private String [] instanceColorMapping = null;  
-  private String [] instanceFields = new String [] {"Reservation ID", "Owner", "Instance ID", "AMI", "State",
-      "Public DNS", "Key"};
   private EC2Mgr ec2mgr = null;
   
-  
+  private static String [] AMI_FIELDS = new String [] {"AMI ID", "Manifest", "State", "Owner"};
+  private static String [] INSTANCE_FIELDS = new String [] {"Reservation ID", "Owner", "Instance ID", "AMI", "State",
+      "Public DNS", "Key"};
+ 
   public StatusBar statusBar = null;
 
   public EC2MonitoringPanel(EC2Mgr _ec2mgr){
@@ -103,7 +107,7 @@ public class EC2MonitoringPanel extends GPFrame {
   
   String [][] getAvailableAMIs() throws EC2Exception{
     List amiList = ec2mgr.listAvailableAMIs();
-    String [][] amiArray = new String [amiList.size()][amiFields.length];
+    String [][] amiArray = new String [amiList.size()][AMI_FIELDS.length];
     ImageDescription ami = null;
     int i = 0;
     // "AMI ID", "Manifest", "State", "Owner"
@@ -118,15 +122,50 @@ public class EC2MonitoringPanel extends GPFrame {
     return amiArray;
   }
   
+  String [][] getRunningInstances() throws EC2Exception{
+    List reservationList = ec2mgr.listReservations();
+    Vector instanceVector = new Vector();
+    List instanceList = null;
+    String [] row = new String [INSTANCE_FIELDS.length];
+    Instance instance = null;
+    ReservationDescription reservation = null;
+    for(Iterator it=reservationList.iterator(); it.hasNext();){
+      reservation = (ReservationDescription) it.next();
+      instanceList = ec2mgr.listInstances(reservation);
+      // "Reservation ID", "Owner", "Instance ID", "AMI", "State", "Public DNS", "Key"
+      for(Iterator itt=instanceList.iterator(); itt.hasNext();){
+        row = new String [INSTANCE_FIELDS.length];
+        instance = (Instance) itt.next();
+        row[0] = reservation.getReservationId();
+        row[1] = reservation.getOwner();
+        row[2] = instance.getInstanceId();
+        row[3] = instance.getImageId();
+        row[4] = instance.getState();
+        row[5] = instance.getDnsName();
+        row[6] = instance.getKeyName();
+        instanceVector.add(row);
+      }
+    }
+    String [][] instanceArray = new String[instanceVector.size()][INSTANCE_FIELDS.length];
+    for(int i=0; i<instanceVector.size(); ++i){
+      row = (String []) instanceVector.get(i);
+      for(int j=0; j<INSTANCE_FIELDS.length; ++j){
+        instanceArray[i][j] = row[j];
+      }
+    }
+    return instanceArray;
+  }
+  
   private JPanel createAMIsPanel(){
     JPanel panel = new JPanel(new BorderLayout()); 
-    amiTable = new Table(new String [] {}, amiFields, amiColorMapping);
+    amiTable = new Table(new String [] {}, AMI_FIELDS, amiColorMapping);
+    amiTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     amiTable.addListSelectionListener(new ListSelectionListener(){
       public void valueChanged(ListSelectionEvent e){
         amiSelectionEvent(e);
       }
     });
-    amiTable.setTable(amiFields);
+    amiTable.setTable(AMI_FIELDS);
     amiTable.updateUI();
     JScrollPane sp = new JScrollPane();
     sp.getViewport().add(amiTable);
@@ -140,18 +179,23 @@ public class EC2MonitoringPanel extends GPFrame {
     bRefresh.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         try{
-          amiTable.setTable(getAvailableAMIs(), amiFields);
+          amiTable.setTable(getAvailableAMIs(), AMI_FIELDS);
         }
-        catch (EC2Exception e1) {
+        catch(Exception e1){
            e1.printStackTrace();
         }
       }
     });
     JButton bLaunch = new JButton("Launch instance(s)");
     bLaunch.setToolTipText("Launch an instance of the selected AMI");
-    bRefresh.addActionListener(new ActionListener(){
+    bLaunch.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        //launchAMIs();
+        try{
+          launchAMIs();
+        }
+        catch(Exception e1){
+           e1.printStackTrace();
+        }
       }
     });
     pButtons.add(bRefresh);
@@ -161,15 +205,42 @@ public class EC2MonitoringPanel extends GPFrame {
     return panel;
   }
   
+  protected void launchAMIs() throws Exception {
+    // get the selected AMI
+    int row = amiTable.getSelectedRow();
+    if(row==-1){
+      return;
+    }
+    String amiID = (String) amiTable.getUnsortedValueAt(row, 0);
+    // get the number of instances we want to start
+    String instancesStr = Util.getName("Number of instances to start", "1");
+    int instances = Integer.parseInt(instancesStr);
+    ec2mgr.launchInstances(amiID, instances);
+  }
+
+  protected void terminateInstances() throws Exception {
+    // get the selected instances
+    int [] rows = amiTable.getSelectedRows();
+    if(rows==null || rows.length==0){
+      return;
+    }
+    String [] ids = new String [rows.length];
+    for(int i=0; i<rows.length; ++i){
+      ids[i] = (String) instanceTable.getUnsortedValueAt(rows[i], 0);
+    }
+    ec2mgr.terminateInstances(ids);
+  }
+
   private JPanel createInstancesPanel(){
     JPanel panel = new JPanel(new BorderLayout()); 
-    instanceTable = new Table(new String [] {}, instanceFields, instanceColorMapping);
+    instanceTable = new Table(new String [] {}, INSTANCE_FIELDS, instanceColorMapping);
+    amiTable.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
     instanceTable.addListSelectionListener(new ListSelectionListener(){
       public void valueChanged(ListSelectionEvent e){
         instanceSelectionEvent(e);
       }
     });
-    instanceTable.setTable(instanceFields);
+    instanceTable.setTable(INSTANCE_FIELDS);
     instanceTable.updateUI();
     JScrollPane sp = new JScrollPane();
     sp.getViewport().add(instanceTable);
@@ -178,7 +249,29 @@ public class EC2MonitoringPanel extends GPFrame {
     panel.add(sp);
     JPanel pButtons = new JPanel();
     JButton bRefresh = new JButton("Refresh");
+    bRefresh.setToolTipText("Refresh the list of instances");
+    bRefresh.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        try{
+          instanceTable.setTable(getRunningInstances(), INSTANCE_FIELDS);
+        }
+        catch(Exception e1){
+           e1.printStackTrace();
+        }
+      }
+    });
     JButton bTerminate = new JButton("Terminate");
+    bTerminate.setToolTipText("Terminate the selected instance(s)");
+    bTerminate.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        try{
+          terminateInstances();
+        }
+        catch(Exception e1){
+           e1.printStackTrace();
+        }
+      }
+    });
     pButtons.add(bRefresh);
     pButtons.add(new JLabel("|"));
     pButtons.add(bTerminate);
@@ -202,7 +295,7 @@ public class EC2MonitoringPanel extends GPFrame {
     if(lsm.isSelectionEmpty()){
     }
     else{
-      int [] rows = amiTable.getSelectedRows();
+      //int [] rows = amiTable.getSelectedRows();
       //miShowInfo.setEnabled(!lsm.isSelectionEmpty() && lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
     }
   }
@@ -219,7 +312,7 @@ public class EC2MonitoringPanel extends GPFrame {
     if(lsm.isSelectionEmpty()){
     }
     else{
-      int [] rows = instanceTable.getSelectedRows();
+      //int [] rows = instanceTable.getSelectedRows();
       //miShowInfo.setEnabled(!lsm.isSelectionEmpty() && lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
     }
   }

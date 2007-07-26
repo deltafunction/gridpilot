@@ -5,6 +5,7 @@ import java.util.Vector;
 import gridpilot.ComputingSystem;
 import gridpilot.GridPilot;
 import gridpilot.JobInfo;
+import gridpilot.Util;
 import gridpilot.csplugins.fork.ForkPoolComputingSystem;
 
 public class EC2ComputingSystem extends ForkPoolComputingSystem implements ComputingSystem {
@@ -24,7 +25,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
       // Default to global access
       sshAccessSubnet = "0.0.0.0/0";
     }
-    ec2mgr = new EC2Mgr(accessKey, secretKey, sshAccessSubnet, this.getUserInfo(csName));
+    String runDir = Util.clearTildeLocally(Util.clearFile(workingDir));
+    ec2mgr = new EC2Mgr(accessKey, secretKey, sshAccessSubnet, this.getUserInfo(csName),
+        runDir);
  
     EC2MonitoringPanel panel = new EC2MonitoringPanel(ec2mgr);
     panel.setVisible(true);
@@ -36,8 +39,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
   }
 
   public void exit() {
-    // TODO Auto-generated method stub
-
+    ec2mgr.exit();
+    // TODO: cleanup runtimeenvironments
   }
 
   public String getFullStatus(JobInfo job) {
