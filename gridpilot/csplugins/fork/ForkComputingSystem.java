@@ -48,7 +48,7 @@ public class ForkComputingSystem implements ComputingSystem{
   protected String [] localRuntimeDBs = null;
   protected HashSet toCleanupRTEs = null;
 
-  public ForkComputingSystem(String _csName){
+  public ForkComputingSystem(String _csName) throws Exception{
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
     
@@ -56,12 +56,19 @@ public class ForkComputingSystem implements ComputingSystem{
       shellMgr = GridPilot.getClassMgr().getShellMgr(csName);
     }
     catch(Exception e){
-      Debug.debug("ERROR getting shell manager: "+e.getMessage(), 1);
-      return;
+      Debug.debug("WARNING: could not get shell manager: "+e.getMessage(), 1);
+      if(csName.equalsIgnoreCase("fork")){
+        throw e;
+      }
     }
     
     defaultUser = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "default user");
-    userName = shellMgr.getUserName();
+    try{
+      userName = shellMgr.getUserName();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
     
     workingDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "working directory");
     if(workingDir==null || workingDir.equals("")){
@@ -78,6 +85,7 @@ public class ForkComputingSystem implements ComputingSystem{
       logFile.addInfo("Working directory "+workingDir+" does not exist, creating.");
       shellMgr.mkdirs(workingDir);
     }
+    Debug.debug("Using workingDir "+workingDir, 2);
     
     commandSuffix = ".sh";
     if(shellMgr.isLocal() && System.getProperty("os.name").toLowerCase().startsWith("windows")){
