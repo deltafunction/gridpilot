@@ -36,6 +36,8 @@ public class EC2Mgr {
 
   private static String GROUP_NAME = "GridPilot";
   private static String KEY_NAME = "GridPilot_EC2_TMP_KEY";
+  
+  protected File keyFile = null;
 
   public EC2Mgr(String accessKey, String secretKey, String _subnet, String _owner,
       String _runDir) {    
@@ -63,9 +65,9 @@ public class EC2Mgr {
       if(groupList==null || groupList.isEmpty()){
         ec2.createSecurityGroup(GROUP_NAME, description);
         groupList = ec2.describeSecurityGroups(new String [] {GROUP_NAME});
+        // Allow ssh access
+        ec2.authorizeSecurityGroupIngress(GROUP_NAME, "tcp", 22, 22, subnet);
       }
-      // Allow ssh access
-      ec2.authorizeSecurityGroupIngress(GROUP_NAME, "tcp", 22, 22, subnet);
     }
     catch(EC2Exception e){
       logFile.addMessage("ERROR: Could not add inbound ssh access to AWS nodes.", e);
@@ -86,8 +88,9 @@ public class EC2Mgr {
     // Generate keypair
     KeyPairInfo keyInfo = ec2.createKeyPair(KEY_NAME);
     // Save secret key to file
-    File keyFile = new File(runDir, KEY_NAME+"-"+
+    keyFile = new File(runDir, KEY_NAME+"-"+
         keyInfo.getKeyFingerprint().replaceAll(":", ""));
+    Debug.debug("Writing private key to "+runDir, 1);
     LocalStaticShellMgr.writeFile(keyFile.getAbsolutePath(), keyInfo.getKeyMaterial(), false);
     if(GridPilot.gridHomeURL!=null && !GridPilot.gridHomeURL.equals("") && Util.urlIsRemote(GridPilot.gridHomeURL)){
       String uploadUrl = GridPilot.gridHomeURL + (GridPilot.gridHomeURL.endsWith("/")?"":"/");
@@ -288,6 +291,7 @@ public class EC2Mgr {
    * @throws EC2Exception 
    */
   public void terminateInstances(String [] instanceIDs) throws EC2Exception{
+    Debug.debug("Terminating instance(s) "+Util.arrayToString(instanceIDs), 1);
     ec2.terminateInstances(instanceIDs);
   }
   

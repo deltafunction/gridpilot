@@ -3,6 +3,7 @@ package gridpilot.csplugins.ec2;
 import java.util.Vector;
 
 import gridpilot.ComputingSystem;
+import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.JobInfo;
 import gridpilot.Util;
@@ -12,7 +13,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
 
   private EC2Mgr ec2mgr = null;
 
-  public EC2ComputingSystem(String _csName) {
+  public EC2ComputingSystem(String _csName) throws Exception {
     super(_csName);
     
     String accessKey = GridPilot.getClassMgr().getConfigFile().getValue("EC2",
@@ -26,11 +27,14 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
       sshAccessSubnet = "0.0.0.0/0";
     }
     String runDir = Util.clearTildeLocally(Util.clearFile(workingDir));
+    Debug.debug("Using workingDir "+workingDir, 2);
     ec2mgr = new EC2Mgr(accessKey, secretKey, sshAccessSubnet, this.getUserInfo(csName),
         runDir);
  
     System.out.println("Adding EC2 monitor");
     EC2MonitoringPanel panel = new EC2MonitoringPanel(ec2mgr);
+    // This causes the panel to be added to the monitoring window as a tab,
+    // right after the transfer monitoring tab and before the log tab.
     GridPilot.extraMonitorTabs.add(panel);
   }
 

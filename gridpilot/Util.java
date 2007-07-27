@@ -73,9 +73,11 @@ import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.UIManager;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
@@ -586,6 +588,36 @@ public class Util{
     }
     else{
       return tf.getText();
+    }
+  }
+  
+  public static int getNumber(String message, String title, int initialValue){
+
+    JPanel panel = new JPanel(new GridBagLayout());
+    JSpinner sNum = new JSpinner();
+    sNum.setPreferredSize(new Dimension(50, 21));
+    sNum.setModel(new SpinnerNumberModel(initialValue, 1, 9999, 1));
+
+    panel.add(new JLabel(message),
+        new GridBagConstraints(0, 1, 1, 1, 1.0, 1.0,
+            GridBagConstraints.CENTER,
+            GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        0, 0));
+    JPanel pNum = new JPanel();
+    pNum.add(sNum);
+    panel.add(pNum, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
+        GridBagConstraints.CENTER,
+        GridBagConstraints.NONE, new Insets(5, 5, 5, 5),
+        0, 0));
+
+    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
+        title, JOptionPane.OK_CANCEL_OPTION);
+
+    if(choice!=JOptionPane.OK_OPTION){
+      return -1;
+    }
+    else{
+      return((Integer) (sNum.getValue())).intValue();
     }
   }
   
