@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 
 import org.apache.log4j.*;
+import org.apache.log4j.Logger;
 import org.safehaus.uuid.UUIDGenerator;
 
 public class SecureShellMgr implements ShellMgr{
