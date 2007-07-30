@@ -1448,6 +1448,10 @@ public class TransferControl{
     }
   }
   
+  /**
+   * Method for copying input files from the local hard disk (file://..) or a remote location
+   * to the run directory of the job, using the ShellMgr of the job.
+   */
   public static boolean copyInputFile(String src, String dest,
       ShellMgr shellMgr, String error, LogFile logFile){
     
@@ -1462,7 +1466,7 @@ public class TransferControl{
       File tempFile;
       try{
         tempFile=File.createTempFile("GridPilot-", "");
-        tempFileName = tempFile.getAbsolutePath();
+        tempFileName = "file:"+tempFile.getAbsolutePath();
         tempFile.delete();
         //  hack to have the file deleted on exit
         GridPilot.tmpConfFile.put(tempFileName, new File(tempFileName));
@@ -1476,7 +1480,7 @@ public class TransferControl{
     if(/*Linux local file*/(src.matches("^file:~[^:]*") || src.matches("^file:/[^:]*") || src.startsWith("/") || src.startsWith("~")) ||
         /*Windows local file*/(src.matches("\\w:.*") || src.matches("^file:/*\\w:.*")) && shellMgr.isLocal()){
       try{
-        if(!shellMgr.existsFile(src)){
+        if(!LocalStaticShellMgr.existsFile(Util.clearFile(src))){
           error = "File " + src + " doesn't exist";
           logFile.addMessage(error);
           return false;
@@ -1508,7 +1512,7 @@ public class TransferControl{
               return false;
             }
           }
-          if(!shellMgr.download(src, realDest)){
+          if(!LocalStaticShellMgr.copyFile(Util.clearFile(src), realDest)){
             error = "Cannot get \n\t" +
             src + "\n to \n\t" + dest;
             logFile.addMessage(error);
@@ -1524,11 +1528,11 @@ public class TransferControl{
       }
       // if we have a fully qualified name (and for Windows a local shell), we just copy it with the shellMgr
       else{
-        Debug.debug("renaming " + src + " in " + tempFileName, 2);
+        Debug.debug("copying " + src + " to " + tempFileName, 2);
         try{
-          if(!shellMgr.copyFile(src, tempFileName)){
-            error = "Cannot move \n\t" + src +
-            "\n into \n\t" + tempFileName;
+          if(!shellMgr.copyFile(Util.clearFile(src), tempFileName)){
+            error = "Cannot copy \n\t" + src +
+            "\n to \n\t" + tempFileName;
             logFile.addMessage(error);
             return false;
           }
@@ -1567,7 +1571,7 @@ public class TransferControl{
     // if a temp file was written, copy it to the real remote destination via ssh
     if(!tempFileName.equals(dest)){
       try{
-        shellMgr.upload(tempFileName, dest);
+        shellMgr.upload(Util.clearFile(tempFileName), dest);
       }
       catch(Exception e){
         error = "ERROR copying "+tempFileName+" -> "+dest+": "+e.getMessage();
@@ -1657,11 +1661,11 @@ public class TransferControl{
       }
       // if we have a fully qualified name (and for Windows a local shell), we just copy it with the shellMgr
       else{
-        Debug.debug("renaming " + src + " in " + dest, 2);
+        Debug.debug("copying " + src + " to " + dest, 2);
         try{
           if(!shellMgr.copyFile(src, dest)){
-            error = "Cannot move \n\t" + src +
-            "\n into \n\t" + dest;
+            error = "Cannot copy \n\t" + src +
+            "\n to \n\t" + dest;
             logFile.addMessage(error);
             return false;
           }

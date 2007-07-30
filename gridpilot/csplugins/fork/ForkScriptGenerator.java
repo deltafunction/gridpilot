@@ -211,7 +211,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
           logFile.addMessage("Could not set job executable. "+stderr);
           throw new FileNotFoundException(stderr.toString());
         }
-        shellMgr.exec("chmod +x "+Util.clearTildeLocally(Util.clearFile(scriptDest)), stdout, stderr);
+        shellMgr.exec("chmod +x "+Util.clearFile(scriptDest), stdout, stderr);
         if(stderr!=null && stderr.length()!=0){
           logFile.addMessage("Could not set transformation executable. "+stderr);
           throw new FileNotFoundException(stderr.toString());

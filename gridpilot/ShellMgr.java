@@ -11,6 +11,11 @@ public interface ShellMgr{
   public String getUserName();
 
   /**
+   * Get the host DNS name
+   */
+  public String getHostName();
+
+  /**
    * Executes in the shell the command 'cmd', in the current directory, with
    * the environment 'env'.
    * Standard output is written in stdOut (if stdOut != null)

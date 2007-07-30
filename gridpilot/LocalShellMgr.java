@@ -496,5 +496,10 @@ public class LocalShellMgr implements ShellMgr {
   public String getUserName(){
     return System.getProperty("user.name").trim();
   }
+  
+  public String getHostName(){
+    return "localhost";
+  }
+
 
 }

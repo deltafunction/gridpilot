@@ -116,6 +116,7 @@ public class ForkComputingSystem implements ComputingSystem{
     localRuntimeDBs = GridPilot.getClassMgr().getConfigFile().getValues(
         csName, "runtime databases");
     
+    Debug.debug("Setting up RTEs for "+csName, 2);
     if(runtimeDirectory!=null){
       if(!shellMgr.existsFile(runtimeDirectory)){
         logFile.addInfo("Runtime directory "+runtimeDirectory+" does not exist, creating.");
@@ -454,7 +455,7 @@ public class ForkComputingSystem implements ComputingSystem{
   protected void updateStatus(JobInfo job, ShellMgr shellMgr){
     
     // Host.
-    job.setHost("localhost");
+    job.setHost(shellMgr.getHostName());
 
     if(shellMgr.isRunning(job.getJobId())/*stdOut.length()!=0 &&
         stdOut.indexOf(job.getName())>-1*/
@@ -831,13 +832,16 @@ public class ForkComputingSystem implements ComputingSystem{
     DBRecord rteRecord = null;
     RteInstaller rteInstaller = null;
     String url = null;
-    String [] deps = null;
+    String [] deps = new String [0];
     String rteName = null;
     for(int i=0; i<rteNames.length; ++i){
       try{
         rteId = dbPluginMgr.getRuntimeEnvironmentID(rteNames[i], job.getCSName());
         rteRecord = dbPluginMgr.getRuntimeEnvironment(rteId);
-        deps = Util.splitUrls((String) rteRecord.getValue("depends"));
+        String depsStr = (String) rteRecord.getValue("depends");
+        if(depsStr!=null && !depsStr.equals("")){
+          deps = Util.splitUrls((String) rteRecord.getValue("depends"));
+        }
         for(int j=0; j<deps.length+1; ++j){
           // First see if the dependencies are there or will install.
           // Then, install the RTE.
