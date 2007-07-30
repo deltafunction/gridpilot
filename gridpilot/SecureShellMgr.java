@@ -25,6 +25,8 @@ public class SecureShellMgr implements ShellMgr{
   private String host;
   private String user;
   private String password;
+  private File keyFile;
+  private String keyPassphrase;
   private int port;
   private LogFile logFile;
   private ConfigFile configFile;
@@ -33,6 +35,27 @@ public class SecureShellMgr implements ShellMgr{
   private int channelsNum = 1;
   private String prefix = "/tmp/GridPilot-job-";
 
+  public SecureShellMgr(String _host, String _user,
+      File _keyFile, String _keyPassphrase){
+    keyFile = _keyFile;
+    keyPassphrase = _keyPassphrase;
+    BasicConfigurator.configure();
+    Logger.getRootLogger().setLevel(Level.ERROR);
+    host = _host;
+    port = 22;
+    if(host.indexOf(":")>0){
+      port = Integer.parseInt(host.substring(host.indexOf(":")+1));
+      host = host.substring(0, host.indexOf(":"));
+    }
+    user = _user;
+    password = null;
+    logFile = GridPilot.getClassMgr().getLogFile();
+    configFile = GridPilot.getClassMgr().getConfigFile();
+    connect();
+    logFile.addInfo("Authentication completed on " + host + "(user : " + user +
+        ", privateKeyFile : " + keyFile + ")");
+  }
+  
   public SecureShellMgr(String _host, String _user,
       String _password){
     BasicConfigurator.configure();
@@ -60,11 +83,13 @@ public class SecureShellMgr implements ShellMgr{
       if(GridPilot.getClassMgr().getGlobalFrame()!=null){
         showDialog = false;
       }
-      boolean gridAuth = false;
+      if(keyFile!=null){
+        jsch.addIdentity(keyFile.getAbsolutePath(), (keyPassphrase==null?keyPassphrase:""));
+      }
       String [] up = null;
       for(int rep=0; rep<3; ++rep){               
         if(showDialog ||
-            user==null || (password==null && !gridAuth) || host==null){
+            user==null || (password==null && keyFile==null) || host==null){
           up = GridPilot.userPwd("Shell login on "+host, new String [] {"User", "Password", "Host"},
               new String [] {user, password, host});
           if(up==null){
@@ -79,7 +104,9 @@ public class SecureShellMgr implements ShellMgr{
         try{
           session = jsch.getSession(user, host, port);
           session.setHost(host);
-          session.setPassword(password);
+          if(password!=null && !password.equals("")){
+            session.setPassword(password);
+          }
           session.setUserInfo(ui);
           java.util.Hashtable config = new java.util.Hashtable();
           config.put("StrictHostKeyChecking", "no");
@@ -513,7 +540,7 @@ public class SecureShellMgr implements ShellMgr{
     StringBuffer stdOut = new StringBuffer();
     StringBuffer stdErr = new StringBuffer();
     try{
-      int ret = exec("ls "+name, stdOut, stdErr);
+      int ret = exec("ls -d "+name, stdOut, stdErr);
       if(ret!=0 || stdErr.length()>0){
         Debug.debug("WARNING: file "+name+" does not exist. "+stdErr, 3);
         return false;
@@ -873,6 +900,10 @@ public class SecureShellMgr implements ShellMgr{
 
   public String getUserName(){
     return user;
+  }
+  
+  public String getHostName(){
+    return host;
   }
   
   public int getJobsNumber(){
