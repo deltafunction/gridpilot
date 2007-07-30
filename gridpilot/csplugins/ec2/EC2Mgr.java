@@ -128,6 +128,9 @@ public class EC2Mgr {
         break;
       }
     }
+    if(keyInfo==null){
+      return;
+    }
     File keyFile = new File(runDir, KEY_NAME+"-"+keyInfo.getKeyFingerprint().replaceAll(":", ""));
     String downloadUrl = GridPilot.gridHomeURL + (GridPilot.gridHomeURL.endsWith("/")?"":"/")+
       keyFile.getName();

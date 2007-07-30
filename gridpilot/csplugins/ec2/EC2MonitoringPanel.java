@@ -406,7 +406,7 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     //instanceTable.addMenuSeparator();
     instanceTable.addMenuItem(miCopyDNS);
     instanceTable.addMenuItem(miCopyKeyFile);
-    instanceTable.addMenuItem(miRunShell);
+    //instanceTable.addMenuItem(miRunShell);
   }
   
   private void copyDNSToClipBoard(){
@@ -426,9 +426,10 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     clipboard.setContents(stringSelection, this);
   }
 
+  // TODO: Use JCShell
   private void runShell(){
-    int row = instanceTable.getSelectedRow();
-    String dns = (String) instanceTable.getUnsortedValueAt(row, 5);
+    //int row = instanceTable.getSelectedRow();
+    //String dns = (String) instanceTable.getUnsortedValueAt(row, 5);
   }
 
   public void lostOwnership(Clipboard clipboard, Transferable contents) {
