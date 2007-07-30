@@ -1253,8 +1253,8 @@ public class GPSSComputingSystem implements ComputingSystem{
         job.getInternalStatus()!=ComputingSystem.STATUS_FAILED){
       try{
         String lastModifiedStr = remoteMgr.getJobDefValue(remoteID, "lastModified");
-        long lastUpdateMillis = Util.getDateInSeconds(lastModifiedStr);
-        long nowMillis = Util.getDateInSeconds(null);
+        long lastUpdateMillis = Util.getDateInMilliSeconds(lastModifiedStr);
+        long nowMillis = Util.getDateInMilliSeconds(null);
         if(nowMillis-lastUpdateMillis>providerTimeout){
           job.setInternalStatus(ComputingSystem.STATUS_FAILED);
           job.setJobStatus(csStatus);

@@ -400,7 +400,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     }
     
     // The current date
-    long nowMillis = Util.getDateInSeconds(null);
+    long nowMillis = Util.getDateInMilliSeconds(null);
     
     if(lockFile.exists()){
       String lastLock = LocalStaticShellMgr.readFile(lockFile.getAbsolutePath());

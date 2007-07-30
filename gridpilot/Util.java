@@ -2323,7 +2323,7 @@ public class Util{
     }
   }
 
-  public static long getDateInSeconds(String dateInput){
+  public static long getDateInMilliSeconds(String dateInput){
     try{
       SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
       long millis = -1;
