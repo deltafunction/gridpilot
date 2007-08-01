@@ -1461,6 +1461,7 @@ public class TransferControl{
     
     // If the shell is not local, first get the source to a local temp file and change dest
     // temporarily
+    // TODO: consider using caching
     String tempFileName = dest;
     if(!shellMgr.isLocal()){
       File tempFile;
@@ -1571,6 +1572,7 @@ public class TransferControl{
     // if a temp file was written, copy it to the real remote destination via ssh
     if(!tempFileName.equals(dest)){
       try{
+        Debug.debug("Uploading tmp file "+tempFileName+" -> "+dest, 2);
         shellMgr.upload(Util.clearFile(tempFileName), dest);
       }
       catch(Exception e){

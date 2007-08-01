@@ -968,8 +968,8 @@ public class ForkComputingSystem implements ComputingSystem{
           // (assuming that e.g. the runtime environment ARC has been required)
           else if(!ignoreRemoteInputs && Util.urlIsRemote(inputFiles[i])){
             try{
-              TransferControl.copyInputFile(urlDir + fileName,
-                 runDir(job), shellMgr, error, logFile);
+              Debug.debug("Getting input file "+inputFiles[i]+" --> "+runDir(job), 3);
+              TransferControl.copyInputFile(inputFiles[i], runDir(job)+"/"+fileName, shellMgr, error, logFile);
             }
             catch(Exception ioe){
               logFile.addMessage("WARNING: GridPilot could not get input file "+inputFiles[i]+

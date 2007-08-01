@@ -75,6 +75,27 @@ public class SecureShellMgr implements ShellMgr{
         ", password : " + password + ")");
   }
 
+  public SecureShellMgr(String _host, String _user, String _password,
+      File _keyFile, String _keyPassphrase){
+    keyFile = _keyFile;
+    keyPassphrase = _keyPassphrase;
+    BasicConfigurator.configure();
+    Logger.getRootLogger().setLevel(Level.ERROR);
+    host = _host;
+    port = 22;
+    if(host.indexOf(":")>0){
+      port = Integer.parseInt(host.substring(host.indexOf(":")+1));
+      host = host.substring(0, host.indexOf(":"));
+    }
+    user = _user;
+    password = _password;
+    logFile = GridPilot.getClassMgr().getLogFile();
+    configFile = GridPilot.getClassMgr().getConfigFile();
+    connect();
+    logFile.addInfo("Authentication completed on " + host + "(user : " + user +
+        ", privateKeyFile : " + keyFile + ")");
+  }
+  
   private void connect(){
     try{
       UserInfo ui = new MyUserInfo();
@@ -83,22 +104,33 @@ public class SecureShellMgr implements ShellMgr{
       if(GridPilot.getClassMgr().getGlobalFrame()!=null){
         showDialog = false;
       }
-      if(keyFile!=null){
-        jsch.addIdentity(keyFile.getAbsolutePath(), (keyPassphrase==null?keyPassphrase:""));
-      }
       String [] up = null;
       for(int rep=0; rep<3; ++rep){               
         if(showDialog ||
-            user==null || (password==null && keyFile==null) || host==null){
-          up = GridPilot.userPwd("Shell login on "+host, new String [] {"User", "Password", "Host"},
-              new String [] {user, password, host});
-          if(up==null){
-            return;
+            user==null || (password==null && keyFile==null || keyPassphrase==null) || host==null){
+          // Only try private key once
+          if(keyFile!=null && rep==0){
+            up = GridPilot.userPwd("Shell login with private key on "+host,
+                new String [] {"User", "Key passphrase", "Host"},
+                new String [] {user, (keyPassphrase==null?keyPassphrase:""), host});
+            if(up!=null){
+              user = up[0];
+              keyPassphrase = up[1];
+              host = up[2];
+              jsch.addIdentity(keyFile.getAbsolutePath(), (keyPassphrase==null?keyPassphrase:""));
+            }
           }
-          else{
-            user = up[0];
-            password = up[1];
-            host = up[2];
+          if(up==null || rep>0){
+            up = GridPilot.userPwd("Shell login with password on "+host, new String [] {"User", "Password", "Host"},
+                new String [] {user, password, host});
+            if(up==null){
+              return;
+            }
+            else{
+              user = up[0];
+              password = up[1];
+              host = up[2];
+            }
           }
         }
         try{
