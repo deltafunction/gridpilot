@@ -34,6 +34,8 @@ public class SecureShellMgr implements ShellMgr{
   private int channels;
   private int channelsNum = 1;
   private String prefix = "/tmp/GridPilot-job-";
+  
+  private static final int MAX_SSH_LOGIN_ATTEMPTS = 3;
 
   public SecureShellMgr(String _host, String _user,
       File _keyFile, String _keyPassphrase){
@@ -53,7 +55,7 @@ public class SecureShellMgr implements ShellMgr{
     configFile = GridPilot.getClassMgr().getConfigFile();
     connect();
     logFile.addInfo("Authentication completed on " + host + "(user : " + user +
-        ", privateKeyFile : " + keyFile + ")");
+        ", keyFile : " + keyFile + ")");
   }
   
   public SecureShellMgr(String _host, String _user,
@@ -105,19 +107,31 @@ public class SecureShellMgr implements ShellMgr{
         showDialog = false;
       }
       String [] up = null;
-      for(int rep=0; rep<3; ++rep){               
+      for(int rep=0; rep<MAX_SSH_LOGIN_ATTEMPTS; ++rep){               
         if(showDialog ||
             user==null || (password==null && keyFile==null || keyPassphrase==null) || host==null){
+          Debug.debug("Shell login:"+
+          Util.arrayToString(new String [] {"User", "Key passphrase", "Host"})+" --> "+
+          Util.arrayToString(new String [] {user, (keyPassphrase==null?keyPassphrase:""), host}), 2);
           // Only try private key once
           if(keyFile!=null && rep==0){
             up = GridPilot.userPwd("Shell login with private key on "+host,
                 new String [] {"User", "Key passphrase", "Host"},
                 new String [] {user, (keyPassphrase==null?keyPassphrase:""), host});
-            if(up!=null){
-              user = up[0];
+            if(up==null){
+              return;
+            }
+            else{
+              user = up[0].trim();
               keyPassphrase = up[1];
-              host = up[2];
-              jsch.addIdentity(keyFile.getAbsolutePath(), (keyPassphrase==null?keyPassphrase:""));
+              host = up[2].trim();
+              try{
+                jsch.addIdentity(keyFile.getAbsolutePath(), (keyPassphrase==null?keyPassphrase:""));
+              }
+              catch(Exception e){
+                logFile.addMessage("Could not load SSH private key.", e);
+                up = null;
+              }
             }
           }
           if(up==null || rep>0){
@@ -127,9 +141,20 @@ public class SecureShellMgr implements ShellMgr{
               return;
             }
             else{
-              user = up[0];
+              user = up[0].trim();
               password = up[1];
-              host = up[2];
+              host = up[2].trim();
+              Debug.debug("SSH user: "+user+":", 2);
+              if(user==null || user.equals("")){
+                user = null;
+                if(rep==MAX_SSH_LOGIN_ATTEMPTS-1){
+                  if(GridPilot.splash!=null){
+                    GridPilot.splash.hide();
+                  }
+                  Util.showError("SSH login failed on "+host);
+                }
+                continue;
+              }
             }
           }
         }
@@ -150,6 +175,12 @@ public class SecureShellMgr implements ShellMgr{
           break;
         }
         catch(Exception e){
+          if(rep==MAX_SSH_LOGIN_ATTEMPTS-1){
+            if(GridPilot.splash!=null){
+              GridPilot.splash.hide();
+            }
+            Util.showError("SSH login failed on "+host);
+          }
           password = null;
           continue;
         }
