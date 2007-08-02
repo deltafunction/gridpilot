@@ -403,7 +403,7 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
         }).start();
       }
     });
-    //instanceTable.addMenuSeparator();
+    instanceTable.addMenuSeparator();
     instanceTable.addMenuItem(miCopyDNS);
     instanceTable.addMenuItem(miCopyKeyFile);
     //instanceTable.addMenuItem(miRunShell);

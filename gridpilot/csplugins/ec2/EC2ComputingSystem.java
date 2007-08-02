@@ -6,11 +6,14 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.swing.JOptionPane;
+
 import com.xerox.amazonws.ec2.EC2Exception;
 import com.xerox.amazonws.ec2.ReservationDescription;
 import com.xerox.amazonws.ec2.ReservationDescription.Instance;
 
 import gridpilot.ComputingSystem;
+import gridpilot.ConfirmBox;
 import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.JobInfo;
@@ -32,7 +35,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
     super(_csName);
     
     amiID = GridPilot.getClassMgr().getConfigFile().getValue("EC2",
-    "AMI id");
+      "AMI id");
     String accessKey = GridPilot.getClassMgr().getConfigFile().getValue("EC2",
        "AWS access key id");
     String secretKey = GridPilot.getClassMgr().getConfigFile().getValue("EC2",
@@ -82,7 +85,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
    * Override in order to postpone setting up shellMgrs till submission time (preProcess).
    */
   protected void setupRemoteShellMgrs(){
-    shellMgrs = new HashMap();
+    remoteShellMgrs = new HashMap();
   }
   
   // Halt machines with no running jobs
@@ -97,30 +100,68 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
     }
     ReservationDescription res = null;
     Instance inst = null;
-    ArrayList term = new ArrayList();
+    ArrayList passiveInstances = new ArrayList();
+    ArrayList activeInstances = new ArrayList();
     if(reservations!=null){
       for(Iterator it=reservations.iterator(); it.hasNext();){
         res = (ReservationDescription) it.next();
         for(Iterator itt=res.getInstances().iterator(); it.hasNext();){
           inst = (Instance) itt.next();
-          if(shellMgrs.containsKey(inst.getDnsName())){
-            continue;
+          if(remoteShellMgrs.containsKey(inst.getDnsName())){
+            activeInstances.add(inst.getInstanceId());
           }
-          term.add(inst.getInstanceId());
+          else{
+            passiveInstances.add(inst.getInstanceId());
+          }
         }
       }
-      if(!term.isEmpty()){
-        int i = 0;
-        String [] termArr = new String [term.size()];
-        for(Iterator it=term.iterator(); it.hasNext();){
-          termArr[i] = (String) it.next();
-          ++i;
-        }
+      if(!passiveInstances.isEmpty() || !activeInstances.isEmpty()){
+        String msg = "You have running EC2 AMI instance(s).\n" +
+           (passiveInstances.isEmpty()?"":"The following are not executing any GridPilot jobs: "+
+           Util.arrayToString(passiveInstances.toArray())+".\n") +
+           (activeInstances.isEmpty()?"":"The following ARE executing GridPilot jobs: "+
+           Util.arrayToString(activeInstances.toArray())+".\n" )+
+           "What do you want to do?";
+        ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+        int choice = -1;
         try{
-          ec2mgr.terminateInstances(termArr);
+          choice = confirmBox.getConfirm("Confirm terminate instances",
+              msg, new Object[] {"Terminate all", "Terminate passive", "Do nothing"});
+          if(choice==2){
+            return;
+          }
         }
-        catch (EC2Exception e) {
+        catch(Exception e){
           e.printStackTrace();
+          return;
+        }
+        if(choice==0 || choice==1){
+          int i = 0;
+          String [] termArr = new String [passiveInstances.size()];
+          for(Iterator it=passiveInstances.iterator(); it.hasNext();){
+            termArr[i] = (String) it.next();
+            ++i;
+          }
+          try{
+            ec2mgr.terminateInstances(termArr);
+          }
+          catch (EC2Exception e) {
+            e.printStackTrace();
+          }
+        }
+        if(choice==1){
+          int i = 0;
+          String [] termArr = new String [activeInstances.size()];
+          for(Iterator it=activeInstances.iterator(); it.hasNext();){
+            termArr[i] = (String) it.next();
+            ++i;
+          }
+          try{
+            ec2mgr.terminateInstances(termArr);
+          }
+          catch (EC2Exception e) {
+            e.printStackTrace();
+          }
         }
       }
     }
@@ -143,10 +184,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
     ShellMgr mgr = null;
     if(host!=null &&
         !host.startsWith("localhost") && !host.equals("127.0.0.1")){
-      if(!shellMgrs.containsKey(host)){
-        shellMgrs.put(host, new SecureShellMgr(host, USER, ec2mgr.keyFile, ""));
+      if(!remoteShellMgrs.containsKey(host)){
+        // This means it has just been booted
+        ShellMgr newShellMgr = new SecureShellMgr(host, USER, ec2mgr.keyFile, "");
+        remoteShellMgrs.put(host, newShellMgr);
+        setupRuntimeEnvironmentsSSH(newShellMgr);
       }
-      SecureShellMgr sMgr = (SecureShellMgr) shellMgrs.get(host);
+      SecureShellMgr sMgr = (SecureShellMgr) remoteShellMgrs.get(host);
       if(!sMgr.isConnected()){
         sMgr.reconnect();
       }
@@ -154,7 +198,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
     }
     else if(host!=null &&
         (host.startsWith("localhost") || host.equals("127.0.0.1"))){
-      mgr = (ShellMgr) shellMgrs.get(host);
+      mgr = (ShellMgr) remoteShellMgrs.get(host);
     }
     return mgr;
   }
@@ -204,6 +248,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
                    "to boot for job "+job.getJobDefId());
               return null;
             }
+            Debug.debug("Waiting for EC2 machine to boot...", 1);
+            Thread.sleep(5000);
           }
           hosts[i] = inst.getPrivateDnsName();
           return hosts[i];
@@ -217,12 +263,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
     return null;
   }
 
-  public void cleanupRuntimeEnvironments(String csName) {
+  //public void cleanupRuntimeEnvironments(String csName) {
     // TODO
-  }
+  //}
   
-  public void setupRuntimeEnvironments(String csName) {
+  //public void setupRuntimeEnvironments(String csName) {
     // TODO
-  }
+  //}
 
 }

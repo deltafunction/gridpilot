@@ -47,10 +47,20 @@ public class ForkComputingSystem implements ComputingSystem{
   protected String remotePullDB = null;
   protected String [] localRuntimeDBs = null;
   protected HashSet toCleanupRTEs = null;
+  protected DBPluginMgr remoteDBPluginMgr = null;
 
   public ForkComputingSystem(String _csName) throws Exception{
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
+    
+    try{
+      remoteDBPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(remotePullDB);
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: Could not load remote pull DB "+
+          remoteDBPluginMgr+". Runtime environments must be defined by hand. "+
+          e.getMessage(), 1);
+    }
     
     try{
       shellMgr = GridPilot.getClassMgr().getShellMgr(csName);
@@ -95,7 +105,7 @@ public class ForkComputingSystem implements ComputingSystem{
     runtimeDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "runtime directory");   
     if(runtimeDirectory!=null && runtimeDirectory.startsWith("~")){
-      // Expand ~. Should work for both local and remote shells...
+      // Expand ~
       if(System.getProperty("os.name").toLowerCase().startsWith("windows") &&
           shellMgr.isLocal()){
         runtimeDirectory = System.getProperty("user.home")+runtimeDirectory.substring(1);
@@ -140,16 +150,7 @@ public class ForkComputingSystem implements ComputingSystem{
    * scripts in the directory specified in the config file (runtime directory).
    */
   public void setupRuntimeEnvironments(String csName){
-    DBPluginMgr remoteDBMgr = null;
-    try{
-      remoteDBMgr = GridPilot.getClassMgr().getDBPluginMgr(remotePullDB);
-    }
-    catch(Exception e){
-      Debug.debug("WARNING: Could not load remote pull DB "+
-          remoteDBMgr+". Runtime environments must be defined by hand. "+
-          e.getMessage(), 1);
-    }
-    if(remoteDBMgr!=null){
+    if(remoteDBPluginMgr!=null){
       //Enable the pull button on the monitoring panel
       GridPilot.pullEnabled = true;
       try{
@@ -171,18 +172,15 @@ public class ForkComputingSystem implements ComputingSystem{
             e.getMessage(), 1);
         continue;
       }
-      if(i>0){
-        remoteDBMgr = null;
-      }
       try{
-        setupRuntimeEnvironments(localDBMgr, remoteDBMgr, csName);
+        setupRuntimeEnvironments(localDBMgr, i>0?null:remoteDBPluginMgr, csName, shellMgr);
       }
       catch(Exception e){
         e.printStackTrace();
       }
     }
-    if(localRuntimeDBs.length==0 && remoteDBMgr!=null){
-      setupRuntimeEnvironments(null, remoteDBMgr, csName);
+    if(localRuntimeDBs.length==0 && remoteDBPluginMgr!=null){
+      setupRuntimeEnvironments(null, remoteDBPluginMgr, csName, shellMgr);
     }
   }
 
@@ -194,20 +192,29 @@ public class ForkComputingSystem implements ComputingSystem{
    * @param remoteDBMgr Remote DBPluginMgr
    * @param cs Computing system name
    */
-  public void setupRuntimeEnvironments(DBPluginMgr localDBMgr, DBPluginMgr remoteDBMgr,
-      String cs){
+  protected void setupRuntimeEnvironments(DBPluginMgr localDBMgr, DBPluginMgr remoteDBMgr,
+      String cs, ShellMgr mgr){
 
-    if(shellMgr.isLocal() &&
+    if(mgr.isLocal() &&
         System.getProperty("os.name").toLowerCase().startsWith("linux") ||
         // remote shells always run on Linux
-        !shellMgr.isLocal()){
-      Debug.debug("Setting up runtime environments...", 3);
+        !mgr.isLocal()){
+      Debug.debug("Setting up Linux runtime environment.", 3);
       try{
+        try{
+          if(!mgr.existsFile(runtimeDirectory)){
+            mgr.mkdirs(runtimeDirectory);
+          }
+        }
+        catch(Exception e){
+          logFile.addMessage("ERROR: could not create runtimeDirectory "+runtimeDirectory+" with ShellMgr on "+mgr.getHostName(), e);
+          return;
+        }    
         String filePath = null;
         filePath = runtimeDirectory+"/"+"Linux";
-        if(!shellMgr.existsFile(filePath)){
+        if(!mgr.existsFile(filePath)){
           Debug.debug("Writing "+filePath, 3);
-          shellMgr.writeFile(filePath, "# This is a dummy runtime environment" +
+          mgr.writeFile(filePath, "# This is a dummy runtime environment" +
                 " description file. Its presence just means that we are running on Linux.", false);
         }
       }
@@ -219,11 +226,11 @@ public class ForkComputingSystem implements ComputingSystem{
     
     String name = null;
     String deps = "";
-    String cert = getCertificate(shellMgr);
+    String cert = getCertificate(mgr);
     String url = getUrl();
     
     toCleanupRTEs = new HashSet();
-    HashSet runtimes = shellMgr.listFilesRecursively(runtimeDirectory);
+    HashSet runtimes = mgr.listFilesRecursively(runtimeDirectory);
     if(runtimes!=null && runtimes.size()>0){
       String fil = null;      
       for(Iterator it=runtimes.iterator(); it.hasNext();){
@@ -236,7 +243,7 @@ public class ForkComputingSystem implements ComputingSystem{
         name = fil.substring(Util.clearTildeLocally(Util.clearFile(runtimeDirectory)).length()+1);
         if(name.toLowerCase().endsWith(".gz") || name.toLowerCase().endsWith(".tar") ||
             name.toLowerCase().endsWith(".tgz") || name.toLowerCase().endsWith(".zip") ||
-            shellMgr.isDirectory(name)){
+            mgr.isDirectory(name)){
           continue;
         }
         // Read dependencies from the file.
@@ -245,7 +252,7 @@ public class ForkComputingSystem implements ComputingSystem{
         // # ARC_RTE_DEP=<RTE name 2>
         // ...
         try{
-          String content = shellMgr.readFile(fil);
+          String content = mgr.readFile(fil);
           InputStream dis = new ByteArrayInputStream(content.getBytes());
           BufferedReader in = new BufferedReader(new InputStreamReader(dis));
           String line = null;
@@ -681,7 +688,20 @@ public class ForkComputingSystem implements ComputingSystem{
   
   public String[] getScripts(JobInfo job){
     String jobScriptFile = runDir(job)+"/"+job.getName()+commandSuffix;
-      return new String [] {jobScriptFile};
+    // In case this is not a local shell, first get the script to a local tmp file.
+    if(!shellMgr.isLocal()){
+      try{
+        File tmpFile = File.createTempFile(/*prefix*/"GridPilot-Fork-", /*suffix*/"");
+        // hack to have the file deleted on exit
+        GridPilot.tmpConfFile.put(tmpFile.getAbsolutePath(), tmpFile);
+        shellMgr.download(jobScriptFile, tmpFile.getAbsolutePath());
+        jobScriptFile = tmpFile.getAbsolutePath();
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    return new String [] {jobScriptFile};
   }
     
   public String getUserInfo(String csName){
@@ -857,6 +877,18 @@ public class ForkComputingSystem implements ComputingSystem{
             return false;
           }
           if(toCleanupRTEs.contains(rteNames[i])){
+            // RTE comes from local RTE dir (DB record written on initialization). If this shell is not local,
+            // Copy "Linux" RTE file to remote host. Others are problematic as there is no way to
+            // tell where all their files are from the setup script.
+            // DROPPED: Better to switch completely to Janitor RTEs.
+            /*if(!shellMgr.isLocal() && rteName.equalsIgnoreCase("Linux")){
+              try{
+                shellMgr.upload(runtimeDirectory+"/"+rteName, runtimeDirectory+"/"+rteName);
+              }
+              catch(Exception e){
+                e.printStackTrace();
+              }
+            }*/
             continue;
           }
           rteRecord = dbPluginMgr.getRuntimeEnvironment(rteId);
