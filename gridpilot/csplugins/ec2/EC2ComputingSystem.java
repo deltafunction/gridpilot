@@ -241,6 +241,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
           // Wait for the machine to boot
           long startMillis = Util.getDateInMilliSeconds(null);
           long nowMillis = Util.getDateInMilliSeconds(null);
+          List reservationList = null;
+          List instanceList = null;
+          Instance instance = null;
           while(!inst.isRunning()){
             nowMillis = Util.getDateInMilliSeconds(null);
             if(nowMillis-startMillis>MAX_BOOT_WAIT){
@@ -248,10 +251,30 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
                    "to boot for job "+job.getJobDefId());
               return null;
             }
-            Debug.debug("Waiting for EC2 machine to boot...", 1);
+            reservationList = ec2mgr.listReservations();
+            instanceList = null;
+            instance = null;
+            ReservationDescription reservation = null;
+            Debug.debug("Finding reservations... ", 1);
+            for(Iterator it=reservationList.iterator(); it.hasNext();){
+              reservation = (ReservationDescription) it.next();
+              instanceList = ec2mgr.listInstances(reservation);
+              // "Reservation ID", "Owner", "Instance ID", "AMI", "State", "Public DNS", "Key"
+              for(Iterator itt=instanceList.iterator(); itt.hasNext();){
+                instance = (Instance) itt.next();
+                if(reservation.getReservationId().equalsIgnoreCase(reservation.getReservationId())){
+                  inst = instance;
+                }
+              }
+            }
+            Debug.debug("Waiting for EC2 machine to boot... "+inst.getState()+":"+inst.getStateCode(), 1);
+            if(inst.isRunning() || inst.getState().equalsIgnoreCase("running")){
+              break;
+            }
             Thread.sleep(5000);
           }
-          hosts[i] = inst.getPrivateDnsName();
+          hosts[i] = inst.getDnsName();
+          Debug.debug("Returning host "+inst.getState()+hosts[i], 1);
           return hosts[i];
         }
       }
