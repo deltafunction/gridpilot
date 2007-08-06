@@ -221,7 +221,7 @@ public class GLiteComputingSystem implements ComputingSystem{
             if(rteVos!=null){
               for(int j=0; j<rteVos.length; ++j){
                 Debug.debug("checking "+rte.toLowerCase()+" <-> "+"vo-"+rteVos[j].toLowerCase(), 3);
-                if(rteVos[j]!=null &&
+                if(!rte.toLowerCase().startsWith("vo-") || rteVos[j]!=null &&
                     rte.toLowerCase().startsWith("vo-"+rteVos[j].toLowerCase())){
                   runtimes.add(rte);
                   continue;

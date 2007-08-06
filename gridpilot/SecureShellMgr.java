@@ -137,6 +137,7 @@ public class SecureShellMgr implements ShellMgr{
           if(up==null || rep>0){
             up = GridPilot.userPwd("Shell login with password on "+host, new String [] {"User", "Password", "Host"},
                 new String [] {user, password, host});
+            keyFile = null;
             if(up==null){
               return;
             }
@@ -159,6 +160,15 @@ public class SecureShellMgr implements ShellMgr{
           }
         }
         try{
+          if(keyFile!=null){
+            try{
+              jsch.addIdentity(keyFile.getAbsolutePath(), (keyPassphrase==null?keyPassphrase:""));
+            }
+            catch(Exception e){
+              logFile.addMessage("Could not load SSH private key.", e);
+              up = null;
+            }
+          }
           session = jsch.getSession(user, host, port);
           session.setHost(host);
           if(password!=null && !password.equals("")){
