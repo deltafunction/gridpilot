@@ -34,10 +34,10 @@ public class EC2Mgr {
   private String owner = null;
   private String runDir = null;
 
-  private static String GROUP_NAME = "GridPilot";
-  private static String KEY_NAME = "GridPilot_EC2_TMP_KEY";
+  public final static String GROUP_NAME = "GridPilot";
+  public final static String KEY_NAME = "GridPilot_EC2_TMP_KEY";
   
-  protected File keyFile = null;
+  private File keyFile = null;
 
   public EC2Mgr(String accessKey, String secretKey, String _subnet, String _owner,
       String _runDir) {    
@@ -109,7 +109,7 @@ public class EC2Mgr {
   /**
    * If no instances are running, delete keypair.
    */
-  protected void exit(){
+  public void exit(){
     List keypairs;
     try{
       keypairs = listKeyPairs();
@@ -175,6 +175,13 @@ public class EC2Mgr {
     catch(Exception e){
     }
   }
+  
+  /**
+   * @return the file used to store the unencrypted secret key.
+   */
+  public File getKeyFile(){
+    return keyFile;
+  }
 
   /**
    * First find out if the keypair GridPilot_EC2_TMP_KEY exists and we have
@@ -193,7 +200,7 @@ public class EC2Mgr {
    * @throws IOException 
    * @throws FileNotFoundException 
    */
-  private KeyPairInfo getKey() throws Exception{
+  public KeyPairInfo getKey() throws Exception{
     List keypairs = listKeyPairs();
     KeyPairInfo keyInfo = null;
     KeyPairInfo tmpInfo = null;
@@ -224,6 +231,11 @@ public class EC2Mgr {
       Debug.debug("Downloading private key from "+downloadUrl, 1);
       try{
         TransferControl.download(downloadUrl, keyFile, null);
+        if(keyFile.exists()){
+          Debug.debug("Loading downloaded keypair "+KEY_NAME, 2);
+          return new KeyPairInfo(KEY_NAME, keyInfo.getKeyFingerprint(),
+              LocalStaticShellMgr.readFile(keyFile.getAbsolutePath()));
+        }
       }
       catch(Exception e){
         logFile.addMessage("WARNING: could not download private key from "+downloadUrl, e);

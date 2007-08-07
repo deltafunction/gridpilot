@@ -420,7 +420,7 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
   private void copyKeyFileToClipBoard(){
     int row = instanceTable.getSelectedRow();
     String name = (String) instanceTable.getUnsortedValueAt(row, 6);
-    name = ec2mgr.keyFile.getPath();
+    name = ec2mgr.getKeyFile().getPath();
     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
     StringSelection stringSelection = new StringSelection(name);
     clipboard.setContents(stringSelection, this);
