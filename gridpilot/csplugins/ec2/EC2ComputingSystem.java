@@ -88,7 +88,92 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
     remoteShellMgrs = new HashMap();
   }
   
-  // Halt machines with no running jobs
+
+  // Discover running virtual machines
+  // TODO
+  private void discoverInstances(){
+    List reservations;
+    try{
+      reservations = ec2mgr.listReservations();
+    }
+    catch (EC2Exception e1){
+      e1.printStackTrace();
+      return;
+    }
+    ReservationDescription res = null;
+    Instance inst = null;
+    ArrayList passiveInstances = new ArrayList();
+    ArrayList activeInstances = new ArrayList();
+    if(reservations!=null){
+      Debug.debug("No reservations found.", 2);
+      return;
+    }
+    for(Iterator it=reservations.iterator(); it.hasNext();){
+      res = (ReservationDescription) it.next();
+      Debug.debug("checking reservation"+res.getReservationId(), 2);
+      for(Iterator itt=res.getInstances().iterator(); itt.hasNext();){
+        inst = (Instance) itt.next();
+        Debug.debug("checking instance "+inst.getDnsName(), 2);
+        if(remoteShellMgrs.containsKey(inst.getDnsName())){
+          activeInstances.add(inst.getInstanceId());
+        }
+        else{
+          passiveInstances.add(inst.getInstanceId());
+        }
+      }
+    }
+    if(!passiveInstances.isEmpty() || !activeInstances.isEmpty()){
+      String msg = "You have running EC2 AMI instance(s).\n" +
+         (passiveInstances.isEmpty()?"":"The following are not executing any GridPilot jobs: "+
+         Util.arrayToString(passiveInstances.toArray())+".\n") +
+         (activeInstances.isEmpty()?"":"The following ARE executing GridPilot jobs: "+
+         Util.arrayToString(activeInstances.toArray())+".\n" )+
+         "What do you want to do?";
+      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+      int choice = -1;
+      try{
+        choice = confirmBox.getConfirm("Confirm terminate instances",
+            msg, new Object[] {"Terminate all", "Terminate passive", "Do nothing"});
+        if(choice==2){
+          return;
+        }
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        return;
+      }
+      if(choice==0 || choice==1){
+        int i = 0;
+        String [] termArr = new String [passiveInstances.size()];
+        for(Iterator it=passiveInstances.iterator(); it.hasNext();){
+          termArr[i] = (String) it.next();
+          ++i;
+        }
+        try{
+          ec2mgr.terminateInstances(termArr);
+        }
+        catch (EC2Exception e) {
+          e.printStackTrace();
+        }
+      }
+      if(choice==1){
+        int i = 0;
+        String [] termArr = new String [activeInstances.size()];
+        for(Iterator it=activeInstances.iterator(); it.hasNext();){
+          termArr[i] = (String) it.next();
+          ++i;
+        }
+        try{
+          ec2mgr.terminateInstances(termArr);
+        }
+        catch (EC2Exception e) {
+          e.printStackTrace();
+        }
+      }
+    }
+  }
+  
+  // Halt virtual machines with no running jobs
   private void haltNonBusy(){
     List reservations;
     try{
@@ -103,65 +188,69 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
     ArrayList passiveInstances = new ArrayList();
     ArrayList activeInstances = new ArrayList();
     if(reservations!=null){
-      for(Iterator it=reservations.iterator(); it.hasNext();){
-        res = (ReservationDescription) it.next();
-        for(Iterator itt=res.getInstances().iterator(); it.hasNext();){
-          inst = (Instance) itt.next();
-          if(remoteShellMgrs.containsKey(inst.getDnsName())){
-            activeInstances.add(inst.getInstanceId());
-          }
-          else{
-            passiveInstances.add(inst.getInstanceId());
-          }
+      Debug.debug("No reservations found.", 2);
+      return;
+    }
+    for(Iterator it=reservations.iterator(); it.hasNext();){
+      res = (ReservationDescription) it.next();
+      Debug.debug("checking reservation"+res.getReservationId(), 2);
+      for(Iterator itt=res.getInstances().iterator(); itt.hasNext();){
+        inst = (Instance) itt.next();
+        Debug.debug("checking instance "+inst.getDnsName(), 2);
+        if(remoteShellMgrs.containsKey(inst.getDnsName())){
+          activeInstances.add(inst.getInstanceId());
+        }
+        else{
+          passiveInstances.add(inst.getInstanceId());
         }
       }
-      if(!passiveInstances.isEmpty() || !activeInstances.isEmpty()){
-        String msg = "You have running EC2 AMI instance(s).\n" +
-           (passiveInstances.isEmpty()?"":"The following are not executing any GridPilot jobs: "+
-           Util.arrayToString(passiveInstances.toArray())+".\n") +
-           (activeInstances.isEmpty()?"":"The following ARE executing GridPilot jobs: "+
-           Util.arrayToString(activeInstances.toArray())+".\n" )+
-           "What do you want to do?";
-        ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-        int choice = -1;
-        try{
-          choice = confirmBox.getConfirm("Confirm terminate instances",
-              msg, new Object[] {"Terminate all", "Terminate passive", "Do nothing"});
-          if(choice==2){
-            return;
-          }
-        }
-        catch(Exception e){
-          e.printStackTrace();
+    }
+    if(!passiveInstances.isEmpty() || !activeInstances.isEmpty()){
+      String msg = "You have running EC2 AMI instance(s).\n" +
+         (passiveInstances.isEmpty()?"":"The following are not executing any GridPilot jobs: "+
+         Util.arrayToString(passiveInstances.toArray())+".\n") +
+         (activeInstances.isEmpty()?"":"The following ARE executing GridPilot jobs: "+
+         Util.arrayToString(activeInstances.toArray())+".\n" )+
+         "What do you want to do?";
+      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+      int choice = -1;
+      try{
+        choice = confirmBox.getConfirm("Confirm terminate instances",
+            msg, new Object[] {"Terminate all", "Terminate passive", "Do nothing"});
+        if(choice==2){
           return;
         }
-        if(choice==0 || choice==1){
-          int i = 0;
-          String [] termArr = new String [passiveInstances.size()];
-          for(Iterator it=passiveInstances.iterator(); it.hasNext();){
-            termArr[i] = (String) it.next();
-            ++i;
-          }
-          try{
-            ec2mgr.terminateInstances(termArr);
-          }
-          catch (EC2Exception e) {
-            e.printStackTrace();
-          }
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        return;
+      }
+      if(choice==0 || choice==1){
+        int i = 0;
+        String [] termArr = new String [passiveInstances.size()];
+        for(Iterator it=passiveInstances.iterator(); it.hasNext();){
+          termArr[i] = (String) it.next();
+          ++i;
         }
-        if(choice==1){
-          int i = 0;
-          String [] termArr = new String [activeInstances.size()];
-          for(Iterator it=activeInstances.iterator(); it.hasNext();){
-            termArr[i] = (String) it.next();
-            ++i;
-          }
-          try{
-            ec2mgr.terminateInstances(termArr);
-          }
-          catch (EC2Exception e) {
-            e.printStackTrace();
-          }
+        try{
+          ec2mgr.terminateInstances(termArr);
+        }
+        catch (EC2Exception e) {
+          e.printStackTrace();
+        }
+      }
+      if(choice==1){
+        int i = 0;
+        String [] termArr = new String [activeInstances.size()];
+        for(Iterator it=activeInstances.iterator(); it.hasNext();){
+          termArr[i] = (String) it.next();
+          ++i;
+        }
+        try{
+          ec2mgr.terminateInstances(termArr);
+        }
+        catch (EC2Exception e) {
+          e.printStackTrace();
         }
       }
     }

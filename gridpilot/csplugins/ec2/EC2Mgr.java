@@ -147,7 +147,7 @@ public class EC2Mgr {
     if(reservations!=null){
       for(Iterator it=reservations.iterator(); it.hasNext();){
         res = (ReservationDescription) it.next();
-        for(Iterator itt=res.getInstances().iterator(); it.hasNext();){
+        for(Iterator itt=res.getInstances().iterator(); itt.hasNext();){
           inst = (Instance) itt.next();
           if(inst.getKeyName().equals(KEY_NAME)){
             // The key is used, don't do anything
@@ -235,7 +235,7 @@ public class EC2Mgr {
       if(reservations!=null){
         for(Iterator it=reservations.iterator(); it.hasNext();){
           res = (ReservationDescription) it.next();
-          for(Iterator itt=res.getInstances().iterator(); it.hasNext();){
+          for(Iterator itt=res.getInstances().iterator(); itt.hasNext();){
             inst = (Instance) itt.next();
             if(inst.getKeyName().equals(KEY_NAME)){
               throw new EC2Exception("The keypair "+KEY_NAME+" is in use by the instance "+
