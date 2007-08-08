@@ -37,8 +37,7 @@ public class SecureShellMgr implements ShellMgr{
   
   private static final int MAX_SSH_LOGIN_ATTEMPTS = 3;
 
-  public SecureShellMgr(String _host, String _user,
-      File _keyFile, String _keyPassphrase){
+  public SecureShellMgr(String _host, String _user, File _keyFile, String _keyPassphrase){
     keyFile = _keyFile;
     keyPassphrase = _keyPassphrase;
     BasicConfigurator.configure();
@@ -583,7 +582,7 @@ public class SecureShellMgr implements ShellMgr{
       catch(IOException e){
         Debug.debug(e.getMessage(), 2);
       }
-      name = stdOut.toString()+name.substring(1);
+      name = stdOut.toString()+"/"+name;
     }
     if(name.startsWith("~")){
       StringBuffer stdOut = new StringBuffer();
