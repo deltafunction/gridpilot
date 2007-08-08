@@ -131,7 +131,7 @@ public class EC2Mgr {
     if(keyInfo==null){
       return;
     }
-    File keyFile = new File(runDir, KEY_NAME+"-"+keyInfo.getKeyFingerprint().replaceAll(":", ""));
+    keyFile = new File(runDir, KEY_NAME+"-"+keyInfo.getKeyFingerprint().replaceAll(":", ""));
     String downloadUrl = GridPilot.gridHomeURL + (GridPilot.gridHomeURL.endsWith("/")?"":"/")+
       keyFile.getName();
     List reservations;
@@ -178,6 +178,8 @@ public class EC2Mgr {
   
   /**
    * @return the file used to store the unencrypted secret key.
+   * Does not trigger loading of a stored key. To achieve this, first
+   * call getKey().
    */
   public File getKeyFile(){
     return keyFile;
@@ -219,7 +221,7 @@ public class EC2Mgr {
         return keyInfo;
       }
       // See if the corresponding file is there locally
-      File keyFile = new File(runDir, KEY_NAME+"-"+keyInfo.getKeyFingerprint().replaceAll(":", ""));
+      keyFile = new File(runDir, KEY_NAME+"-"+keyInfo.getKeyFingerprint().replaceAll(":", ""));
       if(keyFile.exists()){
         Debug.debug("Loading existing keypair "+KEY_NAME, 2);
         return new KeyPairInfo(KEY_NAME, keyInfo.getKeyFingerprint(),

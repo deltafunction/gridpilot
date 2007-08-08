@@ -461,6 +461,13 @@ public class ForkComputingSystem implements ComputingSystem{
   
   protected void updateStatus(JobInfo job, ShellMgr shellMgr){
     
+    if(shellMgr==null){
+      // If there is no ShellMgr, the job was probably started in another session...
+      job.setJobStatus("Error");
+      job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+      return;
+    }
+    
     // Host.
     job.setHost(shellMgr.getHostName());
 
@@ -609,7 +616,13 @@ public class ForkComputingSystem implements ComputingSystem{
   }
 
   public void exit(){
-    cleanupRuntimeEnvironments(csName);
+    try{
+      cleanupRuntimeEnvironments(csName);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      Debug.debug("WARNING: could not cleanup runtime environments.", 1);
+    }
   }
   
   public void cleanupRuntimeEnvironments(String csName){

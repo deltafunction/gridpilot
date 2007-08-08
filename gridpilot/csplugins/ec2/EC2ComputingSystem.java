@@ -106,7 +106,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
       e1.printStackTrace();
       return;
     }
-    if(reservations!=null){
+    if(reservations==null){
       Debug.debug("No reservations found.", 2);
       return;
     }
@@ -118,6 +118,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
       Debug.debug("checking reservation"+res.getReservationId(), 2);
       for(Iterator itt=res.getInstances().iterator(); itt.hasNext();){
         inst = (Instance) itt.next();
+        if(inst.isShuttingDown() || inst.isTerminated()){
+          continue;
+        }
         Debug.debug("checking instance "+inst.getDnsName(), 2);
         // If we have no key for the host, we cannot use it.
         if(inst.getKeyName().equalsIgnoreCase(EC2Mgr.KEY_NAME)){
@@ -129,8 +132,11 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
       return;
     }
     String msg = "You have "+instances.size()+" running EC2 AMI instance(s).\n" +
-    "Do you want to include them in the pool of compute hosts?";
+       "Do you want to include it/them in the pool of compute hosts?";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    if(GridPilot.splash!=null){
+      GridPilot.splash.hide();
+    }
     int choice = -1;
     try{
       choice = confirmBox.getConfirm("Confirm inclusion of hosts",
@@ -168,7 +174,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
       e1.printStackTrace();
       return;
     }
-    if(reservations!=null){
+    if(reservations==null){
       Debug.debug("No reservations found.", 2);
       return;
     }
@@ -181,8 +187,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
       Debug.debug("checking reservation"+res.getReservationId(), 2);
       for(Iterator itt=res.getInstances().iterator(); itt.hasNext();){
         inst = (Instance) itt.next();
+        if(inst.isShuttingDown() || inst.isTerminated()){
+          continue;
+        }
         Debug.debug("checking instance "+inst.getDnsName(), 2);
-        if(remoteShellMgrs.containsKey(inst.getDnsName())){
+        if(remoteShellMgrs.containsKey(inst.getDnsName()) &&
+            remoteShellMgrs.get(inst.getDnsName())!=null &&
+            ((SecureShellMgr) remoteShellMgrs.get(inst.getDnsName())).getJobsNumber()>0){
           activeInstances.add(inst.getInstanceId());
         }
         else{
@@ -194,17 +205,23 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
       return;
     }
     String msg = "You have running EC2 AMI instance(s).\n" +
-    (passiveInstances.isEmpty()?"":"The following are not executing any GridPilot jobs: "+
-    Util.arrayToString(passiveInstances.toArray())+".\n") +
-    (activeInstances.isEmpty()?"":"The following ARE executing GridPilot jobs: "+
-    Util.arrayToString(activeInstances.toArray())+".\n" )+
+    (passiveInstances.isEmpty()?"":"The following are not executing any GridPilot jobs:\n"+
+    Util.arrayToString(passiveInstances.toArray(), ",\n")+".\n") +
+    (activeInstances.isEmpty()?"":"The following are executing GridPilot jobs:\n"+
+    Util.arrayToString(activeInstances.toArray(), ",\n")+".\n" )+
     "What do you want to do?";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = -1;
     try{
-      choice = confirmBox.getConfirm("Confirm terminate instances",
-          msg, new Object[] {"Terminate all", "Terminate passive", "Do nothing"});
-      if(choice==2){
+      if(passiveInstances.isEmpty() || activeInstances.isEmpty()){
+        choice = confirmBox.getConfirm("Confirm terminate instances",
+            msg, new Object[] {"Do nothing", "Terminate all"});
+      }
+      else{
+        choice = confirmBox.getConfirm("Confirm terminate instances",
+            msg, new Object[] {"Do nothing", "Terminate all", "Terminate passive"});
+      }
+      if(choice==0){
         return;
       }
     }
@@ -212,7 +229,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
       e.printStackTrace();
       return;
     }
-    if(choice==0 || choice==1){
+    if(choice==1 || choice==2){
       int i = 0;
       String [] termArr = new String [passiveInstances.size()];
       for(Iterator it=passiveInstances.iterator(); it.hasNext();){
@@ -243,7 +260,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
   }
 
   public void exit() {
-    super.exit();
+    try{
+      super.exit();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
     haltNonBusy();
     ec2mgr.exit();
   }
@@ -257,7 +279,34 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
    */
   protected ShellMgr getShellMgr(String host){
     ShellMgr mgr = null;
-    if(host!=null &&
+    /*
+     * If there is no keyFile set, this is a VM reused from a previous GridPilot session.
+     * If the secret key corresponding to the public key currently uploaded with EC2 is
+     * available either on the hard disk or in the grid homedir, ec2mgr.getKey() will
+     * set the keyFile.
+     * If this failes, we cannot use this host and it is dropped from remoteShellMgrs and
+     * hosts.
+     */
+    if(ec2mgr.getKeyFile()==null){
+      try{
+        ec2mgr.getKey();
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    if(ec2mgr.getKeyFile()==null){
+      remoteShellMgrs.remove(host);
+      for(int i=0; i<hosts.length; ++i){
+        if(hosts[i].equals(host)){
+          hosts[i] = null;
+          break;
+        }
+      }
+    }
+    Debug.debug("host: "+host+"-->"+remoteShellMgrs.get(host)+"-->"+ec2mgr.getKeyFile(), 2);
+    Debug.debug("remoteShellMgrs: "+Util.arrayToString(remoteShellMgrs.keySet().toArray()), 2);
+    if(host!=null && !host.equals("") &&
         !host.startsWith("localhost") && !host.equals("127.0.0.1")){
       if(!remoteShellMgrs.containsKey(host)){
         // This means the VM has just been booted
@@ -268,8 +317,11 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
       else if(remoteShellMgrs.get(host)==null){
         // This means the VM was running before starting
         // GridPilot and we need to reconnect. RTEs should already be setup.
+        // -- well, we do it anyway, just in case
         ShellMgr newShellMgr = new SecureShellMgr(host, USER, ec2mgr.getKeyFile(), "");
+        Debug.debug("Added ShellMgr on already running host "+newShellMgr.getHostName(), 2);
         remoteShellMgrs.put(host, newShellMgr);
+        setupRuntimeEnvironmentsSSH(newShellMgr);
       }
       SecureShellMgr sMgr = (SecureShellMgr) remoteShellMgrs.get(host);
       if(!sMgr.isConnected()){
@@ -277,7 +329,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
       }
       mgr = sMgr;
     }
-    else if(host!=null &&
+    else if(host!=null && !host.startsWith("") &&
         (host.startsWith("localhost") || host.equals("127.0.0.1"))){
       mgr = (ShellMgr) remoteShellMgrs.get(host);
     }
@@ -355,7 +407,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
             Thread.sleep(5000);
           }
           hosts[i] = inst.getDnsName();
-          Debug.debug("Returning host "+inst.getState()+hosts[i], 1);
+          Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
           return hosts[i];
         }
       }
