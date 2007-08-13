@@ -626,6 +626,9 @@ public class ForkComputingSystem implements ComputingSystem{
   }
   
   public void cleanupRuntimeEnvironments(String csName){
+    if(toCleanupRTEs==null){
+      return;
+    }
     String runtimeName = null;
     String myCSName = null;
     String initText = null;
