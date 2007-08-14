@@ -18,6 +18,14 @@ import javax.naming.TimeLimitExceededException;
 
 import org.globus.util.GlobusURL;
 
+/**
+ * This class supports looking up a KnowARC runtime environment (RTE)
+ * in a catalog in RDF format, downloading and installing the software,
+ * using a UNIX shell.
+ * 
+ * Supported RTE formats: tar.gz, img.gz (GridPilot extension).
+ * 
+ */
 public class RteInstaller {
   
   private String url;
@@ -38,6 +46,10 @@ public class RteInstaller {
     logFile = GridPilot.getClassMgr().getLogFile();
   }
   
+  /**
+   * Download and install the RTE.
+   * @throws Exception
+   */
   public void install() throws Exception{
     if(shellMgr==null){
       throw new IOException("No shell available; cannot install");
@@ -135,13 +147,20 @@ public class RteInstaller {
     }
   }
   
-  private void localDownload(String url, String tarBallName, File downloadDir) throws Exception{
+  /**
+   * Download file from remote location to local directory.
+   * @param url URL of the file to download
+   * @param fileName name of local file
+   * @param downloadDir name of local directory
+   * @throws Exception
+   */
+  private void localDownload(String url, String fileName, File downloadDir) throws Exception{
     // Construct the download transfer vector (one transfer).
     Vector transferVector = new Vector();
     TransferInfo transfer = new TransferInfo(
               new GlobusURL(url),
               new GlobusURL("file:///"+(new File(downloadDir.getAbsolutePath(),
-                  tarBallName)).getAbsolutePath()));
+                  fileName)).getAbsolutePath()));
     transferVector.add(transfer);
     // Carry out the transfers.
     GridPilot.getClassMgr().getTransferControl().queue(transferVector);
