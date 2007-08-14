@@ -2086,6 +2086,10 @@ public class Util{
     if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
       return new String []{table};
     }
+    table = sql.replaceFirst("^(?i)(?s)CREATE TABLE (\\S+)\\s*\\(.*$", "$1");
+    if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
+      return new String []{table};
+    }
     return null;
   }
 
