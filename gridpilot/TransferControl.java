@@ -1586,6 +1586,10 @@ public class TransferControl{
     return true;
   }
 
+  /**
+   * Method for copying output files from the run directory of the job to a local or
+   * remote destination, using the ShellMgr of the job.
+   */
   public static boolean copyOutputFile(String src, String dest,
       ShellMgr shellMgr, String error, LogFile logFile){
     
@@ -1693,6 +1697,12 @@ public class TransferControl{
         Debug.debug(error, 2);
         logFile.addMessage(error);
         return false;
+      }
+      try{
+        // clean up the tmp file (is also done on exit, just in case)
+        LocalStaticShellMgr.deleteFile(tempFileName);
+      }
+      catch(Exception e){
       }
     }
     // relative paths or copying files (via ssh) to a Windows server is not supported
