@@ -72,6 +72,7 @@ public class MySQLDatabase extends DBCache implements Database {
   private String socketTimeout = null;
   private HashMap tableFieldNames = new HashMap();
   private boolean stop = false;
+  private ConfigFile configFile = null;
   
   private static String MAX_CONNECTIONS = "15";
 
@@ -87,22 +88,22 @@ public class MySQLDatabase extends DBCache implements Database {
     connectTimeout = "0";
     socketTimeout = "0";
     
-    String _connectTimeout = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "connect timeout");
+    configFile = GridPilot.getClassMgr().getConfigFile();
+    
+    String _connectTimeout = configFile.getValue(dbName, "connect timeout");
     if(_connectTimeout!=null && !_connectTimeout.equals("")){
       connectTimeout = _connectTimeout;
     }
-    String _socketTimeout = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "socket timeout");
+    String _socketTimeout = configFile.getValue(dbName, "socket timeout");
     if(_socketTimeout!=null && !_socketTimeout.equals("")){
       socketTimeout = _socketTimeout;
     }
 
-    if(GridPilot.getClassMgr().getConfigFile().getValue(dbName, "t_pfn field names")!=
-      null){
+    if(configFile.getValue(dbName, "t_pfn field names")!=null){
       fileCatalog = true;
     }
     
-    if(GridPilot.getClassMgr().getConfigFile().getValue(dbName, "jobDefinition field names")!=
-      null){
+    if(configFile.getValue(dbName, "jobDefinition field names")!=null){
       jobRepository = true;
     }
     
@@ -134,7 +135,7 @@ public class MySQLDatabase extends DBCache implements Database {
         dbName = dbName.substring(1);
         database = database + dbName;
       }
-      String useCachingStr = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "cache search results");
+      String useCachingStr = configFile.getValue(dbName, "cache search results");
       if(useCachingStr==null || useCachingStr.equalsIgnoreCase("")){
         useCaching = false;
       }
@@ -149,6 +150,7 @@ public class MySQLDatabase extends DBCache implements Database {
         Util.activateSsl(globusCred);
       }
       catch(Exception e){
+        e.printStackTrace();
         Debug.debug("ERROR: "+e.getMessage(), 1);
         return;
       }
@@ -259,15 +261,20 @@ public class MySQLDatabase extends DBCache implements Database {
     return "";
   }
   
+  /**
+   * Check if the given table has field names defined in the config file.
+   * @param table
+   * @return
+   */
   private boolean checkTable(String table){
-    ConfigFile tablesConfig = GridPilot.getClassMgr().getConfigFile();
     String [] fields = null;
     //String [] fieldTypes = null;
     try{
-      fields = Util.split(tablesConfig.getValue(dbName, table+" field names"), ",");
+      fields = Util.split(configFile.getValue(dbName, table+" field names"), ",");
       //fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
     }
     catch(Exception e){
+      //e.printStackTrace();
     }
     if(fields==null /*|| fieldTypes==null*/){
       return false;
@@ -297,12 +304,12 @@ public class MySQLDatabase extends DBCache implements Database {
   private boolean makeTable(String table){
     
     if(!checkTable(table)){
+      GridPilot.getClassMgr().getLogFile().addMessage("ERROR: Fields for table "+table+" not defined in configuration file.");
       return false;
     }
     
-    ConfigFile tablesConfig = GridPilot.getClassMgr().getConfigFile();
-    String [] fields = Util.split(tablesConfig.getValue(dbName, table+" field names"), ",");
-    String [] fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
+    String [] fields = Util.split(configFile.getValue(dbName, table+" field names"), ",");
+    String [] fieldTypes = Util.split(configFile.getValue(dbName, table+" field types"), ",");
     if(fields==null || fieldTypes==null){
       return false;
     }
@@ -318,7 +325,6 @@ public class MySQLDatabase extends DBCache implements Database {
     }
     sql += ")";
     sql = sql.replaceAll(";", ",");
-    Debug.debug(sql, 2);
     boolean execok = true;
     try{
       Debug.debug("Creating table. "+sql, 1);
@@ -385,9 +391,7 @@ public class MySQLDatabase extends DBCache implements Database {
         ret = new String [] {refFields[1], nameField, "url"};
        }
       else{
-        ret = Util.split(
-            GridPilot.getClassMgr().getConfigFile().getValue(dbName, "file field names"),
-            ", ");
+        ret = Util.split(configFile.getValue(dbName, "file field names"), ", ");
       }
       tableFieldNames.put(table, ret);
       return ret;
@@ -407,8 +411,8 @@ public class MySQLDatabase extends DBCache implements Database {
       ret[i-1] = md.getColumnName(i);
     }
     conn.close();
-    System.out.println("caching and returning fields for "+dbName+
-        "."+table+": "+Util.arrayToString(ret));
+    Debug.debug("caching and returning fields for "+dbName+
+        "."+table+": "+Util.arrayToString(ret), 3);
     tableFieldNames.put(table, ret);
     return ret;
   }

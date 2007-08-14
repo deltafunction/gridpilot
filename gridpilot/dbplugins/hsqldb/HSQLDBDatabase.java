@@ -74,12 +74,14 @@ public class HSQLDBDatabase extends DBCache implements Database{
     passwd = _passwd;
     dbName = _dbName;
     
-    if(GridPilot.getClassMgr().getConfigFile().getValue(dbName, "t_pfn field names")!=
+    configFile = GridPilot.getClassMgr().getConfigFile();
+
+    if(configFile.getValue(dbName, "t_pfn field names")!=
       null){
       fileCatalog = true;
     }
 
-    if(GridPilot.getClassMgr().getConfigFile().getValue(dbName, "jobDefinition field names")!=
+    if(configFile.getValue(dbName, "jobDefinition field names")!=
       null){
       jobRepository = true;
     }
@@ -88,8 +90,6 @@ public class HSQLDBDatabase extends DBCache implements Database{
       database = database.replaceFirst("/~",
           System.getProperty("user.home").replaceAll("\\\\", "/").replaceFirst("^(\\w):/", "/$1:/"));
     }
-    
-    configFile = GridPilot.getClassMgr().getConfigFile();
 
     
     boolean showDialog = true;
@@ -271,11 +271,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
   
   private boolean checkTable(String table){
-    ConfigFile tablesConfig = GridPilot.getClassMgr().getConfigFile();
     String [] fields = null;
     //String [] fieldTypes = null;
     try{
-      fields = Util.split(tablesConfig.getValue(dbName, table+" field names"), ",");
+      fields = Util.split(configFile.getValue(dbName, table+" field names"), ",");
       //fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
     }
     catch(Exception e){
@@ -290,7 +289,6 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
 
   private void setFieldNames() throws SQLException {
-    configFile = GridPilot.getClassMgr().getConfigFile();
     datasetFields = getFieldNames("dataset");
     String [] dsFieldTypes = Util.split(configFile.getValue(dbName, "dataset field types"), ",");
     for(int i=0; i<datasetFields.length; ++i){
@@ -469,9 +467,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         return new String [] {refFields[1], nameField, "url"};
       }
       else{
-        return Util.split(
-            GridPilot.getClassMgr().getConfigFile().getValue(dbName, "file field names"),
-            ", ");
+        return Util.split(configFile.getValue(dbName, "file field names"), ", ");
       }
     }
     else if(!checkTable(table)){
