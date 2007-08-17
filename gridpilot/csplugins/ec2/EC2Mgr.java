@@ -40,8 +40,9 @@ public class EC2Mgr {
   private File keyFile = null;
 
   public EC2Mgr(String accessKey, String secretKey, String _subnet, String _owner,
-      String _runDir) {    
-    ec2 = new Jec2(accessKey, secretKey);
+      String _runDir) {
+    
+    ec2 = new Jec2(accessKey, secretKey, /*isSecure*/true);
     subnet = _subnet;
     owner = _owner;
     runDir = _runDir;

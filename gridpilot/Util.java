@@ -1453,6 +1453,9 @@ public class Util{
     // hack to have the diretory deleted on exit
     GridPilot.tmpConfFile.put(truststorePath, new File(truststorePath));
 
+    // Add the default CAs of Java
+    loadDefaultTrustStore(tmpPwd.toCharArray(), truststorePath);
+    
     String caCertsTmpdir = GridPilot.getClassMgr().getCaCertsTmpDir();
     String fileName = null;
     File caCertFile = null;
@@ -1515,15 +1518,51 @@ public class Util{
     out.close();
   }
 
+  /**
+   * Copies over the contents of the default truststore (cacerts)
+   * to a new rw location.
+   * @param password
+   * @param trustStorePath
+   * @throws KeyStoreException
+   * @throws FileNotFoundException
+   * @throws IOException
+   * @throws CertificateException
+   * @throws NoSuchAlgorithmException
+   */
+  private static void loadDefaultTrustStore(char [] password, String trustStorePath)
+      throws KeyStoreException, FileNotFoundException,
+      IOException, CertificateException, NoSuchAlgorithmException{
+     KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+     // Load the truststore contents
+     Debug.debug("Opening key file "+System.getProperty("java.home") + File.separator + "lib" +
+         File.separator + "security" + File.separator + "cacerts", 3);
+     FileInputStream in = new FileInputStream(System.getProperty("java.home") + File.separator + "lib" +
+        File.separator + "security" + File.separator + "cacerts");
+     Debug.debug("available "+in.available(), 3);
+     if(in.available()==0){ 
+       keystore.load(null, null);
+     }
+     else{ 
+       keystore.load(in, null);
+     }
+     in.close();
+     // Save the new truststore contents
+     FileOutputStream out = new FileOutputStream(trustStorePath);
+     keystore.store(out, password);
+     out.close();
+   }
+
+
+  
   private static void addToTrustStore(char [] password, String alias,
-     Certificate cert, String keyFilePath)
+     Certificate cert, String trustStorePath)
      throws KeyStoreException, FileNotFoundException,
      IOException, CertificateException, NoSuchAlgorithmException{
     KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
-    // Load the keystore contents
+    // Load the truststore contents
     Debug.debug("Opening key file", 3);
-    FileInputStream in = new FileInputStream(keyFilePath);
-    Debug.debug("Loading input from "+keyFilePath+" into keystore", 2);
+    FileInputStream in = new FileInputStream(trustStorePath);
+    Debug.debug("Loading input from "+trustStorePath+" into truststore", 2);
     Debug.debug("available "+in.available(), 3);
     if(in.available()==0){ 
       keystore.load(null, password);
@@ -1534,8 +1573,8 @@ public class Util{
     in.close();
     // Add the certificate
     keystore.setCertificateEntry(alias, cert);
-    // Save the new keystore contents
-    FileOutputStream out = new FileOutputStream(keyFilePath);
+    // Save the new truststore contents
+    FileOutputStream out = new FileOutputStream(trustStorePath);
     keystore.store(out, password);
     out.close();
   }
