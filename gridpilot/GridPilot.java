@@ -108,9 +108,9 @@ public class GridPilot extends JApplet{
         firstRun = false;
       }      
       loadConfigValues();
+      initDebug();
       loadDBs();
       loadFTs();
-      initDebug();
       initGUI();
       try{
         (new TestDatasets()).createAll();
