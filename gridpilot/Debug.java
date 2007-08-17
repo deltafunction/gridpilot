@@ -15,10 +15,10 @@ public class Debug{
   private static boolean withLineNumber = true;
 
   public synchronized static void debug(String msg, int level){
-    if(isExclude())
+    if(isExclude()){
        return;
-
-    if(level <= GridPilot.getClassMgr().getDebugLevel()){
+    }
+    if(level<=GridPilot.getClassMgr().getDebugLevel()){
       String className = "";
       Throwable t = new Throwable();
       if(withClassName)
