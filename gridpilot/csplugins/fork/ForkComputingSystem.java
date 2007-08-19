@@ -14,12 +14,15 @@ import java.util.Iterator;
 import java.util.Vector;
 
 import gridpilot.ComputingSystem;
+import gridpilot.ConfigFile;
 import gridpilot.DBPluginMgr;
 import gridpilot.DBRecord;
+import gridpilot.DBResult;
 import gridpilot.Debug;
 import gridpilot.JobInfo;
 import gridpilot.LogFile;
 import gridpilot.GridPilot;
+import gridpilot.RteRdfParser;
 import gridpilot.ShellMgr;
 import gridpilot.TransferControl;
 import gridpilot.Util;
@@ -48,8 +51,11 @@ public class ForkComputingSystem implements ComputingSystem{
   protected String [] localRuntimeDBs = null;
   protected HashSet toCleanupRTEs = null;
   protected DBPluginMgr remoteDBPluginMgr = null;
+  // List of (Janitor) catalogs from where to get RTEs
+  protected String [] rteCatalogUrls = null;
 
   public ForkComputingSystem(String _csName) throws Exception{
+    ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
     
@@ -72,7 +78,7 @@ public class ForkComputingSystem implements ComputingSystem{
       }
     }
     
-    defaultUser = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "default user");
+    defaultUser = configFile.getValue("GridPilot", "default user");
     try{
       userName = shellMgr.getUserName();
     }
@@ -80,7 +86,7 @@ public class ForkComputingSystem implements ComputingSystem{
       e.printStackTrace();
     }
     
-    workingDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "working directory");
+    workingDir = configFile.getValue(csName, "working directory");
     if(workingDir==null || workingDir.equals("")){
       workingDir = "~";
     }
@@ -102,8 +108,7 @@ public class ForkComputingSystem implements ComputingSystem{
       commandSuffix = ".bat";
     }
     
-    runtimeDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "runtime directory");   
+    runtimeDirectory = configFile.getValue(csName, "runtime directory");   
     if(runtimeDirectory!=null && runtimeDirectory.startsWith("~")){
       // Expand ~
       if(System.getProperty("os.name").toLowerCase().startsWith("windows") &&
@@ -118,13 +123,12 @@ public class ForkComputingSystem implements ComputingSystem{
                 ).replaceFirst("^\\w:", "");*/
       }
     }
+    
+    rteCatalogUrls = configFile.getValues("GridPilot", "runtime catalog URLs");
 
-    publicCertificate = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "public certificate");
-    remotePullDB = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "remote pull database");
-    localRuntimeDBs = GridPilot.getClassMgr().getConfigFile().getValues(
-        csName, "runtime databases");
+    publicCertificate = configFile.getValue(csName, "public certificate");
+    remotePullDB = configFile.getValue(csName, "remote pull database");
+    localRuntimeDBs = configFile.getValues(csName, "runtime databases");
     
     Debug.debug("Setting up RTEs for "+csName, 2);
     if(runtimeDirectory!=null){
@@ -134,8 +138,7 @@ public class ForkComputingSystem implements ComputingSystem{
       }
       setupRuntimeEnvironments(csName);
     }
-    transformationDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "transformation directory");   
+    transformationDirectory = configFile.getValue(csName, "transformation directory");   
     //if(shellMgr.isLocal() && transformationDirectory!=null && transformationDirectory.startsWith("~")){
     //  transformationDirectory = System.getProperty("user.home")+transformationDirectory.substring(1);
     //}
@@ -173,17 +176,18 @@ public class ForkComputingSystem implements ComputingSystem{
         continue;
       }
       try{
-        setupRuntimeEnvironments(localDBMgr, i>0?null:remoteDBPluginMgr, csName, shellMgr);
+        scanRTEDir(localDBMgr, i>0?null:remoteDBPluginMgr, csName, shellMgr);
       }
       catch(Exception e){
         e.printStackTrace();
       }
     }
     if(localRuntimeDBs.length==0 && remoteDBPluginMgr!=null){
-      setupRuntimeEnvironments(null, remoteDBPluginMgr, csName, shellMgr);
+      scanRTEDir(null, remoteDBPluginMgr, csName, shellMgr);
     }
+    syncRTEsFromCatalogs();
   }
-
+  
   /**
    * Scan runtime environment directory for runtime environment setup scripts;
    * register the found RTEs in local database with computing system cs;
@@ -192,7 +196,7 @@ public class ForkComputingSystem implements ComputingSystem{
    * @param remoteDBMgr Remote DBPluginMgr
    * @param cs Computing system name
    */
-  protected void setupRuntimeEnvironments(DBPluginMgr localDBMgr, DBPluginMgr remoteDBMgr,
+  protected void scanRTEDir(DBPluginMgr localDBMgr, DBPluginMgr remoteDBMgr,
       String cs, ShellMgr mgr){
 
     if(mgr.isLocal() &&
@@ -844,6 +848,58 @@ public class ForkComputingSystem implements ComputingSystem{
   }
   
   /**
+   * If "runtime catalog URLs" is defined, copies records from them
+   * to the 'local' runtime DBs. The copying is not done if there's
+   * already a record with the same name and CS.
+    */
+  private void syncRTEsFromCatalogs(){
+    if(rteCatalogUrls==null){
+      return;
+    }
+    DBPluginMgr localDBMgr = null;
+    RteRdfParser rteRdfParser = new RteRdfParser(rteCatalogUrls);
+    String id = null;
+    String rteNameField = null;
+    String newId = null;
+    Debug.debug("Syncing RTEs from catalogs to DBs: "+Util.arrayToString(localRuntimeDBs), 2);
+    for(int ii=0; ii<localRuntimeDBs.length; ++ii){
+      try{
+        localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);
+        DBResult rtes = rteRdfParser.getDBResult(localDBMgr);
+        Debug.debug("Checking RTEs "+rtes.values.length, 3);
+        for(int i=0; i<rtes.values.length; ++i){
+          Debug.debug("Checking RTE "+Util.arrayToString(rtes.getRow(i).values), 3);
+          id = null;
+          // Check if RTE already exists
+          rteNameField = Util.getNameField(localDBMgr.getDBName(), "runtimeEnvironment");
+          id = localDBMgr.getRuntimeEnvironmentID(
+              (String) rtes.getRow(i).getValue(rteNameField), csName);
+          if(id==null || id.equals("-1")){
+            if(localDBMgr.createRuntimeEnvironment(rtes.getRow(i).values)){
+              Debug.debug("Creating RTE "+Util.arrayToString(rtes.getRow(i).values), 2);
+              // Tag for deletion
+              String name = (String) rtes.getRow(i).getValue(rteNameField);
+              newId = localDBMgr.getRuntimeEnvironmentID(name , csName);
+              if(newId!=null && !newId.equals("-1")){
+                Debug.debug("Tagging for deletion "+name+":"+newId, 3);
+                toCleanupRTEs.add(new String [] {name, csName, localDBMgr.getDBName()});
+              }
+            }
+            else{
+              Debug.debug("WARNING: Failed creating RTE "+Util.arrayToString(rtes.getRow(i).values), 2);
+            }
+          }
+        }
+      }
+      catch(Exception e){
+        error = "Could not load local runtime DB "+localRuntimeDBs[ii]+"."+e.getMessage();
+        Debug.debug(error, 1);
+        e.printStackTrace();
+      }
+    }
+  }
+  
+  /**
    * If a setup script for an RTE required by job is not present
    * and the corresponding tarball URL is set, the tarball is downloaded
    * and extracted/installed and a setup script is written in the runtime directory.
@@ -873,6 +929,10 @@ public class ForkComputingSystem implements ComputingSystem{
     for(int i=0; i<rteNames.length; ++i){
       try{
         rteId = dbPluginMgr.getRuntimeEnvironmentID(rteNames[i], job.getCSName());
+        if(rteId==null || rteId.equals("") || rteId.equals("-1")){
+          logFile.addMessage("runtimeEnvironment "+rteNames[i]+" not found for computing system "+job.getCSName());
+          return false;
+        }
         rteRecord = dbPluginMgr.getRuntimeEnvironment(rteId);
         String depsStr = (String) rteRecord.getValue("depends");
         if(depsStr!=null && !depsStr.equals("")){
@@ -888,8 +948,8 @@ public class ForkComputingSystem implements ComputingSystem{
             rteName = deps[i];
           }
           rteId = dbPluginMgr.getRuntimeEnvironmentID(rteName, job.getCSName());
-          if(rteId==null || rteId.equals("-1")){
-            logFile.addMessage("ERROR: RTE "+rteNames[i]+" not found.");
+          if(rteId==null || rteId.equals("") || rteId.equals("-1")){
+            logFile.addMessage("runtimeEnvironment "+rteNames[i]+" not found for computing system "+job.getCSName());
             return false;
           }
           if(toCleanupRTEs.contains(rteNames[i])){
