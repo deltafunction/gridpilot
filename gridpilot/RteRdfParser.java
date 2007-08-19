@@ -91,13 +91,14 @@ public class RteRdfParser {
             // We always depend on the base system
             rec.setValue("depends",
                 ((rec.getValue("depends")!=null?rec.getValue("depends"):"")+" "+
-                (tarPack.baseSystem!=null?tarPack.baseSystem:"")).replaceAll("'([^']+)'", "$1").trim());
+                (tarPack.baseSystem!=null?"\\'"+getBaseSystem(tarPack.baseSystem).name+"\\'":""))/*.replaceAll("'([^']+)'", "$1")*/.trim());
             // Optional other dependencies
             for(int k=0; k<tarPack.depends.length; ++k){
+              Debug.debug("depends: "+tarPack.depends[k], 2);
               try{
                 rec.setValue("depends",
                     ((rec.getValue("depends")!=null?rec.getValue("depends"):"")+" "+
-                    (getMetaPackageName(tarPack.depends[k])!=null?getMetaPackageName(tarPack.depends[k]):"")).replaceAll("'([^']+)'", "$1").trim());
+                    (getMetaPackageName(tarPack.depends[k])!=null?"\\'"+getMetaPackageName(tarPack.depends[k])+"\\'":""))/*.replaceAll("'([^']+)'", "$1")*/.trim());
               }
               catch(Exception e){
                 e.printStackTrace();
@@ -111,7 +112,7 @@ public class RteRdfParser {
               Debug.debug("Skipping record (no URL): "+rec, 2);
             }
             else{
-              Debug.debug("Adding record: "+":"+records.size()+" --> "+rec, 2);
+              Debug.debug("Adding record: "+records.size()+" --> "+rec, 2);
               records.add(rec);
             }
             
@@ -368,6 +369,18 @@ public class RteRdfParser {
         labels);
   }
   
+  public BaseSystem getBaseSystem(String id){
+    BaseSystem bs = null;
+    for(Iterator it=baseSystems.iterator(); it.hasNext();){
+      bs = (BaseSystem) it.next();
+      Debug.debug("Looking for "+id+" "+bs.id, 3);
+      if(bs.id.equals(id)){
+        return bs;
+      }
+    }
+    return null;
+  }
+  
   public TarPackage getTarPackage(String id){
     TarPackage pack = null;
     for(Iterator it=tarPackages.iterator(); it.hasNext();){
@@ -502,11 +515,14 @@ public class RteRdfParser {
     for(Iterator it=metaPackages.iterator(); it.hasNext();){
       pack = (MetaPackage) it.next();
       for(int i=0; i<pack.instances.length; ++i){
+        Debug.debug("--> "+pack.instances[i]+"<->"+tarPackageId, 3);
         if(pack.instances[i].equals(tarPackageId)){
           return pack.name;
         }
       }
     }
+    GridPilot.getClassMgr().getLogFile().addMessage("WARNING: no metaPackage found for tarPackage " +
+        tarPackageId);
     return null;
   }
   
