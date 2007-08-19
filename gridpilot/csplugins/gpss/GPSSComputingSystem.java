@@ -1475,7 +1475,7 @@ public class GPSSComputingSystem implements ComputingSystem{
           rteNameField = Util.getNameField(
               localDBMgr.getDBName(), "runtimeEnvironment");
           id = localDBMgr.getRuntimeEnvironmentID(
-              (String) rtes.getRow(i).getValue(rteNameField), "GPSS");
+              (String) rtes.getRow(i).getValue(rteNameField), csName);
           if(id!=null && !id.equals("-1")){
             url = (String) localDBMgr.getRuntimeEnvironment(id).getValue("url");
           }
@@ -1484,7 +1484,7 @@ public class GPSSComputingSystem implements ComputingSystem{
               Debug.debug("Creating RTE "+Util.arrayToString(rtes.getRow(i).values), 2);
               // Tag for deletion
               String name = (String) rtes.getRow(i).getValue(rteNameField);
-              newId = localDBMgr.getRuntimeEnvironmentID(name , "GPSS");
+              newId = localDBMgr.getRuntimeEnvironmentID(name , csName);
               if(newId!=null && !newId.equals("-1")){
                 Debug.debug("Tagging for deletion "+name+":"+newId, 3);
                 toDeleteRtes.put(newId, localDBMgr.getDBName());
