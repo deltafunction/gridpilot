@@ -1,5 +1,9 @@
 package gridpilot;
 
+/**
+ * Abstract representation of database records,
+ * regardless of actual backend.
+ */
 public class DBRecord{
   
   public String [] fields = null;
@@ -33,7 +37,6 @@ public class DBRecord{
         return values[i];
       }
     }
-    //return "no such field "+col;
     return "";
   }
   
@@ -41,15 +44,16 @@ public class DBRecord{
      for(int i=0; i<fields.length; i++){
       if(col.equalsIgnoreCase(fields[i])){
         values[i] = val;
-        //Debug.debug("Set field "+fields[i]+" to value "+values[i],3);
-        // TODO: Should set field to value. Seems not to work
-        //DBRecord.class.getField(col).set(this,val);
         return;
       }
     }
     throw new Exception("no such field "+col);
   }
   
+  /**
+   * Removes all values in a given column.
+   * @param col column/field name
+   */
   public void remove(String col){
     String [] newFields = new String[fields.length-1];
     String [] newValues = new String[values.length-1];
