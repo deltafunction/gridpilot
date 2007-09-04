@@ -42,12 +42,15 @@ public class PullJobsDaemon{
   public static String STATUS_REQUESTED = "requested";
   public static String STATUS_PREPARED = "prepared";
   public static String STATUS_DOWNLOADING = "downloading";
+  public static String STATUS_UPLOADING = "uploading";
   public static String STATUS_SUBMITTED = "submitted";
   public static String STATUS_RUNNING = "running";
-  public static String STATUS_REQUESTED_KILLED = "requestKill";
-  public static String STATUS_REQUESTED_STDOUT = "requestStdout";
-  public static String STATUS_FAILED = "failed";
+  public static String STATUS_PAUSED = "paused";
+  public static String STATUS_REQUEST_KILL = "running:requestKill";
+  public static String STATUS_REQUEST_PAUSE = "running:requestPause";
+  public static String STATUS_REQUEST_OUTPUT = "running:requestOutput";
   public static String STATUS_EXECUTED = "executed";
+  public static String STATUS_FAILED = "failed";
   
   private Timer timerPull = new Timer(0, new ActionListener(){
     public void actionPerformed(ActionEvent e){
@@ -475,7 +478,6 @@ public class PullJobsDaemon{
     GlobusURL destUrl = null;
     int lastSlash = -1;
     String fileName = null;
-    String cacheSubdir = null;
     for(int i=0; i<inputFiles.length; ++i){
       // Get the remote input file URLs.
       if(Util.urlIsRemote(inputFiles[i])){
@@ -533,7 +535,7 @@ public class PullJobsDaemon{
     }
     runningTransfers.put(job, transferVector);
   }
-  
+
   /**
    * Finds job ready to be run and starts it.
    * @return true if successful, false otherwise.
@@ -695,7 +697,7 @@ public class PullJobsDaemon{
          // Just in case a done job has been resubmitted
          allDoneJobs.remove(job);
       }
-      if(jobRecord.getValue("csStatus").equals(STATUS_REQUESTED_KILLED)){
+      if(jobRecord.getValue("csStatus").equals(STATUS_REQUEST_KILL)){
         Vector killJobs = new Vector();
         // Temporarily change the CS name from GPSS to the local one,
         // so the killing is actually done.
@@ -710,13 +712,32 @@ public class PullJobsDaemon{
         job.setCSName("GPSS");
         // Don't wait for any confirmation, just assume the job has been killed
         dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
-            new String [] {STATUS_FAILED+": "+"job killed. "});
+            new String [] {STATUS_FAILED+": job killed."});
       }
-      else if(jobRecord.getValue("csStatus").equals(STATUS_REQUESTED_STDOUT)){
+      else if(jobRecord.getValue("csStatus").equals(STATUS_REQUEST_OUTPUT)){
         // Simply copy stdout/stderr to their final destinations.
-        // These will be on a gridftp server (if they were not originally, GPSS
+        // These will be on a https or gridftp server (if they were not originally, GPSS
         // will have modified them temporarily to be).
-        uploadStdoutErr(job);
+        boolean uploadOk = true;
+        String uploadError = "";
+        try{
+          uploadOk = uploadStdoutErr(job);
+        }
+        catch(Exception e){
+          uploadOk = false;
+          uploadError = e.getMessage();
+          e.printStackTrace();
+        }
+        // This is to avoid to keep uploading when the submitter is no longer
+        // updating.
+        if(uploadOk){
+          dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
+              new String [] {STATUS_REQUEST_OUTPUT+": uploaded."});
+        }
+        else{
+          dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
+              new String [] {STATUS_REQUEST_OUTPUT+": upload failed. "+uploadError});
+        }
       }
     }
     JobInfo [] ret = new JobInfo[doneJobs.size()];
@@ -731,18 +752,13 @@ public class PullJobsDaemon{
 
   /**
    * copy temp stdout -> finalStdout, temp stderr -> finalStdErr
+   * @throws Exception 
    */
-  private boolean uploadStdoutErr(JobInfo job){
+  private boolean uploadStdoutErr(JobInfo job) throws Exception{
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
     boolean ok = false;
-    ShellMgr shellMgr = null;
-    try {
-      shellMgr = GridPilot.getClassMgr().getShellMgr(csName);
-    }
-    catch (Exception e) {
-      e.printStackTrace();
-    }
+    ShellMgr shellMgr = GridPilot.getClassMgr().getShellMgr(csName);
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
       if(TransferControl.copyOutputFile(job.getStdOut(), finalStdOut, shellMgr, "", logFile)){
         ok = true;
