@@ -110,7 +110,7 @@ public class PullJobsDaemon{
     }
   }
   
-  public String getUserInfo(){
+  private String getUserInfo(){
     String user = null;
     try{
       user = Util.getGridSubject();
