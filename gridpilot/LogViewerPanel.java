@@ -20,7 +20,7 @@ public class LogViewerPanel extends JTextPane{
     Debug.debug("New LogViewerPanel", 3);
     doc = new DefaultStyledDocument();
     setDocument(doc);
-    GridPilot.getClassMgr().getLogFile().addActionOnMessage(new ActionOnMessage(){
+    GridPilot.getClassMgr().getLogFile().addActionOnMessage(new LogFile.ActionOnMessage(){
       public void newMessage(String head, String cont, boolean isError){
         Debug.debug("Adding message: "+cont, 3);
         addLogMessage(head, cont, isError);

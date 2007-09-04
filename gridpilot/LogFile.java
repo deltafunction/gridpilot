@@ -278,6 +278,11 @@ public class LogFile {
   }
   actionsOnMessages.add(aom);
   }
+  
+  public interface ActionOnMessage{
+    public void newMessage(String header, String message, boolean isError);
+  }
+
 }
 
 
