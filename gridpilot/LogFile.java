@@ -71,7 +71,7 @@ public class LogFile {
    * @return a String which contains the next message, or null if there is no more message
    */
   public String getNextMessage(){
-    if (this.isFake()){
+    if(this.isFake()){
       return null;
     }
     try{
@@ -102,11 +102,13 @@ public class LogFile {
    * msg is appended to the log file, as well as e stack trace
    */
   public void addMessage(String msg, Throwable t){
-  if (this.isFake()) return;
+    if(this.isFake()){
+      return;
+    }
     StringWriter sw = new StringWriter();
     t.printStackTrace( new PrintWriter(sw));
-    addMessage(msg + "\n" + (t instanceof Exception ? "Exception" : "Error") + " : \n" + sw, EXCEPTION_MESSAGE);
-
+    addMessage(msg + "\n" + (t instanceof Exception ? "Exception" : "Error") +
+        " : \n" + sw, EXCEPTION_MESSAGE);
   }
 
   /**
@@ -123,7 +125,9 @@ public class LogFile {
    */
 
   public void addMessage(String msg, JobInfo job, Throwable t){
-  if (this.isFake()) return;
+    if(this.isFake()){
+      return;
+    }
     StringWriter sw = new StringWriter();
     t.printStackTrace( new PrintWriter(sw));
 
@@ -151,7 +155,9 @@ public class LogFile {
    */
   private synchronized void addMessage(String s, int type){
 
-  if (this.isFake()) return;
+    if(this.isFake()){
+      return;
+    }
     String message;
     String header = "";
 
@@ -191,7 +197,7 @@ public class LogFile {
     message += messagesSeparator + "\n";
 
 
-    if(type != INFORMATION_MESSAGE){
+    if(type!=INFORMATION_MESSAGE){
       try {
         if (!openFile(true)) {
           System.err.println("Cannot add this message :\n" + s);
@@ -206,11 +212,12 @@ public class LogFile {
       }
     }
 
-    if(printMessages)
+    if(printMessages){
       Debug.debug(s, 2);
-    if(showMessages)
+    }
+    if(showMessages){
       MessagePane.showMessage(s, getMessageTypeName(type));
-
+    }
     Enumeration e = actionsOnMessages.elements();
     Debug.debug("Adding message " +s+
         ". "+Util.arrayToString(actionsOnMessages.toArray()), 3);
@@ -234,11 +241,14 @@ public class LogFile {
       return false;
     }
     try{
-      if(append)
+      if(append){
         file.seek(file.length());
-      else
+      }
+      else{
         file.seek(0);
-    }catch(IOException ioe){
+      }
+    }
+    catch(IOException ioe){
       System.err.println("LogFile : Exception during opening");
       ioe.printStackTrace();
       return false;
@@ -250,20 +260,23 @@ public class LogFile {
    * Clears this file.
    */
   public void clear(){
-  if (this.isFake()) return;
+    if(this.isFake()){
+      return;
+    }
     try{
       file.setLength(0);
-    }catch(IOException ioe){
+    }
+    catch(IOException ioe){
       ioe.printStackTrace();
     }
   }
 
   public void addActionOnMessage(ActionOnMessage aom){
-  if (this.isFake()){
+  if(this.isFake()){
     Debug.debug("Fake log file, not adding "+aom.getClass(), 3);
     return;
   }
-    actionsOnMessages.add(aom);
+  actionsOnMessages.add(aom);
   }
 }
 
