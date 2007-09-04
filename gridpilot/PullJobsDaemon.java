@@ -41,8 +41,8 @@ public class PullJobsDaemon{
   public static String STATUS_READY = "ready";
   public static String STATUS_REQUESTED = "requested";
   public static String STATUS_PREPARED = "prepared";
-  public static String STATUS_DOWNLOADING = "downloading";
-  public static String STATUS_UPLOADING = "uploading";
+  //public static String STATUS_DOWNLOADING = "downloading";
+  //public static String STATUS_UPLOADING = "uploading";
   public static String STATUS_SUBMITTED = "submitted";
   public static String STATUS_RUNNING = "running";
   public static String STATUS_PAUSED = "paused";
@@ -199,8 +199,8 @@ public class PullJobsDaemon{
             }
             try{
               statusBar.setLabel("Starting to download input files.");
-              dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus", "lastModified"},
-                  new String [] {STATUS_DOWNLOADING, ""});
+              //dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus", "lastModified"},
+              //    new String [] {STATUS_DOWNLOADING, ""});
              }
             catch(Exception e){
               logFile.addMessage("WARNING: could not set csStatus to downloading for job "+jobDefID, e);

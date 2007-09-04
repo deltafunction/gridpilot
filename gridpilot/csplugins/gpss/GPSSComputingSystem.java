@@ -1219,10 +1219,10 @@ public class GPSSComputingSystem implements ComputingSystem{
       job.setJobStatus(csStatus);
       job.setInternalStatus(ComputingSystem.STATUS_WAIT);
     }
-    else if(csStatus.startsWith(PullJobsDaemon.STATUS_DOWNLOADING)){
+    /*else if(csStatus.startsWith(PullJobsDaemon.STATUS_DOWNLOADING)){
       job.setJobStatus(csStatus);
       job.setInternalStatus(ComputingSystem.STATUS_WAIT);
-    }
+    }*/
     else if(csStatus.startsWith(PullJobsDaemon.STATUS_REQUEST_KILL)){
       job.setJobStatus(csStatus);
     }
