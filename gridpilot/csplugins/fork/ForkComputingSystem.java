@@ -1245,6 +1245,10 @@ public class ForkComputingSystem implements ComputingSystem{
     
   }
   
+  public ShellMgr getShellMgr(JobInfo job){
+    return shellMgr;
+  }
+  
   public String getError(String csName){
     return error;
   }

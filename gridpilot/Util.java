@@ -111,6 +111,12 @@ import com.ice.tar.TarOutputStream;
 
 public class Util{
       
+  /**
+   * Splits a space-separated String in an array of Strings.
+   * 
+   * @param s String to split
+   * @return an array of String
+   */
   public static String [] split(String s){
     StringTokenizer tok = new StringTokenizer(s);
     int len = tok.countTokens();
@@ -121,6 +127,13 @@ public class Util{
     return res ;
   }
   
+  /**
+   * Splits a String in an array of Strings by a given delimiter.
+   * 
+   * @param s String to split
+   * @param delim Delimiter
+   * @return an array of String
+   */
   public static String [] split(String s, String delim){
     //StringTokenizer tok = new StringTokenizer(s, delim);
     //int len = tok.countTokens();
@@ -174,13 +187,20 @@ public class Util{
   }
   
   /**
-   * Converts an array of object in a String representing this array,
+   * Converts an array of Objects into a String representing this array,
    * using the delimiter string delim to separate the records.
+   * On each of the Objects, toString is used.
+   * 
+   * @param values array of Objects
+   * @param delim delimiter
+   * @return a String made up of the concatenated String representations
+   *         of the Objects
    */
   public static String arrayToString(Object [] values, String delim){
     String res = "";
-    if(values==null)
+    if(values==null){
       return "(null)";
+    }
     for(int i=0; i<values.length ; ++i){
       res += (values[i]==null ? "" : values[i].toString());
       if(i<values.length-1){
@@ -1102,6 +1122,12 @@ public class Util{
     //return s.replace('\r', ' ');
   }
   
+  /**
+   * Converts the newlines of a text File from DOS to UNIX format.
+   * 
+   * @param file the File to convert
+   * @throws IOException
+   */
   public static void dos2unix(File file) throws IOException{
     try{
       File tempFile = new File(file.getAbsolutePath() + ".tmp");
@@ -1877,6 +1903,8 @@ public class Util{
    * Java uses the format ...,...,C=...
    * We translate to the format /C=.../.../...
    * Attention: this may go wrong if the DN contains slashes and/or commas...
+   * 
+   * @return the DN (subject) of the active grid certificate
    */
   public static String getGridSubject(){
     String subject = null;
@@ -2143,6 +2171,13 @@ public class Util{
     return null;
   }
   
+  /**
+   * Checks whether or not a URL is remote (i.e. does not point to a file/folder
+   * on the local machine).
+   * 
+   * @param url the URL to check
+   * @return true is the URL is remote, false if not
+   */
   public static boolean urlIsRemote(String url){
     return !url.matches("^file:/*[^/]+.*") && url.matches("^[a-z]+:/*[^/]+.*");
   }

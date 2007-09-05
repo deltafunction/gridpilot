@@ -901,7 +901,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     
     DBPluginMgr dbPluginMgr = null;
     String [] shownFields = null;
-    String jobStatus = null;
     String user = "";
     String csName = "";
     DBResult allJobDefinitions = null;

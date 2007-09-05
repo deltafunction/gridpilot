@@ -9,20 +9,18 @@ import java.util.Vector;
 import org.safehaus.uuid.UUIDGenerator;
 
 /**
- * The purpose of this class is to protect GridPilot from plugin errors, exceptions, abnormal behaviours. <p>
+ * The purpose of this class is to protect GridPilot from plugin errors, exceptions, abnormal behaviour. <p>
  *
  * The class <code>CSPluginMgr</code> defines the same methods as <code>ComputingSystem</code>,
  * and some others. <br>
  * For all methods from <code>ComputingSystem</code>, this class chooses the right plug-in,
  * calls it, catching all exceptions, and controls the duration of the function.<br>
- * For all methods from plug-in, an attribute &lt;method name&gt; timeout in seconds is defined
- * in configuration file ; If one of them is not defined in this file,
+ * For all methods from plug-in, an attribute "'method name' timeout"  - in seconds, is defined
+ * in the configuration file. If one of them is not defined in this file,
  * "default timeout" is used, and if this one is not defined either,
  * <code>defaultTimeOut</code> is used. <p>
  * If the time out delay is elapsed before the end of a method, the user is asked to
  * interrupt the plug-in (if <code>askBeforeInterrupt==true</code>)
- *
- * <p><a href="CSPluginMgr.java.html">see sources</a>
  */
 
 public class CSPluginMgr implements ComputingSystem{
@@ -69,7 +67,7 @@ public class CSPluginMgr implements ComputingSystem{
    * @throws Throwable if <ul>
    * <li>There is no ComputingSystem specified in configuration file
    * <li>One of theses computing system hasn't a class name defined
-   * <li>An Exception occurs when AtCom tries to load these classes (by example because
+   * <li>An Exception occurs when GridPilot tries to load these classes (e.g. if
    * the constructor with one parameter (String) is not defined)
    * </ul>
    */
@@ -597,6 +595,42 @@ public class CSPluginMgr implements ComputingSystem{
     }
     else{
       return new String [] {null, "No response"};
+    }
+  }
+
+  /**
+   * @see ComputingSystem#getShellMgr()
+   */
+  public ShellMgr getShellMgr(final JobInfo job) {
+    final String csName = job.getCSName();
+    if(csName==null || csName.equals("")){
+      return null;
+    }
+
+    MyThread t = new MyThread(){
+      ShellMgr res = null;
+      public void run(){
+        try{
+          res = ((ComputingSystem) cs.get(csName)).getShellMgr(job);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + csName +
+                             " during job " + job.getName() + " getScripts", job, t);
+        }
+      }
+      public ShellMgr getShellMgrRes(){
+        return res;
+      }
+    };
+
+    t.start();
+
+    if(Util.waitForThread(t, csName, currentOutputTimeOut, "getScripts")){
+      return t.getShellMgrRes();
+    }
+    else{
+      return null;
     }
   }
 

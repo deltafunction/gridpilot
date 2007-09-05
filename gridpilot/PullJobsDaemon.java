@@ -26,16 +26,21 @@ public class PullJobsDaemon{
   private int maxPullRun = 1;
   private String idField = null;
   private String cacheDir = null;
-  // Map of JobInfo -> (Vector of TransferInfos)
+  /** Map of JobInfo -> (Vector of TransferInfos) */
   private HashMap runningTransfers = new HashMap();
   private static int WAIT_TRIES = 5;
   private static int WAIT_SLEEP = 10000;
   private static boolean CLEANUP_CACHE_ON_EXIT = true;
-  // If this is set to false, we will not try and pick up
-  // the same job twice.
+  /**
+   * If this is set to false, we will not try and pick up
+   * the same job twice.
+   */
   private static boolean ALLOW_USER_RERUN = false;
-  // List of done jobs: needed to avoid having findDoneJobs trying to get
-  // the DB record of jobs that have been deleted by GPSSComputingSystem of the submitter.
+  /**
+   * List of done jobs: needed to avoid having findDoneJobs trying to get
+   * the DB record of jobs that have been deleted by GPSSComputingSystem
+   * of the submitter.
+   */
   private Vector allDoneJobs = null;
    
   public static String STATUS_READY = "ready";
@@ -401,7 +406,20 @@ public class PullJobsDaemon{
     int runningJobs = -1;
     int preparingJobs = -1;
     try{
-      runningJobs = GridPilot.getClassMgr().getShellMgr(csName).getJobsNumber();
+      // This would only work for Fork et al.
+      //runningJobs = GridPilot.getClassMgr().getShellMgr(csName).getJobsNumber();
+      // Like this we can also run pulled jobs on other CSs
+      String [] statusList =
+        new String [] {DBPluginMgr.getStatusName(DBPluginMgr.SUBMITTED)};
+      String [] allFields = new String [] {"computingSystem"};
+      DBResult allJobDefinitions = dbPluginMgr.getJobDefinitions("-1", allFields,
+          statusList, new String [] {STATUS_SUBMITTED, STATUS_RUNNING, STATUS_PAUSED});
+      runningJobs = 0;
+      for(int i=0; i<allJobDefinitions.values.length; ++i){
+        if(allJobDefinitions.getValue(i, "computingSystem").equals(csName)){
+          ++runningJobs;
+        }
+      }
     }
     catch(Exception e){
       logFile.addMessage("Error: Could not get running jobs.", e);
@@ -751,14 +769,22 @@ public class PullJobsDaemon{
   
 
   /**
-   * copy temp stdout -> finalStdout, temp stderr -> finalStdErr
+   * Copy tmp stdout -> final stdout, tmp stderr -> final stderr.
+   * 
+   * @param job the job in question
    * @throws Exception 
    */
   private boolean uploadStdoutErr(JobInfo job) throws Exception{
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
     boolean ok = false;
-    ShellMgr shellMgr = GridPilot.getClassMgr().getShellMgr(csName);
+    ShellMgr shellMgr = null;
+    try{
+      //shellMgr = GridPilot.getClassMgr().getShellMgr(csName);
+      shellMgr = GridPilot.getClassMgr().getCSPluginMgr().getShellMgr(job);
+    }
+    catch(Exception e){
+    }
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
       if(TransferControl.copyOutputFile(job.getStdOut(), finalStdOut, shellMgr, "", logFile)){
         ok = true;

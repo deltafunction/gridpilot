@@ -35,6 +35,7 @@ import gridpilot.JobInfo;
 import gridpilot.LocalStaticShellMgr;
 import gridpilot.LogFile;
 import gridpilot.GridPilot;
+import gridpilot.ShellMgr;
 import gridpilot.StatusBar;
 import gridpilot.TransferControl;
 import gridpilot.Util;
@@ -1428,6 +1429,10 @@ public class NGComputingSystem implements ComputingSystem{
   
   public String getError(String csName){
     return error;
+  }
+  
+  public ShellMgr getShellMgr(JobInfo job){
+    return null;
   }
 
 }

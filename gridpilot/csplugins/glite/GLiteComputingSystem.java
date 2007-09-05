@@ -23,6 +23,7 @@ import gridpilot.JobInfo;
 import gridpilot.LocalStaticShellMgr;
 import gridpilot.LogFile;
 import gridpilot.GridPilot;
+import gridpilot.ShellMgr;
 import gridpilot.TransferControl;
 import gridpilot.Util;
 import gridpilot.csplugins.ng.NGComputingSystem;
@@ -1225,6 +1226,10 @@ public class GLiteComputingSystem implements ComputingSystem{
 
   public String getError(String csName){
     return error;
+  }
+
+  public ShellMgr getShellMgr(JobInfo job){
+    return null;
   }
 
 }

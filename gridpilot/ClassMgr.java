@@ -50,11 +50,13 @@ public class ClassMgr{
   private HashMap shellMgrs = new HashMap();
   private static String caCertsTmpdir = null;
   private static String DEFAULT_POOL_SIZE = "10";
-  // list of urls in db pool
+  /** List of urls in db pool */
   private HashSet dbURLs = new HashSet();
-  // Map of pulled jobs -> computing systems.
-  // This map will be cleared on exit - also, all pulled
-  // JobDefinitions will be set back to 'ready'.
+  /**
+   * Map of pulled jobs -> computing systems.
+   * This map will be cleared on exit - also, all pulled
+   * JobDefinitions will be set back to 'ready'.
+   */
   private HashMap jobCSMap = new HashMap();
   private X509Certificate x509UserCert = null;
   // only accessed directly by GridPilot.exit()

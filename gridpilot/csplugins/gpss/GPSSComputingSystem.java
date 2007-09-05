@@ -34,6 +34,7 @@ import gridpilot.LocalStaticShellMgr;
 import gridpilot.LogFile;
 import gridpilot.PullJobsDaemon;
 import gridpilot.RteRdfParser;
+import gridpilot.ShellMgr;
 import gridpilot.TransferControl;
 import gridpilot.TransferInfo;
 import gridpilot.TransferStatusUpdateControl;
@@ -1841,6 +1842,10 @@ public class GPSSComputingSystem implements ComputingSystem{
 
   public String getError(String csName){
     return error;
+  }
+  
+  public ShellMgr getShellMgr(JobInfo job){
+    return null;
   }
 
 }
