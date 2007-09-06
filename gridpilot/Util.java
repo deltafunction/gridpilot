@@ -100,7 +100,6 @@ import org.gridforum.jgss.ExtendedGSSCredential;
 import org.gridforum.jgss.ExtendedGSSManager;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
-import org.knowarc.pullsys.Debug;
 
 import com.ice.tar.TarEntry;
 import com.ice.tar.TarInputStream;
