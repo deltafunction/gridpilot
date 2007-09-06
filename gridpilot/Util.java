@@ -22,6 +22,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -99,6 +100,7 @@ import org.gridforum.jgss.ExtendedGSSCredential;
 import org.gridforum.jgss.ExtendedGSSManager;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
+import org.knowarc.pullsys.Debug;
 
 import com.ice.tar.TarEntry;
 import com.ice.tar.TarInputStream;
@@ -148,7 +150,10 @@ public class Util{
 
   /**
    * Converts an array of object in a String representing this array.
-   * Example : {"a", new Integer(32), "ABCE", null} is converted in "a 32 ABCE null"
+   * Example : {"a", new Integer(32), "ABCE", null} is converted in "a 32 ABCE null".
+   * 
+   * @param values an array of Objects. toString() is applied on each object.
+   * @return a string representation of the array
    */
   public static String arrayToString(Object [] values){
     String res = "";
@@ -217,7 +222,7 @@ public class Util{
     String text = "";
     if(comp.getClass().isInstance(new JTextArea()) ||
         comp.getClass().isInstance(createTextArea()) ||
-        comp.getClass().isInstance(Util.createTextArea())){
+        comp.getClass().isInstance(createTextArea())){
       text = ((JTextComponent) comp).getText();
     }
     else if(comp.getClass().isInstance(new JTextField())){
@@ -239,7 +244,7 @@ public class Util{
    */
   public static String setJText(JComponent comp, String text){
     if(comp.getClass().isInstance(new JTextField()) ||
-        comp.getClass().isInstance(Util.createTextArea())){
+        comp.getClass().isInstance(createTextArea())){
       Debug.debug("Setting text "+((JTextComponent) comp).getText()+"->"+text, 3);
       ((JTextComponent) comp).setText(text);
     }
@@ -374,7 +379,7 @@ public class Util{
                urls[i] = (new File(urls[i])).toURI().toURL().toExternalForm();
              }
              else if(urls[i].startsWith("~")){
-               urls[i] = (new File(Util.clearTildeLocally(urls[i]))).toURI().toURL().toExternalForm();
+               urls[i] = (new File(clearTildeLocally(urls[i]))).toURI().toURL().toExternalForm();
              }
              else if(urls[i].startsWith("file://")){
                urls[i] = (new File(urls[i].substring(6))).toURI().toURL().toExternalForm();
@@ -980,6 +985,13 @@ public class Util{
     }
   }
     
+  /**
+   * Returns the file holding the grid (X509) proxy file.
+   * If no location has been specified in the preferences,
+   * the default location is used.
+   * 
+   * @return a File object representing the proxy file
+   */
   public static File getProxyFile(){
     String proxyDirectory = clearTildeLocally(GridPilot.proxyDir);
     if(proxyDirectory!=null && (new File(proxyDirectory)).exists() &&
@@ -1352,6 +1364,14 @@ public class Util{
     return jval;
   }
 
+  /**
+   * Sets up the "javax.net.ssl.trustStore" and "javax.net.ssl.keyStore"
+   * system properties.
+   * 
+   * @param globusCred the GlobusCredential object to use
+   * @throws KeyStoreException, NoSuchAlgorithmException, CertificateException,
+   *         IOException, GSSException
+   */
   public static void activateSsl(GlobusCredential globusCred) throws KeyStoreException,
   NoSuchAlgorithmException, CertificateException,
   IOException, GSSException {
@@ -1482,21 +1502,24 @@ public class Util{
     // Add the default CAs of Java
     loadDefaultTrustStore(tmpPwd.toCharArray(), truststorePath);
     
+    // Add the grid CAs
     String caCertsTmpdir = GridPilot.getClassMgr().getCaCertsTmpDir();
-    String fileName = null;
-    File caCertFile = null;
-    for(Iterator it=certFilesList.iterator(); it.hasNext();){
-      fileName = it.next().toString();
-      if(!fileName.toLowerCase().endsWith(".0")){
-        continue;
+    class CertFilter implements FilenameFilter {
+      public boolean accept(File dir, String name) {
+          return (name.matches("^.*\\.\\d+$"));
       }
-      caCertFile =  new File(caCertsTmpdir, fileName);
+    }
+    FilenameFilter filter = new CertFilter();
+    String [] caCertfiles = (new File(caCertsTmpdir)).list(filter);
+    File caCertFile = null;
+    for(int i=0; i<caCertfiles.length; ++i){
+      caCertFile =  new File(caCertsTmpdir, caCertfiles[i]);
       Debug.debug("loading "+caCertFile.getAbsolutePath(), 3);
       try{
         fis = new FileInputStream(caCertFile);
         cf = CertificateFactory.getInstance("X.509");
         cert = (X509Certificate) cf.generateCertificate(fis);
-        String alias = fileName.substring(0, fileName.length()-2);
+        String alias = caCertfiles[i].replaceFirst("^.*\\(.\\d+)$", "$1");
         Debug.debug("Adding the cert with alias " + alias, 2);
         addToTrustStore(tmpPwd.toCharArray(), alias, cert,
            truststorePath);
@@ -1519,6 +1542,14 @@ public class Util{
   }
 
 
+  /**
+   * Adds a private key to a key store.
+   * 
+   * @param privateKey the PrivateKey object to be added
+   * @param password the password of the key store
+   * @param chain the associated X509Certificate [] chain
+   * @param keyFilePath the full path of the file holding the key store
+   */
   private static void addToKeyStore(PrivateKey privateKey, char [] password,
      X509Certificate [] chain, String keyFilePath)
      throws KeyStoreException, FileNotFoundException,
@@ -1580,6 +1611,14 @@ public class Util{
 
 
   
+  /**
+   * Adds a certificate to a trust store.
+   * 
+   * @param password of the trust store
+   * @param alias the alias of the certificate
+   * @param cert the Certificate object
+   * @param trustStorePath the full path of the file holding the trust store
+   */
   private static void addToTrustStore(char [] password, String alias,
      Certificate cert, String trustStorePath)
      throws KeyStoreException, FileNotFoundException,
@@ -1933,11 +1972,13 @@ public class Util{
   /**
    * Generate a unique string, from the user's grid certificate subject,
    * which is usable as a MySQL user name.
+   * 
+   * @return the DN of the currently active grid (X509) certificate
    */
   public static String getGridDatabaseUser(){
     String user = null;
     try{
-      String subject = Util.getGridSubject();
+      String subject = getGridSubject();
       
       AbstractChecksum checksum = null;
       checksum = JacksumAPI.getChecksumInstance("cksum");
@@ -1990,7 +2031,7 @@ public class Util{
   public static String getGridDatabaseUser0(){
     String user = null;
     try{
-      String subject = Util.getGridSubject0();
+      String subject = getGridSubject0();
       
       AbstractChecksum checksum = null;
       checksum = JacksumAPI.getChecksumInstance("cksum");
@@ -2131,6 +2172,12 @@ public class Util{
     return sb.toString();
   }
 
+  /**
+   * Extracts the table names from an SQL statement.
+   * 
+   * @param the SQL string
+   * @return and array of table names
+   */
   public static String [] getTableNames(String sql){
     String table = null;
     table = sql.replaceFirst("^(?i)(?s)SELECT .* FROM (\\S+)$", "$1");

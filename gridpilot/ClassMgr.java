@@ -489,7 +489,21 @@ public class ClassMgr{
     return credential;
   }
 
-  //timeouts in milliseconds
+  /**
+   * Establishes a JDBC connection to a database. The connection is
+   * relayed through Proxool.
+   * 
+   * @param dbName the name of the database in the Proxool registry
+   * @param driver the name of the class providing the driver to use
+   * @param databaseUrl the URL of the database. E.g. jdbc:mysql://server.name
+   * @param user user name
+   * @param passwd password for authenticating with the database.
+   *        Can be null, if X509 authorization is used
+   * @param gridAuth whether or not to use X509 authorization
+   * @param connectionTimeout timeout in milliseconds of connecting
+   * @param milliseconds timeout in milliseconds of establishing a socket
+   * @param _poolSize the number of connections in the Proxool pool
+   */
   public void sqlConnection(String dbName, String driver, String databaseUrl,
       String user, String passwd, boolean gridAuth, String connectionTimeout,
       String socketTimeout, String _poolSize) throws SQLException{
@@ -564,11 +578,15 @@ public class ClassMgr{
       e.printStackTrace();
       throw new SQLException(error);
     }
-    
     dbURLs.add(dbName);
-    
   }
   
+  /**
+   * Obtains a database handle via the Proxool service.
+   * 
+   * @param dbName the name of the database to use
+   * @return a Connection object, allowing database operations
+   */
   public Connection getDBConnection(String dbName){
     Connection conn = null;
     try{

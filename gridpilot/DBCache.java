@@ -32,10 +32,34 @@ public class DBCache{
     queryResults.clear();
   }
   
+  /**
+   * Executes the given SQL statement, returning a DBResult object.
+   * 
+   * @param sql an SQL statement to be sent to the database,
+   *            typically a static SQL SELECT statement
+   * @return a DBResult object that contains the data produced by
+   *         the given query; never null
+   * @throws SQLException - if a database access error occurs or
+   *         the given SQL statement produces anything other than a
+   *         single ResultSet object
+   */
   public DBResult executeQuery(String sql) throws SQLException{
     return executeQuery(null, sql);
   }
   
+  /**
+   * Executes the given SQL statement, returning a DBResult object.
+   * 
+   * @param _dbName the name of the database to query (a name registered
+   *                with Proxool)
+   * @param sql an SQL statement to be sent to the database,
+   *            typically a static SQL SELECT statement
+   * @return a DBResult object that contains the data produced by
+   *         the given query; never null
+   * @throws SQLException - if a database access error occurs or
+   *         the given SQL statement produces anything other than a
+   *         single ResultSet object
+   */
   public DBResult executeQuery(String _dbName, String sql) throws SQLException{
     String thisDbName = dbName;
     if(_dbName!=null){
@@ -88,6 +112,19 @@ public class DBCache{
     return res;
   }
   
+  /**
+   * Executes the given SQL statement, which may be an INSERT, UPDATE,
+   * or DELETE statement or an SQL statement that returns nothing,
+   * such as an SQL DDL statement.
+   * 
+   * @param sql an SQL INSERT, UPDATE or DELETE statement or an SQL
+   *            statement that returns nothing
+   * @return either the row count for INSERT, UPDATE  or DELETE
+   *         statements, or 0 for SQL statements that return nothing
+   * @throws SQLException - if a database access error occurs or the
+   *         given SQL statement produces a ResultSet object        
+   */
+
   public int executeUpdate(String sql) throws SQLException{
     int execok = -1;
     Connection conn = null;
