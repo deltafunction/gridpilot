@@ -152,15 +152,17 @@ public class ForkComputingSystem implements ComputingSystem{
    * By convention the runtime environments are defined by the
    * scripts in the directory specified in the config file (runtime directory).
    */
-  public void setupRuntimeEnvironments(String csName){
+  public void setupRuntimeEnvironments(String thisCs){
     if(remoteDBPluginMgr!=null){
-      //Enable the pull button on the monitoring panel
+      // Enable the pull button on the monitoring panel
       GridPilot.pullEnabled = true;
       try{
         Debug.debug("Enabling pulling of jobs", 2);
         GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.setPullEnabled(true);
       }
       catch(Exception e){
+        e.printStackTrace();
+        GridPilot.pullEnabled = false;
       }
     }
     for(int i=0; i<localRuntimeDBs.length; ++i){
@@ -176,14 +178,14 @@ public class ForkComputingSystem implements ComputingSystem{
         continue;
       }
       try{
-        scanRTEDir(localDBMgr, i>0?null:remoteDBPluginMgr, csName, shellMgr);
+        scanRTEDir(localDBMgr, i>0?null:remoteDBPluginMgr, thisCs, shellMgr);
       }
       catch(Exception e){
         e.printStackTrace();
       }
     }
     if(localRuntimeDBs.length==0 && remoteDBPluginMgr!=null){
-      scanRTEDir(null, remoteDBPluginMgr, csName, shellMgr);
+      scanRTEDir(null, remoteDBPluginMgr, thisCs, shellMgr);
     }
     syncRTEsFromCatalogs();
   }
@@ -282,9 +284,19 @@ public class ForkComputingSystem implements ComputingSystem{
           createRTE(localDBMgr, name, cs, deps, null, null);
           // Register with local and remote DB with CS "GPSS"
           if(cert!=null && cert.length()>0 && remoteDBMgr!=null){
-            createRTE(localDBMgr, name, "GPSS", deps, cert, null);
-            createRTE(remoteDBMgr, name, "GPSS", deps, cert, url);
-            createRTE(remoteDBMgr, name, cs, deps, null, null);
+            // Only register with local database if GPSS is enabled
+            try{
+              // Dirty way of checking if GPSS is loaded. TODO: change
+              GridPilot.getClassMgr().getCSPluginMgr().getError("GPSS");
+              createRTE(localDBMgr, name, "GPSS", deps, cert, null);
+            }
+            catch(Exception e){
+            }
+            // Only register with remote database if pulling is enabled
+            if(GridPilot.pullEnabled){
+              createRTE(remoteDBMgr, name, "GPSS", deps, cert, url);
+              createRTE(remoteDBMgr, name, cs, deps, null, null);
+            }
           }         
           else{
             logFile.addMessage("WARNING: no certificate or no remote DB. Disabling remote registration of " +
@@ -655,6 +667,7 @@ public class ForkComputingSystem implements ComputingSystem{
             initText = dbPluginMgr.getRuntimeInitText(runtimeName, myCSName);
           }
           catch(Exception e){
+            e.printStackTrace();
           }
           if(initText!=null && !initText.equals("")){
             continue;
@@ -857,7 +870,7 @@ public class ForkComputingSystem implements ComputingSystem{
       return;
     }
     DBPluginMgr localDBMgr = null;
-    RteRdfParser rteRdfParser = new RteRdfParser(rteCatalogUrls);
+    RteRdfParser rteRdfParser = new RteRdfParser(rteCatalogUrls, csName);
     String id = null;
     String rteNameField = null;
     String newId = null;
@@ -876,7 +889,7 @@ public class ForkComputingSystem implements ComputingSystem{
               (String) rtes.getRow(i).getValue(rteNameField), csName);
           if(id==null || id.equals("-1")){
             if(localDBMgr.createRuntimeEnvironment(rtes.getRow(i).values)){
-              Debug.debug("Creating RTE "+Util.arrayToString(rtes.getRow(i).values), 2);
+              Debug.debug("Created RTE "+Util.arrayToString(rtes.getRow(i).values), 2);
               // Tag for deletion
               String name = (String) rtes.getRow(i).getValue(rteNameField);
               newId = localDBMgr.getRuntimeEnvironmentID(name , csName);

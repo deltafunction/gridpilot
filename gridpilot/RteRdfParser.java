@@ -28,8 +28,14 @@ public class RteRdfParser {
   private static String [] TOP_TAGS = {"BaseSystem", "MetaPackage",
     "TarPackage", "DebianPackage"};
   private static String BASE_URL = "http://knowarc.eu/kb#knowarc_Instance_";
+  private String csName = null;
   
   public RteRdfParser(String [] _urls){
+    this(_urls, "GPSS");
+  }
+  
+  public RteRdfParser(String [] _urls, String _csName){
+    csName = _csName;
     catalogURLs = _urls;
     baseSystems = new HashSet();
     metaPackages = new HashSet();
@@ -82,7 +88,7 @@ public class RteRdfParser {
         rec.setValue(Util.getNameField(dbpluginMgr.getDBName(), "runtimeEnvironment"),
             pack.name);
         rec.setValue("lastModified", pack.lastupdate);
-        rec.setValue("computingSystem", "GPSS");
+        rec.setValue("computingSystem", csName);
         rec.setValue("url", "");
         for(int j=0; j<pack.instances.length; ++j){
           // We support only TarPackages
