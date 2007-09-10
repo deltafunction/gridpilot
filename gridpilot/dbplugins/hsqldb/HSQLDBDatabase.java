@@ -928,7 +928,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
               values[i][j] = foo;
             }
             else{
-              String foo =  rset.getString(j+1);
+              String foo = dbDecode(rset.getString(j+1));
               Debug.debug("values "+i+" "+foo, 2);
               values[i][j] = foo;
             }
@@ -948,7 +948,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
             values[i][j] = foo;
           }
           else{
-            String foo = rset.getString(j+1);
+            String foo = dbDecode(rset.getString(j+1));
             Debug.debug("values "+i+" "+foo, 2);
             values[i][j] = foo;
           }
@@ -1002,7 +1002,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
             values[i] = Integer.toString(rset.getInt(datasetFields[i]));
           }
           else{
-            values[i] = rset.getString(datasetFields[i]);
+            values[i] = dbDecode(rset.getString(datasetFields[i]));
           }
           //Debug.debug(datasetFields[i]+"-->"+values[i], 3);
         }
@@ -1110,7 +1110,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         jt = new String[runtimeEnvironmentFields.length];
         for(int j=0; j<runtimeEnvironmentFields.length; ++j){
           try{
-            jt[j] = rset.getString(j+1);
+            jt[j] = dbDecode(rset.getString(j+1));
           }
           catch(Exception e){
             Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
@@ -1164,7 +1164,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         jt = new String[transformationFields.length];
         for(int j=0; j<transformationFields.length; ++j){
           try{
-            jt[j] = rset.getString(j+1);
+            jt[j] = dbDecode(rset.getString(j+1));
           }
           catch(Exception e){
             Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
@@ -1226,7 +1226,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         jt = new String[runtimeEnvironmentFields.length];
         for(int j=0; j<runtimeEnvironmentFields.length; ++j){
           try{
-            jt[j] = rset.getString(j+1);
+            jt[j] = dbDecode(rset.getString(j+1));
           }
           catch(Exception e){
             Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
@@ -1278,7 +1278,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         jt = new String[transformationFields.length];
         for(int j=0; j<transformationFields.length; ++j){
           try{
-            jt[j] = rset.getString(j+1);
+            jt[j] = dbDecode(rset.getString(j+1));
           }
           catch(Exception e){
             Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
@@ -1330,7 +1330,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
                 val = Integer.toString(tmp);
               }
               else{
-                val = rset.getString(fieldname);
+                val = dbDecode(rset.getString(fieldname));
               }
               break;
             }
@@ -1426,7 +1426,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
                 val = Integer.toString(tmp);
               }
               else{
-                val = rset.getString(fieldname);
+                val = dbDecode(rset.getString(fieldname));
               }
               break;
             }
@@ -1553,7 +1553,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         values[i] = "'0'";
       }
       else{
-        values[i] = "'"+values[i]+"'";
+        values[i] = "'"+dbEncode(values[i].toString())+"'";
       }
       
       sql += values[i];
@@ -1564,8 +1564,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     sql += ")";
     Debug.debug(sql, 2);
     boolean execok = true;
+    Connection conn = null;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -1575,6 +1576,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
       execok = false;
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
+      try{
+        conn.close();
+      }
+      catch(SQLException e1){
+      }
     }
     return execok;
   }
@@ -1608,9 +1614,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     arg += "transPars, outFileMapping, stdoutDest," +
             "stderrDest, created, lastModified";
-    arg += ") values ('"+datasetName+"', 'Defined', ";
+    arg += ") values ('"+dbEncode(datasetName)+"', 'Defined', ";
     for(int i=0; i<resCstAttr.length; ++i){
-      arg += "'"+resCstAttr[i]+"', ";
+      arg += "'"+dbEncode(resCstAttr[i])+"', ";
     }
 
     arg += "'"
@@ -1624,8 +1630,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     if(datasetName!=null && !datasetName.equals("")){
       Debug.debug(arg, 3);
       boolean execok = true;
+      Connection conn = null;
       try{
-        Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+        conn = GridPilot.getClassMgr().getDBConnection(dbName);
         Statement stmt = conn.createStatement();
         stmt.executeUpdate(arg);
         conn.commit();
@@ -1635,6 +1642,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
         execok = false;
         Debug.debug(e.getMessage(), 2);
         error = e.getMessage();
+        try{
+          conn.close();
+        }
+        catch(SQLException e1){
+        }
       }
       return execok;
     }
@@ -1724,10 +1736,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
             GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
             GridPilot.getClassMgr().getLogFile().addInfo(message);
           }
-           values[i] = "'"+values[i]+"'";
+           values[i] = "'"+dbEncode(values[i].toString())+"'";
         }
         else if(values[i]!=null){
-          values[i] = values[i].toString().replaceAll("\n","\\\\n");
+          values[i] = dbEncode(values[i].toString());
           values[i] = "'"+values[i].toString()+"'";
         }
         // Set empty numeric fields to 0.
@@ -1764,8 +1776,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     sql = sql.replaceFirst(",\\)$", ")");
     Debug.debug(sql, 2);
     boolean execok = true;
+    Connection conn = null;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -1775,6 +1788,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
       execok = false;
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
+      try{
+        conn.close();
+      }
+      catch(SQLException e1){
+      }
     }
     return execok;
   }
@@ -1804,7 +1822,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         values[i] = makeDate("");
       }
       else{
-        values[i] = "'"+values[i].toString()+"'";
+        values[i] = "'"+dbEncode(values[i].toString())+"'";
       }
 
       sql += values[i].toString();
@@ -1815,8 +1833,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     sql += ")";
     Debug.debug(sql, 2);
     boolean execok = true;
+    Connection conn = null;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -1826,6 +1845,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
       execok = false;
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
+      try{
+        conn.close();
+      }
+      catch(SQLException e1){
+      }
     }
     return execok;
   }
@@ -1858,7 +1882,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         values[i] = "''";
       }
       else{
-        values[i] = "'"+values[i].toString()+"'";
+        values[i] = "'"+dbEncode(values[i].toString())+"'";
       }
   
       sql += values[i].toString();
@@ -1869,8 +1893,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     sql += ")";
     Debug.debug(sql, 2);
     boolean execok = true;
+    Connection conn = null;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      conn = GridPilot.getClassMgr().getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -1880,6 +1905,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
       execok = false;
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
+      try{
+        conn.close();
+      }
+      catch(SQLException e1){
+      }
     }
     return execok;
   }
@@ -1888,7 +1918,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       String field, String value){
     String idField = Util.getIdentifierField(dbName, "jobDefinition");
     String sql = "UPDATE jobDefinition SET ";
-    sql += field+"='"+value+"' WHERE ";
+    sql += field+"='"+dbEncode(value)+"' WHERE ";
     // Not very elegant, but we need to use Identifier instead of
     // identifier, because identifier will only have been set if
     // a JobDefinition object has already been made, which may not
@@ -1969,7 +1999,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
               values[j] = "'0'";
             }
             else{
-              values[j] = "'"+values[j]+"'";
+              values[j] = "'"+dbEncode(values[j])+"'";
             }            
             if(addedFields>0){
               sql += ",";
@@ -2037,7 +2067,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
               values[i] = makeDate("");
             }
             else{
-              values[i] = "'"+values[i]+"'";
+              values[i] = "'"+dbEncode(values[i])+"'";
             }
             
             sql += fields[i];
@@ -2109,7 +2139,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
               values[j] = makeDate("");
             }
             else{
-              values[j] = "'"+values[j]+"'";
+              values[j] = "'"+dbEncode(values[j])+"'";
             }
             
             sql += fields[j];
@@ -2181,7 +2211,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
               values[j] = makeDate("");
             }
             else{
-              values[j] = "'"+Util.dbEncode(values[j])+"'";
+              values[j] = "'"+Util.dbEncode(dbEncode(values[j]))+"'";
             }
             
             sql += fields[j];
@@ -2870,6 +2900,17 @@ public class HSQLDBDatabase extends DBCache implements Database{
     else{
       return null;
     }
+  }
+  
+  private String dbEncode(String value){
+    String value1 = value.replaceAll("\\\\\'", "\\\\quote");
+    value1 = value1.replaceAll("\n","\\\\n");
+    return value1;
+  }
+  
+  private String dbDecode(String value){
+    String value1 = value.replaceAll("\\\\quote", "\\\'");
+    return value1;
   }
   
   public String getFileID(String datasetName, String name){
