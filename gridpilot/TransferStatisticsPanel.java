@@ -30,8 +30,8 @@ public class TransferStatisticsPanel extends StatisticsPanel{
 
   public void update(){
     
-    statusUpdateControl = GridPilot.getClassMgr().getGlobalFrame(
-      ).monitoringPanel.transferMonitor.statusUpdateControl;
+    TransferStatusUpdateControl statusUpdateControl =
+      GridPilot.getClassMgr().getTransferStatusUpdateControl();
 
     if(style<painters.size()){
       statusNames = TransferStatusUpdateControl.ftStatusNames;

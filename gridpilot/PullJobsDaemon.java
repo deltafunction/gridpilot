@@ -565,8 +565,8 @@ public class PullJobsDaemon{
     String jobDefID = null;
     String transferStatus = null;
     String transferID = null;
-    TransferStatusUpdateControl statusUpdateControl = GridPilot.getClassMgr().getGlobalFrame(
-       ).monitoringPanel.transferMonitor.statusUpdateControl;
+    TransferStatusUpdateControl statusUpdateControl =
+      GridPilot.getClassMgr().getTransferStatusUpdateControl();
     statusUpdateControl.updateStatus(null);
     for(Iterator it=runningTransfers.keySet().iterator(); it.hasNext();){
       toSubmitJobs = new Vector();

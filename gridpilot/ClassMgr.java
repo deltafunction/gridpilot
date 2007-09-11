@@ -32,6 +32,7 @@ public class ClassMgr{
   private GlobalFrame globalFrame;
   private LogFile logFile;
   private StatusBar statusBar;
+  private TransferStatusUpdateControl transferStatusUpdateControl;
   private Table jobStatusTable;
   private Table transferStatusTable;
   private StatisticsPanel jobStatisticsPanel;
@@ -302,6 +303,14 @@ public class ClassMgr{
       new Exception().printStackTrace();
     }
     return statusBar;
+  }
+
+  public TransferStatusUpdateControl getTransferStatusUpdateControl(){
+    if(transferStatusUpdateControl==null){
+      Debug.debug("transferStatusUpdateControl null", 3);
+      transferStatusUpdateControl = new TransferStatusUpdateControl();
+    }
+    return transferStatusUpdateControl;
   }
 
   public Table getJobStatusTable(){

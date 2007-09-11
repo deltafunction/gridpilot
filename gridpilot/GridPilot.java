@@ -670,7 +670,7 @@ public class GridPilot extends JApplet{
     getClassMgr().getSubmissionControl().loadValues();
     getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.statusUpdateControl.loadValues();
     getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.reInitPulling();
-    getClassMgr().getGlobalFrame().monitoringPanel.transferMonitor.statusUpdateControl.loadValues();
+    getClassMgr().getTransferStatusUpdateControl().loadValues();
     getClassMgr().getCSPluginMgr().loadValues();
     for(int i=0; i<dbNames.length; ++i){
       getClassMgr().getDBPluginMgr(dbNames[i]).loadValues();

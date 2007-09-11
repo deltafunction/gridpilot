@@ -445,8 +445,8 @@ public class GPSSComputingSystem implements ComputingSystem{
     String transferID = null;
     int sleepT = 3000;
     int waitT = 0;
-    TransferStatusUpdateControl statusUpdateControl = GridPilot.getClassMgr().getGlobalFrame(
-       ).monitoringPanel.transferMonitor.statusUpdateControl;
+    TransferStatusUpdateControl statusUpdateControl =
+      GridPilot.getClassMgr().getTransferStatusUpdateControl();
     while(!transfersDone && waitT*sleepT<MAX_UPLOAD_WAIT){
       transfersDone = true;
       statusUpdateControl.updateStatus(null);
@@ -820,8 +820,8 @@ public class GPSSComputingSystem implements ComputingSystem{
     boolean transfersDone = false;
     int sleepT = 3000;
     int waitT = 0;
-    TransferStatusUpdateControl statusUpdateControl = GridPilot.getClassMgr().getGlobalFrame(
-       ).monitoringPanel.transferMonitor.statusUpdateControl;
+    TransferStatusUpdateControl statusUpdateControl =
+      GridPilot.getClassMgr().getTransferStatusUpdateControl();
     while(!transfersDone && waitT*sleepT<MAX_DOWNLOAD_WAIT){
       transfersDone = true;
       statusUpdateControl.updateStatus(null);
@@ -1598,8 +1598,8 @@ public class GPSSComputingSystem implements ComputingSystem{
     boolean transfersDone = false;
     int sleepT = 3000;
     int waitT = 0;
-    TransferStatusUpdateControl statusUpdateControl = GridPilot.getClassMgr().getGlobalFrame(
-       ).monitoringPanel.transferMonitor.statusUpdateControl;
+    TransferStatusUpdateControl statusUpdateControl =
+      GridPilot.getClassMgr().getTransferStatusUpdateControl();
     while(!transfersDone && waitT*sleepT<MAX_DOWNLOAD_WAIT){
       transfersDone = true;
       statusUpdateControl.updateStatus(null);

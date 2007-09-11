@@ -54,8 +54,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private JMenuItem miResubmit = new JMenuItem("Retry transfer(s)");
   private JMenuItem miClear = new JMenuItem("Clear");
   private TransferControl transferControl;
-    
-  public TransferStatusUpdateControl statusUpdateControl = null;
+  private TransferStatusUpdateControl statusUpdateControl = null;
   
   private Timer timerRefresh = new Timer(0, new ActionListener (){
     public void actionPerformed(ActionEvent e){
@@ -74,7 +73,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
       }
     });
     transferControl = GridPilot.getClassMgr().getTransferControl();
-    statusUpdateControl = new TransferStatusUpdateControl();
+    statusUpdateControl = GridPilot.getClassMgr().getTransferStatusUpdateControl();
   }
   
   public String getTitle(){
