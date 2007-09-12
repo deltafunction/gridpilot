@@ -587,6 +587,7 @@ public class TransferControl{
 
   public static String getStatus(String fileTransferID) throws Exception {
     String status = findFTPlugin(fileTransferID).getStatus(fileTransferID);
+    // This means there's a TURL returned by the SRM plugin
     if(status!=null && status.matches("^\\w+://.*")){
       return "Ready";
     }
