@@ -1589,6 +1589,14 @@ public class TransferControl{
   /**
    * Method for copying output files from the run directory of the job to a local or
    * remote destination, using the ShellMgr of the job.
+   * 
+   * NOTICE: too messy - needs a complete rewrite
+   * 
+   *  @param src URL of the source file
+   *  @param dest URL of the destination file
+   *  @param shellMgr ShellMgr object to be used to copy the file
+   *         from its source to a local cache. If it is null, it
+   *         is assumed that the source is local
    */
   public static boolean copyOutputFile(String src, String dest,
       ShellMgr shellMgr, String error, LogFile logFile){
