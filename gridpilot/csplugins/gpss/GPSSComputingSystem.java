@@ -1101,15 +1101,21 @@ public class GPSSComputingSystem implements ComputingSystem{
         Thread.sleep(sleepT);
         while(sleepN*sleepT<STDOUT_WAIT){
           ++sleepN;
-          try{
-            TransferControl.download(dlStdout, tmpStdout,
-                GridPilot.getClassMgr().getGlobalFrame().getContentPane());
-            TransferControl.download(dlStderr, tmpStderr,
-                GridPilot.getClassMgr().getGlobalFrame().getContentPane());
-            break;
+          status = remoteMgr.getJobDefValue(remoteID, "csStatus");
+          if(status.equals(PullJobsDaemon.STATUS_REQUEST_OUTPUT_DONE)){
+            try{
+              TransferControl.download(dlStdout, tmpStdout,
+                  GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+              TransferControl.download(dlStderr, tmpStderr,
+                  GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+              break;
+            }
+            catch(Exception e){
+              Debug.debug("Waiting for stdout/stderr...", 2);
+            }
           }
-          catch(Exception e){
-            Debug.debug("Waiting for stdout/stderr...", 2);
+          else if(status.startsWith(PullJobsDaemon.STATUS_REQUEST_OUTPUT_FAILED)){
+            throw new IOException("WN failed uploading outputs. "+status);
           }
           // Wait
           Thread.sleep(sleepT);

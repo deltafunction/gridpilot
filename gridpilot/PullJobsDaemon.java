@@ -54,6 +54,8 @@ public class PullJobsDaemon{
   public static String STATUS_REQUEST_KILL = "running:requestKill";
   public static String STATUS_REQUEST_PAUSE = "running:requestPause";
   public static String STATUS_REQUEST_OUTPUT = "running:requestOutput";
+  public static String STATUS_REQUEST_OUTPUT_FAILED = "running:requestOutput_failed";
+  public static String STATUS_REQUEST_OUTPUT_DONE = "running:requestOutput_done";
   public static String STATUS_EXECUTED = "executed";
   public static String STATUS_FAILED = "failed";
   
@@ -750,11 +752,11 @@ public class PullJobsDaemon{
         // updating.
         if(uploadOk){
           dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
-              new String [] {STATUS_REQUEST_OUTPUT+": uploaded."});
+              new String [] {STATUS_REQUEST_OUTPUT_DONE});
         }
         else{
           dbPluginMgr.updateJobDefinition(jobDefID, new String [] {"csStatus"},
-              new String [] {STATUS_REQUEST_OUTPUT+": upload failed. "+uploadError});
+              new String [] {STATUS_REQUEST_OUTPUT_FAILED});
         }
       }
     }
