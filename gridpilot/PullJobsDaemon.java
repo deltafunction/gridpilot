@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -567,6 +568,7 @@ public class PullJobsDaemon{
     String jobDefID = null;
     String transferStatus = null;
     String transferID = null;
+    HashSet removeFromRunningTransfers = new HashSet();
     TransferStatusUpdateControl statusUpdateControl =
       GridPilot.getClassMgr().getTransferStatusUpdateControl();
     statusUpdateControl.updateStatus(null);
@@ -616,12 +618,13 @@ public class PullJobsDaemon{
           //dbPluginMgr.updateJobDefinition((String) job.getValue(idField), new String [] {"csStatus"},
           //    new String [] {STATUS_FAILED+": "+"failed downloading input file. "});
           ok = false;
-          runningTransfers.remove(job);
+          removeFromRunningTransfers.add(job);
           unRequestJob(job);
           logFile.addMessage("ERROR: failed downloading input file for job "+job);
         }
       }
       if(ok){
+        removeFromRunningTransfers.add(job);
         try{
           // Submitting implies the creation of a new JobInfo object, now representing
           // a running job and a record on the job monitor. This can be accessed with
@@ -648,7 +651,9 @@ public class PullJobsDaemon{
     if(ok && job!=null && jobDefID!=null){
       // Carry over the setDownloadFiles.
       JobMgr.getJob(jobDefID).setDownloadFiles(job.getDownloadFiles());
-      runningTransfers.remove(job);
+    }
+    for(Iterator it=removeFromRunningTransfers.iterator(); it.hasNext();){
+      runningTransfers.remove(it.next());
     }
   }
 
