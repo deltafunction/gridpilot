@@ -136,7 +136,7 @@ public class TransferControl{
             }
             Debug.debug("plugin selected: "+pluginName, 3);
             
-            // Transfer jobs from toSubmitJobs to submittingJobs.
+            // Transfer jobs from toSubmitTransfers to submittingTransfers.
             // First construct uniform batch.
             transferVector = new Vector();
             while(runningTransfers.size()+submittingTransfers.size()<maxSimultaneousTransfers &&
