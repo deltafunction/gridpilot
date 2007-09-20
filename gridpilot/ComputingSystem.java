@@ -130,11 +130,11 @@ public interface ComputingSystem{
 
   /**
    * If it is supported by this system, gets current outputs of this job.
-   * This method is called only when this job is running. After that, outputs are read in
-   * job.StdOut and job.StdErr;
-   * This return value is an String array, where the first String is StdOut, and the second one
-   * is StdErr.
-   * Return values are output, and not paths.
+    * This method is called only when this job is running. After that, outputs are read from their
+    * final destinations.
+    * The return value is a String array, where the first String is the stdout, and the second one
+    * is the stderr.
+    * Return values are output, and not paths.
    *
    * @param job the job in question
    * @return String [] {'job' StdOut, 'job' StdErr}
