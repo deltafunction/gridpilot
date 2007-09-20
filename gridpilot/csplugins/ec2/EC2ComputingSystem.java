@@ -284,7 +284,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
      * If the secret key corresponding to the public key currently uploaded with EC2 is
      * available either on the hard disk or in the grid homedir, ec2mgr.getKey() will
      * set the keyFile.
-     * If this failes, we cannot use this host and it is dropped from remoteShellMgrs and
+     * If this fails, we cannot use this host and it is dropped from remoteShellMgrs and
      * hosts.
      */
     if(ec2mgr.getKeyFile()==null){
