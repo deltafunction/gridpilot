@@ -983,7 +983,9 @@ public class ForkComputingSystem implements ComputingSystem{
           rteRecord = dbPluginMgr.getRuntimeEnvironment(rteId);
           url = (String) rteRecord.getValue("url");
           if(url!=null && !url.equals("null") && !url.equals("")){
-            rteInstaller = new RteInstaller(url, runtimeDirectory, rteNames[i], shellMgr);
+            // Notice that we use the same directory to keep RTEs on both the local host and the (remote)
+            // shell host
+            rteInstaller = new RteInstaller(url, runtimeDirectory, runtimeDirectory, rteNames[i], shellMgr);
             try{
               rteInstaller.install();
             }

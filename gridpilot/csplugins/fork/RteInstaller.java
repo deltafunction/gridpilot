@@ -29,7 +29,8 @@ import org.globus.util.GlobusURL;
 public class RteInstaller {
   
   private String url;
-  private String dir;
+  private String remoteDir;
+  private String cacheDir;
   private String rteName;
   private ShellMgr shellMgr;
   private LogFile logFile;
@@ -38,9 +39,19 @@ public class RteInstaller {
   private static int MAX_DOWNLOAD_WAIT = 240000;
 
 
-  RteInstaller(String _url, String _dir, String _rteName, ShellMgr _shellMgr){
+  /**
+   * If given shell manager '_shellMgr' is local, the remote directory
+   * '_remoteDir' is irrelevant/ignored. 
+   * 
+   * @param _url the URL of the catalog
+   * @param _remoteDir full path to the directory on the worker node in which to keep runtime environments
+   * @param _localDir cache directory on the host where GridWorker is running
+   * @param _shellMgr ShellMgr object to be used for the installation
+   */
+  RteInstaller(String _url, String _remoteDir, String _localDir, String _rteName, ShellMgr _shellMgr){
     url = _url;
-    dir = _dir;
+    remoteDir = _remoteDir;
+    cacheDir = _localDir;
     rteName = _rteName;
     shellMgr = _shellMgr;
     logFile = GridPilot.getClassMgr().getLogFile();
@@ -51,59 +62,71 @@ public class RteInstaller {
    * @throws Exception
    */
   public void install() throws Exception{
+    
     if(shellMgr==null){
       throw new IOException("No shell available; cannot install");
     }
+    
     String tarBallName = url.replaceFirst("^.*/([^/]+)$", "$1");
     String unpackName = tarBallName.replaceFirst("\\.tar\\.gz$", "");
     unpackName = unpackName.replaceFirst("\\.tgz$", "");
-    File cacheDir = new File(dir, "softwareCache");
+    File localCacheDir = new File(cacheDir);
+    String remoteCacheDir = remoteDir+"/softwareCache";
     
     // Check if cache directory exists locally
-    if(!cacheDir.exists()){
+    if(!localCacheDir.exists()){
       logFile.addInfo("Software cache directory "+
-          cacheDir.getAbsolutePath()+" does not exist, creating.");
-      cacheDir.mkdirs();
+          localCacheDir.getAbsolutePath()+" does not exist, creating.");
+      localCacheDir.mkdirs();
     }
-    // We need it remotely as well
-    if(!shellMgr.existsFile(cacheDir.getAbsolutePath())){
+    // We need a remote directory as well
+    if(!shellMgr.existsFile(remoteCacheDir)){
       logFile.addInfo("Software cache directory "+
-          cacheDir.getAbsolutePath()+" does not exist, creating.");
-      shellMgr.mkdirs(cacheDir.getAbsolutePath());
+          remoteCacheDir+" does not exist, creating.");
+      shellMgr.mkdirs(remoteCacheDir);
     }
     
-    File unpackDir = new File(cacheDir, unpackName);
+    File dlDir = new File(localCacheDir, unpackName);
     // Check if the unpack directory is already there. Should not happen...
-    if(unpackDir.exists()){
+    if(dlDir.exists()){
       throw new IOException("There is already a file or directory called "+
-          unpackDir.getAbsolutePath()+". Please remove it.");
+          dlDir.getAbsolutePath()+". Please remove it.");
     }
     // Make the directory where we will unpack the tarball.
-    unpackDir.mkdir();
+    dlDir.mkdir();
     
-    // Download the tarball to the local disk
-    localDownload(url, tarBallName, cacheDir);
-    File fullDlFile = (new File(cacheDir, tarBallName));
+    // Download the tarball to the local disk - should use caching already
+    localDownload(url, tarBallName, localCacheDir);
+    File fullDlFile = (new File(localCacheDir, tarBallName));
     if(shellMgr.isLocal()){
+      // If this RTE has already been installed, return
+      if(shellMgr.existsFile((new File(localCacheDir, ".install_ok_"+rteName)).getAbsolutePath())){
+        return;
+      }
       // Unpack the tarball
-      File fullGunzipName = (new File(unpackDir, unpackName));
+      File fullGunzipName = (new File(dlDir, unpackName));
       Debug.debug("Gunzipping "+fullDlFile, 2);
       Util.gunzip(fullDlFile, fullGunzipName);
       Debug.debug("Untarring "+fullDlFile, 2);
-      Util.unTar(fullGunzipName, unpackDir);
+      Util.unTar(fullGunzipName, dlDir);
       // Rename "data" to "pkg"
-      (new File(unpackDir, "data")).renameTo(new File(unpackDir, "pkg"));
+      (new File(dlDir, "data")).renameTo(new File(dlDir, "pkg"));
     }
     else{
       // For remote shells, copy over the downloaded tarball and then unpack it
+      // If this RTE has already been installed, return
+      if(shellMgr.existsFile(remoteCacheDir+"/.install_ok_"+rteName)){
+        return;
+      }
       Debug.debug("Copying over downloaded file via ssh; "+fullDlFile.getAbsolutePath(), 2);
-      TransferControl.copyOutputFile(fullDlFile.getAbsolutePath(), fullDlFile.getAbsolutePath(), shellMgr, null,
+      TransferControl.copyOutputFile(
+          fullDlFile.getAbsolutePath(), remoteCacheDir+"/"+fullDlFile.getName(), shellMgr, null,
           logFile);
       // Then unpack the tarball and rename "data" to "pkg"
       StringBuffer stdout = new StringBuffer();
       StringBuffer stderr = new StringBuffer();
-      if(shellMgr.exec("cd "+unpackDir.getAbsolutePath()+"; tar -xzf "+
-          fullDlFile.getAbsolutePath()+"; mv data pkg", stdout, stderr)!=0 ||
+      if(shellMgr.exec("cd "+remoteCacheDir+"; tar -xzf "+
+          remoteCacheDir+"/"+fullDlFile.getName()+"; mv data pkg", stdout, stderr)!=0 ||
           stderr!=null && stderr.length()!=0){
         throw new IOException("could not unpack tarball; "+stdout.toString()+":"+stderr.toString());
       }
@@ -118,7 +141,7 @@ public class RteInstaller {
     StringBuffer stdout = new StringBuffer();
     StringBuffer stderr = new StringBuffer();
     // TODO: support Windows bat scripts.
-    if(shellMgr.exec("cd "+unpackDir.getAbsolutePath()+
+    if(shellMgr.exec("cd "+remoteCacheDir+
         "/pkg; /bin/sh ../control/install", stdout, stderr)!=0 ||
         stderr!=null && stderr.length()!=0){
       throw new IOException("could not run install script; "+stdout.toString()+":"+stderr.toString());
@@ -127,8 +150,8 @@ public class RteInstaller {
     // Replace %BASEDIR% with the pkg dir in then runtime script.
     // TODO: support Windows: unpack locally (in java) and
     // then copy over the runtime script if needed
-    if(shellMgr.exec("cd "+unpackDir.getAbsolutePath()+
-        "/control; sed -i 's|%BASEDIR%|"+unpackDir.getAbsolutePath()+
+    if(shellMgr.exec("cd "+remoteCacheDir+
+        "/control; sed -i 's|%BASEDIR%|"+remoteCacheDir+
         "/pkg|g runtime'", stdout, stderr)!=0 || stderr!=null && stderr.length()!=0){
       throw new IOException("could not run install script; "+stdout.toString()+":"+stderr.toString());
     }
@@ -136,15 +159,25 @@ public class RteInstaller {
     // Create the subdirs (if any) of rteName.
     String subDir = rteName.replaceFirst("^(.*)/[^/]+$", "$1");
     if(!subDir.equals(rteName)){
-      if(!shellMgr.mkdirs(dir+"/"+subDir)){
+      if(!shellMgr.mkdirs(remoteDir+"/"+subDir)){
         throw new IOException("could not create directory "+subDir+"; "+stdout.toString()+":"+stderr.toString());
       }
     }
     
     // Move the runtime script to rteName
-    if(!shellMgr.moveFile(unpackDir.getAbsolutePath()+"/pkg", dir+"/"+rteName)){
+    if(!shellMgr.moveFile(remoteCacheDir+"/pkg", remoteDir+"/"+rteName)){
       throw new IOException("could not move runtime script to final destination; "+stdout.toString()+":"+stderr.toString());
     }
+    
+    // Tag this as successfully installed
+    if(shellMgr.isLocal()){
+      shellMgr.writeFile((new File(localCacheDir, ".install_ok_"+rteName)).getAbsolutePath(),
+          "", false);
+    }
+    else{
+      shellMgr.writeFile(remoteCacheDir+"/.install_ok_"+rteName, "", false);
+    }
+    
   }
   
   /**
