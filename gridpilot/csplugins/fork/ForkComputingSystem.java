@@ -1015,7 +1015,7 @@ public class ForkComputingSystem implements ComputingSystem{
    * Copies input files to run directory.
    * Assumes job.stdout points to a file in the run directory.
    */
-  protected boolean getInputFiles(JobInfo job, ShellMgr shellMgr){
+  protected boolean getInputFiles(JobInfo job, ShellMgr thisShellMgr){
     
     boolean ok = true;
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
@@ -1073,11 +1073,11 @@ public class ForkComputingSystem implements ComputingSystem{
       }
       if(inputFiles[i]!=null && inputFiles[i].trim().length()!=0){
         // Remote shell
-        if(!shellMgr.isLocal()){
+        if(!thisShellMgr.isLocal()){
           // If source starts with file:/, scp the file from local disk.
           if(inputFiles[i].matches("^file:/*[^/]+.*")){
             inputFiles[i] = Util.clearTildeLocally(Util.clearFile(inputFiles[i]));
-            ok = shellMgr.upload(inputFiles[i], runDir(job)+"/"+fileName);
+            ok = thisShellMgr.upload(inputFiles[i], runDir(job)+"/"+fileName);
             if(!ok){
               logFile.addMessage("ERROR: could not put input file "+inputFiles[i]);
             }
@@ -1090,7 +1090,7 @@ public class ForkComputingSystem implements ComputingSystem{
           else if(!ignoreRemoteInputs && Util.urlIsRemote(inputFiles[i])){
             try{
               Debug.debug("Getting input file "+inputFiles[i]+" --> "+runDir(job), 3);
-              TransferControl.copyInputFile(inputFiles[i], runDir(job)+"/"+fileName, shellMgr, error, logFile);
+              TransferControl.copyInputFile(inputFiles[i], runDir(job)+"/"+fileName, thisShellMgr, error, logFile);
             }
             catch(Exception ioe){
               logFile.addMessage("WARNING: GridPilot could not get input file "+inputFiles[i]+
@@ -1116,7 +1116,7 @@ public class ForkComputingSystem implements ComputingSystem{
              inputFiles[i].startsWith("file:")){
             inputFiles[i] = Util.clearFile(inputFiles[i]);
             try{
-              if(!shellMgr.existsFile(inputFiles[i])){
+              if(!thisShellMgr.existsFile(inputFiles[i])){
                 logFile.addMessage("File " + inputFiles[i] + " doesn't exist");
                 ok = false;
                 continue;
@@ -1129,7 +1129,7 @@ public class ForkComputingSystem implements ComputingSystem{
               ok = false;
             }
             try{
-              if(!shellMgr.copyFile(inputFiles[i], runDir(job)+"/"+fileName)){
+              if(!thisShellMgr.copyFile(inputFiles[i], runDir(job)+"/"+fileName)){
                 logFile.addMessage("ERROR: Cannot get input file " + inputFiles[i]);
                 ok = false;
               }
