@@ -329,7 +329,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
       }
       mgr = sMgr;
     }
-    else if(host!=null && !host.startsWith("") &&
+    else if(host!=null && !host.equals("") &&
         (host.startsWith("localhost") || host.equals("127.0.0.1"))){
       mgr = (ShellMgr) remoteShellMgrs.get(host);
     }
