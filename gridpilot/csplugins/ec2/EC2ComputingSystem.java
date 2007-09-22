@@ -20,7 +20,7 @@ import gridpilot.JobInfo;
 import gridpilot.SecureShellMgr;
 import gridpilot.ShellMgr;
 import gridpilot.Util;
-import gridpilot.csplugins.fork.ForkPoolComputingSystem;
+import gridpilot.csplugins.forkpool.ForkPoolComputingSystem;
 
 public class EC2ComputingSystem extends ForkPoolComputingSystem implements ComputingSystem {
 
