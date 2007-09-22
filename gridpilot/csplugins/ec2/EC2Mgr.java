@@ -24,7 +24,7 @@ import com.xerox.amazonws.ec2.ReservationDescription.Instance;
 /**
  * This class contains methods for managing virtual machines in the
  * Amazon Elastic Compute Cloud (EC2).
- * I relyes on the Typica library http://code.google.com/p/typica/wiki/TypicaSampleCode)
+ * It relies on the Typica library http://code.google.com/p/typica/wiki/TypicaSampleCode)
  */
 public class EC2Mgr {
   
