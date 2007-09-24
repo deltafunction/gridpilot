@@ -19,14 +19,46 @@ public class ConfirmBox extends JDialog implements ActionListener {
    enableEvents(AWTEvent.WINDOW_EVENT_MASK);
   }
 
-  public int getConfirm(String title, Object text, Object[] showResultsOptions) throws Exception {
-    return getConfirm(title, text, showResultsOptions, null, null, true);
-  }
-  
+  /**
+   * Return the JDialog object created by getConfirm. 
+   * 
+   * @return a JDialog object
+   */
   public JDialog getDialog(){
     return dialog;
   }
   
+  /**
+   * Show a dialog box containing a given text and a number of
+   * buttons corresponding to choices.
+   * 
+   * @param title the title text displayed on the window frame
+   * @param text the body text displayed in the window
+   * @param showResultsOptions an array of Objects that can be either
+   *                           strings or JComponents. If an object is a string,
+   *                           a JButton is created with the string as button text.
+   * @return an integer corresponding to the button clicked: 0, 1, ...
+   * @throws Exception
+   */
+  public int getConfirm(String title, Object text, Object[] showResultsOptions) throws Exception {
+    return getConfirm(title, text, showResultsOptions, null, null, true);
+  }
+  
+  /**
+   * Show a dialog box containing a given text and a number of
+   * buttons corresponding to choices.
+   * 
+   * @param title the title text displayed on the window frame
+   * @param text the body text displayed in the window
+   * @param showResultsOptions an array of Objects that can be either
+   *                           strings or JComponents. If an object is a string,
+   *                           a JButton is created with the string as button text.
+   * @param icon an Icon to be displayed on the window
+   * @param bgColor the background color of the window
+   * @param isResizable whether or not the window should be resizable
+   * @return an integer corresponding to the button clicked: 0, 1, ...
+   * @throws Exception
+   */
   public int getConfirm(String title, Object text, Object[] showResultsOptions,
       Icon icon, Color bgColor, boolean isResizable) throws Exception {
     
