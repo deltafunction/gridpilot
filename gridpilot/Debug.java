@@ -1,11 +1,8 @@
 package gridpilot;
 
 /**
- * Debuging class : print debug information with the calling class name. <p>
- *
- *
+ * Debuging class: print debug information with the calling class name.
  */
-
 public class Debug{
 
   private static Class [] excludeClasses = {/*DBPluginMgr.class*/};
@@ -14,6 +11,12 @@ public class Debug{
   private static boolean withMethodName = true;
   private static boolean withLineNumber = true;
 
+  /**
+   * Prints a message on stdout iff the specified 'level' is smaller than
+   * or equal to the current debug level as specified in the configuration file.
+   * @param msg the message
+   * @param level the level - between 0 and 3
+   */
   public synchronized static void debug(String msg, int level){
     if(isExclude()){
        return;
@@ -36,11 +39,11 @@ public class Debug{
 
   private static boolean isExclude(){
     String className = new Throwable().getStackTrace()[2].getClassName();
-    for(int i=0; i<excludeClasses.length ; ++i)
-      if(className.equals(excludeClasses[i].getName()))
+    for(int i=0; i<excludeClasses.length ; ++i){
+      if(className.equals(excludeClasses[i].getName())){
         return true;
-
-
+      }
+    }
     return false;
   }
 
