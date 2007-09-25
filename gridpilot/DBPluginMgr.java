@@ -2363,7 +2363,7 @@ public class DBPluginMgr extends DBCache implements Database{
                               selectQuery, t);
         }
       }
-      public DBResult getDB2Res(){
+      public DBResult getDBResultRes(){
         return res;
       }
     };
@@ -2371,7 +2371,7 @@ public class DBPluginMgr extends DBCache implements Database{
     t.start();
   
     if(Util.waitForThread(t, dbName, dbTimeOut, "select")){
-      return t.getDB2Res();
+      return t.getDBResultRes();
     }
     else{
       return null;
@@ -2397,7 +2397,7 @@ public class DBPluginMgr extends DBCache implements Database{
                              " from plugin " + dbName, t);
         }
       }
-      public DBResult getDB2Res(){
+      public DBResult getDBResultRes(){
         return res;
       }
     };
@@ -2405,7 +2405,7 @@ public class DBPluginMgr extends DBCache implements Database{
     t.start();
   
     if(Util.waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironments")){
-      return t.getDB2Res();
+      return t.getDBResultRes();
     }
     else{
       return null;
@@ -2431,7 +2431,7 @@ public class DBPluginMgr extends DBCache implements Database{
                              " from plugin " + dbName, t);
         }
       }
-      public DBResult getDB2Res(){
+      public DBResult getDBResultRes(){
         return res;
       }
     };
@@ -2439,7 +2439,7 @@ public class DBPluginMgr extends DBCache implements Database{
     t.start();
   
     if(Util.waitForThread(t, dbName, dbTimeOut, "getTransformations")){
-      return t.getDB2Res();
+      return t.getDBResultRes();
     }
     else{
       return null;
@@ -2466,7 +2466,7 @@ public class DBPluginMgr extends DBCache implements Database{
                                datasetID, t);
           }
         }
-        public DBRecord getDBRes(){
+        public DBRecord getDBRecordRes(){
           return res;
         }
       };
@@ -2474,7 +2474,7 @@ public class DBPluginMgr extends DBCache implements Database{
       t.start();
     
       if(Util.waitForThread(t, dbName, dbTimeOut, "getDataset")){
-        return t.getDBRes();
+        return t.getDBRecordRes();
       }
       else{
         return null;
@@ -2501,7 +2501,7 @@ public class DBPluginMgr extends DBCache implements Database{
                                runtimeEnvironmentID, t);
           }
         }
-        public DBRecord getDBRes(){
+        public DBRecord getDBRecordRes(){
           return res;
         }
       };
@@ -2509,7 +2509,7 @@ public class DBPluginMgr extends DBCache implements Database{
       t.start();
     
       if(Util.waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironment")){
-        return t.getDBRes();
+        return t.getDBRecordRes();
       }
       else{
         return null;
@@ -2536,7 +2536,7 @@ public class DBPluginMgr extends DBCache implements Database{
                                transformationID, t);
           }
         }
-        public DBRecord getDBRes(){
+        public DBRecord getDBRecordRes(){
           return res;
         }
       };
@@ -2544,7 +2544,7 @@ public class DBPluginMgr extends DBCache implements Database{
       t.start();
     
       if(Util.waitForThread(t, dbName, dbTimeOut, "getTransformation")){
-        return t.getDBRes();
+        return t.getDBRecordRes();
       }
       else{
         return null;
@@ -2571,7 +2571,7 @@ public class DBPluginMgr extends DBCache implements Database{
                              datasetID, t);
         }
       }
-      public DBResult getDB2Res(){
+      public DBResult getDBResultRes(){
         return res;
       }
     };
@@ -2579,7 +2579,7 @@ public class DBPluginMgr extends DBCache implements Database{
     t.start();
   
     if(Util.waitForThread(t, dbName, dbTimeOut, "getFiles")){
-      return t.getDB2Res();
+      return t.getDBResultRes();
     }
     else{
       return null;
@@ -2607,7 +2607,7 @@ public class DBPluginMgr extends DBCache implements Database{
                              datasetID, t);
         }
       }
-      public DBResult getDB2Res(){
+      public DBResult getDBResultRes(){
         return res;
       }
     };
@@ -2615,7 +2615,7 @@ public class DBPluginMgr extends DBCache implements Database{
     t.start();
   
     if(Util.waitForThread(t, dbName, dbTimeOut, "getJobDefinitions")){
-      return t.getDB2Res();
+      return t.getDBResultRes();
     }
     else{
       return null;
@@ -2642,7 +2642,7 @@ public class DBPluginMgr extends DBCache implements Database{
                              jobDefinitionID, t);
         }
       }
-      public DBRecord getDBRes(){
+      public DBRecord getDBRecordRes(){
         return res;
       }
     };
@@ -2650,7 +2650,7 @@ public class DBPluginMgr extends DBCache implements Database{
     t.start();
   
     if(Util.waitForThread(t, dbName, dbTimeOut, "getJobDefinition")){
-      return t.getDBRes();
+      return t.getDBRecordRes();
     }
     else{
       return null;
@@ -2952,7 +2952,7 @@ public class DBPluginMgr extends DBCache implements Database{
                              fileID, t);
         }
       }
-      public DBRecord getDBRes(){
+      public DBRecord getDBRecordRes(){
         return res;
       }
     };
@@ -2960,7 +2960,7 @@ public class DBPluginMgr extends DBCache implements Database{
     t.start();
   
     if(Util.waitForThread(t, dbName, dbTimeOut, "getFile")){
-      return t.getDBRes();
+      return t.getDBRecordRes();
     }
     else{
       return null;

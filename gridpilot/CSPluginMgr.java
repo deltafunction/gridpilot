@@ -269,7 +269,7 @@ public class CSPluginMgr implements ComputingSystem{
     t.start();
 
     if(Util.waitForThread(t, job.getCSName(), submissionTimeOut, "submit")){
-      return t.getBooleanRes();
+      return t.getBoolRes();
     }
     else{
       return false;
@@ -734,7 +734,7 @@ public class CSPluginMgr implements ComputingSystem{
     t.start();
 
     if(Util.waitForThread(t, job.getCSName(), copyFileTimeOut, "postProcessing")){
-      if(t.getBooleanRes()){
+      if(t.getBoolRes()){
         // Register the new file if the db is a file catalog
         try{
           DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
@@ -804,7 +804,7 @@ public class CSPluginMgr implements ComputingSystem{
     t.start();
 
     if(Util.waitForThread(t, job.getCSName(), copyFileTimeOut, "preProcessing")){
-      return t.getBooleanRes();
+      return t.getBoolRes();
     }
     else{
       return false;
