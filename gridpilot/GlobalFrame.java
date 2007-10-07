@@ -84,8 +84,8 @@ public class GlobalFrame extends GPFrame{
     }
     selectedPanel = tabbedPane.getSelectedIndex();
 
-    /*
-    Detect click over X in tab
+   /**
+    * Detect click over X in tab
     */
    tabbedPane.addMouseListener(new MouseAdapter(){
      public void mouseReleased(MouseEvent evt){
@@ -167,9 +167,9 @@ public class GlobalFrame extends GPFrame{
    * ActionEvents
    */
 
-  /*
-  Add a new panel.
-  */
+  /**
+   * Add a new panel.
+   */
   public void addPanel(ListPanel newPanel, String title){
     Debug.debug("Adding panel "+newPanel.getTitle(), 3);
     addPanel(newPanel);
@@ -215,8 +215,8 @@ public class GlobalFrame extends GPFrame{
     setSize(size);
   }
 
- /*
-  Remove panel.
+ /**
+  * Remove panel.
   */
   public void removePanel(){
     ListPanel panel = (ListPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
@@ -236,19 +236,19 @@ public class GlobalFrame extends GPFrame{
     tabbedPane.removeTabAt(tabbedPane.getSelectedIndex());
   }
 
-  //Edit-cut | About action performed
+  // Edit-cut | About action performed
   public void menuEditCut_actionPerformed(){
     Debug.debug("Cutting", 3);
     ListPanel panel = (ListPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
     panel.cut();
   }
-  //Edit-copy | About action performed
+  // Edit-copy | About action performed
   public void menuEditCopy_actionPerformed(){
     Debug.debug("Copying", 3);
     ListPanel panel = (ListPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
     panel.copy();
   }
-  //Edit-paste | About action performed
+  // Edit-paste | About action performed
   public void menuEditPaste_actionPerformed(){
     Debug.debug("Pasting", 3);
     ListPanel panel = (ListPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
@@ -259,8 +259,8 @@ public class GlobalFrame extends GPFrame{
     if(GridPilot.editingPrefs){
       return;
     }
-    //Schedule a job for the event-dispatching thread:
-    //creating and showing this application's GUI.
+    // Schedule a job for the event-dispatching thread:
+    // creating and showing this application's GUI.
     javax.swing.SwingUtilities.invokeLater(new Runnable() {
         public void run(){
           GridPilot.editingPrefs = true;
@@ -269,7 +269,7 @@ public class GlobalFrame extends GPFrame{
     });
   }
 
-  //Help | About action performed
+  // Help | About action performed
   public void menuHelpAbout_actionPerformed(){
     URL aboutURL = null;
     try{
@@ -290,10 +290,10 @@ public class GlobalFrame extends GPFrame{
     }
   }
 
-  //Overridden so we can exit when window is closed
+  // Overridden so we can exit when window is closed
   protected void processWindowEvent(WindowEvent e){
     super.processWindowEvent(e);
-    if (e.getID() == WindowEvent.WINDOW_CLOSING){
+    if (e.getID()==WindowEvent.WINDOW_CLOSING){
       GridPilot.exit(0);
     }
   }
@@ -331,14 +331,12 @@ public class GlobalFrame extends GPFrame{
     });
     //menuFile.add(miReloadValues);
    
-    //DB
+    // DB
     JMenu menuDB = new JMenu("Databases");
     JMenuItem miDbClearCaches = new JMenuItem("Clear DB caches");
     miDbClearCaches.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        /*
-         Clear caches in all of the DB connections
-         */
+        // Clear caches in all of the DB connections
         GridPilot.getClassMgr().clearDBCaches();
       }
     });
@@ -382,7 +380,7 @@ public class GlobalFrame extends GPFrame{
     menuDB.add(miDbRefreshRTEs);
     menuFile.add(menuDB);
 
-    //CS
+    // CS
     JMenu menuCS = new JMenu("Computing systems");
     JMenuItem miCsReconnect = new JMenuItem("Reconnect");
     miCsReconnect.addActionListener(new ActionListener(){
@@ -570,7 +568,7 @@ public class GlobalFrame extends GPFrame{
     });
     menuEdit.add(menuEditPrefs);
 
-    //Help
+    // Help
     JMenu menuHelp = new JMenu("Help");
     JMenuItem menuHelpAbout = new JMenuItem("About GridPilot");
     menuHelpAbout.addActionListener(new ActionListener(){
@@ -691,7 +689,5 @@ public class GlobalFrame extends GPFrame{
     });*/
   
   }
-
-  
 
 }
