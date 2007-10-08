@@ -906,30 +906,26 @@ public class Util{
       // hack to have the diretory deleted on exit
       GridPilot.tmpConfFile.put(tmpDir, new File(tmpDir));
       // fill the directory with certificates from resources/certificates
-      Debug.debug("Reading list of files from "+
-          GridPilot.resourcesPath+"ca_certs_list.txt", 3);
-      Debug.debug("will save to "+tmpDir, 3);
-      URL fileURL = GridPilot.class.getResource(
-          GridPilot.resourcesPath+"ca_certs_list.txt");
-      HashSet certFilesList = new HashSet();
-      BufferedReader in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
+      URL fileURL = null;
+      BufferedReader in = null;
       String line;
-      while((line = in.readLine())!=null){
-        certFilesList.add(line);
-      }
-      in.close();
       String fileName;
       PrintWriter out = null;
       boolean ok = true;
-      for(Iterator it=certFilesList.iterator(); it.hasNext();){
-        fileName = it.next().toString();
+      class CertFilter implements FilenameFilter {
+        public boolean accept(File dir, String name) {
+            return (name.matches("^.*\\.\\d+$"));
+        }
+      }
+      FilenameFilter filter = new CertFilter();
+      String [] caCertfiles = (new File(GridPilot.resourcesPath+"certificates")).list(filter);
+      for(int i=0; i<caCertfiles.length; ++i){
+        fileName =  caCertfiles[i];
         Debug.debug("extracting "+fileName, 3);
         try{
-          fileURL = GridPilot.class.getResource(
-              GridPilot.resourcesPath+"certificates/"+fileName);
+          fileURL = GridPilot.class.getResource(GridPilot.resourcesPath+"certificates/"+fileName);
           in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
-          out = new PrintWriter(
-              new FileWriter(new File(tmpDir, fileName)));
+          out = new PrintWriter(new FileWriter(new File(tmpDir, fileName)));
           // if this is an X509 certificate with the
           // descripion in plain text first, just grab the
           // certificate part.
@@ -938,22 +934,15 @@ public class Util{
           //-----BEGIN CERTIFICATE-----
           // and end with
           //-----END CERTIFICATE-----
-          if(fileName.endsWith(".0")){
-            ok = false;
-          }
-          else{
-            ok = true;
-          }
+          ok = false;
           while((line = in.readLine())!=null){
-            if(fileName.endsWith(".0") &&
-                line.matches(".*BEGIN CERTIFICATE.*")){
+            if(line.matches("(?i).*BEGIN CERTIFICATE.*")){
               ok = true;
             }
             if(ok){
               out.println(line);
             }
-            if(fileName.endsWith(".0") &&
-                line.matches(".*END CERTIFICATE.*")){
+            if(line.matches("(?i).*END CERTIFICATE.*")){
               ok = false;
             }
           }
@@ -1478,17 +1467,6 @@ public class Util{
 
     // The trust store
     //
-    Debug.debug("Reading list of files from "+
-        GridPilot.resourcesPath+"ca_certs_list.txt", 3);
-    URL fileURL = GridPilot.class.getResource(
-        GridPilot.resourcesPath+"ca_certs_list.txt");
-    HashSet certFilesList = new HashSet();
-    BufferedReader in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
-    String line;
-    while((line = in.readLine())!=null){
-      certFilesList.add(line);
-    }
-    in.close();
     
     // The truststore will be saved to a temporary file.
     // This seems to be the only way to get connector/j to use it...
