@@ -918,7 +918,8 @@ public class Util{
         }
       }
       FilenameFilter filter = new CertFilter();
-      String [] caCertfiles = (new File(GridPilot.resourcesPath+"certificates")).list(filter);
+      URL dirURL = GridPilot.class.getResource(GridPilot.resourcesPath+"certificates");
+      String [] caCertfiles = (new File(Util.clearFile(dirURL.toExternalForm()))).list(filter);
       for(int i=0; i<caCertfiles.length; ++i){
         fileName =  caCertfiles[i];
         Debug.debug("extracting "+fileName, 3);
