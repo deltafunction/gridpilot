@@ -1497,7 +1497,7 @@ public class Util{
         fis = new FileInputStream(caCertFile);
         cf = CertificateFactory.getInstance("X.509");
         cert = (X509Certificate) cf.generateCertificate(fis);
-        String alias = caCertfiles[i].replaceFirst("^.*\\(.\\d+)$", "$1");
+        String alias = caCertfiles[i].replaceFirst("^(.*)\\.\\d+$", "$1");
         Debug.debug("Adding the cert with alias " + alias, 2);
         addToTrustStore(tmpPwd.toCharArray(), alias, cert,
            truststorePath);
