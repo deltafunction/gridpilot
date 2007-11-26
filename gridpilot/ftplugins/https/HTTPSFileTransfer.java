@@ -519,7 +519,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       String [] lines = Util.split(res, "(?s)[\n\r]");
       String hrefPattern = "(?i)<d:href>"+path+"</d:href>";
       String datePattern = "(?i)<lp1:getlastmodified>(.*)</lp1:getlastmodified>";
-      String date = null;
+      String date = "";
       boolean ok = false;
       for(int i=0; i<lines.length; ++i){
         if(lines[i].matches(hrefPattern)){
