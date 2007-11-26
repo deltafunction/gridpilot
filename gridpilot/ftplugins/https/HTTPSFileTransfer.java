@@ -475,7 +475,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       }
       Date modificationDate = null;
       try{
-        modificationDate = getLastModified(urlCopy.getDestinationUrl());
+        modificationDate = getLastModified(urlCopy.getSourceUrl());
       }
       catch(Exception ee){
       }
