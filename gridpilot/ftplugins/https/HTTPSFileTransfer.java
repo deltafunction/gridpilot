@@ -458,6 +458,9 @@ public class HTTPSFileTransfer implements FileTransfer {
         String line = "";
         while(line!=null){
            line = cacheRAF.readLine();
+           if(line==null){
+             break;
+           }
            if(line.startsWith("date: ")){
              cachedDate = makeDate(line.replaceFirst("date: (.*)", "$1"));
            }
