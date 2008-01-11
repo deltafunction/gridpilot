@@ -1308,10 +1308,15 @@ public class TransferControl{
               InputStream is = (new URL(url)).openStream();
               DataInputStream dis = new DataInputStream(new BufferedInputStream(is));
               FileOutputStream os = new FileOutputStream(new File(dName+fName));
-              // read data in chunks of 10 kB
-              byte [] b = new byte[10000];
-              while(dis.read(b)>-1){
-                os.write(b);
+              // read data in chunks of 1 kB
+              byte [] b = new byte[1024];
+              int len = -1;
+              while(true){
+                len = is.read(b, 0, b.length);
+                if(len<0){
+                  break;
+                }
+                os.write(b, 0, len);
               }
               dis.close();
               is.close();
