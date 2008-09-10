@@ -1,5 +1,9 @@
 package gridpilot;
 
+import gridfactory.common.Debug;
+import gridfactory.common.LocalStaticShell;
+import gridfactory.common.Shell;
+
 import javax.swing.JOptionPane;
 
 import javax.swing.*;
@@ -43,19 +47,19 @@ public class ShowOutputsJobsDialog extends JOptionPane{
 
       String[] files;
       Vector vFiles = new Vector();
-      JobInfo job = (JobInfo) jobs.get(i);
-      if(job.getStdOut()!=null){
-          vFiles.add(job.getStdOut());
+      MyJobInfo job = (MyJobInfo) jobs.get(i);
+      if(job.getOutTmp()!=null){
+          vFiles.add(job.getOutTmp());
       }
-      if(job.getStdErr()!=null){
-        vFiles.add(job.getStdErr());
+      if(job.getErrTmp()!=null){
+        vFiles.add(job.getErrTmp());
       }
 
       files = new String[vFiles.size()];
       for (int k=0; k<files.length; ++k){
         files[k] = vFiles.get(k).toString();
       }
-      ShellMgr shell = null;
+      Shell shell = null;
       try{
         shell = GridPilot.getClassMgr().getShellMgr(job);
       }
@@ -83,13 +87,13 @@ public class ShowOutputsJobsDialog extends JOptionPane{
   }
 
   public static void showTabs(Component parent, String header,
-      final JobInfo job,
+      final MyJobInfo job,
       final String[] filesPaths){
     showTabs(parent, header, job, filesPaths, null, null);
   }
 
   public static int showTabs(Component parent, String header,
-                                  final ShellMgr shell,
+                                  final Shell shell,
                                   final String[] filesPaths,
                                   String[] options,
                                   JCheckBox cb){
@@ -137,7 +141,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
             String content;
             try{
               if(shell == null){
-                content = LocalStaticShellMgr.readFile(filesPaths[finalI]);
+                content = LocalStaticShell.readFile(filesPaths[finalI]);
               }
               else{
                 content = shell.readFile(filesPaths[finalI]);
@@ -200,7 +204,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
   }
 
   public static int showTabs(Component parent, String header,
-      final JobInfo job,
+      final MyJobInfo job,
       final String[] filesPaths,
       String[] options,
       JCheckBox cb){

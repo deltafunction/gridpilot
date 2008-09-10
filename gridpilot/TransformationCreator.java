@@ -1,5 +1,7 @@
 package gridpilot;
 
+import gridfactory.common.Debug;
+
 import javax.swing.*;
 
 /**
@@ -37,7 +39,7 @@ public class TransformationCreator{
     int choice = 0;
     if(showResults){
       //choice = showResult();
-      choice = Util.showResult(cstAttrNames, cstAttr, "Transformation", 1);
+      choice = MyUtil.showResult(cstAttrNames, cstAttr, "Transformation", 1);
     }
 
     switch(choice){
@@ -48,7 +50,7 @@ public class TransformationCreator{
 
     if(editing){
       String transformationIdentifier =
-        Util.getIdentifierField(dbPluginMgr.getDBName(), "transformation");
+        MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "transformation");
       String id = "-1";
       for(int i=0; i<cstAttrNames.length; ++i){
         Debug.debug("Checking name "+transformationIdentifier+":"+cstAttrNames[i].toString(), 3);

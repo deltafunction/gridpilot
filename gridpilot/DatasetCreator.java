@@ -1,5 +1,8 @@
 package gridpilot;
 
+import gridfactory.common.DBRecord;
+import gridfactory.common.Debug;
+
 import javax.swing.*;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -41,9 +44,9 @@ public class DatasetCreator{
     dbPluginMgr = _dbPluginMgr;
     
     datasetTransformationReference =
-      Util.getDatasetTransformationReference(dbPluginMgr.getDBName());
+      MyUtil.getDatasetTransformationReference(dbPluginMgr.getDBName());
     datasetTransformationVersionReference =
-      Util.getDatasetTransformationVersionReference(dbPluginMgr.getDBName());
+      MyUtil.getDatasetTransformationVersionReference(dbPluginMgr.getDBName());
 
     makeDataset();
   }
@@ -68,12 +71,12 @@ public class DatasetCreator{
           transformationVersion = cstAttr[j];
         }
       }
-      String datasetNameField = Util.getNameField(dbPluginMgr.getDBName(), "Dataset");
+      String datasetNameField = MyUtil.getNameField(dbPluginMgr.getDBName(), "Dataset");
       for(int i=0; i<datasetIDs.length; ++i){
         Debug.debug("Creating #"+datasetIDs[i], 2);
         DBRecord res = dbPluginMgr.getDataset(datasetIDs[i]);
-        Debug.debug("Input records "+Util.arrayToString(res.fields), 2);
-        Debug.debug("Input values "+Util.arrayToString(res.values), 2);
+        Debug.debug("Input records "+MyUtil.arrayToString(res.fields), 2);
+        Debug.debug("Input values "+MyUtil.arrayToString(res.values), 2);
         clearAttrs.clear();        
         for(int j=0; j<cstAttrNames.length; ++j){                   
           if(!datasetIDs[i].equals("-1")){
@@ -132,7 +135,7 @@ public class DatasetCreator{
         }
         if(showThis && !okAll){
         //int choice = showResult(resCstAttr, /*datasetIDs[i],*/ i+1<datasetIDs.length);  
-        int choice = Util.showResult(cstAttrNames, resCstAttr, "dataset",
+        int choice = MyUtil.showResult(cstAttrNames, resCstAttr, "dataset",
             (i+1<datasetIDs.length ? 2 : 1));  
         switch(choice){
           case 0  : skip = false; break;  // OK
@@ -167,7 +170,7 @@ public class DatasetCreator{
 
         if(showThis && !okAll){
         //int choice = showResult(resCstAttr, /*datasetIDs[i],*/ i+1<datasetIDs.length);  
-        int choice = Util.showResult(cstAttrNames, resCstAttr, "dataset",
+        int choice = MyUtil.showResult(cstAttrNames, resCstAttr, "dataset",
             (i+1<datasetIDs.length ? 2 : 1));  
         switch(choice){
           case 0  : skip = false; break;  // OK

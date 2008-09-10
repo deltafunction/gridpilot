@@ -3,6 +3,7 @@ package gridpilot.csplugins.ng;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.GeneralSecurityException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
@@ -18,12 +19,13 @@ import org.nordugrid.matcher.Matcher;
 import org.nordugrid.matcher.SimpleMatcher;
 import org.nordugrid.model.ARCResource;
 
+import gridfactory.common.Debug;
+import gridfactory.common.JobInfo;
 import gridpilot.DBPluginMgr;
-import gridpilot.Debug;
-import gridpilot.JobInfo;
-import gridpilot.LogFile;
+import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
-import gridpilot.Util;
+import gridpilot.MyLogFile;
+import gridpilot.MyUtil;
 
 /**
  * Submission class for the NorduGrid plugin.
@@ -32,7 +34,7 @@ import gridpilot.Util;
 
 public class NGSubmission{
  
-  private LogFile logFile;
+  private MyLogFile logFile;
   private String csName;
   private String [] clusters = null;
   private int clusterIndex = 0;
@@ -60,10 +62,10 @@ public class NGSubmission{
   MalformedURLException, IOException{
 
     scriptGenerator =  new NGScriptGenerator(csName);
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     
-    String finalStdErr = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
-    String finalStdOut = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+    String finalStdErr = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
+    String finalStdOut = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
     // The default is now to create both stderr if either
     // final destination is specified for stderr or final destination is speficied for
     // neither stdout nor stderr
@@ -72,7 +74,7 @@ public class NGSubmission{
        (finalStdOut==null || finalStdOut.equals(""));
     Debug.debug("stdout/err: "+finalStdOut+":"+finalStdErr, 3);
 
-    List files = scriptGenerator.createXRSL(job, scriptName, xrslName, !withStdErr);
+    List files = scriptGenerator.createXRSL((MyJobInfo) job, scriptName, xrslName, !withStdErr);
     // Now the short file names
     List fileNames = new Vector();
     String file;
@@ -88,7 +90,7 @@ public class NGSubmission{
     }
     String ngJobId = null;
     try{
-      ngJobId = submit(submissionNumber, job, xrslName, files, fileNames);
+      ngJobId = submit(submissionNumber, (MyJobInfo) job, xrslName, files, fileNames);
     }
     catch(Exception e){
       e.printStackTrace();
@@ -96,7 +98,7 @@ public class NGSubmission{
           " to " + csName, e);
     }
     if(ngJobId==null){
-      job.setJobStatus(NGComputingSystem.NG_STATUS_ERROR);
+      ((MyJobInfo) job).setCSStatus(NGComputingSystem.NG_STATUS_ERROR);
       return false;
     }
     else{
@@ -105,9 +107,9 @@ public class NGSubmission{
     }
   }
 
-  private String submit(int submissionNumber, JobInfo job, String xrslFileName,
+  private String submit(int submissionNumber, MyJobInfo job, String xrslFileName,
       List files, List fileNames) throws ARCDiscoveryException,
-  MalformedURLException, ARCGridFTPJobException, IOException{
+  MalformedURLException, ARCGridFTPJobException, IOException, GeneralSecurityException{
     
     String ngJobId = null;
     String xrsl = "";
@@ -195,7 +197,7 @@ public class NGSubmission{
         ARCResource resource = null;
         for(int i=0; i<resources.length; ++i){
           Debug.debug("Checking resource "+resources[i].getClusterName()+
-              " : "+Util.arrayToString(resources[i].getRuntimeenvironment().toArray()), 2);
+              " : "+MyUtil.arrayToString(resources[i].getRuntimeenvironment().toArray()), 2);
           if(matcher.isResourceSuitable(xrsl, resources[i]) &&
              (resource==null ||
              resources[i].getTotalQueueCPUs()>resource.getTotalQueueCPUs() ||
@@ -253,15 +255,15 @@ public class NGSubmission{
       xrsl = xrsl.replaceFirst("\\((?i)cputime=.*\\)\\(\\*endCpu\\*\\)", "");
       
       Debug.debug("XRSL: "+xrsl, 3);
-      Debug.debug("Submitting with input files: "+Util.arrayToString(files.toArray()), 2);
-      Debug.debug("Submitting with input file names: "+Util.arrayToString(fileNames.toArray()), 2);
+      Debug.debug("Submitting with input files: "+MyUtil.arrayToString(files.toArray()), 2);
+      Debug.debug("Submitting with input file names: "+MyUtil.arrayToString(fileNames.toArray()), 2);
 
       int i = 0;
       ARCGridFTPJob gridJob = null;
       while(true){
         try{
           gridJob = new ARCGridFTPJob(submissionHost);
-          GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+          GSSCredential credential = GridPilot.getClassMgr().getSSL().getGridCredential();
           GlobusCredential globusCred = null;
           if(credential instanceof GlobusGSSCredentialImpl){
             globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();

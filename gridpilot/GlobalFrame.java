@@ -9,8 +9,13 @@ import javax.swing.event.*;
 
 import java.util.*;
 
+import gridfactory.common.ConfigFile;
+import gridfactory.common.ConfigNode;
+import gridfactory.common.Debug;
+import gridfactory.common.LogFile;
+import gridfactory.common.PreferencesPanel;
+import gridfactory.common.ResThread;
 import gridpilot.StatusBar;
-import gridpilot.Debug;
 import gridpilot.GridPilot;
 import gridpilot.ListPanel;
 import gridpilot.IconProxy;
@@ -28,7 +33,7 @@ public class GlobalFrame extends GPFrame{
   private Vector allPanels;
   private int selectedPanel;
   private CreateEditDialog pDialog;
-
+  private PreferencesPanel prefsPanel = null;
   private static int i;
 
   public JTabbedPane tabbedPane = new JTabbedPane();
@@ -41,7 +46,7 @@ public class GlobalFrame extends GPFrame{
   // keep track of whether or not we are cutting on the sub-panels
   public boolean cutting = false;
   public ListPanel cutPanel = null;
-
+  public JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show monitor (ctrl m)");
   
   /**
    * Constructor
@@ -113,7 +118,7 @@ public class GlobalFrame extends GPFrame{
         }
         if(e.getID()==KeyEvent.KEY_PRESSED){
           if(e.getKeyCode()==KeyEvent.VK_O){
-            MyThread t = (new MyThread(){
+            ResThread t = (new ResThread(){
               public void run(){
                 try{
                   BrowserPanel bp = new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(),
@@ -256,15 +261,15 @@ public class GlobalFrame extends GPFrame{
   }
   
   public void menuEditPrefs_actionPerformed(){
-    if(GridPilot.editingPrefs){
+    if(prefsPanel!=null && prefsPanel.isEditing()){
       return;
     }
     // Schedule a job for the event-dispatching thread:
     // creating and showing this application's GUI.
     javax.swing.SwingUtilities.invokeLater(new Runnable() {
         public void run(){
-          GridPilot.editingPrefs = true;
           createAndShowPrefsGUI();
+          prefsPanel.setEditing(true);
         }
     });
   }
@@ -311,7 +316,6 @@ public class GlobalFrame extends GPFrame{
     }
   }
 
-  public JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show monitor (ctrl m)");
   /**
    * Creates the menu in the main menu bar.
    */
@@ -355,7 +359,7 @@ public class GlobalFrame extends GPFrame{
         /*
          Call setupRuntimeEnvironments() on all CSs
          */
-        MyThread t = new MyThread(){
+        ResThread t = new ResThread(){
           public void run(){
             try{
               for(int i=0; i<GridPilot.csNames.length; ++i){
@@ -412,7 +416,7 @@ public class GlobalFrame extends GPFrame{
     JMenuItem miBrowser = new JMenuItem("New browser (ctrl o)");
     miBrowser.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        MyThread t = (new MyThread(){
+        ResThread t = (new ResThread(){
           public void run(){
             try{
               BrowserPanel bp = new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(),
@@ -581,7 +585,7 @@ public class GlobalFrame extends GPFrame{
     JMenuItem menuHelpBeginning = new JMenuItem("Wizard: Starting with GridPilot");
     menuHelpBeginning.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        (new MyThread(){
+        (new ResThread(){
           public void run(){
             new BeginningWizard(false);
           }
@@ -670,9 +674,11 @@ public class GlobalFrame extends GPFrame{
     GridPilot.getClassMgr().getConfigFile().resetConfiguration();
     GridPilot.getClassMgr().getConfigFile().parseSections();
     ConfigNode topNode = GridPilot.getClassMgr().getConfigFile().getHeadNode();
+    ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
+    LogFile logFile = GridPilot.getClassMgr().getLogFile();
 
     // Create and set up the content pane.
-    PreferencesPanel prefsPanel = new PreferencesPanel(frame, topNode);
+    prefsPanel = new PreferencesPanel(frame, topNode, configFile, logFile);
     prefsPanel.setOpaque(true); // content panes must be opaque
     frame.setContentPane(prefsPanel);
 

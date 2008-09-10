@@ -1,8 +1,8 @@
 package gridpilot.dbplugins.atlas;
 
-import gridpilot.Debug;
+import gridfactory.common.Debug;
 import gridpilot.GridPilot;
-import gridpilot.Util;
+import gridpilot.MyUtil;
 
 import java.net.MalformedURLException;
 import java.sql.Connection;
@@ -32,7 +32,7 @@ public class MySQLLookupPFN  extends LookupPFN {
     // gridAuth to authenticate
     if(user.equals("")){
       gridAuth = true;
-      user = Util.getGridDatabaseUser();
+      user = GridPilot.getClassMgr().getSSL().getGridDatabaseUser();
     }
     // Make the connection
     // we use the database url as alias
@@ -42,7 +42,7 @@ public class MySQLLookupPFN  extends LookupPFN {
     if(gridAuth){
       ATLASDatabase.activateSsl();
     }
-    Connection conn = GridPilot.getClassMgr().getDBConnection(alias);
+    Connection conn = db.getDBConnection(alias);
     // First query the t_lfn table to get the guid
     String req = null;
     if(db.homeSite!=null && db.homeServerMysqlAlias!=null &&
@@ -106,7 +106,7 @@ public class MySQLLookupPFN  extends LookupPFN {
         conn.close();
         return null;
       }
-      res = Util.split(rset.getString("pfname"));
+      res = MyUtil.split(rset.getString("pfname"));
       for(int i=0; i<res.length; ++i){
         resultVector.add(res[i]);
       }

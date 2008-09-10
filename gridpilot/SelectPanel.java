@@ -1,6 +1,6 @@
 package gridpilot;
 
-import gridpilot.Debug;
+import gridfactory.common.Debug;
 
 import javax.swing.*;
 

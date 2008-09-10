@@ -1,11 +1,11 @@
 package gridpilot.csplugins.ec2;
 
-import gridpilot.ConfirmBox;
-import gridpilot.Debug;
+import gridfactory.common.ConfirmBox;
+import gridfactory.common.Debug;
 import gridpilot.GridPilot;
 import gridpilot.StatusBar;
-import gridpilot.Table;
-import gridpilot.Util;
+import gridpilot.MyJTable;
+import gridpilot.MyUtil;
 
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
@@ -14,6 +14,8 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
@@ -32,6 +34,9 @@ import javax.swing.border.TitledBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
+import org.globus.gsi.GlobusCredentialException;
+import org.ietf.jgss.GSSException;
+
 import com.xerox.amazonws.ec2.EC2Exception;
 import com.xerox.amazonws.ec2.ImageDescription;
 import com.xerox.amazonws.ec2.ReservationDescription;
@@ -48,8 +53,8 @@ import com.xerox.amazonws.ec2.ReservationDescription.Instance;
 public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
 
   private static final long serialVersionUID = 1L;
-  private Table amiTable = null;
-  private Table instanceTable = null;
+  private MyJTable amiTable = null;
+  private MyJTable instanceTable = null;
   private String [] amiColorMapping = null;  
   private String [] instanceColorMapping = null;  
   private EC2Mgr ec2mgr = null;
@@ -65,7 +70,7 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
  
   public StatusBar statusBar = null;
 
-  public EC2MonitoringPanel(EC2Mgr _ec2mgr){
+  public EC2MonitoringPanel(EC2Mgr _ec2mgr) throws Exception{
     ec2mgr = _ec2mgr;
     // use status bar on main window until a monitoring panel is actually created
     statusBar = GridPilot.getClassMgr().getStatusBar();
@@ -80,7 +85,7 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     return "EC2 Monitor";
   }
 
-  public void initGUI(){
+  public void initGUI() throws Exception{
     
     this.setLayout(new BorderLayout());
     
@@ -141,7 +146,7 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     return amiArray;
   }
   
-  String [][] getRunningInstances() throws EC2Exception{
+  String [][] getRunningInstances() throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException{
     List reservationList = ec2mgr.listReservations();
     Vector instanceVector = new Vector();
     List instanceList = null;
@@ -175,9 +180,9 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     return instanceArray;
   }
   
-  private JPanel createAMIsPanel(){
+  private JPanel createAMIsPanel() throws Exception{
     JPanel panel = new JPanel(new BorderLayout()); 
-    amiTable = new Table(new String [] {}, AMI_FIELDS, amiColorMapping);
+    amiTable = new MyJTable(new String [] {}, AMI_FIELDS, amiColorMapping);
     amiTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     amiTable.addListSelectionListener(new ListSelectionListener(){
       public void valueChanged(ListSelectionEvent e){
@@ -234,7 +239,7 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     }
     String amiID = (String) amiTable.getUnsortedValueAt(row, 0);
     // get the number of instances we want to start
-    int instances = Util.getNumber("Number of instances to start", "Instances", 1);
+    int instances = MyUtil.getNumber("Number of instances to start", "Instances", 1);
     if(instances<1){
       return;
     }
@@ -252,7 +257,7 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     for(int i=0; i<rows.length; ++i){
       ids[i] = (String) instanceTable.getUnsortedValueAt(rows[i], 2);
     }
-    String msg = "Are you sure you want to terminate the instance(s) "+Util.arrayToString(ids)+"?";
+    String msg = "Are you sure you want to terminate the instance(s) "+MyUtil.arrayToString(ids)+"?";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     try{
       int choice = confirmBox.getConfirm("Confirm terminate",
@@ -269,9 +274,9 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     ec2mgr.terminateInstances(ids);
   }
 
-  private JPanel createInstancesPanel(){
+  private JPanel createInstancesPanel() throws Exception{
     JPanel panel = new JPanel(new BorderLayout()); 
-    instanceTable = new Table(new String [] {}, INSTANCE_FIELDS, instanceColorMapping);
+    instanceTable = new MyJTable(new String [] {}, INSTANCE_FIELDS, instanceColorMapping);
     amiTable.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
     instanceTable.addListSelectionListener(new ListSelectionListener(){
       public void valueChanged(ListSelectionEvent e){

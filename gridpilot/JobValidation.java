@@ -1,5 +1,8 @@
 package gridpilot;
 
+import gridfactory.common.ConfigFile;
+import gridfactory.common.Debug;
+
 import java.util.*;
 
 /**
@@ -21,7 +24,7 @@ public class JobValidation{
   static final int EXIT_UNEXPECTED = 4;
   static final int ERROR = -1;
 
-  private LogFile logFile;
+  private MyLogFile logFile;
   private ConfigFile configFile;
   private int maxSimultaneaousValidation = 3;
   private int currentSimultaneousValidation = 0;
@@ -64,7 +67,7 @@ public class JobValidation{
    * After this delay, and if there is not too much pending validation, this job
    * validation is started immediatly. <p>
    */
-  public synchronized void validate(JobInfo job){
+  public synchronized void validate(MyJobInfo job){
     Debug.debug("validate " + job.getName() + " at " + Calendar.getInstance().getTime().toString(), 2);
     waitingJobs.add(job);
     timer.schedule(new TimerTask(){
@@ -75,7 +78,7 @@ public class JobValidation{
   }
 
   private synchronized void delayElapsed(){
-    Debug.debug("delayElapsed for " + ((JobInfo) waitingJobs.get(0)).getName() + " at " + Calendar.getInstance().getTime().toString(), 2);
+    Debug.debug("delayElapsed for " + ((MyJobInfo) waitingJobs.get(0)).getName() + " at " + Calendar.getInstance().getTime().toString(), 2);
     if(waitingJobs.isEmpty()){
       Debug.debug("WARNING: waitingJobs empty", 2);
       return;
@@ -100,7 +103,7 @@ public class JobValidation{
       return;
     }
     if(currentSimultaneousValidation<maxSimultaneaousValidation){
-      final JobInfo job = (JobInfo) toValidateJobs.remove(0);
+      final MyJobInfo job = (MyJobInfo) toValidateJobs.remove(0);
       ++currentSimultaneousValidation;
       new Thread(){
         public void run(){
@@ -123,10 +126,10 @@ public class JobValidation{
    * Called when a validation ends. <br>
    * update database, warns, and checks for a new validation. <p>
    */
-  private void endOfValidation(JobInfo job, int dbStatus){
+  private void endOfValidation(MyJobInfo job, int dbStatus){
     if(!GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).updateJobStdoutErr(
-        job.getJobDefId(), job.getValidationResult())){
-      logFile.addMessage("DB updateJobStdoutErr(" + job.getJobDefId() + ", " +
+        job.getIdentifier(), job.getValidationResult())){
+      logFile.addMessage("DB updateJobStdoutErr(" + job.getIdentifier() + ", " +
                          job.getValidationResult() +
                          ") failed", job);
     }
@@ -138,8 +141,8 @@ public class JobValidation{
       logFile.addMessage("update DB status failed after validation ; " +
                          "this job is set back updatable, and will be revalidated later " +
                          "(after redetection of this job end", job);
-      job.setInternalStatus(ComputingSystem.STATUS_ERROR);
-      job.setNeedToBeRefreshed(true);
+      job.setStatusError();
+      job.setNeedsUpdate(true);
     }
 
     --currentSimultaneousValidation;
@@ -151,7 +154,7 @@ public class JobValidation{
    * Returns {String <error lines in stdout>[, String <error lines in stderr>]}.
    **/
   private String validate(String [] outs){
-    String [] outArray = Util.split(outs[0], "[\\n\\r]");
+    String [] outArray = MyUtil.split(outs[0], "[\\n\\r]");
     Vector outErrArray = new Vector();
     boolean foundError = false;
     for(int i=0; i<outArray.length; ++i){
@@ -174,7 +177,7 @@ public class JobValidation{
     }
     String [] errArray = new String [] {};
     if(outs.length==2 && outs[1]!=null){
-      errArray = Util.split(outs[1], "[\\n\\r]");
+      errArray = MyUtil.split(outs[1], "[\\n\\r]");
     }
     Vector errErrArray = new Vector();
     for(int i=0; i<errArray.length; ++i){
@@ -189,29 +192,29 @@ public class JobValidation{
         errErrArray.add(errArray[i]);
       }
     }
-    return Util.arrayToString(outErrArray.toArray(), "\n")+
-           Util.arrayToString(errErrArray.toArray(), "\n");
+    return MyUtil.arrayToString(outErrArray.toArray(), "\n")+
+           MyUtil.arrayToString(errErrArray.toArray(), "\n");
   }
 
   /**
    * Starts the validation and sets this job DBStatus corresponding to the exit value. <p>
    * Called by {@link #newValidation()}
    */
-  private int doValidate(JobInfo job){
+  private int doValidate(MyJobInfo job){
     int exitValue;
     String [] outs = null;
     long beginTime = new Date().getTime();
     Debug.debug("is going to validate ("+currentSimultaneousValidation + ") " + job.getName() + "..." , 2);
     try{
-      if((job.getStdOut()==null || job.getStdOut().length()==0) &&
-         (job.getStdErr()==null || job.getStdErr().length()==0)){
+      if((job.getOutTmp()==null || job.getOutTmp().length()==0) &&
+         (job.getErrTmp()==null || job.getErrTmp().length()==0)){
          logFile.addMessage("Validation for job " + job.getName()  +
              ") cannot be run : this job doesn't have any outputs", job);
          return DBPluginMgr.UNDECIDED;
       }
       
       try{
-        outs = GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutputs(job);
+        outs = GridPilot.getClassMgr().getCSPluginMgr().getCurrentOutput(job);
       }
       catch(Exception e){
         // TODO: we would get an Exception here if trying to resync, since stdout/stderr are gone on the server,
@@ -232,7 +235,7 @@ public class JobValidation{
         return DBPluginMgr.UNDECIDED;
       }
       
-      if(job.getStdErr()==null){
+      if(job.getErrTmp()==null){
         outs = new String[] {outs[0]};
       }
 
@@ -304,7 +307,7 @@ public class JobValidation{
    * 
    * (from AtCom1)
    */
-  private boolean extractInfo(JobInfo job, String stdOut){
+  private boolean extractInfo(MyJobInfo job, String stdOut){
     StringTokenizer st = new StringTokenizer(stdOut.toString(), "\n");
     Vector attributes = new Vector();
     Vector values = new Vector();
@@ -364,10 +367,10 @@ public class JobValidation{
     }
 
     if((attrArray.length>1 || !((String) attrValMap.get("metaData")).equals("")) &&
-        !dbPluginMgr.updateJobDefinition(job.getJobDefId(), attrArray, valuesArray)){
+        !dbPluginMgr.updateJobDefinition(job.getIdentifier(), attrArray, valuesArray)){
       logFile.addMessage("Unable to update DB for job " + job.getName() + "\n"+
-                         "attributes : " + Util.arrayToString(attrArray) + "\n" +
-                         "values : " + Util.arrayToString(valuesArray), job);
+                         "attributes : " + MyUtil.arrayToString(attrArray) + "\n" +
+                         "values : " + MyUtil.arrayToString(valuesArray), job);
       return false;
     }
     return true;

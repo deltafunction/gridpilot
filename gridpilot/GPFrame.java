@@ -3,8 +3,9 @@ package gridpilot;
 import java.awt.BorderLayout;
 import java.net.URL;
 import javax.swing.*;
+
+import gridfactory.common.Debug;
 import gridpilot.StatusBar;
-import gridpilot.Debug;
 import gridpilot.GridPilot;
 
 /**

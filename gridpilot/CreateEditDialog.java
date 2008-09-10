@@ -1,5 +1,7 @@
 package gridpilot;
 
+import gridfactory.common.Debug;
+
 import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;

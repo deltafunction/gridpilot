@@ -1,5 +1,7 @@
 package gridpilot;
 
+import gridfactory.common.Debug;
+
 import java.util.*;
 
 /**
@@ -42,7 +44,7 @@ public class JobStatisticsPanel extends StatisticsPanel{
       // Set the number of jobs in each state to 0
       values = new int[statusNames.length];
       Debug.debug("resetting number of jobs for each status, "+
-          Util.arrayToString(statusNames), 3);
+          MyUtil.arrayToString(statusNames), 3);
       for(int i=0; i<values.length; ++i){
         values[i]= 0;
       }

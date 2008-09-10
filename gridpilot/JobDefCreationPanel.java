@@ -1,7 +1,7 @@
 package gridpilot;
 
-import gridpilot.Debug;
-import gridpilot.DBRecord;
+import gridfactory.common.DBRecord;
+import gridfactory.common.Debug;
 
 import javax.swing.*;
 import javax.swing.border.*;
@@ -21,7 +21,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
   private static final long serialVersionUID = 1L;
   protected JScrollPane spAttributes = new JScrollPane();
   protected String jobDefinitionID = "-1";
-  protected Table table;
+  protected MyJTable table;
   protected String dbName;
   protected DBPluginMgr dbPluginMgr = null;
   protected String datasetID = "-1";
@@ -65,9 +65,9 @@ public class JobDefCreationPanel extends CreateEditPanel{
       datasetName = "";
     }
 
-    jobDefIdentifier = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
+    jobDefIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
     cstAttributesNames = dbPluginMgr.getFieldNames("jobDefinition");
-    Debug.debug("cstAttributesNames: "+Util.arrayToString(cstAttributesNames), 3);
+    Debug.debug("cstAttributesNames: "+MyUtil.arrayToString(cstAttributesNames), 3);
     cstAttr = new String[cstAttributesNames.length];
         
     // When editing, fill cstAttr from db
@@ -241,7 +241,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
           ((JComboBox) tcCstAttributes[i]).setSelectedItem("no");
         }
         if(editing || cstAttr[i]!=null){
-          Util.setJText(tcCstAttributes[i], cstAttr[i]);
+          MyUtil.setJText(tcCstAttributes[i], cstAttr[i]);
         }
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("ramUnit")){
@@ -253,7 +253,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
           ((JComboBox) tcCstAttributes[i]).setSelectedItem("MB");
         }
         if(editing || cstAttr[i]!=null){
-          Util.setJText(tcCstAttributes[i], cstAttr[i]);
+          MyUtil.setJText(tcCstAttributes[i], cstAttr[i]);
         }
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("diskUnit")){
@@ -265,7 +265,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
           ((JComboBox) tcCstAttributes[i]).setSelectedItem("GB");
         }
         if(editing || cstAttr[i]!=null){
-          Util.setJText(tcCstAttributes[i], cstAttr[i]);
+          MyUtil.setJText(tcCstAttributes[i], cstAttr[i]);
         }
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("currentState")){
@@ -273,23 +273,23 @@ public class JobDefCreationPanel extends CreateEditPanel{
         if(!reuseTextFields || tcCstAttributes[i]==null){
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
         }
-        Util.setJText(tcCstAttributes[i], cstAttr[i]);
+        MyUtil.setJText(tcCstAttributes[i], cstAttr[i]);
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("taskFK")){
         pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
         if(!reuseTextFields || tcCstAttributes[i]==null){
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
         }
-        Util.setJText(tcCstAttributes[i], datasetID);
+        MyUtil.setJText(tcCstAttributes[i], datasetID);
         tcCstAttributes[i].setEnabled(false);
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("outFileMapping") ||
           cstAttributesNames[i].equalsIgnoreCase("metaData")){
         pAttributes.add(new JLabel(cstAttributesNames[i] + " : "), cl);
         if(!reuseTextFields || tcCstAttributes[i]==null){
-          tcCstAttributes[i] = Util.createTextArea(TEXTFIELDWIDTH);
+          tcCstAttributes[i] = MyUtil.createTextArea(TEXTFIELDWIDTH);
         }
-        Util.setJText(tcCstAttributes[i], cstAttr[i]);
+        MyUtil.setJText(tcCstAttributes[i], cstAttr[i]);
       }
       else{
         if(cstAttributesNames[i].equalsIgnoreCase("jobPars") ||
@@ -305,7 +305,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
         }
         if(cstAttr[i]!=null && !cstAttr[i].equals("")){
           Debug.debug("Setting cstAttr["+i+"]: "+cstAttr[i], 3);
-          Util.setJText(tcCstAttributes[i], cstAttr[i]);
+          MyUtil.setJText(tcCstAttributes[i], cstAttr[i]);
         }
       }      
       cl = new GridBagConstraints(
@@ -321,9 +321,9 @@ public class JobDefCreationPanel extends CreateEditPanel{
       if(cstAttributesNames[i].equalsIgnoreCase(jobDefIdentifier)){
         // when creating, zap loaded jobDefinitionID
         if(!editing){
-          Util.setJText((JComponent) tcCstAttributes[i],"");
+          MyUtil.setJText((JComponent) tcCstAttributes[i],"");
         }
-        Util.setJEditable(tcCstAttributes[i], false);
+        MyUtil.setJEditable(tcCstAttributes[i], false);
       }
       else if( cstAttributesNames[i].equalsIgnoreCase("created") ||
           cstAttributesNames[i].equalsIgnoreCase("lastModified") ||
@@ -334,7 +334,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
           //cstAttributesNames[i].equalsIgnoreCase("providerInfo") ||
           //cstAttributesNames[i].equalsIgnoreCase("csStatus") ||
           cstAttributesNames[i].equalsIgnoreCase("computingSystem")){
-        Util.setJEditable(tcCstAttributes[i], false);
+        MyUtil.setJEditable(tcCstAttributes[i], false);
       }
       // TODO: disable also fields filled out by GridPilot and runtime fields
     }
@@ -358,7 +358,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
               (!cstAttributesNames[i].equalsIgnoreCase("taskFK") ||
                   datasetID.equals("-1")) &&
               tcCstAttributes[i]!=null){
-        Util.setJEditable(tcCstAttributes[i], enabled);
+        MyUtil.setJEditable(tcCstAttributes[i], enabled);
       }
     }
 
@@ -417,7 +417,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
         tcCstAttributes, tcConstant);
   
     for(int i =0; i<textFields.size(); ++i){
-      Util.setJText((JComponent) textFields.get(i),"");
+      MyUtil.setJText((JComponent) textFields.get(i),"");
     }  
   }
 

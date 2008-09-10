@@ -1,5 +1,9 @@
 package gridpilot;
 
+import gridfactory.common.DBRecord;
+import gridfactory.common.DBResult;
+import gridfactory.common.Debug;
+
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.text.*;
@@ -17,7 +21,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
   private boolean editing = false;
-  private Table table;
+  private MyJTable table;
   private String transformationID = "-1";
   private String [] cstAttributesNames;
   private String [] cstAttr = null;
@@ -49,18 +53,18 @@ public class TransformationCreationPanel extends CreateEditPanel{
     panel = _panel;
     table = panel.getTable();
     transformationIdentifier =
-      Util.getIdentifierField(dbPluginMgr.getDBName(), "transformation");
+      MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "transformation");
     transformationFields = dbPluginMgr.getFieldNames("transformation");
     cstAttributesNames = dbPluginMgr.getFieldNames("transformation");    
     runtimeEnvironments = dbPluginMgr.getRuntimeEnvironments();
-    Debug.debug("Got field names: "+Util.arrayToString(cstAttributesNames),3);
+    Debug.debug("Got field names: "+MyUtil.arrayToString(cstAttributesNames),3);
     Debug.debug("Number of runtimeEnvironments found: "+runtimeEnvironments.values.length+
-        "; "+Util.arrayToString(runtimeEnvironments.fields),3);
+        "; "+MyUtil.arrayToString(runtimeEnvironments.fields),3);
     cstAttr = new String[cstAttributesNames.length];
     // Find transformation ID from table
     if(table.getSelectedRow()>-1 && editing){
       Debug.debug("Editing...", 3);
-      String [] runtimeReference = Util.getTransformationRuntimeReference(dbPluginMgr.getDBName());
+      String [] runtimeReference = MyUtil.getTransformationRuntimeReference(dbPluginMgr.getDBName());
       for(int i=0; i<table.getColumnNames().length; ++i){
         Object fieldVal = table.getUnsortedValueAt(table.getSelectedRow(),i);
         Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
@@ -141,11 +145,11 @@ public class TransformationCreationPanel extends CreateEditPanel{
         if(cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier) ||
             cstAttributesNames[i].equalsIgnoreCase("created") ||
             cstAttributesNames[i].equalsIgnoreCase("lastModified")){
-          Util.setJEditable(tcCstAttributes[i], false);
+          MyUtil.setJEditable(tcCstAttributes[i], false);
         }
         else if(runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("") &&
             cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironmentName")){
-          Util.setJText(tcCstAttributes[i], runtimeEnvironmentName);
+          MyUtil.setJText(tcCstAttributes[i], runtimeEnvironmentName);
         }
       }
     }
@@ -271,7 +275,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
           DBPanel dbPanel = new DBPanel(dbPluginMgr.getDBName(),
               "runtimeEnvironment");
           String nameField =
-            Util.getNameField(dbPluginMgr.getDBName(), "runtimeEnvironment");
+            MyUtil.getNameField(dbPluginMgr.getDBName(), "runtimeEnvironment");
           dbPanel.selectPanel.setConstraint(nameField,
               runtimeEnvironmentName, 0);
           dbPanel.searchRequest(true, false);           
@@ -310,7 +314,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
       if(cstAttributesNames[i].equalsIgnoreCase("initLines") ||
           cstAttributesNames[i].equalsIgnoreCase("comment")){
         if(!reuseTextFields || tcCstAttributes[i]==null){
-          tcCstAttributes[i] = Util.createTextArea(TEXTFIELDWIDTH);
+          tcCstAttributes[i] = MyUtil.createTextArea(TEXTFIELDWIDTH);
         }
       }
       else{
@@ -322,7 +326,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
          cstAttributesNames[i].equalsIgnoreCase("script") ||
          cstAttributesNames[i].equalsIgnoreCase("validationScript") ||
          cstAttributesNames[i].equalsIgnoreCase("extractionScript")){
-        pAttributes.add(Util.createCheckPanel(
+        pAttributes.add(MyUtil.createCheckPanel(
             (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
             cstAttributesNames[i], tcCstAttributes[i], true, true),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
@@ -330,7 +334,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
                 new Insets(5, 22, 5, 5), 0, 0));
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("inputFiles")){
-        pAttributes.add(Util.createCheckPanel(
+        pAttributes.add(MyUtil.createCheckPanel(
             (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
             cstAttributesNames[i], tcCstAttributes[i], false, true),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
@@ -350,7 +354,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
            cbRuntimeEnvironmentSelection.setSelectedItem(runtimeEnvironmentName);
           cbRuntimeEnvironmentSelection.updateUI();
         }
-        Util.setJEditable(tcCstAttributes[i], false);
+        MyUtil.setJEditable(tcCstAttributes[i], false);
       }
       pAttributes.add(tcCstAttributes[i],
           new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
@@ -373,7 +377,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
              tcCstAttributes[i].getText().length()==0){            
             if(cstAttributesNames[i].equalsIgnoreCase("initLines") ||
                 cstAttributesNames[i].equalsIgnoreCase("comment")){
-              tcCstAttributes[i] = Util.createTextArea(TEXTFIELDWIDTH);
+              tcCstAttributes[i] = MyUtil.createTextArea(TEXTFIELDWIDTH);
             }
             else{
               tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
@@ -387,7 +391,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
           }
           if(editing){
             try{
-              Util.setJText(tcCstAttributes[i], transformation.values[j].toString());
+              MyUtil.setJText(tcCstAttributes[i], transformation.values[j].toString());
                 Debug.debug(i+": "+cstAttributesNames[i].toString()+"="+
                     transformationFields[j]+". Setting to "+tcCstAttributes[i].getText(),3);
             }
@@ -401,11 +405,11 @@ public class TransformationCreationPanel extends CreateEditPanel{
       if(cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier) ||
           cstAttributesNames[i].equalsIgnoreCase("created") ||
           cstAttributesNames[i].equalsIgnoreCase("lastModified")){
-        Util.setJEditable(tcCstAttributes[i], false);
+        MyUtil.setJEditable(tcCstAttributes[i], false);
         if(!editing){
           try{
             Debug.debug("Clearing identifier",3);
-            Util.setJText(tcCstAttributes[i], "");
+            MyUtil.setJText(tcCstAttributes[i], "");
           }
           catch(java.lang.Exception e){
             Debug.debug("Attribute not found, "+e.getMessage(),1);
@@ -415,7 +419,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
       else if(cbRuntimeEnvironmentSelection!=null &&
           runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("") &&
           cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironmentName")){
-        Util.setJText(tcCstAttributes[i], runtimeEnvironmentName);
+        MyUtil.setJText(tcCstAttributes[i], runtimeEnvironmentName);
       }
     }
   }

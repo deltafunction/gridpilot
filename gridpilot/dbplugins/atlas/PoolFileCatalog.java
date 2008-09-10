@@ -1,6 +1,6 @@
 package gridpilot.dbplugins.atlas;
 
-import gridpilot.Debug;
+import gridfactory.common.Debug;
 
 import java.util.Vector;
 

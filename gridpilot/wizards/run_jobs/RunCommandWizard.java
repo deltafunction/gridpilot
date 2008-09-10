@@ -1,13 +1,15 @@
 package gridpilot.wizards.run_jobs;
 
+import gridfactory.common.DBRecord;
+import gridfactory.common.DBResult;
+import gridfactory.common.LocalStaticShell;
+import gridfactory.common.ResThread;
 import gridpilot.DBPluginMgr;
-import gridpilot.DBRecord;
-import gridpilot.DBResult;
+
 import gridpilot.GPFrame;
 import gridpilot.GridPilot;
-import gridpilot.LocalStaticShellMgr;
-import gridpilot.MyThread;
-import gridpilot.Util;
+
+import gridpilot.MyUtil;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -74,7 +76,7 @@ public class RunCommandWizard extends GPFrame{
     catch(Exception e){
       e.printStackTrace();
     }*/
-    tfCommand = Util.createTextArea(TEXTFIELDWIDTH);
+    tfCommand = MyUtil.createTextArea(TEXTFIELDWIDTH);
     tfOutputDir = new JTextField(TEXTFIELDWIDTH);
     
     JPanel jp = mkPanel();
@@ -95,7 +97,7 @@ public class RunCommandWizard extends GPFrame{
     String scriptFile = (String) dbPluginMgr.getTransformation(transformationID).getValue("script");
     String txt = null;
     try{
-      txt = LocalStaticShellMgr.readFile(Util.clearTildeLocally(Util.clearFile(scriptFile)));
+      txt = LocalStaticShell.readFile(MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFile)));
     }
     catch(Exception e){
       e.printStackTrace();
@@ -175,7 +177,7 @@ public class RunCommandWizard extends GPFrame{
     JPanel row = new JPanel(new BorderLayout());
     ct.gridy = ct.gridy+1;
     tfOutputDir.setText(getInitialOutputDir());
-    row.add(Util.createCheckPanel1(thisFrame, "Output directory", tfOutputDir,
+    row.add(MyUtil.createCheckPanel1(thisFrame, "Output directory", tfOutputDir,
         true, true, true), BorderLayout.WEST);
     JPanel fieldPanel = new JPanel();
     fieldPanel.add(tfOutputDir);
@@ -331,7 +333,7 @@ public class RunCommandWizard extends GPFrame{
       ct.gridy = ct.gridy+1;
       JTextField field = new JTextField(TEXTFIELDWIDTH);
       if(withFileChooser){
-        row.add(Util.createCheckPanel1(thisFrame, label, field,
+        row.add(MyUtil.createCheckPanel1(thisFrame, label, field,
             true, true, false), BorderLayout.WEST);
       }
       else{
@@ -388,7 +390,7 @@ public class RunCommandWizard extends GPFrame{
   /**
    * Create and submit job.
    */
-  MyThread workThread = null;
+  ResThread workThread = null;
   private void runJob(final ActionEvent e){
     // get the command
     final String cmd = tfCommand.getText().trim();
@@ -408,7 +410,7 @@ public class RunCommandWizard extends GPFrame{
     else{
       outputFiles = null;
     }
-    workThread = new MyThread(){
+    workThread = new ResThread(){
       public void run(){
         statusBar.setLabel("Preparing jobs, please wait...");
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -428,12 +430,12 @@ public class RunCommandWizard extends GPFrame{
         String transformationID = dbPluginMgr.getTransformationID(myTransformationName, myTransformationVersion);
         String scriptFile = (String) dbPluginMgr.getTransformation(transformationID).getValue("script");
         try{
-          LocalStaticShellMgr.writeFile(Util.clearTildeLocally(Util.clearFile(scriptFile)),
+          LocalStaticShell.writeFile(MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFile)),
               cmd, false);
         }
         catch(IOException e2){
           e2.printStackTrace();
-          Util.showError("ERROR: could not write transformation script"+scriptFile+".\n" +
+          MyUtil.showError("ERROR: could not write transformation script"+scriptFile+".\n" +
                 "Check permissions.");
           return;
         }
@@ -446,7 +448,7 @@ public class RunCommandWizard extends GPFrame{
               new String [] {"outputLocation"}, new String [] {outputDir});
           if(outputsPanel.isVisible()){
             dbPluginMgr.updateTransformation(transformationID,
-                new String [] {"outputFiles"}, new String [] {Util.arrayToString(outputFiles)});
+                new String [] {"outputFiles"}, new String [] {MyUtil.arrayToString(outputFiles)});
           }
           // If no output files are specified, zap the outputFiles of my_transformation
           else{
@@ -462,7 +464,7 @@ public class RunCommandWizard extends GPFrame{
         String [] inputURLs;
         if(inputsPanel.isVisible()){
           inputsPanel.fieldMap.put("transformation script",
-              new JTextField(Util.clearTildeLocally(Util.clearFile(scriptFile))));
+              new JTextField(MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFile))));
           inputURLs = new String [inputsPanel.fieldMap.values().size()];
           int i = 0;
           for(Iterator it=inputsPanel.fieldMap.values().iterator(); it.hasNext();){
@@ -471,7 +473,7 @@ public class RunCommandWizard extends GPFrame{
           }
         }
         else{
-          inputURLs = new String [] {Util.clearTildeLocally(Util.clearFile(scriptFile))};
+          inputURLs = new String [] {MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFile))};
         }
         // create a guid. This will be used so we can get the identifier, which is needed
         // to submit...
@@ -493,7 +495,7 @@ public class RunCommandWizard extends GPFrame{
             myDatasetName+".1",
             uuid,
             "Defined",
-            Util.arrayToString(inputURLs).trim(),
+            MyUtil.arrayToString(inputURLs).trim(),
             outputFiles==null?"":createOutputMappingStr(outputFiles, outputDir).trim(),
             //"transPars",
             outputDir+myDatasetName+".1.stdout",
@@ -508,7 +510,7 @@ public class RunCommandWizard extends GPFrame{
               outputDir+myDatasetName+".1.stdout",
               outputDir+myDatasetName+".1.stderr");*/
           // now get the identifier of the newly created jobDefinition record
-          String idField = Util.getIdentifierField(DB_NAME, "jobDefinition");
+          String idField = MyUtil.getIdentifierField(DB_NAME, "jobDefinition");
           String id = null;
           DBResult jobDefs = dbPluginMgr.getJobDefinitions(
               datasetID,
@@ -548,7 +550,7 @@ public class RunCommandWizard extends GPFrame{
 
   private void bSubmit_mousePressed(){
     if(tfCommand.getText()==null || tfCommand.getText().equals("")){
-      Util.showError("You must give a command");
+      MyUtil.showError("You must give a command");
       return;
     }
     // if a jobDefinition is selected, show the menu with computing systems

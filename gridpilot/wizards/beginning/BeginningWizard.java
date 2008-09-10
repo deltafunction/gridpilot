@@ -20,16 +20,15 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 
+import gridfactory.common.ConfigFile;
+import gridfactory.common.ConfirmBox;
+import gridfactory.common.Debug;
+import gridfactory.common.FileTransfer;
+import gridfactory.common.LocalStaticShell;
+import gridfactory.common.ResThread;
 import gridpilot.BrowserPanel;
-import gridpilot.ConfigFile;
-import gridpilot.ConfirmBox;
-import gridpilot.Debug;
-import gridpilot.FileTransfer;
 import gridpilot.GridPilot;
-import gridpilot.JExtendedComboBox;
-import gridpilot.LocalStaticShellMgr;
-import gridpilot.MyThread;
-import gridpilot.Util;
+import gridpilot.MyUtil;
 
 import javax.swing.ImageIcon;
 import javax.swing.JCheckBox;
@@ -102,7 +101,7 @@ public class BeginningWizard{
       }
       else if(ret==1){
         if(!dirsOk){
-          Util.showError("Without these directories setup cannot continue. Exiting wizard.");
+          MyUtil.showError("Without these directories setup cannot continue. Exiting wizard.");
           if(firstRun){
             GridPilot.userConfFile.delete();
             System.out.println("Deleting new configuration file.");
@@ -127,7 +126,7 @@ public class BeginningWizard{
         }
       }
       catch(FileNotFoundException ee){
-        Util.showError(ee.getMessage());
+        MyUtil.showError(ee.getMessage());
         ret = checkCertificate(firstRun);
         if(ret==2 || ret==-1){
           ret = partialSetupMessage(firstRun);
@@ -200,7 +199,7 @@ public class BeginningWizard{
       e.printStackTrace();
       GridPilot.getClassMgr().getLogFile().addMessage("ERROR: could not run setup wizard", e);
       try{
-        Util.showError(e.getMessage());
+        MyUtil.showError(e.getMessage());
       }
       catch(Exception e1){
         e1.printStackTrace();
@@ -272,15 +271,17 @@ public class BeginningWizard{
     
     if(firstRun){
       System.out.println("Creating new configuration file.");
-      configFile = new ConfigFile(GridPilot.defaultConfFileName);
+      configFile = new ConfigFile(GridPilot.defaultConfFileName, GridPilot.topConfigSection, GridPilot.configSections);
+      configFile.excludeItems = GridPilot.myExcludeItems;
       // Make temporary config file
       File tmpConfFile = (File) GridPilot.tmpConfFile.get(GridPilot.defaultConfFileName);       
        // Copy over config file
-       LocalStaticShellMgr.copyFile(tmpConfFile.getAbsolutePath(),
+       LocalStaticShell.copyFile(tmpConfFile.getAbsolutePath(),
            GridPilot.userConfFile.getAbsolutePath());
        tmpConfFile.delete();
        try{
-         configFile = new ConfigFile(GridPilot.userConfFile);
+         configFile = new ConfigFile(GridPilot.userConfFile, GridPilot.topConfigSection, GridPilot.configSections);
+         configFile.excludeItems = GridPilot.myExcludeItems;
        }
        catch(Exception e){
          System.out.println("WARNING: could not create or load new configuration file!");
@@ -343,7 +344,7 @@ public class BeginningWizard{
       jtFields[i] = new JTextField(TEXTFIELDWIDTH);
       jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout(8, 0));
-      row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
+      row.add(MyUtil.createCheckPanel(JOptionPane.getRootFrame(),
           names[i], jtFields[i], true, false), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
@@ -382,7 +383,7 @@ public class BeginningWizard{
     for(int i=0; i<defDirs.length; ++i){
       newDirs[i] = jtFields[i].getText();
       Debug.debug("Checking directory "+newDirs[i], 2);
-      newDirFiles[i] = new File(Util.clearTildeLocally(Util.clearFile(newDirs[i])));
+      newDirFiles[i] = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[i])));
       if(newDirs[i]!=null && !newDirs[i].equals("")){
         if(newDirFiles[i].exists()){
           if(!newDirFiles[i].isDirectory()){
@@ -400,7 +401,7 @@ public class BeginningWizard{
           }
         }
       }
-      newDirs[i] = Util.replaceWithTildeLocally(Util.clearFile(newDirs[i]));
+      newDirs[i] = MyUtil.replaceWithTildeLocally(MyUtil.clearFile(newDirs[i]));
     }
     
     // Now copy over the software catalog
@@ -415,7 +416,7 @@ public class BeginningWizard{
       in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
     }
     BufferedWriter out =  new BufferedWriter(new FileWriter(
-        new File(Util.clearTildeLocally(Util.clearFile(newDirs[0])), "rtes.rdf")));
+        new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[0])), "rtes.rdf")));
     int c;
     while((c=in.read())!=-1){
       if(c!='\r'){
@@ -438,9 +439,9 @@ public class BeginningWizard{
           new String [] {
               newDirs[1],
               "hsql://localhost"+
-                 (Util.clearFile(newDirs[0]).startsWith("/")?"":"/")+
-                 Util.clearFile(newDirs[0])+
-                 (Util.clearFile(newDirs[0]).endsWith("/")?"":"/")+
+                 (MyUtil.clearFile(newDirs[0]).startsWith("/")?"":"/")+
+                 MyUtil.clearFile(newDirs[0])+
+                 (MyUtil.clearFile(newDirs[0]).endsWith("/")?"":"/")+
                  "My_DB",
               newDirs[2],
               newDirs[3],
@@ -492,7 +493,7 @@ public class BeginningWizard{
       jtFields[i] = new JTextField(TEXTFIELDWIDTH);
       jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout(8, 0));
-      row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
+      row.add(MyUtil.createCheckPanel(JOptionPane.getRootFrame(),
           names[i], jtFields[i], true, false), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
@@ -527,7 +528,7 @@ public class BeginningWizard{
       newDirs[i] = jtFields[i].getText();
       if(i>1 && newDirs[i]!=null && !newDirs[i].equals("")){
         Debug.debug("Checking directory "+newDirs[i], 2);
-        newDirFiles[i] = new File(Util.clearTildeLocally(Util.clearFile(newDirs[i])));
+        newDirFiles[i] = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[i])));
         if(newDirFiles[i].exists()){
           if(!newDirFiles[i].isDirectory()){
             throw new IOException("The directory "+newDirFiles[i].getAbsolutePath()+" cannot be created.");
@@ -538,15 +539,15 @@ public class BeginningWizard{
           newDirFiles[i].mkdir();
         }
       }
-      newDirs[i] = Util.replaceWithTildeLocally(Util.clearFile(newDirs[i]));
+      newDirs[i] = MyUtil.replaceWithTildeLocally(MyUtil.clearFile(newDirs[i]));
     }
     
     // Check if certificate and key exist
-    File certFile = new File(Util.clearTildeLocally(Util.clearFile(newDirs[0])));
+    File certFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[0])));
     if(!certFile.exists()){
       throw new FileNotFoundException(certFile.getAbsolutePath());
     }
-    File keyFile = new File(Util.clearTildeLocally(Util.clearFile(newDirs[1])));
+    File keyFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[1])));
     if(!keyFile.exists()){
       throw new FileNotFoundException(keyFile.getAbsolutePath());
     }
@@ -601,7 +602,7 @@ public class BeginningWizard{
     String host = remoteDB.replaceFirst(".*mysql://(.*)/.*","$1");
     // TODO: now we assume that mysql always runs on port 3306 - generalize.
     host = host.replaceFirst("(.*):\\d+", "$1");
-    String lfcUser = Util.getGridSubject().replaceFirst(".*CN=(\\w+)\\s+(\\w+)\\W.*", "$1$2");
+    String lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=(\\w+)\\s+(\\w+)\\W.*", "$1$2");
     String lfcPath = "/users/"+lfcUser+"/";
     String [] defDirs = new String [] {"",
                                        "db.gridpilot.dk",
@@ -829,7 +830,7 @@ public class BeginningWizard{
       // remote DB, enable Regional_DB, My_DB_Local, disable GP_DB.
       // Ask for Regional_DB:description
       String origDbDesc = configFile.getValue("Regional_DB", "Description");
-      String dbDesc = Util.getName(
+      String dbDesc = MyUtil.getName(
           "Please enter a short (~ 5 words) description of the remote file catalog", "");
       if(dbDesc==null || dbDesc.equals("")){
         dbDesc = origDbDesc;
@@ -878,7 +879,7 @@ public class BeginningWizard{
             System.out.println("Launching browser...");
             final Window window = (Window) SwingUtilities.getWindowAncestor(jPanel.getRootPane());
             window.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-            MyThread t = new MyThread(){
+            ResThread t = new ResThread(){
               public void run(){
                 try{
                   new BrowserPanel(
@@ -899,7 +900,7 @@ public class BeginningWizard{
                   e.printStackTrace();
                   try{
                     window.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-                    Util.showError("WARNING: could not open URL. "+e.getMessage());
+                    MyUtil.showError("WARNING: could not open URL. "+e.getMessage());
                   }
                   catch(Exception e2){
                     e2.printStackTrace();
@@ -928,10 +929,10 @@ public class BeginningWizard{
         
         *> We just set runtime vos = virtual organization and leave runtime clusters
 
-  --->  configure GPSS
+  --->  configure GRIDFACTORY
 
-        [GPSS] allowed subjects =
-        [GPSS] runtime catalog URLs = ~/GridPilot/rtes.rdf http://www.gridpilot.dk/rtes.rdf
+        [GRIDFACTORY] allowed subjects =
+        [GRIDFACTORY] runtime catalog URLs = ~/GridPilot/rtes.rdf http://www.gridpilot.dk/rtes.rdf
 
         ** TODO: We postpone the configuration of this... It should include GUIs for
           selecting VOMS groups and for editing KnowARC rdf catalogs
@@ -960,7 +961,7 @@ public class BeginningWizard{
       "If you're not a member of an EGEE virtual organization, you will probably not be able to run jobs on this backend.\n\n" +
       "SSH_POOL is a backend that runs jobs on a pool of Linux machines accessed via ssh. The scheduling is done by\n" +
       "a very simplistic FIFO algorithm.\n\n" +
-      "GPSS (GridPilot Submission System) is the native submission system of GridPilot. It is still experimental, but it\n" +
+      "GRIDFACTORY is the native batch system of GridPilot. It is still experimental, but it\n" +
       "should be possible to try it out. The submission is done by writing job definitions in another database controlled\n" +
       "by another GridPilot. From this database, the job descriptions will then be picked up and run (locally) by other\n" +
       "GridPilots.\n\n";
@@ -970,7 +971,7 @@ public class BeginningWizard{
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     JPanel row = null;
-    String [] names = new String [] {"NG", "GLite", "SSH_POOL", "GPSS"};
+    String [] names = new String [] {"NG", "GLite", "SSH_POOL", "GRIDFACTORY"};
     JPanel [] csRows = new JPanel [names.length];
     final JPanel [] csPanels = new JPanel [names.length];
     jcbs = new JCheckBox[names.length];
@@ -1069,61 +1070,28 @@ public class BeginningWizard{
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));    
     
-    // GPSS
+    // GRIDFACTORY
     csPanels[3] = new JPanel(new GridBagLayout());
-    String gpssString =
-      "For GPSS to work, you need to have write access to a remote database. You moreover need write\n" +
+    String gfString =
+      "For GRIDFACTORY to work, you need to have write access to a GRIDFACTORY server. You moreover need write\n" +
       "access to a remote directory, where input and output files of your jobs can be staged.\n" +
-      "If you don't have any remote database configured you should not enable this computing system.\n\n";
-    csPanels[3].add(new JLabel("<html>"+gpssString.replaceAll("\n", "<br>")+"</html>"),
+      "If you don't have access to any GRIDFACTORY server, you should not enable this computing system.\n\n";
+    csPanels[3].add(new JLabel("<html>"+gfString.replaceAll("\n", "<br>")+"</html>"),
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     row = new JPanel(new BorderLayout(8, 0));
-    row.add(new JLabel("Submit database: "), BorderLayout.WEST);
-    JPanel jpGpssDB = new JPanel();
-    JExtendedComboBox cbGpssDB = new JExtendedComboBox();
-    jpGpssDB.add(cbGpssDB);
-    String remoteDB = configFile.getValue("GPSS", "Remote database");
-    String my_db_remote_enabled = configFile.getValue("My_DB_Remote", "Enabled");
-    String gp_db_enabled = configFile.getValue("GP_DB", "Enabled");
-    if(my_db_remote_enabled!=null && (my_db_remote_enabled.equalsIgnoreCase("yes") ||
-        my_db_remote_enabled.equalsIgnoreCase("true"))){
-      cbGpssDB.addItem("My_DB_Remote");
+    row.add(new JLabel("Submit URL: "), BorderLayout.WEST);
+    String submitURL = configFile.getValue("GRIDFACTORY", "Submission URL");
+    JPanel jpGfDB = new JPanel();
+    JTextField tfGpUrl = new JTextField(TEXTFIELDWIDTH);
+    jpGfDB.add(tfGpUrl);
+    if(submitURL!=null){
+      tfGpUrl.setText(submitURL);
     }
-    if(gp_db_enabled!=null && (gp_db_enabled.equalsIgnoreCase("yes") ||
-        gp_db_enabled.equalsIgnoreCase("true"))){
-      cbGpssDB.addItem("GP_DB");
-    }
-    if(remoteDB!=null && !remoteDB.equals("")){
-      cbGpssDB.setSelectedItem(remoteDB);
-    }
-    row.add(jpGpssDB, BorderLayout.CENTER);
+    row.add(jpGfDB, BorderLayout.CENTER);
     csPanels[3].add(row,
         new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
-            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
-            new Insets(5, 5, 5, 5), 0, 0));
-    row = new JPanel(new BorderLayout(8, 0));
-    JTextField tfGpssDir = new JTextField(TEXTFIELDWIDTH);
-    JPanel subRow = new JPanel(new BorderLayout(8, 0));
-    subRow.add(tfGpssDir, BorderLayout.CENTER);
-    subRow.add(new JLabel("   "), BorderLayout.EAST);
-    subRow.add(new JLabel("   "), BorderLayout.SOUTH);
-    subRow.add(new JLabel("   "), BorderLayout.NORTH);
-    row.add(subRow, BorderLayout.EAST);
-    row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
-        "Remote job staging directory", tfGpssDir, true, true), BorderLayout.WEST);
-    //String remoteDir = configFile.getValue("GPSS", "Remote directory");
-    String remoteDir = configFile.getValue("GridPilot", "Grid home url");
-    if(remoteDB!=null && !remoteDB.equals("")){
-      remoteDir += (remoteDir.endsWith("/")?"":"/")+"gpss/";
-      tfGpssDir.setText(remoteDir);
-    }
-    else{
-      tfGpssDir.setText("");
-    }
-    csPanels[3].add(row,
-        new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     
@@ -1224,14 +1192,14 @@ public class BeginningWizard{
           // We use the first of the given hosts as master host
           new String [] {"SSH_Pool", "SSH_Pool", "SSH_Pool"},
           new String [] {"Enabled", "Hosts", "Host"},
-          new String [] {"yes", tfHosts.getText().trim(), Util.split(tfHosts.getText())[0]}
+          new String [] {"yes", tfHosts.getText().trim(), MyUtil.split(tfHosts.getText())[0]}
           );
       if(tfUsers.getText()!=null && !tfUsers.getText().equals("")){
         configFile.setAttributes(
             // We use the first of the given hosts as master host
             new String [] {"SSH_Pool", "SSH_Pool"},
             new String [] {"Users", "User"},
-            new String [] {tfUsers.getText().trim(), Util.split(tfUsers.getText())[0]}
+            new String [] {tfUsers.getText().trim(), MyUtil.split(tfUsers.getText())[0]}
             );
       }
       if(tfPasswords.getText()!=null && !tfPasswords.getText().equals("")){
@@ -1239,7 +1207,7 @@ public class BeginningWizard{
             // We use the first of the given hosts as master host
             new String [] {"SSH_Pool", "SSH_Pool"},
             new String [] {"Passwords", "Password"},
-            new String [] {tfPasswords.getText().trim(), Util.split(tfPasswords.getText())[0]}
+            new String [] {tfPasswords.getText().trim(), MyUtil.split(tfPasswords.getText())[0]}
             );
       }
     }
@@ -1250,19 +1218,17 @@ public class BeginningWizard{
           new String [] {"no"}
           );
     }
-    if(jcbs[3].isSelected() && Util.getJTextOrEmptyString(cbGpssDB)!=null &&
-        !Util.getJTextOrEmptyString(cbGpssDB).equals("") &&
-        tfGpssDir.getText()!=null && !tfGpssDir.getText().equals("")){
+    if(jcbs[3].isSelected() && MyUtil.getJTextOrEmptyString(tfGpUrl)!=null &&
+        !MyUtil.getJTextOrEmptyString(tfGpUrl).equals("")){
       configFile.setAttributes(
-          new String [] {"GPSS", "GPSS", "GPSS", "GPSS"},
-          new String [] {"Enabled", "Remote database", "Runtime databases", "Remote directory"},
-          new String [] {"yes", Util.getJTextOrEmptyString(cbGpssDB).trim(),
-             ("My_DB_Local "+Util.getJTextOrEmptyString(cbGpssDB)).trim(), tfGpssDir.getText().trim()}
+          new String [] {"GRIDFACTORY", "GRIDFACTORY"},
+          new String [] {"Enabled", "Submission URL"},
+          new String [] {"yes", MyUtil.getJTextOrEmptyString(tfGpUrl).trim()}
           );
     }
     else{
       configFile.setAttributes(
-          new String [] {"GPSS"},
+          new String [] {"GRIDFACTORY"},
           new String [] {"Enabled"},
           new String [] {"no"}
           );
@@ -1390,62 +1356,56 @@ public class BeginningWizard{
   
     if(sel==0){
       // Local DB, enable My_DB_Local, disable My_DB_Remote and GP_DB.
-      // Set GPSS:remote database = GP_DB
       // Set Fork:remote pull database = GP_DB
-      // Set [Fork|GPSS|SSH|SSH_POOL|NG|GLite]:runtime databases = My_DB_Local
+      // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite]:runtime databases = My_DB_Local
        configFile.setAttributes(
           new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
-              "GPSS", "Fork",
-              "Fork", "GPSS", "SSH", "SSH_POOL", "NG", "GLite"},
+              "Fork", "GRIDFACTORY", "SSH", "SSH_POOL", "NG", "GLite"},
           new String [] {"Enabled", "Enabled", "Enabled",
-              "Remote database", "Remote pull database",
-              "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases"},
+              "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases",
+              "Runtime databases","Runtime databases"},
           new String [] {"yes", "no", "no",
-              "GP_DB", "GP_DB",
               "My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Local"}
       );  
       changes = true;
     }
     else if(sel==1){
       // gridpilot.dk, enable GP_DB, My_DB_Local, disable My_DB_Remote.
-      // Set GPSS:remote database = GP_DB
       // Set GP_DB:database = local_production
       // Set Fork:remote pull database = GP_DB
-      // Set [Fork|GPSS|SSH|SSH_POOL|NG|GLite]:runtime databases = GP_DB My_DB_Local
+      // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite]:runtime databases = GP_DB My_DB_Local
       configFile.setAttributes(
           new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
-              "GPSS", "Fork", "GP_DB",
-              "Fork", "GPSS", "SSH", "SSH_POOL", "NG", "GLite"},
+              "GP_DB", "Fork", "GRIDFACTORY", "SSH", "SSH_POOL", "NG", "GLite"},
           new String [] {"Enabled", "Enabled", "Enabled",
-              "Remote database", "Remote pull database", "Database",
-              "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases"},
+              "Database", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases",
+              "Runtime databases", "Runtime databases"},
           new String [] {"yes", "no", "yes",
-              "GP_DB", "GP_DB", "jdbc:mysql://db.gridpilot.dk:3306/local_production",
-              "My_DB_Local", "GP_DB My_DB_Local", "My_DB_Local", "My_DB_Local", "GP_DB My_DB_Local", "GP_DB My_DB_Local"}
+              "jdbc:mysql://db.gridpilot.dk:3306/local_production", "My_DB_Local", "GP_DB My_DB_Local",
+              "My_DB_Local", "My_DB_Local", "GP_DB My_DB_Local", "GP_DB My_DB_Local"}
       );  
       changes = true;
     }
     else if(sel==2){
       // remote DB, enable My_DB_Remote, My_DB_Local, disable GP_DB.
       // Ask for My_DB_Remote:description
-      // Set GPSS:remote database = My_DB_Remote
       // Set Fork:remote pull database = My_DB_Remote
-      // Set [Fork|GPSS|SSH|SSH_POOL|NG|GLite]:runtime databases = My_DB_Remote My_DB_Local
+      // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite]:runtime databases = My_DB_Remote My_DB_Local
       String origDbDesc = configFile.getValue("My_DB_Remote", "Description");
-      String dbDesc = Util.getName(
+      String dbDesc = MyUtil.getName(
           "Please enter a short (~ 5 words) description of the remote database", "");
       if(dbDesc==null || dbDesc.equals("")){
         dbDesc = origDbDesc;
       }
       configFile.setAttributes(
           new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
-              "GPSS", "Fork", "My_DB_Remote", "My_DB_Remote",
-              "Fork", "GPSS", "SSH", "SSH_POOL", "NG", "GLite"},
+              "My_DB_Remote", "My_DB_Remote",
+              "Fork", "GRIDFACTORY", "SSH", "SSH_POOL", "NG", "GLite"},
           new String [] {"Enabled", "Enabled", "Enabled",
-              "Remote database", "Remote pull database", "Database", "Description",
+             "Database", "Description",
               "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases"},
           new String [] {"yes", "yes", "no",
-              "My_DB_Remote", "My_DB_Remote", "jdbc:mysql://"+newDirs[sel].trim()+":3306/", dbDesc,
+              "jdbc:mysql://"+newDirs[sel].trim()+":3306/", dbDesc,
               "My_DB_Local", "My_DB_Remote My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Remote My_DB_Local", "My_DB_Remote My_DB_Local"}
       );  
       changes = true;
@@ -1456,7 +1416,7 @@ public class BeginningWizard{
 
   private int setGridHomeDir(boolean firstRun) throws Exception{
     GridPilot.proxyDir = configFile.getValue("GridPilot", "Grid proxy directory");
-    GridPilot.caCerts = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot",
+    GridPilot.caCertsDir = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot",
        "ca certificates");
     GridPilot.resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "resources");
     String confirmString =
@@ -1478,7 +1438,7 @@ public class BeginningWizard{
     addHyperLinkListener(pane, jPanel);
     String homeUrl = configFile.getValue("GridPilot", "Grid home url");
     String [] defDirs = new String [] {homeUrl,
-                                       HOME_URL+"users/"+Util.getGridDatabaseUser()+"/",
+                                       HOME_URL+"users/"+GridPilot.getClassMgr().getSSL().getGridDatabaseUser()+"/",
                                        homeUrl};
     String [] names = new String [] {"Use your own grid or local home URL",
                                      "Use default grid home URL",
@@ -1500,7 +1460,7 @@ public class BeginningWizard{
       row = new JPanel(new BorderLayout(8, 0));
       row.add(jrbs[i], BorderLayout.WEST);
       if(i==0){
-        row.add(Util.createCheckPanel(JOptionPane.getRootFrame(),
+        row.add(MyUtil.createCheckPanel(JOptionPane.getRootFrame(),
             names[i], jtFields[i], true, true), BorderLayout.CENTER);
       }
       else{
@@ -1546,9 +1506,9 @@ public class BeginningWizard{
         continue;
       }
       newDirs[i] = jtFields[i].getText();
-      if(newDirs[i]!=null && !newDirs[i].equals("") && !Util.urlIsRemote(newDirs[i])){
+      if(newDirs[i]!=null && !newDirs[i].equals("") && !MyUtil.urlIsRemote(newDirs[i])){
         Debug.debug("Checking directory "+newDirs[i], 2);
-        newDirFiles[i] = new File(Util.clearTildeLocally(Util.clearFile(newDirs[i])));
+        newDirFiles[i] = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[i])));
         if(newDirFiles[i].exists()){
           if(!newDirFiles[i].isDirectory()){
             throw new IOException("The directory "+newDirFiles[i].getAbsolutePath()+" cannot be created.");
@@ -1559,26 +1519,26 @@ public class BeginningWizard{
           newDirFiles[i].mkdir();
         }
       }
-      newDirs[i] = Util.replaceWithTildeLocally(Util.clearFile(newDirs[i]));
+      newDirs[i] = MyUtil.replaceWithTildeLocally(MyUtil.clearFile(newDirs[i]));
     }
 
     // Set config entries
     if(sel>-1 && newDirs[sel]!=null &&
         (defDirs[0]==null || !defDirs[0].equals(newDirs[sel]))){
       // Create the homedir if it doesn't exist
-      if(Util.urlIsRemote(newDirs[sel])){
+      if(MyUtil.urlIsRemote(newDirs[sel])){
         mkRemoteDir(newDirs[sel]);
       }
       else{
-        if(!LocalStaticShellMgr.mkdir(newDirs[sel])){
+        if(!LocalStaticShell.mkdir(newDirs[sel])){
           throw new IOException("Could not create directory "+newDirs[sel]);
         }
       }
       Debug.debug("Setting "+sel+":"+newDirs[sel], 2);
       configFile.setAttributes(
-          new String [] {"GridPilot", "GPSS"},
-          new String [] {"Grid home url", "Remote directory"},
-          new String [] {newDirs[sel], newDirs[sel]+"/gpss/"}
+          new String [] {"GridPilot"},
+          new String [] {"Grid home url"},
+          new String [] {newDirs[sel]}
       );
       changes = true;
     }
@@ -1594,7 +1554,7 @@ public class BeginningWizard{
     FileTransfer fileTransfer = GridPilot.getClassMgr().getFTPlugin(globusUrl.getProtocol());
     // First, check if directory already exists.
     try{
-      fileTransfer.list(globusUrl, null, null);
+      fileTransfer.list(globusUrl, null);
       return;
     }
     catch(Exception e){

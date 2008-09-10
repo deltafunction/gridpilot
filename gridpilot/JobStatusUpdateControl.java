@@ -1,5 +1,8 @@
 package gridpilot;
 
+import gridfactory.common.ConfigFile;
+import gridfactory.common.Debug;
+
 import java.net.URL;
 import java.util.Iterator;
 import java.util.Vector;
@@ -28,7 +31,7 @@ public class JobStatusUpdateControl{
   private Timer timerChecking;
 
   private ConfigFile configFile;
-  private LogFile logFile;
+  private MyLogFile logFile;
 
   /** Maximun number of simultaneous thread for checking */
   private static int maxSimultaneousChecking = 3;
@@ -38,7 +41,7 @@ public class JobStatusUpdateControl{
   /** For each plug-in, maximum number of job for one update (0 = INF)*/
   private HashMap maxJobsByUpdate;
 
-  private Table statusTable;
+  private MyJTable statusTable;
 
   /**
    * Contains all jobs which should be updated. <p>
@@ -70,7 +73,7 @@ public class JobStatusUpdateControl{
 
   private Vector jobMgrs;
 
-  public JobStatusUpdateControl(){
+  public JobStatusUpdateControl() throws Exception{
     statusTable = GridPilot.getClassMgr().getJobStatusTable();
     configFile = GridPilot.getClassMgr().getConfigFile();
     logFile = GridPilot.getClassMgr().getLogFile();
@@ -217,11 +220,11 @@ public class JobStatusUpdateControl{
     synchronized(toCheckJobs){
       Enumeration e = jobs.elements();
       while(e.hasMoreElements()){
-        JobInfo job = (JobInfo) e.nextElement();
+        MyJobInfo job = (MyJobInfo) e.nextElement();
         Debug.debug("Checking job: "+job.getName()+" "+
-            job.needToBeRefreshed() +" "+ !toCheckJobs.contains(job) +" "+
+            job.getNeedsUpdate() +" "+ !toCheckJobs.contains(job) +" "+
             !checkingJobs.contains(job), 3);
-        if(job.needToBeRefreshed() && !toCheckJobs.contains(job) &&
+        if(job.getNeedsUpdate() && !toCheckJobs.contains(job) &&
             !checkingJobs.contains(job)){
           Debug.debug("Adding job to toCheckJobs", 3);
           toCheckJobs.add(job);
@@ -238,7 +241,7 @@ public class JobStatusUpdateControl{
   /**
    * Called by <code>timerChecking</code> time outs. <p>
    * This method is invocated in a thread. <br>
-   * Takes the maximum number of jobs in <code>toCheckJobs</code>, saves their internal status
+   * Takes the maximum number of jobs in <code>toCheckJobs</code>, saves their status
    * and calls the computing system plugin with these jobs. <br>
    * If a status has changed, an action is performed: <ul>
    * <li>STATUS_ERRROR : nothing
@@ -258,14 +261,14 @@ public class JobStatusUpdateControl{
       if(toCheckJobs.isEmpty()){
         return;
       }
-      String csName = ((JobInfo) toCheckJobs.get(0)).getCSName();
+      String csName = ((MyJobInfo) toCheckJobs.get(0)).getCSName();
 
       int currentJob = 0;
       while((jobs.size()<((Integer) maxJobsByUpdate.get(csName)).intValue() ||
           ((Integer) maxJobsByUpdate.get(csName)).intValue()==0 )
             && currentJob<toCheckJobs.size()){
         Debug.debug("Adding job to toCheckJobs "+currentJob, 3);
-        if(((JobInfo) toCheckJobs.get(
+        if(((MyJobInfo) toCheckJobs.get(
             currentJob)).getCSName().toString().equalsIgnoreCase(csName)){
           jobs.add(toCheckJobs.remove(currentJob));
         }
@@ -276,11 +279,11 @@ public class JobStatusUpdateControl{
     }
     checkingJobs.addAll(jobs);
 
-    int [] previousInternalStatus = new int [jobs.size()];
+    int [] previousStatus = new int [jobs.size()];
     for(int i=0; i<jobs.size(); ++i){
       Debug.debug("Setting value for job "+i, 3);
-      statusTable.setValueAt(iconChecking, ((JobInfo) jobs.get(i)).getTableRow(), JobMgr.FIELD_CONTROL);
-      previousInternalStatus[i] = ((JobInfo) jobs.get(i)).getInternalStatus();
+      statusTable.setValueAt(iconChecking, ((MyJobInfo) jobs.get(i)).getTableRow(), JobMgr.FIELD_CONTROL);
+      previousStatus[i] = ((MyJobInfo) jobs.get(i)).getStatus();
     }
     
     Debug.debug("Updating status of "+jobs.size()+" jobs", 3);
@@ -293,37 +296,37 @@ public class JobStatusUpdateControl{
 
     for(int i=0; i<jobs.size(); ++i){
       Debug.debug("Setting value of job #"+i, 3);
-      statusTable.setValueAt(null, ((JobInfo) jobs.get(i)).getTableRow(), JobMgr.FIELD_CONTROL);
-      statusTable.setValueAt(((JobInfo) jobs.get(i)).getJobStatus(),
-          ((JobInfo) jobs.get(i)).getTableRow(), JobMgr.FIELD_STATUS);
+      statusTable.setValueAt(null, ((MyJobInfo) jobs.get(i)).getTableRow(), JobMgr.FIELD_CONTROL);
+      statusTable.setValueAt(((MyJobInfo) jobs.get(i)).getCSStatus(),
+          ((MyJobInfo) jobs.get(i)).getTableRow(), JobMgr.FIELD_STATUS);
     }
   
     for(int i=0; i<jobs.size(); ++i){
-      JobInfo job = (JobInfo) jobs.get(i);
+      MyJobInfo job = (MyJobInfo) jobs.get(i);
       Debug.debug("Setting computing system status of job #"+i+"; "+
-          job.getInternalStatus()+"<->"+previousInternalStatus[i], 3);
-      if(job.getInternalStatus()!=previousInternalStatus[i]){       
-        switch(job.getInternalStatus()){
-        case ComputingSystem.STATUS_WAIT :
+          job.getStatus()+"<->"+previousStatus[i], 3);
+      if(job.getStatus()!=previousStatus[i]){       
+        switch(job.getStatus()){
+        case MyJobInfo.STATUS_READY :
           break;
-        case ComputingSystem.STATUS_DONE:
-          job.setNeedToBeRefreshed(false);
+        case MyJobInfo.STATUS_DONE:
+          job.setNeedsUpdate(false);
           GridPilot.getClassMgr().getJobValidation().validate(job);
           break;
-        case ComputingSystem.STATUS_RUNNING:
+        case MyJobInfo.STATUS_RUNNING:
           statusTable.setValueAt(job.getHost(), job.getTableRow(), JobMgr.FIELD_HOST);
           break;
-        case ComputingSystem.STATUS_ERROR:
+        case MyJobInfo.STATUS_ERROR:
           // Without the line below: leave as refreshable, in case the error is intermittent.
           // With the line below: avoid checking over and over again.
           //                      To recheck, clear and add again to monitoring panel.
           //job.setNeedToBeRefreshed(false);
           if(job.getDBStatus()==DBPluginMgr.UNDECIDED || job.getDBStatus()==DBPluginMgr.UNEXPECTED){
-            job.setNeedToBeRefreshed(false);
+            job.setNeedsUpdate(false);
           }
           break;
-        case ComputingSystem.STATUS_FAILED:
-          job.setNeedToBeRefreshed(false);
+        case MyJobInfo.STATUS_FAILED:
+          job.setNeedsUpdate(false);
           jobMgrs = GridPilot.getClassMgr().getJobMgrs();
           JobMgr mgr = null;
           for(Iterator it = jobMgrs.iterator(); it.hasNext();){

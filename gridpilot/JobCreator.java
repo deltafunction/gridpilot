@@ -1,10 +1,11 @@
 package gridpilot;
 
+import gridfactory.common.DBResult;
+import gridfactory.common.Debug;
+
 import java.util.*;
 
 import javax.swing.*;
-
-import gridpilot.DBResult;
 
 import java.awt.*;
 import java.io.IOException;
@@ -611,7 +612,7 @@ public class JobCreator{
     if(inputDataset!=null && !inputDataset.equalsIgnoreCase("")){
       if(inputMgr.isFileCatalog()){
         try{
-          String inputDBFileIdentifierField = Util.getIdentifierField(
+          String inputDBFileIdentifierField = MyUtil.getIdentifierField(
               inputMgr.getDBName(), "file");
           if(inputDataset!=null && !inputDataset.equals("") &&
               inputDB!=null && !inputDB.equals("")){
@@ -629,7 +630,7 @@ public class JobCreator{
                   inputDBFileIdentifierField);
             }
             Debug.debug("Input files for "+datasetIdentifiers[currentDataset]+
-                ":"+inputDataset+":"+inputDB+": "+Util.arrayToString(inputIds), 3);
+                ":"+inputDataset+":"+inputDB+": "+MyUtil.arrayToString(inputIds), 3);
           }
         }
         catch(Exception e){
@@ -640,7 +641,7 @@ public class JobCreator{
       }
       if((inputRecords==null || inputRecords.values.length==0) && inputMgr.isJobRepository()){
         try{
-          String inputDBJobDefIdentifierField = Util.getIdentifierField(
+          String inputDBJobDefIdentifierField = MyUtil.getIdentifierField(
               inputMgr.getDBName(), "jobDefinition");
           if(inputDataset!=null && !inputDataset.equals("") &&
               inputDB!=null && !inputDB.equals("")){
@@ -657,7 +658,7 @@ public class JobCreator{
                   inputDBJobDefIdentifierField);
             }
             Debug.debug("Input job definitions for "+datasetIdentifiers[currentDataset]+
-                ":"+inputDataset+":"+inputDB+": "+Util.arrayToString(inputIds), 3);
+                ":"+inputDataset+":"+inputDB+": "+MyUtil.arrayToString(inputIds), 3);
           }
         }
         catch(Exception e){
@@ -762,12 +763,12 @@ public class JobCreator{
               inputIds[currentPartition-1], 1).getValue("pfns");
           String [] inputFilArr = null;
           try{
-            inputFilArr = Util.splitUrls(inputFils);
+            inputFilArr = MyUtil.splitUrls(inputFils);
           }
           catch(Exception e){
             Debug.debug("WARNING: could not split as URLs, trying normal split", 1);
             e.printStackTrace();
-            inputFilArr = Util.split(inputFils);
+            inputFilArr = MyUtil.split(inputFils);
           }
           inputFiles = inputFilArr[0];
         }
@@ -783,20 +784,20 @@ public class JobCreator{
     // construct the (short) file names for the job script arguments
     String inputs = "";
     String [] fils = null;
-    String [] inArr = Util.split(inputFiles);
+    String [] inArr = MyUtil.split(inputFiles);
     String addFils = "";
     for(int j=0; j<inArr.length; ++j){
       if(j>0){
         inputs += " ";
       }
-      fils = Util.split(inArr[j], "/");
+      fils = MyUtil.split(inArr[j], "/");
       if(fils.length>0){
         addFils = fils[fils.length-1];
       }
       else{
         addFils = inArr[j];
       }
-      fils = Util.split(addFils, "\\\\");
+      fils = MyUtil.split(addFils, "\\\\");
       if(fils.length>0){
         inputs += fils[fils.length-1];
       }
@@ -894,11 +895,11 @@ public class JobCreator{
     // metadata information from the metadata field of the dataset
     String metaDataString = (String) dbPluginMgr.getDataset(
         datasetIdentifiers[currentDataset]).getValue("metaData");
-    HashMap metaData = Util.parseMetaData(metaDataString);
+    HashMap metaData = MyUtil.parseMetaData(metaDataString);
     for(int i=0; i<resJobParam.length; ++i){
       Debug.debug("param #"+i+" : "+jobParamNames[i]+" -> "+
           metaData.containsKey(jobParamNames[i].toLowerCase())+ " : "+
-          Util.arrayToString(metaData.keySet().toArray()), 3);
+          MyUtil.arrayToString(metaData.keySet().toArray()), 3);
       if((jobParam[i]==null || jobParam[i].equals("")) &&
           (jobParamNames[i].equalsIgnoreCase("eventMin")) &&
           eventSplits!=null && eventSplits.length>1){
@@ -925,7 +926,7 @@ public class JobCreator{
         //int jobParamIndex = jobdefinitionFields.indexOf(jobParamNames[i].toLowerCase());
         int jobParamIndex = jobattributenames.indexOf(jobParamNames[i].toLowerCase());
         Debug.debug("Filling in job parameter "+jobParamNames[i]+":"+jobParamIndex+" from "+
-            Util.arrayToString(jobattributenames.toArray()), 3);
+            MyUtil.arrayToString(jobattributenames.toArray()), 3);
         if(resCstAttr[jobParamIndex]==null || resCstAttr[jobParamIndex].equals("")){
           //resCstAttr[jobdefinitionFields.indexOf(jobParamNames[i].toLowerCase())] = resJobParam[i];
           resCstAttr[jobParamIndex] = resJobParam[i];
@@ -949,9 +950,9 @@ public class JobCreator{
     
     if(fileCatalogInput && !eventsPresent && outMap.length==1 &&
         (outMap[0][1]==null || outMap[0][1].equals("")) && inputs!=null &&
-        Util.split(inputs).length==1){
+        MyUtil.split(inputs).length==1){
       String ifn = inputs;
-      String [] fullNameStrings = Util.split(ifn, "\\.");
+      String [] fullNameStrings = MyUtil.split(ifn, "\\.");
       if(fullNameStrings.length>0){
         String extension = "."+fullNameStrings[fullNameStrings.length-1];
         resOutMap[0][1] = evaluate("$o/"+ifn.replaceFirst(extension, ".out"+extension),

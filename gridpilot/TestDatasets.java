@@ -1,5 +1,11 @@
 package gridpilot;
 
+import gridfactory.common.ConfigFile;
+import gridfactory.common.Debug;
+import gridfactory.common.LocalShell;
+import gridfactory.common.LogFile;
+import gridfactory.common.Shell;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -43,7 +49,7 @@ public class TestDatasets {
       // if we cannot show text on splash, just silently ignore
     }
     String isEnabled = "no";
-    ShellMgr shellMgr = null;
+    Shell shellMgr = null;
     DBPluginMgr dbPluginMgr = null;
     for(int i=0; i<GridPilot.csNames.length; ++i){
       isEnabled = configFile.getValue(GridPilot.csNames[i], "Enabled");
@@ -57,7 +63,7 @@ public class TestDatasets {
         shellMgr = null;
       }
       if(shellMgr==null){
-        shellMgr = new LocalShellMgr();
+        shellMgr = new LocalShell();
       }
       Debug.debug("createAll --> "+shellMgr+" : "+transformationDirectory, 3);
       // Make sure transformation directory exists
@@ -94,7 +100,7 @@ public class TestDatasets {
   /**
    * If the transformation script does not exist, create it.
    */
-  protected void createMyTransformationScript(ShellMgr shellMgr){
+  protected void createMyTransformationScript(Shell shellMgr){
     String transformationScriptName = myTransformationName+".sh";
     try{
       if(!shellMgr.existsFile(transformationDirectory+transformationScriptName)){
@@ -111,7 +117,7 @@ public class TestDatasets {
   /**
    * If the transformation script does not exist, create it.
    */
-  protected void createTestTransformationScript(ShellMgr shellMgr){
+  protected void createTestTransformationScript(Shell shellMgr){
     String testScriptName = testTransformationName+".sh";
     // Create two dummy input files
     if(!shellMgr.existsFile(transformationDirectory+"data1.txt")){
@@ -165,10 +171,10 @@ public class TestDatasets {
     String id = dbPluginMgr.getTransformationID(myTransformationName, myTransformationVersion);
     if(id==null || id.equals("") || id.equals("-1")){
       String [] fields = new String [] {
-          /*identifier cannot be null*/Util.getIdentifierField("My_DB_Local", "transformation"),
-          /*name*/Util.getNameField("My_DB_Local", "transformation"),
-          /*version*/Util.getDatasetTransformationVersionReference("My_DB_Local")[0],
-          /*runtimeenvironmentname*/Util.getTransformationRuntimeReference("My_DB_Local")[1],
+          /*identifier cannot be null*/MyUtil.getIdentifierField("My_DB_Local", "transformation"),
+          /*name*/MyUtil.getNameField("My_DB_Local", "transformation"),
+          /*version*/MyUtil.getDatasetTransformationVersionReference("My_DB_Local")[0],
+          /*runtimeenvironmentname*/MyUtil.getTransformationRuntimeReference("My_DB_Local")[1],
           "script"};
       String [] values = new String [] {
           "",
@@ -236,10 +242,10 @@ public class TestDatasets {
     String id = dbPluginMgr.getDatasetID(myDatasetName);
     if(id==null || id.equals("") || id.equals("-1")){
       String [] fields = new String [] {
-          /*identifier cannot be null*/Util.getIdentifierField("My_DB_Local", "dataset"),
-          /*name*/Util.getNameField("My_DB_Local", "dataset"),
-          /*transformationname*/Util.getDatasetTransformationReference("My_DB_Local")[1],
-          /*transformationversion*/Util.getDatasetTransformationVersionReference("My_DB_Local")[1],
+          /*identifier cannot be null*/MyUtil.getIdentifierField("My_DB_Local", "dataset"),
+          /*name*/MyUtil.getNameField("My_DB_Local", "dataset"),
+          /*transformationname*/MyUtil.getDatasetTransformationReference("My_DB_Local")[1],
+          /*transformationversion*/MyUtil.getDatasetTransformationVersionReference("My_DB_Local")[1],
           "totalFiles",
           "outputLocation"};
       String [] values = new String [] {

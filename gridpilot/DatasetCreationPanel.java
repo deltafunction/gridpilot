@@ -1,8 +1,8 @@
 package gridpilot;
 
-import gridpilot.Debug;
-import gridpilot.DBRecord;
-import gridpilot.DBResult;
+import gridfactory.common.DBRecord;
+import gridfactory.common.DBResult;
+import gridfactory.common.Debug;
 
 import javax.swing.*;
 import javax.swing.border.*;
@@ -24,7 +24,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private String datasetID = "-1";
   private String datasetIdentifier = "identifier";
   private DBPanel panel;
-  private Table table;
+  private MyJTable table;
   private String [] cstAttributesNames;
   private JTextComponent [] tcCstAttributes;
   private boolean reuseTextFields = true;
@@ -67,14 +67,14 @@ public class DatasetCreationPanel extends CreateEditPanel{
     table = panel.getTable();
     cstAttributesNames = dbPluginMgr.getFieldNames("dataset");
     cstAttr = new String[cstAttributesNames.length];
-    datasetIdentifier = Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
+    datasetIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
     transformations = dbPluginMgr.getTransformations();
     editable = true;
     
     datasetTransformationReference =
-      Util.getDatasetTransformationReference(dbPluginMgr.getDBName());
+      MyUtil.getDatasetTransformationReference(dbPluginMgr.getDBName());
     datasetTransformationVersionReference =
-      Util.getDatasetTransformationVersionReference(dbPluginMgr.getDBName());
+      MyUtil.getDatasetTransformationVersionReference(dbPluginMgr.getDBName());
     
     // Find identifier index
     int identifierIndex = -1;
@@ -111,7 +111,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       // Find input datasets
       datasetIDs = panel.getSelectedIdentifiers();
       Debug.debug("Creating with input datasets "+identifierIndex+":"+datasetID+": "+
-          Util.arrayToString(datasetIDs), 3);
+          MyUtil.arrayToString(datasetIDs), 3);
     } 
   }
 
@@ -135,10 +135,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
       // will be null and we have to take those we can directly from the tableResults
       if(editing && (datasetName==null || datasetName.equals(""))){
         try{
-          Table tableResults = panel.getTable();
+          MyJTable tableResults = panel.getTable();
           if(tableResults.getSelectedRows().length==1){
             for(int k=0; k<tableResults.getColumnCount(); ++k){
-              if(tableResults.getColumnName(k).equalsIgnoreCase(Util.getNameField(dbPluginMgr.getDBName(), "dataset"))){
+              if(tableResults.getColumnName(k).equalsIgnoreCase(MyUtil.getNameField(dbPluginMgr.getDBName(), "dataset"))){
                 datasetName = tableResults.getUnsortedValueAt(tableResults.getSelectedRow(), k).toString();
                 break;
               }
@@ -234,7 +234,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     for(int i=0; i<cstAttributesNames.length; ++i){
       if(cstAttributesNames[i].equalsIgnoreCase("metaData")){
         if(!reuseTextFields || tcCstAttributes[i]==null){
-          tcCstAttributes[i] = Util.createTextArea(TEXTFIELDWIDTH);
+          tcCstAttributes[i] = MyUtil.createTextArea(TEXTFIELDWIDTH);
         }
       }
       else{
@@ -247,7 +247,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       // If we cannot get all values, we will not allow editing.
       if(editing && (cstAttr[i]==null || cstAttr[i].equals(""))){
         try{
-          Table tableResults = panel.getTable();
+          MyJTable tableResults = panel.getTable();
           if(tableResults.getSelectedRows().length==1){
             boolean ok = false;
             for(int k=0; k<tableResults.getColumnCount(); ++k){
@@ -272,12 +272,12 @@ public class DatasetCreationPanel extends CreateEditPanel{
       }
       if(cstAttr[i]!=null && !cstAttr[i].equals("")){
         Debug.debug("Setting cstAttr["+i+"]: "+cstAttr[i], 3);
-        Util.setJText(tcCstAttributes[i], cstAttr[i]);
+        MyUtil.setJText(tcCstAttributes[i], cstAttr[i]);
       }
       Debug.debug("Adding cstAttributesNames["+i+"], "+cstAttributesNames[i]+
           " "+tcCstAttributes[i].getClass().toString(), 3);
       if(cstAttributesNames[i].equalsIgnoreCase("outputLocation")){
-        pAttributes.add(Util.createCheckPanel(
+        pAttributes.add(MyUtil.createCheckPanel(
             (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
             cstAttributesNames[i], tcCstAttributes[i], true, true),
             new GridBagConstraints(0, i, 1, 1, 0.0, 0.0,
@@ -300,8 +300,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
       }
       // when creating, zap loaded dataset id
       if(!editing && cstAttributesNames[i].equalsIgnoreCase(datasetIdentifier)){
-        Util.setJText((JComponent) tcCstAttributes[i], "");
-        Util.setJEditable(tcCstAttributes[i], false);
+        MyUtil.setJText((JComponent) tcCstAttributes[i], "");
+        MyUtil.setJEditable(tcCstAttributes[i], false);
       }
     }
     
@@ -310,7 +310,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
          cstAttributesNames[i].equalsIgnoreCase(datasetTransformationVersionReference[1]) ||
          cstAttributesNames[i].equalsIgnoreCase("created") ||
          cstAttributesNames[i].equalsIgnoreCase("lastModified")){
-        Util.setJEditable(tcCstAttributes[i], false);
+        MyUtil.setJEditable(tcCstAttributes[i], false);
       }
     }
   }
@@ -352,11 +352,11 @@ public class DatasetCreationPanel extends CreateEditPanel{
       }
       else if(transformationName!=null && !transformationName.equals("") &&
           cstAttributesNames[i].equalsIgnoreCase(datasetTransformationReference[1])){
-        Util.setJText(tcCstAttributes[i], transformationName);
+        MyUtil.setJText(tcCstAttributes[i], transformationName);
       }
       else if(transformationVersion!=null && !transformationVersion.equals("") &&
           cstAttributesNames[i].equalsIgnoreCase(datasetTransformationVersionReference[1])){
-        Util.setJText(tcCstAttributes[i], transformationVersion);
+        MyUtil.setJText(tcCstAttributes[i], transformationVersion);
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("targetDatabase")){
         // TODO
@@ -379,7 +379,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       textFields = getNonIdTextFields();
     }
     for(int i =0; i<textFields.size(); ++i){
-      Util.setJText((JComponent) textFields.get(i),"");
+      MyUtil.setJText((JComponent) textFields.get(i),"");
     }
     GridBagConstraints cv = new GridBagConstraints();
     cv.fill = GridBagConstraints.VERTICAL;
@@ -407,7 +407,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     
     if(editing){
       for(int i=0; i<cstAttr.length; ++i){
-        cstAttr[i] = Util.getJTextOrEmptyString(tcCstAttributes[i]);
+        cstAttr[i] = MyUtil.getJTextOrEmptyString(tcCstAttributes[i]);
         Debug.debug("createDataset: cstAttr["+i+"]: "+cstAttr[i], 3);
       }
       DatasetUpdater dsu = new DatasetUpdater(
@@ -430,7 +430,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
         targetDB = cbTargetDBSelection.getSelectedItem().toString();
       }
       for(int i=0; i<cstAttr.length; ++i){
-        cstAttr[i] = Util.getJTextOrEmptyString(tcCstAttributes[i]);
+        cstAttr[i] = MyUtil.getJTextOrEmptyString(tcCstAttributes[i]);
         Debug.debug("createDataset: cstAttr["+i+"]: "+cstAttr[i], 3);
       }
       DatasetCreator dsc = new DatasetCreator(
@@ -456,7 +456,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     Debug.debug("setValues: " + datasetID +
         " " + transformationName + " " + transformationVersion, 3); 
     Debug.debug("Got field names: "+
-        Util.arrayToString(cstAttributesNames), 3);
+        MyUtil.arrayToString(cstAttributesNames), 3);
 
     if(editing){
       // set values of fields
@@ -469,7 +469,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
               try{
                 Debug.debug(cstAttributesNames[i].toString()+"="+dataset.fields[j]+". Setting to "+
                     dataset.values[j].toString(), 3);
-                Util.setJText(tcCstAttributes[i], dataset.values[j].toString());
+                MyUtil.setJText(tcCstAttributes[i], dataset.values[j].toString());
                 
                 if(cstAttributesNames[i].equalsIgnoreCase(datasetTransformationReference[1])){
                   transformationName = dataset.values[j].toString();
@@ -493,16 +493,16 @@ public class DatasetCreationPanel extends CreateEditPanel{
           try{
             if(datasetID==null || datasetID.equals("-1")){
               Debug.debug("Clearing identifier", 3);
-              Util.setJText(tcCstAttributes[i], "");
+              MyUtil.setJText(tcCstAttributes[i], "");
             }
-            Util.setJEditable(tcCstAttributes[i], false);
+            MyUtil.setJEditable(tcCstAttributes[i], false);
           }
           catch(java.lang.Exception e){
             Debug.debug("Field not found, "+e.getMessage(), 1);
           }
         }
         else{
-          Util.setJEditable(tcCstAttributes[i], true);
+          MyUtil.setJEditable(tcCstAttributes[i], true);
         }
       }
     }
@@ -512,11 +512,11 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private String[] getTransNames(){
     String [] ret = new String[transformations.values.length];
     Debug.debug("number of transformations: "+transformations.values.length, 3);
-    Debug.debug("fields: "+Util.arrayToString(transformations.fields), 3);
+    Debug.debug("fields: "+MyUtil.arrayToString(transformations.fields), 3);
     for(int i=0; i<transformations.values.length; ++i){
       Debug.debug("#"+i, 3);
       Debug.debug("name: "+transformations.getValue(i, "name"), 3);
-      Debug.debug("values: "+Util.arrayToString(transformations.values[i]), 3);
+      Debug.debug("values: "+MyUtil.arrayToString(transformations.values[i]), 3);
       ret[i] = transformations.getValue(i, "name").toString(); 
     }
     // This is to ensure only unique elements
@@ -662,7 +662,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           DBPanel dbPanel = new DBPanel(targetDBPluginMgr.getDBName(),
               "transformation");
           String idField =
-            Util.getIdentifierField(targetDBPluginMgr.getDBName(), "transformation");
+            MyUtil.getIdentifierField(targetDBPluginMgr.getDBName(), "transformation");
           String id = targetDBPluginMgr.getTransformationID(transformationName,
               transformationVersion);
           dbPanel.selectPanel.setConstraint(idField,
@@ -794,7 +794,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     String [] sourceFields = cstAttributesNames;
     String [] sourceAttr = new String[cstAttributesNames.length];
     for(int i=0; i<tcCstAttributes.length; ++i){
-      sourceAttr[i] = Util.getJTextOrEmptyString(tcCstAttributes[i]);
+      sourceAttr[i] = MyUtil.getJTextOrEmptyString(tcCstAttributes[i]);
     }
     targetDB = cbTargetDBSelection.getSelectedItem().toString();
     targetDBPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(
@@ -819,7 +819,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           targetFields[j].equalsIgnoreCase(datasetTransformationVersionReference[1])){
       }
       else if(targetFields[j].equalsIgnoreCase(
-          Util.getNameField(targetDBPluginMgr.getDBName(), "dataset"))){
+          MyUtil.getNameField(targetDBPluginMgr.getDBName(), "dataset"))){
         targetAttr[j] = dbPluginMgr.getTargetDatasetName(
             targetDB, dbPluginMgr.getDatasetName(datasetIDs[0]),
             transformationName, transformationVersion);
@@ -879,14 +879,14 @@ public class DatasetCreationPanel extends CreateEditPanel{
     
     for(int i=0; i<tcCstAttributes.length; ++i){
       Debug.debug("Setting "+targetFields[i]+"->"+targetAttr[i], 3);
-      Util.setJText(tcCstAttributes[i], targetAttr[i]);
+      MyUtil.setJText(tcCstAttributes[i], targetAttr[i]);
       if((cstAttributesNames[i].equalsIgnoreCase("runNumber") ||
           cstAttributesNames[i].equalsIgnoreCase("InputDataset") ||
           cstAttributesNames[i].equalsIgnoreCase("InputDB") ||
           cstAttributesNames[i].equalsIgnoreCase(datasetTransformationReference[1]) ||
           cstAttributesNames[i].equalsIgnoreCase(datasetTransformationVersionReference[1]))){         
         try{
-          Util.setJEditable(tcCstAttributes[i], false);
+          MyUtil.setJEditable(tcCstAttributes[i], false);
         }
         catch(java.lang.Exception e){
           Debug.debug("Attribute not found, "+e.getMessage(),1);

@@ -1,5 +1,7 @@
 package gridpilot;
 
+import gridfactory.common.Debug;
+
 import java.util.*;
 import javax.swing.*;
 
@@ -45,7 +47,7 @@ public class JobDefCreator{
 
     if(showThis){
       //int choice = showResult(cstAttr);
-      int choice = Util.showResult(cstAttrNames, cstAttr, "Job definition", 1);
+      int choice = MyUtil.showResult(cstAttrNames, cstAttr, "Job definition", 1);
       switch(choice){
         case 0  : skip = false;  break;  // OK
         case 1  : skip = true;   break; // Skip
@@ -67,7 +69,7 @@ public class JobDefCreator{
     Debug.debug(this.getClass().getName() + " is calling DB", 2);
 
     if(editing){
-      String jobDefIdentifier = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
+      String jobDefIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
       String id = "-1";
       for(int i=0; i<cstAttrNames.length; ++i){
         if(cstAttrNames[i].toString().equalsIgnoreCase(

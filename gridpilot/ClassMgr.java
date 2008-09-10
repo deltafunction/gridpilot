@@ -1,10 +1,13 @@
 package gridpilot;
 
+import gridfactory.common.ConfigFile;
+import gridfactory.common.Debug;
+import gridfactory.common.FileTransfer;
+import gridfactory.common.LocalStaticShell;
+import gridfactory.common.Shell;
+
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.security.cert.X509Certificate;
-import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,8 +20,6 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
-import org.globus.common.CoGProperties;
-import org.globus.gsi.CertUtil;
 import org.ietf.jgss.GSSCredential;
 import org.logicalcobwebs.proxool.ProxoolFacade;
 
@@ -30,16 +31,15 @@ public class ClassMgr{
 
   private ConfigFile configFile;
   private GlobalFrame globalFrame;
-  private LogFile logFile;
+  private MyLogFile logFile;
   private StatusBar statusBar;
   private TransferStatusUpdateControl transferStatusUpdateControl;
-  private Table jobStatusTable;
-  private Table transferStatusTable;
+  private MyJTable jobStatusTable;
+  private MyJTable transferStatusTable;
   private StatisticsPanel jobStatisticsPanel;
   private StatisticsPanel transferStatisticsPanel;
   private JobValidation jobValidation;
   private GridPilot gridPilot;
-  private int debugLevel = 0;
   private HashMap dbMgrs = new HashMap();
   private HashMap ft = new HashMap();
   private HashMap jobMgrs = new HashMap();
@@ -49,17 +49,10 @@ public class ClassMgr{
   private TransferControl transferControl;
   private Vector urlList = new Vector();
   private HashMap shellMgrs = new HashMap();
-  private static String caCertsTmpdir = null;
   private static String DEFAULT_POOL_SIZE = "10";
   /** List of urls in db pool */
   private HashSet dbURLs = new HashSet();
-  /**
-   * Map of pulled jobs -> computing systems.
-   * This map will be cleared on exit - also, all pulled
-   * JobDefinitions will be set back to 'ready'.
-   */
-  private HashMap jobCSMap = new HashMap();
-  private X509Certificate x509UserCert = null;
+  private MySSL ssl = null;
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
   public GSSCredential credential = null;
@@ -86,7 +79,7 @@ public class ClassMgr{
     return true;
   }
 
-  public void setLogFile(LogFile _logFile){
+  public void setLogFile(MyLogFile _logFile){
     logFile = _logFile;
   }
 
@@ -94,11 +87,11 @@ public class ClassMgr{
     statusBar = _statusBar;
   }
 
-  public void setJobStatusTable(Table _statusTable){
+  public void setJobStatusTable(MyJTable _statusTable){
      jobStatusTable = _statusTable;
   }
 
-  public void setTransferStatusTable(Table _statusTable){
+  public void setTransferStatusTable(MyJTable _statusTable){
     transferStatusTable = _statusTable;
  }
 
@@ -115,7 +108,7 @@ public class ClassMgr{
   }
 
   public void setDebugLevel(int _debugLevel){
-    debugLevel = _debugLevel;
+    Debug.DEBUG_LEVEL = _debugLevel;
   }
 
   public void setSubmissionControl(SubmissionControl _submissionControl){
@@ -163,7 +156,13 @@ public class ClassMgr{
     }
     if(!jobMgrs.keySet().contains(dbName)){
       Debug.debug("Creating new JobMgr, "+dbName, 3);
-      jobMgrs.put(dbName, new JobMgr(dbName));
+      try{
+        jobMgrs.put(dbName, new JobMgr(dbName));
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        logFile.addMessage("ERROR: could not create new JobMgr.", e);
+      }
     }
     return (JobMgr) jobMgrs.get(dbName);
   }
@@ -215,7 +214,7 @@ public class ClassMgr{
   /**
    * Return the Shell Manager for this job
    */
-  public ShellMgr getShellMgr(JobInfo job) throws Exception{
+  public Shell getShellMgr(MyJobInfo job) throws Exception{
     String csName = job.getCSName();
     if(csName==null || csName.equals("")){
       return askWhichShell(job);
@@ -225,12 +224,12 @@ public class ClassMgr{
     }
   }
   
-  public void setShellMgr(String csName, ShellMgr shellMgr){
+  public void setShellMgr(String csName, Shell shellMgr){
     shellMgrs.put(csName, shellMgr);
   }
 
-  public ShellMgr getShellMgr(String csName) throws Exception{
-    ShellMgr smgr = (ShellMgr) shellMgrs.get(csName);
+  public Shell getShellMgr(String csName) throws Exception{
+    Shell smgr = (Shell) shellMgrs.get(csName);
     if(smgr==null){
       Debug.debug("No computing system "+csName, 3);
       throw new Exception("No computing system "+csName);
@@ -246,15 +245,15 @@ public class ClassMgr{
     }
   }
   
-  private ShellMgr askWhichShell(JobInfo job){
+  private Shell askWhichShell(MyJobInfo job){
 
     JComboBox cb = new JComboBox();
     for(int i=0; i<shellMgrs.size() ; ++i){
       String type = "";
-      if(shellMgrs.get(GridPilot.csNames[i]) instanceof SecureShellMgr){
+      if(shellMgrs.get(GridPilot.csNames[i]) instanceof MySecureShell){
         type = " (remote)";
       }
-      if(shellMgrs.get(GridPilot.csNames[i]) instanceof LocalStaticShellMgr){
+      if(shellMgrs.get(GridPilot.csNames[i]) instanceof LocalStaticShell){
         type = " (local)";
       }
       cb.addItem(GridPilot.csNames[i] + type);
@@ -273,17 +272,17 @@ public class ClassMgr{
 
     int ind = cb.getSelectedIndex();
     if(ind>=0 && ind<shellMgrs.size()){
-      return (ShellMgr) shellMgrs.get(GridPilot.csNames[ind]);
+      return (Shell) shellMgrs.get(GridPilot.csNames[ind]);
     }
     else{
       return null;
     }
   }
 
-  public LogFile getLogFile(){
+  public MyLogFile getLogFile(){
     if(logFile==null){
       Debug.debug("logFile null", 3);
-      setLogFile(new LogFile(""));
+      setLogFile(new MyLogFile(""));
     }
     return logFile;
   }
@@ -308,17 +307,23 @@ public class ClassMgr{
   public TransferStatusUpdateControl getTransferStatusUpdateControl(){
     if(transferStatusUpdateControl==null){
       Debug.debug("transferStatusUpdateControl null", 3);
-      transferStatusUpdateControl = new TransferStatusUpdateControl();
+      try{
+        transferStatusUpdateControl = new TransferStatusUpdateControl();
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        logFile.addMessage("ERROR: could not create new TransferStatusUpdateControl.", e);
+      }
     }
     return transferStatusUpdateControl;
   }
 
-  public Table getJobStatusTable(){
+  public MyJTable getJobStatusTable() throws Exception{
     if(jobStatusTable==null){
       Debug.debug("jobStatusTable null", 3);
       String[] fieldNames = GridPilot.jobStatusFields;
-      Debug.debug("Creating new Table with fields "+Util.arrayToString(fieldNames), 3);
-      jobStatusTable = new Table(new String [] {}, fieldNames,
+      Debug.debug("Creating new Table with fields "+MyUtil.arrayToString(fieldNames), 3);
+      jobStatusTable = new MyJTable(new String [] {}, fieldNames,
           GridPilot.jobColorMapping);
       setJobStatusTable(jobStatusTable);
     }
@@ -348,12 +353,12 @@ public class ClassMgr{
     return submittedJobs;
   }
 
-  public Table getTransferStatusTable(){
+  public MyJTable getTransferStatusTable() throws Exception{
     if(transferStatusTable==null){
       Debug.debug("transferStatusTable null", 3);
       String[] fieldNames = GridPilot.transferStatusFields;
-      Debug.debug("Creating new Table with fields "+Util.arrayToString(fieldNames), 3);
-      transferStatusTable = new Table(new String [] {}, fieldNames,
+      Debug.debug("Creating new Table with fields "+MyUtil.arrayToString(fieldNames), 3);
+      transferStatusTable = new MyJTable(new String [] {}, fieldNames,
           GridPilot.transferColorMapping);
        GridPilot.getClassMgr().setTransferStatusTable(transferStatusTable);
       //new Exception().printStackTrace();
@@ -413,15 +418,17 @@ public class ClassMgr{
     }
     return gridPilot;
   }
-
-  public int getDebugLevel(){
-    return debugLevel;
-  }
   
   public SubmissionControl getSubmissionControl(){
     if(submissionControl==null){
       Debug.debug("submissionControl null, creating new", 1);
-      setSubmissionControl(new SubmissionControl());
+      try{
+        setSubmissionControl(new SubmissionControl());
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        logFile.addMessage("ERROR: could not create new SubmissionControl.", e);
+      }
     }
     return submissionControl;
   }
@@ -429,75 +436,26 @@ public class ClassMgr{
   public TransferControl getTransferControl(){
     if(transferControl==null){
       Debug.debug("transferControl null, creating new", 1);
-      setTransferControl(new TransferControl());
+      try{
+        setTransferControl(new TransferControl());
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        logFile.addMessage("ERROR: could not create new TransferControl.", e);
+      }
     }
     return transferControl;
   }
   
-  public String getCaCertsTmpDir(){
-    return caCertsTmpdir;
+  public MySSL getSSL() throws IOException, GeneralSecurityException{
+    if(ssl==null){
+      Debug.debug("Constructing SSL with "+GridPilot.certFile+":"+GridPilot.keyFile+":"+
+          GridPilot.keyPassword+":"+GridPilot.caCertsDir, 1);
+      ssl = new MySSL(GridPilot.certFile, GridPilot.keyFile, GridPilot.keyPassword, GridPilot.caCertsDir);
+    }
+    return ssl;
   }
   
-  public X509Certificate getX509UserCert() throws IOException, GeneralSecurityException{
-    x509UserCert = CertUtil.loadCertificate(Util.clearTildeLocally(GridPilot.certFile));
-    return x509UserCert;
-  }
-  
-  public /*synchronized*/ GSSCredential getGridCredential(){
-    if(gridProxyInitialized.booleanValue()){
-      return credential;
-    }
-    synchronized(gridProxyInitialized){
-      // avoids that dozens of popups open if
-      // you submit dozen of jobs and proxy not initialized
-      try{
-        if(credential==null || credential.getRemainingLifetime()<GridPilot.proxyTimeLeftLimit){
-          Debug.debug("Initializing credential", 3);
-          credential = Util.initGridProxy();
-          Debug.debug("Initialized credential", 3);
-          gridProxyInitialized = Boolean.TRUE;
-          if(credential!=null){
-            Debug.debug("Initialized credential"+credential.getRemainingLifetime()+
-                ":"+GridPilot.proxyTimeLeftLimit, 3);
-          }
-        }
-        else{
-          gridProxyInitialized = Boolean.TRUE;
-        }
-        // set the directory for trusted CA certificates
-        CoGProperties prop = null;
-        if(CoGProperties.getDefault()==null){
-          prop = new CoGProperties();
-        }
-        else{
-          prop = CoGProperties.getDefault();
-        }
-        if(GridPilot.caCerts==null || GridPilot.caCerts.equals("")){
-          if(caCertsTmpdir==null){
-            caCertsTmpdir = Util.setupDefaultCACertificates();
-            // this adds all certificates in the dir to globus authentication procedures
-          }
-          caCertsTmpdir = caCertsTmpdir.replaceAll("\\\\", "/");
-          prop.setCaCertLocations(caCertsTmpdir);
-        }
-        else{
-          prop.setCaCertLocations(GridPilot.caCerts);
-          caCertsTmpdir = GridPilot.caCerts;
-        }
-        // set the proxy default location
-        prop.setProxyFile(Util.getProxyFile().getAbsolutePath());
-        CoGProperties.setDefault(prop);
-        Debug.debug("COG defaults now:\n"+CoGProperties.getDefault(), 3);
-        Debug.debug("COG defaults file:\n"+CoGProperties.configFile, 3);
-      }
-      catch(Exception e){
-        Debug.debug("ERROR: could not get grid credential", 1);
-        e.printStackTrace();
-      }
-    }
-    return credential;
-  }
-
   /**
    * Establishes a JDBC connection to a database. The connection is
    * relayed through Proxool.
@@ -590,42 +548,4 @@ public class ClassMgr{
     dbURLs.add(dbName);
   }
   
-  /**
-   * Obtains a database handle via the Proxool service.
-   * 
-   * @param dbName the name of the database to use
-   * @return a Connection object, allowing database operations
-   */
-  public Connection getDBConnection(String dbName){
-    Connection conn = null;
-    try{
-      conn = DriverManager.getConnection("proxool."+dbName);
-    }
-    catch(SQLException e){
-      e.printStackTrace();
-      GridPilot.getClassMgr().getLogFile().addMessage(
-          "ERROR: failed connecting to database "+dbName, e);
-    }
-    try{
-      conn.setAutoCommit(true);
-    }
-    catch(Exception e){
-      GridPilot.getClassMgr().getLogFile().addMessage(
-          "failed setting auto commit to true: "+e.getMessage());
-    }
-    return conn;
-  }
-  
-  public String getJobCS(String jobDefID){
-    return (String) jobCSMap.get(jobDefID);
-  }
-
-  public void clearJobCS(String jobDefID){
-    jobCSMap.remove(jobDefID);
-  }
-
-  public void setJobCS(String jobDefID, String csName){
-   jobCSMap.put(jobDefID, csName);
-  }
-
 }

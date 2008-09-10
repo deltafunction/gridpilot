@@ -1,6 +1,6 @@
 package gridpilot.ftplugins.gsiftp;
 
-import gridpilot.Debug;
+import gridfactory.common.Debug;
 import gridpilot.GridPilot;
 
 import org.globus.io.urlcopy.UrlCopyListener;

@@ -8,21 +8,22 @@ import java.util.List;
 
 import javax.swing.JOptionPane;
 
+import com.jcraft.jsch.JSchException;
 import com.xerox.amazonws.ec2.EC2Exception;
 import com.xerox.amazonws.ec2.ReservationDescription;
 import com.xerox.amazonws.ec2.ReservationDescription.Instance;
 
-import gridpilot.ComputingSystem;
-import gridpilot.ConfirmBox;
-import gridpilot.Debug;
+import gridfactory.common.ConfirmBox;
+import gridfactory.common.Debug;
+import gridfactory.common.Shell;
+import gridpilot.MyComputingSystem;
 import gridpilot.GridPilot;
-import gridpilot.JobInfo;
-import gridpilot.SecureShellMgr;
-import gridpilot.ShellMgr;
-import gridpilot.Util;
+import gridpilot.MyJobInfo;
+import gridpilot.MySecureShell;
+import gridpilot.MyUtil;
 import gridpilot.csplugins.forkpool.ForkPoolComputingSystem;
 
-public class EC2ComputingSystem extends ForkPoolComputingSystem implements ComputingSystem {
+public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyComputingSystem {
 
   private EC2Mgr ec2mgr = null;
   private String amiID = null;
@@ -47,7 +48,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
       // Default to global access
       sshAccessSubnet = "0.0.0.0/0";
     }
-    String runDir = Util.clearTildeLocally(Util.clearFile(workingDir));
+    String runDir = MyUtil.clearTildeLocally(MyUtil.clearFile(workingDir));
     Debug.debug("Using workingDir "+workingDir, 2);
     ec2mgr = new EC2Mgr(accessKey, secretKey, sshAccessSubnet, this.getUserInfo(csName),
         runDir);
@@ -102,7 +103,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
     try{
       reservations = ec2mgr.listReservations();
     }
-    catch(EC2Exception e1){
+    catch(Exception e1){
       e1.printStackTrace();
       return;
     }
@@ -170,7 +171,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
     try{
       reservations = ec2mgr.listReservations();
     }
-    catch(EC2Exception e1){
+    catch(Exception e1){
       e1.printStackTrace();
       return;
     }
@@ -193,7 +194,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
         Debug.debug("checking instance "+inst.getDnsName(), 2);
         if(remoteShellMgrs.containsKey(inst.getDnsName()) &&
             remoteShellMgrs.get(inst.getDnsName())!=null &&
-            ((SecureShellMgr) remoteShellMgrs.get(inst.getDnsName())).getJobsNumber()>0){
+            ((MySecureShell) remoteShellMgrs.get(inst.getDnsName())).getJobsNumber()>0){
           activeInstances.add(inst.getInstanceId());
         }
         else{
@@ -206,9 +207,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
     }
     String msg = "You have running EC2 AMI instance(s).\n" +
     (passiveInstances.isEmpty()?"":"The following are not executing any GridPilot jobs:\n"+
-    Util.arrayToString(passiveInstances.toArray(), ",\n")+".\n") +
+    MyUtil.arrayToString(passiveInstances.toArray(), ",\n")+".\n") +
     (activeInstances.isEmpty()?"":"The following are executing GridPilot jobs:\n"+
-    Util.arrayToString(activeInstances.toArray(), ",\n")+".\n" )+
+    MyUtil.arrayToString(activeInstances.toArray(), ",\n")+".\n" )+
     "What do you want to do?";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = -1;
@@ -271,14 +272,15 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
   }
 
   /**
-   * Finds a ShellMgr for the host/user/password of the job.
+   * Finds a Shell for the host/user/password of the job.
    * If the shellMgr is dead it is attempted to start a new one.
    * If no shellMgr exists for this host, a new one is created.
    * @param job
-   * @return a ShellMgr
+   * @return a Shell
+   * @throws JSchException 
    */
-  protected ShellMgr getShellMgr(String host){
-    ShellMgr mgr = null;
+  protected Shell getShellMgr(String host) throws JSchException{
+    Shell mgr = null;
     /*
      * If there is no keyFile set, this is a VM reused from a previous GridPilot session.
      * If the secret key corresponding to the public key currently uploaded with EC2 is
@@ -305,12 +307,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
       }
     }
     Debug.debug("host: "+host+"-->"+remoteShellMgrs.get(host)+"-->"+ec2mgr.getKeyFile(), 2);
-    Debug.debug("remoteShellMgrs: "+Util.arrayToString(remoteShellMgrs.keySet().toArray()), 2);
+    Debug.debug("remoteShellMgrs: "+MyUtil.arrayToString(remoteShellMgrs.keySet().toArray()), 2);
     if(host!=null && !host.equals("") &&
         !host.startsWith("localhost") && !host.equals("127.0.0.1")){
       if(!remoteShellMgrs.containsKey(host)){
         // This means the VM has just been booted
-        ShellMgr newShellMgr = new SecureShellMgr(host, USER, ec2mgr.getKeyFile(), "");
+        Shell newShellMgr = new MySecureShell(host, USER, ec2mgr.getKeyFile(), "");
         remoteShellMgrs.put(host, newShellMgr);
         setupRuntimeEnvironmentsSSH(newShellMgr);
       }
@@ -318,12 +320,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
         // This means the VM was running before starting
         // GridPilot and we need to reconnect. RTEs should already be setup.
         // -- well, we do it anyway, just in case
-        ShellMgr newShellMgr = new SecureShellMgr(host, USER, ec2mgr.getKeyFile(), "");
+        Shell newShellMgr = new MySecureShell(host, USER, ec2mgr.getKeyFile(), "");
         Debug.debug("Added ShellMgr on already running host "+newShellMgr.getHostName(), 2);
         remoteShellMgrs.put(host, newShellMgr);
         setupRuntimeEnvironmentsSSH(newShellMgr);
       }
-      SecureShellMgr sMgr = (SecureShellMgr) remoteShellMgrs.get(host);
+      MySecureShell sMgr = (MySecureShell) remoteShellMgrs.get(host);
       if(!sMgr.isConnected()){
         sMgr.reconnect();
       }
@@ -331,7 +333,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
     }
     else if(host!=null && !host.equals("") &&
         (host.startsWith("localhost") || host.equals("127.0.0.1"))){
-      mgr = (ShellMgr) remoteShellMgrs.get(host);
+      mgr = (Shell) remoteShellMgrs.get(host);
     }
     return mgr;
   }
@@ -341,8 +343,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
    * Slight extension as compared to ForkPoolComputingSystem:
    * start shell and get host if none is running on the slot.
    */
-  protected String selectHost(JobInfo job){
-    ShellMgr mgr = null;
+  protected String selectHost(MyJobInfo job){
+    Shell mgr = null;
     String host = null;
     int maxR = 1;
     // First try to use an already used instance
@@ -372,16 +374,16 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements Compu
           ReservationDescription desc = ec2mgr.launchInstances(amiID, 1);
           Instance inst = ((Instance) desc.getInstances().get(0));
           // Wait for the machine to boot
-          long startMillis = Util.getDateInMilliSeconds(null);
-          long nowMillis = Util.getDateInMilliSeconds(null);
+          long startMillis = MyUtil.getDateInMilliSeconds(null);
+          long nowMillis = MyUtil.getDateInMilliSeconds(null);
           List reservationList = null;
           List instanceList = null;
           Instance instance = null;
           while(!inst.isRunning()){
-            nowMillis = Util.getDateInMilliSeconds(null);
+            nowMillis = MyUtil.getDateInMilliSeconds(null);
             if(nowMillis-startMillis>MAX_BOOT_WAIT){
               logFile.addMessage("ERROR: timeout waiting for image "+inst.getImageId()+
-                   "to boot for job "+job.getJobDefId());
+                   "to boot for job "+job.getIdentifier());
               return null;
             }
             reservationList = ec2mgr.listReservations();

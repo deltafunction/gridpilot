@@ -1,13 +1,13 @@
 package gridpilot.csplugins.fork;
 
-import gridpilot.Debug;
+import gridfactory.common.Debug;
+import gridfactory.common.LogFile;
+import gridfactory.common.Shell;
 import gridpilot.GridPilot;
-import gridpilot.LogFile;
-import gridpilot.ShellMgr;
 import gridpilot.TransferControl;
-import gridpilot.TransferInfo;
+import gridpilot.MyTransferInfo;
 import gridpilot.TransferStatusUpdateControl;
-import gridpilot.Util;
+import gridpilot.MyUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,7 +32,7 @@ public class RteInstaller {
   private String remoteDir;
   private String cacheDir;
   private String rteName;
-  private ShellMgr shellMgr;
+  private Shell shellMgr;
   private LogFile logFile;
   
   // Wait max 240 seconds for all output files to be downloaded
@@ -48,7 +48,7 @@ public class RteInstaller {
    * @param _localDir cache directory on the host where GridWorker is running
    * @param _shellMgr ShellMgr object to be used for the installation
    */
-  RteInstaller(String _url, String _remoteDir, String _localDir, String _rteName, ShellMgr _shellMgr){
+  RteInstaller(String _url, String _remoteDir, String _localDir, String _rteName, Shell _shellMgr){
     url = _url;
     remoteDir = _remoteDir;
     cacheDir = _localDir;
@@ -106,9 +106,9 @@ public class RteInstaller {
       // Unpack the tarball
       File fullGunzipName = (new File(dlDir, unpackName));
       Debug.debug("Gunzipping "+fullDlFile, 2);
-      Util.gunzip(fullDlFile, fullGunzipName);
+      MyUtil.gunzip(fullDlFile, fullGunzipName);
       Debug.debug("Untarring "+fullDlFile, 2);
-      Util.unTar(fullGunzipName, dlDir);
+      MyUtil.unTar(fullGunzipName, dlDir);
       // Rename "data" to "pkg"
       (new File(dlDir, "data")).renameTo(new File(dlDir, "pkg"));
     }
@@ -190,7 +190,7 @@ public class RteInstaller {
   private void localDownload(String url, String fileName, File downloadDir) throws Exception{
     // Construct the download transfer vector (one transfer).
     Vector transferVector = new Vector();
-    TransferInfo transfer = new TransferInfo(
+    MyTransferInfo transfer = new MyTransferInfo(
               new GlobusURL(url),
               new GlobusURL("file:///"+(new File(downloadDir.getAbsolutePath(),
                   fileName)).getAbsolutePath()));
@@ -207,7 +207,7 @@ public class RteInstaller {
       transfersDone = true;
       statusUpdateControl.updateStatus(null);
       for(Iterator itt=transferVector.iterator(); itt.hasNext();){
-        transfer = (TransferInfo) itt.next();
+        transfer = (MyTransferInfo) itt.next();
         if(TransferControl.isRunning(transfer)){
           transfersDone = false;
           break;

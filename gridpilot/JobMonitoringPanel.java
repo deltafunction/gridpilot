@@ -1,5 +1,9 @@
 package gridpilot;
 
+import gridfactory.common.DBRecord;
+import gridfactory.common.DBResult;
+import gridfactory.common.Debug;
+
 import javax.swing.*;
 
 import java.awt.*;
@@ -10,9 +14,6 @@ import java.util.Iterator;
 import java.util.Vector;
 
 import javax.swing.event.*;
-
-import gridpilot.DBRecord;
-import gridpilot.DBResult;
 
 /**
  * Shows a table with informations about runnings jobs
@@ -28,7 +29,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private final int ONLY_DONE_JOBS = 2;
   
   private int showRows = ALL_JOBS;
-  private Table statusTable = null;
+  private MyJTable statusTable = null;
   // Central panel
   private JPanel mainPanel = new JPanel();
   private JScrollPane spStatusTable = new JScrollPane();
@@ -50,16 +51,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   // TODO: discard bKill
   private JButton bKill = new JButton("Kill");
   private JButton bRefresh = new JButton("Refresh");
-  private JButton bPull = new JButton("Pull");
   private JButton bUpdate = new JButton("Update");
   // auto refresh
   private JCheckBox cbAutoRefresh = new JCheckBox("each");
   private JCheckBox cbAutoPull = new JCheckBox("each");
   private JSpinner sAutoRefresh = new JSpinner();
-  private JSpinner sAutoPull = new JSpinner();
   public JSpinner sAutoResubmit = new JSpinner();
   private JComboBox cbRefreshUnits = new JComboBox(new Object []{"sec", "min"});
-  private JComboBox cbPullUnits = new JComboBox(new Object []{"sec", "min"});
   private int MIN = 1;
   private JMenuItem miStopUpdate = new JMenuItem("Stop updating");
   private JMenuItem miKill = new JMenuItem("Kill");
@@ -76,8 +74,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JMenu mDB = new JMenu("Set DB Status");
   public JobStatusUpdateControl statusUpdateControl;
   private SubmissionControl submissionControl;
-  private HashMap pullDaemons = new HashMap();
-  private boolean isPulling = false;
+
   
   private Timer timerRefresh = new Timer(0, new ActionListener (){
     public void actionPerformed(ActionEvent e){
@@ -235,128 +232,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
     sAutoResubmit.setToolTipText("Number of times to resubmit failed jobs");
-    
-    bPull.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        if(isPulling){
-          Debug.debug("already pulling jobs...", 2);
-          return;
-        }
-        else{
-          Thread t = new MyThread(){
-            public void run(){
-              try{
-                isPulling = true;
-                Debug.debug("trying to pull jobs...", 2);
-                for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-                  PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-                  if(daemon.pullJob()){
-                    break;
-                  }
-                }
-                Debug.debug("trying to run jobs...", 2);
-                for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-                  PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-                  try{
-                    daemon.runJob();
-                    break;
-                  }
-                  catch(Exception e){
-                    e.printStackTrace();
-                    continue;
-                  }
-                }
-                Debug.debug("trying to finish jobs...", 2);
-                for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-                  PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-                  if(daemon.finishJob()){
-                    break;
-                  }
-                }
-              }
-              catch(Exception e){
-                e.printStackTrace();
-              }
-              finally{
-                isPulling = false;
-              }              
-            }
-          };
-          t.start();
-        }
-      }
-    });
-    bPull.setToolTipText("Pull an eligible job");
-    bUpdate.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        if(isPulling){
-          Debug.debug("already pulling jobs...", 2);
-          return;
-        }
-        else{
-          Thread t = new MyThread(){
-            public void run(){
-              try{
-                isPulling = true;
-                Debug.debug("trying to run jobs...", 2);
-                for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-                  PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-                  try{
-                    daemon.runJob();
-                    break;
-                  }
-                  catch(Exception e){
-                    e.printStackTrace();
-                    continue;
-                  }
-                }
-                Debug.debug("trying to finish jobs...", 2);
-                for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-                  PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-                  if(daemon.finishJob()){
-                    break;
-                  }
-                }
-              }
-              catch(Exception e){
-                e.printStackTrace();
-              }
-              finally{
-                isPulling = false;
-              }              
-            }
-          };
-          t.start();
-        }
-      }
-    });
-    bUpdate.setToolTipText("Update pulled job(s)");
-    cbAutoPull.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        cbAutoPull_clicked();
-      }
-    });
-    sAutoPull.setPreferredSize(new Dimension(50, 21));
-    sAutoPull.setModel(new SpinnerNumberModel(30, 1, 9999, 1));
-    sAutoPull.addChangeListener(new ChangeListener(){
-      public void stateChanged(ChangeEvent e){
-        delayPullChanged();
-      }
-    });
-    cbPullUnits.setSelectedIndex(MIN);
-    cbPullUnits.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        delayPullChanged();
-      }
-    });
-
-    //pButtons.add(bKill);
-
-    pButtons.add(bPull);
-    pButtons.add(bUpdate);
-    pButtons.add(cbAutoPull);
-    pButtons.add(sAutoPull);
-    pButtons.add(cbPullUnits);
 
     pButtons.add(new JLabel("  |  "));
     pButtons.add(bRefresh);
@@ -369,12 +244,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     pButtons.add(sAutoResubmit);
     pButtons.add(new JLabel("times"));
     
-    setPullEnabled(GridPilot.pullEnabled);
-    if(GridPilot.pullEnabled){
-      Debug.debug("Enabling pulling of jobs", 2);
-      initPulling();
-    }
-
     mainPanel.add(pOptions, BorderLayout.EAST);
     mainPanel.add(pButtons, BorderLayout.SOUTH);
     mainPanel.add(spStatusTable);
@@ -388,63 +257,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     if(!ok){
       cbAutoPull.setSelected(false);
     }
-    bPull.setEnabled(ok);
     bUpdate.setEnabled(ok);
     cbAutoPull.setEnabled(ok);
-    sAutoPull.setEnabled(ok);
-    cbPullUnits.setEnabled(ok);
-  }
-
-  /**
-   * Constructs list of computing systems which have pulling enabled
-   * and constructs the corresponding PullJobsDaemon's.
-   */
-  private void initPulling(){
-    String pullDB = null;
-    boolean ok = false;
-    String enabled = "no";
-    for(int i=0; i<GridPilot.csNames.length; ++i){
-      try{
-        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.csNames[i], "Enabled");
-      }
-      catch(Exception e){
-        continue;
-      }
-      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
-          !enabled.equalsIgnoreCase("true")){
-        continue;
-      }
-      ok = false;
-      pullDB = GridPilot.getClassMgr().getCSPluginMgr().getPullDatabase(GridPilot.csNames[i]);
-      if(pullDB!=null && pullDB.length()>0){
-        // check if the specified db is also actually enabled
-        for(int ii=0; ii<GridPilot.dbNames.length; ++ii){
-          if(pullDB.equals(GridPilot.dbNames[ii])){
-            ok = true;
-            break;
-          }
-        }
-      }
-      if(ok){
-        // Now construct the PullJobDaemon
-        pullDaemons.put(GridPilot.csNames[i],
-            new PullJobsDaemon(pullDB, GridPilot.csNames[i], statusBar));
-      }
-    }
-  }
-  
-  /**
-   * Reinitializes the PullJobsDaemon's of the computing system which
-   * have pulling enabled.
-   */
-  public void reInitPulling(){
-    for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-      PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-      daemon.stopPulling();
-    }
-    pullDaemons.clear();
-    pullDaemons = new HashMap();
-    initPulling();
   }
   
   /**
@@ -637,25 +451,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       timerRefresh.stop();
     }
   }
-  
-  /**
-   * Called when check box for auto refresh is selected
-   */
-  private void cbAutoPull_clicked(){
-    if(cbAutoRefresh.isSelected()){
-      delayPullChanged();
-      for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-        PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-        daemon.startPulling();
-      }  
-    }
-    else{
-      for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-        PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-        daemon.stopPulling();
-      }  
-    }
-  }
 
   /**
    * Called when either the spinner valuer is changed or combo box "sec/min" is changed
@@ -667,25 +462,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     }
     else{
       timerRefresh.setDelay(delay * 1000);
-    }
-  }
-
-  /**
-   * Called when either the spinner valuer is changed or combo box "sec/min" is changed
-   */
-  private void delayPullChanged(){
-    int delay = ((Integer) (sAutoRefresh.getValue())).intValue();
-    if(cbPullUnits.getSelectedIndex()==MIN){
-      for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-        PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-        daemon.setDelay(delay * 1000 * 60);
-      }  
-    }
-    else{
-      for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-        PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-        daemon.setDelay(delay * 1000);
-      }  
     }
   }
 
@@ -706,7 +482,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private void decide(){
     int [] rows = statusTable.getSelectedRows();
     
-    Debug.debug("Deciding rows "+Util.arrayToString(rows), 3);
+    Debug.debug("Deciding rows "+MyUtil.arrayToString(rows), 3);
 
     if(!JobMgr.areDecidables(rows)){
       return;
@@ -738,7 +514,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
       JobMgr jobMgr = null;
       for(int i=0; i<jobs.size(); ++i){
-        JobInfo job = (JobInfo) jobs.get(i);
+        MyJobInfo job = (MyJobInfo) jobs.get(i);
         if(job.getDBStatus()!=dbChoices[i]){
           jobMgr = getJobMgr(job);
           jobMgr.updateDBStatus(job, dbChoices[i]);
@@ -768,18 +544,18 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     final Thread t = new Thread(){
       public void run(){
-        JobInfo job = JobMgr.getJobAtRow(selectedRow);
+        MyJobInfo job = JobMgr.getJobAtRow(selectedRow);
         String [] outNames = new String [] {"stdout", "stderr"};
         String [] outs = null;
         try{
           outs = GridPilot.getClassMgr().getCSPluginMgr(
-          ).getCurrentOutputs(job);
+          ).getCurrentOutput(job);
         }
         catch(Exception e){
           outs = new String [] {"Could not read stdout "+e.getMessage(),
               "Could not read stdout "+e.getMessage()};
         }
-        if(job.getStdErr()==null){
+        if(job.getErrTmp()==null){
           outNames = new String [] {"stdout"};
           outs = new String[] {outs[0]};
         }
@@ -817,7 +593,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private void showFullStatus(){
     final Thread t = new Thread(){
       public void run(){
-        JobInfo job = JobMgr.getJobAtRow(statusTable.getSelectedRow());
+        MyJobInfo job = JobMgr.getJobAtRow(statusTable.getSelectedRow());
         String status = GridPilot.getClassMgr().getCSPluginMgr().getFullStatus(job);
         statusBar.removeLabel();
         statusBar.stopAnimation();
@@ -844,7 +620,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   }
 
   private void showScripts(){
-    JobInfo job = JobMgr.getJobAtRow(statusTable.getSelectedRow());
+    MyJobInfo job = JobMgr.getJobAtRow(statusTable.getSelectedRow());
     ShowOutputsJobsDialog.showTabs(JOptionPane.getRootFrame(),
         "Scripts for job " + job.getName(),
         job,
@@ -931,8 +707,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         user = null;
         DBRecord job = new DBRecord(allJobDefinitions.fields,
             allJobDefinitions.values[i]);
-        String idField = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
-        Debug.debug("Checking:"+Util.arrayToString(job.values), 3);
+        String idField = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
+        Debug.debug("Checking:"+MyUtil.arrayToString(job.values), 3);
         String id = job.getValue(idField).toString();
         // if not showing all jobs and job not submitted by me, continue
         csName = job.getValue("computingSystem").toString();
@@ -1043,13 +819,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     new Thread(){
       public void run(){    
         int [] rows = statusTable.getSelectedRows();       
-        Debug.debug("Setting status of rows "+Util.arrayToString(rows), 3);
+        Debug.debug("Setting status of rows "+MyUtil.arrayToString(rows), 3);
         Vector jobs = JobMgr.getJobsAtRows(rows);
-        JobInfo job = null;
+        MyJobInfo job = null;
         JobMgr jobMgr = null;
         HashMap datasetJobs = new HashMap();
         for(int i=0; i<jobs.size(); ++i){
-          job = (JobInfo) jobs.get(i);
+          job = (MyJobInfo) jobs.get(i);
           jobMgr = getJobMgr(job);
           if(!datasetJobs.containsKey(jobMgr)){
             datasetJobs.put(jobMgr, new Vector());
@@ -1096,7 +872,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     Vector submittedJobs = GridPilot.getClassMgr().getSubmittedJobs();
     Enumeration e =  submittedJobs.elements();
     while(e.hasMoreElements()){
-      JobInfo job = (JobInfo) e.nextElement();
+      MyJobInfo job = (MyJobInfo) e.nextElement();
       if(JobMgr.isRunning(job)){
         if(showRows==ONLY_RUNNING_JOBS){
           statusTable.showRow(job.getTableRow());
@@ -1153,15 +929,11 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     return ret;
   }
   
-  JobMgr getJobMgr(JobInfo job){
+  JobMgr getJobMgr(MyJobInfo job){
     return GridPilot.getClassMgr().getJobMgr(job.getDBName());
   }
   
   public void exit(){
-    for(Iterator it=pullDaemons.keySet().iterator(); it.hasNext();){
-      PullJobsDaemon daemon = (PullJobsDaemon) pullDaemons.get(it.next());
-      daemon.exit();
-    }  
   }
 
   public void copy(){

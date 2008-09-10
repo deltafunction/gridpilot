@@ -1,6 +1,8 @@
 package gridpilot;
 
-import gridpilot.Debug;
+import gridfactory.common.DBVectorTableModel;
+import gridfactory.common.Debug;
+import gridfactory.common.Table;
 
 import javax.swing.table.*;
 import javax.swing.event.*;
@@ -17,7 +19,7 @@ import java.util.Vector;
  *
  */
 
-public class Table extends JTable{
+public class MyJTable extends JTable implements Table {
   
   private static final long serialVersionUID = 1L;
   private ListSelectionListener lsl;
@@ -117,9 +119,10 @@ public class Table extends JTable{
 
   /**
    * Constructs an empty table with the columns hide hidden.
+   * @throws Exception 
    */
 
-  public Table(String [] _hide, String [] fieldNames){
+  public MyJTable(String [] _hide, String [] fieldNames) throws Exception{
     tableModel = new DBVectorTableModel(fieldNames);
     setModel(tableModel);
     hide = _hide;
@@ -129,11 +132,12 @@ public class Table extends JTable{
   /**
    * Constructs an empty table with the columns hide hidden and
    * colored according to colorMapping.
+   * @throws Exception 
    */
 
-  public Table(String [] _hide,
+  public MyJTable(String [] _hide,
                String [] fieldNames,
-               String [] _colorMapping){
+               String [] _colorMapping) throws Exception{
     tableModel = new DBVectorTableModel(fieldNames);
     setModel(tableModel);
     hide = _hide;
@@ -153,7 +157,7 @@ public class Table extends JTable{
    /**
     * Constructs a table.
     */
-    public Table(DBVectorTableModel _model){
+    public MyJTable(DBVectorTableModel _model){
       tableModel = _model;
       setModel(_model);
       initTable();
@@ -162,7 +166,7 @@ public class Table extends JTable{
     /**
      * Constructs a with the columns hide hidden.
      */
-     public Table(DBVectorTableModel _model, String [] _hide){
+     public MyJTable(DBVectorTableModel _model, String [] _hide){
        tableModel = _model;
        setModel(_model);
        hide = _hide;
@@ -170,8 +174,9 @@ public class Table extends JTable{
 
   /**
    * Constructs a table, with rowCount rows and colCount.
+   * @throws Exception 
    */
-  public Table(int rowCount, int colCount){
+  public MyJTable(int rowCount, int colCount) throws Exception{
     tableModel = new DBVectorTableModel(rowCount, colCount);
     setModel(tableModel);
     
@@ -180,8 +185,9 @@ public class Table extends JTable{
 
   /**
    * Constructs a table with 0 rows, where column titles are in <code>columnNames</code>.
+   * @throws Exception 
    */
-  public Table(String [] columnNames){
+  public MyJTable(String [] columnNames) throws Exception{
     tableModel = new DBVectorTableModel(columnNames);
 
     setModel(tableModel);
@@ -193,8 +199,9 @@ public class Table extends JTable{
    * Constructs a table using values in values, and where column titles are in columnNames.
    * If length of values and columnNames are incompatibles,
    * an empty table is created.
+   * @throws Exception 
    */
-  public Table(Object [][] values, String [] columnNames){
+  public MyJTable(Object [][] values, String [] columnNames) throws Exception{
     tableModel = new DBVectorTableModel(values, columnNames);
     setModel(tableModel);
 
@@ -205,8 +212,9 @@ public class Table extends JTable{
    * Sets values and column names to this table, using values and columnNames.
    * If length of values and columnNames are incompatibles,
    * nothing is changed
+   * @throws Exception 
    */
-  /*synchronized*/ public void setTable(Object [][] values, String [] columnNames){
+  /*synchronized*/ public void setTable(Object [][] values, String [] columnNames) throws Exception{
     Debug.debug("DBVectorTableModel.setTable", 2);
     tableModel.setTable(values, columnNames);
     Debug.debug("creating menu", 2);
@@ -240,9 +248,10 @@ public class Table extends JTable{
   /**
    * Sets column names of this table, using columnNames. 
    * The "new" table has 0 rows
+   * @throws Exception 
    */
 
-  synchronized public void setTable(String [] columnNames){
+  synchronized public void setTable(String [] columnNames) throws Exception{
     tableModel.setTable(columnNames);
     createMenu();
   }
@@ -325,6 +334,10 @@ public class Table extends JTable{
     return tableModel.getValueAt(row, col);
   }
 
+  public synchronized Object[][] getValues(){
+    return tableModel.getValues();
+  }
+  
   /**
    * Returns the table model.
    * For some reason it crashes startup when there...
@@ -350,7 +363,9 @@ public class Table extends JTable{
    */
   public synchronized void deleteRows(int[] indexes){
     clearSelection();
-    tableModel.deleteRows(indexes);
+    for(int i=0; i<indexes.length; ++i){
+      tableModel.removeRow(indexes[i]);
+    }
     revalidate();
   }
   
@@ -360,7 +375,9 @@ public class Table extends JTable{
       indexes[i] = ((Integer)vecIndexes.elementAt(i)).intValue();
     }
     clearSelection();
-    tableModel.deleteRows(indexes);
+    for(int i=0; i<indexes.length; ++i){
+      tableModel.removeRow(indexes[i]);
+    }
     revalidate();
   }
 

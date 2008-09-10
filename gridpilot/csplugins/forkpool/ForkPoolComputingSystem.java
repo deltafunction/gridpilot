@@ -1,27 +1,29 @@
 package gridpilot.csplugins.forkpool;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
 
+import com.jcraft.jsch.JSchException;
 
-import gridpilot.ComputingSystem;
+
+import gridfactory.common.Debug;
+import gridfactory.common.JobInfo;
+import gridfactory.common.LocalShell;
+import gridfactory.common.Shell;
+import gridpilot.MyComputingSystem;
 import gridpilot.DBPluginMgr;
-import gridpilot.Debug;
 import gridpilot.GridPilot;
-import gridpilot.JobInfo;
-import gridpilot.LocalShellMgr;
-import gridpilot.SecureShellMgr;
-import gridpilot.ShellMgr;
+import gridpilot.MyJobInfo;
+import gridpilot.MySecureShell;
 import gridpilot.TransferControl;
-import gridpilot.Util;
+import gridpilot.MyUtil;
 import gridpilot.csplugins.fork.ForkComputingSystem;
 import gridpilot.csplugins.fork.ForkScriptGenerator;
 
-public class ForkPoolComputingSystem extends ForkComputingSystem implements ComputingSystem {
+public class ForkPoolComputingSystem extends ForkComputingSystem implements MyComputingSystem {
 
   // One ShellMgr per host
   protected HashMap remoteShellMgrs = null;
@@ -55,16 +57,22 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
     for(int i=0; i<hosts.length; ++i){
       if(hosts[i]!=null &&
           !hosts[i].startsWith("localhost") && !hosts[i].equals("127.0.0.1")){
-        remoteShellMgrs.put(hosts[i],
-           new SecureShellMgr(hosts[i],
-               users!=null&&users.length>i&&users[i]!=null?users[i]:null/*null will cause prompting*/,
-               passwords!=null&&passwords.length>i&&passwords[i]!=null?passwords[i]:null/*null will cause prompting*/,
-                   sshKeyFile==null?null:new File(Util.clearTildeLocally(Util.clearFile(sshKeyFile))),
-                   sshKeyPassword));
+        try{
+          remoteShellMgrs.put(hosts[i],
+             new MySecureShell(hosts[i],
+                 users!=null&&users.length>i&&users[i]!=null?users[i]:null/*null will cause prompting*/,
+                 passwords!=null&&passwords.length>i&&passwords[i]!=null?passwords[i]:null/*null will cause prompting*/,
+                     sshKeyFile==null?null:new File(MyUtil.clearTildeLocally(MyUtil.clearFile(sshKeyFile))),
+                     sshKeyPassword));
+        }
+        catch(JSchException e){
+          logFile.addMessage("WARNING: could not open shell on host "+hosts[i], e);
+          e.printStackTrace();
+        }
       }
       else if(hosts[i]!=null &&
           (hosts[i].startsWith("localhost") || hosts[i].equals("127.0.0.1"))){
-        remoteShellMgrs.put(hosts[i], new LocalShellMgr());
+        remoteShellMgrs.put(hosts[i], new LocalShell());
       }
       else{
         // host null not accepted...
@@ -73,17 +81,18 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
   }
   
   /**
-   * Finds a ShellMgr for the host/user/password of the job.
+   * Finds a Shell for the host/user/password of the job.
    * If the shellMgr is dead it is attempted to start a new one.
    * 
    * @param job
-   * @return a ShellMgr
+   * @return a Shell
+   * @throws JSchException 
    */
-  protected ShellMgr getShellMgr(String host){
-    ShellMgr mgr = null;
+  protected Shell getShellMgr(String host) throws JSchException{
+    Shell mgr = null;
     if(host!=null &&
         !host.startsWith("localhost") && !host.equals("127.0.0.1")){
-      SecureShellMgr sMgr = (SecureShellMgr) remoteShellMgrs.get(host);
+      MySecureShell sMgr = (MySecureShell) remoteShellMgrs.get(host);
       if(!sMgr.isConnected()){
         sMgr.reconnect();
       }
@@ -91,7 +100,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
     }
     else if(host!=null &&
         (host.startsWith("localhost") || host.equals("127.0.0.1"))){
-      mgr = (ShellMgr) remoteShellMgrs.get(host);
+      mgr = (Shell) remoteShellMgrs.get(host);
     }
     return mgr;
   }
@@ -100,7 +109,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
    * The brokering algorithm. As simple as possible: FIFO.
    */
   protected String selectHost(JobInfo job){
-    ShellMgr mgr = null;
+    Shell mgr = null;
     String host = null;
     int maxR = 1;
     for(int i=0; i<hosts.length; ++i){
@@ -122,8 +131,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
     return null;
   }
   
-  protected String runDir(JobInfo job){
-    return Util.clearFile(workingDir +"/"+job.getName());
+  protected String runDir(MyJobInfo job){
+    return MyUtil.clearFile(workingDir +"/"+job.getName());
   }
 
   public boolean submit(final JobInfo job){
@@ -131,13 +140,13 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
     final String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";
     final String cmd = runDir(job)+"/"+job.getName()+commandSuffix;
     Debug.debug("Executing "+cmd, 2);
-    job.setOutputs(stdoutFile, stderrFile);
+    ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     ForkScriptGenerator scriptGenerator =
-      new ForkScriptGenerator(job.getCSName(), runDir(job));
-    ShellMgr mgr = getShellMgr(job.getHost());
-    scriptGenerator.createWrapper(mgr, job, job.getName()+commandSuffix);
+      new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job));
     try{
-      String id = mgr.submit(cmd, runDir(job), stdoutFile, stderrFile);
+      Shell mgr = getShellMgr(job.getHost());
+      scriptGenerator.createWrapper(mgr, (MyJobInfo) job, job.getName()+commandSuffix);
+      String id = mgr.submit(cmd, runDir(job), stdoutFile, stderrFile, logFile);
       job.setJobId(id!=null?id:"");
     }
     catch(Exception ioe){
@@ -153,16 +162,24 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
 
   public void updateStatus(Vector jobs){
     for(int i=0; i<jobs.size(); ++i)
-      updateStatus((JobInfo) jobs.get(i), getShellMgr(((JobInfo) jobs.get(i)).getHost()));
+      try{
+        updateStatus((MyJobInfo) jobs.get(i), getShellMgr(((MyJobInfo) jobs.get(i)).getHost()));
+      }
+      catch(JSchException e){
+        error = "Exception during job " + ((MyJobInfo) jobs.get(i)).getName() + " submission : \n" +
+        "\tException\t: " + e.getMessage();
+        logFile.addMessage(error, e);
+        e.printStackTrace();
+      }
   }
 
   public boolean killJobs(Vector jobsToKill){
     Vector errors = new Vector();
-    JobInfo job = null;
+    MyJobInfo job = null;
     for(Enumeration en=jobsToKill.elements(); en.hasMoreElements();){
       try{
-        job = (JobInfo) en.nextElement();
-        getShellMgr(job.getHost()).killProcess(job.getJobId());
+        job = (MyJobInfo) en.nextElement();
+        getShellMgr(job.getHost()).killProcess(job.getJobId(), logFile);
       }
       catch(Exception e){
         errors.add(e.getMessage());
@@ -172,7 +189,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
       }
     }
     if(errors.size()!=0){
-      error = Util.arrayToString(errors.toArray());
+      error = MyUtil.arrayToString(errors.toArray());
       return false;
     }
     else{
@@ -180,20 +197,21 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
     }
   }
 
-  public void clearOutputMapping(JobInfo job){
+  public boolean cleanup(JobInfo job){
+    boolean ret = true;
     String runDir = runDir(job);
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
-    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
+    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
 
     // Delete files that may have been copied to final destination.
     // Files starting with file: are considered to locally available, accessed
     // with shellMgr
-    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
+    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getIdentifier());
     String fileName;
     Vector remoteFiles = new Vector();
     for(int i=0; i<outputFileNames.length; ++i){
-      fileName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFileNames[i]);
+      fileName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
       if(fileName.startsWith("file:")){
         shellMgr.deleteFile(fileName);
       }
@@ -258,29 +276,39 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
       error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
       "\tException\t: " + ioe.getMessage();
       logFile.addMessage(error, ioe);
+      ret = false;
     }
+    return ret;
   }
 
   public String getFullStatus(JobInfo job){
     Debug.debug("Checking job "+job.getHost()+":"+job.getJobId(), 2);
-    if(getShellMgr(job.getHost()).isRunning(job.getJobId())){
-      return "Job #"+job.getJobId()+" is running.";
+    try {
+      if(getShellMgr(job.getHost()).isRunning(job.getJobId())){
+        return "Job #"+job.getJobId()+" is running.";
+      }
+      else{
+        return "Job #"+job.getJobId()+" is not running.";
+      }
     }
-    else{
-      return "Job #"+job.getJobId()+" is not running.";
+    catch(JSchException e){
+      error = "Exception during getFullStatus of job " + job.getName()+ "\n" +
+      "\tException\t: " + e.getMessage();
+      e.printStackTrace();
+      return null;
     }
   }
 
-  public String[] getCurrentOutputs(JobInfo job){
+  public String[] getCurrentOutput(JobInfo job) {
     try{
-      String stdOutText = getShellMgr(job.getHost()).readFile(job.getStdOut());
+      String stdOutText = getShellMgr(job.getHost()).readFile(job.getOutTmp());
       String stdErrText = "";
-      if(getShellMgr(job.getHost()).existsFile(job.getStdErr())){
-        stdErrText = getShellMgr(job.getHost()).readFile(job.getStdErr());
+      if(getShellMgr(job.getHost()).existsFile(job.getErrTmp())){
+        stdErrText = getShellMgr(job.getHost()).readFile(job.getErrTmp());
       }
       return new String [] {stdOutText, stdErrText};
     }
-    catch(IOException ioe){
+    catch(Exception ioe){
       error = "IOException during getFullStatus of job " + job.getName()+ "\n" +
       "\tException\t: " + ioe.getMessage();
       logFile.addMessage(error, ioe);
@@ -288,49 +316,44 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
     }
   }
 
-  public String[] getScripts(JobInfo job){
+  public String[] getScripts(JobInfo job) {
     String jobScriptFile = runDir(job)+"/"+job.getName()+commandSuffix;
     // In case this is not a local shell, first get the script to a local tmp file.
-    if(!getShellMgr(job.getHost()).isLocal()){
-      try{
+    try {
+      if(!getShellMgr(job.getHost()).isLocal()){
         File tmpFile = File.createTempFile(/*prefix*/"GridPilot-Fork-", /*suffix*/"");
         // hack to have the file deleted on exit
         GridPilot.tmpConfFile.put(tmpFile.getAbsolutePath(), tmpFile);
         getShellMgr(job.getHost()).download(jobScriptFile, tmpFile.getAbsolutePath());
         jobScriptFile = tmpFile.getAbsolutePath();
       }
-      catch(Exception e){
-        e.printStackTrace();
-      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
     }
     return new String [] {jobScriptFile};
   }
 
-  public boolean postProcess(JobInfo job){
+  public boolean postProcess(JobInfo job) {
     Debug.debug("Post processing job " + job.getName(), 2);
     String runDir = runDir(job);
-    boolean ok = true;
-    if(copyToFinalDest(job, getShellMgr(job.getHost()))){
-      // Delete the run directory
-      try{
-        ok = getShellMgr(job.getHost()).deleteDir(runDir);
+    try{
+      if(copyToFinalDest((MyJobInfo) job, getShellMgr(job.getHost()))){
+        return getShellMgr(job.getHost()).deleteDir(runDir);
       }
-      catch(Exception e){
-        e.printStackTrace();
-        ok = false;
+      else{
+        return false;
       }
-      if(!ok){
-        error = "Exception during postProcess of job " + job.getName();
-        logFile.addMessage(error);
-      }
-      return ok;
     }
-    else{
+    catch(Exception e){
+      e.printStackTrace();
+      error = "Exception during postProcess of job " + job.getName();
+      logFile.addMessage(error);
       return false;
     }
   }
 
-  public boolean preProcess(JobInfo job){
+  public boolean preProcess(JobInfo job) throws JSchException{
     // choose the host
     String host = selectHost(job);
     if(host==null){
@@ -338,10 +361,10 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
       return false;
     }
     
-    ShellMgr mgr = getShellMgr(host);
+    Shell mgr = getShellMgr(host);
     Debug.debug("Getting ShellMgr for host "+host, 2);
     job.setHost(host);
-    job.setUser(mgr.getUserName());
+    job.setUserInfo(mgr.getUserName());
     
     // create the run directory
     try{
@@ -361,8 +384,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
         logFile.addMessage("WARNING: could not write user proxy.", e);
       }
     }
-    return setupJobRTEs(job, getShellMgr(job.getHost())) &&
-       setRemoteOutputFiles(job) && getInputFiles(job, getShellMgr(job.getHost()));
+    return setupJobRTEs((MyJobInfo) job, getShellMgr(job.getHost())) &&
+       setRemoteOutputFiles((MyJobInfo) job) && getInputFiles((MyJobInfo) job, getShellMgr(job.getHost()));
   }
   
   /**
@@ -370,11 +393,11 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
    */
   protected void setupRuntimeEnvironmentsSSH(){
     for(Iterator it=remoteShellMgrs.values().iterator(); it.hasNext();){
-      setupRuntimeEnvironmentsSSH((ShellMgr) it.next());
+      setupRuntimeEnvironmentsSSH((Shell) it.next());
     }
   }
   
-  protected void setupRuntimeEnvironmentsSSH(ShellMgr shellMgr){
+  protected void setupRuntimeEnvironmentsSSH(Shell shellMgr){
     for(int i=0; i<localRuntimeDBs.length; ++i){
       DBPluginMgr localDBMgr = null;
       try{
@@ -406,14 +429,14 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
   
   public void exit() {
     // Inform that running jobs will not be bookkept and ask for confirmation.
-    ShellMgr shellMgr = null;
+    Shell shellMgr = null;
     boolean anyRunning = false;
     String host = null;
     int jobs = 0;
     String message = "WARNING: You have ";
     boolean oneIterationDone = false;
     for(Iterator it=remoteShellMgrs.values().iterator(); it.hasNext();){
-      shellMgr = (ShellMgr) it.next();
+      shellMgr = (Shell) it.next();
       host = shellMgr.getHostName();
       jobs = shellMgr.getJobsNumber();
       if(oneIterationDone){
@@ -428,7 +451,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
       message += ". The stdout/stderr of these jobs will be lost\n" +
           "and their output files will not be catalogued.";
       try{
-        Util.showError(message);
+        MyUtil.showError(message);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -437,8 +460,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements Comp
     super.exit();
   }
 
-  public ShellMgr getShellMgr(JobInfo job){
-    return (ShellMgr) remoteShellMgrs.get(job.getHost());
+  public Shell getShell(JobInfo job){
+    return (Shell) remoteShellMgrs.get(job.getHost());
   }
 
 }

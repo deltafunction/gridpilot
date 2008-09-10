@@ -8,7 +8,10 @@ import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Vector;
 
-import gridpilot.DBRecord;
+import gridfactory.common.ConfigFile;
+import gridfactory.common.DBRecord;
+import gridfactory.common.Debug;
+import gridfactory.common.Shell;
 
 /**
  * Controls the job submission. <p>
@@ -26,8 +29,8 @@ public class SubmissionControl{
   private JProgressBar pbSubmission;
   private boolean isProgressBarSet = false;
   private ConfigFile configFile;
-  private LogFile logFile;
-  private Table statusTable;
+  private MyLogFile logFile;
+  private MyJTable statusTable;
   private CSPluginMgr csPluginMgr;
   private Timer timer;
   private ImageIcon iconSubmitting;
@@ -42,7 +45,7 @@ public class SubmissionControl{
   private int timeBetweenSubmissions = 1000;
   private String isRand = null;
 
-  public SubmissionControl(){
+  public SubmissionControl() throws Exception{
     submittedJobs = GridPilot.getClassMgr().getSubmittedJobs();
     statusTable = GridPilot.getClassMgr().getJobStatusTable();
     csPluginMgr = GridPilot.getClassMgr().getCSPluginMgr();
@@ -132,7 +135,7 @@ public class SubmissionControl{
       // are not yet put in toSubmitJobs).
       statusBar.setLabel("Reserving. Please wait...");
       //statusBar.animateProgressBar();
-      String jobDefIdentifier = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
+      String jobDefIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
       for(int i=0; i<selectedJobs.size(); ++i){
         DBRecord jobDef = ((DBRecord) selectedJobs.get(i));
         String jobDefID = jobDef.getValue(jobDefIdentifier).toString();
@@ -148,17 +151,17 @@ public class SubmissionControl{
         if(dbPluginMgr.reserveJobDefinition(jobDefID, userInfo, csName)){
           // checks if this partition has not been monitored (and is Submitted,
           // otherwise reservation doesn't work)
-          JobInfo job = null;
+          MyJobInfo job = null;
           boolean isjobMonitored = false;
           for(Iterator it=submittedJobs.iterator(); it.hasNext();){
-            job = ((JobInfo) it.next());
-            if(job.getJobDefId()==jobDefID){
+            job = ((MyJobInfo) it.next());
+            if(job.getIdentifier()==jobDefID){
               isjobMonitored = true;
               break;
             };
           }
           if(isjobMonitored==false){ // this job doesn't exist yet
-            job = new JobInfo(
+            job = new MyJobInfo(
                 jobDefID,
                 dbPluginMgr.getJobDefName(jobDefID),
                 csName,
@@ -177,7 +180,7 @@ public class SubmissionControl{
             job.setDBStatus(DBPluginMgr.SUBMITTED);
           }
           newJobs.add(job);
-          Debug.debug("job definition " + job.getJobDefId() + "("+job.getName()+") reserved", 2);
+          Debug.debug("job definition " + job.getIdentifier() + "("+job.getName()+") reserved", 2);
         }
         else{
           logFile.addMessage("cannot reserve job "+jobDefID);
@@ -211,20 +214,20 @@ public class SubmissionControl{
     synchronized(submittedJobs){
       Vector newJobs = new Vector();
       for(int i=0; i<jobs.size(); ++i){
-        JobInfo job = (JobInfo) jobs.get(i);
+        MyJobInfo job = (MyJobInfo) jobs.get(i);
         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-        if(dbPluginMgr.reserveJobDefinition(job.getJobDefId(), "", csName)){
+        if(dbPluginMgr.reserveJobDefinition(job.getIdentifier(), "", csName)){
           job.setCSName(csName);
           newJobs.add(job);
           job.setDBStatus(DBPluginMgr.SUBMITTED);
-          job.setInternalStatus(ComputingSystem.STATUS_WAIT);
+          job.setCSStatus(MyJobInfo.CS_STATUS_WAIT);
           job.setJobId(null);
           job.setHost(null);
-          job.setJobStatus(null);
-          Debug.debug("logical file " + job.getJobDefId() + "("+job.getName()+") reserved", 2);
+          job.setStatusReady();
+          Debug.debug("logical file " + job.getIdentifier() + "("+job.getName()+") reserved", 2);
         }
         else{
-          logFile.addMessage("cannot reserve logical file "+job.getJobDefId());
+          logFile.addMessage("cannot reserve logical file "+job.getIdentifier());
         }
       }
       statusBar.removeLabel();
@@ -246,7 +249,7 @@ public class SubmissionControl{
     }
     
     if(isRand!=null && isRand.equalsIgnoreCase("yes")){
-      jobs = Util.shuffle(jobs);
+      jobs = MyUtil.shuffle(jobs);
     }
     pbSubmission.setMaximum(pbSubmission.getMaximum() + jobs.size());
     pbSubmission.addMouseListener(new MouseAdapter(){
@@ -262,7 +265,7 @@ public class SubmissionControl{
       isProgressBarSet = true;
     }
     
-    JobInfo job = (JobInfo) jobs.get(0);
+    MyJobInfo job = (MyJobInfo) jobs.get(0);
     
     JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
     
@@ -290,8 +293,8 @@ public class SubmissionControl{
     GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Cleaning up jobs...");
     for(int i=0; i<jobs.size() ; ++i){
 
-      JobInfo job = (JobInfo) jobs.get(i);
-      ShellMgr shell = null;
+      MyJobInfo job = (MyJobInfo) jobs.get(i);
+      Shell shell = null;
       try{
         shell = GridPilot.getClassMgr().getShellMgr(job);
       }
@@ -315,8 +318,8 @@ public class SubmissionControl{
       boolean stdOutExists = false;
       boolean stdErrExists = false;
       try{
-        stdOutExists = job.getStdOut()!=null &&
-           shell.existsFile(job.getStdOut());
+        stdOutExists = job.getOutTmp()!=null &&
+           shell.existsFile(job.getOutTmp());
       }
       catch(Exception e){
         Debug.debug("ERROR checking for stdout: "+e.getMessage(), 2);
@@ -324,8 +327,8 @@ public class SubmissionControl{
         //throw e;
       }
       try{
-        stdErrExists = job.getStdErr() != null &&
-           shell.existsFile(job.getStdErr());
+        stdErrExists = job.getErrTmp() != null &&
+           shell.existsFile(job.getErrTmp());
       }
       catch(Exception e){
         Debug.debug("ERROR checking for stderr: "+e.getMessage(), 2);
@@ -336,10 +339,10 @@ public class SubmissionControl{
       if(!askSave){
         if(deleteFiles){
           if(stdOutExists){
-            shell.deleteFile(job.getStdOut());
+            shell.deleteFile(job.getOutTmp());
           }
           if(stdErrExists){
-            shell.deleteFile(job.getStdErr());
+            shell.deleteFile(job.getErrTmp());
           }
         }
       }
@@ -367,10 +370,10 @@ public class SubmissionControl{
             case 1://JOptionPane.NO_OPTION:
               if(deleteFiles){
                 if(stdOutExists)
-                  if(!shell.deleteFile(job.getStdOut()))
+                  if(!shell.deleteFile(job.getOutTmp()))
                     logFile.addMessage("Cannot delete stdout", job);
                 if(stdErrExists)
-                  if(!shell.deleteFile(job.getStdErr()))
+                  if(!shell.deleteFile(job.getErrTmp()))
                     logFile.addMessage("Cannot delete stderr", job);
               }
               break;
@@ -387,17 +390,17 @@ public class SubmissionControl{
                   if(stdOut != null){
                     try{
                      shell.writeFile(stdOut.getPath(),
-                        shell.readFile(job.getStdOut()), false);
+                        shell.readFile(job.getOutTmp()), false);
                     }
                     catch(java.io.IOException ioe){
-                      logFile.addMessage("Cannot rename " + job.getStdOut() +
+                      logFile.addMessage("Cannot rename " + job.getOutTmp() +
                                          " in " + stdOut.getPath(), ioe);
                     }
                   }
                 }
                 else
                 if(deleteFiles) //remove StdOut
-                  shell.deleteFile(job.getStdOut());
+                  shell.deleteFile(job.getOutTmp());
               }
               // stderr
               if(stdErrExists){
@@ -407,17 +410,17 @@ public class SubmissionControl{
                   if(stdErr != null){
                     try{
                       shell.writeFile(stdErr.getPath(),
-                         shell.readFile(job.getStdErr()), false);
+                         shell.readFile(job.getErrTmp()), false);
                     }
                     catch(java.io.IOException ioe){
-                      logFile.addMessage("Cannot rename " + job.getStdErr() +
+                      logFile.addMessage("Cannot rename " + job.getErrTmp() +
                                          " in " + stdErr.getPath(), ioe);
                     }
                   }
                 }
                 else
                 if(deleteFiles) //remove StdErr
-                  shell.deleteFile(job.getStdErr());
+                  shell.deleteFile(job.getErrTmp());
               }
               break;
 
@@ -430,15 +433,15 @@ public class SubmissionControl{
     Vector submitables = new Vector();
     GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Updating job status...");
     
-    JobInfo job = null;
+    MyJobInfo job = null;
     JobMgr jobMgr = null;
     
     while(jobs.size()>0){
-      job = (JobInfo) jobs.remove(0);
+      job = (MyJobInfo) jobs.remove(0);
       jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
       // first clean up old job
-      jobMgr.getDBPluginMgr().cleanRunInfo(job.getJobDefId());
-      GridPilot.getClassMgr().getCSPluginMgr().clearOutputMapping(job);
+      jobMgr.getDBPluginMgr().cleanRunInfo(job.getIdentifier());
+      GridPilot.getClassMgr().getCSPluginMgr().cleanup(job);
       // then set the status to Submitted
       // (this will not cause a cleanup, as setting the status to Defined would)
       jobMgr.updateDBStatus(job, DBPluginMgr.SUBMITTED);
@@ -449,10 +452,10 @@ public class SubmissionControl{
             job);
       }
       else{
-        job.setNeedToBeRefreshed(false);
+        job.setNeedsUpdate(false);
         job.setJobId(null);
         job.setHost(null);
-        job.setJobStatus(null);
+        job.setStatusReady();
         submitables.add(job);
       }
     }
@@ -470,7 +473,7 @@ public class SubmissionControl{
   private synchronized void trigSubmission(){
     if(submittingJobs.size()<maxSimultaneousSubmissions && !toSubmitJobs.isEmpty()){
       // transfer job from toSubmitJobs to submittingJobs
-      final JobInfo job = (JobInfo) toSubmitJobs.remove(0);
+      final MyJobInfo job = (MyJobInfo) toSubmitJobs.remove(0);
       submittingJobs.add(job);
       new Thread(){
         public void run(){
@@ -488,9 +491,9 @@ public class SubmissionControl{
    * Calls the plugin submission method (via PluginMgr). <br>
    * This method is started in a thread. <p>
    */
-  private void submit(final JobInfo job){
+  private void submit(final MyJobInfo job){
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    job.setName(dbPluginMgr.getJobDefName(job.getJobDefId()));
+    job.setName(dbPluginMgr.getJobDefName(job.getIdentifier()));
     statusTable.setValueAt(job.getCSName(), job.getTableRow(),
         JobMgr.FIELD_CS);
     //statusTable.setValueAt(job.getName(), job.getTableRow(),
@@ -503,38 +506,38 @@ public class SubmissionControl{
     if(csPluginMgr.preProcess(job) && csPluginMgr.submit(job)){
       Debug.debug("Job " + job.getName() + " submitted : \n" +
                   "\tCSJobId = " + job.getJobId() + "\n" +
-                  "\tStdOut = " + job.getStdOut() + "\n" +
-                  "\tStdErr = " + job.getStdErr(), 2);
+                  "\tStdOut = " + job.getOutTmp() + "\n" +
+                  "\tStdErr = " + job.getErrTmp(), 2);
       String jobUser = csPluginMgr.getUserInfo(job.getCSName());
       Debug.debug("Setting job user :"+jobUser+":", 3);
-      job.setUser(jobUser);
+      job.setUserInfo(jobUser);
       if(!dbPluginMgr.updateJobDefinition(
-              job.getJobDefId(),
+              job.getIdentifier(),
               new String []{jobUser, job.getJobId(), job.getName(),
-              job.getStdOut(), job.getStdErr()})){
-        logFile.addMessage("DB update(" + job.getJobDefId() + ", " +
+              job.getOutTmp(), job.getErrTmp()})){
+        logFile.addMessage("DB update(" + job.getIdentifier() + ", " +
                            job.getJobId() + ", " + job.getName() + ", " +
-                           job.getStdOut() + ", " + job.getStdErr() +
+                           job.getOutTmp() + ", " + job.getErrTmp() +
                            ") failed", job);
       }
       statusTable.setValueAt(job.getJobId(), job.getTableRow(),
           JobMgr.FIELD_JOBID);
-      statusTable.setValueAt(job.getUser(), job.getTableRow(),
+      statusTable.setValueAt(job.getUserInfo(), job.getTableRow(),
           JobMgr.FIELD_USER);
       statusTable.updateSelection();
-      job.setNeedToBeRefreshed(true);
-      job.setInternalStatus(ComputingSystem.STATUS_WAIT);
+      job.setNeedsUpdate(true);
+      job.setCSStatus(MyJobInfo.CS_STATUS_WAIT);
     }
     else{
       statusTable.setValueAt("Not submitted!", job.getTableRow(),
           JobMgr.FIELD_JOBID);
-      job.setInternalStatus(ComputingSystem.STATUS_FAILED);
-      job.setNeedToBeRefreshed(false);
+      job.setCSStatus(MyJobInfo.CS_STATUS_FAILED);
+      job.setNeedsUpdate(false);
       if(jobMgr.updateDBStatus(job, DBPluginMgr.FAILED)){
         job.setDBStatus(DBPluginMgr.FAILED);
       }
       else{
-        logFile.addMessage("DB update status(" + job.getJobDefId() + ", " +
+        logFile.addMessage("DB update status(" + job.getIdentifier() + ", " +
             DBPluginMgr.getStatusName(job.getDBStatus()) +
                            ") failed", job);
       }
@@ -574,20 +577,20 @@ public class SubmissionControl{
   private void cancelSubmission(){
     timer.stop();
     Enumeration e = toSubmitJobs.elements();
-    JobInfo job = null;
+    MyJobInfo job = null;
     JobMgr jobMgr = null;
     while(e.hasMoreElements()){
-      job = (JobInfo) e.nextElement();
+      job = (MyJobInfo) e.nextElement();
       statusTable.setValueAt("Not submitted (cancelled)!", job.getTableRow(), JobMgr.FIELD_JOBID);
       statusTable.setValueAt(job.getName(), job.getTableRow(), JobMgr.FIELD_JOBNAME);
-      job.setInternalStatus(ComputingSystem.STATUS_FAILED);
-      job.setNeedToBeRefreshed(false);
+      job.setCSStatus(MyJobInfo.CS_STATUS_FAILED);
+      job.setNeedsUpdate(false);
       jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
       if(jobMgr.updateDBStatus(job, DBPluginMgr.FAILED)){
         job.setDBStatus(DBPluginMgr.FAILED);
       }
       else{
-        logFile.addMessage("DB update status(" + job.getJobDefId() + ", " +
+        logFile.addMessage("DB update status(" + job.getIdentifier() + ", " +
             DBPluginMgr.getStatusName(job.getDBStatus()) + ") failed", job);
       }
     }

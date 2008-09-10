@@ -1,12 +1,19 @@
 package gridpilot;
 
+import gridfactory.common.ConfigFile;
+import gridfactory.common.Debug;
+import gridfactory.common.JobInfo;
+import gridfactory.common.ResThread;
+import gridfactory.common.Shell;
+import gridfactory.common.VirtualMachine;
+
 import java.io.IOException;
-import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Vector;
 
 import org.safehaus.uuid.UUIDGenerator;
+
+import com.jcraft.jsch.JSchException;
 
 /**
  * The purpose of this class is to protect GridPilot from plugin errors, exceptions, abnormal behaviour. <p>
@@ -23,11 +30,11 @@ import org.safehaus.uuid.UUIDGenerator;
  * interrupt the plug-in (if <code>askBeforeInterrupt==true</code>)
  */
 
-public class CSPluginMgr implements ComputingSystem{
+public class CSPluginMgr implements MyComputingSystem{
   
   private ConfigFile configFile;
 
-  private LogFile logFile;
+  private MyLogFile logFile;
 
   /** time out in ms for <code>submit</code> method */
   private int submissionTimeOut;
@@ -38,7 +45,7 @@ public class CSPluginMgr implements ComputingSystem{
   /** time out in ms for <code>killJob</code> method */
   private int killTimeOut;
   /** time out in ms for <code>getCurrentOutputs</code> method */
-  private int currentOutputTimeOut;
+  public int currentOutputTimeOut;
   /** time out in ms for <code>clearOutputMapping</code> method */
   private int clearTimeOut;
   /** time out in ms for <code>getFullStatus</code> method */
@@ -140,10 +147,10 @@ public class CSPluginMgr implements ComputingSystem{
       Object [] csArgs = {csNames[i]};
       
       Debug.debug("class: "+csClass, 3);
-      Debug.debug("argument types: "+Util.arrayToString(csArgsType), 3);
-      Debug.debug("arguments: "+Util.arrayToString(csArgs), 3);
+      Debug.debug("argument types: "+MyUtil.arrayToString(csArgsType), 3);
+      Debug.debug("arguments: "+MyUtil.arrayToString(csArgs), 3);
       try{
-        cs.put(csNames[i], Util.loadClass(csClass, csArgsType, csArgs));
+        cs.put(csNames[i], MyUtil.loadClass(csClass, csArgsType, csArgs));
       }
       catch(Throwable e){
         Debug.debug("ERROR: plugin " + csNames[i] + "(" + csClass + ") not loaded. "+e.getMessage(), 2);
@@ -154,15 +161,15 @@ public class CSPluginMgr implements ComputingSystem{
 
   void disconnect(){
     for(int i=0; i<csNames.length ; ++i){
-      ShellMgr shellMgr = null;
+      Shell shellMgr = null;
       try{
         shellMgr = GridPilot.getClassMgr().getShellMgr(csNames[i]);
       }
       catch(Exception e){
         continue;
       }
-      if(shellMgr instanceof SecureShellMgr){
-        ((SecureShellMgr) shellMgr).exit();
+      if(shellMgr instanceof MySecureShell){
+        ((MySecureShell) shellMgr).exit();
       }
     }
   }
@@ -225,22 +232,22 @@ public class CSPluginMgr implements ComputingSystem{
 
   /**
    * Submits this job on the computing system specified by job.ComputingSystem
-   * @see ComputingSystem#submit(JobInfo)
+   * @see MyComputingSystem#submit(MyJobInfo)
    */
   public boolean submit(final JobInfo job){
     
     // first check if the runtime environments are present
     
-    String[] rtes = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()
-        ).getRuntimeEnvironments(job.getJobDefId());
+    String[] rtes = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()
+        ).getRuntimeEnvironments(job.getIdentifier());
 
     for(int i=0; i<rtes.length; ++i){
       try{
-        String id = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()
-        ).getRuntimeEnvironmentID(rtes[i], job.getCSName());
+        String id = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()
+        ).getRuntimeEnvironmentID(rtes[i], ((MyJobInfo) job).getCSName());
         if(id==null || id.equals("-1")){
-          throw new IOException("Runtime environment "+rtes[i]+" not found. "+job.getCSName()+
-              ":"+job.getDBName()+":"+id);
+          throw new IOException("Runtime environment "+rtes[i]+" not found. "+((MyJobInfo) job).getCSName()+
+              ":"+((MyJobInfo) job).getDBName()+":"+id);
         }
       }
       catch(Exception e){
@@ -250,25 +257,25 @@ public class CSPluginMgr implements ComputingSystem{
       }
     }
 
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       boolean res = false;
       public void run(){
         try{
-          res = ((ComputingSystem) cs.get(job.getCSName())).submit(job);
+          res = ((MyComputingSystem) cs.get(((MyJobInfo) job).getCSName())).submit(job);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + job.getCSName() +
-                             " during job " + job.getName() + " submission", job, t);
+                             " from plugin " + ((MyJobInfo) job).getCSName() +
+                             " during job " + job.getName() + " submission", (MyJobInfo) job, t);
           res = false;
         }
       }
-      public boolean getBooleanRes(){return res;}
+      public boolean getBoolRes(){return res;}
     };
 
     t.start();
 
-    if(Util.waitForThread(t, job.getCSName(), submissionTimeOut, "submit")){
+    if(MyUtil.waitForThread(t, ((MyJobInfo) job).getCSName(), submissionTimeOut, "submit")){
       return t.getBoolRes();
     }
     else{
@@ -278,65 +285,37 @@ public class CSPluginMgr implements ComputingSystem{
 
   /**
    * Update the status of this job on the computing system specified by job.ComputingSystem
-   * @see ComputingSystem#updateStatus(Vector)
+   * @see MyComputingSystem#updateStatus(Vector)
    */
-  public void updateStatus(final Vector jobs){
-    final String csName = ((JobInfo) jobs.get(0)).getCSName();
+  public void updateStatus(final Vector<JobInfo> jobs){
+    final String csName = ((MyJobInfo) jobs.get(0)).getCSName();
     if(csName==null || csName.equals("")){
       return;
     }
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       public void run(){
-        if(csName.equalsIgnoreCase("gpss")){
-          HashMap jobCSs = new HashMap();
-          String pullCSName = null;
-          JobInfo job = null;
-          Enumeration en = jobs.elements();
-          while(en.hasMoreElements()){
-            job = (JobInfo) en.nextElement();
-            pullCSName = GridPilot.getClassMgr().getJobCS(job.getJobDefId());
-            if(!jobCSs.containsKey(pullCSName)){
-              jobCSs.put(pullCSName, new Vector());
-            }
-            ((Vector) jobCSs.get(pullCSName)).add(job);
-          }
-          for(Iterator it=jobCSs.keySet().iterator(); it.hasNext();){
-            pullCSName = (String) it.next();
-            try{
-              Debug.debug("Updating status of pulled jobs on "+pullCSName, 2);
-              ((ComputingSystem) cs.get(csName)).updateStatus((Vector) jobCSs.get(pullCSName));
-            }
-            catch(Throwable t){
-              logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                                 " from plugin " + csName +
-                                 " during updateStatus", t);
-            }
-          }
-        }       
-        else{
-          try{
-            ((ComputingSystem) cs.get(csName)).updateStatus(jobs);
-          }
-          catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + csName +
-                               " during updateStatus", t);
-          }
+        try{
+          ((MyComputingSystem) cs.get(csName)).updateStatus(jobs);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + csName +
+                             " during updateStatus", t);
         }
       }
     };
 
     t.start();
 
-    Util.waitForThread(t, csName, updateTimeOut, "updateStatus");
+    MyUtil.waitForThread(t, csName, updateTimeOut, "updateStatus");
   }
 
 
   /**
    * Kills these jobs
-   * @see ComputingSystem#killJobs(Vector)
+   * @see MyComputingSystem#killJobs(Vector)
    */
-  public boolean killJobs(final Vector jobs){
+  public boolean killJobs(final Vector<JobInfo> jobs){
     
     StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
     statusBar.setLabel("Killing job(s)...");
@@ -345,7 +324,7 @@ public class CSPluginMgr implements ComputingSystem{
     HashMap csJobs = new HashMap();
     String csName = null;
     for(int i=0; i<jobs.size(); ++i){
-      csName = ((JobInfo) jobs.get(i)).getCSName();
+      csName = ((MyJobInfo) jobs.get(i)).getCSName();
       if(!csJobs.keySet().contains(csName)){
         csJobs.put(csName, new Vector());
       }
@@ -354,16 +333,16 @@ public class CSPluginMgr implements ComputingSystem{
     
     final HashMap csJobsFinal = csJobs;
     
-    MyThread [] threads = new MyThread[csJobs.size()];
+    ResThread [] threads = new ResThread[csJobs.size()];
     for(threadI=0; threadI<threads.length; ++threadI){
  
       Debug.debug("Killing thread "+threads.length+":"+threadI, 3);
       
-      threads[threadI] = new MyThread(){
+      threads[threadI] = new ResThread(){
         public void run(){
           try{
             String csName = (String) csJobsFinal.keySet().toArray()[threadI];
-            ((ComputingSystem) cs.get(csName)).killJobs((Vector) csJobsFinal.get(csName));
+            ((MyComputingSystem) cs.get(csName)).killJobs((Vector) csJobsFinal.get(csName));
           }
           catch(Exception t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -386,11 +365,11 @@ public class CSPluginMgr implements ComputingSystem{
     // When killing jobs from several CSs, we wait the timeout of
     // the first one for the first jobs and then just move with
     // timeout 0 to kill the others
-    Util.waitForThread(threads[0],(String) csJobsFinal.keySet().toArray()[0],
+    MyUtil.waitForThread(threads[0],(String) csJobsFinal.keySet().toArray()[0],
         killTimeOut, "killJobs");
     if(csNames.length>1){
       for(int i=1; i<threads.length; ++i){
-        Util.waitForThread(threads[i], (String) csJobsFinal.keySet().toArray()[i],
+        MyUtil.waitForThread(threads[i], (String) csJobsFinal.keySet().toArray()[i],
             0, "killJobs");
       }
     }
@@ -399,34 +378,44 @@ public class CSPluginMgr implements ComputingSystem{
     return true;
   }
 
-  public void clearOutputMapping(final JobInfo job) {
-    final String csName = job.getCSName();
+  public boolean cleanup(final JobInfo job) {
+    final String csName = ((MyJobInfo) job).getCSName();
     if(csName==null || csName.equals("")){
-      return;
+      return false;
     }
 
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
+      boolean res = false;
       public void run(){
         try{
-          ((ComputingSystem) cs.get(csName)).clearOutputMapping(job);
+          res = ((MyComputingSystem) cs.get(csName)).cleanup(job);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + csName +
-                             " during job " + job.getName() + " clearOutputMapping", job, t);
+                             " during job " + job.getName() + " clearOutputMapping", (MyJobInfo) job, t);
         }
+      }
+      public boolean getBoolRes(){
+        return res;
       }
     };
 
     t.start();
+    
+    if(MyUtil.waitForThread(t, csName, clearTimeOut, "clean")){
+      return t.getBoolRes();
+    }
+    else{
+      return false;
+    }
 
-    Util.waitForThread(t, csName, clearTimeOut, "clearOutputMapping");
   }
 
 
   /**
    * Calls exit of all plug-ins
-   * @see ComputingSystem#exit()
+   * @see MyComputingSystem#exit()
    */
   public void exit() {
     String enabled = null;
@@ -443,10 +432,10 @@ public class CSPluginMgr implements ComputingSystem{
         continue;
       }
       final int k = i;
-      MyThread t = new MyThread(){
+      ResThread t = new ResThread(){
         public void run(){
           try{
-            ((ComputingSystem) cs.get(csNames[k])).exit();
+            ((MyComputingSystem) cs.get(csNames[k])).exit();
           }
           catch(Throwable t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -458,17 +447,17 @@ public class CSPluginMgr implements ComputingSystem{
 
       t.start();
 
-      Util.waitForThread(t, csNames[k], exitTimeOut, "exit");
+      MyUtil.waitForThread(t, csNames[k], exitTimeOut, "exit");
 
     }
   }
 
   /**
    * Gets the full status of the specified job on its ComputingSystem
-   * @see ComputingSystem#getFullStatus(JobInfo)
+   * @see MyComputingSystem#getFullStatus(MyJobInfo)
    */
   public String getFullStatus(final JobInfo job) {
-    final String csName = job.getCSName();
+    final String csName = ((MyJobInfo) job).getCSName();
     if(csName==null || csName.equals("")){
       return "ERROR: no computing system";
     }
@@ -494,16 +483,16 @@ public class CSPluginMgr implements ComputingSystem{
       return "Computing system "+csName+" not found. Try loading it.";
     }
 
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       String res = null;
       public void run(){
         try{
-          res = ((ComputingSystem) cs.get(csName)).getFullStatus(job);
+          res = ((MyComputingSystem) cs.get(csName)).getFullStatus(job);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + csName +
-                             " during job " + job.getName() + " getFullStatus", job, t);
+                             " during job " + job.getName() + " getFullStatus", (MyJobInfo) job, t);
           res = null;
         }
       }
@@ -514,7 +503,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(Util.waitForThread(t, csName, fullStatusTimeOut, "getFullStatus")){
+    if(MyUtil.waitForThread(t, csName, fullStatusTimeOut, "getFullStatus")){
       return t.getStringRes();
     }
     else{
@@ -522,26 +511,22 @@ public class CSPluginMgr implements ComputingSystem{
     }
   }
 
-  /**
-   * Gets the current outputs of the specified job on its ComputingSystem.
-   * @see ComputingSystem#getCurrentOutputs(JobInfo)
-   */
-  public String[] getCurrentOutputs(final JobInfo job){
-    final String csName = job.getCSName();
+  public String[] getCurrentOutput(final JobInfo job){
+    final String csName = ((MyJobInfo) job).getCSName();
     if(csName==null || csName.equals("")){
       return null;
     }
 
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       String [] res = new String[]{null,null};
       public void run(){
         try{
-          res = ((ComputingSystem) cs.get(csName)).getCurrentOutputs(job);
+          res = ((MyComputingSystem) cs.get(csName)).getCurrentOutput(job);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + csName +
-                             " during job " + job.getName() + " getCurrentOutpus", job, t);
+                             " during job " + job.getName() + " getCurrentOutpus", (MyJobInfo) job, t);
           res = new String[]{null, null};
         }
       }
@@ -552,7 +537,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(Util.waitForThread(t, csName, currentOutputTimeOut, "getCurrentOutputs")){
+    if(MyUtil.waitForThread(t, csName, currentOutputTimeOut, "getCurrentOutputs")){
       return t.getString2Res();
     }
     else{
@@ -562,24 +547,24 @@ public class CSPluginMgr implements ComputingSystem{
 
   /**
    * Gets the current outputs of the specified job on its ComputingSystem.
-   * @see ComputingSystem#getCurrentOutputs(JobInfo)
+   * @see MyComputingSystem#getScripts(JobInfo)
    */
   public String[] getScripts(final JobInfo job) {
-    final String csName = job.getCSName();
+    final String csName = ((MyJobInfo) job).getCSName();
     if(csName==null || csName.equals("")){
       return null;
     }
 
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       String [] res = new String[]{null,null};
       public void run(){
         try{
-          res = ((ComputingSystem) cs.get(csName)).getScripts(job);
+          res = ((MyComputingSystem) cs.get(csName)).getScripts(job);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + csName +
-                             " during job " + job.getName() + " getScripts", job, t);
+                             " during job " + job.getName() + " getScripts", (MyJobInfo) job, t);
           res = new String[]{null, null};
         }
       }
@@ -590,7 +575,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(Util.waitForThread(t, csName, currentOutputTimeOut, "getScripts")){
+    if(MyUtil.waitForThread(t, csName, currentOutputTimeOut, "getScripts")){
       return t.getString2Res();
     }
     else{
@@ -598,36 +583,33 @@ public class CSPluginMgr implements ComputingSystem{
     }
   }
 
-  /**
-   * @see ComputingSystem#getShellMgr()
-   */
-  public ShellMgr getShellMgr(final JobInfo job) {
-    final String csName = job.getCSName();
+  public Shell getShell(final JobInfo job) {
+    final String csName = ((MyJobInfo) job).getCSName();
     if(csName==null || csName.equals("")){
       return null;
     }
 
-    MyThread t = new MyThread(){
-      ShellMgr res = null;
+    MyResThread t = new MyResThread(){
+      Shell res = null;
       public void run(){
         try{
-          res = ((ComputingSystem) cs.get(csName)).getShellMgr(job);
+          res = ((MyComputingSystem) cs.get(csName)).getShell(job);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + csName +
-                             " during job " + job.getName() + " getScripts", job, t);
+                             " during job " + job.getName() + " getScripts", (MyJobInfo) job, t);
         }
       }
-      public ShellMgr getShellMgrRes(){
+      public Shell getShellMgr(){
         return res;
       }
     };
 
     t.start();
 
-    if(Util.waitForThread(t, csName, currentOutputTimeOut, "getScripts")){
-      return t.getShellMgrRes();
+    if(MyUtil.waitForThread(t, csName, currentOutputTimeOut, "getScripts")){
+      return t.getShellMgr();
     }
     else{
       return null;
@@ -635,18 +617,18 @@ public class CSPluginMgr implements ComputingSystem{
   }
 
   /**
-   * @see ComputingSystem#getUserInfo()
+   * @see MyComputingSystem#getUserInfo()
    */
   public String getUserInfo(final String csName) {
     if(csName==null || csName.equals("")){
       return null;
     }
 
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       String res = null;
       public void run(){
         try{
-          res = ((ComputingSystem) cs.get(csName)).getUserInfo(csName);
+          res = ((MyComputingSystem) cs.get(csName)).getUserInfo(csName);
         }
         catch(Throwable t){
           /*logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -664,7 +646,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(Util.waitForThread(t, csName, getUserInfoTimeOut, "getUserInfo")){
+    if(MyUtil.waitForThread(t, csName, getUserInfoTimeOut, "getUserInfo")){
       return t.getStringRes();
     }
     else{
@@ -672,19 +654,16 @@ public class CSPluginMgr implements ComputingSystem{
     }
   }
 
-  /**
-   * @see ComputingSystem#getError()
-   */
   public String getError(final String csName) {
     if(csName==null || csName.equals("")){
       return null;
     }
 
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       String res = null;
       public void run(){
         try{
-          res = ((ComputingSystem) cs.get(csName)).getError(csName);
+          res = ((MyComputingSystem) cs.get(csName)).getError();
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -700,7 +679,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    if(Util.waitForThread(t, csName, defaultTimeOut, "getError")){
+    if(MyUtil.waitForThread(t, csName, defaultTimeOut, "getError")){
       return t.getStringRes();
     }
     else{
@@ -709,46 +688,46 @@ public class CSPluginMgr implements ComputingSystem{
   }
 
   /**
-   * @see ComputingSystem#postProcess(JobInfo)
+   * @see MyComputingSystem#postProcess(MyJobInfo)
    */
   public boolean postProcess(final JobInfo job){
 
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       boolean res = false;
       public void run(){
         try{
-          res = ((ComputingSystem) cs.get(job.getCSName())).postProcess(job);
+          res = ((MyComputingSystem) cs.get(((MyJobInfo) job).getCSName())).postProcess(job);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + job.getCSName() +
+                             " from plugin " + ((MyJobInfo) job).getCSName() +
                              " during postProcessing", t);
           res = false;
         }
       }
-      public boolean getBooleanRes(){
+      public boolean getBoolRes(){
         return res;
       }
     };
 
     t.start();
 
-    if(Util.waitForThread(t, job.getCSName(), copyFileTimeOut, "postProcessing")){
+    if(MyUtil.waitForThread(t, ((MyJobInfo) job).getCSName(), copyFileTimeOut, "postProcessing")){
       if(t.getBoolRes()){
         // Register the new file if the db is a file catalog
         try{
-          DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-          String[] outputFiles = dbPluginMgr.getOutputFiles(job.getJobDefId());
+          DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+          String[] outputFiles = dbPluginMgr.getOutputFiles(job.getIdentifier());
           if(outputFiles.length>0 && dbPluginMgr.isFileCatalog()){
-            String datasetID = dbPluginMgr.getJobDefDatasetID(job.getJobDefId());
+            String datasetID = dbPluginMgr.getJobDefDatasetID(job.getIdentifier());
             String datasetName = dbPluginMgr.getDatasetName(datasetID);
-            String remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(),
+            String remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(),
                 outputFiles[0]);
-            String [] nameArray = Util.split(remoteName, "\\\\");
-            nameArray = Util.split(nameArray[nameArray.length-1], "/");
+            String [] nameArray = MyUtil.split(remoteName, "\\\\");
+            nameArray = MyUtil.split(nameArray[nameArray.length-1], "/");
             String lfn = nameArray[nameArray.length-1];
-            String size = dbPluginMgr.getFileBytes(datasetName, job.getJobDefId());
-            String checksum = dbPluginMgr.getFileChecksum(datasetName, job.getJobDefId());
+            String size = dbPluginMgr.getFileBytes(datasetName, job.getIdentifier());
+            String checksum = dbPluginMgr.getFileChecksum(datasetName, job.getIdentifier());
             String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
             String message = "Registering UUID "+uuid.toString()+" and LFN "+lfn+
                " for new location "+remoteName;
@@ -778,32 +757,32 @@ public class CSPluginMgr implements ComputingSystem{
   }
   
   /**
-   * @see ComputingSystem#preProcess(JobInfo)
+   * @see MyComputingSystem#preProcess(MyJobInfo)
    */
   public boolean preProcess(final JobInfo job){
 
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       boolean res = false;
       public void run(){
         try{
-          res = ((ComputingSystem) cs.get(job.getCSName())).preProcess(job);
+          res = ((MyComputingSystem) cs.get(((MyJobInfo) job).getCSName())).preProcess(job);
         }
         catch(Throwable t){
           t.printStackTrace();
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + job.getCSName() +
+                             " from plugin " + ((MyJobInfo) job).getCSName() +
                              " during preProcessing", t);
           res = false;
         }
       }
-      public boolean getBooleanRes(){
+      public boolean getBoolRes(){
         return res;
       }
     };
 
     t.start();
 
-    if(Util.waitForThread(t, job.getCSName(), copyFileTimeOut, "preProcessing")){
+    if(MyUtil.waitForThread(t, ((MyJobInfo) job).getCSName(), copyFileTimeOut, "preProcessing")){
       return t.getBoolRes();
     }
     else{
@@ -815,7 +794,7 @@ public class CSPluginMgr implements ComputingSystem{
     if(csName==null || csName.equals("")){
       return;
     }
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       public void run(){
         try{
           if(!configFile.getValue(csName, "Enabled").equalsIgnoreCase("yes")){
@@ -826,7 +805,7 @@ public class CSPluginMgr implements ComputingSystem{
           return;
         }
         try{
-          ((ComputingSystem) cs.get(csName)).setupRuntimeEnvironments(csName);
+          ((MyComputingSystem) cs.get(csName)).setupRuntimeEnvironments(csName);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -838,14 +817,14 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    Util.waitForThread(t, csName, setupTimeOut, "setupRuntimeEnvironments");
+    MyUtil.waitForThread(t, csName, setupTimeOut, "setupRuntimeEnvironments");
   }
 
   public void cleanupRuntimeEnvironments(final String csName){
     if(csName==null || csName.equals("")){
       return;
     }
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       public void run(){
         try{
           try{
@@ -856,7 +835,7 @@ public class CSPluginMgr implements ComputingSystem{
           catch(Exception e){
             return;
           }
-          ((ComputingSystem) cs.get(csName)).cleanupRuntimeEnvironments(csName);
+          ((MyComputingSystem) cs.get(csName)).cleanupRuntimeEnvironments(csName);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -868,22 +847,7 @@ public class CSPluginMgr implements ComputingSystem{
 
     t.start();
 
-    Util.waitForThread(t, csName, setupTimeOut, "cleanupRuntimeEnvironments");
-  }
-
-  /**
-   * Returns the setting of "remote pull database" in the config file
-   */
-  public String getPullDatabase(final String csName){
-    if(csName==null || csName.equals("")){
-      return null;
-    }
-    if(pullDBs==null || pullDBs.get(csName)==null){
-      return null;
-    }
-    else{
-      return (String) pullDBs.get(csName);
-    }
+    MyUtil.waitForThread(t, csName, setupTimeOut, "cleanupRuntimeEnvironments");
   }
 
   public void reconnect(){
@@ -896,7 +860,7 @@ public class CSPluginMgr implements ComputingSystem{
     }
     
     for(int i=0; i<csNames.length ; ++i){
-      ShellMgr shellMgr = null;
+      Shell shellMgr = null;
       try{
         shellMgr = GridPilot.getClassMgr().getShellMgr(csNames[i]);
       }
@@ -904,11 +868,32 @@ public class CSPluginMgr implements ComputingSystem{
         //e.printStackTrace();
         continue;
       }
-      if(shellMgr!=null && shellMgr instanceof SecureShellMgr){
-        ((SecureShellMgr) shellMgr).reconnect();
+      if(shellMgr!=null && shellMgr instanceof MySecureShell){
+        try {
+          ((MySecureShell) shellMgr).reconnect();
+        }
+        catch(JSchException e){
+          e.printStackTrace();
+          logFile.addMessage("WARNING: Could not reconnect.", e);
+        }
       }
     }
   }
-
+  public String getError() {
+    // dummy method - here in GridPilot getError(csName) should always be used
+    return null;
+  }
+  public long getRunningTime(JobInfo arg0) {
+    return -1;
+  }
+  public VirtualMachine getVM(JobInfo arg0) {
+    return null;
+  }
+  public boolean pauseJobs(Vector<JobInfo> arg0) {
+    return false;
+  }
+  public boolean resumeJobs(Vector<JobInfo> arg0) {
+    return false;
+  }
 
 }

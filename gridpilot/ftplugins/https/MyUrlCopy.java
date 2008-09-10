@@ -1,6 +1,6 @@
 package gridpilot.ftplugins.https;
 
-import gridpilot.Debug;
+import gridfactory.common.Debug;
 import gridpilot.GridPilot;
 
 import java.io.ByteArrayOutputStream;

@@ -28,6 +28,12 @@ import org.globus.ftp.exception.FTPException;
 import org.globus.util.GlobusURL;
 import org.safehaus.uuid.UUIDGenerator;
 
+import gridfactory.common.ConfirmBox;
+import gridfactory.common.DBResult;
+import gridfactory.common.Debug;
+import gridfactory.common.FileTransfer;
+import gridfactory.common.LocalStaticShell;
+import gridfactory.common.ResThread;
 import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 import gridpilot.ftplugins.https.HTTPSFileTransfer;
 import gridpilot.ftplugins.https.MyUrlCopy;
@@ -152,11 +158,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
         GridPilot.browserHistoryFile = homeDir+GridPilot.browserHistoryFile.substring(1);
       }
       try{
-        if(!LocalStaticShellMgr.existsFile(GridPilot.browserHistoryFile)){
+        if(!LocalStaticShell.existsFile(GridPilot.browserHistoryFile)){
           Debug.debug("trying to create file", 2);
-          LocalStaticShellMgr.writeFile(GridPilot.browserHistoryFile, "", false);
+          LocalStaticShell.writeFile(GridPilot.browserHistoryFile, "", false);
         }
-        urlHistory = LocalStaticShellMgr.readFile(GridPilot.browserHistoryFile);
+        urlHistory = LocalStaticShell.readFile(GridPilot.browserHistoryFile);
         saveUrlHistory = true;
       }
       catch(Exception e){
@@ -243,7 +249,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
               !currentUrlBox.getSelectedItem().toString().equals("")){
             statusBar.setLabel("Opening URL...");
             ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-            MyThread t = (new MyThread(){
+            ResThread t = (new ResThread(){
               public void run(){
                 try{
                   setDisplay(currentUrlBox.getSelectedItem().toString());
@@ -278,7 +284,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
             Debug.debug("Detected ENTER", 3);
             statusBar.setLabel("Opening URL...");
             ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-            MyThread t = (new MyThread(){
+            ResThread t = (new ResThread(){
               public void run(){
                 try{
                   setDisplay(getUrl());
@@ -441,7 +447,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bHome.setSize(new java.awt.Dimension(22, 22));
       bHome.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent me){
-          MyThread t = (new MyThread(){
+          ResThread t = (new ResThread(){
             public void run(){
               try{
                 statusBar.setLabel("Opening URL...");
@@ -474,7 +480,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         public void mouseClicked(MouseEvent me){
           statusBar.setLabel("Opening URL...");
           ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-          MyThread t = (new MyThread(){
+          ResThread t = (new ResThread(){
             public void run(){
               try{
                 setDisplay(currentUrlBox.getSelectedItem().toString());
@@ -547,7 +553,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
             //setUrl(e.getDescription());
             ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             statusBar.setLabel("Opening URL...");
-            (new MyThread(){
+            (new ResThread(){
               public void run(){
                 try{
                   if(e.getURL()!=null){
@@ -587,7 +593,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
               if(excludeDBs.contains(Integer.toString(i))){
                 continue;
               }
-              Debug.debug("addActionListener "+Util.arrayToString(excludeDBs.toArray())+":"+i, 3);
+              Debug.debug("addActionListener "+MyUtil.arrayToString(excludeDBs.toArray())+":"+i, 3);
               miRegister.getItem(ii).addActionListener(new ActionListener(){
                 public void actionPerformed(ActionEvent ev){
                   Debug.debug("registerFile "+((JMenuItem) ev.getSource()).getText(), 3);
@@ -757,11 +763,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Download a single file.
    */
   private void downloadFile(final String url){
-    final File dir = Util.getDownloadDir(this);      
+    final File dir = MyUtil.getDownloadDir(this);      
     if(dir==null){
       return;
     }
-    //MyThread t = (new MyThread(){
+    //ResThread t = (new ResThread(){
       //public void run(){
         Debug.debug("Getting file : "+url+" -> "+dir.getAbsolutePath(), 3);
         try{
@@ -831,9 +837,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
         if(e.getButton()!=MouseEvent.BUTTON1){
           return;
         }
-        String idField = Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
-        String nameField = Util.getNameField(dbPluginMgr.getDBName(), "dataset");
-        String str = Util.getJTextOrEmptyString(dsField);
+        String idField = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
+        String nameField = MyUtil.getNameField(dbPluginMgr.getDBName(), "dataset");
+        String str = MyUtil.getJTextOrEmptyString(dsField);
         if(str==null || str.equals("")){
           return;
         }
@@ -888,7 +894,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(choice!=0){
       return null;
     }
-    return new String [] {Util.getJTextOrEmptyString(dsField), lfnField.getText()};
+    return new String [] {MyUtil.getJTextOrEmptyString(dsField), lfnField.getText()};
   }
   
   
@@ -899,7 +905,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(registering){
       return;
     }
-    MyThread t = (new MyThread(){
+    ResThread t = (new ResThread(){
       public void run(){
         registering = true;
         try{
@@ -982,7 +988,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         GridPilot.getClassMgr().removeUrl(urlList.iterator().next().toString());
       }
       GridPilot.getClassMgr().addUrl(newUrl);
-      Debug.debug("urlSet is now: "+Util.arrayToString(
+      Debug.debug("urlSet is now: "+MyUtil.arrayToString(
           urlList.toArray(), " : "), 2);
     }
 
@@ -1211,7 +1217,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         tmpFile.delete();
         return false;
       }
-      ft.getFile(new GlobusURL(url), tmpFile, statusBar);
+      ft.getFile(new GlobusURL(url), tmpFile);
     }
     catch(Exception e){
       Debug.debug("Could not read "+url, 1);
@@ -1585,7 +1591,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bRegister.setEnabled(false);
       String htmlText = "";
       try{
-        String [] text = LocalStaticShellMgr.listFiles(localPath);
+        String [] text = LocalStaticShell.listFiles(localPath);
         int directories = 0;
         int files = 0;
         Vector textVector = new Vector();
@@ -1602,7 +1608,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           if((jcbFilter.isSelected() ||
               !text[j].substring(localPath.length()).matches("^\\.[^\\.].+")) &&
               text[j].substring(localPath.length()).matches(filter)){
-            if(LocalStaticShellMgr.isDirectory(text[j])){
+            if(LocalStaticShell.isDirectory(text[j])){
               ++directories;
             }
             else{
@@ -1627,7 +1633,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         if(!localPath.equals("/")){
           htmlText += "<a href=\"file:"+localPath+"../\">"/*+localPath*/+"../</a><br>\n";
         }
-        htmlText += Util.arrayToString(textVector.toArray(), "<br>\n");
+        htmlText += MyUtil.arrayToString(textVector.toArray(), "<br>\n");
         htmlText += "\n</html>";
         ep.setText(htmlText);
         ep.setEditable(false);
@@ -1691,8 +1697,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       String host = globusUrl.getHost();
       int port = globusUrl.getPort();
       
-      Vector textVector = ft.list(globusUrl, filter,
-          this.statusBar);
+      Vector textVector = ft.list(globusUrl, filter);
 
       String text = "";
       // TODO: reconsider max entries and why listing more is so slow...
@@ -1712,7 +1717,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         nameAndBytes = null;
         longName = textVector.get(i).toString();
         try{
-          nameAndBytes = Util.split(longName);
+          nameAndBytes = MyUtil.split(longName);
         }
         catch(Exception e){
         }
@@ -1799,7 +1804,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bDownload.setEnabled(false);
       bRegister.setEnabled(false);
      
-      MyThread t = new MyThread(){
+      ResThread t = new ResThread(){
         String res = null;
         MyUrlCopy urlCopy = null;
         public void run(){
@@ -1819,7 +1824,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         }
       };
       t.start();
-      if(!Util.waitForThread(t, "https", HTTP_TIMEOUT, "list", new Boolean(true))){
+      if(!MyUtil.myWaitForThread(t, "https", HTTP_TIMEOUT, "list", new Boolean(true))){
         if(statusBar!=null){
           statusBar.setLabel("List cancelled");
         }
@@ -1893,7 +1898,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   void exit(){
     //GridPilot.lastURL = ep.getPage();
     Debug.debug("Setting lastURL, "+thisUrl, 3);
-    lastURL = Util.urlDecode(thisUrl);
+    lastURL = MyUtil.urlDecode(thisUrl);
     saveHistory();
     dispose();
   }
@@ -1902,8 +1907,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
     Debug.debug("Saving history", 3);
     if(saveUrlHistory){
       try{
-        LocalStaticShellMgr.writeFile(GridPilot.browserHistoryFile,
-           Util.arrayToString(GridPilot.getClassMgr().getUrlList().toArray(),"\n"), false);
+        LocalStaticShell.writeFile(GridPilot.browserHistoryFile,
+           MyUtil.arrayToString(GridPilot.getClassMgr().getUrlList().toArray(),"\n"), false);
       }
       catch(Exception e){
         Debug.debug("WARNING: could not write history file. "+e.getMessage(), 1);
@@ -1918,12 +1923,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private void localWriteFile(String fsPath, String text) throws IOException {
     if(fsPath.endsWith("/") && (text==null || text.equals(""))){
       fsPath = fsPath.substring(0, fsPath.length()-1);
-      if(!LocalStaticShellMgr.mkdirs(fsPath)){
+      if(!LocalStaticShell.mkdirs(fsPath)){
         throw new IOException("Could not make directory "+fsPath);
       }
     }
     else if(!fsPath.endsWith("/")){
-      LocalStaticShellMgr.writeFile(fsPath, text, false);
+      LocalStaticShell.writeFile(fsPath, text, false);
     }
     else{
       throw new IOException("ERROR: Cannot write text to a directory.");
@@ -1935,7 +1940,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Delete file or directory fsPath in local file system.
    */
   private void localDeleteFile(String fsPath) throws IOException{
-    if(!LocalStaticShellMgr.deleteFile(fsPath)){
+    if(!LocalStaticShell.deleteFile(fsPath)){
       throw new IOException(fsPath+" could not be deleted.");
     }
     Debug.debug("File or directory "+fsPath+" deleted", 2);
@@ -1948,7 +1953,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * (this path must match the URL url).
    */
   private String localCreate(String fsPath) throws IOException {
-    String fileName = Util.getName("File name (end with a / to create a directory)", "");   
+    String fileName = MyUtil.getName("File name (end with a / to create a directory)", "");   
     if(fsPath==null || fileName==null){
       return null;
     }  
@@ -2146,11 +2151,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
         statusBar.setLabel(thisUrl+" uploaded");
       }
       else if(e.getSource()==bDownload){
-        final File dir = Util.getDownloadDir(this);      
+        final File dir = MyUtil.getDownloadDir(this);      
         if(dir==null){
           return;
         }
-        MyThread t = (new MyThread(){
+        ResThread t = (new ResThread(){
           public void run(){
             String href = null;
             for(Iterator it=listedUrls.iterator(); it.hasNext();){
@@ -2202,7 +2207,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   }
   
   private void registerAll(final String dbName) {
-    MyThread t = (new MyThread(){
+    ResThread t = (new ResThread(){
       public void run(){
         try{
           DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);

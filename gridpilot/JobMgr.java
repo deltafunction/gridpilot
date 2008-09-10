@@ -1,5 +1,8 @@
 package gridpilot;
 
+import gridfactory.common.ConfirmBox;
+import gridfactory.common.Debug;
+
 import java.awt.Color;
 import java.util.*;
 
@@ -13,10 +16,10 @@ import javax.swing.JProgressBar;
 public class JobMgr{
 
   private DBPluginMgr dbPluginMgr;
-  private LogFile logFile;
+  private MyLogFile logFile;
   
   // These are shared between all jobMgrs
-  private Table statusTable;
+  private MyJTable statusTable;
   private StatusBar statusBar;
   private StatisticsPanel statisticsPanel;
   /** Contains all jobs or logicalFiles (partitions) managed currently. <br>
@@ -73,7 +76,7 @@ public class JobMgr{
   // Name used for DB reservation and load
   public String dbName;
 
-  public JobMgr(String _dbName){
+  public JobMgr(String _dbName) throws Exception{
     dbName = _dbName;
     dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
     logFile = GridPilot.getClassMgr().getLogFile();
@@ -121,23 +124,19 @@ public class JobMgr{
       pb.setValue(i);
 
       if(!exists(selectedJobDefs[i])){
-        JobInfo job = new JobInfo();
-        job.setJobDefId(selectedJobDefs[i]);
+        String jobName = dbPluginMgr.getJobDefName(selectedJobDefs[i]);
+        MyJobInfo job = new MyJobInfo(selectedJobDefs[i], jobName);
 
-        int dbStatus = DBPluginMgr.getStatusId(dbPluginMgr.getJobDefStatus(job.getJobDefId()));
-        Debug.debug("job status " + dbStatus, 3);
-        String jobName = dbPluginMgr.getJobDefName(job.getJobDefId());
+        int dbStatus = DBPluginMgr.getStatusId(dbPluginMgr.getJobDefStatus(job.getIdentifier()));
         Debug.debug("Setting job db status :"+dbStatus+":", 3);
         job.setDBStatus(dbStatus);
-        Debug.debug("Setting job name :"+jobName+":", 3);
-        job.setName(jobName);
         Debug.debug("Setting job DB :"+dbName+":", 3);
         job.setDBName(dbName);
-        String jobUser = dbPluginMgr.getJobDefUserInfo(job.getJobDefId());
+        String jobUser = dbPluginMgr.getJobDefUserInfo(job.getIdentifier());
         Debug.debug("Setting job user :"+jobUser+":", 3);
-        job.setUser(jobUser);
+        job.setUserInfo(jobUser);
         try{
-          String jobID = dbPluginMgr.getRunInfo(job.getJobDefId(), "jobID");
+          String jobID = dbPluginMgr.getRunInfo(job.getIdentifier(), "jobID");
           Debug.debug("Setting job ID :"+jobID+":", 3);
           job.setJobId(jobID);
         }
@@ -145,7 +144,7 @@ public class JobMgr{
           Debug.debug(e.getCause().toString(), 2);
         }
         try{
-          String jobCS = dbPluginMgr.getRunInfo(job.getJobDefId(), "computingSystem");
+          String jobCS = dbPluginMgr.getRunInfo(job.getIdentifier(), "computingSystem");
           Debug.debug("Setting job CS :"+jobCS+":", 3);
           job.setCSName(jobCS);
         }
@@ -153,7 +152,7 @@ public class JobMgr{
           Debug.debug(e.getCause().toString(), 2);
         }
         try{
-          String jobHost = dbPluginMgr.getRunInfo(job.getJobDefId(), "hostMachine");
+          String jobHost = dbPluginMgr.getRunInfo(job.getIdentifier(), "hostMachine");
           Debug.debug("Setting job host :"+jobHost+":", 3);
           job.setHost(jobHost);
         }
@@ -161,7 +160,7 @@ public class JobMgr{
           Debug.debug(e.getCause().toString(), 2);
         }
         job.setTableRow(submittedJobs.size());
-        job.setNeedToBeRefreshed(true);
+        job.setNeedsUpdate(true);
         String stdOut = null;
         String stdErr = null;
         switch(dbStatus){
@@ -169,48 +168,48 @@ public class JobMgr{
           case DBPluginMgr.ABORTED:
           case DBPluginMgr.VALIDATED:
             Debug.debug(job.getName()+" is validated",3);
-            job.setNeedToBeRefreshed(false);
+            job.setNeedsUpdate(false);
             //job.setCSName("");
-            job.setOutputs(dbPluginMgr.getStdOutFinalDest(job.getJobDefId()),
-                           dbPluginMgr.getStdErrFinalDest(job.getJobDefId()));
+            job.setOutputs(dbPluginMgr.getStdOutFinalDest(job.getIdentifier()),
+                           dbPluginMgr.getStdErrFinalDest(job.getIdentifier()));
             break;
           case DBPluginMgr.FAILED:
           case DBPluginMgr.UNDECIDED:
             Debug.debug(job.getName()+" exited with state undecided",3);
-            stdOut = dbPluginMgr.getRunInfo(job.getJobDefId(), "outTmp");
-            stdErr = dbPluginMgr.getRunInfo(job.getJobDefId(), "errTmp");
+            stdOut = dbPluginMgr.getRunInfo(job.getIdentifier(), "outTmp");
+            stdErr = dbPluginMgr.getRunInfo(job.getIdentifier(), "errTmp");
             if(stdErr==null || stdErr.trim().length()==0 ||
                stdErr.equalsIgnoreCase("null")){
               stdErr = null;
             }
             job.setOutputs(stdOut, stdErr);
-            job.setNeedToBeRefreshed(false);
+            job.setNeedsUpdate(false);
             // ! no break
           case DBPluginMgr.UNEXPECTED:
             Debug.debug(job.getName()+" ran with unexpected errors",3);
-            stdOut = dbPluginMgr.getRunInfo(job.getJobDefId(), "outTmp");
-            stdErr = dbPluginMgr.getRunInfo(job.getJobDefId(), "errTmp");
+            stdOut = dbPluginMgr.getRunInfo(job.getIdentifier(), "outTmp");
+            stdErr = dbPluginMgr.getRunInfo(job.getIdentifier(), "errTmp");
             if(stdErr==null || stdErr.trim().length()==0 ||
                stdErr.equalsIgnoreCase("null")){
               stdErr = null;
             }
             job.setOutputs(stdOut, stdErr);
-            job.setNeedToBeRefreshed(false);
+            job.setNeedsUpdate(false);
             // ! no break
           case DBPluginMgr.SUBMITTED:
-            stdOut = dbPluginMgr.getRunInfo(job.getJobDefId(), "outTmp");
-            stdErr = dbPluginMgr.getRunInfo(job.getJobDefId(), "errTmp");
+            stdOut = dbPluginMgr.getRunInfo(job.getIdentifier(), "outTmp");
+            stdErr = dbPluginMgr.getRunInfo(job.getIdentifier(), "errTmp");
             if(stdErr==null || stdErr.trim().length()==0 ||
                stdErr.equalsIgnoreCase("null")){
               stdErr = null;
             }
             job.setOutputs(stdOut, stdErr);
-            String jobId = dbPluginMgr.getRunInfo(job.getJobDefId(), "jobId");
+            String jobId = dbPluginMgr.getRunInfo(job.getIdentifier(), "jobId");
             job.setJobId(jobId);
-            String csName = dbPluginMgr.getRunInfo(job.getJobDefId(), "computingSystem");
+            String csName = dbPluginMgr.getRunInfo(job.getIdentifier(), "computingSystem");
             if (csName==null || csName.equals("")){
-              logFile.addMessage("this job (" + job.getJobDefId() + ") doesn't have a CS defined");
-              job.setNeedToBeRefreshed(false);
+              logFile.addMessage("this job (" + job.getIdentifier() + ") doesn't have a CS defined");
+              job.setNeedsUpdate(false);
             }
             job.setCSName(csName);
             break;
@@ -218,21 +217,21 @@ public class JobMgr{
             logFile.addMessage("This status (" + dbStatus +
                                ") doesn't exist. " +
                                "The record of the job definition " +
-                               job.getJobDefId() +
+                               job.getIdentifier() +
                                " seems to be corrupted");
-            job.setNeedToBeRefreshed(false);
+            job.setNeedsUpdate(false);
             break;
         }
         submittedJobs.add(job);
         
-        Debug.debug(job.getName()+" needToBeRefreshed: "+job.needToBeRefreshed(),3);
+        Debug.debug(job.getName()+" getNeedsUpdate: "+job.getNeedsUpdate(),3);
 
         if (job.getDBStatus()==DBPluginMgr.SUBMITTED){
-          job.setInternalStatus(ComputingSystem.STATUS_WAIT);
+          job.setCSStatus(MyJobInfo.CS_STATUS_WAIT);
           if(job.getJobId()==null || job.getJobId().trim().length()==0){
             logFile.addMessage("This job is SUBMITTED but doesn't have any job id\n" +
                                "It is set to UNDECIDED", job);
-            job.setNeedToBeRefreshed(false);
+            job.setNeedsUpdate(false);
             initChanges();
             // TODO: is this necessary?
             statusTable.createRows(submittedJobs.size());
@@ -241,11 +240,11 @@ public class JobMgr{
         }
         else{
           if(job.getDBStatus()!=DBPluginMgr.DEFINED){
-            job.setInternalStatus(ComputingSystem.STATUS_DONE);
+            job.setCSStatus(MyJobInfo.CS_STATUS_DONE);
           }
         }
         //job.print();
-        Debug.debug(job.getName()+" needToBeRefreshed: "+job.needToBeRefreshed(),3);
+        Debug.debug(job.getName()+" getNeedsUpdate: "+job.getNeedsUpdate(),3);
       }
     }
 
@@ -276,7 +275,7 @@ public class JobMgr{
    * @see #updateDBCells(DBVector)
    * (from AtCom)
    */
-  public void updateDBCell(JobInfo job){
+  public void updateDBCell(MyJobInfo job){
     // Label with status Name
 
     JLabel status = new JLabel(DBPluginMgr.getStatusName(job.getDBStatus()));
@@ -322,7 +321,7 @@ public class JobMgr{
 
   /**
    * Updates DB cell for all specified jobs.
-   * @see #updateDBCell(JobInfo)
+   * @see #updateDBCell(MyJobInfo)
    * (From AtCom)
    */
   public void updateDBCells(Vector jobs){
@@ -345,7 +344,7 @@ public class JobMgr{
 
     Enumeration e = jobs.elements();
     while(e.hasMoreElements()){
-      updateDBCell((JobInfo)e.nextElement());
+      updateDBCell((MyJobInfo)e.nextElement());
     }
     //updateJobsByStatus();
 
@@ -353,13 +352,13 @@ public class JobMgr{
 
   /**
    * Updates cells for all specified jobs.
-   * @see #updateJobCell(JobInfo)
+   * @see #updateJobCell(MyJobInfo)
    * (From AtCom)
    */
   public void updateJobCells(Vector jobs){
     Enumeration e = jobs.elements();
     while(e.hasMoreElements()){
-      updateJobCell((JobInfo)e.nextElement());
+      updateJobCell((MyJobInfo)e.nextElement());
     }
   }
 
@@ -367,7 +366,7 @@ public class JobMgr{
    * Updates all fields (except DB) for this specified job.
    * (From AtCom)
    */
-  private void updateJobCell(JobInfo job){
+  private void updateJobCell(MyJobInfo job){
     int row = job.getTableRow();
     statusTable.setValueAt(job.getName(), row, FIELD_JOBNAME);
     statusTable.setValueAt(job.getJobId(), row, FIELD_JOBID);
@@ -375,8 +374,8 @@ public class JobMgr{
       statusTable.setValueAt(job.getCSName(), row, FIELD_CS);
     }
     statusTable.setValueAt(job.getDBName(), row, FIELD_DB);
-    statusTable.setValueAt(job.getUser(), row, FIELD_USER);
-    statusTable.setValueAt(job.getJobStatus(), row, FIELD_STATUS);
+    statusTable.setValueAt(job.getUserInfo(), row, FIELD_USER);
+    statusTable.setValueAt(job.getCSStatus(), row, FIELD_STATUS);
     statusTable.setValueAt(job.getHost(), row, FIELD_HOST);
   }
 
@@ -395,25 +394,25 @@ public class JobMgr{
     int doneIndex = 2;
 
     for(int i=0; i<submittedJobs.size(); ++i){
-      Debug.debug("adding job "+((JobInfo) submittedJobs.get(i)).getName()+
-          " : "+((JobInfo) submittedJobs.get(i)).getDBStatus()+
-          " : "+jobsByDBStatus[((JobInfo) submittedJobs.get(i)).getDBStatus()-1], 3);
-      ++jobsByDBStatus[((JobInfo) submittedJobs.get(i)).getDBStatus()-1];
+      Debug.debug("adding job "+((MyJobInfo) submittedJobs.get(i)).getName()+
+          " : "+((MyJobInfo) submittedJobs.get(i)).getDBStatus()+
+          " : "+jobsByDBStatus[((MyJobInfo) submittedJobs.get(i)).getDBStatus()-1], 3);
+      ++jobsByDBStatus[((MyJobInfo) submittedJobs.get(i)).getDBStatus()-1];
 
-      switch(((JobInfo) submittedJobs.get(i)).getInternalStatus()){
-        case ComputingSystem.STATUS_WAIT:
+      switch(((MyJobInfo) submittedJobs.get(i)).getStatus()){
+        case MyJobInfo.STATUS_READY:
           ++jobsByStatus[waitIndex];
           break;
 
-        case ComputingSystem.STATUS_RUNNING:
+        case MyJobInfo.STATUS_RUNNING:
           ++jobsByStatus[runIndex];
           break;
 
-        case ComputingSystem.STATUS_DONE:
+        case MyJobInfo.STATUS_DONE:
           ++jobsByStatus[doneIndex];
           break;
 
-        case ComputingSystem.STATUS_FAILED:
+        case MyJobInfo.STATUS_FAILED:
           ++jobsByStatus[doneIndex];
           break;
       }
@@ -436,12 +435,12 @@ public class JobMgr{
    * (From AtCom)
    */
   public boolean exists(String jobDefId){
-    JobInfo job;
+    MyJobInfo job;
     Debug.debug("Checking jobs: "+submittedJobs.size(), 3);
     Iterator i = submittedJobs.iterator();
     while(i.hasNext()){
-      job = ((JobInfo) i.next());
-      if(job.getJobDefId()==jobDefId){
+      job = ((MyJobInfo) i.next());
+      if(job.getIdentifier()==jobDefId){
         return true;
       }
     }
@@ -456,8 +455,8 @@ public class JobMgr{
     String lfn = dbPluginMgr.getJobDefinition(jobDefID).getValue("name").toString();
     // Remove jobs from status vectors
     for(int i=0; i<submittedJobs.size(); ++i){
-      if(((JobInfo) submittedJobs.get(i)).getName().equals(lfn)){
-        --jobsByDBStatus[((JobInfo) submittedJobs.get(i)).getDBStatus()-1];
+      if(((MyJobInfo) submittedJobs.get(i)).getName().equals(lfn)){
+        --jobsByDBStatus[((MyJobInfo) submittedJobs.get(i)).getDBStatus()-1];
         submittedJobs.remove(i);
       }
     }
@@ -478,29 +477,22 @@ public class JobMgr{
    * (from AtCom1)
    */
   public static String getJobInformation(int row){
-    JobInfo job = getJobAtRow(row);
-    int st = job.getInternalStatus();
-    String statusGridPilot = st==ComputingSystem.STATUS_WAIT ? "WAIT" :
-                             st==ComputingSystem.STATUS_RUNNING ? "RUNNING" :
-                             st==ComputingSystem.STATUS_DONE ? "DONE" :
-                             st==ComputingSystem.STATUS_ERROR ? "ERROR" :
-                             st==ComputingSystem.STATUS_FAILED ? "FAILED" :
-                             "UNKNOWN STATUS";
+    MyJobInfo job = getJobAtRow(row);
 
     return "  Name \t: " + job.getName() + "\n" +
-        "  Job definition ID \t: " + job.getJobDefId() + "\n" +
+        "  Job definition ID \t: " + job.getIdentifier() + "\n" +
         "  CS \t: " + job.getCSName() + "\n" +
         "  Job ID \t: " + job.getJobId() + "\n" +
         "  Host \t: " + job.getHost() + "\n" +
         "  Status DB \t: " + DBPluginMgr.getStatusName(job.getDBStatus()) + "\n" +
-        "  Status \t: " + job.getJobStatus() + "\n" +
-        "  Status GridPilot \t: " + statusGridPilot + "\n" +
-        "  StdOut \t: " + job.getStdOut() + "\n" +
-        "  StdErr \t: " + job.getStdErr() + "\n" +
-        (job.getDownloadFiles()==null?"":"  Download files \t: " + Util.arrayToString(job.getDownloadFiles()) + "\n") +
-        (job.getUploadFiles()==null?"":"  Upload files \t: " + Util.arrayToString(job.getUploadFiles()) + "\n") +
+        "  Status \t: " + job.getStatus() + "\n" +
+        "  Status GridPilot \t: " + MyJobInfo.getStatusName(job.getStatus()) + "\n" +
+        "  StdOut \t: " + job.getOutTmp() + "\n" +
+        "  StdErr \t: " + job.getErrTmp() + "\n" +
+        (job.getDownloadFiles()==null?"":"  Download files \t: " + MyUtil.arrayToString(job.getDownloadFiles()) + "\n") +
+        (job.getUploadFiles()==null?"":"  Upload files \t: " + MyUtil.arrayToString(job.getUploadFiles()) + "\n") +
         "  Row \t: " + job.getTableRow() + "\n" +
-        "  Updatable \t: " + job.needToBeRefreshed() ;
+        "  Updatable \t: " + job.getNeedsUpdate() ;
   }
 
   /**
@@ -512,8 +504,8 @@ public class JobMgr{
     JobInfo job = getJobAtRow(row);
     if((job.getStdOut()==null || job.getStdOut().equals("")) &&
        (job.getStdErr()==null || job.getStdErr().equals(""))){
-      job.setOutputs(dbPluginMgr.getStdOutFinalDest(job.getJobDefId()),
-                     dbPluginMgr.getStdErrFinalDest(job.getJobDefId()));
+      job.setOutputs(dbPluginMgr.getStdOutFinalDest(job.getIdentifier()),
+                     dbPluginMgr.getStdErrFinalDest(job.getIdentifier()));
     }
   }*/
 
@@ -552,12 +544,12 @@ public class JobMgr{
    * Called when a plugin indicates that this job failed.
    * In this case, validation is never done.
    */
-  public void jobFailure(JobInfo job){
+  public void jobFailure(MyJobInfo job){
     updateDBStatus(job, DBPluginMgr.FAILED);
     if(job.getDBStatus()!=DBPluginMgr.FAILED){
       logFile.addMessage("Update DB status failed after job Failure ; " +
                          " this job is put back updatable", job);
-      job.setNeedToBeRefreshed(true);
+      job.setNeedsUpdate(true);
     }
     else{
       // Resubmit job if value of resubmit spinner is larger than job.getResubmitCount().
@@ -566,7 +558,7 @@ public class JobMgr{
       Debug.debug("Checking if job should be resubmitted, "+job.getResubmitCount()+":"+resubmitNr, 2);
       if(job.getResubmitCount()>-1 && job.getResubmitCount()<resubmitNr){
         job.incrementResubmitCount();
-        logFile.addInfo("Auto-resubmitting job "+job.getJobDefId()+" : "+job.getResubmitCount()+":"+resubmitNr);
+        logFile.addInfo("Auto-resubmitting job "+job.getIdentifier()+" : "+job.getResubmitCount()+":"+resubmitNr);
         // TODO: consider doing this in a thread...
         SubmissionControl submissionControl = GridPilot.getClassMgr().getSubmissionControl();
         Vector jobVector = new Vector();
@@ -583,13 +575,13 @@ public class JobMgr{
   /**
    * Returns the submitted job with the specified jobDefinition.identifier.
    */
-  public static JobInfo getJob(String jobDefID){
+  public static MyJobInfo getJob(String jobDefID){
     Vector submJobs = GridPilot.getClassMgr().getSubmittedJobs();
     Enumeration e = submJobs.elements();
-    JobInfo job = null;
+    MyJobInfo job = null;
     while(e.hasMoreElements()){
-      job = (JobInfo) e.nextElement();
-      if(job.getJobDefId().equalsIgnoreCase(jobDefID)){
+      job = (MyJobInfo) e.nextElement();
+      if(job.getIdentifier().equalsIgnoreCase(jobDefID)){
         return job;
       }
     }
@@ -601,10 +593,10 @@ public class JobMgr{
    * Returns the job at the specified row in the statusTable
    * @see #getJobsAtRows(int[])
    */
-  public static JobInfo getJobAtRow(int row){
+  public static MyJobInfo getJobAtRow(int row){
     Vector submJobs = GridPilot.getClassMgr().getSubmittedJobs();
     //Debug.debug("Got jobs at row "+row+". "+submJobs.size(), 3);
-    return (JobInfo) submJobs.get(row);
+    return (MyJobInfo) submJobs.get(row);
   }
 
   /**
@@ -628,11 +620,11 @@ public class JobMgr{
 
   /**
    * Checks if all jobs at these specified rows are killable. <p>
-   * @see #isKillable(JobInfo)
+   * @see #isKillable(MyJobInfo)
    */
   public static boolean areKillable(int[] rows){
     for(int i = 0; i < rows.length; ++i){
-      JobInfo job = getJobAtRow(rows[i]);
+      MyJobInfo job = getJobAtRow(rows[i]);
       if(!isKillable(job))
         return false;
     }
@@ -644,21 +636,21 @@ public class JobMgr{
    * A Killable job is a job which is Submitted, and have a job Id!=null.
    * Called by :
    * <li>{@link #areKillables(int[])}
-   * <li>{@link #killJob(JobInfo)}
+   * <li>{@link #killJob(MyJobInfo)}
    * @see #areKillables(int[])
    */
-  private static boolean isKillable(JobInfo job){
+  private static boolean isKillable(MyJobInfo job){
     return job.getDBStatus()==DBPluginMgr.SUBMITTED && job.getJobId()!=null;
   }
 
   /**
    * Checks if all jobs at these specified rows are killable. <p>
    * Called by {@link MonitoringPanel#selectionEvent(javax.swing.event.ListSelectionEvent)} <p>
-   * @see #isKillable(JobInfo)
+   * @see #isKillable(MyJobInfo)
    */
   public static boolean areKillables(int[] rows) {
     for (int i = 0; i < rows.length; ++i) {
-      JobInfo job = getJobAtRow(rows[i]);
+      MyJobInfo job = getJobAtRow(rows[i]);
       if (!isKillable(job))
         return false;
     }
@@ -683,7 +675,7 @@ public class JobMgr{
    */
   public static boolean areResumbitables(int[] rows){
     for(int i = 0; i < rows.length; ++i){
-      JobInfo job = getJobAtRow(rows[i]);
+      MyJobInfo job = getJobAtRow(rows[i]);
       if(job.getDBStatus()!=DBPluginMgr.FAILED || job.getCSName().equals(""))
         return false;
     }
@@ -714,7 +706,7 @@ public class JobMgr{
    * Checks if the specified job is running.
    * A job is running iff its DB status is Submitted.
    */
-  public static boolean isRunning(JobInfo job){
+  public static boolean isRunning(MyJobInfo job){
     return job.getDBStatus()==DBPluginMgr.SUBMITTED && job.getJobId()!=null;
   }
 
@@ -741,7 +733,7 @@ public class JobMgr{
         break;
       }
       pb.setValue(i);
-      JobInfo job = getJobAtRow(rows[i]);
+      MyJobInfo job = getJobAtRow(rows[i]);
       String authorization = isTransitionAllowed(job.getDBStatus(), dbStatus);
       
       if(authorization!=null){
@@ -786,10 +778,10 @@ public class JobMgr{
       }
       updateDBStatus(job, dbStatus);
       if (isRunning(job) && job.getCSName()!=null && !job.getCSName().equals("")){
-        job.setNeedToBeRefreshed(true);
+        job.setNeedsUpdate(true);
       }
       else{
-        job.setNeedToBeRefreshed(false);
+        job.setNeedsUpdate(false);
       }
     }
     statusBar.removeProgressBar(pb);
@@ -879,7 +871,7 @@ public class JobMgr{
    *
    * (from AtCom)
    */
-  public boolean updateDBStatus(JobInfo job, int dbStatusNr) {
+  public boolean updateDBStatus(MyJobInfo job, int dbStatusNr) {
     // dbPluginMgr.updateDBStatus should be done before dereservation (otherwise you
     // could have integrity problems), but should be done after post processing
     // in case of 'Validate' (in order to avoid double access to DB)
@@ -903,7 +895,7 @@ public class JobMgr{
       case DBPluginMgr.DEFINED:
         /** Previous : V, A, F*/
 
-        if(dbPluginMgr.setJobDefsField(new String [] {job.getJobDefId()}, "status",
+        if(dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "status",
             dbStatus)){
           job.setDBStatus(dbStatusNr);
 
@@ -913,8 +905,8 @@ public class JobMgr{
               previousStatus==DBPluginMgr.ABORTED ||
               previousStatus==DBPluginMgr.UNDECIDED ||
               previousStatus==DBPluginMgr.VALIDATED){
-            if(!dbPluginMgr.cleanRunInfo(job.getJobDefId())){
-              logFile.addMessage("DB deReservePart(" + job.getJobDefId() +
+            if(!dbPluginMgr.cleanRunInfo(job.getIdentifier())){
+              logFile.addMessage("DB deReservePart(" + job.getIdentifier() +
               ") failed.\n" + dbPluginMgr.getError(), job);
             }
           }
@@ -923,12 +915,12 @@ public class JobMgr{
           if(previousStatus==DBPluginMgr.FAILED ||
               previousStatus==DBPluginMgr.UNEXPECTED ||
               previousStatus==DBPluginMgr.UNDECIDED){
-            GridPilot.getClassMgr().getCSPluginMgr().clearOutputMapping(job);
+            GridPilot.getClassMgr().getCSPluginMgr().cleanup(job);
           }
         }
         else{
           succes = false;
-          logFile.addMessage("DB updateDBStatus(" + job.getJobDefId() + ", " +
+          logFile.addMessage("DB updateDBStatus(" + job.getIdentifier() + ", " +
               dbStatus + ") failed \n" + "  -> dereservation not done.\n" +
               dbPluginMgr.getError(), job);
         }
@@ -940,32 +932,32 @@ public class JobMgr{
          * Not called after submission : reservation set DB status to submitted
          * -> called only by resubmission
          */
-        if(dbPluginMgr.setJobDefsField(new String [] {job.getJobDefId()}, "status",
+        if(dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "status",
             dbStatus)){
           job.setDBStatus(dbStatusNr);
           if(job.getCSName()!=""){
-            job.setNeedToBeRefreshed(true);
+            job.setNeedsUpdate(true);
           }
-          job.setJobStatus(null);
+          job.setStatusReady();
           updateJobCell(job);
-          job.setInternalStatus(ComputingSystem.STATUS_WAIT);
+          job.setCSStatus(MyJobInfo.CS_STATUS_WAIT);
         }
         else{
           succes = false;
-          logFile.addMessage("DB updateDBStatus(" + job.getJobDefId() + ", " +
+          logFile.addMessage("DB updateDBStatus(" + job.getIdentifier() + ", " +
               dbStatus + ") failed.\n" +
               dbPluginMgr.getError(), job);
         }
         break;
 
       case DBPluginMgr.UNDECIDED:
-        if(dbPluginMgr.setJobDefsField(new String [] {job.getJobDefId()}, "status",
+        if(dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "status",
             dbStatus)){
           job.setDBStatus(dbStatusNr);
         }
         else{
           succes = false;
-          logFile.addMessage("DB updateDBStatus(" + job.getJobDefId() + ", " +
+          logFile.addMessage("DB updateDBStatus(" + job.getIdentifier() + ", " +
               dbStatus + ") failed.\n" +
               dbPluginMgr.getError(), job);
         }
@@ -977,23 +969,23 @@ public class JobMgr{
          * clearOutputMapping, dereservation
          */
 
-        if(dbPluginMgr.setJobDefsField(new String [] {job.getJobDefId()}, "status",
+        if(dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "status",
             dbStatus)){
           if(previousStatus==DBPluginMgr.UNDECIDED ||
               previousStatus==DBPluginMgr.UNEXPECTED ||
               previousStatus==DBPluginMgr.VALIDATED){
             /** if job still has outputs, clean completely */
-            GridPilot.getClassMgr().getCSPluginMgr().clearOutputMapping(job);
+            GridPilot.getClassMgr().getCSPluginMgr().cleanup(job);
           }
           else{
             /** just dereserve */
-            dbPluginMgr.cleanRunInfo(job.getJobDefId());
+            dbPluginMgr.cleanRunInfo(job.getIdentifier());
           }
           job.setDBStatus(dbStatusNr);
         }
         else{
           succes = false;
-          logFile.addMessage("DB updateDBStatus(" + job.getJobDefId() + ", " +
+          logFile.addMessage("DB updateDBStatus(" + job.getIdentifier() + ", " +
               dbStatus + ") failed\n" +
                              "clearOutputMapping and dereservation not done.\n"+
                              dbPluginMgr.getError(),
@@ -1007,24 +999,24 @@ public class JobMgr{
          * - we want to be able to check what went wrong.
          */
 
-        if(dbPluginMgr.setJobDefsField(new String [] {job.getJobDefId()}, "status",
+        if(dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "status",
             dbStatus)){
           job.setDBStatus(dbStatusNr);
         }
         else{
           succes = false;
-          logFile.addMessage("DB updateDBStatus(" + job.getJobDefId() + ", " +
+          logFile.addMessage("DB updateDBStatus(" + job.getIdentifier() + ", " +
               dbStatus + ") failed. "+dbPluginMgr.getError(), job);
         }
         break;
 
       case DBPluginMgr.UNEXPECTED:
-        if(dbPluginMgr.setJobDefsField(new String [] {job.getJobDefId()}, "status",
+        if(dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "status",
             dbStatus)){
         }
         else{
           succes = false;
-          logFile.addMessage("DB updateDBStatus(" + job.getJobDefId() + ", " +
+          logFile.addMessage("DB updateDBStatus(" + job.getIdentifier() + ", " +
               dbStatus + ") failed. "+dbPluginMgr.getError(), job);
         }
         break;
@@ -1046,17 +1038,17 @@ public class JobMgr{
         else{
           // Stdout/stderr has now been copied to
           // final destinations and the local run dir deleted by postProcessing.
-          if(dbPluginMgr.setJobDefsField(new String [] {job.getJobDefId()}, "status",
+          if(dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "status",
               dbStatus)){
             job.setDBStatus(dbStatusNr);
           }
           else{
             succes = false;
-            logFile.addMessage("DB updateDBStatus(" + job.getJobDefId() + ", " +
+            logFile.addMessage("DB updateDBStatus(" + job.getIdentifier() + ", " +
                 dbStatus + ") failed.\n"+dbPluginMgr.getError(),
                                job);
           }
-          /*if(!dbPluginMgr.cleanRunInfo(job.getJobDefId())){
+          /*if(!dbPluginMgr.cleanRunInfo(job.getIdentifier())){
             logFile.addMessage("de-reservation of job " + job.getName() +
                                " failed", job);
           }*/

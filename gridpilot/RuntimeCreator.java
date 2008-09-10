@@ -1,5 +1,7 @@
 package gridpilot;
 
+import gridfactory.common.Debug;
+
 import javax.swing.*;
 
 /**
@@ -37,7 +39,7 @@ public class RuntimeCreator{
     int choice = 0;
     if(showResults){
       //choice = showResult();
-      choice = Util.showResult(cstAttrNames, cstAttr, "Runtime environment", 1);
+      choice = MyUtil.showResult(cstAttrNames, cstAttr, "Runtime environment", 1);
     }
     switch(choice){
       case 0  : break;  // OK
@@ -46,7 +48,7 @@ public class RuntimeCreator{
     }
     if(editing){
       String tranformationIdentifier =
-        Util.getIdentifierField(dbPluginMgr.getDBName(), "runtimeEnvironment");
+        MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "runtimeEnvironment");
       String id = "-1";
       for(int i=0; i<cstAttrNames.length; ++i){
         Debug.debug("Checking name "+tranformationIdentifier+":"+cstAttrNames[i].toString(), 3);

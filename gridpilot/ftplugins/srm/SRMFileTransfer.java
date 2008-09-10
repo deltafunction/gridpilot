@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Vector;
@@ -19,12 +20,12 @@ import org.dcache.srm.client.SRMClientV1;
 import diskCacheV111.srm.ISRM;
 import diskCacheV111.srm.RequestStatus;
 
-import gridpilot.Debug;
+import gridfactory.common.Debug;
+import gridfactory.common.FileTransfer;
 import gridpilot.StatusBar;
 import gridpilot.TransferControl;
-import gridpilot.FileTransfer;
 import gridpilot.GridPilot;
-import gridpilot.Util;
+import gridpilot.MyUtil;
 
 /**
  * Implementation of SRM version 1 support, using the dCache jar.
@@ -58,10 +59,10 @@ public class SRMFileTransfer implements FileTransfer {
   
   private static String pluginName;
 
-  public SRMFileTransfer(){
+  public SRMFileTransfer() throws IOException, GeneralSecurityException{
     pluginName = "srm";
     if(!GridPilot.firstRun){
-      user = Util.getGridSubject();
+      user = GridPilot.getClassMgr().getSSL().getGridSubject();
     }
 
     //System.setProperty("X509_CERT_DIR",
@@ -104,7 +105,7 @@ public class SRMFileTransfer implements FileTransfer {
     try{
        srm = new SRMClientV1(
            srmUrl,
-           GridPilot.getClassMgr().getGridCredential(),
+           GridPilot.getClassMgr().getSSL().getGridCredential(),
            Long.parseLong(Integer.toString(
                1000*Integer.parseInt(copyRetryTimeout))),
            Integer.parseInt(copyRetries),
@@ -122,7 +123,7 @@ public class SRMFileTransfer implements FileTransfer {
     try{
       srm = new SRMClientV1(
           srmUrl,
-          GridPilot.getClassMgr().getGridCredential(),
+          GridPilot.getClassMgr().getSSL().getGridCredential(),
           Long.parseLong(Integer.toString(
               1000*Integer.parseInt(copyRetryTimeout))),
           Integer.parseInt(copyRetries),
@@ -258,8 +259,8 @@ public class SRMFileTransfer implements FileTransfer {
     String srmSurl = null;
     String shortID = null;
 
-    String [] idArr = Util.split(fileTransferID, "::");
-    String [] head = Util.split(idArr[0], "-");
+    String [] idArr = MyUtil.split(fileTransferID, "::");
+    String [] head = MyUtil.split(idArr[0], "-");
     if(idArr.length<3){
       throw new SRMException("ERROR: malformed ID "+fileTransferID);
     }
@@ -271,7 +272,7 @@ public class SRMFileTransfer implements FileTransfer {
       String turls = fileTransferID.replaceFirst(idArr[0]+"::", "");
       turls = turls.replaceFirst(idArr[1]+"::", "");
       turls = turls.replaceFirst(idArr[2]+"::", "");
-      String [] turlArray = Util.split(turls, "' '");
+      String [] turlArray = MyUtil.split(turls, "' '");
       srcTurl = turlArray[0].replaceFirst("'", "");
       destTurl = turlArray[1].replaceFirst("'", "");
       srmSurl = turlArray[2].replaceFirst("'", "");
@@ -444,11 +445,11 @@ public class SRMFileTransfer implements FileTransfer {
       // getStatus
       ISRM srm = connect(new GlobusURL(surl));
       RequestStatus rs = srm.getRequestStatus(requestId);
-      Debug.debug("Finalizing request "+rs.requestId+" : "+rs.state+" : "+Util.arrayToString(rs.fileStatuses), 2);
+      Debug.debug("Finalizing request "+rs.requestId+" : "+rs.state+" : "+MyUtil.arrayToString(rs.fileStatuses), 2);
       // state should be one of "Ready", "Pending", "Active", "Done", "Failed".
-      //RequestStatus types: “Get”, “Put”, “Copy”, …
-      //RequestStatus states: “Pending”, “Active”, “Done”, “Failed”
-      //RequestFileStatus: “Pending”, “Ready”, “Running”, “Done”, “Failed”
+      //RequestStatus types: ï¿½Getï¿½, ï¿½Putï¿½, ï¿½Copyï¿½, ï¿½
+      //RequestStatus states: ï¿½Pendingï¿½, ï¿½Activeï¿½, ï¿½Doneï¿½, ï¿½Failedï¿½
+      //RequestFileStatus: ï¿½Pendingï¿½, ï¿½Readyï¿½, ï¿½Runningï¿½, ï¿½Doneï¿½, ï¿½Failedï¿½
       //if(rs.state.equalsIgnoreCase("Done") || rs.state.equalsIgnoreCase("Failed")){
         srm.setFileStatus(requestId, rs.fileStatuses[statusIndex].fileId, "Done");
       //}
@@ -681,7 +682,7 @@ public class SRMFileTransfer implements FileTransfer {
           StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
           statusBar.setLabel("Waiting for file(s) to be ready...");
           assignedTurls = waitForOK(thesePendingIDs);
-          Debug.debug("Assigned TURLs: "+Util.arrayToString(assignedTurls), 2);
+          Debug.debug("Assigned TURLs: "+MyUtil.arrayToString(assignedTurls), 2);
         }
         catch(Exception e){
           e.printStackTrace();
@@ -757,7 +758,7 @@ public class SRMFileTransfer implements FileTransfer {
              rs.fileStatuses[i].TURL+"' '"+destUrls[i].getURL()+
              "' '"+srcUrls[0].getURL()+"'";
         }
-        Debug.debug("Returning TURLS "+Util.arrayToString(ids), 2);
+        Debug.debug("Returning TURLS "+MyUtil.arrayToString(ids), 2);
         return ids;
       }
       else if((fromType & FILE_URL)==FILE_URL && toType==SRM_URL){
@@ -939,7 +940,7 @@ public class SRMFileTransfer implements FileTransfer {
     }
     catch(Exception e){
       throw new SRMException("ERROR: SRM problem deleting files. Could not connect "+
-          Util.arrayToString(urls)+". "+e.getMessage());
+          MyUtil.arrayToString(urls)+". "+e.getMessage());
     }
     
     try{
@@ -947,7 +948,7 @@ public class SRMFileTransfer implements FileTransfer {
     }
     catch(Exception e){
       throw new SRMException("ERROR: SRM problem deleting files "+
-          Util.arrayToString(urls)+". "+e.getMessage());
+          MyUtil.arrayToString(urls)+". "+e.getMessage());
     }
   }
 
@@ -1170,6 +1171,18 @@ public class SRMFileTransfer implements FileTransfer {
 
   public void write(GlobusURL globusUrl, String text) throws Exception {
     //  No point in implementing this. SRM is anyway not browsable.
+  }
+
+  public void getFile(GlobusURL arg0, File arg1) throws Exception {
+    getFile(arg0, arg1, null);
+  }
+
+  public Vector list(GlobusURL arg0, String arg1) throws Exception {
+    return list(arg0, arg1, null);
+  }
+
+  public void putFile(File arg0, GlobusURL arg1) throws Exception {
+    putFile(arg0, arg1, null);
   }
 
 }

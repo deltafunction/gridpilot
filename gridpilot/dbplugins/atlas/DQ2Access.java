@@ -3,12 +3,11 @@ package gridpilot.dbplugins.atlas;
 import java.io.IOException;
 import java.net.URLDecoder;
 
-import javax.swing.SwingUtilities;
-
-import gridpilot.Debug;
+import gridfactory.common.Debug;
+import gridfactory.common.ResThread;
 import gridpilot.GridPilot;
-import gridpilot.MyThread;
-import gridpilot.Util;
+import gridpilot.MySSL;
+import gridpilot.MyUtil;
 
 import org.safehaus.uuid.UUIDGenerator;
 
@@ -69,7 +68,7 @@ public class DQ2Access {
   }
   
   private void checkProxy() throws Exception{
-    MyThread t = (new MyThread(){
+    ResThread t = (new ResThread(){
       public void run(){
         if(checkingProxy){
           while(!proxyOk){
@@ -88,8 +87,8 @@ public class DQ2Access {
           proxyOk = false;
         }
         try{
-          GridPilot.getClassMgr().getGridCredential();
-          wsSecure.loadLocalProxyCertificate(Util.getProxyFile().getAbsolutePath());
+          GridPilot.getClassMgr().getSSL().getGridCredential();
+          wsSecure.loadLocalProxyCertificate(MySSL.getProxyFile().getAbsolutePath());
         }
         catch(Exception ee){
           ee.printStackTrace();
@@ -100,7 +99,7 @@ public class DQ2Access {
         }
       }
     });     
-    Util.waitForThread(t, "checkProxy", 0, "checkProxy");
+    MyUtil.waitForThread(t, "checkProxy", 0, "checkProxy");
   }
 
   /**
@@ -338,7 +337,7 @@ public class DQ2Access {
     Debug.debug("Checking proxy", 3);
     checkProxy();
     String [] keys = new String [] {"vuid", "guids"};
-    String [] values = new String [] {vuid, "['" + Util.arrayToString(guids, "', '") + "']"};
+    String [] values = new String [] {vuid, "['" + MyUtil.arrayToString(guids, "', '") + "']"};
     wsSecure.post(deleteFilesURL, keys, values);
   }
 

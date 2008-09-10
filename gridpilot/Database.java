@@ -1,5 +1,8 @@
 package gridpilot;
 
+import gridfactory.common.DBRecord;
+import gridfactory.common.DBResult;
+
 import java.sql.SQLException;
 
 public interface Database{

@@ -1,5 +1,7 @@
 package gridpilot;
 
+import gridfactory.common.Debug;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -79,7 +81,7 @@ public class DatasetUpdater{
 
     for(int i =0; i<cstAttr.length; ++i, ++row){
       if(cstAttrNames[i].equals("init")){
-        JTextArea ta = Util.createGrayTextArea(cstAttr[i]);
+        JTextArea ta = MyUtil.createGrayTextArea(cstAttr[i]);
         pResult.add(ta, new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
             GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));

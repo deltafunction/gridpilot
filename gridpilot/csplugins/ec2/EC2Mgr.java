@@ -1,18 +1,22 @@
 package gridpilot.csplugins.ec2;
 
-import gridpilot.Debug;
+import gridfactory.common.Debug;
+import gridfactory.common.LocalStaticShell;
 import gridpilot.GridPilot;
-import gridpilot.LocalStaticShellMgr;
-import gridpilot.LogFile;
+import gridpilot.MyLogFile;
 import gridpilot.TransferControl;
-import gridpilot.Util;
+import gridpilot.MyUtil;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import org.globus.gsi.GlobusCredentialException;
+import org.ietf.jgss.GSSException;
 
 import com.xerox.amazonws.ec2.EC2Exception;
 import com.xerox.amazonws.ec2.Jec2;
@@ -30,7 +34,7 @@ public class EC2Mgr {
   
   private Jec2 ec2 = null;
   private String subnet = null;
-  private LogFile logFile = null;
+  private MyLogFile logFile = null;
   private String owner = null;
   private String runDir = null;
 
@@ -92,8 +96,8 @@ public class EC2Mgr {
     keyFile = new File(runDir, KEY_NAME+"-"+
         keyInfo.getKeyFingerprint().replaceAll(":", ""));
     Debug.debug("Writing private key to "+runDir, 1);
-    LocalStaticShellMgr.writeFile(keyFile.getAbsolutePath(), keyInfo.getKeyMaterial(), false);
-    if(GridPilot.gridHomeURL!=null && !GridPilot.gridHomeURL.equals("") && Util.urlIsRemote(GridPilot.gridHomeURL)){
+    LocalStaticShell.writeFile(keyFile.getAbsolutePath(), keyInfo.getKeyMaterial(), false);
+    if(GridPilot.gridHomeURL!=null && !GridPilot.gridHomeURL.equals("") && MyUtil.urlIsRemote(GridPilot.gridHomeURL)){
       String uploadUrl = GridPilot.gridHomeURL + (GridPilot.gridHomeURL.endsWith("/")?"":"/");
       Debug.debug("Uploading private key to "+uploadUrl, 1);
       try{
@@ -139,7 +143,7 @@ public class EC2Mgr {
     try{
       reservations = listReservations();
     }
-    catch (EC2Exception e1){
+    catch (Exception e1){
       e1.printStackTrace();
       return;
     }
@@ -166,7 +170,7 @@ public class EC2Mgr {
       e1.printStackTrace();
     }
     try{
-      LocalStaticShellMgr.deleteFile(keyFile.getAbsolutePath());
+      LocalStaticShell.deleteFile(keyFile.getAbsolutePath());
     }
     catch(Exception e){
     }
@@ -226,7 +230,7 @@ public class EC2Mgr {
       if(keyFile.exists()){
         Debug.debug("Loading existing keypair "+KEY_NAME, 2);
         return new KeyPairInfo(KEY_NAME, keyInfo.getKeyFingerprint(),
-            LocalStaticShellMgr.readFile(keyFile.getAbsolutePath()));
+            LocalStaticShell.readFile(keyFile.getAbsolutePath()));
       }
       // See if we can download the private key
       String downloadUrl = GridPilot.gridHomeURL + (GridPilot.gridHomeURL.endsWith("/")?"":"/")+
@@ -237,7 +241,7 @@ public class EC2Mgr {
         if(keyFile.exists()){
           Debug.debug("Loading downloaded keypair "+KEY_NAME, 2);
           return new KeyPairInfo(KEY_NAME, keyInfo.getKeyFingerprint(),
-              LocalStaticShellMgr.readFile(keyFile.getAbsolutePath()));
+              LocalStaticShell.readFile(keyFile.getAbsolutePath()));
         }
       }
       catch(Exception e){
@@ -264,7 +268,7 @@ public class EC2Mgr {
       Debug.debug("Deleting keypair "+KEY_NAME, 2);
       ec2.deleteKeyPair(KEY_NAME);
       try{
-        LocalStaticShellMgr.deleteFile(keyFile.getAbsolutePath());
+        LocalStaticShell.deleteFile(keyFile.getAbsolutePath());
       }
       catch(Exception e){
       }
@@ -309,7 +313,7 @@ public class EC2Mgr {
    * @throws EC2Exception 
    */
   public void terminateInstances(String [] instanceIDs) throws EC2Exception{
-    Debug.debug("Terminating instance(s) "+Util.arrayToString(instanceIDs), 1);
+    Debug.debug("Terminating instance(s) "+MyUtil.arrayToString(instanceIDs), 1);
     ec2.terminateInstances(instanceIDs);
   }
   
@@ -342,8 +346,13 @@ public class EC2Mgr {
    * 
    * @return a List of elements of type ReservationDescription
    * @throws EC2Exception
+   * @throws GSSException 
+   * @throws GeneralSecurityException 
+   * @throws IOException 
+   * @throws GlobusCredentialException 
    */
-  public List listReservations() throws EC2Exception{
+  public List listReservations() throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException{
+    GridPilot.getClassMgr().getSSL().activateSSL();
     List list = new ArrayList();
     List params = new ArrayList();
     List reservations = ec2.describeInstances(params);

@@ -1,5 +1,11 @@
 package gridpilot;
 
+import gridfactory.common.ConfigFile;
+import gridfactory.common.Debug;
+import gridfactory.common.FileTransfer;
+import gridfactory.common.LocalShell;
+import gridfactory.common.LocalStaticShell;
+import gridfactory.common.Splash;
 import gridpilot.wizards.beginning.BeginningWizard;
 
 import java.awt.*;
@@ -31,6 +37,17 @@ public class GridPilot extends JApplet{
   private static JLabel exitPanel = new JLabel();
   private static JPanel topExitPanel = new JPanel();
   
+  /**
+   * List of main section headers in config file
+   */
+  public static String [] configSections =
+    {"File transfer systems", "Databases", "Computing systems"};
+  /**
+   * List of items that will not be included in the GUI preferences editor.
+   */
+  public static String [] myExcludeItems = {"Systems", "*field*", "class", "driver",
+      "parameters", "randomized", "* name", "* identifier", "* reference", "default user"};
+  public static String topConfigSection = "GridPilot";
   public static String defaultConfFileName = "gridpilot.conf";
   public static String [] preferredFileServers = null;
   public static int fileRows = 300;
@@ -52,7 +69,7 @@ public class GridPilot extends JApplet{
   public static String certFile = "~/.globus/usercert.pem";
   public static String proxyDir = "~/.globus/usercert.pem";
   public static String keyPassword = null;
-  public static String caCerts = null;
+  public static String caCertsDir = null;
   public static String dateFormatString = "yyyy-MM-dd HH:mm:ss";
   public static String [] fixedJobAttributes = {"number", "name"};
   public static String browserHistoryFile = null;
@@ -68,7 +85,6 @@ public class GridPilot extends JApplet{
   // dialog. It overrides the various thread timeouts and can be cleared only by
   // "reload values from config file"
   public static boolean waitForever = false;
-  public static boolean editingPrefs = false;
   public static boolean pullEnabled = false;
   public static int maxPullRerun = 0;
   public static boolean firstRun = false;
@@ -81,7 +97,7 @@ public class GridPilot extends JApplet{
   public GridPilot(){
     
     try{
-      getClassMgr().setLogFile(new LogFile(logFileName));
+      getClassMgr().setLogFile(new MyLogFile(logFileName));
       // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
       if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
         userConfFileName = defaultConfFileName;
@@ -90,7 +106,8 @@ public class GridPilot extends JApplet{
       userConfFile = new File(System.getProperty("user.home") + File.separator +
           userConfFileName);
       try{
-        confFile = new ConfigFile(userConfFile);
+        confFile = new ConfigFile(userConfFile, topConfigSection, configSections);
+        confFile.excludeItems = myExcludeItems;
         if(!userConfFile.exists()){
           throw new FileNotFoundException("WARNING: Configuration file "+
               userConfFile.getAbsolutePath()+" not found.");
@@ -166,7 +183,7 @@ public class GridPilot extends JApplet{
         if(!resourcesPath.endsWith("/"))
           resourcesPath = resourcesPath + "/";
       }
-      splash = new Splash(resourcesPath, "splash.png");
+      splash = new Splash(resourcesPath+"splash.png", GridPilot.class);
       jobColorMapping = getClassMgr().getConfigFile().getValues("GridPilot", "job color mapping");  
       /** Job status table header*/
       jobStatusFields = new String [] {
@@ -202,12 +219,12 @@ public class GridPilot extends JApplet{
             String sshKeyFile = GridPilot.getClassMgr().getConfigFile().getValue(csNames[i], "Ssh key file");
             String sshKeyPassword = GridPilot.getClassMgr().getConfigFile().getValue(csNames[i], "Ssh key passphrase");
             getClassMgr().setShellMgr(csNames[i],
-                new SecureShellMgr(host, user, password,
-                    sshKeyFile==null?null:new File(Util.clearTildeLocally(Util.clearFile(sshKeyFile))),
+                new MySecureShell(host, user, password,
+                    sshKeyFile==null?null:new File(MyUtil.clearTildeLocally(MyUtil.clearFile(sshKeyFile))),
                     sshKeyPassword));
            }
           else if(host!=null && (host.startsWith("localhost") || host.equals("127.0.0.1"))){
-            getClassMgr().setShellMgr(csNames[i], new LocalShellMgr());
+            getClassMgr().setShellMgr(csNames[i], new LocalShell());
           }
           else{
             // no shell used by this plugin
@@ -227,9 +244,9 @@ public class GridPilot extends JApplet{
       "grid proxy directory");
       keyPassword = getClassMgr().getConfigFile().getValue("GridPilot",
           "key password");
-      caCerts = getClassMgr().getConfigFile().getValue("GridPilot",
+      caCertsDir = getClassMgr().getConfigFile().getValue("GridPilot",
           "ca certificates");
-      if(caCerts==null){
+      if(caCertsDir==null){
         getClassMgr().getConfigFile().missingMessage(
             "GridPilot", "ca certificates");
         getClassMgr().getLogFile().addMessage(
@@ -244,10 +261,10 @@ public class GridPilot extends JApplet{
       }
       else{
         fixedJobAttributes = _fixedJobAttributes;
-        Debug.debug("Job attributes: "+Util.arrayToString(fixedJobAttributes)+" "+
+        Debug.debug("Job attributes: "+MyUtil.arrayToString(fixedJobAttributes)+" "+
             fixedJobAttributes.length, 2);
       }
-      Debug.debug("Job attributes: "+Util.arrayToString(fixedJobAttributes)+" "+
+      Debug.debug("Job attributes: "+MyUtil.arrayToString(fixedJobAttributes)+" "+
           fixedJobAttributes.length, 2);
       browserHistoryFile = getClassMgr().getConfigFile().getValue("GridPilot",
          "browser history file");
@@ -370,7 +387,7 @@ public class GridPilot extends JApplet{
       }
       String ftClass = getClassMgr().getConfigFile().getValue(ftNames[i], "Class");
       getClassMgr().setFTPlugin(ftNames[i],
-          (FileTransfer) Util.loadClass(ftClass, new Class []{}, new Object []{}));
+          (FileTransfer) MyUtil.loadClass(ftClass, new Class []{}, new Object []{}));
     }          
   }
     
@@ -489,7 +506,7 @@ public class GridPilot extends JApplet{
             delFile = ((File) tmpConfFile.get(it.next()));
             Debug.debug("Cleaning up: deleting "+delFile.getAbsolutePath(), 2);
             if(delFile.isDirectory()){
-              LocalStaticShellMgr.deleteDir(delFile);
+              LocalStaticShell.deleteDir(delFile.getAbsolutePath());
             }
             else{
               delFile.delete();
@@ -647,13 +664,15 @@ public class GridPilot extends JApplet{
             exConfFile.getAbsolutePath()+" not found.");
       }
       System.out.println("Trying to load configuration file "+exConfFile);
-      confFile = new ConfigFile(exConfFile);
+      confFile = new ConfigFile(exConfFile, topConfigSection, configSections);
+      confFile.excludeItems = myExcludeItems;
     }
     catch(Exception ee){
       System.out.println("WARNING: could not load external configuration file, " +
               "using default config file.");
       ee.printStackTrace();
-      confFile = new ConfigFile(defaultConfFileName);
+      confFile = new ConfigFile(defaultConfFileName, topConfigSection, configSections);
+      confFile.excludeItems = myExcludeItems;
     }
     getClassMgr().setConfigFile(confFile);
     
@@ -669,7 +688,6 @@ public class GridPilot extends JApplet{
     getClassMgr().getJobValidation().loadValues();
     getClassMgr().getSubmissionControl().loadValues();
     getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.statusUpdateControl.loadValues();
-    getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.reInitPulling();
     getClassMgr().getTransferStatusUpdateControl().loadValues();
     getClassMgr().getCSPluginMgr().loadValues();
     for(int i=0; i<dbNames.length; ++i){

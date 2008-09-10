@@ -1,6 +1,6 @@
 package gridpilot;
 
-import gridpilot.Debug;
+import gridfactory.common.Debug;
 
 /**
  * Evaluates arithmetic expressions with one variable.

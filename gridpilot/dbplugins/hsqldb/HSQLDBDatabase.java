@@ -24,19 +24,19 @@ import org.hsqldb.Server;
 import org.logicalcobwebs.proxool.ProxoolFacade;
 import org.safehaus.uuid.UUIDGenerator;
 
-import gridpilot.ConfigFile;
-import gridpilot.DBCache;
+import gridfactory.common.ConfigFile;
+import gridfactory.common.DBCache;
+import gridfactory.common.DBRecord;
+import gridfactory.common.DBResult;
+import gridfactory.common.Debug;
+import gridfactory.common.LogFile;
+import gridfactory.common.ResThread;
 import gridpilot.DBPluginMgr;
 import gridpilot.Database;
-import gridpilot.Debug;
 import gridpilot.GridPilot;
-import gridpilot.LogFile;
 import gridpilot.MessagePane;
-import gridpilot.MyThread;
 import gridpilot.TransferControl;
-import gridpilot.Util;
-import gridpilot.DBResult;
-import gridpilot.DBRecord;
+import gridpilot.MyUtil;
 
 public class HSQLDBDatabase extends DBCache implements Database{
   
@@ -139,16 +139,36 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     
     if(datasetFields==null || datasetFields.length<1){
-      makeTable("dataset");
+      try{
+        makeTable("dataset");
+      }
+      catch(SQLException e){
+        e.printStackTrace();
+      }
     }
     if(jobDefFields==null || jobDefFields.length<1){
-      makeTable("jobDefinition");
+      try{
+        makeTable("jobDefinition");
+      }
+      catch(SQLException e){
+        e.printStackTrace();
+      }
     }
     if(transformationFields==null || transformationFields.length<1){
-      makeTable("transformation");
+      try{
+        makeTable("transformation");
+      }
+      catch(SQLException e){
+        e.printStackTrace();
+      }
     }
     if(runtimeEnvironmentFields==null || runtimeEnvironmentFields.length<1){
-      makeTable("runtimeEnvironment");
+      try{
+        makeTable("runtimeEnvironment");
+      }
+      catch(SQLException e){
+        e.printStackTrace();
+      }
     }
     if(t_lfnFields==null || t_lfnFields.length<1){
       try{
@@ -254,8 +274,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
               false, null, null, MAX_CONNECTIONS);
         }
       }
-      getFieldNamesConn = GridPilot.getClassMgr().getDBConnection(dbName);
-      selectConn = GridPilot.getClassMgr().getDBConnection(dbName);
+      getFieldNamesConn = getDBConnection(dbName);
+      selectConn = getDBConnection(dbName);
       if(!getFieldNamesConn.isClosed()){
         return "";
       }
@@ -274,7 +294,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     String [] fields = null;
     //String [] fieldTypes = null;
     try{
-      fields = Util.split(configFile.getValue(dbName, table+" field names"), ",");
+      fields = MyUtil.split(configFile.getValue(dbName, table+" field names"), ",");
       //fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
     }
     catch(Exception e){
@@ -290,7 +310,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
 
   private void setFieldNames() throws SQLException {
     datasetFields = getFieldNames("dataset");
-    String [] dsFieldTypes = Util.split(configFile.getValue(dbName, "dataset field types"), ",");
+    String [] dsFieldTypes = MyUtil.split(configFile.getValue(dbName, "dataset field types"), ",");
     for(int i=0; i<datasetFields.length; ++i){
       datasetFieldTypes.put(datasetFields[i], dsFieldTypes[i]);
     }
@@ -310,17 +330,17 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
   }
 
-  private boolean makeTable(String table){
+  private boolean makeTable(String table) throws SQLException{
     Debug.debug("Creating table "+table, 3);
 
     if(!checkTable(table)){
       return false;
     }
     
-    Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+    Connection conn = getDBConnection(dbName);
 
-    String [] fields = Util.split(configFile.getValue(dbName, table+" field names"), ",");
-    String [] fieldTypes = Util.split(configFile.getValue(dbName, table+" field types"), ",");
+    String [] fields = MyUtil.split(configFile.getValue(dbName, table+" field names"), ",");
+    String [] fieldTypes = MyUtil.split(configFile.getValue(dbName, table+" field types"), ",");
     if(fields==null || fieldTypes==null){
       return false;
     }
@@ -391,13 +411,13 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
 
   public synchronized boolean cleanRunInfo(String jobDefID){
-    String idField = Util.getIdentifierField(dbName, "jobDefinition");
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     String sql = "UPDATE jobDefinition SET jobID = ''," +
         "outTmp = '', errTmp = '', validationResult = '' " +
         "WHERE "+idField+" = '"+jobDefID+"'";
     boolean ok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.close();
@@ -415,7 +435,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         try{
           getFieldNamesConn.close();
           selectConn.close();
-          Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+          Connection conn = getDBConnection(dbName);
           Statement stmt = conn.createStatement();
           // This must be done before exiting. Changes are done in memory
           // and only committed to disk when the compact command is issued.
@@ -439,7 +459,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         try{
           getFieldNamesConn.close();
           selectConn.close();
-          Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+          Connection conn = getDBConnection(dbName);
           Statement stmt = conn.createStatement();
           stmt.executeUpdate("SHUTDOWN COMPACT");
           conn.close();
@@ -461,13 +481,13 @@ public class HSQLDBDatabase extends DBCache implements Database{
      throws SQLException {
     Debug.debug("getFieldNames for table "+table, 3);
     if(table.equalsIgnoreCase("file")){
-      String nameField = Util.getNameField(dbName, "dataset");
-      String [] refFields = Util.getJobDefDatasetReference(dbName);
+      String nameField = MyUtil.getNameField(dbName, "dataset");
+      String [] refFields = MyUtil.getJobDefDatasetReference(dbName);
       if(!isFileCatalog()){
         return new String [] {refFields[1], nameField, "url"};
       }
       else{
-        return Util.split(configFile.getValue(dbName, "file field names"), ", ");
+        return MyUtil.split(configFile.getValue(dbName, "file field names"), ", ");
       }
     }
     else if(!checkTable(table)){
@@ -475,7 +495,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     //return new String [] {"dsn", "lfn", "pfns", "guid"};
     if(getFieldNamesConn.isClosed()){
-      getFieldNamesConn = GridPilot.getClassMgr().getDBConnection(dbName);
+      getFieldNamesConn = getDBConnection(dbName);
     }
     Statement stmt = getFieldNamesConn.createStatement();
     // TODO: Do we need to execute a query to get the metadata?
@@ -485,20 +505,20 @@ public class HSQLDBDatabase extends DBCache implements Database{
     for(int i=1; i<=md.getColumnCount(); ++i){
       res[i-1] = md.getColumnName(i);
     }
-    Debug.debug("found "+Util.arrayToString(res), 3);
+    Debug.debug("found "+MyUtil.arrayToString(res), 3);
     return res;
   }
 
   public synchronized String getTransformationID(String transName, String transVersion){
-    String idField = Util.getIdentifierField(dbName, "transformation");
-    String nameField = Util.getNameField(dbName, "transformation");
-    String versionField = Util.getVersionField(dbName, "transformation");
+    String idField = MyUtil.getIdentifierField(dbName, "transformation");
+    String nameField = MyUtil.getNameField(dbName, "transformation");
+    String versionField = MyUtil.getVersionField(dbName, "transformation");
     String req = "SELECT "+idField+" from transformation where "+nameField+" = '"+transName + "'"+
     " AND "+versionField+" = '"+transVersion+"'";
     String id = null;
     Vector vec = new Vector();
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -533,14 +553,14 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
 
   public synchronized String getRuntimeEnvironmentID(String name, String cs){
-    String nameField = Util.getNameField(dbName, "runtimeEnvironment");
-    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
+    String nameField = MyUtil.getNameField(dbName, "runtimeEnvironment");
+    String idField = MyUtil.getIdentifierField(dbName, "runtimeEnvironment");
     String req = "SELECT "+idField+" from runtimeEnvironment where "+nameField+" = '"+name + "'"+
     " AND computingSystem = '"+cs+"'";
     String id = null;
     Vector vec = new Vector();
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -574,38 +594,38 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
   }
 
-  public String [] getTransformationJobParameters(String transformationID){
+  public String [] getTransformationJobParameters(String transformationID) throws InterruptedException{
     String res = (String) getTransformation(transformationID).getValue("arguments"); 
-    return (res!=null?Util.split(res):new String [] {});
+    return (res!=null?MyUtil.split(res):new String [] {});
   }
 
-  public String [] getOutputFiles(String jobDefID){
+  public String [] getOutputFiles(String jobDefID) throws InterruptedException{
     String transformationID = getJobDefTransformationID(jobDefID);
     String outputs = (String) getTransformation(transformationID).getValue("outputFiles");
-    return (outputs!=null?Util.split(outputs):new String [] {});
+    return (outputs!=null?MyUtil.split(outputs):new String [] {});
   }
 
-  public String [] getJobDefInputFiles(String jobDefID){
+  public String [] getJobDefInputFiles(String jobDefID) throws InterruptedException{
     String inputs = (String) getJobDefinition(jobDefID).getValue("inputFileURLs");
-    return (inputs!=null?Util.split(inputs):new String [] {});
+    return (inputs!=null?MyUtil.split(inputs):new String [] {});
   }
 
-  public String [] getJobDefTransPars(String jobDefID){
+  public String [] getJobDefTransPars(String jobDefID) throws InterruptedException{
     String args = (String) getJobDefinition(jobDefID).getValue("transPars");
-    return (args!=null?Util.split(args):new String [] {});
+    return (args!=null?MyUtil.split(args):new String [] {});
   }
 
-  public String getJobDefOutLocalName(String jobDefID, String par){
+  public String getJobDefOutLocalName(String jobDefID, String par) throws InterruptedException{
     String transID = getJobDefTransformationID(jobDefID);
-    String [] fouts = Util.split((String) getTransformation(transID).getValue("outputFiles"));
+    String [] fouts = MyUtil.split((String) getTransformation(transID).getValue("outputFiles"));
     String maps = (String) getJobDefinition(jobDefID).getValue("outFileMapping");
     String[] map = null;
     try{
-      map = Util.splitUrls(maps);
+      map = MyUtil.splitUrls(maps);
     }
     catch(Exception e){
       Debug.debug("WARNING: could not split URLs "+maps, 1);
-      map = Util.split(maps);
+      map = MyUtil.split(maps);
     }
     String name = "";
     for(int i=0; i<fouts.length; i++){
@@ -616,12 +636,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
     return name;
   }
 
-  public String getJobDefOutRemoteName(String jobDefID, String par){
+  public String getJobDefOutRemoteName(String jobDefID, String par) throws InterruptedException{
     String transID = getJobDefTransformationID(jobDefID);
-    String [] fouts = Util.split((String) getTransformation(transID).getValue("outputFiles"));
+    String [] fouts = MyUtil.split((String) getTransformation(transID).getValue("outputFiles"));
     String maps = (String) getJobDefinition(jobDefID).getValue("outFileMapping");
-    Debug.debug("output file mapping: "+maps+" : "+Util.arrayToString(fouts), 3);
-    String[] map = Util.split(maps);
+    Debug.debug("output file mapping: "+maps+" : "+MyUtil.arrayToString(fouts), 3);
+    String[] map = MyUtil.split(maps);
     String name = "";
     for(int i=0; i<fouts.length; i++){
       Debug.debug("checking: "+par+"<->"+fouts[i]+" : "+map[i*2+1], 3);
@@ -634,37 +654,37 @@ public class HSQLDBDatabase extends DBCache implements Database{
     return name;
   }
   
-  public String getStdOutFinalDest(String jobDefID){
+  public String getStdOutFinalDest(String jobDefID) throws InterruptedException{
     return (String) getJobDefinition(jobDefID).getValue("stdoutDest");
   }
 
-  public String getStdErrFinalDest(String jobDefID){
+  public String getStdErrFinalDest(String jobDefID) throws InterruptedException{
     return (String) getJobDefinition(jobDefID).getValue("stderrDest");
   }
 
-  public String getTransformationScript(String jobDefID){
+  public String getTransformationScript(String jobDefID) throws InterruptedException{
     String transformationID = getJobDefTransformationID(jobDefID);
     String script = (String) getTransformation(transformationID).getValue("script");
     return script;
   }
 
-  public String [] getRuntimeEnvironments(String jobDefID){
+  public String [] getRuntimeEnvironments(String jobDefID) throws InterruptedException{
     String transformationID = getJobDefTransformationID(jobDefID);
     String rts = (String) getTransformation(transformationID).getValue("runtimeEnvironmentName");
-    return Util.split(rts);
+    return MyUtil.split(rts);
   }
 
-  public String [] getTransformationArguments(String jobDefID){
+  public String [] getTransformationArguments(String jobDefID) throws InterruptedException{
     String transformationID = getJobDefTransformationID(jobDefID);
     String args = (String) getTransformation(transformationID).getValue("arguments");
-    return Util.split(args);
+    return MyUtil.split(args);
   }
 
-  public String getTransformationRuntimeEnvironment(String transformationID){
+  public String getTransformationRuntimeEnvironment(String transformationID) throws InterruptedException{
     return (String) getTransformation(transformationID).getValue("runtimeEnvironmentName");
   }
 
-  public String getJobDefUserInfo(String jobDefinitionID){
+  public String getJobDefUserInfo(String jobDefinitionID) throws InterruptedException{
     Object userInfo = getJobDefinition(jobDefinitionID).getValue("userInfo");
     if(userInfo==null){
       return "";
@@ -674,23 +694,23 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
   }
 
-  public String getJobDefStatus(String jobDefinitionID){
+  public String getJobDefStatus(String jobDefinitionID) throws InterruptedException{
     return (String) getJobDefinition(jobDefinitionID).getValue("status");
   }
 
-  public String getJobDefName(String jobDefinitionID){
-    String nameField = Util.getNameField(dbName, "jobDefinition");
+  public String getJobDefName(String jobDefinitionID) throws InterruptedException{
+    String nameField = MyUtil.getNameField(dbName, "jobDefinition");
     return (String) getJobDefinition(jobDefinitionID).getValue(nameField);
   }
 
-  public String getJobDefDatasetID(String jobDefinitionID){
+  public String getJobDefDatasetID(String jobDefinitionID) throws InterruptedException{
     String datasetName = (String) getJobDefinition(jobDefinitionID).getValue("datasetName");
     String datasetID = getDatasetID(datasetName);
-    String idField = Util.getIdentifierField(dbName, "dataset");
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
     return (String) getDataset(datasetID).getValue(idField);
   }
 
- public String getRuntimeInitText(String runTimeEnvironmentName, String csName){
+ public String getRuntimeInitText(String runTimeEnvironmentName, String csName) throws InterruptedException{
      String id = getRuntimeEnvironmentID(runTimeEnvironmentName, csName);
      if(id==null){
        return null;
@@ -699,19 +719,19 @@ public class HSQLDBDatabase extends DBCache implements Database{
      return initTxt;
   }
 
-  public synchronized String getJobDefTransformationID(String jobDefinitionID){
+  public synchronized String getJobDefTransformationID(String jobDefinitionID) throws InterruptedException{
     DBRecord dataset = getDataset(getJobDefDatasetID(jobDefinitionID));
     String transformation = (String) dataset.getValue("transformationName");
     String version = (String) dataset.getValue("transformationVersion");
     String transID = null;
-    String idField = Util.getIdentifierField(dbName, "transformation");
-    String nameField = Util.getNameField(dbName, "transformation");
+    String idField = MyUtil.getIdentifierField(dbName, "transformation");
+    String nameField = MyUtil.getNameField(dbName, "transformation");
     String req = "SELECT "+idField+" FROM "+
        "transformation WHERE "+nameField+" = '"+transformation+"' AND version = '"+version+"'";
     Vector vec = new Vector();
     Debug.debug(req, 2);
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -818,8 +838,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
       // We replace "url" with "outFileMapping" and parse the values of
       // outFileMapping later.
       // We replace "bytes" "outputFileBytes" and "checksum" with "outputFileChecksum".
-      String sizeField = Util.getFileSizeField(dbName);
-      String checksumField = Util.getChecksumField(dbName);
+      String sizeField = MyUtil.getFileSizeField(dbName);
+      String checksumField = MyUtil.getChecksumField(dbName);
       if(req.matches("SELECT (.+) url\\, (.+) FROM file\\b(.*)")){
         patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
@@ -871,7 +891,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     
     try{
       if(selectConn.isClosed()){
-        selectConn = GridPilot.getClassMgr().getDBConnection(dbName);
+        selectConn = getDBConnection(dbName);
       }
       Statement stmt = selectConn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
@@ -899,11 +919,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
           fields[j] = "URL";
         }
         // Find the name column number
-        if(fileTable && fields[j].equalsIgnoreCase(Util.getNameField(dbName, "jobDefinition")) && 
+        if(fileTable && fields[j].equalsIgnoreCase(MyUtil.getNameField(dbName, "jobDefinition")) && 
             j!=md.getColumnCount()-1){
           nameColumn = j;
           // replace "name" with the what's defined in the config file
-          fields[j] = Util.getNameField(dbName, "file");
+          fields[j] = MyUtil.getNameField(dbName, "file");
         }
       }
       if(withStar && identifierColumn>-1){
@@ -936,7 +956,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
           else if(fileTable && urlColumn>-1 && j==urlColumn){
             // The first output file specified in outFileMapping
             // is by convention *the* output file.
-            String [] foos = Util.split(rset.getString(j+1));
+            String [] foos = MyUtil.split(rset.getString(j+1));
             String foo = "";
             if(foos.length>1){
               foo = foos[1];
@@ -970,14 +990,14 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     catch(SQLException e){
       Debug.debug(e.getMessage(),1);
-      return new DBResult();
+      return new DBResult(0, 0);
     }
   }
   
   // TODO: use getValues
   public synchronized DBRecord getDataset(String datasetID){
     
-    String idField = Util.getIdentifierField(dbName, "dataset");
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
    
     DBRecord dataset = null;
     String req = "SELECT "+datasetFields[0];
@@ -989,7 +1009,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     req += " FROM dataset";
     req += " WHERE "+idField+" = '"+ datasetID+"'";
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
       Vector datasetVector = new Vector();
@@ -1037,18 +1057,18 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
 
   public String getDatasetName(String datasetID){
-    String nameField = Util.getNameField(dbName, "dataset");
+    String nameField = MyUtil.getNameField(dbName, "dataset");
     return (String) getDataset(datasetID).getValue(nameField);
   }
 
   public synchronized String getDatasetID(String datasetName){
-    String idField = Util.getIdentifierField(dbName, "dataset");
-    String nameField = Util.getNameField(dbName, "dataset");
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
+    String nameField = MyUtil.getNameField(dbName, "dataset");
     String req = "SELECT "+idField+" from dataset where "+nameField+" = '"+datasetName + "'";
     String id = null;
     Vector vec = new Vector();
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -1088,7 +1108,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
 
   public synchronized DBRecord getRuntimeEnvironment(String runtimeEnvironmentID){
     
-    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
+    String idField = MyUtil.getIdentifierField(dbName, "runtimeEnvironment");
 
     DBRecord pack = null;
     String req = "SELECT "+runtimeEnvironmentFields[0];
@@ -1100,7 +1120,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     req += " FROM runtimeEnvironment";
     req += " WHERE "+idField+" = '"+ runtimeEnvironmentID+"'";
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
       Vector runtimeEnvironmentVector = new Vector();
@@ -1142,7 +1162,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   
   public synchronized DBRecord getTransformation(String transformationID){
     
-    String idField = Util.getIdentifierField(dbName, "transformation");
+    String idField = MyUtil.getIdentifierField(dbName, "transformation");
 
     DBRecord transformation = null;
     String req = "SELECT "+transformationFields[0];
@@ -1154,7 +1174,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     req += " FROM transformation";
     req += " WHERE "+idField+" = '"+ transformationID+"'";
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
       Vector transformationVector = new Vector();
@@ -1217,7 +1237,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
       req += " FROM runtimeEnvironment";
       Debug.debug(req, 3);
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       rset = conn.createStatement().executeQuery(req);
       Vector runtimeEnvironmentVector = new Vector();
       String [] jt = new String[runtimeEnvironmentFields.length];
@@ -1243,7 +1263,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       allRuntimeEnvironmentRecords = new DBRecord[i];
       for(int j=0; j<i; ++j){
         allRuntimeEnvironmentRecords[j] = ((DBRecord) runtimeEnvironmentVector.get(j));
-        Debug.debug("Added value "+allRuntimeEnvironmentRecords[j].getAt(0), 3);
+        Debug.debug("Added value "+allRuntimeEnvironmentRecords[j].values[0], 3);
       }
     }
     catch(SQLException e){
@@ -1269,7 +1289,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
       req += " FROM transformation";
       Debug.debug(req, 3);
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       rset = conn.createStatement().executeQuery(req);
       Vector transformationVector = new Vector();
       String [] jt = new String[transformationFields.length];
@@ -1294,7 +1314,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       for(int j=0; j<i; ++j){
         allTransformationRecords[j] = ((DBRecord) transformationVector.get(j));
         Debug.debug("Added values "+
-            Util.arrayToString(allTransformationRecords[j].values, " : "), 3);
+            MyUtil.arrayToString(allTransformationRecords[j].values, " : "), 3);
       }
     }
     catch(SQLException e){
@@ -1306,7 +1326,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   // Selects only the fields listed in fieldNames. Other fields are set to "".
   public synchronized DBRecord getJobDefinition(String jobDefinitionID){
     
-    String idField = Util.getIdentifierField(dbName, "jobDefinition");
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     
     String req = "SELECT *";
     req += " FROM jobDefinition where "+idField+" = '"+
@@ -1314,7 +1334,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -1410,7 +1430,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -1566,7 +1586,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     boolean execok = true;
     Connection conn = null;
     try{
-      conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -1598,7 +1618,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     String ofmapstr = "" ;
     String trparsstr = "" ;
     //trparsstr = Util.webEncode(trpars);
-    trparsstr = Util.arrayToString(trpars);
+    trparsstr = MyUtil.arrayToString(trpars);
     for(int i=0; i<ofmap.length; i++){  
       ofmapstr += ofmap[i] [0] + " " + ofmap[i] [1] + " ";
     }
@@ -1632,7 +1652,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       boolean execok = true;
       Connection conn = null;
       try{
-        conn = GridPilot.getClassMgr().getDBConnection(dbName);
+        conn = getDBConnection(dbName);
         Statement stmt = conn.createStatement();
         stmt.executeUpdate(arg);
         conn.commit();
@@ -1658,7 +1678,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   
   public synchronized boolean createDataset(String table,
       String [] fields, Object [] _values){
-    String idField = Util.getIdentifierField(dbName, "dataset");
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
     Object [] values = new Object [_values.length];
     for(int i=0; i<values.length; ++i){
       values[i] = _values[i];
@@ -1683,8 +1703,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
     }
     if(nonMatchedFields.size()>0){
-      Debug.debug("Could not match "+Util.arrayToString(nonMatchedFields.toArray())+
-          " with "+Util.arrayToString(datasetFields), 3);
+      Debug.debug("Could not match "+MyUtil.arrayToString(nonMatchedFields.toArray())+
+          " with "+MyUtil.arrayToString(datasetFields), 3);
     }
     String sql = "INSERT INTO "+table+" (";
     for(int i=0; i<fields.length; ++i){
@@ -1698,10 +1718,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
     sql += ") VALUES (";
     Debug.debug("Checking fields. "+
         datasetFieldTypes.keySet().size()+"\n"+
-        Util.arrayToString(datasetFieldTypes.keySet().toArray())+"\n"+
-        Util.arrayToString(datasetFieldTypes.values().toArray())+"\n"+
-        Util.arrayToString(datasetFields)+"\n"+
-        Util.arrayToString(fields), 3);
+        MyUtil.arrayToString(datasetFieldTypes.keySet().toArray())+"\n"+
+        MyUtil.arrayToString(datasetFieldTypes.values().toArray())+"\n"+
+        MyUtil.arrayToString(datasetFields)+"\n"+
+        MyUtil.arrayToString(fields), 3);
     for(int i=0; i<fields.length; ++i){
       if(!nonMatchedFields.contains(fields[i])){
         if(!nonMatchedStr.equals("") &&
@@ -1778,7 +1798,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     boolean execok = true;
     Connection conn = null;
     try{
-      conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -1835,7 +1855,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     boolean execok = true;
     Connection conn = null;
     try{
-      conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -1895,7 +1915,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     boolean execok = true;
     Connection conn = null;
     try{
-      conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -1916,7 +1936,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   
   public synchronized boolean setJobDefsField(String [] identifiers,
       String field, String value){
-    String idField = Util.getIdentifierField(dbName, "jobDefinition");
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     String sql = "UPDATE jobDefinition SET ";
     sql += field+"='"+dbEncode(value)+"' WHERE ";
     // Not very elegant, but we need to use Identifier instead of
@@ -1932,7 +1952,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -1948,7 +1968,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
   
   public boolean updateJobDefinition(String jobDefID, String [] values){
-    String nameField = Util.getNameField(dbName, "dataset");
+    String nameField = MyUtil.getNameField(dbName, "dataset");
     return updateJobDefinition(
         jobDefID,
         new String [] {"userInfo", "jobID", nameField, "outTmp", "errTmp"},
@@ -1959,7 +1979,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   public synchronized boolean updateJobDefinition(String jobDefID, String [] fields,
       String [] values){
     
-    String idField = Util.getIdentifierField(dbName, "jobDefinition");
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -2016,7 +2036,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     sql += " WHERE "+idField+"="+jobDefID;
     Debug.debug(sql, 2);
     boolean execok = true;
-    try{Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+    try{Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -2034,7 +2054,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   public synchronized boolean updateDataset(String datasetID, /*not used*/String datasetName, String [] fields,
       String [] values){
 
-    String idField = Util.getIdentifierField(dbName, "dataset");
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
 
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -2086,7 +2106,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -2104,7 +2124,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   public synchronized boolean updateTransformation(String transformationID, String [] fields,
       String [] values){
     
-    String idField = Util.getIdentifierField(dbName, "transformation");
+    String idField = MyUtil.getIdentifierField(dbName, "transformation");
     
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -2158,7 +2178,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -2176,7 +2196,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   public synchronized boolean updateRuntimeEnvironment(String runtimeEnvironmentID, String [] fields,
       String [] values){
     
-    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
+    String idField = MyUtil.getIdentifierField(dbName, "runtimeEnvironment");
     
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -2211,7 +2231,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
               values[j] = makeDate("");
             }
             else{
-              values[j] = "'"+Util.dbEncode(dbEncode(values[j]))+"'";
+              values[j] = "'"+MyUtil.dbEncode(dbEncode(values[j]))+"'";
             }
             
             sql += fields[j];
@@ -2230,7 +2250,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -2272,7 +2292,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
               toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-2]);
             }
           }
-          Debug.debug("Deleting files "+Util.arrayToString(toDeleteFiles), 2);        
+          Debug.debug("Deleting files "+MyUtil.arrayToString(toDeleteFiles), 2);        
           if(toDeleteFiles!=null){
             TransferControl.deleteFiles(toDeleteFiles);
           }
@@ -2282,13 +2302,13 @@ public class HSQLDBDatabase extends DBCache implements Database{
         }
       }
     }
-    String idField = Util.getIdentifierField(dbName, "jobDefinition");
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     boolean ok = true;
     try{
       String sql = "DELETE FROM jobDefinition WHERE "+idField+" = '"+
       jobDefId+"'";
       Debug.debug(sql, 3);
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -2303,7 +2323,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
   
   public synchronized boolean deleteDataset(String datasetID, boolean cleanup){
-    String idField = Util.getIdentifierField(dbName, "dataset");
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
     boolean ok = true;
     if(isJobRepository() && cleanup){
       ok = deleteJobDefsFromDataset(datasetID);
@@ -2317,7 +2337,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     try{
       String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
          datasetID+"'";
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -2332,12 +2352,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
 
   public synchronized boolean deleteJobDefsFromDataset(String datasetID){
-    String [] refFields = Util.getJobDefDatasetReference(dbName);
+    String [] refFields = MyUtil.getJobDefDatasetReference(dbName);
     boolean ok = true;
     try{
       String sql = "DELETE FROM jobDefinition WHERE "+refFields[1]+" = '"+
       getDatasetName(datasetID)+"'";
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -2351,12 +2371,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
 
   public synchronized boolean deleteTransformation(String transformationID){
-    String idField = Util.getIdentifierField(dbName, "transformation");
+    String idField = MyUtil.getIdentifierField(dbName, "transformation");
     boolean ok = true;
     try{
       String sql = "DELETE FROM transformation WHERE "+idField+" = '"+
       transformationID+"'";
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -2371,12 +2391,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
       
   public synchronized boolean deleteRuntimeEnvironment(String runtimeEnvironmentID){
-    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
+    String idField = MyUtil.getIdentifierField(dbName, "runtimeEnvironment");
     boolean ok = true;
     try{
       String sql = "DELETE FROM runtimeEnvironment WHERE "+idField+" = '"+
       runtimeEnvironmentID+"'";
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -2391,16 +2411,16 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
       
   public synchronized String [] getVersions(String transformation){   
-    String idField = Util.getIdentifierField(dbName, "transformation");
-    String nameField = Util.getNameField(dbName, "transformation");
-    String versionField = Util.getVersionField(dbName, "transformation");
+    String idField = MyUtil.getIdentifierField(dbName, "transformation");
+    String nameField = MyUtil.getNameField(dbName, "transformation");
+    String versionField = MyUtil.getVersionField(dbName, "transformation");
     String req = "SELECT "+idField+", "+versionField+" FROM "+
     "transformation WHERE "+nameField+" = '"+transformation+"'";
     Vector vec = new Vector();
     Debug.debug(req, 2);
     String version;
     try{
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -2439,12 +2459,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
   
   public String [] getTransformationOutputs(String transformationID){    
     String outputs = (String) getTransformation(transformationID).getValue("outputFiles");
-    return Util.split(outputs);
+    return MyUtil.split(outputs);
   }
 
   public String [] getTransformationInputs(String transformationID){    
     String inputs = (String) getTransformation(transformationID).getValue("inputFiles");
-    return Util.split(inputs);
+    return MyUtil.split(inputs);
   }
   
   public String getError(){
@@ -2482,7 +2502,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     String [] values = new String[fields.length];
     DBRecord file = new DBRecord(fields, values);
-    Debug.debug("file fields: "+Util.arrayToString(file.fields), 3);
+    Debug.debug("file fields: "+MyUtil.arrayToString(file.fields), 3);
     // If the file catalog tables (t_pfn, t_lfn, t_meta) are present,
     // we use them.
     if(isFileCatalog()){
@@ -2495,7 +2515,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
           }
           else if(fields[i].equalsIgnoreCase("lfname")){
             // TODO: we're assuming a on-to-one lfn/guid mapping. Improve.
-            String [][] val = Util.getValues(dbName, "t_lfn", "guid", fileID, new String [] {"lfname"});
+            String [][] val = MyUtil.getValues(dbName, "t_lfn", "guid", fileID, new String [] {"lfname"});
             if(val!=null && val.length>0){
               file.setValue(fields[i], val[0][0]);
             }
@@ -2503,7 +2523,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
           else if(fields[i].equalsIgnoreCase("pfname")){
             String [] pfns = new String [0];
             if(findAllPFNs!=0){
-              String [][] res = Util.getValues(dbName, "t_pfn", "guid", fileID, new String [] {"pfname"});
+              String [][] res = MyUtil.getValues(dbName, "t_pfn", "guid", fileID, new String [] {"pfname"});
               pfns = new String [res.length];
               for(int j=0; j<res.length; ++j){
                 pfns[j] = res[j][0];
@@ -2515,7 +2535,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
                 pfns = new String [] {pfns[0]};
               }
             }
-            file.setValue(fields[i], Util.arrayToString(pfns));
+            file.setValue(fields[i], MyUtil.arrayToString(pfns));
           }
           else if(fields[i].equalsIgnoreCase("guid")){
             file.setValue(fields[i], fileID);
@@ -2531,7 +2551,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
       // get the rest of the values
       DBResult res = select("SELECT " +
-          Util.arrayToString(fieldsVector.toArray(), ", ") +
+          MyUtil.arrayToString(fieldsVector.toArray(), ", ") +
             " FROM file WHERE guid = "+fileID, "guid", true);
       for(int i=0; i<fieldsVector.size(); ++i){
         try{
@@ -2558,7 +2578,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
       for(int i=0; i<jobDef.fields.length; ++i){
         if(jobDef.fields[i].equalsIgnoreCase("outFileMapping")){
-          String [] map = Util.split((String) jobDef.getValue(jobDef.fields[i]));
+          String [] map = MyUtil.split((String) jobDef.getValue(jobDef.fields[i]));
           try{
             file.setValue("url", map[1]);
           }
@@ -2585,7 +2605,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
       String [][] urls = new String [2][];
       try{
-        urls[1] = Util.splitUrls(ret);
+        urls[1] = MyUtil.splitUrls(ret);
         urls[0] = new String[urls[1].length];
         Arrays.fill(urls[0], "");
       }
@@ -2611,7 +2631,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
    * Returns the files registered for a given dataset id.
    */
   public DBResult getFiles(String datasetID){
-    String idField = Util.getIdentifierField(dbName, "dataset");
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
     DBResult res = select("SELECT * FROM file WHERE "+idField+" = "+datasetID, idField, false);
     return res;
   }
@@ -2625,7 +2645,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       final String msg = "This is a virtual file catalog - it cannot be modified directly.";
       final String title = "Table cannot be modified";
       SwingUtilities.invokeLater(
-          new MyThread(){
+          new ResThread(){
             public void run(){
               MessagePane.showMessage(msg, title);
             }
@@ -2660,8 +2680,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
     // If the dataset does not exist, create it
     if(!datasetExists){
       try{
-        String nameField = Util.getNameField(dbName, "dataset");
-        String idField = Util.getIdentifierField(dbName, "dataset");
+        String nameField = MyUtil.getNameField(dbName, "dataset");
+        String idField = MyUtil.getIdentifierField(dbName, "dataset");
         GridPilot.getClassMgr().getStatusBar().setLabel("Creating new dataset "+datasetName);
         Debug.debug("Creating new dataset; "+nameField+":"+idField+"-->"+datasetName+":"+datasetID, 3);
         if(!createDataset("dataset",
@@ -2743,7 +2763,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
     url + "', '" + fileID +"')";
     Debug.debug(sql, 2);
-    Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+    Connection conn = getDBConnection(dbName);
     Statement stmt = conn.createStatement();
     stmt.executeUpdate(sql);
     conn.commit();
@@ -2768,7 +2788,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     Debug.debug(sql, 2);
     boolean execok1 = true;
     try{
-      conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
@@ -2814,10 +2834,16 @@ public class HSQLDBDatabase extends DBCache implements Database{
 
   public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) {
     if(isFileCatalog()){
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+      Connection conn = null;
+      try{
+        conn = getDBConnection(dbName);
+      }
+      catch(SQLException e1){
+        e1.printStackTrace();
+      }
       LogFile logFile = GridPilot.getClassMgr().getLogFile();
       boolean ok = true;
-      Debug.debug("Deleting files "+Util.arrayToString(fileIDs), 2);
+      Debug.debug("Deleting files "+MyUtil.arrayToString(fileIDs), 2);
       for(int i=0; i<fileIDs.length; ++i){
         try{
           if(cleanup){
@@ -2831,7 +2857,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
               }
               Debug.debug("Deleting files "+fileNames, 2);
               if(fileNames!=null && !fileNames.equals("no such field")){
-                String [] fileNameArray = Util.splitUrls(fileNames);
+                String [] fileNameArray = MyUtil.splitUrls(fileNames);
                 if(fileNameArray!=null && fileNameArray.length>0){
                   TransferControl.deleteFiles(fileNameArray);
                 }
@@ -2885,15 +2911,15 @@ public class HSQLDBDatabase extends DBCache implements Database{
 
   private synchronized String getFileID(String lfn){
     if(isFileCatalog()){
-      String ret = Util.getValues(dbName, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
+      String ret = MyUtil.getValues(dbName, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
       return ret;
     }
     else if(isJobRepository()){
       // an autoincremented integer is of no use... Except for when pasting:
       // then we need it to get the pfns.
-      String nameField = Util.getNameField(dbName, "jobDefinition");
-      String idField = Util.getIdentifierField(dbName, "jobDefinition");
-      String ret = Util.getValues(dbName, "jobDefinition", nameField, lfn,
+      String nameField = MyUtil.getNameField(dbName, "jobDefinition");
+      String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+      String ret = MyUtil.getValues(dbName, "jobDefinition", nameField, lfn,
           new String [] {idField})[0][0];
       return ret;
     }

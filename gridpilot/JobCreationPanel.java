@@ -1,5 +1,7 @@
 package gridpilot;
 
+import gridfactory.common.Debug;
+
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
@@ -48,8 +50,8 @@ public class JobCreationPanel extends CreateEditPanel{
   public JobCreationPanel(DBPluginMgr _dbPluginMgr, DBPanel panel){
     dbPluginMgr = _dbPluginMgr;
     dbName = dbPluginMgr.getDBName();
-    Table table = panel.getTable();
-    String jobDefinitionIdentifier = Util.getIdentifierField(
+    MyJTable table = panel.getTable();
+    String jobDefinitionIdentifier = MyUtil.getIdentifierField(
         dbPluginMgr.getDBName(), "jobDefinition");
     String [] datasetFieldArray = dbPluginMgr.getFieldnames("dataset");
     for(int i=0; i<datasetFieldArray.length; ++i){
@@ -72,7 +74,7 @@ public class JobCreationPanel extends CreateEditPanel{
     // Dataset(s) selected and not editing - creating from dataset(s)
     if(table.getSelectedRows().length>0){
       datasetIDs = panel.getSelectedIdentifiers();
-      Debug.debug("Creating jobs for datasets "+Util.arrayToString(datasetIDs), 3);
+      Debug.debug("Creating jobs for datasets "+MyUtil.arrayToString(datasetIDs), 3);
     } 
 
     initGUI(datasetIDs);
@@ -165,7 +167,7 @@ public class JobCreationPanel extends CreateEditPanel{
     jobParamNames = dbPluginMgr.getTransformationJobParameters(transformationID);
     outputMapNames = dbPluginMgr.getTransformationOutputs(transformationID);
 
-    Debug.debug("Fixed job attributes: "+Util.arrayToString(cstAttributesNames), 3);
+    Debug.debug("Fixed job attributes: "+MyUtil.arrayToString(cstAttributesNames), 3);
     if(!reuseTextFields || tcCstAttributes==null ||
         tcCstAttributes.length != cstAttributesNames.length){
       tcCstAttributes = new JTextComponent[cstAttributesNames.length];
@@ -184,7 +186,7 @@ public class JobCreationPanel extends CreateEditPanel{
     int row = 0;
 
     // Constant attributes
-    Debug.debug("Job attributes: "+Util.arrayToString(cstAttributesNames), 3);
+    Debug.debug("Job attributes: "+MyUtil.arrayToString(cstAttributesNames), 3);
     detailFields.add(new JLabel("Fixed job parameters"));
     pAttributes.add((JLabel) detailFields.get(detailFields.size()-1),
         new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
@@ -218,7 +220,7 @@ public class JobCreationPanel extends CreateEditPanel{
               GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
 
       if(!reuseTextFields || tcCstAttributes[i]==null){
-        tcCstAttributes[i] = Util.createTextArea();
+        tcCstAttributes[i] = MyUtil.createTextArea();
       }
       if(metaData!=null && metaData.containsKey(cstAttributesNames[i].toLowerCase())){
         isInMetadata = true;
@@ -241,7 +243,7 @@ public class JobCreationPanel extends CreateEditPanel{
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("created") ||
           cstAttributesNames[i].equalsIgnoreCase("lastModified")){
-        Util.setJEditable(tcCstAttributes[i], false);
+        MyUtil.setJEditable(tcCstAttributes[i], false);
       }
       // TODO: disable also fields filled out by GridPilot and runtime fields
       else if(datasetFields.contains(cstAttributesNames[i].toLowerCase())){
@@ -275,7 +277,7 @@ public class JobCreationPanel extends CreateEditPanel{
     // - IF the field is left empty
     String metaDataString = (String) dbPluginMgr.getDataset(
         datasetIDs[0]).getValue("metaData");
-    metaData = Util.parseMetaData(metaDataString);    
+    metaData = MyUtil.parseMetaData(metaDataString);    
     for(int i=0; i<jobParamNames.length; ++i, ++row){
       isInMetadata = false;
       if(metaData!=null && metaData.containsKey(jobParamNames[i].toLowerCase())){
@@ -287,7 +289,7 @@ public class JobCreationPanel extends CreateEditPanel{
               GridBagConstraints.CENTER,
               GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
       if(!reuseTextFields || tcJobParam[i]==null){
-        tcJobParam[i] = Util.createTextArea();
+        tcJobParam[i] = MyUtil.createTextArea();
       }
       // The following fields will be set by JobCreator.
       // They are rather specific to HEP, but if they are
@@ -333,7 +335,7 @@ public class JobCreationPanel extends CreateEditPanel{
       else if(jobParamNames[i].equalsIgnoreCase("outputFileName")){
         String extension = ".root";
         if(outputMapNames!=null && !outputMapNames.equals("")){
-          String [] fullNameStrings = Util.split(outputMapNames[0], "\\.");
+          String [] fullNameStrings = MyUtil.split(outputMapNames[0], "\\.");
           if(fullNameStrings.length>0){
             extension = "."+fullNameStrings[fullNameStrings.length-1];
           }
@@ -374,10 +376,10 @@ public class JobCreationPanel extends CreateEditPanel{
     if(metaData!=null && metaData.containsKey("outfilemapping")){
       try{
         String om = metaData.get("outfilemapping").toString();
-        String [] outMap = Util.splitUrls(om);
+        String [] outMap = MyUtil.splitUrls(om);
         String [] outputMapNames = new String [outMap.length/2];
         outputMapValues = new String [outMap.length/2];
-        Debug.debug("Got outfilemapping: "+Util.arrayToString(outMap, "-->"), 2);
+        Debug.debug("Got outfilemapping: "+MyUtil.arrayToString(outMap, "-->"), 2);
         for(int i=0; i<outMap.length/2; ++i){
           Debug.debug(i+":"+outMap.length, 2);
           outputMapNames[i] = outMap[2*i];
@@ -404,13 +406,13 @@ public class JobCreationPanel extends CreateEditPanel{
               GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
 
       if(!reuseTextFields || tcOutputMap[i][0]==null){
-        tcOutputMap[i][0] = Util.createTextArea();
+        tcOutputMap[i][0] = MyUtil.createTextArea();
       }
       tcOutputMap[i][0].setText(outputMapNames[i]);
       tcOutputMap[i][0].setEnabled(false);
       
       Debug.debug("Finding extension from "+outputMapNames[i], 3);
-      fullNameStrings = Util.split(outputMapNames[i], "\\.");
+      fullNameStrings = MyUtil.split(outputMapNames[i], "\\.");
       if(fullNameStrings.length>0){
         extension = "."+fullNameStrings[fullNameStrings.length-1];
         Debug.debug("Extension: "+extension, 3);
@@ -427,7 +429,7 @@ public class JobCreationPanel extends CreateEditPanel{
               GridBagConstraints.BOTH, new Insets(5, 5, 5, 5), 0, 0));
 
       if(!reuseTextFields || tcOutputMap[i][1]==null){
-        tcOutputMap[i][1] = Util.createTextArea();
+        tcOutputMap[i][1] = MyUtil.createTextArea();
       }
       
       if(isInMetadata){
@@ -460,7 +462,7 @@ public class JobCreationPanel extends CreateEditPanel{
               GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));
 
       if(!reuseTextFields || tcStdOutput[i]==null){
-        tcStdOutput[i] = Util.createTextArea();
+        tcStdOutput[i] = MyUtil.createTextArea();
       }
 
       if(metaData!=null && metaData.containsKey(stdOutputNames[i])){
@@ -579,10 +581,10 @@ public class JobCreationPanel extends CreateEditPanel{
       value = null;
       if(pAttributes.getComponent(i).getClass().isInstance(new JLabel()) &&
           (pAttributes.getComponent(i+1).getClass().isInstance(new JTextField()) ||
-              pAttributes.getComponent(i+1).getClass().isInstance(Util.createTextArea()))){
+              pAttributes.getComponent(i+1).getClass().isInstance(MyUtil.createTextArea()))){
         field = ((JLabel) pAttributes.getComponent(i)).getText().replaceFirst(LABEL_END+"$", "");
         Debug.debug("field: "+field, 3);
-        value = Util.getJTextOrEmptyString((JComponent) pAttributes.getComponent(i+1));
+        value = MyUtil.getJTextOrEmptyString((JComponent) pAttributes.getComponent(i+1));
         // outputMapping, <>:<local name>:<>:<remote name>
         if(((JLabel) pAttributes.getComponent(i)).getText().endsWith(LOCAL_NAME_LABEL)){
           field = null;
@@ -598,14 +600,14 @@ public class JobCreationPanel extends CreateEditPanel{
         }
       }
       if(!outMapping.isEmpty()){
-        value = Util.arrayToString(outMapping.toArray(), " ");
+        value = MyUtil.arrayToString(outMapping.toArray(), " ");
         if(!value.trim().equals("")){
           settings.put("outFileMapping", value);
         }
       }
     }
     String origMetadata = (String) dbPluginMgr.getDataset(datasetIDs[0]).getValue("metaData");
-    String nonFieldValueMetadata = Util.getMetadataComments(origMetadata);
+    String nonFieldValueMetadata = MyUtil.getMetadataComments(origMetadata);
     String newMetadata = nonFieldValueMetadata;
     String key = null;
     for(Iterator it=settings.keySet().iterator(); it.hasNext();){

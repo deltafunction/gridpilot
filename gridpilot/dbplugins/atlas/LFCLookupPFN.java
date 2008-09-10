@@ -1,7 +1,7 @@
 package gridpilot.dbplugins.atlas;
 
-import gridpilot.Debug;
-import gridpilot.Util;
+import gridfactory.common.Debug;
+import gridpilot.MyUtil;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -59,7 +59,7 @@ public class LFCLookupPFN extends LookupPFN {
         if(!findAll && pfns!=null && pfns.length>1){
           pfns = new String [] {pfns[0]};
         }
-        Debug.debug("PFNs: "+Util.arrayToString(pfns), 2);
+        Debug.debug("PFNs: "+MyUtil.arrayToString(pfns), 2);
         break;
       }
     }

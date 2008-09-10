@@ -1,6 +1,5 @@
 package gridpilot.ftplugins.srm;
-
-import gridpilot.Debug;
+import gridfactory.common.Debug;
 import gridpilot.GridPilot;
 
 import org.dcache.srm.Logger;

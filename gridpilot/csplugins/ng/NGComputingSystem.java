@@ -2,6 +2,7 @@ package gridpilot.csplugins.ng;
 
 import java.io.*;
 import java.net.MalformedURLException;
+import java.security.GeneralSecurityException;
 import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.Date;
@@ -26,26 +27,29 @@ import org.nordugrid.model.ARCJob;
 import org.nordugrid.model.ARCResource;
 import org.nordugrid.multithread.TaskResult;
 
-import gridpilot.ComputingSystem;
-import gridpilot.ConfigFile;
-import gridpilot.ConfirmBox;
+import gridfactory.common.ConfigFile;
+import gridfactory.common.ConfirmBox;
+import gridfactory.common.Debug;
+import gridfactory.common.JobInfo;
+import gridfactory.common.LocalStaticShell;
+import gridfactory.common.Shell;
+import gridfactory.common.VirtualMachine;
+
+import gridpilot.MyComputingSystem;
 import gridpilot.DBPluginMgr;
-import gridpilot.Debug;
-import gridpilot.JobInfo;
-import gridpilot.LocalStaticShellMgr;
-import gridpilot.LogFile;
+import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
-import gridpilot.ShellMgr;
+import gridpilot.MyLogFile;
 import gridpilot.StatusBar;
 import gridpilot.TransferControl;
-import gridpilot.Util;
+import gridpilot.MyUtil;
 
 /**
  * Main class for the NorduGrid plugin. <br>
  * <p><a href="NGComputingSystem.java.html">see sources</a>
  */
 
-public class NGComputingSystem implements ComputingSystem{
+public class NGComputingSystem implements MyComputingSystem{
 
   public static final String NG_STATUS_ACCEPTED =  "ACCEPTED";
   public static final String NG_STATUS_PREPARING = "PREPARING" ;
@@ -83,7 +87,7 @@ public class NGComputingSystem implements ComputingSystem{
   private int submissionNumber = 1;
   
   private static String csName;
-  private static LogFile logFile;
+  private static MyLogFile logFile;
   private static boolean CONFIRM_RUN_DIR_CREATION = false;
   
   
@@ -100,7 +104,7 @@ public class NGComputingSystem implements ComputingSystem{
       unparsedWorkingDir = "~"+"/"+unparsedWorkingDir;
     }
     workingDir = unparsedWorkingDir;
-    workingDir = Util.clearTildeLocally(Util.clearFile(workingDir));
+    workingDir = MyUtil.clearTildeLocally(MyUtil.clearFile(workingDir));
     if(workingDir.endsWith("/") || workingDir.endsWith("\\")){
       workingDir = workingDir.substring(0, workingDir.length()-1);
     }
@@ -183,7 +187,7 @@ public class NGComputingSystem implements ComputingSystem{
       ngSubmission = new NGSubmission(csName, clusters);
     }
     
-    Debug.debug("Clusters: "+Util.arrayToString(clusters), 2);
+    Debug.debug("Clusters: "+MyUtil.arrayToString(clusters), 2);
     
     try{
       runtimeDBs = GridPilot.getClassMgr().getConfigFile().getValues(
@@ -301,11 +305,11 @@ public class NGComputingSystem implements ComputingSystem{
 
   public void updateStatus(Vector jobs){
     for(int i=0; i<jobs.size(); ++i){
-      updateStatus((JobInfo) jobs.get(i));
+      updateStatus((MyJobInfo) jobs.get(i));
     }
   }
 
-  private void updateStatus(JobInfo job){
+  private void updateStatus(MyJobInfo job){
     
     boolean doUpdate = false;
     String jobId = job.getJobId();
@@ -322,62 +326,59 @@ public class NGComputingSystem implements ComputingSystem{
 
     if(doUpdate){
       Debug.debug("Updating status of job "+job.getName(), 2);
-      if(job.getJobStatus()==null){
+      if(job.getCSStatus()==null){
         Debug.debug("No status found for job "+job.getName(), 2);
-        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+        job.setStatusError();
       }
-      else if(job.getJobStatus().equals(NG_STATUS_FINISHED)){
+      else if(job.getCSStatus().equals(NG_STATUS_FINISHED)){
         try{
           // Only sync if CE has copied stdout/stderr to final destination.
           // Otherwise, getOutput will get them (and syncCurrentOutputs will fail
           // because it will try to get them from final destination).
           DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-          String stdoutDest = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
-          String stderrDest = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+          String stdoutDest = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
+          String stderrDest = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
           if(!stdoutDest.startsWith("file:") ||
               stderrDest!=null && !stderrDest.equals("") && !stderrDest.startsWith("file:")){
             syncCurrentOutputs(job);
           }
           if(getOutput(job)){
-            job.setInternalStatus(ComputingSystem.STATUS_DONE);
+            job.setStatusDone();
           }
           else{
-            job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+            job.setStatusError();
           }
         }
         catch(Exception e){
-          job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+          job.setStatusError();
         }
       }
-      else if(job.getJobStatus().equals(NG_STATUS_FAILURE) ||
-          job.getJobStatus().equals(NG_STATUS_FAILED)){
+      else if(job.getCSStatus().equals(NG_STATUS_FAILURE) ||
+          job.getCSStatus().equals(NG_STATUS_FAILED)){
         //getOutput(job);
-        job.setInternalStatus(ComputingSystem.STATUS_FAILED);
+        job.setStatusFailed();
       }
-      else if(job.getJobStatus().equals(NG_STATUS_ERROR)){
+      else if(job.getCSStatus().equals(NG_STATUS_ERROR)){
         // try to clean up, just in case...
         //getOutput(job);
-        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+        job.setStatusError();
       }
-      else if(job.getJobStatus().equals(NG_STATUS_DELETED)){
-        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
+      else if(job.getCSStatus().equals(NG_STATUS_DELETED)){
+        job.setStatusError();
       }
-      else if(job.getJobStatus().equals(NG_STATUS_FAILED)){
-        job.setInternalStatus(ComputingSystem.STATUS_ERROR);
-      }
-      else if(job.getJobStatus().equals(NG_STATUS_INLRMSR) ||
-          job.getJobStatus().equals(NG_STATUS_INLRMSR1)){
-        job.setInternalStatus(ComputingSystem.STATUS_RUNNING);
+      else if(job.getCSStatus().equals(NG_STATUS_INLRMSR) ||
+          job.getCSStatus().equals(NG_STATUS_INLRMSR1)){
+        job.setStatusRunning();
       }
       //job.setInternalStatus(ComputingSystem.STATUS_WAIT);
       else{
-        Debug.debug("WARNING: unknown status: "+job.getJobStatus(), 1);
-        job.setInternalStatus(ComputingSystem.STATUS_WAIT);
+        Debug.debug("WARNING: unknown status: "+job.getCSStatus(), 1);
+        job.setStatusReady();
       }
     }
   }
   
-  private ARCGridFTPJob getGridJob(JobInfo job) throws ARCGridFTPJobException{
+  private ARCGridFTPJob getGridJob(MyJobInfo job) throws ARCGridFTPJobException, IOException, GeneralSecurityException{
     
     String jobID = job.getJobId().substring(job.getJobId().lastIndexOf("/"));
     int lastSlash = job.getJobId().lastIndexOf("/");
@@ -396,7 +397,7 @@ public class NGComputingSystem implements ComputingSystem{
     }
     Debug.debug("Getting job "+submissionHost +" : "+ jobID, 3);
     ARCGridFTPJob gridJob = new ARCGridFTPJob(submissionHost, jobID);
-    GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+    GSSCredential credential = GridPilot.getClassMgr().getSSL().getGridCredential();
     GlobusCredential globusCred = null;
     if(credential instanceof GlobusGSSCredentialImpl){
       globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
@@ -407,11 +408,11 @@ public class NGComputingSystem implements ComputingSystem{
   }
   
   public boolean killJobs(Vector jobsToKill){
-    JobInfo job = null;
+    MyJobInfo job = null;
     Vector errors = new Vector();
     for(Enumeration en=jobsToKill.elements(); en.hasMoreElements();){
       try{
-        job = (JobInfo) en.nextElement();
+        job = (MyJobInfo) en.nextElement();
         Debug.debug("Cleaning : " + job.getName() + ":" + job.getJobId(), 3);
         ARCGridFTPJob gridJob = getGridJob(job);
         gridJob.cancel();
@@ -425,7 +426,7 @@ public class NGComputingSystem implements ComputingSystem{
       }
     }    
     if(errors.size()!=0){
-      error = Util.arrayToString(errors.toArray());
+      error = MyUtil.arrayToString(errors.toArray());
       return false;
     }
     else{
@@ -433,11 +434,13 @@ public class NGComputingSystem implements ComputingSystem{
     }
   }
 
-  public void clearOutputMapping(JobInfo job){
+  public boolean cleanup(JobInfo job){
+    
+    boolean ret = true;
     
     // Clean job off grid. - just in case...
     try{
-      ARCGridFTPJob gridJob = getGridJob(job);
+      ARCGridFTPJob gridJob = getGridJob((MyJobInfo) job);
       gridJob.cancel();
     }
     catch(Exception e){
@@ -446,7 +449,7 @@ public class NGComputingSystem implements ComputingSystem{
       //e.printStackTrace();
     }
     try{
-      ARCGridFTPJob gridJob = getGridJob(job);
+      ARCGridFTPJob gridJob = getGridJob((MyJobInfo) job);
       gridJob.clean();
     }
     catch(Exception e){
@@ -456,11 +459,11 @@ public class NGComputingSystem implements ComputingSystem{
     }
     
     // Delete files that may have been copied to storage elements
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getIdentifier());
     try{
       for(int i=0; i<outputFileNames.length; ++i){
-        outputFileNames[i] = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFileNames[i]);
+        outputFileNames[i] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
       }
       TransferControl.deleteFiles(outputFileNames);
     }
@@ -469,8 +472,8 @@ public class NGComputingSystem implements ComputingSystem{
       Debug.debug(error, 3);
     }
     // Delete stdout/stderr that may have been copied to final destination
-    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
-    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
+    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
       try{
         TransferControl.deleteFiles(new String [] {finalStdOut});
@@ -502,12 +505,15 @@ public class NGComputingSystem implements ComputingSystem{
     String runDir = runDir(job);
     try{
       Debug.debug("Deleting runtime directory "+runDir, 2);
-      LocalStaticShellMgr.deleteDir(new File(runDir));
+      LocalStaticShell.deleteDir(runDir);
     }
     catch(Exception e){
       error = "WARNING: could not delete "+runDir+". "+e.getMessage();
       Debug.debug(error, 2);
+      ret = false;
     }
+    
+    return ret;
 
   }
 
@@ -552,7 +558,7 @@ public class NGComputingSystem implements ComputingSystem{
     }
   }
   
-  private boolean getOutput(JobInfo job){
+  private boolean getOutput(MyJobInfo job){
     
     String jobID = null;
     int lastSlash = job.getJobId().lastIndexOf("/");
@@ -568,7 +574,7 @@ public class NGComputingSystem implements ComputingSystem{
       SimpleDateFormat dateFormat = new SimpleDateFormat(GridPilot.dateFormatString);
       dateFormat.setTimeZone(TimeZone.getDefault());
       String dateString = dateFormat.format(new Date());
-      LocalStaticShellMgr.moveFile(dirName, dirName+"."+dateString);
+      LocalStaticShell.moveFile(dirName, dirName+"."+dateString);
     }
     catch(Exception ioe){
       error = "Exception during job " + job.getName() + " get output :\n" +
@@ -593,9 +599,9 @@ public class NGComputingSystem implements ComputingSystem{
     
     // Rename stdout and stderr to the name specified in the job description,
     // and move them one level up
-    if(job.getStdOut()!=null && !job.getStdOut().equals("")){      
+    if(job.getOutTmp()!=null && !job.getOutTmp().equals("")){      
       try{
-        LocalStaticShellMgr.copyFile(dirName+File.separator+"stdout", job.getStdOut());
+        LocalStaticShell.copyFile(dirName+File.separator+"stdout", job.getOutTmp());
       } 
       catch(Exception ioe){
         error = "Exception during job " + job.getName() + " getFullStatus :\n" +
@@ -604,9 +610,9 @@ public class NGComputingSystem implements ComputingSystem{
         return false;
       }
     }
-    if(job.getStdErr() != null && !job.getStdErr().equals("")){
+    if(job.getErrTmp()!=null && !job.getErrTmp().equals("")){
       try{
-        LocalStaticShellMgr.copyFile(dirName+File.separator+"stderr", job.getStdErr());
+        LocalStaticShell.copyFile(dirName+File.separator+"stderr", job.getErrTmp());
       }
       catch(Exception ioe){
         error = "Exception during job " + job.getName() + " getOutput :\n" +
@@ -656,7 +662,7 @@ public class NGComputingSystem implements ComputingSystem{
       ARCGridFTPJob gridJob;
       try{
         Debug.debug("Getting " + job.getJobId(), 3);
-        gridJob = getGridJob(job);
+        gridJob = getGridJob((MyJobInfo) job);
 
       }
       catch(Exception ioe){
@@ -787,49 +793,49 @@ public class NGComputingSystem implements ComputingSystem{
     return result;
   }
 
-  public String [] getCurrentOutputs(JobInfo job) throws IOException{
+  public String [] getCurrentOutput(JobInfo job) throws IOException{
     
-    String stdOutFile = job.getStdOut();
-    String stdErrFile = job.getStdErr();
+    String stdOutFile = job.getOutTmp();
+    String stdErrFile = job.getErrTmp();
     
     boolean resyncFirst = true;
 
     if(resyncFirst){
 
       // move existing files out of the way.
-      // - do it only if job.getStdOut is not the final destination, that is,
+      // - do it only if job.getOutTmp is not the final destination, that is,
       // if syncCurrentOutputs will not get
       // stdout/stderr from the final destination
       boolean isValidated = false;
       String dirName = runDir(job);
-      if(!LocalStaticShellMgr.existsFile(dirName) || job.getDBStatus()==DBPluginMgr.VALIDATED){
+      if(!LocalStaticShell.existsFile(dirName) || job.getDBStatus()==DBPluginMgr.VALIDATED){
         isValidated = true;
       }
       if(!isValidated && stdOutFile!=null && !stdOutFile.equals("") &&
-          LocalStaticShellMgr.existsFile(stdOutFile)){
-        LocalStaticShellMgr.moveFile(stdOutFile, stdOutFile+".bk");
+          LocalStaticShell.existsFile(stdOutFile)){
+        LocalStaticShell.moveFile(stdOutFile, stdOutFile+".bk");
       }
       if(!isValidated && stdErrFile!=null && !stdErrFile.equals("") &&
-          LocalStaticShellMgr.existsFile(stdErrFile)){
-        LocalStaticShellMgr.moveFile(stdErrFile, stdErrFile+".bk");
+          LocalStaticShell.existsFile(stdErrFile)){
+        LocalStaticShell.moveFile(stdErrFile, stdErrFile+".bk");
       }
       
       // if retrieval of files fails, move old files back in place
-      if(!syncCurrentOutputs(job)){
+      if(!syncCurrentOutputs((MyJobInfo) job)){
         if(!isValidated){
           try{
-            if(LocalStaticShellMgr.existsFile(stdOutFile+".bk")){
-              LocalStaticShellMgr.deleteFile(stdOutFile);
-              LocalStaticShellMgr.moveFile(stdOutFile+".bk", stdOutFile);
+            if(LocalStaticShell.existsFile(stdOutFile+".bk")){
+              LocalStaticShell.deleteFile(stdOutFile);
+              LocalStaticShell.moveFile(stdOutFile+".bk", stdOutFile);
             }
           }
           catch(Exception e){
             e.printStackTrace();
           }
           try{
-            if(LocalStaticShellMgr.existsFile(stdErrFile+".bk")){
-              LocalStaticShellMgr.deleteFile(stdErrFile);
-              LocalStaticShellMgr.moveFile(stdErrFile+".bk", stdErrFile);
+            if(LocalStaticShell.existsFile(stdErrFile+".bk")){
+              LocalStaticShell.deleteFile(stdErrFile);
+              LocalStaticShell.moveFile(stdErrFile+".bk", stdErrFile);
             }
           }
           catch(Exception e){
@@ -843,8 +849,8 @@ public class NGComputingSystem implements ComputingSystem{
             job.getName(), 2);
         if(!isValidated){
           try{
-            LocalStaticShellMgr.deleteFile(stdOutFile+".bk");
-            LocalStaticShellMgr.deleteFile(stdErrFile+".bk");
+            LocalStaticShell.deleteFile(stdOutFile+".bk");
+            LocalStaticShell.deleteFile(stdErrFile+".bk");
           }
           catch(Exception e){
             e.printStackTrace();
@@ -858,7 +864,7 @@ public class NGComputingSystem implements ComputingSystem{
     if(stdOutFile!=null && !stdOutFile.equals("")){
       // read stdout
       try{
-        res[0] = LocalStaticShellMgr.readFile(stdOutFile);
+        res[0] = LocalStaticShell.readFile(stdOutFile);
        }
        catch(IOException ae){
          error = "Exception during getCurrentOutputs (stdout) for " + job.getName() + ":" + job.getJobId() + ":\n" +
@@ -873,7 +879,7 @@ public class NGComputingSystem implements ComputingSystem{
     if(stdErrFile!=null && !stdErrFile.equals("")){
       // read stderr
       try{
-        res[1] = LocalStaticShellMgr.readFile(stdErrFile);
+        res[1] = LocalStaticShell.readFile(stdErrFile);
        }
        catch(Exception ae){
          error = "Exception during getCurrentOutputs (stderr) for " + job.getName() + ":" + job.getJobId() + ":\n" +
@@ -921,7 +927,7 @@ public class NGComputingSystem implements ComputingSystem{
       allJobIds.add(allJobs[i].getGlobalId());
     }
     Debug.debug("No job found matching "+job.getJobId()+
-        " The following jobs found: "+Util.arrayToString(allJobIds.toArray()), 1);
+        " The following jobs found: "+MyUtil.arrayToString(allJobIds.toArray()), 1);
     throw new ARCGridFTPJobException("No job found matching "+job.getJobId());
   }
   
@@ -1052,14 +1058,14 @@ public class NGComputingSystem implements ComputingSystem{
    * Returns true if the directory didn't exist and has been successfully
    * created.
    */
-  private boolean createMissingWorkingDir(JobInfo job){
+  private boolean createMissingWorkingDir(MyJobInfo job){
     // First check if working directory is there. If not, we may be
     // checking from another machine than the one we submitted from.
     // We just create it...
     boolean getFromfinalDest = false;
     try{
       String dirName = runDir(job);
-      if(!LocalStaticShellMgr.existsFile(dirName)){
+      if(!LocalStaticShell.existsFile(dirName)){
         int choice = -1;
         if(CONFIRM_RUN_DIR_CREATION){
           choice = (new ConfirmBox(JOptionPane.getRootFrame())).getConfirm(
@@ -1073,18 +1079,18 @@ public class NGComputingSystem implements ComputingSystem{
           choice = 0;
         }
         if(choice==0){
-          LocalStaticShellMgr.mkdirs(dirName);
+          LocalStaticShell.mkdirs(dirName);
           final String stdoutFile = unparsedWorkingDir+"/"+job.getName() + "/" + job.getName() + ".stdout";
           final String stderrFile = unparsedWorkingDir+"/"+job.getName() + "/" + job.getName() + ".stderr";
           job.setOutputs(stdoutFile, stderrFile);
           DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
           if(!dbPluginMgr.updateJobDefinition(
-              job.getJobDefId(),
-              new String []{job.getUser(), job.getJobId(), job.getName(),
-              job.getStdOut(), job.getStdErr()})){
-            logFile.addMessage("DB update(" + job.getJobDefId() + ", " +
+              job.getIdentifier(),
+              new String []{job.getUserInfo(), job.getJobId(), job.getName(),
+              job.getOutTmp(), job.getErrTmp()})){
+            logFile.addMessage("DB update(" + job.getIdentifier() + ", " +
                            job.getJobId() + ", " + job.getName() + ", " +
-                           job.getStdOut() + ", " + job.getStdErr() +
+                           job.getOutTmp() + ", " + job.getErrTmp() +
                            ") failed", job);    
           }
           getFromfinalDest = true;
@@ -1104,7 +1110,7 @@ public class NGComputingSystem implements ComputingSystem{
   }
   
   // Copy stdout+stderr to local files
-  public boolean syncCurrentOutputs(JobInfo job){
+  public boolean syncCurrentOutputs(MyJobInfo job){
     try{
       Debug.debug("Syncing " + job.getName() + ":" + job.getJobId(), 3);
       ARCGridFTPJob gridJob = getGridJob(job);
@@ -1112,21 +1118,21 @@ public class NGComputingSystem implements ComputingSystem{
       String dirName = runDir(job);
 
       DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-      String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
-      String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+      String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
+      String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
 
       boolean getFromfinalDest = createMissingWorkingDir(job);
-      if(!(getFromfinalDest || job.getJobStatus().equals(NG_STATUS_FINISHED) ||
+      if(!(getFromfinalDest || job.getCSStatus().equals(NG_STATUS_FINISHED) ||
           job.getDBStatus()==DBPluginMgr.UNDECIDED)){
         Debug.debug("Downloading stdout/err of running job: " + job.getName() + " : " + job.getJobId() +
-            " : " + job.getJobStatus()+" to " + dirName, 3);
+            " : " + job.getCSStatus()+" to " + dirName, 3);
         try{
           gridJob.getOutputFile("stdout", dirName);
-          LocalStaticShellMgr.moveFile((new File(dirName, "stdout")).getAbsolutePath(),
-              job.getStdOut());
+          LocalStaticShell.moveFile((new File(dirName, "stdout")).getAbsolutePath(),
+              job.getOutTmp());
           gridJob.getOutputFile("stderr", dirName);
-          LocalStaticShellMgr.moveFile((new File(dirName, "stderr")).getAbsolutePath(),
-              job.getStdErr());
+          LocalStaticShell.moveFile((new File(dirName, "stderr")).getAbsolutePath(),
+              job.getErrTmp());
         }
         catch(Exception e){
           // if this fails, give it a try to get from final destination;
@@ -1138,20 +1144,20 @@ public class NGComputingSystem implements ComputingSystem{
         }
       }
       
-      if(getFromfinalDest || job.getJobStatus().equals(NG_STATUS_FINISHED) ||
+      if(getFromfinalDest || job.getCSStatus().equals(NG_STATUS_FINISHED) ||
           job.getDBStatus()==DBPluginMgr.UNDECIDED){
         if(getFromfinalDest || !finalStdOut.startsWith("file:")){
           Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
               " from final destination "+finalStdOut+" to " +
-              Util.clearTildeLocally(Util.clearFile(job.getStdOut())), 3);
-          TransferControl.download(finalStdOut, new File(Util.clearTildeLocally(Util.clearFile(job.getStdOut()))),
+              MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp())), 3);
+          TransferControl.download(finalStdOut, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))),
               GridPilot.getClassMgr().getGlobalFrame().getContentPane());
         }
         if(getFromfinalDest || !finalStdErr.startsWith("file:")){
           Debug.debug("Downloading stderr of: " + job.getName() + ":" + job.getJobId()+
               " from final destination "+finalStdErr+" to " +
-              Util.clearTildeLocally(Util.clearFile(job.getStdErr())), 3);
-          TransferControl.download(finalStdErr, new File(Util.clearTildeLocally(Util.clearFile(job.getStdErr()))),
+              MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp())), 3);
+          TransferControl.download(finalStdErr, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))),
               GridPilot.getClassMgr().getGlobalFrame().getContentPane());
         }
       }
@@ -1169,7 +1175,7 @@ public class NGComputingSystem implements ComputingSystem{
   public String getUserInfo(String csName){
     String user = null;
     try{
-      user = Util.getGridSubject();
+      user = GridPilot.getClassMgr().getSSL().getGridSubject();
     }
     catch(Exception ioe){
       error = "Exception during getUserInfo\n" +
@@ -1191,11 +1197,11 @@ public class NGComputingSystem implements ComputingSystem{
 
   public boolean postProcess(JobInfo job){
     Debug.debug("PostProcessing for job " + job.getName(), 2);
-    if(copyToFinalDest(job)){
+    if(copyToFinalDest((MyJobInfo) job)){
       try{
         // Delete the local run directory
         String runDir = runDir(job);
-        LocalStaticShellMgr.deleteDir(new File(runDir));
+        LocalStaticShell.deleteDir(runDir);
       }
       catch(Exception e){
         error = e.getMessage();
@@ -1203,7 +1209,7 @@ public class NGComputingSystem implements ComputingSystem{
       }
       // Clean the job off the grid
       try{
-        ARCGridFTPJob gridJob = getGridJob(job);
+        ARCGridFTPJob gridJob = getGridJob((MyJobInfo) job);
         gridJob.clean();
       }
       catch(Exception e){
@@ -1225,7 +1231,7 @@ public class NGComputingSystem implements ComputingSystem{
     // preserve ~ in tmp stdout/stderr, so checking from another machine might work
     final String stdoutFile = unparsedWorkingDir+"/"+job.getName() + "/" + job.getName() + ".stdout";
     final String stderrFile = unparsedWorkingDir+"/"+job.getName() + "/" + job.getName() + ".stderr";
-    job.setOutputs(stdoutFile, stderrFile);
+    ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     // input files are already there
     return true;
   }
@@ -1236,10 +1242,10 @@ public class NGComputingSystem implements ComputingSystem{
    * @return <code>true</code> if the move went ok, <code>false</code> otherwise.
    * (from AtCom1)
    */
-  private boolean copyToFinalDest(JobInfo job){
+  private boolean copyToFinalDest(MyJobInfo job){
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getJobDefId());
-    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getJobDefId());
+    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
+    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
     boolean ok = true;
     
     /**
@@ -1251,13 +1257,13 @@ public class NGComputingSystem implements ComputingSystem{
     if(lastSlash>-1){
       jobID = job.getJobId().substring(lastSlash + 1);
     }
-    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
+    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getIdentifier());
     String localName = null;
     String remoteName = null;
     for(int i=0; i<outputFileNames.length; ++i){
       try{
-        localName = dbPluginMgr.getJobDefOutLocalName(job.getJobDefId(), outputFileNames[i]);
-        remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFileNames[i]);
+        localName = dbPluginMgr.getJobDefOutLocalName(job.getIdentifier(), outputFileNames[i]);
+        remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
         if(remoteName.startsWith("file:")){
           TransferControl.upload(
               new File(runDir(job)+File.separator+jobID+File.separator+localName),
@@ -1289,8 +1295,8 @@ public class NGComputingSystem implements ComputingSystem{
       try{
         // this has already been done by doValidate --> getCurrentOutputs
         //syncCurrentOutputs(job);
-        if(!LocalStaticShellMgr.existsFile(job.getStdOut())){
-          logFile.addMessage("Post-processing : File " + job.getStdOut() + " doesn't exist");
+        if(!LocalStaticShell.existsFile(job.getOutTmp())){
+          logFile.addMessage("Post-processing : File " + job.getOutTmp() + " doesn't exist");
           ok = false;
         }
       }
@@ -1301,13 +1307,13 @@ public class NGComputingSystem implements ComputingSystem{
         logFile.addMessage(error, e);
         ok = false;
       }
-      Debug.debug("Post-processing : Moving " + job.getStdOut() + " -> " + finalStdOut, 2);
+      Debug.debug("Post-processing : Moving " + job.getOutTmp() + " -> " + finalStdOut, 2);
       try{
-        File stdoutSourceFile = new File(Util.clearTildeLocally(Util.clearFile(job.getStdOut())));
+        File stdoutSourceFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp())));
         emptyFile = finalStdOut.startsWith("https") && stdoutSourceFile.length()==0;
         TransferControl.upload(stdoutSourceFile, finalStdOut,
             GridPilot.getClassMgr().getGlobalFrame().getContentPane());
-        job.setStdOut(finalStdOut);
+        job.setOutTmp(finalStdOut);
       }
       catch(Throwable e){
         error = "ERROR copying stdout: "+e.getMessage();
@@ -1329,8 +1335,8 @@ public class NGComputingSystem implements ComputingSystem{
             finalStdErr.startsWith("httpg://") ||
             finalStdOut.startsWith("https://"))){
       try{
-        if(!LocalStaticShellMgr.existsFile(job.getStdErr())){
-          logFile.addMessage("Post-processing : File " + job.getStdErr() + " doesn't exist");
+        if(!LocalStaticShell.existsFile(job.getErrTmp())){
+          logFile.addMessage("Post-processing : File " + job.getErrTmp() + " doesn't exist");
           return false;
         }
       }
@@ -1341,13 +1347,13 @@ public class NGComputingSystem implements ComputingSystem{
         logFile.addMessage(error, e);
         ok = false;
       }
-      Debug.debug("Post processing : Moving " + job.getStdErr() + " -> " + finalStdErr,2);
+      Debug.debug("Post processing : Moving " + job.getErrTmp() + " -> " + finalStdErr,2);
       try{
-        File stderrSourceFile = new File(Util.clearTildeLocally(Util.clearFile(job.getStdErr())));
+        File stderrSourceFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp())));
         emptyFile = finalStdOut.startsWith("https") && stderrSourceFile.length()==0;
         TransferControl.upload(stderrSourceFile, finalStdErr,
             GridPilot.getClassMgr().getGlobalFrame().getContentPane());
-        job.setStdErr(finalStdErr);
+        job.setErrTmp(finalStdErr);
       }
       catch(Throwable e){
         error = "ERROR copying stderr: "+e.getMessage();
@@ -1363,7 +1369,7 @@ public class NGComputingSystem implements ComputingSystem{
    * Extracts the ng status status of the job and updates job status with job.setJobStatus().
    * Returns false if the status has changed, true otherwise.
    */
-  private static boolean extractStatus(JobInfo job, String line){
+  private static boolean extractStatus(MyJobInfo job, String line){
 
     // host
     if(job.getHost()==null){
@@ -1379,7 +1385,7 @@ public class NGComputingSystem implements ComputingSystem{
     String status = getValueOf("Status", line);
     Debug.debug("Got Status: "+status, 2);
     if(status==null){
-      job.setJobStatus(NGComputingSystem.NG_STATUS_ERROR);
+      job.setCSStatus(NG_STATUS_ERROR);
       Debug.debug(
           "Status not found for job " + job.getName() +" : \n" + line, 2);
       return true;
@@ -1392,15 +1398,15 @@ public class NGComputingSystem implements ComputingSystem{
           GridPilot.getClassMgr().getLogFile().addMessage("Error at end of job " +
               job.getName() + " :\n" +
               line.substring(errorBegin, line.indexOf("\n", errorBegin)));
-          job.setJobStatus(NGComputingSystem.NG_STATUS_FAILURE);
+          job.setCSStatus(NG_STATUS_FAILURE);
           return true;
         }
       }
-      if(job.getJobStatus()!=null && job.getJobStatus().equals(status)){
+      if(job.getCSStatus()!=null && job.getCSStatus().equals(status)){
         return false;
       }
       else{
-        job.setJobStatus(status);
+        job.setCSStatus(status);
         return true;
       }
     }
@@ -1427,12 +1433,28 @@ public class NGComputingSystem implements ComputingSystem{
     return res;
   }
   
-  public String getError(String csName){
+  public String getError(){
     return error;
   }
   
-  public ShellMgr getShellMgr(JobInfo job){
+  public Shell getShell(JobInfo job){
     return null;
+  }
+
+  public long getRunningTime(JobInfo arg0) {
+    return -1;
+  }
+
+  public VirtualMachine getVM(JobInfo arg0) {
+    return null;
+  }
+
+  public boolean pauseJobs(Vector<JobInfo> arg0) {
+    return false;
+  }
+
+  public boolean resumeJobs(Vector<JobInfo> arg0) {
+    return false;
   }
 
 }

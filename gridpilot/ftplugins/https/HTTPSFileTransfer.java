@@ -3,6 +3,7 @@ package gridpilot.ftplugins.https;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.security.GeneralSecurityException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -15,13 +16,13 @@ import org.globus.io.urlcopy.UrlCopyException;
 import org.globus.util.GlobusURL;
 import org.ietf.jgss.GSSCredential;
 
-import gridpilot.Debug;
-import gridpilot.FileTransfer;
-import gridpilot.LocalStaticShellMgr;
+import gridfactory.common.Debug;
+import gridfactory.common.FileTransfer;
+import gridfactory.common.LocalStaticShell;
+import gridfactory.common.ResThread;
 import gridpilot.GridPilot;
-import gridpilot.MyThread;
 import gridpilot.StatusBar;
-import gridpilot.Util;
+import gridpilot.MyUtil;
 
 public class HTTPSFileTransfer implements FileTransfer {
   
@@ -41,11 +42,11 @@ public class HTTPSFileTransfer implements FileTransfer {
   protected final static String STATUS_ERROR = "Error";
 
 
-  public HTTPSFileTransfer(){
+  public HTTPSFileTransfer() throws IOException, GeneralSecurityException{
     PLUGIN_NAME = "https";
     if(!GridPilot.firstRun){
       Debug.debug("getting identity", 3);
-      user = Util.getGridSubject();
+      user = GridPilot.getClassMgr().getSSL().getGridSubject();
     }
     jobs = new HashMap();
     urlCopyTransferListeners = new HashMap();
@@ -104,6 +105,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       }
       urlCopy.setSourceAuthorization(null);
       urlCopy.setDestinationAuthorization(null);*/
+      GridPilot.getClassMgr().getSSL().activateSSL();
       urlCopy = new MyUrlCopy();
       urlCopy.setSourceUrl(srcUrl);
       urlCopy.setDestinationUrl(destUrl);
@@ -135,7 +137,8 @@ public class HTTPSFileTransfer implements FileTransfer {
     try{
       urlCopy = new MyUrlCopy();
       urlCopy.setSourceUrl(srcUrl);
-      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
+      GridPilot.getClassMgr().getSSL().activateSSL();
+      GSSCredential credential = GridPilot.getClassMgr().getSSL().getCredential();
       if(srcUrl.getProtocol().equalsIgnoreCase("https")){
         urlCopy.setSourceCredentials(credential);
         urlCopy.setDestinationCredentials(credential);
@@ -174,7 +177,7 @@ public class HTTPSFileTransfer implements FileTransfer {
     final String id = globusUrl.getURL()+"::"+downloadDirOrFile.getAbsolutePath();
     
     Debug.debug("Getting "+globusUrl.getURL(), 3);
-    (new MyThread(){
+    (new ResThread(){
       public void run(){
         if(statusBar!=null){
           statusBar.setLabel("Getting "+globusUrl.getURL());
@@ -195,10 +198,10 @@ public class HTTPSFileTransfer implements FileTransfer {
     fileTransfers.put(id, urlCopy);
 
     // Leave this outside of thread to avoid deadlock when querying for password.
-    GridPilot.getClassMgr().getGridCredential();
+    GridPilot.getClassMgr().getSSL().activateSSL();
 
     Debug.debug("Downloading "+globusUrl.getURL()+"->"+downloadFile.getAbsolutePath(), 3);
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       public void run(){
         try{
           urlCopy.copy();
@@ -210,7 +213,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       }
     };
     t.start();
-    if(!Util.waitForThread(t, "https", COPY_TIMEOUT, "getFile")){
+    if(!MyUtil.waitForThread(t, "https", COPY_TIMEOUT, "getFile")){
       if(statusBar!=null){
         statusBar.setLabel("Download cancelled");
       }
@@ -240,7 +243,7 @@ public class HTTPSFileTransfer implements FileTransfer {
     
     final String id = file.getAbsolutePath() +"::"+ globusFileUrl.getURL();
     
-    (new MyThread(){
+    (new ResThread(){
       public void run(){
         if(statusBar!=null){
           statusBar.setLabel("Uploading "+globusFileUrl.getURL());
@@ -262,9 +265,9 @@ public class HTTPSFileTransfer implements FileTransfer {
     final MyUrlCopy urlCopy = myConnect(fileURL, uploadUrl);
 
     // Leave this outside of thread to avoid deadlock when querying for password.
-    GridPilot.getClassMgr().getGridCredential();
+    GridPilot.getClassMgr().getSSL().activateSSL();
 
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       public void run(){
         try{
           fileTransfers.put(id, urlCopy);
@@ -276,7 +279,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       }
     };
     t.start();
-    if(!Util.waitForThread(t, "https", COPY_TIMEOUT, "putFile")){
+    if(!MyUtil.waitForThread(t, "https", COPY_TIMEOUT, "putFile")){
       if(statusBar!=null){
         statusBar.setLabel("Upload cancelled");
       }
@@ -315,7 +318,7 @@ public class HTTPSFileTransfer implements FileTransfer {
   public void deleteFiles(GlobusURL [] globusUrls) throws
      IOException, UrlCopyException{
     
-    Debug.debug("delete "+Util.arrayToString(globusUrls), 3);
+    Debug.debug("delete "+MyUtil.arrayToString(globusUrls), 3);
     
     for(int i=0; i<globusUrls.length; ++i){
       try{
@@ -341,7 +344,7 @@ public class HTTPSFileTransfer implements FileTransfer {
    */
   public String create(GlobusURL globusUrlDir)
      throws Exception{
-    String fileName = Util.getName("File name (end with a / to create a directory)", "");   
+    String fileName = MyUtil.getName("File name (end with a / to create a directory)", "");   
     if(fileName==null){
       return null;
     }
@@ -369,7 +372,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       }
       else if(!globusUrl.getPath().endsWith("/")){
         tmpFile = File.createTempFile("gridpilot.", ".txt");
-        LocalStaticShellMgr.writeFile(tmpFile.getAbsolutePath(), text, false);
+        LocalStaticShell.writeFile(tmpFile.getAbsolutePath(), text, false);
         Debug.debug("Created temp file "+tmpFile, 3);
         String fileName = globusUrl.getPath().replaceFirst(".*/([^/]+)", "$1");
         Debug.debug("Uploading "+tmpFile.getAbsolutePath()+" --> "+fileName, 3);
@@ -400,7 +403,7 @@ public class HTTPSFileTransfer implements FileTransfer {
     try{
       Vector vec = list(url, null, null);
       String line = (String) vec.get(0);
-      String [] arr = Util.split(line);
+      String [] arr = MyUtil.split(line);
       return Long.parseLong(arr[0]);
     }
     catch(Exception e){
@@ -499,9 +502,9 @@ public class HTTPSFileTransfer implements FileTransfer {
       }
       if(!cacheOk && modificationDate!=null && fileSize>-1){
         // write the file size and modification date to .gridpilot_cache/.<file name>
-        LocalStaticShellMgr.writeFile(cacheInfoFile.getAbsolutePath(),
+        LocalStaticShell.writeFile(cacheInfoFile.getAbsolutePath(),
             "date: "+makeDateString(modificationDate), false);
-        LocalStaticShellMgr.writeFile(cacheInfoFile.getAbsolutePath(),
+        LocalStaticShell.writeFile(cacheInfoFile.getAbsolutePath(),
             "size: "+Long.toString(fileSize), true);
       }
     }
@@ -519,7 +522,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       MyUrlCopy urlCopy = myConnect(globusUrl);
       urlCopy.execute("PROPFIND");
       String res = urlCopy.getResult();
-      String [] lines = Util.split(res, "(?s)[\n\r]");
+      String [] lines = MyUtil.split(res, "(?s)[\n\r]");
       String hrefPattern = "(?i)<d:href>"+path+"</d:href>";
       String datePattern = "(?i)<lp1:getlastmodified>(.*)</lp1:getlastmodified>";
       String date = "";
@@ -620,7 +623,7 @@ public class HTTPSFileTransfer implements FileTransfer {
     // Wait, Transfer, Error, Done
     Debug.debug("Getting status for transfer "+fileTransferID, 2);
     Debug.debug("urlCopyTransferListeners: "+
-        Util.arrayToString(urlCopyTransferListeners.entrySet().toArray()), 2);
+        MyUtil.arrayToString(urlCopyTransferListeners.entrySet().toArray()), 2);
     String ret = ((MyUrlCopyTransferListener) 
         urlCopyTransferListeners.get(fileTransferID)).getStatus();
     Debug.debug("Got status "+ret, 2);
@@ -746,10 +749,10 @@ public class HTTPSFileTransfer implements FileTransfer {
     Debug.debug("Filtering with "+filter, 3);
     Debug.debug("Using baseDir "+baseDir, 2);
     
-//  Leave this outside of thread to avoid deadlock when querying for password.
-    GridPilot.getClassMgr().getGridCredential();
+    //  Leave this outside of thread to avoid deadlock when querying for password.
+    GridPilot.getClassMgr().getSSL().activateSSL();
     
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       String res = null;
       MyUrlCopy urlCopy = null;
       public void run(){
@@ -770,7 +773,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       }
     };
     t.start();
-    if(!Util.waitForThread(t, "https", COPY_TIMEOUT, "list", new Boolean(true))){
+    if(!MyUtil.myWaitForThread(t, "https", COPY_TIMEOUT, "list", new Boolean(true))){
       if(statusBar!=null){
         statusBar.setLabel("List cancelled");
       }
@@ -783,7 +786,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       throw t.getException();
     }
     String res = t.getStringRes();
-    String [] lines = Util.split(res, "(?s)[\n\r]");
+    String [] lines = MyUtil.split(res, "(?s)[\n\r]");
     Vector resVec = new Vector();
     String hrefPattern = "(?i)<d:href>(.*)</d:href>";
     String sizePattern = "(?i)<lp1:getcontentlength>(.*)</lp1:getcontentlength>";
@@ -819,6 +822,18 @@ public class HTTPSFileTransfer implements FileTransfer {
       statusBar.setLabel(directories+" directories, "+files+" files");
     }
     return resVec;
+  }
+
+  public void getFile(GlobusURL arg0, File arg1) throws Exception {
+    getFile(arg0, arg1, null);
+  }
+
+  public Vector list(GlobusURL arg0, String arg1) throws Exception {
+    return list(arg0, arg1, null);
+  }
+
+  public void putFile(File arg0, GlobusURL arg1) throws Exception {
+    putFile(arg0, arg1, null);
   }
 
 }

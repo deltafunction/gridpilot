@@ -4,13 +4,14 @@ import java.io.*;
 import java.util.List;
 import java.util.Vector;
 
+import gridfactory.common.ConfigFile;
+import gridfactory.common.Debug;
+import gridfactory.common.LocalStaticShell;
+import gridfactory.common.ScriptGenerator;
 import gridpilot.DBPluginMgr;
-import gridpilot.Debug;
-import gridpilot.JobInfo;
-import gridpilot.LocalStaticShellMgr;
+import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
-import gridpilot.ScriptGenerator;
-import gridpilot.Util;
+import gridpilot.MyUtil;
 
 /**
  * Script generator for the NorduGrid plugin. <br>
@@ -23,16 +24,19 @@ public class NGScriptGenerator extends ScriptGenerator{
   String reRun = null;
   List localInputFilesList = null;
   List remoteInputFilesList = null;
+  String csName = null;
+  ConfigFile configFile = null;
   
   public NGScriptGenerator(String _csName){
-    super(_csName);
+    super(GridPilot.getClassMgr().getLogFile(), false);
+    configFile = GridPilot.getClassMgr().getConfigFile();
     csName = _csName;
     cpuTime = configFile.getValue(csName, "CPU time");
     reRun = configFile.getValue(csName, "Max rerun");
   }
 
   // Returns List of input files, needed for ARCGridFTPJob.submit()
-  public List createXRSL(JobInfo job, String exeFileName, String xrslFileName, boolean join)
+  public List createXRSL(MyJobInfo job, String exeFileName, String xrslFileName, boolean join)
      throws IOException {
 
     localInputFilesList = new Vector();
@@ -40,7 +44,7 @@ public class NGScriptGenerator extends ScriptGenerator{
     StringBuffer bufXRSL = new StringBuffer();
     StringBuffer bufScript = new StringBuffer();
     String line = "";
-    String jobDefID = job.getJobDefId();
+    String jobDefID = job.getIdentifier();
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String [] formalParam = dbPluginMgr.getTransformationArguments(jobDefID);
     String [] actualParam = dbPluginMgr.getJobDefTransPars(jobDefID);
@@ -55,12 +59,12 @@ public class NGScriptGenerator extends ScriptGenerator{
     // names starting with file: will be uploaded, names starting with
     // / or c:\ are considered to be locally available on the server
     if(scriptFileName.startsWith("file:")){
-      localInputFilesList.add(Util.clearTildeLocally(Util.clearFile(scriptFileName)));
+      localInputFilesList.add(MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFileName)));
     }
 
     //The xrsl file
     String shortExeFileName = new File(exeFileName).getName();
-    String xrslExeFileName = Util.clearTildeLocally(Util.clearFile(exeFileName));
+    String xrslExeFileName = MyUtil.clearTildeLocally(MyUtil.clearFile(exeFileName));
     Debug.debug("shortName : " + shortExeFileName, 3);
     localInputFilesList.add(xrslExeFileName);
 
@@ -107,7 +111,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       // Input files.
       String[] inputFiles1 = new String [] {};
       String [] inputs = dbPluginMgr.getJobDefInputFiles(jobDefID);
-      Debug.debug("input files: "+inputs.length+" "+Util.arrayToString(inputs), 3);
+      Debug.debug("input files: "+inputs.length+" "+MyUtil.arrayToString(inputs), 3);
       if(inputs!=null && inputs.length>0){
         inputFiles1 = inputs;
       }
@@ -116,7 +120,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       String[] inputFiles2 = new String [] {};
       inputs = dbPluginMgr.getTransformationInputs(
           dbPluginMgr.getJobDefTransformationID(jobDefID));
-      Debug.debug("input files: "+inputs.length+" "+Util.arrayToString(inputs), 3);
+      Debug.debug("input files: "+inputs.length+" "+MyUtil.arrayToString(inputs), 3);
       if(inputs!=null && inputs.length>0){
         inputFiles2 = inputs;
       }
@@ -145,7 +149,7 @@ public class NGScriptGenerator extends ScriptGenerator{
         }
         else{
           // URL is full path of input file
-          inputFileURL = Util.clearTildeLocally(Util.clearFile(inputFiles[i]));
+          inputFileURL = MyUtil.clearTildeLocally(MyUtil.clearFile(inputFiles[i]));
         }
         Debug.debug("Input file physical name: "+inputFileURL, 3);
        
@@ -199,13 +203,13 @@ public class NGScriptGenerator extends ScriptGenerator{
           line += "(\"stderr\" \"\")";
         }
       }
-      String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getJobDefId());
+      String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getIdentifier());
       String localName;
       String remoteName;
       // output file copy
       for(int i=0; i<outputFileNames.length; ++i){
-        localName = dbPluginMgr.getJobDefOutLocalName(job.getJobDefId(), outputFileNames[i]);
-        remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getJobDefId(), outputFileNames[i]);
+        localName = dbPluginMgr.getJobDefOutLocalName(job.getIdentifier(), outputFileNames[i]);
+        remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
         if(remoteName.startsWith("/") || remoteName.matches("^\\w:.*")){
           // In analogy with ForkComputingSystem, this should trigger
           // copying the file to a place on the file system on the server.
@@ -236,7 +240,7 @@ public class NGScriptGenerator extends ScriptGenerator{
           if(uses[i].equals("Linux")){
             continue;
           }
-          writeLine(bufXRSL, "(runTimeEnvironment="+Util.dos2unix(uses[i])+")");
+          writeLine(bufXRSL, "(runTimeEnvironment="+MyUtil.dos2unix(uses[i])+")");
           writeLine(bufXRSL, "");
         }
       }
@@ -244,7 +248,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       // TODO: maxCPUTime maxDisk ftpThreads MinMemory
 
       try{
-        LocalStaticShellMgr.writeFile(xrslFileName, bufXRSL.toString(), false);
+        LocalStaticShell.writeFile(xrslFileName, bufXRSL.toString(), false);
       }
       catch(Exception fnfe) {
         System.err.print(fnfe.getMessage());
@@ -257,24 +261,24 @@ public class NGScriptGenerator extends ScriptGenerator{
       // Header
       writeLine(bufScript, "#!" + configFile.getValue(csName, "Shell"));
       writeLine(bufScript,"# Script generated by GridPilot/NGScriptGenerator");
-      writeBloc(bufScript, csName + " wrapper script", 0, "# ");
+      writeBlock(bufScript, csName + " wrapper script", 0, "# ");
 
       // Runtime environment dependencies. Text from runtimeEnvironment.init
-      writeBloc(bufScript, "runtime environment dependencies", 1, "# ");
+      writeBlock(bufScript, "runtime environment dependencies", 1, "# ");
       for(int i=0; i<uses.length; ++i){
-        writeBloc(bufScript, "use "+ uses[i], 2, "# ");
+        writeBlock(bufScript, "use "+ uses[i], 2, "# ");
         String initTxt = dbPluginMgr.getRuntimeInitText(uses[i], csName).toString();
-        writeLine(bufScript, Util.dos2unix(initTxt));
+        writeLine(bufScript, MyUtil.dos2unix(initTxt));
         writeLine(bufScript, "");
       }
 
       // Parameter translation
-      writeBloc(bufScript, "parameter translation", 1, "# ");
+      writeBlock(bufScript, "parameter translation", 1, "# ");
       line ="PARAM";
       for(int i=0; i<formalParam.length; ++i){
         line += " "+formalParam[i];
       }
-      writeBloc(bufScript, line, 1, "# ");
+      writeBlock(bufScript, line, 1, "# ");
       String [] tmpParams = null;
       // Use actualParam.length instead of formalParam.length.
       // This way, if not all parameters are filled in the first will
@@ -282,8 +286,8 @@ public class NGScriptGenerator extends ScriptGenerator{
       for(int i=0; i</*formalParam.length*/actualParam.length; ++i){
       	try{
           // replace spaces with commas
-      	  tmpParams = Util.split(actualParam[i]);
-          writeLine(bufScript, "p"+(i+1)+"="+Util.arrayToString(tmpParams, ","));
+      	  tmpParams = MyUtil.split(actualParam[i]);
+          writeLine(bufScript, "p"+(i+1)+"="+MyUtil.arrayToString(tmpParams, ","));
       	}
       	catch(Exception ex){
       		logFile.addMessage("Warning: problem with job parameter "+i);
@@ -294,7 +298,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       writeLine(bufScript, "");
 
       // core script call
-      writeBloc(bufScript, "core script call", 1, "# ");
+      writeBlock(bufScript, "core script call", 1, "# ");
       
       // workaround for bug in NG on Condor
       writeLine(bufScript, "chmod +x "+shortScriptName);
@@ -310,7 +314,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       // in principle preventing multiple output files per job, but as it is now,
       // only the first of the output files will be registered.
       // TODO: reconsider
-      writeBloc(bufScript, "Output files", ScriptGenerator.TYPE_SUBSECTION);
+      writeBlock(bufScript, "Output files", ScriptGenerator.TYPE_SUBSECTION);
       for(int i=0; i<outputFileNames.length; ++i){
         writeLine(bufScript, "echo GRIDPILOT METADATA: bytes = `du -b "+outputFileNames[i]+" | awk '{print $1}'`");
         writeLine(bufScript, "echo GRIDPILOT METADATA: checksum = md5:`md5sum "+outputFileNames[i]+" | awk '{print $1}'`");
@@ -318,8 +322,8 @@ public class NGScriptGenerator extends ScriptGenerator{
       }
 
       try{
-        LocalStaticShellMgr.writeFile(exeFileName, bufScript.toString(), false);
-        Util.dos2unix(new File(exeFileName));
+        LocalStaticShell.writeFile(exeFileName, bufScript.toString(), false);
+        MyUtil.dos2unix(new File(exeFileName));
       }
       catch(FileNotFoundException fnfe){
         System.err.print(fnfe.getMessage());

@@ -1,7 +1,6 @@
 package gridpilot.dbplugins.atlas;
 
-
-import gridpilot.Debug;
+import gridfactory.common.Debug;
 
 import java.io.FileInputStream;
 //import java.io.IOException;

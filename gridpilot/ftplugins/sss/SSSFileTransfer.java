@@ -55,14 +55,14 @@ import org.jets3t.service.utils.FileComparerResults;
 import org.jets3t.service.utils.Mimetypes;
 import org.jets3t.service.utils.ServiceUtils;
 
-import gridpilot.ConfirmBox;
-import gridpilot.Debug;
-import gridpilot.FileTransfer;
+import gridfactory.common.ConfirmBox;
+import gridfactory.common.Debug;
+import gridfactory.common.FileTransfer;
+import gridfactory.common.LogFile;
+import gridfactory.common.ResThread;
 import gridpilot.GridPilot;
-import gridpilot.LogFile;
-import gridpilot.MyThread;
 import gridpilot.StatusBar;
-import gridpilot.Util;
+import gridpilot.MyUtil;
 
 /**
  * Portions of code in this class taken from org.jets3t.samples and org.jets3t.apps.cockpit
@@ -220,7 +220,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       for(int i=0; i<srcUrls.length; ++i){
         id = PLUGIN_NAME + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
         ids[i] = id;
-        uploadFiles[i] = new File(Util.clearFile(srcUrls[i].getURL()));
+        uploadFiles[i] = new File(MyUtil.clearFile(srcUrls[i].getURL()));
       }
       prepareForFilesUpload(uploadFiles, GridPilot.getClassMgr().getStatusBar(), bucket, ids);
     }
@@ -272,7 +272,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   }
   
   private String getLocalPath(GlobusURL fileUrl){
-    String ret = Util.clearFile(
+    String ret = MyUtil.clearFile(
       fileUrl.getPath().replaceFirst("(^.*)"+File.separator+"[^"+File.separator+"]+$", "$1"));
     if(ret.equals("")){
       ret = "/";
@@ -484,7 +484,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     Debug.debug("Get "+globusUrl.getURL(), 3);
 
     Debug.debug("Getting "+globusUrl.getURL(), 3);
-    (new MyThread(){
+    (new ResThread(){
       public void run(){
         if(statusBar!=null){
           statusBar.setLabel("Getting "+globusUrl.getURL());
@@ -526,7 +526,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
 
     Debug.debug("Downloading "+globusUrl.getURL()+"->"+downloadFile.getAbsolutePath(), 3);
     
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       public void run(){
         try{
           S3Object s3Object = s3Service.getObject(bucket, objectKey);
@@ -548,7 +548,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     };
     t.start();
     
-    if(!Util.waitForThread(t, "sss", COPY_TIMEOUT, "getFile", new Boolean(true))){
+    if(!MyUtil.myWaitForThread(t, "sss", COPY_TIMEOUT, "getFile", new Boolean(true))){
       throw new IOException("Download taking too long (>"+COPY_TIMEOUT+" ms). Cancelling.");
     }
     if(t.getException()!=null){
@@ -578,7 +578,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     
     final GlobusURL globusFileUrl = fileUrl;
     
-    (new MyThread(){
+    (new ResThread(){
       public void run(){
         if(statusBar!=null){
           statusBar.setLabel("Uploading "+globusFileUrl.getURL());
@@ -593,7 +593,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       return;
     }
     
-    MyThread t = new MyThread(){
+    ResThread t = new ResThread(){
       public void run(){
         // Notice: abortTransfer will not work here; there's no stream writing to interrupt...
         try{
@@ -616,7 +616,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       }
     };
     t.start();
-    if(!Util.waitForThread(t, "sss", COPY_TIMEOUT, "putFile")){
+    if(!MyUtil.waitForThread(t, "sss", COPY_TIMEOUT, "putFile")){
       if(statusBar!=null){
         statusBar.setLabel("Upload cancelled");
       }
@@ -673,7 +673,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
    */
   public String create(GlobusURL globusUrlDir)
      throws Exception{
-    String fileName = Util.getName("File name (end with a / to create a directory)", "");   
+    String fileName = MyUtil.getName("File name (end with a / to create a directory)", "");   
     if(fileName==null){
       return null;
     }
@@ -827,7 +827,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     
     if(filesAlreadyInDownloadDirectoryMap.size()>0/*potentialClashingObjects.size()>0*/){
       logFile.addInfo("WARNING: overwriting "+
-          Util.arrayToString(filesAlreadyInDownloadDirectoryMap.keySet().toArray())+" in "+downloadDirectory);
+          MyUtil.arrayToString(filesAlreadyInDownloadDirectoryMap.keySet().toArray())+" in "+downloadDirectory);
     }
     /*if(potentialClashingObjects.size()>0){
       // Retrieve details of potential clashes.
@@ -1248,7 +1248,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     
     final S3Object[] incompleteObjects = (S3Object[]) s3ObjectsIncompleteList.toArray(
         new S3Object[s3ObjectsIncompleteList.size()]);        
-    MyThread t = (new MyThread(){
+    ResThread t = (new ResThread(){
       public void run(){
         //S3ServiceEventListener s3Listener = new MyS3ServiceEventListener();
         //S3ServiceMulti s3ServiceMulti = new S3ServiceMulti(s3Service, s3Listener);
@@ -1297,6 +1297,18 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       e.printStackTrace();
       throw new CredentialsNotAvailableException(e.getMessage(), e);
     }
-  }   
+  }
+
+  public void getFile(GlobusURL arg0, File arg1) throws Exception {
+    getFile(arg0, arg1, null);
+  }
+
+  public Vector list(GlobusURL arg0, String arg1) throws Exception {
+    return list(arg0, arg1, null);
+  }
+
+  public void putFile(File arg0, GlobusURL arg1) throws Exception {
+    putFile(arg0, arg1, null);
+  }
 
 }

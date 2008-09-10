@@ -12,6 +12,8 @@ import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.sql.Connection;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -21,26 +23,24 @@ import java.sql.Statement;
 
 import javax.swing.SwingUtilities;
 
-import org.globus.gsi.GlobusCredential;
-import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
-import org.ietf.jgss.GSSCredential;
 import org.logicalcobwebs.proxool.ProxoolException;
 import org.logicalcobwebs.proxool.ProxoolFacade;
 import org.safehaus.uuid.UUIDGenerator;
 
-import gridpilot.ConfigFile;
-import gridpilot.DBCache;
+import gridfactory.common.ConfigFile;
+import gridfactory.common.DBCache;
+import gridfactory.common.DBRecord;
+import gridfactory.common.DBResult;
+import gridfactory.common.Debug;
+import gridfactory.common.ResThread;
 import gridpilot.DBPluginMgr;
 import gridpilot.Database;
-import gridpilot.Debug;
 import gridpilot.GridPilot;
-import gridpilot.LogFile;
 import gridpilot.MessagePane;
-import gridpilot.MyThread;
+import gridpilot.MyLogFile;
 import gridpilot.TransferControl;
-import gridpilot.Util;
-import gridpilot.DBResult;
-import gridpilot.DBRecord;
+import gridpilot.MyUtil;
+
 
 /**
  * Plugin to access mysql databases.
@@ -65,7 +65,6 @@ public class MySQLDatabase extends DBCache implements Database {
   private String [] t_pfnFields = null;
   private String [] t_metaFields = null;
   private boolean gridAuth;
-  private GlobusCredential globusCred = null;
   private boolean fileCatalog = false;
   private boolean jobRepository = false;
   private String connectTimeout = null;
@@ -73,12 +72,13 @@ public class MySQLDatabase extends DBCache implements Database {
   private HashMap tableFieldNames = new HashMap();
   private boolean stop = false;
   private ConfigFile configFile = null;
+  private String dbName;
   
   private static String MAX_CONNECTIONS = "15";
 
   public MySQLDatabase(String _dbName,
       String _driver, String _database,
-      String _user, String _passwd){
+      String _user, String _passwd) throws IOException, GeneralSecurityException{
     driver = _driver;
     database = _database;
     user = _user;
@@ -117,14 +117,10 @@ public class MySQLDatabase extends DBCache implements Database {
     if(user==null || user.equals("") ||
         database!=null && database.endsWith("/")){
       gridAuth = true;
-      GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-      if(credential instanceof GlobusGSSCredentialImpl){
-        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-      }
-      String subject = globusCred.getIdentity().trim();
+      String subject = MyUtil.getGridSubject(GridPilot.certFile);
       
       if(user==null || user.equals("")){
-        user = Util.getGridDatabaseUser();
+        user = GridPilot.getClassMgr().getSSL().getGridDatabaseUser();
         Debug.debug("Using user name from cksum of grid subject: "+user, 2);
       }
       
@@ -147,7 +143,7 @@ public class MySQLDatabase extends DBCache implements Database {
     
     if(gridAuth){
       try{
-        Util.activateSsl(globusCred);
+        GridPilot.getClassMgr().getSSL().activateSSL();
       }
       catch(Exception e){
         e.printStackTrace();
@@ -270,7 +266,7 @@ public class MySQLDatabase extends DBCache implements Database {
     String [] fields = null;
     //String [] fieldTypes = null;
     try{
-      fields = Util.split(configFile.getValue(dbName, table+" field names"), ",");
+      fields = MyUtil.split(configFile.getValue(dbName, table+" field names"), ",");
       //fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
     }
     catch(Exception e){
@@ -308,8 +304,8 @@ public class MySQLDatabase extends DBCache implements Database {
       return false;
     }
     
-    String [] fields = Util.split(configFile.getValue(dbName, table+" field names"), ",");
-    String [] fieldTypes = Util.split(configFile.getValue(dbName, table+" field types"), ",");
+    String [] fields = MyUtil.split(configFile.getValue(dbName, table+" field names"), ",");
+    String [] fieldTypes = MyUtil.split(configFile.getValue(dbName, table+" field types"), ",");
     if(fields==null || fieldTypes==null){
       return false;
     }
@@ -328,7 +324,7 @@ public class MySQLDatabase extends DBCache implements Database {
     boolean execok = true;
     try{
       Debug.debug("Creating table. "+sql, 1);
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       execok = false;
@@ -344,13 +340,13 @@ public class MySQLDatabase extends DBCache implements Database {
   }
 
   public synchronized boolean cleanRunInfo(String jobDefID){
-    String idField = Util.getIdentifierField(dbName, "jobDefinition");
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     String sql = "UPDATE jobDefinition SET jobID = ''," +
         "outTmp = '', errTmp = '', validationResult = '' " +
         "WHERE "+idField+" = '"+jobDefID+"'";
     boolean ok = true;
     try{
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       error = e.getMessage();
@@ -381,17 +377,17 @@ public class MySQLDatabase extends DBCache implements Database {
       for(int i=0; i<ret.length; ++i){
         ret[i] = ((String []) tableFieldNames.get(table))[i];
       }
-      Debug.debug("returning fields: "+Util.arrayToString(ret), 3);
+      Debug.debug("returning fields: "+MyUtil.arrayToString(ret), 3);
       return ret;
     }
     if(table.equalsIgnoreCase("file")){
-      String nameField = Util.getNameField(dbName, "dataset");
-      String [] refFields = Util.getJobDefDatasetReference(dbName);
+      String nameField = MyUtil.getNameField(dbName, "dataset");
+      String [] refFields = MyUtil.getJobDefDatasetReference(dbName);
       if(!isFileCatalog()){
         ret = new String [] {refFields[1], nameField, "url"};
        }
       else{
-        ret = Util.split(configFile.getValue(dbName, "file field names"), ", ");
+        ret = MyUtil.split(configFile.getValue(dbName, "file field names"), ", ");
       }
       tableFieldNames.put(table, ret);
       return ret;
@@ -401,7 +397,7 @@ public class MySQLDatabase extends DBCache implements Database {
       tableFieldNames.put(table, null);
       return null;
     }
-    Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
+    Connection conn = getDBConnection(dbName);
     Statement stmt = conn.createStatement();
     // TODO: Do we need to execute a query to get the metadata?
     ResultSet rset = stmt.executeQuery("SELECT * FROM "+table+" LIMIT 1");
@@ -412,21 +408,21 @@ public class MySQLDatabase extends DBCache implements Database {
     }
     conn.close();
     Debug.debug("caching and returning fields for "+dbName+
-        "."+table+": "+Util.arrayToString(ret), 3);
+        "."+table+": "+MyUtil.arrayToString(ret), 3);
     tableFieldNames.put(table, ret);
     return ret;
   }
 
   public synchronized String getTransformationID(String transName, String transVersion){
-    String idField = Util.getIdentifierField(dbName, "transformation");
-    String nameField = Util.getNameField(dbName, "transformation");
-    String versionField = Util.getVersionField(dbName, "transformation");
+    String idField = MyUtil.getIdentifierField(dbName, "transformation");
+    String nameField = MyUtil.getNameField(dbName, "transformation");
+    String versionField = MyUtil.getVersionField(dbName, "transformation");
     String req = "SELECT "+idField+" from transformation where "+nameField+" = '"+transName + "'"+
     " AND "+versionField+" = '"+transVersion+"'";
     String id = null;
     Vector vec = new Vector();
     try{
-      DBResult rset = executeQuery(req);
+      DBResult rset = executeQuery(req, dbName);
       while(rset.next()){
         id = rset.getString(idField);
         if(id!=null){
@@ -457,14 +453,14 @@ public class MySQLDatabase extends DBCache implements Database {
   }
 
   public synchronized String getRuntimeEnvironmentID(String name, String cs){
-    String nameField = Util.getNameField(dbName, "runtimeEnvironment");
-    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
+    String nameField = MyUtil.getNameField(dbName, "runtimeEnvironment");
+    String idField = MyUtil.getIdentifierField(dbName, "runtimeEnvironment");
     String req = "SELECT "+idField+" from runtimeEnvironment where "+nameField+" = '"+name + "'"+
     " AND computingSystem = '"+cs+"'";
     String id = null;
     Vector vec = new Vector();
     try{
-      DBResult rset = executeQuery(req);
+      DBResult rset = executeQuery(req, dbName);
       while(rset.next()){
         id = rset.getString(idField);
         if(id!=null){
@@ -494,38 +490,38 @@ public class MySQLDatabase extends DBCache implements Database {
     }
   }
 
-  public String [] getTransformationJobParameters(String transformationID){
+  public String [] getTransformationJobParameters(String transformationID) throws InterruptedException{
     String res = (String) getTransformation(transformationID).getValue("arguments"); 
-    return (res!=null?Util.split(res):new String [] {});
+    return (res!=null?MyUtil.split(res):new String [] {});
   }
 
-  public String [] getOutputFiles(String jobDefID){
+  public String [] getOutputFiles(String jobDefID) throws InterruptedException{
     String transformationID = getJobDefTransformationID(jobDefID);
     String outputs = (String) getTransformation(transformationID).getValue("outputFiles");
-    return (outputs!=null?Util.split(outputs):new String [] {});
+    return (outputs!=null?MyUtil.split(outputs):new String [] {});
   }
 
-  public String [] getJobDefInputFiles(String jobDefID){
+  public String [] getJobDefInputFiles(String jobDefID) throws InterruptedException{
     String inputs = (String) getJobDefinition(jobDefID).getValue("inputFileURLs");
-    return (inputs!=null?Util.split(inputs):new String [] {});
+    return (inputs!=null?MyUtil.split(inputs):new String [] {});
   }
 
-  public String [] getJobDefTransPars(String jobDefID){
+  public String [] getJobDefTransPars(String jobDefID) throws InterruptedException{
     String args = (String) getJobDefinition(jobDefID).getValue("transPars");
-    return (args!=null?Util.split(args):new String [] {});
+    return (args!=null?MyUtil.split(args):new String [] {});
   }
 
-  public String getJobDefOutLocalName(String jobDefID, String par){
+  public String getJobDefOutLocalName(String jobDefID, String par) throws InterruptedException{
     String transID = getJobDefTransformationID(jobDefID);
-    String [] fouts = Util.split((String) getTransformation(transID).getValue("outputFiles"));
+    String [] fouts = MyUtil.split((String) getTransformation(transID).getValue("outputFiles"));
     String maps = (String) getJobDefinition(jobDefID).getValue("outFileMapping");
     String[] map = null;
     try{
-      map = Util.splitUrls(maps);
+      map = MyUtil.splitUrls(maps);
     }
     catch(Exception e){
       Debug.debug("WARNING: could not split URLs "+maps, 1);
-      map = Util.split(maps);
+      map = MyUtil.split(maps);
     }
     String name = "";
     for(int i=0; i<fouts.length; i++){
@@ -536,11 +532,11 @@ public class MySQLDatabase extends DBCache implements Database {
     return name;
   }
 
-  public String getJobDefOutRemoteName(String jobDefID, String par){
+  public String getJobDefOutRemoteName(String jobDefID, String par) throws InterruptedException{
     String transID = getJobDefTransformationID(jobDefID);
-    String [] fouts = Util.split((String) getTransformation(transID).getValue("outputFiles"));
+    String [] fouts = MyUtil.split((String) getTransformation(transID).getValue("outputFiles"));
     String maps = (String) getJobDefinition(jobDefID).getValue("outFileMapping");
-    String[] map = Util.split(maps);
+    String[] map = MyUtil.split(maps);
     String name = "";
     for(int i=0; i<fouts.length; i++){
       if(par.equals(fouts[i])){
@@ -551,37 +547,37 @@ public class MySQLDatabase extends DBCache implements Database {
     return name;
   }
 
-  public String getStdOutFinalDest(String jobDefID){
+  public String getStdOutFinalDest(String jobDefID) throws InterruptedException{
     return (String) getJobDefinition(jobDefID).getValue("stdoutDest");
   }
 
-  public String getStdErrFinalDest(String jobDefID){
+  public String getStdErrFinalDest(String jobDefID) throws InterruptedException{
     return (String) getJobDefinition(jobDefID).getValue("stderrDest");
   }
 
-  public String getTransformationScript(String jobDefID){
+  public String getTransformationScript(String jobDefID) throws InterruptedException{
     String transformationID = getJobDefTransformationID(jobDefID);
     String script = (String) getTransformation(transformationID).getValue("script");
     return script;
   }
 
-  public String [] getRuntimeEnvironments(String jobDefID){
+  public String [] getRuntimeEnvironments(String jobDefID) throws InterruptedException{
     String transformationID = getJobDefTransformationID(jobDefID);
     String rts = (String) getTransformation(transformationID).getValue("runtimeEnvironmentName");
-    return Util.split(rts);
+    return MyUtil.split(rts);
   }
 
-  public String [] getTransformationArguments(String jobDefID){
+  public String [] getTransformationArguments(String jobDefID) throws InterruptedException{
     String transformationID = getJobDefTransformationID(jobDefID);
     String args = (String) getTransformation(transformationID).getValue("arguments");
-    return Util.split(args);
+    return MyUtil.split(args);
   }
 
-  public String getTransformationRuntimeEnvironment(String transformationID){
+  public String getTransformationRuntimeEnvironment(String transformationID) throws InterruptedException{
     return (String) getTransformation(transformationID).getValue("runtimeEnvironmentName");
   }
 
-  public String getJobDefUserInfo(String jobDefinitionID){
+  public String getJobDefUserInfo(String jobDefinitionID) throws InterruptedException{
     Object userInfo = getJobDefinition(jobDefinitionID).getValue("userInfo");
     if(userInfo==null){
       return "";
@@ -591,23 +587,23 @@ public class MySQLDatabase extends DBCache implements Database {
     }
   }
 
-  public String getJobDefStatus(String jobDefinitionID){
+  public String getJobDefStatus(String jobDefinitionID) throws InterruptedException{
     return (String) getJobDefinition(jobDefinitionID).getValue("status");
   }
 
-  public String getJobDefName(String jobDefinitionID){
-    String nameField = Util.getNameField(dbName, "jobDefinition");
+  public String getJobDefName(String jobDefinitionID) throws InterruptedException{
+    String nameField = MyUtil.getNameField(dbName, "jobDefinition");
     return (String) getJobDefinition(jobDefinitionID).getValue(nameField);
   }
 
-  public String getJobDefDatasetID(String jobDefinitionID){
+  public String getJobDefDatasetID(String jobDefinitionID) throws InterruptedException{
     String datasetName = (String) getJobDefinition(jobDefinitionID).getValue("datasetName");
     String datasetID = getDatasetID(datasetName);
-    String idField = Util.getIdentifierField(dbName, "dataset");
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
     return (String) getDataset(datasetID).getValue(idField);
   }
 
-  public String getRuntimeInitText(String runTimeEnvironmentName, String csName){
+  public String getRuntimeInitText(String runTimeEnvironmentName, String csName) throws InterruptedException{
     String id = getRuntimeEnvironmentID(runTimeEnvironmentName, csName);
     if(id==null){
       return null;
@@ -616,19 +612,19 @@ public class MySQLDatabase extends DBCache implements Database {
     return initTxt;
   }
 
-  public synchronized String getJobDefTransformationID(String jobDefinitionID){
+  public synchronized String getJobDefTransformationID(String jobDefinitionID) throws InterruptedException{
     DBRecord dataset = getDataset(getJobDefDatasetID(jobDefinitionID));
     String transformation = (String) dataset.getValue("transformationName");
     String version = (String) dataset.getValue("transformationVersion");
     String transID = null;
-    String idField = Util.getIdentifierField(dbName, "transformation");
-    String nameField = Util.getNameField(dbName, "transformation");
+    String idField = MyUtil.getIdentifierField(dbName, "transformation");
+    String nameField = MyUtil.getNameField(dbName, "transformation");
     String req = "SELECT "+idField+" FROM "+
        "transformation WHERE "+nameField+" = '"+transformation+"' AND version = '"+version+"'";
     Vector vec = new Vector();
     Debug.debug(req, 2);
     try{
-      DBResult rset = executeQuery(req);
+      DBResult rset = executeQuery(req, dbName);
       while(rset.next()){
         if(transID!=null){
           Debug.debug("WARNING: more than one transformation for name, version :" +
@@ -725,8 +721,8 @@ public class MySQLDatabase extends DBCache implements Database {
       // We replace "url" with "outFileMapping" and parse the values of
       // outFileMapping later.
       // We replace "bytes" "outputFileBytes" and "checksum" with "outputFileChecksum".
-      String sizeField = Util.getFileSizeField(dbName);
-      String checksumField = Util.getChecksumField(dbName);
+      String sizeField = MyUtil.getFileSizeField(dbName);
+      String checksumField = MyUtil.getChecksumField(dbName);
       if(req.matches("SELECT (.+) url\\, (.+) FROM file\\b(.*)")){
         patt = Pattern.compile("SELECT (.+) url\\, (.+) FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
@@ -775,7 +771,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(">>> sql string is: "+req, 3);
     
     try{
-      String [] tables = Util.getTableNames(req);
+      String [] tables = MyUtil.getTableNames(req);
       String [] fields = null;
       if(withStar){
         String [] tmpFields = null;
@@ -794,11 +790,11 @@ public class MySQLDatabase extends DBCache implements Database {
           fields[count] = (String) it.next();
           ++count;
         }
-        Debug.debug("found fields: "+Util.arrayToString(fields), 3);
+        Debug.debug("found fields: "+MyUtil.arrayToString(fields), 3);
       }
       else{
-        fields = Util.getColumnNames(req);
-        Debug.debug("found fields: "+Util.arrayToString(fields), 3);
+        fields = MyUtil.getColumnNames(req);
+        Debug.debug("found fields: "+MyUtil.arrayToString(fields), 3);
       }
       for(int j=0; j<fields.length; ++j){
         // If we did select *, make sure that the identifier
@@ -815,23 +811,23 @@ public class MySQLDatabase extends DBCache implements Database {
           fields[j] = "url";
         }
         // Find the name column number
-        if(fileTable && fields[j].equalsIgnoreCase(Util.getNameField(dbName, "jobDefinition")) && 
+        if(fileTable && fields[j].equalsIgnoreCase(MyUtil.getNameField(dbName, "jobDefinition")) && 
             j!=fields.length-1){
           nameColumn = j;
           // replace "name" with the what's defined in the config file
-          fields[j] = Util.getNameField(dbName, "file");
+          fields[j] = MyUtil.getNameField(dbName, "file");
         }
       }
       if(withStar && identifierColumn>-1){
         fields[identifierColumn] = fields[fields.length-1];
         fields[fields.length-1] = identifier;
       }
-      DBResult rset = executeQuery(req);
+      DBResult rset = executeQuery(req, dbName);
       String [][] values = new String[rset.values.length][fields.length];
       int i=0;
       if(rset.fields.length!=fields.length){
         Debug.debug("ERROR: inconsistent number of fields "+rset.fields.length+"!="+fields.length, 1);
-        return new DBResult(); 
+        return new DBResult(0, 0); 
       }
       while(rset.next()){
         for(int j=0; j<rset.fields.length; ++j){
@@ -859,7 +855,7 @@ public class MySQLDatabase extends DBCache implements Database {
           else if(fileTable && urlColumn>-1 && j==urlColumn){
             // The first output file specified in outFileMapping
             // is by convention *the* output file.
-            String [] foos = Util.split(rset.getString(j+1));
+            String [] foos = MyUtil.split(rset.getString(j+1));
             String foo = "";
             if(foos.length>1){
               foo = foos[1];
@@ -894,13 +890,13 @@ public class MySQLDatabase extends DBCache implements Database {
     catch(SQLException e){
       e.printStackTrace();
       Debug.debug(e.getMessage(),1);
-      return new DBResult();
+      return new DBResult(0, 0);
     }
   }
   
   public synchronized DBRecord getDataset(String datasetID){
     
-    String idField = Util.getIdentifierField(dbName, "dataset");
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
    
     DBRecord dataset = null;
     String req = "SELECT "+datasetFields[0];
@@ -913,7 +909,7 @@ public class MySQLDatabase extends DBCache implements Database {
     req += " WHERE "+idField+" = '"+ datasetID+"'";
     try{
       Debug.debug(">> "+req, 3);
-      DBResult rset = executeQuery(req);
+      DBResult rset = executeQuery(req, dbName);
       Vector datasetVector = new Vector();
       while(rset.next()){
         String values[] = new String[datasetFields.length];
@@ -950,19 +946,19 @@ public class MySQLDatabase extends DBCache implements Database {
   }
   
   public String getDatasetName(String datasetID){
-    String nameField = Util.getNameField(dbName, "dataset");
+    String nameField = MyUtil.getNameField(dbName, "dataset");
     return (String) getDataset(datasetID).getValue(nameField);
   }
 
   public synchronized String getDatasetID(String datasetName){
-    String idField = Util.getIdentifierField(dbName, "dataset");
-    String nameField = Util.getNameField(dbName, "dataset");
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
+    String nameField = MyUtil.getNameField(dbName, "dataset");
     String req = "SELECT "+idField+" from dataset where "+nameField+" = '"+datasetName + "'";
     String id = null;
     Vector vec = new Vector();
     try{
       Debug.debug(">>> sql string was: "+req, 3);
-      DBResult rset = executeQuery(req);
+      DBResult rset = executeQuery(req, dbName);
       while(rset.next()){
         id = rset.getString(idField);
         if(id!=null){
@@ -998,7 +994,7 @@ public class MySQLDatabase extends DBCache implements Database {
 
   public synchronized DBRecord getRuntimeEnvironment(String runtimeEnvironmentID){
     
-    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
+    String idField = MyUtil.getIdentifierField(dbName, "runtimeEnvironment");
 
     DBRecord pack = null;
     String req = "SELECT "+runtimeEnvironmentFields[0];
@@ -1011,7 +1007,7 @@ public class MySQLDatabase extends DBCache implements Database {
     req += " WHERE "+idField+" = '"+ runtimeEnvironmentID+"'";
     try{
       Debug.debug(">> "+req, 3);
-      DBResult rset = executeQuery(req);
+      DBResult rset = executeQuery(req, dbName);
       Vector runtimeEnvironmentVector = new Vector();
       String [] jt = new String[runtimeEnvironmentFields.length];
       int i = 0;
@@ -1049,7 +1045,7 @@ public class MySQLDatabase extends DBCache implements Database {
   
   public synchronized DBRecord getTransformation(String transformationID){
     
-    String idField = Util.getIdentifierField(dbName, "transformation");
+    String idField = MyUtil.getIdentifierField(dbName, "transformation");
 
     DBRecord transformation = null;
     String req = "SELECT "+transformationFields[0];
@@ -1062,7 +1058,7 @@ public class MySQLDatabase extends DBCache implements Database {
     req += " WHERE "+idField+" = '"+ transformationID+"'";
     try{
       Debug.debug(">> "+req, 3);
-      DBResult rset = executeQuery(req);
+      DBResult rset = executeQuery(req, dbName);
       Vector transformationVector = new Vector();
       String [] jt = new String[transformationFields.length];
       int i = 0;
@@ -1120,7 +1116,7 @@ public class MySQLDatabase extends DBCache implements Database {
       }
       req += " FROM runtimeEnvironment";
       Debug.debug(req, 3);
-      rset = executeQuery(req);
+      rset = executeQuery(req, dbName);
       Vector runtimeEnvironmentVector = new Vector();
       String [] jt = new String[runtimeEnvironmentFields.length];
       int i = 0;
@@ -1143,7 +1139,7 @@ public class MySQLDatabase extends DBCache implements Database {
       allRuntimeEnvironmentRecords = new DBRecord[i];
       for(int j=0; j<i; ++j){
         allRuntimeEnvironmentRecords[j] = ((DBRecord) runtimeEnvironmentVector.get(j));
-        Debug.debug("Added value "+allRuntimeEnvironmentRecords[j].getAt(0), 3);
+        Debug.debug("Added value "+allRuntimeEnvironmentRecords[j].values[0], 3);
       }
     }
     catch(SQLException e){
@@ -1169,7 +1165,7 @@ public class MySQLDatabase extends DBCache implements Database {
       }
       req += " FROM transformation";
       Debug.debug(req, 3);
-      rset = executeQuery(req);
+      rset = executeQuery(req, dbName);
       Vector transformationVector = new Vector();
       String [] jt = new String[transformationFields.length];
       int i = 0;
@@ -1192,7 +1188,7 @@ public class MySQLDatabase extends DBCache implements Database {
       allTransformationRecords = new DBRecord[i];
       for(int j=0; j<i; ++j){
         allTransformationRecords[j] = ((DBRecord) transformationVector.get(j));
-        Debug.debug("Added value "+allTransformationRecords[j].getAt(0), 3);
+        Debug.debug("Added value "+allTransformationRecords[j].values[0], 3);
       }
     }
     catch(SQLException e){
@@ -1204,7 +1200,7 @@ public class MySQLDatabase extends DBCache implements Database {
   // Selects only the fields listed in fieldNames. Other fields are set to "".
   public synchronized DBRecord getJobDefinition(String jobDefinitionID){
     
-    String idField = Util.getIdentifierField(dbName, "jobDefinition");
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     
     String req = "SELECT *";
     req += " FROM jobDefinition where "+idField+" = '"+
@@ -1212,7 +1208,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{
-      DBResult rset = executeQuery(req);
+      DBResult rset = executeQuery(req, dbName);
       while(rset.next()){
         String values[] = new String[jobDefFields.length];
         for(int i=0; i<jobDefFields.length;i++){
@@ -1297,7 +1293,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{
-      DBResult rset = executeQuery(req);
+      DBResult rset = executeQuery(req, dbName);
       while(rset.next()){
         String values[] = new String[jobDefFields.length];
         for(int i=0; i<jobDefFields.length;i++){
@@ -1434,7 +1430,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       execok = false;
@@ -1457,7 +1453,7 @@ public class MySQLDatabase extends DBCache implements Database {
     String ofmapstr = "" ;
     String trparsstr = "" ;
     //trparsstr = Util.webEncode(trpars);
-    trparsstr = Util.arrayToString(trpars);
+    trparsstr = MyUtil.arrayToString(trpars);
     for (int i=0 ; i<ofmap.length ; i++){  
       ofmapstr += ofmap[i] [0] + " " + ofmap[i] [1] + " ";
     }
@@ -1490,7 +1486,7 @@ public class MySQLDatabase extends DBCache implements Database {
       boolean execok = true;
       Debug.debug("Updating >>> "+arg, 2);
       try{
-        executeUpdate(arg);
+        executeUpdate(arg, dbName);
       }
       catch(Exception e){
         execok = false;
@@ -1508,7 +1504,7 @@ public class MySQLDatabase extends DBCache implements Database {
 
   public synchronized boolean createDataset(String table,
       String [] fields, Object [] _values){
-    String idField = Util.getIdentifierField(dbName, "dataset");
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
     Object [] values = new Object [_values.length];
     String nonMatchedStr = "";
     Vector matchedFields = new Vector();
@@ -1604,7 +1600,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       execok = false;
@@ -1653,7 +1649,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       execok = false;
@@ -1703,7 +1699,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       execok = false;
@@ -1716,7 +1712,7 @@ public class MySQLDatabase extends DBCache implements Database {
     
   public synchronized boolean setJobDefsField(String [] identifiers,
       String field, String value){
-    String idField = Util.getIdentifierField(dbName, "jobDefinition");
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     String sql = "UPDATE jobDefinition SET ";
     sql += field+"='"+value+"' WHERE ";
     // Not very elegant, but we need to use Identifier instead of
@@ -1732,7 +1728,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       execok = false;
@@ -1744,7 +1740,7 @@ public class MySQLDatabase extends DBCache implements Database {
   }
   
   public boolean updateJobDefinition(String jobDefID, String [] values){
-    String nameField = Util.getNameField(dbName, "dataset");
+    String nameField = MyUtil.getNameField(dbName, "dataset");
     return updateJobDefinition(
         jobDefID,
         new String [] {"userInfo", "jobID", nameField, "outTmp", "errTmp"},
@@ -1755,7 +1751,7 @@ public class MySQLDatabase extends DBCache implements Database {
   public synchronized boolean updateJobDefinition(String jobDefID, String [] fields,
       String [] values){
     
-    String idField = Util.getIdentifierField(dbName, "jobDefinition");
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -1813,7 +1809,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       execok = false;
@@ -1827,7 +1823,7 @@ public class MySQLDatabase extends DBCache implements Database {
   public synchronized boolean updateDataset(String datasetID, /*not used*/String datasetName, String [] fields,
       String [] values){
     
-    String idField = Util.getIdentifierField(dbName, "dataset");
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
 
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -1841,7 +1837,7 @@ public class MySQLDatabase extends DBCache implements Database {
           fields.length+">"+datasetFields.length, 1);
     }
 
-    Debug.debug("Updating: "+Util.arrayToString(fields)+" --> "+Util.arrayToString(values), 2);
+    Debug.debug("Updating: "+MyUtil.arrayToString(fields)+" --> "+MyUtil.arrayToString(values), 2);
     
     String sql = "UPDATE dataset SET ";
     int addedFields = 0;
@@ -1850,7 +1846,7 @@ public class MySQLDatabase extends DBCache implements Database {
       Debug.debug("Value: "+values[i], 2);
       if(!((values[i]==null || values[i].toString().equals("''") || values[i].toString().equals(""))) &&
           !fields[i].equalsIgnoreCase(idField)){
-        Debug.debug("Checking dataset fields: "+Util.arrayToString(datasetFields), 2);
+        Debug.debug("Checking dataset fields: "+MyUtil.arrayToString(datasetFields), 2);
         for(int j=0; j<datasetFields.length; ++j){
           // only add if present in datasetFields
           if(fields[i].equalsIgnoreCase(datasetFields[j])){
@@ -1885,7 +1881,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       execok = false;
@@ -1899,7 +1895,7 @@ public class MySQLDatabase extends DBCache implements Database {
   public synchronized boolean updateTransformation(String transformationID, String [] fields,
       String [] values){
     
-    String idField = Util.getIdentifierField(dbName, "transformation");
+    String idField = MyUtil.getIdentifierField(dbName, "transformation");
     
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -1953,7 +1949,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       execok = false;
@@ -1967,7 +1963,7 @@ public class MySQLDatabase extends DBCache implements Database {
   public synchronized boolean updateRuntimeEnvironment(String runtimeEnvironmentID, String [] fields,
       String [] values){
     
-    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
+    String idField = MyUtil.getIdentifierField(dbName, "runtimeEnvironment");
     
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -2021,7 +2017,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       execok = false;
@@ -2059,7 +2055,7 @@ public class MySQLDatabase extends DBCache implements Database {
               toDeletefiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-2]);
             }
           }
-          Debug.debug("Deleting files "+Util.arrayToString(toDeletefiles), 2);
+          Debug.debug("Deleting files "+MyUtil.arrayToString(toDeletefiles), 2);
           if(toDeletefiles!=null){
             TransferControl.deleteFiles(toDeletefiles);
           }
@@ -2069,12 +2065,12 @@ public class MySQLDatabase extends DBCache implements Database {
         }
       }
     }
-    String idField = Util.getIdentifierField(dbName, "jobDefinition");
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     boolean ok = true;
     try{
       String sql = "DELETE FROM jobDefinition WHERE "+idField+" = '"+
       jobDefId+"'";
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2085,7 +2081,7 @@ public class MySQLDatabase extends DBCache implements Database {
   }
   
   public synchronized boolean deleteDataset(String datasetID, boolean cleanup){
-    String idField = Util.getIdentifierField(dbName, "dataset");
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
     boolean ok = true;
     if(isJobRepository() && cleanup){
       ok = deleteJobDefsFromDataset(datasetID);
@@ -2100,7 +2096,7 @@ public class MySQLDatabase extends DBCache implements Database {
       String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
       datasetID+"'";
       Debug.debug(">>> sql string was: "+sql, 3);
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2112,12 +2108,12 @@ public class MySQLDatabase extends DBCache implements Database {
   }
 
   public synchronized boolean deleteJobDefsFromDataset(String datasetID){
-    String [] refFields = Util.getJobDefDatasetReference(dbName);
+    String [] refFields = MyUtil.getJobDefDatasetReference(dbName);
     boolean ok = true;
     try{
       String sql = "DELETE FROM jobDefinition WHERE "+refFields[1]+" = '"+
         getDatasetName(datasetID)+"'";
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
@@ -2127,12 +2123,12 @@ public class MySQLDatabase extends DBCache implements Database {
   }
     
   public synchronized boolean deleteTransformation(String transformationID){
-    String idField = Util.getIdentifierField(dbName, "transformation");
+    String idField = MyUtil.getIdentifierField(dbName, "transformation");
     boolean ok = true;
     try{
       String sql = "DELETE FROM transformation WHERE "+idField+" = '"+
       transformationID+"'";
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2143,12 +2139,12 @@ public class MySQLDatabase extends DBCache implements Database {
   }
     
   public synchronized boolean deleteRuntimeEnvironment(String runtimeEnvironmentID){
-    String idField = Util.getIdentifierField(dbName, "runtimeEnvironment");
+    String idField = MyUtil.getIdentifierField(dbName, "runtimeEnvironment");
     boolean ok = true;
     try{
       String sql = "DELETE FROM runtimeEnvironment WHERE "+idField+" = '"+
       runtimeEnvironmentID+"'";
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2159,16 +2155,16 @@ public class MySQLDatabase extends DBCache implements Database {
   }
 
   public synchronized String [] getVersions(String transformation){   
-    String idField = Util.getIdentifierField(dbName, "transformation");
-    String nameField = Util.getNameField(dbName, "transformation");
-    String versionField = Util.getVersionField(dbName, "transformation");
+    String idField = MyUtil.getIdentifierField(dbName, "transformation");
+    String nameField = MyUtil.getNameField(dbName, "transformation");
+    String versionField = MyUtil.getVersionField(dbName, "transformation");
     String req = "SELECT "+idField+", "+versionField+" FROM "+
     "transformation WHERE "+nameField+" = '"+transformation+"'";
     Vector vec = new Vector();
     Debug.debug(req, 2);
     String version;
     try{
-      DBResult rset = executeQuery(req);
+      DBResult rset = executeQuery(req, dbName);
       while(rset.next()){
         version = rset.getString("version");
         if(version!=null){
@@ -2203,12 +2199,12 @@ public class MySQLDatabase extends DBCache implements Database {
 
   public String [] getTransformationOutputs(String transformationID){    
     String outputs = (String) getTransformation(transformationID).getValue("outputFiles");
-    return Util.split(outputs);
+    return MyUtil.split(outputs);
   }
 
   public String [] getTransformationInputs(String transformationID){    
     String inputs = (String) getTransformation(transformationID).getValue("inputFiles");
-    return Util.split(inputs);
+    return MyUtil.split(inputs);
   }
   
   public String getError(){
@@ -2237,8 +2233,10 @@ public class MySQLDatabase extends DBCache implements Database {
   
   public DBRecord getFile(String datasetName, String fileID, int findAllPFNs){
     String [] fields = null;
+    Connection conn = null;
     try{
       fields = getFieldNames("file");
+      conn = getDBConnection(dbName);
     }
     catch(Exception e){
       e.printStackTrace();
@@ -2248,10 +2246,9 @@ public class MySQLDatabase extends DBCache implements Database {
     DBRecord file = new DBRecord(fields, values);
     // If the file catalog tables (t_pfn, t_lfn, t_meta) are present,
     // we use them.
-    Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
     if(isFileCatalog()){
       Vector fieldsVector = new Vector();
-      Debug.debug("file fields: "+Util.arrayToString(fields), 3);
+      Debug.debug("file fields: "+MyUtil.arrayToString(fields), 3);
       // first some special fields; we lump all pfname's into the same pfname field
       for(int i=0; i<fields.length; ++i){
         try{
@@ -2261,13 +2258,13 @@ public class MySQLDatabase extends DBCache implements Database {
           else if(fields[i].equalsIgnoreCase("lfname")){
             // TODO: we're assuming a on-to-one lfn/guid mapping. Improve.
             file.setValue(fields[i],
-                Util.getValues(dbName,
+                MyUtil.getValues(dbName,
                     "t_lfn", "guid", fileID, new String [] {"lfname"})[0][0]);
           }
           else if(fields[i].equalsIgnoreCase("pfname")){
             String [] pfns = new String [0];
             if(findAllPFNs!=0){
-              String [][] res = Util.getValues(dbName, "t_pfn", "guid", fileID, new String [] {"pfname"});
+              String [][] res = MyUtil.getValues(dbName, "t_pfn", "guid", fileID, new String [] {"pfname"});
               pfns = new String [res.length];
               for(int j=0; j<res.length; ++j){
                 pfns[j] = res[j][0];
@@ -2279,7 +2276,7 @@ public class MySQLDatabase extends DBCache implements Database {
                 pfns = new String [] {pfns[0]};
               }
             }
-            file.setValue(fields[i], Util.arrayToString(pfns));
+            file.setValue(fields[i], MyUtil.arrayToString(pfns));
           }
           else if(fields[i].equalsIgnoreCase("guid")){
             file.setValue(fields[i], fileID);
@@ -2294,7 +2291,7 @@ public class MySQLDatabase extends DBCache implements Database {
       }
       // get the rest of the values
       DBResult res = select("SELECT " +
-          Util.arrayToString(fieldsVector.toArray(), ", ") +
+          MyUtil.arrayToString(fieldsVector.toArray(), ", ") +
             " FROM file WHERE guid = "+fileID, "guid", true);
       for(int i=0; i<fieldsVector.size(); ++i){
         try{
@@ -2322,7 +2319,7 @@ public class MySQLDatabase extends DBCache implements Database {
       }
       for(int i=0; i<jobDef.fields.length; ++i){
         if(jobDef.fields[i].equalsIgnoreCase("outFileMapping")){
-          String [] map = Util.split((String) jobDef.getValue(jobDef.fields[i]));
+          String [] map = MyUtil.split((String) jobDef.getValue(jobDef.fields[i]));
           try{
             file.setValue("url", map[1]);
           }
@@ -2355,7 +2352,7 @@ public class MySQLDatabase extends DBCache implements Database {
       }
       String [][] urls = new String [2][];
       try{
-        urls[1] = Util.splitUrls(ret);
+        urls[1] = MyUtil.splitUrls(ret);
         urls[0] = new String[urls[1].length];
         Arrays.fill(urls[0], "");
       }
@@ -2381,7 +2378,7 @@ public class MySQLDatabase extends DBCache implements Database {
    * Returns the files registered for a given dataset id.
    */
   public DBResult getFiles(String datasetID){
-    String idField = Util.getIdentifierField(dbName, "dataset");
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
     DBResult res = select("SELECT * FROM file WHERE "+idField+" = "+datasetID, idField, false);
     return res;
   }
@@ -2398,7 +2395,7 @@ public class MySQLDatabase extends DBCache implements Database {
       final String msg = "This is a virtual file catalog - it cannot be modified directly.";
       final String title = "Table cannot be modified";
       SwingUtilities.invokeLater(
-          new MyThread(){
+          new ResThread(){
             public void run(){
               MessagePane.showMessage(msg, title);
             }
@@ -2438,8 +2435,8 @@ public class MySQLDatabase extends DBCache implements Database {
       // TODO: map source name field to target name field and
       // source identifier field to target identifier field.
       try{
-        String nameField = Util.getNameField(dbName, "dataset");
-        String idField = Util.getIdentifierField(dbName, "dataset");
+        String nameField = MyUtil.getNameField(dbName, "dataset");
+        String idField = MyUtil.getIdentifierField(dbName, "dataset");
         GridPilot.getClassMgr().getStatusBar().setLabel("Creating new dataset "+datasetName);
         if(!createDataset("dataset",
             new String [] {nameField, idField}, new Object [] {datasetName, datasetID})){
@@ -2522,7 +2519,7 @@ public class MySQLDatabase extends DBCache implements Database {
     String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
     url + "', '" + fileID +"')";
     Debug.debug(sql, 2);
-    executeUpdate(sql);
+    executeUpdate(sql, dbName);
   }
   
   // This is only to be used if this is a file catalog.
@@ -2542,7 +2539,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok1 = true;
     try{
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       execok1 = false;
@@ -2555,7 +2552,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok2 = true;
     try{
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       execok2 = false;
@@ -2568,7 +2565,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok3 = true;
     try{
-      executeUpdate(sql);
+      executeUpdate(sql, dbName);
     }
     catch(Exception e){
       execok3 = false;
@@ -2581,7 +2578,7 @@ public class MySQLDatabase extends DBCache implements Database {
 
   public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) {
     if(isFileCatalog()){
-      LogFile logFile = GridPilot.getClassMgr().getLogFile();
+      MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
       boolean ok = true;
       for(int i=0; i<fileIDs.length; ++i){
         try{
@@ -2596,7 +2593,7 @@ public class MySQLDatabase extends DBCache implements Database {
               }
               Debug.debug("Deleting files "+fileNames, 2);
               if(fileNames!=null && !fileNames.equals("no such field")){
-                String [] fileNameArray = Util.splitUrls(fileNames);
+                String [] fileNameArray = MyUtil.splitUrls(fileNames);
                 if(fileNameArray!=null && fileNameArray.length>0){
                   TransferControl.deleteFiles(fileNameArray);
                 }
@@ -2609,21 +2606,21 @@ public class MySQLDatabase extends DBCache implements Database {
           }
           String req = "DELETE FROM t_lfn WHERE guid = '"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
-          int rowsAffected = executeUpdate(req);
+          int rowsAffected = executeUpdate(req, dbName);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+fileIDs[i]+" from t_lfn";
             logFile.addMessage(error);
           }
           req = "DELETE FROM t_pfn WHERE guid = '"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
-          rowsAffected = executeUpdate(req);
+          rowsAffected = executeUpdate(req, dbName);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+fileIDs[i]+" from t_pfn";
             logFile.addMessage(error);
           }
           req = "DELETE FROM t_meta WHERE guid = '"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
-          rowsAffected = executeUpdate(req);
+          rowsAffected = executeUpdate(req, dbName);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+fileIDs[i]+" from t_meta";
             logFile.addMessage(error);
@@ -2643,10 +2640,11 @@ public class MySQLDatabase extends DBCache implements Database {
   }
 
   private synchronized String getFileID(String lfn){
+    String ret = null;
     if(isFileCatalog()){
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      String ret = Util.getValues(dbName, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
       try{
+        Connection conn = getDBConnection(dbName);
+        ret = MyUtil.getValues(dbName, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
         conn.close();
       }
       catch(SQLException e){
@@ -2655,14 +2653,14 @@ public class MySQLDatabase extends DBCache implements Database {
       return ret;
     }
     else if(isJobRepository()){
-      Connection conn = GridPilot.getClassMgr().getDBConnection(dbName);
-      // an autoincremented integer is of no use... Except for when pasting:
-      // then we need it to get the pfns.
-      String nameField = Util.getNameField(dbName, "jobDefinition");
-      String idField = Util.getIdentifierField(dbName, "jobDefinition");
-      String ret = Util.getValues(dbName, "jobDefinition", nameField, lfn,
-          new String [] {idField})[0][0];
       try{
+        Connection conn = getDBConnection(dbName);
+        // an autoincremented integer is of no use... Except for when pasting:
+        // then we need it to get the pfns.
+        String nameField = MyUtil.getNameField(dbName, "jobDefinition");
+        String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+        ret = MyUtil.getValues(dbName, "jobDefinition", nameField, lfn,
+            new String [] {idField})[0][0];
         conn.close();
       }
       catch(SQLException e){

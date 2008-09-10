@@ -1,8 +1,8 @@
 package gridpilot.dbplugins.atlas;
 
-import gridpilot.Debug;
+import gridfactory.common.Debug;
 import gridpilot.GridPilot;
-import gridpilot.Util;
+import gridpilot.MyUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -28,7 +28,7 @@ public class TiersOfAtlas {
       URL toaURL = null;
       toaFile = File.createTempFile(/*prefix*/"GridPilot-TOA", /*suffix*/"");
       toaFile.delete();
-      toaLocation = Util.clearFile(toaLocation);
+      toaLocation = MyUtil.clearFile(toaLocation);
       if(toaLocation.startsWith("~")){
         toaLocation = System.getProperty("user.home") + File.separator +
         toaLocation.substring(1);

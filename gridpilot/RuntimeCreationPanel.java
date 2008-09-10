@@ -1,5 +1,8 @@
 package gridpilot;
 
+import gridfactory.common.DBRecord;
+import gridfactory.common.Debug;
+
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.text.*;
@@ -16,7 +19,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
   private boolean editing = false;
-  private Table table;
+  private MyJTable table;
   private String packID = "-1";
   private String [] cstAttributesNames;
   private String [] cstAttr = null;
@@ -40,12 +43,12 @@ public class RuntimeCreationPanel extends CreateEditPanel{
     table = panel.getTable();
     packIdentifier = "identifier";
     cstAttributesNames = dbPluginMgr.getFieldNames("runtimeEnvironment");
-    Debug.debug("Got field names: "+Util.arrayToString(cstAttributesNames),3);
+    Debug.debug("Got field names: "+MyUtil.arrayToString(cstAttributesNames),3);
     cstAttr = new String[cstAttributesNames.length];
     Debug.debug("edit? "+table.getSelectedRow()+":"+ editing, 3);
     // Find pack ID from table
     if(table.getSelectedRow()>-1 && editing){
-      Debug.debug("Editing... "+table.getColumnNames().length+" : "+Util.arrayToString(table.getColumnNames()), 3);
+      Debug.debug("Editing... "+table.getColumnNames().length+" : "+MyUtil.arrayToString(table.getColumnNames()), 3);
       for(int i=0; i<table.getColumnNames().length; ++i){
         Object fieldVal = table.getUnsortedValueAt(table.getSelectedRow(),i);
         Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
@@ -116,7 +119,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
         if(cstAttributesNames[i].equalsIgnoreCase(packIdentifier) ||
            cstAttributesNames[i].equalsIgnoreCase("created") ||
            cstAttributesNames[i].equalsIgnoreCase("lastModified")){
-          Util.setJEditable(tcCstAttributes[i], false);
+          MyUtil.setJEditable(tcCstAttributes[i], false);
         }
       }
     }
@@ -151,7 +154,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
     int row = 0;
     for(int i = 0; i<cstAttributesNames.length; ++i, ++row){
       if(cstAttributesNames[i].equalsIgnoreCase("scriptRepository")){
-           pAttributes.add(Util.createCheckPanel(
+           pAttributes.add(MyUtil.createCheckPanel(
                (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
                cstAttributesNames[i], tcCstAttributes[i], true, true),
                new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
@@ -167,7 +170,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
             tcCstAttributes[i]==null){
           if(cstAttributesNames[i].toString().equalsIgnoreCase("initLines") ||
               cstAttributesNames[i].toString().equalsIgnoreCase("certificate")){
-            tcCstAttributes[i] = Util.createTextArea(TEXTFIELDWIDTH);
+            tcCstAttributes[i] = MyUtil.createTextArea(TEXTFIELDWIDTH);
           }
           else{
             tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
@@ -175,11 +178,11 @@ public class RuntimeCreationPanel extends CreateEditPanel{
         }
         if(cstAttr[i]!=null && !cstAttr[i].equals("")){
           Debug.debug("Setting cstAttr["+i+"]: "+cstAttr[i], 3);
-          Util.setJText(tcCstAttributes[i], cstAttr[i]);
+          MyUtil.setJText(tcCstAttributes[i], cstAttr[i]);
         }
         // when creating, zap loaded dataset id
         if(!editing && cstAttributesNames[i].toString().equalsIgnoreCase("identifier")){
-          Util.setJText(tcCstAttributes[i], "");
+          MyUtil.setJText(tcCstAttributes[i], "");
         }
       }
       
@@ -210,7 +213,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
           if(tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled() &&
              tcCstAttributes[i].getText().length()==0){
             if(cstAttributesNames[i].toString().equalsIgnoreCase("initLines")){
-              tcCstAttributes[i] = Util.createTextArea(TEXTFIELDWIDTH);
+              tcCstAttributes[i] = MyUtil.createTextArea(TEXTFIELDWIDTH);
             }
             else{
               tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
@@ -231,7 +234,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
       if(cstAttributesNames[i].equalsIgnoreCase(packIdentifier) ||
           cstAttributesNames[i].equalsIgnoreCase("created") ||
           cstAttributesNames[i].equalsIgnoreCase("lastModified")){
-        Util.setJEditable(tcCstAttributes[i], false);
+        MyUtil.setJEditable(tcCstAttributes[i], false);
         Debug.debug("Disabling identifier "+cstAttributesNames[i],3);
         if(!editing){
           try{

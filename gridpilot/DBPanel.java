@@ -1,10 +1,13 @@
 package gridpilot;
 
-import gridpilot.Table;
-import gridpilot.DBResult;
-import gridpilot.DBRecord;
+import gridfactory.common.ConfirmBox;
+import gridfactory.common.DBRecord;
+import gridfactory.common.DBResult;
+import gridfactory.common.DBVectorTableModel;
+import gridfactory.common.Debug;
+import gridfactory.common.ResThread;
+import gridpilot.MyJTable;
 import gridpilot.SelectPanel.SPanel;
-import gridpilot.Debug;
 import gridpilot.GridPilot;
 
 import javax.swing.*;
@@ -40,7 +43,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JScrollPane spSelectPanel = new JScrollPane();
   private JPanel pButtonSelectPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
   private JScrollPane spTableResults = new JScrollPane();
-  private Table tableResults = null;
+  private MyJTable tableResults = null;
   private JPanel pButtonTableResults = new JPanel(new FlowLayout(FlowLayout.CENTER));
   private JButton bCreateRecords = new JButton("Define new record(s)");
   private JButton bEditRecord = new JButton("Edit record");
@@ -80,7 +83,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JMenuItem menuEditCopy = null;
   private JMenuItem menuEditCut = null;
   private JMenuItem menuEditPaste = null;
-  private MyThread workThread;
+  private ResThread workThread;
   // WORKING THREAD SEMAPHORE
   // The idea is to ignore new requests when working on a request
   private boolean working = false;
@@ -153,10 +156,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      
      GridPilot.gridHomeURL = defaultURL;
           
-     identifier = Util.getIdentifierField(dbPluginMgr.getDBName(), tableName);
+     identifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), tableName);
      
      if(tableName.equalsIgnoreCase("jobDefinition")){
-       jobDefIdentifier = Util.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
+       jobDefIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
      }
 
      defaultFields = dbPluginMgr.getDBDefFields(tableName);
@@ -165,7 +168,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      fieldNames = dbPluginMgr.getFieldNames(tableName);
      
      hiddenFields = dbPluginMgr.getDBHiddenFields(tableName);
-     Debug.debug("Hidden fields "+Util.arrayToString(hiddenFields), 3);
+     Debug.debug("Hidden fields "+MyUtil.arrayToString(hiddenFields), 3);
      
      submissionControl = GridPilot.getClassMgr().getSubmissionControl();
      
@@ -192,7 +195,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
        fieldNames[i] = fieldSet.get(i).toString();
      }
      
-     tableResults = new Table(hiddenFields, fieldNames,
+     tableResults = new MyJTable(hiddenFields, fieldNames,
          GridPilot.jobColorMapping);
      
      setFieldArrays();
@@ -203,7 +206,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      initGUI();
    }
    
-   public Table getTable(){
+   public MyJTable getTable(){
      return tableResults;
    }
 
@@ -211,7 +214,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      Vector shownSet = new Vector();  
      boolean ok = true;
      boolean hiddenOk = true;
-     Debug.debug("Finding fields to show from: "+Util.arrayToString(defaultFields), 3);
+     Debug.debug("Finding fields to show from: "+MyUtil.arrayToString(defaultFields), 3);
      for(int i=0; i<defaultFields.length; ++i){
        ok = false;
        for(int j=0; j<fieldNames.length; ++j){
@@ -339,7 +342,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             GridBagConstraints.NONE,new Insets(10, 10, 10, 10), 0, 0));
     panelSelectPanel.validate();
 
-    selectPanel.setConstraint(Util.getNameField(dbPluginMgr.getDBName(), tableName), "", 1);
+    selectPanel.setConstraint(MyUtil.getNameField(dbPluginMgr.getDBName(), tableName), "", 1);
     
     // Listen for enter key in text field
     this.selectPanel.spcp.tfConstraintValue.addKeyListener(new KeyAdapter(){
@@ -347,7 +350,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         switch(e.getKeyCode()){
           case KeyEvent.VK_ENTER:
             cursor = -1;
-            MyThread t = (new MyThread(){
+            ResThread t = (new ResThread(){
               public void run(){
                 try{
                   search();
@@ -415,7 +418,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bSearch.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         cursor = -1;
-        MyThread t = (new MyThread(){
+        ResThread t = (new ResThread(){
           public void run(){
             try{
               search();
@@ -434,7 +437,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bNext.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         cursor = cursor+GridPilot.fileRows;
-        MyThread t = (new MyThread(){
+        ResThread t = (new ResThread(){
           public void run(){
             try{
               search();
@@ -453,7 +456,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bPrevious.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         cursor = cursor-GridPilot.fileRows;
-        MyThread t = (new MyThread(){
+        ResThread t = (new ResThread(){
           public void run(){
             try{
               search();
@@ -787,7 +790,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     String clip = getClipboardContents();
     String clips [] = null;
     if(clip!=null){
-      clips = Util.split(clip);
+      clips = MyUtil.split(clip);
     }
     if(clips!=null && clips.length>2 && clips[1].equalsIgnoreCase(tableName)){
       clipboardOwned = true;
@@ -885,7 +888,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     selectPanel.setDisplayFieldValue(values);
     selectPanel.resetConstraintList(tableName);
-    selectPanel.setConstraint(Util.getNameField(dbPluginMgr.getDBName(), tableName), "", 1);
+    selectPanel.setConstraint(MyUtil.getNameField(dbPluginMgr.getDBName(), tableName), "", 1);
     selectPanel.updateUI();
   }
   
@@ -927,7 +930,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   public void searchRequest(final int sortColumn, final boolean isAscending,
       final int [] columnWidths, boolean invokeLater, boolean waitForThread){
         
-    workThread = new MyThread(){
+    workThread = new ResThread(){
       public void run(){
         if(!waitForWorking()){
           GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, search not performed");
@@ -950,7 +953,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         if(selectRequest==null){
             return;
         }
-        String [][] vals = null;
+        Object[][] vals = null;
         if(tableName.equalsIgnoreCase("file")){
           Debug.debug("Searching from cursor "+cursor, 2);
           if(cursor==-1){
@@ -995,7 +998,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           vals = res.values;
         }
         Debug.debug("Setting table", 3);
-        tableResults.setTable(vals, res.fields);
+        try {
+          tableResults.setTable(vals, res.fields);
+        }
+        catch(Exception e1){
+          e1.printStackTrace();
+          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not set values in table.", e1);
+        }
         Debug.debug("Done setting table", 3);
 
         bViewFiles.setEnabled(false);
@@ -1188,7 +1197,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     
     if(waitForThread){
       workThread.start();
-      Util.waitForThread(workThread, dbName, 0, "searchRequest");
+      MyUtil.waitForThread(workThread, dbName, 0, "searchRequest");
       return;
     }
     if(invokeLater){
@@ -1541,7 +1550,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             // the identifier is the last column
             tableResults.getColumnCount()-1).toString()).getValue(fieldNames[j]).toString();*/
       }
-      Util.showResult(fieldNames, values, "file", 0);
+      MyUtil.showResult(fieldNames, values, "file", 0);
     }
   }
   
@@ -1583,7 +1592,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         e.printStackTrace();
         return;
       }
-      workThread = new MyThread(){
+      workThread = new ResThread(){
         public void run(){
           if(!getWorking()){
             return;
@@ -1592,7 +1601,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           String [] allIds = getSelectedIdentifiers();
           
           HashMap datasetNameAndIds = new HashMap();
-          String [] fileDatasetReference = Util.getFileDatasetReference(dbPluginMgr.getDBName());
+          String [] fileDatasetReference = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
           int [] rows = tableResults.getSelectedRows();
           int fileDatasetNameColumn = -1;
           // Find the dataset name column on the files tab
@@ -1612,7 +1621,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             ((Vector) datasetNameAndIds.get(dsn)).add(allIds[i]);
           }          
           
-          Debug.debug("Deleting "+allIds.length+" rows. "+Util.arrayToString(allIds), 2);
+          Debug.debug("Deleting "+allIds.length+" rows. "+MyUtil.arrayToString(allIds), 2);
           if(allIds.length!=0){
             GridPilot.getClassMgr().getStatusBar().setLabel(
                "Deleting file(s). Please wait...");
@@ -1625,7 +1634,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             Vector idVec = null;
             String datasetId = null;
             Debug.debug("Deleting from "+datasetNameAndIds.keySet().size()+" datasets. "+
-                Util.arrayToString(datasetNameAndIds.keySet().toArray()), 2);
+                MyUtil.arrayToString(datasetNameAndIds.keySet().toArray()), 2);
             for(Iterator it=datasetNameAndIds.keySet().iterator(); it.hasNext();){
               dsn = (String) it.next();
               datasetId = dbPluginMgr.getDatasetID(dsn);
@@ -1634,7 +1643,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               for(int i=0; i<idVec.size(); ++i){
                 ids[i] = idVec.get(i).toString();
               }
-              Debug.debug("Now deleting "+ids.length+" files: "+Util.arrayToString(ids), 3);
+              Debug.debug("Now deleting "+ids.length+" files: "+MyUtil.arrayToString(ids), 3);
               boolean success = true;
               try{
                 success = dbPluginMgr.deleteFiles(datasetId, ids, cbCleanup.isSelected());
@@ -1644,7 +1653,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                 success = false;
               }
               if(!success){
-                String msg = "Deleting files "+Util.arrayToString(ids)+" failed.";
+                String msg = "Deleting files "+MyUtil.arrayToString(ids)+" failed.";
                 Debug.debug(msg, 1);
                 GridPilot.getClassMgr().getStatusBar().setLabel("Deleting file(s) failed");
                 GridPilot.getClassMgr().getLogFile().addMessage(msg);
@@ -1705,7 +1714,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       return;
     }
 
-    workThread = new MyThread(){
+    workThread = new ResThread(){
       public void run(){
         if(!getWorking()){
           return;
@@ -1794,7 +1803,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   public void deleteDatasets(){
     statusBar.setLabel("Deleting dataset(s).");
     final HashSet deleted = new HashSet();
-    workThread = new MyThread(){
+    workThread = new ResThread(){
       public void run(){
         if(!getWorking()){
           return;
@@ -1954,7 +1963,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(choice==JOptionPane.NO_OPTION){
       return;
     }
-    workThread = new MyThread(){
+    workThread = new ResThread(){
       public void run(){
         if(!getWorking()){
           return;
@@ -2019,7 +2028,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(choice==JOptionPane.NO_OPTION){
       return;
     }
-    workThread = new MyThread(){
+    workThread = new ResThread(){
       public void run(){
         if(!getWorking()){
           return;
@@ -2077,7 +2086,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             // We assume that the dataset name is used as reference...
             // TODO: improve this
             String datasetColumn = "dsn";
-            String [] fileDatasetReference = Util.getFileDatasetReference(dbPluginMgr.getDBName());
+            String [] fileDatasetReference = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
             if(fileDatasetReference!=null){
               datasetColumn = fileDatasetReference[1];
             }
@@ -2133,7 +2142,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             DBPanel dbPanel = new DBPanel("jobDefinition",
                 dbPluginMgr, id);
             String [] jobDefDatasetReference =
-              Util.getJobDefDatasetReference(dbPluginMgr.getDBName());
+              MyUtil.getJobDefDatasetReference(dbPluginMgr.getDBName());
             dbPanel.selectPanel.setConstraint(jobDefDatasetReference[1],
                 dbPluginMgr.getDataset(id).getValue(
                     jobDefDatasetReference[0]).toString(),
@@ -2184,7 +2193,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           String datasetID = getSelectedIdentifier();
           // Well, again: DQ2 cannot lookup dataset name from id...
           //String datasetName = dbPluginMgr.getDatasetName(datasetID);
-          String [] datasetNameFields = Util.getFileDatasetReference(dbPluginMgr.getDBName());
+          String [] datasetNameFields = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
           String datasetNameField = datasetNameFields[1];
           int datasetNameIndex = -1;
           for(int i=0; i<tableResults.getColumnNames().length; ++i){
@@ -2361,15 +2370,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         // TODO: improve this
         String datasetColumn = "dsn";
         String [] fileDatasetReference =
-          Util.getFileDatasetReference(dbPluginMgr.getDBName());
+          MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
         if(fileDatasetReference!=null){
           datasetColumn = fileDatasetReference[1];
         }
         dbPluginMgr.clearRequestStopLookup();
-        String pfnsColumn = Util.getPFNsField(dbName);
+        String pfnsColumn = MyUtil.getPFNsField(dbName);
         String catalogsColumn = "catalogs";
         Debug.debug("PFNs column name: "+pfnsColumn, 2);
-        JProgressBar pb = Util.setProgressBar(selectedFileIdentifiers.length, dbName);
+        JProgressBar pb = MyUtil.setProgressBar(selectedFileIdentifiers.length, dbName);
         for(int i=0; i<selectedFileIdentifiers.length; ++i){
           pb.setValue(i+1);
           // Get the datasetName from the table.            
@@ -2402,10 +2411,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           String [][] catsPfns = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i],
               findAll());
           if(catalogsColumnIndex>-1 && catsPfns!=null && catsPfns[0]!=null){
-            tableResults.setValueAt(Util.arrayToString(catsPfns[0]), selectedRows[i], catalogsColumnIndex);
+            tableResults.setValueAt(MyUtil.arrayToString(catsPfns[0]), selectedRows[i], catalogsColumnIndex);
           }
           if(pfnsColumnIndex>-1 && catsPfns!=null && catsPfns[1]!=null){
-            tableResults.setValueAt(Util.arrayToString(catsPfns[1]), selectedRows[i], pfnsColumnIndex);
+            tableResults.setValueAt(MyUtil.arrayToString(catsPfns[1]), selectedRows[i], pfnsColumnIndex);
           }
           frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
@@ -2421,7 +2430,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     Object [] pfns = new String [selectedFileIdentifiers.length];
     for(int i=0; i<selectedFileIdentifiers.length; ++i){
       HashMap values = new HashMap();
-      String pfnsColumn = Util.getPFNsField(dbName);
+      String pfnsColumn = MyUtil.getPFNsField(dbName);
       Debug.debug("PFNs column name: "+pfnsColumn, 2);
       int pfnsColumnIndex = -1;
       for(int j=0; j<fieldNames.length; ++j){
@@ -2442,7 +2451,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     }
     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-    StringSelection stringSelection = new StringSelection(Util.arrayToString(pfns));
+    StringSelection stringSelection = new StringSelection(MyUtil.arrayToString(pfns));
     clipboard.setContents(stringSelection, this);
     clipboardOwned = false;
     menuEditPaste.setEnabled(false);
@@ -2501,8 +2510,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     String [][] ret = new String [2][];
     ret[0] = wb.lastUrlList;
     ret[1] = wb.lastSizesList;
-    Debug.debug("Returning last URL list "+Util.arrayToString(ret[0])+
-        Util.arrayToString(ret[1]), 2);
+    Debug.debug("Returning last URL list "+MyUtil.arrayToString(ret[0])+
+        MyUtil.arrayToString(ret[1]), 2);
     return ret;
   }
   
@@ -2587,11 +2596,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     String [] selectedFileIdentifiers = getSelectedIdentifiers();
     int [] selectedRows = tableResults.getSelectedRows();
     Debug.debug("Starting download of "+selectedFileIdentifiers.length+" files", 2);
-    String nameField = Util.getNameField(dbPluginMgr.getDBName(), "file");
-    String idField = Util.getIdentifierField(dbPluginMgr.getDBName(), "file");
+    String nameField = MyUtil.getNameField(dbPluginMgr.getDBName(), "file");
+    String idField = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "file");
     GlobusURL srcUrl = null;
     GlobusURL destUrl = null;
-    TransferInfo transfer = null;
+    MyTransferInfo transfer = null;
     Vector transfers = new Vector();
     String dlUrl = null;
     TransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
@@ -2607,11 +2616,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     // TODO: improve this
     String datasetColumn = "dsn";
     String [] fileDatasetReference =
-      Util.getFileDatasetReference(dbPluginMgr.getDBName());
+      MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
     if(fileDatasetReference!=null){
       datasetColumn = fileDatasetReference[1];
     }
-    JProgressBar pb = Util.setProgressBar(selectedFileIdentifiers.length, dbName);
+    JProgressBar pb = MyUtil.setProgressBar(selectedFileIdentifiers.length, dbName);
     for(int i=0; i<selectedFileIdentifiers.length; ++i){
       pb.setValue(i+1);
       String [] urls = null;
@@ -2639,17 +2648,17 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       catch(Exception e){
       }
       try{
-        bytes = (String) values.get(Util.getFileSizeField(dbName));
+        bytes = (String) values.get(MyUtil.getFileSizeField(dbName));
       }
       catch(Exception e){
       }
       try{
-        checksum = (String) values.get(Util.getChecksumField(dbName));
+        checksum = (String) values.get(MyUtil.getChecksumField(dbName));
       }
       catch(Exception e){
       }
       try{
-        String pfnsColumn = Util.getPFNsField(dbName);
+        String pfnsColumn = MyUtil.getPFNsField(dbName);
         String urlsString = values.get(pfnsColumn).toString();
         // If the PFNs have not been looked up, do it.
         Debug.debug("urlsString: "+urlsString, 2);
@@ -2660,14 +2669,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           Debug.debug("new urlsString: "+urlsString, 2);
           // This may also cause some missing bytes and checksums to be filled in
           if(bytes==null || bytes.equals("")){
-            bytes = (String) values.get(Util.getFileSizeField(dbName));
+            bytes = (String) values.get(MyUtil.getFileSizeField(dbName));
           }
           if(checksum==null || checksum.equals("")){
-            checksum = (String) values.get(Util.getChecksumField(dbName));
+            checksum = (String) values.get(MyUtil.getChecksumField(dbName));
           }
         }
         // If no PFNs were found, skip this transfer (an exception will be thrown and caught).
-        urls = Util.splitUrls(urlsString);
+        urls = MyUtil.splitUrls(urlsString);
       }
       catch(Exception e){
       }
@@ -2699,10 +2708,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           datasetName = file.getValue(datasetColumn).toString();
         }
         if(bytes==null){
-          bytes = (String) file.getValue(Util.getFileSizeField(dbName));
+          bytes = (String) file.getValue(MyUtil.getFileSizeField(dbName));
         }
         if(checksum==null){
-          checksum = (String) file.getValue(Util.getChecksumField(dbName));
+          checksum = (String) file.getValue(MyUtil.getChecksumField(dbName));
         }
       }
       try{
@@ -2773,7 +2782,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           try{
             if(transfer==null){
               // Create the TransferInfo
-              transfer = new TransferInfo(srcUrl, destUrl);
+              transfer = new MyTransferInfo(srcUrl, destUrl);
             }
             Debug.debug(transfer.getSource().getURL()+" ---> "+transfer.getDestination().getURL(), 2);
             transfer.setDBPluginMgr(regDBPluginMgr);
@@ -2806,7 +2815,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       }
       try{
-        Util.setClosestSource(transfer);
+        MyUtil.setClosestSource(transfer);
         Debug.debug("adding transfer "+transfer.getSource().getURL()+" ---> "+transfer.getDestination().getURL(), 2);
         transfers.add(transfer);
       }
@@ -2922,7 +2931,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Submits all selected logicalFiles (partitions) in computing system chosen in the popupMenu
    */
   private void submit(final ActionEvent e){
-    workThread = new MyThread(){
+    workThread = new ResThread(){
       public void run(){
         if(!waitForWorking()){
           GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, search not performed");
@@ -2964,7 +2973,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     String [] ids = getSelectedIdentifiers();
     String [] copyObjects = new String [ids.length];
     if(tableName.equalsIgnoreCase("dataset")){
-      String nameField = Util.getNameField(dbPluginMgr.getDBName(), "dataset");
+      String nameField = MyUtil.getNameField(dbPluginMgr.getDBName(), "dataset");
       int nameIndex = -1;
       for(int i=0; i<tableResults.getColumnNames().length; ++i){
         if(tableResults.getColumnNames()[i].equalsIgnoreCase(nameField)){
@@ -2978,8 +2987,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     }
     if(tableName.equalsIgnoreCase("file")){
-      String nameField = Util.getNameField(dbPluginMgr.getDBName(), "file");
-      String [] datasetNameFields = Util.getFileDatasetReference(dbPluginMgr.getDBName());
+      String nameField = MyUtil.getNameField(dbPluginMgr.getDBName(), "file");
+      String [] datasetNameFields = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
       String datasetNameField = datasetNameFields[1];
       int nameIndex = -1;
       int datasetNameIndex = -1;
@@ -3002,7 +3011,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       copyObjects = ids;
     }
     StringSelection stringSelection = new StringSelection(
-        dbName+" "+tableName+" "+Util.arrayToString(copyObjects));
+        dbName+" "+tableName+" "+MyUtil.arrayToString(copyObjects));
     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
     clipboard.setContents(stringSelection, this);
     clipboardOwned = true;
@@ -3025,9 +3034,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     // or <db> <table> 'dsname1'::'name1'::'id1' 'dsname2'::'name2'::'id2' ...
     String [] records = null;
     if(clip.indexOf("'")>0){
-      String [] recs = Util.split(clip, "' '");
+      String [] recs = MyUtil.split(clip, "' '");
       records = new String [recs.length+2];
-      String [] head = Util.split(recs[0]);
+      String [] head = MyUtil.split(recs[0]);
       if(head.length<3){
         return;
       }
@@ -3042,7 +3051,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     }
     else{
-      records = Util.split(clip);
+      records = MyUtil.split(clip);
     }
     if(records.length<3){
       return;
@@ -3077,7 +3086,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             index = rest.indexOf("'::'");
             id = rest.substring(0, index);
             if(!GridPilot.getClassMgr().getDBPluginMgr(dbName).getDatasetID(name).equals("-1")){            
-              name = Util.getName("Cannot overwrite, please give new name", "new-"+name);
+              name = MyUtil.getName("Cannot overwrite, please give new name", "new-"+name);
               if(name==null || name.equals("")){
                 return;
               }
@@ -3245,7 +3254,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private boolean insertJobDefinition(DBPluginMgr sourceMgr, DBRecord jobDef) throws Exception{  
     try{
       // Check if parent dataset exists
-      String sourceJobDefIdentifier = Util.getIdentifierField(sourceMgr.getDBName(), "jobDefinition");
+      String sourceJobDefIdentifier = MyUtil.getIdentifierField(sourceMgr.getDBName(), "jobDefinition");
       String datasetName = sourceMgr.getDatasetName(
           sourceMgr.getJobDefDatasetID((String) jobDef.getValue(sourceJobDefIdentifier)));
       String targetDsId = dbPluginMgr.getDatasetID(datasetName);
@@ -3301,22 +3310,22 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       else{
         // Check if referenced transformation exists     
         String sourceTransName = sourceMgr.getDatasetTransformationName(
-            dataset.getValue(Util.getIdentifierField(sourceMgr.getDBName(),
+            dataset.getValue(MyUtil.getIdentifierField(sourceMgr.getDBName(),
                 "dataset")).toString());
         String sourceTransVersion = sourceMgr.getDatasetTransformationVersion(
-            dataset.getValue(Util.getIdentifierField(sourceMgr.getDBName(),
+            dataset.getValue(MyUtil.getIdentifierField(sourceMgr.getDBName(),
                 "dataset")).toString());          
         DBResult targetTransformations = dbPluginMgr.getTransformations();
         Vector transVec = new Vector();
         for(int i=0; i<targetTransformations.values.length; ++i){
-          if(targetTransformations.getValue(i, Util.getNameField(dbPluginMgr.getDBName(),
+          if(targetTransformations.getValue(i, MyUtil.getNameField(dbPluginMgr.getDBName(),
               "transformation")).toString(
               ).equalsIgnoreCase(sourceTransName)){
             transVec.add(targetTransformations.getRow(i));
           }
         }
         for(int i=0; i<transVec.size(); ++i){
-          if(((DBRecord) transVec.get(i)).getValue(Util.getVersionField(dbPluginMgr.getDBName(),
+          if(((DBRecord) transVec.get(i)).getValue(MyUtil.getVersionField(dbPluginMgr.getDBName(),
               "transformation")).toString().equalsIgnoreCase(sourceTransVersion)){
             ok = true;
             break;
@@ -3369,13 +3378,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       dataset = new DBRecord(targetFields, targetValues);
       ////
       
-      Debug.debug("Creating dataset: " + Util.arrayToString(dataset.fields, ":") + " ---> " +
-          Util.arrayToString(dataset.values, ":"), 3);
+      Debug.debug("Creating dataset: " + MyUtil.arrayToString(dataset.fields, ":") + " ---> " +
+          MyUtil.arrayToString(dataset.values, ":"), 3);
       try{
         // if name is specified, use it
         if(name!=null && !name.equals("")){
           Debug.debug("Setting name "+name, 3);
-          dataset.setValue(Util.getNameField(dbPluginMgr.getDBName(), "dataset"),
+          dataset.setValue(MyUtil.getNameField(dbPluginMgr.getDBName(), "dataset"),
               name);
         }
       }
@@ -3391,12 +3400,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         if(id!=null && !id.equals("")){
           if(sourceMgr.getDBName().equals(dbPluginMgr.getDBName())){
             Debug.debug("Clearing id", 3);
-            dataset.setValue(Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset"),
+            dataset.setValue(MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "dataset"),
                 "''");
           }
           else if(sourceMgr.isFileCatalog()){
             Debug.debug("Setting id "+id, 3);
-            dataset.setValue(Util.getIdentifierField(dbPluginMgr.getDBName(), "dataset"),
+            dataset.setValue(MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "dataset"),
                 id);
           }
         }
@@ -3421,11 +3430,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      throws Exception{
     try{
       // Check if referenced runtime environment exists
-      String sourceTransformationIdentifier = Util.getIdentifierField(sourceMgr.getDBName(),
+      String sourceTransformationIdentifier = MyUtil.getIdentifierField(sourceMgr.getDBName(),
           "transformation");
-      String targetTransformationIdentifier = Util.getIdentifierField(dbPluginMgr.getDBName(),
+      String targetTransformationIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(),
           "transformation");
-      String targetRuntimeEnvironmentName = Util.getNameField(dbPluginMgr.getDBName(),
+      String targetRuntimeEnvironmentName = MyUtil.getNameField(dbPluginMgr.getDBName(),
           "runtimeEnvironment");
       String runtimeEnvironment = sourceMgr.getTransformationRuntimeEnvironment(
           transformation.getValue(
