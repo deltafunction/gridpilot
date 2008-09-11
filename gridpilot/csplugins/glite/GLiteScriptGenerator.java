@@ -245,7 +245,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     // create jdl file
     StringBuffer bufJdl = new StringBuffer();
     try{
-      //writeLine(bufJdl, "Executable = \"/bin/sh\";");
+      //writeLine(bufJdl, "Executable = \"/bin/bash\";");
       //writeLine(bufJdl, "Arguments = \""+shortExeFileName+"\";");
       writeLine(bufJdl, "Executable = \""+shortExeFileName+"\";");
       writeLine(bufJdl, "StdOutput = \"stdout\";");

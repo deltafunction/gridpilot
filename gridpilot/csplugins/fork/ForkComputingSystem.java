@@ -149,7 +149,12 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
   
   protected String runDir(JobInfo job){
-    return MyUtil.clearTildeLocally(MyUtil.clearFile(workingDir +"/"+job.getName()));
+    if(getShell(job).isLocal()){
+      return MyUtil.clearTildeLocally(MyUtil.clearFile(workingDir +"/"+job.getName()));
+    }
+    else{
+      return MyUtil.clearFile(workingDir +"/"+job.getName());
+    }
   }
   
   /**
@@ -157,18 +162,6 @@ public class ForkComputingSystem implements MyComputingSystem{
    * scripts in the directory specified in the config file (runtime directory).
    */
   public void setupRuntimeEnvironments(String thisCs){
-    if(remoteDBPluginMgr!=null){
-      // Enable the pull button on the monitoring panel
-      GridPilot.pullEnabled = true;
-      try{
-        Debug.debug("Enabling pulling of jobs", 2);
-        GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.setPullEnabled(true);
-      }
-      catch(Exception e){
-        e.printStackTrace();
-        GridPilot.pullEnabled = false;
-      }
-    }
     for(int i=0; i<localRuntimeDBs.length; ++i){
       DBPluginMgr localDBMgr = null;
       try{
@@ -236,11 +229,29 @@ public class ForkComputingSystem implements MyComputingSystem{
     
     String name = null;
     String deps = "";
-    String cert = getCertificate(mgr);
-    String url = getUrl();
     
     toCleanupRTEs = new HashSet();
     HashSet runtimes = mgr.listFilesRecursively(runtimeDirectory);
+    String [] expandedRuntimeDirs = mgr.listFiles(MyUtil.clearFile(runtimeDirectory));
+    String dirName = null;
+    if(shellMgr.isLocal() && System.getProperty("os.name").toLowerCase().startsWith("windows")){
+      dirName = runtimeDirectory.replaceFirst("^.*\\([^\\]+)$", "$1");
+    }
+    else{
+      dirName = runtimeDirectory.replaceFirst("^.*/([^/]+)$", "$1");
+    }
+    if(expandedRuntimeDirs.length==1 && expandedRuntimeDirs[0].endsWith(dirName)){
+      Debug.debug("No RTE files in "+runtimeDirectory, 2);
+      return;
+    }
+    String expandedRuntimeDir = null;
+    if(shellMgr.isLocal() && System.getProperty("os.name").toLowerCase().startsWith("windows")){
+      expandedRuntimeDir = expandedRuntimeDirs[0].replaceFirst("^(.*\\)[^\\]+$", "$1");
+    }
+    else{
+      expandedRuntimeDir = expandedRuntimeDirs[0].replaceFirst("^(.*/)[^/]+$", "$1");
+    }
+
     if(runtimes!=null && runtimes.size()>0){
       String fil = null;      
       for(Iterator it=runtimes.iterator(); it.hasNext();){
@@ -249,8 +260,8 @@ public class ForkComputingSystem implements MyComputingSystem{
         fil = (String) it.next();
         
         // Get the name
-        Debug.debug("File found: "+runtimeDirectory+":"+fil, 3);
-        name = fil.substring(MyUtil.clearTildeLocally(MyUtil.clearFile(runtimeDirectory)).length()+1);
+        Debug.debug("File found: "+expandedRuntimeDir+":"+fil, 3);
+        name = fil.substring(expandedRuntimeDir.length());
         if(name.toLowerCase().endsWith(".gz") || name.toLowerCase().endsWith(".tar") ||
             name.toLowerCase().endsWith(".tgz") || name.toLowerCase().endsWith(".zip") ||
             mgr.isDirectory(name)){
@@ -286,26 +297,6 @@ public class ForkComputingSystem implements MyComputingSystem{
           // Write the entry in the local DB
           Debug.debug("Writing RTE "+name+" in local DB "+localDBMgr.getDBName(), 3);
           createRTE(localDBMgr, name, cs, deps, null, null);
-          // Register with local and remote DB with CS "GPSS"
-          if(cert!=null && cert.length()>0 && remoteDBMgr!=null){
-            // Only register with local database if GPSS is enabled
-            try{
-              // Dirty way of checking if GPSS is loaded. TODO: change
-              GridPilot.getClassMgr().getCSPluginMgr().getError("GPSS");
-              createRTE(localDBMgr, name, "GPSS", deps, cert, null);
-            }
-            catch(Exception e){
-            }
-            // Only register with remote database if pulling is enabled
-            if(GridPilot.pullEnabled){
-              createRTE(remoteDBMgr, name, "GPSS", deps, cert, url);
-              createRTE(remoteDBMgr, name, cs, deps, null, null);
-            }
-          }         
-          else{
-            logFile.addMessage("WARNING: no certificate or no remote DB. Disabling remote registration of " +
-                    "runtime environments.");
-          }
         }
       }
     }
@@ -928,12 +919,12 @@ public class ForkComputingSystem implements MyComputingSystem{
    * and the corresponding tarball URL is set, the tarball is downloaded
    * and extracted/installed and a setup script is written in the runtime directory.
    * @param job
-   * @param shellMgr
+   * @param shell
    * @return false if a required RTE is not present and could not be downloaded.
    */
-  protected boolean setupJobRTEs(MyJobInfo job, Shell shellMgr){
+  protected boolean setupJobRTEs(MyJobInfo job, Shell shell){
     if(runtimeDirectory==null || runtimeDirectory.length()==0 ||
-        !(new File(MyUtil.clearTildeLocally(MyUtil.clearFile(runtimeDirectory)))).exists()){
+        !shell.existsFile(runtimeDirectory)){
       logFile.addMessage("ERROR: could not download RTE to "+runtimeDirectory);
       return false;
     }
@@ -996,7 +987,7 @@ public class ForkComputingSystem implements MyComputingSystem{
           if(url!=null && !url.equals("null") && !url.equals("")){
             // Notice that we use the same directory to keep RTEs on both the local host and the (remote)
             // shell host
-            rteInstaller = new RteInstaller(url, runtimeDirectory, runtimeDirectory, rteNames[i], shellMgr);
+            rteInstaller = new RteInstaller(url, runtimeDirectory, runtimeDirectory, rteNames[i], shell);
             try{
               rteInstaller.install();
             }
@@ -1157,8 +1148,7 @@ public class ForkComputingSystem implements MyComputingSystem{
           // If source is remote, get it
           else if(!ignoreRemoteInputs && MyUtil.urlIsRemote(inputFiles[i])){
             try{
-              TransferControl.download(urlDir + fileName,
-                  new File(runDir(job)), GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+              TransferControl.download(urlDir + fileName, new File(runDir(job)));
             }
             catch(Exception ioe){
               logFile.addMessage("WARNING: GridPilot could not get input file "+inputFiles[i]+

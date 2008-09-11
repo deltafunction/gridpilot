@@ -1150,15 +1150,13 @@ public class NGComputingSystem implements MyComputingSystem{
           Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
               " from final destination "+finalStdOut+" to " +
               MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp())), 3);
-          TransferControl.download(finalStdOut, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))),
-              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+          TransferControl.download(finalStdOut, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
         }
         if(getFromfinalDest || !finalStdErr.startsWith("file:")){
           Debug.debug("Downloading stderr of: " + job.getName() + ":" + job.getJobId()+
               " from final destination "+finalStdErr+" to " +
               MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp())), 3);
-          TransferControl.download(finalStdErr, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))),
-              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+          TransferControl.download(finalStdErr, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))));
         }
       }
     }
@@ -1267,8 +1265,7 @@ public class NGComputingSystem implements MyComputingSystem{
         if(remoteName.startsWith("file:")){
           TransferControl.upload(
               new File(runDir(job)+File.separator+jobID+File.separator+localName),
-              remoteName,
-              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+              remoteName);
         }
       }
       catch(Exception e){
@@ -1311,8 +1308,7 @@ public class NGComputingSystem implements MyComputingSystem{
       try{
         File stdoutSourceFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp())));
         emptyFile = finalStdOut.startsWith("https") && stdoutSourceFile.length()==0;
-        TransferControl.upload(stdoutSourceFile, finalStdOut,
-            GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+        TransferControl.upload(stdoutSourceFile, finalStdOut);
         job.setOutTmp(finalStdOut);
       }
       catch(Throwable e){
@@ -1351,8 +1347,7 @@ public class NGComputingSystem implements MyComputingSystem{
       try{
         File stderrSourceFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp())));
         emptyFile = finalStdOut.startsWith("https") && stderrSourceFile.length()==0;
-        TransferControl.upload(stderrSourceFile, finalStdErr,
-            GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+        TransferControl.upload(stderrSourceFile, finalStdErr);
         job.setErrTmp(finalStdErr);
       }
       catch(Throwable e){

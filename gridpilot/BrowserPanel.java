@@ -772,7 +772,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         Debug.debug("Getting file : "+url+" -> "+dir.getAbsolutePath(), 3);
         try{
           statusBar.setLabel("Downloading "+url);
-          TransferControl.download(url, dir, ep);
+          TransferControl.download(url, dir);
           statusBar.setLabel("Download done");
         }
         catch(Exception ioe){
@@ -2139,8 +2139,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
         if(file==null){
           return;
         }
-        TransferControl.upload(file, thisUrl, ep);
+        TransferControl.upload(file, thisUrl);
         try{
+          statusBar.setLabel("uploading "+thisUrl);
           ep.getDocument().putProperty(
               Document.StreamDescriptionProperty, null);
           setDisplay(thisUrl);

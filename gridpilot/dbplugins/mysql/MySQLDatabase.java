@@ -324,7 +324,7 @@ public class MySQLDatabase extends DBCache implements Database {
     boolean execok = true;
     try{
       Debug.debug("Creating table. "+sql, 1);
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       execok = false;
@@ -346,7 +346,7 @@ public class MySQLDatabase extends DBCache implements Database {
         "WHERE "+idField+" = '"+jobDefID+"'";
     boolean ok = true;
     try{
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       error = e.getMessage();
@@ -422,7 +422,7 @@ public class MySQLDatabase extends DBCache implements Database {
     String id = null;
     Vector vec = new Vector();
     try{
-      DBResult rset = executeQuery(req, dbName);
+      DBResult rset = executeQuery(dbName, req);
       while(rset.next()){
         id = rset.getString(idField);
         if(id!=null){
@@ -460,7 +460,7 @@ public class MySQLDatabase extends DBCache implements Database {
     String id = null;
     Vector vec = new Vector();
     try{
-      DBResult rset = executeQuery(req, dbName);
+      DBResult rset = executeQuery(dbName, req);
       while(rset.next()){
         id = rset.getString(idField);
         if(id!=null){
@@ -624,7 +624,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Vector vec = new Vector();
     Debug.debug(req, 2);
     try{
-      DBResult rset = executeQuery(req, dbName);
+      DBResult rset = executeQuery(dbName, req);
       while(rset.next()){
         if(transID!=null){
           Debug.debug("WARNING: more than one transformation for name, version :" +
@@ -822,7 +822,7 @@ public class MySQLDatabase extends DBCache implements Database {
         fields[identifierColumn] = fields[fields.length-1];
         fields[fields.length-1] = identifier;
       }
-      DBResult rset = executeQuery(req, dbName);
+      DBResult rset = executeQuery(dbName, req);
       String [][] values = new String[rset.values.length][fields.length];
       int i=0;
       if(rset.fields.length!=fields.length){
@@ -909,7 +909,7 @@ public class MySQLDatabase extends DBCache implements Database {
     req += " WHERE "+idField+" = '"+ datasetID+"'";
     try{
       Debug.debug(">> "+req, 3);
-      DBResult rset = executeQuery(req, dbName);
+      DBResult rset = executeQuery(dbName, req);
       Vector datasetVector = new Vector();
       while(rset.next()){
         String values[] = new String[datasetFields.length];
@@ -958,7 +958,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Vector vec = new Vector();
     try{
       Debug.debug(">>> sql string was: "+req, 3);
-      DBResult rset = executeQuery(req, dbName);
+      DBResult rset = executeQuery(dbName, req);
       while(rset.next()){
         id = rset.getString(idField);
         if(id!=null){
@@ -1007,7 +1007,7 @@ public class MySQLDatabase extends DBCache implements Database {
     req += " WHERE "+idField+" = '"+ runtimeEnvironmentID+"'";
     try{
       Debug.debug(">> "+req, 3);
-      DBResult rset = executeQuery(req, dbName);
+      DBResult rset = executeQuery(dbName, req);
       Vector runtimeEnvironmentVector = new Vector();
       String [] jt = new String[runtimeEnvironmentFields.length];
       int i = 0;
@@ -1058,7 +1058,7 @@ public class MySQLDatabase extends DBCache implements Database {
     req += " WHERE "+idField+" = '"+ transformationID+"'";
     try{
       Debug.debug(">> "+req, 3);
-      DBResult rset = executeQuery(req, dbName);
+      DBResult rset = executeQuery(dbName, req);
       Vector transformationVector = new Vector();
       String [] jt = new String[transformationFields.length];
       int i = 0;
@@ -1116,7 +1116,7 @@ public class MySQLDatabase extends DBCache implements Database {
       }
       req += " FROM runtimeEnvironment";
       Debug.debug(req, 3);
-      rset = executeQuery(req, dbName);
+      rset = executeQuery(dbName, req);
       Vector runtimeEnvironmentVector = new Vector();
       String [] jt = new String[runtimeEnvironmentFields.length];
       int i = 0;
@@ -1165,7 +1165,7 @@ public class MySQLDatabase extends DBCache implements Database {
       }
       req += " FROM transformation";
       Debug.debug(req, 3);
-      rset = executeQuery(req, dbName);
+      rset = executeQuery(dbName, req);
       Vector transformationVector = new Vector();
       String [] jt = new String[transformationFields.length];
       int i = 0;
@@ -1208,7 +1208,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{
-      DBResult rset = executeQuery(req, dbName);
+      DBResult rset = executeQuery(dbName, req);
       while(rset.next()){
         String values[] = new String[jobDefFields.length];
         for(int i=0; i<jobDefFields.length;i++){
@@ -1293,7 +1293,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Vector jobdefv = new Vector();
     Debug.debug(req, 2);
     try{
-      DBResult rset = executeQuery(req, dbName);
+      DBResult rset = executeQuery(dbName, req);
       while(rset.next()){
         String values[] = new String[jobDefFields.length];
         for(int i=0; i<jobDefFields.length;i++){
@@ -1430,7 +1430,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       execok = false;
@@ -1486,7 +1486,7 @@ public class MySQLDatabase extends DBCache implements Database {
       boolean execok = true;
       Debug.debug("Updating >>> "+arg, 2);
       try{
-        executeUpdate(arg, dbName);
+        executeUpdate(dbName, arg);
       }
       catch(Exception e){
         execok = false;
@@ -1600,7 +1600,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       execok = false;
@@ -1649,7 +1649,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       execok = false;
@@ -1699,7 +1699,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       execok = false;
@@ -1728,7 +1728,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       execok = false;
@@ -1809,7 +1809,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       execok = false;
@@ -1881,7 +1881,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       execok = false;
@@ -1949,7 +1949,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       execok = false;
@@ -2017,7 +2017,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       execok = false;
@@ -2070,7 +2070,7 @@ public class MySQLDatabase extends DBCache implements Database {
     try{
       String sql = "DELETE FROM jobDefinition WHERE "+idField+" = '"+
       jobDefId+"'";
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2096,7 +2096,7 @@ public class MySQLDatabase extends DBCache implements Database {
       String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
       datasetID+"'";
       Debug.debug(">>> sql string was: "+sql, 3);
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2113,7 +2113,7 @@ public class MySQLDatabase extends DBCache implements Database {
     try{
       String sql = "DELETE FROM jobDefinition WHERE "+refFields[1]+" = '"+
         getDatasetName(datasetID)+"'";
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
@@ -2128,7 +2128,7 @@ public class MySQLDatabase extends DBCache implements Database {
     try{
       String sql = "DELETE FROM transformation WHERE "+idField+" = '"+
       transformationID+"'";
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2144,7 +2144,7 @@ public class MySQLDatabase extends DBCache implements Database {
     try{
       String sql = "DELETE FROM runtimeEnvironment WHERE "+idField+" = '"+
       runtimeEnvironmentID+"'";
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       Debug.debug(e.getMessage(), 2);
@@ -2164,7 +2164,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(req, 2);
     String version;
     try{
-      DBResult rset = executeQuery(req, dbName);
+      DBResult rset = executeQuery(dbName, req);
       while(rset.next()){
         version = rset.getString("version");
         if(version!=null){
@@ -2519,7 +2519,7 @@ public class MySQLDatabase extends DBCache implements Database {
     String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
     url + "', '" + fileID +"')";
     Debug.debug(sql, 2);
-    executeUpdate(sql, dbName);
+    executeUpdate(dbName, sql);
   }
   
   // This is only to be used if this is a file catalog.
@@ -2539,7 +2539,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok1 = true;
     try{
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       execok1 = false;
@@ -2606,7 +2606,7 @@ public class MySQLDatabase extends DBCache implements Database {
           }
           String req = "DELETE FROM t_lfn WHERE guid = '"+fileIDs[i]+"'";
           Debug.debug(">> "+req, 3);
-          int rowsAffected = executeUpdate(req, dbName);
+          int rowsAffected = executeUpdate(dbName, req);
           if(rowsAffected==0){
             error = "WARNING: could not delete guid "+fileIDs[i]+" from t_lfn";
             logFile.addMessage(error);

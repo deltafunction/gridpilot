@@ -142,7 +142,7 @@ public class RteInstaller {
     StringBuffer stderr = new StringBuffer();
     // TODO: support Windows bat scripts.
     if(shellMgr.exec("cd "+remoteCacheDir+
-        "/pkg; /bin/sh ../control/install", stdout, stderr)!=0 ||
+        "/pkg; /bin/bash ../control/install", stdout, stderr)!=0 ||
         stderr!=null && stderr.length()!=0){
       throw new IOException("could not run install script; "+stdout.toString()+":"+stderr.toString());
     }

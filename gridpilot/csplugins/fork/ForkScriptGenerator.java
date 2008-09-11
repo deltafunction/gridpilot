@@ -32,10 +32,10 @@ public class ForkScriptGenerator extends ScriptGenerator{
    */
   public ForkScriptGenerator(String _csName, String _workingDir){
     super(GridPilot.getClassMgr().getLogFile());
+    csName = _csName;
     String onWindowsStr = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "on windows");
     onWindows = onWindowsStr!=null && (onWindowsStr.equalsIgnoreCase("yes") || onWindowsStr.equalsIgnoreCase("true"));
-    csName = _csName;
     workingDir = _workingDir;
     runtimeDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "runtime directory");
@@ -54,9 +54,10 @@ public class ForkScriptGenerator extends ScriptGenerator{
     String commentStart = "REM";
 
     // Header
-    if(!shellMgr.isLocal() || !System.getProperty("os.name").toLowerCase().startsWith("windows")){
+    if(!shellMgr.isLocal() && !onWindows || shellMgr.isLocal() &&
+        (onWindows || !System.getProperty("os.name").toLowerCase().startsWith("windows"))){
       commentStart = "#";
-      writeLine(buf, "#!/bin/sh");
+      writeLine(buf, "#!/bin/bash");
       // write out the process name, for MySecureShell.submit to pick up
       writeLine(buf, "echo $$");
     }
@@ -66,7 +67,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     writeBlock(buf, "Sleep 5 seconds before start", ScriptGenerator.TYPE_SUBSECTION, commentStart);
     // this is to be sure to have some stdout (jobs without are considered failed)
     writeLine(buf, "echo starting...");
-    if(shellMgr.isLocal() && System.getProperty("os.name").toLowerCase().startsWith("windows")){
+    if(shellMgr.isLocal() && (onWindows || System.getProperty("os.name").toLowerCase().startsWith("windows"))){
       writeLine(buf, "ping -n 10 127.0.0.1 >/nul");
     }
     else{

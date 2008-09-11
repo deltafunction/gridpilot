@@ -49,7 +49,7 @@ public interface Database{
   /**
    * the input file of a job script are defined by the fields
    * transformation.inputFiles (fully qualified names),
-   * jobDefinition.inputFileNames (fully qualified names)
+   * jobDefinition.inputFileURLs (fully qualified names)
    * - generated using dataset.inputDataset, dataset.inputDB).
    * 
    * the output files of a job script are defined by the fields

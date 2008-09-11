@@ -1268,8 +1268,7 @@ public class MyUtil extends gridfactory.common.Util{
       }
     }
     else if(urlString.startsWith("gsiftp:") || urlString.startsWith("srm:")){
-      TransferControl.download(urlString, tmpFile,
-          GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+      TransferControl.download(urlString, tmpFile);
       ret = readURL(tmpFile.toURL().toExternalForm(), tmpFile, commentTag);
      }
     return ret;

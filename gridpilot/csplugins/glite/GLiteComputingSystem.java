@@ -402,8 +402,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
         upFile = (String) it.next();
         TransferControl.upload(
             new File(MyUtil.clearTildeLocally(MyUtil.clearFile(upFile))),
-            uri,
-            GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+            uri);
       }
       // start the job
       wmProxyAPI.jobStart(jobId.getId());
@@ -772,13 +771,13 @@ public class GLiteComputingSystem implements MyComputingSystem{
       url = outs[i].getName();
       if(url!=null){
         if(url.endsWith("stdout")){
-          TransferControl.download(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))), null);
+          TransferControl.download(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
         }
         else if(url.endsWith("stderr")){
-          TransferControl.download(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))), null);
+          TransferControl.download(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))));
         }
         else{
-          TransferControl.download(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(runDir(job)))), null);
+          TransferControl.download(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(runDir(job)))));
         }
       }
     }
@@ -816,10 +815,10 @@ public class GLiteComputingSystem implements MyComputingSystem{
             }
           }
           if(stdoutUrl!=null){
-            TransferControl.download(stdoutUrl, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))), null);
+            TransferControl.download(stdoutUrl, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
           }
           if(stderrUrl!=null){
-            TransferControl.download(stderrUrl, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))), null);
+            TransferControl.download(stderrUrl, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))));
           }
         }
         catch(Exception e){
@@ -836,15 +835,13 @@ public class GLiteComputingSystem implements MyComputingSystem{
           Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
               " from final destination "+finalStdOut+" to " +
               MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp())), 3);
-          TransferControl.download(finalStdOut, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))),
-              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+          TransferControl.download(finalStdOut, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
         }
         if(getFromfinalDest || !finalStdErr.startsWith("file:")){
           Debug.debug("Downloading stderr of: " + job.getName() + ":" + job.getJobId()+
               " from final destination "+finalStdErr+" to " +
               MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp())), 3);
-          TransferControl.download(finalStdErr, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))),
-              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+          TransferControl.download(finalStdErr, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))));
         }
       }
     }
@@ -1031,8 +1028,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
             " from final destination "+finalStdOut+" to " +
             MyUtil.clearTildeLocally(MyUtil.clearFile(stdOutFile)), 3);
         try {
-          TransferControl.download(finalStdOut, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(stdOutFile))),
-              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+          TransferControl.download(finalStdOut, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(stdOutFile))));
         }
         catch(Exception e){
           e.printStackTrace();
@@ -1043,8 +1039,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
             " from final destination "+finalStdErr+" to " +
             MyUtil.clearTildeLocally(MyUtil.clearFile(stdErrFile)), 3);
         try{
-          TransferControl.download(finalStdErr, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(stdErrFile))),
-              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+          TransferControl.download(finalStdErr, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(stdErrFile))));
         }
         catch(Exception e){
           e.printStackTrace();
@@ -1129,8 +1124,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
         if(remoteName.startsWith("file:")){
           TransferControl.upload(
               new File(new File(MyUtil.clearTildeLocally(MyUtil.clearFile(runDir(job))))+File.separator+localName),
-              remoteName,
-              GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+              remoteName);
         }
       }
       catch(Exception e){
@@ -1152,8 +1146,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
         emptyFile = stdoutDest.startsWith("https") && stdoutSourceFile.length()==0;
         TransferControl.upload(
             stdoutSourceFile,
-            stdoutDest,
-            GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor);
+            stdoutDest);
         String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
         job.setOutTmp(finalStdOut);
       }
@@ -1170,8 +1163,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
         emptyFile = stdoutDest.startsWith("https") && stderrSourceFile.length()==0;
         TransferControl.upload(
             stderrSourceFile,
-            stderrDest,
-            GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor);
+            stderrDest);
         String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
         job.setOutTmp(finalStdErr);
       }

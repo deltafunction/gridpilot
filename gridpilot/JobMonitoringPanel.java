@@ -51,10 +51,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   // TODO: discard bKill
   private JButton bKill = new JButton("Kill");
   private JButton bRefresh = new JButton("Refresh");
-  private JButton bUpdate = new JButton("Update");
   // auto refresh
   private JCheckBox cbAutoRefresh = new JCheckBox("each");
-  private JCheckBox cbAutoPull = new JCheckBox("each");
   private JSpinner sAutoRefresh = new JSpinner();
   public JSpinner sAutoResubmit = new JSpinner();
   private JComboBox cbRefreshUnits = new JComboBox(new Object []{"sec", "min"});
@@ -251,14 +249,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     
     //this.setPreferredSize(new Dimension(700, 500));
     
-  }
-  
-  public void setPullEnabled(boolean ok){
-    if(!ok){
-      cbAutoPull.setSelected(false);
-    }
-    bUpdate.setEnabled(ok);
-    cbAutoPull.setEnabled(ok);
   }
   
   /**

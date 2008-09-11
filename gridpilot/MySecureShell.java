@@ -14,16 +14,7 @@ import gridfactory.common.SecureShell;
 
 public class MySecureShell extends SecureShell{
 
-  private String host;
-  private String user;
-  private String password;
-  private File keyFile;
-  private String keyPassphrase;
-  private int port;
-  private LogFile logFile;
   private ConfigFile configFile;
-  private Session session;
-  private int channelsNum = 1;
   
   private static final int MAX_SSH_LOGIN_ATTEMPTS = 3;
 
@@ -143,7 +134,7 @@ public class MySecureShell extends SecureShell{
       }
       
       try{
-        channelsNum = Integer.parseInt(
+        maxChannels = Integer.parseInt(
             configFile.getValue("Computing systems", "maximum simultaneous submissions"))+
         Integer.parseInt(
             configFile.getValue("GridPilot", "maximum simultaneous checking"))+
@@ -154,7 +145,7 @@ public class MySecureShell extends SecureShell{
         Debug.debug("WARNING: could not construct number of channels. "+
             e.getMessage(), 1);
       }      
-      sshs = new Channel[channelsNum];
+      sshs = new Channel[maxChannels];
     }
     catch (Exception e){
       Debug.debug("Could not connect via ssh, "+user+", "+password+", "+host+

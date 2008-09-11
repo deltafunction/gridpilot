@@ -105,7 +105,7 @@ public class TestDatasets {
     try{
       if(!shellMgr.existsFile(transformationDirectory+transformationScriptName)){
         shellMgr.writeFile(transformationDirectory+transformationScriptName,
-            "#!/bin/sh\n#\n# Sample transformation.\n# Write any commands below.\n#", false);
+            "#!/bin/bash\n#\n# Sample transformation.\n# Write any commands below.\n#", false);
       }
     }
     catch(Exception e){
@@ -207,7 +207,7 @@ public class TestDatasets {
             values[i] = "Linux";
           }
           else if(fields[i].equalsIgnoreCase("arguments")){
-            values[i] = "multiplier inputFileNames";
+            values[i] = "multiplier inputFileURLs";
           }
           else if(fields[i].equalsIgnoreCase("inputFiles")){
             values[i] = "file:"+transformationDirectory+"/data1.txt "+

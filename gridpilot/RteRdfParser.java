@@ -7,6 +7,7 @@ import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.RTECatalog;
+import gridfactory.common.Util;
 import gridfactory.common.RTECatalog.MetaPackage;
 import gridfactory.common.RTECatalog.TarPackage;
 
@@ -25,6 +26,18 @@ public class RteRdfParser {
   public RteRdfParser(String [] _urls, String _csName){
     csName = _csName;
     catalogURLs = _urls;
+    for(int i=0; i<catalogURLs.length; ++i){
+      if(catalogURLs[i].toLowerCase().startsWith("https://")){
+        try{
+          GridPilot.getClassMgr().getSSL().activateSSL();
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not activate SSL.");
+        }
+        break;
+      }
+    }
     rteCatalog = new RTECatalog(_urls, null);
   }
   

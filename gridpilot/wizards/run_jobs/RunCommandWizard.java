@@ -86,7 +86,7 @@ public class RunCommandWizard extends GPFrame{
     int maxHeight = Toolkit.getDefaultToolkit().getScreenSize().height-10;
     int maxWidth = Toolkit.getDefaultToolkit().getScreenSize().width-10;
     this.setMaximumSize(new Dimension(maxWidth, maxHeight>400?400:maxHeight));
-    this.setPreferredSize(new Dimension(660, 580));
+    this.setPreferredSize(new Dimension(660, 700));
     this.pack();
     setVisible(true);
   }
@@ -146,7 +146,10 @@ public class RunCommandWizard extends GPFrame{
       "and fill in the names of these.\n\n" +
       "If the job needs any input files, click on \"Input files\" and fill in the URLs.\n\n" +
       "When you're done, click \"Submit job\" and use right-click menu on the job monitoring panel\n" +
-      "to follow the progress of your job.\n\n";
+      "to follow the progress of your job.\n\n" +
+      "Notice that the job you create belongs to the dataset "+myDatasetName+" which in turn uses the \n" +
+      "transformation "+myTransformationName+". You can inspect and edit these from the corresponding \n" +
+      "tabs on the main window.\n\n";
     JLabel jlDirInstructions = new JLabel("<html>"+msg.replaceAll("\n", "<br>")+"</html>");
 
     GridBagConstraints ct = new GridBagConstraints();

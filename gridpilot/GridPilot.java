@@ -85,8 +85,6 @@ public class GridPilot extends JApplet{
   // dialog. It overrides the various thread timeouts and can be cleared only by
   // "reload values from config file"
   public static boolean waitForever = false;
-  public static boolean pullEnabled = false;
-  public static int maxPullRerun = 0;
   public static boolean firstRun = false;
   public static File userConfFile = null;
   public static int PROXY_STRENGTH = 512;
@@ -273,14 +271,6 @@ public class GridPilot extends JApplet{
       gridHomeURL = getClassMgr().getConfigFile().getValue("GridPilot",
          "Grid home url");
       String maxReRunString = getClassMgr().getConfigFile().getValue("GridPilot", "Max pull rerun");
-      if(maxReRunString!=null){
-        try{
-          maxPullRerun = Integer.parseInt(maxReRunString);
-        }
-        catch(Exception ee){
-          ee.printStackTrace();
-        }
-     }
       String ask = null;
       try{
         ask = getClassMgr().getConfigFile().getValue("GridPilot",
@@ -774,7 +764,6 @@ public class GridPilot extends JApplet{
     GridPilot.getClassMgr().getStatusBar().setLabel(
         "Reconnecting computing systems. Please wait...");
     GridPilot.getClassMgr().getStatusBar().animateProgressBar();
-    pullEnabled = false;
     /*
      Reconnect CSs
      */

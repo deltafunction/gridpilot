@@ -30,6 +30,7 @@ public class MonitoringPanel extends CreateEditPanel {
   public MonitoringPanel() throws Exception{   
     // use status bar on main window until a monitoring panel is actually created
     statusBar = GridPilot.getClassMgr().getStatusBar();
+    GridPilot.getClassMgr().getLogFile().addActionOnMessage(logViewerPanel.new MyActionOnMessage());
   }
   
   public String getTitle(){

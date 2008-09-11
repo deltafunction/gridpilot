@@ -92,8 +92,18 @@ public class HTTPSFileTransfer implements FileTransfer {
     MyUrlCopy urlCopy = null;
     
     try{
-      /*GSSCredential credential = GridPilot.getClassMgr().getGridCredential();
-      if(srcUrl.getProtocol().equalsIgnoreCase("https")){
+      GridPilot.getClassMgr().getSSL().activateSSL();
+      GSSCredential credential = GridPilot.getClassMgr().getSSL().getCredential();
+      urlCopy = new MyUrlCopy();
+      urlCopy.setSourceUrl(srcUrl);
+      urlCopy.setDestinationUrl(destUrl);
+      if(srcUrl.getProtocol().equalsIgnoreCase("https") &&
+          destUrl.getProtocol().equalsIgnoreCase("https")){
+        urlCopy.setUseThirdPartyCopy(true);
+      }
+      urlCopy.setSourceCredentials(credential);
+      urlCopy.setDestinationCredentials(credential);
+      /*if(srcUrl.getProtocol().equalsIgnoreCase("https")){
         urlCopy.setSourceCredentials(credential);
         urlCopy.setSourceAuthorization(new IdentityAuthorization(
             ((GlobusGSSCredentialImpl)credential).getGlobusCredential().getIdentity()));
@@ -105,14 +115,6 @@ public class HTTPSFileTransfer implements FileTransfer {
       }
       urlCopy.setSourceAuthorization(null);
       urlCopy.setDestinationAuthorization(null);*/
-      GridPilot.getClassMgr().getSSL().activateSSL();
-      urlCopy = new MyUrlCopy();
-      urlCopy.setSourceUrl(srcUrl);
-      urlCopy.setDestinationUrl(destUrl);
-      if(srcUrl.getProtocol().equalsIgnoreCase("https") &&
-          destUrl.getProtocol().equalsIgnoreCase("https")){
-        urlCopy.setUseThirdPartyCopy(true);
-      }
     }
     catch(Exception e){
       Debug.debug("Could not connect "+e.getMessage(), 1);
@@ -135,9 +137,9 @@ public class HTTPSFileTransfer implements FileTransfer {
     MyUrlCopy urlCopy = null;
     
     try{
+      GridPilot.getClassMgr().getSSL().activateSSL();
       urlCopy = new MyUrlCopy();
       urlCopy.setSourceUrl(srcUrl);
-      GridPilot.getClassMgr().getSSL().activateSSL();
       GSSCredential credential = GridPilot.getClassMgr().getSSL().getCredential();
       if(srcUrl.getProtocol().equalsIgnoreCase("https")){
         urlCopy.setSourceCredentials(credential);
@@ -194,11 +196,11 @@ public class HTTPSFileTransfer implements FileTransfer {
       downloadFile = downloadDirOrFile;
     }
         
-    final MyUrlCopy urlCopy = myConnect(globusUrl, new GlobusURL("file:///"+downloadFile.getAbsolutePath()));
-    fileTransfers.put(id, urlCopy);
-
     // Leave this outside of thread to avoid deadlock when querying for password.
     GridPilot.getClassMgr().getSSL().activateSSL();
+
+    final MyUrlCopy urlCopy = myConnect(globusUrl, new GlobusURL("file:///"+downloadFile.getAbsolutePath()));
+    fileTransfers.put(id, urlCopy);
 
     Debug.debug("Downloading "+globusUrl.getURL()+"->"+downloadFile.getAbsolutePath(), 3);
     ResThread t = new ResThread(){
@@ -262,10 +264,10 @@ public class HTTPSFileTransfer implements FileTransfer {
     GlobusURL fileURL = new GlobusURL("file:///"+file.getCanonicalPath());
     Debug.debug("put "+fileURL.getURL()+" --> "+uploadUrl.getURL(), 3);
  
-    final MyUrlCopy urlCopy = myConnect(fileURL, uploadUrl);
-
     // Leave this outside of thread to avoid deadlock when querying for password.
     GridPilot.getClassMgr().getSSL().activateSSL();
+
+    final MyUrlCopy urlCopy = myConnect(fileURL, uploadUrl);
 
     ResThread t = new ResThread(){
       public void run(){

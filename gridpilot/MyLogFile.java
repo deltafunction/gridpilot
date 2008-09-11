@@ -6,8 +6,8 @@ import java.io.*;
 
 public class MyLogFile extends LogFile {
 
-  public MyLogFile(String arg0) {
-    super(arg0);
+  public MyLogFile(String _fileName) {
+    super(_fileName);
   }
 
   /**

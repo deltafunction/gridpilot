@@ -9,8 +9,6 @@ import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
 import gridfactory.common.Shell;
 
-import java.awt.Container;
-import java.awt.Cursor;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -1206,10 +1204,9 @@ public class TransferControl{
    * @param url
    * @param fileName
    * @param destination    can be either a directory or a file
-   * @param frame
    * @throws IOException
    */
-  public static void download(final String url, File destination, final Container frame) throws Exception{
+  public static void download(final String url, File destination) throws Exception{
     try{
       
       if(url==null || url.endsWith("/")|| destination==null){
@@ -1247,63 +1244,20 @@ public class TransferControl{
           throw new IOException("ERROR: source or destination directory not given. "+
               fsPath+":"+downloadDir);
         }        
-        try{
-          localCopy(new File(fsPath),
-              (new File(downloadDir, destFileName)).getAbsolutePath());
-          GridPilot.getClassMgr().getStatusBar().setLabel(fsPath+destFileName+" copied");
-        }
-        catch(IOException e){
-          Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
-          GridPilot.getClassMgr().getLogFile().addMessage("ERROR: download failed. "+e.getMessage());
-          e.printStackTrace();
-          return;
-        }
+        localCopy(new File(fsPath),
+            (new File(downloadDir, destFileName)).getAbsolutePath());
+        GridPilot.getClassMgr().getStatusBar().setLabel(fsPath+destFileName+" copied");
       }
       // remote gsiftp or https/webdav directory
       else if(srcUrlDir.startsWith("gsiftp://") || srcUrlDir.startsWith("https://") ||
           srcUrlDir.startsWith("sss://")){
         Debug.debug("Downloading to "+downloadDir.getAbsolutePath(), 3);        
         Debug.debug("Downloading "+destFileName+" from "+srcUrlDir, 3);
-        /*final File dName = downloadDir;
-        final String destFName = destFileName;
-        final String srcFName = srcFileName;*/
-        if(frame!=null){
-          frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        }
-        //(new MyThread(){
-          //public void run(){
-            try{
-              GlobusURL globusUrl = new GlobusURL(url);
-              FileTransfer fileTransfer =
-                 GridPilot.getClassMgr().getFTPlugin(url.replaceFirst("^(\\w+):/.*", "$1"));
-              fileTransfer.getFile(globusUrl, destination/*dName*/);
-              GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
-              // Why was this introduced?? Easier to just download file to final destination...
-              /*if(!destFName.equals(srcFName)){
-                LocalStaticShellMgr.moveFile((new File(dName, srcFName)).getAbsolutePath(),
-                    (new File(dName, destFName)).getAbsolutePath());
-              }*/
-            }
-            catch(IOException e){
-              GridPilot.getClassMgr().getStatusBar().setLabel("Failed downloading "+url);
-              Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
-              GridPilot.getClassMgr().getLogFile().addMessage("ERROR: download failed. "+e.getMessage());
-              e.printStackTrace();
-              return;
-            }
-            catch(Exception e){
-              Debug.debug("ERROR: download failed. "+e.getMessage(), 1);
-              GridPilot.getClassMgr().getLogFile().addMessage("ERROR: download failed. "+e.getMessage());
-              e.printStackTrace();
-              return;
-            }
-            finally{
-              if(frame!=null){
-                frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-              }
-            }
-          //}
-        //}).run();               
+        GlobusURL globusUrl = new GlobusURL(url);
+        FileTransfer fileTransfer =
+           GridPilot.getClassMgr().getFTPlugin(url.replaceFirst("^(\\w+):/.*", "$1"));
+        fileTransfer.getFile(globusUrl, destination/*dName*/);
+        GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
       }
       else if(srcUrlDir.startsWith("http://")){
         Debug.debug("Downloading file to "+downloadDir.getAbsolutePath(), 3);        
@@ -1314,42 +1268,23 @@ public class TransferControl{
         Debug.debug("Downloading from "+url+" to "+dirPath+destFileName, 2);
         final String fName = destFileName;
         final String dName = dirPath;
-        if(frame!=null){
-          frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        InputStream is = (new URL(url)).openStream();
+        DataInputStream dis = new DataInputStream(new BufferedInputStream(is));
+        FileOutputStream os = new FileOutputStream(new File(dName+fName));
+        // read data in chunks of 1 kB
+        byte [] b = new byte[1024];
+        int len = -1;
+        while(true){
+          len = is.read(b, 0, b.length);
+          if(len<0){
+            break;
+          }
+          os.write(b, 0, len);
         }
-        //(new MyThread(){
-          //public void run(){
-            try{
-              InputStream is = (new URL(url)).openStream();
-              DataInputStream dis = new DataInputStream(new BufferedInputStream(is));
-              FileOutputStream os = new FileOutputStream(new File(dName+fName));
-              // read data in chunks of 1 kB
-              byte [] b = new byte[1024];
-              int len = -1;
-              while(true){
-                len = is.read(b, 0, b.length);
-                if(len<0){
-                  break;
-                }
-                os.write(b, 0, len);
-              }
-              dis.close();
-              is.close();
-              os.close();
-              GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
-            }
-            catch(IOException e){
-              Debug.debug("File download failed. "+e.getMessage(), 1);
-              GridPilot.getClassMgr().getStatusBar().setLabel("File download failed. "+e.getMessage());
-              e.printStackTrace();
-            }
-            finally{
-              if(frame!=null){
-                frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-              }
-            }
-          //}
-        //}).run();               
+        dis.close();
+        is.close();
+        os.close();
+        GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
       }
       else{
         throw(new IOException("Unknown protocol for "+url));
@@ -1366,82 +1301,57 @@ public class TransferControl{
    * Upload file to URL.
    * @param uploadUrl the destination; can be either a directory or a file name
    * @param file
-   * @param frame
    * @throws IOException
    * @throws FTPException
    */
-  public static void upload(File file, final String uploadUrl, final Container frame) throws Exception, FTPException{
-    try{
-      
-      String uploadUrlDir = null;
-      String uploadFileName = null;
-      
-      if(uploadUrl.endsWith("/")){
-        uploadUrlDir = uploadUrl;
-        uploadFileName = file.getName();
-      }
-      else if(uploadUrl.endsWith("\\")){
-        uploadUrlDir = uploadUrl;
-        uploadFileName = file.getName();
-      }
-      if(uploadUrlDir==null){
-        int lastSlash1 = uploadUrl.lastIndexOf("/");
-        int lastSlash2 = uploadUrl.lastIndexOf("\\");
-        int lastSlash = lastSlash2>lastSlash1 ? lastSlash2 : lastSlash1;
-        if(lastSlash>-1){
-          uploadFileName = uploadUrl.substring(lastSlash + 1);
-          uploadUrlDir = uploadUrl.substring(0, lastSlash + 1);
-        }
-      }
-      if(uploadUrlDir==null){
-        throw new IOException("Could not get upload directory from "+uploadUrl);
-      }
-      
-      Debug.debug("Uploading file "+file+" to directory "+uploadUrlDir, 3);
-      // local directory
-      if(!MyUtil.urlIsRemote(uploadUrlDir)/*uploadUrlDir.startsWith("file:")*/){
-        String fsPath = MyUtil.clearTildeLocally(MyUtil.clearFile(uploadUrl));
-        Debug.debug("Local directory path: "+fsPath, 3);        
-        if(fsPath==null || uploadFileName==null || file==null){
-          throw(new IOException("ERROR: fsPath==null || uploadFileName==null || file==null"));
-        }
-        localCopy(file, fsPath);
-      }
-      // remote directory
-      else if(uploadUrlDir.startsWith("gsiftp://") || uploadUrlDir.startsWith("https") ||
-         uploadUrlDir.startsWith("sss")){
-        if(!uploadUrlDir.endsWith("/")){
-          throw(new IOException("Upload location must be a directory. "+uploadUrl));
-        }
-        GlobusURL globusUrl = new GlobusURL(uploadUrlDir+uploadFileName);
-        if(frame!=null){
-          frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        }
-        FileTransfer fileTransfer = (FileTransfer) GridPilot.getClassMgr(
-            ).getFTPlugin(uploadUrlDir.replaceFirst("^(\\w+):/.*", "$1"));
-        fileTransfer.putFile(file, globusUrl);
-        if(frame!=null){
-          frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-        }
-      }
-      else{
-        throw(new IOException("Unknown protocol for "+uploadUrl));
+  public static void upload(File file, final String uploadUrl) throws Exception, FTPException{
+    String uploadUrlDir = null;
+    String uploadFileName = null;
+    
+    if(uploadUrl.endsWith("/")){
+      uploadUrlDir = uploadUrl;
+      uploadFileName = file.getName();
+    }
+    else if(uploadUrl.endsWith("\\")){
+      uploadUrlDir = uploadUrl;
+      uploadFileName = file.getName();
+    }
+    if(uploadUrlDir==null){
+      int lastSlash1 = uploadUrl.lastIndexOf("/");
+      int lastSlash2 = uploadUrl.lastIndexOf("\\");
+      int lastSlash = lastSlash2>lastSlash1 ? lastSlash2 : lastSlash1;
+      if(lastSlash>-1){
+        uploadFileName = uploadUrl.substring(lastSlash + 1);
+        uploadUrlDir = uploadUrl.substring(0, lastSlash + 1);
       }
     }
-    catch(IOException e){
-      Debug.debug("Could not upload to URL "+uploadUrl+". "+e.getMessage(), 1);
-      GridPilot.getClassMgr().getStatusBar().setLabel("ERROR!\n\nFile could not be copied.\n\n" +
-          e.getMessage());
-      throw e;
+    if(uploadUrlDir==null){
+      throw new IOException("Could not get upload directory from "+uploadUrl);
     }
-    catch(FTPException e){
-      Debug.debug("Could not save to URL "+uploadUrl+". "+e.getMessage(), 1);
-      throw e;
-    }
-    finally{
-      if(frame!=null){
-        frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+    
+    Debug.debug("Uploading file "+file+" to directory "+uploadUrlDir, 3);
+    // local directory
+    if(!MyUtil.urlIsRemote(uploadUrlDir)/*uploadUrlDir.startsWith("file:")*/){
+      String fsPath = MyUtil.clearTildeLocally(MyUtil.clearFile(uploadUrl));
+      Debug.debug("Local directory path: "+fsPath, 3);        
+      if(fsPath==null || uploadFileName==null || file==null){
+        throw(new IOException("ERROR: fsPath==null || uploadFileName==null || file==null"));
       }
+      localCopy(file, fsPath);
+    }
+    // remote directory
+    else if(uploadUrlDir.startsWith("gsiftp://") || uploadUrlDir.startsWith("https") ||
+       uploadUrlDir.startsWith("sss")){
+      if(!uploadUrlDir.endsWith("/")){
+        throw(new IOException("Upload location must be a directory. "+uploadUrl));
+      }
+      GlobusURL globusUrl = new GlobusURL(uploadUrlDir+uploadFileName);
+      FileTransfer fileTransfer = (FileTransfer) GridPilot.getClassMgr(
+          ).getFTPlugin(uploadUrlDir.replaceFirst("^(\\w+):/.*", "$1"));
+      fileTransfer.putFile(file, globusUrl);
+    }
+    else{
+      throw(new IOException("Unknown protocol for "+uploadUrl));
     }
   }
   
@@ -1449,24 +1359,17 @@ public class TransferControl{
    * Copy file to a file or directory fsPath.
    */
   private static void localCopy(File file, String fsPath) throws IOException{
-    try{
-      String fileName = file.getName();
-      if(LocalStaticShell.isDirectory(fsPath)){
-        fsPath = (new File(MyUtil.clearTildeLocally(MyUtil.clearFile(fsPath)), fileName)).getAbsolutePath();
-      }
-      if(!LocalStaticShell.copyFile(file.getAbsolutePath(), fsPath)){
-        throw new IOException(file.getAbsolutePath()+
-            " could not be copied to "+fsPath+fileName);
-      }
-      // if we don't get an exception, the file got written...
-      Debug.debug("File "+file.getAbsolutePath()+" written to " +
-          fsPath+fileName, 2);
-      return;
+    String fileName = file.getName();
+    if(LocalStaticShell.isDirectory(fsPath)){
+      fsPath = (new File(MyUtil.clearTildeLocally(MyUtil.clearFile(fsPath)), fileName)).getAbsolutePath();
     }
-    catch(IOException e){
-      Debug.debug("Could not write "+fsPath, 1);
-      throw e;
+    if(!LocalStaticShell.copyFile(file.getAbsolutePath(), fsPath)){
+      throw new IOException(file.getAbsolutePath()+
+          " could not be copied to "+fsPath+fileName);
     }
+    // if we don't get an exception, the file got written...
+    Debug.debug("File "+file.getAbsolutePath()+" written to " +
+        fsPath+fileName, 2);
   }
   
   /**
@@ -1570,10 +1473,9 @@ public class TransferControl{
     // Remote src
     else if(MyUtil.urlIsRemote(src)){
       try{
-        TransferControl.download(
+        download(
             src,
-            new File(MyUtil.clearTildeLocally(MyUtil.clearFile(tempFileName))),
-            GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+            new File(MyUtil.clearTildeLocally(MyUtil.clearFile(tempFileName))));
       }
       catch(Exception e){
         error = "ERROR copying "+src+" -> "+tempFileName+": "+e.getMessage();
@@ -1718,8 +1620,7 @@ public class TransferControl{
       try{
         upload(
             new File(MyUtil.clearTildeLocally(MyUtil.clearFile(src))),
-            dest,
-            GridPilot.getClassMgr().getGlobalFrame().getContentPane());
+            dest);
       }
       catch(Exception e){
         error = "ERROR copying "+src+" -> "+dest+": "+e.getMessage();

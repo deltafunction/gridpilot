@@ -809,7 +809,7 @@ public class JobCreator{
     
     // jobDefinition fields
     
-    // Add eventMin, eventMax and inputFileNames if they are
+    // Add eventMin, eventMax and inputFileURLs if they are
     // present in the fields of jobDefinition, but not in the fixed
     // attributes.
     String [] jobDefFields = dbPluginMgr.getFieldNames("jobDefinition");

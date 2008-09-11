@@ -395,7 +395,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     catch(Throwable e){
     }
     try{
-      TransferControl.download(lockUrl, lockFile, this);
+      TransferControl.download(lockUrl, lockFile);
     }
     catch(Throwable e){
       try{
@@ -434,7 +434,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     // Upload temporary lock on the catalog
     LocalStaticShell.writeFile(lockFile.getAbsolutePath(),
         Long.toString(nowMillis)+":"+GridPilot.getClassMgr().getSSL().getGridSubject(), false);
-    TransferControl.upload(lockFile, lockUrl, this);
+    TransferControl.upload(lockFile, lockUrl);
     
     RTECatalog rteCatalog;
     try{
@@ -564,7 +564,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
       // Upload the catalog
       File newCatalog = new File(tmpDir, "newCatalog.rdf");
       LocalStaticShell.writeFile(newCatalog.getAbsolutePath(), xml, false);
-      TransferControl.upload(newCatalog, catalogUrl, this);
+      TransferControl.upload(newCatalog, catalogUrl);
       lockFile.delete();
       newCatalog.delete();
     }
@@ -584,7 +584,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
 
   private void createTemplateScripts() throws IOException {
     String installStr =
-      "#! /bin/sh\n" +
+      "#! /bin/bash\n" +
       "## This is in case your software directory contains a zip file,  my_software.zip,\n" +
       "## that needs to be unpacked in order for the software to run." +
       "set -e\n" +
@@ -592,7 +592,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
       "unzip $MY_ZIP\n" +
       "rm -f $MY_ZIP\n" +
       "#eof";
-    String runtimeStr = "#!/bin/sh\n"+
+    String runtimeStr = "#!/bin/bash\n"+
     "\n"+
     "# this file is sourced with argument \"0\" just before the job submission script\n"+
     "# is written. The job submission script sources it with \"1\" just before job\n"+
@@ -915,7 +915,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
           }
           // Upload the tarball
           File gzipFile = new File(tmpDir, shortName+".tar.gz");
-          TransferControl.upload(gzipFile, jtfUrl.getText(), thisFrame);
+          TransferControl.upload(gzipFile, jtfUrl.getText());
           String shortName = gzipFile.getName();
           tarballUrl = jtfUrl.getText();
           if(tarballUrl.endsWith("/")){

@@ -101,7 +101,7 @@ public class EC2Mgr {
       String uploadUrl = GridPilot.gridHomeURL + (GridPilot.gridHomeURL.endsWith("/")?"":"/");
       Debug.debug("Uploading private key to "+uploadUrl, 1);
       try{
-        TransferControl.upload(keyFile, uploadUrl, null);
+        TransferControl.upload(keyFile, uploadUrl);
       }
       catch(Exception e){
         logFile.addMessage("WARNING: could not upload private key to grid home directory. " +
@@ -237,7 +237,7 @@ public class EC2Mgr {
         keyFile.getName();
       Debug.debug("Downloading private key from "+downloadUrl, 1);
       try{
-        TransferControl.download(downloadUrl, keyFile, null);
+        TransferControl.download(downloadUrl, keyFile);
         if(keyFile.exists()){
           Debug.debug("Loading downloaded keypair "+KEY_NAME, 2);
           return new KeyPairInfo(KEY_NAME, keyInfo.getKeyFingerprint(),

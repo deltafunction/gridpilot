@@ -1013,6 +1013,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
       Vector datasetVector = new Vector();
+      String str;
       while(rset.next()){
         String values[] = new String[datasetFields.length];
         for(int i=0; i<datasetFields.length;i++){
@@ -1022,9 +1023,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
             values[i] = Integer.toString(rset.getInt(datasetFields[i]));
           }
           else{
-            values[i] = dbDecode(rset.getString(datasetFields[i]));
+            Debug.debug(datasetFields[i]+"-->"+rset.getString(datasetFields[i]), 3);
+            str = rset.getString(datasetFields[i]);
+            values[i] = dbDecode(str);
           }
-          //Debug.debug(datasetFields[i]+"-->"+values[i], 3);
         }
         DBRecord jobd = new DBRecord(datasetFields, values);
         datasetVector.add(jobd);
@@ -1366,14 +1368,15 @@ public class HSQLDBDatabase extends DBCache implements Database{
       conn.close();
     }
     catch(Exception e){
-      Debug.debug(e.getMessage(), 2);
+      e.printStackTrace();
+      Debug.debug("WARNING: problem getting job definition", 2);
     }
     if(jobdefv.size()>1){
-      Debug.debug("WARNING: More than one jobDefinition with jobDefinitionID "+
+      Debug.debug("WARNING: More than one jobDefinition with id "+
           jobDefinitionID, 1);
     }
     if(jobdefv.size()<1){
-      Debug.debug("WARNING: No jobDefinition with jobDefinitionID "+
+      Debug.debug("WARNING: No jobDefinition with id "+
           jobDefinitionID, 1);
       return null;
     }
@@ -2935,6 +2938,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
   
   private String dbDecode(String value){
+    if(value==null){
+      return "";
+    }
     String value1 = value.replaceAll("\\\\quote", "\\\'");
     return value1;
   }
