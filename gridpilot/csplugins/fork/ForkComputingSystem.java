@@ -821,6 +821,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       shellMgr.upload(MySSL.getProxyFile().getAbsolutePath(), "/tmp/x509up_u"+uid);     
     }
     catch(Exception e){
+      e.printStackTrace();
       throw new IOException("WARNING: NOT writing user proxy. " +"Probably not on UNIX. "+e.getMessage());
     }
   }

@@ -1635,7 +1635,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
     // For a jobDefinition table, size and md5sum may have been inserted
     // by the CS+validation.
-    if((size==null || Integer.parseInt(size)<0) && db.isJobRepository()){
+    if((size==null || size.equals("") || Integer.parseInt(size)<0) && db.isJobRepository()){
       try{
         String metaData = null;
         DBRecord jobDef = db.getJobDefinition(fileId);

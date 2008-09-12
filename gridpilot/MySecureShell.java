@@ -9,7 +9,6 @@ import javax.swing.*;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
-import gridfactory.common.LogFile;
 import gridfactory.common.SecureShell;
 
 public class MySecureShell extends SecureShell{
@@ -35,6 +34,18 @@ public class MySecureShell extends SecureShell{
   }
   
   protected void connect(){
+    while(connecting){
+      try{
+        Thread.sleep(3000);
+      }
+      catch(InterruptedException e){
+        return;
+      }
+    }
+    if(session!=null && session.isConnected()){
+      return;
+    }
+    connecting = true;
     configFile = GridPilot.getClassMgr().getConfigFile();
     try{
       UserInfo ui = new MyUserInfo();
@@ -46,10 +57,10 @@ public class MySecureShell extends SecureShell{
       String [] up = null;
       for(int rep=0; rep<MAX_SSH_LOGIN_ATTEMPTS; ++rep){               
         if(showDialog ||
-            user==null || (password==null && keyFile==null || keyPassphrase==null) || host==null){
-          Debug.debug("Shell login:"+
-          MyUtil.arrayToString(new String [] {"User", "Key passphrase", "Host"})+" --> "+
-          MyUtil.arrayToString(new String [] {user, (keyPassphrase==null?keyPassphrase:""), host}), 2);
+            user==null || (password==null && (keyFile==null || keyPassphrase==null)) || host==null){
+          Debug.debug("Shell login:"+showDialog+":"+
+          MyUtil.arrayToString(new String [] {"User", "password", "Host"})+" --> "+
+          MyUtil.arrayToString(new String [] {user, (password==null?"":password), host}), 2);
           // Only try private key once
           if(keyFile!=null && rep==0){
             up = GridPilot.userPwd("Shell login with private key on "+host,
@@ -151,6 +162,9 @@ public class MySecureShell extends SecureShell{
       Debug.debug("Could not connect via ssh, "+user+", "+password+", "+host+
           ". "+e.getMessage(), 1);
       e.printStackTrace();
+    }
+    finally{
+      connecting = false;
     }
   }
 

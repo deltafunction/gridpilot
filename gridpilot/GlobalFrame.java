@@ -13,7 +13,6 @@ import gridfactory.common.ConfigFile;
 import gridfactory.common.ConfigNode;
 import gridfactory.common.Debug;
 import gridfactory.common.LogFile;
-import gridfactory.common.PreferencesPanel;
 import gridfactory.common.ResThread;
 import gridpilot.StatusBar;
 import gridpilot.GridPilot;
@@ -33,7 +32,7 @@ public class GlobalFrame extends GPFrame{
   private Vector allPanels;
   private int selectedPanel;
   private CreateEditDialog pDialog;
-  private PreferencesPanel prefsPanel = null;
+  private MyPreferencesPanel prefsPanel = null;
   private static int i;
 
   public JTabbedPane tabbedPane = new JTabbedPane();
@@ -678,7 +677,7 @@ public class GlobalFrame extends GPFrame{
     LogFile logFile = GridPilot.getClassMgr().getLogFile();
 
     // Create and set up the content pane.
-    prefsPanel = new PreferencesPanel(frame, topNode, configFile, logFile);
+    prefsPanel = new MyPreferencesPanel(frame, topNode, configFile, logFile);
     prefsPanel.setOpaque(true); // content panes must be opaque
     frame.setContentPane(prefsPanel);
 

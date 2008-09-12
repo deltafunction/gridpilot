@@ -72,6 +72,7 @@ import org.globus.util.GlobusURL;
 
 public class MyUtil extends gridfactory.common.Util{
 
+  public static final String TMP_FILE_PREFIX = "gridpilot-";
 
   /**
    * Returns the text of a JComponent.

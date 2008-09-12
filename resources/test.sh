@@ -101,7 +101,7 @@ echo $fullsum > $OUTFN
 sleep 20
 
 # this will be registered as metadata
-echo GRIDPILOT METADATA: OUTPUTFILEKILOBYTES = `du -sk $OUTFN | awk '{print $1}'`
+echo GRIDPILOT METADATA: OUTPUTFILEBYTES = `du -b $OUTFN | awk '{print $1}'`
 
 endDate=`date +%s`
 echo "End date: $endDate"
