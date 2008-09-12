@@ -51,7 +51,6 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected String runtimeDirectory = null;
   protected String transformationDirectory = null;
   protected String publicCertificate = null;
-  protected String remotePullDB = null;
   protected String [] localRuntimeDBs = null;
   protected HashSet toCleanupRTEs = null;
   protected DBPluginMgr remoteDBPluginMgr = null;
@@ -63,14 +62,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
     
-    try{
-      remoteDBPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(remotePullDB);
-    }
-    catch(Exception e){
-      Debug.debug("WARNING: Could not load remote pull DB "+
-          remoteDBPluginMgr+". Runtime environments must be defined by hand. "+
-          e.getMessage(), 1);
-    }
+    GridPilot.splashShow("Setting up shells...");
     
     try{
       shellMgr = GridPilot.getClassMgr().getShellMgr(csName);
@@ -131,9 +123,9 @@ public class ForkComputingSystem implements MyComputingSystem{
     rteCatalogUrls = configFile.getValues("GridPilot", "runtime catalog URLs");
 
     publicCertificate = configFile.getValue(csName, "public certificate");
-    remotePullDB = configFile.getValue(csName, "remote pull database");
     localRuntimeDBs = configFile.getValues(csName, "runtime databases");
     
+    GridPilot.splashShow("Setting up RTEs for "+csName);
     Debug.debug("Setting up RTEs for "+csName, 2);
     if(runtimeDirectory!=null){
       if(!shellMgr.existsFile(runtimeDirectory)){
@@ -1031,14 +1023,14 @@ public class ForkComputingSystem implements MyComputingSystem{
     Debug.debug("Getting input files for job " + job.getName(), 2);
     String [] jobInputFiles = dbPluginMgr.getJobDefInputFiles(job.getIdentifier());
 
-    // CONVENTION: if job has already had remote input files downloaded (by PullJobsDaemon),
+    // CONVENTION: if job has already had remote input files downloaded,
     // job.getDownloadFiles() will be set (to local files). These files should then be copied to the
     // run directory along with any local input files.
     // Moreover, the remote files from transInputFiles and jobInputFiles should be ignored.
-    String [] pullInputFiles = new String [] {};
+    String [] dlInputFiles = new String [] {};
     boolean ignoreRemoteInputs = false;
     if(job.getDownloadFiles()!=null && job.getDownloadFiles().length>0){
-      pullInputFiles = job.getDownloadFiles();
+      dlInputFiles = job.getDownloadFiles();
       Vector jobInputFilesVector = new Vector();
       for(int i=0; i<jobInputFiles.length; ++i){
         if(!MyUtil.urlIsRemote(jobInputFiles[i])){
@@ -1054,15 +1046,15 @@ public class ForkComputingSystem implements MyComputingSystem{
     job.setDownloadFiles(new String [] {});
     
     String [] inputFiles = new String [transInputFiles.length+jobInputFiles.length+
-                                       pullInputFiles.length];
+                                       dlInputFiles.length];
     for(int i=0; i<transInputFiles.length; ++i){
       inputFiles[i] = transInputFiles[i];
     }
     for(int i=0; i<jobInputFiles.length; ++i){
       inputFiles[i+transInputFiles.length] = jobInputFiles[i];
     }
-    for(int i=0; i<pullInputFiles.length; ++i){
-      inputFiles[i+transInputFiles.length+jobInputFiles.length] = pullInputFiles[i];
+    for(int i=0; i<dlInputFiles.length; ++i){
+      inputFiles[i+transInputFiles.length+jobInputFiles.length] = dlInputFiles[i];
     }
     Vector downloadVector = new Vector();
     String [] downloadFiles = null;
@@ -1090,7 +1082,7 @@ public class ForkComputingSystem implements MyComputingSystem{
           // If source starts with /, just use the remote file.
           else if(inputFiles[i].startsWith("/")){
           }
-          // If source is remote and the job is not pulled, have the job script get it
+          // If source is remote, have the job script get it
           // (assuming that e.g. the runtime environment ARC has been required)
           else if(!ignoreRemoteInputs && MyUtil.urlIsRemote(inputFiles[i])){
             try{

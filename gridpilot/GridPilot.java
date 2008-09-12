@@ -270,7 +270,6 @@ public class GridPilot extends JApplet{
          "globus tcp port range");
       gridHomeURL = getClassMgr().getConfigFile().getValue("GridPilot",
          "Grid home url");
-      String maxReRunString = getClassMgr().getConfigFile().getValue("GridPilot", "Max pull rerun");
       String ask = null;
       try{
         ask = getClassMgr().getConfigFile().getValue("GridPilot",

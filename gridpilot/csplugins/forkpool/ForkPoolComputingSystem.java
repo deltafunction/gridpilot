@@ -55,6 +55,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     String sshKeyFile = GridPilot.getClassMgr().getConfigFile().getValue(csName, "Ssh key file");
     String sshKeyPassword = GridPilot.getClassMgr().getConfigFile().getValue(csName, "Ssh key passphrase");
     for(int i=0; i<hosts.length; ++i){
+      GridPilot.splashShow("Setting up shell on "+hosts[i]+"...");
       if(hosts[i]!=null &&
           !hosts[i].startsWith("localhost") && !hosts[i].equals("127.0.0.1")){
         try{
@@ -77,6 +78,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       else{
         // host null not accepted...
       }
+      GridPilot.splashShow("Setting up environment...");
     }
   }
   

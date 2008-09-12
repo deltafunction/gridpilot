@@ -63,7 +63,6 @@ public class CSPluginMgr implements MyComputingSystem{
   private String [] csNames;
   private HashMap cs;
   private int threadI;
-  private HashMap pullDBs;
 
   public CSPluginMgr() throws Throwable{
     init();
@@ -82,9 +81,6 @@ public class CSPluginMgr implements MyComputingSystem{
 
     logFile = GridPilot.getClassMgr().getLogFile();
     configFile = GridPilot.getClassMgr().getConfigFile();
-    
-    pullDBs = new HashMap();
-
     csNames = GridPilot.csNames;
     cs = new HashMap(csNames.length);
 
@@ -105,11 +101,9 @@ public class CSPluginMgr implements MyComputingSystem{
   public void loadClasses() throws Throwable{
 
     String enabled = "no";
-    String pullDB = null;
 
     for(int i=0; i<csNames.length; ++i){
       enabled = "no";
-      pullDB = null;
       try{
         enabled = configFile.getValue(csNames[i], "Enabled");
       }
@@ -121,14 +115,6 @@ public class CSPluginMgr implements MyComputingSystem{
         continue;
       }
       
-      try{
-        pullDB = configFile.getValue(csNames[i], "Remote pull database");
-      }
-      catch(Exception e){
-      }
-      if(pullDB!=null && pullDB.length()>0){
-        pullDBs.put(csNames[i], pullDB);
-      }
       try{
         GridPilot.splashShow("Connecting to "+csNames[i]+"...");
       }

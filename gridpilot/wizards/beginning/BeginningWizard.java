@@ -312,13 +312,11 @@ public class BeginningWizard{
       dbDir.replaceFirst("hsql://localhost/", "");
       dbDir.replaceFirst("/My_DB", "");
     }
-    String cacheDir = configFile.getValue("GridPilot", "Pull cache directory");
     String workingDir = configFile.getValue("Fork", "Working directory");
     String runtimeDir = configFile.getValue("Fork", "Runtime directory");
     String transDir = configFile.getValue("Fork", "Transformation directory");
     String [] defDirs = new String [] {
         dbDir==null?dbDir:"~/GridPilot",
-        cacheDir==null?dbDir+"/cache":cacheDir,
         workingDir==null?dbDir+"/jobs":workingDir,
         runtimeDir==null?dbDir+"/runtimeEnvironments":runtimeDir,
         transDir==null?dbDir+"/transformations":transDir
@@ -427,17 +425,19 @@ public class BeginningWizard{
     out.close();
     
     // Set config entries
-    if(doCreate && (!defDirs[0].equals(newDirs[0]) ||
-       !defDirs[1].equals(newDirs[1]) ||
-       !defDirs[2].equals(newDirs[2]) ||
-       !defDirs[3].equals(newDirs[3]) ||
-       !defDirs[4].equals(newDirs[4]))){
+    boolean diff = false;
+    for(int i=0; i<defDirs.length; ++i){
+      if(!defDirs[i].equals(newDirs[i])){
+        diff = true;
+        break;
+      }
+    }
+    if(doCreate && diff){
       configFile.setAttributes(
-          new String [] {"GridPilot", "My_DB_local", "Fork", "Fork", "Fork"},
-          new String [] {"pull cache directory", "database", "working directory",
+          new String [] {"My_DB_local", "Fork", "Fork", "Fork"},
+          new String [] {"database", "working directory",
               "runtime directory", "transformation directory"},
           new String [] {
-              newDirs[1],
               "hsql://localhost"+
                  (MyUtil.clearFile(newDirs[0]).startsWith("/")?"":"/")+
                  MyUtil.clearFile(newDirs[0])+
@@ -945,10 +945,6 @@ public class BeginningWizard{
         
         *> set [SSH] host = ([SSH_POOL] hosts)[0], ...
 
-  ---> configure job pulling
-  
-       * checkCertificate has already set
-         [Fork] public certificate = [GridPilot] certificate file
 */
   private int configureComputingSystems(boolean firstRun) throws Exception{
     String confirmString =
@@ -1356,7 +1352,6 @@ public class BeginningWizard{
   
     if(sel==0){
       // Local DB, enable My_DB_Local, disable My_DB_Remote and GP_DB.
-      // Set Fork:remote pull database = GP_DB
       // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite]:runtime databases = My_DB_Local
        configFile.setAttributes(
           new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
@@ -1372,7 +1367,6 @@ public class BeginningWizard{
     else if(sel==1){
       // gridpilot.dk, enable GP_DB, My_DB_Local, disable My_DB_Remote.
       // Set GP_DB:database = local_production
-      // Set Fork:remote pull database = GP_DB
       // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite]:runtime databases = GP_DB My_DB_Local
       configFile.setAttributes(
           new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
@@ -1389,7 +1383,6 @@ public class BeginningWizard{
     else if(sel==2){
       // remote DB, enable My_DB_Remote, My_DB_Local, disable GP_DB.
       // Ask for My_DB_Remote:description
-      // Set Fork:remote pull database = My_DB_Remote
       // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite]:runtime databases = My_DB_Remote My_DB_Local
       String origDbDesc = configFile.getValue("My_DB_Remote", "Description");
       String dbDesc = MyUtil.getName(
