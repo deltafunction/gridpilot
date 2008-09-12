@@ -1107,6 +1107,8 @@ public class MyUtil extends gridfactory.common.Util{
     if(str==null){
       return hm;
     }
+    // This is because hsqldb values don't have new-lines - \n is just \\n.
+    str = str.replaceAll("\\\\n", "\n");
     try{
       InputStream is = new ByteArrayInputStream(str.getBytes());
       BufferedReader in = new BufferedReader(new InputStreamReader(is));

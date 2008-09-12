@@ -530,8 +530,12 @@ public class ClassMgr{
     try{
       Class.forName("org.logicalcobwebs.proxool.ProxoolDriver");
       info.setProperty("proxool.maximum-connection-count", poolSize);
-      info.setProperty("proxool.house-keeping-test-sql", "select CURRENT_DATE");
-      info.setProperty("verbose", "false");
+      //info.setProperty("proxool.house-keeping-test-sql", "select CURRENT_DATE");
+      info.setProperty("verbose", "true");
+      info.setProperty("trace", "true");
+      info.setProperty("test-before-use", "true");
+      info.setProperty("test-after-use", "true");
+      //info.setProperty("house-keeping-sleep-time", "10");
       //String url = "jdbc:hsqldb:test";
       String proxoolUrl = "proxool." + dbName + ":" + driver + ":" + databaseUrl;
       ProxoolFacade.registerConnectionPool(proxoolUrl, info);

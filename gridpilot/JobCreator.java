@@ -224,6 +224,7 @@ public class JobCreator{
         // beamEnergy, beamParticle, outputLocation.
         // If they are not, the automatic generation of the names will not include
         // this information.
+        Debug.debug("evaluating all", 3);
         try{
           evaluateAll(currentDataset, currentPartition,
               dbPluginMgr.getDatasetName(datasetIdentifiers[currentDataset]),
@@ -270,7 +271,7 @@ public class JobCreator{
             skip = true;
           }
         }
-
+        Debug.debug("done evaluating all", 3);
         int choice;
         if(showThis){
           if(lastPartition - currentPartition + len - currentDataset > 1){       
@@ -387,7 +388,7 @@ public class JobCreator{
       String energy, String particle, String outputDest) throws ArithmeticException, SyntaxException {
     // expression format : ${<arithmExpr>[:length]}
     // arithmExpr : operator priority : (*,/,%), (+,-), left associative
-    Debug.debug("parsing, "+ss+" : "+var+" : "+name+" : "+number+" : "+energy+" : "+particle+" : "+outputDest, 3);
+    Debug.debug("Evaluating, "+ss+" : "+var+" : "+name+" : "+number+" : "+energy+" : "+particle+" : "+outputDest, 3);
 
     int pos = -1;
     int pos1 = -1;
@@ -527,7 +528,7 @@ public class JobCreator{
       previousPos = currentPos + 1;
     }
     while(true);
-
+    Debug.debug("Done evaluating", 3);
     return result.trim();
   }
 
@@ -884,14 +885,13 @@ public class JobCreator{
         Debug.debug("setting input files "+inputFiles, 3);
       }
       else{
-        Debug.debug("evaluating", 3);
         resCstAttr[i] = evaluate(cstAttr[i], currentPartition, name, number,
             energy, particle, outputDest);
       }
     }
     
     // Job parameters
-    
+    Debug.debug("Filling in job parameters", 3);
     // metadata information from the metadata field of the dataset
     String metaDataString = (String) dbPluginMgr.getDataset(
         datasetIdentifiers[currentDataset]).getValue("metaData");
@@ -947,7 +947,7 @@ public class JobCreator{
     // if the destination is left empty on the creation panel and
     // we are using input files from a file catalog, name the output file
     // by simply appending ".out" to the input file name
-    
+    Debug.debug("Filling in outputs", 3);
     if(fileCatalogInput && !eventsPresent && outMap.length==1 &&
         (outMap[0][1]==null || outMap[0][1].equals("")) && inputs!=null &&
         MyUtil.split(inputs).length==1){
@@ -1049,6 +1049,7 @@ public class JobCreator{
   private int showResult(int currentPartition, String [] resCstAttr, String [] resJobParam,
                          String [][] resOutMap, String [] resStdOut, Object[] showResultsOptions){
 
+    Debug.debug("showing results for confirmation", 3);
     JPanel pResult = new JPanel(new GridBagLayout());
     int row = 0;
 
@@ -1153,6 +1154,7 @@ public class JobCreator{
                                      showResultsOptions,
                                      showResultsOptions[0]);
 
+    Debug.debug("creating dialog", 3);
     JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "Job definition # "+currentPartition);
     dialog.setResizable(true);
     dialog.setVisible(true);

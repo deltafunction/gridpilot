@@ -3550,8 +3550,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
     //odd: the Object param of getContents is not currently used
     Transferable contents = clipboard.getContents(null);
-    boolean hasTransferableText =
-      (contents != null) &&
+    boolean hasTransferableText = (contents!=null) &&
       contents.isDataFlavorSupported(DataFlavor.stringFlavor);
     if(hasTransferableText){
       try{

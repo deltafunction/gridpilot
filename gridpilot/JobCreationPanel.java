@@ -275,8 +275,7 @@ public class JobCreationPanel extends CreateEditPanel{
     // metadata information from the metadata field of the dataset.
     // We display nothing, jobCreator will take care of filling in
     // - IF the field is left empty
-    String metaDataString = (String) dbPluginMgr.getDataset(
-        datasetIDs[0]).getValue("metaData");
+    String metaDataString = (String) dbPluginMgr.getDataset(datasetIDs[0]).getValue("metaData");
     metaData = MyUtil.parseMetaData(metaDataString);    
     for(int i=0; i<jobParamNames.length; ++i, ++row){
       isInMetadata = false;

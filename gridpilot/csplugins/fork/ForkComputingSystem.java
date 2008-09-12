@@ -448,10 +448,10 @@ public class ForkComputingSystem implements MyComputingSystem{
       if(!scriptGenerator.createWrapper(shellMgr, (MyJobInfo) job, job.getName()+commandSuffix)){
         throw new IOException("Could not create wrapper script.");
       }
-      String id = shellMgr.submit(MyUtil.clearTildeLocally(MyUtil.clearFile(cmd)),
+      String id = shellMgr.submit(MyUtil.clearFile(cmd),
                                   runDir(job),
-                                  MyUtil.clearTildeLocally(MyUtil.clearFile(stdoutFile)),
-                                  MyUtil.clearTildeLocally(MyUtil.clearFile(stderrFile)),
+                                  MyUtil.clearFile(stdoutFile),
+                                  MyUtil.clearFile(stderrFile),
                                   logFile);
       job.setJobId(id!=null?id:"");
     }
