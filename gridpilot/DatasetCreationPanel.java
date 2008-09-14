@@ -52,6 +52,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private String [] datasetTransformationVersionReference;
   private JButton jbEditTrans = new JButton("view");
   private String datasetName = "";
+  private String title = "";
   
   public boolean editable = true;
 
@@ -123,7 +124,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
     pTop.setLayout(new FlowLayout());
      removeAll();
     
-    String title = "";
     if(editing){
       try{
         datasetName = dbPluginMgr.getDatasetName(datasetID);
@@ -131,30 +131,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
       catch(Exception e){
         // nothing
       }
-      // in case the database does not support lookup on dataset id; then the values
-      // will be null and we have to take those we can directly from the tableResults
-      if(editing && (datasetName==null || datasetName.equals(""))){
-        try{
-          MyJTable tableResults = panel.getTable();
-          if(tableResults.getSelectedRows().length==1){
-            for(int k=0; k<tableResults.getColumnCount(); ++k){
-              if(tableResults.getColumnName(k).equalsIgnoreCase(MyUtil.getNameField(dbPluginMgr.getDBName(), "dataset"))){
-                datasetName = tableResults.getUnsortedValueAt(tableResults.getSelectedRow(), k).toString();
-                break;
-              }
-            }
-          }
-          if(datasetName==null){
-            editable = false;
-          }
-        }
-        catch(Exception e){
-          editable = false;
-          e.printStackTrace();
-        }
-      }
-      title = "Edit dataset " + 
-        (datasetName.length()>32 ? datasetName.substring(0, 28)+"..." : datasetName);
     }
     else if(GridPilot.dbNames!=null && GridPilot.dbNames.length!=0 &&
         datasetIDs!=null && datasetIDs.length!=0 &&
@@ -195,6 +171,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
 
     initAttributePanel();
     setValues();
+    checkValues();
     
     if(GridPilot.dbNames==null || GridPilot.dbNames.length==0 ||
         datasetIDs==null || datasetIDs.length==0 ||
@@ -215,6 +192,45 @@ public class DatasetCreationPanel extends CreateEditPanel{
     );
     
     updateUI();
+  }
+  
+  private void checkValues(){
+    for(int i=0; i<cstAttributesNames.length; ++i){
+      // in case the database does not support lookup on dataset id (like DQ2);
+      // then the values will be null and we have to take those we can directly from tableResults.
+      // If we cannot get all values, we will not allow editing.
+      if(editing && (cstAttr[i]==null /*|| cstAttr[i].equals("")*/)){
+        try{
+          MyJTable tableResults = panel.getTable();
+          if(tableResults.getSelectedRows().length==1){
+            boolean ok = false;
+            for(int k=0; k<tableResults.getColumnCount(); ++k){
+              if(tableResults.getColumnName(k).equalsIgnoreCase(cstAttributesNames[i])){
+                cstAttr[i] = tableResults.getUnsortedValueAt(tableResults.getSelectedRow(), k).toString();
+                ok = true;
+                break;
+              }
+            }
+            if(!ok){
+              Debug.debug("Dataset has no "+cstAttributesNames[i]+", "+cstAttr[i], 2);
+              if(datasetName==null){
+              }
+              editable = false;
+            }
+          }
+          else{
+            Debug.debug("Dataset has no "+cstAttributesNames[i]+", "+cstAttr[i]+" and no row is selected.", 2);
+            editable = false;
+          }
+        }
+        catch(Exception e){
+          editable = false;
+          e.printStackTrace();
+        }
+      }
+    }
+    title = "Edit dataset " + 
+    (datasetName.length()>32 ? datasetName.substring(0, 28)+"..." : datasetName);
   }
 
   private void initAttributePanel(){
@@ -240,34 +256,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
       else{
         if(!editing && !reuseTextFields || tcCstAttributes[i]==null){
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
-        }
-      }
-      // in case the database does not support lookup on dataset id (like DQ2);
-      // then the values will be null and we have to take those we can directly from tableResults.
-      // If we cannot get all values, we will not allow editing.
-      if(editing && (cstAttr[i]==null || cstAttr[i].equals(""))){
-        try{
-          MyJTable tableResults = panel.getTable();
-          if(tableResults.getSelectedRows().length==1){
-            boolean ok = false;
-            for(int k=0; k<tableResults.getColumnCount(); ++k){
-              if(tableResults.getColumnName(k).equalsIgnoreCase(cstAttributesNames[i])){
-                cstAttr[i] = tableResults.getUnsortedValueAt(tableResults.getSelectedRow(), k).toString();
-                ok = true;
-                break;
-              }
-            }
-            if(!ok){
-              editable = false;
-            }
-          }
-          else{
-            editable = false;
-          }
-        }
-        catch(Exception e){
-          editable = false;
-          e.printStackTrace();
         }
       }
       if(cstAttr[i]!=null && !cstAttr[i].equals("")){
@@ -470,6 +458,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
                 Debug.debug(cstAttributesNames[i].toString()+"="+dataset.fields[j]+". Setting to "+
                     dataset.values[j].toString(), 3);
                 MyUtil.setJText(tcCstAttributes[i], dataset.values[j].toString());
+                cstAttr[i] = dataset.values[j].toString();
                 
                 if(cstAttributesNames[i].equalsIgnoreCase(datasetTransformationReference[1])){
                   transformationName = dataset.values[j].toString();

@@ -36,6 +36,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   public ForkPoolComputingSystem(String _csName) throws Exception{
     super(_csName);
     setupRemoteShellMgrs();
+    GridPilot.splashShow("Setting up environment on remote hosts...");
     setupRuntimeEnvironmentsSSH();
     Debug.debug("Using workingDir "+workingDir, 2);
   }
@@ -78,7 +79,6 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       else{
         // host null not accepted...
       }
-      GridPilot.splashShow("Setting up environment...");
     }
   }
   
