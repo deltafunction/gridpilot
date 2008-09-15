@@ -3,6 +3,7 @@ package gridpilot.csplugins.ec2;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
@@ -15,10 +16,10 @@ import com.xerox.amazonws.ec2.ReservationDescription.Instance;
 
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
+import gridfactory.common.JobInfo;
 import gridfactory.common.Shell;
 import gridpilot.MyComputingSystem;
 import gridpilot.GridPilot;
-import gridpilot.MyJobInfo;
 import gridpilot.MySecureShell;
 import gridpilot.MyUtil;
 import gridpilot.csplugins.forkpool.ForkPoolComputingSystem;
@@ -80,6 +81,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     // Fill maxJobs with a constant number
     maxJobs = new String[maxMachines];
     Arrays.fill(maxJobs, jobsPerMachine);
+    
+    submittingHostJobs = new HashMap<String, HashSet<String>>();
     
     // Reuse running VMs
     discoverInstances();
@@ -155,6 +158,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     for(Iterator it=instances.iterator(); it.hasNext();){
       hostName = ((Instance) it.next()).getDnsName();
       remoteShellMgrs.put(hostName, null);
+      submittingHostJobs.put(hostName, new HashSet());
       if(i<maxMachines && hosts[i]==null){
         hosts[i] = hostName;
         ++i;
@@ -343,7 +347,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * Slight extension as compared to ForkPoolComputingSystem:
    * start shell and get host if none is running on the slot.
    */
-  protected String selectHost(MyJobInfo job){
+  protected synchronized String selectHost(JobInfo job){
     Shell mgr = null;
     String host = null;
     int maxR = 1;
@@ -410,6 +414,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           }
           hosts[i] = inst.getDnsName();
           Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
+          submittingHostJobs.put(hosts[i], new HashSet());
           return hosts[i];
         }
       }

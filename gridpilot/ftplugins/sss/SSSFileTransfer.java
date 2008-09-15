@@ -41,7 +41,7 @@ import org.jets3t.service.S3Service;
 import org.jets3t.service.S3ServiceException;
 import org.jets3t.service.acl.AccessControlList;
 import org.jets3t.service.impl.rest.httpclient.RestS3Service;
-import org.jets3t.service.io.BytesTransferredWatcher;
+import org.jets3t.service.io.BytesProgressWatcher;
 import org.jets3t.service.io.GZipDeflatingInputStream;
 import org.jets3t.service.model.S3Bucket;
 import org.jets3t.service.model.S3Object;
@@ -60,6 +60,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
+import gridfactory.common.Util;
 import gridpilot.GridPilot;
 import gridpilot.StatusBar;
 import gridpilot.MyUtil;
@@ -296,9 +297,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
           ret += "Status: "+s3Listener.getStatus();
           ret += "\nThreads: "+s3Listener.getThreadWatcher().getThreadCount();
           ret += "\nCompleted threads: "+s3Listener.getThreadWatcher().getCompletedThreads();
-          if(s3Listener.getThreadWatcher().isBytesPerSecondAvailable()){
-            ret += "\nBytes per second: "+s3Listener.getThreadWatcher().getBytesPerSecond();
-          }
+          ret += "\nBytes per second: "+s3Listener.getThreadWatcher().getBytesPerSecond();
           if(s3Listener.getThreadWatcher().isBytesTransferredInfoAvailable()){
             ret += "\nBytes total: "+s3Listener.getThreadWatcher().getBytesTotal();
           }
@@ -765,8 +764,11 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   
   private void prepareForFilesUpload(File[] uploadFiles, StatusBar statusBar, final S3Bucket bucket,
       String [] ids){
+    
+    FileComparer fc = new FileComparer(s3Service.getJetS3tProperties());
+    
     // Build map of files proposed for upload.
-    filesForUploadMap = FileComparer.buildFileMap(uploadFiles);
+    filesForUploadMap = fc.buildFileMap(uploadFiles, true);
                 
     // Build map of objects already existing in target S3 bucket with keys
     // matching the proposed upload keys.
@@ -778,7 +780,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     }
     existingObjects = (S3Object[]) objectsWithExistingKeys.toArray(
         new S3Object[objectsWithExistingKeys.size()]);
-    s3ExistingObjectsMap = FileComparer.populateS3ObjectMap("", existingObjects);
+    s3ExistingObjectsMap = fc.populateS3ObjectMap("", existingObjects);
     if(existingObjects.length>0){
       // Retrieve details of potential clashes.
       final S3Object[] clashingObjects = existingObjects;
@@ -798,13 +800,15 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       final S3Bucket bucket, final String [] ids, File downloadDirectory) throws IOException{
     
     Debug.debug("Preparing for download in "+downloadDirectory.getAbsolutePath(), 3);
+    
+    FileComparer fc = new FileComparer(s3Service.getJetS3tProperties());
 
     // Build map of existing local files.
-    Map filesInDownloadDirectoryMap = FileComparer.buildFileMap(downloadDirectory, null);
+    Map filesInDownloadDirectoryMap = fc.buildFileMap(downloadDirectory, null, true);
     filesAlreadyInDownloadDirectoryMap = new HashMap();
     
     // Build map of S3 Objects being downloaded. 
-    s3DownloadObjectsMap = FileComparer.populateS3ObjectMap("", s3Objects);
+    s3DownloadObjectsMap = fc.populateS3ObjectMap("", s3Objects);
 
     // Identify objects that may clash with existing files, or may be directories,
     // and retrieve details for these.
@@ -1094,7 +1098,14 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     final S3ServiceMulti s3ServiceMulti = new S3ServiceMulti(s3Service, s3Listener);
     Runnable r = new Runnable(){
       public void run(){
-        s3ServiceMulti.downloadObjects(bucket, downloadPackagesArray);
+        try{
+          s3ServiceMulti.downloadObjects(bucket, downloadPackagesArray);
+        }
+        catch(S3ServiceException e){
+          e.printStackTrace();
+          logFile.addMessage("ERROR: could not download object(s) "+Util.arrayToString(downloadPackagesArray), e);
+          return;
+        }
       }
     };
     SwingUtilities.invokeLater(r);
@@ -1125,8 +1136,8 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       // Monitor generation of MD5 hash, and provide feedback via the progress bar. 
       final long hashedBytesTotal[] = new long[1];
       hashedBytesTotal[0] = 0;
-      final BytesTransferredWatcher hashWatcher = new BytesTransferredWatcher() {
-          public void bytesTransferredUpdate(long transferredBytes) {
+      final BytesProgressWatcher hashWatcher = new BytesProgressWatcher(filesSizeTotal[0]) {
+          public void updateBytesTransferred(long transferredBytes) {
               hashedBytesTotal[0] += transferredBytes;
               final int percentage = 
                   (int) (100 * hashedBytesTotal[0] / filesSizeTotal[0]);
@@ -1138,8 +1149,10 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
           }
       };
       
+      FileComparer fc = new FileComparer(s3Service.getJetS3tProperties());
+      
       FileComparerResults comparisonResults = 
-          FileComparer.buildDiscrepancyLists(localFilesMap, s3ObjectsMap, hashWatcher);
+        fc.buildDiscrepancyLists(localFilesMap, s3ObjectsMap, hashWatcher);
       
       statusBar.removeProgressBar(pb); 
       

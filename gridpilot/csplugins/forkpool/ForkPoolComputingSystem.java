@@ -120,6 +120,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     Shell mgr = null;
     String host = null;
     int maxR = 1;
+    int submitting = 0;
     for(int i=0; i<hosts.length; ++i){
       host = hosts[i];
       maxR = 1;
@@ -128,7 +129,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
         if(maxJobs!=null && maxJobs.length>i && maxJobs[i]!=null){
           maxR = Integer.parseInt(maxJobs[i]);
         }
-        if(mgr.getJobsNumber()+((HashSet)submittingHostJobs.get(host)).size()<maxR){
+        submitting = (host!=null&&submittingHostJobs.get(host)!=null?((HashSet)submittingHostJobs.get(host)).size():0);
+        if(mgr.getJobsNumber()+submitting<maxR){
           return host;
         }
       }

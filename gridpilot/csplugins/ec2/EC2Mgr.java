@@ -19,9 +19,11 @@ import org.globus.gsi.GlobusCredentialException;
 import org.ietf.jgss.GSSException;
 
 import com.xerox.amazonws.ec2.EC2Exception;
+import com.xerox.amazonws.ec2.InstanceType;
 import com.xerox.amazonws.ec2.Jec2;
 import com.xerox.amazonws.ec2.ImageDescription;
 import com.xerox.amazonws.ec2.KeyPairInfo;
+import com.xerox.amazonws.ec2.LaunchConfiguration;
 import com.xerox.amazonws.ec2.ReservationDescription;
 import com.xerox.amazonws.ec2.ReservationDescription.Instance;
 
@@ -293,16 +295,14 @@ public class EC2Mgr {
   public ReservationDescription launchInstances(String amiID, int instances) throws Exception{
     KeyPairInfo keypair = getKey();
     createSecurityGroup();
-    List groupSet = new ArrayList();
-    groupSet.add(GROUP_NAME);
-    ReservationDescription desc = ec2.runInstances(
-        amiID,
-        instances,
-        instances,
-        groupSet,
-        /*userData*/owner,
-        keypair.getKeyName(),
-        /*public IP*/true);
+    List groupList = new ArrayList();
+    groupList.add(GROUP_NAME);
+    LaunchConfiguration lc = new LaunchConfiguration(amiID, instances, instances);
+    lc.setSecurityGroup(groupList);
+    lc.setInstanceType(InstanceType.DEFAULT /*i386*/);
+    lc.setKeyName(keypair.getKeyName());
+    lc.setUserData(owner.getBytes());
+    ReservationDescription desc =  ec2.runInstances(lc);
     return desc;
   }
   
