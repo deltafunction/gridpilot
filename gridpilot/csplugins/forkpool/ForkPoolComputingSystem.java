@@ -3,6 +3,7 @@ package gridpilot.csplugins.forkpool;
 import java.io.File;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -29,6 +30,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   protected HashMap remoteShellMgrs = null;
   protected String [] hosts = null;
   protected String [] maxJobs = null;
+  protected HashMap submittingHostJobs = null;
   
   protected String [] users = null;
   protected String [] passwords = null;
@@ -80,6 +82,10 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
         // host null not accepted...
       }
     }
+    submittingHostJobs = new HashMap<String, HashSet<String>>();
+    for(int i=0; i<hosts.length; ++i){
+      submittingHostJobs.put(hosts[i], new HashSet());
+    }
   }
   
   /**
@@ -110,7 +116,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   /**
    * The brokering algorithm. As simple as possible: FIFO.
    */
-  protected String selectHost(JobInfo job){
+  protected synchronized String selectHost(JobInfo job){
     Shell mgr = null;
     String host = null;
     int maxR = 1;
@@ -122,7 +128,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
         if(maxJobs!=null && maxJobs.length>i && maxJobs[i]!=null){
           maxR = Integer.parseInt(maxJobs[i]);
         }
-        if(mgr.getJobsNumber()<maxR){
+        if(mgr.getJobsNumber()+((HashSet)submittingHostJobs.get(host)).size()<maxR){
           return host;
         }
       }
@@ -150,6 +156,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       scriptGenerator.createWrapper(mgr, (MyJobInfo) job, job.getName()+commandSuffix);
       String id = mgr.submit(cmd, runDir(job), stdoutFile, stderrFile, logFile);
       job.setJobId(id!=null?id:"");
+      return true;
     }
     catch(Exception ioe){
       ioe.printStackTrace();
@@ -159,7 +166,9 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       logFile.addMessage(error, ioe);
       return false;
     }
-    return true;
+    finally{
+      ((HashSet) submittingHostJobs.get(job.getHost())).remove(job);
+    }
   }
 
   public void updateStatus(Vector jobs){
@@ -362,6 +371,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       logFile.addInfo("No free slots on any hosts.");
       return false;
     }
+    ((HashSet) submittingHostJobs.get(host)).add(job);
     
     Shell mgr = getShellMgr(host);
     Debug.debug("Getting ShellMgr for host "+host, 2);

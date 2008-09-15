@@ -331,7 +331,12 @@ public class MyJTable extends JTable implements Table {
    * Returns the object wich is really at row, col.
    */
   public synchronized Object getValueAt(int row, int col){
-    return tableModel.getValueAt(row, col);
+    try{
+      return tableModel.getValueAt(row, col);
+    }
+    catch(Exception e){
+      return null;
+    }
   }
 
   public synchronized Object[][] getValues(){
