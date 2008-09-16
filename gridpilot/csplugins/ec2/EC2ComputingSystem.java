@@ -153,6 +153,14 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     if(choice!=0){
       return;
     }
+    try {
+      ec2mgr.getKey();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      MyUtil.showError("Could not get SSH key.");
+      return;
+    }
     int i = 0;
     String hostName = null;
     for(Iterator it=instances.iterator(); it.hasNext();){
@@ -351,6 +359,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     Shell mgr = null;
     String host = null;
     int maxR = 1;
+    int submitting = 0;
     // First try to use an already used instance
     for(int i=0; i<hosts.length; ++i){
       try{
@@ -363,7 +372,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         if(maxJobs!=null && maxJobs.length>i && maxJobs[i]!=null){
           maxR = Integer.parseInt(maxJobs[i]);
         }
-        if(mgr.getJobsNumber()<maxR){
+        submitting = (host!=null&&submittingHostJobs.get(host)!=null?((HashSet)submittingHostJobs.get(host)).size():0);
+        if(mgr.getJobsNumber()+submitting<maxR){
           return host;
         }
       }

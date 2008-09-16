@@ -375,8 +375,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     }
     ((HashSet) submittingHostJobs.get(host)).add(job);
     
-    Shell mgr = getShellMgr(host);
     Debug.debug("Getting ShellMgr for host "+host, 2);
+    Shell mgr = getShellMgr(host);
     job.setHost(host);
     job.setUserInfo(mgr.getUserName());
     

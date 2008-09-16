@@ -2,6 +2,7 @@ package gridpilot.csplugins.ec2;
 
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
+import gridfactory.common.LocalShell;
 import gridpilot.GridPilot;
 import gridpilot.StatusBar;
 import gridpilot.MyJTable;
@@ -57,12 +58,14 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
   private MyJTable instanceTable = null;
   private String [] amiColorMapping = null;  
   private String [] instanceColorMapping = null;  
+  private String [] sshCommand = null;  
   private EC2Mgr ec2mgr = null;
   private JButton bTerminate = new JButton("Terminate");
   private JButton bLaunch = new JButton("Launch instance(s)");
   private JMenuItem miCopyDNS = new JMenuItem("Copy DNS to clipboard");
   private JMenuItem miCopyKeyFile = new JMenuItem("Copy key file location to clipboard");
   private JMenuItem miRunShell = new JMenuItem("Run shell on instance");
+  private boolean runningShell = false;
   
   private static String [] AMI_FIELDS = new String [] {"AMI ID", "Manifest", "State", "Owner"};
   private static String [] INSTANCE_FIELDS = new String [] {"Reservation ID", "Owner", "Instance ID", "AMI", "State",
@@ -76,6 +79,7 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     statusBar = GridPilot.getClassMgr().getStatusBar();
     amiColorMapping = GridPilot.getClassMgr().getConfigFile().getValues("EC2", "AMI color mapping");  
     instanceColorMapping = GridPilot.getClassMgr().getConfigFile().getValues("EC2", "Instance color mapping");  
+    sshCommand = GridPilot.getClassMgr().getConfigFile().getValues("EC2", "Ssh command");  
     initGUI();
     bLaunch.setEnabled(false);
     bTerminate.setEnabled(false);
@@ -411,7 +415,7 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     instanceTable.addMenuSeparator();
     instanceTable.addMenuItem(miCopyDNS);
     instanceTable.addMenuItem(miCopyKeyFile);
-    //instanceTable.addMenuItem(miRunShell);
+    instanceTable.addMenuItem(miRunShell);
   }
   
   private void copyDNSToClipBoard(){
@@ -431,10 +435,33 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     clipboard.setContents(stringSelection, this);
   }
 
-  // TODO: Use JCShell
   private void runShell(){
-    //int row = instanceTable.getSelectedRow();
-    //String dns = (String) instanceTable.getUnsortedValueAt(row, 5);
+    if(runningShell){
+      return;
+    }
+    runningShell = true;
+    StringBuffer stdout = new StringBuffer();
+    StringBuffer stderr = new StringBuffer();
+    String [] fullCommand = new String [0];
+    try{
+      int row = instanceTable.getSelectedRow();
+      String dns = (String) instanceTable.getUnsortedValueAt(row, 5);
+      fullCommand = new String [sshCommand.length+2];
+      for(int i=0; i<sshCommand.length; ++i){
+        fullCommand[i] = sshCommand[i];
+      }
+      fullCommand[fullCommand.length-2] = ec2mgr.getKeyFile().getPath();
+      fullCommand[fullCommand.length-1] = dns;
+      Debug.debug("Connecting to "+dns+" with "+ec2mgr.getKeyFile().getPath(), 1);
+      (new LocalShell()).exec(fullCommand, null, null, stdout, stderr, 0, null);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      MyUtil.showError("Could not connect to host with "+MyUtil.arrayToString(fullCommand)+"; "+stdout+" : "+stderr);
+    }
+    finally{
+      runningShell = false;
+    }
   }
 
   public void lostOwnership(Clipboard clipboard, Transferable contents) {

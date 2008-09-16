@@ -129,15 +129,21 @@ public class MySecureShell extends SecureShell{
           if(GridPilot.splash!=null){
             GridPilot.splash.hide();
           }
+          // Get rid of popups - well, doesn't seem to work...
+          session.setX11Host(null);
           session.connect(30000);
           break;
         }
         catch(Exception e){
+          e.printStackTrace();
           if(rep==MAX_SSH_LOGIN_ATTEMPTS-1){
             if(GridPilot.splash!=null){
               GridPilot.splash.hide();
             }
-            MyUtil.showError("SSH login failed on "+host);
+            MyUtil.showError((rep+1)+" SSH login(s) failed on "+host);
+          }
+          else{
+            Thread.sleep(10000L);
           }
           password = null;
           continue;

@@ -99,6 +99,10 @@ public class EC2Mgr {
         keyInfo.getKeyFingerprint().replaceAll(":", ""));
     Debug.debug("Writing private key to "+runDir, 1);
     LocalStaticShell.writeFile(keyFile.getAbsolutePath(), keyInfo.getKeyMaterial(), false);
+    keyFile.setReadable(false, false);
+    keyFile.setReadable(true, true);
+    keyFile.setWritable(false, false);
+    keyFile.setWritable(true, true);
     if(GridPilot.gridHomeURL!=null && !GridPilot.gridHomeURL.equals("") && MyUtil.urlIsRemote(GridPilot.gridHomeURL)){
       String uploadUrl = GridPilot.gridHomeURL + (GridPilot.gridHomeURL.endsWith("/")?"":"/");
       Debug.debug("Uploading private key to "+uploadUrl, 1);
@@ -258,7 +262,7 @@ public class EC2Mgr {
           res = (ReservationDescription) it.next();
           for(Iterator itt=res.getInstances().iterator(); itt.hasNext();){
             inst = (Instance) itt.next();
-            if(inst.getKeyName().equals(KEY_NAME)){
+            if((inst.isPending() || inst.isRunning()) && inst.getKeyName().equals(KEY_NAME)){
               throw new EC2Exception("The keypair "+KEY_NAME+" is in use by the instance "+
                   inst.getInstanceId()+". But the secret key is not available. " +
                       "Please terminate this instance and try again.");
@@ -303,6 +307,8 @@ public class EC2Mgr {
     lc.setKeyName(keypair.getKeyName());
     lc.setUserData(owner.getBytes());
     ReservationDescription desc =  ec2.runInstances(lc);
+    // Leave time for SSH server to come up
+    //Thread.sleep(20000L);
     return desc;
   }
   
@@ -314,6 +320,9 @@ public class EC2Mgr {
    */
   public void terminateInstances(String [] instanceIDs) throws EC2Exception{
     Debug.debug("Terminating instance(s) "+MyUtil.arrayToString(instanceIDs), 1);
+    if(instanceIDs.length==0){
+      return;
+    }
     ec2.terminateInstances(instanceIDs);
   }
   
