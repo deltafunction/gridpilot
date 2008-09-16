@@ -38,9 +38,10 @@ public class SubmissionControl{
   private Vector toSubmitJobs = new Vector();
   /** All jobs for which the submission is in progress */
   private Vector submittingJobs = new Vector();
- /** Maximum number of simulaneous threads for submission. <br>
-   * It is not the maximum number of running jobs on the Computing System */
+ /** Maximum number of simulaneous threads for submission. */
   private int maxSimultaneousSubmissions = 5;
+  /** Maximum total number of simultaneously running jobs. */
+  private int maxRunning = 10;
   /** Delay between the begin of two submission threads */
   private int timeBetweenSubmissions = 1000;
   private String isRand = null;
@@ -68,12 +69,13 @@ public class SubmissionControl{
    * These values are : <ul>
    * <li>{@link #defaultUserName}
    * <li>{@link #maxSimultaneousSubmissions}
+   * <li>{@link #maxRunning}
    * <li>{@link #timeBetweenSubmissions} </ul><p>
    *
    */
   public void loadValues(){
     String tmp = configFile.getValue("Computing systems", "maximum simultaneous submissions");
-    if(tmp != null){
+    if(tmp!=null){
       try{
         maxSimultaneousSubmissions = Integer.parseInt(tmp);
       }
@@ -85,8 +87,22 @@ public class SubmissionControl{
     else
       logFile.addMessage(configFile.getMissingMessage("Computing systems", "maximum simultaneous submissions") + "\n" +
                               "Default value = " + maxSimultaneousSubmissions);
+    tmp = configFile.getValue("Computing systems", "maximum simultaneous running");
+    if(tmp!=null){
+      try{
+        maxRunning = Integer.parseInt(tmp);
+      }
+      catch(NumberFormatException nfe){
+        logFile.addMessage("Value of \"maximum simultaneous running\" is not"+
+                                    " an integer in configuration file", nfe);
+      }
+    }
+    else{
+      logFile.addMessage(configFile.getMissingMessage("Computing systems", "maximum simultaneous running") + "\n" +
+                              "Default value = " + maxRunning);
+    }
     tmp = configFile.getValue("Computing systems", "time between submissions");
-    if(tmp != null){
+    if(tmp!=null){
       try{
         timeBetweenSubmissions = Integer.parseInt(tmp);
       }
@@ -103,7 +119,7 @@ public class SubmissionControl{
     timer.setInitialDelay(0);
     timer.setDelay(timeBetweenSubmissions);
     String resourcesPath = configFile.getValue("GridPilot", "resources");
-    if(resourcesPath != null && !resourcesPath.endsWith("/"))
+    if(resourcesPath!=null && !resourcesPath.endsWith("/"))
       resourcesPath += "/";
     URL imgURL=null;
     try{
@@ -471,7 +487,24 @@ public class SubmissionControl{
   * waiting jobs. If there are any, creates new submission threads
   */
   private synchronized void trigSubmission(){
-    if(submittingJobs.size()<maxSimultaneousSubmissions && !toSubmitJobs.isEmpty()){
+    
+    if(toSubmitJobs.isEmpty()){
+      timer.stop();
+      return;
+    }
+    
+    int runningJobs = 0;
+    JobMgr mgr = null;
+    int [] rJobs = null;
+    for(Iterator it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
+      mgr = ((JobMgr) it.next());
+      rJobs = mgr.getJobsByStatus();
+      runningJobs += (rJobs[0]+rJobs[1]);
+    }
+    
+    if(submittingJobs.size()<maxSimultaneousSubmissions &&
+        submittingJobs.size()+runningJobs<maxRunning &&
+        !toSubmitJobs.isEmpty()){
       // transfer job from toSubmitJobs to submittingJobs
       final MyJobInfo job = (MyJobInfo) toSubmitJobs.remove(0);
       submittingJobs.add(job);

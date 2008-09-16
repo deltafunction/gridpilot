@@ -232,7 +232,7 @@ public class TransferControl{
    * Reloads some values from configuration file. <p>
    */
   public void loadValues(){
-    String tmp = configFile.getValue("File transfer systems", "maximum simultaneous transfers");
+    String tmp = configFile.getValue("File transfer systems", "maximum simultaneous running");
     if(tmp != null){
       try{
         maxSimultaneousTransfers = Integer.parseInt(tmp);
@@ -243,7 +243,7 @@ public class TransferControl{
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage("File transfer systems", "maximum simultaneous transfers") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage("File transfer systems", "maximum simultaneous running") + "\n" +
                               "Default value = " + maxSimultaneousTransfers);
     tmp = configFile.getValue("File transfer systems", "time between transfers");
     if(tmp != null){
