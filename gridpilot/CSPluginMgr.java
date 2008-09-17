@@ -61,8 +61,9 @@ public class CSPluginMgr implements MyComputingSystem{
   private int defaultTimeOut = 60*1000;
 
   private String [] csNames;
-  private HashMap cs;
+  private HashMap<String, Object> cs;
   private int threadI;
+  private String [] enabledCSs;
 
   public CSPluginMgr() throws Throwable{
     init();
@@ -143,6 +144,15 @@ public class CSPluginMgr implements MyComputingSystem{
         e.printStackTrace();
       }
     }
+    enabledCSs = cs.keySet().toArray(new String [cs.size()]);
+  }
+  
+  /**
+   * Get a list of the enabled computing systems.
+   * @return a list of the names of the successfully loaded computing systems
+   */
+  public String [] getEnabledCSNames(){
+    return enabledCSs;
   }
 
   void disconnect(){

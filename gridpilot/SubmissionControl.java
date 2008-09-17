@@ -42,9 +42,12 @@ public class SubmissionControl{
   private int maxSimultaneousSubmissions = 5;
   /** Maximum total number of simultaneously running jobs. */
   private int maxRunning = 10;
+  /** Maximum total number of simultaneously running jobs per CS. */
+  private int [] maxRunningPerCS;
   /** Delay between the begin of two submission threads */
-  private int timeBetweenSubmissions = 1000;
+  private int timeBetweenSubmissions = 5000;
   private String isRand = null;
+  private String [] csNames;
 
   public SubmissionControl() throws Exception{
     submittedJobs = GridPilot.getClassMgr().getSubmittedJobs();
@@ -101,6 +104,28 @@ public class SubmissionControl{
       logFile.addMessage(configFile.getMissingMessage("Computing systems", "maximum simultaneous running") + "\n" +
                               "Default value = " + maxRunning);
     }
+    
+    csNames = GridPilot.getClassMgr().getCSPluginMgr().getEnabledCSNames();
+    maxRunningPerCS = new int[csNames.length];
+    for(int i=0; i<csNames.length; ++i){
+      tmp = configFile.getValue(csNames[i], "maximum simultaneous running");
+      if(tmp!=null){
+        try{
+          maxRunningPerCS[i] = Integer.parseInt(tmp);
+        }
+        catch(NumberFormatException nfe){
+          logFile.addMessage("Value of \"maximum simultaneous running\" is not"+
+                                      " an integer in configuration file for CS "+csNames[i], nfe);
+        }
+      }
+      else{
+        maxRunningPerCS[i] = maxRunning;
+        logFile.addMessage(configFile.getMissingMessage("Computing systems", "maximum simultaneous running") + "\n" +
+                                "Default value = " + maxRunningPerCS[i]);
+      }
+    }
+    
+    
     tmp = configFile.getValue("Computing systems", "time between submissions");
     if(tmp!=null){
       try{
@@ -185,7 +210,8 @@ public class SubmissionControl{
                 );
             job.setTableRow(submittedJobs.size());
             submittedJobs.add(job);
-            job.setDBStatus(DBPluginMgr.SUBMITTED);
+            //job.setDBStatus(DBPluginMgr.SUBMITTED);
+            job.setDBStatus(DBPluginMgr.DEFINED);
             job.setName(dbPluginMgr.getJobDefinition(jobDefID).getValue("name").toString());
             job.setCSName(csName);
           }
@@ -193,7 +219,8 @@ public class SubmissionControl{
             // this job exists, get its computingSystem, keeps its row number,
             // and do not add to submittedJobs
             job.setCSName(csName);
-            job.setDBStatus(DBPluginMgr.SUBMITTED);
+            //job.setDBStatus(DBPluginMgr.SUBMITTED);
+            job.setDBStatus(DBPluginMgr.DEFINED);
           }
           newJobs.add(job);
           Debug.debug("job definition " + job.getIdentifier() + "("+job.getName()+") reserved", 2);
@@ -235,7 +262,8 @@ public class SubmissionControl{
         if(dbPluginMgr.reserveJobDefinition(job.getIdentifier(), "", csName)){
           job.setCSName(csName);
           newJobs.add(job);
-          job.setDBStatus(DBPluginMgr.SUBMITTED);
+          //job.setDBStatus(DBPluginMgr.SUBMITTED);
+          job.setDBStatus(DBPluginMgr.DEFINED);
           job.setCSStatus(MyJobInfo.CS_STATUS_WAIT);
           job.setJobId(null);
           job.setHost(null);
@@ -493,30 +521,70 @@ public class SubmissionControl{
       return;
     }
     
-    int runningJobs = 0;
-    JobMgr mgr = null;
-    int [] rJobs = null;
-    for(Iterator it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
-      mgr = ((JobMgr) it.next());
-      rJobs = mgr.getJobsByStatus();
-      runningJobs += (rJobs[0]+rJobs[1]);
-    }
+    MyJobInfo job = (MyJobInfo) toSubmitJobs.get(0);
     
-    if(submittingJobs.size()<maxSimultaneousSubmissions &&
-        submittingJobs.size()+runningJobs<maxRunning &&
-        !toSubmitJobs.isEmpty()){
-      // transfer job from toSubmitJobs to submittingJobs
-      final MyJobInfo job = (MyJobInfo) toSubmitJobs.remove(0);
-      submittingJobs.add(job);
-      new Thread(){
-        public void run(){
-          submit(job);
-        }
-      }.start();
+    if(!toSubmitJobs.isEmpty()){
+      if(checkRunning(job)){
+        job.setDBStatus(DBPluginMgr.SUBMITTED);
+        // transfer job from toSubmitJobs to submittingJobs
+        toSubmitJobs.remove(job);
+        submittingJobs.add(job);
+        final MyJobInfo fJob = job;
+        new Thread(){
+          public void run(){
+            submit(fJob);
+          }
+        }.start();
+      }
     }
     else{
       timer.stop();
     }
+  }
+  
+  private boolean checkRunning(MyJobInfo job){
+    
+    int runningJobs = 0;
+    JobMgr mgr = null;
+    MyJobInfo tmpJob;
+    int [] jobsByStatus = null;
+    int [] rJobsByCS = new int[csNames.length];
+    int [] rjc = new int[csNames.length];
+    int jobCsIndex = -1;
+    for(int i=0; i<csNames.length; ++i){
+      rJobsByCS[i] = 0;
+    }
+    for(Iterator it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
+      mgr = ((JobMgr) it.next());
+      mgr.updateJobsByStatus();
+      jobsByStatus = mgr.getJobsByStatus();
+      rjc = mgr.getRunningJobsByCS();
+      for(int i=0; i<csNames.length; ++i){
+        rJobsByCS[i] += rjc[i];
+        //Debug.debug("Upping job count for CS "+csNames[i]+" with "+rjc[i], 3);
+        if(csNames[i].equalsIgnoreCase(job.getCSName())){
+          jobCsIndex = i;
+        }
+      }
+      runningJobs += (jobsByStatus[0]+jobsByStatus[1]);
+    }
+    for(Iterator it = submittingJobs.iterator(); it.hasNext();){
+      tmpJob = (MyJobInfo) it.next();
+      for(int i=0; i<csNames.length; ++i){
+        if(csNames[i].equalsIgnoreCase(tmpJob.getCSName())){
+          //Debug.debug("Upping job count for CS "+csNames[i], 3);
+          ++rJobsByCS[i];
+        }
+      }
+    }
+    
+    //Debug.debug("Found running jobs: "+MyUtil.arrayToString(csNames)+" --> "+MyUtil.arrayToString(rJobsByCS)+
+    //    " --> "+MyUtil.arrayToString(maxRunningPerCS), 3);
+
+    return submittingJobs.size()<maxSimultaneousSubmissions &&
+      submittingJobs.size()+runningJobs<maxRunning &&
+      rJobsByCS[jobCsIndex]<maxRunningPerCS[jobCsIndex];
+
   }
 
   /**
@@ -536,6 +604,9 @@ public class SubmissionControl{
     statusTable.setValueAt(iconSubmitting, job.getTableRow(),
         JobMgr.FIELD_CONTROL);
     JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
+    Vector updV = new Vector();
+    updV.add(job);
+    jobMgr.updateDBCells(updV);
     if(csPluginMgr.preProcess(job) && csPluginMgr.submit(job)){
       Debug.debug("Job " + job.getName() + " submitted : \n" +
                   "\tCSJobId = " + job.getJobId() + "\n" +

@@ -32,34 +32,39 @@ public class JobMgr{
    */
   private Vector submittedJobs;
 
-  /** Index of column of icon in statusTable*/
+  /** Index of column of icon in statusTable .*/
   public final static int FIELD_CONTROL = 0;
-  /** Index of column of JobName in statusTable*/
+  /** Index of column of JobName in statusTable .*/
   public final static int FIELD_JOBNAME = 1;
-  /** Index of column of JobId in statusTable*/
+  /** Index of column of JobId in statusTable .*/
   public final static int FIELD_JOBID = 2;
-  /** Index of column of JobStatus in statusTable*/
+  /** Index of column of JobStatus in statusTable .*/
   public final static int FIELD_STATUS = 3;
-  /** Index of column of Computing System name in statusTable*/
+  /** Index of column of Computing System name in statusTable .*/
   public final static int FIELD_CS = 4;
-  /** Index of column of host in statusTable*/
+  /** Index of column of host in statusTable .*/
   public final static int FIELD_HOST = 5;
-  /** Index of column of db in statusTable*/
+  /** Index of column of db in statusTable .*/
   public final static int FIELD_DB = 6;
-  /** Index of column of DB status in statusTable*/
+  /** Index of column of DB status in statusTable .*/
   public final static int FIELD_DBSTATUS = 7;
-  /** Index of column of DB reservedBy in statusTable*/
+  /** Index of column of DB reservedBy in statusTable .*/
   public final static int FIELD_USER = 8;
 
   /** 
-   * counters of jobs ordered by local status
+   * Counters of jobs ordered by local status.
    */
   private static int[] jobsByStatus = new int[DBPluginMgr.getStatusNames().length];
   
   /** 
-   * counters of jobs ordered by DB status
+   * Counters of jobs ordered by DB status.
    */
   private static int[] jobsByDBStatus = new int[DBPluginMgr.getDBStatusNames().length];
+  
+  /** 
+   * Counters of running jobs ordered by DB computing system.
+   */
+  private int [] runningJobsByCS;
   
   private boolean [] hasChanged;
   private boolean useChanges = true;
@@ -96,6 +101,10 @@ public class JobMgr{
 
    public int [] getJobsByDBStatus(){
      return jobsByDBStatus;
+   }
+
+   public int [] getRunningJobsByCS(){
+     return runningJobsByCS;
    }
 
    public DBPluginMgr getDBPluginMgr(){
@@ -383,7 +392,7 @@ public class JobMgr{
   void updateJobsByStatus(){
     // jobsByDBStatus
     for(int i=0; i<jobsByDBStatus.length;++i){
-          jobsByDBStatus[i] = 0;
+      jobsByDBStatus[i] = 0;
     }
     // jobsByStatus
     for(int i=0; i<jobsByStatus.length;++i){
@@ -392,14 +401,21 @@ public class JobMgr{
     int waitIndex = 0;
     int runIndex = 1;
     int doneIndex = 2;
+    
+    String [] css = GridPilot.getClassMgr().getCSPluginMgr().getEnabledCSNames();
+    runningJobsByCS = new int[css.length];
+    MyJobInfo job;
 
     for(int i=0; i<submittedJobs.size(); ++i){
-      Debug.debug("adding job "+((MyJobInfo) submittedJobs.get(i)).getName()+
-          " : "+((MyJobInfo) submittedJobs.get(i)).getDBStatus()+
-          " : "+jobsByDBStatus[((MyJobInfo) submittedJobs.get(i)).getDBStatus()-1], 3);
-      ++jobsByDBStatus[((MyJobInfo) submittedJobs.get(i)).getDBStatus()-1];
+      job = (MyJobInfo) submittedJobs.get(i);
+      //Debug.debug("adding job "+job.getName()+
+      //    " : "+job.getDBStatus()+
+      //    " : "+(job.getDBStatus()<1?"":jobsByDBStatus[job.getDBStatus()-1]), 3);
+      if(job.getDBStatus()>0){
+        ++jobsByDBStatus[job.getDBStatus()-1];
+      }
 
-      switch(((MyJobInfo) submittedJobs.get(i)).getStatus()){
+      switch(job.getStatus()){
         case MyJobInfo.STATUS_READY:
           ++jobsByStatus[waitIndex];
           break;
@@ -416,6 +432,13 @@ public class JobMgr{
           ++jobsByStatus[doneIndex];
           break;
       }
+      
+      for(int j=0; j<css.length; ++j){
+        if(css[j].equalsIgnoreCase(job.getCSName()) && job.getDBStatus()==DBPluginMgr.SUBMITTED){
+          ++runningJobsByCS[j];
+        }
+      }
+      
     }
     statisticsPanel.update();
   }

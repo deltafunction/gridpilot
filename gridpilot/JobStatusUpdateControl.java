@@ -212,7 +212,7 @@ public class JobStatusUpdateControl{
       jobs = GridPilot.getClassMgr().getSubmittedJobs();
     }
     else{
-      rows = statusTable.getSelectedRows();
+      //rows = statusTable.getSelectedRows();
       jobs = JobMgr.getJobsAtRows(rows);
     }
    
