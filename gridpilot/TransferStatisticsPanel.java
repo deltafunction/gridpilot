@@ -9,7 +9,7 @@ import java.awt.Color;
  */
 public class TransferStatisticsPanel extends StatisticsPanel{
   
-  private TransferStatusUpdateControl statusUpdateControl = null;
+  private MyTransferStatusUpdateControl statusUpdateControl = null;
 
   /**
    * Colors corresponding to getStatusNames for statistics panel.
@@ -24,7 +24,7 @@ public class TransferStatisticsPanel extends StatisticsPanel{
 
   public TransferStatisticsPanel(String title){
     super(title);
-    statusNames = TransferStatusUpdateControl.ftStatusNames;
+    statusNames = MyTransferStatusUpdateControl.ftStatusNames;
     colors = statusColors;
   }
 
@@ -32,11 +32,11 @@ public class TransferStatisticsPanel extends StatisticsPanel{
 
   public void update(){
     
-    TransferStatusUpdateControl statusUpdateControl =
+    MyTransferStatusUpdateControl statusUpdateControl =
       GridPilot.getClassMgr().getTransferStatusUpdateControl();
 
     if(style<painters.size()){
-      statusNames = TransferStatusUpdateControl.ftStatusNames;
+      statusNames = MyTransferStatusUpdateControl.ftStatusNames;
       // Set the number of jobs in each state to 0
       values = new int[statusNames.length];
       for(int i=0; i<values.length; ++i){
@@ -50,7 +50,7 @@ public class TransferStatisticsPanel extends StatisticsPanel{
       }
     }
     else{
-      statusNames = TransferStatusUpdateControl.statusNames;
+      statusNames = MyTransferStatusUpdateControl.statusNames;
       // Set the number of jobs in each state to 0
       values = new int[statusNames.length];
       Debug.debug("resetting number of jobs for each status, "+

@@ -19,7 +19,6 @@ import gridpilot.DBPluginMgr;
 import gridpilot.GridPilot;
 import gridpilot.MyJobInfo;
 import gridpilot.MySecureShell;
-import gridpilot.TransferControl;
 import gridpilot.MyUtil;
 import gridpilot.csplugins.fork.ForkComputingSystem;
 import gridpilot.csplugins.fork.ForkScriptGenerator;
@@ -237,7 +236,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       remoteFilesArr[i] = (String) remoteFiles.get(i);
     }
     try{
-      TransferControl.deleteFiles(remoteFilesArr);
+      transferControl.deleteFiles(remoteFilesArr);
     }
     catch(Exception e){
       error = "WARNING: could not delete output files. "+e.getMessage();
@@ -251,7 +250,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
           shellMgr.deleteFile(finalStdOut);
         }
         else{
-          TransferControl.deleteFiles(new String [] {finalStdOut});
+          transferControl.deleteFiles(new String [] {finalStdOut});
         }
       }
       catch(Exception e){
@@ -269,7 +268,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
           shellMgr.deleteFile(finalStdErr);
         }
         else{
-          TransferControl.deleteFiles(new String [] {finalStdErr});
+          transferControl.deleteFiles(new String [] {finalStdErr});
         }
       }
       catch(Exception e){

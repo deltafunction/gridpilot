@@ -9,7 +9,7 @@ import javax.swing.*;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
-import gridfactory.common.SecureShell;
+import gridfactory.common.jobrun.SecureShell;
 
 public class MySecureShell extends SecureShell{
 

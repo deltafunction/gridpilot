@@ -3,14 +3,14 @@ package gridpilot.wizards.manage_software;
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.LocalStaticShell;
-import gridfactory.common.RTECatalog;
-import gridfactory.common.RTECatalog.BaseSystem;
-import gridfactory.common.RTECatalog.MetaPackage;
-import gridfactory.common.RTECatalog.TarPackage;
+import gridfactory.common.jobrun.RTECatalog;
+import gridfactory.common.jobrun.RTECatalog.BaseSystem;
+import gridfactory.common.jobrun.RTECatalog.MetaPackage;
+import gridfactory.common.jobrun.RTECatalog.TarPackage;
 import gridpilot.GPFrame;
 import gridpilot.GridPilot;
 import gridpilot.RteRdfParser;
-import gridpilot.TransferControl;
+import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
 import java.awt.Color;
@@ -395,7 +395,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     catch(Throwable e){
     }
     try{
-      TransferControl.download(lockUrl, lockFile);
+      GridPilot.getClassMgr().getTransferControl().download(lockUrl, lockFile);
     }
     catch(Throwable e){
       try{
@@ -434,7 +434,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     // Upload temporary lock on the catalog
     LocalStaticShell.writeFile(lockFile.getAbsolutePath(),
         Long.toString(nowMillis)+":"+GridPilot.getClassMgr().getSSL().getGridSubject(), false);
-    TransferControl.upload(lockFile, lockUrl);
+    GridPilot.getClassMgr().getTransferControl().upload(lockFile, lockUrl);
     
     RTECatalog rteCatalog;
     try{
@@ -564,7 +564,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
       // Upload the catalog
       File newCatalog = new File(tmpDir, "newCatalog.rdf");
       LocalStaticShell.writeFile(newCatalog.getAbsolutePath(), xml, false);
-      TransferControl.upload(newCatalog, catalogUrl);
+      GridPilot.getClassMgr().getTransferControl().upload(newCatalog, catalogUrl);
       lockFile.delete();
       newCatalog.delete();
     }
@@ -573,7 +573,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     }
     finally{
       try{
-        TransferControl.deleteFiles(new String [] {lockUrl});
+        GridPilot.getClassMgr().getTransferControl().deleteFiles(new String [] {lockUrl});
       }
       catch(Exception eee){
         eee.printStackTrace();
@@ -915,7 +915,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
           }
           // Upload the tarball
           File gzipFile = new File(tmpDir, shortName+".tar.gz");
-          TransferControl.upload(gzipFile, jtfUrl.getText());
+          GridPilot.getClassMgr().getTransferControl().upload(gzipFile, jtfUrl.getText());
           String shortName = gzipFile.getName();
           tarballUrl = jtfUrl.getText();
           if(tarballUrl.endsWith("/")){

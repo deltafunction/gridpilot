@@ -41,7 +41,7 @@ import gridfactory.common.ResThread;
 import gridpilot.Database;
 import gridpilot.GridPilot;
 
-import gridpilot.TransferControl;
+import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
 public class ATLASDatabase extends DBCache implements Database{
@@ -2119,7 +2119,7 @@ public class ATLASDatabase extends DBCache implements Database{
           urls[j] = new GlobusURL((String) itt.next());
         }
         GridPilot.getClassMgr().getStatusBar().setLabel("Deleting physical file(s)");
-        TransferControl.deleteFiles(urls);
+        GridPilot.getClassMgr().getTransferControl().deleteFiles(urls);
         deleted = deleted+urls.length;
       }
       catch(Exception e){

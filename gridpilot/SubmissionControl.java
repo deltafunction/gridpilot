@@ -87,9 +87,10 @@ public class SubmissionControl{
                                     "is not an integer in configuration file", nfe);
       }
     }
-    else
+    else{
       logFile.addMessage(configFile.getMissingMessage("Computing systems", "maximum simultaneous submissions") + "\n" +
                               "Default value = " + maxSimultaneousSubmissions);
+    }
     tmp = configFile.getValue("Computing systems", "maximum simultaneous running");
     if(tmp!=null){
       try{

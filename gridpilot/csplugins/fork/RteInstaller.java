@@ -4,9 +4,9 @@ import gridfactory.common.Debug;
 import gridfactory.common.LogFile;
 import gridfactory.common.Shell;
 import gridpilot.GridPilot;
-import gridpilot.TransferControl;
+import gridpilot.MyTransferControl;
 import gridpilot.MyTransferInfo;
-import gridpilot.TransferStatusUpdateControl;
+import gridpilot.MyTransferStatusUpdateControl;
 import gridpilot.MyUtil;
 
 import java.io.File;
@@ -119,9 +119,8 @@ public class RteInstaller {
         return;
       }
       Debug.debug("Copying over downloaded file via ssh; "+fullDlFile.getAbsolutePath(), 2);
-      TransferControl.copyOutputFile(
-          fullDlFile.getAbsolutePath(), remoteCacheDir+"/"+fullDlFile.getName(), shellMgr, null,
-          logFile);
+      GridPilot.getClassMgr().getTransferControl().copyOutputFile(
+          fullDlFile.getAbsolutePath(), remoteCacheDir+"/"+fullDlFile.getName(), shellMgr, null);
       // Then unpack the tarball and rename "data" to "pkg"
       StringBuffer stdout = new StringBuffer();
       StringBuffer stderr = new StringBuffer();
@@ -201,14 +200,14 @@ public class RteInstaller {
     boolean transfersDone = false;
     int sleepT = 3000;
     int waitT = 0;
-    TransferStatusUpdateControl statusUpdateControl =
+    MyTransferStatusUpdateControl statusUpdateControl =
       GridPilot.getClassMgr().getTransferStatusUpdateControl();
     while(!transfersDone && waitT*sleepT<MAX_DOWNLOAD_WAIT){
       transfersDone = true;
       statusUpdateControl.updateStatus(null);
       for(Iterator itt=transferVector.iterator(); itt.hasNext();){
         transfer = (MyTransferInfo) itt.next();
-        if(TransferControl.isRunning(transfer)){
+        if(MyTransferControl.isRunning(transfer)){
           transfersDone = false;
           break;
         }
@@ -221,7 +220,7 @@ public class RteInstaller {
       ++ waitT;
     }
     if(!transfersDone){
-      TransferControl.cancel(transferVector);
+      GridPilot.getClassMgr().getTransferControl().cancel(transferVector);
       throw new TimeLimitExceededException("Download took too long, aborting.");
     }
   }

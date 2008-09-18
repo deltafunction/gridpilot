@@ -38,7 +38,6 @@ import gridpilot.Database;
 import gridpilot.GridPilot;
 import gridpilot.MessagePane;
 import gridpilot.MyLogFile;
-import gridpilot.TransferControl;
 import gridpilot.MyUtil;
 
 
@@ -2057,7 +2056,7 @@ public class MySQLDatabase extends DBCache implements Database {
           }
           Debug.debug("Deleting files "+MyUtil.arrayToString(toDeletefiles), 2);
           if(toDeletefiles!=null){
-            TransferControl.deleteFiles(toDeletefiles);
+            GridPilot.getClassMgr().getTransferControl().deleteFiles(toDeletefiles);
           }
         }
         catch(Exception e){
@@ -2595,7 +2594,7 @@ public class MySQLDatabase extends DBCache implements Database {
               if(fileNames!=null && !fileNames.equals("no such field")){
                 String [] fileNameArray = MyUtil.splitUrls(fileNames);
                 if(fileNameArray!=null && fileNameArray.length>0){
-                  TransferControl.deleteFiles(fileNameArray);
+                  GridPilot.getClassMgr().getTransferControl().deleteFiles(fileNameArray);
                 }
               }
             }

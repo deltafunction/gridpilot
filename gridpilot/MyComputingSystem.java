@@ -1,6 +1,6 @@
 package gridpilot;
 
-import gridfactory.common.ComputingSystem;
+import gridfactory.common.jobrun.ComputingSystem;
 
 /**
  * Interface a computing system plugin must implement. <p>

@@ -5,7 +5,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.ResThread;
 import gridfactory.common.Shell;
-import gridfactory.common.VirtualMachine;
+import gridfactory.common.jobrun.VirtualMachine;
 
 import java.io.IOException;
 import java.util.HashMap;

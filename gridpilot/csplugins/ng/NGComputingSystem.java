@@ -33,7 +33,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.Shell;
-import gridfactory.common.VirtualMachine;
+import gridfactory.common.jobrun.VirtualMachine;
 
 import gridpilot.MyComputingSystem;
 import gridpilot.DBPluginMgr;
@@ -41,7 +41,7 @@ import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
 import gridpilot.MyLogFile;
 import gridpilot.StatusBar;
-import gridpilot.TransferControl;
+import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
 /**
@@ -85,6 +85,7 @@ public class NGComputingSystem implements MyComputingSystem{
   private String [] runtimeDBs = null;
   private HashSet finalRuntimes = null;
   private int submissionNumber = 1;
+  private MyTransferControl transferControl;
   
   private static String csName;
   private static MyLogFile logFile;
@@ -93,6 +94,7 @@ public class NGComputingSystem implements MyComputingSystem{
   
   public NGComputingSystem(String _csName){
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
+    transferControl = GridPilot.getClassMgr().getTransferControl();
     csName = _csName;
     unparsedWorkingDir= configFile.getValue(csName, "working directory");
     if(unparsedWorkingDir==null || unparsedWorkingDir.equals("")){
@@ -465,7 +467,7 @@ public class NGComputingSystem implements MyComputingSystem{
       for(int i=0; i<outputFileNames.length; ++i){
         outputFileNames[i] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
       }
-      TransferControl.deleteFiles(outputFileNames);
+      transferControl.deleteFiles(outputFileNames);
     }
     catch(Exception e){
       error = "WARNING: could not delete output file. "+e.getMessage();
@@ -476,7 +478,7 @@ public class NGComputingSystem implements MyComputingSystem{
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
       try{
-        TransferControl.deleteFiles(new String [] {finalStdOut});
+        transferControl.deleteFiles(new String [] {finalStdOut});
       }
       catch(Exception e){
         error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
@@ -489,7 +491,7 @@ public class NGComputingSystem implements MyComputingSystem{
     }
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
       try{
-        TransferControl.deleteFiles(new String [] {finalStdErr});
+        transferControl.deleteFiles(new String [] {finalStdErr});
       }
       catch(Exception e){
         error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
@@ -1150,13 +1152,13 @@ public class NGComputingSystem implements MyComputingSystem{
           Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
               " from final destination "+finalStdOut+" to " +
               MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp())), 3);
-          TransferControl.download(finalStdOut, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
+          transferControl.download(finalStdOut, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
         }
         if(getFromfinalDest || !finalStdErr.startsWith("file:")){
           Debug.debug("Downloading stderr of: " + job.getName() + ":" + job.getJobId()+
               " from final destination "+finalStdErr+" to " +
               MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp())), 3);
-          TransferControl.download(finalStdErr, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))));
+          transferControl.download(finalStdErr, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))));
         }
       }
     }
@@ -1263,7 +1265,7 @@ public class NGComputingSystem implements MyComputingSystem{
         localName = dbPluginMgr.getJobDefOutLocalName(job.getIdentifier(), outputFileNames[i]);
         remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
         if(remoteName.startsWith("file:")){
-          TransferControl.upload(
+          transferControl.upload(
               new File(runDir(job)+File.separator+jobID+File.separator+localName),
               remoteName);
         }
@@ -1308,7 +1310,7 @@ public class NGComputingSystem implements MyComputingSystem{
       try{
         File stdoutSourceFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp())));
         emptyFile = finalStdOut.startsWith("https") && stdoutSourceFile.length()==0;
-        TransferControl.upload(stdoutSourceFile, finalStdOut);
+        transferControl.upload(stdoutSourceFile, finalStdOut);
         job.setOutTmp(finalStdOut);
       }
       catch(Throwable e){
@@ -1347,7 +1349,7 @@ public class NGComputingSystem implements MyComputingSystem{
       try{
         File stderrSourceFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp())));
         emptyFile = finalStdOut.startsWith("https") && stderrSourceFile.length()==0;
-        TransferControl.upload(stderrSourceFile, finalStdErr);
+        transferControl.upload(stderrSourceFile, finalStdErr);
         job.setErrTmp(finalStdErr);
       }
       catch(Throwable e){

@@ -1,6 +1,7 @@
 package gridpilot.dbplugins.atlas;
 
 import gridfactory.common.Debug;
+import gridpilot.GridPilot;
 import gridpilot.MyUtil;
 
 import java.net.MalformedURLException;
@@ -22,7 +23,7 @@ public class LRCLookupPFN  extends LookupPFN {
     String path = "lrc/PoolFileCatalog?lfns="+lfn;
     String url = catalogServer+(catalogServer.endsWith("/")?"":"/")+path;
     Debug.debug("Querying "+url, 2);
-    String [] answer = MyUtil.readURL(url, null, null);
+    String [] answer = MyUtil.readURL(url, GridPilot.getClassMgr().getTransferControl(), null, null);
     Debug.debug("Parsing PoolFileCatalog with "+MyUtil.arrayToString(answer), 3);
     PoolFileCatalog pfc = new PoolFileCatalog(answer);
     PoolFileCatalog.PoolFile pf = ((PoolFileCatalog.PoolFile) pfc.files.get(0));

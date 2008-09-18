@@ -6,10 +6,9 @@ import java.util.Iterator;
 import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
-import gridfactory.common.RTECatalog;
-import gridfactory.common.Util;
-import gridfactory.common.RTECatalog.MetaPackage;
-import gridfactory.common.RTECatalog.TarPackage;
+import gridfactory.common.jobrun.RTECatalog;
+import gridfactory.common.jobrun.RTECatalog.MetaPackage;
+import gridfactory.common.jobrun.RTECatalog.TarPackage;
 
 
 /**

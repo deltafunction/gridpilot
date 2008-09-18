@@ -52,7 +52,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     String runDir = MyUtil.clearTildeLocally(MyUtil.clearFile(workingDir));
     Debug.debug("Using workingDir "+workingDir, 2);
     ec2mgr = new EC2Mgr(accessKey, secretKey, sshAccessSubnet, this.getUserInfo(csName),
-        runDir);
+        runDir, transferControl);
  
     System.out.println("Adding EC2 monitor");
     EC2MonitoringPanel panel = new EC2MonitoringPanel(ec2mgr);

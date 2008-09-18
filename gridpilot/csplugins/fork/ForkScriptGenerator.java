@@ -13,7 +13,6 @@ import gridfactory.common.Shell;
 import gridpilot.DBPluginMgr;
 import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
-import gridpilot.TransferControl;
 import gridpilot.MyUtil;
 
 /**
@@ -167,7 +166,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }*/
     // Copy the script to the working directory
     try{
-      if(!TransferControl.copyInputFile(scriptSrc, scriptDest, shellMgr, null, logFile)){
+      if(!GridPilot.getClassMgr().getTransferControl().copyInputFile(scriptSrc, scriptDest, shellMgr, true, null)){
         throw new IOException("Copying transformation script to working dir failed.");
       }
     }

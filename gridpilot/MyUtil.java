@@ -1230,12 +1230,13 @@ public class MyUtil extends gridfactory.common.Util{
   /**
    * Reads the lines of a text file on a web server (or locally).
    * @param urlString the URL to read
+   * @param transferControl MyTransferControl object to use for downloading
    * @param tmpFile local download location. If left empty, nothing is written to disk
    * @param commentTag a string like "#". If specified, lines starting with this string will be ignored
    * as will empty lines. If null, all lines will be kept.
    * @return an array of the lines of text
    */
-  public static String [] readURL(String urlString, File tmpFile, String commentTag) throws Exception{
+  public static String [] readURL(String urlString, MyTransferControl transferControl, File tmpFile, String commentTag) throws Exception{
     String [] ret = null;
     if(urlString.startsWith("http:") || urlString.startsWith("http:") ||
         urlString.startsWith("ftp:") || urlString.startsWith("file:")){
@@ -1271,8 +1272,8 @@ public class MyUtil extends gridfactory.common.Util{
       }
     }
     else if(urlString.startsWith("gsiftp:") || urlString.startsWith("srm:")){
-      TransferControl.download(urlString, tmpFile);
-      ret = readURL(tmpFile.toURL().toExternalForm(), tmpFile, commentTag);
+      transferControl.download(urlString, tmpFile);
+      ret = readURL(tmpFile.toURL().toExternalForm(), transferControl, tmpFile, commentTag);
      }
     return ret;
   }

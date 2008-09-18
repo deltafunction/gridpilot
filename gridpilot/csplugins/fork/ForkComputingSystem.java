@@ -20,7 +20,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LogFile;
 import gridfactory.common.Shell;
-import gridfactory.common.VirtualMachine;
+import gridfactory.common.jobrun.VirtualMachine;
 
 import gridpilot.MyComputingSystem;
 import gridpilot.DBPluginMgr;
@@ -28,7 +28,7 @@ import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
 import gridpilot.MySSL;
 import gridpilot.RteRdfParser;
-import gridpilot.TransferControl;
+import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
 public class ForkComputingSystem implements MyComputingSystem{
@@ -56,11 +56,13 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected DBPluginMgr remoteDBPluginMgr = null;
   // List of (Janitor) catalogs from where to get RTEs
   protected String [] rteCatalogUrls = null;
+  protected MyTransferControl transferControl;
 
   public ForkComputingSystem(String _csName) throws Exception{
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
+    transferControl = GridPilot.getClassMgr().getTransferControl();
     
     GridPilot.splashShow("Setting up shells...");
     
@@ -104,7 +106,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       commandSuffix = ".bat";
     }
     
-    runtimeDirectory = configFile.getValue(csName, "runtime directory");   
+    runtimeDirectory = configFile.getValue(csName, "runtime directory");
     if(runtimeDirectory!=null && runtimeDirectory.startsWith("~")){
       // Expand ~
       if(System.getProperty("os.name").toLowerCase().startsWith("windows") &&
@@ -568,7 +570,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       remoteFilesArr[i] = (String) remoteFiles.get(i);
     }
     try{
-      TransferControl.deleteFiles(remoteFilesArr);
+      transferControl.deleteFiles(remoteFilesArr);
     }
     catch(Exception e){
       error = "WARNING: could not delete output files. "+e.getMessage();
@@ -582,7 +584,7 @@ public class ForkComputingSystem implements MyComputingSystem{
           shellMgr.deleteFile(finalStdOut);
         }
         else{
-          TransferControl.deleteFiles(new String [] {finalStdOut});
+          transferControl.deleteFiles(new String [] {finalStdOut});
         }
       }
       catch(Exception e){
@@ -600,7 +602,7 @@ public class ForkComputingSystem implements MyComputingSystem{
           shellMgr.deleteFile(finalStdErr);
         }
         else{
-          TransferControl.deleteFiles(new String [] {finalStdErr});
+          transferControl.deleteFiles(new String [] {finalStdErr});
         }
       }
       catch(Exception e){
@@ -1087,7 +1089,7 @@ public class ForkComputingSystem implements MyComputingSystem{
           else if(!ignoreRemoteInputs && MyUtil.urlIsRemote(inputFiles[i])){
             try{
               Debug.debug("Getting input file "+inputFiles[i]+" --> "+runDir(job), 3);
-              TransferControl.copyInputFile(inputFiles[i], runDir(job)+"/"+fileName, thisShellMgr, error, logFile);
+              transferControl.copyInputFile(inputFiles[i], runDir(job)+"/"+fileName, thisShellMgr, true, error);
             }
             catch(Exception ioe){
               logFile.addMessage("WARNING: GridPilot could not get input file "+inputFiles[i]+
@@ -1141,7 +1143,7 @@ public class ForkComputingSystem implements MyComputingSystem{
           // If source is remote, get it
           else if(!ignoreRemoteInputs && MyUtil.urlIsRemote(inputFiles[i])){
             try{
-              TransferControl.download(urlDir + fileName, new File(runDir(job)));
+              transferControl.download(urlDir + fileName, new File(runDir(job)));
             }
             catch(Exception ioe){
               logFile.addMessage("WARNING: GridPilot could not get input file "+inputFiles[i]+
@@ -1198,7 +1200,7 @@ public class ForkComputingSystem implements MyComputingSystem{
         localName = MyUtil.clearFile(localName);
         remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputNames[i]);
         emptyFile = remoteName.startsWith("https") && (new File(localName)).length()==0;
-        ok = ok && (TransferControl.copyOutputFile(localName, remoteName, shellMgr, error, logFile) ||
+        ok = ok && (transferControl.copyOutputFile(localName, remoteName, shellMgr, error) ||
             emptyFile);
       }
       catch(Exception e){
@@ -1227,7 +1229,7 @@ public class ForkComputingSystem implements MyComputingSystem{
      */
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
       emptyFile = finalStdOut.startsWith("https") && (new File(job.getOutTmp())).length()==0;
-      if(TransferControl.copyOutputFile(job.getOutTmp(), finalStdOut, shellMgr, error, logFile) ||
+      if(transferControl.copyOutputFile(job.getOutTmp(), finalStdOut, shellMgr, error) ||
           emptyFile){
         job.setOutTmp(finalStdOut);
       }
@@ -1241,7 +1243,7 @@ public class ForkComputingSystem implements MyComputingSystem{
      */
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
       emptyFile = finalStdErr.startsWith("https") && (new File(job.getErrTmp())).length()==0;
-      if(TransferControl.copyOutputFile(job.getErrTmp(), finalStdErr, shellMgr, error, logFile) ||
+      if(transferControl.copyOutputFile(job.getErrTmp(), finalStdErr, shellMgr, error) ||
           emptyFile){
         job.setErrTmp(finalStdErr);
       }

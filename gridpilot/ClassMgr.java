@@ -33,7 +33,7 @@ public class ClassMgr{
   private GlobalFrame globalFrame;
   private MyLogFile logFile;
   private StatusBar statusBar;
-  private TransferStatusUpdateControl transferStatusUpdateControl;
+  private MyTransferStatusUpdateControl transferStatusUpdateControl;
   private MyJTable jobStatusTable;
   private MyJTable transferStatusTable;
   private StatisticsPanel jobStatisticsPanel;
@@ -46,7 +46,7 @@ public class ClassMgr{
   private Vector submittedJobs = new Vector();
   private Vector submittedTransfers = new Vector();
   private SubmissionControl submissionControl;
-  private TransferControl transferControl;
+  private MyTransferControl transferControl;
   private Vector urlList = new Vector();
   private HashMap shellMgrs = new HashMap();
   private static String DEFAULT_POOL_SIZE = "10";
@@ -115,7 +115,7 @@ public class ClassMgr{
      submissionControl = _submissionControl;
   }
 
-  public void setTransferControl(TransferControl _transferControl){
+  public void setTransferControl(MyTransferControl _transferControl){
     transferControl = _transferControl;
  }
 
@@ -304,11 +304,11 @@ public class ClassMgr{
     return statusBar;
   }
 
-  public TransferStatusUpdateControl getTransferStatusUpdateControl(){
+  public MyTransferStatusUpdateControl getTransferStatusUpdateControl(){
     if(transferStatusUpdateControl==null){
       Debug.debug("transferStatusUpdateControl null", 3);
       try{
-        transferStatusUpdateControl = new TransferStatusUpdateControl();
+        transferStatusUpdateControl = new MyTransferStatusUpdateControl();
       }
       catch(Exception e){
         e.printStackTrace();
@@ -433,11 +433,11 @@ public class ClassMgr{
     return submissionControl;
   }
   
-  public TransferControl getTransferControl(){
+  public MyTransferControl getTransferControl(){
     if(transferControl==null){
       Debug.debug("transferControl null, creating new", 1);
       try{
-        setTransferControl(new TransferControl());
+        setTransferControl(new MyTransferControl());
       }
       catch(Exception e){
         e.printStackTrace();

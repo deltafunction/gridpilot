@@ -2603,7 +2603,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     MyTransferInfo transfer = null;
     Vector transfers = new Vector();
     String dlUrl = null;
-    TransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
+    MyTransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
     // Correct file url not understood by Globus: file:/... -> file://...
     String dlUrlDir = _dlUrl.replaceFirst("^file:/([^/])", "file://$1");
     // GlobusURL does not accept file://C:/... or file://C:\..., but

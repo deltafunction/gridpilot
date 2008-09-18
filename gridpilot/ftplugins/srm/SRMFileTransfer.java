@@ -23,7 +23,7 @@ import diskCacheV111.srm.RequestStatus;
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridpilot.StatusBar;
-import gridpilot.TransferControl;
+import gridpilot.MyTransferControl;
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;
 
@@ -38,6 +38,7 @@ public class SRMFileTransfer implements FileTransfer {
   private String error = "";
   private Vector pendingIDs = new Vector();
   private String user = null;
+  private MyTransferControl transferControl;
   
   // Default to trying 5 checks after submitting a transfer
   private static int checkRetries = 5;
@@ -64,6 +65,8 @@ public class SRMFileTransfer implements FileTransfer {
     if(!GridPilot.firstRun){
       user = GridPilot.getClassMgr().getSSL().getGridSubject();
     }
+    
+    transferControl = GridPilot.getClassMgr().getTransferControl();
 
     //System.setProperty("X509_CERT_DIR",
     //    Util.getProxyFile().getParentFile().getAbsolutePath());
@@ -169,7 +172,7 @@ public class SRMFileTransfer implements FileTransfer {
         requestType.equals("get") || requestType.equals("put"))){
       // get status from GSIFTPFileTransfer (or whichever protocol the SRM uses)
       try{
-        status = TransferControl.getStatus(shortID);
+        status = transferControl.getStatus(shortID);
         Debug.debug("Got status from subsystem: "+status, 2);
       }
       catch(Exception e){
@@ -218,7 +221,7 @@ public class SRMFileTransfer implements FileTransfer {
       // get status from GSIFTPFileTransfer (or whichever protocol the SRM uses)
       Debug.debug("Getting status of "+shortID+" from subsystem", 3);
       try{
-        status += "GSIFTP Status: "+TransferControl.getStatus(shortID);
+        status += "GSIFTP Status: "+transferControl.getStatus(shortID);
       }
       catch(Exception e){
         Debug.debug("WARNING: could not get status from subsystem for "+
@@ -323,7 +326,7 @@ public class SRMFileTransfer implements FileTransfer {
         requestType.equals("get") || requestType.equals("put"))){
       // get status from GSIFTPFileTransfer (or whichever protocol the SRM uses)
       try{
-        percentComplete = TransferControl.getPercentComplete(shortID);
+        percentComplete = transferControl.getPercentComplete(shortID);
       }
       catch(Exception e){
         Debug.debug("WARNING: could not call getPercentComplete from subsystem for "+
@@ -367,7 +370,7 @@ public class SRMFileTransfer implements FileTransfer {
         requestType.equals("get") || requestType.equals("put"))){
       // Get status from GSIFTPFileTransfer (or whichever protocol the SRM uses).    
       try{
-        bytes = TransferControl.getBytesTransferred(shortID);
+        bytes = transferControl.getBytesTransferred(shortID);
       }
       catch(Exception e){
         Debug.debug("WARNING: could not call getBytesTransferred from subsystem for "+
@@ -489,7 +492,7 @@ public class SRMFileTransfer implements FileTransfer {
       // cancel GSIFTPFileTransfer (or whichever protocol the SRM uses)
       try{
         Debug.debug("Cancelling "+shortID, 1);
-        TransferControl.cancel(shortID);
+        transferControl.cancel(shortID);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -729,7 +732,7 @@ public class SRMFileTransfer implements FileTransfer {
         statusBar.setLabel("File(s) ready, starting download.");
         try{
           // Now use some other plugin - depending on the TURL returned
-          TransferControl.startCopyFiles(turls, destUrls);
+          transferControl.startCopyFiles(turls, destUrls);
         }
         catch(Exception e){
           for(int i=0; i<ids.length; ++i){
@@ -842,7 +845,7 @@ public class SRMFileTransfer implements FileTransfer {
         statusBar.setLabel("File(s) ready, starting download.");
         try{
           // Now use some other plugin - depending on the TURL returned
-          TransferControl.startCopyFiles(srcUrls, turls);
+          transferControl.startCopyFiles(srcUrls, turls);
         }
         catch(Exception e){
           for(int i=0; i<ids.length; ++i){
@@ -1106,7 +1109,7 @@ public class SRMFileTransfer implements FileTransfer {
         requestType.equals("get") || requestType.equals("put"))){
       // get status from GSIFTPFileTransfer (or whichever protocol the SRM uses)
       try{
-        internalStatus = TransferControl.getInternalStatus(shortID, status);
+        internalStatus = transferControl.getInternalStatus(shortID, status);
       }
       catch(Exception e){
         e.printStackTrace();

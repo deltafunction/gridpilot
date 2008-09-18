@@ -35,7 +35,7 @@ import gridpilot.DBPluginMgr;
 import gridpilot.Database;
 import gridpilot.GridPilot;
 import gridpilot.MessagePane;
-import gridpilot.TransferControl;
+import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
 public class HSQLDBDatabase extends DBCache implements Database{
@@ -2297,7 +2297,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
           }
           Debug.debug("Deleting files "+MyUtil.arrayToString(toDeleteFiles), 2);        
           if(toDeleteFiles!=null){
-            TransferControl.deleteFiles(toDeleteFiles);
+            GridPilot.getClassMgr().getTransferControl().deleteFiles(toDeleteFiles);
           }
         }
         catch(Exception e){
@@ -2862,7 +2862,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
               if(fileNames!=null && !fileNames.equals("no such field")){
                 String [] fileNameArray = MyUtil.splitUrls(fileNames);
                 if(fileNameArray!=null && fileNameArray.length>0){
-                  TransferControl.deleteFiles(fileNameArray);
+                  GridPilot.getClassMgr().getTransferControl().deleteFiles(fileNameArray);
                 }
               }
             }

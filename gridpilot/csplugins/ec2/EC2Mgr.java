@@ -4,7 +4,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.LocalStaticShell;
 import gridpilot.GridPilot;
 import gridpilot.MyLogFile;
-import gridpilot.TransferControl;
+import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
 import java.io.File;
@@ -39,6 +39,7 @@ public class EC2Mgr {
   private MyLogFile logFile = null;
   private String owner = null;
   private String runDir = null;
+  private MyTransferControl transferControl;
 
   public final static String GROUP_NAME = "GridPilot";
   public final static String KEY_NAME = "GridPilot_EC2_TMP_KEY";
@@ -46,12 +47,13 @@ public class EC2Mgr {
   private File keyFile = null;
 
   public EC2Mgr(String accessKey, String secretKey, String _subnet, String _owner,
-      String _runDir) {
+      String _runDir, MyTransferControl _transferControl) {
     
     ec2 = new Jec2(accessKey, secretKey, /*isSecure*/true);
     subnet = _subnet;
     owner = _owner;
     runDir = _runDir;
+    transferControl = _transferControl;
     logFile = GridPilot.getClassMgr().getLogFile();
   }
   
@@ -107,7 +109,7 @@ public class EC2Mgr {
       String uploadUrl = GridPilot.gridHomeURL + (GridPilot.gridHomeURL.endsWith("/")?"":"/");
       Debug.debug("Uploading private key to "+uploadUrl, 1);
       try{
-        TransferControl.upload(keyFile, uploadUrl);
+        transferControl.upload(keyFile, uploadUrl);
       }
       catch(Exception e){
         logFile.addMessage("WARNING: could not upload private key to grid home directory. " +
@@ -181,7 +183,7 @@ public class EC2Mgr {
     catch(Exception e){
     }
     try{
-      TransferControl.deleteFiles(new String[] {downloadUrl});
+      transferControl.deleteFiles(new String[] {downloadUrl});
     }
     catch(Exception e){
     }
@@ -243,7 +245,7 @@ public class EC2Mgr {
         keyFile.getName();
       Debug.debug("Downloading private key from "+downloadUrl, 1);
       try{
-        TransferControl.download(downloadUrl, keyFile);
+        transferControl.download(downloadUrl, keyFile);
         if(keyFile.exists()){
           Debug.debug("Loading downloaded keypair "+KEY_NAME, 2);
           return new KeyPairInfo(KEY_NAME, keyInfo.getKeyFingerprint(),
@@ -279,7 +281,7 @@ public class EC2Mgr {
       catch(Exception e){
       }
       try{
-        TransferControl.deleteFiles(new String[] {downloadUrl});
+        transferControl.deleteFiles(new String[] {downloadUrl});
       }
       catch(Exception e){
       }

@@ -4,6 +4,9 @@ import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LogFile;
+import gridfactory.common.Table;
+import gridfactory.common.TransferControl;
+import gridfactory.common.TransferStatusUpdateControl;
 
 import java.net.URL;
 
@@ -30,7 +33,7 @@ import java.awt.event.*;
  *
  * <p><a href="TransferStatusUpdateControl.java.html">see sources</a>
  */
-public class TransferStatusUpdateControl{
+public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
   /** The timer which triggers the checking */
   private Timer timerChecking;
 
@@ -44,8 +47,6 @@ public class TransferStatusUpdateControl{
 
   /** For each plug-in, maximum number of transfer for one update (0 = INF)*/
   private HashMap maxTransfersByUpdate;
-
-  private MyJTable statusTable;
 
   /** counters of jobs ordered by local status
    */
@@ -107,8 +108,8 @@ public class TransferStatusUpdateControl{
   private Vector checkingThread = new Vector();
   private ImageIcon iconChecking;
 
-  public TransferStatusUpdateControl() throws Exception{
-    statusTable = GridPilot.getClassMgr().getTransferStatusTable();
+  public MyTransferStatusUpdateControl() throws Exception{
+    super(GridPilot.getClassMgr().getTransferStatusTable(), GridPilot.getClassMgr().getTransferControl());
     configFile = GridPilot.getClassMgr().getConfigFile();
     logFile = GridPilot.getClassMgr().getLogFile();
 
@@ -235,7 +236,7 @@ public class TransferStatusUpdateControl{
       transfers = GridPilot.getClassMgr().getSubmittedTransfers();
     }
     else{
-      rows = statusTable.getSelectedRows();
+      rows = ((MyJTable) transferStatusTable).getSelectedRows();
       transfers = TransferMonitoringPanel.getTransfersAtRows(rows);
     }
    
@@ -275,7 +276,7 @@ public class TransferStatusUpdateControl{
    * </ul>
    *
    */
-  private void trigCheck(){
+  public void trigCheck(){
 
     Debug.debug("trigCheck", 1);
 
@@ -323,7 +324,7 @@ public class TransferStatusUpdateControl{
 
     int [] previousInternalStatus = new int [transfers.size()];
     for(int i=0; i<transfers.size(); ++i){
-      statusTable.setValueAt(iconChecking, ((MyTransferInfo) transfers.get(i)).getTableRow(), MyTransferInfo.FIELD_CONTROL);
+      transferStatusTable.setValueAt(iconChecking, ((MyTransferInfo) transfers.get(i)).getTableRow(), MyTransferInfo.FIELD_CONTROL);
       previousInternalStatus[i] = ((MyTransferInfo) transfers.get(i)).getInternalStatus();
       Debug.debug("Setting previousInternalStatus for transfer "+i+" : "+
           previousInternalStatus[i], 3);
@@ -333,7 +334,7 @@ public class TransferStatusUpdateControl{
 
     // checks and updates with MyTransferInfo.setStatus() and
     // MyTransferInfo.setInternalStatus()
-    TransferControl.updateStatus(transfers);
+    transferControl.updateStatus(transfers);
 
     Debug.debug("Removing "+transfers.size()+" transfers from checkingTransfers", 3);
     
@@ -341,11 +342,11 @@ public class TransferStatusUpdateControl{
 
     for(int i=0; i<transfers.size(); ++i){
       Debug.debug("Setting value of transfer #"+i, 3);
-      statusTable.setValueAt(null, ((MyTransferInfo) transfers.get(i)).getTableRow(),
+      transferStatusTable.setValueAt(null, ((MyTransferInfo) transfers.get(i)).getTableRow(),
           MyTransferInfo.FIELD_CONTROL);
-      statusTable.setValueAt(((MyTransferInfo) transfers.get(i)).getStatus(),
+      transferStatusTable.setValueAt(((MyTransferInfo) transfers.get(i)).getStatus(),
           ((MyTransferInfo) transfers.get(i)).getTableRow(), MyTransferInfo.FIELD_STATUS);
-      statusTable.setValueAt(((MyTransferInfo) transfers.get(i)).getTransferred(),
+      transferStatusTable.setValueAt(((MyTransferInfo) transfers.get(i)).getTransferred(),
           ((MyTransferInfo) transfers.get(i)).getTableRow(), MyTransferInfo.FIELD_TRANSFERRED);
     }
 
@@ -364,12 +365,12 @@ public class TransferStatusUpdateControl{
           break;
         case FileTransfer.STATUS_DONE:
           transfer.setNeedsUpdate(false);
-          TransferControl.transferDone(transfer);
+          transferControl.transferDone(transfer);
           break;
         case FileTransfer.STATUS_RUNNING:
-          statusTable.setValueAt(transfer.getSource().getURL(),
+          transferStatusTable.setValueAt(transfer.getSource().getURL(),
               transfer.getTableRow(), MyTransferInfo.FIELD_SOURCE);
-          statusTable.setValueAt(transfer.getDestination().getURL(),
+          transferStatusTable.setValueAt(transfer.getDestination().getURL(),
               transfer.getTableRow(), MyTransferInfo.FIELD_DESTINATION);
           break;
         case FileTransfer.STATUS_ERROR:
@@ -386,7 +387,7 @@ public class TransferStatusUpdateControl{
           break;
         case FileTransfer.STATUS_FAILED:
           transfer.setNeedsUpdate(false);
-          TransferControl.transferFailure(transfer);
+          MyTransferControl.transferFailure(transfer);
           break;
         }
       }

@@ -772,7 +772,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         Debug.debug("Getting file : "+url+" -> "+dir.getAbsolutePath(), 3);
         try{
           statusBar.setLabel("Downloading "+url);
-          TransferControl.download(url, dir);
+          GridPilot.getClassMgr().getTransferControl().download(url, dir);
           statusBar.setLabel("Download done");
         }
         catch(Exception ioe){
@@ -2139,7 +2139,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         if(file==null){
           return;
         }
-        TransferControl.upload(file, thisUrl);
+        GridPilot.getClassMgr().getTransferControl().upload(file, thisUrl);
         try{
           statusBar.setLabel("uploading "+thisUrl);
           ep.getDocument().putProperty(
@@ -2165,7 +2165,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
               try{
                 //TransferControl.download(href, dir, ep);
                 // Use the physical file name (strip off the first ...://.../.../
-                TransferControl.startCopyFiles(new GlobusURL [] {new GlobusURL(href)},
+                GridPilot.getClassMgr().getTransferControl().startCopyFiles(new GlobusURL [] {new GlobusURL(href)},
                     new GlobusURL [] {new GlobusURL("file:///"+
                         (new File(dir, href.replaceFirst(".*/([^/]+)$", "$1"))))});
               }

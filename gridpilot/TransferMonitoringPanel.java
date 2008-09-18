@@ -56,8 +56,8 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private JMenuItem miKill = new JMenuItem("Stop transfer(s)");
   private JMenuItem miResubmit = new JMenuItem("Retry transfer(s)");
   private JMenuItem miClear = new JMenuItem("Clear");
-  private TransferControl transferControl;
-  private TransferStatusUpdateControl statusUpdateControl = null;
+  private MyTransferControl transferControl;
+  private MyTransferStatusUpdateControl statusUpdateControl = null;
   
   private Timer timerRefresh = new Timer(0, new ActionListener (){
     public void actionPerformed(ActionEvent e){
@@ -303,7 +303,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
       public void run(){
         transferControl = GridPilot.getClassMgr().getTransferControl();
         try{
-          TransferControl.cancel(
+          transferControl.cancel(
               getTransfersAtRows(statusTable.getSelectedRows()));
           statusUpdateControl.updateTransfersByStatus();
         }
@@ -340,7 +340,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
           }
           info += "Internal status : "+transfer.getInternalStatus()+"\n";
           try{
-            info += "Plugin "+TransferControl.getFullStatus(transfer.getTransferID());
+            info += "Plugin "+transferControl.getFullStatus(transfer.getTransferID());
           }
           catch(Exception e){
             info += "ERROR: could not get full status. "+e.getMessage();
@@ -432,7 +432,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     Enumeration e =  submittedJobs.elements();
     while(e.hasMoreElements()){
       MyTransferInfo transfer = (MyTransferInfo) e.nextElement();
-      if(TransferControl.isRunning(transfer)){
+      if(MyTransferControl.isRunning(transfer)){
         if(showRows==ONLY_RUNNING_JOBS){
           statusTable.showRow(transfer.getTableRow());
         }
@@ -466,7 +466,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     MyTransferInfo transfer = null;
     for(int i=0; i<transferVector.toArray().length;++i){
       transfer = (MyTransferInfo) transferVector.get(i);
-      if(!TransferControl.isRunning(transfer)){
+      if(!MyTransferControl.isRunning(transfer)){
         statusTable.removeRow(i);
         statusTable.repaint();
         runningRowsVector.add(new Integer(i));
@@ -518,7 +518,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     Vector runningRowsVector = new Vector();
     for(int i=0; i<statusTable.getRowCount(); ++i){
       MyTransferInfo transfer = getTransferAtRow(i);
-      if(!TransferControl.isRunning(transfer)){
+      if(!MyTransferControl.isRunning(transfer)){
         Debug.debug("Removing row "+i, 3);
         runningRowsVector.add(new Integer(i));
       }

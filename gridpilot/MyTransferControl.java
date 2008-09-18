@@ -5,9 +5,10 @@ import gridfactory.common.DBVectorTableModel;
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
-import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
 import gridfactory.common.Shell;
+import gridfactory.common.TransferControl;
+import gridfactory.common.Util;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -48,14 +49,12 @@ import org.safehaus.uuid.UUIDGenerator;
  * If there are any, the first transfer is removed from <code>toSubmitTransfers</code> and
  * put in <code>submittingTransfers</code>.
  */
-public class TransferControl{
+public class MyTransferControl extends TransferControl {
   
   private StatusBar statusBar;
   private JProgressBar pbSubmission;
   private boolean isProgressBarSet = false;
   private ConfigFile configFile;
-  private LogFile logFile;
-  private MyJTable statusTable;
   private Timer timer;
   private ImageIcon iconSubmitting;
   /** All transfers for which the submission is not made yet */
@@ -75,10 +74,9 @@ public class TransferControl{
   private static int TRANSFER_CANCEL_TIMEOUT = 60*1000;
   private Object [][] tableValues = new Object[0][GridPilot.transferStatusFields.length];
   
-  public TransferControl() throws Exception{
-    statusTable = GridPilot.getClassMgr().getTransferStatusTable();    
+  public MyTransferControl() throws Exception{
+    super(GridPilot.getClassMgr().getLogFile(), GridPilot.getClassMgr().getTransferStatusTable());
     configFile = GridPilot.getClassMgr().getConfigFile();
-    logFile = GridPilot.getClassMgr().getLogFile();
 
     timer = new Timer(0, new ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -282,7 +280,7 @@ public class TransferControl{
    * @param   srcUrls    Array of source URLs.
    * @param   destUrls   Array of destination URLs.
    */
-  public static String [] startCopyFiles(GlobusURL [] srcUrls, GlobusURL [] destUrls)
+  public String [] startCopyFiles(GlobusURL [] srcUrls, GlobusURL [] destUrls)
      throws Exception {
 
     for(int i=0; i<srcUrls.length; ++i){
@@ -400,7 +398,7 @@ public class TransferControl{
 
     tableValues = newTablevalues;
     try {
-      ((DBVectorTableModel) statusTable.getModel()).setTable(tableValues, GridPilot.transferStatusFields);
+      ((DBVectorTableModel) ((MyJTable) statusTable).getModel()).setTable(tableValues, GridPilot.transferStatusFields);
     }
     catch(Exception e){
       e.printStackTrace();
@@ -480,7 +478,7 @@ public class TransferControl{
       System.arraycopy(appendTablevalues, 0, newTablevalues, tableValues.length, appendTablevalues.length);
       tableValues = newTablevalues;
       Debug.debug("Setting table", 3);
-      ((DBVectorTableModel) statusTable.getModel()).setTable(tableValues, GridPilot.transferStatusFields);
+      ((DBVectorTableModel) ((MyJTable) statusTable).getModel()).setTable(tableValues, GridPilot.transferStatusFields);
     }
 
     // find shortest list of source URLs
@@ -598,7 +596,7 @@ public class TransferControl{
     }
   };
 
-  public static String getStatus(String fileTransferID) throws Exception {
+  public String getStatus(String fileTransferID) throws Exception {
     String status = findFTPlugin(fileTransferID).getStatus(fileTransferID);
     // This means there's a TURL returned by the SRM plugin
     if(status!=null && status.matches("^\\w+://.*")){
@@ -609,15 +607,15 @@ public class TransferControl{
     }
   }
 
-  public static String getFullStatus(String fileTransferID) throws Exception {
+  public String getFullStatus(String fileTransferID) throws Exception {
     return findFTPlugin(fileTransferID).getFullStatus(fileTransferID);
   }
 
-  public static int getPercentComplete(String fileTransferID) throws Exception {
+  public int getPercentComplete(String fileTransferID) throws Exception {
     return findFTPlugin(fileTransferID).getPercentComplete(fileTransferID);
   }
 
-  public static long getBytesTransferred(String fileTransferID) throws Exception {
+  public long getBytesTransferred(String fileTransferID) throws Exception {
     return findFTPlugin(fileTransferID).getBytesTransferred(fileTransferID);
   }
   
@@ -626,7 +624,7 @@ public class TransferControl{
    * by LocalStaticShellMgr, remote by the available plugins.
    * @param toDeleteFiles URL strings spefifying the file locations.
    */
-  public static void deleteFiles(String [] toDeleteFiles){
+  public void deleteFiles(String [] toDeleteFiles){
     // get the list of remote files, ordered by protocol
     HashMap remoteFiles = new HashMap();
     String protocol = null;
@@ -650,7 +648,7 @@ public class TransferControl{
           LocalStaticShell.deleteFile(toDeleteFiles[i]);
         }
         catch(Exception e){
-          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete file "+
+          logFile.addMessage("WARNING: Could not delete file "+
               toDeleteFiles[i]+". Please do so by hand.");
         }
       }
@@ -673,11 +671,11 @@ public class TransferControl{
       }
       try{
         Debug.debug("Deleting "+MyUtil.arrayToString(remoteUrls), 2);
-        TransferControl.deleteFiles(remoteUrls);
+        deleteFiles(remoteUrls);
       }
       catch(Exception e){
         e.printStackTrace();
-        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete files "+
+        logFile.addMessage("WARNING: Could not delete files "+
             MyUtil.arrayToString(remoteUrls)+". Please do so by hand.");
       }
     }
@@ -688,7 +686,7 @@ public class TransferControl{
    * @param urls array of URLs
    * @throws Exception
    */
-  public static void deleteFiles(GlobusURL [] urls) throws Exception {
+  public void deleteFiles(GlobusURL [] urls) throws Exception {
     String ftPluginName = null;
     String [] fts = GridPilot.ftNames;
     
@@ -744,7 +742,7 @@ public class TransferControl{
   /**
    * Just cancels the transfer with the corresponding plugin
    */
-  public static void cancel(final String fileTransferID) throws Exception{
+  public void cancel(final String fileTransferID) throws Exception{
     findFTPlugin(fileTransferID).cancel(fileTransferID);
   }
   
@@ -752,7 +750,7 @@ public class TransferControl{
    * Cancels a Vector of transfers.
    * @param transfers Vector of MyTransferInfo's
    */
-  public static void cancel(final Vector transfers){
+  public void cancel(final Vector transfers){
     ResThread t = new ResThread(){
       MyTransferInfo transfer = null;
       public void run(){
@@ -799,7 +797,7 @@ public class TransferControl{
           }        
         }
         catch(Throwable t){
-          GridPilot.getClassMgr().getLogFile().addMessage((t instanceof Exception ? "Exception" : "Error") +
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " +
                              " for download", t);
         }
@@ -868,7 +866,7 @@ public class TransferControl{
           queue(transfers);
         }
         catch(Throwable t){
-          GridPilot.getClassMgr().getLogFile().addMessage((t instanceof Exception ? "Exception" : "Error") +
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " +
                              " for download", t);
         }
@@ -979,7 +977,7 @@ public class TransferControl{
   /**
    * Checks the status of the transfers and updates the MyTransferInfo objects. <p>
    */
-  public static void updateStatus(Vector transfers){
+  public void updateStatus(Vector transfers){
     String status = null;
     String transferred = null;
     int percentComplete = -1;
@@ -1032,7 +1030,7 @@ public class TransferControl{
   /**
    *  Find the GridPilot-specific internal status from the corresponding plugin.
    */
-  public static int getInternalStatus(String id, String status) throws Exception{
+  public int getInternalStatus(String id, String status) throws Exception{
     return findFTPlugin(id).getInternalStatus(id, status);
   }
   
@@ -1051,7 +1049,7 @@ public class TransferControl{
    * transfers. So, all get/put transfers will die when we exit and running
    * transfers should be cancelled before exiting.
    */
-  public static void exit(){
+  public void exit(){
     Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
     for(int i=0; i<submittedTransfers.size(); ++i){
       try{
@@ -1069,7 +1067,7 @@ public class TransferControl{
    * Take some action on successful transfer completion,
    * like registering the new location.
    */
-  public static void transferDone(MyTransferInfo transfer){
+  public void transferDone(MyTransferInfo transfer){
     GridPilot.getClassMgr().getTransferControl().runningTransfers.remove(transfer);
     // Do plugin-specific finalization. E.g. for SRM, set the status to Done.
     String id = null;
@@ -1078,7 +1076,7 @@ public class TransferControl{
       findFTPlugin(transfer.getTransferID()).finalize(transfer.getTransferID());
     }
     catch(Exception e){
-      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: finalize could not " +
+      logFile.addMessage("WARNING: finalize could not " +
           "be done for transfer "+id, e);
     }
     // If transfer.getDBPluginMgr() is not null, it is the convention that this
@@ -1092,7 +1090,7 @@ public class TransferControl{
       catch(Exception e){
       }
       if(lfn==null || lfn.equals("")){
-        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: LFN not found. "+
+        logFile.addMessage("WARNING: LFN not found. "+
             "This file will be named after the physical file and may not keep its name in the file catalog.");
         int lastSlash = destination.lastIndexOf("/");
         lfn = destination;
@@ -1107,7 +1105,7 @@ public class TransferControl{
       catch(Exception e){
       }
       if(guid==null || guid.equals("")){
-        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: GUID not found. "+
+        logFile.addMessage("WARNING: GUID not found. "+
             "This file, "+lfn+", will not keep its GUID - a new one will be generated.");
         String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
         String message = "Registering UUID "+uuid.toString()+" and LFN "+lfn+
@@ -1123,7 +1121,7 @@ public class TransferControl{
       catch(Exception e){
       }
       if(datasetID==null || datasetID.equals("")){
-        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: no dataset found. "+
+        logFile.addMessage("WARNING: no dataset found. "+
             "This file, "+lfn+", will NOT be registered in dataset catalog, only in file catalog.");
       }
       String datasetName = null;
@@ -1133,7 +1131,7 @@ public class TransferControl{
       catch(Exception e){
       }
       if(datasetName==null || datasetName.equals("")){
-        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: dataset name not found. "+
+        logFile.addMessage("WARNING: dataset name not found. "+
             "This file, "+lfn+", may not keep its dataset association.");
       }
       String fileBytes = transfer.getBytes();
@@ -1173,7 +1171,7 @@ public class TransferControl{
             datasetID, datasetName, guid, lfn, destination, fileBytes, checksum, false);
       }
       catch(Exception e){
-        GridPilot.getClassMgr().getLogFile().addMessage(
+        logFile.addMessage(
             "ERROR: could not register "+destination+" for file "+
             lfn+" in dataset "+datasetName, e);
         GridPilot.getClassMgr().getGlobalFrame(
@@ -1206,7 +1204,7 @@ public class TransferControl{
    * @param destination    can be either a directory or a file
    * @throws IOException
    */
-  public static void download(final String url, File destination) throws Exception{
+  public void download(final String url, File destination) throws IOException{
     try{
       
       if(url==null || url.endsWith("/")|| destination==null){
@@ -1256,7 +1254,13 @@ public class TransferControl{
         GlobusURL globusUrl = new GlobusURL(url);
         FileTransfer fileTransfer =
            GridPilot.getClassMgr().getFTPlugin(url.replaceFirst("^(\\w+):/.*", "$1"));
-        fileTransfer.getFile(globusUrl, destination/*dName*/);
+        try {
+          fileTransfer.getFile(globusUrl, destination/*dName*/);
+        }
+        catch (Exception e) {
+          e.printStackTrace();
+          throw new IOException(e.getCause());
+        }
         GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
       }
       else if(srcUrlDir.startsWith("http://")){
@@ -1304,7 +1308,7 @@ public class TransferControl{
    * @throws IOException
    * @throws FTPException
    */
-  public static void upload(File file, final String uploadUrl) throws Exception, FTPException{
+  public void upload(File file, final String uploadUrl) throws Exception, FTPException{
     String uploadUrlDir = null;
     String uploadFileName = null;
     
@@ -1376,9 +1380,36 @@ public class TransferControl{
    * Method for copying input files from the local hard disk (file://..) or a remote location
    * to the run directory of the job, using the ShellMgr of the job.
    */
-  public static boolean copyInputFile(String src, String dest,
-      Shell shellMgr, String error, LogFile logFile){
+  public boolean copyInputFile(String src, String dest, Shell shellMgr,  boolean overWrite, String error){
     
+    // First check if the file has already been copied
+    if(!overWrite){
+      if(shellMgr!=null){
+        if(shellMgr.existsFile(Util.clearFile(dest))){
+          Long destSize = null;
+          try{
+            destSize = shellMgr.getSize(Util.clearFile(dest));
+          }
+          catch(IOException e){
+            e.printStackTrace();
+          }
+          if(destSize!=null && src.length()==destSize){    
+            Debug.debug("file " + src + " already there. NOT uploading.", 2);
+            return true;
+          }
+        }
+      }
+      else{
+        File destFile = new File(Util.clearTildeLocally(Util.clearFile(dest)));
+        if(destFile.exists()){
+          if(destFile.length()==src.length()){
+            Debug.debug("file " + src + " already there. NOT uploading.", 2);
+            return true;
+          }        
+        }        
+      }
+    }
+
     if(error==null){
       error = new String();
     }
@@ -1520,9 +1551,9 @@ public class TransferControl{
    *  @param shellMgr ShellMgr object to be used to copy the file
    *         from its source to a local cache. If it is null, it
    *         is assumed that the source is local
+   *  @param error string object that will be set to the error string in case an error occurs
    */
-  public static boolean copyOutputFile(String src, String dest,
-      Shell shellMgr, String error, LogFile logFile){
+  public boolean copyOutputFile(String src, String dest, Shell shellMgr, String error){
     
     if(error==null){
       error = new String();
