@@ -8,6 +8,7 @@ import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
 import gridfactory.common.Shell;
 import gridfactory.common.TransferControl;
+import gridfactory.common.TransferInfo;
 import gridfactory.common.Util;
 
 import java.awt.event.ActionEvent;
@@ -103,17 +104,17 @@ public class MyTransferControl extends TransferControl {
           // use status bar on monitoring frame
           statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
 
-          GlobusURL firstSrc = ((MyTransferInfo) toSubmitTransfers.get(0)).getSource();
-          GlobusURL firstDest = ((MyTransferInfo) toSubmitTransfers.get(0)).getDestination();
+          GlobusURL firstSrc = ((TransferInfo) toSubmitTransfers.get(0)).getSource();
+          GlobusURL firstDest = ((TransferInfo) toSubmitTransfers.get(0)).getDestination();
           
-          Debug.debug("First transfer: "+((MyTransferInfo) toSubmitTransfers.get(0)), 3);
+          Debug.debug("First transfer: "+((TransferInfo) toSubmitTransfers.get(0)), 3);
           
           String [] fts = GridPilot.ftNames;
           String pluginName = null;
           Vector transferVector = null;
           GlobusURL [] theseSources = null;
           GlobusURL [] theseDestinations = null;
-          MyTransferInfo [] theseTransfers = null;
+          TransferInfo [] theseTransfers = null;
           GlobusURL [] checkSources = null;
           GlobusURL [] checkDestinations = null;
           
@@ -148,13 +149,13 @@ public class MyTransferControl extends TransferControl {
                 !toSubmitTransfers.isEmpty()){
               
               // break if next transfer is not uniform with the previous ones (in this batch)
-              transferVector.add(((MyTransferInfo) toSubmitTransfers.get(0)));
+              transferVector.add(((TransferInfo) toSubmitTransfers.get(0)));
               theseSources = new GlobusURL[transferVector.size()];
               theseDestinations = new GlobusURL[transferVector.size()];
-              theseTransfers = new MyTransferInfo[transferVector.size()];
-              MyTransferInfo tmpTransfer = null;
+              theseTransfers = new TransferInfo[transferVector.size()];
+              TransferInfo tmpTransfer = null;
               for(int i=0; i<theseDestinations.length; ++i){
-                tmpTransfer = (MyTransferInfo) transferVector.get(i);
+                tmpTransfer = (TransferInfo) transferVector.get(i);
                 theseSources[i] = tmpTransfer.getSource();
                 theseDestinations[i] = tmpTransfer.getDestination();
                 theseTransfers[i] = tmpTransfer;
@@ -177,7 +178,7 @@ public class MyTransferControl extends TransferControl {
                 break;
               }
               
-              MyTransferInfo transfer = (MyTransferInfo) toSubmitTransfers.remove(0);
+              TransferInfo transfer = (TransferInfo) toSubmitTransfers.remove(0);
               //statusBar.setLabel("Queueing "+transfer.getSourceURL()+"->"+
               //    transfer.getDestination().getURL());
               submittingTransfers.add(transfer);
@@ -197,13 +198,13 @@ public class MyTransferControl extends TransferControl {
           
           // Remove the wrongly added last transfer from theseTransfers before submitting
           if(brokenOut && theseTransfers.length>1){
-            MyTransferInfo [] tmpTransfers = new MyTransferInfo [theseTransfers.length-1];
+            TransferInfo [] tmpTransfers = new TransferInfo[theseTransfers.length-1];
             for(int i=0; i<theseTransfers.length-1; ++i){
               tmpTransfers[i] = theseTransfers[i];
             }
             theseTransfers = tmpTransfers;
           }
-          final MyTransferInfo [] finalTransfers = theseTransfers;
+          final TransferInfo [] finalTransfers = theseTransfers;
           final String finalPluginName = pluginName;
           
           new Thread(){
@@ -295,8 +296,7 @@ public class MyTransferControl extends TransferControl {
     // Select first plugin that supports the protocol of the these transfers
     for(int i=0; i<fts.length; ++i){
       Debug.debug("Checking plugin "+fts[i], 3);
-      if(GridPilot.getClassMgr().getFTPlugin(
-          fts[i]).checkURLs(srcUrls, destUrls)){
+      if(GridPilot.getClassMgr().getFTPlugin(fts[i]).checkURLs(srcUrls, destUrls)){
         ftPluginName = fts[i];
         Debug.debug("Selected plugin "+fts[i], 3);
         break;
@@ -318,7 +318,7 @@ public class MyTransferControl extends TransferControl {
   
   /**
    * Adds transfers to toSubmitTransfers.
-   * @param   transfers     Vector of MyTransferInfo's.
+   * @param   transfers     Vector of TransferInfo's.
    */
   public void queue(final Vector _transfers) throws Exception {
 
@@ -347,7 +347,10 @@ public class MyTransferControl extends TransferControl {
           statusBar.setProgressBar(pbSubmission);
           isProgressBarSet = true;
         }
-        toSubmitTransfers.addAll(transfers);
+        //toSubmitTransfers.addAll(transfers);
+        for(Iterator it=transfers.iterator(); it.hasNext();){
+          toSubmitTransfers.add((TransferInfo) it.next());
+        }
         if(!timer.isRunning()){
           timer.restart();
         }
@@ -365,8 +368,8 @@ public class MyTransferControl extends TransferControl {
   
   public void clearTableRows(int [] clearRows){
     Object [][] newTablevalues = new Object [tableValues.length-clearRows.length][GridPilot.transferStatusFields.length];
-    MyTransferInfo transfer = null;
-    MyTransferInfo [] toClearTransfers = new MyTransferInfo [clearRows.length];
+    TransferInfo transfer = null;
+    TransferInfo [] toClearTransfers = new TransferInfo[clearRows.length];
     int rowNr = 0;
     int clearNr = 0;
     for(int i=0; i<tableValues.length; ++i){
@@ -411,11 +414,11 @@ public class MyTransferControl extends TransferControl {
    * @param   ftPlugin    Name ofthe ft plugin.
    * @param   transfers    URL of the SRM server.
    */
-  public void submit(String ftPlugin, MyTransferInfo [] transfers)
+  public void submit(String ftPlugin, TransferInfo [] transfers)
      throws Exception {
 
     if(isRand!=null && isRand.equalsIgnoreCase("yes")){
-      transfers = (MyTransferInfo []) MyUtil.shuffle(transfers);
+      transfers = (TransferInfo []) MyUtil.shuffle(transfers);
     }
 
     // use status bar on monitoring frame
@@ -438,7 +441,7 @@ public class MyTransferControl extends TransferControl {
       /*Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
       for(int j=0; j<submittedTransfers.size(); ++j){
         try{
-          String id = ((MyTransferInfo) submittedTransfers.get(j)).getTransferID();
+          String id = ((TransferInfo) submittedTransfers.get(j)).getTransferID();
           if(transfers[i].getTransferID().equals(id)){
             resubmit = true;
             break;
@@ -464,11 +467,11 @@ public class MyTransferControl extends TransferControl {
       transfers[i].setInternalStatus(FileTransfer.STATUS_WAIT);
 
       statusTable.setValueAt(transfers[i].getSourceURL(),
-          transfers[i].getTableRow(), MyTransferInfo.FIELD_SOURCE);
+          transfers[i].getTableRow(), MyTransferStatusUpdateControl.FIELD_SOURCE);
       statusTable.setValueAt(transfers[i].getDestination().getURL(),
-          transfers[i].getTableRow(), MyTransferInfo.FIELD_DESTINATION);
+          transfers[i].getTableRow(), MyTransferStatusUpdateControl.FIELD_DESTINATION);
       statusTable.setValueAt(iconSubmitting, transfers[i].getTableRow(),
-          MyTransferInfo.FIELD_CONTROL);
+          MyTransferStatusUpdateControl.FIELD_CONTROL);
       
     }
     
@@ -545,9 +548,9 @@ public class MyTransferControl extends TransferControl {
         transfers[i].setTransferID(ids[i]);
         
         statusTable.setValueAt(transfers[i].getTransferID(), transfers[i].getTableRow(),
-            MyTransferInfo.FIELD_TRANSFER_ID);
+            MyTransferStatusUpdateControl.FIELD_TRANSFER_ID);
         statusTable.setValueAt(userInfo, transfers[i].getTableRow(),
-            MyTransferInfo.FIELD_USER);
+            MyTransferStatusUpdateControl.FIELD_USER);
         pbSubmission.setValue(pbSubmission.getValue() + 1);
         Debug.debug("Transfer submitted", 2);
       }
@@ -559,11 +562,11 @@ public class MyTransferControl extends TransferControl {
       for(int i=0; i<sources.length; ++i){
         try{
           statusTable.setValueAt("NOT started!", transfers[i].getTableRow(),
-              MyTransferInfo.FIELD_TRANSFER_ID);
+              MyTransferStatusUpdateControl.FIELD_TRANSFER_ID);
           statusTable.setValueAt(transfers[i].getSourceURL(), transfers[i].getTableRow(),
-              MyTransferInfo.FIELD_SOURCE);
+              MyTransferStatusUpdateControl.FIELD_SOURCE);
           statusTable.setValueAt(transfers[i].getDestination().getURL(), transfers[i].getTableRow(),
-              MyTransferInfo.FIELD_DESTINATION);
+              MyTransferStatusUpdateControl.FIELD_DESTINATION);
           transfers[i].setInternalStatus(FileTransfer.STATUS_ERROR);
           transfers[i].setNeedsUpdate(false);
           GridPilot.getClassMgr().getFTPlugin(
@@ -579,7 +582,7 @@ public class MyTransferControl extends TransferControl {
         submittingTransfers.remove(transfers[i]);
         runningTransfers.add(transfers[i]);
         // remove iconSubmitting
-        statusTable.setValueAt(null, transfers[i].getTableRow(), MyTransferInfo.FIELD_CONTROL);
+        statusTable.setValueAt(null, transfers[i].getTableRow(), MyTransferStatusUpdateControl.FIELD_CONTROL);
       }
       
       if(!timer.isRunning()){
@@ -724,13 +727,13 @@ public class MyTransferControl extends TransferControl {
     timer.stop();
     Enumeration e = toSubmitTransfers.elements();
     while(e.hasMoreElements()){
-      MyTransferInfo transfer = (MyTransferInfo) e.nextElement();
+      TransferInfo transfer = (TransferInfo) e.nextElement();
       statusTable.setValueAt("Transfer not queued (cancelled)!",
-          transfer.getTableRow(), MyTransferInfo.FIELD_TRANSFER_ID);
+          transfer.getTableRow(), MyTransferStatusUpdateControl.FIELD_TRANSFER_ID);
       statusTable.setValueAt(transfer.getSourceURL(), transfer.getTableRow(),
-          MyTransferInfo.FIELD_SOURCE);
+          MyTransferStatusUpdateControl.FIELD_SOURCE);
       statusTable.setValueAt(transfer.getDestination().getURL(), transfer.getTableRow(),
-          MyTransferInfo.FIELD_DESTINATION);
+          MyTransferStatusUpdateControl.FIELD_DESTINATION);
       transfer.setNeedsUpdate(false);
     }
     toSubmitTransfers.removeAllElements();
@@ -748,11 +751,11 @@ public class MyTransferControl extends TransferControl {
   
   /**
    * Cancels a Vector of transfers.
-   * @param transfers Vector of MyTransferInfo's
+   * @param transfers Vector of TransferInfo's
    */
   public void cancel(final Vector transfers){
     ResThread t = new ResThread(){
-      MyTransferInfo transfer = null;
+      TransferInfo transfer = null;
       public void run(){
         // use status bar on monitoring frame
         StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
@@ -762,13 +765,13 @@ public class MyTransferControl extends TransferControl {
         try{
           for(int i=0; i<transfers.size(); ++i){
             try{             
-              transfer = (MyTransferInfo) transfers.get(i);
+              transfer = (TransferInfo) transfers.get(i);
               GridPilot.getClassMgr().getTransferControl().runningTransfers.remove(transfer);
               // skip if not running
               boolean isRunning = false;
               for(int j=0; j<submittedTransfers.size(); ++j){
                 try{
-                  String id = ((MyTransferInfo) submittedTransfers.get(j)).getTransferID();
+                  String id = ((TransferInfo) submittedTransfers.get(j)).getTransferID();
                   if(transfer.getTransferID().equals(id)){
                     isRunning = true;
                     break;
@@ -785,7 +788,7 @@ public class MyTransferControl extends TransferControl {
               ft.cancel(transfer.getTransferID());
               String status = "Cancelled";
               GridPilot.getClassMgr().getTransferStatusTable().setValueAt(
-                  status, transfer.getTableRow(), MyTransferInfo.FIELD_STATUS);
+                  status, transfer.getTableRow(), MyTransferStatusUpdateControl.FIELD_STATUS);
               transfer.setStatus(status);
               transfer.setInternalStatus(FileTransfer.STATUS_ERROR);
               transfer.setNeedsUpdate(false);
@@ -817,7 +820,7 @@ public class MyTransferControl extends TransferControl {
   
   public void resubmit(final Vector transfers){
     ResThread t = new ResThread(){
-      MyTransferInfo transfer = null;
+      TransferInfo transfer = null;
       public void run(){
         // use status bar on monitoring frame
         StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
@@ -829,12 +832,12 @@ public class MyTransferControl extends TransferControl {
           GlobusURL [] destUrls = new GlobusURL [transfers.size()];
           for(int i=0; i<transfers.size(); ++i){
             try{             
-              transfer = (MyTransferInfo) transfers.get(i);
+              transfer = (TransferInfo) transfers.get(i);
               // abort if a job is running
               boolean isRunning = false;
               for(int j=0; j<submittedTransfers.size(); ++j){
                 try{
-                  String id = ((MyTransferInfo) submittedTransfers.get(j)).getTransferID();
+                  String id = ((TransferInfo) submittedTransfers.get(j)).getTransferID();
                   if(transfer.getTransferID().equals(id)){
                     if(isRunning(transfer)){
                       isRunning = true;
@@ -851,7 +854,7 @@ public class MyTransferControl extends TransferControl {
               Debug.debug("Requeueing transfer "+transfer.getTransferID(), 2);
               String status = "Wait";
               GridPilot.getClassMgr().getTransferStatusTable().setValueAt(
-                  status, transfer.getTableRow(), MyTransferInfo.FIELD_STATUS);
+                  status, transfer.getTableRow(), MyTransferStatusUpdateControl.FIELD_STATUS);
               transfer.setStatus(status);
               transfer.setInternalStatus(FileTransfer.STATUS_WAIT);
               transfer.setNeedsUpdate(true);
@@ -975,17 +978,17 @@ public class MyTransferControl extends TransferControl {
   }
   
   /**
-   * Checks the status of the transfers and updates the MyTransferInfo objects. <p>
+   * Checks the status of the transfers and updates the TransferInfo objects. <p>
    */
   public void updateStatus(Vector transfers){
     String status = null;
     String transferred = null;
     int percentComplete = -1;
-    MyTransferInfo transfer = null;
+    TransferInfo transfer = null;
     String id = null;
     int internalStatus = -1;
     for(Iterator it=transfers.iterator(); it.hasNext();){
-      transfer = (MyTransferInfo) it.next();
+      transfer = (TransferInfo) it.next();
       id = null;
       try{
         id = transfer.getTransferID();
@@ -1038,7 +1041,7 @@ public class MyTransferControl extends TransferControl {
    *  Take some action on transfer failure, like asking to delete partly copied
    *  target file or retry...
    */
-  public static void transferFailure(MyTransferInfo transfer){
+  public void transferFailure(TransferInfo transfer){
     // TODO: retry on transfer failure
     GridPilot.getClassMgr().getGlobalFrame(
         ).monitoringPanel.statusBar.setLabel("Transfer "+transfer.getTransferID()+" failed");
@@ -1053,7 +1056,7 @@ public class MyTransferControl extends TransferControl {
     Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
     for(int i=0; i<submittedTransfers.size(); ++i){
       try{
-        String id = ((MyTransferInfo) submittedTransfers.get(i)).getTransferID();
+        String id = ((TransferInfo) submittedTransfers.get(i)).getTransferID();
         Debug.debug("Cancelling "+id, 3);
         findFTPlugin(id).cancel(id);
       }
@@ -1067,7 +1070,7 @@ public class MyTransferControl extends TransferControl {
    * Take some action on successful transfer completion,
    * like registering the new location.
    */
-  public void transferDone(MyTransferInfo transfer){
+  public void transferDone(TransferInfo transfer){
     GridPilot.getClassMgr().getTransferControl().runningTransfers.remove(transfer);
     // Do plugin-specific finalization. E.g. for SRM, set the status to Done.
     String id = null;
@@ -1081,7 +1084,7 @@ public class MyTransferControl extends TransferControl {
     }
     // If transfer.getDBPluginMgr() is not null, it is the convention that this
     // DBPluginMgr is used for registering the file.
-    if(transfer.getDBPluginMgr()!=null && transfer.getDestination()!=null){
+    if(((TransferInfo) transfer).getDBName()!=null && transfer.getDestination()!=null){
       String destination = transfer.getDestination().getURL();
       String lfn = null;
       try{
@@ -1116,7 +1119,7 @@ public class MyTransferControl extends TransferControl {
       }
       String datasetID = null;
       try{
-        datasetID= transfer.getDatasetID();
+        datasetID = ((TransferInfo) transfer).getDatasetID();
       }
       catch(Exception e){
       }
@@ -1126,7 +1129,7 @@ public class MyTransferControl extends TransferControl {
       }
       String datasetName = null;
       try{
-        datasetName= transfer.getDatasetName();
+        datasetName = ((TransferInfo) transfer).getDatasetName();
       }
       catch(Exception e){
       }
@@ -1167,7 +1170,7 @@ public class MyTransferControl extends TransferControl {
       }
       // Now register the file
       try{
-        transfer.getDBPluginMgr().registerFileLocation(
+        GridPilot.getClassMgr().getDBPluginMgr(((TransferInfo) transfer).getDBName()).registerFileLocation(
             datasetID, datasetName, guid, lfn, destination, fileBytes, checksum, false);
       }
       catch(Exception e){
@@ -1186,7 +1189,7 @@ public class MyTransferControl extends TransferControl {
     }
   }
   
-  public static boolean isRunning(MyTransferInfo transfer){
+  public static boolean isRunning(TransferInfo transfer){
     int internalStatus = transfer.getInternalStatus();
     if(internalStatus==FileTransfer.STATUS_WAIT ||
         internalStatus==FileTransfer.STATUS_RUNNING){

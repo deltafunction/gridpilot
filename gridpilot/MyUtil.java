@@ -4,6 +4,7 @@ import gridfactory.common.ConfirmBox;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.ResThread;
+import gridfactory.common.TransferInfo;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -1048,7 +1049,7 @@ public class MyUtil extends gridfactory.common.Util{
   /**
    * Find closest in getSources() by checking with GridPilot.preferredFileServers
    */
-  public static void setClosestSource(MyTransferInfo transfer){
+  public static void setClosestSource(TransferInfo transfer){
     boolean ok = false;
     GlobusURL [] sources = transfer.getSources();
     if(GridPilot.preferredFileServers!=null && GridPilot.preferredFileServers.length>0){

@@ -2,6 +2,7 @@ package gridpilot;
 
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
+import gridfactory.common.TransferInfo;
 
 import javax.swing.*;
 
@@ -321,7 +322,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     final Thread t = new Thread(){
       public void run(){
         String info = "";
-        MyTransferInfo transfer = getTransferAtRow(statusTable.getSelectedRow());
+        TransferInfo transfer = getTransferAtRow(statusTable.getSelectedRow());
         try{
           info += "File transfer system : "+transfer.getFTName()+"\n";
           try{
@@ -330,8 +331,8 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
           }
           catch(Exception e){
           }
-          info += "File catalog : "+(transfer.getDBPluginMgr()==null?
-              "none":transfer.getDBPluginMgr().getDBName())+"\n";
+          info += "File catalog : "+(transfer.getDBName()==null?
+              "none":transfer.getDBName())+"\n";
           info += transfer+"\n";
           try{
             info += "Status : "+transfer.getStatus()+"\n";
@@ -431,7 +432,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     Vector submittedJobs = GridPilot.getClassMgr().getSubmittedTransfers();
     Enumeration e =  submittedJobs.elements();
     while(e.hasMoreElements()){
-      MyTransferInfo transfer = (MyTransferInfo) e.nextElement();
+      TransferInfo transfer = (TransferInfo) e.nextElement();
       if(MyTransferControl.isRunning(transfer)){
         if(showRows==ONLY_RUNNING_JOBS){
           statusTable.showRow(transfer.getTableRow());
@@ -463,9 +464,9 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     }
     Vector runningRowsVector = new Vector();
     Vector transferVector = getTransfersAtRows(selectedRows);
-    MyTransferInfo transfer = null;
+    TransferInfo transfer = null;
     for(int i=0; i<transferVector.toArray().length;++i){
-      transfer = (MyTransferInfo) transferVector.get(i);
+      transfer = (TransferInfo) transferVector.get(i);
       if(!MyTransferControl.isRunning(transfer)){
         statusTable.removeRow(i);
         statusTable.repaint();
@@ -517,7 +518,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     
     Vector runningRowsVector = new Vector();
     for(int i=0; i<statusTable.getRowCount(); ++i){
-      MyTransferInfo transfer = getTransferAtRow(i);
+      TransferInfo transfer = getTransferAtRow(i);
       if(!MyTransferControl.isRunning(transfer)){
         Debug.debug("Removing row "+i, 3);
         runningRowsVector.add(new Integer(i));
@@ -541,10 +542,10 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    * Returns the transfer at the specified row in the statusTable
    * @see #getTransfersAtRows(int[])
    */
-  public static MyTransferInfo getTransferAtRow(int row){
+  public static TransferInfo getTransferAtRow(int row){
     Vector submTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
     Debug.debug("Got transfers at row "+row+". "+submTransfers.size(), 3);
-    return (MyTransferInfo) submTransfers.get(row);
+    return (TransferInfo) submTransfers.get(row);
   }
 
   /**
@@ -562,7 +563,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private boolean areKillables(int [] rows){
     Vector transferVector = getTransfersAtRows(rows);
     for(Iterator it=transferVector.iterator(); it.hasNext();){
-      MyTransferInfo transfer = (MyTransferInfo) it.next();
+      TransferInfo transfer = (TransferInfo) it.next();
       int internalStatus = transfer.getInternalStatus();
       if(internalStatus==FileTransfer.STATUS_DONE ||
           internalStatus==FileTransfer.STATUS_ERROR ||
@@ -576,7 +577,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private boolean areResubmitables(int [] rows){
     Vector transferVector = getTransfersAtRows(rows);
     for(Iterator it=transferVector.iterator(); it.hasNext();){
-      MyTransferInfo transfer = (MyTransferInfo) it.next();
+      TransferInfo transfer = (TransferInfo) it.next();
       int internalStatus = transfer.getInternalStatus();
       if(internalStatus==FileTransfer.STATUS_WAIT ||
           internalStatus==FileTransfer.STATUS_RUNNING){

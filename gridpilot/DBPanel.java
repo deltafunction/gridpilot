@@ -6,6 +6,7 @@ import gridfactory.common.DBResult;
 import gridfactory.common.DBVectorTableModel;
 import gridfactory.common.Debug;
 import gridfactory.common.ResThread;
+import gridfactory.common.TransferInfo;
 import gridpilot.MyJTable;
 import gridpilot.SelectPanel.SPanel;
 import gridpilot.GridPilot;
@@ -2600,7 +2601,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     String idField = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "file");
     GlobusURL srcUrl = null;
     GlobusURL destUrl = null;
-    MyTransferInfo transfer = null;
+    TransferInfo transfer = null;
     Vector transfers = new Vector();
     String dlUrl = null;
     MyTransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
@@ -2782,10 +2783,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           try{
             if(transfer==null){
               // Create the TransferInfo
-              transfer = new MyTransferInfo(srcUrl, destUrl);
+              transfer = new TransferInfo(srcUrl, destUrl);
             }
             Debug.debug(transfer.getSource().getURL()+" ---> "+transfer.getDestination().getURL(), 2);
-            transfer.setDBPluginMgr(regDBPluginMgr);
+            transfer.setDBName(regDBPluginMgr.getDBName());
             // If the file is in a file catalog, we should reuse the lfn, guid
             // and the dataset name and id if possible.
             if(dbPluginMgr.isFileCatalog()){

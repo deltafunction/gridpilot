@@ -618,6 +618,7 @@ public class HTTPSFileTransfer implements FileTransfer {
             "cancelled this batch. "+e.getMessage());
       }
     }
+    Debug.debug("returning IDs: "+MyUtil.arrayToString(ret), 3);
     return ret;
   }
 

@@ -20,6 +20,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LogFile;
 import gridfactory.common.Shell;
+import gridfactory.common.jobrun.RTEInstaller;
 import gridfactory.common.jobrun.VirtualMachine;
 
 import gridpilot.MyComputingSystem;
@@ -240,10 +241,12 @@ public class ForkComputingSystem implements MyComputingSystem{
     }
     String expandedRuntimeDir = null;
     if(shellMgr.isLocal() && System.getProperty("os.name").toLowerCase().startsWith("windows")){
-      expandedRuntimeDir = expandedRuntimeDirs[0].replaceFirst("^(.*\\)[^\\]+$", "$1");
+      expandedRuntimeDir = expandedRuntimeDirs[0].replaceFirst("^(.*)\\[^\\]+$", "$1");
+      expandedRuntimeDir = expandedRuntimeDir.replaceFirst("^(.*)\\[^\\]+\\$", "$1")+"\\";
     }
     else{
-      expandedRuntimeDir = expandedRuntimeDirs[0].replaceFirst("^(.*/)[^/]+$", "$1");
+      expandedRuntimeDir = expandedRuntimeDirs[0].replaceFirst("^(.*)/[^/]+$", "$1");
+      expandedRuntimeDir = expandedRuntimeDir.replaceFirst("^(.*)/[^/]+/$", "$1")+"/";
     }
 
     if(runtimes!=null && runtimes.size()>0){
@@ -254,10 +257,10 @@ public class ForkComputingSystem implements MyComputingSystem{
         fil = (String) it.next();
         
         // Get the name
-        Debug.debug("File found: "+expandedRuntimeDir+":"+fil, 3);
+        Debug.debug("File found: "+expandedRuntimeDirs[0]+":"+expandedRuntimeDir+":"+fil, 3);
         name = fil.substring(expandedRuntimeDir.length());
-        if(name.toLowerCase().endsWith(".gz") || name.toLowerCase().endsWith(".tar") ||
-            name.toLowerCase().endsWith(".tgz") || name.toLowerCase().endsWith(".zip") ||
+        if(name.startsWith(".") || name.toLowerCase().endsWith(".gz") || name.toLowerCase().endsWith(".tar") ||
+            name.toLowerCase().endsWith(".tgz") || name.toLowerCase().endsWith(".zip")|| name.toLowerCase().endsWith(".rdf") ||
             mgr.isDirectory(name)){
           continue;
         }
@@ -932,8 +935,9 @@ public class ForkComputingSystem implements MyComputingSystem{
     String [] rteNames = MyUtil.split(rteNamesString);
     String rteId = null;
     DBRecord rteRecord = null;
-    RteInstaller rteInstaller = null;
+    RTEInstaller rteInstaller = null;
     String url = null;
+    String mountPoint = null;
     String [] deps = new String [0];
     String rteName = null;
     for(int i=0; i<rteNames.length; ++i){
@@ -979,10 +983,15 @@ public class ForkComputingSystem implements MyComputingSystem{
           }
           rteRecord = dbPluginMgr.getRuntimeEnvironment(rteId);
           url = (String) rteRecord.getValue("url");
+          // TODO: introduce mountPoint in runtimeEnvironment table.
+          // Currently this will be null.
+          mountPoint = (String) rteRecord.getValue("mountPoint");
           if(url!=null && !url.equals("null") && !url.equals("")){
             // Notice that we use the same directory to keep RTEs on both the local host and the (remote)
             // shell host
-            rteInstaller = new RteInstaller(url, runtimeDirectory, runtimeDirectory, rteNames[i], shell);
+            //rteInstaller = new MyRTEInstaller(url, runtimeDirectory, runtimeDirectory, rteNames[i], shell);
+            rteInstaller = new RTEInstaller(url, runtimeDirectory, runtimeDirectory, mountPoint, rteNames[i], shell,
+                GridPilot.getClassMgr().getTransferStatusUpdateControl(), logFile);
             try{
               rteInstaller.install();
             }
