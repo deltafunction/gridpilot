@@ -83,10 +83,7 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     initGUI();
     bLaunch.setEnabled(false);
     bTerminate.setEnabled(false);
-  }
-  
-  public String getTitle(){
-    return "EC2 Monitor";
+    setName("EC2 virtual machines");
   }
 
   public void initGUI() throws Exception{

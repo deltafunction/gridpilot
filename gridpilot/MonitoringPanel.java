@@ -53,7 +53,8 @@ public class MonitoringPanel extends CreateEditPanel {
     tpStatLog.addTab("Transfers", transferMonitor);
     // add any panels added by plugins
     for(Iterator it=GridPilot.extraMonitorTabs.iterator(); it.hasNext();){
-      tpStatLog.addTab("Virtual machines", (Component) it.next());
+      JPanel panel = (JPanel) it.next();
+      tpStatLog.addTab(panel.getName(), panel);
     }
     tpStatLog.addTab("Logs", spLogView);
 

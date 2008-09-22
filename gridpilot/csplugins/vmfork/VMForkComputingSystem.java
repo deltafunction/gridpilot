@@ -212,17 +212,15 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     if(localRuntimeDBs==null || localRuntimeDBs.length==0){
       return;
     }
-    if(!MyUtil.onWindows()){
-      for(int i=0; i<localRuntimeDBs.length; ++i){
-        try{
-          GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[i]).createRuntimeEnv(
-              new String [] {"name", "computingSystem"}, new String [] {MyUtil.getMyOS() , csName});
-        }
-        catch(Exception e){
-          e.printStackTrace();
-        }
-        toDeleteRtes.put(MyUtil.getMyOS(), localRuntimeDBs[i]);
+    for(int i=0; i<localRuntimeDBs.length; ++i){
+      try{
+        GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[i]).createRuntimeEnv(
+            new String [] {"name", "computingSystem"}, new String [] {MyUtil.getMyOS() , csName});
       }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+      toDeleteRtes.put(MyUtil.getMyOS(), localRuntimeDBs[i]);
     }
     MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes);
   }
