@@ -55,9 +55,9 @@ public class RteRdfParser {
    */
   public DBResult getDBResult(DBPluginMgr dbpluginMgr){
     // The standard runtimeEnvironment fields are:
-    // identifier name computingSystem certificate url initLines depends created lastModified
+    // identifier name computingSystem certificate url initLines depends provides created lastModified
     // The MetaPackage fields are:
-    // id name homepage description lastupdate instances tags
+    // id name homepage description lastupdate provides instances tags
     // The Package fields are:
     // id baseSystem depends
     // The TarPackage fields are:
@@ -79,6 +79,13 @@ public class RteRdfParser {
       try{
         rec.setValue(MyUtil.getNameField(dbpluginMgr.getDBName(), "runtimeEnvironment"),
             pack.name);
+        if(pack.provides!=null && pack.provides.length>0){
+          rec.setValue("provides", MyUtil.arrayToString(pack.provides));
+        }
+        if(pack.tags!=null && pack.tags.length>0){
+          rec.setValue("provides", (rec.getValue("provides")==null?"":rec.getValue("provides"))+
+              MyUtil.arrayToString(pack.provides));
+        }
         rec.setValue("lastModified", pack.lastupdate);
         rec.setValue("computingSystem", csName);
         rec.setValue("url", "");

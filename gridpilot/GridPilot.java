@@ -97,7 +97,7 @@ public class GridPilot extends JApplet{
     try{
       getClassMgr().setLogFile(new MyLogFile(logFileName));
       // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
-      if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
+      if(MyUtil.onWindows()){
         userConfFileName = defaultConfFileName;
       }
       ConfigFile confFile = null;
@@ -641,7 +641,7 @@ public class GridPilot extends JApplet{
   public static void reloadConfigValues(){
     
     // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
-    if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
+    if(MyUtil.onWindows()){
       userConfFileName = defaultConfFileName;
     }
     ConfigFile confFile = null;

@@ -156,11 +156,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       catch(Exception e){
         Debug.debug("ERROR getting runtime database: "+e.getMessage(), 1);
         e.printStackTrace();
-      }
-      if(runtimeDBs!=null && runtimeDBs.length>0){
-        setupRuntimeEnvironments(csName);
-      }
-      
+      }      
     }
     catch(Exception e){
       Debug.debug("ERROR initializing "+csName+". "+e.getMessage(), 1);
@@ -180,6 +176,9 @@ public class GLiteComputingSystem implements MyComputingSystem{
    * information system.
    */
   public void setupRuntimeEnvironments(String csName){
+    if(runtimeDBs==null || runtimeDBs.length==0){
+      return;
+    }
     for(int i=0; i<runtimeDBs.length; ++i){
       setupRuntimeEnvironments(csName, runtimeDBs[i]);
     }
@@ -724,7 +723,6 @@ public class GLiteComputingSystem implements MyComputingSystem{
   }
 
   public void exit(){
-    cleanupRuntimeEnvironments(csName);
   }
   
   public void cleanupRuntimeEnvironments(String csName){

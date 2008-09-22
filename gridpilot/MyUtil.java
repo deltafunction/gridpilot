@@ -518,7 +518,7 @@ public class MyUtil extends gridfactory.common.Util{
     if(str.startsWith(System.getProperty("user.home"))){
       str = "~"+str.substring(System.getProperty("user.home").length());
     }
-    if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
+    if(onWindows()){
       str =str.replaceAll("\\\\", "/");
     }
     return str;
@@ -1330,6 +1330,123 @@ public class MyUtil extends gridfactory.common.Util{
 
   public static long getDateInMilliSeconds(String dateInput){
     return getDateInMilliSeconds(dateInput, GridPilot.dateFormatString);
+  }
+  
+  /**
+   * Copies records from them to the 'local' runtime DBs.
+    */
+  public static void syncRTEsFromCatalogs(String csName, String [] rteCatalogUrls, String [] localRuntimeDBs,
+      HashMap toDeleteRtes){
+    if(rteCatalogUrls==null){
+      return;
+    }
+    DBPluginMgr localDBMgr = null;
+    RteRdfParser rteRdfParser = new RteRdfParser(rteCatalogUrls, csName);
+    String id = null;
+    String rteNameField = null;
+    String newId = null;
+    Debug.debug("Syncing RTEs from catalogs to DBs: "+MyUtil.arrayToString(localRuntimeDBs), 2);
+    for(int ii=0; ii<localRuntimeDBs.length; ++ii){
+      try{
+        localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);
+        DBResult rtes = rteRdfParser.getDBResult(localDBMgr);
+        Debug.debug("Checking RTEs "+rtes.values.length, 3);
+        for(int i=0; i<rtes.values.length; ++i){
+          Debug.debug("Checking RTE "+MyUtil.arrayToString(rtes.getRow(i).values), 3);
+          id = null;
+          // Check if RTE already exists
+          rteNameField = MyUtil.getNameField(localDBMgr.getDBName(), "runtimeEnvironment");
+          id = localDBMgr.getRuntimeEnvironmentID(
+              (String) rtes.getRow(i).getValue(rteNameField), csName);
+          if(id==null || id.equals("-1")){
+            if(localDBMgr.createRuntimeEnvironment(rtes.getRow(i).values)){
+              Debug.debug("Created RTE "+MyUtil.arrayToString(rtes.getRow(i).values), 2);
+              // Tag for deletion
+              String name = (String) rtes.getRow(i).getValue(rteNameField);
+              newId = localDBMgr.getRuntimeEnvironmentID(name , csName);
+              if(newId!=null && !newId.equals("-1")){
+                Debug.debug("Tagging for deletion "+name+":"+newId, 3);
+                toDeleteRtes.put(newId, localDBMgr.getDBName());
+              }
+            }
+            else{
+              Debug.debug("WARNING: Failed creating RTE "+MyUtil.arrayToString(rtes.getRow(i).values), 2);
+            }
+          }
+        }
+      }
+      catch(Exception e){
+        String error = "Could not load local runtime DB "+localRuntimeDBs[ii]+"."+e.getMessage();
+        GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+        e.printStackTrace();
+      }
+    }
+  }
+
+  /**
+   * Clean up runtime environment records copied from runtime catalog URLs.
+   */
+  public static void cleanupRuntimeEnvironments(String csName, String [] localRuntimeDBs,
+      HashMap toDeleteRtes){
+    String id = "-1";
+    boolean ok = true;
+    DBPluginMgr localDBMgr = null;
+    for(int i=0; i<localRuntimeDBs.length; ++i){
+      localDBMgr = null;
+      try{
+        localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
+            localRuntimeDBs[i]);
+      }
+      catch(Exception e){
+        String error = "Could not load local runtime DB "+localRuntimeDBs[i]+"."+e.getMessage();
+        GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+      }
+      // Delete RTEs from catalog(s)
+      Debug.debug("Cleaning up catalog RTEs "+MyUtil.arrayToString(toDeleteRtes.keySet().toArray()), 3);
+      if(toDeleteRtes!=null && toDeleteRtes.keySet()!=null){
+        for(Iterator it=toDeleteRtes.keySet().iterator(); it.hasNext();){
+          try{
+            id = (String) it.next();
+            if(toDeleteRtes.get(id).equals(localRuntimeDBs[i])){
+              Debug.debug("Deleting "+id, 3);
+              ok = localDBMgr.deleteRuntimeEnvironment(id);
+              if(!ok){
+                String error = "WARNING: could not delete runtime environment " +
+                id+" from database "+localDBMgr.getDBName();
+                GridPilot.getClassMgr().getLogFile().addMessage(error);
+              }
+            }
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+        }
+      }
+    }
+  }
+  
+  public static String [] removeMyOS(String [] rtes){
+    String myOS = getMyOS();
+    String [] newRTEs;
+    if(MyUtil.arrayContainsIgnoreCase(rtes, myOS)){
+      newRTEs = new String[rtes.length-1];
+      int j = 0;
+      for(int i=0; i<rtes.length; ++i){
+        if(!rtes[i].equalsIgnoreCase(myOS)){
+          newRTEs[j] = rtes[i];
+          ++j;
+        }
+      }
+      rtes = newRTEs;
+    }
+    else{
+      newRTEs = rtes;
+    }
+    return newRTEs;
+  }
+  
+  public static String getMyOS(){
+    return System.getProperty("os.name");
   }
 
 }

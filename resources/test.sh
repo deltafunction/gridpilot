@@ -66,7 +66,7 @@ cat /proc/meminfo
 uname -a
 echo userid="`   id   `"
 # this will be registered as metadata
-echo HOSTMACHINE: `hostname -f`
+echo HOSTMACHINE: `hostname`
 printenv
 
 echo

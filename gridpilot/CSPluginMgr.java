@@ -1,6 +1,7 @@
 package gridpilot;
 
 import gridfactory.common.ConfigFile;
+import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.ResThread;
@@ -138,6 +139,7 @@ public class CSPluginMgr implements MyComputingSystem{
       Debug.debug("arguments: "+MyUtil.arrayToString(csArgs), 3);
       try{
         cs.put(csNames[i], MyUtil.loadClass(csClass, csArgsType, csArgs));
+        ((MyComputingSystem) cs.get(csNames[i])).setupRuntimeEnvironments(csNames[i]);
       }
       catch(Throwable e){
         Debug.debug("ERROR: plugin " + csNames[i] + "(" + csClass + ") not loaded. "+e.getMessage(), 2);
@@ -233,24 +235,14 @@ public class CSPluginMgr implements MyComputingSystem{
   public boolean submit(final JobInfo job){
     
     // first check if the runtime environments are present
-    
-    String[] rtes = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()
-        ).getRuntimeEnvironments(job.getIdentifier());
 
-    for(int i=0; i<rtes.length; ++i){
-      try{
-        String id = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()
-        ).getRuntimeEnvironmentID(rtes[i], ((MyJobInfo) job).getCSName());
-        if(id==null || id.equals("-1")){
-          throw new IOException("Runtime environment "+rtes[i]+" not found. "+((MyJobInfo) job).getCSName()+
-              ":"+((MyJobInfo) job).getDBName()+":"+id);
-        }
-      }
-      catch(Exception e){
-        //MessagePane.showMessage("Could not submit job. "+e.getMessage(), "Error");
-        logFile.addMessage("Could not submit job. "+e.getMessage(), e);
-        return false;
-      }
+    try{
+      checkRTEs(job);
+    }
+    catch(Exception e){
+      //MessagePane.showMessage("Could not submit job. "+e.getMessage(), "Error");
+      logFile.addMessage("Could not submit job. "+e.getMessage(), e);
+      return false;
     }
 
     ResThread t = new ResThread(){
@@ -279,6 +271,35 @@ public class CSPluginMgr implements MyComputingSystem{
     }
   }
 
+  private void checkRTEs(JobInfo job) throws IOException {
+    
+    String[] rtes = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()
+       ).getRuntimeEnvironments(job.getIdentifier());
+    
+    String id;
+    boolean ok;
+    DBResult allRtes;
+    for(int i=0; i<rtes.length; ++i){
+      id = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()
+         ).getRuntimeEnvironmentID(rtes[i], ((MyJobInfo) job).getCSName());
+      if(id==null || id.equals("-1")){
+        ok = false;
+        allRtes = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()
+          ).getRuntimeEnvironments();
+        for(int j=0; j<allRtes.values.length; ++j){
+          // TODO: do some fuzzy matching
+          if(rtes[i].equals(allRtes.getValue(j, "provides"))){
+            ok = true;
+          }
+        }
+        if(!ok){
+          throw new IOException("Runtime environment "+rtes[i]+" not found. "+((MyJobInfo) job).getCSName()+
+              ":"+((MyJobInfo) job).getDBName()+":"+id);
+        }
+      }
+    }
+  }
+  
   /**
    * Update the status of this job on the computing system specified by job.ComputingSystem
    * @see MyComputingSystem#updateStatus(Vector)
@@ -431,6 +452,7 @@ public class CSPluginMgr implements MyComputingSystem{
       ResThread t = new ResThread(){
         public void run(){
           try{
+            ((MyComputingSystem) cs.get(csNames[k])).cleanupRuntimeEnvironments(csNames[k]);
             ((MyComputingSystem) cs.get(csNames[k])).exit();
           }
           catch(Throwable t){

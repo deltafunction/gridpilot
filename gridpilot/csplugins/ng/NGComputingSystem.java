@@ -198,9 +198,6 @@ public class NGComputingSystem implements MyComputingSystem{
     catch(Exception e){
       Debug.debug("ERROR getting runtime database: "+e.getMessage(), 1);
     }
-    if(runtimeDBs!=null && runtimeDBs.length>0){
-      setupRuntimeEnvironments(csName);
-    }    
   }
   
   /**
@@ -208,6 +205,9 @@ public class NGComputingSystem implements MyComputingSystem{
    * information system.
    */
   public void setupRuntimeEnvironments(String csName){
+    if(runtimeDBs==null || runtimeDBs.length==0){
+      return;
+    }    
     Set runtimes = null;
     DBPluginMgr dbPluginMgr = null;
     for(int ii=0; ii<runtimeDBs.length; ++ii){
@@ -520,7 +520,6 @@ public class NGComputingSystem implements MyComputingSystem{
   }
 
   public void exit(){
-    cleanupRuntimeEnvironments(csName);
   }
   
   public void cleanupRuntimeEnvironments(String csName){

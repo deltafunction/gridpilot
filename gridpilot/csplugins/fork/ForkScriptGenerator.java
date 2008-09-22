@@ -8,7 +8,7 @@ import java.net.MalformedURLException;
 import org.globus.util.GlobusURL;
 
 import gridfactory.common.Debug;
-import gridfactory.common.ScriptGenerator;
+import gridfactory.common.jobrun.ScriptGenerator;
 import gridfactory.common.Shell;
 import gridpilot.DBPluginMgr;
 import gridpilot.MyJobInfo;
@@ -54,7 +54,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
 
     // Header
     if(!shellMgr.isLocal() && !onWindows || shellMgr.isLocal() &&
-        (onWindows || !System.getProperty("os.name").toLowerCase().startsWith("windows"))){
+        (onWindows || !MyUtil.onWindows())){
       commentStart = "#";
       writeLine(buf, "#!/bin/bash");
       // write out the process name, for MySecureShell.submit to pick up
@@ -66,7 +66,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     writeBlock(buf, "Sleep 5 seconds before start", ScriptGenerator.TYPE_SUBSECTION, commentStart);
     // this is to be sure to have some stdout (jobs without are considered failed)
     writeLine(buf, "echo starting...");
-    if(shellMgr.isLocal() && (onWindows || System.getProperty("os.name").toLowerCase().startsWith("windows"))){
+    if(shellMgr.isLocal() && (onWindows || MyUtil.onWindows())){
       writeLine(buf, "ping -n 10 127.0.0.1 >/nul");
     }
     else{
@@ -78,7 +78,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     writeBlock(buf, "Runtime setup", ScriptGenerator.TYPE_SUBSECTION, commentStart);
     // For each runtime environment used, get its init text (if present) and write it out,
     // source the setup script
-    String[] rtes = dbPluginMgr.getRuntimeEnvironments(jobDefID);
+    String[] rtes = MyUtil.removeMyOS(dbPluginMgr.getRuntimeEnvironments(jobDefID));
     for(int i=0; i<rtes.length; ++i){
       writeBlock(buf, "runtime environment: " + rtes[i], ScriptGenerator.TYPE_COMMENT, commentStart);
       String initTxt = dbPluginMgr.getRuntimeInitText(rtes[i], csName).toString();
@@ -136,10 +136,8 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
 
     // transformation script call section
-    String [] formalParam =
-        dbPluginMgr.getTransformationArguments(jobDefID);
-    String [] actualParam =
-        dbPluginMgr.getJobDefTransPars(jobDefID);
+    String [] formalParam = dbPluginMgr.getTransformationArguments(jobDefID);
+    String [] actualParam = dbPluginMgr.getJobDefTransPars(jobDefID);
     // write out the signature
     line = "Transformation script arguments: ";
     for(int i=0; i<formalParam.length; ++i){
@@ -161,7 +159,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     scriptDest = scriptDest.replaceAll("\\\\", "/");
     scriptDest = workingDir + scriptDest.replaceFirst(".*(/[^/]+)", "$1");
     // Don't think we need this...
-    /*if(System.getProperty("os.name").toLowerCase().startsWith("windows")){
+    /*if(MyUtil.onWindows()){
       line = line.replaceAll("/", "\\\\");
     }*/
     // Copy the script to the working directory

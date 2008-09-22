@@ -1,5 +1,6 @@
 package gridpilot.csplugins.vmfork;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -15,14 +16,28 @@ import gridfactory.common.jobrun.ForkComputingSystem;
 import gridfactory.common.jobrun.RTEInstaller;
 import gridfactory.common.jobrun.RTEMgr;
 import gridfactory.common.jobrun.VMMgr;
+import gridpilot.DBPluginMgr;
 import gridpilot.GridPilot;
 import gridpilot.MyComputingSystem;
+import gridpilot.MyJobInfo;
+import gridpilot.MyUtil;
+import gridpilot.csplugins.fork.ForkScriptGenerator;
 
+/**
+ * This class provides the means to test the virtual machines and runtime environments of the
+ * software catalogs ("runtime catalog URLs" in the config file).
+ * It extends ForkComputingSystem from GridFactory in order to match as much as possible what
+ * happens on a GridFactory worker node.
+ * Some methods are copied from ForkComputingSystem and ForkPoolComputingSystem from GridPilot
+ * in order to match what GridPilot expects a MyComputingSystem implementation to do.
+ */
 public class VMForkComputingSystem extends ForkComputingSystem implements MyComputingSystem {
 
   private String csName;
   private String [] rteCatalogUrls;
   private String user;
+  private String[] localRuntimeDBs;
+  private HashMap toDeleteRtes = new HashMap();
 
   public VMForkComputingSystem(String _csName) throws Exception {
     csName = _csName;
@@ -92,6 +107,8 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
       user = System.getProperty("user.name").trim();
     }
     vmMgr = new VMMgr(rteMgr, transferStatusUpdateControl, defaultVmMB, bootTimeout, localRteDir, logFile);
+    
+    localRuntimeDBs = configFile.getValues(csName, "runtime databases");
   }
   
   protected void setupJobRTEs(JobInfo job, Shell shell) throws Exception{
@@ -117,6 +134,13 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
         }
       }
       name = it.next();
+      // Check if installation was already done.
+      // This we need, because GridPilot's HTTPSFileTransfer does not cache.
+      // GridFactory's does.
+      if(shell.existsFile(remoteRteDir+"/"+name+"/"+RTEInstaller.INSTALL_OK_FILE)){
+        logFile.addInfo("Reusing existing installation of "+name);
+        return;
+      }
       url = rteMgr.getRteURL(name, os);
       mountPoint = rteMgr.getRteMountPoint(name, os);
       rteInstaller = new RTEInstaller(url, remoteRteDir, localRteDir, mountPoint, name, shell, transferStatusUpdateControl, logFile);
@@ -124,16 +148,83 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     }
   }
   
+  protected void updateStatus(JobInfo job, Shell shell){
+    super.updateStatus(job, shell);
+    // TODO: eliminate MyJobInfo
+    ((MyJobInfo) job).setCSStatus(JobInfo.getStatusName(job.getStatus()));
+  }
+  
   public void cleanupRuntimeEnvironments(String csName) {
-    // Nothing to do.
+    MyUtil.cleanupRuntimeEnvironments(csName, localRuntimeDBs, toDeleteRtes);
   }
 
   public String getUserInfo(String csName) {
     return user;
   }
+  
+  public boolean preProcess(JobInfo job) throws Exception {
+    
+    // From gridpilot.csplugins.fork.ForkScriptComputingSystem
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+    String [] rtes = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
+    String transID = dbPluginMgr.getJobDefTransformationID(job.getIdentifier());
+    String [] transInputFiles = dbPluginMgr.getTransformationInputs(transID);
+    String [] jobInputFiles = dbPluginMgr.getJobDefInputFiles(job.getIdentifier());
+    String [] inputFiles = new String [transInputFiles.length+jobInputFiles.length];
+    for(int i=0; i<transInputFiles.length; ++i){
+      inputFiles[i] = transInputFiles[i];
+    }
+    for(int i=0; i<jobInputFiles.length; ++i){
+      inputFiles[transInputFiles.length+i] = jobInputFiles[i];
+    }
+    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getIdentifier());
+    String [] outputDestinations = new String [outputFileNames.length];
+    for(int i=0; i<outputDestinations.length; ++i){
+      outputDestinations[i] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
+    }
+    job.setInputFileUrls(inputFiles);
+    job.setOutputFileDestinations(outputDestinations);
+    job.setOutputFileNames(outputFileNames);
+    job.setRTEs(MyUtil.removeMyOS(rtes));
+    
+    boolean ok = gridpilot.csplugins.fork.ForkComputingSystem.setRemoteOutputFiles((MyJobInfo) job);
+    ok = ok && super.preProcess(job);
+    String commandSuffix = ".sh";
+    Shell shell = getShell(job);
+    if(shell.isLocal() && MyUtil.onWindows()){
+      commandSuffix = ".bat";
+    }
+    String scriptFile = job.getName()+".gp"+commandSuffix;
+    String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
+    String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";
+    ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job));
+    if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, scriptFile)){
+      throw new IOException("Could not create wrapper script.");
+    }
+    ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
+    job.setExecutable(scriptFile);
+    
+    return ok;
+    
+  }
 
   public void setupRuntimeEnvironments(String csName) {
-    // Nothing to do.
+    if(localRuntimeDBs==null || localRuntimeDBs.length==0){
+      return;
+    }
+    if(!MyUtil.onWindows()){
+      for(int i=0; i<localRuntimeDBs.length; ++i){
+        try{
+          GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[i]).createRuntimeEnv(
+              new String [] {"name", "computingSystem"}, new String [] {MyUtil.getMyOS() , csName});
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        toDeleteRtes.put(MyUtil.getMyOS(), localRuntimeDBs[i]);
+      }
+    }
+    MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes);
   }
 
 }

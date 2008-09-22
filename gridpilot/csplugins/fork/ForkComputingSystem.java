@@ -89,7 +89,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     if(workingDir==null || workingDir.equals("")){
       workingDir = "~";
     }
-    if(System.getProperty("os.name").toLowerCase().startsWith("windows") &&
+    if(MyUtil.onWindows() &&
         shellMgr.isLocal() && workingDir!=null && workingDir.startsWith("~")){
       workingDir = System.getProperty("user.home")+workingDir.substring(1);
     }
@@ -103,14 +103,14 @@ public class ForkComputingSystem implements MyComputingSystem{
     Debug.debug("Using workingDir "+workingDir, 2);
     
     commandSuffix = ".sh";
-    if(shellMgr.isLocal() && System.getProperty("os.name").toLowerCase().startsWith("windows")){
+    if(shellMgr.isLocal() && MyUtil.onWindows()){
       commandSuffix = ".bat";
     }
     
     runtimeDirectory = configFile.getValue(csName, "runtime directory");
     if(runtimeDirectory!=null && runtimeDirectory.startsWith("~")){
       // Expand ~
-      if(System.getProperty("os.name").toLowerCase().startsWith("windows") &&
+      if(MyUtil.onWindows() &&
           shellMgr.isLocal()){
         runtimeDirectory = System.getProperty("user.home")+runtimeDirectory.substring(1);
       }
@@ -135,7 +135,6 @@ public class ForkComputingSystem implements MyComputingSystem{
         logFile.addInfo("Runtime directory "+runtimeDirectory+" does not exist, creating.");
         shellMgr.mkdirs(runtimeDirectory);
       }
-      setupRuntimeEnvironments(csName);
     }
     transformationDirectory = configFile.getValue(csName, "transformation directory");   
     //if(shellMgr.isLocal() && transformationDirectory!=null && transformationDirectory.startsWith("~")){
@@ -229,8 +228,8 @@ public class ForkComputingSystem implements MyComputingSystem{
     HashSet runtimes = mgr.listFilesRecursively(runtimeDirectory);
     String [] expandedRuntimeDirs = mgr.listFiles(MyUtil.clearFile(runtimeDirectory));
     String dirName = null;
-    if(shellMgr.isLocal() && System.getProperty("os.name").toLowerCase().startsWith("windows")){
-      dirName = runtimeDirectory.replaceFirst("^.*\\([^\\]+)$", "$1");
+    if(shellMgr.isLocal() && MyUtil.onWindows()){
+      dirName = runtimeDirectory.replaceFirst("^.*\\\\([^\\\\]+)$", "$1");
     }
     else{
       dirName = runtimeDirectory.replaceFirst("^.*/([^/]+)$", "$1");
@@ -240,9 +239,9 @@ public class ForkComputingSystem implements MyComputingSystem{
       return;
     }
     String expandedRuntimeDir = null;
-    if(shellMgr.isLocal() && System.getProperty("os.name").toLowerCase().startsWith("windows")){
-      expandedRuntimeDir = expandedRuntimeDirs[0].replaceFirst("^(.*)\\[^\\]+$", "$1");
-      expandedRuntimeDir = expandedRuntimeDir.replaceFirst("^(.*)\\[^\\]+\\$", "$1")+"\\";
+    if(shellMgr.isLocal() && MyUtil.onWindows()){
+      expandedRuntimeDir = expandedRuntimeDirs[0].replaceFirst("^(.*)\\\\[^\\\\]+$", "$1");
+      expandedRuntimeDir = expandedRuntimeDir.replaceFirst("^(.*)\\\\[^\\\\]+\\$", "$1")+"\\";
     }
     else{
       expandedRuntimeDir = expandedRuntimeDirs[0].replaceFirst("^(.*)/[^/]+$", "$1");
@@ -259,9 +258,9 @@ public class ForkComputingSystem implements MyComputingSystem{
         // Get the name
         Debug.debug("File found: "+expandedRuntimeDirs[0]+":"+expandedRuntimeDir+":"+fil, 3);
         name = fil.substring(expandedRuntimeDir.length());
-        if(name.startsWith(".") || name.toLowerCase().endsWith(".gz") || name.toLowerCase().endsWith(".tar") ||
+        if(name.matches(".*/\\..*") || name.toLowerCase().endsWith(".gz") || name.toLowerCase().endsWith(".tar") ||
             name.toLowerCase().endsWith(".tgz") || name.toLowerCase().endsWith(".zip")|| name.toLowerCase().endsWith(".rdf") ||
-            mgr.isDirectory(name)){
+            mgr.isDirectory(name) || name.matches(".*/pkg/.*") || name.matches(".*/data/.*") || name.matches(".*/control/.*")){
           continue;
         }
         // Read dependencies from the file.
@@ -631,13 +630,6 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
 
   public void exit(){
-    try{
-      cleanupRuntimeEnvironments(csName);
-    }
-    catch(Exception e){
-      e.printStackTrace();
-      Debug.debug("WARNING: could not cleanup runtime environments.", 1);
-    }
   }
   
   public void cleanupRuntimeEnvironments(String csName){
@@ -829,7 +821,7 @@ public class ForkComputingSystem implements MyComputingSystem{
    * @param job description of the computing job
    * @return True if the operation completes, false otherwise
    */
-  protected boolean setRemoteOutputFiles(MyJobInfo job){
+  public static boolean setRemoteOutputFiles(MyJobInfo job){
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String [] outputFiles = dbPluginMgr.getOutputFiles(job.getIdentifier());
     Vector remoteNamesVector = new Vector();
@@ -865,7 +857,7 @@ public class ForkComputingSystem implements MyComputingSystem{
    * to the 'local' runtime DBs. The copying is not done if there's
    * already a record with the same name and CS.
     */
-  private void syncRTEsFromCatalogs(){
+  protected void syncRTEsFromCatalogs(){
     if(rteCatalogUrls==null){
       return;
     }

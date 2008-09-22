@@ -43,7 +43,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   private LRMS lrms = null;
   // Map of id -> DBPluginMgr.
   // This is to be able to clean up RTEs from catalogs on exit.
-  private HashMap toDeleteRtes = null;
+  private HashMap toDeleteRtes = new HashMap();
   // Whether or not to request virtualization of jobs.
   private boolean virtualize = false;
   // VOs allowed to run my jobs.
@@ -57,7 +57,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     public void actionPerformed(ActionEvent e){
       Debug.debug("Syncing RTEs", 2);
       cleanupRuntimeEnvironments(csName);
-      syncRTEsFromCatalogs();
+      MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes);
     }
   });
 
@@ -70,17 +70,13 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     submitHost = (new GlobusURL(submitURL)).getHost();
     rteCatalogUrls = configFile.getValues("GridPilot", "runtime catalog URLs");
     timerSyncRTEs.setDelay(RTE_SYNC_DELAY);
-    toDeleteRtes = new HashMap();
     String virtualizeStr = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "virtualize");
     virtualize = virtualizeStr!=null && (virtualizeStr.equalsIgnoreCase("yes") || virtualizeStr.equalsIgnoreCase("true"));
     allowedVOs = GridPilot.getClassMgr().getConfigFile().getValues(csName, "allowed subjects");
     try{
       // Set user
-      user = GridPilot.getClassMgr().getSSL().getGridSubject();      
-      // Set up runtime environments on the remote site
-      setupRuntimeEnvironments(csName);
-      
+      user = GridPilot.getClassMgr().getSSL().getGridSubject();            
     }
     catch(Exception ioe){
       error = "ERROR during initialization of GridFactory plugin\n" +
@@ -388,104 +384,17 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   }
 
   public void setupRuntimeEnvironments(String csName){
-    syncRTEsFromCatalogs();
-  }
-  
-  /**
-   * If "runtime catalog URLs" is defined, copies records from them
-   * to the 'local' runtime DBs.
-    */
-  private void syncRTEsFromCatalogs(){
-    if(rteCatalogUrls==null){
-      return;
-    }
-    DBPluginMgr localDBMgr = null;
-    RteRdfParser rteRdfParser = new RteRdfParser(rteCatalogUrls, csName);
-    String id = null;
-    String rteNameField = null;
-    String newId = null;
-    Debug.debug("Syncing RTEs from catalogs to DBs: "+MyUtil.arrayToString(localRuntimeDBs), 2);
-    for(int ii=0; ii<localRuntimeDBs.length; ++ii){
-      try{
-        localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);
-        DBResult rtes = rteRdfParser.getDBResult(localDBMgr);
-        Debug.debug("Checking RTEs "+rtes.values.length, 3);
-        for(int i=0; i<rtes.values.length; ++i){
-          Debug.debug("Checking RTE "+MyUtil.arrayToString(rtes.getRow(i).values), 3);
-          id = null;
-          // Check if RTE already exists
-          rteNameField = MyUtil.getNameField(
-              localDBMgr.getDBName(), "runtimeEnvironment");
-          id = localDBMgr.getRuntimeEnvironmentID(
-              (String) rtes.getRow(i).getValue(rteNameField), csName);
-          if(id==null || id.equals("-1")){
-            if(localDBMgr.createRuntimeEnvironment(rtes.getRow(i).values)){
-              Debug.debug("Creating RTE "+MyUtil.arrayToString(rtes.getRow(i).values), 2);
-              // Tag for deletion
-              String name = (String) rtes.getRow(i).getValue(rteNameField);
-              newId = localDBMgr.getRuntimeEnvironmentID(name , csName);
-              if(newId!=null && !newId.equals("-1")){
-                Debug.debug("Tagging for deletion "+name+":"+newId, 3);
-                toDeleteRtes.put(newId, localDBMgr.getDBName());
-              }
-            }
-            else{
-              Debug.debug("WARNING: Failed creating RTE "+MyUtil.arrayToString(rtes.getRow(i).values), 2);
-            }
-          }
-        }
-      }
-      catch(Exception e){
-        error = "Could not load local runtime DB "+localRuntimeDBs[ii]+"."+e.getMessage();
-        Debug.debug(error, 1);
-        e.printStackTrace();
-      }
-    }
+    MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes);
   }
 
   public void exit(){
-    cleanupRuntimeEnvironments(csName);
   }
   
   /**
    * Clean up runtime environment records copied from runtime catalog URLs.
    */
   public void cleanupRuntimeEnvironments(String csName){
-    String id = "-1";
-    boolean ok = true;
-    DBPluginMgr localDBMgr = null;
-    for(int i=0; i<localRuntimeDBs.length; ++i){
-      localDBMgr = null;
-      try{
-        localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
-            localRuntimeDBs[i]);
-      }
-      catch(Exception e){
-        error = "Could not load local runtime DB "+localRuntimeDBs[i]+"."+e.getMessage();
-        Debug.debug(error, 1);
-      }
-      // Delete RTEs from catalog(s)
-      Debug.debug("Cleaning up catalog RTEs "+MyUtil.arrayToString(toDeleteRtes.keySet().toArray()), 3);
-      if(toDeleteRtes!=null && toDeleteRtes.keySet()!=null){
-        for(Iterator it=toDeleteRtes.keySet().iterator(); it.hasNext();){
-          try{
-            id = (String) it.next();
-            if(toDeleteRtes.get(id).equals(localRuntimeDBs[i])){
-              Debug.debug("Deleting "+id, 3);
-              ok = localDBMgr.deleteRuntimeEnvironment(id);
-              if(!ok){
-                error = "WARNING: could not delete runtime environment " +
-                id+" from database "+localDBMgr.getDBName();
-                Debug.debug(error, 1);
-              }
-            }
-          }
-          catch(Exception e){
-            e.printStackTrace();
-          }
-        }
-      }
-    }
+    MyUtil.cleanupRuntimeEnvironments(csName, localRuntimeDBs, toDeleteRtes);
   }
 
   public Shell getShell(JobInfo job){

@@ -7,7 +7,7 @@ import java.util.Vector;
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
 import gridfactory.common.LocalStaticShell;
-import gridfactory.common.ScriptGenerator;
+import gridfactory.common.jobrun.ScriptGenerator;
 import gridpilot.DBPluginMgr;
 import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
