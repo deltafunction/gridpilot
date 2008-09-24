@@ -9,13 +9,13 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Vector;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.DBRecord;
-import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LogFile;
@@ -28,7 +28,6 @@ import gridpilot.DBPluginMgr;
 import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
 import gridpilot.MySSL;
-import gridpilot.RteRdfParser;
 import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
@@ -53,7 +52,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected String transformationDirectory = null;
   protected String publicCertificate = null;
   protected String [] localRuntimeDBs = null;
-  protected HashSet toCleanupRTEs = null;
+  protected HashMap toDeleteRTEs = null;
   protected DBPluginMgr remoteDBPluginMgr = null;
   // List of (Janitor) catalogs from where to get RTEs
   protected String [] rteCatalogUrls = null;
@@ -64,6 +63,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
     transferControl = GridPilot.getClassMgr().getTransferControl();
+    toDeleteRTEs = new HashMap();
     
     GridPilot.splashShow("Setting up shells...");
     
@@ -178,7 +178,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     if(localRuntimeDBs.length==0 && remoteDBPluginMgr!=null){
       scanRTEDir(null, remoteDBPluginMgr, thisCs, shellMgr);
     }
-    syncRTEsFromCatalogs();
+    MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRTEs);
   }
   
   /**
@@ -224,7 +224,6 @@ public class ForkComputingSystem implements MyComputingSystem{
     String name = null;
     String deps = "";
     
-    toCleanupRTEs = new HashSet();
     HashSet runtimes = mgr.listFilesRecursively(runtimeDirectory);
     String [] expandedRuntimeDirs = mgr.listFiles(MyUtil.clearFile(runtimeDirectory));
     String dirName = null;
@@ -402,9 +401,10 @@ public class ForkComputingSystem implements MyComputingSystem{
       }
     }
     boolean rteExists = false;
+    String rtId = null;
     if(dbPluginMgr!=null){
       try{
-        String rtId = dbPluginMgr.getRuntimeEnvironmentID(name, csName);
+        rtId = dbPluginMgr.getRuntimeEnvironmentID(name, csName);
         if(rtId!=null && !rtId.equals("-1")){
           rteExists = true;
         }
@@ -417,20 +417,17 @@ public class ForkComputingSystem implements MyComputingSystem{
     Debug.debug("rteExists: "+rteExists, 3);
     if(!rteExists){
       try{
-        if(dbPluginMgr.createRuntimeEnvironment(rtVals)){
-          toCleanupRTEs.add(new String [] {name, csName, dbPluginMgr.getDBName()});
-        }
+        dbPluginMgr.createRuntimeEnvironment(rtVals);
       }
       catch(Exception e){
-        logFile.addMessage("WARNING: could not access "+dbPluginMgr.getDBName()+". Disabling" +
-        "registration of runtime environments");
+        logFile.addMessage("WARNING: could not access "+dbPluginMgr.getDBName()+". Cannot" +
+        "register runtime environments");
         e.printStackTrace();
       }
     }
     // tag for deletion in any case
-    else{
-      toCleanupRTEs.add(new String [] {name, csName, dbPluginMgr.getDBName()});
-    }
+    rtId = dbPluginMgr.getRuntimeEnvironmentID(name, csName);
+    toDeleteRTEs.put(rtId, dbPluginMgr.getDBName());
   }
   
   public boolean submit(JobInfo job){
@@ -633,29 +630,26 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
   
   public void cleanupRuntimeEnvironments(String csName){
-    if(toCleanupRTEs==null){
+    if(toDeleteRTEs==null){
       return;
     }
-    String runtimeName = null;
-    String myCSName = null;
     String initText = null;
     String id = "-1";
+    String dbName = null;
     boolean ok = true;
     DBPluginMgr dbPluginMgr = null;
-    String [] triplet = null;
-    for(Iterator itt = toCleanupRTEs.iterator(); itt.hasNext();){
-      triplet = (String []) itt.next();
+    for(Iterator itt = toDeleteRTEs.keySet().iterator(); itt.hasNext();){
+      id = (String) itt.next();
       try{
-        dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(triplet[2]);
+        dbName = (String) toDeleteRTEs.get(id);
+        dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
         if(dbPluginMgr!=null){
           ok = true;
-          runtimeName = triplet[0];
-          myCSName = triplet[1];
           // Don't delete records with a non-empty initText.
           // These can only have been created by hand.
           initText = null;
           try{
-            initText = dbPluginMgr.getRuntimeInitText(runtimeName, myCSName);
+            initText = (String) dbPluginMgr.getRuntimeEnvironment(id).getValue("initText");
           }
           catch(Exception e){
             e.printStackTrace();
@@ -663,8 +657,7 @@ public class ForkComputingSystem implements MyComputingSystem{
           if(initText!=null && !initText.equals("")){
             continue;
           }
-          id = dbPluginMgr.getRuntimeEnvironmentID(runtimeName, myCSName);
-          if(!id.equals("-1")){
+          if(id!=null && !id.equals("-1")){
             ok = dbPluginMgr.deleteRuntimeEnvironment(id);
           }
           else{
@@ -672,14 +665,14 @@ public class ForkComputingSystem implements MyComputingSystem{
           }
           if(!ok){
             Debug.debug("WARNING: could not delete runtime environment " +
-                runtimeName+" from database "+triplet[2], 1);
+                id+" from database "+dbName, 1);
           }
         }
       }
       catch(Exception e){
         e.printStackTrace();
         Debug.debug("WARNING: could not delete runtime environment " +
-            runtimeName+" from database "+triplet[2], 1);
+            id+" from database "+dbName, 1);
       }
     }
   }
@@ -853,58 +846,6 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
   
   /**
-   * If "runtime catalog URLs" is defined, copies records from them
-   * to the 'local' runtime DBs. The copying is not done if there's
-   * already a record with the same name and CS.
-    */
-  protected void syncRTEsFromCatalogs(){
-    if(rteCatalogUrls==null){
-      return;
-    }
-    DBPluginMgr localDBMgr = null;
-    RteRdfParser rteRdfParser = new RteRdfParser(rteCatalogUrls, csName);
-    String id = null;
-    String rteNameField = null;
-    String newId = null;
-    Debug.debug("Syncing RTEs from catalogs to DBs: "+MyUtil.arrayToString(localRuntimeDBs), 2);
-    for(int ii=0; ii<localRuntimeDBs.length; ++ii){
-      try{
-        localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);
-        DBResult rtes = rteRdfParser.getDBResult(localDBMgr);
-        Debug.debug("Checking RTEs "+rtes.values.length, 3);
-        for(int i=0; i<rtes.values.length; ++i){
-          Debug.debug("Checking RTE "+MyUtil.arrayToString(rtes.getRow(i).values), 3);
-          id = null;
-          // Check if RTE already exists
-          rteNameField = MyUtil.getNameField(localDBMgr.getDBName(), "runtimeEnvironment");
-          id = localDBMgr.getRuntimeEnvironmentID(
-              (String) rtes.getRow(i).getValue(rteNameField), csName);
-          if(id==null || id.equals("-1")){
-            if(localDBMgr.createRuntimeEnvironment(rtes.getRow(i).values)){
-              Debug.debug("Created RTE "+MyUtil.arrayToString(rtes.getRow(i).values), 2);
-              // Tag for deletion
-              String name = (String) rtes.getRow(i).getValue(rteNameField);
-              newId = localDBMgr.getRuntimeEnvironmentID(name , csName);
-              if(newId!=null && !newId.equals("-1")){
-                Debug.debug("Tagging for deletion "+name+":"+newId, 3);
-                toCleanupRTEs.add(new String [] {name, csName, localDBMgr.getDBName()});
-              }
-            }
-            else{
-              Debug.debug("WARNING: Failed creating RTE "+MyUtil.arrayToString(rtes.getRow(i).values), 2);
-            }
-          }
-        }
-      }
-      catch(Exception e){
-        error = "Could not load local runtime DB "+localRuntimeDBs[ii]+"."+e.getMessage();
-        Debug.debug(error, 1);
-        e.printStackTrace();
-      }
-    }
-  }
-  
-  /**
    * If a setup script for an RTE required by job is not present
    * and the corresponding tarball URL is set, the tarball is downloaded
    * and extracted/installed and a setup script is written in the runtime directory.
@@ -958,7 +899,7 @@ public class ForkComputingSystem implements MyComputingSystem{
             logFile.addMessage("runtimeEnvironment "+rteNames[i]+" not found for computing system "+job.getCSName());
             return false;
           }
-          if(toCleanupRTEs.contains(rteNames[i])){
+          if(toDeleteRTEs.containsKey(rteId)){
             // RTE comes from local RTE dir (DB record written on initialization). If this shell is not local,
             // Copy "Linux" RTE file to remote host. Others are problematic as there is no way to
             // tell where all their files are from the setup script.

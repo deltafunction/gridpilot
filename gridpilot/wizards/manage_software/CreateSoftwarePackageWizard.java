@@ -10,7 +10,6 @@ import gridfactory.common.jobrun.RTECatalog.TarPackage;
 import gridpilot.GPFrame;
 import gridpilot.GridPilot;
 import gridpilot.RteRdfParser;
-import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
 import java.awt.Color;
@@ -439,7 +438,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     RTECatalog rteCatalog;
     try{
       // Add the entry to the catalog: name, url, depends.
-      RteRdfParser rdf = new RteRdfParser(new String [] {catalogUrl}, /* only used by rdf.getDBResult */null);
+      RteRdfParser rdf = GridPilot.getClassMgr().getRteRdfParser(new String [] {catalogUrl});
       rteCatalog = rdf.getRteCatalog();
       
       if(rteCatalog.getBaseSystems().isEmpty() && rteCatalog.getMetaPackages().isEmpty() && rteCatalog.getTarPackages().isEmpty()){
@@ -968,7 +967,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
       Debug.debug("Adding catalog "+catalogUrls[i], 2);
       ++i;
     }
-    rteRdfParser = new RteRdfParser(catalogUrls, null);
+    rteRdfParser = GridPilot.getClassMgr().getRteRdfParser(catalogUrls);
   }
   
   private void refreshBSs(String catalogUrl, boolean forceUpdate){

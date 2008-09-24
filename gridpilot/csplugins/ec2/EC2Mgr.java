@@ -309,8 +309,6 @@ public class EC2Mgr {
     lc.setKeyName(keypair.getKeyName());
     lc.setUserData(owner.getBytes());
     ReservationDescription desc =  ec2.runInstances(lc);
-    // Leave time for SSH server to come up
-    //Thread.sleep(20000L);
     return desc;
   }
   

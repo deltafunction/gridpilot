@@ -4,36 +4,18 @@ import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.LocalShell;
 import gridpilot.GridPilot;
-import gridpilot.StatusBar;
-import gridpilot.MyJTable;
-import gridpilot.MyUtil;
 
-import java.awt.*;
-import java.awt.datatransfer.Clipboard;
+import gridpilot.MyUtil;
+import gridpilot.VMMonitoringPanel;
+
 import java.awt.datatransfer.ClipboardOwner;
-import java.awt.datatransfer.StringSelection;
-import java.awt.datatransfer.Transferable;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
 
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
-import javax.swing.ListSelectionModel;
-import javax.swing.TransferHandler;
-import javax.swing.border.EtchedBorder;
-import javax.swing.border.TitledBorder;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 
 import org.globus.gsi.GlobusCredentialException;
 import org.ietf.jgss.GSSException;
@@ -51,88 +33,38 @@ import com.xerox.amazonws.ec2.ReservationDescription.Instance;
  * Running images: <selectable list> [configure access] [stop]
  * 
  */
-public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
+public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOwner{
 
   private static final long serialVersionUID = 1L;
-  private MyJTable amiTable = null;
-  private MyJTable instanceTable = null;
-  private String [] amiColorMapping = null;  
-  private String [] instanceColorMapping = null;  
-  private String [] sshCommand = null;  
+
   private EC2Mgr ec2mgr = null;
-  private JButton bTerminate = new JButton("Terminate");
-  private JButton bLaunch = new JButton("Launch instance(s)");
-  private JMenuItem miCopyDNS = new JMenuItem("Copy DNS to clipboard");
-  private JMenuItem miCopyKeyFile = new JMenuItem("Copy key file location to clipboard");
-  private JMenuItem miRunShell = new JMenuItem("Run shell on instance");
   private boolean runningShell = false;
   
-  private static String [] AMI_FIELDS = new String [] {"AMI ID", "Manifest", "State", "Owner"};
-  private static String [] INSTANCE_FIELDS = new String [] {"Reservation ID", "Owner", "Instance ID", "AMI", "State",
+  protected String [] imageColorMapping = null;  
+  protected String [] instanceColorMapping = null;  
+  protected String [] sshCommand = null;
+  
+  protected static String [] IMAGE_FIELDS = new String [] {"AMI ID", "Manifest", "State", "Owner"};
+  protected static String [] INSTANCE_FIELDS = new String [] {"Reservation ID", "Owner", "Instance ID", "AMI", "State",
       "Public DNS", "Key"};
- 
-  public StatusBar statusBar = null;
 
   public EC2MonitoringPanel(EC2Mgr _ec2mgr) throws Exception{
+    super();
     ec2mgr = _ec2mgr;
-    // use status bar on main window until a monitoring panel is actually created
-    statusBar = GridPilot.getClassMgr().getStatusBar();
-    amiColorMapping = GridPilot.getClassMgr().getConfigFile().getValues("EC2", "AMI color mapping");  
+    imageColorMapping = GridPilot.getClassMgr().getConfigFile().getValues("EC2", "AMI color mapping");  
     instanceColorMapping = GridPilot.getClassMgr().getConfigFile().getValues("EC2", "Instance color mapping");  
     sshCommand = GridPilot.getClassMgr().getConfigFile().getValues("EC2", "Ssh command");  
-    initGUI();
-    bLaunch.setEnabled(false);
-    bTerminate.setEnabled(false);
-    setName("EC2 virtual machines");
-  }
-
-  public void initGUI() throws Exception{
-    
-    this.setLayout(new BorderLayout());
-    
-    statusBar = new StatusBar();
-    
-    JPanel jp = new JPanel(new BorderLayout());
-    JPanel availableAMIsPanel = createAMIsPanel();
-    JPanel runningInstancesPanel = createInstancesPanel();
-    availableAMIsPanel.setPreferredSize(new Dimension(600, 150));
-    runningInstancesPanel.setPreferredSize(new Dimension(600, 150));
-    availableAMIsPanel.setMinimumSize(new Dimension(600, 100));
-    runningInstancesPanel.setMinimumSize(new Dimension(600, 100));
-
-    JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
-        availableAMIsPanel, runningInstancesPanel);
-    splitPane.setOneTouchExpandable(true);
-    splitPane.setContinuousLayout(true);
-    jp.add(splitPane);
-    jp.add(statusBar, BorderLayout.SOUTH);
-    
-    JScrollPane sp = new JScrollPane();
-    sp.getViewport().add(jp);
-    this.add(sp);
-
-    /*this.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-    this.addWindowListener(new WindowAdapter(){
-      public void windowClosing(WindowEvent we){
-        Debug.debug("Thwarted user attempt to close window.", 3);
-      }
-    });
-
-    jp.setPreferredSize(new Dimension(600, 300));
-    this.pack();*/
-    splitPane.setDividerLocation(0.5);
-    splitPane.setResizeWeight(0.5);
-    
-    // Disable clipboard handling inherited from JPanel
-    TransferHandler th = new TransferHandler(null);
-    instanceTable.setTransferHandler(th);
-    
-    makeMenu();
+    imageTable.setTable(IMAGE_FIELDS);
+    instanceTable.setTable(getRunningInstances(), INSTANCE_FIELDS);
   }
   
-  String [][] getAvailableAMIs() throws EC2Exception{
+  public String getName(){
+    return "EC2 virtual machines";
+  }
+  
+  protected String [][] getAvailableImages() throws EC2Exception{
     List amiList = ec2mgr.listAvailableAMIs();
-    String [][] amiArray = new String [amiList.size()][AMI_FIELDS.length];
+    String [][] amiArray = new String [amiList.size()][IMAGE_FIELDS.length];
     ImageDescription ami = null;
     int i = 0;
     // "AMI ID", "Manifest", "State", "Owner"
@@ -147,7 +79,7 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     return amiArray;
   }
   
-  String [][] getRunningInstances() throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException{
+  protected String [][] getRunningInstances() throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException{
     List reservationList = ec2mgr.listReservations();
     Vector instanceVector = new Vector();
     List instanceList = null;
@@ -181,64 +113,13 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     return instanceArray;
   }
   
-  private JPanel createAMIsPanel() throws Exception{
-    JPanel panel = new JPanel(new BorderLayout()); 
-    amiTable = new MyJTable(new String [] {}, AMI_FIELDS, amiColorMapping);
-    amiTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-    amiTable.addListSelectionListener(new ListSelectionListener(){
-      public void valueChanged(ListSelectionEvent e){
-        amiSelectionEvent(e);
-      }
-    });
-    amiTable.setTable(AMI_FIELDS);
-    amiTable.updateUI();
-    JScrollPane sp = new JScrollPane();
-    sp.getViewport().add(amiTable);
-    sp.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
-        Color.white, new Color(165, 163, 151)), "Available AMIs"));
-    panel.add(sp);
-    // buttons
-    JPanel pButtons = new JPanel();
-    JButton bRefresh = new JButton("Refresh");
-    bRefresh.setToolTipText("Refresh the list of AMIs");
-    bRefresh.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        try{
-          amiTable.setTable(getAvailableAMIs(), AMI_FIELDS);
-          bLaunch.setEnabled(false);
-          bTerminate.setEnabled(false);
-          makeMenu();
-        }
-        catch(Exception e1){
-           e1.printStackTrace();
-        }
-      }
-    });
-    bLaunch.setToolTipText("Launch an instance of the selected AMI");
-    bLaunch.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        try{
-          launchAMIs();
-        }
-        catch(Exception e1){
-           e1.printStackTrace();
-        }
-      }
-    });
-    pButtons.add(bRefresh);
-    pButtons.add(new JLabel("|"));
-    pButtons.add(bLaunch);
-    panel.add(pButtons, BorderLayout.SOUTH);
-    return panel;
-  }
-  
-  protected void launchAMIs() throws Exception {
+  protected void launchImages() throws Exception {
     // get the selected AMI
-    int row = amiTable.getSelectedRow();
+    int row = imageTable.getSelectedRow();
     if(row==-1){
       return;
     }
-    String amiID = (String) amiTable.getUnsortedValueAt(row, 0);
+    String amiID = (String) imageTable.getUnsortedValueAt(row, 0);
     // get the number of instances we want to start
     int instances = MyUtil.getNumber("Number of instances to start", "Instances", 1);
     if(instances<1){
@@ -258,7 +139,7 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     for(int i=0; i<rows.length; ++i){
       ids[i] = (String) instanceTable.getUnsortedValueAt(rows[i], 2);
     }
-    String msg = "Are you sure you want to terminate the instance(s) "+MyUtil.arrayToString(ids)+"?";
+    String msg = "Are you sure you want to terminate "+MyUtil.arrayToString(ids, ", ")+"?";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     try{
       int choice = confirmBox.getConfirm("Confirm terminate",
@@ -274,165 +155,12 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     Debug.debug("Terminating "+ids.length+" instances.", 2);
     ec2mgr.terminateInstances(ids);
   }
-
-  private JPanel createInstancesPanel() throws Exception{
-    JPanel panel = new JPanel(new BorderLayout()); 
-    instanceTable = new MyJTable(new String [] {}, INSTANCE_FIELDS, instanceColorMapping);
-    amiTable.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-    instanceTable.addListSelectionListener(new ListSelectionListener(){
-      public void valueChanged(ListSelectionEvent e){
-        instanceSelectionEvent(e);
-      }
-    });
-    instanceTable.setTable(INSTANCE_FIELDS);
-    instanceTable.updateUI();
-    JScrollPane sp = new JScrollPane();
-    sp.getViewport().add(instanceTable);
-    sp.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
-        Color.white, new Color(165, 163, 151)), "Your instances"));
-    panel.add(sp);
-    JPanel pButtons = new JPanel();
-    JButton bRefresh = new JButton("Refresh");
-    bRefresh.setToolTipText("Refresh the list of instances");
-    bRefresh.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        try{
-          instanceTable.setTable(getRunningInstances(), INSTANCE_FIELDS);
-          bLaunch.setEnabled(false);
-          bTerminate.setEnabled(false);
-          makeMenu();
-        }
-        catch(Exception e1){
-           e1.printStackTrace();
-        }
-      }
-    });
-    bTerminate.setToolTipText("Terminate the selected instance(s)");
-    bTerminate.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        try{
-          terminateInstances();
-        }
-        catch(Exception e1){
-           e1.printStackTrace();
-        }
-      }
-    });
-    pButtons.add(bRefresh);
-    pButtons.add(new JLabel("|"));
-    pButtons.add(bTerminate);
-    panel.add(pButtons, BorderLayout.SOUTH);
-    return panel;
-  }
-
-  public void windowClosing(){
-    // disallow closing this window
-  }
-
-  /**
-   * Updates selected and unselected menu items or button regarding to the selection.
-   */
-  private void amiSelectionEvent(ListSelectionEvent e){
-    //Ignore extra messages.
-    if(e.getValueIsAdjusting()){
-      return;
-    }
-    ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-    if(lsm.isSelectionEmpty()){
-      bLaunch.setEnabled(false);
-    }
-    else{
-      //int [] rows = amiTable.getSelectedRows();
-      bLaunch.setEnabled(!lsm.isSelectionEmpty() && lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-    }
-  }
   
-  /**
-   * Updates selected and unselected menu items or button regarding to the selection.
-   */
-  private void instanceSelectionEvent(ListSelectionEvent e){
-    // Ignore extra messages.
-    if(e.getValueIsAdjusting()){
-      return;
-    }
-    ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-    if(lsm.isSelectionEmpty()){
-      bTerminate.setEnabled(false);
-      miCopyDNS.setEnabled(false);
-      miCopyKeyFile.setEnabled(false);
-      miRunShell.setEnabled(false);
-    }
-    else{
-      int [] rows = instanceTable.getSelectedRows();
-      bTerminate.setEnabled(true);
-      for(int i=0; i<rows.length; ++i){
-        if(!((String) instanceTable.getUnsortedValueAt(rows[i], 4)).equalsIgnoreCase("running")){
-          bTerminate.setEnabled(false);
-          boolean ok = !lsm.isSelectionEmpty() && lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex();
-          miCopyDNS.setEnabled(ok);
-          miCopyKeyFile.setEnabled(ok);
-          miRunShell.setEnabled(ok);
-        }
-      }
-      //bTerminate.setEnabled(!lsm.isSelectionEmpty());
-    }
+  protected String getCredentials(){
+    return "SSH key: "+ec2mgr.getKeyFile().getPath();
   }
 
-  /**
-   * Makes the menu shown when the user right-clicks on the status table
-   */
-  private void makeMenu(){
-    miCopyDNS.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        (new Thread(){
-          public void run(){
-            copyDNSToClipBoard();
-          }
-        }).start();
-      }
-    });
-    miCopyKeyFile.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        (new Thread(){
-          public void run(){
-            copyKeyFileToClipBoard();
-          }
-        }).start();
-      }
-    });
-    miRunShell.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        (new Thread(){
-          public void run(){
-            runShell();
-          }
-        }).start();
-      }
-    });
-    instanceTable.addMenuSeparator();
-    instanceTable.addMenuItem(miCopyDNS);
-    instanceTable.addMenuItem(miCopyKeyFile);
-    instanceTable.addMenuItem(miRunShell);
-  }
-  
-  private void copyDNSToClipBoard(){
-    int row = instanceTable.getSelectedRow();
-    String dns = (String) instanceTable.getUnsortedValueAt(row, 5);
-    Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-    StringSelection stringSelection = new StringSelection(dns);
-    clipboard.setContents(stringSelection, this);
-  }
-
-  private void copyKeyFileToClipBoard(){
-    int row = instanceTable.getSelectedRow();
-    String name = (String) instanceTable.getUnsortedValueAt(row, 6);
-    name = ec2mgr.getKeyFile().getPath();
-    Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-    StringSelection stringSelection = new StringSelection(name);
-    clipboard.setContents(stringSelection, this);
-  }
-
-  private void runShell(){
+  protected void runShell(){
     if(runningShell){
       return;
     }
@@ -461,8 +189,5 @@ public class EC2MonitoringPanel extends JPanel implements ClipboardOwner{
     }
   }
 
-  public void lostOwnership(Clipboard clipboard, Transferable contents) {
-  }
-  
 }
 

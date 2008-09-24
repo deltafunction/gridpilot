@@ -9,6 +9,7 @@ import gridfactory.common.Shell;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -53,6 +54,7 @@ public class ClassMgr{
   /** List of urls in db pool */
   private HashSet dbURLs = new HashSet();
   private MySSL ssl = null;
+  private HashMap<String, RteRdfParser> rdfParsers = new HashMap<String, RteRdfParser>();
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
   public GSSCredential credential = null;
@@ -550,6 +552,18 @@ public class ClassMgr{
       throw new SQLException(error);
     }
     dbURLs.add(dbName);
+  }
+
+  public RteRdfParser getRteRdfParser(String[] rteCatalogUrls) {
+    String [] sortedUrls = rteCatalogUrls.clone();
+    Arrays.sort(sortedUrls);
+    String key = MyUtil.arrayToString(sortedUrls);
+    if(!rdfParsers.containsKey(key)){
+      Debug.debug("Creating new RteRdfParser from "+key, 1);
+      RteRdfParser rteRdfParser = new RteRdfParser(rteCatalogUrls);
+      rdfParsers.put(key, rteRdfParser);
+    }
+    return rdfParsers.get(key);
   }
   
 }

@@ -109,7 +109,14 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     vmMgr = new VMMgr(rteMgr, transferStatusUpdateControl, defaultVmMB, bootTimeout, localRteDir, logFile);
     
     localRuntimeDBs = configFile.getValues(csName, "runtime databases");
-  }
+
+    Debug.debug("Adding Local VM monitor", 2);
+    VMForkMonitoringPanel panel = new VMForkMonitoringPanel(vmMgr, rteCatalogUrls);
+    // This causes the panel to be added to the monitoring window as a tab,
+    // right after the transfer monitoring tab and before the log tab.
+    GridPilot.extraMonitorTabs.add(panel);
+        
+}
   
   protected void setupJobRTEs(JobInfo job, Shell shell) throws Exception{
     String [] rteNames = job.getRTEs();
@@ -215,12 +222,13 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     for(int i=0; i<localRuntimeDBs.length; ++i){
       try{
         GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[i]).createRuntimeEnv(
-            new String [] {"name", "computingSystem"}, new String [] {MyUtil.getMyOS() , csName});
+            new String [] {"name", "computingSystem"}, new String [] {MyUtil.getMyOS(), csName});
       }
       catch(Exception e){
         e.printStackTrace();
       }
-      toDeleteRtes.put(MyUtil.getMyOS(), localRuntimeDBs[i]);
+      String rteId = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[i]).getRuntimeEnvironmentID(MyUtil.getMyOS(), csName);
+      toDeleteRtes.put(rteId, localRuntimeDBs[i]);
     }
     MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes);
   }

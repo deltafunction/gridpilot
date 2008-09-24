@@ -35,7 +35,6 @@ import gridpilot.DBPluginMgr;
 import gridpilot.Database;
 import gridpilot.GridPilot;
 import gridpilot.MessagePane;
-import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
 public class HSQLDBDatabase extends DBCache implements Database{

@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Vector;
 
 import javax.swing.Timer;
@@ -16,7 +15,6 @@ import javax.swing.Timer;
 import org.globus.util.GlobusURL;
 
 import gridfactory.common.ConfigFile;
-import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.JobInfo;
@@ -28,7 +26,6 @@ import gridpilot.MyComputingSystem;
 import gridpilot.DBPluginMgr;
 import gridpilot.GridPilot;
 import gridpilot.MyJobInfo;
-import gridpilot.RteRdfParser;
 
 import gridpilot.MyUtil;
 import gridpilot.csplugins.fork.ForkComputingSystem;

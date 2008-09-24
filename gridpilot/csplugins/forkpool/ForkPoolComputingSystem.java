@@ -408,7 +408,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     for(Iterator it=remoteShellMgrs.values().iterator(); it.hasNext();){
       setupRuntimeEnvironmentsSSH((Shell) it.next());
     }
-    syncRTEsFromCatalogs();
+    MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRTEs);
   }
   
   protected void setupRuntimeEnvironmentsSSH(Shell shellMgr){

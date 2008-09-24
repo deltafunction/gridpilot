@@ -54,7 +54,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     ec2mgr = new EC2Mgr(accessKey, secretKey, sshAccessSubnet, this.getUserInfo(csName),
         runDir, transferControl);
  
-    System.out.println("Adding EC2 monitor");
+    Debug.debug("Adding EC2 monitor", 2);
     EC2MonitoringPanel panel = new EC2MonitoringPanel(ec2mgr);
     // This causes the panel to be added to the monitoring window as a tab,
     // right after the transfer monitoring tab and before the log tab.

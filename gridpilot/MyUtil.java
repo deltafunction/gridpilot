@@ -1341,7 +1341,7 @@ public class MyUtil extends gridfactory.common.Util{
       return;
     }
     DBPluginMgr localDBMgr = null;
-    RteRdfParser rteRdfParser = new RteRdfParser(rteCatalogUrls, csName);
+    RteRdfParser rteRdfParser = GridPilot.getClassMgr().getRteRdfParser(rteCatalogUrls);
     String id = null;
     String rteNameField = null;
     String newId = null;
@@ -1349,7 +1349,7 @@ public class MyUtil extends gridfactory.common.Util{
     for(int ii=0; ii<localRuntimeDBs.length; ++ii){
       try{
         localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);
-        DBResult rtes = rteRdfParser.getDBResult(localDBMgr);
+        DBResult rtes = rteRdfParser.getDBResult(localDBMgr, csName);
         Debug.debug("Checking RTEs "+rtes.values.length, 3);
         for(int i=0; i<rtes.values.length; ++i){
           Debug.debug("Checking RTE "+MyUtil.arrayToString(rtes.getRow(i).values), 3);
@@ -1376,7 +1376,7 @@ public class MyUtil extends gridfactory.common.Util{
         }
       }
       catch(Exception e){
-        String error = "Could not load local runtime DB "+localRuntimeDBs[ii]+"."+e.getMessage();
+        String error = "Could not load local runtime DB "+localRuntimeDBs[ii]+". "+e.getMessage();
         GridPilot.getClassMgr().getLogFile().addMessage(error, e);
         e.printStackTrace();
       }

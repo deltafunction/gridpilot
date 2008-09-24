@@ -19,11 +19,9 @@ import gridfactory.common.jobrun.RTECatalog.TarPackage;
 public class RteRdfParser {
   
   public String [] catalogURLs;
-  private String csName = null;
   private RTECatalog rteCatalog;
   
-  public RteRdfParser(String [] _urls, String _csName){
-    csName = _csName;
+  public RteRdfParser(String [] _urls){
     catalogURLs = _urls;
     for(int i=0; i<catalogURLs.length; ++i){
       if(catalogURLs[i].toLowerCase().startsWith("https://")){
@@ -53,7 +51,7 @@ public class RteRdfParser {
    * "url" is set to the URL of the instance TarPackage.
    * Each BaseSystem is also parsed into a "runtimeEnvironment" DBRecord.
    */
-  public DBResult getDBResult(DBPluginMgr dbpluginMgr){
+  public DBResult getDBResult(DBPluginMgr dbpluginMgr, String csName){
     // The standard runtimeEnvironment fields are:
     // identifier name computingSystem certificate url initLines depends provides created lastModified
     // The MetaPackage fields are:
