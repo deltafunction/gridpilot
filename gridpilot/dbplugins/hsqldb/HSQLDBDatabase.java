@@ -1678,13 +1678,38 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
   }
   
-  public synchronized boolean createDataset(String table,
-      String [] fields, Object [] _values){
-    String idField = MyUtil.getIdentifierField(dbName, "dataset");
-    Object [] values = new Object [_values.length];
-    for(int i=0; i<values.length; ++i){
-      values[i] = _values[i];
+  /**
+   * Select the value from an array of values, corresponding to the position of a field in an
+   * array of fields. If the field is a numeric one, set an empty value to 0.
+   * @param fieldTypes
+   * @param field
+   * @param fields
+   * @param values
+   * @return
+   */
+  private String getFieldValue(HashMap fieldTypes, String field, String [] fields, Object [] values){
+    String ret = null;
+    for(int i=0; i<fields.length; ++i){
+      if(field.trim().equalsIgnoreCase(fields[i])){
+        ret = (String) values[i];
+        break;
+      }
     }
+    if((ret==null || ret.equals("") || ret.equals("''")) &&
+        isNumericField(fieldTypes, field)){
+      ret = "0";
+    }
+    if(ret==null){
+      ret = "";
+    }
+    return ret;
+  }
+  
+  public synchronized boolean createDataset(String table,
+      String [] fields, Object [] values){
+    
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
+    
     String nonMatchedStr = "";
     Vector nonMatchedFields = new Vector();
     boolean match = false;
@@ -1708,87 +1733,68 @@ public class HSQLDBDatabase extends DBCache implements Database{
       Debug.debug("Could not match "+MyUtil.arrayToString(nonMatchedFields.toArray())+
           " with "+MyUtil.arrayToString(datasetFields), 3);
     }
+    
     String sql = "INSERT INTO "+table+" (";
-    for(int i=0; i<fields.length; ++i){
-      if(!nonMatchedFields.contains(fields[i])){
-        sql += fields[i];
-        if(fields.length>0 && i<fields.length-1){
-          sql += ",";
-        }
+    
+    for(int i=0; i<datasetFields.length; ++i){
+      sql += datasetFields[i];
+      if(i<datasetFields.length-1){
+        sql += ",";
       }
     }
+    
     sql += ") VALUES (";
+    
     Debug.debug("Checking fields. "+
         datasetFieldTypes.keySet().size()+"\n"+
         MyUtil.arrayToString(datasetFieldTypes.keySet().toArray())+"\n"+
         MyUtil.arrayToString(datasetFieldTypes.values().toArray())+"\n"+
         MyUtil.arrayToString(datasetFields)+"\n"+
         MyUtil.arrayToString(fields), 3);
-    for(int i=0; i<fields.length; ++i){
-      if(!nonMatchedFields.contains(fields[i])){
-        if(!nonMatchedStr.equals("") &&
-            fields[i].equalsIgnoreCase("comment")){
-          values[i] = values[i]+"\n"+nonMatchedStr;
-        }
-        if(fields[i].equalsIgnoreCase("created")){
-          try{
-            values[i] = makeDate(values[i].toString());
-          }
-          catch(Exception e){
-            values[i] = makeDate("");
-          }
-        }
-        else if(fields[i].equalsIgnoreCase("lastModified")){
-          values[i] = makeDate("");
-        }
-        else if(isFileCatalog() && fields[i].equalsIgnoreCase(idField)){
-          // Generate uuid if this is a file catalogue and the
-          // passed id is not a uuid.
-          boolean isNum = false;
-          try{
-            int num = Integer.parseInt((String) values[i]);
-            isNum = (num>-1);
-          }
-          catch(Exception e){
-          }
-          if(isNum || values[i]==null || values[i].equals("") ||
-              values[i].equals("''")){
-            values[i] = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
-            String message = "Generated new UUID "+values[i].toString()+" for dataset";
-            GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
-            GridPilot.getClassMgr().getLogFile().addInfo(message);
-          }
-           values[i] = "'"+dbEncode(values[i].toString())+"'";
-        }
-        else if(values[i]!=null){
-          values[i] = dbEncode(values[i].toString());
-          values[i] = "'"+values[i].toString()+"'";
-        }
-        // Set empty numeric fields to 0.
-        // Empty fields should not be allowed in central dataset catalogs,
-        // but here, locally, it should be ok.
-        Debug.debug("Value of  "+fields[i]+": "+values[i], 3);
+    
+    String val;
+    for(int i=0; i<datasetFields.length; ++i){
+      val = getFieldValue(datasetFieldTypes, datasetFields[i], fields, values);
+      if(!nonMatchedStr.equals("") &&
+          datasetFields[i].equalsIgnoreCase("comment")){
+        val = val+"\n"+nonMatchedStr;
+      }
+      else if(datasetFields[i].equalsIgnoreCase("created")){
         try{
-          if(fields[i]!=null && (values[i]==null || values[i].equals("") || values[i].equals("''")) && 
-              (datasetFieldTypes.get(fields[i]).toString().toLowerCase().startsWith("int") ||
-               datasetFieldTypes.get(fields[i]).toString().toLowerCase().startsWith("bigint") ||
-               datasetFieldTypes.get(fields[i]).toString().toLowerCase().startsWith("tinyint") ||
-               datasetFieldTypes.get(fields[i]).toString().toLowerCase().startsWith("float"))){
-            Debug.debug("Fixing "+fields[i]+":"+values[i]+
-                " - "+datasetFieldTypes.get(fields[i]).toString().toLowerCase(), 3);
-            values[i] = "'0'";
-          }
-          else if(values[i]==null){
-            values[i] = "''";
-          }
+          val = makeDate(val);
         }
         catch(Exception e){
-          e.printStackTrace();
+          val = makeDate("");
         }
-        sql += values[i];
-        if(fields.length>0 && i<fields.length-1){
-          sql += ",";
+      }
+      else if(datasetFields[i].equalsIgnoreCase("lastModified")){
+        val = makeDate("");
+      }
+      else if(isFileCatalog() && datasetFields[i].equalsIgnoreCase(idField)){
+        // Generate uuid if this is a file catalogue and the
+        // passed id is not a uuid.
+        boolean isNum = false;
+        try{
+          int num = Integer.parseInt((String) val);
+          isNum = (num>-1);
         }
+        catch(Exception e){
+        }
+        if(isNum || val==null || val.equals("") || val.equals("''")){
+          val = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+          String message = "Generated new UUID "+val+" for dataset";
+          GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
+          GridPilot.getClassMgr().getLogFile().addInfo(message);
+        }
+        val = "'"+dbEncode(val)+"'";
+      }
+      else if(val!=null){
+        val = dbEncode(val);
+        val = "'"+val+"'";
+      }
+      sql += val;
+      if(i<datasetFields.length-1){
+        sql += ",";
       }
     }
     sql += ")";
@@ -1817,6 +1823,18 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
     }
     return execok;
+  }
+  
+  private boolean isNumericField(HashMap fieldTypes, String field){
+    if(fieldTypes.get(field).toString().toLowerCase().startsWith("int") ||
+        fieldTypes.get(field).toString().toLowerCase().startsWith("bigint") ||
+        fieldTypes.get(field).toString().toLowerCase().startsWith("tinyint") ||
+        fieldTypes.get(field).toString().toLowerCase().startsWith("float")){
+      return true;
+    }
+    else{
+      return false;
+    }
   }
 
   public synchronized boolean createTransformation(Object [] _values){
