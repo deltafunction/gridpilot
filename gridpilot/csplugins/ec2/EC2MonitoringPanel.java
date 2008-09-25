@@ -119,7 +119,7 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
     if(row==-1){
       return;
     }
-    String amiID = (String) imageTable.getUnsortedValueAt(row, 0);
+    String amiID = (String) imageTable.getUnsortedValueAt(row, imIdField);
     // get the number of instances we want to start
     int instances = MyUtil.getNumber("Number of instances to start", "Instances", 1);
     if(instances<1){
@@ -137,7 +137,7 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
     }
     String [] ids = new String [rows.length];
     for(int i=0; i<rows.length; ++i){
-      ids[i] = (String) instanceTable.getUnsortedValueAt(rows[i], 2);
+      ids[i] = (String) instanceTable.getUnsortedValueAt(rows[i], idField);
     }
     String msg = "Are you sure you want to terminate "+MyUtil.arrayToString(ids, ", ")+"?";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
@@ -170,7 +170,7 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
     String [] fullCommand = new String [0];
     try{
       int row = instanceTable.getSelectedRow();
-      String dns = (String) instanceTable.getUnsortedValueAt(row, 5);
+      String dns = (String) instanceTable.getUnsortedValueAt(row, dnsField);
       fullCommand = new String [sshCommand.length+2];
       for(int i=0; i<sshCommand.length; ++i){
         fullCommand[i] = sshCommand[i];

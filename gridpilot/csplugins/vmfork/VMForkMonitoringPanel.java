@@ -41,15 +41,16 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
 
   public VMForkMonitoringPanel(VMMgr _vmMgr, String [] _rteCatalogUrls) throws Exception{
     super();
-    IMAGE_FIELDS = new String [] {"Image name", "OS", "Services", "Privileges"};
+    IMAGE_FIELDS = new String [] {"Image name", "OS", "Services", "Privileges", "Requirements"};
     INSTANCE_FIELDS = new String [] {"Image name", "Identifier", "State", "DNS", "SSH port"};
     dnsField = 3;
     stateField = 2;
+    idField = 1;
     vmMgr = _vmMgr;
     rteCatalogUrls = _rteCatalogUrls;
     imageColorMapping = GridPilot.getClassMgr().getConfigFile().getValues("VMFork", "Image color mapping");  
     instanceColorMapping = GridPilot.getClassMgr().getConfigFile().getValues("VMFork", "Instance color mapping");  
-    sshCommand = GridPilot.getClassMgr().getConfigFile().getValues("VMFork", "Shell command"); 
+    sshCommand = GridPilot.getClassMgr().getConfigFile().getValues("VMFork", "Ssh command"); 
     imageTable.setTable(IMAGE_FIELDS);
     instanceTable.setTable(getRunningInstances(), INSTANCE_FIELDS);
   }
@@ -64,7 +65,7 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
     MetaPackage mp;
     HashSet<String []> images = new HashSet<String []>();
     String[] imRow;
-    // "Image name", "OS", "Services", "Privileges"
+    // "Image name", "OS", "Services", "Privileges", "Requirements"
     for(Iterator it=mps.iterator(); it.hasNext();){
       mp = (MetaPackage) it.next();
       if(mp.virtualMachine!=null){
@@ -73,6 +74,7 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
         imRow[1] = mp.virtualMachine.os;
         imRow[2] = MyUtil.arrayToString(mp.virtualMachine.services);
         imRow[3] = MyUtil.arrayToString(mp.virtualMachine.privileges);
+        imRow[4] = mp.requirements==null?"":mp.requirements.toString();
         images.add(imRow);
       }
     }
@@ -111,7 +113,8 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
     if(row==-1){
       return;
     }
-    final String imageName = (String) imageTable.getUnsortedValueAt(row, 0);
+    // In the GridFactory catalog, the name is a valid identifier.
+    final String imageName = (String) imageTable.getUnsortedValueAt(row, imIdField);
     // get the number of instances we want to start
     final int memory = MyUtil.getNumber("Memory (in MB) to assign to this VM ", "Memory", 512);
     if(memory<=0){
@@ -124,6 +127,7 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
               vmMgr.launchVM(imageName, memory, uuid);
             }
             catch(Exception e){
+              GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not launch VM.", e);
               e.printStackTrace();
               this.setException(e);
               this.requestStop();
@@ -142,7 +146,7 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
     }
     String [] ids = new String [rows.length];
     for(int i=0; i<rows.length; ++i){
-      ids[i] = (String) instanceTable.getUnsortedValueAt(rows[i], 1);
+      ids[i] = (String) instanceTable.getUnsortedValueAt(rows[i], idField);
     }
     String msg = "Are you sure you want to terminate "+MyUtil.arrayToString(ids, ", ")+"?";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
@@ -165,7 +169,7 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
 
   protected String getCredentials(){
     int row = instanceTable.getSelectedRow();
-    String id = (String) instanceTable.getUnsortedValueAt(row, 1);
+    String id = (String) instanceTable.getUnsortedValueAt(row, idField);
     VirtualMachine vm = vmMgr.getVM(id);
     String creds = "User: "+vm.getUserName()+"\nPassword: "+vm.getPassword();
     return creds;
@@ -181,20 +185,27 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
     String [] fullCommand = null;
     try{
       int row = instanceTable.getSelectedRow();
-      String id = (String) instanceTable.getUnsortedValueAt(row, 1);
-      VirtualMachine vm = vmMgr.getVM(id);
-      String dns = (String) instanceTable.getUnsortedValueAt(row, 3);
-      fullCommand = new String [sshCommand.length+6];
+      String id = (String) instanceTable.getUnsortedValueAt(row, idField);
+      final VirtualMachine vm = vmMgr.getVM(id);
+      String dns = (String) instanceTable.getUnsortedValueAt(row, dnsField);
+      fullCommand = new String [sshCommand.length+2];
       for(int i=0; i<sshCommand.length; ++i){
         fullCommand[i] = sshCommand[i];
       }
-      fullCommand[fullCommand.length-6] = "/usr/bin/ssh";
-      fullCommand[fullCommand.length-5] = "-l";
-      fullCommand[fullCommand.length-4] = vm.getUserName();
-      fullCommand[fullCommand.length-3] = "-p";
       fullCommand[fullCommand.length-2] = Integer.toString(vm.getSshPort());
-      fullCommand[fullCommand.length-1] = dns;
-      Debug.debug("Connecting to "+dns, 1);
+      fullCommand[fullCommand.length-1] = vm.getUserName()+"@"+dns;
+      Debug.debug("Connecting to VM with "+MyUtil.arrayToString(fullCommand), 1);
+      (new ResThread(){
+        public void run(){
+          try{
+            MyUtil.showMessage("Login information", "To login, use the password "+vm.getPassword());
+          }
+          catch(Exception e){
+            GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not login to VM.", e);
+            e.printStackTrace();
+         }
+        }
+      }).start();
       (new LocalShell()).exec(fullCommand, null, null, stdout, stderr, 0, null);
     }
     catch(Exception e){

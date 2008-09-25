@@ -58,6 +58,7 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
       "Public DNS", "SSH key"};
   protected int dnsField = 5;
   protected int idField = 0;
+  protected int imIdField = 0;
   protected int stateField = 4;
   protected String runningString = "running";
  
