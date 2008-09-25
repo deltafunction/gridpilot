@@ -21,6 +21,7 @@ import gridpilot.MyUtil;
 public class NGScriptGenerator extends ScriptGenerator{
 
   String cpuTime = null;
+  String memory = null;
   String reRun = null;
   List localInputFilesList = null;
   List remoteInputFilesList = null;
@@ -32,6 +33,7 @@ public class NGScriptGenerator extends ScriptGenerator{
     configFile = GridPilot.getClassMgr().getConfigFile();
     csName = _csName;
     cpuTime = configFile.getValue(csName, "CPU time");
+    memory = configFile.getValue(csName, "Memory");
     reRun = configFile.getValue(csName, "Max rerun");
   }
 
@@ -97,6 +99,9 @@ public class NGScriptGenerator extends ScriptGenerator{
       //writeLine(bufXRSL,"(executables=\""+shortScriptName+"\")");
       if(cpuTime!=null && !cpuTime.equals("")){
         writeLine(bufXRSL,"(cpuTime=\""+cpuTime+"\")(*endCpu*)");
+      }
+      if(memory!=null && !memory.equals("")){
+        writeLine(bufXRSL,"(memory=\""+memory+"\")");
       }
       // Input files: scripts
       writeLine(bufXRSL,"(inputFiles=");

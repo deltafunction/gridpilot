@@ -17,6 +17,7 @@ import java.util.Vector;
 public class GLiteScriptGenerator extends ScriptGenerator {
 
   String cpuTime = null;
+  String memory = null;
   String reRun = null;
   List remoteInputFilesList = null;
   List lfcInputFilesList = null;
@@ -44,6 +45,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     jdlFileName = _jdlFileName;
     configFile = GridPilot.getClassMgr().getConfigFile();
     cpuTime = configFile.getValue(csName, "CPU time");
+    memory = configFile.getValue(csName, "Memory");
     reRun = configFile.getValue(csName, "Max rerun");
     vo = configFile.getValue(csName, "Virtual organization");
     replicaCatalog = configFile.getValue(csName, "ReplicaCatalog");
@@ -346,8 +348,10 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       
       // Various options
       writeLine(bufJdl, "DataAccessProtocol =  {\"rfio\", \"gsiftp\", \"gsidcap\"};");
-      writeLine(bufJdl, "Requirements = (other.GlueCEPolicyMaxCPUTime > "+cpuTime+") &&" +
-          " (other.GlueCEStateStatus == \"Production\");");
+      writeLine(bufJdl, "Requirements = (other.GlueCEPolicyMaxCPUTime >= "+cpuTime+")" +
+          " && (other.other.GlueHostMainMemoryRAMSize) >= "+memory+")" +
+          //" && (other.GlueCEStateStatus == \"Production\")"); +
+          ";");
       writeLine(bufJdl, "Rank = (-other.GlueCEStateEstimatedResponseTime);");
       writeLine(bufJdl, "VirtualOrganisation = \"" + vo + "\";");
       writeLine(bufJdl, "RetryCount  = 0;");

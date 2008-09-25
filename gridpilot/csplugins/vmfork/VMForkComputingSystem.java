@@ -43,9 +43,9 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     csName = _csName;
     virtEnforce = true;
     // Just some reasonable number
-    minVmMB = 512;
+    minVmMB = 256;
     // Just some reasonable number
-    defaultJobMB = 512;
+    defaultJobMB = 256;
     // Just some reasonable number (seconds)
     int bootTimeout = 120;
     defaultVmMB = minVmMB+defaultJobMB;
@@ -106,7 +106,8 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     catch(Exception e){
       user = System.getProperty("user.name").trim();
     }
-    vmMgr = new VMMgr(rteMgr, transferStatusUpdateControl, defaultVmMB, bootTimeout, localRteDir, logFile);
+    vmMgr = new VMMgr(rteMgr, transferStatusUpdateControl, /*Total memory assigned to VMs*/defaultVmMB,
+        bootTimeout, localRteDir, logFile);
     
     localRuntimeDBs = configFile.getValues(csName, "runtime databases");
 
@@ -210,6 +211,7 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     }
     ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     job.setExecutable(scriptFile);
+    job.setMemory(defaultJobMB);
     
     return ok;
     
