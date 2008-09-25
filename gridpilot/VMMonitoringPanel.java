@@ -294,7 +294,7 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
         }).start();
       }
     });
-    instanceTable.addMenuSeparator();
+    //instanceTable.addMenuSeparator();
     instanceTable.addMenuItem(miCopyDNS);
     instanceTable.addMenuItem(miCopyCredentials);
     instanceTable.addMenuItem(miRunShell);

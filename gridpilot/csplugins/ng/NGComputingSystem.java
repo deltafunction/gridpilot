@@ -183,6 +183,13 @@ public class NGComputingSystem implements MyComputingSystem{
       }
       GridPilot.splashShow("Finding authorized NG ARC resources...");
       resources = findAuthorizedResourcesFromIS();
+      Debug.debug("Found "+resources.length+" authorized ARC resources.", 1);
+      for(int i=0; i<resources.length; ++i){
+        Debug.debug("--> "+resources[i].getClusterName()+"--> "+resources[i].getQueueName(), 1);
+      }
+      if(resources.length==0){
+        MyUtil.showError("You are not not authorized to run jobs on any defined clusters.");
+      }
       ngSubmission = new NGSubmission(csName, resources);
     }
     else{

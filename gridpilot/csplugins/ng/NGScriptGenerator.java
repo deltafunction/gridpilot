@@ -20,13 +20,11 @@ import gridpilot.MyUtil;
 
 public class NGScriptGenerator extends ScriptGenerator{
 
-  String cpuTime = null;
-  String memory = null;
-  String reRun = null;
-  List localInputFilesList = null;
-  List remoteInputFilesList = null;
-  String csName = null;
-  ConfigFile configFile = null;
+  private String cpuTime = null;
+  private String memory = null;
+  private String reRun = null;
+  private String csName = null;
+  private ConfigFile configFile = null;
   
   public NGScriptGenerator(String _csName){
     super(GridPilot.getClassMgr().getLogFile(), false);
@@ -41,8 +39,8 @@ public class NGScriptGenerator extends ScriptGenerator{
   public List createXRSL(MyJobInfo job, String exeFileName, String xrslFileName, boolean join)
      throws IOException {
 
-    localInputFilesList = new Vector();
-    remoteInputFilesList = new Vector();
+    Vector localInputFilesList = new Vector();
+    Vector remoteInputFilesList = new Vector();
     StringBuffer bufXRSL = new StringBuffer();
     StringBuffer bufScript = new StringBuffer();
     String line = "";
@@ -340,6 +338,7 @@ public class NGScriptGenerator extends ScriptGenerator{
         ioe.printStackTrace();
         return null;
       }
+      Debug.debug("Will upload input files for job "+job.getIdentifier()+": "+MyUtil.arrayToString(localInputFilesList.toArray()), 2);
       return localInputFilesList;
     }
     catch(Exception ioe){
