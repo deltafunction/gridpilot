@@ -91,6 +91,8 @@ public class NGComputingSystem implements MyComputingSystem{
   private static MyLogFile logFile;
   private static boolean CONFIRM_RUN_DIR_CREATION = false;
   
+  // At least for now, we only have Linux resources on NorduGrid
+  public static final String OS = "Linux";
   
   public NGComputingSystem(String _csName){
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
@@ -188,7 +190,7 @@ public class NGComputingSystem implements MyComputingSystem{
         Debug.debug("--> "+resources[i].getClusterName()+"--> "+resources[i].getQueueName(), 1);
       }
       if(resources.length==0){
-        MyUtil.showError("You are not not authorized to run jobs on any defined clusters.");
+        MyUtil.showMessage("No authorization", "WARNING: You are not not authorized to run jobs on any defined NorduGrid/ARC clusters.");
       }
       ngSubmission = new NGSubmission(csName, resources);
     }
@@ -228,7 +230,7 @@ public class NGComputingSystem implements MyComputingSystem{
       }
       finalRuntimes = new HashSet();
       // At least for now, we only have Linux resources on NorduGrid
-      finalRuntimes.add("Linux");
+      finalRuntimes.add(OS);
       if(useInfoSystem){
         Object rte = null;
         for(int i=0; i<resources.length; ++i){
@@ -264,7 +266,7 @@ public class NGComputingSystem implements MyComputingSystem{
           try{
             // only create if there is not already a record with this name
             // and csName
-            if(dbPluginMgr.getRuntimeEnvironmentID(name, csName).equals("-1")){
+            if(dbPluginMgr.getRuntimeEnvironmentIDs(name, csName)==null){
               if(!dbPluginMgr.createRuntimeEnvironment(rtVals)){
                 finalRuntimes.remove(name);
               }
@@ -532,7 +534,7 @@ public class NGComputingSystem implements MyComputingSystem{
   public void cleanupRuntimeEnvironments(String csName){
     String runtimeName = null;
     String initText = null;
-    String id = "-1";
+    String[] ids = null;
     boolean ok = true;
     for(int ii=0; ii<runtimeDBs.length; ++ii){
       try{
@@ -547,15 +549,17 @@ public class NGComputingSystem implements MyComputingSystem{
           if(initText!=null && !initText.equals("")){
             continue;
           }
-          id = dbPluginMgr.getRuntimeEnvironmentID(runtimeName, csName);
-          if(!id.equals("-1")){
-            ok = dbPluginMgr.deleteRuntimeEnvironment(id);
+          ids = dbPluginMgr.getRuntimeEnvironmentIDs(runtimeName, csName);
+          if(ids!=null){
+            for(int i=0; i<ids.length; ++i){
+              ok = ok && dbPluginMgr.deleteRuntimeEnvironment(ids[i]);
+            }
           }
           else{
             ok = false;
           }
           if(!ok){
-            Debug.debug("WARNING: could not delete runtime environment " +
+            Debug.debug("WARNING: could not delete runtime environment(s) " +
                 runtimeName+" from database "+dbPluginMgr.getDBName(), 1);
           }
         }

@@ -80,6 +80,9 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private static String GLITE_STATUS_ERROR = "Error";
   private static String GLITE_STATUS_FAILED = "Failed";
   private static String GLITE_STATUS_RUNNING = "Running";
+  
+  // At least for now, we only have Linux resources on EGEE
+  public static final String OS = "Linux";
 
   public GLiteComputingSystem(String _csName){
     csName = _csName;
@@ -249,8 +252,8 @@ public class GLiteComputingSystem implements MyComputingSystem{
       e.printStackTrace();
     }
     
-    // At least for now, we only have Linux resources on NorduGrid
-    runtimes.add("Linux");
+    // At least for now, we only have Linux resources on EGEE
+    runtimes.add(OS);
     
     if(runtimes!=null && runtimes.size()>0){
       String name = null;
@@ -728,7 +731,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
   public void cleanupRuntimeEnvironments(String csName){
     String runtimeName = null;
     String initText = null;
-    String id = "-1";
+    String [] ids = null;
     boolean ok = true;
     for(int ii=0; ii<runtimeDBs.length; ++ii){
       try{
@@ -743,9 +746,11 @@ public class GLiteComputingSystem implements MyComputingSystem{
           /*if(initText!=null && !initText.equals("")){
             continue;
           }*/
-          id = dbPluginMgr.getRuntimeEnvironmentID(runtimeName, csName);
-          if(!id.equals("-1")){
-            ok = dbPluginMgr.deleteRuntimeEnvironment(id);
+          ids = dbPluginMgr.getRuntimeEnvironmentIDs(runtimeName, csName);
+          if(ids!=null){
+            for(int i=0; i<ids.length; ++i){
+              ok = ok && dbPluginMgr.deleteRuntimeEnvironment(ids[i]);
+            }
           }
           else{
             ok = false;

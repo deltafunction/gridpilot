@@ -1,10 +1,18 @@
 package gridpilot;
 
 import gridfactory.common.ConfirmBox;
+import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
+import gridfactory.common.JobInfo;
+import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
+import gridfactory.common.Shell;
 import gridfactory.common.TransferInfo;
+import gridfactory.common.TransferStatusUpdateControl;
+import gridfactory.common.Util;
+import gridfactory.common.jobrun.RTEInstaller;
+import gridfactory.common.jobrun.RTEMgr;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -1337,47 +1345,69 @@ public class MyUtil extends gridfactory.common.Util{
     */
   public static void syncRTEsFromCatalogs(String csName, String [] rteCatalogUrls, String [] localRuntimeDBs,
       HashMap toDeleteRtes){
+    
+    MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
+    
     if(rteCatalogUrls==null){
       return;
     }
+    
     DBPluginMgr localDBMgr = null;
+    
     RteRdfParser rteRdfParser = GridPilot.getClassMgr().getRteRdfParser(rteCatalogUrls);
-    String id = null;
-    String rteNameField = null;
-    String newId = null;
+    String rteNameField;
+    String [] newIds = null;
+    DBRecord row;
     Debug.debug("Syncing RTEs from catalogs to DBs: "+MyUtil.arrayToString(localRuntimeDBs), 2);
     for(int ii=0; ii<localRuntimeDBs.length; ++ii){
       try{
         localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);
+        
+        // Write the local OS as an RTE. This is just to make CSPluginMgr.submit happy
+        for(int i=0; i<localRuntimeDBs.length; ++i){
+          try{
+            localDBMgr.createRuntimeEnv(
+                new String [] {"name", "computingSystem"},
+                new String [] {LocalStaticShell.getOS(), csName});
+          }
+          catch(Exception e){
+            e.printStackTrace();
+            logFile.addMessage("WARNING: could not create RTE for local OS "+LocalStaticShell.getOS()+
+                " on "+csName, e);
+          }
+          String [] rteIds = GridPilot.getClassMgr().getDBPluginMgr(
+              localRuntimeDBs[i]).getRuntimeEnvironmentIDs(LocalStaticShell.getOS(), csName);
+          for(int j=0; j<rteIds.length; ++j){
+            toDeleteRtes.put(rteIds[i], localRuntimeDBs[i]);
+          }
+        }
+        
         DBResult rtes = rteRdfParser.getDBResult(localDBMgr, csName);
-        Debug.debug("Checking RTEs "+rtes.values.length, 3);
         for(int i=0; i<rtes.values.length; ++i){
-          Debug.debug("Checking RTE "+MyUtil.arrayToString(rtes.getRow(i).values), 3);
-          id = null;
-          // Check if RTE already exists
-          rteNameField = MyUtil.getNameField(localDBMgr.getDBName(), "runtimeEnvironment");
-          id = localDBMgr.getRuntimeEnvironmentID(
-              (String) rtes.getRow(i).getValue(rteNameField), csName);
-          if(id==null || id.equals("-1")){
-            if(localDBMgr.createRuntimeEnvironment(rtes.getRow(i).values)){
-              Debug.debug("Created RTE "+MyUtil.arrayToString(rtes.getRow(i).values), 2);
-              // Tag for deletion
-              String name = (String) rtes.getRow(i).getValue(rteNameField);
-              newId = localDBMgr.getRuntimeEnvironmentID(name , csName);
-              if(newId!=null && !newId.equals("-1")){
-                Debug.debug("Tagging for deletion "+name+":"+newId, 3);
-                toDeleteRtes.put(newId, localDBMgr.getDBName());
+          row = rtes.getRow(i);
+          Debug.debug("Checking RTE "+MyUtil.arrayToString(row.values), 3);
+          if(localDBMgr.createRuntimeEnvironment(row.values)){
+            Debug.debug("Created RTE "+MyUtil.arrayToString(row.values), 2);
+            // Tag for deletion
+            rteNameField = getNameField(localDBMgr.getDBName(), "runtimeEnvironment");
+            String name = (String) row.getValue(rteNameField);
+            newIds = localDBMgr.getRuntimeEnvironmentIDs(name , csName);
+            if(newIds!=null){
+              for(int j=0; j<newIds.length; ++j){
+                Debug.debug("Tagging for deletion "+name+":"+newIds[j], 3);
+                toDeleteRtes.put(newIds[j], localDBMgr.getDBName());
               }
             }
-            else{
-              Debug.debug("WARNING: Failed creating RTE "+MyUtil.arrayToString(rtes.getRow(i).values), 2);
-            }
+          }
+          else{
+            logFile.addMessage("WARNING: Failed creating RTE "+MyUtil.arrayToString(row.values)+
+                " on "+csName);
           }
         }
       }
       catch(Exception e){
         String error = "Could not load local runtime DB "+localRuntimeDBs[ii]+". "+e.getMessage();
-        GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+        logFile.addMessage(error, e);
         e.printStackTrace();
       }
     }
@@ -1426,7 +1456,7 @@ public class MyUtil extends gridfactory.common.Util{
   }
   
   public static String [] removeMyOS(String [] rtes){
-    String myOS = getMyOS();
+    String myOS = LocalStaticShell.getOS();
     String [] newRTEs;
     if(MyUtil.arrayContainsIgnoreCase(rtes, myOS)){
       newRTEs = new String[rtes.length-1];
@@ -1444,9 +1474,58 @@ public class MyUtil extends gridfactory.common.Util{
     }
     return newRTEs;
   }
-  
-  public static String getMyOS(){
-    return System.getProperty("os.name");
+
+  public static void setupJobRTEs(JobInfo job, Shell shell, RTEMgr rteMgr, TransferStatusUpdateControl transferStatusUpdateControl,
+      String remoteRteDir, String localRteDir) throws Exception{
+    String [] rteNames = job.getRTEs();
+    Vector<String> rtes = new Vector<String>();
+    Collections.addAll(rtes, rteNames);
+    Vector<String> deps = rteMgr.getRteDepends(rtes, job.getOpSys());
+    RTEInstaller rteInstaller = null;
+    String url = null;
+    String mountPoint = null;
+    String name = null;
+    String os = null;
+    boolean osEntry = true;
+    Debug.debug("Setting up RTEs "+Util.arrayToString(deps.toArray()), 2);
+    for(Iterator<String> it=deps.iterator(); it.hasNext();){
+      // The first dependency returned by getRteDepends is the OS; skip it. The fact
+      // that the job landed on that system means it matches.
+      if(osEntry){
+        os = it.next();
+        osEntry = false;
+        if(!it.hasNext()){
+          break;
+        }
+      }
+      name = it.next();
+      // Check if installation was already done.
+      // This we need, because GridPilot's HTTPSFileTransfer does not cache.
+      // GridFactory's does.
+      if(shell.existsFile(remoteRteDir+"/"+name+"/"+RTEInstaller.INSTALL_OK_FILE)){
+        GridPilot.getClassMgr().getLogFile().addInfo("Reusing existing installation of "+name);
+        return;
+      }
+      url = rteMgr.getRteURL(name, os);
+      mountPoint = rteMgr.getRteMountPoint(name, os);
+      rteInstaller = new RTEInstaller(url, remoteRteDir, localRteDir, mountPoint, name, shell,
+          transferStatusUpdateControl, GridPilot.getClassMgr().getLogFile());
+      rteInstaller.install();
+    }
   }
 
+  public static void checkAndActivateSSL(String[] urls){
+    for(int i=0; i<urls.length; ++i){
+      if(urls[i].toLowerCase().startsWith("https://")){
+        try{
+          GridPilot.getClassMgr().getSSL().activateSSL();
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not activate SSL.");
+        }
+        break;
+      }
+    }
+  }
 }

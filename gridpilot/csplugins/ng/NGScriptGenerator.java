@@ -240,7 +240,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       if(uses!=null && uses.length>0 && uses[0]!=null){
         for(int i=0; i<uses.length; ++i){
           // At least for now, we only have Linux resources on NorduGrid
-          if(uses[i].equals("Linux")){
+          if(uses[i].equals(NGComputingSystem.OS)){
             continue;
           }
           writeLine(bufXRSL, "(runTimeEnvironment="+MyUtil.dos2unix(uses[i])+")");

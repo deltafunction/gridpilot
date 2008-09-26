@@ -24,6 +24,7 @@ public class DatasetCreator{
   private DBPluginMgr dbPluginMgr;
   private String [] datasetTransformationReference;
   private String [] datasetTransformationVersionReference;
+  private String datasetIdentifier = "identifier";
   public boolean anyCreated = false;
 
   public DatasetCreator(  StatusBar _statusBar,
@@ -42,7 +43,7 @@ public class DatasetCreator{
     datasetIDs =  _datasetIDs;
     targetDB = _targetDB;
     dbPluginMgr = _dbPluginMgr;
-    
+    datasetIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
     datasetTransformationReference =
       MyUtil.getDatasetTransformationReference(dbPluginMgr.getDBName());
     datasetTransformationVersionReference =
@@ -102,7 +103,7 @@ public class DatasetCreator{
             else if(cstAttrNames[j].equalsIgnoreCase("inputDB")){
               resCstAttr[j] = dbPluginMgr.getDBName();
             }
-            else if(cstAttrNames[j].equalsIgnoreCase("identifier") ||
+            else if(cstAttrNames[j].equalsIgnoreCase(datasetIdentifier) ||
                 cstAttrNames[j].equalsIgnoreCase("percentageValidatedFiles") ||
                 cstAttrNames[j].equalsIgnoreCase("percentageFailedFiles ") ||
                 //cstAttrNames[j].equalsIgnoreCase("totalFiles") ||

@@ -40,8 +40,6 @@ import gridfactory.common.ResThread;
 
 import gridpilot.Database;
 import gridpilot.GridPilot;
-
-import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
 public class ATLASDatabase extends DBCache implements Database{
@@ -2649,8 +2647,8 @@ public class ATLASDatabase extends DBCache implements Database{
     return null;
   }
 
-  public String getRuntimeEnvironmentID(String name, String cs){
-    return "-1";
+  public String [] getRuntimeEnvironmentIDs(String name, String cs){
+    return null;
   }
 
   public DBRecord getRuntimeEnvironment(String runtimeEnvironmentID){

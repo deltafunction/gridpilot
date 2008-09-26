@@ -663,9 +663,9 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String getRuntimeEnvironmentID(final String name, final String cs){
+  public String [] getRuntimeEnvironmentIDs(final String name, final String cs){
     ResThread t = new ResThread(){
-      String res = "-1";
+      String [] res = null;
       public void requestStop(){
         db.requestStop();
       }
@@ -674,7 +674,7 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
-          res = db.getRuntimeEnvironmentID(name, cs);
+          res = db.getRuntimeEnvironmentIDs(name, cs);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
@@ -682,7 +682,7 @@ public class DBPluginMgr extends DBCache implements Database{
                              name+":"+cs, t);
         }
       }
-      public String getStringRes(){
+      public String [] getString2Res(){
         return res;
       }
     };
@@ -690,10 +690,10 @@ public class DBPluginMgr extends DBCache implements Database{
     t.start();
   
     if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironmentID")){
-      return t.getStringRes();
+      return t.getString2Res();
     }
     else{
-      return "-1";
+      return null;
     }
   }
 

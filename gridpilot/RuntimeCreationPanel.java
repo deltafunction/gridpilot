@@ -41,7 +41,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
     editing = _editing;
     panel = _panel;
     table = panel.getTable();
-    packIdentifier = "identifier";
+    packIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "runtimeEnvironment");
     cstAttributesNames = dbPluginMgr.getFieldNames("runtimeEnvironment");
     Debug.debug("Got field names: "+MyUtil.arrayToString(cstAttributesNames),3);
     cstAttr = new String[cstAttributesNames.length];

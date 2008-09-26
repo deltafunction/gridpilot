@@ -360,8 +360,8 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       // Runtime environments
       if(uses!=null && uses.length>0 && uses[0]!=null){
         for(int i=0; i<uses.length; ++i){
-          // At least for now, we only have Linux resources on LCG
-          if(uses[i].equals("Linux")){
+          // At least for now, we only have Linux resources on EGEE
+          if(uses[i].equals(GLiteComputingSystem.OS)){
             continue;
           }
           writeLine(bufJdl,"Requirements = Member(\""+MyUtil.dos2unix(uses[i])+"\", " +

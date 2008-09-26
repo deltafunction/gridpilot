@@ -23,19 +23,8 @@ public class RteRdfParser {
   
   public RteRdfParser(String [] _urls){
     catalogURLs = _urls;
-    for(int i=0; i<catalogURLs.length; ++i){
-      if(catalogURLs[i].toLowerCase().startsWith("https://")){
-        try{
-          GridPilot.getClassMgr().getSSL().activateSSL();
-        }
-        catch(Exception e){
-          e.printStackTrace();
-          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not activate SSL.");
-        }
-        break;
-      }
-    }
-    rteCatalog = new RTECatalog(_urls, null);
+    MyUtil.checkAndActivateSSL(catalogURLs);
+    rteCatalog = new RTECatalog(catalogURLs, null);
   }
   
   /**
@@ -44,6 +33,33 @@ public class RteRdfParser {
    */
   public RTECatalog getRteCatalog(){
     return rteCatalog;
+  }
+  
+  private DBRecord mkRecFromMetaPackage(String[] fields, String nameField, String csName, MetaPackage pack) throws Exception{
+    DBRecord rec = new DBRecord(fields, new String [fields.length]);
+    rec.setValue(nameField,  pack.name);
+    if(pack.provides!=null && pack.provides.length>0){
+      rec.setValue("provides", (rec.getValue("provides")==null?"":rec.getValue("provides"))+
+          (MyUtil.arrayToString(pack.provides)));
+    }
+    // We add tags, labels and VirtualMachine.os to the 'provides' field to improve chances of
+    // matching a required RTE. TODO: reconsider
+    if(pack.virtualMachine!=null && pack.virtualMachine.os!=null){
+      rec.setValue("provides", (rec.getValue("provides")==null?"":rec.getValue("provides"))+
+          pack.virtualMachine.os);
+    }
+    if(pack.tags!=null && pack.tags.length>0){
+      rec.setValue("provides", (rec.getValue("provides")==null?"":rec.getValue("provides"))+
+          (MyUtil.arrayToString(pack.tags)));
+    }
+    if(pack.labels!=null && pack.labels.length>0){
+      rec.setValue("provides", (rec.getValue("provides")==null?"":rec.getValue("provides"))+
+          (MyUtil.arrayToString(pack.labels)));
+    }
+    rec.setValue("lastModified", pack.lastupdate);
+    rec.setValue("computingSystem", csName);
+    rec.setValue("url", "");
+    return rec;
   }
   
   /**
@@ -71,23 +87,12 @@ public class RteRdfParser {
     String dep;
     for(Iterator it=rteCatalog.getMetaPackages().iterator(); it.hasNext();){
       pack = (MetaPackage) it.next();
-      Debug.debug("Adding metaPackage "+pack.name+" with "+pack.instances.length+
-          " instance(s)", 2);
-      DBRecord rec = new DBRecord(fields, new String [fields.length]);
+      Debug.debug("Adding metaPackage "+pack.name, 2);
+
       try{
-        rec.setValue(MyUtil.getNameField(dbpluginMgr.getDBName(), "runtimeEnvironment"),
-            pack.name);
-        if(pack.provides!=null && pack.provides.length>0){
-          rec.setValue("provides", MyUtil.arrayToString(pack.provides));
-        }
-        if(pack.tags!=null && pack.tags.length>0){
-          rec.setValue("provides", (rec.getValue("provides")==null?"":rec.getValue("provides"))+
-              MyUtil.arrayToString(pack.provides));
-        }
-        rec.setValue("lastModified", pack.lastupdate);
-        rec.setValue("computingSystem", csName);
-        rec.setValue("url", "");
         for(int j=0; j<pack.instances.length; ++j){
+          DBRecord rec = mkRecFromMetaPackage(fields, MyUtil.getNameField(dbpluginMgr.getDBName(), "runtimeEnvironment"),
+              csName, pack);
           tarPack = rteCatalog.getInstancePackage(pack.instances[j]);
           if(tarPack!=null){
             // We always depend on the base system
@@ -123,7 +128,8 @@ public class RteRdfParser {
               Debug.debug("Skipping record (no URL): "+rec, 2);
             }
             else{
-              Debug.debug("Adding record: "+records.size()+" --> "+rec, 2);
+              Debug.debug("Adding record: "+records.size()+" --> "+MyUtil.arrayToString(rec.fields)+
+                  " --> "+MyUtil.arrayToString(rec.values, "', '"), 2);
               records.add(rec);
             }
             

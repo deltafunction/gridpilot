@@ -26,7 +26,7 @@ import gridpilot.csplugins.fork.ForkScriptGenerator;
 public class ForkPoolComputingSystem extends ForkComputingSystem implements MyComputingSystem {
 
   // One ShellMgr per host
-  protected HashMap remoteShellMgrs = null;
+  protected HashMap<String, Shell> remoteShellMgrs = null;
   protected String [] hosts = null;
   protected String [] maxJobs = null;
   protected HashMap submittingHostJobs = null;

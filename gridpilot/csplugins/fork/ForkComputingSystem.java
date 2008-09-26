@@ -16,11 +16,12 @@ import java.util.Vector;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.DBRecord;
+import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LogFile;
 import gridfactory.common.Shell;
-import gridfactory.common.jobrun.RTEInstaller;
+import gridfactory.common.jobrun.RTEMgr;
 import gridfactory.common.jobrun.VirtualMachine;
 
 import gridpilot.MyComputingSystem;
@@ -32,6 +33,8 @@ import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
 public class ForkComputingSystem implements MyComputingSystem{
+  
+  private RTEMgr rteMgr;
 
   protected String [] env = {
     "STATUS_WAIT="+MyJobInfo.STATUS_READY,
@@ -140,6 +143,8 @@ public class ForkComputingSystem implements MyComputingSystem{
     //if(shellMgr.isLocal() && transformationDirectory!=null && transformationDirectory.startsWith("~")){
     //  transformationDirectory = System.getProperty("user.home")+transformationDirectory.substring(1);
     //}
+    MyUtil.checkAndActivateSSL(rteCatalogUrls);
+    rteMgr = new RTEMgr(runtimeDirectory, rteCatalogUrls, logFile, transferControl);
   }
   
   protected String runDir(JobInfo job){
@@ -184,46 +189,13 @@ public class ForkComputingSystem implements MyComputingSystem{
   /**
    * Scan runtime environment directory for runtime environment setup scripts;
    * register the found RTEs in local database with computing system cs;
-   * register them in remote database (if defined) with computing system "GPSS".
    * @param localDBMgr Local DBPluginMgr
    * @param remoteDBMgr Remote DBPluginMgr
    * @param cs Computing system name
    */
   protected void scanRTEDir(DBPluginMgr localDBMgr, DBPluginMgr remoteDBMgr,
       String cs, Shell mgr){
-
-    if(mgr.isLocal() &&
-        System.getProperty("os.name").toLowerCase().startsWith("linux") ||
-        // remote shells always run on Linux
-        !mgr.isLocal()){
-      Debug.debug("Setting up Linux runtime environment.", 3);
-      try{
-        try{
-          if(!mgr.existsFile(runtimeDirectory)){
-            mgr.mkdirs(runtimeDirectory);
-          }
-        }
-        catch(Exception e){
-          logFile.addMessage("ERROR: could not create runtimeDirectory "+runtimeDirectory+" with ShellMgr on "+mgr.getHostName(), e);
-          return;
-        }    
-        String filePath = null;
-        filePath = runtimeDirectory+"/"+"Linux";
-        if(!mgr.existsFile(filePath)){
-          Debug.debug("Writing "+filePath, 3);
-          mgr.writeFile(filePath, "# This is a dummy runtime environment" +
-                " description file. Its presence just means that we are running on Linux.", false);
-        }
-      }
-      catch(Exception e){
-        logFile.addMessage("WARNING: Could not create Linux runtime environment file",
-            e);
-      }
-    }
-    
-    String name = null;
-    String deps = "";
-    
+    String name = null;   
     HashSet runtimes = mgr.listFilesRecursively(runtimeDirectory);
     String [] expandedRuntimeDirs = mgr.listFiles(MyUtil.clearFile(runtimeDirectory));
     String dirName = null;
@@ -262,6 +234,15 @@ public class ForkComputingSystem implements MyComputingSystem{
             mgr.isDirectory(name) || name.matches(".*/pkg/.*") || name.matches(".*/data/.*") || name.matches(".*/control/.*")){
           continue;
         }
+        // the first dependency is the OS
+        String deps;
+        try{
+          deps = mgr.getOS()+(mgr.getProvides()==null?"":(" "+MyUtil.arrayToString(mgr.getProvides())));
+        }
+        catch(Exception e1){
+          deps = "";
+          e1.printStackTrace();
+        }        
         // Read dependencies from the file.
         // The notation is:
         // # ARC_RTE_DEP=<RTE name 1>
@@ -275,9 +256,7 @@ public class ForkComputingSystem implements MyComputingSystem{
           String depPattern = "^\\S*#\\sARC_RTE_DEP=([^#]+).*";
           while((line=in.readLine())!=null){
             if(line.matches(depPattern)){
-              if(deps.length()>0){
-                deps += " ";
-              }
+              deps += " ";
               deps += line.replaceFirst(depPattern, "$1");
             }
           }
@@ -291,7 +270,7 @@ public class ForkComputingSystem implements MyComputingSystem{
         if(name!=null && name.length()>0){
           // Write the entry in the local DB
           Debug.debug("Writing RTE "+name+" in local DB "+localDBMgr.getDBName(), 3);
-          createRTE(localDBMgr, name, cs, deps, null, null);
+          createLocalRTE(localDBMgr, name, cs, deps);
         }
       }
     }
@@ -362,8 +341,8 @@ public class ForkComputingSystem implements MyComputingSystem{
     return cert;
   }
   
-  protected void createRTE(DBPluginMgr dbPluginMgr, String name, String csName,
-      String depends, String cert, String url){
+  private void createLocalRTE(DBPluginMgr dbPluginMgr, String name, String csName,
+      String depends){
     if(dbPluginMgr==null){
       return;
     }
@@ -384,17 +363,11 @@ public class ForkComputingSystem implements MyComputingSystem{
       if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
         rtVals[i] = name;
       }
-      else if(runtimeEnvironmentFields[i].equalsIgnoreCase("url") && url!=null){
-        rtVals[i] = url;
-      }
       else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
         rtVals[i] = csName;
       }
       else if(runtimeEnvironmentFields[i].equalsIgnoreCase("depends") && depends!=null){
         rtVals[i] = depends;
-      }
-      else if(runtimeEnvironmentFields[i].equalsIgnoreCase("certificate") && cert!=null){
-        rtVals[i] = cert;
       }
       else{
         rtVals[i] = "";
@@ -404,7 +377,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     String rtId = null;
     if(dbPluginMgr!=null){
       try{
-        rtId = dbPluginMgr.getRuntimeEnvironmentID(name, csName);
+        rtId = getLocalRuntimeEnvironmentID(dbPluginMgr, name, depends);
         if(rtId!=null && !rtId.equals("-1")){
           rteExists = true;
         }
@@ -426,10 +399,24 @@ public class ForkComputingSystem implements MyComputingSystem{
       }
     }
     // tag for deletion in any case
-    rtId = dbPluginMgr.getRuntimeEnvironmentID(name, csName);
+    rtId = getLocalRuntimeEnvironmentID(dbPluginMgr, name, depends);
     toDeleteRTEs.put(rtId, dbPluginMgr.getDBName());
   }
   
+  private String getLocalRuntimeEnvironmentID(DBPluginMgr dbPluginMgr, String name, String depends) {
+    DBResult rtes = dbPluginMgr.getRuntimeEnvironments();
+    DBRecord row;
+    for(int i=0; i<rtes.values.length; ++i){
+      row = rtes.getRow(i);
+      if(csName.equalsIgnoreCase((String) row.getValue("computingSystem")) &&
+          name.equalsIgnoreCase((String) row.getValue(MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "name"))) &&
+          depends.equalsIgnoreCase((String) row.getValue("depends"))){
+        return (String) row.getValue(MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "runtimeEnvironment"));
+      }
+    }
+    return null;
+  }
+
   public boolean submit(JobInfo job){
     final String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
     final String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";
@@ -854,102 +841,16 @@ public class ForkComputingSystem implements MyComputingSystem{
    * @return false if a required RTE is not present and could not be downloaded.
    */
   protected boolean setupJobRTEs(MyJobInfo job, Shell shell){
-    if(runtimeDirectory==null || runtimeDirectory.length()==0 ||
-        !shell.existsFile(runtimeDirectory)){
-      logFile.addMessage("ERROR: could not download RTE to "+runtimeDirectory);
+    try{
+      MyUtil.setupJobRTEs(job, shell, rteMgr,
+          GridPilot.getClassMgr().getTransferStatusUpdateControl(),
+          runtimeDirectory, runtimeDirectory);
+      return true;
+    }
+    catch(Exception e){
+      e.printStackTrace();
       return false;
     }
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    String jobDefId = job.getIdentifier();
-    String transID = dbPluginMgr.getJobDefTransformationID(jobDefId);
-    DBRecord transformation = dbPluginMgr.getTransformation(transID);
-    String rteNamesString = (String) transformation.getValue(
-        MyUtil.getTransformationRuntimeReference(job.getDBName())[1]);
-    String [] rteNames = MyUtil.split(rteNamesString);
-    String rteId = null;
-    DBRecord rteRecord = null;
-    RTEInstaller rteInstaller = null;
-    String url = null;
-    String mountPoint = null;
-    String [] deps = new String [0];
-    String rteName = null;
-    for(int i=0; i<rteNames.length; ++i){
-      try{
-        rteId = dbPluginMgr.getRuntimeEnvironmentID(rteNames[i], job.getCSName());
-        if(rteId==null || rteId.equals("") || rteId.equals("-1")){
-          logFile.addMessage("runtimeEnvironment "+rteNames[i]+" not found for computing system "+job.getCSName());
-          return false;
-        }
-        rteRecord = dbPluginMgr.getRuntimeEnvironment(rteId);
-        String depsStr = (String) rteRecord.getValue("depends");
-        if(depsStr!=null && !depsStr.equals("")){
-          deps = MyUtil.splitUrls((String) rteRecord.getValue("depends"));
-        }
-        for(int j=0; j<deps.length+1; ++j){
-          // First see if the dependencies are there or will install.
-          // Then, install the RTE.
-          if(j==deps.length){
-            rteName = rteNames[i];
-          }
-          else{
-            rteName = deps[i];
-          }
-          rteId = dbPluginMgr.getRuntimeEnvironmentID(rteName, job.getCSName());
-          if(rteId==null || rteId.equals("") || rteId.equals("-1")){
-            logFile.addMessage("runtimeEnvironment "+rteNames[i]+" not found for computing system "+job.getCSName());
-            return false;
-          }
-          if(toDeleteRTEs.containsKey(rteId)){
-            // RTE comes from local RTE dir (DB record written on initialization). If this shell is not local,
-            // Copy "Linux" RTE file to remote host. Others are problematic as there is no way to
-            // tell where all their files are from the setup script.
-            // DROPPED: Better to switch completely to Janitor RTEs.
-            /*if(!shellMgr.isLocal() && rteName.equalsIgnoreCase("Linux")){
-              try{
-                shellMgr.upload(runtimeDirectory+"/"+rteName, runtimeDirectory+"/"+rteName);
-              }
-              catch(Exception e){
-                e.printStackTrace();
-              }
-            }*/
-            continue;
-          }
-          rteRecord = dbPluginMgr.getRuntimeEnvironment(rteId);
-          url = (String) rteRecord.getValue("url");
-          // TODO: introduce mountPoint in runtimeEnvironment table.
-          // Currently this will be null.
-          mountPoint = (String) rteRecord.getValue("mountPoint");
-          if(url!=null && !url.equals("null") && !url.equals("")){
-            // Notice that we use the same directory to keep RTEs on both the local host and the (remote)
-            // shell host
-            //rteInstaller = new MyRTEInstaller(url, runtimeDirectory, runtimeDirectory, rteNames[i], shell);
-            rteInstaller = new RTEInstaller(url, runtimeDirectory, runtimeDirectory, mountPoint, rteNames[i], shell,
-                GridPilot.getClassMgr().getTransferStatusUpdateControl(), logFile);
-            try{
-              rteInstaller.install();
-            }
-            catch(Exception e){
-              e.printStackTrace();
-              logFile.addInfo("ERROR: RTE "+rteNames[i]+" could not be installed. " +
-                  "Presumably it is already installed. Trying to run job...");
-              //return false;
-            }
-          }
-          // If there's no URL the RTE is a local one
-          /*else{
-            logFile.addMessage("ERROR: RTE "+rteNames[i]+" cannot be installed " +
-                  "dynamically; no URL found.");
-            return false;
-          }*/
-        }
-      }
-      catch(Exception e){
-        logFile.addMessage("ERROR: could not install RTE "+rteNames[i], e);
-        e.printStackTrace();
-        return false;
-      }
-    }
-    return true;
   }
 
   /**

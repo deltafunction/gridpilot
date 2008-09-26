@@ -29,7 +29,7 @@ public interface Database{
   // ####### RuntimeEnvironment table
   public String [] getRuntimeEnvironments(String jobDefID) throws InterruptedException;
   public DBResult getRuntimeEnvironments() throws InterruptedException;
-  public String getRuntimeEnvironmentID(String name, String cs) throws InterruptedException;
+  public String [] getRuntimeEnvironmentIDs(String name, String cs) throws InterruptedException;
   public DBRecord getRuntimeEnvironment(String runtimeEnvironmentID) throws InterruptedException;
   public String getRuntimeInitText(String pack, String cluster) throws InterruptedException;
   public boolean createRuntimeEnvironment(Object [] values) throws InterruptedException;

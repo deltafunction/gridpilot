@@ -429,7 +429,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     Vector textFields = getTextFields();
 
     for(int i =0; i<textFields.size(); ++i)
-    if(!(cstAttributesNames[i].equalsIgnoreCase("identifier"))){
+    if(!(cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier))){
       ((JTextComponent) textFields.get(i)).setText("");
     }
   }

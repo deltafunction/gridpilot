@@ -2,18 +2,13 @@ package gridpilot.csplugins.vmfork;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Vector;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.Shell;
-import gridfactory.common.Util;
 import gridfactory.common.jobrun.ForkComputingSystem;
-import gridfactory.common.jobrun.RTEInstaller;
 import gridfactory.common.jobrun.RTEMgr;
 import gridfactory.common.jobrun.VMMgr;
 import gridpilot.DBPluginMgr;
@@ -120,40 +115,7 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
 }
   
   protected void setupJobRTEs(JobInfo job, Shell shell) throws Exception{
-    String [] rteNames = job.getRTEs();
-    Vector<String> rtes = new Vector<String>();
-    Collections.addAll(rtes, rteNames);
-    Vector<String> deps = rteMgr.getRteDepends(rtes, job.getOpSys());
-    RTEInstaller rteInstaller = null;
-    String url = null;
-    String mountPoint = null;
-    String name = null;
-    String os = null;
-    boolean osEntry = true;
-    Debug.debug("Setting up RTEs "+Util.arrayToString(deps.toArray()), 2);
-    for(Iterator<String> it=deps.iterator(); it.hasNext();){
-      // The first dependency is the OS; skip it. The fact
-      // that the job landed on this system means it matches.
-      if(osEntry){
-        os = it.next();
-        osEntry = false;
-        if(!it.hasNext()){
-          break;
-        }
-      }
-      name = it.next();
-      // Check if installation was already done.
-      // This we need, because GridPilot's HTTPSFileTransfer does not cache.
-      // GridFactory's does.
-      if(shell.existsFile(remoteRteDir+"/"+name+"/"+RTEInstaller.INSTALL_OK_FILE)){
-        logFile.addInfo("Reusing existing installation of "+name);
-        return;
-      }
-      url = rteMgr.getRteURL(name, os);
-      mountPoint = rteMgr.getRteMountPoint(name, os);
-      rteInstaller = new RTEInstaller(url, remoteRteDir, localRteDir, mountPoint, name, shell, transferStatusUpdateControl, logFile);
-      rteInstaller.install();
-    }
+    MyUtil.setupJobRTEs(job, shell, rteMgr, transferStatusUpdateControl, remoteRteDir, localRteDir);
   }
   
   protected void updateStatus(JobInfo job, Shell shell){
@@ -220,17 +182,6 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
   public void setupRuntimeEnvironments(String csName) {
     if(localRuntimeDBs==null || localRuntimeDBs.length==0){
       return;
-    }
-    for(int i=0; i<localRuntimeDBs.length; ++i){
-      try{
-        GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[i]).createRuntimeEnv(
-            new String [] {"name", "computingSystem"}, new String [] {MyUtil.getMyOS(), csName});
-      }
-      catch(Exception e){
-        e.printStackTrace();
-      }
-      String rteId = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[i]).getRuntimeEnvironmentID(MyUtil.getMyOS(), csName);
-      toDeleteRtes.put(rteId, localRuntimeDBs[i]);
     }
     MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes);
   }

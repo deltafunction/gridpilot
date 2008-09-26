@@ -276,13 +276,16 @@ public class CSPluginMgr implements MyComputingSystem{
     String[] rtes = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()
        ).getRuntimeEnvironments(job.getIdentifier());
     
-    String id;
+    String [] ids;
     boolean ok;
     DBResult allRtes;
     for(int i=0; i<rtes.length; ++i){
-      id = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()
-         ).getRuntimeEnvironmentID(rtes[i], ((MyJobInfo) job).getCSName());
-      if(id==null || id.equals("-1")){
+      // This is just a rough check: although all RTEs may be available
+      //                             for a given CS, they may be available
+      //                             on different OS'es.
+      ids = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()
+         ).getRuntimeEnvironmentIDs(rtes[i], ((MyJobInfo) job).getCSName());
+      if(ids==null){
         ok = false;
         allRtes = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()
           ).getRuntimeEnvironments();
@@ -294,7 +297,7 @@ public class CSPluginMgr implements MyComputingSystem{
         }
         if(!ok){
           throw new IOException("Runtime environment "+rtes[i]+" not found. "+((MyJobInfo) job).getCSName()+
-              ":"+((MyJobInfo) job).getDBName()+":"+id);
+              ":"+((MyJobInfo) job).getDBName());
         }
       }
     }

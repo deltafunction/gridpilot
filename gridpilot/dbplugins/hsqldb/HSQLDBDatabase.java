@@ -551,13 +551,13 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
   }
 
-  public synchronized String getRuntimeEnvironmentID(String name, String cs){
+  public synchronized String [] getRuntimeEnvironmentIDs(String name, String cs){
     String nameField = MyUtil.getNameField(dbName, "runtimeEnvironment");
     String idField = MyUtil.getIdentifierField(dbName, "runtimeEnvironment");
     String req = "SELECT "+idField+" from runtimeEnvironment where "+nameField+" = '"+name + "'"+
     " AND computingSystem = '"+cs+"'";
     String id = null;
-    Vector vec = new Vector();
+    Vector<String> vec = new Vector<String>();
     try{
       Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
@@ -579,17 +579,17 @@ public class HSQLDBDatabase extends DBCache implements Database{
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
       error = e.getMessage();
-      return "-1";
+      return null;
     }
     if(vec.size()>1){
       Debug.debug("WARNING: More than one ("+vec.size()+
           ") runtimeEnvironment found with name:cs "+name+":"+cs, 1);
     }
     if(vec.size()==0){
-      return "-1";
+      return null;
     }
     else{
-      return (String) vec.get(0);
+      return vec.toArray(new String [vec.size()]);
     }
   }
 
@@ -710,12 +710,13 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
 
  public String getRuntimeInitText(String runTimeEnvironmentName, String csName) throws InterruptedException{
-     String id = getRuntimeEnvironmentID(runTimeEnvironmentName, csName);
-     if(id==null){
-       return null;
-     }
-     String initTxt = (String) getRuntimeEnvironment(id).getValue("initLines");
-     return initTxt;
+   String [] rtes = getRuntimeEnvironmentIDs(runTimeEnvironmentName, csName);
+   if(rtes==null||rtes.length==0){
+     return null;
+   }
+   String id = rtes[0];
+   String initTxt = (String) getRuntimeEnvironment(id).getValue("initLines");
+   return initTxt;
   }
 
   public synchronized String getJobDefTransformationID(String jobDefinitionID) throws InterruptedException{
