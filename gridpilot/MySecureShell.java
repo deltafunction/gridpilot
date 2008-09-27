@@ -154,7 +154,7 @@ public class MySecureShell extends SecureShell{
         maxChannels = Integer.parseInt(
             configFile.getValue("Computing systems", "maximum simultaneous submissions"))+
         Integer.parseInt(
-            configFile.getValue("GridPilot", "maximum simultaneous checking"))+
+            configFile.getValue(GridPilot.topConfigSection, "maximum simultaneous checking"))+
             Integer.parseInt(
                 configFile.getValue("Computing systems", "maximum simultaneous validating"));
       }

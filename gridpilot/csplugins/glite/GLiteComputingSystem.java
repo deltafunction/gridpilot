@@ -89,7 +89,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
     logFile = GridPilot.getClassMgr().getLogFile();
     configFile = GridPilot.getClassMgr().getConfigFile();
     transferControl = GridPilot.getClassMgr().getTransferControl();
-    defaultUser = configFile.getValue("GridPilot", "Default user");
+    defaultUser = configFile.getValue(GridPilot.topConfigSection, "Default user");
     unparsedWorkingDir= configFile.getValue(csName, "Working directory");
     if(unparsedWorkingDir==null || unparsedWorkingDir.equals("")){
       unparsedWorkingDir = "~";
@@ -712,7 +712,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
     // Delete the local run directory
     String runDir = runDir(job);
     try{
-      Debug.debug("Deleting runtime directory "+runDir, 2);
+      Debug.debug("Deleting run directory "+runDir, 2);
       LocalStaticShell.deleteDir(runDir);
     }
     catch(Exception e){

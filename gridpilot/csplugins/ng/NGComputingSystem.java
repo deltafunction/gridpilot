@@ -116,7 +116,7 @@ public class NGComputingSystem implements MyComputingSystem{
 
     logFile = GridPilot.getClassMgr().getLogFile();  
     
-    defaultUser = configFile.getValue("GridPilot", "Default user");
+    defaultUser = configFile.getValue(GridPilot.topConfigSection, "Default user");
     String useInfoSys = configFile.getValue(csName, "Use information system");
     useInfoSystem = useInfoSys.equalsIgnoreCase("true") || useInfoSys.equalsIgnoreCase("yes");
     clusters = configFile.getValues(csName, "clusters");
@@ -515,7 +515,7 @@ public class NGComputingSystem implements MyComputingSystem{
     // Delete the local run directory
     String runDir = runDir(job);
     try{
-      Debug.debug("Deleting runtime directory "+runDir, 2);
+      Debug.debug("Deleting run directory "+runDir, 2);
       LocalStaticShell.deleteDir(runDir);
     }
     catch(Exception e){

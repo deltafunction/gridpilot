@@ -57,8 +57,8 @@ public class JobValidation{
       logFile.addMessage(configFile.getMissingMessage("Computing systems", "delay before validation") + "\n" +
                          "Default value = " + delayBeforeValidation);
     }
-    errorPatterns = configFile.getValues("GridPilot", "validation error patterns");
-    errorAntiPatterns = configFile.getValues("GridPilot", "validation error anti patterns");
+    errorPatterns = configFile.getValues(GridPilot.topConfigSection, "validation error patterns");
+    errorAntiPatterns = configFile.getValues(GridPilot.topConfigSection, "validation error anti patterns");
   }
 
   /**

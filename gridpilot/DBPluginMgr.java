@@ -95,7 +95,7 @@ public class DBPluginMgr extends DBCache implements Database{
    */
   public void loadValues(){
     // default timeout  
-    String tmp = configFile.getValue("GridPilot", "db timeout");
+    String tmp = configFile.getValue(GridPilot.topConfigSection, "db timeout");
     if(tmp!=null){
       try{
         dbTimeOut = new Integer(tmp).intValue();

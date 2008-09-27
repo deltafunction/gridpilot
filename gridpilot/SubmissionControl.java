@@ -144,7 +144,7 @@ public class SubmissionControl{
     Debug.debug("Setting time between submissions "+timeBetweenSubmissions, 3);
     timer.setInitialDelay(0);
     timer.setDelay(timeBetweenSubmissions);
-    String resourcesPath = configFile.getValue("GridPilot", "resources");
+    String resourcesPath = configFile.getValue(GridPilot.topConfigSection, "resources");
     if(resourcesPath!=null && !resourcesPath.endsWith("/"))
       resourcesPath += "/";
     URL imgURL=null;

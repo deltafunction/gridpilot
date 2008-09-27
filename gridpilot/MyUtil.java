@@ -1528,4 +1528,14 @@ public class MyUtil extends gridfactory.common.Util{
       }
     }
   }
+
+  public static boolean isNumeric(String dep){
+    try{
+      Integer.parseInt(dep);
+    }
+    catch(Exception e){
+      return false;
+    }
+    return true;
+  }
 }

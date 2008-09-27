@@ -180,7 +180,7 @@ public class CSPluginMgr implements MyComputingSystem{
     String tmp;
 
     // default timeout
-    tmp = configFile.getValue("GridPilot", "default timeout");
+    tmp = configFile.getValue(GridPilot.topConfigSection, "default timeout");
     if(tmp!=null){
       try{
         defaultTimeOut = new Integer(tmp).intValue();
@@ -200,7 +200,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     for(int i=0; i<timeOutNames.length; ++i){
 
-      tmp = configFile.getValue("GridPilot", timeOutNames[i] + " timeout");
+      tmp = configFile.getValue(GridPilot.topConfigSection, timeOutNames[i] + " timeout");
       if(tmp!=null){
         try{
           values[i] = new Integer(tmp).intValue();
@@ -212,7 +212,7 @@ public class CSPluginMgr implements MyComputingSystem{
       }
       else{
         values[i] = defaultTimeOut;
-        Debug.debug(configFile.getMissingMessage("GridPilot", timeOutNames[i] + " timeout"), 3);
+        Debug.debug(configFile.getMissingMessage(GridPilot.topConfigSection, timeOutNames[i] + " timeout"), 3);
       }
     }
 
@@ -279,6 +279,7 @@ public class CSPluginMgr implements MyComputingSystem{
     String [] ids;
     boolean ok;
     DBResult allRtes;
+    String provides;
     for(int i=0; i<rtes.length; ++i){
       // This is just a rough check: although all RTEs may be available
       //                             for a given CS, they may be available
@@ -290,9 +291,11 @@ public class CSPluginMgr implements MyComputingSystem{
         allRtes = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()
           ).getRuntimeEnvironments();
         for(int j=0; j<allRtes.values.length; ++j){
-          // TODO: do some fuzzy matching
-          if(rtes[i].equals(allRtes.getValue(j, "provides"))){
+          provides = (String) allRtes.getValue(j, "provides");
+          if(MyUtil.checkOS(rtes[i], (String) allRtes.getValue(j, "name"),
+              provides==null?null:MyUtil.split(provides))){
             ok = true;
+            break;
           }
         }
         if(!ok){

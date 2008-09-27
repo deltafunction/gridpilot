@@ -173,6 +173,10 @@ public class NGSubmission{
       Matcher matcher = new SimpleMatcher();
       for(int i=0; i<resources.length; ++i){
         try{
+          Debug.debug("Checking resource "+resources[i].getClusterName()+
+              //". RTES: "+MyUtil.arrayToString(resources[i].getRuntimeenvironment().toArray())+
+              ". Min CPU time: "+resources[i].getMinCpuTime()+
+              ". Max CPU time: "+resources[i].getMaxCpuTime(), 2);
           // Very simple brokering.
           // If resource is suitable and has free slots, the job
           // is submitted, otherwise try next resource.
@@ -187,29 +191,31 @@ public class NGSubmission{
           }
         }
         catch(ARCGridFTPJobException ae){
-          logFile.addMessage("ARCGridFTPJobException during submission of " + xrslFileName + ":\n" +
-              "\tException\t: " + ae.getMessage(), ae);
-          throw ae;
+          Debug.debug("ARCGridFTPJobException during submission of " + xrslFileName + ":\n" +
+              "\tException\t: " + ae.getMessage(), 2);
+          ae.printStackTrace();
         }
       }
       if(submissionHost==null){
         // no free slots found, take best bet
         ARCResource resource = null;
         for(int i=0; i<resources.length; ++i){
-          Debug.debug("Checking resource "+resources[i].getClusterName()+
-              " : "+MyUtil.arrayToString(resources[i].getRuntimeenvironment().toArray()), 2);
-          if(matcher.isResourceSuitable(xrsl, resources[i]) &&
-             (resource==null ||
-             resources[i].getTotalQueueCPUs()>resource.getTotalQueueCPUs() ||
-             resources[i].getFreejobs()>resource.getFreejobs())){
-             resource = resources[i];
-             queue = resource.getQueueName();
-             break;
+          try{
+            if(matcher.isResourceSuitable(xrsl, resources[i]) &&
+                (resource==null ||
+                resources[i].getTotalQueueCPUs()>resource.getTotalQueueCPUs() ||
+                resources[i].getFreejobs()>resource.getFreejobs())){
+                resource = resources[i];
+                queue = resource.getQueueName();
+                break;
+             }
+             else{
+               logFile.addInfo("Resource rejected: \n"+
+                   "Max jobs:"+resources[i].getMaxjobs()+
+                   "\nTotal CPUs:"+resources[i].getTotalQueueCPUs());
+             }
           }
-          else{
-            logFile.addInfo("Resource rejected: \n"+
-                "Max jobs:"+resources[i].getMaxjobs()+
-                "\nTotal CPUs:"+resources[i].getTotalQueueCPUs());
+          catch(ARCGridFTPJobException ae){
           }
         }
         if(resource!=null){

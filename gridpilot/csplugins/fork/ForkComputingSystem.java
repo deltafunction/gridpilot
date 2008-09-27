@@ -80,7 +80,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       }
     }
     
-    defaultUser = configFile.getValue("GridPilot", "default user");
+    defaultUser = configFile.getValue(GridPilot.topConfigSection, "default user");
     try{
       userName = shellMgr.getUserName();
     }
@@ -110,7 +110,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       commandSuffix = ".bat";
     }
     
-    runtimeDirectory = configFile.getValue(csName, "runtime directory");
+    runtimeDirectory = GridPilot.runtimeDir;
     if(runtimeDirectory!=null && runtimeDirectory.startsWith("~")){
       // Expand ~
       if(MyUtil.onWindows() &&
@@ -126,7 +126,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       }
     }
     
-    rteCatalogUrls = configFile.getValues("GridPilot", "runtime catalog URLs");
+    rteCatalogUrls = configFile.getValues(GridPilot.topConfigSection, "runtime catalog URLs");
 
     publicCertificate = configFile.getValue(csName, "public certificate");
     localRuntimeDBs = configFile.getValues(csName, "runtime databases");
@@ -144,7 +144,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     //  transformationDirectory = System.getProperty("user.home")+transformationDirectory.substring(1);
     //}
     MyUtil.checkAndActivateSSL(rteCatalogUrls);
-    rteMgr = new RTEMgr(runtimeDirectory, rteCatalogUrls, logFile, transferControl);
+    rteMgr = GridPilot.getClassMgr().getRTEMgr(runtimeDirectory, rteCatalogUrls);
   }
   
   protected String runDir(JobInfo job){
@@ -205,7 +205,8 @@ public class ForkComputingSystem implements MyComputingSystem{
     else{
       dirName = runtimeDirectory.replaceFirst("^.*/([^/]+)$", "$1");
     }
-    if(expandedRuntimeDirs.length==1 && expandedRuntimeDirs[0].endsWith(dirName)){
+    if(expandedRuntimeDirs.length==0 ||
+        expandedRuntimeDirs.length==1 && expandedRuntimeDirs[0].endsWith(dirName)){
       Debug.debug("No RTE files in "+runtimeDirectory, 2);
       return;
     }

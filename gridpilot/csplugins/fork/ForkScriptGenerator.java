@@ -36,8 +36,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
         csName, "on windows");
     onWindows = onWindowsStr!=null && (onWindowsStr.equalsIgnoreCase("yes") || onWindowsStr.equalsIgnoreCase("true"));
     workingDir = _workingDir;
-    runtimeDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "runtime directory");
+    runtimeDirectory = GridPilot.runtimeDir;
     remoteCopyCommand = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "remote copy command");
     requiredRuntimeEnv = GridPilot.getClassMgr().getConfigFile().getValue(
@@ -79,10 +78,11 @@ public class ForkScriptGenerator extends ScriptGenerator{
     // For each runtime environment used, get its init text (if present) and write it out,
     // source the setup script
     String[] rtes = MyUtil.removeMyOS(dbPluginMgr.getRuntimeEnvironments(jobDefID));
-    for(int i=0; i<rtes.length; ++i){
+    // We skip the first one which is the OS
+    for(int i=1; i<rtes.length; ++i){
       writeBlock(buf, "runtime environment: " + rtes[i], ScriptGenerator.TYPE_COMMENT, commentStart);
-      String initTxt = dbPluginMgr.getRuntimeInitText(rtes[i], csName).toString();
-      writeLine(buf, initTxt); 
+      String initTxt = dbPluginMgr.getRuntimeInitText(rtes[i], csName);
+      writeLine(buf, initTxt==null?"":initTxt); 
       writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
           "/"+rtes[i]).replaceAll("//", "/"));
       writeLine(buf, "");

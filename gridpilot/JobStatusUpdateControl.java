@@ -125,7 +125,7 @@ public class JobStatusUpdateControl{
     /**
      * Load maxSimultaneousChecking
      */
-    String tmp = configFile.getValue("GridPilot", "maximum simultaneous checking");
+    String tmp = configFile.getValue(GridPilot.topConfigSection, "maximum simultaneous checking");
     if(tmp!=null){
       try{
         maxSimultaneousChecking = Integer.parseInt(tmp);
@@ -136,12 +136,12 @@ public class JobStatusUpdateControl{
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage("GridPilot", "maximum simultaneous checking") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage(GridPilot.topConfigSection, "maximum simultaneous checking") + "\n" +
                          "Default value = " + maxSimultaneousChecking);
     /**
      * Load timeBetweenCheking
      */
-    tmp = configFile.getValue("GridPilot", "time between checks");
+    tmp = configFile.getValue(GridPilot.topConfigSection, "time between checks");
     if(tmp!=null){
       try{
         timeBetweenCheking = Integer.parseInt(tmp);
@@ -152,7 +152,7 @@ public class JobStatusUpdateControl{
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage("GridPilot", "time between checks") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage(GridPilot.topConfigSection, "time between checks") + "\n" +
                          "Default value = " + timeBetweenCheking);
 
     timerChecking.setDelay(timeBetweenCheking);

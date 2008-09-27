@@ -261,7 +261,7 @@ public class MyTransferControl extends TransferControl {
     Debug.debug("Setting time between transfers "+timeBetweenTransfers, 3);
     timer.setInitialDelay(0);
     timer.setDelay(timeBetweenTransfers);
-    String resourcesPath = configFile.getValue("GridPilot", "resources");
+    String resourcesPath = configFile.getValue(GridPilot.topConfigSection, "resources");
     if(resourcesPath != null && !resourcesPath.endsWith("/"))
       resourcesPath += "/";
     try{

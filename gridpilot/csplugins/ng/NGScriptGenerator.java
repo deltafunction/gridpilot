@@ -99,7 +99,7 @@ public class NGScriptGenerator extends ScriptGenerator{
         writeLine(bufXRSL,"(cpuTime=\""+cpuTime+"\")(*endCpu*)");
       }
       if(memory!=null && !memory.equals("")){
-        writeLine(bufXRSL,"(memory=\""+memory+"\")");
+        writeLine(bufXRSL,"(memory>=\""+memory+"\")");
       }
       // Input files: scripts
       writeLine(bufXRSL,"(inputFiles=");

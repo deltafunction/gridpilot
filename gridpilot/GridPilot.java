@@ -87,6 +87,7 @@ public class GridPilot extends JApplet{
   public static boolean waitForever = false;
   public static boolean firstRun = false;
   public static File userConfFile = null;
+  public static String runtimeDir = null;
   public static int PROXY_STRENGTH = 512;
 
   /**
@@ -152,10 +153,10 @@ public class GridPilot extends JApplet{
   public static void loadConfigValues(){
     try{
       fileRows = Integer.parseInt(
-          getClassMgr().getConfigFile().getValue("GridPilot", "file rows"));
-      preferredFileServers = getClassMgr().getConfigFile().getValues("GridPilot", "preferred file servers");
-      proxyHost = getClassMgr().getConfigFile().getValue("GridPilot", "proxy host");
-      proxyPort = getClassMgr().getConfigFile().getValue("GridPilot", "proxy port");
+          getClassMgr().getConfigFile().getValue(topConfigSection, "file rows"));
+      preferredFileServers = getClassMgr().getConfigFile().getValues(topConfigSection, "preferred file servers");
+      proxyHost = getClassMgr().getConfigFile().getValue(topConfigSection, "proxy host");
+      proxyPort = getClassMgr().getConfigFile().getValue(topConfigSection, "proxy port");
       if(proxyHost!=null && proxyHost.length()>0){
         if(proxyPort==null || proxyPort.length()==0){
           proxyPort = "80";
@@ -171,22 +172,23 @@ public class GridPilot extends JApplet{
         System.setProperties(systemProperties);
       }
       
-      debugLevel = getClassMgr().getConfigFile().getValue("GridPilot", "debug");
-      resourcesPath =  getClassMgr().getConfigFile().getValue("GridPilot", "resources");
+      debugLevel = getClassMgr().getConfigFile().getValue(topConfigSection, "debug");
+      resourcesPath =  getClassMgr().getConfigFile().getValue(topConfigSection, "resources");
       if(resourcesPath==null){
-        getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("GridPilot", "resources"));
+        getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage(topConfigSection, "resources"));
         resourcesPath = "./";
       }
       else{
         if(!resourcesPath.endsWith("/"))
           resourcesPath = resourcesPath + "/";
       }
+      runtimeDir = getClassMgr().getConfigFile().getValue(topConfigSection, "runtime directory");
       splash = new Splash(resourcesPath+"splash.png", GridPilot.class);
-      jobColorMapping = getClassMgr().getConfigFile().getValues("GridPilot", "job color mapping");  
+      jobColorMapping = getClassMgr().getConfigFile().getValues(topConfigSection, "job color mapping");  
       /** Job status table header*/
       jobStatusFields = new String [] {
           " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "user"};
-      transferColorMapping = getClassMgr().getConfigFile().getValues("GridPilot", "transfer color mapping");  
+      transferColorMapping = getClassMgr().getConfigFile().getValues(topConfigSection, "transfer color mapping");  
       /** Job status table header*/
       /** Transfer status table header*/
       transferStatusFields = new String [] {
@@ -229,33 +231,33 @@ public class GridPilot extends JApplet{
           }
         }
       }
-      tabs = getClassMgr().getConfigFile().getValues("GridPilot", "initial panels");
+      tabs = getClassMgr().getConfigFile().getValues(topConfigSection, "initial panels");
       proxyTimeLeftLimit = Integer.parseInt(
-        getClassMgr().getConfigFile().getValue("GridPilot", "proxy time left limit"));
+        getClassMgr().getConfigFile().getValue(topConfigSection, "proxy time left limit"));
       proxyTimeValid = Integer.parseInt(
-          getClassMgr().getConfigFile().getValue("GridPilot", "proxy time valid"));
-      keyFile = getClassMgr().getConfigFile().getValue("GridPilot",
+          getClassMgr().getConfigFile().getValue(topConfigSection, "proxy time valid"));
+      keyFile = getClassMgr().getConfigFile().getValue(topConfigSection,
           "key file");
-      certFile = getClassMgr().getConfigFile().getValue("GridPilot",
+      certFile = getClassMgr().getConfigFile().getValue(topConfigSection,
           "certificate file");
-      proxyDir = getClassMgr().getConfigFile().getValue("GridPilot",
+      proxyDir = getClassMgr().getConfigFile().getValue(topConfigSection,
       "grid proxy directory");
-      keyPassword = getClassMgr().getConfigFile().getValue("GridPilot",
+      keyPassword = getClassMgr().getConfigFile().getValue(topConfigSection,
           "key password");
-      caCertsDir = getClassMgr().getConfigFile().getValue("GridPilot",
+      caCertsDir = getClassMgr().getConfigFile().getValue(topConfigSection,
           "ca certificates");
       if(caCertsDir==null){
         getClassMgr().getConfigFile().missingMessage(
-            "GridPilot", "ca certificates");
+            topConfigSection, "ca certificates");
         getClassMgr().getLogFile().addMessage(
             "WARNING: you have not specified any CA certificates. " +
             "A default set will be used.");
       }
-      String [] _fixedJobAttributes = getClassMgr().getConfigFile().getValues("GridPilot",
+      String [] _fixedJobAttributes = getClassMgr().getConfigFile().getValues(topConfigSection,
       "job attributes");
       if(_fixedJobAttributes==null || _fixedJobAttributes.length==0){
         getClassMgr().getConfigFile().missingMessage(
-            "GridPilot", "job attributes");
+            topConfigSection, "job attributes");
       }
       else{
         fixedJobAttributes = _fixedJobAttributes;
@@ -264,15 +266,15 @@ public class GridPilot extends JApplet{
       }
       Debug.debug("Job attributes: "+MyUtil.arrayToString(fixedJobAttributes)+" "+
           fixedJobAttributes.length, 2);
-      browserHistoryFile = getClassMgr().getConfigFile().getValue("GridPilot",
+      browserHistoryFile = getClassMgr().getConfigFile().getValue(topConfigSection,
          "browser history file");
       globusTcpPortRange = getClassMgr().getConfigFile().getValue("File transfer systems",
          "globus tcp port range");
-      gridHomeURL = getClassMgr().getConfigFile().getValue("GridPilot",
+      gridHomeURL = getClassMgr().getConfigFile().getValue(topConfigSection,
          "Grid home url");
       String ask = null;
       try{
-        ask = getClassMgr().getConfigFile().getValue("GridPilot",
+        ask = getClassMgr().getConfigFile().getValue(topConfigSection,
         "Ask before thread interrupt");
         askBeforeInterrupt = !(ask!=null && (
             ask.equalsIgnoreCase("no") ||
@@ -699,7 +701,7 @@ public class GridPilot extends JApplet{
    */
   private static void initDebug(){
         if(debugLevel==null){
-      getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("GridPilot", "debug"));
+      getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage(topConfigSection, "debug"));
       getClassMgr().setDebugLevel(0);
     }
     else{

@@ -54,13 +54,13 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     // Fill maxJobs with a constant number
     maxJobs = new int[maxMachines];
     Arrays.fill(maxJobs, jobsPerMachine);
-    localRteDir = configFile.getValue(csName, "runtime directory");
+    localRteDir = GridPilot.runtimeDir;
     remoteRteDir = localRteDir;
     workingDir = configFile.getValue(csName, "working directory");
     logFile = GridPilot.getClassMgr().getLogFile();
-    rteCatalogUrls = configFile.getValues("GridPilot", "runtime catalog URLs");
+    rteCatalogUrls = configFile.getValues(GridPilot.topConfigSection, "runtime catalog URLs");
     transferControl = GridPilot.getClassMgr().getTransferControl();
-    rteMgr = new RTEMgr(localRteDir, rteCatalogUrls, logFile, transferControl);
+    rteMgr = GridPilot.getClassMgr().getRTEMgr(localRteDir, rteCatalogUrls);
     rteMgr.fixLocalCatalog(GridPilot.class);
     transferStatusUpdateControl = GridPilot.getClassMgr().getTransferStatusUpdateControl();
     termVmOnJobEnd = false;

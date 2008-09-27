@@ -24,7 +24,8 @@ public class RteRdfParser {
   public RteRdfParser(String [] _urls){
     catalogURLs = _urls;
     MyUtil.checkAndActivateSSL(catalogURLs);
-    rteCatalog = new RTECatalog(catalogURLs, null);
+    //rteCatalog = new RTECatalog(catalogURLs, null);
+    rteCatalog = GridPilot.getClassMgr().getRTEMgr(GridPilot.runtimeDir, catalogURLs).getRTECatalog();
   }
   
   /**
@@ -101,16 +102,24 @@ public class RteRdfParser {
                 (tarPack.baseSystem!=null?"\\'"+rteCatalog.getBaseSystem(tarPack.baseSystem).name+"\\'":""))/*.replaceAll("'([^']+)'", "$1")*/.trim());
             // Optional other dependencies
             for(int k=0; k<tarPack.depends.length; ++k){
-              Debug.debug("depends: "+tarPack.depends[k], 2);
               try{
                 dep = tarPack.depends[k];
-                if(dep!=null){
+                if(dep!=null && !dep.trim().equals("")){
                   try{
                     dep = rteCatalog.getName(dep);
                   }
                   catch(Exception e){
                     // dep was probably already a name - ignore
                   }
+                  if(dep==null || dep.trim().equals("")){
+                    dep = tarPack.depends[k];
+                  }
+                  if(MyUtil.isNumeric(dep)){
+                    GridPilot.getClassMgr().getLogFile().addInfo("WARNING: The package "+pack.name+
+                        " is not installable. "+tarPack);
+                    continue;
+                  }
+                  Debug.debug("found depends: "+tarPack.depends[k]+"-->"+dep, 2);
                   rec.setValue("depends",
                       ((rec.getValue("depends")!=null?rec.getValue("depends"):"")+" "+
                           dep)/*.replaceAll("'([^']+)'", "$1")*/.trim());
@@ -125,7 +134,7 @@ public class RteRdfParser {
                     !tarPack.url.equals(rec.getValue("url")))?tarPack.url:"")).replaceAll("'([^']+)'", "$1").trim());
             
             if(rec.getValue("url")==null || rec.getValue("url").equals("")){
-              Debug.debug("Skipping record (no URL): "+rec, 2);
+              GridPilot.getClassMgr().getLogFile().addInfo("WARNING: Skipping package (no URL): "+pack.name);
             }
             else{
               Debug.debug("Adding record: "+records.size()+" --> "+MyUtil.arrayToString(rec.fields)+
@@ -135,8 +144,8 @@ public class RteRdfParser {
             
           }
           else{
-            Debug.debug("WARNING: Only TarPackages are supported.  "+pack.instances[j]+
-                " "+tarPack, 1);
+            GridPilot.getClassMgr().getLogFile().addInfo("WARNING: The package "+pack.name+
+                " is not installable. "+tarPack);
           }
         }
       }

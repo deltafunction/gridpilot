@@ -5,6 +5,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.Shell;
+import gridfactory.common.jobrun.RTEMgr;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -55,6 +56,7 @@ public class ClassMgr{
   private HashSet dbURLs = new HashSet();
   private MySSL ssl = null;
   private HashMap<String, RteRdfParser> rdfParsers = new HashMap<String, RteRdfParser>();
+  private HashMap<String, RTEMgr> rteMgrs = new HashMap<String, RTEMgr>();
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
   public GSSCredential credential = null;
@@ -564,6 +566,18 @@ public class ClassMgr{
       rdfParsers.put(key, rteRdfParser);
     }
     return rdfParsers.get(key);
+  }
+  
+  public RTEMgr getRTEMgr(String localRteDir, String[] rteCatalogUrls){
+    String [] sortedUrls = rteCatalogUrls.clone();
+    Arrays.sort(sortedUrls);
+    String key = localRteDir+MyUtil.arrayToString(sortedUrls);
+    if(!rteMgrs.containsKey(key)){
+      Debug.debug("Creating new RTEMgr from "+key, 1);
+      RTEMgr rteMgr = new RTEMgr(localRteDir, rteCatalogUrls, getLogFile(), getTransferControl());
+      rteMgrs.put(key, rteMgr);
+    }
+    return rteMgrs.get(key);
   }
   
 }

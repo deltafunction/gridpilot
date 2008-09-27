@@ -313,7 +313,7 @@ public class BeginningWizard{
       dbDir.replaceFirst("/My_DB", "");
     }
     String workingDir = configFile.getValue("Fork", "Working directory");
-    String runtimeDir = configFile.getValue("Fork", "Runtime directory");
+    String runtimeDir = GridPilot.runtimeDir;
     String transDir = configFile.getValue("Fork", "Transformation directory");
     String [] defDirs = new String [] {
         dbDir==null?dbDir:"~/GridPilot",
@@ -466,10 +466,10 @@ public class BeginningWizard{
       "that you trust. This can safely be left unspecified, in which case a default set of CAs will be trusted.\n\n" +
       "Specified, but non-existing directories will be created.\n\n";
     JPanel jPanel = new JPanel(new GridBagLayout());
-    String certPath = configFile.getValue("GridPilot", "Certificate file");
-    String keyPath = configFile.getValue("GridPilot", "Key file");
-    String proxyDir = configFile.getValue("GridPilot", "Grid proxy directory");
-    String caCertsDir = configFile.getValue("GridPilot", "CA certificates");
+    String certPath = configFile.getValue(GridPilot.topConfigSection, "Certificate file");
+    String keyPath = configFile.getValue(GridPilot.topConfigSection, "Key file");
+    String proxyDir = configFile.getValue(GridPilot.topConfigSection, "Grid proxy directory");
+    String caCertsDir = configFile.getValue(GridPilot.topConfigSection, "CA certificates");
     String [] defDirs = new String [] {
         certPath,
         keyPath,
@@ -558,7 +558,7 @@ public class BeginningWizard{
         !defDirs[2].equals(newDirs[2]) ||
         newDirs[3]!=null && (defDirs[3]==null || !defDirs[3].equals(newDirs[3]))){
       configFile.setAttributes(
-          new String [] {"GridPilot", "GridPilot", "GridPilot", "GridPilot", "Fork"},
+          new String [] {GridPilot.topConfigSection, GridPilot.topConfigSection, GridPilot.topConfigSection, GridPilot.topConfigSection, "Fork"},
           new String [] {"Certificate file", "Key file", "Grid proxy directory",
               "CA certificates", "Public certificate"},
           new String [] {
@@ -1408,10 +1408,10 @@ public class BeginningWizard{
   }
 
   private int setGridHomeDir(boolean firstRun) throws Exception{
-    GridPilot.proxyDir = configFile.getValue("GridPilot", "Grid proxy directory");
-    GridPilot.caCertsDir = GridPilot.getClassMgr().getConfigFile().getValue("GridPilot",
+    GridPilot.proxyDir = configFile.getValue(GridPilot.topConfigSection, "Grid proxy directory");
+    GridPilot.caCertsDir = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.topConfigSection,
        "ca certificates");
-    GridPilot.resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue("GridPilot", "resources");
+    GridPilot.resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.topConfigSection, "resources");
     String confirmString =
       "When running jobs on a grid it is useful to have the jobs upload output files to a directory on a server\n" +
       "that's always on-line.\n\n" +
@@ -1429,7 +1429,7 @@ public class BeginningWizard{
     pane.setEditable(false);
     pane.setOpaque(false);
     addHyperLinkListener(pane, jPanel);
-    String homeUrl = configFile.getValue("GridPilot", "Grid home url");
+    String homeUrl = configFile.getValue(GridPilot.topConfigSection, "Grid home url");
     String [] defDirs = new String [] {homeUrl,
                                        HOME_URL+"users/"+GridPilot.getClassMgr().getSSL().getGridDatabaseUser()+"/",
                                        homeUrl};
@@ -1529,7 +1529,7 @@ public class BeginningWizard{
       }
       Debug.debug("Setting "+sel+":"+newDirs[sel], 2);
       configFile.setAttributes(
-          new String [] {"GridPilot"},
+          new String [] {GridPilot.topConfigSection},
           new String [] {"Grid home url"},
           new String [] {newDirs[sel]}
       );
