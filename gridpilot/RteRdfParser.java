@@ -7,6 +7,7 @@ import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.jobrun.RTECatalog;
+import gridfactory.common.jobrun.RTECatalog.BaseSystem;
 import gridfactory.common.jobrun.RTECatalog.MetaPackage;
 import gridfactory.common.jobrun.RTECatalog.TarPackage;
 
@@ -86,6 +87,7 @@ public class RteRdfParser {
     TarPackage tarPack = null;
     HashSet records = new HashSet();
     String dep;
+    BaseSystem bs;
     for(Iterator it=rteCatalog.getMetaPackages().iterator(); it.hasNext();){
       pack = (MetaPackage) it.next();
       Debug.debug("Adding metaPackage "+pack.name, 2);
@@ -96,10 +98,16 @@ public class RteRdfParser {
               csName, pack);
           tarPack = rteCatalog.getInstancePackage(pack.instances[j]);
           if(tarPack!=null){
+            Debug.debug("Instance: "+pack.instances[j]+"-->"+tarPack.id, 3);
             // We always depend on the base system
+            bs = rteCatalog.getBaseSystem(tarPack.baseSystem);
+            if(bs==null || bs.name==null || bs.name.equals("")){
+              GridPilot.getClassMgr().getLogFile().addMessage("WARNING: instance "+pack.instances[j]+" has no BaseSystem defined");
+              continue;
+            }
             rec.setValue("depends",
-                ((rec.getValue("depends")!=null?rec.getValue("depends"):"")+" "+
-                (tarPack.baseSystem!=null?"\\'"+rteCatalog.getBaseSystem(tarPack.baseSystem).name+"\\'":""))/*.replaceAll("'([^']+)'", "$1")*/.trim());
+                ((rec.getValue("depends")!=null?rec.getValue("depends"):"")+" "+bs.name
+                    )/*.replaceAll("'([^']+)'", "$1")*/.trim());
             // Optional other dependencies
             for(int k=0; k<tarPack.depends.length; ++k){
               try{
