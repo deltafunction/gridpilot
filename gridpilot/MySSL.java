@@ -66,6 +66,7 @@ public class MySSL extends SSL{
   private Boolean gridProxyInitialized = Boolean.FALSE;
   private boolean sslOk = false;
   private boolean proxyOk = false;
+  private CoGProperties prop = null;
   
   public MySSL(String _certFile, String _keyFile,
       String _keyPassword, String _caCertsDir) throws IOException, GeneralSecurityException {
@@ -73,19 +74,27 @@ public class MySSL extends SSL{
     keyFile = _keyFile;
     keyPassword = _keyPassword;
     caCertsDir = Util.clearTildeLocally(Util.clearFile(_caCertsDir));
-    getGridCredential();
-    activateProxySSL();
+    if(CoGProperties.getDefault()==null){
+      prop = new CoGProperties();
+    }
+    else{
+      prop = CoGProperties.getDefault();
+    }
+    //getGridCredential();
+    //activateProxySSL();
   }
   
   public void activateSSL() throws IOException, GeneralSecurityException, GlobusCredentialException, GSSException {
     if(sslOk){
       return;
     }
+    initalizeCACertsDir();
     if(GridPilot.keyPassword==null){
       gridProxyInitialized = false;
       credential = null;
-      getProxyFile().delete();
-      getGridCredential();
+      //getProxyFile().delete();
+      //getGridCredential();
+      decryptPrivateKey();
     }
     Debug.debug("Activating SSL with password "+GridPilot.keyPassword, 2);
     super.activateSSL(GridPilot.certFile, GridPilot.keyFile, GridPilot.keyPassword, GridPilot.caCertsDir);
@@ -98,9 +107,8 @@ public class MySSL extends SSL{
       return;
     }
     Debug.debug("Activating proxy SSL with password "+GridPilot.keyPassword, 2);
-    if(GridPilot.keyPassword==null){
-      getGridCredential();
-    }
+    initalizeCACertsDir();
+    getGridCredential();
     super.activateSSL(getProxyFile().getAbsolutePath(), getProxyFile().getAbsolutePath(), "", caCertsDir);
     proxyOk = true;
   }
@@ -114,15 +122,37 @@ public class MySSL extends SSL{
     return x509UserCert;
   }
   
+  private void initalizeCACertsDir() throws IOException{
+    if(caCertsDir==null || caCertsDir.equals("")){
+      if(caCertsTmpdir==null){
+        caCertsTmpdir = setupDefaultCACertificates();
+      }
+      // this adds all certificates in the dir to globus authentication procedures
+      caCertsTmpdir = caCertsTmpdir.replaceAll("\\\\", "/");
+      prop.setCaCertLocations(caCertsTmpdir);
+      caCertsDir = caCertsTmpdir;
+    }
+    else{
+      prop.setCaCertLocations(GridPilot.caCertsDir);
+      caCertsTmpdir = GridPilot.caCertsDir;
+    }
+    GridPilot.caCertsDir = caCertsDir;
+    CoGProperties.setDefault(prop);
+    Debug.debug("COG defaults now:\n"+CoGProperties.getDefault(), 3);
+    Debug.debug("COG defaults file:\n"+CoGProperties.configFile, 3);
+  }
+  
   public /*synchronized*/ GSSCredential getGridCredential(){
     if(gridProxyInitialized.booleanValue()){
+      Debug.debug("Grid proxy already initialized. "+credential, 2);
       return credential;
     }
     synchronized(gridProxyInitialized){
       // avoids that dozens of popups open if
       // you submit dozen of jobs and proxy not initialized
       try{
-        if(credential==null || credential.getRemainingLifetime()<GridPilot.proxyTimeLeftLimit){
+        if(credential==null || credential.getRemainingLifetime()<GridPilot.proxyTimeLeftLimit ||
+            !getProxyFile().exists()){
           Debug.debug("Initializing credential", 3);
           initGridProxy();
           Debug.debug("Initialized credential", 3);
@@ -133,35 +163,12 @@ public class MySSL extends SSL{
           }
         }
         else{
+          Debug.debug("Grid proxy already initialized. "+credential.getRemainingLifetime(), 2);
           gridProxyInitialized = Boolean.TRUE;
         }
-        // set the directory for trusted CA certificates
-        CoGProperties prop = null;
-        if(CoGProperties.getDefault()==null){
-          prop = new CoGProperties();
-        }
-        else{
-          prop = CoGProperties.getDefault();
-        }
-        if(caCertsDir==null || caCertsDir.equals("")){
-          if(caCertsTmpdir==null){
-            caCertsTmpdir = setupDefaultCACertificates();
-          }
-          // this adds all certificates in the dir to globus authentication procedures
-          caCertsTmpdir = caCertsTmpdir.replaceAll("\\\\", "/");
-          prop.setCaCertLocations(caCertsTmpdir);
-          caCertsDir = caCertsTmpdir;
-        }
-        else{
-          prop.setCaCertLocations(GridPilot.caCertsDir);
-          caCertsTmpdir = GridPilot.caCertsDir;
-        }
-        GridPilot.caCertsDir = caCertsDir;
         // set the proxy default location
         prop.setProxyFile(getProxyFile().getAbsolutePath());
         CoGProperties.setDefault(prop);
-        Debug.debug("COG defaults now:\n"+CoGProperties.getDefault(), 3);
-        Debug.debug("COG defaults file:\n"+CoGProperties.configFile, 3);
       }
       catch(Exception e){
         Debug.debug("ERROR: could not get grid credential", 1);
@@ -191,6 +198,40 @@ public class MySSL extends SSL{
       //e.printStackTrace();
       throw e;
     }
+  }
+  
+  private void decryptPrivateKey() throws IOException {
+    String [] credentials = null;
+    for(int i=0; i<=3; ++i){
+      try{
+        credentials = askForPassword(GridPilot.keyFile, GridPilot.certFile,
+            GridPilot.keyPassword);
+      }
+      catch(IllegalArgumentException e){
+        // cancelling
+        e.printStackTrace();
+        break;
+      }
+      try{
+        BouncyCastleOpenSSLKey key = new BouncyCastleOpenSSLKey(credentials[1]);
+        // decrypt key with password
+        Debug.debug("Decrypting key...", 3);
+        if(key.isEncrypted()){
+            key.decrypt(credentials[0]);
+          }
+        // Keep password in memory - needed by mysql plugin
+        GridPilot.certFile = credentials[2];
+        GridPilot.keyFile = credentials[1];
+        Debug.debug("Setting grid password to "+credentials[0], 3);
+        GridPilot.keyPassword = credentials[0];
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        continue;
+      }
+      return;
+    }
+    throw new IOException("ERROR: could not decrypt private key");
   }
 
   private void initGridProxy() throws IOException, GSSException{
@@ -222,7 +263,7 @@ public class MySSL extends SSL{
     }
     
     // if credential ok, return
-    if(credential!=null && credential.getRemainingLifetime()>=GridPilot.proxyTimeLeftLimit){
+    if(gridProxyInitialized && credential!=null && credential.getRemainingLifetime()>=GridPilot.proxyTimeLeftLimit){
       Debug.debug("proxy ok", 3);
       return;
     }
@@ -238,7 +279,7 @@ public class MySSL extends SSL{
       FileOutputStream out = null;
       for(int i=0; i<=3; ++i){
         try{
-          credentials = getGridCredentials(GridPilot.keyFile, GridPilot.certFile,
+          credentials = askForPassword(GridPilot.keyFile, GridPilot.certFile,
               GridPilot.keyPassword);
         }
         catch(IllegalArgumentException e){
@@ -284,7 +325,7 @@ public class MySSL extends SSL{
    * @param password
    * @return password, key location, certificate location.
    */
-  private static String [] getGridCredentials(String keyFile, String certFile, String password){
+  private static String [] askForPassword(String keyFile, String certFile, String password){
     
     final JPanel panel = new JPanel(new GridBagLayout());
     JTextPane tp = new JTextPane();
@@ -438,6 +479,7 @@ public class MySSL extends SSL{
     //System.setProperty("org.globus.gsi.version", "3");
     // get user certificate
     GridPilot.certFile = userCertFilename;
+    GridPilot.keyFile = userKeyFilename;
     X509Certificate userCert = getX509UserCert();
     return createProxy(key, userCert, password, lifetime, strength);
 
@@ -447,7 +489,7 @@ public class MySSL extends SSL{
      X509Certificate userCert, String password, int lifetime, int strength)
      throws InvalidKeyException, GeneralSecurityException{
 
-    // decrypt the password
+    // decrypt key with password
     Debug.debug("Decrypting key...", 3);
     if(key.isEncrypted()){
         key.decrypt(password);
@@ -461,7 +503,8 @@ public class MySSL extends SSL{
     BouncyCastleCertProcessingFactory factory = BouncyCastleCertProcessingFactory.getDefault();
 
     Debug.debug("Creating credentials...", 3);
-    GlobusCredential myCredentials = factory.createCredential(new X509Certificate[] { userCert }, key.getPrivateKey(), strength, lifetime,
+    GlobusCredential myCredentials = factory.createCredential(
+        new X509Certificate[] {userCert}, key.getPrivateKey(), strength, lifetime,
             proxyType, (X509ExtensionSet) null);
     return myCredentials;
   }

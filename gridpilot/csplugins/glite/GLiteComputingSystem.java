@@ -138,10 +138,11 @@ public class GLiteComputingSystem implements MyComputingSystem{
       
       // setup proxy if not there
       try{
-        GridPilot.getClassMgr().getSSL().getGridCredential();
+        GridPilot.getClassMgr().getSSL().activateProxySSL();
       }
       catch(Exception ee){
         ee.printStackTrace();
+        logFile.addMessage("WARNING: could not initialize GSI security.", ee);
       }
 
       Debug.debug("Creating new WMProxyAPI; "+MySSL.getProxyFile().getAbsolutePath()+

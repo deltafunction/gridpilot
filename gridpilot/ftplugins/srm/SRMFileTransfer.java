@@ -106,6 +106,7 @@ public class SRMFileTransfer implements FileTransfer {
   private static ISRM connect(GlobusURL srmUrl) throws Exception {
     ISRM srm;
     try{
+      GridPilot.getClassMgr().getSSL().activateProxySSL();
        srm = new SRMClientV1(
            srmUrl,
            GridPilot.getClassMgr().getSSL().getGridCredential(),

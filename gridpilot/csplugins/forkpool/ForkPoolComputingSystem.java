@@ -450,16 +450,21 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     String message = "WARNING: You have ";
     boolean oneIterationDone = false;
     for(Iterator it=remoteShellMgrs.values().iterator(); it.hasNext();){
-      shellMgr = (Shell) it.next();
-      host = shellMgr.getHostName();
-      jobs = shellMgr.getJobsNumber();
-      if(oneIterationDone){
-        message += ", \n";
+      try{
+        shellMgr = (Shell) it.next();
+        host = shellMgr.getHostName();
+        jobs = shellMgr.getJobsNumber();
+        if(oneIterationDone){
+          message += ", \n";
+        }
+        if(jobs>0){
+          message += jobs+" jobs running on "+host;
+        }
+        oneIterationDone = true;
       }
-      if(jobs>0){
-        message += jobs+" jobs running on "+host;
+      catch(Exception e){
+        e.printStackTrace();
       }
-      oneIterationDone = true;
     }
     if(anyRunning){
       message += ". The stdout/stderr of these jobs will be lost\n" +

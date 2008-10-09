@@ -96,6 +96,13 @@ public class NGComputingSystem implements MyComputingSystem{
   
   public NGComputingSystem(String _csName){
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
+    try{
+      GridPilot.getClassMgr().getSSL().activateProxySSL();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      logFile.addMessage("WARNING: could not initialize GSI security.", e);
+    }
     transferControl = GridPilot.getClassMgr().getTransferControl();
     csName = _csName;
     unparsedWorkingDir= configFile.getValue(csName, "working directory");

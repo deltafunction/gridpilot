@@ -124,6 +124,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
     GridFTPClient gridFtpClient = null;
     
     try{
+      GridPilot.getClassMgr().getSSL().activateProxySSL();
       GSSCredential credential = GridPilot.getClassMgr().getSSL().getGridCredential();
       gridFtpClient = new GridFTPClient(host, port);
       gridFtpClient.authenticate(credential);
