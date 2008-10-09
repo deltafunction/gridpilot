@@ -264,33 +264,18 @@ public class MyUtil extends gridfactory.common.Util{
            }
            Debug.debug("URL: "+urls[i], 3);
            try{
-             if(frame!=null){
-               wb = new BrowserPanel(//GridPilot.getClassMgr().getGlobalFrame(),
-                   frame,
-                   "Choose file",
-                   //finUrl,
-                   urls[i],
-                   finBaseUrl,
-                   true,
-                   /*filter*/!onlyDirs && withNavigation,
-                   /*navigation*/withNavigation,
-                   null,
-                   onlyDirs?"*/":null,
-                   localFS);
-             }
-             else{
-               wb = new BrowserPanel(
-                   "Choose file",
-                   //finUrl,
-                   urls[i],
-                   finBaseUrl,
-                   true,
-                   /*filter*/!onlyDirs && withNavigation,
-                   /*navigation*/withNavigation,
-                   null,
-                   onlyDirs?"*/":null,
-                   localFS);
-             }
+             wb = new BrowserPanel(
+                 frame,
+                 "Choose file",
+                 //finUrl,
+                 urls[i],
+                 finBaseUrl,
+                 true/*modal*/,
+                 !onlyDirs && withNavigation/*filter*/,
+                 withNavigation/*navigation*/,
+                 null,
+                 onlyDirs?"*/":null,
+                 localFS);
            }
            catch(Exception eee){
              ok = false;

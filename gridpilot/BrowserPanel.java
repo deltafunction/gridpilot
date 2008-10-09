@@ -92,6 +92,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private Vector listedSizes = null;
   private boolean allowRegister = true;
   private HashSet excludeDBs = new HashSet();
+  private Vector urlList;
   
   public static int HISTORY_SIZE = 15;
   private static int MAX_FILE_EDIT_BYTES = 100000;
@@ -103,6 +104,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       boolean _withNavigation, JComponent _jBox, String _filter,
       boolean _localFS) throws Exception{
     super(parent);
+    urlList = GridPilot.getClassMgr().getBrowserHistoryList();
     init(parent, title, url, _baseUrl, modal, _withFilter, _withNavigation, _jBox, _filter,
         _localFS, true, true);
   }
@@ -111,20 +113,13 @@ public class BrowserPanel extends JDialog implements ActionListener{
       String _baseUrl, boolean modal, boolean _withFilter,
       boolean _withNavigation, JComponent _jBox, String _filter,
       boolean _localFS, boolean cancelEnabled, boolean registrationEnabled) throws Exception{
+    urlList = GridPilot.getClassMgr().getBrowserHistoryList();
     init(parent, title, url, _baseUrl, modal, _withFilter, _withNavigation, _jBox, _filter,
         _localFS, cancelEnabled, registrationEnabled);
     Debug.debug("Setting default cursor", 2);
   }
 
-  public BrowserPanel(String title, String url, 
-      String _baseUrl, boolean modal, boolean _withFilter,
-      boolean _withNavigation, JComponent _jBox, String _filter,
-      boolean _localFS) throws Exception{
-    init(null, title, url, _baseUrl, modal, _withFilter, _withNavigation, _jBox, _filter,
-        _localFS, true, true);
-  }
-  
-  public void init(Window parent, String title, String url, 
+  private void init(Window parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
       boolean _withNavigation, JComponent _jBox, String _filter,
       boolean _localFS, boolean cancelEnabled, boolean registrationEnabled) throws Exception{
@@ -147,6 +142,24 @@ public class BrowserPanel extends JDialog implements ActionListener{
       sssFileTransfer = (SSSFileTransfer) GridPilot.getClassMgr().getFTPlugin("sss");
     }
     
+    readBrowserHistory();
+    
+    currentUrlBox = new JExtendedComboBox();
+    currentUrlBox.setEditable(true);
+    Dimension d = currentUrlBox.getPreferredSize();
+    currentUrlBox.setPreferredSize(new Dimension(320, d.height));
+    setUrl(url);
+    Debug.debug("initializing browser window", 3);
+    try{
+      initGUI(parent, title, url, cancelEnabled, registrationEnabled);
+    }
+    catch(IOException e){
+      //e.printStackTrace();
+      throw e;
+    }
+  }
+  
+  private void readBrowserHistory(){
     String urlHistory = null;
     Debug.debug("browser history file: "+GridPilot.browserHistoryFile, 2);
     if(GridPilot.browserHistoryFile!=null && !GridPilot.browserHistoryFile.equals("")){
@@ -173,8 +186,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
     }
     
-    if((GridPilot.getClassMgr().getUrlList()==null ||
-        GridPilot.getClassMgr().getUrlList().size()==0) &&
+    if((urlList==null || urlList.size()==0) &&
         urlHistory!=null && !urlHistory.equals("")){
       BufferedReader in = null;
       try{
@@ -196,7 +208,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           line = line.replaceAll("\\r", "");
           line = line.replaceAll("\\n", "");
           line = URLDecoder.decode(line, "utf-8");
-          GridPilot.getClassMgr().addUrl(line);
+          addUrl(line);
           Debug.debug("URL: "+line, 3);
         }
         in.close();
@@ -207,20 +219,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
         GridPilot.browserHistoryFile = null;
         urlHistory = null;
       }
-    }
-
-    currentUrlBox = new JExtendedComboBox();
-    currentUrlBox.setEditable(true);
-    Dimension d = currentUrlBox.getPreferredSize();
-    currentUrlBox.setPreferredSize(new Dimension(320, d.height));
-    setUrl(url);
-    
-    try{
-      initGUI(parent, title, url, cancelEnabled, registrationEnabled);
-    }
-    catch(IOException e){
-      //e.printStackTrace();
-      throw e;
     }
   }
   
@@ -511,7 +509,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           new Insets(0, 5, 0, 5), 0, 0));
       jpNavigation.add(new JLabel(" "));
       jpNavigation.add(bEnter);
-      GridPilot.getClassMgr().addUrl("");
+      addUrl("");
       addUrlKeyListener();
     }
     
@@ -972,11 +970,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
       e.printStackTrace();
     }
     String newUrl = url.trim();
-    GridPilot.getClassMgr().removeUrl("");
-    Vector urlList = GridPilot.getClassMgr().getUrlList();
+    Debug.debug("checking history", 3);
+    removeUrl("");
     newUrl = newUrl.replaceAll("\\\\", "/");
     newUrl = newUrl.replaceAll("file:C", "file:/C");
-    
     // check if url is already in history and add if not
     boolean refresh = false;
     if(!urlList.contains(newUrl)){
@@ -985,16 +982,15 @@ public class BrowserPanel extends JDialog implements ActionListener{
       if(urlList.size()>HISTORY_SIZE){
         Debug.debug("History size exceeded, removing first, "+
             urlList.size()+">"+HISTORY_SIZE, 2);
-        GridPilot.getClassMgr().removeUrl(urlList.iterator().next().toString());
+        removeUrl(urlList.iterator().next().toString());
       }
-      GridPilot.getClassMgr().addUrl(newUrl);
+      addUrl(newUrl);
       Debug.debug("urlSet is now: "+MyUtil.arrayToString(
           urlList.toArray(), " : "), 2);
     }
 
     if(refresh || currentUrlBox.getItemCount()==0 && urlList.size()>0){
       currentUrlBox.removeAllItems();
-      urlList = GridPilot.getClassMgr().getUrlList();
       for(ListIterator it=urlList.listIterator(urlList.size()-1); it.hasPrevious();){
         currentUrlBox.addItem(it.previous().toString());
       }
@@ -1252,7 +1248,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       ep.updateUI();
       pButton.updateUI();
       
-      bSave.setEnabled(true);
+      bSave.setEnabled(withNavigation);
       bOk.setEnabled(ok);
       bNew.setEnabled(false);
       bUpload.setEnabled(false);
@@ -1285,7 +1281,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     Debug.debug("setTextEdit "+url, 2);
     jtFilter.setEnabled(false);
     try{
-      bSave.setEnabled(true);
+      bSave.setEnabled(withNavigation);
       bNew.setEnabled(false);
       bUpload.setEnabled(false);
       bDownload.setEnabled(false);
@@ -1908,7 +1904,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(saveUrlHistory){
       try{
         LocalStaticShell.writeFile(GridPilot.browserHistoryFile,
-           MyUtil.arrayToString(GridPilot.getClassMgr().getUrlList().toArray(),"\n"), false);
+           MyUtil.arrayToString(urlList.toArray(),"\n"), false);
       }
       catch(Exception e){
         Debug.debug("WARNING: could not write history file. "+e.getMessage(), 1);
@@ -2246,5 +2242,31 @@ public class BrowserPanel extends JDialog implements ActionListener{
     SwingUtilities.invokeLater(t);
   }
 
+  private void addUrl(String url){
+    synchronized(urlList){
+      if(urlList==null){
+        Debug.debug("urlList null", 3);
+      }
+      urlList.add(url);
+    }
+  }
+
+  private void removeUrl(String url){
+    synchronized(urlList){
+      if(urlList==null){
+        Debug.debug("urlList null", 3);
+      }
+      urlList.remove(url);
+    }
+  }
+
+  private void clearUrls(String url){
+    synchronized(urlList){
+      if(urlList==null){
+        Debug.debug("urlList null", 3);
+      }
+      urlList.removeAllElements();
+    }
+  }
   
 }

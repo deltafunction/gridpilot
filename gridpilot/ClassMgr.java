@@ -49,7 +49,6 @@ public class ClassMgr{
   private Vector submittedTransfers = new Vector();
   private SubmissionControl submissionControl;
   private MyTransferControl transferControl;
-  private Vector urlList = new Vector();
   private HashMap shellMgrs = new HashMap();
   private static String DEFAULT_POOL_SIZE = "10";
   /** List of urls in db pool */
@@ -57,10 +56,15 @@ public class ClassMgr{
   private MySSL ssl = null;
   private HashMap<String, RteRdfParser> rdfParsers = new HashMap<String, RteRdfParser>();
   private HashMap<String, RTEMgr> rteMgrs = new HashMap<String, RTEMgr>();
+  private Vector urlList = new Vector();
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
   public GSSCredential credential = null;
   public Boolean gridProxyInitialized = Boolean.FALSE;
+  
+  public Vector getBrowserHistoryList(){
+    return urlList;
+  }
   
   public void setConfigFile(ConfigFile _configFile){
     configFile = _configFile;
@@ -200,7 +204,7 @@ public class ClassMgr{
   // Different model here: the HashMap of CS objects is kept in csPluginMgr.
   // We don't use a setCsPluginMgr method because we don't want to load
   // the classes and make the connections until it is necessary.
-  public synchronized CSPluginMgr getCSPluginMgr(){
+  public CSPluginMgr getCSPluginMgr(){
     if(csPluginMgr==null){
       Debug.debug("csPluginMgr null, creating new", 3);
       try{
@@ -375,40 +379,6 @@ public class ClassMgr{
       Debug.debug("submittedTransfers null", 3);
     }
     return submittedTransfers;
-  }
-
-  public Vector getUrlList(){
-    if(urlList==null){
-      Debug.debug("urlList null", 3);
-    }
-    return urlList;
-  }
-  
-  public synchronized void addUrl(String url){
-    synchronized(urlList){
-      if(urlList==null){
-        Debug.debug("urlList null", 3);
-      }
-      urlList.add(url);
-    }
-  }
-
-  public synchronized void removeUrl(String url){
-    synchronized(urlList){
-      if(urlList==null){
-        Debug.debug("urlList null", 3);
-      }
-      urlList.remove(url);
-    }
-  }
-
-  public synchronized void clearUrls(String url){
-    synchronized(urlList){
-      if(urlList==null){
-        Debug.debug("urlList null", 3);
-      }
-      urlList.removeAllElements();
-    }
   }
 
   public GlobalFrame getGlobalFrame(){
