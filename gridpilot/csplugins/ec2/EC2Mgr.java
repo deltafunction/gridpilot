@@ -46,10 +46,21 @@ public class EC2Mgr {
   
   private File keyFile = null;
 
-  public EC2Mgr(String accessKey, String secretKey, String _subnet, String _owner,
+  /**
+   * Construct an EC2Mgr.
+   * @param secure whether to use HTTPS or HTTP
+   * @param accessKey AWS access key
+   * @param secretKey AWS secret key
+   * @param _subnet subnet from which to allow access
+   * @param _owner owner label
+   * @param _runDir run directory
+   * @param _transferControl TransferControl object to get remote files
+   */
+  public EC2Mgr(boolean secure,
+      String accessKey, String secretKey, String _subnet, String _owner,
       String _runDir, MyTransferControl _transferControl) {
     
-    ec2 = new Jec2(accessKey, secretKey, /*isSecure*/true);
+    ec2 = new Jec2(accessKey, secretKey, secure);
     subnet = _subnet;
     owner = _owner;
     runDir = _runDir;

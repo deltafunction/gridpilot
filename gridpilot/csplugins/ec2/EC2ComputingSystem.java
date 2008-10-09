@@ -37,13 +37,19 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   public EC2ComputingSystem(String _csName) throws Exception {
     super(_csName);
     
-    amiID = GridPilot.getClassMgr().getConfigFile().getValue("EC2",
+    amiID = GridPilot.getClassMgr().getConfigFile().getValue(csName,
       "AMI id");
-    String accessKey = GridPilot.getClassMgr().getConfigFile().getValue("EC2",
+    boolean ec2Secure = true;
+    String ec2SecureStr = GridPilot.getClassMgr().getConfigFile().getValue(csName,
+       "Secure");
+    if(ec2SecureStr!=null && !ec2SecureStr.equalsIgnoreCase("yes") && !ec2SecureStr.equalsIgnoreCase("true")){
+      ec2Secure = false;
+    }
+    String accessKey = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "AWS access key id");
-    String secretKey = GridPilot.getClassMgr().getConfigFile().getValue("EC2",
+    String secretKey = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "AWS secret access key");
-    String sshAccessSubnet = GridPilot.getClassMgr().getConfigFile().getValue("EC2",
+    String sshAccessSubnet = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "SSH access subnet");
     if(sshAccessSubnet==null || sshAccessSubnet.equals("")){
       // Default to global access
@@ -51,7 +57,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     String runDir = MyUtil.clearTildeLocally(MyUtil.clearFile(workingDir));
     Debug.debug("Using workingDir "+workingDir, 2);
-    ec2mgr = new EC2Mgr(accessKey, secretKey, sshAccessSubnet, this.getUserInfo(csName),
+    ec2mgr = new EC2Mgr(/*ec2Server, ec2Port, */ec2Secure, /*ec2Path,*/
+        accessKey, secretKey, sshAccessSubnet, getUserInfo(csName),
         runDir, transferControl);
  
     Debug.debug("Adding EC2 monitor", 2);
@@ -61,7 +68,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     GridPilot.extraMonitorTabs.add(panel);
         
     try{
-      String mms = GridPilot.getClassMgr().getConfigFile().getValue("EC2",
+      String mms = GridPilot.getClassMgr().getConfigFile().getValue(csName,
          "Maximum machines");
       maxMachines = Integer.parseInt(mms);
     }
@@ -70,7 +77,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     String jobsPerMachine = "1";
     try{
-      jobsPerMachine = GridPilot.getClassMgr().getConfigFile().getValue("EC2",
+      jobsPerMachine = GridPilot.getClassMgr().getConfigFile().getValue(csName,
          "Jobs per machine");
     }
     catch(Exception e){
