@@ -45,9 +45,12 @@ public class EC2Mgr {
   public final static String KEY_NAME = "GridPilot_EC2_TMP_KEY";
   
   private File keyFile = null;
-
+  
   /**
    * Construct an EC2Mgr.
+   * @param server the IP name or address of the server
+   * @param port port number of the service
+   * @param path path of the service
    * @param secure whether to use HTTPS or HTTP
    * @param accessKey AWS access key
    * @param secretKey AWS secret key
@@ -56,11 +59,20 @@ public class EC2Mgr {
    * @param _runDir run directory
    * @param _transferControl TransferControl object to get remote files
    */
-  public EC2Mgr(boolean secure,
+  public EC2Mgr(String server, int port, String path, boolean secure,
       String accessKey, String secretKey, String _subnet, String _owner,
       String _runDir, MyTransferControl _transferControl) {
-    
+    if(secure){
+      try{
+        GridPilot.getClassMgr().getSSL().activateSSL();
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        secure = false;
+      }
+    }
     ec2 = new Jec2(accessKey, secretKey, secure);
+    //ec2 = new Jec2(accessKey, secretKey, secure, server, port, path);
     subnet = _subnet;
     owner = _owner;
     runDir = _runDir;

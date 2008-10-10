@@ -36,15 +36,33 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
 
   public EC2ComputingSystem(String _csName) throws Exception {
     super(_csName);
-    
+
     amiID = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-      "AMI id");
+    "AMI id");
     boolean ec2Secure = true;
     String ec2SecureStr = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "Secure");
     if(ec2SecureStr!=null && !ec2SecureStr.equalsIgnoreCase("yes") && !ec2SecureStr.equalsIgnoreCase("true")){
       ec2Secure = false;
     }
+
+    String ec2Server = GridPilot.getClassMgr().getConfigFile().getValue(csName,
+      "Server address");
+    if(ec2Server==null || ec2Server.equals("")){
+      ec2Server = "ec2.amazonaws.com";
+    }
+    String ec2Path = GridPilot.getClassMgr().getConfigFile().getValue(csName,
+       "Service path");
+    if(ec2Path==null){
+      ec2Path = "";
+    }
+    String ec2PortStr = GridPilot.getClassMgr().getConfigFile().getValue(csName,
+       "Port number");
+    int ec2Port = ec2Secure?443:80;
+    if(ec2PortStr!=null){
+      ec2Port = Integer.parseInt(ec2PortStr);
+    }
+   
     String accessKey = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "AWS access key id");
     String secretKey = GridPilot.getClassMgr().getConfigFile().getValue(csName,
@@ -57,7 +75,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     String runDir = MyUtil.clearTildeLocally(MyUtil.clearFile(workingDir));
     Debug.debug("Using workingDir "+workingDir, 2);
-    ec2mgr = new EC2Mgr(/*ec2Server, ec2Port, */ec2Secure, /*ec2Path,*/
+    ec2mgr = new EC2Mgr(ec2Server, ec2Port, ec2Path, ec2Secure,
         accessKey, secretKey, sshAccessSubnet, getUserInfo(csName),
         runDir, transferControl);
  
