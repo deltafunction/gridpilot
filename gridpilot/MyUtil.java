@@ -1363,7 +1363,7 @@ public class MyUtil extends gridfactory.common.Util{
           String [] rteIds = GridPilot.getClassMgr().getDBPluginMgr(
               localRuntimeDBs[i]).getRuntimeEnvironmentIDs(LocalStaticShell.getOS(), csName);
           for(int j=0; j<rteIds.length; ++j){
-            toDeleteRtes.put(rteIds[i], localRuntimeDBs[i]);
+            toDeleteRtes.put(rteIds[j], localRuntimeDBs[i]);
           }
         }
         
