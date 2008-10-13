@@ -64,16 +64,28 @@ public class MySSL extends SSL{
   private X509Certificate x509UserCert = null;
   private GSSCredential credential = null;
   private Boolean gridProxyInitialized = Boolean.FALSE;
+  private Boolean sslInitialized = Boolean.FALSE;
   private boolean sslOk = false;
   private boolean proxyOk = false;
   private CoGProperties prop = null;
+  // the *Str fields are to be fully qualified path names to be fed to the VOMS stuff
+  private String certFileStr;
+  private String keyFileStr;
+  private String vomsDirStr;
+  private String caCertsDirStr;
   
-  public MySSL(String _certFile, String _keyFile,
-      String _keyPassword, String _caCertsDir) throws IOException, GeneralSecurityException {
-    certFile =_certFile;
-    keyFile = _keyFile;
-    keyPassword = _keyPassword;
-    caCertsDir = Util.clearTildeLocally(Util.clearFile(_caCertsDir));
+  public MySSL() throws IOException, GeneralSecurityException {
+    
+    certFile = GridPilot.certFile;
+    keyFile = GridPilot.keyFile;
+    keyPassword = GridPilot.keyPassword;
+    
+    caCertsDir = GridPilot.caCertsDir==null?null:Util.clearTildeLocally(Util.clearFile(GridPilot.caCertsDir));
+    vomsDirStr = GridPilot.vomsDir==null?null:Util.clearTildeLocally(Util.clearFile(GridPilot.vomsDir));
+    
+    certFileStr = (new File(clearTildeLocally(MyUtil.clearFile(certFile)))).getAbsolutePath();
+    keyFileStr = (new File(clearTildeLocally(MyUtil.clearFile(keyFile)))).getAbsolutePath();
+    
     if(CoGProperties.getDefault()==null){
       prop = new CoGProperties();
     }
@@ -90,11 +102,14 @@ public class MySSL extends SSL{
     }
     initalizeCACertsDir();
     if(GridPilot.keyPassword==null){
-      gridProxyInitialized = false;
+      sslInitialized = false;
       credential = null;
       //getProxyFile().delete();
       //getGridCredential();
-      decryptPrivateKey();
+      synchronized(sslInitialized){
+        decryptPrivateKey();
+        sslInitialized = true;
+      }
     }
     Debug.debug("Activating SSL with password "+GridPilot.keyPassword, 2);
     super.activateSSL(GridPilot.certFile, GridPilot.keyFile, GridPilot.keyPassword, GridPilot.caCertsDir);
@@ -108,6 +123,7 @@ public class MySSL extends SSL{
     }
     Debug.debug("Activating proxy SSL with password "+GridPilot.keyPassword, 2);
     initalizeCACertsDir();
+    initalizeVomsDir();
     getGridCredential();
     super.activateSSL(getProxyFile().getAbsolutePath(), getProxyFile().getAbsolutePath(), "", caCertsDir);
     proxyOk = true;
@@ -137,13 +153,21 @@ public class MySSL extends SSL{
       caCertsTmpdir = GridPilot.caCertsDir;
     }
     GridPilot.caCertsDir = caCertsDir;
+    caCertsDirStr = (new File(clearTildeLocally(clearFile(caCertsDir)))).getAbsolutePath();
     CoGProperties.setDefault(prop);
     Debug.debug("COG defaults now:\n"+CoGProperties.getDefault(), 3);
     Debug.debug("COG defaults file:\n"+CoGProperties.configFile, 3);
   }
   
+  private void initalizeVomsDir() {
+    if(GridPilot.vomsDir==null || GridPilot.vomsDir.equals("")){
+      GridPilot.vomsDir = setupDefaultVomsDir();
+      vomsDirStr = GridPilot.vomsDir;
+    }
+  }
+  
   public /*synchronized*/ GSSCredential getGridCredential(){
-    if(gridProxyInitialized.booleanValue()){
+    if(gridProxyInitialized){
       Debug.debug("Grid proxy already initialized. "+credential, 2);
       return credential;
     }
@@ -178,7 +202,7 @@ public class MySSL extends SSL{
     return credential;
   }
   
-  private static String setupDefaultCACertificates() throws IOException {
+  private String setupDefaultCACertificates() throws IOException {
     try{
       // get a temp name
       File tmpFile = File.createTempFile(/*prefix*/"GridPilot-certificates", /*suffix*/"");
@@ -188,7 +212,7 @@ public class MySSL extends SSL{
       // hack to have the diretory deleted on exit
       GridPilot.tmpConfFile.put(tmpDir, new File(tmpDir));
       // fill the directory with certificates from resources/certificates
-      SSL.copyDefaultCACertificates(tmpDir, MySSL.class);
+      SSL.copyDefaultCACertificates(tmpDir, super.getClass());
       return tmpDir;
     }
     catch(IOException e){
@@ -200,7 +224,51 @@ public class MySSL extends SSL{
     }
   }
   
+  private String setupDefaultVomsDir() {
+    try{
+      // try and see if SSl.class was loaded from a jar
+      boolean fromJar = false;
+      try{
+        fromJar = MyUtil.listFromJAR("/resources/vomsdir", this.getClass(), false).size()>0;
+      }
+      catch(Exception e){
+        Debug.debug("this class NOT loaded from jar.", 2);
+      }
+      // if so, extract vomsdir to the tmp dir
+      if(fromJar){
+        // get a temp name
+        File tmpFile = File.createTempFile(/*prefix*/"GridPilot-vomsdir", /*suffix*/"");
+        String tmpDir = tmpFile.getAbsolutePath();
+        tmpFile.delete();
+        tmpFile.mkdirs();
+        MyUtil.extractFromJAR("resources/vomsdir", tmpFile, super.getClass());
+        // hack to have the diretory deleted on exit
+        GridPilot.tmpConfFile.put(tmpDir, new File(tmpDir));
+        String vDir = (new File(tmpFile, "vomsdir")).getAbsolutePath();
+        Debug.debug("Created tmp VOMS dir "+vDir, 3);
+        return vDir;
+      }
+      // otherwise, just use the directory
+      else{
+        URL dirUrl = super.getClass().getResource("/resources/vomsdir");
+        Debug.debug("Using default VOMS dir "+dirUrl.getPath(), 3);
+        return dirUrl.getPath();
+      }
+    }
+    catch(IOException e){
+      GridPilot.getClassMgr().getLogFile().addMessage(
+          "ERROR: could not setup VOMS directory. " +
+          "Grid authentication may not work.", e);
+      e.printStackTrace();
+      return null;
+    }
+  }
+  
   private void decryptPrivateKey() throws IOException {
+    if(sslInitialized){
+      Debug.debug("SSL already initialized. "+credential, 2);
+      return;
+    }
     String [] credentials = null;
     for(int i=0; i<=3; ++i){
       try{
@@ -252,7 +320,6 @@ public class MySSL extends SSL{
           manager.createCredential(data,
                                    ExtendedGSSCredential.IMPEXP_OPAQUE,
                                                GSSCredential.DEFAULT_LIFETIME,
-                                               // TODO: set proxy life time
                                                //GridPilot.proxyTimeValid,
                                                null, // use default mechanism - GSI
                                                GSSCredential.INITIATE_AND_ACCEPT);
@@ -263,7 +330,7 @@ public class MySSL extends SSL{
     }
     
     // if credential ok, return
-    if(gridProxyInitialized && credential!=null && credential.getRemainingLifetime()>=GridPilot.proxyTimeLeftLimit){
+    if(credential!=null && credential.getRemainingLifetime()>=GridPilot.proxyTimeLeftLimit){
       Debug.debug("proxy ok", 3);
       return;
     }
@@ -277,6 +344,11 @@ public class MySSL extends SSL{
       String [] credentials = null;
       GlobusCredential cred = null;
       FileOutputStream out = null;
+      /**
+       * Query for password max 4 times in total. If VOMS server is specified in
+       * config file, try max 2 times to create VOMS proxy, then max 2 times to
+       * create normal proxy.
+       */
       for(int i=0; i<=3; ++i){
         try{
           credentials = askForPassword(GridPilot.keyFile, GridPilot.certFile,
@@ -289,9 +361,24 @@ public class MySSL extends SSL{
         }
         try{
           Debug.debug("Creating proxy, "+arrayToString(credentials), 3);
-          cred = createProxy(credentials[1], credentials[2],
-             credentials[0], GridPilot.proxyTimeValid, GridPilot.PROXY_STRENGTH);
-          credential = new GlobusGSSCredentialImpl(cred, GSSCredential.INITIATE_AND_ACCEPT) ;
+          if(GridPilot.vomsServerURL==null || GridPilot.vomsServerURL.equals("") ||
+              i>1){
+            /* Old implementation - no VOMS attributes. */
+            cred = createProxy(credentials[1], credentials[2],
+            credentials[0], GridPilot.proxyTimeValid, GridPilot.PROXY_STRENGTH);
+            credential = new GlobusGSSCredentialImpl(cred, GSSCredential.INITIATE_AND_ACCEPT);
+          }
+          else{
+            VomsProxyFactory vpf = new VomsProxyFactory(VomsProxyFactory.CERTIFICATE_PEM,
+                GridPilot.vomsServerURL, GridPilot.vo, credentials[0], proxy.getAbsolutePath(),
+                certFileStr, keyFileStr, caCertsDirStr, vomsDirStr,
+                GridPilot.proxyTimeValid, VomsProxyFactory.DELEGATION_FULL, VomsProxyFactory.OID_OLD,
+                GridPilot.fqan);
+            credential = vpf.createProxy();
+            if(credential instanceof GlobusGSSCredentialImpl) {
+              cred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+            }
+          }
           // Keep password in memory - needed by mysql plugin
           Debug.debug("Setting grid password to "+credentials[0], 3);
           GridPilot.keyPassword = credentials[0];

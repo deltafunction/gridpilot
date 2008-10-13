@@ -22,7 +22,6 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
-import org.ietf.jgss.GSSCredential;
 import org.logicalcobwebs.proxool.ProxoolFacade;
 
 /**
@@ -59,8 +58,6 @@ public class ClassMgr{
   private Vector urlList = new Vector();
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
-  public GSSCredential credential = null;
-  public Boolean gridProxyInitialized = Boolean.FALSE;
   
   public Vector getBrowserHistoryList(){
     return urlList;
@@ -425,7 +422,7 @@ public class ClassMgr{
     if(ssl==null){
       Debug.debug("Constructing SSL with "+GridPilot.certFile+":"+GridPilot.keyFile+":"+
           GridPilot.keyPassword+":"+GridPilot.caCertsDir, 1);
-      ssl = new MySSL(GridPilot.certFile, GridPilot.keyFile, GridPilot.keyPassword, GridPilot.caCertsDir);
+      ssl = new MySSL();
     }
     return ssl;
   }

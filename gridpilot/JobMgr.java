@@ -216,7 +216,7 @@ public class JobMgr{
             String jobId = dbPluginMgr.getRunInfo(job.getIdentifier(), "jobId");
             job.setJobId(jobId);
             String csName = dbPluginMgr.getRunInfo(job.getIdentifier(), "computingSystem");
-            if (csName==null || csName.equals("")){
+            if(csName==null || csName.equals("")){
               logFile.addMessage("this job (" + job.getIdentifier() + ") doesn't have a CS defined");
               job.setNeedsUpdate(false);
             }
@@ -235,10 +235,10 @@ public class JobMgr{
         
         Debug.debug(job.getName()+" getNeedsUpdate: "+job.getNeedsUpdate(),3);
 
-        if (job.getDBStatus()==DBPluginMgr.SUBMITTED){
+        if(job.getDBStatus()==DBPluginMgr.SUBMITTED){
           job.setCSStatus(MyJobInfo.CS_STATUS_WAIT);
           if(job.getJobId()==null || job.getJobId().trim().length()==0){
-            logFile.addMessage("This job is SUBMITTED but doesn't have any job id\n" +
+            logFile.addMessage("This job is SUBMITTED but is not known to the computing backend.\n" +
                                "It is set to UNDECIDED", job);
             job.setNeedsUpdate(false);
             initChanges();
@@ -508,8 +508,8 @@ public class JobMgr{
         "  Job ID \t: " + job.getJobId() + "\n" +
         "  Host \t: " + job.getHost() + "\n" +
         "  Status DB \t: " + DBPluginMgr.getStatusName(job.getDBStatus()) + "\n" +
-        "  Status \t: " + job.getStatus() + "\n" +
-        "  Status GridPilot \t: " + MyJobInfo.getStatusName(job.getStatus()) + "\n" +
+        "  Status CS \t: " + job.getCSStatus() + "\n" +
+        "  Status \t: " + MyJobInfo.getStatusName(job.getStatus()) + "\n" +
         "  StdOut \t: " + job.getOutTmp() + "\n" +
         "  StdErr \t: " + job.getErrTmp() + "\n" +
         (job.getDownloadFiles()==null?"":"  Download files \t: " + MyUtil.arrayToString(job.getDownloadFiles()) + "\n") +
@@ -568,6 +568,7 @@ public class JobMgr{
    * In this case, validation is never done.
    */
   public void jobFailure(MyJobInfo job){
+    Debug.debug("Failing job "+job.getIdentifier(), 2);
     updateDBStatus(job, DBPluginMgr.FAILED);
     if(job.getDBStatus()!=DBPluginMgr.FAILED){
       logFile.addMessage("Update DB status failed after job Failure ; " +
@@ -851,7 +852,7 @@ public class JobMgr{
 
   /**
    * Called each time the DB status of the specified job changes (except at submission). <br>
-   * In all cases, DB is updated ; <br>
+   * In all case the DB is updated.<br>
    * <ul>
    * <li>Defined : dereservation
    * <li>Submitted : needToBeRefreshed <- true
@@ -896,7 +897,7 @@ public class JobMgr{
    */
   public boolean updateDBStatus(MyJobInfo job, int dbStatusNr) {
     // dbPluginMgr.updateDBStatus should be done before dereservation (otherwise you
-    // could have integrity problems), but should be done after post processing
+    // could have integrity problems), but should be done after post-processing
     // in case of 'Validate' (in order to avoid double access to DB)
     
     boolean succes = true;

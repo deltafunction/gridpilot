@@ -264,7 +264,7 @@ public class SubmissionControl{
           job.setCSName(csName);
           newJobs.add(job);
           //job.setDBStatus(DBPluginMgr.SUBMITTED);
-          job.setDBStatus(DBPluginMgr.DEFINED);
+          //job.setDBStatus(DBPluginMgr.DEFINED);
           job.setCSStatus(MyJobInfo.CS_STATUS_WAIT);
           job.setJobId(null);
           job.setHost(null);

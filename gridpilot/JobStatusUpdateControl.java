@@ -325,7 +325,7 @@ public class JobStatusUpdateControl{
           // Without the line below: leave as refreshable, in case the error is intermittent.
           // With the line below: avoid checking over and over again.
           //                      To recheck, clear and add again to monitoring panel.
-          //job.setNeedToBeRefreshed(false);
+          //job.setNeedsUpdate(false);
           if(job.getDBStatus()==DBPluginMgr.UNDECIDED || job.getDBStatus()==DBPluginMgr.UNEXPECTED){
             job.setNeedsUpdate(false);
           }

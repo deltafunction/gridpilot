@@ -1171,7 +1171,7 @@ public class BeginningWizard{
     }
     if(jcbs[1].isSelected() && tfVO.getText()!=null && !tfVO.getText().equals("")){
       configFile.setAttributes(
-          new String [] {"GLite", "GLite", "GLite"},
+          new String [] {"GLite", GridPilot.topConfigSection, "GLite"},
           new String [] {"Enabled", "Virtual organization", "Runtime vos"},
           new String [] {"yes", tfVO.getText().trim(), tfVO.getText().trim()}
           );

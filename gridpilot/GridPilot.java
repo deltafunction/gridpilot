@@ -89,6 +89,10 @@ public class GridPilot extends JApplet{
   public static File userConfFile = null;
   public static String runtimeDir = null;
   public static int PROXY_STRENGTH = 512;
+  public static String vo;
+  public static String vomsServerURL;
+  public static String fqan;
+  public static String vomsDir;
 
   /**
    * Constructor
@@ -253,8 +257,20 @@ public class GridPilot extends JApplet{
             "WARNING: you have not specified any CA certificates. " +
             "A default set will be used.");
       }
+      vomsDir = getClassMgr().getConfigFile().getValue(topConfigSection,
+         "voms directory");
+      if(vomsDir==null){
+        getClassMgr().getConfigFile().missingMessage(
+            topConfigSection, "voms directory");
+        getClassMgr().getLogFile().addMessage(
+            "WARNING: you have not specified any VOMS directory. " +
+            "A default set of VOMS definitions will be used.");
+      }
+      vo = getClassMgr().getConfigFile().getValue(topConfigSection, "Virtual organization");
+      vomsServerURL = getClassMgr().getConfigFile().getValue(topConfigSection, "Voms server");
+      fqan = getClassMgr().getConfigFile().getValue(topConfigSection, "Voms fqan");
       String [] _fixedJobAttributes = getClassMgr().getConfigFile().getValues(topConfigSection,
-      "job attributes");
+         "job attributes");
       if(_fixedJobAttributes==null || _fixedJobAttributes.length==0){
         getClassMgr().getConfigFile().missingMessage(
             topConfigSection, "job attributes");

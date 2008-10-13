@@ -21,7 +21,6 @@ public class GLiteScriptGenerator extends ScriptGenerator {
   String reRun = null;
   List remoteInputFilesList = null;
   List lfcInputFilesList = null;
-  String vo = null;
   String replicaCatalog = null;
   String [] uses = null;
   DBPluginMgr dbPluginMgr = null;
@@ -47,7 +46,6 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     cpuTime = configFile.getValue(csName, "CPU time");
     memory = configFile.getValue(csName, "Memory");
     reRun = configFile.getValue(csName, "Max rerun");
-    vo = configFile.getValue(csName, "Virtual organization");
     replicaCatalog = configFile.getValue(csName, "ReplicaCatalog");
     localInputFilesList = new Vector();
     remoteInputFilesList = new Vector();
@@ -347,14 +345,23 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       }
       
       // Various options
-      writeLine(bufJdl, "DataAccessProtocol =  {\"rfio\", \"gsiftp\", \"gsidcap\"};");
-      writeLine(bufJdl, "Requirements = (other.GlueCEPolicyMaxCPUTime >= "+cpuTime+")" +
-          " && (other.other.GlueHostMainMemoryRAMSize) >= "+memory+")" +
-          //" && (other.GlueCEStateStatus == \"Production\")"); +
+      //writeLine(bufJdl, "DataAccessProtocol =  {\"rfio\", \"gsiftp\", \"gsidcap\"};");
+      writeLine(bufJdl, "Requirements =" +
+          (cpuTime==null||cpuTime.equals("")?"":"(other.GlueCEPolicyMaxCPUTime >= "+cpuTime+") ") +
+          (cpuTime!=null&&!cpuTime.equals("")?" && ":"")+
+          (memory==null||memory.equals("")?"":"(other.other.GlueHostMainMemoryRAMSize >= "+memory+") ") +
+          ((cpuTime==null||cpuTime.equals(""))&&(memory!=null&&!memory.equals(""))?" && ":"")+
+          "(other.GlueCEStateStatus == \"Production\")" +
           ";");
-      writeLine(bufJdl, "Rank = (-other.GlueCEStateEstimatedResponseTime);");
-      writeLine(bufJdl, "VirtualOrganisation = \"" + vo + "\";");
-      writeLine(bufJdl, "RetryCount  = 0;");
+      writeLine(bufJdl, "rank = -other.GlueCEStateEstimatedResponseTime;");
+      writeLine(bufJdl, "DefaultRank = -other.GlueCEStateEstimatedResponseTime;");
+      writeLine(bufJdl, "SignificantAttributes = { \"Requirements\",\"Rank\",\"FuzzyRank\" };");
+      //if(GridPilot.vo!=null && !GridPilot.vo.equals("")){
+      //  writeLine(bufJdl, "VirtualOrganisation = \"" + GridPilot.vo + "\";");
+      //}
+      writeLine(bufJdl, "JobType  = \"normal\";");
+      writeLine(bufJdl, "Type  = \"job\";");
+      writeLine(bufJdl, "RetryCount  = 3;");
       writeLine(bufJdl, "ShallowRetryCount = " + reRun + ";");
       
       // Runtime environments

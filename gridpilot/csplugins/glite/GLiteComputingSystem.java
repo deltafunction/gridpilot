@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -33,6 +34,8 @@ import gridpilot.MyUtil;
 
 import org.glite.jdl.JobAd;
 import org.glite.wms.wmproxy.JobIdStructType;
+import org.glite.wms.wmproxy.JobUnknownFaultException;
+import org.glite.wms.wmproxy.OperationNotAllowedFaultException;
 import org.glite.wms.wmproxy.StringAndLongList;
 import org.glite.wms.wmproxy.StringAndLongType;
 import org.glite.wms.wmproxy.WMProxyAPI;
@@ -579,22 +582,21 @@ public class GLiteComputingSystem implements MyComputingSystem{
     
     String status = getStatus(job);
     
-    // Update only if status has changed
-    boolean doUpdate = (job.getCSStatus()!=null &&
-        !status.equals(job.getCSStatus()));
+    Debug.debug(
+        "Status of job " + job.getIdentifier() + ": "+status, 2);
 
     if(status==null){
-      job.setCSStatus(GLITE_STATUS_UNKNOWN);
+      status = GLITE_STATUS_UNKNOWN;
       Debug.debug(
-          "Status not found for job " + job.getName(), 2);
-      return;
+          "Status not found for job " + job.getIdentifier(), 2);
     }
-    else{
-      job.setCSStatus(status);
-    }
+
+    // Update only if status has changed
+    boolean doUpdate = (job.getCSStatus()==null || !job.getCSStatus().equals(status));
 
     if(doUpdate){
       Debug.debug("Updating status of job "+job.getName(), 2);
+      job.setCSStatus(status);
       if(job.getCSStatus()==null){
         Debug.debug("No status found for job "+job.getName(), 2);
         job.setCSStatus(GLITE_STATUS_ERROR);
@@ -604,10 +606,12 @@ public class GLiteComputingSystem implements MyComputingSystem{
           // get stdout and stderr and any other sandbox files
           getOutputs(job);
           // if this went well we can set the status to done
-          job.setStatusFailed();
+          job.setStatusDone();
         }
         catch(Exception e){
           job.setCSStatus(GLITE_STATUS_FAILED);
+          e.printStackTrace();
+          logFile.addInfo("Job "+job.getName()+" : "+job.getIdentifier()+" : "+job.getJobId()+" : "+"failed. "+e.getMessage());
         }
       }
       else if(status.equals(GLITE_STATUS_ERROR)){
@@ -618,10 +622,13 @@ public class GLiteComputingSystem implements MyComputingSystem{
       else if(status.equals(GLITE_STATUS_RUNNING)){
         job.setStatusRunning();
       }
+      else if(status.equals(GLITE_STATUS_FAILED)){
+          job.setStatusFailed();
+      }
       //job.setInternalStatus(ComputingSystem.STATUS_WAIT);
       else{
         Debug.debug("WARNING: unknown status: "+status, 1);
-        job.setCSStatus(GLITE_STATUS_WAIT);
+        job.setCSStatus(GLITE_STATUS_UNKNOWN);
       }
     }
   }
@@ -777,10 +784,10 @@ public class GLiteComputingSystem implements MyComputingSystem{
       url = outs[i].getName();
       if(url!=null){
         if(url.endsWith("stdout")){
-          transferControl.download(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
+          transferControl.httpsDownload(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
         }
         else if(url.endsWith("stderr")){
-          transferControl.download(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))));
+          transferControl.httpsDownload(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))));
         }
         else{
           transferControl.download(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(runDir(job)))));
@@ -789,8 +796,13 @@ public class GLiteComputingSystem implements MyComputingSystem{
     }
   }
   
-  // Copy stdout+stderr to local files
-  public boolean syncCurrentOutputs(MyJobInfo job){
+  /**
+   * Copy stdout+stderr to local files.
+   * Returns true if syncing succeeds, false if the job ok, but in a state where
+   * stdout/stderr is not available.
+   * @throws IOException if the job is done or killed, but stdout/stderr not available.
+   */
+  public boolean syncCurrentOutputs(MyJobInfo job) throws IOException {
     try{
       Debug.debug("Syncing " + job.getName() + ":" + job.getJobId(), 3);
       
@@ -808,7 +820,9 @@ public class GLiteComputingSystem implements MyComputingSystem{
         try{
           String stdoutUrl = null;
           String stderrUrl = null;
+          Debug.debug("Getting output file list", 3);
           StringAndLongList outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
+          Debug.debug("--> "+outList.toString(), 3);
           StringAndLongType [] outs = outList.getFile();
           if(outs!=null){
             for(int i=0; i<outs.length; ++i){
@@ -821,50 +835,67 @@ public class GLiteComputingSystem implements MyComputingSystem{
             }
           }
           if(stdoutUrl!=null){
-            transferControl.download(stdoutUrl, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
+            transferControl.httpsDownload(stdoutUrl, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
           }
           if(stderrUrl!=null){
-            transferControl.download(stderrUrl, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))));
+            transferControl.httpsDownload(stderrUrl, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))));
           }
         }
-        catch(Exception e){
-          // if this fails, give it a try to get from final destination;
-          // it could be that the job is in NG_STATUS_FINISHED on the CE,
-          // but GridPilot does not know, because the job has not been
-          // refreshed yet
-          getFromfinalDest = true;
+        // If this fails, give it a try to get from final destination;
+        // it could be that the job is in GLITE_STATUS_DONE on the CE,
+        // but GridPilot does not know, because the job has not been
+        // refreshed yet.
+        // If the job has been killed, the exception will be an JobUnknownFaultException.
+        // If the job has just been submitted, the exception will be an OperationNotAllowedFaultException.
+        catch(JobUnknownFaultException e){
           e.printStackTrace();
+          getFromfinalDest = true;
+        }
+        catch(OperationNotAllowedFaultException e){
+          e.printStackTrace();
+          getFromfinalDest = false;
         }
       }
-      else{
+      if(getFromfinalDest || job.getCSStatus().equals(GLITE_STATUS_DONE) ||
+          job.getDBStatus()==DBPluginMgr.UNDECIDED){
         if(getFromfinalDest || !finalStdOut.startsWith("file:")){
           Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
               " from final destination "+finalStdOut+" to " +
               MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp())), 3);
           transferControl.download(finalStdOut, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
+          return true;
         }
         if(getFromfinalDest || !finalStdErr.startsWith("file:")){
           Debug.debug("Downloading stderr of: " + job.getName() + ":" + job.getJobId()+
               " from final destination "+finalStdErr+" to " +
               MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp())), 3);
           transferControl.download(finalStdErr, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))));
+          return true;
         }
       }
+      return !getFromfinalDest;
     }
     catch(Exception ae){
-      error = "Exception during get stdout of " + job.getName() + ":" + job.getJobId() + ":\n" +
-      "\tException\t: " + ae.getMessage();
-      //logFile.addMessage(error, ae);
-      //ae.printStackTrace();
-      return false;
+      error = "Job is done or has been killed, but stdout/stderr is not available. " + ae.getMessage();
+      throw new IOException(error);
     }
-    return true;
   }
 
   public String getStatus(MyJobInfo job){
-    syncCurrentOutputs(job);
+    try{
+      if(!syncCurrentOutputs(job)){
+        //return GLITE_STATUS_ERROR;
+        return GLITE_STATUS_WAIT;
+      }
+    }
+    catch(Exception e){
+      logFile.addInfo("Job "+job.getName()+" : "+job.getIdentifier()+" : "+job.getJobId()+
+          " failed. "+e.getMessage());
+      return GLITE_STATUS_FAILED;
+    }
     String stdoutFileName = job.getOutTmp();
     File stdoutFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(stdoutFileName)));
+    Debug.debug("Checking stdout file "+stdoutFile.getAbsolutePath(), 2);
     if(stdoutFile.exists()){
       boolean stdoutOK = false;
       try{
@@ -872,6 +903,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
         String line = "";
         while(line!=null){
            line = raf.readLine();
+           Debug.debug("--> "+line, 2);
            if(line.equals("job "+job.getIdentifier()+" done")){
              stdoutOK = true;
              break;

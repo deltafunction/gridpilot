@@ -718,7 +718,22 @@ public class GSIFTPFileTransfer implements FileTransfer {
         else{
           entryArr = MyUtil.split(line);
           fileName = entryArr[entryArr.length-1];
+          // Really ugly: we cannot know how the server chooses to display the information.
+          // E.g.
+          // NorduGrid ARC:
+          // -------   1 user     group  Mon Oct 13 11:20:41 2008       1912035286  data1.txt
+          // gLite
+          // -rw-rw----    1 glite           9 Oct 13 11:21 data1.txt
+          // TODO: Find some way to improve this wild guessing...
           bytes = entryArr[entryArr.length-2];
+          try{
+            Integer.parseInt(bytes);
+          }
+          catch(NumberFormatException e){
+            if(entryArr.length==8){
+              bytes = entryArr[entryArr.length-5];
+            }
+          }
         }
         // If server is nice enough to provide file information, use it
         if(fileName.matches(filter)){

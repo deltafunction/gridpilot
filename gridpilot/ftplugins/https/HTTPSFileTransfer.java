@@ -84,7 +84,7 @@ public class HTTPSFileTransfer implements FileTransfer {
   /**
    * Connect to server and set environment.
    * This method must be synchronized: before there were problems with
-   * simultaneous GPSS submissions, i.e. connecting in parallel to the same
+   * simultaneous GridFactory submissions, i.e. connecting in parallel to the same
    * host.
    */
   private synchronized MyUrlCopy myConnect(GlobusURL srcUrl, GlobusURL destUrl) throws IOException{
@@ -127,7 +127,7 @@ public class HTTPSFileTransfer implements FileTransfer {
   /**
    * Connect to server and set environment with the aim of deleting srcUrl.
    * This method must be synchronized: before there were problems with
-   * simultaneous GPSS submissions, i.e. connecting in parallel to the same
+   * simultaneous GridFactory submissions, i.e. connecting in parallel to the same
    * host.
    */
   private synchronized MyUrlCopy myConnect(GlobusURL srcUrl) throws IOException{
@@ -225,6 +225,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       if(statusBar!=null){
         statusBar.setLabel("Download failed");
       }
+      Debug.debug("Download failed. "+t.getException().getMessage(), 2);
       throw t.getException();
     }
    

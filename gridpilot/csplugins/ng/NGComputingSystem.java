@@ -388,7 +388,6 @@ public class NGComputingSystem implements MyComputingSystem{
           job.getCSStatus().equals(NG_STATUS_INLRMSR1)){
         job.setStatusRunning();
       }
-      //job.setInternalStatus(ComputingSystem.STATUS_WAIT);
       else{
         Debug.debug("WARNING: unknown status: "+job.getCSStatus(), 1);
         job.setStatusReady();

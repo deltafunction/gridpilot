@@ -1202,16 +1202,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
       try{
         bytes = ft.getFileBytes(new GlobusURL(url));
       }
-      catch(Exception e){
-        // Some gridftp servers (glite) list modification date as second field.
-        // This will cause an exception when trying to parse as long.
-        // Just assume the file is large.
-        e.printStackTrace();
-      }   
-      if(bytes==-1 || bytes>MAX_FILE_EDIT_BYTES){
+      catch(Exception ee){
+      }
+      if(bytes>MAX_FILE_EDIT_BYTES){
         //throw new IOException("File too big "+ft.getFileBytes(new GlobusURL(url)));
-        tmpFile.delete();
         return false;
+      }
+      if(bytes==-1){
+        GridPilot.getClassMgr().getLogFile().addInfo("WARNING: File size not found.");
       }
       ft.getFile(new GlobusURL(url), tmpFile);
     }
@@ -1223,6 +1221,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
       e.getMessage();
       ep.setText(error);
       throw new IOException(error);
+    }
+    finally{
+      ep.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+      statusBar.setLabel("");
     }
     pButton.updateUI();
     try{
@@ -1254,8 +1256,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bUpload.setEnabled(false);
       bDownload.setEnabled(false);
       bRegister.setEnabled(false);
-      
-      tmpFile.delete();
 
       Debug.debug("Setting thisUrl, "+url, 3);
       thisUrl = url;
@@ -1267,6 +1267,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       Debug.debug("Could not set text editor for url "+url+". "+
          e.getMessage(), 1);
       throw e;
+    }
+    finally{
+      tmpFile.delete();
     }
     return true;
   }

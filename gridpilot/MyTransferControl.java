@@ -1199,109 +1199,99 @@ public class MyTransferControl extends TransferControl {
       return false;
     }
   }
+  
+  public void httpsDownload(String url, File destination) throws Exception{
+    super.download(url, destination);
+  }
 
   /**
    * Download file from URL. Quick method - bypassing transfer control and monitoring.
    * @param url
    * @param fileName
    * @param destination    can be either a directory or a file
-   * @throws IOException
+   * @throws Exception 
    */
-  public void download(final String url, File destination) throws IOException{
-    try{
-      
-      if(url==null || url.endsWith("/")|| destination==null){
-        throw new IOException("ERROR: source or destination not given. "+
-            url+":"+destination);
-      }      
-      
-      File downloadDir = null;
-      String destFileName = null;
-      String srcUrlDir = null;
-      String srcFileName = null;
-      
-      int lastSlash = url.lastIndexOf("/");
-      srcUrlDir = url.substring(0, lastSlash + 1);
-      srcFileName = url.substring(lastSlash + 1);
-     
-      if(destination.isDirectory()){
-        downloadDir = destination;
-        destFileName = url.substring(lastSlash + 1);
-      }
-      else{
-        downloadDir = destination.getParentFile();
-        destFileName = destination.getName();
-      }
-      
-      GridPilot.getClassMgr().getStatusBar().setLabel("Downloading "+srcFileName+" from "+srcUrlDir+
-          " to "+downloadDir);
-
-      Debug.debug("Downloading file from "+srcUrlDir, 3);
-      // local directory
-      if(!MyUtil.urlIsRemote(srcUrlDir)/*srcUrlDir.startsWith("file:")*/){
-        String fsPath = MyUtil.clearTildeLocally(MyUtil.clearFile(url));
-        Debug.debug("Downloading file to "+downloadDir.getAbsolutePath(), 3);        
-        if(fsPath==null || downloadDir==null){
-          throw new IOException("ERROR: source or destination directory not given. "+
-              fsPath+":"+downloadDir);
-        }        
-        localCopy(new File(fsPath),
-            (new File(downloadDir, destFileName)).getAbsolutePath());
-        GridPilot.getClassMgr().getStatusBar().setLabel(fsPath+destFileName+" copied");
-      }
-      // remote gsiftp or https/webdav directory
-      else if(srcUrlDir.startsWith("gsiftp://") || srcUrlDir.startsWith("https://") ||
-          srcUrlDir.startsWith("sss://")){
-        Debug.debug("Downloading to "+downloadDir.getAbsolutePath(), 3);        
-        Debug.debug("Downloading "+destFileName+" from "+srcUrlDir, 3);
-        GlobusURL globusUrl = new GlobusURL(url);
-        FileTransfer fileTransfer =
-           GridPilot.getClassMgr().getFTPlugin(url.replaceFirst("^(\\w+):/.*", "$1"));
-        try {
-          fileTransfer.getFile(globusUrl, destination/*dName*/);
-        }
-        catch (Exception e) {
-          e.printStackTrace();
-          throw new IOException(e.getCause());
-        }
-        GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
-      }
-      else if(srcUrlDir.startsWith("http://")){
-        Debug.debug("Downloading file to "+downloadDir.getAbsolutePath(), 3);        
-        String dirPath = downloadDir.getAbsolutePath();
-        if(!dirPath.endsWith("/") && !destFileName.startsWith("/")){
-          dirPath = dirPath+"/";
-        }
-        Debug.debug("Downloading from "+url+" to "+dirPath+destFileName, 2);
-        final String fName = destFileName;
-        final String dName = dirPath;
-        InputStream is = (new URL(url)).openStream();
-        DataInputStream dis = new DataInputStream(new BufferedInputStream(is));
-        FileOutputStream os = new FileOutputStream(new File(dName+fName));
-        // read data in chunks of 1 kB
-        byte [] b = new byte[1024];
-        int len = -1;
-        while(true){
-          len = is.read(b, 0, b.length);
-          if(len<0){
-            break;
-          }
-          os.write(b, 0, len);
-        }
-        dis.close();
-        is.close();
-        os.close();
-        GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
-      }
-      else{
-        throw(new IOException("Unknown protocol for "+url));
-      }
+  public void download(final String url, File destination) throws Exception{
+    if(url==null || url.endsWith("/")|| destination==null){
+      throw new IOException("ERROR: source or destination not given. "+
+          url+":"+destination);
+    }      
+    
+    File downloadDir = null;
+    String destFileName = null;
+    String srcUrlDir = null;
+    String srcFileName = null;
+    
+    int lastSlash = url.lastIndexOf("/");
+    srcUrlDir = url.substring(0, lastSlash + 1);
+    srcFileName = url.substring(lastSlash + 1);
+   
+    if(destination.isDirectory()){
+      downloadDir = destination;
+      destFileName = url.substring(lastSlash + 1);
     }
-    catch(IOException e){
-      Debug.debug("Could not get URL "+url+". "+e.getMessage(), 1);
-      e.printStackTrace();
-      throw e;
-    }   
+    else{
+      downloadDir = destination.getParentFile();
+      destFileName = destination.getName();
+    }
+    
+    GridPilot.getClassMgr().getStatusBar().setLabel("Downloading "+srcFileName+" from "+srcUrlDir+
+        " to "+downloadDir);
+
+    Debug.debug("Downloading "+srcFileName+" from "+srcUrlDir, 3);
+    // local directory
+    if(!MyUtil.urlIsRemote(srcUrlDir)/*srcUrlDir.startsWith("file:")*/){
+      String fsPath = MyUtil.clearTildeLocally(MyUtil.clearFile(url));
+      Debug.debug("Downloading file to "+downloadDir.getAbsolutePath(), 3);        
+      if(fsPath==null || downloadDir==null){
+        throw new IOException("ERROR: source or destination directory not given. "+
+            fsPath+":"+downloadDir);
+      }        
+      localCopy(new File(fsPath),
+          (new File(downloadDir, destFileName)).getAbsolutePath());
+      GridPilot.getClassMgr().getStatusBar().setLabel(fsPath+destFileName+" copied");
+    }
+    // remote gsiftp or https/webdav directory
+    else if(srcUrlDir.startsWith("gsiftp://") || srcUrlDir.startsWith("https://") ||
+        srcUrlDir.startsWith("sss://")){
+      Debug.debug("Downloading to "+downloadDir.getAbsolutePath(), 3);        
+      Debug.debug("Downloading "+destFileName+" from "+srcUrlDir, 3);
+      GlobusURL globusUrl = new GlobusURL(url);
+      FileTransfer fileTransfer =
+        GridPilot.getClassMgr().getFTPlugin(url.replaceFirst("^(\\w+):/.*", "$1"));
+     fileTransfer.getFile(globusUrl, destination/*dName*/);
+     GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
+    }
+    else if(srcUrlDir.startsWith("http://")){
+      Debug.debug("Downloading file to "+downloadDir.getAbsolutePath(), 3);        
+      String dirPath = downloadDir.getAbsolutePath();
+      if(!dirPath.endsWith("/") && !destFileName.startsWith("/")){
+        dirPath = dirPath+"/";
+      }
+      Debug.debug("Downloading from "+url+" to "+dirPath+destFileName, 2);
+      final String fName = destFileName;
+      final String dName = dirPath;
+      InputStream is = (new URL(url)).openStream();
+      DataInputStream dis = new DataInputStream(new BufferedInputStream(is));
+      FileOutputStream os = new FileOutputStream(new File(dName+fName));
+      // read data in chunks of 1 kB
+      byte [] b = new byte[1024];
+      int len = -1;
+      while(true){
+        len = is.read(b, 0, b.length);
+        if(len<0){
+          break;
+        }
+        os.write(b, 0, len);
+      }
+      dis.close();
+      is.close();
+      os.close();
+      GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
+    }
+    else{
+      throw(new IOException("Unknown protocol for "+url));
+    }
   }
 
   /**
