@@ -643,25 +643,38 @@ public class JobMgr{
   //}
 
   /**
-   * Checks if all jobs at these specified rows are killable. <p>
-   * @see #isKillable(MyJobInfo)
+   * Checks if all jobs at these specified rows are cleanable. <p>
+   * Called by {@link MonitoringPanel#selectionEvent(javax.swing.event.ListSelectionEvent)} <p>
+   * @see #isCleanable(MyJobInfo)
    */
-  public static boolean areKillable(int[] rows){
-    for(int i = 0; i < rows.length; ++i){
+  public static boolean areCleanable(int[] rows) {
+    for (int i = 0; i < rows.length; ++i) {
       MyJobInfo job = getJobAtRow(rows[i]);
-      if(!isKillable(job))
+      if (!isCleanable(job))
         return false;
     }
     return true;
+  }
+  
+  /**
+   * Checks if this specified job is killable.
+   * A Killable job is a job which is Submitted, and have a job Id!=null.
+   * Called by :
+   * <li>{@link #areCleanable(int[])}
+  * @see #areKillable(int[])
+   */
+  private static boolean isCleanable(MyJobInfo job){
+    return (job.getDBStatus()==DBPluginMgr.UNDECIDED ||
+            job.getDBStatus()==DBPluginMgr.UNEXPECTED ||
+            job.getDBStatus()==DBPluginMgr.FAILED) && job.getJobId()!=null;
   }
 
   /**
    * Checks if this specified job is killable.
    * A Killable job is a job which is Submitted, and have a job Id!=null.
    * Called by :
-   * <li>{@link #areKillables(int[])}
-   * <li>{@link #killJob(MyJobInfo)}
-   * @see #areKillables(int[])
+   * <li>{@link #areKillable(int[])}
+   * @see #areKillable(int[])
    */
   private static boolean isKillable(MyJobInfo job){
     return job.getDBStatus()==DBPluginMgr.SUBMITTED && job.getJobId()!=null;
@@ -672,7 +685,7 @@ public class JobMgr{
    * Called by {@link MonitoringPanel#selectionEvent(javax.swing.event.ListSelectionEvent)} <p>
    * @see #isKillable(MyJobInfo)
    */
-  public static boolean areKillables(int[] rows) {
+  public static boolean areKillable(int[] rows) {
     for (int i = 0; i < rows.length; ++i) {
       MyJobInfo job = getJobAtRow(rows[i]);
       if (!isKillable(job))
@@ -684,7 +697,7 @@ public class JobMgr{
   /**
    * Checks if all jobs at these specified rows are Undecided.
    */
-  public static boolean areDecidables(int[] rows){
+  public static boolean areDecidable(int[] rows){
     for(int i = 0; i < rows.length; ++i){
       if(getJobAtRow(rows[i]).getDBStatus()!=DBPluginMgr.UNDECIDED)
         return false;
@@ -697,7 +710,7 @@ public class JobMgr{
    * A job is resubmitable is its DB status is Failed, and if it has a
    * attributed computing system.
    */
-  public static boolean areResumbitables(int[] rows){
+  public static boolean areResumbitable(int[] rows){
     for(int i = 0; i < rows.length; ++i){
       MyJobInfo job = getJobAtRow(rows[i]);
       if(job.getDBStatus()!=DBPluginMgr.FAILED || job.getCSName().equals(""))
@@ -711,7 +724,7 @@ public class JobMgr{
    * A job is submitable iff its DB status is Defined.
    *
    */
-  public static boolean areSubmitables(int[] rows){
+  public static boolean areSubmitable(int[] rows){
     for(int i = 0; i < rows.length; ++i){
       if(getJobAtRow(rows[i]).getDBStatus()!=DBPluginMgr.DEFINED)
         return false;
@@ -824,14 +837,14 @@ public class JobMgr{
 
     String sameStatus = "Transitions between the same status are not allowed";
 
-    String fromDefined = "Defined logical files cannot be set manually into other status than Aborted";
-    String fromValidated = "A Validated logical file can only be put in Defined or Aborted";
-    String fromAborted = "An Aborted logical file has to be put in Defined before resubmission";
+    String fromDefined = "Defined jobs cannot be set manually to other statuses than Aborted";
+    String fromValidated = "A Validated job can only be set to Defined or Aborted";
+    String fromAborted = "An Aborted job has to be set to Defined before resubmission";
     String fromSubmitted = "Kill this job and wait until GridPilot detects its end, " +
-        "otherwise ghost job will overwrite new attempt";
+        "otherwise a ghost job may overwrite a new attempt";
 
-    String toValidated = "A logical file can never be put in Validated manualy";
-    String toUndecided = "A logical file can never be put in Undecided manualy";
+    String toValidated = "A job cannot be set to Validated manually";
+    String toUndecided = "A job cannot be set to Undecided manually";
 
     String undToSub = "Set it Failed before, and resubmit it";
     String failToSub = "Resubmit it";
@@ -917,7 +930,6 @@ public class JobMgr{
 
     switch(dbStatusNr){
       case DBPluginMgr.DEFINED:
-        /** Previous : V, A, F*/
 
         if(dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "status",
             dbStatus)){
@@ -934,7 +946,7 @@ public class JobMgr{
               ") failed.\n" + dbPluginMgr.getError(), job);
             }
           }
-          /** if job Validated -> clearOutputMapping
+          /** if job was failed -> cleanup
            * (remove logs in final destination) */
           if(previousStatus==DBPluginMgr.FAILED ||
               previousStatus==DBPluginMgr.UNEXPECTED ||
@@ -952,10 +964,9 @@ public class JobMgr{
       break;
       
       case DBPluginMgr.SUBMITTED:
-        /**
-         * Not called after submission : reservation set DB status to submitted
-         * -> called only by resubmission
-         */
+        /** set DB status to submitted , status to ready and csStatus to wait -
+         * notice that updateDBstatus(JobInfo) is not called on job submission, so
+         * the below is only called on resubmission - on submission it is done elsewhere */
         if(dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "status",
             dbStatus)){
           job.setDBStatus(dbStatusNr);
@@ -985,14 +996,10 @@ public class JobMgr{
               dbStatus + ") failed.\n" +
               dbPluginMgr.getError(), job);
         }
-
         break;
 
       case DBPluginMgr.ABORTED:
-        /**
-         * clearOutputMapping, dereservation
-         */
-
+        /** cleanup, dereservation */
         if(dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "status",
             dbStatus)){
           if(previousStatus==DBPluginMgr.UNDECIDED ||
@@ -1011,18 +1018,13 @@ public class JobMgr{
           succes = false;
           logFile.addMessage("DB updateDBStatus(" + job.getIdentifier() + ", " +
               dbStatus + ") failed\n" +
-                             "clearOutputMapping and dereservation not done.\n"+
+                             "cleanup and dereservation not done.\n"+
                              dbPluginMgr.getError(),
                              job);
         }
         break;
 
       case DBPluginMgr.FAILED:
-        /**
-         * clearOutputMapping - dropped for now
-         * - we want to be able to check what went wrong.
-         */
-
         if(dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "status",
             dbStatus)){
           job.setDBStatus(dbStatusNr);
@@ -1031,6 +1033,11 @@ public class JobMgr{
           succes = false;
           logFile.addMessage("DB updateDBStatus(" + job.getIdentifier() + ", " +
               dbStatus + ") failed. "+dbPluginMgr.getError(), job);
+        }
+        /** if job was undecided, this status must have been decided and we can cleanup */
+        if(previousStatus==DBPluginMgr.UNEXPECTED ||
+            previousStatus==DBPluginMgr.UNDECIDED){
+          GridPilot.getClassMgr().getCSPluginMgr().cleanup(job);
         }
         break;
 
@@ -1046,8 +1053,7 @@ public class JobMgr{
         break;
 
       case DBPluginMgr.VALIDATED:
-        /** previous : S, U*/
-        // Post processing
+        /** post process */
         if(!GridPilot.getClassMgr().getCSPluginMgr().postProcess(job)){
           logFile.addMessage("Post processing of job " + job.getName() +
                              " failed ; \n" +
@@ -1095,12 +1101,39 @@ public class JobMgr{
   }
 
   /**
-   * Kills all jobs at these specified rows.
+   * Kills all jobs at the specified rows.
    */
   public static void killJobs(final int [] rows){
     if(GridPilot.getClassMgr().getCSPluginMgr().killJobs(
         getJobsAtRows(rows))){
       // update db and monitoring panel
+    }
+  }
+
+  /**
+   * Cleans all jobs at the specified rows.
+   */
+  public static void cleanJobs(final int [] rows) {
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()); 
+    try{
+      int choice = confirmBox.getConfirm("Confirm clean",
+          "This will clean all traces of the job(s)\n" +
+          "both remotely and locally.\n" +
+          "Are you sure you want to do this?", new Object[] {"OK",  "Cancel"});
+      if(choice!=0){
+        return;
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return;
+    }
+    MyJobInfo job;
+    for(int i=0; i<rows.length; ++i){
+      job = getJobAtRow(rows[i]);
+      GridPilot.getClassMgr().getCSPluginMgr().cleanup(job);
+      job.setDBStatus(DBPluginMgr.DEFINED);
+      GridPilot.getClassMgr().getJobMgr(job.getDBName()).updateDBCell(job);
     }
   }
 

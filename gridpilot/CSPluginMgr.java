@@ -47,7 +47,7 @@ public class CSPluginMgr implements MyComputingSystem{
   private int killTimeOut;
   /** time out in ms for <code>getCurrentOutputs</code> method */
   public int currentOutputTimeOut;
-  /** time out in ms for <code>clearOutputMapping</code> method */
+  /** time out in ms for <code>cleanup</code> method */
   private int clearTimeOut;
   /** time out in ms for <code>getFullStatus</code> method */
   private int fullStatusTimeOut;
@@ -195,7 +195,7 @@ public class CSPluginMgr implements MyComputingSystem{
      * method timeouts
      */
     String timeOutNames [] = {"submit", "updateStatus", "exit", "killJob", "getCurrentOutputs",
-      "clearOutputMapping", "getFullStatus", "getUserInfo", "copyFile"};
+      "cleanup", "getFullStatus", "getUserInfo", "copyFile"};
     int values [] = new int[timeOutNames.length];
 
     for(int i=0; i<timeOutNames.length; ++i){
@@ -416,7 +416,7 @@ public class CSPluginMgr implements MyComputingSystem{
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + csName +
-                             " during job " + job.getName() + " clearOutputMapping", (MyJobInfo) job, t);
+                             " during job " + job.getName() + " cleanup", (MyJobInfo) job, t);
         }
       }
       public boolean getBoolRes(){

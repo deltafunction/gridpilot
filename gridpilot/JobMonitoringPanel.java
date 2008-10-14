@@ -59,6 +59,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private int MIN = 1;
   private JMenuItem miStopUpdate = new JMenuItem("Stop updating");
   private JMenuItem miKill = new JMenuItem("Kill");
+  private JMenuItem miClean = new JMenuItem("Clean");
   private JMenuItem miDecide = new JMenuItem("Decide");
   private JMenuItem miRefresh = new JMenuItem("Refresh");
   private JMenu mSubmit = new JMenu("Submit");
@@ -271,6 +272,12 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
 
+    miClean.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        clean();
+      }
+    });
+
     miDecide.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         decide();
@@ -381,6 +388,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     }
 
     miKill.setEnabled(false);
+    miClean.setEnabled(false);
     miDecide.setEnabled(false);
     mSubmit.setEnabled(false);
     miResubmit.setEnabled(false);
@@ -403,6 +411,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     statusTable.addMenuItem(miStopUpdate);
     statusTable.addMenuSeparator();
     statusTable.addMenuItem(miKill);
+    statusTable.addMenuItem(miClean);
     statusTable.addMenuItem(miDecide);
     statusTable.addMenuItem(miRefresh);
     statusTable.addMenuItem(mSubmit);
@@ -467,6 +476,17 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   }
 
   /**
+   * Called when button or menu item "Clean" is selected
+   */
+  private void clean(){
+    (new Thread(){
+      public void run(){
+        JobMgr.cleanJobs(statusTable.getSelectedRows());
+      }
+    }).start();
+  }
+
+  /**
    * Called when button or menu item "Decide" is clicked
    */
   private void decide(){
@@ -474,7 +494,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     
     Debug.debug("Deciding rows "+MyUtil.arrayToString(rows), 3);
 
-    if(!JobMgr.areDecidables(rows)){
+    if(!JobMgr.areDecidable(rows)){
       return;
     }
 
@@ -749,6 +769,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     ListSelectionModel lsm = (ListSelectionModel)e.getSource();
     if(lsm.isSelectionEmpty()){
       bKill.setEnabled(false);
+      miClean.setEnabled(false);
       miKill.setEnabled(false);
       miDecide.setEnabled(false);
       mSubmit.setEnabled(false);
@@ -759,7 +780,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     }
     else{
       int [] rows = statusTable.getSelectedRows();
-      if(JobMgr.areDecidables(rows)){
+      if(JobMgr.areDecidable(rows)){
         miDecide.setEnabled(true);
         miRevalidate.setEnabled(true);
       }
@@ -768,7 +789,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         miRevalidate.setEnabled(false);
       }
 
-      if(JobMgr.areKillables(rows)){
+      if(JobMgr.areKillable(rows)){
         bKill.setEnabled(true);
         miKill.setEnabled(true);
       }
@@ -777,14 +798,21 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         miKill.setEnabled(false);
       }
 
-      if(JobMgr.areResumbitables(rows)){
+      if(JobMgr.areCleanable(rows)){
+        miClean.setEnabled(true);
+      }
+      else{
+        miClean.setEnabled(false);
+      }
+
+      if(JobMgr.areResumbitable(rows)){
         miResubmit.setEnabled(true);
       }
       else{
         miResubmit.setEnabled(false);
       }
 
-      if(JobMgr.areSubmitables(rows)){
+      if(JobMgr.areSubmitable(rows)){
         mSubmit.setEnabled(true);
       }
       else{

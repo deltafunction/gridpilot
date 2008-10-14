@@ -285,7 +285,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       getShellMgr(job.getHost()).deleteDir(runDir);
     }
     catch(Exception ioe){
-      error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
+      error = "Exception during cleanup of job " + job.getName()+ "\n" +
       "\tException\t: " + ioe.getMessage();
       logFile.addMessage(error, ioe);
       ret = false;

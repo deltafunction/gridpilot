@@ -10,6 +10,7 @@ import gridfactory.common.Shell;
 import gridfactory.common.TransferControl;
 import gridfactory.common.TransferInfo;
 import gridfactory.common.Util;
+import gridfactory.common.https.HTTPSFileTransfer;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -1201,6 +1202,8 @@ public class MyTransferControl extends TransferControl {
   }
   
   public void httpsDownload(String url, File destination) throws Exception{
+    MySSL ssl = GridPilot.getClassMgr().getSSL();
+    super.setFileTransfer(new HTTPSFileTransfer(ssl.getGridSubject(), ssl, logFile));
     super.download(url, destination);
   }
 

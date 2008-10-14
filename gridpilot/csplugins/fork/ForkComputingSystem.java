@@ -606,7 +606,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       shellMgr.deleteDir(runDir);
     }
     catch(Exception ioe){
-      error = "Exception during clearOutputMapping of job " + job.getName()+ "\n" +
+      error = "Exception during cleanup of job " + job.getName()+ "\n" +
       "\tException\t: " + ioe.getMessage();
       logFile.addMessage(error, ioe);
       ret = false;

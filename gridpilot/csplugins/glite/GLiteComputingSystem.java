@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.net.URL;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -639,13 +638,23 @@ public class GLiteComputingSystem implements MyComputingSystem{
     for(Enumeration en=jobsToKill.elements(); en.hasMoreElements();){
       try{
         job = (MyJobInfo) en.nextElement();
-        Debug.debug("Cleaning : " + job.getName() + ":" + job.getJobId(), 3);
+        Debug.debug("Killing: " + job.getName() + ":" + job.getJobId(), 3);
         wmProxyAPI.jobCancel(job.getJobId());
-        wmProxyAPI.jobPurge(job.getJobId());
       }
       catch(Exception ae){
         errors.add(ae.getMessage());
         logFile.addMessage("Exception during killing of " + job.getName() + ":" + job.getJobId() + ":\n" +
+                           "\tException\t: " + ae.getMessage(), ae);
+        ae.printStackTrace();
+      }
+      try{
+        job = (MyJobInfo) en.nextElement();
+        Debug.debug("Cleaning: " + job.getName() + ":" + job.getJobId(), 3);
+        wmProxyAPI.jobPurge(job.getJobId());
+      }
+      catch(Exception ae){
+        errors.add(ae.getMessage());
+        logFile.addMessage("Exception during cleaning of " + job.getName() + ":" + job.getJobId() + ":\n" +
                            "\tException\t: " + ae.getMessage(), ae);
         ae.printStackTrace();
       }
@@ -666,12 +675,18 @@ public class GLiteComputingSystem implements MyComputingSystem{
     // Clean job off grid. - just in case...
     try{
       wmProxyAPI.jobCancel(job.getJobId());
-      wmProxyAPI.jobPurge(job.getJobId());
     }
     catch(Exception e){
       Debug.debug("Could not cancel job. Probably finished. "+
           job.getName()+". "+e.getMessage(), 3);
-      //e.printStackTrace();
+    }
+    try{
+      wmProxyAPI.jobPurge(job.getJobId());
+    }
+    catch(Exception e){
+      Debug.debug("Could not clean job. Probably already cleaned. "+
+          job.getName()+". "+e.getMessage(), 3);
+      e.printStackTrace();
     }
     
     // Delete files that may have been copied to storage elements
@@ -784,10 +799,10 @@ public class GLiteComputingSystem implements MyComputingSystem{
       url = outs[i].getName();
       if(url!=null){
         if(url.endsWith("stdout")){
-          transferControl.httpsDownload(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
+          transferControl.download(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
         }
         else if(url.endsWith("stderr")){
-          transferControl.httpsDownload(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))));
+          transferControl.download(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))));
         }
         else{
           transferControl.download(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(runDir(job)))));
@@ -882,6 +897,17 @@ public class GLiteComputingSystem implements MyComputingSystem{
   }
 
   public String getStatus(MyJobInfo job){
+
+    try{
+      LBInfo lbInfo = new LBInfo(job.getJobId());
+      if(lbInfo.getMap().get("status")!=null){
+        return lbInfo.getMap().get("status");
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    
     try{
       if(!syncCurrentOutputs(job)){
         //return GLITE_STATUS_ERROR;
@@ -923,6 +949,15 @@ public class GLiteComputingSystem implements MyComputingSystem{
   }
   
   public String getFullStatus(JobInfo job){
+    
+    try{
+      LBInfo lbInfo = new LBInfo(job.getJobId());
+      return lbInfo.getString();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    
     String ret = "";
     //ret += "Job ID: "+job.getJobId()+"\n";
     try{
@@ -1214,7 +1249,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
     return ok;
   }
   public boolean postProcess(JobInfo job){
-    Debug.debug("PostProcessing for job " + job.getName(), 2);
+    Debug.debug("PostProcessing job " + job.getName(), 2);
     if(copyToFinalDest((MyJobInfo) job)){
       try{
         // Delete the local run directory

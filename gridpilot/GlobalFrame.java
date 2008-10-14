@@ -437,7 +437,7 @@ public class GlobalFrame extends GPFrame{
     
     for(i=0; i<GridPilot.dbNames.length; ++i){
       
-      final JMenu mDB = new JMenu(GridPilot.dbNames[i]);
+      final JMenu mDB = new JMenu("New tab with "+GridPilot.dbNames[i]);
       
       // Check if there is a runtimeEnvironment table in this database
       try{
