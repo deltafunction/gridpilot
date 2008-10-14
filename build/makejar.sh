@@ -1,6 +1,8 @@
 #!/bin/bash
 
-find . -type f | grep -v .jar | grep -v bcprov | grep -v jarfiles | grep -v tmp | grep -v CVS | grep -v META-INF | grep -v '\.java' | grep -v '\.zip' | grep -v '\.conf'  | grep -v '\.bat' | grep -v suresh | grep -v 'gridpilot\.jar' | grep -P -v '/\.'| grep -P -v '^./[^/]*\.sh' > jarfiles
+find . -type f | grep -v .jar | grep -v bcprov | grep -v jarfiles | grep -v tmp | grep -v CVS | \
+grep -v META-INF | grep -v '\.java' | grep -v '\.zip' | grep -v '\.conf'  | grep -v '\.bat' | \
+grep -v suresh | grep -v 'gridpilot\.jar' | grep -r -v '/\.' | grep -r -v '^./[^/]*\.sh' > jarfiles
 
 echo Creating an unsigned applet
 
@@ -33,7 +35,7 @@ fi
 
 #rm -rf oracle javax com COM cryptix hsqlServlet.class LICENSE.txt log4j.properties META-INF netscape org xjava LDAP* *.properties axis* Jacksum* electric* diskCache* help jonelo LGPL* LICENSE* README.txt samples soaprmi sxt tests xpp
 #rm -f ~/.globus/tmp.p12
-rm -rf jarfiles gridpilot resources tmp* gridpilot.conf readme.txt gridpilot.log
+rm -rf jarfiles gridpilot resources tmp* readme.txt
 
 exit
 

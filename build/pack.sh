@@ -4,9 +4,7 @@ version="0.2.0"
 
 mkdir GridPilot-$version
 
-cp -r gridpilot.jar gridpilot-atlas-gen.conf gridpilot.bat gridpilot.sh lib GridPilot-$version/
-
-mv GridPilot-$version/gridpilot-atlas-gen.conf GridPilot-$version/gridpilot.conf
+cp -r gridpilot.jar gridpilot.conf gridpilot.bat gridpilot.sh lib GridPilot-$version/
 
 mv GridPilot-$version/gridpilot.jar GridPilot-$version/gridpilot-$version.jar
 
