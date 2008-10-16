@@ -702,6 +702,8 @@ public class ATLASDatabase extends DBCache implements Database{
         Debug.debug(error, 2);
         return null;
       }
+      // Discard html
+      str = str.replaceFirst("(?i)(?s)<html>.*</html>", "");
       // Check if the result is of the form {...}
       if(!str.matches("^\\{.*\\}$")){
         Debug.debug("ERROR: cannot parse search result "+str, 1);
