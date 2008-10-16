@@ -1,0 +1,61 @@
+******************************************
+* GridPilot: a GUI for job control and
+* file management on remote HPC resources
+* Build: <!--date--> 
+******************************************
+
+  Copyright (C) 2008
+  Frederik Orellana
+  Niels Bohr Institute
+  University of Copenhagen
+
+-----------------------------
+License
+-----------------------------
+
+GridPilot is covered by the GNU General Public License version 3.0, which
+can be found at
+
+http://www.gnu.org/licenses/gpl.html
+
+This implies:
+
+1. I don't promise that this software works (please report bugs).
+
+2. The source code is publicly available.
+
+3. If you use this software or parts of it as part of another piece of
+   software, this software must be covered by the same license.
+
+GridPilot uses a number of external libraries which are covered by different
+licenses, including:
+
+Cryptix License - see licenses/CRYPTIX_LICENSE.TXT
+GNU General Public License - version 2.0 - see licenses/gpl-2.0.txt
+GNU Lesser General Public License - version 3.0
+Apache License - version 2.0 - see licenses/APACHE_LICENSE-2.0.txt
+Bouncy Castle License - see licenses/BOUNCY_CASTLE_LICENSE.TXT
+JSch License (BSD style) - see licenses/JSCH_LICENSE.txt
+Proxool License (OSI certified) - see licenses/PROXOOL_LICENSE.txt
+PureTLS License (BSD style) see licenses/PURETLS_LICENSE.txt
+
+For details, please check each jar.
+
+-----------------------------
+Requirements
+-----------------------------
+
+- Java >= 1.6
+- A virtual machine engine - currently VirtualBox and QEMU (with kqemu) are
+  supported
+- An X509 certificate for the server
+
+-----------------------------
+Installation
+-----------------------------
+
+There are a variety of installers and archives available in the
+download directory. Just install one that suits your platform.
+The first time you run GridPilot, you will be led through a
+graphical configuration wizard. You can change preferences later
+by selecting "Edit"->"Preferences" from the menu on the main window.
