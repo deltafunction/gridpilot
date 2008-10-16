@@ -15,8 +15,7 @@ import gridfactory.common.Shell;
 
 /**
  * Controls the job submission. <p>
- * When submitting some jobs (giving logical file id or jobs already created),
- * these jobs are put in a queue (<code>toSubmitJobs</code>). Each
+ * Submitted jobs are put in a queue (<code>toSubmitJobs</code>). Each
  * <code>timeBetweenSubmissions</code>, a Timer checks if there is some jobs in
  * this queue (this timer is stopped when the queue is empty, and restarted when
  * new jobs arrive). <br>
@@ -269,10 +268,10 @@ public class SubmissionControl{
           job.setJobId(null);
           job.setHost(null);
           job.setStatusReady();
-          Debug.debug("logical file " + job.getIdentifier() + "("+job.getName()+") reserved", 2);
+          Debug.debug("identifier " + job.getIdentifier() + "("+job.getName()+") reserved", 2);
         }
         else{
-          logFile.addMessage("cannot reserve logical file "+job.getIdentifier());
+          logFile.addMessage("cannot reserve job "+job.getIdentifier());
         }
       }
       statusBar.removeLabel();

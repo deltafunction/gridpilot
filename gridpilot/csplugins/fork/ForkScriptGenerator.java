@@ -157,7 +157,8 @@ public class ForkScriptGenerator extends ScriptGenerator{
     String scriptSrc = dbPluginMgr.getTransformationScript(jobDefID);
     String scriptDest = MyUtil.clearFile(scriptSrc);
     scriptDest = scriptDest.replaceAll("\\\\", "/");
-    scriptDest = workingDir + scriptDest.replaceFirst(".*(/[^/]+)", "$1");
+    String scriptName = scriptDest.replaceFirst(".*(/[^/]+)", "$1");
+    scriptDest = workingDir + scriptName;
     // Don't think we need this...
     /*if(MyUtil.onWindows()){
       line = line.replaceAll("/", "\\\\");
@@ -173,7 +174,10 @@ public class ForkScriptGenerator extends ScriptGenerator{
           "Cannot proceed with "+job);
       return false;
     }
-    line = MyUtil.clearFile(scriptDest) + " " + MyUtil.arrayToString(actualParam);
+    // Running the transformation script with ./ instead of a full path is to allow this to 
+    // be used by GridFactoryComputingSystem, where we don't have a shell on the worker node
+    // and the full path is not known.
+    line = /*MyUtil.clearFile(scriptDest)*/ "./" + scriptName + " " + MyUtil.arrayToString(actualParam);
     writeLine(buf, line);
     writeLine(buf, "");
     

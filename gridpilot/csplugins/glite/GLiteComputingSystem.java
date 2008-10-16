@@ -791,7 +791,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
   }
 
   // Download all sandbox output files to the local run directory.
-  public void getOutputs(MyJobInfo job) throws Exception{
+  private void getOutputs(MyJobInfo job) throws Exception{
     String url = null;
     StringAndLongList outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
     StringAndLongType [] outs = outList.getFile();
@@ -817,7 +817,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
    * stdout/stderr is not available.
    * @throws IOException if the job is done or killed, but stdout/stderr not available.
    */
-  public boolean syncCurrentOutputs(MyJobInfo job) throws IOException {
+  private boolean syncCurrentOutputs(MyJobInfo job) throws IOException {
     try{
       Debug.debug("Syncing " + job.getName() + ":" + job.getJobId(), 3);
       
@@ -1100,7 +1100,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
         Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
             " from final destination "+finalStdOut+" to " +
             MyUtil.clearTildeLocally(MyUtil.clearFile(stdOutFile)), 3);
-        try {
+        try{
           transferControl.download(finalStdOut, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(stdOutFile))));
         }
         catch(Exception e){

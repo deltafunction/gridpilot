@@ -438,6 +438,7 @@ public class GlobalFrame extends GPFrame{
     for(i=0; i<GridPilot.dbNames.length; ++i){
       
       final JMenu mDB = new JMenu("New tab with "+GridPilot.dbNames[i]);
+      mDB.setName(GridPilot.dbNames[i]);
       
       // Check if there is a runtimeEnvironment table in this database
       try{
@@ -447,7 +448,7 @@ public class GlobalFrame extends GPFrame{
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
-                addPanel(new DBPanel(mDB.getText(), "runtimeEnvironment"), "runtime environments");          
+                addPanel(new DBPanel(mDB.getName(), "runtimeEnvironment"), "runtime environments");          
               }
               catch(Exception ex){
                 Debug.debug("Could not add panel ", 1);

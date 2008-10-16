@@ -807,6 +807,8 @@ public class ForkComputingSystem implements MyComputingSystem{
     String [] outputFiles = dbPluginMgr.getOutputFiles(job.getIdentifier());
     Vector remoteNamesVector = new Vector();
     String remoteName = null;
+    Vector<String> outNames = new Vector<String>();
+    Vector<String> outDestinations = new Vector<String>();
     boolean ok = true;
     try{
       for(int i=0; i<outputFiles.length; ++i){
@@ -816,6 +818,8 @@ public class ForkComputingSystem implements MyComputingSystem{
             !remoteName.startsWith("/") && !remoteName.matches("\\w:.*")){
           remoteNamesVector.add(outputFiles[i]);
         }
+        outNames.add(outputFiles[i]);
+        outDestinations.add(remoteName);
       }
       String [][] remoteNames = new String [remoteNamesVector.size()][2];
       for(int i=0; i<remoteNamesVector.size(); ++i){
@@ -825,6 +829,10 @@ public class ForkComputingSystem implements MyComputingSystem{
             (String) remoteNamesVector.get(i));
       }
       job.setUploadFiles(remoteNames);
+      // This is used only by GridFactoryComputingSystem
+      job.setOutputFileNames(outNames.toArray(new String[outNames.size()]));
+      job.setOutputFileDestinations(outDestinations.toArray(new String[outDestinations.size()]));
+      //
     }
     catch(Exception e){
       e.printStackTrace();

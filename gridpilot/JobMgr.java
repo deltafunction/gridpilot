@@ -550,8 +550,6 @@ public class JobMgr{
 
   /**
    * Forces revalidation of some jobs.
-   * When this function returns, all job are in the validation queue, but are not
-   * always already validated.
    */
   public static void revalidate(final int[] rows){
     JobValidation jobValidation = GridPilot.getClassMgr().getJobValidation();
@@ -666,7 +664,8 @@ public class JobMgr{
   private static boolean isCleanable(MyJobInfo job){
     return (job.getDBStatus()==DBPluginMgr.UNDECIDED ||
             job.getDBStatus()==DBPluginMgr.UNEXPECTED ||
-            job.getDBStatus()==DBPluginMgr.FAILED) && job.getJobId()!=null;
+            job.getDBStatus()==DBPluginMgr.FAILED||
+            job.getDBStatus()==DBPluginMgr.ABORTED) && job.getJobId()!=null;
   }
 
   /**

@@ -662,6 +662,7 @@ public class MySSL extends SSL{
         ++j;
       }
       subject = "/"+arrayToString(newItems, "/");
+      Debug.debug("returning subject "+subject, 3);
     }
     catch(Exception nsae){
       String error = "ERROR: could get grid user subject. "+nsae.getMessage();

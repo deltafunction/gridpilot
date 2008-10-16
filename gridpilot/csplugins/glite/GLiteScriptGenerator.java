@@ -194,12 +194,12 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         }
       }
       
-      // job.getUploadFiles is not used; we set it just for aesthetics...
-      String [][] uploadFiles = new String [uploadVector.size()][2];
+      // job.getUploadFiles is not used
+      /*String [][] uploadFiles = new String [uploadVector.size()][2];
       for(int i=0; i<uploadVector.size(); ++i){
         uploadFiles[i] = (String []) uploadVector.get(i);
       }
-      job.setUploadFiles(uploadFiles);
+      job.setUploadFiles(uploadFiles);*/
 
       // this is for getStatus
       writeLine(bufScript, "echo job "+jobDefID+" done");

@@ -4,6 +4,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.security.GeneralSecurityException;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -19,7 +20,6 @@ import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
-import gridfactory.common.Shell;
 import gridfactory.common.Util;
 import gridfactory.lrms.LRMS;
 import gridpilot.MyComputingSystem;
@@ -80,28 +80,33 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       "\tException\t: " + ioe.getMessage();
       logFile.addMessage(error, ioe);
     }
+    fileTransfer = GridPilot.getClassMgr().getFTPlugin("https");
     lrms = LRMS.constructLrms(true, GridPilot.getClassMgr().getSSL(), null, null);
   }
   
   /**
-   * Add the input files of the transformation to job.getInputFiles().
+   * Add the transformation executable and the input files of the transformation to job.getInputFiles().
    * @param job the job in question
    */
-  private void setExtraInputFiles(MyJobInfo job){
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+  private void setExtraInputFiles(JobInfo job){
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String transformationID = dbPluginMgr.getJobDefTransformationID(job.getIdentifier());
     String [] transformationInputs = dbPluginMgr.getTransformationInputs(transformationID);
     if(transformationInputs==null || transformationInputs.length==0){
       return;
     }
     int initialLen = job.getInputFileUrls()!=null&&job.getInputFileUrls().length>0?job.getInputFileUrls().length:0;
-    String [] newInputs = new String [initialLen+transformationInputs.length];
+    String [] newInputs = new String [initialLen+transformationInputs.length+1];
     for(int i=0; i<initialLen; ++i){
       newInputs[i] = job.getInputFileUrls()[i];
     }
     for(int i=initialLen; i<initialLen+transformationInputs.length; ++i){
       newInputs[i] = transformationInputs[i];
     }
+    String transScript = dbPluginMgr.getTransformationScript(job.getIdentifier());
+    newInputs[newInputs.length-1] = transScript;
+    String transScriptName = (new File(transScript)).getName();
+    job.setExecutables(new String [] {transScriptName});
     job.setInputFileUrls(newInputs);
   }
 
@@ -111,10 +116,9 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
    * Sets finalStdOut and finalStdErr and any local output files 
    * to files in the remote gridftp directory.
    */
-  public boolean submit(MyJobInfo job){
+  public boolean submit(JobInfo job){
     /*
      * Flags that can be set in the job script.
-     * <br><br>
      *  -n [job name]<br>
      *  -i [input file 1] [input file 2] ...<br>
      *  -e [executable 1] [executable 2] ...<br>
@@ -124,22 +128,40 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
            machine<br>
      *  -o [output files]<br>
      *  -r [runtime environment 1] [runtime environment 2] ...<br>
+     *  -y [operating system]<br>
      *  -s [distinguished name] : DN identifying the submitter<br><br>
      *  -v [allowed virtual organization 1] [allowed virtual organization 2] ...<br>
      *  -u [id] : unique identifier of the form https://server/job/dir/hash
      */
     try{
-      setExtraInputFiles(job);
+      Debug.debug("Submitting", 3);
+      if(job.getJobId()!=null){
+        // Do this only if not a resubmit
+        setExtraInputFiles(job);
+      }
       job.setAllowedVOs(allowedVOs);
+      String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
+      String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";
+      ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
       // Create a standard shell script.
       ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job));
       if(!scriptGenerator.createWrapper(shellMgr, (MyJobInfo) job, job.getName()+commandSuffix)){
         throw new IOException("Could not create wrapper script.");
       }
-      String [] values = new String []{job.getName(), Util.arrayToString(job.getInputFileUrls()),
-          Util.arrayToString(job.getExecutables()), Integer.toString(job.getGridTime()), Integer.toString(job.getMemory()),
-          virtualize?"1":"0", Util.arrayToString(job.getOutputFileNames()), Util.arrayToString(job.getRTEs()),
-              job.getUserInfo(), Util.arrayToString(job.getAllowedVOs(), job.getJobId())};
+      String [] values = new String []{
+          job.getName(),
+          Util.arrayToString(job.getInputFileUrls()),
+          Util.arrayToString(job.getExecutables()),
+          Integer.toString(job.getGridTime()),
+          Integer.toString(job.getMemory()),
+          virtualize?"1":"0",
+          Util.arrayToString(job.getOutputFileNames()),
+          Util.arrayToString(job.getRTEs()),
+          null,
+          job.getUserInfo(),
+          Util.arrayToString(job.getAllowedVOs(), job.getJobId()),
+          null
+      };
 
       // If this is a resubmit, first delete the old remote jobDefinition
       try{
@@ -151,11 +173,13 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       }
       
       String cmd = runDir(job)+"/"+job.getName()+commandSuffix;
-      String id = lrms.submit(cmd, values, submitURL, true, GridPilot.getClassMgr().getSSL().getGridSubject());
+      String id = lrms.submit(cmd, values, submitURL, true, GridPilot.getClassMgr().getSSL().getCertFile());
       job.setJobId(id);
     }
     catch(Exception e){
       error = "ERROR: could not submit job. "+e.getMessage();
+      logFile.addMessage(error, e);
+      e.printStackTrace();
       return false;
     }
     return true;
@@ -166,9 +190,6 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       throw new IOException("Directory URL: "+url+" does not end with a slash.");
     }
     GlobusURL globusUrl= new GlobusURL(url);
-    if(fileTransfer==null){
-      fileTransfer = GridPilot.getClassMgr().getFTPlugin(globusUrl.getProtocol());
-    }
     // First, check if directory already exists.
     try{
       fileTransfer.list(globusUrl, null);
@@ -212,6 +233,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   public boolean preProcess(JobInfo job){
     // Iff the job has remote output files, check if the remote directory exists,
     // otherwise see if we can create it.
+    Debug.debug("Preprocessing", 3);
     try{
       if(job.getOutputFileDestinations()!=null){
         String rDir = null;
@@ -228,99 +250,85 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       logFile.addMessage(error, e);
       return false;
     }
-    return true;
+    return setRemoteOutputFiles((MyJobInfo) job);
   }
 
-  /**
-   * - Downloads any files specified as local in the original jobDefinition
-   *   from the remote temporary location.
-   * - Deletes the remote temporary location.
-   * - Cleans up temporary transformation and dataset if any such was written.
-   * - Deletes remote jobDefinition.
-   */
   public boolean postProcess(JobInfo job){
     boolean ok = true;
-    if(((MyJobInfo) job).getCSStatus().equals(JobInfo.getStatusName(JobInfo.STATUS_DONE))){
-      // Delete the run directory
-      try{
-        ok = shellMgr.deleteDir(runDir(job));
-      }
-      catch(Exception e){
-        e.printStackTrace();
-        ok = false;
-      }
+    // super.postProcess assumes the output files are available to the shell, so
+    // we copy them over locally to make this true. Stdout/err were taken care of
+    // by getCurrentOutput called from updateStatus before validation.
+    // TODO: Once GridFactory supports upload of output files for https, this should
+    // be done only for output destinations with other protocols than https.
+    try {
+      getOutputs(job);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      logFile.addMessage("ERROR: could not download output files from job "+job.getIdentifier()+" : "+job.getJobId(), e);
+      ok = false;
+    }
+    if(!super.postProcess(job)){
+      ok = false;
     }
     return ok;
+  }
+  
+  private void getOutputs(JobInfo job) throws MalformedURLException, Exception{
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+    String [] outputFiles = dbPluginMgr.getOutputFiles(job.getIdentifier());
+    if(outputFiles!=null && outputFiles.length>0){
+      for(int i=0; i<outputFiles.length; ++i){
+        transferControl.getFileTransfer().getFile(
+            new GlobusURL(job.getIdentifier()+"/"+outputFiles[i]),
+            new File(MyUtil.clearTildeLocally(MyUtil.clearFile(runDir(job)))));
+      }
+    }
   }
 
   /**
    * Returns csStatus of remote jobDefinition record.
    */
   public String getFullStatus(JobInfo job){
+    String ret = "";
+    ret += "Submit host: "+submitHost+"\n";
+    //ret += "DB location: "+job.getDBLocation()+"\n";
+    //ret += "Job DB URL: "+job.getDBURL()+"\n";
     try{
-      return JobInfo.getStatusName(lrms.getJobStatus(submitHost, job.getJobId()));
+      ret += "Job status: "+JobInfo.getStatusName(lrms.getJobStatus(submitHost, job.getJobId()));
     }
     catch(Exception e){
       e.printStackTrace();
       logFile.addMessage("WARNING: could not get status of job "+job.getIdentifier(), e);
       return null;
     }
+    return ret;
   }
 
   /**
-   * If job is running: deletes stdout and stderr on gridftp server,
-   * sets csStatus to 'requestStdout', waits for files to reappear,
-   * then resets csStatus to its previous value.
-   * If job is done, just reads finalStdout and finalStderr.
+   * Downloads stdout/stderr to local run dir and reads them.
    */
   public String[] getCurrentOutput(JobInfo job) {
-   String [] res = new String[2];
-    File tmpStdout = null;
-    File tmpStderr = null;   
+    File tmpStdout = new File(job.getOutTmp());
+    File tmpStderr = new File(job.getErrTmp());   
+    String [] res = new String[2];
     try{
       int st = lrms.getJobStatus(submitHost, job.getJobId());
       if(st==JobInfo.STATUS_DONE || st==JobInfo.STATUS_FAILED || st==JobInfo.STATUS_UPLOADED){
-        tmpStdout = File.createTempFile(/*prefix*/"GridPilot-stdout", /*suffix*/"");
-        tmpStderr = File.createTempFile(/*prefix*/"GridPilot-stderr", /*suffix*/"");
-        String finalStdOut = job.getStdoutDest();
-        String finalStdErr = job.getStderrDest();
         // stdout
-        if(finalStdOut.startsWith("file:")){
-          res[0] = LocalStaticShell.readFile(finalStdOut);
-        }
-        else if(MyUtil.urlIsRemote(finalStdOut)){
-          try{
-            fileTransfer.getFile(new GlobusURL(finalStdOut), tmpStdout.getParentFile());
-          }
-          catch(Exception e){
-            e.printStackTrace();
-            throw new IOException("ERROR: could not download stdout. "+e.getMessage());
-          }
-          res[0] = LocalStaticShell.readFile(tmpStdout.getAbsolutePath());
-        }
-        else{
-          throw new IOException("Cannot access local files on remote system");
-        }
+        fileTransfer.getFile(new GlobusURL(job.getJobId()+"/stdout"), tmpStdout);
+        res[0] = LocalStaticShell.readFile(tmpStdout.getAbsolutePath());
         // stderr
-        if(finalStdErr.startsWith("file:")){
-          res[1] = LocalStaticShell.readFile(finalStdErr);
+        boolean ok = true;
+        try{
+          fileTransfer.getFile(new GlobusURL(job.getJobId()+"/stderr"), tmpStderr);
         }
-        else if(MyUtil.urlIsRemote(finalStdErr)){
-          boolean ok = true;
-          try{
-            fileTransfer.getFile(new GlobusURL(finalStdErr), tmpStderr.getParentFile());
-          }
-          catch(Exception e){
-            ok = false;
-            e.printStackTrace();
-            throw new IOException("ERROR: could not download stderr. "+e.getMessage());
-          }
-          if(ok){
-            res[1] = LocalStaticShell.readFile(tmpStderr.getAbsolutePath());
-          }
+        catch(Exception e){
+          ok = false;
+          e.printStackTrace();
         }
-        else{
-          throw new IOException("Cannot access local files on remote system");
+        if(ok){
+          res[1] = LocalStaticShell.readFile(tmpStderr.getAbsolutePath());
         }
       }
       else if(st==JobInfo.STATUS_RUNNING){
@@ -333,18 +341,6 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     catch(Exception ee){
       ee.printStackTrace();
       logFile.addMessage("WARNING: could not get current output of job "+job.getIdentifier(), ee);
-    }
-    finally{
-      try{
-        if(!LocalStaticShell.deleteFile(tmpStdout.getAbsolutePath()) ||
-            !LocalStaticShell.deleteFile(tmpStderr.getAbsolutePath())){
-           error = "WARNING: could not delete stdout or stderr temp file.";
-           logFile.addMessage(error);
-         }
-      }
-      catch(Exception eee){
-        eee.printStackTrace();
-      }
     }
     return res;
   }
@@ -360,7 +356,8 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       }
       catch(Exception e){
         e.printStackTrace();
-        logFile.addMessage("WARNING: could not update status of job "+((MyJobInfo) jobs.get(i)).getIdentifier(), e);
+        logFile.addMessage("WARNING: could not update status of job "+((MyJobInfo) jobs.get(i)).getIdentifier()+
+            " : "+((MyJobInfo) jobs.get(i)).getJobId(), e);
       }
   }
 
@@ -369,9 +366,17 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     String csStatus = JobInfo.getStatusName(st);
     job.setCSStatus(csStatus);
     job.setStatus(st);
-    Debug.debug("Updating status of job "+job.getName()+" : "+job.getCSStatus()+" : "+csStatus, 2);
+    if(st==JobInfo.STATUS_DONE){
+      // This is to make sure we have something to validate
+      getCurrentOutput(job);
+      DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+      String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
+      String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
+      // TODO: Now upload to final destination. - first check if this is not done somewhere else
+    }
+    Debug.debug("Updated status of job "+job.getName()+" : "+job.getCSStatus()+" : "+csStatus, 2);
     if(csStatus==null || csStatus.equals("")){
-      logFile.addMessage("ERROR: no csStatus for job "+job.getIdentifier());
+      logFile.addMessage("ERROR: no csStatus for job "+job.getIdentifier()+" : "+job.getJobId());
       return;
     }
   }
@@ -392,10 +397,6 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
    */
   public void cleanupRuntimeEnvironments(String csName){
     MyUtil.cleanupRuntimeEnvironments(csName, localRuntimeDBs, toDeleteRtes);
-  }
-
-  public Shell getShell(JobInfo job){
-    return null;
   }
 
 }

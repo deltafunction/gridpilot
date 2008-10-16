@@ -1128,7 +1128,7 @@ public class NGComputingSystem implements MyComputingSystem{
   }
   
   // Copy stdout+stderr to local files
-  public boolean syncCurrentOutputs(MyJobInfo job){
+  private boolean syncCurrentOutputs(MyJobInfo job){
     try{
       Debug.debug("Syncing " + job.getName() + ":" + job.getJobId(), 3);
       ARCGridFTPJob gridJob = getGridJob(job);
