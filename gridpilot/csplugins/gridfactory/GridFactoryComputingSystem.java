@@ -279,8 +279,8 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     String [] outputFiles = dbPluginMgr.getOutputFiles(job.getIdentifier());
     if(outputFiles!=null && outputFiles.length>0){
       for(int i=0; i<outputFiles.length; ++i){
-        transferControl.getFileTransfer().getFile(
-            new GlobusURL(job.getIdentifier()+"/"+outputFiles[i]),
+        fileTransfer.getFile(
+            new GlobusURL(job.getJobId()+"/"+outputFiles[i]),
             new File(MyUtil.clearTildeLocally(MyUtil.clearFile(runDir(job)))));
       }
     }
