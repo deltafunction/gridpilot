@@ -496,7 +496,7 @@ public class GlobalFrame extends GPFrame{
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
-                addPanel(new DBPanel(mDB.getText(), "dataset"), "datasets");          
+                addPanel(new DBPanel(mDB.getName(), "dataset"), "datasets");          
               }
               catch(Exception ex){
                 Debug.debug("Could not add panel ", 1);
