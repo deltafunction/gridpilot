@@ -31,6 +31,7 @@ import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
 
 import gridpilot.GridPilot;
+import gridpilot.MyFileAppender;
 import gridpilot.StatusBar;
 import gridpilot.MyUtil;
 
@@ -67,20 +68,32 @@ public class GSIFTPFileTransfer implements FileTransfer {
     // remove all logging
     rootLogger.removeAllAppenders();
     // log only info messages and above (DEBUG, INFO, WARN, ERROR, FATAL)
-    rootLogger.setLevel(Level.WARN);
+    switch(Debug.DEBUG_LEVEL){
+    case 0:
+      rootLogger.setLevel(Level.FATAL);      
+      break;
+    case 1:
+      rootLogger.setLevel(Level.ERROR);      
+      break;
+    case 2:
+      rootLogger.setLevel(Level.WARN);      
+      break;
+    case 3:
+      rootLogger.setLevel(Level.INFO);      
+      break;
+    default: 
+      rootLogger.setLevel(Level.WARN);      
+    }
     // add logging to console
     SimpleLayout myLayout = new SimpleLayout();
     ConsoleAppender myAppender = new ConsoleAppender(myLayout);
     rootLogger.addAppender(myAppender);
-    // This should log to gridpilot.log instead of the console.
-    // log4j does not seem to support logging to different destinations
-    // depending on the level.
-    // TODO: test and consider
-    /*FileAppender ap = new FileAppender();
+    // log errors to file
+    FileAppender ap = new MyFileAppender();
     ap.setFile(GridPilot.logFileName);  
     ap.setName("GridPilot Log");
     ap.activateOptions();
-    rootLogger.addAppender(ap);*/
+    rootLogger.addAppender(ap);
   }
 
   public String getUserInfo(){
