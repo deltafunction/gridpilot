@@ -607,7 +607,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         String status = GridPilot.getClassMgr().getCSPluginMgr().getFullStatus(job);
         statusBar.removeLabel();
         statusBar.stopAnimation();
-        MessagePane.showMessage(status, "Job status");
+        MyUtil.showLongMessage(status, "Job status");
       }
     };
     statusBar.setLabel("Getting full status...");
@@ -626,7 +626,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    */
   private void showInfo(){
     String info = JobMgr.getJobInformation(statusTable.getSelectedRow());
-    MessagePane.showMessage(info, "Job Infos");
+    MyUtil.showLongMessage(info, "Job Infos");
   }
 
   private void showScripts(){

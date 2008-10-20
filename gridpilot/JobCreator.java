@@ -97,7 +97,7 @@ public class JobCreator{
     catch(SyntaxException se){
       String msg = "Syntax error  : \n" + se.getMessage() + "\nCannot create job definition";
       String title = "Syntax error";
-      MessagePane.showMessage(msg, title);
+      MyUtil.showLongMessage(msg, title);
       return;
     }
 

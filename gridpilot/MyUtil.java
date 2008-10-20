@@ -1321,6 +1321,29 @@ public class MyUtil extends gridfactory.common.Util{
     }
   }
 
+  public static void showLongMessage(String message, String title){
+    JTextPane ta = new JTextPane();
+    ta.setText(message);
+  
+    //ta.setLineWrap(true);
+    //ta.setWrapStyleWord(true);
+    ta.setOpaque(false);
+    ta.setEditable(false);
+  
+    JOptionPane op = new JOptionPane(ta, JOptionPane.PLAIN_MESSAGE);
+  
+    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), title);
+    dialog.setResizable(true);
+    //ta.getPreferredSize(); // without this line, this dialog is too small !?
+    dialog.pack();
+    dialog.validate();
+    //Dimension dim = dialog.getSize();
+    //dialog.setSize(new Dimension(dim.height+50, dim.width));
+    dialog.setVisible(true);
+    dialog.dispose();
+  
+  }
+
   public static long getDateInMilliSeconds(String dateInput){
     return getDateInMilliSeconds(dateInput, GridPilot.dateFormatString);
   }
@@ -1523,4 +1546,5 @@ public class MyUtil extends gridfactory.common.Util{
     }
     return true;
   }
+
 }

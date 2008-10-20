@@ -34,7 +34,6 @@ import gridfactory.common.ResThread;
 import gridpilot.DBPluginMgr;
 import gridpilot.Database;
 import gridpilot.GridPilot;
-import gridpilot.MessagePane;
 import gridpilot.MyUtil;
 
 public class HSQLDBDatabase extends DBCache implements Database{
@@ -2668,7 +2667,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       SwingUtilities.invokeLater(
           new ResThread(){
             public void run(){
-              MessagePane.showMessage(msg, title);
+              MyUtil.showLongMessage(msg, title);
             }
           }
       );
