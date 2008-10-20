@@ -49,7 +49,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bCreateRecords = new JButton("Define new record(s)");
   private JButton bEditRecord = new JButton("Edit record");
   private JCheckBox cbFindAllFiles = new JCheckBox();
-  private JButton bDownload = new JButton("Replicate file(s)");
+  private JButton bDownload = new JButton("Copy file(s)");
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
   private JPopupMenu pmCreateDSMenu = new JPopupMenu();
   private JMenuItem miWithInput = new JMenuItem("with selected input dataset(s)");
@@ -101,7 +101,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   public String dbName = null;
 
   // try grabbing the semaphore
-  private synchronized boolean getWorking(){
+  private /*synchronized*/ boolean getWorking(){
     if(!working){
       working = true;
       return true;
@@ -109,7 +109,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return false;
   }
   // release the semaphore
-  private synchronized void stopWorking(){
+  private /*synchronized*/ void stopWorking(){
     working = false;
   }
   
@@ -1558,7 +1558,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void deleteFiles(){
     
     if(!dbPluginMgr.isFileCatalog()){
-      MessagePane.showMessage("This is a virtual file table. " +
+      MyUtil.showLongMessage("This is a virtual file table. " +
             "Entries cannot be modified directly.", "Cannot delete");
     }
     // Should be safe, only mysql and hsqldb contain jobDefinitions
@@ -2303,7 +2303,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   /**
-   * Called when mouse is pressed on the Download button
+   * Called when mouse is pressed on the Copy button
    */
   private void download(final String _dlUrl, final TargetDBsPanel _targetDBsPanel){
     new Thread(){
@@ -2526,7 +2526,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     try{
       wb = new BrowserPanel(
                       GridPilot.getClassMgr().getGlobalFrame(),
-                      "Choose directory",
+                      "Choose destination directory",
                       finUrl,
                       finBaseUrl,
                       true,
@@ -2750,7 +2750,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         if(bytes==null){
           // lookup size the hard way
           try{
-            // TODO generalize beyound gsiftp and https
+            // TODO generalize beyond gsiftp and https
             if(urls[j].startsWith("https:") || urls[j].startsWith("gsiftp:")){
               GlobusURL globusUrl = new GlobusURL(urls[j]);
               bytes = Long.toString(GridPilot.getClassMgr().getFTPlugin(

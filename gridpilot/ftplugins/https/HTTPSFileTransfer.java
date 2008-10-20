@@ -802,7 +802,7 @@ public class HTTPSFileTransfer implements FileTransfer {
         line = lines[i].replaceFirst(hrefPattern, "$1").trim();
         line = line.replaceFirst(baseDir, "");
         Debug.debug("Line: "+lines[i], 3);
-        if(line.length()==0){
+        if(line.length()==0 || line.equals("/")){
           continue;
         }
         if(line.endsWith("/") && line.matches(filter)){

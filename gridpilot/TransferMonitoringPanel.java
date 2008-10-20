@@ -242,7 +242,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     miResubmit.setEnabled(false);
     miShowInfo.setEnabled(false);
 
-    //statusTable.addMenuSeparator();
+    statusTable.addMenuSeparator();
     statusTable.addMenuItem(miRefresh);
     statusTable.addMenuItem(miShowInfo);
     statusTable.addMenuItem(miKill);
@@ -353,7 +353,8 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
         }
         statusBar.removeLabel();
         statusBar.stopAnimation();
-        MessagePane.showMessage(info, "Transfer status");
+        //MyUtil.showLongMessage(info, "Transfer info");
+        MyUtil.showMessage("Transfer info", info);
       }
     };
     statusBar.setLabel("Getting full status...");
