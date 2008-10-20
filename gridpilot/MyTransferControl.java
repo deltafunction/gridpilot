@@ -70,16 +70,19 @@ public class MyTransferControl extends TransferControl {
   private int maxSimultaneousTransfers = 5;
   /** Delay between the begin of two submission threads */
   private int timeBetweenTransfers = 1000;
+  private HashMap<String, String> serverPluginMap;
   private String isRand = null;
 
   private static int TRANSFER_SUBMIT_TIMEOUT = 60*1000;
   private static int TRANSFER_CANCEL_TIMEOUT = 60*1000;
   private Object [][] tableValues = new Object[0][GridPilot.transferStatusFields.length];
   
+  final private static String SRM2_PLUGIN_NAME = "srm2";
+  
   public MyTransferControl() throws Exception{
     super(GridPilot.getClassMgr().getLogFile(), GridPilot.getClassMgr().getTransferStatusTable());
     configFile = GridPilot.getClassMgr().getConfigFile();
-
+    serverPluginMap = new HashMap<String, String>();
     timer = new Timer(0, new ActionListener(){
       public void actionPerformed(ActionEvent e){
         trigSubmission();
@@ -281,6 +284,7 @@ public class MyTransferControl extends TransferControl {
    * by the SRM plugin for handling e.g. gsiftp TURLs
    * @param   srcUrls    Array of source URLs.
    * @param   destUrls   Array of destination URLs.
+   * @return a list of identifiers of the form "https-(get|put|copy)::'srcUrl' 'destUrl'"
    */
   public String [] startCopyFiles(GlobusURL [] srcUrls, GlobusURL [] destUrls)
      throws Exception {
@@ -314,6 +318,25 @@ public class MyTransferControl extends TransferControl {
     // Start the transfers
     ids = GridPilot.getClassMgr().getFTPlugin(
         ftPluginName).startCopyFiles(srcUrls, destUrls);
+    
+    // This is a hack to deal with the fact that the protocol srm can mean both version 1 or version 2
+    // (and the fact that the two protocols are not compatible).
+    if(ftPluginName=="srm" && ids==null){
+      // Give it a try with SRM-2
+      ids = GridPilot.getClassMgr().getFTPlugin(
+          SRM2_PLUGIN_NAME).startCopyFiles(srcUrls, destUrls);
+      // If successful, have findFTPlugin remember to pick the right class.
+      if(ids==null){
+        for(int i=0; i<srcUrls.length; ++i){
+          if(srcUrls[i].getProtocol().equalsIgnoreCase("srm")){
+            serverPluginMap.put(srcUrls[i].getHost(), SRM2_PLUGIN_NAME);
+          }
+          if(destUrls[i].getProtocol().equalsIgnoreCase("srm")){
+            serverPluginMap.put(srcUrls[i].getHost(), SRM2_PLUGIN_NAME);
+          }
+        }
+      }
+    }
     return ids;
   }
   
@@ -415,7 +438,7 @@ public class MyTransferControl extends TransferControl {
    * @param   ftPlugin    Name ofthe ft plugin.
    * @param   transfers    URL of the SRM server.
    */
-  public void submit(String ftPlugin, TransferInfo [] transfers)
+  private void submit(String ftPlugin, TransferInfo [] transfers)
      throws Exception {
 
     if(isRand!=null && isRand.equalsIgnoreCase("yes")){
@@ -891,16 +914,24 @@ public class MyTransferControl extends TransferControl {
   /**
    * Select first plugin that supports the protocol of the this transfer.
    * @param   transferID    Transfer ID. Format:
-   *                        "protocol-(get|put|copy):...:srcTURL destTURL [SURL]".
+   *                        "protocol-(get|put|copy)::srcTURL destTURL [SURL]".
    */
-  public static FileTransfer findFTPlugin(String transferID)
+  private FileTransfer findFTPlugin(String transferID)
      throws Exception{
-    
     Debug.debug("Finding plugin for transfer "+transferID, 2);
-    String ftPluginName = null;
     String [] checkArr = MyUtil.split(transferID, "::");
+    String [] arr = MyUtil.split(checkArr[1]);
+    GlobusURL srcUrl = new GlobusURL(arr[0]);
+    GlobusURL destUrl = new GlobusURL(arr[1]);
+    if(serverPluginMap.containsKey(srcUrl.getHost())){
+      return GridPilot.getClassMgr().getFTPlugin(serverPluginMap.get(srcUrl.getHost()));
+    }
+    if(serverPluginMap.containsKey(destUrl.getHost())){
+      return GridPilot.getClassMgr().getFTPlugin(serverPluginMap.get(destUrl.getHost()));
+    }
+    String ftPluginName = null;
     if(checkArr[0].indexOf("-")>0){
-      String [] arr = MyUtil.split(checkArr[0], "-");
+      arr = MyUtil.split(checkArr[0], "-");
       ftPluginName = arr[0];
       Debug.debug("Found plugin "+ftPluginName, 2);
     }
@@ -917,7 +948,7 @@ public class MyTransferControl extends TransferControl {
    * Find the plugin that's actually carrying out the work. E.g. for srm this will
    * typically be gsiftp.
    * @param   transferID    Transfer ID. Format:
-   *                        "protocol-(get|put|copy):...:srcTURL destTURL [SURL]".
+   *                        "protocol-(get|put|copy)::srcTURL destTURL [SURL]".
    */
   /*public static FileTransfer findRealTransferPlugin(String transferID)
      throws Exception{
