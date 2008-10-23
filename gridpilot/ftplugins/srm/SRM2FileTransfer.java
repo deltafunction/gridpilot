@@ -3,7 +3,9 @@ package gridpilot.ftplugins.srm;
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
 import java.net.URLDecoder;
+import java.rmi.RemoteException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Date;
@@ -15,22 +17,58 @@ import org.globus.ftp.exception.FTPException;
 import org.globus.ftp.exception.ServerException;
 import org.globus.util.GlobusURL;
 
-import gov.lbl.srm.client.wsdl.SRMRequest;
-import gov.lbl.srm.client.wsdl.SRMRequestStatus;
-import gov.lbl.srm.client.wsdl.SRMServer;
+import org.apache.axis.types.URI;
+import org.apache.axis.types.UnsignedLong;
+import org.dcache.srm.SRMException;
+import org.dcache.srm.client.SRMClientV2;
+import org.dcache.srm.v2_2.ArrayOfAnyURI;
+import org.dcache.srm.v2_2.ArrayOfTCopyFileRequest;
+import org.dcache.srm.v2_2.ArrayOfTCopyRequestFileStatus;
+import org.dcache.srm.v2_2.ArrayOfTGetFileRequest;
+import org.dcache.srm.v2_2.ArrayOfTGetRequestFileStatus;
+import org.dcache.srm.v2_2.ArrayOfTPutFileRequest;
+import org.dcache.srm.v2_2.ArrayOfTPutRequestFileStatus;
+import org.dcache.srm.v2_2.ISRM;
+import org.dcache.srm.v2_2.SrmAbortRequestRequest;
+import org.dcache.srm.v2_2.SrmAbortRequestResponse;
+import org.dcache.srm.v2_2.SrmCopyRequest;
+import org.dcache.srm.v2_2.SrmCopyResponse;
+import org.dcache.srm.v2_2.SrmLsRequest;
+import org.dcache.srm.v2_2.SrmLsResponse;
+import org.dcache.srm.v2_2.SrmPrepareToGetRequest;
+import org.dcache.srm.v2_2.SrmPrepareToGetResponse;
+import org.dcache.srm.v2_2.SrmPrepareToPutRequest;
+import org.dcache.srm.v2_2.SrmPrepareToPutResponse;
+import org.dcache.srm.v2_2.SrmPutDoneRequest;
+import org.dcache.srm.v2_2.SrmReleaseFilesRequest;
+import org.dcache.srm.v2_2.SrmRmRequest;
+import org.dcache.srm.v2_2.SrmRmResponse;
+import org.dcache.srm.v2_2.SrmStatusOfCopyRequestRequest;
+import org.dcache.srm.v2_2.SrmStatusOfCopyRequestResponse;
+import org.dcache.srm.v2_2.SrmStatusOfGetRequestRequest;
+import org.dcache.srm.v2_2.SrmStatusOfGetRequestResponse;
+import org.dcache.srm.v2_2.SrmStatusOfPutRequestRequest;
+import org.dcache.srm.v2_2.SrmStatusOfPutRequestResponse;
+import org.dcache.srm.v2_2.TCopyFileRequest;
+import org.dcache.srm.v2_2.TCopyRequestFileStatus;
+import org.dcache.srm.v2_2.TGetFileRequest;
+import org.dcache.srm.v2_2.TGetRequestFileStatus;
+import org.dcache.srm.v2_2.TMetaDataPathDetail;
+import org.dcache.srm.v2_2.TPutFileRequest;
+import org.dcache.srm.v2_2.TPutRequestFileStatus;
+import org.dcache.srm.v2_2.TReturnStatus;
+import org.dcache.srm.v2_2.TStatusCode;
 
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
-import gridfactory.common.LocalStaticShell;
-import gridpilot.MySSL;
 import gridpilot.StatusBar;
 import gridpilot.MyTransferControl;
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;
 
 /**
- * Implementation of SRM version 2 support, using the BeStMan jar.
- * Some of the code below is taken from gov.fnal.srm.util.SRMDispatcher,
+ * Implementation of SRM version 1 support, using the dCache jar.
+ * Most of the code below is taken from gov.fnal.srm.util.SRMDispatcher,
  * which is a class providing support for the dCache command line utilities
  * (which we don't use), and  gov.fnal.srm.util.SRMCopyClientV1.
  */
@@ -40,17 +78,14 @@ public class SRM2FileTransfer implements FileTransfer {
   private Vector pendingIDs = new Vector();
   private String user = null;
   private MyTransferControl transferControl;
-  private HashMap<String,SRMServer> serverMap;
-  private HashMap<String,SRMRequest> requestMap;
-  private int currentMaxRequestKey = 0;
   
   // Default to trying 5 checks after submitting a transfer
-  private static int checkRetries = 5;
+  private int checkRetries = 5;
   // Default to sleeping 10 seconds between each check retry
-  private static long checkRetrySleep = 10000;
+  private long checkRetrySleep = 10000;
 
-  private static String copyRetries = "0";
-  private static String copyRetryTimeout = "120";
+  private String copyRetries = "0";
+  private String copyRetryTimeout = "120";
   
   private static final int SRM_URL = 0x1;
   private static final int FILE_URL = 0x8;
@@ -62,7 +97,8 @@ public class SRM2FileTransfer implements FileTransfer {
   private static final int UNKNOWN_URL = 0x100;
   private static final int GSIFTP_URL = 0x200;
   
-  private static String pluginName;
+  private String pluginName;
+  private HashMap<String, Long> startDates;
 
   public SRM2FileTransfer() throws IOException, GeneralSecurityException{
     pluginName = "srm";
@@ -70,9 +106,6 @@ public class SRM2FileTransfer implements FileTransfer {
       user = GridPilot.getClassMgr().getSSL().getGridSubject();
     }
     
-    serverMap = new HashMap<String,SRMServer>();
-    requestMap = new HashMap<String,SRMRequest>();
-      
     transferControl = GridPilot.getClassMgr().getTransferControl();
 
     //System.setProperty("X509_CERT_DIR",
@@ -100,6 +133,7 @@ public class SRM2FileTransfer implements FileTransfer {
     if(sleep!=null){
       checkRetrySleep = Long.parseLong(sleep);
     };
+    startDates = new HashMap<String, Long>();
   }
   
   public String getUserInfo(){
@@ -108,65 +142,53 @@ public class SRM2FileTransfer implements FileTransfer {
   
   /**
    * Connect to the SRM server.
-   * @param srmUrl URL of the SRM server.
+   * @param   srmUrl    URL of the SRM server.
    */
-  private SRMServer connect(GlobusURL srmUrl) throws Exception {
-    SRMServer server = null;
-    GridPilot.getClassMgr().getSSL().activateProxySSL();
-    if(!serverMap.containsKey(srmUrl.getHost())){
-      server = new SRMServer(MySSL.getProxyFile().getAbsolutePath(),
-          null, createTmpLog4jConfigFile().getParent(), Debug.DEBUG_LEVEL>1);
+  private ISRM connect(GlobusURL srmUrl) throws Exception {
+    ISRM srm = null;
+    try{
+      GridPilot.getClassMgr().getSSL().activateProxySSL();
+       srm = new SRMClientV2(
+           srmUrl,
+           GridPilot.getClassMgr().getSSL().getGridCredential(),
+           Long.parseLong(Integer.toString(
+               1000*Integer.parseInt(copyRetryTimeout))),
+           Integer.parseInt(copyRetries),
+           new SRMLogger(true),
+           /*doDelegation*/true,
+           /*fullDelegation*/true,
+           /*gss_expected_name*/"host",
+           "srm/managerv1.wsdl");
+       Debug.debug("connected to server, obtained proxy of type "+srm.getClass(), 2);
     }
-    else{
-      server = serverMap.get(srmUrl.getURL());
+    catch(Exception srme){
+      srme.printStackTrace();
+       //throw new IOException(srme.toString());
     }
-    String serviceUrl = "https://"+srmUrl.getHost()+":8443"+"/srm/managerv2";
-    if(!server.connect(serviceUrl)){
-      throw new IOException("Could not connect to URL "+serviceUrl);
+    if(srm!=null){
+      return srm;
     }
-    if(server==null){
-       throw new IOException("ERROR: Cannot create SRMServer object.");
+    try{
+      srm = new SRMClientV2(
+          srmUrl,
+          GridPilot.getClassMgr().getSSL().getGridCredential(),
+          Long.parseLong(Integer.toString(
+              1000*Integer.parseInt(copyRetryTimeout))),
+          Integer.parseInt(copyRetries),
+          new SRMLogger(true),
+          /*doDelegation*/true,
+          /*fullDelegation*/true,
+          /*gss_expected_name*/"host",
+          "srm/managerv1");
+      Debug.debug("connected to server, obtained proxy of type "+srm.getClass(), 2);
     }
-    return server;
-  }
-  
-  private File createTmpLog4jConfigFile() throws IOException{
-    File log4jDir= File.createTempFile(MyUtil.getTmpFilePrefix(), "");
-    log4jDir.delete();
-    log4jDir.mkdirs();
-    File log4jFile = new File(log4jDir, "log4j.properties");
-    String config = "log4j.rootCategory=INFO, CONSOLE\n"+
-    "#log4j.rootCategory=INFO, CONSOLE, LOGFILE\n"+
-    "\n"+
-    "# Set the enterprise logger category to FATAL and its only appender to CONSOLE.\n"+
-    "log4j.logger.org.apache.axis.enterprise=FATAL, CONSOLE\n"+
-    "\n"+
-    "# CONSOLE is set to be a ConsoleAppender using a PatternLayout.\n"+
-    "log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender\n"+
-    "log4j.appender.CONSOLE.Threshold=INFO\n"+
-    "log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout\n"+
-    "log4j.appender.CONSOLE.layout.ConversionPattern=- %m%n\n"+
-    "\n"+
-    "# LOGFILE is set to be a File appender using a PatternLayout.\n"+
-    "log4j.appender.LOGFILE=gridpilot.MyFileAppender\n"+
-    "log4j.appender.LOGFILE.Name=GridPilot Log\n"+
-    "log4j.appender.LOGFILE.File="+GridPilot.logFileName+"\n"+
-    "log4j.appender.LOGFILE.Append=true\n"+
-    "log4j.appender.LOGFILE.Threshold=INFO\n"+
-    "log4j.appender.LOGFILE.layout=org.apache.log4j.PatternLayout\n"+
-    "log4j.appender.LOGFILE.layout.ConversionPattern=%-4r [%t] %-5p %c %x - %m%n\n";
-    LocalStaticShell.writeFile(log4jFile.getAbsolutePath(), config, true);
-    return log4jFile;
-  };
-  
-  private SRMRequest getSRMRequest(int requestKey){
-    return requestMap.get(Integer.toString(requestKey));
-  }
-  
-  private synchronized int setSRMRequest(SRMRequest req){
-    ++currentMaxRequestKey;
-    requestMap.put(Integer.toString(currentMaxRequestKey), req);
-    return currentMaxRequestKey;
+    catch(Exception srme){
+      throw new IOException(srme.toString());
+    }
+    if(srm==null){
+       throw new IOException("ERROR: Cannot get SRM connection.");
+    }
+    return srm;
   }
 
   /**
@@ -179,18 +201,15 @@ public class SRM2FileTransfer implements FileTransfer {
    *                           Format: srm-{get|put|copy}::srm request id:transfer index::'srcTurl' 'destTurl' 'srmSurl'
    *
    * Change: when getting status from SRM, instead of "Ready" the TURL is now returned.
-   * @throws IOException 
+   * @throws Exception 
+   * @throws MalformedURLException 
    */
-  public String getStatus(String fileTransferID) throws IOException {
+  public String getStatus(String fileTransferID) throws Exception {
     String [] idArr = parseFileTransferID(fileTransferID);
     String requestType = idArr[1];
-    int requestId = Integer.parseInt(idArr[2]);
-    int statusIndex = Integer.parseInt(idArr[3]);
-    String surl = idArr[6];
     String shortID = idArr[7];
-
+    
     String status = null;
-    String turl = null;
 
     if(!pendingIDs.contains(fileTransferID) && (
         requestType.equals("get") || requestType.equals("put"))){
@@ -207,33 +226,109 @@ public class SRM2FileTransfer implements FileTransfer {
     }
     
     if(status!=null && status.length()>0){
-      return(status);
+      return status;
     }
     else{
-      try{
-        SRMRequestStatus rs = getSRMRequest(requestId).getStatus();
-        status = (String) rs.getFileStatuses().get(surl);
-        // TODO: how does ont get the TURLs? With getPathDetails() ??
-        turl = (String) rs.getPathDetails().get(surl);
-        Debug.debug("Got status from SRM server: "+statusIndex+" : "+status+
-            " : "+turl, 2);
-        if(status.equals("Ready") && turl!=null){
-          return turl;
-        }
-        else{
-          return status;
-        }
-      }
-      catch(Exception e){
-        throw new IOException("ERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage());
-      }
+      return getSRMStatus(fileTransferID).statusStr;
     }
   }
   
+  private SRMStatus getSRMStatus(String fileTransferID) throws Exception{
+    String [] idArr = parseFileTransferID(fileTransferID);
+    String requestType = idArr[1];
+    String requestId = idArr[2];
+    int statusIndex = Integer.parseInt(idArr[3]);
+    String surl = idArr[6];
+    ISRM srm = connect(new GlobusURL(surl));
+    SRMStatus status = null;
+    if(requestType.equalsIgnoreCase("get")){
+      status = getGetStatus(requestId, statusIndex, srm);
+    }
+    else if(requestType.equalsIgnoreCase("put")){
+      status = getPutStatus(requestId, statusIndex, srm);
+    }
+    else if(requestType.equalsIgnoreCase("copy")){
+      status = getCopyStatus(requestId, statusIndex, srm);
+    }
+    return status;
+  }
+  
+  private SRMStatus getGetStatus(String requestId, int statusIndex, ISRM srm) throws RemoteException {
+    SrmStatusOfGetRequestRequest sgreq = new SrmStatusOfGetRequestRequest();
+    sgreq.setRequestToken(requestId);
+    SrmStatusOfGetRequestResponse sgresp = srm.srmStatusOfGetRequest(sgreq);
+    ArrayOfTGetRequestFileStatus statuses = sgresp.getArrayOfFileStatuses();
+    TGetRequestFileStatus fileStatus = statuses.getStatusArray()[statusIndex];
+    String statusStr = fileStatus.getStatus().getStatusCode().getValue();
+    TStatusCode statusCode = fileStatus.getStatus().getStatusCode();
+    String turl = fileStatus.getTransferURL().toString();
+    Integer estimatedWaitTime = fileStatus.getEstimatedWaitTime();
+    UnsignedLong fileSize = fileStatus.getFileSize();
+    Debug.debug("Got status from SRM server: "+statusIndex+" : "+statusStr+
+        " : "+turl, 2);
+    if((statusCode==TStatusCode.SRM_FILE_IN_CACHE || statusCode==TStatusCode.SRM_SUCCESS) && turl!=null){
+      statusStr = turl;
+    }
+    return new SRMStatus(statusStr, statusCode, turl, estimatedWaitTime, fileSize);
+  }
+
+  private SRMStatus getPutStatus(String requestId, int statusIndex, ISRM srm) throws RemoteException {
+    SrmStatusOfPutRequestRequest sgreq = new SrmStatusOfPutRequestRequest();
+    sgreq.setRequestToken(requestId);
+    SrmStatusOfPutRequestResponse sgresp = srm.srmStatusOfPutRequest(sgreq);
+    ArrayOfTPutRequestFileStatus statuses = sgresp.getArrayOfFileStatuses();
+    TPutRequestFileStatus fileStatus = statuses.getStatusArray()[statusIndex];   
+    String statusStr = fileStatus.getStatus().getStatusCode().getValue();
+    TStatusCode statusCode = fileStatus.getStatus().getStatusCode();
+    String turl = fileStatus.getTransferURL().toString();
+    Integer estimatedWaitTime = fileStatus.getEstimatedWaitTime();
+    UnsignedLong fileSize = fileStatus.getFileSize();
+    Debug.debug("Got status from SRM server: "+statusIndex+" : "+statusStr+
+        " : "+turl, 2);
+    if((statusCode==TStatusCode.SRM_FILE_IN_CACHE || statusCode==TStatusCode.SRM_SUCCESS) && turl!=null){
+      statusStr = turl;
+    }
+    return new SRMStatus(statusStr, statusCode, turl, estimatedWaitTime, fileSize);
+  }
+
+  private SRMStatus getCopyStatus(String requestId, int statusIndex, ISRM srm) throws RemoteException {
+    SrmStatusOfCopyRequestRequest sgreq = new SrmStatusOfCopyRequestRequest();
+    sgreq.setRequestToken(requestId);
+    SrmStatusOfCopyRequestResponse sgresp = srm.srmStatusOfCopyRequest(sgreq);
+    ArrayOfTCopyRequestFileStatus statuses = sgresp.getArrayOfFileStatuses();
+    TCopyRequestFileStatus fileStatus = statuses.getStatusArray()[statusIndex];   
+    String statusStr = fileStatus.getStatus().getStatusCode().getValue();
+    TStatusCode statusCode = fileStatus.getStatus().getStatusCode();
+    // Use the target SURL as TURL for the GridPilot identifier
+    String turl = fileStatus.getTargetSURL().toString();
+    Integer estimatedWaitTime = fileStatus.getEstimatedWaitTime();
+    UnsignedLong fileSize = fileStatus.getFileSize();
+    Debug.debug("Got status from SRM server: "+statusIndex+" : "+statusStr+
+        " : "+turl, 2);
+    if((statusCode==TStatusCode.SRM_FILE_IN_CACHE || statusCode==TStatusCode.SRM_SUCCESS) && turl!=null){
+      statusStr = turl;
+    }
+    return new SRMStatus(statusStr, statusCode, turl, estimatedWaitTime, fileSize);
+  }
+  
+  private class SRMStatus{
+    String statusStr;
+    TStatusCode statusCode;
+    String turl;
+    int estimatedWaitTime;
+    UnsignedLong fileSize;
+    SRMStatus(String _statusStr, TStatusCode _statusCode, String _turl, int _estimatedWaitTime, UnsignedLong _fileSize){
+      statusStr = _statusStr;
+      statusCode = _statusCode;
+      turl = _turl;
+      estimatedWaitTime = _estimatedWaitTime;
+      fileSize = _fileSize;
+    }
+  }
+
   public String getFullStatus(String fileTransferID) throws Exception {
     String [] idArr = parseFileTransferID(fileTransferID);
     String requestType = idArr[1];
-    int requestId = Integer.parseInt(idArr[2]);
     String surl = idArr[6];
     String shortID = idArr[7];
 
@@ -254,11 +349,11 @@ public class SRM2FileTransfer implements FileTransfer {
     
     try{
       Debug.debug("Getting status of "+shortID+" from SRM server "+surl, 3);
-      SRMRequestStatus rs = getSRMRequest(requestId).getStatus();
-      status += "\nSRM Status: "+rs.getFileStatuses().get(surl);
-      status += "\nEstimated time to start transfer: "+rs.getRemainingDeferredStartTime();
-      status += "\nEstimated transfer finishing time: "+rs.getRemainingTotalRequestTime();
-      status += "\nTime stamp: "+rs.getTimeStamp();
+      SRMStatus srmStatus = getSRMStatus(fileTransferID);
+      status += "\nSRM Status: "+srmStatus.statusStr;
+      status += "\nEstimated time waiting time: "+srmStatus.estimatedWaitTime;
+      status += "\nFile size: "+srmStatus.fileSize;
+      status += "\nTransport URL: "+srmStatus.turl;
     }
     catch(Exception e){
       status += "\nERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage();
@@ -271,7 +366,7 @@ public class SRM2FileTransfer implements FileTransfer {
    * {protocol, requestType (get|put|copy), requestId, statusIndex, srcTurl, destTurl, srmSurl, shortID}.
    * @param fileTransferID   the unique ID of this transfer.
    */
-  private String [] parseFileTransferID(String fileTransferID) throws IOException {
+  private String [] parseFileTransferID(String fileTransferID) throws SRMException {
     
     String protocol = null;
     String requestType = null;
@@ -285,7 +380,7 @@ public class SRM2FileTransfer implements FileTransfer {
     String [] idArr = MyUtil.split(fileTransferID, "::");
     String [] head = MyUtil.split(idArr[0], "-");
     if(idArr.length<3){
-      throw new IOException("ERROR: malformed ID "+fileTransferID);
+      throw new SRMException("ERROR: malformed ID "+fileTransferID);
     }
     try{
       protocol = head[0];
@@ -301,7 +396,8 @@ public class SRM2FileTransfer implements FileTransfer {
       srmSurl = turlArray[2].replaceFirst("'", "");
     }
     catch(Exception e){
-      throw new IOException("ERROR: could not parse ID "+fileTransferID+". "+e.getMessage());
+      e.printStackTrace();
+      throw new SRMException("ERROR: could not parse ID "+fileTransferID+". "+e.getMessage());
     }
     try{
       // First resolve transport protocol
@@ -333,10 +429,11 @@ public class SRM2FileTransfer implements FileTransfer {
    *                           index of the file in question in the array
    *                           RequestStatus.fileStatuses.
    */
-  public int getPercentComplete(String fileTransferID) throws IOException {
+  public int getPercentComplete(String fileTransferID) throws SRMException {
     String [] idArr = parseFileTransferID(fileTransferID);
     String requestType = idArr[1];
     int requestId = Integer.parseInt(idArr[2]);
+    String surl = idArr[6];
     String shortID = idArr[7];
 
     int percentComplete = -1;
@@ -355,18 +452,18 @@ public class SRM2FileTransfer implements FileTransfer {
     }
     else{
       try{
-        SRMRequest request = this.getSRMRequest(requestId);
-        long remain = request.getStatus().getRemainingTotalRequestTime();
+        SRMStatus srmStatus = getSRMStatus(fileTransferID);
+        int waitTime = srmStatus.estimatedWaitTime;
         Date currentDate = new Date();
-        Date startDate = request.getStatus().getTimeStamp();
-        long total = currentDate.getTime() - startDate.getTime() + remain;
-        long diff = currentDate.getTime() - startDate.getTime();
+        long startDate = startDates.get(fileTransferID);
+        long total = currentDate.getTime() + waitTime - startDate;
+        long diff = currentDate.getTime() - startDate;
         float percents = diff / total;
         Debug.debug("Got percent complete "+percents, 3);
         return (int) (percents*100);
       }
       catch(Exception e){
-        throw new IOException("ERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage());
+        throw new SRMException("ERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage());
       }
     }
   }
@@ -378,7 +475,7 @@ public class SRM2FileTransfer implements FileTransfer {
    *                           index of the file in question in the array
    *                           RequestStatus.fileStatuses.
    */
-  public long getBytesTransferred(String fileTransferID) throws IOException {
+  public long getBytesTransferred(String fileTransferID) throws SRMException {
     String [] idArr = parseFileTransferID(fileTransferID);
     String requestType = idArr[1];
     String shortID = idArr[7];
@@ -411,15 +508,31 @@ public class SRM2FileTransfer implements FileTransfer {
    *                           index of the file in question in the array
    *                           RequestStatus.fileStatuses.
    */
-  public long getFileBytes(String fileTransferID) throws Exception {
-    String [] idArr = parseFileTransferID(fileTransferID);
-    int requestId = Integer.parseInt(idArr[2]);
-    String surl = idArr[6];   
-    SRMRequest request = getSRMRequest(requestId);
-    // TODO: how does one get the size of a file??
-    String fSize = (String) request.getStatus().getFileStatuses().get(surl);
-    Debug.debug("Got the following size "+fSize, 3);
-    return Long.parseLong(fSize);
+  private long getFileBytes(String fileTransferID) throws Exception {
+    SRMStatus srmStatus = getSRMStatus(fileTransferID);
+    return srmStatus.fileSize.longValue();
+  }
+  
+  /**
+   * Get the size of a file in bytes.
+   * @throws Exception 
+   */
+  public long getFileBytes(GlobusURL surl) throws Exception {
+    return srmLs(new GlobusURL[] {surl})[0].getSize().longValue();
+  }
+    
+  private TMetaDataPathDetail[] srmLs(GlobusURL [] surls) throws Exception{
+    ISRM srm = connect(surls[0]);
+    SrmLsRequest lsReq = new SrmLsRequest();
+    ArrayOfAnyURI aSurls = new ArrayOfAnyURI();
+    URI[] uris = new URI[surls.length];
+    for(int i=0; i<surls.length; ++i){
+      uris[i] = new URI(surls[i].getURL());
+    }
+    aSurls.setUrlArray(uris);
+    lsReq.setArrayOfSURLs(aSurls);
+    SrmLsResponse lsResp = srm.srmLs(lsReq);
+    return lsResp.getDetails().getPathDetailArray();
   }
   
   /**
@@ -428,22 +541,28 @@ public class SRM2FileTransfer implements FileTransfer {
    *                           and not to be confused with the request id or the
    *                           index of the file in question in the array
    *                           RequestStatus.fileStatuses.
-   * @throws Exception 
    */
-  public void finalize(String fileTransferID) throws Exception {    
+  public void finalize(String fileTransferID) throws SRMException {    
     String [] idArr = parseFileTransferID(fileTransferID);
-    int requestId = Integer.parseInt(idArr[2]);
     String requestType = idArr[1];
-    String surl = idArr[6];   
-    SRMRequest request = getSRMRequest(requestId);
-    Debug.debug("Finalizing request "+requestId, 2);
-    request.releaseFiles(new String[] {surl});
-    if(requestType.equalsIgnoreCase("put")){
-      request.putDone(new String[] {surl});
+    String requestId = idArr[2];
+    String surl = idArr[6];
+
+    try{
+      ISRM srm = connect(new GlobusURL(surl));
+      if(requestType.equalsIgnoreCase("put")){
+        SrmPutDoneRequest putDoneReq = new SrmPutDoneRequest();
+        putDoneReq.setRequestToken(requestId);
+        srm.srmPutDone(putDoneReq);
+      }
+      SrmReleaseFilesRequest releaseFilesReq = new SrmReleaseFilesRequest();
+      releaseFilesReq.setRequestToken(requestId);
+      Debug.debug("Finalizing request "+requestId, 2);
+      srm.srmReleaseFiles(releaseFilesReq);
     }
-    HashMap statusMap = new HashMap();
-    statusMap.put(surl, "Done");
-    request.getStatus().setFileStatuses(statusMap);
+    catch(Exception e){
+      throw new SRMException("ERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage());
+    }
   }
   
   /**
@@ -457,15 +576,20 @@ public class SRM2FileTransfer implements FileTransfer {
   public void cancel(String fileTransferID) throws Exception {
     String [] idArr = parseFileTransferID(fileTransferID);
     String requestType = idArr[1];
-    int requestId = Integer.parseInt(idArr[2]);
+    String requestId = idArr[2];
     String surl = idArr[6];
     String shortID = idArr[7];
-    Debug.debug("Cancelling request "+requestId, 2);
-    SRMRequest request = getSRMRequest(requestId);
-    request.abortFiles(new String[] {surl});
-    if(request.getFiles()!=null && request.getFiles().length==0){
-      request.abortRequest();
+
+    ISRM srm = connect(new GlobusURL(surl));
+    // This cancels and sets to Done.
+    SrmAbortRequestRequest srmAbortRequestRequest = new SrmAbortRequestRequest();
+    srmAbortRequestRequest.setRequestToken(requestId);
+    SrmAbortRequestResponse srmAbortRequestResponse = srm.srmAbortRequest(srmAbortRequestRequest);
+    if(srmAbortRequestResponse.getReturnStatus().getStatusCode()!=TStatusCode.SRM_SUCCESS){
+      GridPilot.getClassMgr().getLogFile().addMessage("Problem aborting request "+requestId+"."+
+          srmAbortRequestResponse.getReturnStatus().getExplanation());
     }
+    
     if(!pendingIDs.contains(fileTransferID) && (
         requestType.equals("get") || requestType.equals("put"))){
       // cancel GSIFTPFileTransfer (or whichever protocol the SRM uses)
@@ -475,7 +599,8 @@ public class SRM2FileTransfer implements FileTransfer {
       }
       catch(Exception e){
         e.printStackTrace();
-        Debug.debug("WARNING: could not cancel "+shortID+". "+e.getMessage(), 1);
+        GridPilot.getClassMgr().getLogFile().addMessage(
+            "WARNING: could not cancel "+shortID+". "+e.getMessage(), e);
       }
     }
 
@@ -483,7 +608,7 @@ public class SRM2FileTransfer implements FileTransfer {
 
   // Wait for all files to be ready on the SRM server before beginning the
   // transfers. This may be reconsidered...
-  private String [] waitForOK(Vector _thesePendingIDs) throws IOException {
+  private String [] waitForOK(Vector _thesePendingIDs) throws SRMException {
     synchronized(pendingIDs){
       Vector thesePendingIDs = _thesePendingIDs;
       String status = null;
@@ -491,6 +616,7 @@ public class SRM2FileTransfer implements FileTransfer {
       String [] turlArray = new String[thesePendingIDs.size()];
       for(int i=0; i<thesePendingIDs.size(); ++i){
         idArray[i] = (String) thesePendingIDs.get(i);
+        startDates.put(idArray[i], MyUtil.getDateInMilliSeconds()*1000);
       }
       int i = 0;
       pendingIDs.addAll(thesePendingIDs);
@@ -516,11 +642,11 @@ public class SRM2FileTransfer implements FileTransfer {
               pendingIDs.remove(id);
               thesePendingIDs.remove(id);
             }
-            else if(status.equalsIgnoreCase("Ready")){
+            else if(status.equalsIgnoreCase(TStatusCode._SRM_FILE_IN_CACHE)){
               pendingIDs.remove(id);
               thesePendingIDs.remove(id);
             }
-            else if(status.equalsIgnoreCase("Failed")){
+            else if(status.equalsIgnoreCase(TStatusCode._SRM_FAILURE)){
               for(int k=0; k<idArray.length; ++k){
                 if(idArray[k].equals(id)){
                   turlArray[k] = "Failed";
@@ -540,7 +666,7 @@ public class SRM2FileTransfer implements FileTransfer {
           break;
         }
         if(i>checkRetries+1){
-          throw new IOException("ERROR: file(s) were not ready within "+
+          throw new SRMException("ERROR: file(s) were not ready within "+
               (checkRetries*checkRetrySleep/1000)+" seconds");
         }
         Debug.debug("Waiting...", 3);
@@ -557,7 +683,8 @@ public class SRM2FileTransfer implements FileTransfer {
   }
 
   public boolean checkURLs(GlobusURL [] srcUrls, GlobusURL [] destUrls)
-     throws ClientException, ServerException, FTPException, IOException {
+     throws ClientException, ServerException, FTPException, IOException,
+     SRMException {
     
     int fromType = getUrlType(srcUrls[0]);
     int toType = getUrlType(destUrls[0]);
@@ -579,124 +706,45 @@ public class SRM2FileTransfer implements FileTransfer {
     }
     
   }
-
-  /**
-   * Get the size of the file in bytes.
-   * @throws Exception 
-   */
-  public long getFileBytes(GlobusURL globusUrl) throws Exception {
-    return getSRMFileBytes(new GlobusURL [] {globusUrl})[0];
-  }
-  
-  /**
-   * Get sizes files in bytes.
-   */
-  private long [] getSRMFileBytes(GlobusURL [] globusUrls) throws Exception {
-    SRMServer server = connect(globusUrls[0]);
-    SRMRequest request = new SRMRequest();
-    String [] urlStrs = new String [globusUrls.length];
-    long [] fileSizes = new long [globusUrls.length];
-    Object [] fSizes= new String [globusUrls.length];
-    for(int i=0; i<globusUrls.length; ++i){
-      urlStrs[i] = globusUrls[i].getURL();
-    }
-    request.setSRMServer(server);
-    request.addFiles(urlStrs, null, null);
-    request.srmLs();
-    // Very unclear from the javadocs whether these have to be set and to what (all are strings).
-    //request.setRequestToken("");
-    //request.setRequestType("LS");
-    //request.setAuthID("");
-    request.submit();
-    int i = 0;
-    while(true){
-      ++i;
-      for(int j=0; j<urlStrs.length; ++j){
-        try{
-          // TODO: how does one get the file sizes? By issuing an Ls and getting the statuses??
-          fSizes = request.getStatus().getFileStatuses().values().toArray();
-          Debug.debug("Got file sizes: "+MyUtil.arrayToString(fSizes), 2);
-          if(request.checkStatus()){
-            fileSizes[i] = Long.parseLong((String) request.getStatus().getFileStatuses().get(urlStrs[j]));
-          }
-        }
-        catch(Exception e){
-          Debug.debug("WARNING: could not get status", 1);
-          e.printStackTrace();
-        }
-      }
-      if(i>checkRetries+1){
-        throw new IOException("ERROR: file(s) were not ready within "+
-            (checkRetries*checkRetrySleep/1000)+" seconds");
-      }
-      Debug.debug("Waiting...", 3);
-      try{
-        Thread.sleep(checkRetrySleep);
-      }
-      catch(InterruptedException e){
-        e.printStackTrace();
-        break;
-      }
-    }
-    return fileSizes;
-  }
   
   /**
    * Initiate transfers and return identifiers:
    * "srm-{get|put|copy}::srm request id::transfer index::'srcTurl' 'destTurl' 'srmSurl'"
    * @param   srcUrls    the source URLs
    * @param   destUrls   the destination URLs
+   * @throws Exception 
    */
-  public String [] startCopyFiles(GlobusURL [] srcUrls, GlobusURL [] destUrls)
-     throws ClientException, ServerException, FTPException, IOException {
-
-    try{      
-      int fromType = getUrlType(srcUrls[0]);
-      checkURLsUniformity(fromType, srcUrls, true);
-      int toType = getUrlType(destUrls[0]);
-      checkURLsUniformity(toType, destUrls, false);
-      
-      if(fromType==SRM_URL &&
-          ((toType & FILE_URL)==FILE_URL || (toType & GSIFTP_URL)==GSIFTP_URL)){
-        return copySrmToGsiftp(srcUrls, destUrls);
-      }
-      else if(fromType==SRM_URL && toType!=SRM_URL){
-        return copySrmToOther(srcUrls, destUrls);
-      }
-      else if((fromType & FILE_URL)==FILE_URL && toType==SRM_URL){
-        return copyFileToSrm(srcUrls, destUrls);
-      }
-      else if(fromType!=SRM_URL && toType==SRM_URL){
-        return copyOtherToSrm(srcUrls, destUrls);
-      }
-      else if(fromType==SRM_URL && toType==SRM_URL){
-        return copySrmToSrm(srcUrls, destUrls);
-      } 
-      else{
-        throw new IllegalArgumentException(
-            "neither source nor destination are SRM URLs :"+
-            srcUrls[0].getURL()+" "+destUrls[0].getURL());
-      }
+  public String [] startCopyFiles(GlobusURL [] srcUrls, GlobusURL [] destUrls) throws Exception {
+    int fromType = getUrlType(srcUrls[0]);
+    checkURLsUniformity(fromType, srcUrls, true);
+    int toType = getUrlType(destUrls[0]);
+    checkURLsUniformity(toType, destUrls, false);
+    
+    if(fromType==SRM_URL &&
+        ((toType & FILE_URL)==FILE_URL || (toType & GSIFTP_URL)==GSIFTP_URL)){
+      return copySrmToFileOrGsiftp(srcUrls, destUrls);
     }
-    catch(FTPException e){
-      Debug.debug("ERROR: Problem with gridftp when copying.", 1);
-      throw e;
+    else if(fromType==SRM_URL && toType!=SRM_URL){
+      return copySrmToOther(srcUrls, destUrls);
     }
-    catch(Exception e){
-      e.printStackTrace();
-      throw new IOException(e.getMessage());
+    else if((fromType & FILE_URL)==FILE_URL && toType==SRM_URL){
+      return copyFileToSrm(srcUrls, destUrls);
     }
-    finally{
-      try{
-        // No cleanup needed...
-      }
-      catch(Exception e){
-      }
+    else if(fromType!=SRM_URL && toType==SRM_URL){
+      return copyOtherToSrm(srcUrls, destUrls);
+    }
+    else if(fromType==SRM_URL && toType==SRM_URL){
+      return copySrmToSrm(srcUrls, destUrls);
+    } 
+    else{
+      throw new IllegalArgumentException(
+          "neither source nor destination are SRM URLs :"+
+          srcUrls[0].getURL()+" "+destUrls[0].getURL());
     }
   }
   
   // if the source is srm and the destination is file or gsiftp we get
-  private String[] copySrmToGsiftp(GlobusURL [] srcUrls, GlobusURL [] destUrls) throws Exception {
+  private String[] copySrmToFileOrGsiftp(GlobusURL [] srcUrls, GlobusURL [] destUrls) throws Exception {
     String sources[] = new String[srcUrls.length];
     String dests[] = new String[srcUrls.length];
     for(int i = 0; i<srcUrls.length; ++i){
@@ -722,19 +770,18 @@ public class SRM2FileTransfer implements FileTransfer {
       Debug.debug("source file #"+i+" : "+sources[i], 2);
       dests[i] = fsPath;
     }
-    
-    long [] fSizes = getSRMFileBytes(srcUrls);
-    SRMServer server = connect(srcUrls[0]);
-    SRMRequest request = new SRMRequest();
-    request.setSRMServer(server);
-    request.setRequestType("get");
-    request.addFiles(sources, dests, fSizes);
-    request.submit();
-    int requestId = setSRMRequest(request);
-    SRMRequestStatus rs = getSRMRequest(requestId).getStatus();
-    if(rs==null){
-      throw new IOException("ERROR: null request status");
+    ISRM srm = connect(srcUrls[0]);
+    TGetFileRequest [] tGetFileRequests = new TGetFileRequest[srcUrls.length];
+    for(int i=0; i<srcUrls.length; ++i){
+      tGetFileRequests[i] = new TGetFileRequest();
+      tGetFileRequests[i].setSourceSURL(new URI(srcUrls[i].getURL()));
     }
+    ArrayOfTGetFileRequest arrayOfFileRequests = new ArrayOfTGetFileRequest();
+    arrayOfFileRequests.setRequestArray(tGetFileRequests);
+    SrmPrepareToGetRequest prepareToGetReq = new SrmPrepareToGetRequest();
+    prepareToGetReq.setArrayOfFileRequests(arrayOfFileRequests);
+    SrmPrepareToGetResponse srmPrepareToGetResponse = srm.srmPrepareToGet(prepareToGetReq);
+    String requestId = srmPrepareToGetResponse.getRequestToken();
     GlobusURL [] turls = new GlobusURL[srcUrls.length];
     String [] ids = new String[srcUrls.length];
     String [] assignedTurls = null;
@@ -751,8 +798,8 @@ public class SRM2FileTransfer implements FileTransfer {
     assignedTurls = waitForOK(thesePendingIDs);
     Debug.debug("Assigned TURLs: "+MyUtil.arrayToString(assignedTurls), 2);
     // Now, assign the real ids (with TURL not null)
-    Debug.debug("Request: "+rs.toString(), 3);
-    Debug.debug("File statuses: "+MyUtil.arrayToString(rs.getFileStatuses().values().toArray()), 3);
+    Debug.debug("File statuses: "+MyUtil.arrayToString(
+        srmPrepareToGetResponse.getArrayOfFileStatuses().getStatusArray()), 3);
     for(int i=0; i<srcUrls.length; ++i){
       if(assignedTurls==null || assignedTurls[i]==null || assignedTurls[i].equals("Failed")){
         throw new IOException("Failed to get TURL.");
@@ -763,17 +810,23 @@ public class SRM2FileTransfer implements FileTransfer {
       ids[i] = pluginName+"-get::"+requestId+"::"+i+"::'"+turls[i].getURL()+"' '"+destUrls[i].getURL()+
       "' '"+srcUrls[0].getURL()+"'";
     }
-    // if no exception was thrown, all is ok and we can set files to "Running"
-    HashMap statusMap = new HashMap();
+    // if no exception was thrown, all is ok and we can set files to "File busy"
     try{
+      ArrayOfTGetRequestFileStatus arrayOfFileStatuses = new ArrayOfTGetRequestFileStatus();
+      TGetRequestFileStatus tGetRequestFileStatus;
+      TReturnStatus tReturnStatus;
       for(int i=0; i<srcUrls.length; ++i){
-        statusMap.put(srcUrls[i], "Running");
+        tGetRequestFileStatus = new TGetRequestFileStatus();
+        tReturnStatus = new TReturnStatus();
+        tReturnStatus.setStatusCode(TStatusCode.SRM_FILE_BUSY);
+        tGetRequestFileStatus.setStatus(tReturnStatus);
+        arrayOfFileStatuses.setStatusArray(i, tGetRequestFileStatus);
       }
-      rs.setFileStatuses(statusMap);
+      srmPrepareToGetResponse.setArrayOfFileStatuses(arrayOfFileStatuses);
     }
     catch(Exception e){
       GridPilot.getClassMgr().getLogFile().addMessage(
-          "WARNING: could not set status of files to Running.", e);
+          "WARNING: could not set status of files to busy.", e);
     }
     // show message on status bar on monitoring frame
     statusBar.setLabel("File(s) ready, starting download.");
@@ -792,33 +845,6 @@ public class SRM2FileTransfer implements FileTransfer {
       e.printStackTrace();
       throw new IOException("ERROR: problem queueing transfers "+ e.getMessage());
     }
-    return ids;
-  }
-  
-  // if the source is srm and the destination is something other
-  // than SRM or GSIFTP, but not file, we push from the source
-  private String[] copySrmToOther(GlobusURL [] srcUrls, GlobusURL [] destUrls) throws Exception {
-    String sources[] = new String[srcUrls.length];
-    String dests[] = new String[srcUrls.length];
-    for(int i = 0; i<srcUrls.length; ++i){
-      sources[i] = srcUrls[i].getURL();
-      dests[i] = destUrls[i].getURL();
-    }
-    long [] fSizes = getSRMFileBytes(srcUrls);
-    SRMServer server = connect(srcUrls[0]);
-    SRMRequest request = new SRMRequest();
-    request.setSRMServer(server);
-    request.setRequestType("copy");
-    request.addFiles(sources, dests, fSizes);
-    request.submit();
-    int requestId = setSRMRequest(request);
-    String [] ids = new String[srcUrls.length];
-    for(int i=0; i<srcUrls.length; ++i){
-      ids[i] = pluginName+"-copy::"+requestId+"::"+i+"::'"+
-         /*TURL*/request.getStatus().getPathDetails().get(srcUrls[i])+"' '"+destUrls[i].getURL()+
-         "' '"+srcUrls[0].getURL()+"'";
-    }
-    Debug.debug("Returning IDs "+MyUtil.arrayToString(ids), 2);
     return ids;
   }
   
@@ -843,17 +869,18 @@ public class SRM2FileTransfer implements FileTransfer {
       fSizes[i] = f.length();
       dests[i] = srmDest.getURL();
     }
-    SRMServer server = connect(srcUrls[0]);
-    SRMRequest request = new SRMRequest();
-    request.setSRMServer(server);
-    request.setRequestType("put");
-    request.addFiles(sources, dests, fSizes);
-    request.submit();
-    int requestId = setSRMRequest(request);
-    SRMRequestStatus rs = getSRMRequest(requestId).getStatus();
-    if(rs==null){
-      throw new IOException("ERROR: null request status");
+    ISRM srm = connect(srcUrls[0]);
+    TPutFileRequest [] tPutFileRequests = new TPutFileRequest[srcUrls.length];
+    for(int i=0; i<srcUrls.length; ++i){
+      tPutFileRequests[i] = new TPutFileRequest();
+      tPutFileRequests[i].setTargetSURL(new URI(srcUrls[i].getURL()));
     }
+    ArrayOfTPutFileRequest arrayOfFileRequests = new ArrayOfTPutFileRequest();
+    arrayOfFileRequests.setRequestArray(tPutFileRequests);
+    SrmPrepareToPutRequest prepareToPutReq = new SrmPrepareToPutRequest();
+    prepareToPutReq.setArrayOfFileRequests(arrayOfFileRequests);
+    SrmPrepareToPutResponse srmPrepareToPutResponse = srm.srmPrepareToPut(prepareToPutReq);
+    String requestId = srmPrepareToPutResponse.getRequestToken();
     GlobusURL [] turls = new GlobusURL[srcUrls.length];
     String [] ids = new String[srcUrls.length];
     String [] assignedTurls = null;
@@ -882,17 +909,23 @@ public class SRM2FileTransfer implements FileTransfer {
       ids[i] = pluginName+"-get::"+requestId+"::"+i+"::'"+srcUrls[i].getURL()+"' '"+turls[i].getURL()+
       "' '"+destUrls[0].getURL()+"'";
     }
-    // if no exception was thrown, all is ok and we can set files to "Running"
-    HashMap statusMap = new HashMap();
+    // if no exception was thrown, all is ok and we can set files to "File busy"
     try{
+      ArrayOfTPutRequestFileStatus arrayOfFileStatuses = new ArrayOfTPutRequestFileStatus();
+      TPutRequestFileStatus tPutRequestFileStatus;
+      TReturnStatus tReturnStatus;
       for(int i=0; i<srcUrls.length; ++i){
-        statusMap.put(srcUrls[i], "Running");
+        tPutRequestFileStatus = new TPutRequestFileStatus();
+        tReturnStatus = new TReturnStatus();
+        tReturnStatus.setStatusCode(TStatusCode.SRM_FILE_BUSY);
+        tPutRequestFileStatus.setStatus(tReturnStatus);
+        arrayOfFileStatuses.setStatusArray(i, tPutRequestFileStatus);
       }
-      rs.setFileStatuses(statusMap);
+      srmPrepareToPutResponse.setArrayOfFileStatuses(arrayOfFileStatuses);
     }
     catch(Exception e){
       GridPilot.getClassMgr().getLogFile().addMessage(
-          "WARNING: could not set status of files to Running.", e);
+          "WARNING: could not set status of files to busy.", e);
     }
     // show message on status bar on monitoring frame
     statusBar.setLabel("File(s) ready, starting upload.");
@@ -913,82 +946,85 @@ public class SRM2FileTransfer implements FileTransfer {
     return ids;
   }
 
+  // if the source is srm and the destination is something other
+  // than SRM or GSIFTP, but not file, we push from the source
+  //TODO: how does one set push mode with SRM-2 ?
+  private String[] copySrmToOther(GlobusURL [] srcUrls, GlobusURL [] destUrls) throws Exception {
+    ISRM srm = connect(srcUrls[0]);
+    return copyToOrFromSrm(srm, srcUrls, destUrls);
+  }
+
   // if the destination is srm and the source is something other
-  // than SRM, but not file, we pull from the destination
+  // than SRM, but not file, we pull from the destination...
+  // TODO: how does one set pull mode with SRM-2 ?
   private String[] copyOtherToSrm(GlobusURL[] srcUrls, GlobusURL[] destUrls) throws Exception {
-    String sources[] = new String[srcUrls.length];
-    String dests[] = new String[srcUrls.length];
-    for(int i = 0; i<srcUrls.length; ++i){
-      sources[i] = srcUrls[i].getURL();
-      dests[i] = destUrls[i].getURL();
-    }
-    long [] fSizes = getSRMFileBytes(srcUrls);
-    SRMServer server = connect(destUrls[0]);
-    SRMRequest request = new SRMRequest();
-    request.setSRMServer(server);
-    request.setRequestType("copy");
-    request.addFiles(sources, dests, fSizes);
-    request.submit();
-    int requestId = setSRMRequest(request);
-    String [] ids = new String[srcUrls.length];
-    Arrays.fill(ids, Integer.toString(requestId));
-    for(int i=0; i<srcUrls.length; ++i){
-      ids[i] = pluginName+"-copy::"+requestId+"::"+i+"::'"+
-      srcUrls[i].getURL()+"' '"+/*TURL*/request.getStatus().getPathDetails().get(dests[i])+
-      "' '"+destUrls[0].getURL()+"'";
-    }
-    return ids;
+    ISRM srm = connect(destUrls[0]);
+    return copyToOrFromSrm(srm, srcUrls, destUrls);
   }
 
   // both source(s) and destination(s) are srm urls
-  // we can either push or pull - we pull.
+  // we can either push or pull - we pull...
+  // TODO: how does one set pull mode with SRM-2 ?
   // In this case we cannot know the source TURL (gsiftp://...) and use
   // the source SURL (srm://...) for the ID string.
   // TODO: perhaps we should try both...
   private String[] copySrmToSrm(GlobusURL[] srcUrls, GlobusURL[] destUrls) throws Exception {
-    String sources[] = new String[srcUrls.length];
-    String dests[] = new String[srcUrls.length];
-    for(int i = 0; i<srcUrls.length; ++i){
-      sources[i] = srcUrls[i].getURL();
-      dests[i] = destUrls[i].getURL();
+    ISRM srm = connect(srcUrls[0]);
+    return copyToOrFromSrm(srm, srcUrls, destUrls);
+  }
+  
+  // Here the SRM server is expected to take care of the copy operation.
+  // This is a utility method for the two methods above.
+  private String[] copyToOrFromSrm(ISRM srm, GlobusURL[] srcUrls, GlobusURL[] destUrls) throws Exception {
+    TCopyFileRequest [] tCopyFileRequests = new TCopyFileRequest[srcUrls.length];
+    for(int i=0; i<srcUrls.length; ++i){
+      tCopyFileRequests[i] = new TCopyFileRequest();
+      tCopyFileRequests[i].setSourceSURL(new URI(srcUrls[i].getURL()));
+      tCopyFileRequests[i].setTargetSURL(new URI(destUrls[i].getURL()));
     }
-    long [] fSizes = getSRMFileBytes(srcUrls);
-    SRMServer server = connect(destUrls[0]);
-    SRMRequest request = new SRMRequest();
-    request.setSRMServer(server);
-    request.setRequestType("copy");
-    request.addFiles(sources, dests, fSizes);
-    request.submit();
-    int requestId = setSRMRequest(request);
+    ArrayOfTCopyFileRequest arrayOfFileRequests = new ArrayOfTCopyFileRequest();
+    arrayOfFileRequests.setRequestArray(tCopyFileRequests);
+    SrmCopyRequest copyReq = new SrmCopyRequest();
+    copyReq.setArrayOfFileRequests(arrayOfFileRequests);
+    SrmCopyResponse srmCopyResponse = srm.srmCopy(copyReq);
+    String requestId = srmCopyResponse.getRequestToken();
     String [] ids = new String[srcUrls.length];
     for(int i=0; i<srcUrls.length; ++i){
-      ids[i] = pluginName+"-copy::"+requestId+"::"+i+"::'"+sources[i]+"' '"+
-      /*TURL*/request.getStatus().getPathDetails().get(dests[i])+"' '"+destUrls[0].getURL()+"'";
+      ids[i] = pluginName+"-copy::"+requestId+"::"+i+"::'"+srcUrls[i].getURL()+"' '"+
+         destUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
     }
     return ids;
   }
-
+  
   /**
    * Delete a list of files.
-   * @param destUrls list of files to be deleted on the SRM server.
+   * @param   destUrls    list of files to be deleted on the SRM server.
    * @throws Exception 
    */
   public void deleteFiles(GlobusURL [] destUrls) throws Exception {
+
     for(int i=0; i<destUrls.length; ++i){
       if(!destUrls[i].getHost().equals(destUrls[0].getHost())){
         throw new IOException("ERROR: all files to be deleted must be on the same server. "+
             destUrls[i]+" <-> "+destUrls[0]);
       }
     }    
+    
     String [] urls = new String [destUrls.length];
     for(int i=0; i<destUrls.length; ++i){
       urls[i] = destUrls[i].getURL();
     }
-    SRMServer server = connect(destUrls[0]);
-    SRMRequest request = new SRMRequest();
-    request.setSRMServer(server);
-    request.removeFiles(urls);
-    request.submit();
+
+    ISRM srm = connect(destUrls[0]);
+    
+    SrmRmRequest srmRmRequest = new SrmRmRequest();
+    ArrayOfAnyURI aSurls = new ArrayOfAnyURI();
+    srmRmRequest.setArrayOfSURLs(aSurls);
+    SrmRmResponse srmRmResponse = srm.srmRm(srmRmRequest);
+    if(srmRmResponse.getReturnStatus().getStatusCode()!=TStatusCode.SRM_SUCCESS){
+      throw new IOException("Problem deleting files "+MyUtil.arrayToString(destUrls)+"."+
+          srmRmResponse.getReturnStatus().getExplanation());
+    }
   }
 
   public static int getUrlType(GlobusURL url) throws IOException {
@@ -1194,9 +1230,9 @@ public class SRM2FileTransfer implements FileTransfer {
     throw new IOException("getFile not supported by SRM plugin.");
   }
 
-  public void putFile(File file, GlobusURL globusUrl) throws Exception {
-    // No point in implementing this. SRM is anyway not browsable.
-    throw new IOException("getFile not supported by SRM plugin.");
+  public void putFile(File file, GlobusURL globusFileUrl) throws Exception {
+      // No point in implementing this. SRM is anyway not browsable.
+     throw new IOException("getFile not supported by SRM plugin.");
   }
 
   public Vector list(GlobusURL globusUrl, String filter) throws Exception {

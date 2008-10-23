@@ -41,12 +41,12 @@ public class SRMFileTransfer implements FileTransfer {
   private MyTransferControl transferControl;
   
   // Default to trying 5 checks after submitting a transfer
-  private static int checkRetries = 5;
+  private int checkRetries = 5;
   // Default to sleeping 10 seconds between each check retry
-  private static long checkRetrySleep = 10000;
+  private long checkRetrySleep = 10000;
 
-  private static String copyRetries = "0";
-  private static String copyRetryTimeout = "120";
+  private String copyRetries = "0";
+  private String copyRetryTimeout = "120";
   
   private static final int SRM_URL = 0x1;
   private static final int FILE_URL = 0x8;
@@ -58,7 +58,7 @@ public class SRMFileTransfer implements FileTransfer {
   private static final int UNKNOWN_URL = 0x100;
   private static final int GSIFTP_URL = 0x200;
   
-  private static String pluginName;
+  private String pluginName;
 
   public SRMFileTransfer() throws IOException, GeneralSecurityException{
     pluginName = "srm";
@@ -103,7 +103,7 @@ public class SRMFileTransfer implements FileTransfer {
    * Connect to the SRM server.
    * @param   srmUrl    URL of the SRM server.
    */
-  private static ISRM connect(GlobusURL srmUrl) throws Exception {
+  private ISRM connect(GlobusURL srmUrl) throws Exception {
     ISRM srm = null;
     try{
       GridPilot.getClassMgr().getSSL().activateProxySSL();
