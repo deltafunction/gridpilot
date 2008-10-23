@@ -2597,57 +2597,19 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     String [] selectedFileIdentifiers = getSelectedIdentifiers();
     int [] selectedRows = tableResults.getSelectedRows();
     Debug.debug("Starting download of "+selectedFileIdentifiers.length+" files", 2);
-    String nameField = MyUtil.getNameField(dbPluginMgr.getDBName(), "file");
-    String idField = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "file");
     GlobusURL srcUrl = null;
     GlobusURL destUrl = null;
-    TransferInfo transfer = null;
     Vector transfers = new Vector();
-    String dlUrl = null;
     MyTransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
-    // Correct file url not understood by Globus: file:/... -> file://...
-    String dlUrlDir = _dlUrl.replaceFirst("^file:/([^/])", "file://$1");
-    // GlobusURL does not accept file://C:/... or file://C:\..., but
-    // file:////C:/... or file:////C:\...
-    dlUrlDir = dlUrlDir.replaceFirst("\\\\", "/");
-    dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w)://", "file:////$1://");
-    dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w):/", "file:////$1:/");
-    dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w)", "file:////$1");
-    // We assume that the dataset name is used as reference...
-    // TODO: improve this
-    String datasetColumn = "dsn";
-    String [] fileDatasetReference =
-      MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
-    if(fileDatasetReference!=null){
-      datasetColumn = fileDatasetReference[1];
-    }
     JProgressBar pb = MyUtil.setProgressBar(selectedFileIdentifiers.length, dbName);
+    TransferInfo transfer;
     for(int i=0; i<selectedFileIdentifiers.length; ++i){
       pb.setValue(i+1);
       String [] urls = null;
-      String guid = null;
-      String name = null;
-      String bytes = null;
-      String checksum = null;
-      String datasetName = null;
-      String datasetID = null;
       // First try and get the values from the table.            
       HashMap values = getValues(selectedRows[i]);
-      try{
-        guid = values.get(idField).toString();
-      }
-      catch(Exception e){
-      }
-      try{
-        name = values.get(nameField).toString();
-      }
-      catch(Exception e){
-      }
-      try{
-        datasetName = values.get(datasetColumn).toString();
-      }
-      catch(Exception e){
-      }
+      String bytes = null;
+      String checksum = null;
       try{
         bytes = (String) values.get(MyUtil.getFileSizeField(dbName));
       }
@@ -2691,138 +2653,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         catch(Exception e){
         }
       }
-      DBRecord file = null;
-      if(guid==null || name==null || urls==null || datasetName==null || bytes==null || checksum==null){
-        file = dbPluginMgr.getFile(datasetName, selectedFileIdentifiers[i], 0);
-        // In the case of DQ2 these are too slow or will fail and return null.
-        // All information must be in the table...
-        if(guid==null){
-          guid = file.getValue(idField).toString();
-        }
-        if(name==null){
-          name = file.getValue(nameField).toString();
-        }
-        if(urls==null){
-          urls = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i], findAll())[1];
-        }
-        if(datasetName==null){
-          datasetName = file.getValue(datasetColumn).toString();
-        }
-        if(bytes==null){
-          bytes = (String) file.getValue(MyUtil.getFileSizeField(dbName));
-        }
-        if(checksum==null){
-          checksum = (String) file.getValue(MyUtil.getChecksumField(dbName));
-        }
-      }
       try{
-        datasetID = dbPluginMgr.getDatasetID(datasetName);
-      }
-      catch(Exception e){
-      }
-      if(urls==null){
-        String error = "ERROR: URLs not found. Cannot queue this transfer. "+
-           selectedFileIdentifiers[i];
-        GridPilot.getClassMgr().getLogFile().addMessage(error);
-        continue;
-      }
-      if(regDBPluginMgr!=null && name==null){
-        String error = "ERROR: LFN not found. Cannot queue this transfer. "+
-           selectedFileIdentifiers[i];
-        GridPilot.getClassMgr().getLogFile().addMessage(error);
-        continue;
-      }
-      if(regDBPluginMgr!=null && guid==null){
-        String error = "WARNING: guid not found for "+name;
-        GridPilot.getClassMgr().getLogFile().addMessage(error);
-      }
-      if(regDBPluginMgr!=null && datasetName==null){
-        String error = "WARNING: dataset name not found for "+name;
-        GridPilot.getClassMgr().getLogFile().addMessage(error);
-      }
-      if(regDBPluginMgr!=null && datasetID==null){
-        String error = "WARNING: dataset ID not found for "+name;
-        GridPilot.getClassMgr().getLogFile().addMessage(error);
-      }
-      String realUrl = null;
-      transfer = null;
-      for(int j=0; j<urls.length; ++j){
-        if(bytes==null){
-          // lookup size the hard way
-          try{
-            // TODO generalize beyond gsiftp and https
-            if(urls[j].startsWith("https:") || urls[j].startsWith("gsiftp:")){
-              GlobusURL globusUrl = new GlobusURL(urls[j]);
-              bytes = Long.toString(GridPilot.getClassMgr().getFTPlugin(
-                  globusUrl.getProtocol()).getFileBytes(globusUrl));
-            }
-          }
-          catch(Exception e){
-          }
-        }
-        try{
-          if(urls[j].startsWith("file:")){
-            realUrl = urls[j].replaceFirst("^file:/+", "file:////");
-            realUrl = realUrl.replaceFirst("^file:([^/]+)", "file:///$1").replaceFirst(
-                "~", System.getProperty("user.home"));
-            realUrl = realUrl.replaceFirst("^file:(\\w):", "file:////$1:");
-            Debug.debug("Corrected: "+urls[j]+"->"+realUrl, 3);
-          }
-          else{
-            realUrl = urls[j];
-          }
-          Debug.debug("Getting URL "+realUrl, 3);
-          srcUrl = new GlobusURL(realUrl);
-          // Add :8443 to srm urls without port number
-          if(srcUrl.getPort()<1 && srcUrl.getProtocol().toLowerCase().equals("srm")){
-            srcUrl = new GlobusURL(urls[j].replaceFirst("(srm://[^/]+)/", "$1:8443/"));
-          }
-          dlUrl = dlUrlDir+(new File (srcUrl.getPath())).getName();
-          destUrl = new GlobusURL(dlUrl);
-          Debug.debug("Preparing download of file "+name, 2);
-          try{
-            if(transfer==null){
-              // Create the TransferInfo
-              transfer = new TransferInfo(srcUrl, destUrl);
-            }
-            Debug.debug(transfer.getSource().getURL()+" ---> "+transfer.getDestination().getURL(), 2);
-            transfer.setDBName(regDBPluginMgr.getDBName());
-            // If the file is in a file catalog, we should reuse the lfn, guid
-            // and the dataset name and id if possible.
-            if(dbPluginMgr.isFileCatalog()){
-              transfer.setGUID(guid);
-            }
-            // The LFN, size and checksum we always (try to) reuse.
-            transfer.setLFN(name);
-            transfer.setBytes(bytes);
-            transfer.setChecksum(checksum);
-            transfer.setDatasetName(datasetName);
-            transfer.setDatasetID(datasetID);
-            transfer.addSource(srcUrl);
-          }
-          catch(Exception ee){
-            // Try next URL
-            ee.printStackTrace();
-            continue;
-          }
-        }
-        catch(Exception e){
-          String error = "WARNING: could not download file "+
-             name+". "+e.getMessage();
-          GridPilot.getClassMgr().getLogFile().addMessage(error);
-          Debug.debug(error, 1);
-          e.printStackTrace();
-          continue;
-        }
-      }
-      try{
+        transfer = mkTransfer(srcUrl, destUrl, _dlUrl, urls,
+           bytes, checksum, regDBPluginMgr,
+           selectedFileIdentifiers[i], selectedRows[i]);
         MyUtil.setClosestSource(transfer);
         Debug.debug("adding transfer "+transfer.getSource().getURL()+" ---> "+transfer.getDestination().getURL(), 2);
         transfers.add(transfer);
       }
       catch(Exception e){
-        String error = "WARNING: could not download file "+
-        name+". Failed with all sources. "+e.getMessage();
+        String error = "WARNING: could not download file "+srcUrl+". Failed with all sources. "+e.getMessage();
         GridPilot.getClassMgr().getLogFile().addMessage(error);
         Debug.debug(error, 1);
         e.printStackTrace();
@@ -2845,6 +2685,159 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     }
     return ret;
+  }
+  
+  private TransferInfo mkTransfer(
+      GlobusURL srcUrl, GlobusURL destUrl, String _dlUrl,
+      String [] urls, String bytes, String checksum,
+      DBPluginMgr regDBPluginMgr, String id, int row) throws Exception{
+    HashMap values = getValues(row);
+    String guid = null;
+    String name = null;
+    // We assume that the dataset name is used as reference...
+    // TODO: improve this
+    String datasetColumn = "dsn";
+    String [] fileDatasetReference =
+      MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
+    if(fileDatasetReference!=null){
+      datasetColumn = fileDatasetReference[1];
+    }
+    String datasetName = null;
+    try{
+      datasetName = values.get(datasetColumn).toString();
+    }
+    catch(Exception e){
+    }
+    String nameField = MyUtil.getNameField(dbPluginMgr.getDBName(), "file");
+    String idField = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "file");
+    try{
+      guid = values.get(idField).toString();
+    }
+    catch(Exception e){
+    }
+    try{
+      name = values.get(nameField).toString();
+    }
+    catch(Exception e){
+    }
+    DBRecord file = null;
+    String datasetID = null;
+    String dlUrl = null;
+    // Correct file url not understood by Globus: file:/... -> file://...
+    String dlUrlDir = _dlUrl.replaceFirst("^file:/([^/])", "file://$1");
+    // GlobusURL does not accept file://C:/... or file://C:\..., but
+    // file:////C:/... or file:////C:\...
+    dlUrlDir = dlUrlDir.replaceFirst("\\\\", "/");
+    dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w)://", "file:////$1://");
+    dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w):/", "file:////$1:/");
+    dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w)", "file:////$1");
+    if(guid==null || name==null || urls==null || datasetName==null || bytes==null || checksum==null){
+      file = dbPluginMgr.getFile(datasetName, id, 0);
+      // In the case of DQ2 these are too slow or will fail and return null.
+      // All information must be in the table...
+      if(guid==null){
+        guid = file.getValue(idField).toString();
+      }
+      if(name==null){
+        name = file.getValue(nameField).toString();
+      }
+      if(urls==null){
+        urls = dbPluginMgr.getFileURLs(datasetName, id, findAll())[1];
+      }
+      if(datasetName==null){
+        datasetName = file.getValue(datasetColumn).toString();
+      }
+      if(bytes==null){
+        bytes = (String) file.getValue(MyUtil.getFileSizeField(dbName));
+      }
+      if(checksum==null){
+        checksum = (String) file.getValue(MyUtil.getChecksumField(dbName));
+      }
+    }
+    try{
+      datasetID = dbPluginMgr.getDatasetID(datasetName);
+    }
+    catch(Exception e){
+    }
+    if(urls==null){
+      String error = "ERROR: URLs not found. Cannot queue this transfer. "+id;
+      GridPilot.getClassMgr().getLogFile().addMessage(error);
+      throw new Exception(error);
+    }
+    if(regDBPluginMgr!=null && name==null){
+      String error = "ERROR: LFN not found. Cannot queue this transfer. "+id;
+      GridPilot.getClassMgr().getLogFile().addMessage(error);
+      throw new Exception(error);
+    }
+    if(regDBPluginMgr!=null && guid==null){
+      String error = "WARNING: guid not found for "+name;
+      GridPilot.getClassMgr().getLogFile().addMessage(error);
+    }
+    if(regDBPluginMgr!=null && datasetName==null){
+      String error = "WARNING: dataset name not found for "+name;
+      GridPilot.getClassMgr().getLogFile().addMessage(error);
+    }
+    if(regDBPluginMgr!=null && datasetID==null){
+      String error = "WARNING: dataset ID not found for "+name;
+      GridPilot.getClassMgr().getLogFile().addMessage(error);
+    }
+    String realUrl = null;
+    TransferInfo transfer = null;
+    for(int j=0; j<urls.length; ++j){
+      if(bytes==null){
+        // lookup size the hard way
+        try{
+          // TODO generalize beyond gsiftp and https
+          if(urls[j].startsWith("https:") || urls[j].startsWith("gsiftp:")){
+            GlobusURL globusUrl = new GlobusURL(urls[j]);
+            bytes = Long.toString(GridPilot.getClassMgr().getFTPlugin(
+                globusUrl.getProtocol()).getFileBytes(globusUrl));
+          }
+        }
+        catch(Exception e){
+        }
+      }
+      if(urls[j].startsWith("file:")){
+        realUrl = urls[j].replaceFirst("^file:/+", "file:////");
+        realUrl = realUrl.replaceFirst("^file:([^/]+)", "file:///$1").replaceFirst(
+            "~", System.getProperty("user.home"));
+        realUrl = realUrl.replaceFirst("^file:(\\w):", "file:////$1:");
+        Debug.debug("Corrected: "+urls[j]+"->"+realUrl, 3);
+      }
+      else{
+        realUrl = urls[j];
+      }
+      Debug.debug("Getting URL "+realUrl, 3);
+      srcUrl = new GlobusURL(realUrl);
+      // Add :8443 to srm urls without port number
+      if(srcUrl.getPort()<1 && srcUrl.getProtocol().toLowerCase().equals("srm")){
+        srcUrl = new GlobusURL(urls[j].replaceFirst("(srm://[^/]+)/", "$1:8443/"));
+      }
+      dlUrl = dlUrlDir+(new File (srcUrl.getPath())).getName();
+      destUrl = new GlobusURL(dlUrl);
+      Debug.debug("Preparing download of file "+name, 2);
+      if(transfer==null){
+        // Create the TransferInfo
+        transfer = new TransferInfo(srcUrl, destUrl);
+      }
+      Debug.debug(transfer.getSource().getURL()+" ---> "+transfer.getDestination().getURL(), 2);
+      if(regDBPluginMgr!=null){
+        transfer.setDBName(regDBPluginMgr.getDBName());
+      }
+      // If the file is in a file catalog, we should reuse the lfn, guid
+      // and the dataset name and id if possible.
+      if(dbPluginMgr.isFileCatalog()){
+        transfer.setGUID(guid);
+      }
+      // The LFN, size and checksum we always (try to) reuse.
+      transfer.setLFN(name);
+      transfer.setBytes(bytes);
+      transfer.setChecksum(checksum);
+      transfer.setDatasetName(datasetName);
+      transfer.setDatasetID(datasetID);
+      transfer.addSource(srcUrl);
+    }
+    return transfer;
   }
   
   /**
