@@ -7,7 +7,6 @@ import java.net.MalformedURLException;
 import java.net.URLDecoder;
 import java.rmi.RemoteException;
 import java.security.GeneralSecurityException;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Vector;
@@ -21,43 +20,7 @@ import org.apache.axis.types.URI;
 import org.apache.axis.types.UnsignedLong;
 import org.dcache.srm.SRMException;
 import org.dcache.srm.client.SRMClientV2;
-import org.dcache.srm.v2_2.ArrayOfAnyURI;
-import org.dcache.srm.v2_2.ArrayOfTCopyFileRequest;
-import org.dcache.srm.v2_2.ArrayOfTCopyRequestFileStatus;
-import org.dcache.srm.v2_2.ArrayOfTGetFileRequest;
-import org.dcache.srm.v2_2.ArrayOfTGetRequestFileStatus;
-import org.dcache.srm.v2_2.ArrayOfTPutFileRequest;
-import org.dcache.srm.v2_2.ArrayOfTPutRequestFileStatus;
-import org.dcache.srm.v2_2.ISRM;
-import org.dcache.srm.v2_2.SrmAbortRequestRequest;
-import org.dcache.srm.v2_2.SrmAbortRequestResponse;
-import org.dcache.srm.v2_2.SrmCopyRequest;
-import org.dcache.srm.v2_2.SrmCopyResponse;
-import org.dcache.srm.v2_2.SrmLsRequest;
-import org.dcache.srm.v2_2.SrmLsResponse;
-import org.dcache.srm.v2_2.SrmPrepareToGetRequest;
-import org.dcache.srm.v2_2.SrmPrepareToGetResponse;
-import org.dcache.srm.v2_2.SrmPrepareToPutRequest;
-import org.dcache.srm.v2_2.SrmPrepareToPutResponse;
-import org.dcache.srm.v2_2.SrmPutDoneRequest;
-import org.dcache.srm.v2_2.SrmReleaseFilesRequest;
-import org.dcache.srm.v2_2.SrmRmRequest;
-import org.dcache.srm.v2_2.SrmRmResponse;
-import org.dcache.srm.v2_2.SrmStatusOfCopyRequestRequest;
-import org.dcache.srm.v2_2.SrmStatusOfCopyRequestResponse;
-import org.dcache.srm.v2_2.SrmStatusOfGetRequestRequest;
-import org.dcache.srm.v2_2.SrmStatusOfGetRequestResponse;
-import org.dcache.srm.v2_2.SrmStatusOfPutRequestRequest;
-import org.dcache.srm.v2_2.SrmStatusOfPutRequestResponse;
-import org.dcache.srm.v2_2.TCopyFileRequest;
-import org.dcache.srm.v2_2.TCopyRequestFileStatus;
-import org.dcache.srm.v2_2.TGetFileRequest;
-import org.dcache.srm.v2_2.TGetRequestFileStatus;
-import org.dcache.srm.v2_2.TMetaDataPathDetail;
-import org.dcache.srm.v2_2.TPutFileRequest;
-import org.dcache.srm.v2_2.TPutRequestFileStatus;
-import org.dcache.srm.v2_2.TReturnStatus;
-import org.dcache.srm.v2_2.TStatusCode;
+import org.dcache.srm.v2_2.*;
 
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
@@ -74,7 +37,6 @@ import gridpilot.MyUtil;
  */
 public class SRM2FileTransfer implements FileTransfer {
   
-  private String error = "";
   private Vector pendingIDs = new Vector();
   private String user = null;
   private MyTransferControl transferControl;
@@ -111,8 +73,7 @@ public class SRM2FileTransfer implements FileTransfer {
     //System.setProperty("X509_CERT_DIR",
     //    Util.getProxyFile().getParentFile().getAbsolutePath());
     if(GridPilot.globusTcpPortRange==null || GridPilot.globusTcpPortRange.equals("")){
-      error = "WARNING: globus tcp port range is not set. SRM may not work.";
-      Debug.debug(error, 1);
+      Debug.debug("WARNING: globus tcp port range is not set. SRM may not work.", 1);
       GridPilot.globusTcpPortRange = "";
     }
     else{
@@ -158,7 +119,7 @@ public class SRM2FileTransfer implements FileTransfer {
            /*doDelegation*/true,
            /*fullDelegation*/true,
            /*gss_expected_name*/"host",
-           "srm/managerv1.wsdl");
+           "srm/managerv2");
        Debug.debug("connected to server, obtained proxy of type "+srm.getClass(), 2);
     }
     catch(Exception srme){
@@ -179,7 +140,7 @@ public class SRM2FileTransfer implements FileTransfer {
           /*doDelegation*/true,
           /*fullDelegation*/true,
           /*gss_expected_name*/"host",
-          "srm/managerv1");
+          "srm/managerv2.wsdl");
       Debug.debug("connected to server, obtained proxy of type "+srm.getClass(), 2);
     }
     catch(Exception srme){
@@ -432,8 +393,6 @@ public class SRM2FileTransfer implements FileTransfer {
   public int getPercentComplete(String fileTransferID) throws SRMException {
     String [] idArr = parseFileTransferID(fileTransferID);
     String requestType = idArr[1];
-    int requestId = Integer.parseInt(idArr[2]);
-    String surl = idArr[6];
     String shortID = idArr[7];
 
     int percentComplete = -1;
@@ -508,10 +467,10 @@ public class SRM2FileTransfer implements FileTransfer {
    *                           index of the file in question in the array
    *                           RequestStatus.fileStatuses.
    */
-  private long getFileBytes(String fileTransferID) throws Exception {
+  /*private long getFileBytes(String fileTransferID) throws Exception {
     SRMStatus srmStatus = getSRMStatus(fileTransferID);
     return srmStatus.fileSize.longValue();
-  }
+  }*/
   
   /**
    * Get the size of a file in bytes.
@@ -548,8 +507,10 @@ public class SRM2FileTransfer implements FileTransfer {
     String requestId = idArr[2];
     String surl = idArr[6];
 
+    Debug.debug("Finalizing request "+requestId, 2);
     try{
       ISRM srm = connect(new GlobusURL(surl));
+      startDates.remove(fileTransferID);
       if(requestType.equalsIgnoreCase("put")){
         SrmPutDoneRequest putDoneReq = new SrmPutDoneRequest();
         putDoneReq.setRequestToken(requestId);
@@ -557,7 +518,6 @@ public class SRM2FileTransfer implements FileTransfer {
       }
       SrmReleaseFilesRequest releaseFilesReq = new SrmReleaseFilesRequest();
       releaseFilesReq.setRequestToken(requestId);
-      Debug.debug("Finalizing request "+requestId, 2);
       srm.srmReleaseFiles(releaseFilesReq);
     }
     catch(Exception e){
@@ -580,8 +540,8 @@ public class SRM2FileTransfer implements FileTransfer {
     String surl = idArr[6];
     String shortID = idArr[7];
 
+    startDates.remove(fileTransferID);
     ISRM srm = connect(new GlobusURL(surl));
-    // This cancels and sets to Done.
     SrmAbortRequestRequest srmAbortRequestRequest = new SrmAbortRequestRequest();
     srmAbortRequestRequest.setRequestToken(requestId);
     SrmAbortRequestResponse srmAbortRequestResponse = srm.srmAbortRequest(srmAbortRequestRequest);
@@ -616,7 +576,6 @@ public class SRM2FileTransfer implements FileTransfer {
       String [] turlArray = new String[thesePendingIDs.size()];
       for(int i=0; i<thesePendingIDs.size(); ++i){
         idArray[i] = (String) thesePendingIDs.get(i);
-        startDates.put(idArray[i], MyUtil.getDateInMilliSeconds()*1000);
       }
       int i = 0;
       pendingIDs.addAll(thesePendingIDs);
@@ -809,6 +768,7 @@ public class SRM2FileTransfer implements FileTransfer {
       }
       ids[i] = pluginName+"-get::"+requestId+"::"+i+"::'"+turls[i].getURL()+"' '"+destUrls[i].getURL()+
       "' '"+srcUrls[0].getURL()+"'";
+      startDates.put(ids[i], MyUtil.getDateInMilliSeconds()*1000);
     }
     // if no exception was thrown, all is ok and we can set files to "File busy"
     try{
@@ -908,6 +868,7 @@ public class SRM2FileTransfer implements FileTransfer {
       }
       ids[i] = pluginName+"-get::"+requestId+"::"+i+"::'"+srcUrls[i].getURL()+"' '"+turls[i].getURL()+
       "' '"+destUrls[0].getURL()+"'";
+      startDates.put(ids[i], MyUtil.getDateInMilliSeconds()*1000);
     }
     // if no exception was thrown, all is ok and we can set files to "File busy"
     try{
@@ -992,6 +953,7 @@ public class SRM2FileTransfer implements FileTransfer {
     for(int i=0; i<srcUrls.length; ++i){
       ids[i] = pluginName+"-copy::"+requestId+"::"+i+"::'"+srcUrls[i].getURL()+"' '"+
          destUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
+      startDates.put(ids[i], MyUtil.getDateInMilliSeconds()*1000);
     }
     return ids;
   }

@@ -316,27 +316,38 @@ public class MyTransferControl extends TransferControl {
     // if they have changed
     
     // Start the transfers
-    ids = GridPilot.getClassMgr().getFTPlugin(
-        ftPluginName).startCopyFiles(srcUrls, destUrls);
+    Exception ee = null;
+    try{
+      ids = GridPilot.getClassMgr().getFTPlugin(ftPluginName).startCopyFiles(srcUrls, destUrls);
+    }
+    catch(Exception e){
+      ee = e;
+    }
     
-    // This is a hack to deal with the fact that the protocol srm can mean both version 1 or version 2
-    // (and the fact that the two protocols are not compatible).
-    if(ftPluginName=="srm" && ids==null){
-      // Give it a try with SRM-2
-      ids = GridPilot.getClassMgr().getFTPlugin(
-          SRM2_PLUGIN_NAME).startCopyFiles(srcUrls, destUrls);
-      // If successful, have findFTPlugin remember to pick the right class.
-      if(ids==null){
-        for(int i=0; i<srcUrls.length; ++i){
-          if(srcUrls[i].getProtocol().equalsIgnoreCase("srm")){
-            serverPluginMap.put(srcUrls[i].getHost(), SRM2_PLUGIN_NAME);
-          }
-          if(destUrls[i].getProtocol().equalsIgnoreCase("srm")){
-            serverPluginMap.put(srcUrls[i].getHost(), SRM2_PLUGIN_NAME);
+    if(ids==null){
+      // If the above failed, it could be because we're trying to do srm-1 on an srm-2 server.
+      // Give it a try with srm-2.
+      // This is a hack to deal with the fact that the protocol srm can mean both version 1 or version 2
+      // (and the fact that the two protocols are not compatible).
+      if(ftPluginName.equalsIgnoreCase("srm") && MyUtil.arrayContains(GridPilot.ftNames, SRM2_PLUGIN_NAME)){
+        ids = GridPilot.getClassMgr().getFTPlugin(SRM2_PLUGIN_NAME).startCopyFiles(srcUrls, destUrls);
+        // If successful, have findFTPlugin remember to pick the right class.
+        if(ids==null){
+          for(int i=0; i<srcUrls.length; ++i){
+            if(srcUrls[i].getProtocol().equalsIgnoreCase("srm")){
+              serverPluginMap.put(srcUrls[i].getHost(), SRM2_PLUGIN_NAME);
+            }
+            if(destUrls[i].getProtocol().equalsIgnoreCase("srm")){
+              serverPluginMap.put(destUrls[i].getHost(), SRM2_PLUGIN_NAME);
+            }
           }
         }
       }
+      else if(ee!=null){
+        throw ee;
+      }
     }
+    
     return ids;
   }
   
@@ -518,13 +529,44 @@ public class MyTransferControl extends TransferControl {
     Debug.debug("Trying "+sourceListLen+" sources", 3);
 
     try{
+      Exception re = null;
       // try source URLs one by one
       for(int i=0; i<sourceListLen; ++i){
         Debug.debug("trial --->"+i, 3);
 
-        try{          
-          ids = GridPilot.getClassMgr().getFTPlugin(ftPlugin).startCopyFiles(
-              sources, destinations);          
+        try{
+          re = null;
+          try{
+            ids = GridPilot.getClassMgr().getFTPlugin(ftPlugin).startCopyFiles(
+                sources, destinations);
+          }
+          catch(Exception e){
+            re = e;
+          }
+          if(ids==null){
+            // If the above failed, it could be because we're trying to do srm-1 on an srm-2 server.
+            // Give it a try with srm-2.
+            // This is a hack to deal with the fact that the protocol srm can mean both version 1 or version 2
+            // (and the fact that the two protocols are not compatible).
+            if(ftPlugin.equalsIgnoreCase("srm") && MyUtil.arrayContains(GridPilot.ftNames, SRM2_PLUGIN_NAME)){
+              ids = GridPilot.getClassMgr().getFTPlugin(SRM2_PLUGIN_NAME).startCopyFiles(
+                  sources, destinations);
+              // If successful, have findFTPlugin remember to pick the right class.
+              if(ids==null){
+                for(int j=0; i<sources.length; ++j){
+                  if(sources[j].getProtocol().equalsIgnoreCase("srm")){
+                    serverPluginMap.put(sources[j].getHost(), SRM2_PLUGIN_NAME);
+                  }
+                  if(destinations[i].getProtocol().equalsIgnoreCase("srm")){
+                    serverPluginMap.put(destinations[j].getHost(), SRM2_PLUGIN_NAME);
+                  }
+                }
+              }
+            }
+            else if(re!=null){
+              throw re;
+            }
+          }
           if(ids.length!=transfers.length){
             throw new IOException("ERROR: returned number of transfer ids don't agree " +
                 "with number of submitted tranfers: "+ids.length+"!="+transfers.length+

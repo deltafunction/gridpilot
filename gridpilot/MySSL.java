@@ -126,7 +126,7 @@ public class MySSL extends SSL{
     initalizeCACertsDir();
     initalizeVomsDir();
     getGridCredential();
-    super.activateSSL(getProxyFile().getAbsolutePath(), getProxyFile().getAbsolutePath(), "", caCertsDir);
+    //super.activateSSL(getProxyFile().getAbsolutePath(), getProxyFile().getAbsolutePath(), "", caCertsDir);
     proxyOk = true;
   }
 
@@ -306,10 +306,9 @@ public class MySSL extends SSL{
   private void initGridProxy() throws IOException, GSSException{
     
     ExtendedGSSManager manager = (ExtendedGSSManager) ExtendedGSSManager.getInstance();
-    //String proxyDir = "/tmp/x509up_u501";
     File proxy = getProxyFile();
         
-    // first just try and load proxy file from default UNIX location
+    // first just try and load proxy file from default location
     try{
       if(proxy.exists()){
         byte [] data = new byte[(int) proxy.length()];
