@@ -39,7 +39,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
   
   private String user = null;
   private HashMap jobs = null;
-  private HashMap urlCopyTransferListeners = null;
+  private HashMap<String, MyUrlCopyTransferListener> urlCopyTransferListeners = null;
   private HashMap fileTransfers = null;
   
   private static String PLUGIN_NAME;
@@ -57,7 +57,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
     }
     
     jobs = new HashMap();
-    urlCopyTransferListeners = new HashMap();
+    urlCopyTransferListeners = new HashMap<String, MyUrlCopyTransferListener>();
     fileTransfers = new HashMap();
     
     // The log4j root logger. All class loggers used
@@ -1041,8 +1041,12 @@ public class GSIFTPFileTransfer implements FileTransfer {
   }
 
   public long getBytesTransferred(String fileTransferID) throws Exception {
-    long comp = ((MyUrlCopyTransferListener) 
-        urlCopyTransferListeners.get(fileTransferID)).getBytesTransferred();
+    MyUrlCopyTransferListener listener = urlCopyTransferListeners.get(fileTransferID);
+    if(listener==null){
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not get TransferListener for "+
+          fileTransferID+". "+MyUtil.arrayToString(urlCopyTransferListeners.keySet().toArray()));
+    }
+    long comp = listener.getBytesTransferred();
     return comp;
   }
 
@@ -1094,6 +1098,10 @@ public class GSIFTPFileTransfer implements FileTransfer {
       ret = FileTransfer.STATUS_DONE;
     }
     return ret;
+  }
+
+  public String getName() {
+    return PLUGIN_NAME;
   }
 
 }

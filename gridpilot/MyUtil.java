@@ -72,6 +72,7 @@ import javax.swing.event.HyperlinkListener;
 import javax.swing.plaf.UIResource;
 import javax.swing.text.JTextComponent;
 
+import org.dcache.srm.SRMException;
 import org.globus.util.GlobusURL;
 
 /**
@@ -1546,5 +1547,67 @@ public class MyUtil extends gridfactory.common.Util{
     }
     return true;
   }
+
+  /**
+   * Parse the file transfer ID into
+   * {protocol, requestType (get|put|copy), requestId, statusIndex, srcTurl, destTurl, srmSurl, shortID}.
+   * @param fileTransferID   the unique ID of this transfer.
+   */
+  // TODO: make a class SRMFileTransfer and use it instead of this hackish array solution.
+  public static String [] parseSrmFileTransferID(String fileTransferID) throws SRMException {
+    
+    String protocol = null;
+    String requestType = null;
+    String requestId = null;
+    String statusIndex = null;
+    String srcTurl = null;
+    String destTurl = null;
+    String srmSurl = null;
+    String shortID = null;
+
+    String [] idArr = MyUtil.split(fileTransferID, "::");
+    String [] head = MyUtil.split(idArr[0], "-");
+    if(idArr.length<3){
+      throw new SRMException("ERROR: malformed ID "+fileTransferID);
+    }
+    try{
+      protocol = head[0];
+      requestType = head[1];
+      requestId = idArr[1];
+      statusIndex = idArr[2];
+      String turls = fileTransferID.replaceFirst(idArr[0]+"::", "");
+      turls = turls.replaceFirst(idArr[1]+"::", "");
+      turls = turls.replaceFirst(idArr[2]+"::", "");
+      String [] turlArray = MyUtil.split(turls, "' '");
+      srcTurl = turlArray[0].replaceFirst("'", "");
+      destTurl = turlArray[1].replaceFirst("'", "");
+      srmSurl = turlArray[2].replaceFirst("'", "");
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      throw new SRMException("ERROR: could not parse ID "+fileTransferID+". "+e.getMessage());
+    }
+    try{
+      // First resolve transport protocol
+      GlobusURL url = null;
+      String transportProtocol = null;
+      if(requestType.equals("get")){
+        url = new GlobusURL(srcTurl);
+        transportProtocol = url.getProtocol();
+        shortID = transportProtocol+"-copy"+"::'"+srcTurl+"' '"+destTurl+"'";
+      }
+      else if(requestType.equals("put")){
+        url = new GlobusURL(destTurl);
+        transportProtocol = url.getProtocol();
+        shortID = transportProtocol+"-copy"+"::'"+srcTurl+"' '"+destTurl+"'";
+      }
+      Debug.debug("Found short ID: "+shortID, 3);
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: could not get short ID for "+fileTransferID+"; SRM probably not ready.", 2);
+    }
+    return new String [] {protocol, requestType, requestId, statusIndex, srcTurl, destTurl, srmSurl, shortID};
+  }
+
 
 }

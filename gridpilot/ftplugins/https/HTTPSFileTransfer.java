@@ -839,5 +839,9 @@ public class HTTPSFileTransfer implements FileTransfer {
   public void putFile(File arg0, GlobusURL arg1) throws Exception {
     putFile(arg0, arg1, null);
   }
+  
+  public String getName() {
+    return PLUGIN_NAME;
+  }
 
 }

@@ -1324,4 +1324,8 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     putFile(arg0, arg1, null);
   }
 
+  public String getName() {
+    return PLUGIN_NAME;
+  }
+
 }

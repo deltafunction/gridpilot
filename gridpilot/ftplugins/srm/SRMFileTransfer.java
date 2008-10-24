@@ -95,6 +95,10 @@ public class SRMFileTransfer implements FileTransfer {
     };
   }
   
+  public String getName() {
+    return "srm";
+  }
+
   public String getUserInfo(){
     return user;
   }
@@ -162,7 +166,7 @@ public class SRMFileTransfer implements FileTransfer {
    * Change: when getting status from SRM, instead of "Ready" the TURL is now returned.
    */
   public String getStatus(String fileTransferID) throws SRMException {
-    String [] idArr = parseFileTransferID(fileTransferID);
+    String [] idArr = MyUtil.parseSrmFileTransferID(fileTransferID);
     String requestType = idArr[1];
     int requestId = Integer.parseInt(idArr[2]);
     int statusIndex = Integer.parseInt(idArr[3]);
@@ -211,7 +215,7 @@ public class SRMFileTransfer implements FileTransfer {
   }
   
   public String getFullStatus(String fileTransferID) throws Exception {
-    String [] idArr = parseFileTransferID(fileTransferID);
+    String [] idArr = MyUtil.parseSrmFileTransferID(fileTransferID);
     String requestType = idArr[1];
     int requestId = Integer.parseInt(idArr[2]);
     int statusIndex = Integer.parseInt(idArr[3]);
@@ -249,65 +253,6 @@ public class SRMFileTransfer implements FileTransfer {
     }
     return status;
   }
-
-  /**
-   * Parse the file transfer ID into
-   * {protocol, requestType (get|put|copy), requestId, statusIndex, srcTurl, destTurl, srmSurl, shortID}.
-   * @param fileTransferID   the unique ID of this transfer.
-   */
-  private String [] parseFileTransferID(String fileTransferID) throws SRMException {
-    
-    String protocol = null;
-    String requestType = null;
-    String requestId = null;
-    String statusIndex = null;
-    String srcTurl = null;
-    String destTurl = null;
-    String srmSurl = null;
-    String shortID = null;
-
-    String [] idArr = MyUtil.split(fileTransferID, "::");
-    String [] head = MyUtil.split(idArr[0], "-");
-    if(idArr.length<3){
-      throw new SRMException("ERROR: malformed ID "+fileTransferID);
-    }
-    try{
-      protocol = head[0];
-      requestType = head[1];
-      requestId = idArr[1];
-      statusIndex = idArr[2];
-      String turls = fileTransferID.replaceFirst(idArr[0]+"::", "");
-      turls = turls.replaceFirst(idArr[1]+"::", "");
-      turls = turls.replaceFirst(idArr[2]+"::", "");
-      String [] turlArray = MyUtil.split(turls, "' '");
-      srcTurl = turlArray[0].replaceFirst("'", "");
-      destTurl = turlArray[1].replaceFirst("'", "");
-      srmSurl = turlArray[2].replaceFirst("'", "");
-    }
-    catch(Exception e){
-      throw new SRMException("ERROR: could not parse ID "+fileTransferID+". "+e.getMessage());
-    }
-    try{
-      // First resolve transport protocol
-      GlobusURL url = null;
-      String transportProtocol = null;
-      if(requestType.equals("get")){
-        url = new GlobusURL(srcTurl);
-        transportProtocol = url.getProtocol();
-        shortID = transportProtocol+"-copy"+"::'"+srcTurl+"' '"+destTurl+"'";
-      }
-      else if(requestType.equals("put")){
-        url = new GlobusURL(destTurl);
-        transportProtocol = url.getProtocol();
-        shortID = transportProtocol+"-copy"+"::'"+srcTurl+"' '"+destTurl+"'";
-      }
-      Debug.debug("Found short ID: "+shortID, 3);
-    }
-    catch(Exception e){
-      Debug.debug("WARNING: could not get short ID for "+fileTransferID+"; SRM probably not ready.", 2);
-    }
-    return new String [] {protocol, requestType, requestId, statusIndex, srcTurl, destTurl, srmSurl, shortID};
-  }
   
   /**
    * Get the percentage of the file that has been copied.
@@ -318,7 +263,7 @@ public class SRMFileTransfer implements FileTransfer {
    *                           RequestStatus.fileStatuses.
    */
   public int getPercentComplete(String fileTransferID) throws SRMException {
-    String [] idArr = parseFileTransferID(fileTransferID);
+    String [] idArr = MyUtil.parseSrmFileTransferID(fileTransferID);
     String requestType = idArr[1];
     int requestId = Integer.parseInt(idArr[2]);
     String surl = idArr[6];
@@ -365,7 +310,7 @@ public class SRMFileTransfer implements FileTransfer {
    *                           RequestStatus.fileStatuses.
    */
   public long getBytesTransferred(String fileTransferID) throws SRMException {
-    String [] idArr = parseFileTransferID(fileTransferID);
+    String [] idArr = MyUtil.parseSrmFileTransferID(fileTransferID);
     String requestType = idArr[1];
     String shortID = idArr[7];
     long bytes = -1;
@@ -398,7 +343,7 @@ public class SRMFileTransfer implements FileTransfer {
    *                           RequestStatus.fileStatuses.
    */
   public long getFileBytes(String fileTransferID) throws SRMException {
-    String [] idArr = parseFileTransferID(fileTransferID);
+    String [] idArr = MyUtil.parseSrmFileTransferID(fileTransferID);
     String requestType = idArr[1];
     int requestId = Integer.parseInt(idArr[2]);
     int statusIndex = Integer.parseInt(idArr[3]);
@@ -436,7 +381,7 @@ public class SRMFileTransfer implements FileTransfer {
    *                           RequestStatus.fileStatuses.
    */
   public void finalize(String fileTransferID) throws SRMException {    
-    String [] idArr = parseFileTransferID(fileTransferID);
+    String [] idArr = MyUtil.parseSrmFileTransferID(fileTransferID);
     String requestType = idArr[1];
     int requestId = Integer.parseInt(idArr[2]);
     int statusIndex = Integer.parseInt(idArr[3]);
@@ -448,9 +393,9 @@ public class SRMFileTransfer implements FileTransfer {
       RequestStatus rs = srm.getRequestStatus(requestId);
       Debug.debug("Finalizing request "+rs.requestId+" : "+rs.state+" : "+MyUtil.arrayToString(rs.fileStatuses), 2);
       // state should be one of "Ready", "Pending", "Active", "Done", "Failed".
-      //RequestStatus types: �Get�, �Put�, �Copy�, �
-      //RequestStatus states: �Pending�, �Active�, �Done�, �Failed�
-      //RequestFileStatus: �Pending�, �Ready�, �Running�, �Done�, �Failed�
+      //RequestStatus types: Get, Put, Copy, 
+      //RequestStatus states: Pending, Active, Done, Failed
+      //RequestFileStatus: Pending, Ready, Running, Done, Failed
       //if(rs.state.equalsIgnoreCase("Done") || rs.state.equalsIgnoreCase("Failed")){
         srm.setFileStatus(requestId, rs.fileStatuses[statusIndex].fileId, "Done");
       //}
@@ -468,7 +413,7 @@ public class SRMFileTransfer implements FileTransfer {
    *                           RequestStatus.fileStatuses.
    */
   public void cancel(String fileTransferID) throws SRMException {
-    String [] idArr = parseFileTransferID(fileTransferID);
+    String [] idArr = MyUtil.parseSrmFileTransferID(fileTransferID);
     String requestType = idArr[1];
     int requestId = Integer.parseInt(idArr[2]);
     int statusIndex = Integer.parseInt(idArr[3]);
@@ -1097,7 +1042,7 @@ public class SRMFileTransfer implements FileTransfer {
    * FileTransfer.STATUS_RUNNING, FileTransfer.STATUS_WAIT
    */
   public int getInternalStatus(String fileTransferID, String status) throws Exception{
-    String [] idArr = parseFileTransferID(fileTransferID);
+    String [] idArr = MyUtil.parseSrmFileTransferID(fileTransferID);
     String requestType = idArr[1];
     String shortID = idArr[7];
 
