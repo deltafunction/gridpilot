@@ -332,13 +332,15 @@ public class MyTransferControl extends TransferControl {
       if(ftPluginName.equalsIgnoreCase("srm") && MyUtil.arrayContains(GridPilot.ftNames, SRM2_PLUGIN_NAME)){
         ids = GridPilot.getClassMgr().getFTPlugin(SRM2_PLUGIN_NAME).startCopyFiles(srcUrls, destUrls);
         // If successful, have findFTPlugin remember to pick the right class.
-        if(ids==null){
+        if(ids!=null){
           for(int i=0; i<srcUrls.length; ++i){
             if(srcUrls[i].getProtocol().equalsIgnoreCase("srm")){
+              Debug.debug("Remembering host "+srcUrls[i].getHost(), 2);
               serverPluginMap.put(srcUrls[i].getHost(), SRM2_PLUGIN_NAME);
             }
             if(destUrls[i].getProtocol().equalsIgnoreCase("srm")){
               serverPluginMap.put(destUrls[i].getHost(), SRM2_PLUGIN_NAME);
+              Debug.debug("Remembering host "+destUrls[i].getHost(), 2);
             }
           }
         }
@@ -552,12 +554,14 @@ public class MyTransferControl extends TransferControl {
               ids = GridPilot.getClassMgr().getFTPlugin(SRM2_PLUGIN_NAME).startCopyFiles(
                   sources, destinations);
               // If successful, have findFTPlugin remember to pick the right class.
-              if(ids==null){
-                for(int j=0; i<sources.length; ++j){
+              if(ids!=null){
+                for(int j=0; j<sources.length; ++j){
                   if(sources[j].getProtocol().equalsIgnoreCase("srm")){
+                    Debug.debug("Remembering host "+sources[j].getHost(), 2);
                     serverPluginMap.put(sources[j].getHost(), SRM2_PLUGIN_NAME);
                   }
-                  if(destinations[i].getProtocol().equalsIgnoreCase("srm")){
+                  if(destinations[j].getProtocol().equalsIgnoreCase("srm")){
+                    Debug.debug("Remembering host "+destinations[j].getHost(), 2);
                     serverPluginMap.put(destinations[j].getHost(), SRM2_PLUGIN_NAME);
                   }
                 }
@@ -667,8 +671,7 @@ public class MyTransferControl extends TransferControl {
 
   public String getStatus(String fileTransferID) throws Exception {
     FileTransfer ft = findFTPlugin(fileTransferID);
-    String realID = findRealID(fileTransferID, ft.getName());
-    String status = ft.getStatus(realID);
+    String status = ft.getStatus(fileTransferID);
     // This means there's a TURL returned by the SRM plugin
     if(status!=null && status.matches("^\\w+://.*")){
       return "Ready";
@@ -965,107 +968,18 @@ public class MyTransferControl extends TransferControl {
   private FileTransfer findFTPlugin(String transferID)
      throws Exception{
     String ftPluginName = null;
+    String [] checkArr = MyUtil.split(transferID, "::");
+
+    String [] arr = MyUtil.split(transferID);
+    GlobusURL srmUrl = new GlobusURL(arr[arr.length-1]);
     Debug.debug("Finding plugin for transfer "+transferID, 2);
-    String [] checkArr = MyUtil.split(transferID, "::");
-    if(checkArr.length==2){
-      // first type
-      ftPluginName = findFTPluginNameShort(checkArr);
+    Debug.debug("Checking host "+srmUrl.getHost(), 2);
+    if(serverPluginMap.containsKey(srmUrl.getHost())){
+      return GridPilot.getClassMgr().getFTPlugin(serverPluginMap.get(srmUrl.getHost()));
     }
-    else{
-      // second type
-      ftPluginName = findFTPluginNameLong(transferID, checkArr);
-    }
+
+    ftPluginName = Util.split(checkArr[0], "-")[0];
     return GridPilot.getClassMgr().getFTPlugin(ftPluginName);
-  }
-  
-  /**
-   * If the ID is of the format
-   * 
-   * protocol-(get|put|copy)::srcTURL destTURL [SURL]
-   * 
-   * just return it. If it is of the format
-   * 
-   * srm-{get|put|copy}::srm request id::transfer index::'srcTurl' 'destTurl' 'srmSurl'
-   * 
-   * and the plugin name is not the protocoll, convert it to the shorter format.
-   * @throws Exception 
-   */
-  private String findRealID(String transferID, String pluginName) throws Exception{
-    String [] checkArr = MyUtil.split(transferID, "::");
-    String ftPluginName = MyUtil.split(checkArr[0], "-")[0];
-    if(ftPluginName.equalsIgnoreCase(pluginName)){
-      // first type
-      return transferID;
-    }
-    else{
-      // second type
-      // {protocol, requestType (get|put|copy), requestId, statusIndex, srcTurl, destTurl, srmSurl, shortID}
-      return MyUtil.parseSrmFileTransferID(transferID)[7];
-    }
-  }
-  
-  private String findFTPluginNameShort(String [] checkArr) throws Exception{
-    String [] arr = MyUtil.split(checkArr[1]);
-    GlobusURL srcUrl = new GlobusURL(arr[0]);
-    GlobusURL destUrl = new GlobusURL(arr[1]);
-    if(serverPluginMap.containsKey(srcUrl.getHost())){
-      return serverPluginMap.get(srcUrl.getHost());
-    }
-    if(serverPluginMap.containsKey(destUrl.getHost())){
-      return serverPluginMap.get(destUrl.getHost());
-    }
-    String ftPluginName = null;
-    if(checkArr[0].indexOf("-")>0){
-      arr = MyUtil.split(checkArr[0], "-");
-      ftPluginName = arr[0];
-      Debug.debug("Found plugin "+ftPluginName, 2);
-    }
-    else{
-      throw new IOException("ERROR: malformed ID");
-    }
-    if(ftPluginName==null){
-      throw new IOException("ERROR: could not get file transfer plugin");
-    }
-    Debug.debug("Found plugin name "+ftPluginName, 2);
-    return ftPluginName;
-  }
-  
-  private String findFTPluginNameLong(String transferID, String [] checkArr)
-     throws Exception{
-    String ftPluginName = null;
-    String [] arr = Util.split(checkArr[0], "-");
-    String type = arr[1];
-    String [] turls = null;
-    // For put or get requests, the work can have been
-    // delegated from one plugin to another (srm -> gsiftp).
-    // We assume the delegation was done by a first match and
-    // repeat the matching to find the first plugin.
-    if(type.equalsIgnoreCase("get") || type.equalsIgnoreCase("put")){
-      Debug.debug("type: "+type, 3);
-      int tmpindex = 0;
-      String tmpID = transferID;
-      String [] fts = GridPilot.ftNames;
-      while(tmpID.indexOf("::")>0){
-        tmpindex += tmpID.indexOf("::") + 2;
-        tmpID = transferID.substring(tmpindex);
-      }
-      turls = Util.split(tmpID);
-      for(int i=0; i<fts.length; ++i){
-        if(GridPilot.getClassMgr().getFTPlugin(
-            fts[i]).checkURLs(
-                new GlobusURL [] {new GlobusURL(turls[0].replaceAll("'", ""))},
-                new GlobusURL [] {new GlobusURL(turls[1].replaceAll("'", ""))})){
-          ftPluginName = fts[i];
-          break;
-        };      
-      }
-    }
-    else{
-      // For copy requests, we just take the plugin name directly form the ID header.
-      ftPluginName = arr[0];
-    }
-    Debug.debug("Found plugin name "+ftPluginName, 2);
-    return ftPluginName;
   }
   
   public boolean isSubmitting(){
