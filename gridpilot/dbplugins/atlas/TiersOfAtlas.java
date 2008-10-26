@@ -64,18 +64,18 @@ public class TiersOfAtlas {
   }
   
   /**
-   * @param name the site acronym
+   * @param siteAcronym the site acronym
    * @param preferHttp only relevant for LRC catalogs: whether or not to use the http
    *        interface instead of direct mysql
    * @return the catalog URL
    */
-  protected String getFileCatalogServer(String name, boolean preferHttp) throws MalformedURLException, IOException {
+  protected String getFileCatalogServer(String siteAcronym, boolean preferHttp) throws MalformedURLException, IOException {
     
-    if(!preferHttp && fileCatalogs.containsKey(name)){
-      return (String) fileCatalogs.get(name);
+    if(!preferHttp && fileCatalogs.containsKey(siteAcronym)){
+      return (String) fileCatalogs.get(siteAcronym);
     }
-    if(preferHttp && httpFileCatalogs.containsKey(name)){
-      return (String) httpFileCatalogs.get(name);
+    if(preferHttp && httpFileCatalogs.containsKey(siteAcronym)){
+      return (String) httpFileCatalogs.get(siteAcronym);
     }
     
     String catalogSite = null;
@@ -87,16 +87,18 @@ public class TiersOfAtlas {
     String line = null;
     String inLine = null;
     int count = 0;
-    
-    Debug.debug("Trying to match "+name, 3);
+    String tmp;
+    Debug.debug("Trying to match "+siteAcronym, 3);
     while(catalogServer==null && count<5){
-      boolean chkSite = false;
       ++count;
       in = new BufferedReader(new InputStreamReader((toaFile.toURI().toURL()).openStream()));
       StringBuffer lb = new StringBuffer();
       while((inLine = in.readLine())!=null){
         // take care of "lines" split on multiple lines
-        if(inLine.endsWith("',")){
+        if(inLine.length()==0){
+          continue;
+        }
+        else if(inLine.endsWith("',")){
           lb.append(inLine);
           continue;
         }
@@ -116,28 +118,31 @@ public class TiersOfAtlas {
         // 'FZK': [ 'FZKDISK', 'FZKTAPE' ],
         if(parentSite!=null &&
             line.matches("^\\W*'(\\w*)':\\s*\\[.*\\W+"+parentSite+"\\W+.*") ||
-            parentSite==null && line.matches("^\\W*'(\\w*)':\\s*\\[.*\\W+"+name+"\\W+.*")){
+            parentSite==null && line.matches("^\\W*'(\\w*)':\\s*\\[.*\\W+"+siteAcronym+"\\W+.*")){
           catalogSite = line.replaceFirst("^\\W*'(\\w*)':.*", "$1");
           Debug.debug("Catalog site: "+catalogSite, 3);
         }
         if(line.indexOf("SITES")<0 && line.indexOf("'TIER1S': [")<0 && 
             line.indexOf("'ALL': [")<0  && line.indexOf("'alternateName' : [")<0 && 
             line.indexOf("LRC")<0 && line.indexOf("LFC")<0 &&
-            line.indexOf("'alternateName' : [")<0&& (
+            line.indexOf("'alternateName' : [")<0 && (
                 parentSite!=null &&
                 line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+parentSite+"\\W+.*") ||
-                line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+name+"\\W+.*"))
+                line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+siteAcronym+"\\W+.*") ||
+                line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+catalogSite+"\\W+.*")
+              )
             ){
-          parentSite = line.replaceFirst("^\\W*(\\w*)\\W*\\s*:.*",
-              "$1");
-          Debug.debug("Parent site: "+parentSite, 3);
-        }
-        if(!chkSite){
-          Debug.debug("Checking: "+catalogSite, 3);
-          chkSite = true;
+          tmp = line.replaceFirst("^\\W*(\\w*)\\W*\\s*:.*", "$1");
+          if(!tmp.equals(catalogSite)){
+            parentSite = tmp;
+          }
         }
         // Now look for
-        // FZKLFC = 'lfc://lfc-fzk.gridka.de:/grid/atlas/'
+        // FZKLFC: [ 'FZKSITES' ]
+        if(line.indexOf("NDGFLFC")>0){
+          Debug.debug("catalogSite--> "+catalogSite, 3);
+          Debug.debug("parentSite--> "+parentSite, 3);
+        }
         if(catalogSite!=null &&
             line.matches("^\\s*\\S+LFC\\s*:.*'"+catalogSite+"'.*")){
           catalogName = line.replaceFirst("^\\s*(\\S+LFC)\\s*:.*'"+catalogSite+"'.*", "$1");
@@ -149,28 +154,40 @@ public class TiersOfAtlas {
           Debug.debug("Catalog name: "+catalogName, 3);
         }
         else if(catalogSite!=null &&
-            line.matches("^\\s*\\S+LFC\\s*:.*'"+name+"'.*")){
-          catalogName = line.replaceFirst("^\\s*(\\S+LFC)\\s*:.*'"+name+"'.*", "$1");
+            line.matches("^\\s*\\S+LFC\\s*:.*'"+siteAcronym+"'.*")){
+          catalogName = line.replaceFirst("^\\s*(\\S+LFC)\\s*:.*'"+siteAcronym+"'.*", "$1");
           Debug.debug("Catalog name: "+catalogName, 3);
         }
         else if(catalogSite!=null &&
-            line.matches("^\\s*\\S+LRC\\s*:.*'"+name+"'.*")){
-          catalogName = line.replaceFirst("^\\s*(\\S+LRC)\\s*:.*'"+name+"'.*", "$1");
+            line.matches("^\\s*\\S+LRC\\s*:.*'"+siteAcronym+"'.*")){
+          catalogName = line.replaceFirst("^\\s*(\\S+LRC)\\s*:.*'"+siteAcronym+"'.*", "$1");
           Debug.debug("Catalog name: "+catalogName, 3);
         }
+        else if(catalogSite!=null &&
+            line.matches("^\\s*\\S+LFC\\s*:.*'"+parentSite+"'.*")){
+          catalogName = line.replaceFirst("^\\s*(\\S+LFC)\\s*:.*'"+parentSite+"'.*", "$1");
+          Debug.debug("Catalog name: "+catalogName, 3);
+        }
+        else if(catalogSite!=null &&
+            line.matches("^\\s*\\S+LRC\\s*:.*'"+parentSite+"'.*")){
+          catalogName = line.replaceFirst("^\\s*(\\S+LRC)\\s*:.*'"+parentSite+"'.*", "$1");
+          Debug.debug("Catalog name: "+catalogName, 3);
+        }
+        // Now look for
+        // FZKLFC = 'lfc://lfc-fzk.gridka.de:/grid/atlas/'
         else if(!preferHttp && catalogName!=null &&
             line.matches("^\\s*"+catalogName+"\\s*=\\s*'(.+)'.*")){
           catalogServer = line.replaceFirst("^\\s*"+catalogName+
               "\\s*=\\s*'(.+)'.*", "$1");
           Debug.debug("Catalog server: "+catalogServer, 3);
-          fileCatalogs.put(name, catalogServer);
+          fileCatalogs.put(siteAcronym, catalogServer);
         }
         else if(preferHttp && catalogName!=null &&
             line.matches("^\\s*"+catalogName+"HTTP\\s*=\\s*'(.+)'.*")){
           catalogServer = line.replaceFirst("^\\s*"+catalogName+
               "HTTP\\s*=\\s*'(.+)'.*", "$1");
           Debug.debug("Catalog server: "+catalogServer, 3);
-          httpFileCatalogs.put(name, catalogServer);
+          httpFileCatalogs.put(siteAcronym, catalogServer);
         }
       }
       in.close();
