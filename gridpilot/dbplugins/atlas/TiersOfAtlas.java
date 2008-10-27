@@ -78,8 +78,12 @@ public class TiersOfAtlas {
       return (String) httpFileCatalogs.get(siteAcronym);
     }
     
+    Debug.debug(siteAcronym+" NOT in cache "+MyUtil.arrayToString(fileCatalogs.keySet().toArray())+
+        " : "+preferHttp, 3);
+    
     String catalogSite = null;
     String catalogServer = null;
+    String httpCatalogServer = null;
     String catalogName = null;
     String parentSite = null;
     // Parse TOA file
@@ -89,7 +93,7 @@ public class TiersOfAtlas {
     int count = 0;
     String tmp;
     Debug.debug("Trying to match "+siteAcronym, 3);
-    while(catalogServer==null && count<5){
+    while(catalogServer==null && httpCatalogServer==null && count<5){
       ++count;
       in = new BufferedReader(new InputStreamReader((toaFile.toURI().toURL()).openStream()));
       StringBuffer lb = new StringBuffer();
@@ -122,7 +126,7 @@ public class TiersOfAtlas {
           catalogSite = line.replaceFirst("^\\W*'(\\w*)':.*", "$1");
           Debug.debug("Catalog site: "+catalogSite, 3);
         }
-        if(line.indexOf("SITES")<0 && line.indexOf("'TIER1S': [")<0 && 
+        if(/*line.indexOf("SITES")<0 && line.indexOf("'TIER1S': [")<0 && */
             line.indexOf("'ALL': [")<0  && line.indexOf("'alternateName' : [")<0 && 
             line.indexOf("LRC")<0 && line.indexOf("LFC")<0 &&
             line.indexOf("'alternateName' : [")<0 && (
@@ -179,21 +183,22 @@ public class TiersOfAtlas {
             line.matches("^\\s*"+catalogName+"\\s*=\\s*'(.+)'.*")){
           catalogServer = line.replaceFirst("^\\s*"+catalogName+
               "\\s*=\\s*'(.+)'.*", "$1");
-          Debug.debug("Catalog server: "+catalogServer, 3);
-          fileCatalogs.put(siteAcronym, catalogServer);
+          Debug.debug("Catalog server: "+siteAcronym+" --> "+catalogServer, 3);
+          //fileCatalogs.put(siteAcronym, catalogServer);
         }
         else if(preferHttp && catalogName!=null &&
             line.matches("^\\s*"+catalogName+"HTTP\\s*=\\s*'(.+)'.*")){
-          catalogServer = line.replaceFirst("^\\s*"+catalogName+
+          httpCatalogServer = line.replaceFirst("^\\s*"+catalogName+
               "HTTP\\s*=\\s*'(.+)'.*", "$1");
-          Debug.debug("Catalog server: "+catalogServer, 3);
-          httpFileCatalogs.put(siteAcronym, catalogServer);
+          Debug.debug("Catalog server: "+siteAcronym+" --> "+httpCatalogServer, 3);
+          //httpFileCatalogs.put(siteAcronym, httpCatalogServer);
         }
       }
       in.close();
     }
+    fileCatalogs.put(siteAcronym, catalogServer);
+    httpFileCatalogs.put(siteAcronym, httpCatalogServer);
     return catalogServer;
-
   }
 
   
