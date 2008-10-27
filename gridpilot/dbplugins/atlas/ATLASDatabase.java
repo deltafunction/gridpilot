@@ -81,7 +81,7 @@ public class ATLASDatabase extends DBCache implements Database{
   public int pathConvention = 1;
   public boolean stop = false;
   public boolean findPFNs = true;
-  public int pathConventions = 3;
+  public int pathConventions = 4;
   public String homeSite;
   public String homeServerMysqlAlias;
   public String error;
@@ -997,22 +997,64 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     return dec;
   }
+  
+  public static void main(String [] params){
+    //String lfn = "trig1_misal1_mc11.007406.singlepart_singlepi7.recon.log.v12003103_tid003805._00003.job.log.tgz.6";
+    String lfn = "trig1_misal1_mc12.006384.PythiaH120gamgam.recon.AOD.v13003002_tid016421";
+    String [] lfnMetaData = MyUtil.split(lfn, "\\.");
+    String baseStr = lfn.replaceFirst("^(.*)\\._[^\\.]+\\..*$", "$1");
+    String [] baseMetaData = MyUtil.split(baseStr, "\\.");
+    System.out.println("baseStr: "+baseStr);
+    System.out.println("--> length: "+baseMetaData.length);
+    String atlasLpn;
+    if(baseMetaData.length==6){
+      atlasLpn = /*datafiles*/"dq2/"+lfnMetaData[0]+"/"+lfnMetaData[4];
+      //atlasLPN += "/"+lfnMetaData[3];
+      atlasLpn += "/"+baseStr;
+      atlasLpn += "/"+lfn;
+    }
+    else{
+      atlasLpn = lfn;
+    }
+    System.out.println("atlasLpn: "+atlasLpn);
+  }
 
   // Construct path following ATLAS conventions
   public String makeAtlasPath(String lfn){
     
     String atlasLpn = null;
     String [] lfnMetaData = MyUtil.split(lfn, "\\.");
+    String baseStr = null;
+    String [] baseMetaData = null;
     Debug.debug("lfnMetaData: "+ lfnMetaData.length+":"+MyUtil.arrayToString(lfnMetaData), 2);
     
     switch(pathConvention){
     
+    case 4:
+      Debug.debug("Using very very new path convention", 2);
+      // trig1_misal1_mc12.006384.PythiaH120gamgam.recon.AOD.v13003002_tid016421 -->
+      // /grid/atlas/dq2/trig1_misal1_mc12/AOD/trig1_misal1_mc12.006384.PythiaH120gamgam.recon.AOD.v13003002_tid016421/AOD.016421._00002.pool.root.12
+      baseStr = lfn.replaceFirst("^(.*)\\._[^\\.]+\\..*$", "$1");
+      baseMetaData = MyUtil.split(baseStr, "\\.");
+      Debug.debug("baseStr: "+baseStr, 2);
+      Debug.debug("--> length: "+baseMetaData.length, 2);
+      if(baseMetaData.length==6){
+        atlasLpn = /*datafiles*/"dq2/"+lfnMetaData[0]+"/"+lfnMetaData[4];
+        //atlasLPN += "/"+lfnMetaData[3];
+        atlasLpn += "/"+baseStr;
+        atlasLpn += "/"+lfn;
+      }
+      else{
+        atlasLpn = lfn;
+      }
+      break;
+      
     case 3:
       Debug.debug("Using very new path convention", 2);
-      // File trig1_misal1_mc11.007406.singlepart_singlepi7.recon.log.v12003103_tid003805._00003.job.log.tgz.6 ->
+      // trig1_misal1_mc11.007406.singlepart_singlepi7.recon.log.v12003103_tid003805._00003.job.log.tgz.6 ->
       // /grid/atlas/dq2/trig1_misal1_mc11/trig1_misal1_mc11.007406.singlepart_singlepi7.recon.log.v12003103_tid003805/trig1_misal1_mc11.007406.singlepart_singlepi7.recon.log.v12003103_tid003805._00003.job.log.tgz.6
-      String baseStr = lfn.replaceFirst("^(.*)\\._[^\\.]+\\..*$", "$1");
-      String [] baseMetaData = MyUtil.split(baseStr, "\\.");
+      baseStr = lfn.replaceFirst("^(.*)\\._[^\\.]+\\..*$", "$1");
+      baseMetaData = MyUtil.split(baseStr, "\\.");
       Debug.debug("baseStr: "+baseStr, 2);
       Debug.debug("--> length: "+baseMetaData.length, 2);
       if(baseMetaData.length==6){
