@@ -1535,7 +1535,7 @@ public class MyTransferControl extends TransferControl {
     if(!tempFileName.equals(dest)){
       try{
         Debug.debug("Uploading tmp file "+tempFileName+" -> "+dest, 2);
-        shellMgr.upload(MyUtil.clearFile(tempFileName), dest);
+        shellMgr.upload(MyUtil.clearFile(tempFileName), MyUtil.clearFile(dest));
       }
       catch(Exception e){
         error = "ERROR copying "+tempFileName+" -> "+dest+": "+e.getMessage();
