@@ -60,6 +60,9 @@ public class ForkComputingSystem implements MyComputingSystem{
   // List of (Janitor) catalogs from where to get RTEs
   protected String [] rteCatalogUrls = null;
   protected MyTransferControl transferControl;
+  protected boolean mkLocalOSRTE = true;
+  protected boolean includeVMRTEs = true;
+  protected String [] basicOSRTES = {"Linux"};
 
   public ForkComputingSystem(String _csName) throws Exception{
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
@@ -78,6 +81,10 @@ public class ForkComputingSystem implements MyComputingSystem{
       if(csName.equalsIgnoreCase("fork")){
         throw e;
       }
+    }
+    
+    if(shellMgr.getOS().toLowerCase().startsWith("windows")){
+      basicOSRTES = new String [] {"Windows"};
     }
     
     defaultUser = configFile.getValue(GridPilot.topConfigSection, "default user");
@@ -183,7 +190,8 @@ public class ForkComputingSystem implements MyComputingSystem{
     if(localRuntimeDBs.length==0 && remoteDBPluginMgr!=null){
       scanRTEDir(null, remoteDBPluginMgr, thisCs, shellMgr);
     }
-    MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRTEs);
+    MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRTEs,
+        mkLocalOSRTE, includeVMRTEs, basicOSRTES);
   }
   
   /**

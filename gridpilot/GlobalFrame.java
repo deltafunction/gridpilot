@@ -35,7 +35,7 @@ public class GlobalFrame extends GPFrame{
   private MyPreferencesPanel prefsPanel = null;
   private static int i;
 
-  public JTabbedPane tabbedPane = new JTabbedPane();
+  public JTabbedPane tabbedPane = new DnDTabbedPane();
   public MonitoringPanel monitoringPanel;
   public JMenu menuEdit = new JMenu("Edit");
   public JMenuItem menuEditCopy = new JMenuItem("Copy (ctrl c)");

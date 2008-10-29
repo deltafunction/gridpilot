@@ -36,9 +36,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
 
   public EC2ComputingSystem(String _csName) throws Exception {
     super(_csName);
+    
+    basicOSRTES = new String [] {"Linux"/*, "Windows"*/
+        /* Windows instances allow only connections via VRDP - and to connect a keypair must be associated. */};
 
     amiID = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-    "AMI id");
+       "AMI id");
     boolean ec2Secure = true;
     String ec2SecureStr = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "Secure");

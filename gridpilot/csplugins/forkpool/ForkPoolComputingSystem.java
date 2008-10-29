@@ -36,6 +36,9 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   
   public ForkPoolComputingSystem(String _csName) throws Exception{
     super(_csName);
+    mkLocalOSRTE = false;
+    includeVMRTEs = false;
+    basicOSRTES = new String [] {"Linux"};
     setupRemoteShellMgrs();
     GridPilot.splashShow("Setting up environment for remote hosts...");
     setupRuntimeEnvironmentsSSH();

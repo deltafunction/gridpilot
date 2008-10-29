@@ -415,7 +415,7 @@ public class EC2Mgr {
     for(Iterator it=res.getInstances().iterator(); it.hasNext();){
       inst = (Instance) it.next();
       // We only consider instances started with GridPilot
-      if(inst.getKeyName().equals(KEY_NAME)){
+      if(inst.getKeyName()!=null && inst.getKeyName().equals(KEY_NAME)){
         instances.add(inst);
       }
     }

@@ -54,7 +54,8 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     public void actionPerformed(ActionEvent e){
       Debug.debug("Syncing RTEs", 2);
       cleanupRuntimeEnvironments(csName);
-      MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes);
+      MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes,
+          false, true,  new String [] {"Linux", "Windows"});
     }
   });
 
@@ -386,7 +387,8 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   }
 
   public void setupRuntimeEnvironments(String csName){
-    MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes);
+    MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes,
+        false, true, new String [] {"Linux", "Windows"});
   }
 
   public void exit(){

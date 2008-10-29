@@ -1349,11 +1349,71 @@ public class MyUtil extends gridfactory.common.Util{
     return getDateInMilliSeconds(dateInput, GridPilot.dateFormatString);
   }
   
+/**
+ * Write the local OS as an RTE. This is to make CSPluginMgr.submit happy when we are submitting
+ * with local fork.
+ * @param csName
+ * @param toDeleteRtes
+ * @param dbMgr
+ */
+  private static void createLocalOSRTE(String csName, HashMap toDeleteRtes,
+      DBPluginMgr dbMgr){
+    MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
+    try{
+      dbMgr.createRuntimeEnv(
+          new String [] {"name", "computingSystem"},
+          new String [] {LocalStaticShell.getOS(), csName});
+      // Find the ID of the newly created RTE and tag it for deletion
+      String [] rteIds = dbMgr.getRuntimeEnvironmentIDs(LocalStaticShell.getOS(), csName);
+      for(int j=0; j<rteIds.length; ++j){
+        toDeleteRtes.put(rteIds[j], dbMgr.getDBName());
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      logFile.addMessage("WARNING: could not create RTE for local OS "+LocalStaticShell.getOS()+
+          " on "+csName, e);
+    }
+  }
+  
+  /**
+   * Create "Linux" and "Windows" RTEs. Selecting one of these as RTE amounts to requiring
+   * Linux or Windows but not caring about the specific distro or version.
+   * @param oses
+   * @param csName
+   * @param toDeleteRtes
+   * @param dbMgr
+   */
+  public static void createBasicOSRTEs(String [] oses, String csName, HashMap toDeleteRtes,
+      DBPluginMgr dbMgr){
+    if(oses==null){
+      return;
+    }
+    MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
+    for(int i=0; i<oses.length; ++i){
+      try{
+        dbMgr.createRuntimeEnv(
+            new String [] {"name", "computingSystem"},
+            new String [] {oses[i], csName});
+        // Find the ID of the newly created RTE and tag it for deletion
+        String [] rteIds = dbMgr.getRuntimeEnvironmentIDs(oses[i], csName);
+        for(int j=0; j<rteIds.length; ++j){
+          toDeleteRtes.put(rteIds[j], dbMgr.getDBName());
+        }
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        logFile.addMessage("WARNING: could not create RTE for local OS "+LocalStaticShell.getOS()+
+            " on "+csName, e);
+      }
+    }
+  }
+  
   /**
    * Copies records from them to the 'local' runtime DBs.
     */
   public static void syncRTEsFromCatalogs(String csName, String [] rteCatalogUrls, String [] localRuntimeDBs,
-      HashMap toDeleteRtes){
+      HashMap toDeleteRtes, boolean mkLocalOS, boolean includeVMs, String [] basicOses){
     
     MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
     
@@ -1368,28 +1428,16 @@ public class MyUtil extends gridfactory.common.Util{
     String [] newIds = null;
     DBRecord row;
     Debug.debug("Syncing RTEs from catalogs to DBs: "+MyUtil.arrayToString(localRuntimeDBs), 2);
+    
     for(int ii=0; ii<localRuntimeDBs.length; ++ii){
       try{
-        localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);
         
-        // Write the local OS as an RTE. This is just to make CSPluginMgr.submit happy
-        for(int i=0; i<localRuntimeDBs.length; ++i){
-          try{
-            localDBMgr.createRuntimeEnv(
-                new String [] {"name", "computingSystem"},
-                new String [] {LocalStaticShell.getOS(), csName});
-          }
-          catch(Exception e){
-            e.printStackTrace();
-            logFile.addMessage("WARNING: could not create RTE for local OS "+LocalStaticShell.getOS()+
-                " on "+csName, e);
-          }
-          String [] rteIds = GridPilot.getClassMgr().getDBPluginMgr(
-              localRuntimeDBs[i]).getRuntimeEnvironmentIDs(LocalStaticShell.getOS(), csName);
-          for(int j=0; j<rteIds.length; ++j){
-            toDeleteRtes.put(rteIds[j], localRuntimeDBs[i]);
-          }
+        localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);  
+        
+        if(mkLocalOS){
+          createLocalOSRTE(csName, toDeleteRtes, localDBMgr);
         }
+        createBasicOSRTEs(basicOses, csName, toDeleteRtes, localDBMgr);
         
         DBResult rtes = rteRdfParser.getDBResult(localDBMgr, csName);
         for(int i=0; i<rtes.values.length; ++i){

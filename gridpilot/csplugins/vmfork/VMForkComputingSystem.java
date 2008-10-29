@@ -9,7 +9,6 @@ import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.Shell;
 import gridfactory.common.jobrun.ForkComputingSystem;
-import gridfactory.common.jobrun.RTEMgr;
 import gridfactory.common.jobrun.VMMgr;
 import gridpilot.DBPluginMgr;
 import gridpilot.GridPilot;
@@ -183,7 +182,8 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     if(localRuntimeDBs==null || localRuntimeDBs.length==0){
       return;
     }
-    MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes);
+    MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes, !virtEnforce,
+        true, new String [] {"Linux", "Windows"});
   }
 
 }
