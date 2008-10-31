@@ -21,8 +21,6 @@ import java.util.Set;
 
 import javax.swing.JOptionPane;
 
-import org.safehaus.uuid.UUIDGenerator;
-
 /**
  * Panel showing the status of EC2 and containing buttons for
  * starting and stopping virtual machines.
@@ -123,8 +121,7 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
     (new ResThread(){
           public void run(){
             try{
-              String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
-              vmMgr.launchVM(imageName, memory, uuid);
+              vmMgr.launchVM(imageName, memory, null);
             }
             catch(Exception e){
               GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not launch VM.", e);

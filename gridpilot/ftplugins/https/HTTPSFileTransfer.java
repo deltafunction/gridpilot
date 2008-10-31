@@ -3,6 +3,8 @@ package gridpilot.ftplugins.https;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.URL;
+import java.net.URLConnection;
 import java.security.GeneralSecurityException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -31,8 +33,10 @@ public class HTTPSFileTransfer implements FileTransfer {
   private HashMap urlCopyTransferListeners = null;
   private HashMap fileTransfers = null;
   
-  //Thu, 07 Jun 2007 20:37:24 GMT
-  private static String DATE_FORMAT = "EEE, dd MMM yyyy HH:mm:ss z";
+  // "Thu, 07 Jun 2007 20:37:24 GMT"
+  private static String GMT_DATE_FORMAT = "EEE, dd MMM yyyy HH:mm:ss z";
+  // "2008-08-20 09:38:24"
+  private static String HTTP_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
   private static String PLUGIN_NAME;
   private static int COPY_TIMEOUT = 10000;
 
@@ -418,12 +422,18 @@ public class HTTPSFileTransfer implements FileTransfer {
   private Date makeDate(String dateInput){
     Date date = null;
     try{
-      SimpleDateFormat df = new SimpleDateFormat(DATE_FORMAT);
+      SimpleDateFormat df = new SimpleDateFormat(GMT_DATE_FORMAT);
       date = df.parse(dateInput);
     }
     catch(Throwable e){
-      Debug.debug("Could not set date. "+e.getMessage(), 1);
-      e.printStackTrace();
+      try{
+        SimpleDateFormat df = new SimpleDateFormat(HTTP_DATE_FORMAT);
+        date = df.parse(dateInput);
+      }
+      catch(Throwable ee){
+        Debug.debug("Could not set date. "+e.getMessage(), 1);
+        ee.printStackTrace();
+      }
     }
     return date;
   }
@@ -468,17 +478,17 @@ public class HTTPSFileTransfer implements FileTransfer {
              break;
            }
            if(line.startsWith("date: ")){
-             cachedDate = makeDate(line.replaceFirst("date: (.*)", "$1"));
+             cachedDate = makeDate(line.replaceFirst("^date: (.*)", "$1"));
            }
            if(line.startsWith("size: ")){
-             cachedSize = Long.parseLong(line.replaceFirst("size: (.*)", "$1"));
+             cachedSize = Long.parseLong(line.replaceFirst("^size: (.*)", "$1"));
            }
         }
         cacheRAF.close();
       }
       long fileSize = -1;
       try{
-        fileSize = urlCopy.getSourceLength();
+        fileSize = getContentLength(urlCopy.getSourceUrl());
       }
       catch(Exception e){
       }
@@ -490,13 +500,17 @@ public class HTTPSFileTransfer implements FileTransfer {
       }
       if(destinationFile.exists() && cachedDate!=null && cachedSize>-1){
         if(modificationDate!=null && fileSize>-1){
-          if(cachedDate.equals(modificationDate) && cachedSize==fileSize){
+          long localSize = destinationFile.length();
+          if(cachedDate.equals(modificationDate) && cachedSize==fileSize &&
+              localSize==cachedSize){
             cacheOk = true;
           }
           else{
+            Debug.debug("Cache not ok "+cachedSize+":"+fileSize+":"+localSize+
+                " --- "+cachedDate+":"+modificationDate, 2);
             // if the file is there, but not up to date, move it out of the way
             try{
-              destinationFile.renameTo(new File(destinationFile.getAbsolutePath()+".bk"));
+              destinationFile.renameTo(new File(destinationFile.getAbsolutePath()+".old"));
             }
             catch(Exception e){
             }
@@ -506,7 +520,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       if(!cacheOk && modificationDate!=null && fileSize>-1){
         // write the file size and modification date to .gridpilot_cache/.<file name>
         LocalStaticShell.writeFile(cacheInfoFile.getAbsolutePath(),
-            "date: "+makeDateString(modificationDate), false);
+            "date: "+makeDateString(modificationDate)+"\n", false);
         LocalStaticShell.writeFile(cacheInfoFile.getAbsolutePath(),
             "size: "+Long.toString(fileSize), true);
       }
@@ -518,8 +532,63 @@ public class HTTPSFileTransfer implements FileTransfer {
     }
     return cacheOk;
   }
+  
+  private HashMap<String, String> getHttpHeaders(URL url) throws IOException{
+
+    URLConnection c = url.openConnection();
+    HashMap<String, String> headers = new HashMap<String, String>();
+  
+    for(int i=0; ; i++){
+      String name = c.getHeaderFieldKey(i);
+      String value = c.getHeaderField(i);
+      if(name==null && value==null){
+        break;         
+      }
+      if(name == null){
+        // First line of headers
+        Debug.debug("Server HTTP version, Response code: "+value, 3);
+      }
+      else{
+        Debug.debug(name.toLowerCase()+": "+value, 3);
+        headers.put(name.toLowerCase(), value);
+      }
+    }
+    return headers;
+  }
 
   private Date getLastModified(GlobusURL globusUrl) throws IOException, UrlCopyException{
+    try{
+      String date = null;
+      date = getHttpHeaders(new URL(globusUrl.getURL())).get("last-modified");
+      if(date!=null){
+        return makeDate(date);
+      }
+    }
+    catch(Exception e){
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not get " +
+            "modification date of "+globusUrl, e);
+      e.printStackTrace();
+    }
+    return null;
+  }
+
+  private long getContentLength(GlobusURL globusUrl) throws IOException, UrlCopyException{
+    try{
+      String lnStr = null;
+      lnStr = getHttpHeaders(new URL(globusUrl.getURL())).get("content-length");
+      if(lnStr!=null){
+        return Long.parseLong(lnStr);
+      }
+    }
+    catch(Exception e){
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not get " +
+            "content length of "+globusUrl, e);
+      e.printStackTrace();
+    }
+    return -1L;
+  }
+
+  private Date getLastModifiedWebDav(GlobusURL globusUrl) throws IOException, UrlCopyException{
     try{
       String path = "/"+globusUrl.getPath();
       MyUrlCopy urlCopy = myConnect(globusUrl);

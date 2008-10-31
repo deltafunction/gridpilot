@@ -3,13 +3,16 @@ package gridpilot.csplugins.vmfork;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
+import gridfactory.common.PullMgr;
 import gridfactory.common.Shell;
 import gridfactory.common.jobrun.ForkComputingSystem;
 import gridfactory.common.jobrun.VMMgr;
+import gridfactory.common.jobrun.VirtualMachine;
 import gridpilot.DBPluginMgr;
 import gridpilot.GridPilot;
 import gridpilot.MyComputingSystem;
@@ -32,6 +35,8 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
   private String user;
   private String[] localRuntimeDBs;
   private HashMap toDeleteRtes = new HashMap();
+  // Only here to use checkRequirements
+  private PullMgr pullMgr;
 
   public VMForkComputingSystem(String _csName) throws Exception {
     csName = _csName;
@@ -110,8 +115,10 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     // This causes the panel to be added to the monitoring window as a tab,
     // right after the transfer monitoring tab and before the log tab.
     GridPilot.extraMonitorTabs.add(panel);
-        
-}
+    
+    pullMgr = new MyPullMgr();
+
+  }
   
   protected void setupJobRTEs(JobInfo job, Shell shell) throws Exception{
     MyUtil.setupJobRTEs(job, shell, rteMgr, transferStatusUpdateControl, remoteRteDir, localRteDir);
@@ -133,7 +140,7 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
   
   public boolean preProcess(JobInfo job) throws Exception {
     
-    // From gridpilot.csplugins.fork.ForkScriptComputingSystem
+    // From gridpilot.csplugins.fork.ForkComputingSystem
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String [] rtes = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
     String transID = dbPluginMgr.getJobDefTransformationID(job.getIdentifier());
@@ -155,6 +162,14 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     job.setOutputFileDestinations(outputDestinations);
     job.setOutputFileNames(outputFileNames);
     job.setRTEs(MyUtil.removeMyOS(rtes));
+    job.setMemory(defaultJobMB);
+    
+    if(!pullMgr.checkRequirements(job, virtEnforce)){
+      throw new Exception("Requirement(s) could not be satisfied. "+job);
+    }
+    
+    // Check if any VMs have been launched from VMForkMonitoringPanel
+    includeManuallyBootedVMs();
     
     boolean ok = gridpilot.csplugins.fork.ForkComputingSystem.setRemoteOutputFiles((MyJobInfo) job);
     ok = ok && super.preProcess(job);
@@ -172,12 +187,33 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     }
     ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     job.setExecutable(scriptFile);
-    job.setMemory(defaultJobMB);
-    
+
     return ok;
     
   }
 
+  private void includeManuallyBootedVMs() {
+    HashMap<String, VirtualMachine> vms = vmMgr.getVMs();
+    VirtualMachine vm;
+    String vmHost;
+    for(int i=0; i<hosts.length; ++i){
+      if(hosts[i]==null || hosts[i].equals("")){
+        for(Iterator it=vms.keySet().iterator(); it.hasNext();){
+          try{
+            vm = vms.get(it.next());
+            vmHost = vm.getHostName()+":"+vm.getSshPort();
+            if(!MyUtil.arrayContains(hosts, vmHost)){
+              hosts[i] = vmHost;
+            }
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+        }
+      }
+    }
+  }
+  
   public void setupRuntimeEnvironments(String csName) {
     if(localRuntimeDBs==null || localRuntimeDBs.length==0){
       return;

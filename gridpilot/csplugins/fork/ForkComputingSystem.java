@@ -238,8 +238,7 @@ public class ForkComputingSystem implements MyComputingSystem{
         // Get the name
         Debug.debug("File found: "+expandedRuntimeDirs[0]+":"+expandedRuntimeDir+":"+fil, 3);
         name = fil.substring(expandedRuntimeDir.length());
-        if(name.matches(".*/\\..*") || name.toLowerCase().endsWith(".gz") || name.toLowerCase().endsWith(".tar") ||
-            name.toLowerCase().endsWith(".tgz") || name.toLowerCase().endsWith(".zip")|| name.toLowerCase().endsWith(".rdf") ||
+        if(name.matches(".*/\\..*") ||  name.matches(".*\\..*") ||
             mgr.isDirectory(name) || name.matches(".*/pkg/.*") || name.matches(".*/data/.*") || name.matches(".*/control/.*")){
           continue;
         }
