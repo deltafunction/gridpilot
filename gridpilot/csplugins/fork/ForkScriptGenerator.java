@@ -77,7 +77,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     writeBlock(buf, "Runtime setup", ScriptGenerator.TYPE_SUBSECTION, commentStart);
     // For each runtime environment used, get its init text (if present) and write it out,
     // source the setup script
-    String[] rtes = MyUtil.removeMyOS(dbPluginMgr.getRuntimeEnvironments(jobDefID));
+    String[] rtes = MyUtil.removeBaseSystemAndVM(dbPluginMgr.getRuntimeEnvironments(jobDefID));
     // We skip the first one which is the OS
     for(int i=1; i<rtes.length; ++i){
       writeBlock(buf, "runtime environment: " + rtes[i], ScriptGenerator.TYPE_COMMENT, commentStart);
@@ -157,15 +157,19 @@ public class ForkScriptGenerator extends ScriptGenerator{
     String scriptSrc = dbPluginMgr.getTransformationScript(jobDefID);
     String scriptDest = MyUtil.clearFile(scriptSrc);
     scriptDest = scriptDest.replaceAll("\\\\", "/");
-    String scriptName = scriptDest.replaceFirst(".*(/[^/]+)", "$1");
-    scriptDest = workingDir + scriptName;
+    String scriptName = scriptDest.replaceFirst(".*/([^/]+)", "$1");
+    scriptDest = workingDir + "/" + scriptName;
     // Don't think we need this...
     /*if(MyUtil.onWindows()){
       line = line.replaceAll("/", "\\\\");
     }*/
     // Copy the script to the working directory
+    // If scriptSrc script is an unqualified file name, don't try to copy it over, just ignore and assume
+    // it's already on the worker node - and on the PATH.
+    boolean copyScript = MyUtil.urlIsRemote(scriptSrc) || MyUtil.isLocalFileName(scriptSrc);
     try{
-      if(!GridPilot.getClassMgr().getTransferControl().copyInputFile(scriptSrc, scriptDest, shellMgr, true, null)){
+      if( copyScript &&
+          !GridPilot.getClassMgr().getTransferControl().copyInputFile(scriptSrc, scriptDest, shellMgr, true, null)){
         throw new IOException("Copying transformation script to working dir failed.");
       }
     }
@@ -177,7 +181,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     // Running the transformation script with ./ instead of a full path is to allow this to 
     // be used by GridFactoryComputingSystem, where we don't have a shell on the worker node
     // and the full path is not known.
-    line = /*MyUtil.clearFile(scriptDest)*/ "./" + scriptName + " " + MyUtil.arrayToString(actualParam);
+    line = /*MyUtil.clearFile(scriptDest)*/ (copyScript?"./":"") + scriptName + " " + MyUtil.arrayToString(actualParam);
     writeLine(buf, line);
     writeLine(buf, "");
     

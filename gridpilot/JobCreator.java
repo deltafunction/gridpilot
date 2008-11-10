@@ -47,6 +47,13 @@ public class JobCreator{
   // Caches
   private HashMap datasetNameIds = new HashMap();
   private HashMap datasetIdFiles = new HashMap();
+  
+  private DBResult inputRecords = null;
+  private String [] inputIds = null;
+  
+  private static String EVENT_MIN = "eventMin";
+  private static String EVENT_MAX = "eventMax";
+  private static String N_EVENTS = "nEvents";
 
   public JobCreator(StatusBar _statusBar,
                     String _dbName,
@@ -229,6 +236,7 @@ public class JobCreator{
           evaluateAll(currentDataset, currentPartition,
               dbPluginMgr.getDatasetName(datasetIdentifiers[currentDataset]),
               dbPluginMgr.getRunNumber(datasetIdentifiers[currentDataset]),
+              // beamEnergy and beamParticle are optional, non-general attributes.
               (String) dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("beamEnergy"),
               (String) dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("beamParticle"),
               (String) dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("outputLocation"),
@@ -311,7 +319,6 @@ public class JobCreator{
 
         }
       }
-
 
       if(!skipAll){
         pb.setMaximum(pb.getMaximum()+partitionCount);
@@ -568,7 +575,7 @@ public class JobCreator{
     int res=ae.getValue();
     return res;
   }
-
+  
   /**
    * The first of the output file names of the transformation
    * used to produce a dataset.
@@ -582,24 +589,17 @@ public class JobCreator{
       int [][] eventSplits)throws ArithmeticException, SyntaxException,
       IOException{
     
-    String inputFiles = "";
     int evtMin = -1;
     int evtMax = -1;
-    int readEvtMin = -1;
-    int readEvtMax = -1;
     try{
       evtMin = eventSplits[currentPartition-1][0];
       evtMax = eventSplits[currentPartition-1][1];
     }
     catch(Exception e){
     }
-    String [] inputIds = new String [] {};
     String inputDB = null;
     String inputDataset = null;
     DBPluginMgr inputMgr = null;
-    String inputDatasetID = "-1";
-    DBResult inputRecords = null;
-    String inputFileName = null;
     boolean fileCatalogInput = false;
     // Construct input file names
     inputDB = (String) dbPluginMgr.getDataset(
@@ -611,176 +611,26 @@ public class JobCreator{
           datasetIdentifiers[currentDataset]).getValue("inputDataset");
     }
     if(inputDataset!=null && !inputDataset.equalsIgnoreCase("")){
-      if(inputMgr.isFileCatalog()){
-        try{
-          String inputDBFileIdentifierField = MyUtil.getIdentifierField(
-              inputMgr.getDBName(), "file");
-          if(inputDataset!=null && !inputDataset.equals("") &&
-              inputDB!=null && !inputDB.equals("")){
-            if(!datasetNameIds.containsKey(inputDataset)){
-              datasetNameIds.put(inputDataset, inputMgr.getDatasetID(inputDataset));
-            }
-            inputDatasetID = (String) datasetNameIds.get(inputDataset);
-            if(!datasetIdFiles.containsKey(inputDatasetID)){
-              datasetIdFiles.put(inputDatasetID, inputMgr.getFiles(inputDatasetID));
-            }
-            inputRecords = (DBResult) datasetIdFiles.get(inputDatasetID);
-            inputIds = new String[inputRecords.values.length];
-            for(int i=0; i<inputIds.length; ++i){
-              inputIds[i] = (String) inputRecords.getValue(i,
-                  inputDBFileIdentifierField);
-            }
-            Debug.debug("Input files for "+datasetIdentifiers[currentDataset]+
-                ":"+inputDataset+":"+inputDB+": "+MyUtil.arrayToString(inputIds), 3);
-          }
-        }
-        catch(Exception e){
-          Debug.debug("No input dataset for "+datasetIdentifiers[currentDataset], 2);
-          //e.printStackTrace();
-          //return;
-        }
-      }
-      if((inputRecords==null || inputRecords.values.length==0) && inputMgr.isJobRepository()){
-        try{
-          String inputDBJobDefIdentifierField = MyUtil.getIdentifierField(
-              inputMgr.getDBName(), "jobDefinition");
-          if(inputDataset!=null && !inputDataset.equals("") &&
-              inputDB!=null && !inputDB.equals("")){
-            if(!datasetNameIds.containsKey(inputDataset)){
-              datasetNameIds.put(inputDataset, inputMgr.getDatasetID(inputDataset));
-            }
-            inputDatasetID = (String) datasetNameIds.get(inputDataset);
-            inputRecords = inputMgr.getJobDefinitions(inputDatasetID, 
-                    new String [] {inputDBJobDefIdentifierField, "eventMin", "eventMax"},
-                    null, null);
-            inputIds = new String[inputRecords.values.length];
-            for(int i=0; i<inputIds.length; ++i){
-              inputIds[i] = (String) inputRecords.getValue(i,
-                  inputDBJobDefIdentifierField);
-            }
-            Debug.debug("Input job definitions for "+datasetIdentifiers[currentDataset]+
-                ":"+inputDataset+":"+inputDB+": "+MyUtil.arrayToString(inputIds), 3);
-          }
-        }
-        catch(Exception e){
-          Debug.debug("No input dataset for "+datasetIdentifiers[currentDataset], 2);
-          //e.printStackTrace();
-          //return;
-        }
-      }
-      else{
-        fileCatalogInput = true;
-      }
-      if(inputRecords==null || inputRecords.values.length==0){
-        throw new IOException ("Could not get input files, cannot proceed.");
-      }
+      fileCatalogInput = evaluateAllWithInput(currentDataset, inputMgr, inputDataset, inputDB);
     }
     boolean eventsPresent = true;
-    if(inputIds.length>0){
-      // just a quick check to avoid exceptions
-      if(inputRecords.getValue(0, "eventMin")==null ||
-          inputRecords.getValue(0, "eventMax")==null ||
-          inputRecords.getValue(0, "eventMin").equals("") ||
-          inputRecords.getValue(0, "eventMax").equals("") ||
-          inputRecords.getValue(0, "eventMin").equals("''") ||
-          inputRecords.getValue(0, "eventMax").equals("''") ||
-          inputRecords.getValue(0, "eventMin").equals("no such field") ||
-          inputRecords.getValue(0, "eventMax").equals("no such field")){
-        eventsPresent = false;
-        Debug.debug("No event information in dataset "+datasetIdentifiers[currentDataset], 2);
-      }
-      if(eventsPresent){
-        boolean inputFileFound = false;
-        for(int j=0; j<inputIds.length; ++j){
-          if(Integer.parseInt((String) inputRecords.getValue(
-              j, "eventMin"))==evtMin &&
-          Integer.parseInt((String) inputRecords.getValue(
-                  j, "eventMax"))==evtMax){
-            //inputJobDefOutputFileName = getTransOutFileName(inputDB, datasetIdentifiers[currentDataset]);
-            inputFileName = inputMgr.getOutputFiles(inputIds[j])[0];
-            inputFiles += inputMgr.getJobDefOutRemoteName(inputIds[j], inputFileName);
-            Debug.debug("Adding input file "+inputIds[j]+"-->"+inputFiles, 3);
-            inputFileFound = true;
-            break;
-          }
-        }
-        if(!inputFileFound){
-          for(int j=0; j<inputIds.length; ++j){
-            readEvtMin = Integer.parseInt((String) inputRecords.getValue(
-                j, "eventMin"));
-            readEvtMax = Integer.parseInt((String) inputRecords.getValue(
-                j, "eventMax"));
-            Debug.debug("Range of events: "+evtMin+"-->"+evtMax, 2);
-            Debug.debug("Range of input events: "+readEvtMin+"-->"+readEvtMax, 2);
-            
-            if(readEvtMin!=-1 && readEvtMax!=-1 && (
-                          // This should catch all cases where event in input files are
-                          // partitioned differently from input events (events in output files).
-                          // TODO:  needs to be checked!
-                  readEvtMax-readEvtMin>evtMax-evtMin &&
-               (evtMin>=readEvtMin &&
-                evtMin<=readEvtMax ||
-                
-                evtMin<=readEvtMin &&
-                evtMax>=readEvtMax ||
-                    
-                evtMax>=readEvtMin &&
-                evtMax<=readEvtMax) ||
-
-                readEvtMax-readEvtMin<evtMax-evtMin &&
-                (readEvtMin>=evtMin &&
-                 readEvtMin<=evtMax ||
-                 
-                 readEvtMin<=evtMin &&
-                 readEvtMax>=evtMax ||
-                     
-                 readEvtMax>=evtMin &&
-                 readEvtMax<=evtMax))){
-              if(j>0){
-                inputFiles += " ";
-              }
-              inputFiles += inputMgr.getJobDefOutRemoteName(
-                  inputIds[j], inputFileName);
-              Debug.debug("Adding input file "+inputIds[j]+
-                      "-->"+inputFiles, 3);
-            }
-          }
-        }
-      }
-      else{
-        // just assume one-to-one input to output files
-        if(fileCatalogInput){
-          Debug.debug("Using input file from file catalog", 2);
-          // The logical file name - we don't use it: I don't see the point
-          // of giving lfc://some/path/some/file.root or mysql://somedb/file.root
-          // to the CE, when we can check file availability right here.
-          /*inputFileName = (String) inputMgr.getFile(datasetIdentifiers[currentDataset],
-              inputIds[currentPartition-1]).getValue("lfn");*/
-          // Use the first pfn returned.
-          // Notice: if "find all PFNs" is checked all PFNs will be looked up,
-          // slowing down job creation enormeously, and still only the first will be used.
-          // So, it should NOT be checked.
-          String inputFils = (String) inputMgr.getFile(inputDataset,
-              inputIds[currentPartition-1], 1).getValue("pfns");
-          String [] inputFilArr = null;
-          try{
-            inputFilArr = MyUtil.splitUrls(inputFils);
-          }
-          catch(Exception e){
-            Debug.debug("WARNING: could not split as URLs, trying normal split", 1);
-            e.printStackTrace();
-            inputFilArr = MyUtil.split(inputFils);
-          }
-          inputFiles = inputFilArr[0];
-        }
-        else{
-          inputFileName = inputMgr.getOutputFiles(
-              inputIds[currentPartition-1])[0];
-          inputFiles = inputMgr.getJobDefOutRemoteName(
-              inputIds[currentPartition-1], inputFileName);
-        }
-        Debug.debug("--->"+inputFiles, 2);
-      }
+    // just a quick check to avoid exceptions
+    if(inputRecords!=null &&(
+        inputRecords.getValue(0, EVENT_MIN)==null ||
+        inputRecords.getValue(0, EVENT_MAX)==null ||
+        inputRecords.getValue(0, EVENT_MIN).equals("") ||
+        inputRecords.getValue(0, EVENT_MAX).equals("") ||
+        inputRecords.getValue(0, EVENT_MIN).equals("''") ||
+        inputRecords.getValue(0, EVENT_MAX).equals("''") ||
+        inputRecords.getValue(0, EVENT_MIN).equals("no such field") ||
+        inputRecords.getValue(0, EVENT_MAX).equals("no such field"))){
+      eventsPresent = false;
+      Debug.debug("No event information in dataset "+datasetIdentifiers[currentDataset], 2);
+    }
+    String inputFiles = "";
+    if(inputIds!=null && inputIds.length>0){
+      inputFiles = findInputFiles(evtMin, evtMax, currentDataset, currentPartition,
+          inputMgr, inputDataset, fileCatalogInput, eventsPresent);
     }
     // construct the (short) file names for the job script arguments
     String inputs = "";
@@ -809,88 +659,221 @@ public class JobCreator{
     }
     
     // jobDefinition fields
+    ArrayList jobattributenames = fillInResCstAttr(eventSplits, currentPartition, name, number,
+        energy, particle, outputDest, evtMin, evtMax, inputFiles);
     
-    // Add eventMin, eventMax and inputFileURLs if they are
-    // present in the fields of jobDefinition, but not in the fixed
-    // attributes.
-    String [] jobDefFields = dbPluginMgr.getFieldNames("jobDefinition");
-    for(int i=0; i<jobDefFields.length; ++i){
-      jobDefFields[i] = jobDefFields[i].toLowerCase();
-    }
-    ArrayList jobdefinitionFields = new ArrayList(Arrays.asList(jobDefFields));    
-    ArrayList jobattributenames = new ArrayList(Arrays.asList(cstAttrNames));
-    ArrayList jobAttributeNames = new ArrayList(Arrays.asList(cstAttrNames));
-    ArrayList jobAttributes = new ArrayList(Arrays.asList(cstAttr));
-    for(int i=0; i<jobattributenames.size(); ++i){
-      jobattributenames.set(i, jobattributenames.get(i).toString().toLowerCase());
-    }
-    if(!jobattributenames.contains("eventmin") &&
-        jobdefinitionFields.contains("eventmin")){
-      jobAttributeNames.add("eventMin");
-      jobAttributes.add("0");
-    }
-    if(!jobattributenames.contains("eventmax") &&
-        jobdefinitionFields.contains("eventmax")){
-      jobAttributeNames.add("eventMax");
-      jobAttributes.add("0");
-    }
-    if(!jobattributenames.contains("nevents") &&
-        jobdefinitionFields.contains("nevents")){
-      jobAttributeNames.add("nEvents");
-      jobAttributes.add("0");
-    }
-    if(!jobattributenames.contains("inputFileURLs") &&
-        jobdefinitionFields.contains("inputFileURLs")){
-      jobAttributeNames.add("inputFileURLs");
-      jobAttributes.add("");
-    }
-    cstAttrNames = new String [jobAttributeNames.size()];
-    for(int i=0; i<jobAttributeNames.size(); ++i){
-      cstAttrNames[i] = jobAttributeNames.get(i).toString();
-    }
-    cstAttr = new String [jobAttributes.size()];
-    for(int i=0; i<jobAttributes.size(); ++i){
-      Debug.debug("Setting attribute "+jobAttributes.get(i), 3);
-      if(jobAttributes.get(i)!=null){
-        cstAttr[i] = jobAttributes.get(i).toString();
-      }
-    }
-    resCstAttr = new String[cstAttr.length];
-    for(int i=0; i<resCstAttr.length; ++i){
-      Debug.debug("parameter #"+i+":"+resCstAttr.length+":"+cstAttrNames[i], 3);
-      Debug.debug("eventSplits: "+(eventSplits==null?-1:eventSplits.length), 3);
-      if(cstAttrNames[i].equalsIgnoreCase("eventMin") &&
-          eventSplits!=null && eventSplits.length>1){
-        Debug.debug("setting event minimum", 3);
-        resCstAttr[i] = Integer.toString(evtMin);
-      }
-      else if(cstAttrNames[i].equalsIgnoreCase("eventMax") &&
-          eventSplits!=null && eventSplits.length>1){
-        Debug.debug("setting event maximum", 3);
-        resCstAttr[i] = Integer.toString(evtMax);
-      }
-      else if(cstAttrNames[i].equalsIgnoreCase("nevents") &&
-          eventSplits!=null && eventSplits.length>1){
-        Debug.debug("setting event number", 3);
-        resCstAttr[i] = Integer.toString(evtMax-evtMin+1);
-      }
-      else if(cstAttrNames[i].equalsIgnoreCase("inputFileURLs")){
-        if(eventSplits!=null && eventSplits.length>1){
-          resCstAttr[i] = inputFiles;
-        }
-        else{
-          resCstAttr[i] = inputFiles;
-        }
-        // all files from input dataset containing the needed events
-        Debug.debug("setting input files "+inputFiles, 3);
+    // Job parameters
+    fillInJobParams(currentDataset, currentPartition, eventSplits, evtMin, evtMax, name, number,
+        energy, particle, outputDest, jobattributenames, inputs);
+
+    // if the destination is left empty on the creation panel and
+    // we are using input files from a file catalog, name the output file
+    // by simply appending ".out" to the input file name
+    Debug.debug("Filling in outputs", 3);
+    if(fileCatalogInput && !eventsPresent && outMap.length==1 &&
+        (outMap[0][1]==null || outMap[0][1].equals("")) && inputs!=null &&
+        MyUtil.split(inputs).length==1){
+      String ifn = inputs;
+      String [] fullNameStrings = MyUtil.split(ifn, "\\.");
+      if(fullNameStrings.length>0){
+        String extension = "."+fullNameStrings[fullNameStrings.length-1];
+        resOutMap[0][1] = evaluate("$o/"+ifn.replaceFirst(extension, ".out"+extension),
+            currentPartition, name, number, energy, particle, outputDest);
       }
       else{
-        resCstAttr[i] = evaluate(cstAttr[i], currentPartition, name, number,
+        resOutMap[0][1] = evaluate("$o/"+ifn+".out",
+            currentPartition, name, number, energy, particle, outputDest);
+      }
+      resOutMap[0][0] = evaluate(outMap[0][0], currentPartition, name, number,
+          energy, particle, outputDest);
+    }
+    else{
+      for(int i=0; i<resOutMap.length; ++i){
+        Debug.debug("param #"+i, 3);
+        resOutMap[i][0] = evaluate(outMap[i][0], currentPartition, name, number,
+            energy, particle, outputDest);
+        resOutMap[i][1] = evaluate(outMap[i][1], currentPartition, name, number,
             energy, particle, outputDest);
       }
     }
-    
-    // Job parameters
+    for(int i=0; i<resStdOut.length; ++i){
+      Debug.debug("param #"+i, 3);
+      resStdOut[i] = evaluate(stdOut[i], currentPartition, name, number,
+          energy, particle, outputDest);
+    }
+  }
+
+  private boolean evaluateAllWithInput(int currentDataset, DBPluginMgr inputMgr, String inputDataset,
+      String inputDB) throws IOException{
+    boolean fileCatalogInput = false;
+    String inputDatasetID = "-1";
+    inputIds = new String [] {};
+    if(inputMgr.isFileCatalog()){
+      try{
+        String inputDBFileIdentifierField = MyUtil.getIdentifierField(
+            inputMgr.getDBName(), "file");
+        if(inputDataset!=null && !inputDataset.equals("") &&
+            inputDB!=null && !inputDB.equals("")){
+          if(!datasetNameIds.containsKey(inputDataset)){
+            datasetNameIds.put(inputDataset, inputMgr.getDatasetID(inputDataset));
+          }
+          inputDatasetID = (String) datasetNameIds.get(inputDataset);
+          if(!datasetIdFiles.containsKey(inputDatasetID)){
+            datasetIdFiles.put(inputDatasetID, inputMgr.getFiles(inputDatasetID));
+          }
+          inputRecords = (DBResult) datasetIdFiles.get(inputDatasetID);
+          inputIds = new String[inputRecords.values.length];
+          for(int i=0; i<inputIds.length; ++i){
+            inputIds[i] = (String) inputRecords.getValue(i,
+                inputDBFileIdentifierField);
+          }
+          Debug.debug("Input files for "+datasetIdentifiers[currentDataset]+
+              ":"+inputDataset+":"+inputDB+": "+MyUtil.arrayToString(inputIds), 3);
+        }
+      }
+      catch(Exception e){
+        Debug.debug("No input dataset for "+datasetIdentifiers[currentDataset], 2);
+        //e.printStackTrace();
+        //return;
+      }
+    }
+    if((inputRecords==null || inputRecords.values.length==0) && inputMgr.isJobRepository()){
+      try{
+        String inputDBJobDefIdentifierField = MyUtil.getIdentifierField(
+            inputMgr.getDBName(), "jobDefinition");
+        if(inputDataset!=null && !inputDataset.equals("") &&
+            inputDB!=null && !inputDB.equals("")){
+          if(!datasetNameIds.containsKey(inputDataset)){
+            datasetNameIds.put(inputDataset, inputMgr.getDatasetID(inputDataset));
+          }
+          inputDatasetID = (String) datasetNameIds.get(inputDataset);
+          inputRecords = inputMgr.getJobDefinitions(inputDatasetID, 
+                  new String [] {inputDBJobDefIdentifierField, EVENT_MIN, EVENT_MAX},
+                  null, null);
+          inputIds = new String[inputRecords.values.length];
+          for(int i=0; i<inputIds.length; ++i){
+            inputIds[i] = (String) inputRecords.getValue(i, inputDBJobDefIdentifierField);
+          }
+          Debug.debug("Input job definitions for "+datasetIdentifiers[currentDataset]+
+              ":"+inputDataset+":"+inputDB+": "+MyUtil.arrayToString(inputIds), 3);
+        }
+      }
+      catch(Exception e){
+        Debug.debug("No input dataset for "+datasetIdentifiers[currentDataset], 2);
+        //e.printStackTrace();
+        //return;
+      }
+    }
+    else{
+      fileCatalogInput = true;
+    }
+    if(inputRecords==null || inputRecords.values.length==0){
+      throw new IOException ("Could not get input files, cannot proceed.");
+    }
+    return fileCatalogInput;
+  }
+
+  private String findInputFiles(int evtMin, int evtMax, int currentDataset, int currentPartition,
+      DBPluginMgr inputMgr, String inputDataset, boolean fileCatalogInput, boolean eventsPresent) {
+    String inputFiles = "";
+    String inputFileName = null;
+    int readEvtMin = -1;
+    int readEvtMax = -1;
+    if(eventsPresent){
+      boolean inputFileFound = false;
+      for(int j=0; j<inputIds.length; ++j){
+        if(Integer.parseInt((String) inputRecords.getValue(j, EVENT_MIN))==evtMin &&
+           Integer.parseInt((String) inputRecords.getValue(j, EVENT_MAX))==evtMax){
+          //inputJobDefOutputFileName = getTransOutFileName(inputDB, datasetIdentifiers[currentDataset]);
+          inputFileName = inputMgr.getOutputFiles(inputIds[j])[0];
+          inputFiles += inputMgr.getJobDefOutRemoteName(inputIds[j], inputFileName);
+          Debug.debug("Adding input file "+inputIds[j]+"-->"+inputFiles, 3);
+          inputFileFound = true;
+          break;
+        }
+      }
+      if(!inputFileFound){
+        for(int j=0; j<inputIds.length; ++j){
+          readEvtMin = Integer.parseInt((String) inputRecords.getValue(j, EVENT_MIN));
+          readEvtMax = Integer.parseInt((String) inputRecords.getValue(j, EVENT_MAX));
+          Debug.debug("Range of events: "+evtMin+"-->"+evtMax, 2);
+          Debug.debug("Range of input events: "+readEvtMin+"-->"+readEvtMax, 2);
+          
+          if(readEvtMin!=-1 && readEvtMax!=-1 && (
+                        // This should catch all cases where event in input files are
+                        // partitioned differently from input events (events in output files).
+                        // TODO:  needs to be checked!
+                readEvtMax-readEvtMin>evtMax-evtMin &&
+             (evtMin>=readEvtMin &&
+              evtMin<=readEvtMax ||
+              
+              evtMin<=readEvtMin &&
+              evtMax>=readEvtMax ||
+                  
+              evtMax>=readEvtMin &&
+              evtMax<=readEvtMax) ||
+
+              readEvtMax-readEvtMin<evtMax-evtMin &&
+              (readEvtMin>=evtMin &&
+               readEvtMin<=evtMax ||
+               
+               readEvtMin<=evtMin &&
+               readEvtMax>=evtMax ||
+                   
+               readEvtMax>=evtMin &&
+               readEvtMax<=evtMax))){
+            if(j>0){
+              inputFiles += " ";
+            }
+            inputFiles += inputMgr.getJobDefOutRemoteName(
+                inputIds[j], inputFileName);
+            Debug.debug("Adding input file "+inputIds[j]+
+                    "-->"+inputFiles, 3);
+          }
+        }
+      }
+    }
+    else{
+      // just assume one-to-one input to output files
+      if(fileCatalogInput){
+        Debug.debug("Using input file from file catalog", 2);
+        // The logical file name - we don't use it: I don't see the point
+        // of giving lfc://some/path/some/file.root or mysql://somedb/file.root
+        // to the CE, when we can check file availability right here.
+        /*inputFileName = (String) inputMgr.getFile(datasetIdentifiers[currentDataset],
+            inputIds[currentPartition-1]).getValue("lfn");*/
+        // Use the first pfn returned.
+        // Notice: if "find all PFNs" is checked all PFNs will be looked up,
+        // slowing down job creation enormeously, and still only the first will be used.
+        // So, it should NOT be checked.
+        String inputFils = (String) inputMgr.getFile(inputDataset,
+            inputIds[currentPartition-1], 1).getValue("pfns");
+        String [] inputFilArr = null;
+        try{
+          inputFilArr = MyUtil.splitUrls(inputFils);
+        }
+        catch(Exception e){
+          Debug.debug("WARNING: could not split as URLs, trying normal split", 1);
+          e.printStackTrace();
+          inputFilArr = MyUtil.split(inputFils);
+        }
+        inputFiles = inputFilArr[0];
+      }
+      else{
+        inputFileName = inputMgr.getOutputFiles(
+            inputIds[currentPartition-1])[0];
+        inputFiles = inputMgr.getJobDefOutRemoteName(
+            inputIds[currentPartition-1], inputFileName);
+      }
+      Debug.debug("--->"+inputFiles, 2);
+    }
+    return inputFiles;
+  }
+
+  private void fillInJobParams(int currentDataset, int currentPartition,
+      int [][] eventSplits, int evtMin, int evtMax, String name, String number,
+      String energy, String particle, String outputDest, ArrayList jobattributenames,
+      String inputs) throws ArithmeticException, SyntaxException {
     Debug.debug("Filling in job parameters", 3);
     // metadata information from the metadata field of the dataset
     String metaDataString = (String) dbPluginMgr.getDataset(
@@ -901,12 +884,17 @@ public class JobCreator{
           metaData.containsKey(jobParamNames[i].toLowerCase())+ " : "+
           MyUtil.arrayToString(metaData.keySet().toArray()), 3);
       if((jobParam[i]==null || jobParam[i].equals("")) &&
-          (jobParamNames[i].equalsIgnoreCase("eventMin")) &&
+          (jobParamNames[i].equalsIgnoreCase(EVENT_MIN)) &&
           eventSplits!=null && eventSplits.length>1){
         resJobParam[i] = Integer.toString(evtMin);
       }
       else if((jobParam[i]==null || jobParam[i].equals("")) &&
-          (jobParamNames[i].equalsIgnoreCase("nEvents")) &&
+          (jobParamNames[i].equalsIgnoreCase(EVENT_MAX)) &&
+          eventSplits!=null && eventSplits.length>1){
+        resJobParam[i] = Integer.toString(evtMax);
+      }
+      else if((jobParam[i]==null || jobParam[i].equals("")) &&
+          (jobParamNames[i].equalsIgnoreCase(N_EVENTS)) &&
           eventSplits!=null && eventSplits.length>1){
         resJobParam[i] = Integer.toString(evtMax-evtMin+1);
       }
@@ -944,41 +932,91 @@ public class JobCreator{
             energy, particle, outputDest);
       }
     }
-    // if the destination is left empty on the creation panel and
-    // we are using input files from a file catalog, name the output file
-    // by simply appending ".out" to the input file name
-    Debug.debug("Filling in outputs", 3);
-    if(fileCatalogInput && !eventsPresent && outMap.length==1 &&
-        (outMap[0][1]==null || outMap[0][1].equals("")) && inputs!=null &&
-        MyUtil.split(inputs).length==1){
-      String ifn = inputs;
-      String [] fullNameStrings = MyUtil.split(ifn, "\\.");
-      if(fullNameStrings.length>0){
-        String extension = "."+fullNameStrings[fullNameStrings.length-1];
-        resOutMap[0][1] = evaluate("$o/"+ifn.replaceFirst(extension, ".out"+extension),
-            currentPartition, name, number, energy, particle, outputDest);
+  }
+
+  private ArrayList fillInResCstAttr(int [][] eventSplits, int currentPartition, String name, String number,
+     String energy, String particle, String outputDest, int evtMin, int evtMax, String inputFiles)
+     throws ArithmeticException, SyntaxException {
+    // Add eventMin, eventMax and inputFileURLs if they are
+    // present in the fields of jobDefinition, but not in the fixed
+    // attributes.
+    String [] jobDefFields = dbPluginMgr.getFieldNames("jobDefinition");
+    for(int i=0; i<jobDefFields.length; ++i){
+      jobDefFields[i] = jobDefFields[i].toLowerCase();
+    }
+    ArrayList jobdefinitionFields = new ArrayList(Arrays.asList(jobDefFields));    
+    ArrayList jobattributenames = new ArrayList(Arrays.asList(cstAttrNames));
+    ArrayList jobAttributeNames = new ArrayList(Arrays.asList(cstAttrNames));
+    ArrayList jobAttributes = new ArrayList(Arrays.asList(cstAttr));
+    for(int i=0; i<jobattributenames.size(); ++i){
+      jobattributenames.set(i, jobattributenames.get(i).toString().toLowerCase());
+    }
+    if(!jobattributenames.contains(EVENT_MIN) &&
+        jobdefinitionFields.contains(EVENT_MIN)){
+      jobAttributeNames.add(EVENT_MIN);
+      jobAttributes.add("0");
+    }
+    if(!jobattributenames.contains(EVENT_MAX) &&
+        jobdefinitionFields.contains(EVENT_MAX)){
+      jobAttributeNames.add(EVENT_MAX);
+      jobAttributes.add("0");
+    }
+    if(!jobattributenames.contains(N_EVENTS) &&
+        jobdefinitionFields.contains(N_EVENTS)){
+      jobAttributeNames.add(N_EVENTS);
+      jobAttributes.add("0");
+    }
+    if(!jobattributenames.contains("inputFileURLs") &&
+        jobdefinitionFields.contains("inputFileURLs")){
+      jobAttributeNames.add("inputFileURLs");
+      jobAttributes.add("");
+    }
+    cstAttrNames = new String [jobAttributeNames.size()];
+    for(int i=0; i<jobAttributeNames.size(); ++i){
+      cstAttrNames[i] = jobAttributeNames.get(i).toString();
+    }
+    cstAttr = new String [jobAttributes.size()];
+    for(int i=0; i<jobAttributes.size(); ++i){
+      Debug.debug("Setting attribute "+jobAttributes.get(i), 3);
+      if(jobAttributes.get(i)!=null){
+        cstAttr[i] = jobAttributes.get(i).toString();
+      }
+    }
+    resCstAttr = new String[cstAttr.length];
+    for(int i=0; i<resCstAttr.length; ++i){
+      Debug.debug("parameter #"+i+":"+resCstAttr.length+":"+cstAttrNames[i], 3);
+      Debug.debug("eventSplits: "+(eventSplits==null?-1:eventSplits.length), 3);
+      if(cstAttrNames[i].equalsIgnoreCase(EVENT_MIN) &&
+          eventSplits!=null && eventSplits.length>1){
+        Debug.debug("setting evtMin to "+evtMin, 3);
+        resCstAttr[i] = Integer.toString(evtMin);
+      }
+      else if(cstAttrNames[i].equalsIgnoreCase(EVENT_MAX) &&
+          eventSplits!=null && eventSplits.length>1){
+        Debug.debug("setting eventMax to "+evtMax, 3);
+        resCstAttr[i] = Integer.toString(evtMax);
+      }
+      else if(cstAttrNames[i].equalsIgnoreCase(N_EVENTS) &&
+          eventSplits!=null && eventSplits.length>1){
+        Debug.debug("setting event number", 3);
+        resCstAttr[i] = Integer.toString(evtMax-evtMin+1);
+      }
+      else if(cstAttrNames[i].equalsIgnoreCase("inputFileURLs")){
+        if(eventSplits!=null && eventSplits.length>1){
+          resCstAttr[i] = inputFiles;
+        }
+        else{
+          resCstAttr[i] = inputFiles;
+        }
+        // all files from input dataset containing the needed events
+        Debug.debug("setting input files "+inputFiles, 3);
       }
       else{
-        resOutMap[0][1] = evaluate("$o/"+ifn+".out",
-            currentPartition, name, number, energy, particle, outputDest);
-      }
-      resOutMap[0][0] = evaluate(outMap[0][0], currentPartition, name, number,
-          energy, particle, outputDest);
-    }
-    else{
-      for(int i=0; i<resOutMap.length; ++i){
-        Debug.debug("param #"+i, 3);
-        resOutMap[i][0] = evaluate(outMap[i][0], currentPartition, name, number,
-            energy, particle, outputDest);
-        resOutMap[i][1] = evaluate(outMap[i][1], currentPartition, name, number,
+        resCstAttr[i] = evaluate(cstAttr[i], currentPartition, name, number,
             energy, particle, outputDest);
       }
     }
-    for(int i=0; i<resStdOut.length; ++i){
-      Debug.debug("param #"+i, 3);
-      resStdOut[i] = evaluate(stdOut[i], currentPartition, name, number,
-          energy, particle, outputDest);
-    }
+    return jobattributenames;
   }
 
   /**

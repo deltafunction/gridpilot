@@ -46,7 +46,7 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     // Just some reasonable number
     defaultJobMB = 256;
     // Just some reasonable number (seconds)
-    int bootTimeout = 120;
+    int bootTimeout = 240;
     defaultVmMB = minVmMB+defaultJobMB;
     // No need to run more than one VM - this CS is just for testing a single job before running it on GridFactory.
     maxMachines = 1;
@@ -161,7 +161,11 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     job.setInputFileUrls(inputFiles);
     job.setOutputFileDestinations(outputDestinations);
     job.setOutputFileNames(outputFileNames);
-    job.setRTEs(MyUtil.removeMyOS(rtes));
+    
+    // TODO: if an RTE is a VM, set is as opSys instead.
+    
+    job.setRTEs(MyUtil.removeBaseSystemAndVM(rtes));
+    setBaseSystemName(rtes, job);
     job.setMemory(defaultJobMB);
     
     if(!pullMgr.checkRequirements(job, virtEnforce)){
@@ -190,6 +194,15 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
 
     return ok;
     
+  }
+  
+  private void setBaseSystemName(String [] rtes, JobInfo job){
+    for(int i=0; i<rtes.length; ++i){
+      if(!rtes[i].startsWith("VM/")){
+        job.setOpSys(rtes[i]);
+        job.setOpSysRTE(rtes[i]);
+      }
+    }
   }
 
   private void includeManuallyBootedVMs() {

@@ -13,6 +13,7 @@ import gridfactory.common.TransferStatusUpdateControl;
 import gridfactory.common.Util;
 import gridfactory.common.jobrun.RTEInstaller;
 import gridfactory.common.jobrun.RTEMgr;
+import gridfactory.common.jobrun.RTECatalog.TarPackage;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -584,7 +585,7 @@ public class MyUtil extends gridfactory.common.Util{
     }
     
     String msg = "No response from " + name + " for " + fct + "\n"+
-                 "Do you want to interrupt it ?";
+                 "Do you want to interrupt it?";
     int choice = -1;
     
     final JCheckBox cbRemember = new JCheckBox("Remember decision", true);
@@ -592,7 +593,7 @@ public class MyUtil extends gridfactory.common.Util{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     try{
       choice = confirmBox.getConfirm("No response from plugin",
-          msg, new Object[] {"OK", "Cancel", cbRemember});
+          msg, new Object[] {"Yes, interrupt", "No, let it run", cbRemember});
     }
     catch(Exception e){
       e.printStackTrace();
@@ -1512,24 +1513,14 @@ public class MyUtil extends gridfactory.common.Util{
     }
   }
   
-  public static String [] removeMyOS(String [] rtes){
-    String myOS = LocalStaticShell.getOS();
-    String [] newRTEs;
-    if(MyUtil.arrayContainsIgnoreCase(rtes, myOS)){
-      newRTEs = new String[rtes.length-1];
-      int j = 0;
-      for(int i=0; i<rtes.length; ++i){
-        if(!rtes[i].equalsIgnoreCase(myOS)){
-          newRTEs[j] = rtes[i];
-          ++j;
-        }
+  public static String [] removeBaseSystemAndVM(String [] rtes){
+    Vector<String> newRTEs = new Vector<String>();
+    for(int i=0; i<rtes.length; ++i){
+      if(!checkOS(rtes[i]) && !rtes[i].startsWith("VM/")){
+        newRTEs.add(rtes[i]);
       }
-      rtes = newRTEs;
     }
-    else{
-      newRTEs = rtes;
-    }
-    return newRTEs;
+    return newRTEs.toArray(new String [newRTEs.size()]);
   }
 
   public static void setupJobRTEs(JobInfo job, Shell shell, RTEMgr rteMgr, TransferStatusUpdateControl transferStatusUpdateControl,
@@ -1539,8 +1530,7 @@ public class MyUtil extends gridfactory.common.Util{
     Collections.addAll(rtes, rteNames);
     Vector<String> deps = rteMgr.getRteDepends(rtes, job.getOpSys());
     RTEInstaller rteInstaller = null;
-    String url = null;
-    String mountPoint = null;
+    TarPackage tp = null;
     String name = null;
     String os = null;
     boolean osEntry = true;
@@ -1563,9 +1553,8 @@ public class MyUtil extends gridfactory.common.Util{
         GridPilot.getClassMgr().getLogFile().addInfo("Reusing existing installation of "+name);
         return;
       }
-      url = rteMgr.getRteURL(name, os);
-      mountPoint = rteMgr.getRteMountPoint(name, os);
-      rteInstaller = new RTEInstaller(url, remoteRteDir, localRteDir, mountPoint, name, shell,
+      tp = rteMgr.getRteTarPackage(name, os);
+      rteInstaller = new RTEInstaller(tp, remoteRteDir, localRteDir, name, shell,
           transferStatusUpdateControl, GridPilot.getClassMgr().getLogFile());
       rteInstaller.install();
     }
@@ -1657,5 +1646,11 @@ public class MyUtil extends gridfactory.common.Util{
     return new String [] {protocol, requestType, requestId, statusIndex, srcTurl, destTurl, srmSurl, shortID};
   }
 
-
+  public static boolean isLocalFileName(String src){
+    if(/*Linux local file*/(src.matches("^file:~[^:]*") || src.matches("^file:/[^:]*") || src.startsWith("/") || src.startsWith("~")) ||
+        /*Windows local file*/(src.matches("\\w:.*") || src.matches("^file:/*\\w:.*"))){
+      return true;
+    }
+    return false;
+  }
 }
