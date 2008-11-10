@@ -224,13 +224,13 @@ public class ForkScriptGenerator extends ScriptGenerator{
         }
         shellMgr.exec("chmod +x "+MyUtil.clearFile(scriptDest), stdout, stderr);
         if(stderr!=null && stderr.length()!=0){
-          logFile.addMessage("Could not set transformation executable. "+stderr);
+          Debug.debug("Could not set transformation executable. "+stderr, 2);
           throw new FileNotFoundException(stderr.toString());
         }
       }
       catch(Exception e){
-        Debug.debug("Warning: NOT setting files executable. " +
-            "Probably not on UNIX. "+e.getMessage(), 2);
+        logFile.addInfo("Warning: NOT setting files executable. " +
+            "Probably not on UNIX. "+e.getMessage());
       }
     }
     catch(FileNotFoundException fnfe){
