@@ -1971,7 +1971,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(url==null){
       return;
     }
-    String msg = "Are you sure you want to delete the file "+url+"?";
+    String msg = "Are you sure you want to delete "+url+"?";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     try{
       int choice = confirmBox.getConfirm("Confirm delete",
@@ -2023,7 +2023,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     catch(Exception e){
       Debug.debug("ERROR: could not delete "+url+". "+e.getMessage(), 1);
       e.printStackTrace();
-      ep.setText("ERROR!\n\nThe file "+url+" could not be deleted.\n\n"+
+      ep.setText("ERROR: "+url+" could not be deleted.\n\n"+
           //"If it is a directory, delete all files within first.\n\n"+
           e.getMessage());
       statusBar.setLabel("ERROR: The file "+url+" could not be deleted.");

@@ -9,6 +9,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -88,8 +89,8 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   // Map of listener objctes. One object for each batch of transfers:
   // {id1, id2, id3, ...} -> s3ServiceEventListener, i.e. the keys are arrays of ids
   private HashMap s3ServiceEventListeners = null;
-  private HashMap myBuckets = null;
-  private S3Object[] existingObjects = new S3Object [] {};
+  private HashMap<String, S3Bucket> myBuckets = null;
+  private S3Object[] s3Objects = new S3Object [] {};
   private String accessKey = null;
   // Use to keep track of single-threaded transfers
   private HashSet fileTransfers = null;
@@ -110,25 +111,25 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     PLUGIN_NAME = "sss";
     logFile = GridPilot.getClassMgr().getLogFile();
     fileTransfers = new HashSet();
-    myBuckets = new HashMap();
+    myBuckets = new HashMap<String, S3Bucket>();
     s3ServiceEventListeners = new HashMap();
-    accessKey = GridPilot.getClassMgr().getConfigFile().getValue("SSS",
+    accessKey = GridPilot.getClassMgr().getConfigFile().getValue(PLUGIN_NAME,
        "AWS access key id");
-    String secretKey = GridPilot.getClassMgr().getConfigFile().getValue("SSS",
+    String secretKey = GridPilot.getClassMgr().getConfigFile().getValue(PLUGIN_NAME,
        "AWS secret access key");
-    String readableStr = GridPilot.getClassMgr().getConfigFile().getValue("SSS",
+    String readableStr = GridPilot.getClassMgr().getConfigFile().getValue(PLUGIN_NAME,
        "World readable files");
     filesWorldReadable = readableStr!=null &&
        (readableStr.equalsIgnoreCase("yes") || readableStr.equalsIgnoreCase("true"));
-    String s3foxMode = GridPilot.getClassMgr().getConfigFile().getValue("SSS",
+    String s3foxMode = GridPilot.getClassMgr().getConfigFile().getValue(PLUGIN_NAME,
        "S3fox directory mode");
     S3FOX_DIRECTORY_MODE = s3foxMode!=null &&
        (s3foxMode.equalsIgnoreCase("yes") || s3foxMode.equalsIgnoreCase("true"));
-    String compressUploadsStr = GridPilot.getClassMgr().getConfigFile().getValue("SSS",
+    String compressUploadsStr = GridPilot.getClassMgr().getConfigFile().getValue(PLUGIN_NAME,
        "Compress uploads");
     compressUploads = compressUploadsStr!=null &&
        (compressUploadsStr.equalsIgnoreCase("yes") || compressUploadsStr.equalsIgnoreCase("true"));
-    encryptionPassword = GridPilot.getClassMgr().getConfigFile().getValue("SSS",
+    encryptionPassword = GridPilot.getClassMgr().getConfigFile().getValue(PLUGIN_NAME,
        "Encryption password");
     encryptUploads = encryptionPassword!=null && !encryptionPassword.equalsIgnoreCase("");
     awsCredentials = new AWSCredentials(accessKey, secretKey);
@@ -143,28 +144,36 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     }
   }
   
-  private S3Bucket getBucket(String bucketName) throws Exception{
+  private S3Bucket getBucket(String bucketName, boolean createIfNotThere) throws IOException, S3ServiceException{
     if(myBuckets.containsKey(bucketName)){
-      return (S3Bucket) myBuckets.get(bucketName);
+      return myBuckets.get(bucketName);
     }
-    S3Bucket [] myBucketsArr = s3Service.listAllBuckets();
-    Debug.debug("Number of buckets in S3? " + myBucketsArr.length, 1);
-    // Check if the bucket specified in the config files exists, if not, try to create it
+    refreshMyBuckets();
     S3Bucket bucket = null;
-    boolean bucketOk = false;
-    for(int i=0; i<myBucketsArr.length; ++i){
-      if(myBucketsArr[i].getName().equals(bucketName)){
-        bucket = myBucketsArr[i];
-        myBuckets.put(bucketName, bucket);
-        bucketOk = true;
-        break;
+    for(Iterator it=myBuckets.keySet().iterator(); it.hasNext();){
+      bucket = myBuckets.get(it.next());
+      if(bucket.getName().equals(bucketName)){
+        return bucket;
       }
     }
-    if(!bucketOk){
+    if(createIfNotThere){
       logFile.addInfo("Creating bucket "+bucketName);
       s3Service.createBucket(bucketName);
+      return bucket;
     }
-    return bucket;
+    else{
+      throw new IOException("Bucket "+bucketName+" not found");
+    }
+  }
+  
+  private void refreshMyBuckets() throws S3ServiceException{
+    S3Bucket [] myBucketsArr = s3Service.listAllBuckets();
+    Debug.debug("Number of buckets in S3? " + myBucketsArr.length, 1);
+    S3Bucket bucket = null;
+    for(int i=0; i<myBucketsArr.length; ++i){
+      bucket = myBucketsArr[i];
+      myBuckets.put(bucket.getName(), bucket);
+    }
   }
 
   public boolean checkURLs(GlobusURL[] srcUrls, GlobusURL[] destUrls)
@@ -172,10 +181,10 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     String firstSrcProtocol = srcUrls[0].getProtocol();
     String firstDestProtocol = destUrls[0].getProtocol();
     if(srcUrls.length!=destUrls.length || !(
-        firstSrcProtocol.equalsIgnoreCase("sss") &&
+        firstSrcProtocol.equalsIgnoreCase(PLUGIN_NAME) &&
         firstDestProtocol.equalsIgnoreCase("file") ||
            firstSrcProtocol.equalsIgnoreCase("file") &&
-           firstDestProtocol.equalsIgnoreCase("sss")
+           firstDestProtocol.equalsIgnoreCase(PLUGIN_NAME)
           )){
       return false;
     }
@@ -206,12 +215,12 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       return new String [] {};
     }
     if(srcUrls[0].getProtocol().equalsIgnoreCase("file") &&
-        destUrls[0].getProtocol().equalsIgnoreCase("sss")){
+        destUrls[0].getProtocol().equalsIgnoreCase(PLUGIN_NAME)){
       // Check that all are destined for the same bucket
-      bucket = getBucket(destUrls[0].getHost());
+      bucket = getBucket(destUrls[0].getHost(), true);
       S3Bucket tmpbucket = null;
       for(int i=0; i<destUrls.length; ++i){
-        tmpbucket = getBucket(destUrls[i].getHost());
+        tmpbucket = getBucket(destUrls[i].getHost(), false);
         if(tmpbucket==null || !tmpbucket.equals(bucket)){
           throw new IOException("All uploads must be to the same bucket. "+tmpbucket);
         }
@@ -225,7 +234,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       }
       prepareForFilesUpload(uploadFiles, GridPilot.getClassMgr().getStatusBar(), bucket, ids);
     }
-    else if(srcUrls[0].getProtocol().equalsIgnoreCase("sss") &&
+    else if(srcUrls[0].getProtocol().equalsIgnoreCase(PLUGIN_NAME) &&
         destUrls[0].getProtocol().equalsIgnoreCase("file")){
       // We only support downloading to the same directory
       String path = getLocalPath(destUrls[0]);
@@ -247,7 +256,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       S3Object [] tmpObjects = null;
       String error = "";
       for(int i=0; i<srcUrls.length; ++i){
-        bucket = getBucket(srcUrls[i].getHost());
+        bucket = getBucket(srcUrls[i].getHost(), false);
         if(bucket==null){
           error = "WARNING: bucket not found: "+srcUrls[i].getHost();
           logFile.addMessage(error);
@@ -353,7 +362,8 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   }
 
   public long getFileBytes(GlobusURL globusUrl) throws Exception{
-    S3Bucket bucket = getBucket(globusUrl.getHost());
+    globusUrl = fixUrl(globusUrl);
+    S3Bucket bucket = getBucket(globusUrl.getHost(), false);
     if(bucket==null){
       String error = "WARNING: bucket not found: "+globusUrl.getHost();
       Debug.debug(error, 1);
@@ -445,27 +455,53 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   public void deleteFiles(GlobusURL [] destUrls) throws Exception{
     GlobusURL globusUrl = null;
     S3Bucket bucket = null;
+    String bucketName = null;
+    String objectName;
     for(int i=0; i<destUrls.length; ++i){
-      globusUrl = destUrls[i];
-      bucket = getBucket(globusUrl.getHost());
+      globusUrl = fixUrl(destUrls[i]);
+      // We cannot delete /
+      if(globusUrl.getURL().matches("^"+PLUGIN_NAME+":/+$")){
+        throw new IOException("Cannot delete top level.");
+      }
+      if(globusUrl.getURL().matches("^"+PLUGIN_NAME+":/+[^/]+/*$")){
+        // If we are deleting a URL of the form sss://bucket, get bucket name directly
+        objectName = null;
+        bucketName = globusUrl.getURL().replaceFirst("^"+PLUGIN_NAME+":/+([^/]+)/*$", "$1");
+        bucket = getBucket(bucketName, false);
+        Debug.debug("Deleted bucket "+bucket.getName(), 1);
+      }
+      else{
+        Debug.debug("Deleting file or directory "+globusUrl.getURL(), 1);
+        // In case of a directory, get rid of the trailing /.
+        objectName = globusUrl.getPath().replaceFirst("(.*)/$", "$1");
+        bucket = getBucket(globusUrl.getHost(), false);
+      }
       if(bucket==null){
         String error = "WARNING: bucket not found: "+globusUrl.getHost();
         Debug.debug(error, 1);
-        return;
+        continue;
       }
-      S3Object [] objects = s3Service.listObjects(bucket, globusUrl.getPath(), null);
-      if(objects==null || objects.length==0){
-        String error = "WARNING: object not found: "+globusUrl.getPath()+". Backing out.";
-        Debug.debug(error, 1);
-        return;
+      // If we are deleting a URL of the form sss://bucket, delete the bucket
+      if(globusUrl.getURL().matches("^"+PLUGIN_NAME+":/+[^/]+/$")){
+        s3Service.deleteBucket(bucket);
       }
-      if(objects==null || objects.length>1){
-        String error = "WARNING: object ambiguous: "+globusUrl.getPath()+". Backing out.";
-        Debug.debug(error, 1);
-        return;
+      // Otherwise, delete the object from the bucket
+      else{
+        S3Object [] objects = s3Service.listObjects(bucket, objectName, null);
+        if(objects==null || objects.length==0){
+          String error = "WARNING: object not found: "+objectName+". Backing out.";
+          Debug.debug(error, 1);
+          continue;
+        }
+        if(objects==null || objects.length>1){
+          String error = "WARNING: directory not empty: "+objectName+": "+MyUtil.arrayToString(objects);
+          Debug.debug(error, 1);
+          //return;
+        }
+        s3Service.deleteObject(bucket, objects[0].getKey());
       }
-      s3Service.deleteObject(bucket, objects[0].getKey());
     }
+    refreshMyBuckets();
   }
 
   /**
@@ -473,8 +509,10 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
    * caching, queueing and monitoring. Notice, that it does NOT
    * start a separate thread.
    */
-  public void getFile(final GlobusURL globusUrl, File downloadDirOrFile,
+  public void getFile(GlobusURL _globusUrl, File downloadDirOrFile,
       final StatusBar statusBar) throws Exception{
+    
+    final GlobusURL globusUrl = fixUrl(_globusUrl);
     
     if(globusUrl.getURL().endsWith("/")){
       throw new IOException("ERROR: cannot download a directory. ");
@@ -501,7 +539,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     }
     final File dlFile = downloadFile;
 
-    final S3Bucket bucket = getBucket(globusUrl.getHost());
+    final S3Bucket bucket = getBucket(globusUrl.getHost(), false);
     if(bucket==null){
       String error = "WARNING: bucket not found: "+globusUrl.getHost();
       Debug.debug(error, 1);
@@ -547,7 +585,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     };
     t.start();
     
-    if(!MyUtil.myWaitForThread(t, "sss", COPY_TIMEOUT, "getFile", new Boolean(true))){
+    if(!MyUtil.myWaitForThread(t, PLUGIN_NAME, COPY_TIMEOUT, "getFile", new Boolean(true))){
       throw new IOException("Download taking too long (>"+COPY_TIMEOUT+" ms). Cancelling.");
     }
     if(t.getException()!=null){
@@ -564,7 +602,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     Debug.debug(globusUrl.getURL()+" downloaded.", 2);
   }
 
-  public void put(GlobusURL _fileUrl, final InputStream is, final StatusBar statusBar)
+  private void put(GlobusURL _fileUrl, final InputStream is, final StatusBar statusBar)
       throws Exception{
     
     GlobusURL fileUrl = _fileUrl;
@@ -585,7 +623,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       }
     }).run();               
  
-    final S3Bucket bucket = getBucket(globusFileUrl.getHost());
+    final S3Bucket bucket = getBucket(globusFileUrl.getHost(), true);
     if(bucket==null){
       String error = "WARNING: bucket not found: "+globusFileUrl.getHost();
       Debug.debug(error, 1);
@@ -615,7 +653,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       }
     };
     t.start();
-    if(!MyUtil.waitForThread(t, "sss", COPY_TIMEOUT, "putFile")){
+    if(!MyUtil.waitForThread(t, PLUGIN_NAME, COPY_TIMEOUT, "putFile")){
       if(statusBar!=null){
         statusBar.setLabel("Upload cancelled");
       }
@@ -654,6 +692,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     else{
       uploadUrl = globusFileUrl;
     }
+    uploadUrl = fixUrl(uploadUrl);
     final GlobusURL upUrl = uploadUrl;
     Debug.debug("put "+file.getAbsolutePath()+" --> "+uploadUrl.getURL(), 3);
 
@@ -684,22 +723,21 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     return fileName;
   }
 
-  public void write(final GlobusURL globusUrl, String text) throws Exception{
+  public void write(GlobusURL _globusUrl, String text) throws Exception{
+    final GlobusURL globusUrl = fixUrl(_globusUrl);
     ByteArrayInputStream textIS = new ByteArrayInputStream(text.getBytes());
     put(globusUrl, textIS, GridPilot.getClassMgr().getStatusBar());
   }
+  
+  private GlobusURL fixUrl(GlobusURL globusUrl) throws MalformedURLException{
+    // In order to use URL.getHost(), the URL needs strictly to be in the form sss://bucket/some/file
+    return new GlobusURL(globusUrl.getURL().replaceFirst("^"+PLUGIN_NAME+":/+", PLUGIN_NAME+"://"));
+  }
 
-  public Vector list(GlobusURL globusUrl, String filter, StatusBar statusBar)
+  private Vector list(GlobusURL globusUrl, String filter, StatusBar statusBar)
       throws Exception{
     
-    // The URLs are of the form sss://bucket/some/file/name
-    // getHost() --> bucket, getPath() --> some/file/name
-    S3Bucket bucket = getBucket(globusUrl.getHost());
-    if(bucket==null){
-      String error = "WARNING: bucket not found: "+globusUrl.getHost();
-      Debug.debug(error, 1);
-      return new Vector();
-    }
+    globusUrl = fixUrl(globusUrl);
     
     boolean onlyDirs = false;
     if(filter==null || filter.equals("")){
@@ -715,23 +753,43 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     filter = filter.replaceAll("\\.", "\\\\.");
     filter = filter.replaceAll("\\*", ".*");
     Debug.debug("Filtering with "+filter, 3);
-
+    
+    // The URLs are of the form sss://bucket/some/file/name
+    // getHost() --> bucket, getPath() --> some/file/name
+    
+    S3Bucket bucket = null;
+    
+    if(globusUrl.getURL().matches("^"+PLUGIN_NAME+":/+$")){
+      // If no bucket is given we list buckets
+      Debug.debug("Top level: "+globusUrl.getURL()+" listing buckets", 2);
+      return listBuckets(globusUrl, filter, statusBar);
+    }
+    else{
+      // If a bucket is given we list its content
+      bucket = getBucket(globusUrl.getHost(), false);
+      Debug.debug("Listing bucket content of "+globusUrl.getURL()+"-->"+globusUrl.getHost(), 2);
+      if(bucket==null){
+        String error = "WARNING: bucket not found: "+globusUrl.getHost();
+        Debug.debug(error, 1);
+        return new Vector();
+      }
+      return listBucketContent(bucket, globusUrl, filter, statusBar);
+    }
+  }
+  
+  private Vector listBuckets(GlobusURL globusUrl, String filter, StatusBar statusBar) throws S3ServiceException {
+    refreshMyBuckets();
     Vector resVec = new Vector();
-    existingObjects = s3Service.listObjects(bucket, globusUrl.getPath(), "/");
-    //retrieveObjectsDetails(existingObjects, bucket);
     int directories = 0;
     int files = 0;
     String fName = null;
     String type = null;
-    S3Object objectDetailsOnly = null;
-    for(int i=0; i<existingObjects.length; i++){
-      // TODO: find out why this doesn't work.
-      //type = existingObjects[i].getContentType();
-      //Debug.debug("Listing "+existingObjects[i].getKey()+" : "+type, 3);
-      objectDetailsOnly = s3Service.getObjectDetails(bucket, existingObjects[i].getKey());
-      Debug.debug("S3Object, details only: " + objectDetailsOnly, 3);
-      type = objectDetailsOnly.getContentType();
-      fName = existingObjects[i].getKey();
+    S3Bucket myBucket = null;
+    for(Iterator it=myBuckets.keySet().iterator(); it.hasNext();){
+      myBucket = myBuckets.get(it.next());
+      Debug.debug("myBucket: " + myBucket.getName(), 3);
+      type = Mimetypes.MIMETYPE_JETS3T_DIRECTORY;
+      fName = myBucket.getName();
       fName = fName.replaceFirst("^"+globusUrl.getPath(), "");
       if(type==null ||
           type!=null && type.equals(Mimetypes.MIMETYPE_JETS3T_DIRECTORY) ||
@@ -754,7 +812,58 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       else{
         ++files;
       }
-      resVec.add(fName + " " + existingObjects[i].getContentLength()/*bytes*/);
+      resVec.add(fName + " " + "0"/*bytes*/);
+    }
+    if(statusBar!=null){
+      statusBar.setLabel(directories+" directories");
+    }
+    return resVec;
+  }
+
+  private Vector listBucketContent(S3Bucket bucket, GlobusURL globusUrl, String filter,
+      StatusBar statusBar) throws S3ServiceException{
+    Vector resVec = new Vector();
+    String path = globusUrl.getPath()==null?"":globusUrl.getPath();
+    Debug.debug("Listing path "+path, 2);
+    s3Objects = s3Service.listObjects(bucket, path, "/");
+    Debug.debug("Number of objects: "+s3Objects.length, 3);
+    //retrieveObjectsDetails(existingObjects, bucket);
+    int directories = 0;
+    int files = 0;
+    String fName = null;
+    String type = null;
+    S3Object objectDetailsOnly = null;
+    for(int i=0; i<s3Objects.length; i++){
+      // TODO: find out why this doesn't work.
+      //type = existingObjects[i].getContentType();
+      //Debug.debug("Listing "+existingObjects[i].getKey()+" : "+type, 3);
+      objectDetailsOnly = s3Service.getObjectDetails(bucket, s3Objects[i].getKey());
+      Debug.debug("S3Object, details only: " + objectDetailsOnly, 3);
+      type = objectDetailsOnly.getContentType();
+      fName = s3Objects[i].getKey();
+      fName = fName.replaceFirst("^"+path, "");
+      if(type==null ||
+          type!=null && type.equals(Mimetypes.MIMETYPE_JETS3T_DIRECTORY) ||
+          fName.endsWith("/") ||
+          /*this is the convention of the S3 Organizer Firefox plugin (S3Fox)*/
+          S3FOX_DIRECTORY_MODE && fName.endsWith(S3FOX_DIRECTORY_SUFFIX)){
+        if(S3FOX_DIRECTORY_MODE && fName.endsWith(S3FOX_DIRECTORY_SUFFIX)){
+          fName = fName.substring(0, fName.length()-9);
+        }
+        if(!fName.endsWith("/")){
+          fName += "/";
+        }
+      }
+      if(!fName.matches(filter)){
+        continue;
+      }
+      if(fName.endsWith("/")){
+        ++directories;
+      }
+      else{
+        ++files;
+      }
+      resVec.add(fName + " " + s3Objects[i].getContentLength()/*bytes*/);
     }
     if(statusBar!=null){
       statusBar.setLabel(directories+" directories, "+files+" files");
@@ -773,17 +882,17 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     // Build map of objects already existing in target S3 bucket with keys
     // matching the proposed upload keys.
     List objectsWithExistingKeys = new ArrayList();
-    for(int i = 0; i<existingObjects.length; i++) {
-      if(filesForUploadMap.keySet().contains(existingObjects[i].getKey())){
-        objectsWithExistingKeys.add(existingObjects[i]);
+    for(int i = 0; i<s3Objects.length; i++) {
+      if(filesForUploadMap.keySet().contains(s3Objects[i].getKey())){
+        objectsWithExistingKeys.add(s3Objects[i]);
       }
     }
-    existingObjects = (S3Object[]) objectsWithExistingKeys.toArray(
+    s3Objects = (S3Object[]) objectsWithExistingKeys.toArray(
         new S3Object[objectsWithExistingKeys.size()]);
-    s3ExistingObjectsMap = fc.populateS3ObjectMap("", existingObjects);
-    if(existingObjects.length>0){
+    s3ExistingObjectsMap = fc.populateS3ObjectMap("", s3Objects);
+    if(s3Objects.length>0){
       // Retrieve details of potential clashes.
-      final S3Object[] clashingObjects = existingObjects;
+      final S3Object[] clashingObjects = s3Objects;
       (new Thread(){
         public void run(){
           retrieveObjectsDetails(clashingObjects, bucket);
