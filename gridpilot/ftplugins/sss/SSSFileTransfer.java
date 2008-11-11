@@ -607,6 +607,12 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     
     GlobusURL fileUrl = _fileUrl;
     
+    if(fileUrl.getURL().matches("^"+PLUGIN_NAME+":/+[^/]+/*$")){
+      String bucketName = fileUrl.getURL().replaceFirst("^"+PLUGIN_NAME+":/+([^/]+)/*$", "$1");
+      getBucket(bucketName, true);
+      return;
+    }
+    
     if(S3FOX_DIRECTORY_MODE && fileUrl.getPath().endsWith("/")){
       String urlStr = fileUrl.getURL();
       urlStr = urlStr.substring(0, urlStr.length()-1)+S3FOX_DIRECTORY_SUFFIX;
