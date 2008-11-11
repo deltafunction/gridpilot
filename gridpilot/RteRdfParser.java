@@ -41,22 +41,22 @@ public class RteRdfParser {
     DBRecord rec = new DBRecord(fields, new String [fields.length]);
     rec.setValue(nameField,  pack.name);
     if(pack.provides!=null && pack.provides.length>0){
-      rec.setValue("provides", (rec.getValue("provides")==null?"":rec.getValue("provides"))+
-          (MyUtil.arrayToString(pack.provides)));
+      rec.setValue("provides", (rec.getValue("provides")==null||rec.getValue("provides").equals("")?"":
+        rec.getValue("provides")+" ")+MyUtil.arrayToString(pack.provides));
     }
     // We add tags, labels and VirtualMachine.os to the 'provides' field to improve chances of
     // matching a required RTE. TODO: reconsider
     if(pack.virtualMachine!=null && pack.virtualMachine.os!=null){
-      rec.setValue("provides", (rec.getValue("provides")==null?"":rec.getValue("provides"))+
-          pack.virtualMachine.os);
+      rec.setValue("provides", (rec.getValue("provides")==null||rec.getValue("provides").equals("")?"":
+        rec.getValue("provides")+" ")+pack.virtualMachine.os);
     }
     if(pack.tags!=null && pack.tags.length>0){
-      rec.setValue("provides", (rec.getValue("provides")==null?"":rec.getValue("provides"))+
-          (MyUtil.arrayToString(pack.tags)));
+      rec.setValue("provides", (rec.getValue("provides")==null||rec.getValue("provides").equals("")?"":
+        rec.getValue("provides")+" ")+MyUtil.arrayToString(pack.tags));
     }
     if(pack.labels!=null && pack.labels.length>0){
-      rec.setValue("provides", (rec.getValue("provides")==null?"":rec.getValue("provides"))+
-          (MyUtil.arrayToString(pack.labels)));
+      rec.setValue("provides", (rec.getValue("provides")==null||rec.getValue("provides").equals("")?"":
+        rec.getValue("provides")+" ")+MyUtil.arrayToString(pack.labels));
     }
     rec.setValue("lastModified", pack.lastupdate);
     rec.setValue("computingSystem", csName);
@@ -103,11 +103,13 @@ public class RteRdfParser {
             bs = rteCatalog.getBaseSystem(tarPack.baseSystem);
             if(bs==null || bs.name==null || bs.name.equals("")){
               GridPilot.getClassMgr().getLogFile().addMessage("WARNING: instance "+pack.instances[j]+" has no BaseSystem defined");
-              continue;
+              //continue;
             }
-            rec.setValue("depends",
-                ((rec.getValue("depends")!=null?rec.getValue("depends"):"")+" "+bs.name
-                    )/*.replaceAll("'([^']+)'", "$1")*/.trim());
+            if(bs!=null){
+              rec.setValue("depends",
+                  ((rec.getValue("depends")!=null?rec.getValue("depends"):"")+" "+bs.name
+                      )/*.replaceAll("'([^']+)'", "$1")*/.trim());
+            }
             // Optional other dependencies
             for(int k=0; k<tarPack.depends.length; ++k){
               try{
