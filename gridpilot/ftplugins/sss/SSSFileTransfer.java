@@ -455,9 +455,10 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   public void deleteFiles(GlobusURL [] destUrls) throws Exception{
     GlobusURL globusUrl = null;
     S3Bucket bucket = null;
-    String bucketName = null;
+    String deleteBucketName = null;
     String objectName;
     for(int i=0; i<destUrls.length; ++i){
+      deleteBucketName = null;
       globusUrl = fixUrl(destUrls[i]);
       // We cannot delete /
       if(globusUrl.getURL().matches("^"+PLUGIN_NAME+":/+$")){
@@ -466,9 +467,9 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       if(globusUrl.getURL().matches("^"+PLUGIN_NAME+":/+[^/]+/*$")){
         // If we are deleting a URL of the form sss://bucket, get bucket name directly
         objectName = null;
-        bucketName = globusUrl.getURL().replaceFirst("^"+PLUGIN_NAME+":/+([^/]+)/*$", "$1");
-        bucket = getBucket(bucketName, false);
-        Debug.debug("Deleted bucket "+bucket.getName(), 1);
+        deleteBucketName = globusUrl.getURL().replaceFirst("^"+PLUGIN_NAME+":/+([^/]+)/*$", "$1");
+        bucket = getBucket(deleteBucketName, false);
+        Debug.debug("Deleting bucket "+bucket.getName(), 1);
       }
       else{
         Debug.debug("Deleting file or directory "+globusUrl.getURL(), 1);
@@ -482,8 +483,8 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
         continue;
       }
       // If we are deleting a URL of the form sss://bucket, delete the bucket
-      if(globusUrl.getURL().matches("^"+PLUGIN_NAME+":/+[^/]+/$")){
-        s3Service.deleteBucket(bucket);
+      if(deleteBucketName!=null){
+        s3Service.deleteBucket(deleteBucketName);
       }
       // Otherwise, delete the object from the bucket
       else{
@@ -493,12 +494,16 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
           Debug.debug(error, 1);
           continue;
         }
-        if(objects==null || objects.length>1){
+        if(objects.length>1){
           String error = "WARNING: directory not empty: "+objectName+": "+MyUtil.arrayToString(objects);
           Debug.debug(error, 1);
           //return;
         }
-        s3Service.deleteObject(bucket, objects[0].getKey());
+        for(int j=0; j<objects.length; ++j){
+          if(objects[j].getKey().equals(objectName)){
+            s3Service.deleteObject(bucket, objects[0].getKey());
+          }
+        }
       }
     }
     refreshMyBuckets();
