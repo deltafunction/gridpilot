@@ -29,8 +29,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   protected HashMap<String, Shell> remoteShellMgrs = null;
   protected String [] hosts = null;
   protected String [] maxJobs = null;
-  protected HashMap submittingHostJobs = null;
-  
+  // Map of host -> Set of jobs that are being submmited
+  protected HashMap<String, HashSet<String>> submittingHostJobs = null;
   protected String [] users = null;
   protected String [] passwords = null;
   
@@ -131,7 +131,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
         if(maxJobs!=null && maxJobs.length>i && maxJobs[i]!=null){
           maxR = Integer.parseInt(maxJobs[i]);
         }
-        submitting = (host!=null&&submittingHostJobs.get(host)!=null?((HashSet)submittingHostJobs.get(host)).size():0);
+        submitting = (host!=null &&
+            submittingHostJobs.get(host)!=null?((HashSet)submittingHostJobs.get(host)).size():0);
         if(mgr.getJobsNumber()+submitting<maxR){
           return host;
         }
@@ -416,28 +417,20 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   }
   
   protected void setupRuntimeEnvironmentsSSH(Shell shellMgr){
-    for(int i=0; i<localRuntimeDBs.length; ++i){
-      DBPluginMgr localDBMgr = null;
+    for(int i=0; i<runtimeDBs.length; ++i){
+      DBPluginMgr dbMgr = null;
       try{
-        localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
-            localRuntimeDBs[i]);
+        dbMgr = GridPilot.getClassMgr().getDBPluginMgr(
+            runtimeDBs[i]);
       }
       catch(Exception e){
         Debug.debug("WARNING: Could not load runtime DB "+
-            localRuntimeDBs[i]+". Runtime environments must be defined by hand. "+
+            runtimeDBs[i]+". Runtime environments must be defined by hand. "+
             e.getMessage(), 1);
         continue;
       }
       try{
-        scanRTEDir(localDBMgr, i>0?null:remoteDBPluginMgr, csName, shellMgr);
-      }
-      catch(Exception e){
-        e.printStackTrace();
-      }
-    }
-    if(localRuntimeDBs.length==0 && remoteDBPluginMgr!=null){
-      try{
-        scanRTEDir(null, remoteDBPluginMgr, csName, shellMgr);
+        scanRTEDir(dbMgr, csName, shellMgr);
       }
       catch(Exception e){
         e.printStackTrace();

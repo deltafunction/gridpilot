@@ -54,9 +54,8 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected String runtimeDirectory = null;
   protected String transformationDirectory = null;
   protected String publicCertificate = null;
-  protected String [] localRuntimeDBs = null;
+  protected String [] runtimeDBs = null;
   protected HashMap toDeleteRTEs = null;
-  protected DBPluginMgr remoteDBPluginMgr = null;
   // List of (Janitor) catalogs from where to get RTEs
   protected String [] rteCatalogUrls = null;
   protected MyTransferControl transferControl;
@@ -136,7 +135,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     rteCatalogUrls = configFile.getValues(GridPilot.topConfigSection, "runtime catalog URLs");
 
     publicCertificate = configFile.getValue(csName, "public certificate");
-    localRuntimeDBs = configFile.getValues(csName, "runtime databases");
+    runtimeDBs = configFile.getValues(csName, "runtime databases");
     
     GridPilot.splashShow("Setting up RTEs for "+csName);
     Debug.debug("Setting up RTEs for "+csName, 2);
@@ -168,41 +167,36 @@ public class ForkComputingSystem implements MyComputingSystem{
    * scripts in the directory specified in the config file (runtime directory).
    */
   public void setupRuntimeEnvironments(String thisCs){
-    for(int i=0; i<localRuntimeDBs.length; ++i){
+    for(int i=0; i<runtimeDBs.length; ++i){
       DBPluginMgr localDBMgr = null;
       try{
         localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(
-            localRuntimeDBs[i]);
+            runtimeDBs[i]);
       }
       catch(Exception e){
         Debug.debug("WARNING: Could not load runtime DB "+
-            localRuntimeDBs[i]+". Runtime environments must be defined by hand. "+
+            runtimeDBs[i]+". Runtime environments must be defined by hand. "+
             e.getMessage(), 1);
         continue;
       }
       try{
-        scanRTEDir(localDBMgr, i>0?null:remoteDBPluginMgr, thisCs, shellMgr);
+        scanRTEDir(localDBMgr, thisCs, shellMgr);
       }
       catch(Exception e){
         e.printStackTrace();
       }
     }
-    if(localRuntimeDBs.length==0 && remoteDBPluginMgr!=null){
-      scanRTEDir(null, remoteDBPluginMgr, thisCs, shellMgr);
-    }
-    MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRTEs,
+    MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, runtimeDBs, toDeleteRTEs,
         mkLocalOSRTE, includeVMRTEs, basicOSRTES);
   }
   
   /**
    * Scan runtime environment directory for runtime environment setup scripts;
    * register the found RTEs in local database with computing system cs;
-   * @param localDBMgr Local DBPluginMgr
-   * @param remoteDBMgr Remote DBPluginMgr
+   * @param dbMgr Local DBPluginMgr
    * @param cs Computing system name
    */
-  protected void scanRTEDir(DBPluginMgr localDBMgr, DBPluginMgr remoteDBMgr,
-      String cs, Shell mgr){
+  protected void scanRTEDir(DBPluginMgr dbMgr, String cs, Shell mgr){
     String name = null;   
     HashSet runtimes = mgr.listFilesRecursively(runtimeDirectory);
     String [] expandedRuntimeDirs = mgr.listFiles(MyUtil.clearFile(runtimeDirectory));
@@ -243,29 +237,34 @@ public class ForkComputingSystem implements MyComputingSystem{
           continue;
         }
         // the first dependency is the OS
-        String deps;
+        String depends = "";
+        String provides = "";
         try{
-          deps = mgr.getOS()+(mgr.getProvides()==null?"":(" "+MyUtil.arrayToString(mgr.getProvides())));
+          depends = mgr.getOS()+(mgr.getProvides()==null?"":(" "+MyUtil.arrayToString(mgr.getProvides())));
         }
         catch(Exception e1){
-          deps = "";
+          depends = "";
           e1.printStackTrace();
         }        
-        // Read dependencies from the file.
+        // Read dependencies from file.
         // The notation is:
-        // # ARC_RTE_DEP=<RTE name 1>
-        // # ARC_RTE_DEP=<RTE name 2>
-        // ...
+        // #PROVIDES: <RTE name 1> <RTE name 2> ...
+        // #DEPENDS: <RTE name 1> <RTE name 2> ...
         try{
           String content = mgr.readFile(fil);
           InputStream dis = new ByteArrayInputStream(content.getBytes());
           BufferedReader in = new BufferedReader(new InputStreamReader(dis));
           String line = null;
-          String depPattern = "^\\S*#\\sARC_RTE_DEP=([^#]+).*";
+          String providesPattern = "(?i)^\\s*#PROVIDES: (.+)";
+          String dependsPattern = "(?i)^\\s*#PROVIDES: (.+)";
           while((line=in.readLine())!=null){
-            if(line.matches(depPattern)){
-              deps += " ";
-              deps += line.replaceFirst(depPattern, "$1");
+            if(line.matches(dependsPattern)){
+              depends += " ";
+              depends += line.replaceFirst(dependsPattern, "$1");
+            }
+            if(line.matches(providesPattern)){
+              provides += " ";
+              provides += line.replaceFirst(providesPattern, "$1");
             }
           }
           in.close();
@@ -277,8 +276,8 @@ public class ForkComputingSystem implements MyComputingSystem{
         }
         if(name!=null && name.length()>0){
           // Write the entry in the local DB
-          Debug.debug("Writing RTE "+name+" in local DB "+localDBMgr.getDBName(), 3);
-          createLocalRTE(localDBMgr, name, cs, deps);
+          Debug.debug("Writing RTE "+name+" in local DB "+dbMgr.getDBName(), 3);
+          createLocalRTE(dbMgr, name, cs, provides.trim(), depends.trim());
         }
       }
     }
@@ -350,7 +349,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
   
   private void createLocalRTE(DBPluginMgr dbPluginMgr, String name, String csName,
-      String depends){
+      String provides, String depends){
     if(dbPluginMgr==null){
       return;
     }
@@ -374,8 +373,11 @@ public class ForkComputingSystem implements MyComputingSystem{
       else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
         rtVals[i] = csName;
       }
-      else if(runtimeEnvironmentFields[i].equalsIgnoreCase("depends") && depends!=null){
+      else if(runtimeEnvironmentFields[i].equalsIgnoreCase("depends") && depends!=null &&! depends.equals("")){
         rtVals[i] = depends;
+      }
+      else if(runtimeEnvironmentFields[i].equalsIgnoreCase("provides") && provides!=null &&!provides.equals("")){
+        rtVals[i] = provides;
       }
       else{
         rtVals[i] = "";
