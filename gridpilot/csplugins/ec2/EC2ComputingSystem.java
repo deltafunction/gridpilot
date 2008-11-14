@@ -1,5 +1,9 @@
 package gridpilot.csplugins.ec2;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -9,15 +13,23 @@ import java.util.List;
 
 import javax.swing.JOptionPane;
 
+import org.globus.gsi.GlobusCredentialException;
+import org.globus.util.GlobusURL;
+import org.ietf.jgss.GSSException;
+
 import com.jcraft.jsch.JSchException;
 import com.xerox.amazonws.ec2.EC2Exception;
+import com.xerox.amazonws.ec2.ImageDescription;
 import com.xerox.amazonws.ec2.ReservationDescription;
 import com.xerox.amazonws.ec2.ReservationDescription.Instance;
 
 import gridfactory.common.ConfirmBox;
+import gridfactory.common.DBRecord;
+import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.Shell;
+import gridpilot.DBPluginMgr;
 import gridpilot.MyComputingSystem;
 import gridpilot.GridPilot;
 import gridpilot.MySecureShell;
@@ -27,7 +39,7 @@ import gridpilot.csplugins.forkpool.ForkPoolComputingSystem;
 public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyComputingSystem {
 
   private EC2Mgr ec2mgr = null;
-  private String amiID = null;
+  private String fallbackAmiID = null;
   // max time to wait for booting a virtual machine when submitting a job
   private static long MAX_BOOT_WAIT = 5*60*1000;
   // the user to use for running jobs on the virtual machines
@@ -40,8 +52,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     basicOSRTES = new String [] {"Linux"/*, "Windows"*/
         /* Windows instances allow only connections via VRDP - and to connect a keypair must be associated. */};
 
-    amiID = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-       "AMI id");
+    fallbackAmiID = GridPilot.getClassMgr().getConfigFile().getValue(csName,
+       "Fallback ami id");
     boolean ec2Secure = true;
     String ec2SecureStr = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "Secure");
@@ -181,7 +193,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     if(choice!=0){
       return;
     }
-    try {
+    try{
       ec2mgr.getKey();
     }
     catch(Exception e){
@@ -378,31 +390,183 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return mgr;
   }
 
+  private boolean checkHostForJobs(int i) throws JSchException {
+    String host = hosts[i];
+    Shell mgr = null;
+    int maxR = 1;
+    int submitting = 0;
+    maxR = 1;
+    mgr = getShellMgr(host);
+    if(maxJobs!=null && maxJobs.length>i && maxJobs[i]!=null){
+      maxR = Integer.parseInt(maxJobs[i]);
+    }
+    submitting = submittingHostJobs.get(host)!=null?((HashSet)submittingHostJobs.get(host)).size():0;
+    if(mgr.getJobsNumber()+submitting<maxR){
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Check if a list of dependencies are provided by the AMI of a given host.
+   * @param host
+   * @param deps
+   * @return
+   * @throws EC2Exception
+   * @throws GlobusCredentialException
+   * @throws IOException
+   * @throws GeneralSecurityException
+   * @throws GSSException
+   */
+  private boolean checkHostProvides(String host, String deps []) throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException {
+    List reservationList = ec2mgr.listReservations();
+    ArrayList<String> provides = new ArrayList();
+    List instanceList = null;
+    Instance instance = null;
+    ReservationDescription reservation = null;
+    String manifest = null;
+    String rteName = null;
+    for(Iterator it=reservationList.iterator(); it.hasNext();){
+      reservation = (ReservationDescription) it.next();
+      instanceList = ec2mgr.listInstances(reservation);
+      for(Iterator itt=instanceList.iterator(); itt.hasNext();){
+        instance = (Instance) itt.next();
+        if(instance.getDnsName().equals(host)){
+          manifest = ec2mgr.getImageDescription(instance.getImageId()).getImageLocation();
+          rteName = manifest.replaceFirst("(?i)^"+EC2Mgr.AMI_BUCKET, "");
+          provides = getProvides(rteName);
+          break;
+        }
+      }
+    }
+    for(int i=0; i<deps.length; ++i){
+      if(!provides.contains(deps[i])){
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  private ArrayList<String> getProvides(String rteName) {
+    ArrayList<String> provides = new ArrayList<String>();
+    provides.add(rteName);
+    DBPluginMgr dbMgr = null;
+    String rteProvidesStr = null;
+    String [] rteProvides = null;
+    for(int i=0; i<runtimeDBs.length; ++i){
+      try{
+        dbMgr = GridPilot.getClassMgr().getDBPluginMgr(runtimeDBs[i]);
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: Could not load runtime DB "+
+            runtimeDBs[i]+". Runtime environments must be defined by hand. "+
+            e.getMessage(), 1);
+        continue;
+      }
+      try{
+        rteProvidesStr = (String) getRuntimeEnvironment(dbMgr, rteName).getValue("provides");
+        if(rteProvidesStr!=null && !rteProvidesStr.equals("")){
+          rteProvides = MyUtil.split(rteProvidesStr);
+          for(int j=0; j<rteProvides.length; ++j){
+            provides.add(rteProvides[j]);
+          }
+          break;
+        }
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    return provides;
+  }
+  
+  // TODO: consider providing this method in Database
+  private DBRecord getRuntimeEnvironment(DBPluginMgr dbMgr, String rteName) throws IOException{
+    DBResult rtes = dbMgr.getRuntimeEnvironments();
+    String nameField = MyUtil.getNameField(dbMgr.getDBName(), "dataset");
+    for(int i=0; i<rtes.values.length; ++i){
+      if(rteName.equalsIgnoreCase((String) rtes.getValue(i, nameField))){
+        return rtes.getRow(i);
+      }
+    }
+    throw new IOException("No runtimeEnvironment with name "+rteName);
+  }
+
+  private File getTmpCatalogFile(String imageId) throws NullPointerException, MalformedURLException, Exception{
+    String manifest = ec2mgr.getImageDescription(imageId).getImageLocation();
+    String rteName = manifest.replaceFirst("(?i)^"+EC2Mgr.AMI_BUCKET, "");
+    rteName = rteName.replaceFirst("(?i)\\.xml$", "");
+    rteName = rteName.replaceFirst("(?i)\\.manifest$", "");
+    ArrayList<String> provides = new ArrayList();
+    provides.add(rteName);
+    File tmpCatalogFile = downloadFromSSS(manifest);
+    GridPilot.tmpConfFile.put(tmpCatalogFile.getAbsolutePath(), tmpCatalogFile);
+    return tmpCatalogFile;
+  }
+  
+  private File [] getAllTmpCatalogFiles() throws Exception{
+    List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, true);
+    ArrayList<File> files = new ArrayList();
+    for(Iterator<ImageDescription> it=gpAMIs.iterator(); it.hasNext();){
+      files.add(getTmpCatalogFile(it.next().getImageId()));
+    }
+    File [] ret = files.toArray(new File[files.size()]);
+    Debug.debug("Saved the following RTE catalogs: "+MyUtil.arrayToString(ret), 2);
+    return ret;
+  }
+  
+  private File downloadFromSSS(String path) throws NullPointerException, MalformedURLException, Exception{
+    File tmpFile = File.createTempFile(MyUtil.getTmpFilePrefix(), ".xml");
+    tmpFile.delete();
+    GridPilot.getClassMgr().getFTPlugin("sss").getFile(new GlobusURL("sss://"+path), tmpFile);
+    return tmpFile;
+  }
+  
+  public void setupRuntimeEnvironments(String thisCs) {
+    File[] allTmpCatalogFiles;
+    try{
+      allTmpCatalogFiles = getAllTmpCatalogFiles();
+    }
+    catch(Exception e){
+      logFile.addMessage("ERROR: unable to get RTE information from AWS.", e);
+      e.printStackTrace();
+      return;
+    }
+    String [] allTmpCatalogs = new String[allTmpCatalogFiles.length];
+    for(int i=0; i<allTmpCatalogFiles.length; ++i){
+      allTmpCatalogs[i] = allTmpCatalogFiles[i].getAbsolutePath();
+    }
+    for(int i=0; i<runtimeDBs.length; ++i){
+      try{
+        MyUtil.syncRTEsFromCatalogs(csName, allTmpCatalogs, runtimeDBs, toDeleteRTEs,
+            mkLocalOSRTE, includeVMRTEs, basicOSRTES);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    //MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, runtimeDBs, toDeleteRTEs,
+    //   mkLocalOSRTE, includeVMRTEs, basicOSRTES);
+  }
+
+
   /**
    * The brokering algorithm. As simple as possible: FIFO.
    * Slight extension as compared to ForkPoolComputingSystem:
    * start shell and get host if none is running on the slot.
    */
   protected synchronized String selectHost(JobInfo job){
-    Shell mgr = null;
-    String host = null;
-    int maxR = 1;
-    int submitting = 0;
     // First try to use an already used instance
     for(int i=0; i<hosts.length; ++i){
       try{
         if(hosts[i]==null){
           continue;
         }
-        host = hosts[i];
-        maxR = 1;
-        mgr = getShellMgr(host);
-        if(maxJobs!=null && maxJobs.length>i && maxJobs[i]!=null){
-          maxR = Integer.parseInt(maxJobs[i]);
-        }
-        submitting = (host!=null&&submittingHostJobs.get(host)!=null?((HashSet)submittingHostJobs.get(host)).size():0);
-        if(mgr.getJobsNumber()+submitting<maxR){
-          return host;
+        if(/* This means that the host has been added by discoverInstances, i.e. that we can use it */
+            submittingHostJobs.containsKey(hosts[i]) &&
+            /**/
+            checkHostProvides(hosts[i], job.getRTEs()) && checkHostForJobs(i)){
+          return hosts[i];
         }
       }
       catch(Exception e){
@@ -413,7 +577,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     for(int i=0; i<hosts.length; ++i){
       try{
         if(hosts[i]==null){
-          ReservationDescription desc = ec2mgr.launchInstances(amiID, 1);
+          ReservationDescription desc = ec2mgr.launchInstances(fallbackAmiID, 1);
           Instance inst = ((Instance) desc.getInstances().get(0));
           // Wait for the machine to boot
           long startMillis = MyUtil.getDateInMilliSeconds(null);

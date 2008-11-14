@@ -15,7 +15,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
 
+import javax.swing.JCheckBox;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 
 import org.globus.gsi.GlobusCredentialException;
 import org.ietf.jgss.GSSException;
@@ -39,6 +42,8 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
 
   private EC2Mgr ec2mgr = null;
   private boolean runningShell = false;
+  private JCheckBox onlyPublicImages;
+  private JCheckBox onlyGridPilotImages;
   
   protected String [] imageColorMapping = null;  
   protected String [] instanceColorMapping = null;  
@@ -56,6 +61,20 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
     sshCommand = GridPilot.getClassMgr().getConfigFile().getValues("EC2", "Ssh command");  
     imageTable.setTable(IMAGE_FIELDS);
     instanceTable.setTable(getRunningInstances(), INSTANCE_FIELDS);
+    pImagesButtons.add(createImageChoicePanel());
+  }
+  
+  private JPanel createImageChoicePanel(){
+    JPanel imageChoicePanel = new JPanel();
+    onlyPublicImages = new JCheckBox();
+    onlyPublicImages.setSelected(true);
+    onlyGridPilotImages = new JCheckBox();
+    onlyGridPilotImages.setSelected(true);
+    imageChoicePanel.add(new JLabel("Show only: public AMIs "));
+    imageChoicePanel.add(onlyPublicImages);
+    imageChoicePanel.add(new JLabel("GridPilot AMIs "));
+    imageChoicePanel.add(onlyGridPilotImages);
+    return imageChoicePanel;
   }
   
   public String getName(){
@@ -63,7 +82,7 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
   }
   
   protected String [][] getAvailableImages() throws EC2Exception{
-    List amiList = ec2mgr.listAvailableAMIs();
+    List amiList = ec2mgr.listAvailableAMIs(onlyPublicImages.isSelected(), onlyGridPilotImages.isSelected());
     String [][] amiArray = new String [amiList.size()][IMAGE_FIELDS.length];
     ImageDescription ami = null;
     int i = 0;

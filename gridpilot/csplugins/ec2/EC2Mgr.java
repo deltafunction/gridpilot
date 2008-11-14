@@ -43,6 +43,7 @@ public class EC2Mgr {
 
   public final static String GROUP_NAME = "GridPilot";
   public final static String KEY_NAME = "GridPilot_EC2_TMP_KEY";
+  public final static String AMI_BUCKET = "gridpilot/";
   
   private File keyFile = null;
   
@@ -352,10 +353,13 @@ public class EC2Mgr {
   /**
    * List available AMIs.
    * 
+   * @param onlyPublicAMIs list only AMIs owned by me
+   * @param onlyGridPilotAMIs list only AMIs in the designated AMI bucket
    * @return a List of elements of type ImageDescription
+   * @see #AMI_BUCKET
    * @throws EC2Exception
    */
-  public List listAvailableAMIs() throws EC2Exception{
+  public List<ImageDescription> listAvailableAMIs(boolean onlyPublicAMIs, boolean onlyGridPilotAMIs) throws EC2Exception{
     List list = new ArrayList();
     List params = new ArrayList();
     List images = ec2.describeImages(params);
@@ -364,13 +368,30 @@ public class EC2Mgr {
     }
     Debug.debug("Finding available images", 3);
     ImageDescription img = null;
-    for(Iterator it=images.iterator(); it.hasNext();){
-      img = (ImageDescription) it.next();
-      if(img.getImageState().equals("available")){
+    for(Iterator<ImageDescription> it=images.iterator(); it.hasNext();){
+      img = it.next();
+      if((!onlyGridPilotAMIs || matchGridPilotAMIName(img.getImageLocation())) &&
+          (!onlyPublicAMIs || img.isPublic()) &&
+          img.getImageState().equals("available")){
         list.add(img);
       }
     }
     return list;
+  }
+  
+  private boolean matchGridPilotAMIName(String imageLocation) {
+    return imageLocation.toLowerCase().startsWith(AMI_BUCKET);
+  }
+
+  public ImageDescription getImageDescription(String imageId) throws EC2Exception{
+    ImageDescription img = null;
+    for(Iterator<ImageDescription> it=listAvailableAMIs(false, false).iterator(); it.hasNext();){
+      img = it.next();
+      if(img.getImageId().equals(imageId)){
+        return img;
+      }
+    }
+    throw new EC2Exception("No image with ID "+imageId);
   }
 
   /**
@@ -383,7 +404,7 @@ public class EC2Mgr {
    * @throws IOException 
    * @throws GlobusCredentialException 
    */
-  public List listReservations() throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException{
+  public List<ReservationDescription> listReservations() throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException{
     GridPilot.getClassMgr().getSSL().activateSSL();
     List list = new ArrayList();
     List params = new ArrayList();

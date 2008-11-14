@@ -50,6 +50,7 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
   protected MyJTable imageTable = null;
   protected MyJTable instanceTable = null;
   
+  protected JPanel pImagesButtons = new JPanel();
   protected String [] imageColorMapping = null;  
   protected String [] instanceColorMapping = null;  
   protected String [] sshCommand = null;
@@ -131,7 +132,6 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
         Color.white, new Color(165, 163, 151)), "Available Images"));
     panel.add(sp);
     // buttons
-    JPanel pButtons = new JPanel();
     JButton bRefresh = new JButton("Refresh");
     bRefresh.setToolTipText("Refresh the list of Images");
     bRefresh.addActionListener(new ActionListener(){
@@ -158,10 +158,10 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
         }
       }
     });
-    pButtons.add(bRefresh);
-    pButtons.add(new JLabel("|"));
-    pButtons.add(bLaunch);
-    panel.add(pButtons, BorderLayout.SOUTH);
+    pImagesButtons.add(bRefresh);
+    pImagesButtons.add(new JLabel("|"));
+    pImagesButtons.add(bLaunch);
+    panel.add(pImagesButtons, BorderLayout.SOUTH);
     return panel;
   }
 
