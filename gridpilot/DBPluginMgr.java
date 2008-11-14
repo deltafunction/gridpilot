@@ -2485,73 +2485,75 @@ public class DBPluginMgr extends DBCache implements Database{
 
   public DBRecord getRuntimeEnvironment(final String runtimeEnvironmentID){
     
-      ResThread t = new ResThread(){
-        DBRecord res = null;
-        public void requestStop(){
-          db.requestStop();
-        }
-        public void clearRequestStop(){
-          db.clearRequestStop();
-        }
-        public void run(){
-          try{
-            res = db.getRuntimeEnvironment(runtimeEnvironmentID);
-          }
-          catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               runtimeEnvironmentID, t);
-          }
-        }
-        public DBRecord getDBRecordRes(){
-          return res;
-        }
-      };
-    
-      t.start();
-    
-      if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironment")){
-        return t.getDBRecordRes();
+    ResThread t = new ResThread(){
+      DBRecord res = null;
+      public void requestStop(){
+        db.requestStop();
       }
-      else{
-        return null;
+      public void clearRequestStop(){
+        db.clearRequestStop();
       }
+      public void run(){
+        try{
+          res = db.getRuntimeEnvironment(runtimeEnvironmentID);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             runtimeEnvironmentID, t);
+        }
+      }
+      public DBRecord getDBRecordRes(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironment")){
+      return t.getDBRecordRes();
     }
+    else{
+      return null;
+    }
+    
+  }
 
   public DBRecord getTransformation(final String transformationID){
     
-      ResThread t = new ResThread(){
-        DBRecord res = null;
-        public void requestStop(){
-          db.requestStop();
-        }
-        public void clearRequestStop(){
-          db.clearRequestStop();
-        }
-        public void run(){
-          try{
-            res = db.getTransformation(transformationID);
-          }
-          catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               transformationID, t);
-          }
-        }
-        public DBRecord getDBRecordRes(){
-          return res;
-        }
-      };
-    
-      t.start();
-    
-      if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getTransformation")){
-        return t.getDBRecordRes();
+    ResThread t = new ResThread(){
+      DBRecord res = null;
+      public void requestStop(){
+        db.requestStop();
       }
-      else{
-        return null;
+      public void clearRequestStop(){
+        db.clearRequestStop();
       }
+      public void run(){
+        try{
+          res = db.getTransformation(transformationID);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             transformationID, t);
+        }
+      }
+      public DBRecord getDBRecordRes(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getTransformation")){
+      return t.getDBRecordRes();
     }
+    else{
+      return null;
+    }
+    
+  }
 
   public DBResult getFiles(final String datasetID){
     
