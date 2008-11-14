@@ -1677,6 +1677,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     String filter = jtFilter.getText();
     String htmlText = "";
     String href = null;
+    String sssBucketMatchPattern = "^\\w+:/+([^/]+/)$";
 
     try{
       bSave.setEnabled(false);
@@ -1685,6 +1686,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
       url = url.replaceFirst("/[^\\/]*/\\.\\.", "");
       GlobusURL globusUrl = new GlobusURL(url);
+      String host = globusUrl.getHost();
+      int port = globusUrl.getPort();
       Debug.debug("Opening directory on remote server\n"+globusUrl.toString(), 3);
       String localPath = "/";
       if(globusUrl.getPath()!=null){
@@ -1693,9 +1696,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
           localPath = "/" + localPath;
         }
       }
-      String host = globusUrl.getHost();
-      int port = globusUrl.getPort();
-      
+      // URLs of the form sss://atlas_images/ will have getPath() null. Take care of these too...
+      else if(globusUrl.getURL().matches(sssBucketMatchPattern)){
+        localPath = globusUrl.getURL().replaceFirst(sssBucketMatchPattern, "$1");
+        if(!localPath.startsWith("/")){
+          localPath = "/" + localPath;
+        }
+        host = "";
+      }
       Vector textVector = ft.list(globusUrl, filter);
 
       String text = "";
@@ -1712,6 +1720,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       lastSizesList = new String [length];
       int directories = 0;
       int files = 0;
+      String [] nameParts;
       for(int i=0; i<length; ++i){
         nameAndBytes = null;
         longName = textVector.get(i).toString();
@@ -1721,11 +1730,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
         catch(Exception e){
         }
         if(nameAndBytes!=null && nameAndBytes.length>0){
-          name = nameAndBytes[0];
           if(nameAndBytes.length>1){
-            bytes = nameAndBytes[1];
+            nameParts = nameAndBytes.clone();
+            nameParts[nameParts.length-1] = "";
+            name = MyUtil.arrayToString(nameParts).trim();
+            bytes = nameAndBytes[nameAndBytes.length-1];
           }
           else{
+            name = nameAndBytes[0];
             bytes = "";
           }
         }
@@ -1745,8 +1757,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           listedUrls.add(href);
           listedSizes.add(bytes);
         }
-        text += "<a href=\""+href+"\">"+
-        /*"gsiftp://"+host+":"+port+localPath+*/name+"</a> "+bytes;
+        text += "<a href=\""+href+"\">"+name+"</a> "+bytes;
         if(i<length-1){
           text += "<br>\n";
         }
@@ -1757,11 +1768,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       ep.setContentType("text/html");
       htmlText = "<html>\n";
       
-      if(!localPath.equals("/")){
+      if(!localPath.matches("/+")){
         htmlText += "<a href=\""+protocol+"://"+host+
-        (port>0?(":"+port):"")+
-        localPath+"../\">"+
-        /*"gsiftp://"+host+":"+port+localPath+*/"../</a><br>\n";
+        (port>0?(":"+port):"")+localPath+"../\">../</a><br>\n";
       }
       htmlText += text;
       if(textVector.size()>maxEntries){
