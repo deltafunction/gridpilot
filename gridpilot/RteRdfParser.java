@@ -144,13 +144,11 @@ public class RteRdfParser {
                     !tarPack.url.equals(rec.getValue("url")))?tarPack.url:"")).replaceAll("'([^']+)'", "$1").trim());
             
             if(rec.getValue("url")==null || rec.getValue("url").equals("")){
-              GridPilot.getClassMgr().getLogFile().addInfo("WARNING: Skipping package (no URL): "+pack.name);
+              GridPilot.getClassMgr().getLogFile().addInfo("WARNING: package "+pack.name+" has no URL defined.");
             }
-            else{
-              Debug.debug("Adding record: "+records.size()+" --> "+MyUtil.arrayToString(rec.fields)+
-                  " --> "+MyUtil.arrayToString(rec.values, "', '"), 2);
-              records.add(rec);
-            }
+            Debug.debug("Adding record: "+records.size()+" --> "+MyUtil.arrayToString(rec.fields)+
+                " --> "+MyUtil.arrayToString(rec.values, "', '"), 2);
+            records.add(rec);
             
           }
           else{

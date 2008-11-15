@@ -159,7 +159,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     ArrayList instances = new ArrayList();
     for(Iterator it=reservations.iterator(); it.hasNext();){
       res = (ReservationDescription) it.next();
-      Debug.debug("checking reservation"+res.getReservationId(), 2);
+      Debug.debug("checking reservation "+res.getReservationId(), 2);
       for(Iterator itt=res.getInstances().iterator(); itt.hasNext();){
         inst = (Instance) itt.next();
         if(inst.isShuttingDown() || inst.isTerminated()){
@@ -492,18 +492,6 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     throw new IOException("No runtimeEnvironment with name "+rteName);
   }
 
-  private File getTmpCatalogFile(String imageId) throws NullPointerException, MalformedURLException, Exception{
-    String manifest = ec2mgr.getImageDescription(imageId).getImageLocation();
-    String rteName = manifest.replaceFirst("(?i)^"+EC2Mgr.AMI_BUCKET, "");
-    rteName = rteName.replaceFirst("(?i)\\.xml$", "");
-    rteName = rteName.replaceFirst("(?i)\\.manifest$", "");
-    ArrayList<String> provides = new ArrayList();
-    provides.add(rteName);
-    File tmpCatalogFile = downloadFromSSS(manifest);
-    GridPilot.tmpConfFile.put(tmpCatalogFile.getAbsolutePath(), tmpCatalogFile);
-    return tmpCatalogFile;
-  }
-  
   private File [] getAllTmpCatalogFiles() throws Exception{
     List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, true);
     ArrayList<File> files = new ArrayList();
@@ -515,10 +503,30 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return ret;
   }
   
+  private File getTmpCatalogFile(String imageId) throws NullPointerException, MalformedURLException, Exception{
+    String manifest = ec2mgr.getImageDescription(imageId).getImageLocation();
+    String rdfFile = manifest;
+    rdfFile = rdfFile.replaceFirst("(?i)\\.xml$", "");
+    rdfFile = rdfFile.replaceFirst("(?i)\\.manifest$", "");
+    rdfFile = rdfFile+".rdf";
+    Debug.debug("rdfFile --> "+rdfFile, 2);
+    String rteName = manifest.replaceFirst("(?i)^"+EC2Mgr.AMI_BUCKET, "");
+    rteName = rteName.replaceFirst("(?i)\\.xml$", "");
+    rteName = rteName.replaceFirst("(?i)\\.manifest$", "");
+    File tmpCatalogFile = downloadFromSSS(rdfFile);
+    GridPilot.tmpConfFile.put(tmpCatalogFile.getAbsolutePath(), tmpCatalogFile);
+    return tmpCatalogFile;
+  }
+  
   private File downloadFromSSS(String path) throws NullPointerException, MalformedURLException, Exception{
-    File tmpFile = File.createTempFile(MyUtil.getTmpFilePrefix(), ".xml");
+    File tmpFile = File.createTempFile(MyUtil.getTmpFilePrefix(), ".rdf");
     tmpFile.delete();
     GridPilot.getClassMgr().getFTPlugin("sss").getFile(new GlobusURL("sss://"+path), tmpFile);
+    // If an AMIs has a '+' in its manifest path name, the actual path of the manifest in S3 will
+    // be the path name with the + replaced with a space...
+    if(!tmpFile.exists()){
+      GridPilot.getClassMgr().getFTPlugin("sss").getFile(new GlobusURL("sss://"+path.replaceAll("\\+", " ")), tmpFile);
+    }
     return tmpFile;
   }
   
@@ -548,7 +556,6 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     //MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, runtimeDBs, toDeleteRTEs,
     //   mkLocalOSRTE, includeVMRTEs, basicOSRTES);
   }
-
 
   /**
    * The brokering algorithm. As simple as possible: FIFO.
