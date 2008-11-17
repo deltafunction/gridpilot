@@ -18,6 +18,7 @@ import gridpilot.GridPilot;
 import gridpilot.MyComputingSystem;
 import gridpilot.MyJobInfo;
 import gridpilot.MyUtil;
+import gridpilot.RteRdfParser;
 import gridpilot.csplugins.fork.ForkScriptGenerator;
 
 /**
@@ -140,7 +141,6 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
   
   public boolean preProcess(JobInfo job) throws Exception {
     
-    // From gridpilot.csplugins.fork.ForkComputingSystem
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String [] rtes = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
     String transID = dbPluginMgr.getJobDefTransformationID(job.getIdentifier());
@@ -161,9 +161,6 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     job.setInputFileUrls(inputFiles);
     job.setOutputFileDestinations(outputDestinations);
     job.setOutputFileNames(outputFileNames);
-    
-    // TODO: if an RTE is a VM, set is as opSys instead.
-    
     job.setRTEs(MyUtil.removeBaseSystemAndVM(rtes));
     setBaseSystemName(rtes, job);
     job.setMemory(defaultJobMB);
@@ -198,7 +195,7 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
   
   private void setBaseSystemName(String [] rtes, JobInfo job){
     for(int i=0; i<rtes.length; ++i){
-      if(!rtes[i].startsWith("VM/")){
+      if(!rtes[i].startsWith(RteRdfParser.VM_PREFIX)){
         job.setOpSys(rtes[i]);
         job.setOpSysRTE(rtes[i]);
       }

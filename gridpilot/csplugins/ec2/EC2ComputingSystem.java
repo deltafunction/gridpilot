@@ -32,8 +32,10 @@ import gridfactory.common.Shell;
 import gridpilot.DBPluginMgr;
 import gridpilot.MyComputingSystem;
 import gridpilot.GridPilot;
+import gridpilot.MyJobInfo;
 import gridpilot.MySecureShell;
 import gridpilot.MyUtil;
+import gridpilot.RteRdfParser;
 import gridpilot.csplugins.forkpool.ForkPoolComputingSystem;
 
 public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyComputingSystem {
@@ -127,6 +129,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     // Reuse running VMs
     discoverInstances();
 
+  }
+  
+  public boolean preProcess(JobInfo job) throws Exception {
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+    String [] rtes = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
+    job.setRTEs(rtes);
+    return super.preProcess(job);
   }
 
   /**
@@ -406,6 +415,65 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     return false;
   }
+  
+  private String findAmiId(JobInfo job, String fallbackAmiId) {
+    DBPluginMgr dbMgr = null;
+    DBRecord rte;
+    ArrayList<DBRecord> recs;
+    for(int i=0; i<runtimeDBs.length; ++i){
+      try{
+        dbMgr = GridPilot.getClassMgr().getDBPluginMgr(runtimeDBs[i]);
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: Could not load runtime DB "+
+            runtimeDBs[i]+". Runtime environments must be defined by hand. "+
+            e.getMessage(), 1);
+        continue;
+      }
+      try{
+        // Get a list of all RTEs with computingSystem EC2.
+        // These will all correspond to an AMI and each provide
+        // some software RTEs.
+        recs = getAllEC2RTEs(dbMgr);
+        boolean ok = true;
+        for(Iterator<DBRecord> it=recs.iterator(); it.hasNext();){
+          rte = it.next();
+          if(checkProvides(job, rte)){
+            return getAmiId(rte);
+          }
+        }
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    return fallbackAmiId;
+  }
+
+  private boolean checkProvides(JobInfo job, DBRecord rte) {
+    Object providesStr = rte.getValue("provides");
+    if(providesStr==null){
+      return false;
+    }
+    String [] provides = MyUtil.split((String) providesStr);
+    // TODO
+    return false;
+  }
+
+  private ArrayList<DBRecord> getAllEC2RTEs(DBPluginMgr dbMgr) {
+    DBResult rtes = dbMgr.getRuntimeEnvironments();
+    DBRecord rte;
+    ArrayList<DBRecord> ret = new ArrayList();
+    String nameField = MyUtil.getNameField(dbMgr.getDBName(), "dataset");
+    for(int i=0; i<rtes.values.length; ++i){
+      rte = rtes.getRow(i);
+      if(((String) rte.getValue(nameField)).startsWith(RteRdfParser.VM_PREFIX) &&
+          ((String) rte.getValue("computingSystem")).equalsIgnoreCase(csName)){
+        ret.add(rte);
+      }
+    }
+    return ret;
+  }
 
   /**
    * Check if a list of dependencies are provided by the AMI of a given host.
@@ -447,6 +515,15 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return true;
   }
   
+  /**
+   * Get a list of RTE names provided by a given RTE, according
+   * to one of the used databases (they are tried one by one).
+   * These databases have been updated at startup with information
+   * from the software catalog fragments expected to be present
+   * in S3 (SSS).
+   * @param rteName
+   * @return list of provided RTEs
+   */
   private ArrayList<String> getProvides(String rteName) {
     ArrayList<String> provides = new ArrayList<String>();
     provides.add(rteName);
@@ -581,51 +658,54 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       }
     }
     // then try to boot an instance
+    String amiID = null;
     for(int i=0; i<hosts.length; ++i){
       try{
-        if(hosts[i]==null){
-          ReservationDescription desc = ec2mgr.launchInstances(fallbackAmiID, 1);
-          Instance inst = ((Instance) desc.getInstances().get(0));
-          // Wait for the machine to boot
-          long startMillis = MyUtil.getDateInMilliSeconds(null);
-          long nowMillis = MyUtil.getDateInMilliSeconds(null);
-          List reservationList = null;
-          List instanceList = null;
-          Instance instance = null;
-          while(!inst.isRunning()){
-            nowMillis = MyUtil.getDateInMilliSeconds(null);
-            if(nowMillis-startMillis>MAX_BOOT_WAIT){
-              logFile.addMessage("ERROR: timeout waiting for image "+inst.getImageId()+
-                   "to boot for job "+job.getIdentifier());
-              return null;
-            }
-            reservationList = ec2mgr.listReservations();
-            instanceList = null;
-            instance = null;
-            ReservationDescription reservation = null;
-            Debug.debug("Finding reservations... ", 1);
-            for(Iterator it=reservationList.iterator(); it.hasNext();){
-              reservation = (ReservationDescription) it.next();
-              instanceList = ec2mgr.listInstances(reservation);
-              // "Reservation ID", "Owner", "Instance ID", "AMI", "State", "Public DNS", "Key"
-              for(Iterator itt=instanceList.iterator(); itt.hasNext();){
-                instance = (Instance) itt.next();
-                if(reservation.getReservationId().equalsIgnoreCase(reservation.getReservationId())){
-                  inst = instance;
-                }
+        if(hosts[i]!=null){
+          continue;
+        }
+        amiID = findAmiId(job, fallbackAmiID);
+        ReservationDescription desc = ec2mgr.launchInstances(amiID, 1);
+        Instance inst = ((Instance) desc.getInstances().get(0));
+        // Wait for the machine to boot
+        long startMillis = MyUtil.getDateInMilliSeconds(null);
+        long nowMillis = MyUtil.getDateInMilliSeconds(null);
+        List reservationList = null;
+        List instanceList = null;
+        Instance instance = null;
+        while(!inst.isRunning()){
+          nowMillis = MyUtil.getDateInMilliSeconds(null);
+          if(nowMillis-startMillis>MAX_BOOT_WAIT){
+            logFile.addMessage("ERROR: timeout waiting for image "+inst.getImageId()+
+                 "to boot for job "+job.getIdentifier());
+            return null;
+          }
+          reservationList = ec2mgr.listReservations();
+          instanceList = null;
+          instance = null;
+          ReservationDescription reservation = null;
+          Debug.debug("Finding reservations... ", 1);
+          for(Iterator it=reservationList.iterator(); it.hasNext();){
+            reservation = (ReservationDescription) it.next();
+            instanceList = ec2mgr.listInstances(reservation);
+            // "Reservation ID", "Owner", "Instance ID", "AMI", "State", "Public DNS", "Key"
+            for(Iterator itt=instanceList.iterator(); itt.hasNext();){
+              instance = (Instance) itt.next();
+              if(reservation.getReservationId().equalsIgnoreCase(reservation.getReservationId())){
+                inst = instance;
               }
             }
-            Debug.debug("Waiting for EC2 machine to boot... "+inst.getState()+":"+inst.getStateCode(), 1);
-            if(inst.isRunning() || inst.getState().equalsIgnoreCase("running")){
-              break;
-            }
-            Thread.sleep(5000);
           }
-          hosts[i] = inst.getDnsName();
-          Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
-          submittingHostJobs.put(hosts[i], new HashSet());
-          return hosts[i];
+          Debug.debug("Waiting for EC2 machine to boot... "+inst.getState()+":"+inst.getStateCode(), 1);
+          if(inst.isRunning() || inst.getState().equalsIgnoreCase("running")){
+            break;
+          }
+          Thread.sleep(5000);
         }
+        hosts[i] = inst.getDnsName();
+        Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
+        submittingHostJobs.put(hosts[i], new HashSet());
+        return hosts[i];
       }
       catch(Exception e){
         e.printStackTrace();

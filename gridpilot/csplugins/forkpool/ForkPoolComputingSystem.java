@@ -369,7 +369,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     }
   }
 
-  public boolean preProcess(JobInfo job) throws JSchException{
+  public boolean preProcess(JobInfo job) throws Exception{
     // choose the host
     String host = selectHost(job);
     if(host==null){

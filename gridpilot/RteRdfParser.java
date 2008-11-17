@@ -19,6 +19,8 @@ import gridfactory.common.jobrun.RTECatalog.TarPackage;
 
 public class RteRdfParser {
   
+  public static final String VM_PREFIX = "VM/";
+  
   public String [] catalogURLs;
   private RTECatalog rteCatalog;
   
