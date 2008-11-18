@@ -417,54 +417,90 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   }
   
   private String findAmiId(JobInfo job, String fallbackAmiId) {
-    DBPluginMgr dbMgr = null;
+    DBPluginMgr dbMgr;
     DBRecord rte;
     ArrayList<DBRecord> recs;
-    for(int i=0; i<runtimeDBs.length; ++i){
-      try{
-        dbMgr = GridPilot.getClassMgr().getDBPluginMgr(runtimeDBs[i]);
-      }
-      catch(Exception e){
-        Debug.debug("WARNING: Could not load runtime DB "+
-            runtimeDBs[i]+". Runtime environments must be defined by hand. "+
-            e.getMessage(), 1);
-        continue;
-      }
-      try{
-        // Get a list of all RTEs with computingSystem EC2.
-        // These will all correspond to an AMI and each provide
-        // some software RTEs.
-        recs = getAllEC2RTEs(dbMgr);
-        boolean ok = true;
-        for(Iterator<DBRecord> it=recs.iterator(); it.hasNext();){
-          rte = it.next();
-          if(checkProvides(job, rte)){
-            return getAmiId(rte);
+    String nameField;
+    String rteName;
+    String amiId = null;
+    try{
+      dbMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+      nameField = MyUtil.getNameField(dbMgr.getDBName(), "runtimeEnvironment");
+    }
+    catch(Exception e){
+      logFile.addMessage("ERROR: could not load database", e);
+      return null;
+    }
+    try{
+      // Get a list of all RTEs with computingSystem EC2.
+      // These will all correspond to an AMI and each provide
+      // some software RTEs.
+      recs = getAllEC2RTEs(dbMgr);
+      for(Iterator<DBRecord> it=recs.iterator(); it.hasNext();){
+        rte = it.next();
+        rteName = (String) rte.getValue(nameField);
+        if(checkProvides(job, rte, rteName)){
+          amiId = getAmiId(rteName);
+          if(amiId!=null){
+            return amiId;
           }
         }
       }
-      catch(Exception e){
-        e.printStackTrace();
-      }
     }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    logFile.addInfo("No RTE found that provides "+MyUtil.arrayToString(job.getRTEs())+
+        ". Falling back to "+fallbackAmiId);
     return fallbackAmiId;
   }
 
-  private boolean checkProvides(JobInfo job, DBRecord rte) {
-    Object providesStr = rte.getValue("provides");
-    if(providesStr==null){
-      return false;
+  private String getAmiId(String rteName) throws EC2Exception, IOException {
+    List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, true);
+    ImageDescription desc;
+    for(Iterator<ImageDescription> it=gpAMIs.iterator(); it.hasNext();){
+      desc = it.next();
+      Debug.debug("Checking AMI "+getRteNameFromLocation(desc.getImageLocation())+"<->"+rteName, 3);
+      if(getRteNameFromLocation(desc.getImageLocation()).equalsIgnoreCase(rteName)){
+        return desc.getImageId();
+      }
     }
-    String [] provides = MyUtil.split((String) providesStr);
-    // TODO
-    return false;
+    Debug.debug("No AMI matching "+rteName, 2);
+    return null;
+  }
+
+  private boolean checkProvides(JobInfo job, DBRecord rte, String rteName) {
+    String [] requestedRtes = job.getRTEs();
+    if(requestedRtes==null || requestedRtes.length==0){
+      Debug.debug("No RTEs requested, using "+rte, 1);
+      return true;
+    }
+    Object providesStr = rte.getValue("provides");
+    String [] provides;
+    if(providesStr==null){
+      provides = new String [] {rteName};
+    }
+    else{
+      String [] rtes = MyUtil.split((String) providesStr);
+      provides = new String [rtes.length+1];
+      provides[0] = rteName;
+      System.arraycopy(rtes, 0, provides, 1, rtes.length);
+    }
+    for(int i=0; i<requestedRtes.length; ++i){
+      if(!MyUtil.arrayContains(provides, requestedRtes[i])){
+        Debug.debug("Requested RTE "+requestedRtes[i]+" not provided by "+rteName, 3);
+        return false;
+      }
+    }
+    Debug.debug("All requested RTEs "+MyUtil.arrayToString(requestedRtes)+" provided by "+rteName, 3);
+    return true;
   }
 
   private ArrayList<DBRecord> getAllEC2RTEs(DBPluginMgr dbMgr) {
     DBResult rtes = dbMgr.getRuntimeEnvironments();
     DBRecord rte;
     ArrayList<DBRecord> ret = new ArrayList();
-    String nameField = MyUtil.getNameField(dbMgr.getDBName(), "dataset");
+    String nameField = MyUtil.getNameField(dbMgr.getDBName(), "runtimeEnvironment");
     for(int i=0; i<rtes.values.length; ++i){
       rte = rtes.getRow(i);
       if(((String) rte.getValue(nameField)).startsWith(RteRdfParser.VM_PREFIX) &&
@@ -501,7 +537,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         instance = (Instance) itt.next();
         if(instance.getDnsName().equals(host)){
           manifest = ec2mgr.getImageDescription(instance.getImageId()).getImageLocation();
-          rteName = manifest.replaceFirst("(?i)^"+EC2Mgr.AMI_BUCKET, "");
+          rteName = getRteNameFromLocation(manifest);
           provides = getProvides(rteName);
           break;
         }
@@ -513,6 +549,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       }
     }
     return true;
+  }
+  
+  private String getRteNameFromLocation(String manifest){
+    String ret = manifest.replaceFirst("(?i)\\.xml$", "");
+    ret = ret.replaceFirst("(?i)\\.manifest$", "");
+    ret = ret.replaceFirst("(?i)^"+EC2Mgr.AMI_BUCKET, "");
+    return ret;
   }
   
   /**
@@ -536,8 +579,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       }
       catch(Exception e){
         Debug.debug("WARNING: Could not load runtime DB "+
-            runtimeDBs[i]+". Runtime environments must be defined by hand. "+
-            e.getMessage(), 1);
+            runtimeDBs[i]+". "+e.getMessage(), 1);
         continue;
       }
       try{
@@ -560,7 +602,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   // TODO: consider providing this method in Database
   private DBRecord getRuntimeEnvironment(DBPluginMgr dbMgr, String rteName) throws IOException{
     DBResult rtes = dbMgr.getRuntimeEnvironments();
-    String nameField = MyUtil.getNameField(dbMgr.getDBName(), "dataset");
+    String nameField = MyUtil.getNameField(dbMgr.getDBName(), "runtimeEnvironment");
     for(int i=0; i<rtes.values.length; ++i){
       if(rteName.equalsIgnoreCase((String) rtes.getValue(i, nameField))){
         return rtes.getRow(i);
@@ -587,9 +629,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     rdfFile = rdfFile.replaceFirst("(?i)\\.manifest$", "");
     rdfFile = rdfFile+".rdf";
     Debug.debug("rdfFile --> "+rdfFile, 2);
-    String rteName = manifest.replaceFirst("(?i)^"+EC2Mgr.AMI_BUCKET, "");
-    rteName = rteName.replaceFirst("(?i)\\.xml$", "");
-    rteName = rteName.replaceFirst("(?i)\\.manifest$", "");
+    String rteName = getRteNameFromLocation(manifest);
     File tmpCatalogFile = downloadFromSSS(rdfFile);
     GridPilot.tmpConfFile.put(tmpCatalogFile.getAbsolutePath(), tmpCatalogFile);
     return tmpCatalogFile;
@@ -624,7 +664,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     for(int i=0; i<runtimeDBs.length; ++i){
       try{
         MyUtil.syncRTEsFromCatalogs(csName, allTmpCatalogs, runtimeDBs, toDeleteRTEs,
-            mkLocalOSRTE, includeVMRTEs, basicOSRTES);
+            mkLocalOSRTE, includeVMRTEs, basicOSRTES, true);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -665,6 +705,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           continue;
         }
         amiID = findAmiId(job, fallbackAmiID);
+        Debug.debug("Booting "+amiID, 2);
         ReservationDescription desc = ec2mgr.launchInstances(amiID, 1);
         Instance inst = ((Instance) desc.getInstances().get(0));
         // Wait for the machine to boot
@@ -714,13 +755,5 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     return null;
   }
-
-  //public void cleanupRuntimeEnvironments(String csName) {
-    // TODO
-  //}
-  
-  //public void setupRuntimeEnvironments(String csName) {
-    // TODO
-  //}
 
 }

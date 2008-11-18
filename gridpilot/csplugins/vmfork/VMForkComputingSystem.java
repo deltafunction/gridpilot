@@ -229,7 +229,7 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
       return;
     }
     MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes, !virtEnforce,
-        true, new String [] {"Linux", "Windows"});
+        true, new String [] {"Linux", "Windows"}, true);
   }
 
 }

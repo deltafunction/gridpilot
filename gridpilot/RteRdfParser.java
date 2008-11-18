@@ -148,8 +148,8 @@ public class RteRdfParser {
             if(rec.getValue("url")==null || rec.getValue("url").equals("")){
               GridPilot.getClassMgr().getLogFile().addInfo("WARNING: package "+pack.name+" has no URL defined.");
             }
-            Debug.debug("Adding record: "+records.size()+" --> "+MyUtil.arrayToString(rec.fields)+
-                " --> "+MyUtil.arrayToString(rec.values, "', '"), 2);
+            Debug.debug("Adding record to "+records.size()+" --> "+MyUtil.arrayToString(rec.fields)+
+                " --> '"+MyUtil.arrayToString(rec.values, "', '")+"'", 2);
             records.add(rec);
             
           }

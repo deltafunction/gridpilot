@@ -187,7 +187,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       }
     }
     MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, runtimeDBs, toDeleteRTEs,
-        mkLocalOSRTE, includeVMRTEs, basicOSRTES);
+        mkLocalOSRTE, includeVMRTEs, basicOSRTES, false);
   }
   
   /**

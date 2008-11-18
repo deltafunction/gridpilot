@@ -50,10 +50,11 @@ public class ForkScriptGenerator extends ScriptGenerator{
     String line; //used as temp working string
     StringBuffer buf = new StringBuffer();
     String commentStart = "REM";
+    boolean amOnWindows = !(!shellMgr.isLocal() && !onWindows || shellMgr.isLocal() &&
+                            (!onWindows || !MyUtil.onWindows()));
 
     // Header
-    if(!shellMgr.isLocal() && !onWindows || shellMgr.isLocal() &&
-        (onWindows || !MyUtil.onWindows())){
+    if(amOnWindows){
       commentStart = "#";
       writeLine(buf, "#!/bin/bash");
       // write out the process name, for MySecureShell.submit to pick up
@@ -65,7 +66,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     writeBlock(buf, "Sleep 5 seconds before start", ScriptGenerator.TYPE_SUBSECTION, commentStart);
     // this is to be sure to have some stdout (jobs without are considered failed)
     writeLine(buf, "echo starting...");
-    if(shellMgr.isLocal() && (onWindows || MyUtil.onWindows())){
+    if(amOnWindows){
       writeLine(buf, "ping -n 10 127.0.0.1 >/nul");
     }
     else{
@@ -82,9 +83,16 @@ public class ForkScriptGenerator extends ScriptGenerator{
     for(int i=1; i<rtes.length; ++i){
       writeBlock(buf, "runtime environment: " + rtes[i], ScriptGenerator.TYPE_COMMENT, commentStart);
       String initTxt = dbPluginMgr.getRuntimeInitText(rtes[i], csName);
-      writeLine(buf, initTxt==null?"":initTxt); 
+      writeLine(buf, initTxt==null?"":initTxt);
+      // Just try and source any setup script found by scanRTEDir or from
+      // the catalog.
+      // Notice that catalog RTEs are not installed on the fly by this computing system,
+      // (so they must have been installed by hand...)
+      // Classes that inherit may choose to do this.
       writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
           "/"+rtes[i]).replaceAll("//", "/"));
+      writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
+          "/"+rtes[i]+"/"+"control/runtime").replaceAll("//", "/")+(amOnWindows?".bat":""));
       writeLine(buf, "");
     }
 

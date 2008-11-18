@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.Vector;
@@ -1414,7 +1415,8 @@ public class MyUtil extends gridfactory.common.Util{
    * Copies records from them to the 'local' runtime DBs.
     */
   public static void syncRTEsFromCatalogs(String csName, String [] rteCatalogUrls, String [] localRuntimeDBs,
-      HashMap toDeleteRtes, boolean mkLocalOS, boolean includeVMs, String [] basicOses){
+      HashMap toDeleteRtes, boolean mkLocalOS, boolean includeVMs, String [] basicOses,
+      boolean createRteForEachProvides){
     
     MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
     
@@ -1422,44 +1424,57 @@ public class MyUtil extends gridfactory.common.Util{
       return;
     }
     
-    DBPluginMgr localDBMgr = null;
+    DBPluginMgr dbMgr = null;
     
     RteRdfParser rteRdfParser = GridPilot.getClassMgr().getRteRdfParser(rteCatalogUrls);
-    String rteNameField;
-    String [] newIds = null;
     DBRecord row;
     Debug.debug("Syncing RTEs from catalogs to DBs: "+MyUtil.arrayToString(localRuntimeDBs), 2);
     
+    String nameField;
+    Object providesStr;
+    String [] provides;
+    DBResult allRtes;
+    HashMap rtesMap = null;
     for(int ii=0; ii<localRuntimeDBs.length; ++ii){
       try{
         
-        localDBMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);  
+        dbMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);  
+        nameField = MyUtil.getNameField(dbMgr.getDBName(), "runtimeEnvironment");
+        allRtes = dbMgr.getRuntimeEnvironments();
+        rtesMap = new HashMap();
+        for(int i=0; i<allRtes.values.length; ++i){
+          rtesMap.put(allRtes.getValue(i, nameField), allRtes.getValue(i, "computingSystem"));
+        }
         
         if(mkLocalOS){
-          createLocalOSRTE(csName, toDeleteRtes, localDBMgr);
+          createLocalOSRTE(csName, toDeleteRtes, dbMgr);
         }
-        createBasicOSRTEs(basicOses, csName, toDeleteRtes, localDBMgr);
+        createBasicOSRTEs(basicOses, csName, toDeleteRtes, dbMgr);
         
-        DBResult rtes = rteRdfParser.getDBResult(localDBMgr, csName);
+        DBResult rtes = rteRdfParser.getDBResult(dbMgr, csName);
         for(int i=0; i<rtes.values.length; ++i){
           row = rtes.getRow(i);
-          Debug.debug("Checking RTE "+MyUtil.arrayToString(row.values), 3);
-          if(localDBMgr.createRuntimeEnvironment(row.values)){
-            Debug.debug("Created RTE "+MyUtil.arrayToString(row.values), 2);
-            // Tag for deletion
-            rteNameField = getNameField(localDBMgr.getDBName(), "runtimeEnvironment");
-            String name = (String) row.getValue(rteNameField);
-            newIds = localDBMgr.getRuntimeEnvironmentIDs(name , csName);
-            if(newIds!=null){
-              for(int j=0; j<newIds.length; ++j){
-                Debug.debug("Tagging for deletion "+name+":"+newIds[j], 3);
-                toDeleteRtes.put(newIds[j], localDBMgr.getDBName());
-              }
+          createRte(dbMgr, row, csName, toDeleteRtes);
+          if(createRteForEachProvides){
+            providesStr = row.getValue("provides");
+            if(providesStr!=null){
+              provides = MyUtil.split((String) providesStr);
             }
-          }
-          else{
-            logFile.addMessage("WARNING: Failed creating RTE "+MyUtil.arrayToString(row.values)+
-                " on "+csName);
+            else{
+              continue;
+            }
+            for(int j=0; j<provides.length; ++j){
+              if(arrayContains(basicOses, provides[j]) ||
+                  rtesMap.containsKey(provides[j]) && rtesMap.get(provides[j]).equals(csName) ||
+                  // Exclude provide strings like tag:bla bla
+                  provides[j].indexOf("/")<0){
+                continue;
+              }
+              row.setValue(nameField, provides[j]);
+              row.setValue("provides", "");
+              Debug.debug("Creating runtimeEnvironment record for provided RTE "+provides[j], 3);
+              createRte(dbMgr, row, csName, toDeleteRtes);
+            }
           }
         }
       }
@@ -1467,7 +1482,31 @@ public class MyUtil extends gridfactory.common.Util{
         String error = "Could not load local runtime DB "+localRuntimeDBs[ii]+". "+e.getMessage();
         logFile.addMessage(error, e);
         e.printStackTrace();
+        continue;
       }
+    }
+  }
+  
+  private static void createRte(DBPluginMgr dbMgr, DBRecord row, String csName,
+      HashMap toDeleteRtes){
+    MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
+    Debug.debug("Checking RTE "+MyUtil.arrayToString(row.values), 3);
+    if(dbMgr.createRuntimeEnvironment(row.values)){
+      Debug.debug("Created RTE "+MyUtil.arrayToString(row.values), 2);
+      // Tag for deletion
+      String rteNameField = getNameField(dbMgr.getDBName(), "runtimeEnvironment");
+      String name = (String) row.getValue(rteNameField);
+      String [] newIds = dbMgr.getRuntimeEnvironmentIDs(name , csName);
+      if(newIds!=null){
+        for(int j=0; j<newIds.length; ++j){
+          Debug.debug("Tagging for deletion "+name+":"+newIds[j], 3);
+          toDeleteRtes.put(newIds[j], dbMgr.getDBName());
+        }
+      }
+    }
+    else{
+      logFile.addMessage("WARNING: Failed creating RTE "+MyUtil.arrayToString(row.values)+
+          " on "+csName);
     }
   }
 
