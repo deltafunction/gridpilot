@@ -2,6 +2,7 @@ package gridpilot;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
 import java.net.URL;
 
 import javax.swing.*;
@@ -11,7 +12,10 @@ import java.util.*;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.ConfigNode;
+import gridfactory.common.ConfirmBox;
+import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
+import gridfactory.common.LocalStaticShell;
 import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
 import gridpilot.StatusBar;
@@ -333,13 +337,30 @@ public class GlobalFrame extends GPFrame{
       }
     });
     //menuFile.add(miReloadValues);
+    
+    // Import/export
+    JMenuItem miImport = new JMenuItem("Import");
+    JMenuItem miExport = new JMenuItem("Export");
+    menuFile.add(miImport);
+    menuFile.add(miExport);
+    menuFile.addSeparator();
+    miImport.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        importToDB();
+      }
+    });
+    miExport.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        exportDB();
+      }
+    });
    
     // DB
     JMenu menuDB = new JMenu("Databases");
     JMenuItem miDbClearCaches = new JMenuItem("Clear DB caches");
     miDbClearCaches.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        // Clear caches in all of the DB connections
+        // Clear caches of all DB connections
         GridPilot.getClassMgr().clearDBCaches();
       }
     });
@@ -620,6 +641,36 @@ public class GlobalFrame extends GPFrame{
     
     return menuBar;
 
+  }
+
+  protected void exportDB() {
+    ResThread t = (new ResThread(){
+      public void run(){
+        try{
+          JTextField jtf =  new JTextField(20);
+          MyUtil.launchCheckBrowser(null, "http://check/", jtf, false, true, true, true);
+          String url = jtf.getText();
+          if(url!=null && !url.equals("")){
+            Debug.debug("Exporting to "+url, 2);
+            MyUtil.exportDB(url);
+          }
+          else{
+            Debug.debug("Not exporting. "+url, 2);
+          }
+        }
+        catch(Exception ex){
+          String error = "ERROR: could not export DB(s). "+ex.getMessage();
+          MyUtil.showError(error);
+          GridPilot.getClassMgr().getLogFile().addMessage(error, ex);
+          ex.printStackTrace();
+        }
+      }
+    });     
+    SwingUtilities.invokeLater(t);    
+  }
+    
+  protected void importToDB() {
+    // TODO
   }
 
   public void toggleMonitoringPanel(){

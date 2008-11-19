@@ -19,12 +19,24 @@ public interface Database{
   // TODO: implement in plugins and make menu point active.
   public void clearCaches();
   
-  // This is the parser of the select request from SelectPanel.
-  // The last returned column must be the identifier.
-  // The parameter findAll is used only to choose whether or not
-  // to query all file catalogs for PFNs.
-  public DBResult select(String selectRequest, String identifier,
-      boolean findAll);
+  /**
+   * This is the parser of the select request from SelectPanel.
+   * The last returned column must be the identifier.
+   * The parameter findAll is used only to choose whether or not
+   * to query all file catalogs for PFNs.
+   * 
+   * @param selectRequest
+   * @param idField
+   * @param findAll
+   * @return DBResult object
+   */
+  public DBResult select(String selectRequest, String idField, boolean findAll);
+  
+  /**
+   * This is used by {@link MyUtil#importToDB()}.
+   * @param sql
+   */
+  public void executeUpdate(String sql) throws Exception;
   
   // ####### RuntimeEnvironment table
   public String [] getRuntimeEnvironments(String jobDefID) throws InterruptedException;

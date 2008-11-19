@@ -2344,6 +2344,36 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
+  public synchronized void executeUpdate(final String sql){
+    
+    ResThread t = new ResThread(){
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
+      public void run(){
+        try{
+          db.executeUpdate(sql);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName, t);
+        }
+      }
+    };
+  
+    t.start();
+  
+    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "executeUpdate")){
+      return;
+    }
+    else{
+      return;
+    }
+  }
+
   public DBResult select(final String selectQuery, final String identifier,
       final boolean findAll){
   

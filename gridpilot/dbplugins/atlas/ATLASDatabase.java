@@ -234,7 +234,7 @@ public class ATLASDatabase extends DBCache implements Database{
     findPFNs = doit;
   }
   
-  public DBResult select(String selectRequest, String identifier, boolean findAll){
+  public DBResult select(String selectRequest, String idField, boolean findAll){
     
     if(useCaching && queryResults.containsKey(selectRequest)){
       Debug.debug("Returning cached result for "+selectRequest, 2);
@@ -262,14 +262,14 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     // Make sure we have identifier as last column.
     else{
-      patt = Pattern.compile(", "+identifier+", ", Pattern.CASE_INSENSITIVE);
+      patt = Pattern.compile(", "+idField+", ", Pattern.CASE_INSENSITIVE);
       matcher = patt.matcher(req);
       req = matcher.replaceAll(", ");
-      patt = Pattern.compile(" "+identifier+" FROM", Pattern.CASE_INSENSITIVE);
+      patt = Pattern.compile(" "+idField+" FROM", Pattern.CASE_INSENSITIVE);
       if(!patt.matcher(req).find()){
         patt = Pattern.compile(" FROM (\\w+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceAll(", "+identifier+" FROM "+"$1");
+        req = matcher.replaceAll(", "+idField+" FROM "+"$1");
       }
     }
     
@@ -2867,6 +2867,10 @@ public class ATLASDatabase extends DBCache implements Database{
 
   public String getError(){
     return error;
+  }
+
+  public void executeUpdate(String sql) throws Exception {
+    throw new Exception("The database "+dbName+" does not support general purpose SQL updates.");
   }
 
 }

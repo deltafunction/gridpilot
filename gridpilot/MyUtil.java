@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.Vector;
@@ -85,6 +84,11 @@ import org.globus.util.GlobusURL;
 public class MyUtil extends gridfactory.common.Util{
 
   public static final String TMP_FILE_PREFIX = "gridpilot-";
+  /**
+   * Place holder for the import directory, used in database records produced by
+   * {@link #exportDB()}.
+   */
+  public static final String GRIDPILOT_IMPORT_DIR = "GRIDPILOT_IMPORT_DIR";
 
   /**
    * Returns the text of a JComponent.
@@ -269,7 +273,7 @@ public class MyUtil extends gridfactory.common.Util{
            try{
              wb = new BrowserPanel(
                  frame,
-                 "Choose file",
+                 onlyDirs?"Choose directory":"Choose file",
                  //finUrl,
                  urls[i],
                  finBaseUrl,
@@ -1428,7 +1432,7 @@ public class MyUtil extends gridfactory.common.Util{
     
     RteRdfParser rteRdfParser = GridPilot.getClassMgr().getRteRdfParser(rteCatalogUrls);
     DBRecord row;
-    Debug.debug("Syncing RTEs from catalogs to DBs: "+MyUtil.arrayToString(localRuntimeDBs), 2);
+    Debug.debug("Syncing RTEs from catalogs to DBs: "+arrayToString(localRuntimeDBs), 2);
     
     String nameField;
     Object providesStr;
@@ -1439,7 +1443,7 @@ public class MyUtil extends gridfactory.common.Util{
       try{
         
         dbMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);  
-        nameField = MyUtil.getNameField(dbMgr.getDBName(), "runtimeEnvironment");
+        nameField = getNameField(dbMgr.getDBName(), "runtimeEnvironment");
         allRtes = dbMgr.getRuntimeEnvironments();
         rtesMap = new HashMap();
         for(int i=0; i<allRtes.values.length; ++i){
@@ -1458,7 +1462,7 @@ public class MyUtil extends gridfactory.common.Util{
           if(createRteForEachProvides){
             providesStr = row.getValue("provides");
             if(providesStr!=null){
-              provides = MyUtil.split((String) providesStr);
+              provides = split((String) providesStr);
             }
             else{
               continue;
@@ -1490,9 +1494,9 @@ public class MyUtil extends gridfactory.common.Util{
   private static void createRte(DBPluginMgr dbMgr, DBRecord row, String csName,
       HashMap toDeleteRtes){
     MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
-    Debug.debug("Checking RTE "+MyUtil.arrayToString(row.values), 3);
+    Debug.debug("Checking RTE "+arrayToString(row.values), 3);
     if(dbMgr.createRuntimeEnvironment(row.values)){
-      Debug.debug("Created RTE "+MyUtil.arrayToString(row.values), 2);
+      Debug.debug("Created RTE "+arrayToString(row.values), 2);
       // Tag for deletion
       String rteNameField = getNameField(dbMgr.getDBName(), "runtimeEnvironment");
       String name = (String) row.getValue(rteNameField);
@@ -1505,7 +1509,7 @@ public class MyUtil extends gridfactory.common.Util{
       }
     }
     else{
-      logFile.addMessage("WARNING: Failed creating RTE "+MyUtil.arrayToString(row.values)+
+      logFile.addMessage("WARNING: Failed creating RTE "+arrayToString(row.values)+
           " on "+csName);
     }
   }
@@ -1529,7 +1533,7 @@ public class MyUtil extends gridfactory.common.Util{
         GridPilot.getClassMgr().getLogFile().addMessage(error, e);
       }
       // Delete RTEs from catalog(s)
-      Debug.debug("Cleaning up catalog RTEs "+MyUtil.arrayToString(toDeleteRtes.keySet().toArray()), 3);
+      Debug.debug("Cleaning up catalog RTEs "+arrayToString(toDeleteRtes.keySet().toArray()), 3);
       if(toDeleteRtes!=null && toDeleteRtes.keySet()!=null){
         for(Iterator it=toDeleteRtes.keySet().iterator(); it.hasNext();){
           try{
@@ -1641,8 +1645,8 @@ public class MyUtil extends gridfactory.common.Util{
     String srmSurl = null;
     String shortID = null;
 
-    String [] idArr = MyUtil.split(fileTransferID, "::");
-    String [] head = MyUtil.split(idArr[0], "-");
+    String [] idArr = split(fileTransferID, "::");
+    String [] head = split(idArr[0], "-");
     if(idArr.length<3){
       throw new SRMException("ERROR: malformed ID "+fileTransferID);
     }
@@ -1654,7 +1658,7 @@ public class MyUtil extends gridfactory.common.Util{
       String turls = fileTransferID.replaceFirst(idArr[0]+"::", "");
       turls = turls.replaceFirst(idArr[1]+"::", "");
       turls = turls.replaceFirst(idArr[2]+"::", "");
-      String [] turlArray = MyUtil.split(turls, "' '");
+      String [] turlArray = split(turls, "' '");
       srcTurl = turlArray[0].replaceFirst("'", "");
       destTurl = turlArray[1].replaceFirst("'", "");
       srmSurl = turlArray[2].replaceFirst("'", "");
@@ -1692,4 +1696,120 @@ public class MyUtil extends gridfactory.common.Util{
     }
     return false;
   }
+  
+  public static void exportDB(String exportFile) throws Exception{
+    String [] choices = new String[GridPilot.dbNames.length+1];
+    System.arraycopy(GridPilot.dbNames, 0, choices, 0, GridPilot.dbNames.length);
+    choices[choices.length-1] = "none";
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    int choice = confirmBox.getConfirm("Export database", "This will export all the data of the chosen database<br>" +
+        "plus all files associated with the transformations in the database.<br>" +
+        "Non-local files will be downloded first.<br>" +
+        "Please choose a database to export.", choices);
+    if(choice<0 || choice>=choices.length-1){
+      return;
+    }
+    File tmpDir = File.createTempFile(MyUtil.getTmpFilePrefix(), "");
+    tmpDir.delete();
+    tmpDir.mkdirs();
+    File tarFile = File.createTempFile(MyUtil.getTmpFilePrefix(), ".tar");
+    // hack to have the tmp directory and file deleted on exit
+    GridPilot.tmpConfFile.put(tmpDir.getAbsolutePath(), tmpDir);
+    GridPilot.tmpConfFile.put(tarFile.getAbsolutePath(), tarFile);
+    // Save everything to a tmp dir
+    saveTableAndFiles(tmpDir, GridPilot.dbNames[choice], "dataset", null, GRIDPILOT_IMPORT_DIR);
+    saveTableAndFiles(tmpDir, GridPilot.dbNames[choice], "transformation",
+        new String [] {"script", "inputFiles"}, GRIDPILOT_IMPORT_DIR);
+    // Tar up the tmp dir
+    MyUtil.tar(tarFile, tmpDir);
+    MyUtil.gzip(tarFile.getAbsolutePath(), tarFile.getAbsolutePath()+".gz");
+    // Clean up
+    LocalStaticShell.deleteDir(tmpDir.getAbsolutePath());
+    LocalStaticShell.deleteFile(tarFile.getAbsolutePath());
+    // TODO: copy tarFile.getAbsolutePath()+".gz" to exportFile
+  }
+  /**
+   * This will fill a tmp directory with an SQL file, 'table'.sql plus a subdirectory
+   * 'table'Files, containing the files found in 'fileFields'.
+   * The URLs found in 'fileFields' will be changed to 'exportImportDir'/'table'Files/[record name]/[file name].
+   * <br><br>
+   * E.g.
+   * 
+   * /tmp/GridPilot12121/                                        <br>&nbsp;
+   *                     transformation.sql                      <br>&nbsp;
+   *                     transformationFiles/                    <br>&nbsp;
+   *                                         jobOptions.py       <br>&nbsp;
+   *                                         input1.root         <br>&nbsp;
+   *                  
+   *      
+   * 
+   * @param dbDir
+   * @param dbName
+   * @param table
+   * @param fileFields
+   * @param exportImportDir
+   * @param sqlExtension
+   * @throws Exception
+   */
+  private static void saveTableAndFiles(File dbDir, String dbName, String table,
+      String [] fileFields, String exportImportDir) throws Exception{
+    String idField = getIdentifierField(dbName, table);
+    DBResult dbResult =
+      GridPilot.getClassMgr().getDBPluginMgr(dbName).select("SELECT * FROM "+table, idField, true);
+    File dir = new File(dbDir, table+"Files");
+    dir.mkdir();
+    saveTableFiles(dbResult, dir, dbName, table, fileFields, exportImportDir);
+    String sql = toSql(dbResult, table, fileFields, exportImportDir);
+    File tableFile = new File(dbDir, table+".sql");
+    LocalStaticShell.writeFile(tableFile.getAbsolutePath(), sql, true);
+  }
+  
+  private static void saveTableFiles(DBResult dbResult, File dir, String dbName, String table, String [] fileFields,
+      String exportImportDir) throws Exception {
+    String urlsStr;
+    String [] urls;
+    String nameField = getNameField(dbName, table);
+    String name;
+    File dlDir;
+    while(dbResult.next()){
+      for(int i=0; i<fileFields.length; ++i){
+        if(MyUtil.arrayContainsIgnoreCase(fileFields, dbResult.fields[i]) &&
+            dbResult.values[i]!=null){
+          name = dbResult.getString(nameField);
+          urlsStr = dbResult.getString(fileFields[i]);
+          urls = split(urlsStr);
+          for(int j=0; j<urls.length; ++j){
+            // Download url to 'dir'/[record name]
+            dlDir = new File(dir, name);
+            dlDir.mkdir();
+            GridPilot.getClassMgr().getTransferControl().download(urls[i], dlDir);
+          }
+        }
+      }
+    }
+  }
+
+  private static String toSql(DBResult dbResult, String table, String [] fileFields, String exportImportDir){
+    String res = null;
+    Object [][] newValues = dbResult.values.clone();
+    for(int i=0; i<dbResult.values.length; ++i){
+      for(int j=0; j<fileFields.length; ++j){
+        if(MyUtil.arrayContainsIgnoreCase(fileFields, dbResult.fields[j]) &&
+            newValues[i][j]!=null){
+          // Replace URLs with file names in exportImportDir
+          newValues[i][j] = ((String) newValues[i][j]).trim().replaceAll("\\\\", "/"
+              ).replaceAll("^.*/([^/]+)$", exportImportDir+"/"+table+"/$1");
+        }
+      }
+      res = "INSERT INTO "+table+" ("+arrayToString(dbResult.fields, ", ")+
+      ") VALUES ("+arrayToString(newValues[i], ", ")+");\n";
+    }
+    return res;
+  }
+
+  public static void importToDB() {
+    // TODO
+    
+  }
+
 }

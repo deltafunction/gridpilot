@@ -654,8 +654,13 @@ public class MySQLDatabase extends DBCache implements Database {
         );
     return ret;
   }
+  
+  public void executeUpdate(String sql) throws SQLException {
+    executeUpdate(dbName, sql);
+  }
 
-  public synchronized DBResult select(String selectRequest, String identifier,
+  // TODO: clean up this mess.
+  public synchronized DBResult select(String selectRequest, String idField,
       boolean findAll){
     
     String req = selectRequest;
@@ -682,14 +687,14 @@ public class MySQLDatabase extends DBCache implements Database {
       req = matcher.replaceFirst("SELECT * FROM");
     }
     else{
-      patt = Pattern.compile(", "+identifier+" ", Pattern.CASE_INSENSITIVE);
+      patt = Pattern.compile(", "+idField+" ", Pattern.CASE_INSENSITIVE);
       matcher = patt.matcher(req);
       req = matcher.replaceAll(" ");
-      patt = Pattern.compile("SELECT "+identifier+" FROM", Pattern.CASE_INSENSITIVE);
+      patt = Pattern.compile("SELECT "+idField+" FROM", Pattern.CASE_INSENSITIVE);
       if(!patt.matcher(req).find()){
         patt = Pattern.compile(" FROM (\\w+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceFirst(", "+identifier+" FROM "+"$1");
+        req = matcher.replaceFirst(", "+idField+" FROM "+"$1");
       }
     }
     
@@ -798,7 +803,7 @@ public class MySQLDatabase extends DBCache implements Database {
       for(int j=0; j<fields.length; ++j){
         // If we did select *, make sure that the identifier
         // row is at the end as it should be
-        if(withStar && fields[j].equalsIgnoreCase(identifier) && 
+        if(withStar && fields[j].equalsIgnoreCase(idField) && 
             j!=fields.length-1){
           identifierColumn = j;
         }
@@ -819,7 +824,7 @@ public class MySQLDatabase extends DBCache implements Database {
       }
       if(withStar && identifierColumn>-1){
         fields[identifierColumn] = fields[fields.length-1];
-        fields[fields.length-1] = identifier;
+        fields[fields.length-1] = idField;
       }
       DBResult rset = executeQuery(dbName, req);
       String [][] values = new String[rset.values.length][fields.length];
@@ -836,17 +841,17 @@ public class MySQLDatabase extends DBCache implements Database {
             if(j==identifierColumn){
               // identifier column is not at the end, so we swap
               // identifier column and the last column
-              String foo = rset.getString(rset.fields.length);
+              String foo = (String) rset.get(rset.fields.length);
               Debug.debug("values "+i+" "+foo, 2);
               values[i][j] = foo;
             }
             else if(j==rset.fields.length-1){
-              String foo = rset.getString(identifierColumn+1);
+              String foo = (String) rset.get(identifierColumn+1);
               Debug.debug("values "+i+" "+foo, 2);
               values[i][j] = foo;
             }
             else{
-              String foo =  rset.getString(j+1);
+              String foo =  (String) rset.get(j+1);
               Debug.debug("values "+i+" "+foo, 2);
               values[i][j] = foo;
             }
@@ -854,7 +859,7 @@ public class MySQLDatabase extends DBCache implements Database {
           else if(fileTable && urlColumn>-1 && j==urlColumn){
             // The first output file specified in outFileMapping
             // is by convention *the* output file.
-            String [] foos = MyUtil.split(rset.getString(j+1));
+            String [] foos = MyUtil.split((String) rset.get(j+1));
             String foo = "";
             if(foos.length>1){
               foo = foos[1];
@@ -866,7 +871,7 @@ public class MySQLDatabase extends DBCache implements Database {
             values[i][j] = foo;
           }
           else{
-            String foo = rset.getString(j+1);
+            String foo = (String) rset.get(j+1);
             Debug.debug("values "+i+" "+foo, 2);
             values[i][j] = foo;
           }
@@ -1014,10 +1019,10 @@ public class MySQLDatabase extends DBCache implements Database {
         jt = new String[runtimeEnvironmentFields.length];
         for(int j=0; j<runtimeEnvironmentFields.length; ++j){
           try{
-            jt[j] = rset.getString(j+1);
+            jt[j] = (String) rset.get(j+1);
           }
           catch(Exception e){
-            Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
+            Debug.debug("Could not set value "+(String) rset.get(j+1)+" in "+
                 runtimeEnvironmentFields[j]+". "+e.getMessage(),1);
           }
         }
@@ -1065,10 +1070,10 @@ public class MySQLDatabase extends DBCache implements Database {
         jt = new String[transformationFields.length];
         for(int j=0; j<transformationFields.length; ++j){
           try{
-            jt[j] = rset.getString(j+1);
+            jt[j] = (String) rset.get(j+1);
           }
           catch(Exception e){
-            Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
+            Debug.debug("Could not set value "+(String) rset.get(j+1)+" in "+
                 transformationFields[j]+". "+e.getMessage(),1);
           }
         }
@@ -1123,10 +1128,10 @@ public class MySQLDatabase extends DBCache implements Database {
         jt = new String[runtimeEnvironmentFields.length];
         for(int j=0; j<runtimeEnvironmentFields.length; ++j){
           try{
-            jt[j] = rset.getString(j+1);
+            jt[j] = (String) rset.get(j+1);
           }
           catch(Exception e){
-            Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
+            Debug.debug("Could not set value "+(String) rset.get(j+1)+" in "+
                 runtimeEnvironmentFields[j]+". "+e.getMessage(),1);
           }
         }
@@ -1172,10 +1177,10 @@ public class MySQLDatabase extends DBCache implements Database {
         jt = new String[transformationFields.length];
         for(int j=0; j<transformationFields.length; ++j){
           try{
-            jt[j] = rset.getString(j+1);
+            jt[j] = (String) rset.get(j+1);
           }
           catch(Exception e){
-            Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
+            Debug.debug("Could not set value "+(String) rset.get(j+1)+" in "+
                 transformationFields[j]+". "+e.getMessage(),1);
           }
         }

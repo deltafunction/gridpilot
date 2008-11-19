@@ -766,7 +766,14 @@ public class HSQLDBDatabase extends DBCache implements Database{
     return ret;
   }
 
-  public synchronized DBResult select(String selectRequest, String identifier,
+  public void executeUpdate(String sql) throws SQLException {
+    Connection conn = getDBConnection(dbName);
+    Statement stmt = conn.createStatement();
+    stmt.executeUpdate(sql);
+    conn.close();
+  }
+
+  public synchronized DBResult select(String selectRequest, String idField,
       boolean findAll){
     
     String req = selectRequest;
@@ -791,14 +798,14 @@ public class HSQLDBDatabase extends DBCache implements Database{
       req = matcher.replaceFirst("SELECT * FROM");
     }
     else{
-      patt = Pattern.compile(", "+identifier+" ", Pattern.CASE_INSENSITIVE);
+      patt = Pattern.compile(", "+idField+" ", Pattern.CASE_INSENSITIVE);
       matcher = patt.matcher(req);
       req = matcher.replaceAll(" ");
-      patt = Pattern.compile("SELECT "+identifier+" FROM", Pattern.CASE_INSENSITIVE);
+      patt = Pattern.compile("SELECT "+idField+" FROM", Pattern.CASE_INSENSITIVE);
       if(!patt.matcher(req).find()){
         patt = Pattern.compile(" FROM (\\w+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceFirst(", "+identifier+" FROM "+"$1");
+        req = matcher.replaceFirst(", "+idField+" FROM "+"$1");
         // get rid of multiple occurences of identifier
         /*patt = Pattern.compile("(SELECT .*)"+identifier+", (.*"+identifier+" FROM .*)",
             Pattern.CASE_INSENSITIVE);
@@ -906,7 +913,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         fields[j] = md.getColumnName(j+1);
         // If we did select *, make sure that the identifier
         // row is at the end as it should be
-        if(withStar && fields[j].equalsIgnoreCase(identifier)  && 
+        if(withStar && fields[j].equalsIgnoreCase(idField)  && 
             j!=md.getColumnCount()-1){
           identifierColumn = j;
         }
@@ -927,7 +934,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
       if(withStar && identifierColumn>-1){
         fields[identifierColumn] = md.getColumnName(md.getColumnCount());
-        fields[md.getColumnCount()-1] = identifier;
+        fields[md.getColumnCount()-1] = idField;
       }
       rset = stmt.executeQuery(req);
       i=0;
