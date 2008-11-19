@@ -2,7 +2,6 @@ package gridpilot;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.io.File;
 import java.net.URL;
 
 import javax.swing.*;
@@ -12,10 +11,7 @@ import java.util.*;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.ConfigNode;
-import gridfactory.common.ConfirmBox;
-import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
-import gridfactory.common.LocalStaticShell;
 import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
 import gridpilot.StatusBar;
