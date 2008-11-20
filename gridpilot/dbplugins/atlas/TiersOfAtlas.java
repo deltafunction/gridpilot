@@ -48,8 +48,8 @@ public class TiersOfAtlas {
       }
       in.close();
       out.close();
-      // hack to have the diretory deleted on exit
-      GridPilot.tmpConfFile.put(toaFile.getName(), toaFile);
+      // have the diretory deleted on exit
+      GridPilot.addTmpFile(toaFile.getName(), toaFile);
     }
     catch(Exception e){
       String error = "WARNING: could not load tiers of atlas. File catalog lookups " +

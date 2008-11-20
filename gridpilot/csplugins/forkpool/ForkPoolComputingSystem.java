@@ -338,8 +338,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     try {
       if(!getShellMgr(job.getHost()).isLocal()){
         File tmpFile = File.createTempFile(/*prefix*/"GridPilot-Fork-", /*suffix*/"");
-        // hack to have the file deleted on exit
-        GridPilot.tmpConfFile.put(tmpFile.getAbsolutePath(), tmpFile);
+        // have the file deleted on exit
+        GridPilot.addTmpFile(tmpFile.getAbsolutePath(), tmpFile);
         getShellMgr(job.getHost()).download(jobScriptFile, tmpFile.getAbsolutePath());
         jobScriptFile = tmpFile.getAbsolutePath();
       }

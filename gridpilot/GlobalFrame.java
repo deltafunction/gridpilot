@@ -644,7 +644,7 @@ public class GlobalFrame extends GPFrame{
       public void run(){
         try{
           JTextField jtf =  new JTextField(20);
-          MyUtil.launchCheckBrowser(null, "http://check/", jtf, false, true, true, true);
+          MyUtil.launchCheckBrowser(null, MyUtil.CHECK_URL, jtf, false, true, true, true);
           String url = jtf.getText();
           if(url!=null && !url.equals("")){
             Debug.debug("Exporting to "+url, 2);

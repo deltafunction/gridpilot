@@ -211,11 +211,11 @@ public class BeginningWizard{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String confirmString = "Welcome!\n\n" +
             (firstRun?"This appears to be the first time you run GridPilot.\n":"") +
-            "On the next windows you will be guided through 6  steps to setup GridPilot.\n" +
+            "On the next windows you will be guided through 6  steps to set up GridPilot.\n" +
             "Your configuration will be stored to a file in your home directory.\n\n" +
             "Click \"Continue\" to move on or \"Cancel\" to exit this wizard.\n\n" +
             "Notice that you can always run this wizard again by choosing it from " +
-            "the \"Help\" menu.";
+            "the \"Help\" menu.\n\n";
     JLabel confirmLabel = new JLabel();
     confirmLabel.setPreferredSize(new Dimension(520, 400));
     confirmLabel.setOpaque(true);
@@ -271,26 +271,28 @@ public class BeginningWizard{
     
     if(firstRun){
       System.out.println("Creating new configuration file.");
-      configFile = new ConfigFile(GridPilot.defaultConfFileName, GridPilot.topConfigSection, GridPilot.configSections);
-      configFile.excludeItems = GridPilot.myExcludeItems;
       // Make temporary config file
-      File tmpConfFile = (File) GridPilot.tmpConfFile.get(GridPilot.defaultConfFileName);       
-       // Copy over config file
-       LocalStaticShell.copyFile(tmpConfFile.getAbsolutePath(),
+      ConfigFile tmpConfigFile = new ConfigFile(GridPilot.defaultConfFileNameWindows,
+          GridPilot.topConfigSection, GridPilot.configSections, GridPilot.class);
+      tmpConfigFile.excludeItems = GridPilot.myExcludeItems;
+      // Copy over temporary to real config file
+      LocalStaticShell.copyFile(tmpConfigFile.getFile().getAbsolutePath(),
            GridPilot.userConfFile.getAbsolutePath());
-       tmpConfFile.delete();
-       try{
-         configFile = new ConfigFile(GridPilot.userConfFile, GridPilot.topConfigSection, GridPilot.configSections);
-         configFile.excludeItems = GridPilot.myExcludeItems;
-       }
-       catch(Exception e){
-         System.out.println("WARNING: could not create or load new configuration file!");
-         e.printStackTrace();
-       }
-       GridPilot.getClassMgr().setConfigFile(configFile);
-       // This is necessary to be able to create browser panels when clicking on
-       // "browse"
-       GridPilot.loadFTs();
+      // Clean up
+      tmpConfigFile.getFile().delete();
+      // Construct ConfigFile object from the new file
+      try{
+        configFile = new ConfigFile(GridPilot.userConfFile, GridPilot.topConfigSection, GridPilot.configSections);
+        configFile.excludeItems = GridPilot.myExcludeItems;
+      }
+      catch(Exception e){
+        System.out.println("WARNING: could not create or load new configuration file!");
+        e.printStackTrace();
+      }
+      GridPilot.getClassMgr().setConfigFile(configFile);
+      // This is necessary to be able to create browser panels when clicking on
+      // "browse"
+      GridPilot.loadFTs();
     }
     else{
       configFile = GridPilot.getClassMgr().getConfigFile();
@@ -299,18 +301,19 @@ public class BeginningWizard{
     JPanel jPanel = new JPanel(new GridBagLayout());
     String [] names = new String [] {
         "Database directory",
-        "Cache directory",
         "Working directory",
         "Software directory",
         "Transformations directory"
         };
-    String dbDir = configFile.getValue("My_DB_local", "Database");
-    if(dbDir==null){
+    String dbDir;
+    String db = configFile.getValue("My_DB_local", "Database");
+    if(db==null){
       dbDir = "~/GridPilot";
     }
     else{
-      dbDir.replaceFirst("hsql://localhost/", "");
-      dbDir.replaceFirst("/My_DB", "");
+      dbDir = db.replaceFirst("hsql://localhost/", "");
+      dbDir = dbDir.replaceFirst("/My_DB", "");
+
     }
     String workingDir = configFile.getValue("Fork", "Working directory");
     String runtimeDir = GridPilot.runtimeDir;
@@ -343,7 +346,7 @@ public class BeginningWizard{
       jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout(8, 0));
       row.add(MyUtil.createCheckPanel(JOptionPane.getRootFrame(),
-          names[i], jtFields[i], true, false), BorderLayout.WEST);
+          names[i], jtFields[i], true, false, true), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
       subRow.add(new JLabel("   "), BorderLayout.EAST);
@@ -494,7 +497,7 @@ public class BeginningWizard{
       jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout(8, 0));
       row.add(MyUtil.createCheckPanel(JOptionPane.getRootFrame(),
-          names[i], jtFields[i], true, false), BorderLayout.WEST);
+          names[i], jtFields[i], true, false, false), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
       subRow.add(new JLabel("   "), BorderLayout.EAST);
@@ -881,20 +884,40 @@ public class BeginningWizard{
             window.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             ResThread t = new ResThread(){
               public void run(){
-                try{
+                /*try{
                   new BrowserPanel(
                         window,
                         "Browser",
                         e.getURL().toString(),
                         null,
                         true,
-                        /*filter*/false,
-                        /*navigation*/true,
+                        //filter
+                         false,
+                        //navigation
+                        true,
                         null,
                         null,
                         false,
                         false,
                         false);
+                  return;
+                }
+                catch(Exception e){
+                }*/
+                try{
+                  new BrowserPanel(
+                      window,
+                      "Browser",
+                      "file:~/",
+                      null,
+                      true,
+                      /*filter*/false,
+                      /*navigation*/true,
+                      null,
+                      null,
+                      false,
+                      false,
+                      false);
                 }
                 catch(Exception e){
                   e.printStackTrace();
@@ -1454,7 +1477,7 @@ public class BeginningWizard{
       row.add(jrbs[i], BorderLayout.WEST);
       if(i==0){
         row.add(MyUtil.createCheckPanel(JOptionPane.getRootFrame(),
-            names[i], jtFields[i], true, true), BorderLayout.CENTER);
+            names[i], jtFields[i], true, true, true), BorderLayout.CENTER);
       }
       else{
         row.add(new JLabel(names[i]), BorderLayout.CENTER);

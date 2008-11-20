@@ -706,8 +706,8 @@ public class ForkComputingSystem implements MyComputingSystem{
     if(!shellMgr.isLocal()){
       try{
         File tmpFile = File.createTempFile(/*prefix*/MyUtil.getTmpFilePrefix()+"-Fork-", /*suffix*/"");
-        // hack to have the file deleted on exit
-        GridPilot.tmpConfFile.put(tmpFile.getAbsolutePath(), tmpFile);
+        // have the file deleted on exit
+        GridPilot.addTmpFile(tmpFile.getAbsolutePath(), tmpFile);
         shellMgr.download(jobScriptFile, tmpFile.getAbsolutePath());
         jobScriptFile = tmpFile.getAbsolutePath();
       }

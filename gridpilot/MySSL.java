@@ -210,8 +210,8 @@ public class MySSL extends SSL{
       String tmpDir = tmpFile.getAbsolutePath();
       tmpFile.delete();
       LocalStaticShell.mkdirs(tmpDir);
-      // hack to have the diretory deleted on exit
-      GridPilot.tmpConfFile.put(tmpDir, new File(tmpDir));
+      // have the diretory deleted on exit
+      GridPilot.addTmpFile(tmpDir, new File(tmpDir));
       // fill the directory with certificates from resources/certificates
       SSL.copyDefaultCACertificates(tmpDir, super.getClass());
       return tmpDir;
@@ -243,8 +243,8 @@ public class MySSL extends SSL{
         tmpFile.delete();
         tmpFile.mkdirs();
         MyUtil.extractFromJAR("resources/vomsdir", tmpFile, super.getClass());
-        // hack to have the diretory deleted on exit
-        GridPilot.tmpConfFile.put(tmpDir, new File(tmpDir));
+        // have the diretory deleted on exit
+        GridPilot.addTmpFile(tmpDir, new File(tmpDir));
         String vDir = (new File(tmpFile, "vomsdir")).getAbsolutePath();
         Debug.debug("Created tmp VOMS dir "+vDir, 3);
         return vDir;
@@ -478,12 +478,12 @@ public class MySSL extends SSL{
     
     bBrowse1.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        MyUtil.launchCheckBrowser(null, "http://check/", keyField, true, true, false, false);
+        MyUtil.launchCheckBrowser(null, MyUtil.CHECK_URL, keyField, true, true, false, false);
       }
     });
     bBrowse2.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        MyUtil.launchCheckBrowser(null, "http://check/", certField, true, true, false, false);
+        MyUtil.launchCheckBrowser(null, MyUtil.CHECK_URL, certField, true, true, false, false);
       }
     });
     

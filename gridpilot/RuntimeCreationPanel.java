@@ -156,7 +156,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
       if(cstAttributesNames[i].equalsIgnoreCase("scriptRepository")){
            pAttributes.add(MyUtil.createCheckPanel(
                (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
-               cstAttributesNames[i], tcCstAttributes[i], true, true),
+               cstAttributesNames[i], tcCstAttributes[i], true, true, true),
                new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                    GridBagConstraints.CENTER,
                    GridBagConstraints.BOTH,

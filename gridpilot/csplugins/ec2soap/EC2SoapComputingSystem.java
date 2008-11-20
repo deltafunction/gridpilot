@@ -60,8 +60,8 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
     tmpKeyFile.setWritable(false, false);
     tmpKeyFile.setReadable(false, false);
     tmpKeyFile.setReadable(true, true);
-    // hack to have the file deleted on exit
-    GridPilot.tmpConfFile.put(tmpKeyFile.getAbsolutePath(), tmpKeyFile);
+    // have the file deleted on exit
+    GridPilot.addTmpFile(tmpKeyFile.getAbsolutePath(), tmpKeyFile);
     tmpKeyFile.deleteOnExit();
     ec2mgr = new EC2SoapMgr(ec2ServiceUrl,
         MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.getClassMgr().getSSL().getCertFile())),

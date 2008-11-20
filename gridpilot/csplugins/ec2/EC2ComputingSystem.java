@@ -631,7 +631,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     Debug.debug("rdfFile --> "+rdfFile, 2);
     String rteName = getRteNameFromLocation(manifest);
     File tmpCatalogFile = downloadFromSSS(rdfFile);
-    GridPilot.tmpConfFile.put(tmpCatalogFile.getAbsolutePath(), tmpCatalogFile);
+    GridPilot.addTmpFile(tmpCatalogFile.getAbsolutePath(), tmpCatalogFile);
     return tmpCatalogFile;
   }
   

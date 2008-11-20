@@ -266,7 +266,7 @@ public class RunCommandWizard extends GPFrame{
    * @return a JEditorPane with the hyperlink
    */
   public static JEditorPane createHyperLinkPanel(final String text, final JPanel panel){
-    String markup = "<a href=\"http://check/\">"+text+"</a>";
+    String markup = "<a href=\""+MyUtil.CHECK_URL+"\">"+text+"</a>";
     JEditorPane checkPanel = new JEditorPane("text/html", markup);
     checkPanel.setEditable(false);
     checkPanel.setOpaque(false);

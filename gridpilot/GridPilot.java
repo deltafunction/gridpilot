@@ -28,7 +28,6 @@ public class GridPilot extends JApplet{
   private static final long serialVersionUID = 1L;
   private boolean packFrame = false;
   private GlobalFrame frame;
-  private static String userConfFileName = ".gridpilot";
   private static ClassMgr classMgr = new ClassMgr();
   private static boolean applet = true;  
   private static String debugLevel = "0";
@@ -36,7 +35,10 @@ public class GridPilot extends JApplet{
   private static String proxyPort = null;
   private static JLabel exitPanel = new JLabel();
   private static JPanel topExitPanel = new JPanel();
+  /** List of files that will be deleted on exit. */
+  private static HashMap<String, File> tmpFiles = new HashMap<String, File>();
   
+  protected static String userConfFileName;
   /**
    * List of main section headers in config file
    */
@@ -48,10 +50,10 @@ public class GridPilot extends JApplet{
   public static String [] myExcludeItems = {"Systems", "*field*", "class", "driver",
       "parameters", "randomized", "* name", "* identifier", "* reference", "default user"};
   public static String topConfigSection = "GridPilot";
-  public static String defaultConfFileName = "gridpilot.conf";
+  public static String defaultConfFileNameUnix = ".gridpilot";
+  public static String defaultConfFileNameWindows = "gridpilot.conf";
   public static String [] preferredFileServers = null;
   public static int fileRows = 300;
-  public static HashMap tmpConfFile = new HashMap();
   public static String logFileName = "gridpilot.log";
   public static String [] jobColorMapping;
   public static String [] transferColorMapping;
@@ -103,7 +105,10 @@ public class GridPilot extends JApplet{
       getClassMgr().setLogFile(new MyLogFile(logFileName));
       // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
       if(MyUtil.onWindows()){
-        userConfFileName = defaultConfFileName;
+        userConfFileName = defaultConfFileNameWindows;
+      }
+      else{
+        userConfFileName = defaultConfFileNameUnix;
       }
       ConfigFile confFile = null;
       userConfFile = new File(System.getProperty("user.home") + File.separator +
@@ -122,7 +127,7 @@ public class GridPilot extends JApplet{
         System.out.println("WARNING: could not load user configuration file, " +
                 "using defaults.");
         //ee.printStackTrace();
-        //confFile = new ConfigFile(defaultConfFileName);
+        //confFile = new ConfigFile(defaultConfFileNameWindows);
         firstRun = true;
         new BeginningWizard(firstRun);
         firstRun = false;
@@ -153,6 +158,19 @@ public class GridPilot extends JApplet{
     }
   }
   
+  public static File getTmpFile(String key){
+    return tmpFiles.get(key);
+  }
+
+  public static void addTmpFile(String key, File file){
+    tmpFiles.put(key, file);
+  }
+  
+  public static void forgetTmpFile(String key){
+    tmpFiles.remove(key);
+  }
+  
+
   // TODO: enclose each in try/catch and set sensible default if it fails
   public static void loadConfigValues(){
     try{
@@ -392,9 +410,18 @@ public class GridPilot extends JApplet{
       catch(Exception e){
         // if we cannot show text on splash, just silently ignore
       }
-      String ftClass = getClassMgr().getConfigFile().getValue(ftNames[i], "Class");
-      getClassMgr().setFTPlugin(ftNames[i],
-          (FileTransfer) MyUtil.loadClass(ftClass, new Class []{}, new Object []{}));
+      try{
+        String ftClass = getClassMgr().getConfigFile().getValue(ftNames[i], "Class");
+        getClassMgr().setFTPlugin(ftNames[i],
+            (FileTransfer) MyUtil.loadClass(ftClass, new Class []{}, new Object []{}));
+      }
+      catch(Exception e){
+        // load as many FTS as possible
+        if(!GridPilot.firstRun){
+          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not load file transfer system "+
+              ftNames[i], e);
+        }
+      }
     }          
   }
     
@@ -509,8 +536,8 @@ public class GridPilot extends JApplet{
         //Delete temporary files
         File delFile = null;
         try{
-          for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext(); ){
-            delFile = ((File) tmpConfFile.get(it.next()));
+          for(Iterator<String> it=tmpFiles.keySet().iterator(); it.hasNext();){
+            delFile = tmpFiles.get(it.next());
             Debug.debug("Cleaning up: deleting "+delFile.getAbsolutePath(), 2);
             if(delFile.isDirectory()){
               LocalStaticShell.deleteDir(delFile.getAbsolutePath());
@@ -620,7 +647,7 @@ public class GridPilot extends JApplet{
             break;
           }
           else{
-            defaultConfFileName = args[i+1];
+            userConfFileName = args[i+1];
             ++i;
           }
         }
@@ -660,7 +687,10 @@ public class GridPilot extends JApplet{
     
     // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
     if(MyUtil.onWindows()){
-      userConfFileName = defaultConfFileName;
+      userConfFileName = defaultConfFileNameWindows;
+    }
+    else{
+      userConfFileName = defaultConfFileNameUnix;
     }
     ConfigFile confFile = null;
     try{
@@ -675,17 +705,17 @@ public class GridPilot extends JApplet{
       confFile.excludeItems = myExcludeItems;
     }
     catch(Exception ee){
-      System.out.println("WARNING: could not load external configuration file, " +
-              "using default config file.");
+      String error = "WARNING: could not load external configuration file, " +
+      "using default config file.";
+      System.out.println(error);
+      classMgr.getLogFile().addMessage(error, ee);
       ee.printStackTrace();
-      confFile = new ConfigFile(defaultConfFileName, topConfigSection, configSections);
-      confFile.excludeItems = myExcludeItems;
     }
     getClassMgr().setConfigFile(confFile);
     
     try{
-      for(Iterator it=tmpConfFile.keySet().iterator(); it.hasNext();){
-        ((File) tmpConfFile.get(it.next())).delete();
+      for(Iterator it=tmpFiles.keySet().iterator(); it.hasNext();){
+        ((File) tmpFiles.get(it.next())).delete();
       }
     }
     catch(Exception e){

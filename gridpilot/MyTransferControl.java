@@ -1436,8 +1436,8 @@ public class MyTransferControl extends TransferControl {
         tempDest = "file:"+tempFile.getAbsolutePath();
         doSshCopy = true;
         tempFile.delete();
-        //  hack to have the file deleted on exit
-        GridPilot.tmpConfFile.put(tempDest, new File(tempDest));
+        //  have the file deleted on exit
+        GridPilot.addTmpFile(tempDest, new File(tempDest));
       }
       catch(IOException e){
         e.printStackTrace();
@@ -1587,8 +1587,8 @@ public class MyTransferControl extends TransferControl {
         tempFile.delete();
         shellMgr.download(src, tempSrc);
         src = tempSrc;
-        //  hack to have the file deleted on exit
-        GridPilot.tmpConfFile.put(tempSrc, new File(tempSrc));
+        //  have the file deleted on exit
+        GridPilot.addTmpFile(tempSrc, new File(tempSrc));
       }
       catch(IOException e){
         e.printStackTrace();

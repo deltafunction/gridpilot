@@ -85,10 +85,13 @@ public class MyUtil extends gridfactory.common.Util{
 
   public static final String TMP_FILE_PREFIX = "gridpilot-";
   /**
-   * Place holder for the import directory, used in database records produced by
+   * Placeholder for the import directory, used in database records produced by
    * {@link #exportDB()}.
    */
-  public static final String GRIDPILOT_IMPORT_DIR = "GRIDPILOT_IMPORT_DIR";
+  public static final String IMPORT_DIR = "GRIDPILOT_IMPORT_DIR";
+  
+  /** URL that will cause a blank browser window to be opened. */
+  public static final String CHECK_URL = "http://check/";
 
   /**
    * Returns the text of a JComponent.
@@ -218,7 +221,7 @@ public class MyUtil extends gridfactory.common.Util{
  public static void launchCheckBrowser(final Frame frame, String url,
      final JTextComponent jt, final boolean localFS, final boolean oneUrl,
      final boolean withNavigation, final boolean onlyDirs){
-   if(url.equals("http://check/")){
+   if(url.equals(MyUtil.CHECK_URL)){
      String httpScript = jt.getText();
      if(frame!=null){
        frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -271,18 +274,40 @@ public class MyUtil extends gridfactory.common.Util{
            }
            Debug.debug("URL: "+urls[i], 3);
            try{
-             wb = new BrowserPanel(
-                 frame,
-                 onlyDirs?"Choose directory":"Choose file",
-                 //finUrl,
-                 urls[i],
-                 finBaseUrl,
-                 true/*modal*/,
-                 !onlyDirs && withNavigation/*filter*/,
-                 withNavigation/*navigation*/,
-                 null,
-                 onlyDirs?"*/":null,
-                 localFS);
+             wb = null;
+             try{
+               wb = new BrowserPanel(
+                   frame,
+                   onlyDirs?"Choose directory":"Choose file",
+                   //finUrl,
+                   urls[i],
+                   finBaseUrl,
+                   true/*modal*/,
+                   !onlyDirs && withNavigation/*filter*/,
+                   withNavigation/*navigation*/,
+                   null,
+                   onlyDirs?"*/":null,
+                   localFS);
+             }
+             catch(Exception e){
+               if(urls!=null && urls.length>1){
+                 throw e;
+               }
+             }
+             if(wb==null){
+               wb = new BrowserPanel(
+                   frame,
+                   onlyDirs?"Choose directory":"Choose file",
+                   //finUrl,
+                   "file:~/",
+                   finBaseUrl,
+                   true/*modal*/,
+                   !onlyDirs && withNavigation/*filter*/,
+                   withNavigation/*navigation*/,
+                   null,
+                   onlyDirs?"*/":null,
+                   localFS);
+             }
            }
            catch(Exception eee){
              ok = false;
@@ -335,10 +360,11 @@ public class MyUtil extends gridfactory.common.Util{
  public static JEditorPane createCheckPanel(
       final Frame frame, 
       final String name, final JTextComponent jt, final boolean oneUrl,
-      final boolean withNavigation){
+      final boolean withNavigation,
+      final boolean onlyDirs){
     //final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
     String markup = "<font size=-1 face=sans-serif><b>"+name+" : </b></font><br>"+
-      "<a href=\"http://check/\">browse</a>";
+      "<a href=\""+MyUtil.CHECK_URL+"\">browse</a>";
     JEditorPane checkPanel = new JEditorPane("text/html", markup);
     checkPanel.setEditable(false);
     checkPanel.setOpaque(false);
@@ -347,7 +373,7 @@ public class MyUtil extends gridfactory.common.Util{
       public void hyperlinkUpdate(HyperlinkEvent e){
         if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
           launchCheckBrowser(frame, e.getURL().toExternalForm(), jt, false, oneUrl,
-              withNavigation, false);
+              withNavigation, onlyDirs);
         }
       }
     });
@@ -376,7 +402,7 @@ public class MyUtil extends gridfactory.common.Util{
     bBrowse1.setSize(new java.awt.Dimension(22, 22));
     bBrowse1.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        launchCheckBrowser(frame, "http://check/", jt, false, oneUrl, withNavigation, onlyDirs);
+        launchCheckBrowser(frame, MyUtil.CHECK_URL, jt, false, oneUrl, withNavigation, onlyDirs);
       }
     });
 
@@ -1713,13 +1739,13 @@ public class MyUtil extends gridfactory.common.Util{
     tmpDir.delete();
     tmpDir.mkdirs();
     File tarFile = File.createTempFile(MyUtil.getTmpFilePrefix(), ".tar");
-    // hack to have the tmp directory and file deleted on exit
-    GridPilot.tmpConfFile.put(tmpDir.getAbsolutePath(), tmpDir);
-    GridPilot.tmpConfFile.put(tarFile.getAbsolutePath(), tarFile);
+    // have the tmp directory and file deleted on exit
+    GridPilot.addTmpFile(tmpDir.getAbsolutePath(), tmpDir);
+    GridPilot.addTmpFile(tarFile.getAbsolutePath(), tarFile);
     // Save everything to a tmp dir
-    saveTableAndFiles(tmpDir, GridPilot.dbNames[choice], "dataset", null, GRIDPILOT_IMPORT_DIR);
+    saveTableAndFiles(tmpDir, GridPilot.dbNames[choice], "dataset", null, IMPORT_DIR);
     saveTableAndFiles(tmpDir, GridPilot.dbNames[choice], "transformation",
-        new String [] {"script", "inputFiles"}, GRIDPILOT_IMPORT_DIR);
+        new String [] {"script", "inputFiles"}, IMPORT_DIR);
     // Tar up the tmp dir
     MyUtil.tar(tarFile, tmpDir);
     MyUtil.gzip(tarFile.getAbsolutePath(), tarFile.getAbsolutePath()+".gz");

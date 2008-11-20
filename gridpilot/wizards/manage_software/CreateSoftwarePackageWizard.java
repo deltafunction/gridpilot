@@ -365,8 +365,8 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     tmpDir = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(cacheDir)),shortName);
     tmpDir.mkdir();
     (new File(tmpDir, "control")).mkdir();
-    // hack to have the diretory deleted on exit
-    GridPilot.tmpConfFile.put(tmpDir.getAbsolutePath(), tmpDir);
+    // have the diretory deleted on exit
+    GridPilot.addTmpFile(tmpDir.getAbsolutePath(), tmpDir);
   }
 
   private void packageInTmpDir() throws IOException {
