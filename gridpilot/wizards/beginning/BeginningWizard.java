@@ -57,6 +57,8 @@ public class BeginningWizard{
 
   private static int TEXTFIELDWIDTH = 32;
   private static String HOME_URL = "https://www.gridpilot.dk/";
+  private static String MYSQL_HOWTO_URL = HOME_URL+"info/gridpilot+mysql_howto.txt";
+  private static String HTTPS_HOWTO_URL = HOME_URL+"info/gridpilot+https_howto.txt";
 
   public BeginningWizard(boolean firstRun){
     
@@ -461,9 +463,9 @@ public class BeginningWizard{
       "To access grid resources you need a valid grid certificate and a corresponding key.\n\n" +
       "If you don't have one, please get one from your grid certificate authority (and run this wizard again).\n" +
       "GridPilot can still be started, but you can only run jobs and access files on your local machine or\n" +
-      "machines to which you ssh access.\n\n" +
-      "The fields below are pre-filled with the standard locations of grid credentials on Linux system. If your\n" +
-      "credentials are stored in a non-standard location, please the corresponding paths as well the path of the\n" +
+      "machines to which you have ssh access.\n\n" +
+      "The fields below are pre-filled with the standard locations of grid credentials on a Linux system. If your\n" +
+      "credentials are stored in a non-standard location, please set the corresponding paths as well the path of the\n" +
       "directory where you want to store temporary credentials (proxies).\n\n" +
       "Optionally, you can also specify a directory with the certificates of the certificate authories (CAs)\n" +
       "that you trust. This can safely be left unspecified, in which case a default set of CAs will be trusted.\n\n" +
@@ -590,7 +592,7 @@ public class BeginningWizard{
       "you can use this too.\n\n" +
       "If you choose to use a remote file catalog, you must specify the name of the server hosting it.\n" +
       "Please notice that the database must be a " +
-      "<a href=\""+HOME_URL+"info/gridpilot+mysql_howto.txt\">GridPilot-enabled MySQL database</a>.\n\n" +
+      "<a href=\""+MYSQL_HOWTO_URL+"\">GridPilot-enabled MySQL database</a>.\n\n" +
       "If you choose to use the default remote database, please notice that anything you write there is\n" +
       "world readable and that the service is provided by gridpilot.org with absolutely no guarantee that\n" +
       "data will not be deleted at any time.\n\n" +
@@ -1270,7 +1272,7 @@ public class BeginningWizard{
       "You can keep this information in your local database or if you have write access to a remote database,\n" +
       "you can keep the information there.\n\n" +
       "If you choose to use a remote database, you must specify the name of the server hosting it. Please notice\n" +
-      "that the database must be a <a href=\""+HOME_URL+"info/gridpilot+mysql_howto.txt\">GridPilot-enabled MySQL database</a>.\n\n" +
+      "that the database must be a <a href=\""+MYSQL_HOWTO_URL+"\">GridPilot-enabled MySQL database</a>.\n\n" +
       "If you choose to use the default remote database, please notice that anything you write there is\n" +
       "world readable and that the service is provided by gridpilot.org with absolutely no guarantee that\n" +
       "data will not be deleted at any time.\n\n";
@@ -1439,7 +1441,7 @@ public class BeginningWizard{
       "When running jobs on a grid it is useful to have the jobs upload output files to a directory on a server\n" +
       "that's always on-line.\n\n" +
       "For this to be possible GridPilot needs to know a URL on a " +
-      "<a href=\""+HOME_URL+"info/gridftp+https_howto.txt\">grid-enabled ftp or http server</a> where you have\n" +
+      "<a href=\""+HTTPS_HOWTO_URL+"\">grid-enabled ftp or http server</a> where you have\n" +
       "read/write permission with the grid certificate you specified previously.\n\n" +
       "If you don't know any such URL or you don't understand the above, you may use the default grid home URL\n" +
       "given below. But please notice that this is but a temporary solution and that the files on this location may\n" +
