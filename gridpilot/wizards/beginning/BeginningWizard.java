@@ -588,13 +588,13 @@ public class BeginningWizard{
       "The files you produce will be registered in the job database you chose in the previous step. You\n" +
       "may want to register them also in a 'real' file catalog, which is readable by other clients than\n" +
       "GridPilot.\n\n" +
-      "Your local database is already such a file catalog and if you have write access to a file catalog,\n" +
-      "you can use this too.\n\n" +
+      "Your local database is already such a file catalog. If you have write access to a remote file catalog,\n" +
+      "you can use this instead.\n\n" +
       "If you choose to use a remote file catalog, you must specify the name of the server hosting it.\n" +
       "Please notice that the database must be a " +
       "<a href=\""+MYSQL_HOWTO_URL+"\">GridPilot-enabled MySQL database</a>.\n\n" +
       "If you choose to use the default remote database, please notice that anything you write there is\n" +
-      "world readable and that the service is provided by gridpilot.org with absolutely no guarantee that\n" +
+      "world readable and that the service is provided by gridpilot.dk with absolutely no guarantee that\n" +
       "data will not be deleted at any time.\n\n" +
       "You also have the option to enable the 'ATLAS' database plugin. If you don't work in the ATLAS\n" +
       "collaboration of CERN, this is probably of no relevance to you and you can leave it disabled.\n\n";
@@ -675,9 +675,9 @@ public class BeginningWizard{
     "In order to be able to write ATLAS file catalog entries, the \"home catalog site\" must be specified\n" +
     "<i>and</i> a \"home catalog site MySQL database\" must be given. This must be a full MySQL URL and\n" +
     "you must have write permission there, either via a user name and password given in the URL, like e.g.\n" +
-    "mysql://dq2user:dqpwd@grid00.unige.ch:3306/localreplicas,\n" +
+    "mysql://dq2user:dqpwd@my.regional.server:3306/localreplicas,\n" +
     "or via your certificate, in which case you should give no user name or password in the URL, e.g.\n" +
-    "mysql://grid00.unige.ch:3306/localreplicas.\n" +
+    "mysql://my.regional.server:3306/localreplicas.\n" +
     "If the home catalog site is an LCG site (i.e. running LFC) you must also specify the path under which\n" +
     "you want to save your datasets.\n\n" +
     "If you don't understand the above or don't have write access to a valid MySQL database, you can\n" +
@@ -886,26 +886,24 @@ public class BeginningWizard{
             window.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             ResThread t = new ResThread(){
               public void run(){
-                /*try{
+                try{
                   new BrowserPanel(
                         window,
                         "Browser",
                         e.getURL().toString(),
                         null,
-                        true,
-                        //filter
-                         false,
-                        //navigation
-                        true,
-                        null,
-                        null,
-                        false,
-                        false,
-                        false);
+                        true,// modal
+                         false,// with filter
+                        true,// with navigation
+                        null,// filter
+                        null,// JBox
+                        false,// only local
+                        true,// cancel enabled
+                        false);// registration enabled
                   return;
                 }
                 catch(Exception e){
-                }*/
+                }
                 try{
                   new BrowserPanel(
                       window,
@@ -913,12 +911,12 @@ public class BeginningWizard{
                       "file:~/",
                       null,
                       true,
-                      /*filter*/false,
-                      /*navigation*/true,
+                      false,
+                      true,
                       null,
                       null,
                       false,
-                      false,
+                      true,
                       false);
                 }
                 catch(Exception e){
@@ -982,17 +980,16 @@ public class BeginningWizard{
       "If you're not a member of an EGEE virtual organization, you will probably not be able to run jobs on this backend.\n\n" +
       "SSH_POOL is a backend that runs jobs on a pool of Linux machines accessed via ssh. The scheduling is done by\n" +
       "a very simplistic FIFO algorithm.\n\n" +
-      "GRIDFACTORY is the native batch system of GridPilot. It is still experimental, but it\n" +
-      "should be possible to try it out. The submission is done by writing job definitions in another database controlled\n" +
-      "by another GridPilot. From this database, the job descriptions will then be picked up and run (locally) by other\n" +
-      "GridPilots.\n\n";
+      "GridFactory is the native batch system of GridPilot. It is still experimental, but it\n" +
+      "should be possible to try it out. The submission is done by writing job definitions in another database\n" +
+      "from where they will then be picked up and run by GridWorkers.\n\n";
     JPanel jPanel = new JPanel(new GridBagLayout());
     jPanel.add(new JLabel("<html>"+confirmString.replaceAll("\n", "<br>")+"</html>"),
         new GridBagConstraints(0, (firstRun?1:0), 2, 2, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     JPanel row = null;
-    String [] names = new String [] {"NG", "GLite", "SSH_POOL", "GRIDFACTORY"};
+    String [] names = new String [] {"NG", "GLite", "SSH_POOL", "GridFactory"};
     JPanel [] csRows = new JPanel [names.length];
     final JPanel [] csPanels = new JPanel [names.length];
     jcbs = new JCheckBox[names.length];
@@ -1032,7 +1029,7 @@ public class BeginningWizard{
       "EGEE virtual organization whose resources you wish to use, e.g. ATLAS. If it is not filled in, you\n" +
       "will be able to load the computing system backend, but your jobs will be rejected on the resources.\n" +
       "You can find a list of virtual organizations at " +
-      "<a href=\"http://cic.gridops.org/index.php?section=home&page=volist\">cic.gridops.org</a>\n\n";
+      "<a href=\"http://cic.gridops.org/index.php?section=home&page=volist\">cic.gridops.org</a>.\n\n";
     pane = new JEditorPane("text/html", "<html>"+gLiteString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
@@ -1094,9 +1091,8 @@ public class BeginningWizard{
     // GRIDFACTORY
     csPanels[3] = new JPanel(new GridBagLayout());
     String gfString =
-      "For GRIDFACTORY to work, you need to have write access to a GRIDFACTORY server. You moreover need write\n" +
-      "access to a remote directory, where input and output files of your jobs can be staged.\n" +
-      "If you don't have access to any GRIDFACTORY server, you should not enable this computing system.\n\n";
+      "For GridFactory to work, you need to have write access to a GridFactory server.\n" +
+      "If you don't have access to any GridFactory server, you should not enable this computing system.\n\n";
     csPanels[3].add(new JLabel("<html>"+gfString.replaceAll("\n", "<br>")+"</html>"),
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -1274,7 +1270,7 @@ public class BeginningWizard{
       "If you choose to use a remote database, you must specify the name of the server hosting it. Please notice\n" +
       "that the database must be a <a href=\""+MYSQL_HOWTO_URL+"\">GridPilot-enabled MySQL database</a>.\n\n" +
       "If you choose to use the default remote database, please notice that anything you write there is\n" +
-      "world readable and that the service is provided by gridpilot.org with absolutely no guarantee that\n" +
+      "world readable and that the service is provided by gridpilot.dk with absolutely no guarantee that\n" +
       "data will not be deleted at any time.\n\n";
     JPanel jPanel = new JPanel(new GridBagLayout());
     JEditorPane pane = new JEditorPane("text/html", "<html>"+confirmString.replaceAll("\n", "<br>")+"</html>");
