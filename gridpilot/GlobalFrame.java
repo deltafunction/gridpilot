@@ -640,10 +640,12 @@ public class GlobalFrame extends GPFrame{
   }
 
   protected void exportDB() {
+    final JTextField jtf =  new JTextField("");
+    this.add(jtf);
+    jtf.setVisible(true);
     ResThread t = (new ResThread(){
       public void run(){
         try{
-          JTextField jtf =  new JTextField(20);
           MyUtil.launchCheckBrowser(null, MyUtil.CHECK_URL, jtf, false, true, true, true);
           String url = jtf.getText();
           if(url!=null && !url.equals("")){

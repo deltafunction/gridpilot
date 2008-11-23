@@ -1748,7 +1748,9 @@ public class MyUtil extends gridfactory.common.Util{
         new String [] {"script", "inputFiles"}, IMPORT_DIR);
     // Tar up the tmp dir
     MyUtil.tar(tarFile, tmpDir);
-    MyUtil.gzip(tarFile.getAbsolutePath(), tarFile.getAbsolutePath()+".gz");
+    String gzipFile = tarFile.getAbsolutePath()+".gz";
+    Debug.debug("Created temporary archive: "+gzipFile, 1);
+    MyUtil.gzip(tarFile.getAbsolutePath(), gzipFile);
     // Clean up
     LocalStaticShell.deleteDir(tmpDir.getAbsolutePath());
     LocalStaticShell.deleteFile(tarFile.getAbsolutePath());
