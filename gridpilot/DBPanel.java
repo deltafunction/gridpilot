@@ -1198,7 +1198,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     
     if(waitForThread){
       workThread.start();
-      MyUtil.waitForThread(workThread, dbName, 0, "searchRequest");
+      MyUtil.myWaitForThread(workThread, dbName, 0, "searchRequest");
       return;
     }
     if(invokeLater){

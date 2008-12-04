@@ -640,14 +640,12 @@ public class GlobalFrame extends GPFrame{
   }
 
   protected void exportDB() {
-    final JTextField jtf =  new JTextField("");
-    this.add(jtf);
-    jtf.setVisible(true);
-    ResThread t = (new ResThread(){
-      public void run(){
+    final StringBuffer urlBuffer =  new StringBuffer();
+    //ResThread t = (new ResThread(){
+      //public void run(){
         try{
-          MyUtil.launchCheckBrowser(null, MyUtil.CHECK_URL, jtf, false, true, true, true);
-          String url = jtf.getText();
+          MyUtil.launchCheckBrowser(null, MyUtil.CHECK_URL, urlBuffer, false, true, true, true, true);
+          String url = urlBuffer.toString();
           if(url!=null && !url.equals("")){
             Debug.debug("Exporting to "+url, 2);
             MyUtil.exportDB(url);
@@ -662,9 +660,9 @@ public class GlobalFrame extends GPFrame{
           GridPilot.getClassMgr().getLogFile().addMessage(error, ex);
           ex.printStackTrace();
         }
-      }
-    });     
-    SwingUtilities.invokeLater(t);    
+    //  }
+    //});     
+    //SwingUtilities.invokeLater(t);    
   }
     
   protected void importToDB() {

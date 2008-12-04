@@ -664,7 +664,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       }
     };
     t.start();
-    if(!MyUtil.waitForThread(t, PLUGIN_NAME, COPY_TIMEOUT, "putFile")){
+    if(!MyUtil.myWaitForThread(t, PLUGIN_NAME, COPY_TIMEOUT, "putFile")){
       if(statusBar!=null){
         statusBar.setLabel("Upload cancelled");
       }

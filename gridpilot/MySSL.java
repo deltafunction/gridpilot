@@ -478,12 +478,12 @@ public class MySSL extends SSL{
     
     bBrowse1.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        MyUtil.launchCheckBrowser(null, MyUtil.CHECK_URL, keyField, true, true, false, false);
+        MyUtil.launchCheckBrowser(null, MyUtil.CHECK_URL, keyField, true, true, false, false, false);
       }
     });
     bBrowse2.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        MyUtil.launchCheckBrowser(null, MyUtil.CHECK_URL, certField, true, true, false, false);
+        MyUtil.launchCheckBrowser(null, MyUtil.CHECK_URL, certField, true, true, false, false, false);
       }
     });
     

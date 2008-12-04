@@ -263,7 +263,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    if(MyUtil.waitForThread(t, ((MyJobInfo) job).getCSName(), submissionTimeOut, "submit")){
+    if(MyUtil.myWaitForThread(t, ((MyJobInfo) job).getCSName(), submissionTimeOut, "submit")){
       return t.getBoolRes();
     }
     else{
@@ -330,7 +330,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    MyUtil.waitForThread(t, csName, updateTimeOut, "updateStatus");
+    MyUtil.myWaitForThread(t, csName, updateTimeOut, "updateStatus");
   }
 
 
@@ -388,11 +388,11 @@ public class CSPluginMgr implements MyComputingSystem{
     // When killing jobs from several CSs, we wait the timeout of
     // the first one for the first jobs and then just move with
     // timeout 0 to kill the others
-    MyUtil.waitForThread(threads[0],(String) csJobsFinal.keySet().toArray()[0],
+    MyUtil.myWaitForThread(threads[0],(String) csJobsFinal.keySet().toArray()[0],
         killTimeOut, "killJobs");
     if(csNames.length>1){
       for(int i=1; i<threads.length; ++i){
-        MyUtil.waitForThread(threads[i], (String) csJobsFinal.keySet().toArray()[i],
+        MyUtil.myWaitForThread(threads[i], (String) csJobsFinal.keySet().toArray()[i],
             0, "killJobs");
       }
     }
@@ -426,7 +426,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
     
-    if(MyUtil.waitForThread(t, csName, clearTimeOut, "clean")){
+    if(MyUtil.myWaitForThread(t, csName, clearTimeOut, "clean")){
       return t.getBoolRes();
     }
     else{
@@ -471,7 +471,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
       t.start();
 
-      MyUtil.waitForThread(t, csNames[k], exitTimeOut, "exit");
+      MyUtil.myWaitForThread(t, csNames[k], exitTimeOut, "exit");
 
     }
   }
@@ -527,7 +527,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    if(MyUtil.waitForThread(t, csName, fullStatusTimeOut, "getFullStatus")){
+    if(MyUtil.myWaitForThread(t, csName, fullStatusTimeOut, "getFullStatus")){
       return t.getStringRes();
     }
     else{
@@ -561,7 +561,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    if(MyUtil.waitForThread(t, csName, currentOutputTimeOut, "getCurrentOutputs")){
+    if(MyUtil.myWaitForThread(t, csName, currentOutputTimeOut, "getCurrentOutputs")){
       return t.getString2Res();
     }
     else{
@@ -599,7 +599,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    if(MyUtil.waitForThread(t, csName, currentOutputTimeOut, "getScripts")){
+    if(MyUtil.myWaitForThread(t, csName, currentOutputTimeOut, "getScripts")){
       return t.getString2Res();
     }
     else{
@@ -632,7 +632,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    if(MyUtil.waitForThread(t, csName, currentOutputTimeOut, "getScripts")){
+    if(MyUtil.myWaitForThread(t, csName, currentOutputTimeOut, "getScripts")){
       return t.getShellMgr();
     }
     else{
@@ -670,7 +670,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    if(MyUtil.waitForThread(t, csName, getUserInfoTimeOut, "getUserInfo")){
+    if(MyUtil.myWaitForThread(t, csName, getUserInfoTimeOut, "getUserInfo")){
       return t.getStringRes();
     }
     else{
@@ -703,7 +703,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    if(MyUtil.waitForThread(t, csName, defaultTimeOut, "getError")){
+    if(MyUtil.myWaitForThread(t, csName, defaultTimeOut, "getError")){
       return t.getStringRes();
     }
     else{
@@ -736,7 +736,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    if(MyUtil.waitForThread(t, ((MyJobInfo) job).getCSName(), copyFileTimeOut, "postProcessing")){
+    if(MyUtil.myWaitForThread(t, ((MyJobInfo) job).getCSName(), copyFileTimeOut, "postProcessing")){
       if(t.getBoolRes()){
         // Register the new file if the db is a file catalog
         try{
@@ -806,7 +806,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    if(MyUtil.waitForThread(t, ((MyJobInfo) job).getCSName(), copyFileTimeOut, "preProcessing")){
+    if(MyUtil.myWaitForThread(t, ((MyJobInfo) job).getCSName(), copyFileTimeOut, "preProcessing")){
       return t.getBoolRes();
     }
     else{
@@ -841,7 +841,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    MyUtil.waitForThread(t, csName, setupTimeOut, "setupRuntimeEnvironments");
+    MyUtil.myWaitForThread(t, csName, setupTimeOut, "setupRuntimeEnvironments");
   }
 
   public void cleanupRuntimeEnvironments(final String csName){
@@ -871,7 +871,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    MyUtil.waitForThread(t, csName, setupTimeOut, "cleanupRuntimeEnvironments");
+    MyUtil.myWaitForThread(t, csName, setupTimeOut, "cleanupRuntimeEnvironments");
   }
 
   public void reconnect(){

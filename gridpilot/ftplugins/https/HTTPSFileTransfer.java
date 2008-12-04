@@ -219,7 +219,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       }
     };
     t.start();
-    if(!MyUtil.waitForThread(t, "https", COPY_TIMEOUT, "getFile")){
+    if(!MyUtil.myWaitForThread(t, "https", COPY_TIMEOUT, "getFile")){
       if(statusBar!=null){
         statusBar.setLabel("Download cancelled");
       }
@@ -286,7 +286,7 @@ public class HTTPSFileTransfer implements FileTransfer {
       }
     };
     t.start();
-    if(!MyUtil.waitForThread(t, "https", COPY_TIMEOUT, "putFile")){
+    if(!MyUtil.myWaitForThread(t, "https", COPY_TIMEOUT, "putFile")){
       if(statusBar!=null){
         statusBar.setLabel("Upload cancelled");
       }

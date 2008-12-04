@@ -397,7 +397,7 @@ public class MyTransferControl extends TransferControl {
     };
     t.start();
 
-    if(!MyUtil.waitForThread(t, "", TRANSFER_SUBMIT_TIMEOUT, "transfer")){
+    if(!MyUtil.myWaitForThread(t, "", TRANSFER_SUBMIT_TIMEOUT, "transfer")){
       statusBar.setLabel("WARNING: queueing transfers timed out.");
       statusBar.stopAnimation();
     }
@@ -882,7 +882,7 @@ public class MyTransferControl extends TransferControl {
 
     t.start();
 
-    if(!MyUtil.waitForThread(t, "", TRANSFER_CANCEL_TIMEOUT, "transfer")){
+    if(!MyUtil.myWaitForThread(t, "", TRANSFER_CANCEL_TIMEOUT, "transfer")){
       StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
       statusBar.stopAnimation();
       statusBar.setLabel("WARNING: cancel transfers timed out.");
@@ -951,7 +951,7 @@ public class MyTransferControl extends TransferControl {
 
     t.start();
 
-    if(!MyUtil.waitForThread(t, "", TRANSFER_CANCEL_TIMEOUT, "transfer")){
+    if(!MyUtil.myWaitForThread(t, "", TRANSFER_CANCEL_TIMEOUT, "transfer")){
       StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
       statusBar.stopAnimation();
       statusBar.setLabel("WARNING: cancel transfers timed out.");

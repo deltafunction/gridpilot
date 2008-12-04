@@ -99,7 +99,7 @@ public class DQ2Access {
         }
       }
     });     
-    MyUtil.waitForThread(t, "checkProxy", 0, "checkProxy");
+    MyUtil.myWaitForThread(t, "checkProxy", 0, "checkProxy");
   }
 
   /**

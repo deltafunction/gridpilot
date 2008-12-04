@@ -247,7 +247,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getFieldNames")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getFieldNames")){
       return t.getString2Res();
     }
     else{
@@ -281,7 +281,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getPackInitText")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getPackInitText")){
       return t.getStringRes();
     }
     else{
@@ -315,7 +315,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getStdOutFinalDest")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getStdOutFinalDest")){
       return t.getStringRes();
     }
     else{
@@ -349,7 +349,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getStdErrFinalDest")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getStdErrFinalDest")){
       return t.getStringRes();
     }
     else{
@@ -382,7 +382,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getError")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getError")){
       return t.getStringRes();
     }
     else{
@@ -416,7 +416,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getTransformationScript")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformationScript")){
       return t.getStringRes();
     }
     else{
@@ -450,7 +450,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getTransformationRTEnvironments")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformationRTEnvironments")){
       return t.getString2Res();
     }
     else{
@@ -484,7 +484,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getTransformationSignature")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformationSignature")){
       return t.getString2Res();
     }
     else{
@@ -518,7 +518,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getTransformationRuntimeEnvironment")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformationRuntimeEnvironment")){
       return t.getStringRes();
     }
     else{
@@ -552,7 +552,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getJobDefUser")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getJobDefUser")){
       return t.getStringRes();
     }
     else{
@@ -586,7 +586,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getJobDefName")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getJobDefName")){
       return t.getStringRes();
     }
     else{
@@ -620,7 +620,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getDatasetName")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getDatasetName")){
       return t.getStringRes();
     }
     else{
@@ -655,7 +655,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getRunNumber")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getRunNumber")){
       return t.getStringRes();
     }
     else{
@@ -689,7 +689,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironmentID")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironmentID")){
       return t.getString2Res();
     }
     else{
@@ -723,7 +723,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getTransformationID")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformationID")){
       return t.getStringRes();
     }
     else{
@@ -757,7 +757,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getDatasetID")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getDatasetID")){
       return t.getStringRes();
     }
     else{
@@ -791,7 +791,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getFileID")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getFileID")){
       return t.getStringRes();
     }
     else{
@@ -825,7 +825,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getJobDefDatasetID")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getJobDefDatasetID")){
       return t.getStringRes();
     }
     else{
@@ -859,7 +859,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getJobStatus")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getJobStatus")){
       return t.getStringRes();
     }
     else{
@@ -899,7 +899,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getJobDefValue")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getJobDefValue")){
       return t.getStringRes();
     }
     else{
@@ -933,7 +933,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getRunInfo")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getRunInfo")){
       return t.getStringRes();
     }
     else{
@@ -967,7 +967,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getTransformationID")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformationID")){
       return t.getStringRes();
     }
     else{
@@ -1001,7 +1001,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getDatasetTransformationName")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getDatasetTransformationName")){
       return t.getStringRes();
     }
     else{
@@ -1035,7 +1035,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getDatasetTransformationVersion")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getDatasetTransformationVersion")){
       return t.getStringRes();
     }
     else{
@@ -1070,7 +1070,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getTransformationValue")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformationValue")){
       return t.getStringRes();
     }
     else{
@@ -1105,7 +1105,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getOutputs")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getOutputs")){
       return t.getString2Res();
     }
     else{
@@ -1140,7 +1140,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
       t.start();
     
-      if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getInputs")){
+      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getInputs")){
         return t.getString2Res();
       }
       else{
@@ -1175,7 +1175,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
       t.start();
     
-      if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getJobDefTransPars")){
+      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getJobDefTransPars")){
         return t.getString2Res();
       }
       else{
@@ -1209,7 +1209,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getJobDefOutLocalName")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getJobDefOutLocalName")){
       return t.getStringRes();
     }
     else{
@@ -1243,7 +1243,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getJobDefOutRemoteName")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getJobDefOutRemoteName")){
       return t.getStringRes();
     }
     else{
@@ -1278,7 +1278,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getTransJobParameters")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransJobParameters")){
       return t.getString2Res();
     }
     else{
@@ -1313,7 +1313,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getTransOutputs")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransOutputs")){
       return t.getString2Res();
     }
     else{
@@ -1348,7 +1348,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getTransInputs")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransInputs")){
       return t.getString2Res();
     }
     else{
@@ -1382,7 +1382,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "isFileCatalog")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "isFileCatalog")){
       return t.getBoolRes();
     }
     else{
@@ -1416,7 +1416,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "isJobRepository")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "isJobRepository")){
       return t.getBoolRes();
     }
     else{
@@ -1451,7 +1451,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "createJobDefinition")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "createJobDefinition")){
       return t.getBoolRes();
     }
     else{
@@ -1494,7 +1494,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "createJobDefinition")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "createJobDefinition")){
       return t.getBoolRes();
     }
     else{
@@ -1798,7 +1798,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "createTransformation")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "createTransformation")){
       return t.getBoolRes();
     }
     else{
@@ -1833,7 +1833,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "createRuntimeEnvironment")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "createRuntimeEnvironment")){
       return t.getBoolRes();
     }
     else{
@@ -1875,7 +1875,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "createDataset")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "createDataset")){
       return t.getBoolRes();
     }
     else{
@@ -1910,7 +1910,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "setJobDefinitionField")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "setJobDefinitionField")){
       return t.getBoolRes();
     }
     else{
@@ -1945,7 +1945,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "updateJobDefinition")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "updateJobDefinition")){
       return t.getBoolRes();
     }
     else{
@@ -1981,7 +1981,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "updateJobDefinition")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "updateJobDefinition")){
       return t.getBoolRes();
     }
     else{
@@ -2017,7 +2017,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
       t.start();
     
-      if(MyUtil.waitForThread(t, dbName, dbTimeOut, "updateDataset")){
+      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "updateDataset")){
         return t.getBoolRes();
       }
       else{
@@ -2053,7 +2053,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
       t.start();
     
-      if(MyUtil.waitForThread(t, dbName, dbTimeOut, "updateTransformation")){
+      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "updateTransformation")){
         return t.getBoolRes();
       }
       else{
@@ -2089,7 +2089,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "updateRuntimeEnvironment")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "updateRuntimeEnvironment")){
       return t.getBoolRes();
     }
     else{
@@ -2124,7 +2124,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
       t.start();
     
-      if(MyUtil.waitForThread(t, dbName, dbTimeOut, "deleteJobDefinition")){
+      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "deleteJobDefinition")){
         return t.getBoolRes();
       }
       else{
@@ -2160,7 +2160,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "deleteFile")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "deleteFile")){
       return t.getBoolRes();
     }
     else{
@@ -2195,7 +2195,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
       t.start();
     
-      if(MyUtil.waitForThread(t, dbName, dbTimeOut, "deleteDataset")){
+      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "deleteDataset")){
         return t.getBoolRes();
       }
       else{
@@ -2230,7 +2230,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
       t.start();
     
-      if(MyUtil.waitForThread(t, dbName, dbTimeOut, "deleteTransformation")){
+      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "deleteTransformation")){
         return t.getBoolRes();
       }
       else{
@@ -2265,7 +2265,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
       t.start();
     
-      if(MyUtil.waitForThread(t, dbName, dbTimeOut, "deleteRuntimeEnvironment")){
+      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "deleteRuntimeEnvironment")){
         return t.getBoolRes();
       }
       else{
@@ -2301,7 +2301,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "reserveJobDefinition")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "reserveJobDefinition")){
       return t.getBoolRes();
     }
     else{
@@ -2336,7 +2336,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "jobDefID")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "jobDefID")){
       return t.getBoolRes();
     }
     else{
@@ -2366,7 +2366,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "executeUpdate")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "executeUpdate")){
       return;
     }
     else{
@@ -2402,7 +2402,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "select")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "select")){
       return t.getDBResultRes();
     }
     else{
@@ -2436,7 +2436,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironments")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironments")){
       return t.getDBResultRes();
     }
     else{
@@ -2470,7 +2470,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getTransformations")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformations")){
       return t.getDBResultRes();
     }
     else{
@@ -2505,7 +2505,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
       t.start();
     
-      if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getDataset")){
+      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getDataset")){
         return t.getDBRecordRes();
       }
       else{
@@ -2540,7 +2540,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironment")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironment")){
       return t.getDBRecordRes();
     }
     else{
@@ -2576,7 +2576,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getTransformation")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformation")){
       return t.getDBRecordRes();
     }
     else{
@@ -2612,7 +2612,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getFiles")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getFiles")){
       return t.getDBResultRes();
     }
     else{
@@ -2648,7 +2648,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getJobDefinitions")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getJobDefinitions")){
       return t.getDBResultRes();
     }
     else{
@@ -2683,7 +2683,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getJobDefinition")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getJobDefinition")){
       return t.getDBRecordRes();
     }
     else{
@@ -2713,7 +2713,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "disconnect")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "disconnect")){
       return;
     }
     else{
@@ -2744,7 +2744,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "clearCaches")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "clearCaches")){
       return;
     }
     else{
@@ -2776,7 +2776,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "registerFileLocation")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "registerFileLocation")){
       return;
     }
     else{
@@ -2898,7 +2898,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getVersions")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getVersions")){
       return t.getString2Res();
     }
     else{
@@ -2993,7 +2993,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getFile")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getFile")){
       return t.getDBRecordRes();
     }
     else{
@@ -3030,7 +3030,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.waitForThread(t, dbName, dbTimeOut, "getFileURLs")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getFileURLs")){
       return t.getString3Res();
     }
     else{
