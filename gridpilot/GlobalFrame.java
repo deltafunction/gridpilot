@@ -640,29 +640,22 @@ public class GlobalFrame extends GPFrame{
   }
 
   protected void exportDB() {
-    final StringBuffer urlBuffer =  new StringBuffer();
-    //ResThread t = (new ResThread(){
-      //public void run(){
-        try{
-          MyUtil.launchCheckBrowser(null, MyUtil.CHECK_URL, urlBuffer, false, true, true, true, true);
-          String url = urlBuffer.toString();
-          if(url!=null && !url.equals("")){
-            Debug.debug("Exporting to "+url, 2);
-            MyUtil.exportDB(url);
-          }
-          else{
-            Debug.debug("Not exporting. "+url, 2);
-          }
-        }
-        catch(Exception ex){
-          String error = "ERROR: could not export DB(s). "+ex.getMessage();
-          MyUtil.showError(error);
-          GridPilot.getClassMgr().getLogFile().addMessage(error, ex);
-          ex.printStackTrace();
-        }
-    //  }
-    //});     
-    //SwingUtilities.invokeLater(t);    
+    try{
+      String url = MyUtil.getReplicaURL("file:~/", null);
+      if(url!=null && !url.equals("")){
+        Debug.debug("Exporting to "+url, 2);
+        MyUtil.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)));
+      }
+      else{
+        Debug.debug("Not exporting. "+url, 2);
+      }
+    }
+    catch(Exception ex){
+      String error = "ERROR: could not export DB(s). "+ex.getMessage();
+      MyUtil.showError(error);
+      GridPilot.getClassMgr().getLogFile().addMessage(error, ex);
+      ex.printStackTrace();
+    }
   }
     
   protected void importToDB() {

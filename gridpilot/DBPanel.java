@@ -1252,7 +1252,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             try{
               TargetDBsPanel targetDBsPanel = makeTargetDBsPanel();
               JPanel pTargetDBs = targetDBsPanel.pTargetDBs;
-              String dlUrl = getReplicaURL(defaultURL, pTargetDBs);
+              String dlUrl = MyUtil.getReplicaURL(defaultURL, pTargetDBs);
               if(dlUrl.startsWith("file:")){
                 defaultURL = dlUrl;
               }
@@ -2327,7 +2327,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         else{
           try{
-            dlUrl = getReplicaURL(defaultURL, pTargetDBs);
+            dlUrl = MyUtil.getReplicaURL(defaultURL, pTargetDBs);
             if(dlUrl.startsWith("file:")){
               defaultURL = dlUrl;
             }
@@ -2513,56 +2513,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     ret[1] = wb.lastSizesList;
     Debug.debug("Returning last URL list "+MyUtil.arrayToString(ret[0])+
         MyUtil.arrayToString(ret[1]), 2);
-    return ret;
-  }
-  
-  private String getReplicaURL(String url, JComponent jcb) throws IOException{
-    Debug.debug("URL: "+url, 3);
-    JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
-    frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-    final String finUrl = url;
-    final String finBaseUrl = "";//url;
-    BrowserPanel wb = null;
-    try{
-      wb = new BrowserPanel(
-                      GridPilot.getClassMgr().getGlobalFrame(),
-                      "Choose destination directory",
-                      finUrl,
-                      finBaseUrl,
-                      true,
-                      false,
-                      true,
-                      jcb,
-                      "*/",
-                      false);
-    }
-    catch(Exception eee){
-      frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-      Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
-      eee.printStackTrace();
-      GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
-      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
-      try{
-        confirmBox.getConfirm("URL could not be opened",
-                             "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
-                          new Object[] {"OK"});
-      }
-      catch(Exception eeee){
-        Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
-      }
-    }
-    frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-    if(wb==null || wb.lastURL==null ||
-        !wb.lastURL.startsWith(finBaseUrl) || wb.lastUrlList==null){
-      Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
-      throw new IOException("No download directory");
-    }
-    //GridPilot.getClassMgr().getStatusBar().setLabel("");
-    String ret = wb.lastURL.substring(finBaseUrl.length());
-    Debug.debug("Returning last URL "+ret, 2);
-    if(!ret.endsWith("/")){
-      throw new IOException("ERROR: not a directory: "+ret);
-    }
     return ret;
   }
   

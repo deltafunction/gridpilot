@@ -33,6 +33,7 @@ import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
@@ -57,6 +58,7 @@ import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -67,6 +69,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
@@ -219,20 +222,11 @@ public class MyUtil extends gridfactory.common.Util{
   }
  
  public static void launchCheckBrowser(final Frame frame, String url,
-     final Object text, final boolean localFS, final boolean oneUrl,
+     final JTextComponent text, final boolean localFS, final boolean oneUrl,
      final boolean withNavigation, final boolean onlyDirs, boolean waitForThread){
    if(url.equals(MyUtil.CHECK_URL)){
      String httpScript = "";
-     if(text.getClass().getCanonicalName().equals(JTextComponent.class.getCanonicalName())){
-       httpScript = ((JTextComponent) text).getText();
-     }
-     else if(text.getClass().getCanonicalName().equals(StringBuffer.class.getCanonicalName())){
-       httpScript = ((StringBuffer) text).toString();
-     }
-     else{
-       Debug.debug("Object type not supported", 1);
-       return;
-     }
+     httpScript = text.getText();
      if(frame!=null){
        frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
      }
@@ -264,12 +258,7 @@ public class MyUtil extends gridfactory.common.Util{
          }
          
          if(ok){
-           if(text.getClass().getCanonicalName().equals(JTextComponent.class.getCanonicalName())){
-             ((JTextComponent) text).setText(arrayToString(urls));
-           }
-           else if(text.getClass().getCanonicalName().equals(StringBuffer.class.getCanonicalName())){
-             ((StringBuffer) text).append(arrayToString(urls));
-           }
+           text.setText(arrayToString(urls));
          }
          if(frame!=null){
            frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
@@ -1753,18 +1742,71 @@ public class MyUtil extends gridfactory.common.Util{
     return false;
   }
   
-  public static void exportDB(String exportFile) throws Exception{
+  public static String getReplicaURL(String url, JComponent jcb) throws IOException{
+    Debug.debug("URL: "+url, 3);
+    JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(GridPilot.getClassMgr().getGlobalFrame().getRootPane());
+    frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    final String finUrl = url;
+    final String finBaseUrl = "";//url;
+    BrowserPanel wb = null;
+    try{
+      wb = new BrowserPanel(
+                      GridPilot.getClassMgr().getGlobalFrame(),
+                      "Choose destination directory",
+                      finUrl,
+                      finBaseUrl,
+                      true,
+                      false,
+                      true,
+                      jcb,
+                      "*/",
+                      false);
+    }
+    catch(Exception eee){
+      frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+      Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
+      eee.printStackTrace();
+      GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
+      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+      try{
+        confirmBox.getConfirm("URL could not be opened",
+                             "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
+                          new Object[] {"OK"});
+      }
+      catch(Exception eeee){
+        Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
+      }
+    }
+    frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+    if(wb==null || wb.lastURL==null ||
+        !wb.lastURL.startsWith(finBaseUrl) || wb.lastUrlList==null){
+      Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
+      throw new IOException("No download directory");
+    }
+    //GridPilot.getClassMgr().getStatusBar().setLabel("");
+    String ret = wb.lastURL.substring(finBaseUrl.length());
+    Debug.debug("Returning last URL "+ret, 2);
+    if(!ret.endsWith("/")){
+      throw new IOException("ERROR: not a directory: "+ret);
+    }
+    return ret;
+  }
+  
+  public static void exportDB(String exportDir) throws Exception{
     String [] choices = new String[GridPilot.dbNames.length+1];
     System.arraycopy(GridPilot.dbNames, 0, choices, 0, GridPilot.dbNames.length);
-    choices[choices.length-1] = "none";
+    choices[choices.length-1] = "none (cancel)";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-    int choice = confirmBox.getConfirm("Export database", "This will export all the data of the chosen database<br>" +
-        "plus all files associated with the transformations in the database.<br>" +
-        "Non-local files will be downloded first.<br>" +
-        "Please choose a database to export.", choices);
+    int choice = confirmBox.getConfirm("Export database",
+  "<html>This will export all datasets and transformations of the chosen database<br>" +
+        "plus any files associated with the transformations. Non-local files will<br>" +
+        "be downloded first.<br><br>" +
+        "Please choose a database to export.</html>", choices);
     if(choice<0 || choice>=choices.length-1){
       return;
     }
+    GridPilot.getClassMgr().getLogFile().addInfo("Exporting from database "+GridPilot.dbNames[choice]+
+        " to "+GridPilot.dbNames[choice]);
     File tmpDir = File.createTempFile(MyUtil.getTmpFilePrefix(), "");
     tmpDir.delete();
     tmpDir.mkdirs();
@@ -1773,7 +1815,7 @@ public class MyUtil extends gridfactory.common.Util{
     GridPilot.addTmpFile(tmpDir.getAbsolutePath(), tmpDir);
     GridPilot.addTmpFile(tarFile.getAbsolutePath(), tarFile);
     // Save everything to a tmp dir
-    saveTableAndFiles(tmpDir, GridPilot.dbNames[choice], "dataset", null, IMPORT_DIR);
+    saveTableAndFiles(tmpDir, GridPilot.dbNames[choice], "dataset", new String [] {}, IMPORT_DIR);
     saveTableAndFiles(tmpDir, GridPilot.dbNames[choice], "transformation",
         new String [] {"script", "inputFiles"}, IMPORT_DIR);
     // Tar up the tmp dir
@@ -1784,8 +1826,10 @@ public class MyUtil extends gridfactory.common.Util{
     // Clean up
     LocalStaticShell.deleteDir(tmpDir.getAbsolutePath());
     LocalStaticShell.deleteFile(tarFile.getAbsolutePath());
-    // TODO: copy tarFile.getAbsolutePath()+".gz" to exportFile
+    LocalStaticShell.moveFile(tarFile.getAbsolutePath()+".gz",
+        (new File(exportDir,"GridPilot_EXPORT_"+getDateInMilliSeconds()+".tar.gz")).getAbsolutePath());
   }
+
   /**
    * This will fill a tmp directory with an SQL file, 'table'.sql plus a subdirectory
    * 'table'Files, containing the files found in 'fileFields'.
@@ -1829,6 +1873,7 @@ public class MyUtil extends gridfactory.common.Util{
     String nameField = getNameField(dbName, table);
     String name;
     File dlDir;
+    StringBuffer failedDLs = new StringBuffer();
     while(dbResult.next()){
       for(int i=0; i<fileFields.length; ++i){
         if(MyUtil.arrayContainsIgnoreCase(fileFields, dbResult.fields[i]) &&
@@ -1840,15 +1885,25 @@ public class MyUtil extends gridfactory.common.Util{
             // Download url to 'dir'/[record name]
             dlDir = new File(dir, name);
             dlDir.mkdir();
-            GridPilot.getClassMgr().getTransferControl().download(urls[i], dlDir);
+            try{
+              GridPilot.getClassMgr().getTransferControl().download(urls[i], dlDir);
+            }
+            catch(Exception e){
+              failedDLs.append(" "+urls[i]);
+            }
           }
         }
+      }
+      if(failedDLs.length()>0){
+        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: the following file(s) could not be downloaded:"+
+            failedDLs + ". The export may not be complete.");
       }
     }
   }
 
   private static String toSql(DBResult dbResult, String table, String [] fileFields, String exportImportDir){
-    String res = null;
+    Debug.debug("Converting DBResult with "+dbResult.values.length+" rows", 2);
+    String res = "";
     Object [][] newValues = dbResult.values.clone();
     for(int i=0; i<dbResult.values.length; ++i){
       for(int j=0; j<fileFields.length; ++j){
@@ -1859,7 +1914,7 @@ public class MyUtil extends gridfactory.common.Util{
               ).replaceAll("^.*/([^/]+)$", exportImportDir+"/"+table+"/$1");
         }
       }
-      res = "INSERT INTO "+table+" ("+arrayToString(dbResult.fields, ", ")+
+      res += "INSERT INTO "+table+" ("+arrayToString(dbResult.fields, ", ")+
       ") VALUES ("+arrayToString(newValues[i], ", ")+");\n";
     }
     return res;
