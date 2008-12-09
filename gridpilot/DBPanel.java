@@ -66,6 +66,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bDefineJobDefinitions = new JButton("Create jobDefinition(s)");
   private JMenuItem miEdit = null;
   private JMenuItem miImportFiles = new JMenuItem("Import file(s)");
+  private JMenuItem miExportDataset = new JMenuItem("Export dataset");
   private String [] identifiers;
   // lists of field names with table name as key
   private String [] fieldNames = null;
@@ -91,6 +92,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private SubmissionControl submissionControl = null;
   // Import thread semaphore
   private boolean importingFiles = false;
+  private boolean exportingDataset = false;
   private int cursor = -1;
   private DBResult res = null;
 
@@ -927,7 +929,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       final int [] columnWidths){
     searchRequest(sortColumn, isAscending, columnWidths, true, false);
   }
-
+  
+  
+  // TODO: split up this monster method
   public void searchRequest(final int sortColumn, final boolean isAscending,
       final int [] columnWidths, boolean invokeLater, boolean waitForThread){
         
@@ -1060,6 +1064,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               miEdit.setEnabled(!lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
               miImportFiles.setEnabled(dbPluginMgr.isFileCatalog() && !lsm.isSelectionEmpty() &&
+                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+              miExportDataset.setEnabled(dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty() &&
                   lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
               menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
               menuEditCut.setEnabled(!lsm.isSelectionEmpty());
@@ -1214,7 +1220,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     tableModel.ascending = true;
     searchRequest(-1, tableModel.ascending, null, invokeLater, waitForThread);
   }
- 
+  
   /**
    * Add menu items to the table with search results. This function is called from within DBPanel
    * after the results table is filled
@@ -1240,39 +1246,33 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             viewFiles(false);
           }
         }.start();
-;
       }
     });
-    JMenuItem miDownloadDataset = new JMenuItem("Replicate file(s)");
-    miDownloadDataset.addActionListener(new ActionListener(){
+    JMenuItem miReplicateDataset = new JMenuItem("Replicate file(s)");
+    miReplicateDataset.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         final int origFileRows = GridPilot.fileRows;
         new Thread(){
           public void run(){
             try{
-              TargetDBsPanel targetDBsPanel = makeTargetDBsPanel();
-              JPanel pTargetDBs = targetDBsPanel.pTargetDBs;
-              String dlUrl = MyUtil.getReplicaURL(defaultURL, pTargetDBs);
-              if(dlUrl.startsWith("file:")){
-                defaultURL = dlUrl;
-              }
-              GridPilot.fileRows = 0;
-              Debug.debug("Creating new files panel", 2);
-              dbPluginMgr.requestStopLookup();
-              DBPanel filesPanel = viewFiles(true);
-              dbPluginMgr.clearRequestStopLookup();
-              //Debug.debug("Waiting 3 seconds...", 2);
-              //Thread.sleep(3000);
-              // TODO: consider selecting only rows with non-empty pfns column
-              Debug.debug("Selecting all", 2);
-              filesPanel.tableResults.selectAll();
-              Debug.debug("Starting download of "+filesPanel.tableResults.getSelectedRowCount()+
-                  " files.", 2);
-              filesPanel.download(dlUrl, targetDBsPanel);
-              GridPilot.fileRows = origFileRows;
+              replicate(origFileRows);
             }
             catch(IOException e){
               GridPilot.fileRows = origFileRows;
+              e.printStackTrace();
+            }
+          }
+        }.start();
+      }
+    });
+    miExportDataset.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        new Thread(){
+          public void run(){
+            try{
+              exportDataset();
+            }
+            catch(Exception e){
               e.printStackTrace();
             }
           }
@@ -1293,15 +1293,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     });
     miImportFiles.setEnabled(dbPluginMgr.isFileCatalog());
     miViewFiles.setEnabled(true);
-    miDownloadDataset.setEnabled(true);
+    miReplicateDataset.setEnabled(true);
+    miExportDataset.setEnabled(true);
     miViewJobDefinitions.setEnabled(dbPluginMgr.isJobRepository());
     miDelete.setEnabled(true);
     miEdit.setEnabled(true);
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miImportFiles);
     tableResults.addMenuSeparator();
+    tableResults.addMenuItem(miExportDataset);
+    tableResults.addMenuSeparator();
     tableResults.addMenuItem(miViewFiles);
-    tableResults.addMenuItem(miDownloadDataset);
+    tableResults.addMenuItem(miReplicateDataset);
     tableResults.addMenuItem(miViewJobDefinitions);
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miEdit);
@@ -2261,6 +2264,79 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
   }
   
+  /**
+   * Called from the right-click menu
+   */
+  private void replicate(int origFileRows) throws IOException{
+    TargetDBsPanel targetDBsPanel = makeTargetDBsPanel();
+    JPanel pTargetDBs = targetDBsPanel.pTargetDBs;
+    String dlUrl = MyUtil.getURL(defaultURL, pTargetDBs, true, "Choose destination directory");
+    if(dlUrl.startsWith("file:")){
+      defaultURL = dlUrl;
+    }
+    GridPilot.fileRows = 0;
+    Debug.debug("Creating new files panel", 2);
+    dbPluginMgr.requestStopLookup();
+    DBPanel filesPanel = viewFiles(true);
+    dbPluginMgr.clearRequestStopLookup();
+    //Debug.debug("Waiting 3 seconds...", 2);
+    //Thread.sleep(3000);
+    // TODO: consider selecting only rows with non-empty pfns column
+    Debug.debug("Selecting all", 2);
+    filesPanel.tableResults.selectAll();
+    Debug.debug("Starting download of "+filesPanel.tableResults.getSelectedRowCount()+
+        " files.", 2);
+    filesPanel.download(dlUrl, targetDBsPanel);
+    GridPilot.fileRows = origFileRows;
+  }
+  
+  /**
+   * Called from the right-click menu
+   */
+  private void exportDataset(){
+    if(!getSelectedIdentifier().equals("-1") && !exportingDataset){
+      new Thread(){
+        public void run(){
+          exportingDataset = true;
+          // Get the dataset name and id
+          String datasetID = getSelectedIdentifier();
+          try{
+            exportDataset(datasetID);
+          }
+          catch(Exception e){
+            String error = "ERROR: could not export dataset";
+            Debug.debug(error, 1);
+            GridPilot.getClassMgr().getStatusBar().setLabel(error);
+            GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+            exportingDataset = false;
+            return;
+          }         
+          exportingDataset = false;
+        }
+      }.start();
+    }
+  }
+  
+  protected void exportDataset(String datasetID) {
+    try{
+      String url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
+      if(url!=null && !url.equals("")){
+        Debug.debug("Exporting to "+url, 2);
+        MyUtil.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)), dbName, datasetID);
+      }
+      else{
+        Debug.debug("Not exporting. "+url, 2);
+      }
+    }
+    catch(Exception ex){
+      String error = "ERROR: could not export DB(s). "+ex.getMessage();
+      MyUtil.showError(error);
+      GridPilot.getClassMgr().getLogFile().addMessage(error, ex);
+      ex.printStackTrace();
+    }
+  }
+
+  
   private class TargetDBsPanel{
     protected JPanel pTargetDBs = null;
     protected JComboBox cbTargetDBSelection = null;
@@ -2327,7 +2403,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         else{
           try{
-            dlUrl = MyUtil.getReplicaURL(defaultURL, pTargetDBs);
+            dlUrl = MyUtil.getURL(defaultURL, pTargetDBs, true, "Choose destination directory");
             if(dlUrl.startsWith("file:")){
               defaultURL = dlUrl;
             }

@@ -641,10 +641,10 @@ public class GlobalFrame extends GPFrame{
 
   protected void exportDB() {
     try{
-      String url = MyUtil.getReplicaURL("file:~/", null);
+      String url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
       if(url!=null && !url.equals("")){
         Debug.debug("Exporting to "+url, 2);
-        MyUtil.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)));
+        MyUtil.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)), null, null);
       }
       else{
         Debug.debug("Not exporting. "+url, 2);
@@ -659,7 +659,22 @@ public class GlobalFrame extends GPFrame{
   }
     
   protected void importToDB() {
-    // TODO
+    try{
+      String url = MyUtil.getURL("file:~/", null, false, "Choose file");
+      if(url!=null && !url.equals("")){
+        Debug.debug("Importing from "+url, 2);
+        MyUtil.importToDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)));
+      }
+      else{
+        Debug.debug("Not exporting. "+url, 2);
+      }
+    }
+    catch(Exception ex){
+      String error = "ERROR: could not import. "+ex.getMessage();
+      MyUtil.showError(error);
+      GridPilot.getClassMgr().getLogFile().addMessage(error, ex);
+      ex.printStackTrace();
+    }
   }
 
   public void toggleMonitoringPanel(){

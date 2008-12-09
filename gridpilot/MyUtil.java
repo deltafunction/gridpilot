@@ -1742,7 +1742,8 @@ public class MyUtil extends gridfactory.common.Util{
     return false;
   }
   
-  public static String getReplicaURL(String url, JComponent jcb) throws IOException{
+  public static String getURL(String url, JComponent jcb, boolean onlyDirs,
+      String message) throws IOException{
     Debug.debug("URL: "+url, 3);
     JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(GridPilot.getClassMgr().getGlobalFrame().getRootPane());
     frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -1752,14 +1753,14 @@ public class MyUtil extends gridfactory.common.Util{
     try{
       wb = new BrowserPanel(
                       GridPilot.getClassMgr().getGlobalFrame(),
-                      "Choose destination directory",
+                      message,
                       finUrl,
                       finBaseUrl,
                       true,
                       false,
                       true,
                       jcb,
-                      "*/",
+                      onlyDirs?"*/":"",
                       false);
     }
     catch(Exception eee){
@@ -1786,13 +1787,84 @@ public class MyUtil extends gridfactory.common.Util{
     //GridPilot.getClassMgr().getStatusBar().setLabel("");
     String ret = wb.lastURL.substring(finBaseUrl.length());
     Debug.debug("Returning last URL "+ret, 2);
-    if(!ret.endsWith("/")){
+    if(onlyDirs && !ret.endsWith("/")){
       throw new IOException("ERROR: not a directory: "+ret);
     }
     return ret;
   }
   
-  public static void exportDB(String exportDir) throws Exception{
+  /**
+   * Exports dataset and corresponding transformation information from the chosen
+   * database. If 'dbName' is null, a popup is displayed asking to choose a database.
+   * If 'datasetId' is null, the whole "dataset" and "transformation" tables are exported.
+   * Input files for the tranformation(s) are bundled in the exported tarball.
+   * @param exportDir
+   * @param datasetId
+   * @param _dbName
+   * @throws Exception
+   */
+  public static void exportDB(String exportDir, String _dbName, String datasetId) throws Exception{
+    String dbName = _dbName;
+    if(dbName==null){
+      String [] choices = new String[GridPilot.dbNames.length+1];
+      System.arraycopy(GridPilot.dbNames, 0, choices, 0, GridPilot.dbNames.length);
+      choices[choices.length-1] = "none (cancel)";
+      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+      int choice = confirmBox.getConfirm("Export database",
+    "<html>This will export all datasets and transformations of the chosen database<br>" +
+          "plus any files associated with the transformations. Non-local files will<br>" +
+          "be downloded first.<br><br>" +
+          "Please choose a database to export.</html>", choices);
+      if(choice<0 || choice>=choices.length-1){
+        return;
+      }
+      dbName = GridPilot.dbNames[choice];
+    }
+    // Work in a tmp dir
+    File tmpDir = File.createTempFile(MyUtil.getTmpFilePrefix(), "");
+    tmpDir.delete();
+    tmpDir.mkdirs();
+    GridPilot.getClassMgr().getLogFile().addInfo("Exporting from database "+dbName+
+        " to "+tmpDir.getAbsolutePath());
+    File tarFile = File.createTempFile(MyUtil.getTmpFilePrefix(), ".tar");
+    // have the tmp directory and file deleted on exit
+    GridPilot.addTmpFile(tmpDir.getAbsolutePath(), tmpDir);
+    GridPilot.addTmpFile(tarFile.getAbsolutePath(), tarFile);
+    // Save everything to the tmp dir
+    saveTableAndFiles(tmpDir, dbName, "dataset", new String [] {}, IMPORT_DIR,
+        datasetId);
+    String transformationId = null;
+    String datasetName = null;
+    if(datasetId!=null){
+      DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(
+          dbName);
+      String transName = mgr.getDatasetTransformationName(datasetId);
+      String transVersion = mgr.getDatasetTransformationVersion(datasetId);
+      transformationId = mgr.getTransformationID(transName, transVersion);
+      datasetName = mgr.getDatasetName(datasetId);
+    }
+    saveTableAndFiles(tmpDir, dbName, "transformation",
+        new String [] {"script", "inputFiles"}, IMPORT_DIR, transformationId);
+    // Tar up the tmp dir
+    tar(tarFile, tmpDir);
+    String gzipFile = tarFile.getAbsolutePath()+".gz";
+    Debug.debug("Created temporary archive: "+gzipFile, 1);
+    gzip(tarFile.getAbsolutePath(), gzipFile);
+    // Clean up
+    LocalStaticShell.deleteDir(tmpDir.getAbsolutePath());
+    LocalStaticShell.deleteFile(tarFile.getAbsolutePath());
+    String exportFileName;
+    if(datasetName!=null){
+      exportFileName = datasetName+".tar.gz";
+    }
+    else{
+      exportFileName = "GridPilot_EXPORT_"+getDateInMilliSeconds()+".tar.gz";
+    }
+    LocalStaticShell.moveFile(tarFile.getAbsolutePath()+".gz",
+        (new File(exportDir, exportFileName)).getAbsolutePath());
+  }
+
+  public static void importToDB(String importFile) throws Exception{
     String [] choices = new String[GridPilot.dbNames.length+1];
     System.arraycopy(GridPilot.dbNames, 0, choices, 0, GridPilot.dbNames.length);
     choices[choices.length-1] = "none (cancel)";
@@ -1805,29 +1877,51 @@ public class MyUtil extends gridfactory.common.Util{
     if(choice<0 || choice>=choices.length-1){
       return;
     }
-    GridPilot.getClassMgr().getLogFile().addInfo("Exporting from database "+GridPilot.dbNames[choice]+
-        " to "+GridPilot.dbNames[choice]);
+    String dbName = GridPilot.dbNames[choice];
+    // Work in a tmp dir
     File tmpDir = File.createTempFile(MyUtil.getTmpFilePrefix(), "");
     tmpDir.delete();
     tmpDir.mkdirs();
-    File tarFile = File.createTempFile(MyUtil.getTmpFilePrefix(), ".tar");
+    GridPilot.getClassMgr().getLogFile().addInfo("Importing to database "+dbName+
+        " and directory "+tmpDir.getAbsolutePath());
     // have the tmp directory and file deleted on exit
     GridPilot.addTmpFile(tmpDir.getAbsolutePath(), tmpDir);
-    GridPilot.addTmpFile(tarFile.getAbsolutePath(), tarFile);
-    // Save everything to a tmp dir
-    saveTableAndFiles(tmpDir, GridPilot.dbNames[choice], "dataset", new String [] {}, IMPORT_DIR);
-    saveTableAndFiles(tmpDir, GridPilot.dbNames[choice], "transformation",
-        new String [] {"script", "inputFiles"}, IMPORT_DIR);
+    // Unpack in the tmp dir
+    String
+    gunzip(importFile, tmpDir);
+    
+    
+    saveTableAndFiles(tmpDir, dbName, "dataset", new String [] {}, IMPORT_DIR,
+        datasetId);
+    String transformationId = null;
+    String datasetName = null;
+    if(datasetId!=null){
+      DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(
+          dbName);
+      String transName = mgr.getDatasetTransformationName(datasetId);
+      String transVersion = mgr.getDatasetTransformationVersion(datasetId);
+      transformationId = mgr.getTransformationID(transName, transVersion);
+      datasetName = mgr.getDatasetName(datasetId);
+    }
+    saveTableAndFiles(tmpDir, dbName, "transformation",
+        new String [] {"script", "inputFiles"}, IMPORT_DIR, transformationId);
     // Tar up the tmp dir
     MyUtil.tar(tarFile, tmpDir);
     String gzipFile = tarFile.getAbsolutePath()+".gz";
     Debug.debug("Created temporary archive: "+gzipFile, 1);
-    MyUtil.gzip(tarFile.getAbsolutePath(), gzipFile);
+    gzip(tarFile.getAbsolutePath(), gzipFile);
     // Clean up
     LocalStaticShell.deleteDir(tmpDir.getAbsolutePath());
     LocalStaticShell.deleteFile(tarFile.getAbsolutePath());
+    String exportFileName;
+    if(datasetName!=null){
+      exportFileName = datasetName+".tar.gz";
+    }
+    else{
+      exportFileName = "GridPilot_EXPORT_"+getDateInMilliSeconds()+".tar.gz";
+    }
     LocalStaticShell.moveFile(tarFile.getAbsolutePath()+".gz",
-        (new File(exportDir,"GridPilot_EXPORT_"+getDateInMilliSeconds()+".tar.gz")).getAbsolutePath());
+        (new File(exportDir, exportFileName)).getAbsolutePath());
   }
 
   /**
@@ -1851,13 +1945,19 @@ public class MyUtil extends gridfactory.common.Util{
    * @param fileFields
    * @param exportImportDir
    * @param sqlExtension
+   * @param id the identifier of the row to be exported. If this is null, the whole table is exported.
    * @throws Exception
    */
   private static void saveTableAndFiles(File dbDir, String dbName, String table,
-      String [] fileFields, String exportImportDir) throws Exception{
+      String [] fileFields, String exportImportDir, String id) throws Exception{
     String idField = getIdentifierField(dbName, table);
+    String query = "SELECT * FROM "+table;
+    if(id!=null){
+      Debug.debug("Exporting row "+id, 2);
+      query += " WHERE "+idField+" = "+id;
+    }
     DBResult dbResult =
-      GridPilot.getClassMgr().getDBPluginMgr(dbName).select("SELECT * FROM "+table, idField, true);
+      GridPilot.getClassMgr().getDBPluginMgr(dbName).select(query, idField, true);
     File dir = new File(dbDir, table+"Files");
     dir.mkdir();
     saveTableFiles(dbResult, dir, dbName, table, fileFields, exportImportDir);
