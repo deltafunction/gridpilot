@@ -2322,7 +2322,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       String url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
       if(url!=null && !url.equals("")){
         Debug.debug("Exporting to "+url, 2);
-        MyUtil.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)), dbName, datasetID);
+        ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)), dbName, datasetID);
       }
       else{
         Debug.debug("Not exporting. "+url, 2);

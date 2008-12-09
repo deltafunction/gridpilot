@@ -2,6 +2,7 @@ package gridpilot;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.io.IOException;
 import java.net.URL;
 
 import javax.swing.*;
@@ -644,7 +645,7 @@ public class GlobalFrame extends GPFrame{
       String url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
       if(url!=null && !url.equals("")){
         Debug.debug("Exporting to "+url, 2);
-        MyUtil.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)), null, null);
+        ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)), null, null);
       }
       else{
         Debug.debug("Not exporting. "+url, 2);
@@ -662,8 +663,11 @@ public class GlobalFrame extends GPFrame{
     try{
       String url = MyUtil.getURL("file:~/", null, false, "Choose file");
       if(url!=null && !url.equals("")){
+        if(!url.endsWith(".tar.gz")){
+          throw new IOException("Only gzipped tar archives (with extension tar.gz) can be imported.");
+        }
         Debug.debug("Importing from "+url, 2);
-        MyUtil.importToDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)));
+        ExportImport.importToDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)));
       }
       else{
         Debug.debug("Not exporting. "+url, 2);
