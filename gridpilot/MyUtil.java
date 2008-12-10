@@ -1774,10 +1774,9 @@ public class MyUtil extends gridfactory.common.Util{
       }
     }
     frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-    if(wb==null || wb.lastURL==null ||
-        !wb.lastURL.startsWith(finBaseUrl) || wb.lastUrlList==null){
-      Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
-      throw new IOException("No download directory");
+    if(wb==null || wb.lastURL==null || !wb.lastURL.startsWith(finBaseUrl)){
+      Debug.debug("ERROR: Could not open URL "+finBaseUrl+":"+wb.lastURL, 1);
+      throw new IOException("No download directory; "+wb.lastURL);
     }
     //GridPilot.getClassMgr().getStatusBar().setLabel("");
     String ret = wb.lastURL.substring(finBaseUrl.length());

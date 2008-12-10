@@ -138,7 +138,9 @@ public interface Database{
   public String [] getFieldNames(String table) throws SQLException, InterruptedException;
   // The last database error reported
   public String getError() throws InterruptedException;
-  // method used by DBPluginMgr to request stopping all queries
+  public void appendError(String error);
+  public void clearError();
+ // method used by DBPluginMgr to request stopping all queries
   public void requestStop();
   public void clearRequestStop();
   // Method used for DBs (ATLAS) that have time consuming PFN lookups.

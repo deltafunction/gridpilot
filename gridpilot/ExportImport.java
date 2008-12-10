@@ -6,6 +6,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.LocalStaticShell;
 
 import java.io.File;
+import java.sql.SQLException;
 
 import javax.swing.JOptionPane;
 
@@ -30,19 +31,42 @@ public class ExportImport {
    */
   public static void exportDB(String exportDir, String _dbName, String datasetId) throws Exception{
     String dbName = _dbName;
+    String transformationId = null;
+    String datasetName = null;
+    if(datasetId!=null){
+      DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
+      String transName = mgr.getDatasetTransformationName(datasetId);
+      String transVersion = mgr.getDatasetTransformationVersion(datasetId);
+      transformationId = mgr.getTransformationID(transName, transVersion);
+      datasetName = mgr.getDatasetName(datasetId);
+    }
+    String exportFileName;
+    if(datasetName!=null){
+      exportFileName = datasetName+".tar.gz";
+    }
+    else{
+      exportFileName = "GridPilot_EXPORT_"+MyUtil.getDateInMilliSeconds()+".tar.gz";
+    }
+    String [] choices = dbName==null?new String[GridPilot.dbNames.length+1]:new String[] {"Continue", "Cancel"};
+    System.arraycopy(GridPilot.dbNames, 0, choices, 0, GridPilot.dbNames.length);
+    choices[choices.length-1] = "none (cancel)";
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    String message = datasetId==null?
+         "<html>This will export all datasets and transformations of the chosen database<br>" +
+              "plus any files associated with the transformations. Non-local files will<br>" +
+              "be downloded first.<br><br>" +
+              "Choose a database to export from or choose none to cancel.<br></html>" :
+         "<html>This will export the dataset \"" + datasetName + "\"<br>" +
+               "and its associated transformation plus any files associated<br>" +
+               "with this transformation. Non-local files will be downloded<br>" +
+               "first.<br><br>" +
+               "Notice: if the file " +exportFileName + " already exists in the<br>" +
+               "chosen directory, it will be overwritten.<br></html>";
+    int choice = confirmBox.getConfirm("Export from database", message, choices);
+    if(choice<0 || choice>=choices.length-1){
+      return;
+    }
     if(dbName==null){
-      String [] choices = new String[GridPilot.dbNames.length+1];
-      System.arraycopy(GridPilot.dbNames, 0, choices, 0, GridPilot.dbNames.length);
-      choices[choices.length-1] = "none (cancel)";
-      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-      int choice = confirmBox.getConfirm("Export database",
-    "<html>This will export all datasets and transformations of the chosen database<br>" +
-          "plus any files associated with the transformations. Non-local files will<br>" +
-          "be downloded first.<br><br>" +
-          "Please choose a database to export.</html>", choices);
-      if(choice<0 || choice>=choices.length-1){
-        return;
-      }
       dbName = GridPilot.dbNames[choice];
     }
     // Work in a tmp dir
@@ -58,15 +82,6 @@ public class ExportImport {
     // Save everything to the tmp dir
     saveTableAndFiles(tmpDir, dbName, "dataset", new String [] {},
         datasetId);
-    String transformationId = null;
-    String datasetName = null;
-    if(datasetId!=null){
-      DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
-      String transName = mgr.getDatasetTransformationName(datasetId);
-      String transVersion = mgr.getDatasetTransformationVersion(datasetId);
-      transformationId = mgr.getTransformationID(transName, transVersion);
-      datasetName = mgr.getDatasetName(datasetId);
-    }
     saveTableAndFiles(tmpDir, dbName, "transformation" ,TRANSFORMATIOM_FILE_FIELDS,
         transformationId);
     // Tar up the tmp dir
@@ -77,15 +92,15 @@ public class ExportImport {
     // Clean up
     LocalStaticShell.deleteDir(tmpDir.getAbsolutePath());
     LocalStaticShell.deleteFile(tarFile.getAbsolutePath());
-    String exportFileName;
-    if(datasetName!=null){
-      exportFileName = datasetName+".tar.gz";
+    if(MyUtil.urlIsRemote(exportDir)){
+      GridPilot.getClassMgr().getTransferControl().upload(
+          new File(tarFile.getAbsolutePath()+".gz"), exportDir+"/"+exportFileName);
+      LocalStaticShell.deleteFile(tarFile.getAbsolutePath()+".gz");
     }
     else{
-      exportFileName = "GridPilot_EXPORT_"+MyUtil.getDateInMilliSeconds()+".tar.gz";
+      LocalStaticShell.moveFile(tarFile.getAbsolutePath()+".gz",
+          (new File(exportDir, exportFileName)).getAbsolutePath());
     }
-    LocalStaticShell.moveFile(tarFile.getAbsolutePath()+".gz",
-        (new File(exportDir, exportFileName)).getAbsolutePath());
   }
 
   /**
@@ -97,7 +112,7 @@ public class ExportImport {
    * 
    * /tmp/GridPilot-12121/                                        <br>&nbsp;
    *                     transformation.sql                      <br>&nbsp;
-   *                     transformationFiles/                    <br>&nbsp;
+   *                     my_transformation/                      <br>&nbsp;
    *                                         jobOptions.py       <br>&nbsp;
    *                                         input1.root         <br>&nbsp;
    *                  
@@ -166,7 +181,11 @@ public class ExportImport {
 
   private static String toSql(DBResult dbResult, String table, String [] fileFields){
     Debug.debug("Converting DBResult with "+dbResult.values.length+" rows", 2);
-    String res = "";
+    StringBuffer res = new StringBuffer();
+    StringBuffer insFields = new StringBuffer();
+    insFields.append("INSERT INTO "+table+" (");
+    StringBuffer insValues = new StringBuffer();
+    insValues.append(") VALUES (");
     Object [][] newValues = dbResult.values.clone();
     for(int i=0; i<dbResult.values.length; ++i){
       for(int j=0; j<fileFields.length; ++j){
@@ -177,75 +196,61 @@ public class ExportImport {
               ).replaceAll("^.*/([^/]+)$", IMPORT_DIR+"/"+table+"/$1");
         }
       }
-      res += "INSERT INTO "+table+" ("+MyUtil.arrayToString(dbResult.fields, ", ")+
-      ") VALUES ("+MyUtil.arrayToString(newValues[i], ", ")+");\n";
+      for(int j=0; j<dbResult.fields.length; ++j){
+        if(newValues[i][j]!=null && !newValues[i][j].equals("")){
+          insFields.append((j>0?", ":"")+dbResult.fields[j]);
+          insValues.append((j>0?", ":"")+"'"+newValues[i][j]+"'");
+        }
+      }
+      res.append(insFields.toString()+insValues.toString()+");\n");
     }
-    return res;
+    return res.toString();
   }
 
   public static void importToDB(String importFile) throws Exception{
+    String transformationDir = GridPilot.getClassMgr().getConfigFile().getValue(
+        "Fork", "transformation directory");
+    File transformationDirectory = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(
+        transformationDir)));
     String [] choices = new String[GridPilot.dbNames.length+1];
     System.arraycopy(GridPilot.dbNames, 0, choices, 0, GridPilot.dbNames.length);
     choices[choices.length-1] = "none (cancel)";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = confirmBox.getConfirm("Export database",
-  "<html>This will export all datasets and transformations of the chosen database<br>" +
-        "plus any files associated with the transformations. Non-local files will<br>" +
-        "be downloded first.<br><br>" +
-        "Please choose a database to export.</html>", choices);
+  "<html>This will import datasets and transformations to the chosen database.<br>" +
+        "Any files associated with the transformations will be copied to<br>" +
+        transformationDirectory + "/.<br><br>" +
+        "Please choose a database to use.<br></html>", choices);
     if(choice<0 || choice>=choices.length-1){
       return;
     }
     String dbName = GridPilot.dbNames[choice];
     DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
+    // Download the import file, unpack it in a tmp dir
     File tmpDir = downloadAndUnpack(importFile);
+    // have the tmp dir deleted on exit
+    GridPilot.addTmpFile(tmpDir.getAbsolutePath(), tmpDir);
     // Insert the SQL
-    String sqlFile = (new File(tmpDir, "transformation")).getAbsolutePath();
+    String sqlFile = (new File(tmpDir, "transformation.sql")).getAbsolutePath();
     String sql = LocalStaticShell.readFile(sqlFile);
     mgr.executeUpdate(sql);
-    sqlFile = (new File(tmpDir, "dataset")).getAbsolutePath();
+    if(mgr.getError()!=null && !mgr.getError().equals("")){
+      throw new SQLException(mgr.getError());
+    }
+    sqlFile = (new File(tmpDir, "dataset.sql")).getAbsolutePath();
     sql = LocalStaticShell.readFile(sqlFile);
     mgr.executeUpdate(sql);
-    // Now read back any rows containing IMPORT_DIR and modify IMPORT_DIR to the GridPilot directory
-    sql = "SELECT * FROM transformation WHERE ";
-    for(int i=0; i<TRANSFORMATIOM_FILE_FIELDS.length; ++i){
-      sql += TRANSFORMATIOM_FILE_FIELDS[i]+" LIKE "+IMPORT_DIR+"/%";
+    if(mgr.getError()!=null && !mgr.getError().equals("")){
+      throw new SQLException(mgr.getError());
     }
-    DBResult dbResult = mgr.select(selectQuery, identifier, findAll);
-      fixImportedFileLocations();
+    // Move transformation input files to transformation dir
+    moveTransInputs((new File(tmpDir, "transformationFiles")).getAbsolutePath(), transformationDirectory);
+    // Read back any rows containing IMPORT_DIR and modify IMPORT_DIR to the GridPilot directory
+    fixImportedFileLocations(dbName, transformationDirectory);
+    // Clean up
+    tmpDir.delete();
    }
   
-  private static void fixImportedFileLocations() {
-    while(dbResult.next()){
-      for(int i=0; i<fileFields.length; ++i){
-        if(MyUtil.arrayContainsIgnoreCase(fileFields, dbResult.fields[i]) &&
-            dbResult.values[i]!=null){
-          name = dbResult.getString(nameField);
-          urlsStr = dbResult.getString(fileFields[i]);
-          urls = MyUtil.split(urlsStr);
-          for(int j=0; j<urls.length; ++j){
-            // Download url to 'dir'/[record name]
-            dlDir = new File(dir, name);
-            dlDir.mkdir();
-            try{
-              GridPilot.getClassMgr().getTransferControl().download(urls[i], dlDir);
-            }
-            catch(Exception e){
-              failedDLs.append(" "+urls[i]);
-            }
-          }
-        }
-      }
-      if(failedDLs.length()>0){
-        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: the following file(s) could not be downloaded:"+
-            failedDLs + ". The export may not be complete.");
-      }
-    }
-  }
-
-  /**
-   * Support method for importToDB.
-   */
   private static File downloadAndUnpack(String importFile) throws Exception{
     // Work in a tmp dir
     File tmpDir = File.createTempFile(MyUtil.getTmpFilePrefix(), "");
@@ -259,11 +264,57 @@ public class ExportImport {
     // Unpack
     String gzipFileName = importFile.replaceFirst("^.*/([^/]+)$", "$1");
     String tarFileName = gzipFileName.replaceFirst("\\.gz$", "");
-    String dirName = tarFileName.replaceFirst("\\.tar$", "");
     MyUtil.gunzip(new File(tmpDir, gzipFileName), new File(tmpDir, tarFileName));
-    File unpackDir = new File(tmpDir, dirName);
-    MyUtil.unTar(new File(tmpDir, dirName), unpackDir);
+    MyUtil.unTar(new File(tmpDir, tarFileName), tmpDir);
     return tmpDir;
+  }
+
+  private static void fixImportedFileLocations(String dbName, File dir) {
+    DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
+    String sql = "SELECT * FROM transformation WHERE ";
+    for(int i=0; i<TRANSFORMATIOM_FILE_FIELDS.length; ++i){
+      sql += (i>0?" AND ":"")+TRANSFORMATIOM_FILE_FIELDS[i]+" = "+IMPORT_DIR+"/%";
+    }
+    String idField = MyUtil.getIdentifierField(dbName, "transformation");
+    DBResult dbResult = mgr.select(sql, idField, true);
+    String id;
+    String [] urls = null;
+    String urlsStr;
+    String [] newUrlsStrs = new String [TRANSFORMATIOM_FILE_FIELDS.length];
+    int recNr = 0;
+    while(dbResult.next()){
+      id = dbResult.getString(idField);
+      newUrlsStrs = null;
+      for(int i=0; i<TRANSFORMATIOM_FILE_FIELDS.length; ++i){
+        if(MyUtil.arrayContainsIgnoreCase(TRANSFORMATIOM_FILE_FIELDS, dbResult.fields[i]) &&
+            dbResult.values[i]!=null){
+          urlsStr = dbResult.getString(TRANSFORMATIOM_FILE_FIELDS[i]);
+          urls = MyUtil.split(urlsStr);
+          for(int j=0; j<urls.length; ++j){
+            // replace IMPORT_DIR/ with 'dir'/
+            urls[j] = urls[j].replaceFirst("^"+IMPORT_DIR, dir.getAbsolutePath());
+          }
+        }
+        newUrlsStrs[i] = MyUtil.arrayToString(urls);
+      }
+      if(newUrlsStrs!=null && newUrlsStrs.length>0){
+        // write back the record
+        mgr.updateTransformation(id, TRANSFORMATIOM_FILE_FIELDS, newUrlsStrs);
+      }
+      ++recNr;
+    }
+  }
+
+  private static void moveTransInputs(String tmpDir, File transformationDirectory) {
+    String [] files = LocalStaticShell.listFiles(tmpDir);
+    String fileName;
+    for(int i=0; i<files.length; ++i){
+      if(!files[i].endsWith(".sql")){
+        fileName = (new File(files[i])).getName();
+        LocalStaticShell.moveFile(files[i],
+            (new File(transformationDirectory, fileName)).getAbsolutePath());
+      }
+    }
   }
 
 }

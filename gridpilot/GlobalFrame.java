@@ -641,8 +641,14 @@ public class GlobalFrame extends GPFrame{
   }
 
   protected void exportDB() {
+    String url = null;
     try{
-      String url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
+      url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
+    }
+    catch(IOException e){
+      e.printStackTrace();
+    }
+    try{
       if(url!=null && !url.equals("")){
         Debug.debug("Exporting to "+url, 2);
         ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)), null, null);
@@ -660,8 +666,14 @@ public class GlobalFrame extends GPFrame{
   }
     
   protected void importToDB() {
+    String url = null;
     try{
-      String url = MyUtil.getURL("file:~/", null, false, "Choose file");
+      url = MyUtil.getURL("file:~/", null, false, "Choose tar.gz file to import from.");
+    }
+    catch(IOException e){
+      e.printStackTrace();
+    }
+    try{
       if(url!=null && !url.equals("")){
         if(!url.endsWith(".tar.gz")){
           throw new IOException("Only gzipped tar archives (with extension tar.gz) can be imported.");
@@ -670,7 +682,7 @@ public class GlobalFrame extends GPFrame{
         ExportImport.importToDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)));
       }
       else{
-        Debug.debug("Not exporting. "+url, 2);
+        Debug.debug("Not importing. "+url, 2);
       }
     }
     catch(Exception ex){

@@ -2869,6 +2869,14 @@ public class ATLASDatabase extends DBCache implements Database{
     return error;
   }
 
+  public void appendError(String _error) {
+    error += _error;
+  }
+
+  public void clearError() {
+    error = "";
+  }
+
   public void executeUpdate(String sql) throws Exception {
     throw new Exception("The database "+dbName+" does not support general purpose SQL updates.");
   }

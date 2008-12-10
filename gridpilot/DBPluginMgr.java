@@ -232,9 +232,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getFieldNames(table);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                               table, t);
@@ -266,9 +268,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getRuntimeInitText(runtimeEnvName, csName);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              runtimeEnvName + " " + csName, t);
@@ -300,9 +304,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getStdOutFinalDest(jobDefinitionID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -334,9 +340,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getStdErrFinalDest(jobDefinitionID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -368,9 +376,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getError();
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName, t);
         }
@@ -401,9 +411,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getTransformationScript(jobDefinitionID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -435,9 +447,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getRuntimeEnvironments(jobDefinitionID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -469,9 +483,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getTransformationArguments(jobDefinitionID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -503,9 +519,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getTransformationRuntimeEnvironment(transformationID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              transformationID, t);
@@ -537,9 +555,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getJobDefUserInfo(jobDefinitionID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -571,9 +591,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getJobDefName(jobDefinitionID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -605,9 +627,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getDatasetName(datasetID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              datasetID, t);
@@ -639,9 +663,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getRunNumber(datasetID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           /*logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              datasetID, t);*/
@@ -674,9 +700,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getRuntimeEnvironmentIDs(name, cs);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              name+":"+cs, t);
@@ -708,9 +736,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getTransformationID(transName, transVersion);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              transName+":"+transVersion, t);
@@ -742,9 +772,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getDatasetID(datasetName);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              datasetName, t);
@@ -776,9 +808,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getFileID(datasetName, fileName);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              datasetName, t);
@@ -810,9 +844,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getJobDefDatasetID(jobDefinitionID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -844,9 +880,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getJobDefStatus(jobDefinitionID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -887,6 +925,7 @@ public class DBPluginMgr extends DBCache implements Database{
           }
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +jobDefID+":"+key+":"+
                              jobDefID, t);
@@ -918,9 +957,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getRunInfo(jobDefID, key).toString();
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           Debug.debug((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName , 2);
           res = "";
@@ -952,9 +993,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getJobDefTransformationID(jobDefID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -986,9 +1029,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getDatasetTransformationName(datasetID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              datasetID, t);
@@ -1020,9 +1065,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getDatasetTransformationVersion(datasetID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              datasetID, t);
@@ -1054,10 +1101,12 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getTransformation(
               db.getJobDefTransformationID(jobDefID)).getValue(key).toString();
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -1090,9 +1139,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getOutputFiles(jobDefID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -1125,9 +1176,11 @@ public class DBPluginMgr extends DBCache implements Database{
         }
         public void run(){
           try{
+            db.clearError();
             res = db.getJobDefInputFiles(jobDefID);
           }
           catch(Throwable t){
+            db.appendError(t.getMessage());
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                jobDefID, t);
@@ -1160,9 +1213,11 @@ public class DBPluginMgr extends DBCache implements Database{
         }
         public void run(){
           try{
+            db.clearError();
             res = db.getJobDefTransPars(jobDefID);
           }
           catch(Throwable t){
+            db.appendError(t.getMessage());
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                jobDefID, t);
@@ -1194,9 +1249,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getJobDefOutLocalName(jobDefID, outpar);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -1228,9 +1285,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getJobDefOutRemoteName(jobDefinitionID, outpar);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -1263,9 +1322,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getTransformationJobParameters(transformationID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              transformationID, t);
@@ -1298,9 +1359,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getTransformationOutputs(transformationID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              transformationID, t);
@@ -1333,9 +1396,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getTransformationInputs(transformationID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              transformationID, t);
@@ -1368,9 +1433,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.isFileCatalog();
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName, t);
         }
@@ -1402,9 +1469,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.isJobRepository();
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName, t);
         }
@@ -1436,9 +1505,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.createJobDefinition(values);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              values.toString(), t);
@@ -1478,10 +1549,12 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.createJobDefinition(datasetName, cstAttrNames, resCstAttr,
               trpars, ofmap, odest, edest);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              datasetName, t);
@@ -1783,9 +1856,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.createTransformation(values);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              values.toString(), t);
@@ -1818,9 +1893,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.createRuntimeEnvironment(values);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              values.toString(), t);
@@ -1860,9 +1937,11 @@ public class DBPluginMgr extends DBCache implements Database{
           else{
             table = targetTable;
           }
+          db.clearError();
           res = db.createDataset(table, fields, values);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              values.toString(), t);
@@ -1895,9 +1974,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.setJobDefsField(identifiers, field, value);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              field, t);
@@ -1930,9 +2011,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.updateJobDefinition(jobDefID, fields, values);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -1966,9 +2049,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.updateJobDefinition(jobDefID, values);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -2002,9 +2087,11 @@ public class DBPluginMgr extends DBCache implements Database{
         }
         public void run(){
           try{
+            db.clearError();
             res = db.updateDataset(datasetID, datasetName, fields, values);
           }
           catch(Throwable t){
+            db.appendError(t.getMessage());
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                datasetID, t);
@@ -2038,9 +2125,11 @@ public class DBPluginMgr extends DBCache implements Database{
         }
         public void run(){
           try{
+            db.clearError();
             res = db.updateTransformation(transformationID, fields, values);
           }
           catch(Throwable t){
+            db.appendError(t.getMessage());
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                transformationID, t);
@@ -2074,9 +2163,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.updateRuntimeEnvironment(runtimeEnvironmentID, fields, values);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              runtimeEnvironmentID, t);
@@ -2109,9 +2200,11 @@ public class DBPluginMgr extends DBCache implements Database{
         }
         public void run(){
           try{
+            db.clearError();
             res = db.deleteJobDefinition(jobDefID, cleanup);
           }
           catch(Throwable t){
+            db.appendError(t.getMessage());
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                jobDefID, t);
@@ -2145,9 +2238,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.deleteFiles(datasetID, fileIDs, cleanup);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              MyUtil.arrayToString(fileIDs), t);
@@ -2180,9 +2275,11 @@ public class DBPluginMgr extends DBCache implements Database{
         }
         public void run(){
           try{
+            db.clearError();
             res = db.deleteDataset(datasetID, cleanup);
           }
           catch(Throwable t){
+            db.appendError(t.getMessage());
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                datasetID, t);
@@ -2215,9 +2312,11 @@ public class DBPluginMgr extends DBCache implements Database{
         }
         public void run(){
           try{
+            db.clearError();
             res = db.deleteTransformation(transformationID);
           }
           catch(Throwable t){
+            db.appendError(t.getMessage());
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                transformationID, t);
@@ -2250,9 +2349,11 @@ public class DBPluginMgr extends DBCache implements Database{
         }
         public void run(){
           try{
+            db.clearError();
             res = db.deleteRuntimeEnvironment(runtimeEnvironmentID);
           }
           catch(Throwable t){
+            db.appendError(t.getMessage());
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                runtimeEnvironmentID, t);
@@ -2286,9 +2387,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.reserveJobDefinition(jobDefID, userName, cs);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -2321,9 +2424,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.cleanRunInfo(jobDefID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
@@ -2358,6 +2463,7 @@ public class DBPluginMgr extends DBCache implements Database{
           db.executeUpdate(sql);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName, t);
         }
@@ -2387,9 +2493,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.select(selectQuery, identifier, findAll);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                               selectQuery, t);
@@ -2422,9 +2530,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getRuntimeEnvironments();
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName, t);
         }
@@ -2456,9 +2566,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getTransformations();
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName, t);
         }
@@ -2490,9 +2602,11 @@ public class DBPluginMgr extends DBCache implements Database{
         }
         public void run(){
           try{
+            db.clearError();
             res = db.getDataset(datasetID);
           }
           catch(Throwable t){
+            db.appendError(t.getMessage());
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
                                datasetID, t);
@@ -2525,9 +2639,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getRuntimeEnvironment(runtimeEnvironmentID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              runtimeEnvironmentID, t);
@@ -2561,9 +2677,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getTransformation(transformationID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              transformationID, t);
@@ -2597,9 +2715,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getFiles(datasetID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              datasetID, t);
@@ -2633,9 +2753,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getJobDefinitions(datasetID, fieldNames, statusList, csStatusList);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              datasetID, t);
@@ -2668,9 +2790,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getJobDefinition(jobDefinitionID);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefinitionID, t);
@@ -2705,6 +2829,7 @@ public class DBPluginMgr extends DBCache implements Database{
            db.disconnect();
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName, t);
         }
@@ -2736,6 +2861,7 @@ public class DBPluginMgr extends DBCache implements Database{
           db.clearCaches();
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName, t);
         }
@@ -2768,6 +2894,7 @@ public class DBPluginMgr extends DBCache implements Database{
            db.registerFileLocation(datasetID, datasetName, fileID, lfn, url, size, checksum, datasetComplete);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName, t);
         }
@@ -2884,9 +3011,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getVersions(transformationName);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName , t);
         }
@@ -2978,9 +3107,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getFile(datasetName, fileID, lookupPFNs);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              fileID, t);
@@ -3015,9 +3146,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           res = db.getFileURLs(datasetName, fileID, findAll);
         }
         catch(Throwable t){
+          db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              fileID, t);
@@ -3036,6 +3169,14 @@ public class DBPluginMgr extends DBCache implements Database{
     else{
       return null;
     }
+  }
+  
+  public void appendError(String error){
+    db.appendError(error);
+  }
+
+  public void clearError(){
+    db.clearError();
   }
 
   public void requestStopLookup(){

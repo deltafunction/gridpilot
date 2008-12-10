@@ -2215,6 +2215,14 @@ public class MySQLDatabase extends DBCache implements Database {
     return error;
   }
 
+  public void appendError(String _error) {
+    error += _error;
+  }
+
+  public void clearError() {
+    error = "";
+  }
+
   private String makeDate(String dateInput){
     try{
       SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
