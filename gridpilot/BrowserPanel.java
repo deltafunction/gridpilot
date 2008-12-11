@@ -1025,7 +1025,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
     try{
       lastUrlList = null;
       lastSizesList = null;
-      if(url.startsWith("file:/~")){
+      if( url.startsWith("~")){
+        url = "file:"+System.getProperty("user.home")+url.substring(1);
+      }
+      else if(url.startsWith("file:/~") || url.startsWith("~")){
         url = "file:"+System.getProperty("user.home")+url.substring(7);
       }
       else if(url.startsWith("file:~")){

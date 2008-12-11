@@ -376,7 +376,6 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
-          db.clearError();
           res = db.getError();
         }
         catch(Throwable t){
@@ -2460,12 +2459,18 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           db.executeUpdate(sql);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName, t);
+          try{
+            logFile.addMessage((t instanceof Exception ? "Error: "+db.getError()+"\nException" : "Error") +
+                               " from plugin " + dbName, t);
+          }
+          catch(InterruptedException e){
+            e.printStackTrace();
+          }
         }
       }
     };
@@ -2826,7 +2831,7 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
-           db.disconnect();
+          db.disconnect();
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
@@ -2857,6 +2862,7 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          db.clearError();
           Debug.debug("Clearing cache of "+dbName, 2); 
           db.clearCaches();
         }
@@ -2891,7 +2897,8 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
-           db.registerFileLocation(datasetID, datasetName, fileID, lfn, url, size, checksum, datasetComplete);
+          db.clearError();
+          db.registerFileLocation(datasetID, datasetName, fileID, lfn, url, size, checksum, datasetComplete);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());

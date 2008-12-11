@@ -157,7 +157,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
        }
      }
      
-     GridPilot.gridHomeURL = defaultURL;
+     //GridPilot.gridHomeURL = defaultURL;
           
      identifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), tableName);
      

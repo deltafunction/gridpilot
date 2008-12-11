@@ -2121,11 +2121,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
             sql += "=";
             sql += values[i];
             ++addedFields;
+            if(addedFields>0 && addedFields<fields.length){
+              sql += ",";
+            }
             break;
           }
-        }
-        if(addedFields>0 && addedFields<fields.length-1){
-          sql += ",";
         }
       }
     }
@@ -2193,11 +2193,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
             sql += "=";
             sql += values[j];
             ++addedFields;
+            if(addedFields>0 && addedFields<fields.length){
+              sql += ", ";
+            }
             break;
           }
-        }
-        if(addedFields>0 && addedFields<fields.length-1){
-          sql += ", ";
         }
       }
     }
@@ -2265,11 +2265,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
             sql += "=";
             sql += values[j];
             ++addedFields;
+            if(addedFields>0 && addedFields<fields.length){
+              sql += ", ";
+            }
             break;
           }
-        }
-        if(addedFields>0 && addedFields<fields.length-1){
-          sql += ", ";
         }
       }
     }
@@ -2499,7 +2499,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
   
   public void appendError(String _error) {
-    error += _error;
+    error += " "+_error;
   }
 
   public void clearError() {

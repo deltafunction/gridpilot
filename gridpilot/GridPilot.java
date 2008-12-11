@@ -134,6 +134,8 @@ public class GridPilot extends JApplet{
       }      
       loadConfigValues();
       initDebug();
+      Debug.debug("Grid home URL: "+GridPilot.gridHomeURL, 2);
+      mkGridHomeDirIfNotThere();
       loadDBs();
       loadFTs();
       initGUI();
@@ -158,6 +160,13 @@ public class GridPilot extends JApplet{
     }
   }
   
+  private void mkGridHomeDirIfNotThere(){
+    if(!MyUtil.urlIsRemote(GridPilot.gridHomeURL) &&
+        !LocalStaticShell.existsFile(GridPilot.gridHomeURL)){
+      LocalStaticShell.mkdirs(GridPilot.gridHomeURL);
+    }
+  }
+
   public static File getTmpFile(String key){
     return tmpFiles.get(key);
   }

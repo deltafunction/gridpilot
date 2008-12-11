@@ -181,7 +181,7 @@ public class TestDatasets {
           myTransformationName,
           myTransformationVersion,
           "Linux",
-          transformationDirectory+transformationScriptName};
+          "file:"+transformationDirectory+transformationScriptName};
       dbPluginMgr.createTrans(fields, values);
     }
   }
@@ -210,14 +210,14 @@ public class TestDatasets {
             values[i] = "multiplier inputFileURLs";
           }
           else if(fields[i].equalsIgnoreCase("inputFiles")){
-            values[i] = "file:"+transformationDirectory+"/data1.txt "+
-            "file:"+transformationDirectory+"/data2.txt";
+            values[i] = "file:"+transformationDirectory+"data1.txt "+
+            "file:"+transformationDirectory+"data2.txt";
           }
           else if(fields[i].equalsIgnoreCase("outputFiles")){
             values[i] = "out.txt";
           }
           else if(fields[i].equalsIgnoreCase("script")){
-            values[i] = "file:"+transformationDirectory+"/"+testScriptName;
+            values[i] = "file:"+transformationDirectory+testScriptName;
           }
           else if(fields[i].equalsIgnoreCase("comment")){
             values[i] = "Transformation script to test running local GridPilot jobs on Linux.";
@@ -239,6 +239,7 @@ public class TestDatasets {
    * If the dataset does not exist, create it.
    */
   public static void createMyDataset(DBPluginMgr dbPluginMgr){
+    Debug.debug("Creating my_dataset with output location "+GridPilot.gridHomeURL, 1);
     String id = dbPluginMgr.getDatasetID(myDatasetName);
     if(id==null || id.equals("") || id.equals("-1")){
       String [] fields = new String [] {

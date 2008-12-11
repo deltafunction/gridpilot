@@ -41,15 +41,21 @@ public class ExportImport {
       datasetName = mgr.getDatasetName(datasetId);
     }
     String exportFileName;
+    String [] choices;
+    if(dbName==null){
+      choices = new String[GridPilot.dbNames.length+1];
+      System.arraycopy(GridPilot.dbNames, 0, choices, 0, GridPilot.dbNames.length);
+    }
+    else{
+      choices = new String[] {"Continue", "Cancel"};
+    }
+    choices[choices.length-1] = "none (cancel)";
     if(datasetName!=null){
       exportFileName = datasetName+".tar.gz";
     }
     else{
       exportFileName = "GridPilot_EXPORT_"+MyUtil.getDateInMilliSeconds()+".tar.gz";
     }
-    String [] choices = dbName==null?new String[GridPilot.dbNames.length+1]:new String[] {"Continue", "Cancel"};
-    System.arraycopy(GridPilot.dbNames, 0, choices, 0, GridPilot.dbNames.length);
-    choices[choices.length-1] = "none (cancel)";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String message = datasetId==null?
          "<html>This will export all datasets and transformations of the chosen database<br>" +
@@ -139,7 +145,7 @@ public class ExportImport {
     File dir = new File(dbDir, table+"Files");
     dir.mkdir();
     saveTableFiles(dbResult, dir, dbName, table, fileFields);
-    String sql = toSql(dbResult, table, fileFields);
+    String sql = toSql(dbResult, dbName, table, fileFields);
     File tableFile = new File(dbDir, table+".sql");
     LocalStaticShell.writeFile(tableFile.getAbsolutePath(), sql, true);
   }
@@ -179,27 +185,33 @@ public class ExportImport {
     }
   }
 
-  private static String toSql(DBResult dbResult, String table, String [] fileFields){
+  private static String toSql(DBResult dbResult, String dbName, String table, String [] fileFields){
     Debug.debug("Converting DBResult with "+dbResult.values.length+" rows", 2);
+    String nameField = MyUtil.getNameField(dbName, table);
     StringBuffer res = new StringBuffer();
     StringBuffer insFields = new StringBuffer();
     insFields.append("INSERT INTO "+table+" (");
     StringBuffer insValues = new StringBuffer();
     insValues.append(") VALUES (");
     Object [][] newValues = dbResult.values.clone();
+    String name;
+    boolean oneInserted = false;
     for(int i=0; i<dbResult.values.length; ++i){
-      for(int j=0; j<fileFields.length; ++j){
+      name = (String) dbResult.getValue(i, nameField);
+      for(int j=0; j<dbResult.fields.length; ++j){
         if(MyUtil.arrayContainsIgnoreCase(fileFields, dbResult.fields[j]) &&
             newValues[i][j]!=null){
           // Replace URLs with file names in exportImportDir
           newValues[i][j] = ((String) newValues[i][j]).trim().replaceAll("\\\\", "/"
-              ).replaceAll("^.*/([^/]+)$", IMPORT_DIR+"/"+table+"/$1");
+              ).replaceAll("^.*/([^/]+)$", IMPORT_DIR+"/"+name+"/$1");
         }
       }
+      oneInserted = false;
       for(int j=0; j<dbResult.fields.length; ++j){
         if(newValues[i][j]!=null && !newValues[i][j].equals("")){
-          insFields.append((j>0?", ":"")+dbResult.fields[j]);
-          insValues.append((j>0?", ":"")+"'"+newValues[i][j]+"'");
+          insFields.append((oneInserted?", ":"")+dbResult.fields[j]);
+          insValues.append((oneInserted?", ":"")+"'"+newValues[i][j]+"'");
+          oneInserted = true;
         }
       }
       res.append(insFields.toString()+insValues.toString()+");\n");
@@ -216,11 +228,11 @@ public class ExportImport {
     System.arraycopy(GridPilot.dbNames, 0, choices, 0, GridPilot.dbNames.length);
     choices[choices.length-1] = "none (cancel)";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-    int choice = confirmBox.getConfirm("Export database",
-  "<html>This will import datasets and transformations to the chosen database.<br>" +
+    int choice = confirmBox.getConfirm("Import in database",
+  "<html>This will import datasets and transformations in the chosen database.<br>" +
         "Any files associated with the transformations will be copied to<br>" +
         transformationDirectory + "/.<br><br>" +
-        "Please choose a database to use.<br></html>", choices);
+        "Choose a database to use.<br></html>", choices);
     if(choice<0 || choice>=choices.length-1){
       return;
     }
@@ -234,6 +246,7 @@ public class ExportImport {
     String sqlFile = (new File(tmpDir, "transformation.sql")).getAbsolutePath();
     String sql = LocalStaticShell.readFile(sqlFile);
     mgr.executeUpdate(sql);
+    Debug.debug("mgr reports: "+mgr.getError(), 3);
     if(mgr.getError()!=null && !mgr.getError().equals("")){
       throw new SQLException(mgr.getError());
     }
@@ -273,7 +286,7 @@ public class ExportImport {
     DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
     String sql = "SELECT * FROM transformation WHERE ";
     for(int i=0; i<TRANSFORMATIOM_FILE_FIELDS.length; ++i){
-      sql += (i>0?" AND ":"")+TRANSFORMATIOM_FILE_FIELDS[i]+" = "+IMPORT_DIR+"/%";
+      sql += (i>0?" OR ":"")+TRANSFORMATIOM_FILE_FIELDS[i]+" CONTAINS "+IMPORT_DIR+"/";
     }
     String idField = MyUtil.getIdentifierField(dbName, "transformation");
     DBResult dbResult = mgr.select(sql, idField, true);
@@ -284,18 +297,18 @@ public class ExportImport {
     int recNr = 0;
     while(dbResult.next()){
       id = dbResult.getString(idField);
-      newUrlsStrs = null;
       for(int i=0; i<TRANSFORMATIOM_FILE_FIELDS.length; ++i){
-        if(MyUtil.arrayContainsIgnoreCase(TRANSFORMATIOM_FILE_FIELDS, dbResult.fields[i]) &&
-            dbResult.values[i]!=null){
-          urlsStr = dbResult.getString(TRANSFORMATIOM_FILE_FIELDS[i]);
+        urlsStr = dbResult.getString(TRANSFORMATIOM_FILE_FIELDS[i]);
+        newUrlsStrs[i] = "";
+        if(urlsStr!=null){
           urls = MyUtil.split(urlsStr);
           for(int j=0; j<urls.length; ++j){
             // replace IMPORT_DIR/ with 'dir'/
-            urls[j] = urls[j].replaceFirst("^"+IMPORT_DIR, dir.getAbsolutePath());
+            urls[j] = urls[j].replaceFirst("^"+IMPORT_DIR, "file:"+MyUtil.replaceWithTildeLocally(
+                dir.getAbsolutePath()));
           }
+          newUrlsStrs[i] = MyUtil.arrayToString(urls);
         }
-        newUrlsStrs[i] = MyUtil.arrayToString(urls);
       }
       if(newUrlsStrs!=null && newUrlsStrs.length>0){
         // write back the record

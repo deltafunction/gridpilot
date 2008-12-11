@@ -2870,7 +2870,7 @@ public class ATLASDatabase extends DBCache implements Database{
   }
 
   public void appendError(String _error) {
-    error += _error;
+    error += " "+_error;
   }
 
   public void clearError() {
