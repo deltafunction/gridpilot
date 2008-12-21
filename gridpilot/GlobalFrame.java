@@ -274,8 +274,8 @@ public class GlobalFrame extends GPFrame{
     });
   }
 
-  // Help | About action performed
-  public void menuHelpAbout_actionPerformed(){
+  // Help -> About action performed
+  private void menuHelpAbout_actionPerformed(){
     URL aboutURL = null;
     try{
       aboutURL = GridPilot.class.getResource(GridPilot.resourcesPath + "about.htm");
@@ -293,6 +293,26 @@ public class GlobalFrame extends GPFrame{
       Debug.debug("WARNING: could not create BrowserPanel", 1);
       e.printStackTrace();
     }
+  }
+
+  // Help -> Show my distinguished name
+  private void menuHelpShowDN_actionPerformed(){
+    try{
+      String dn = GridPilot.getClassMgr().getSSL().getDN();
+      String message;
+      if(dn==null || dn.equals("")){
+        message = "You don't have any active X.509 certificate";
+      }
+      else{
+        message = "Distinguished name (DN) of your active X.509 certificate: "+
+           dn;
+      }
+      MyUtil.showMessage("My DN", "<html>"+message+"</html>");
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return;
+    } 
   }
 
   // Overridden so we can exit when window is closed
@@ -599,6 +619,14 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuHelp.add(menuHelpAbout);
+    menuHelp.addSeparator();
+    JMenuItem menuHelpShowDN = new JMenuItem("Show my distinguished name");
+    menuHelpAbout.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        menuHelpShowDN_actionPerformed();
+      }
+    });
+    menuHelp.add(menuHelpShowDN);
     menuHelp.addSeparator();
     JMenuItem menuHelpBeginning = new JMenuItem("Wizard: Starting with GridPilot");
     menuHelpBeginning.addActionListener(new ActionListener(){
