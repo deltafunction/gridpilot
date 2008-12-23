@@ -107,9 +107,9 @@
 
 The Cancel button will quit the installer without installing anything; Previous will take you to the previous screen (use it if you change your mind about a setting).
  
-GridWorker is free software, released under the terms of the GNU General Public License. The full text of the license is shown in the next page of the installer.
+GridPilot is free software, released under the terms of the GNU General Public License. The full text of the license is shown in the next page of the installer.
 
-Several class libraries bundled with GridWorker have other licenses; once GridWorker is installed, see the README file for details.</string>
+Several class libraries bundled with GridPilot have other licenses; once GridPilot is installed, see the README file for details.</string>
                   </void>
                 </object>
               </java>
