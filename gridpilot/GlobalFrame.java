@@ -12,9 +12,11 @@ import java.util.*;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.ConfigNode;
+import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
+
 import gridpilot.StatusBar;
 import gridpilot.GridPilot;
 import gridpilot.ListPanel;
@@ -299,15 +301,21 @@ public class GlobalFrame extends GPFrame{
   private void menuHelpShowDN_actionPerformed(){
     try{
       String dn = GridPilot.getClassMgr().getSSL().getDN();
-      String message;
+      String label;
+      JPanel jp = new JPanel();
       if(dn==null || dn.equals("")){
-        message = "You don't have any active X.509 certificate";
+        label = "You don't have any active X.509 certificate";
+        jp.add(new JLabel(label));
       }
       else{
-        message = "Distinguished name (DN) of your active X.509 certificate: "+
-           dn;
+        label = "Distinguished name (DN) of your active X.509 certificate: ";
+        JTextArea jt = new JTextArea(dn);
+        jt.setEditable(false);
+        jp.add(new JLabel(label));
+        jp.add(jt);
       }
-      MyUtil.showMessage("My DN", "<html>"+message+"</html>");
+      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+      confirmBox.getConfirm("My DN", jp, new Object[] {"OK"});
     }
     catch(Exception e){
       e.printStackTrace();
@@ -621,7 +629,7 @@ public class GlobalFrame extends GPFrame{
     menuHelp.add(menuHelpAbout);
     menuHelp.addSeparator();
     JMenuItem menuHelpShowDN = new JMenuItem("Show my distinguished name");
-    menuHelpAbout.addActionListener(new ActionListener(){
+    menuHelpShowDN.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         menuHelpShowDN_actionPerformed();
       }
