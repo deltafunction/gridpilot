@@ -125,9 +125,6 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
             <serializedBean>
               <java class="java.beans.XMLDecoder">
                 <object class="com.install4j.runtime.beans.screens.LicenseScreen">
-                  <void property="acceptInitiallySelected">
-                    <boolean>true</boolean>
-                  </void>
                   <void property="displayedTextFile">
                     <object class="com.install4j.api.beans.ExternalFile">
                       <string>${installer:sys.contentDir}/gpl-3.txt</string>
