@@ -68,17 +68,17 @@ public class BeginningWizard{
     
     // Make things look nice
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "aviateur.png");
+      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "aviateur-32x32.png");
       icon = new ImageIcon(imgURL);
     }
     catch(Exception e){
       try{
-        imgURL = GridPilot.class.getResource("/resources/aviateur.png");
+        imgURL = GridPilot.class.getResource("/resources/aviateur-32x32.png");
         icon = new ImageIcon(imgURL);
       }
       catch(Exception ee){
         ee.printStackTrace();
-        Debug.debug("Could not find image "+ GridPilot.resourcesPath + "aviateur.png", 3);
+        Debug.debug("Could not find image "+ GridPilot.resourcesPath + "aviateur-32x32.png", 3);
         icon = null;
       }
     }
@@ -952,14 +952,6 @@ public class BeginningWizard{
         
         *> We just set runtime vos = virtual organization and leave runtime clusters
 
-  --->  configure GRIDFACTORY
-
-        [GRIDFACTORY] allowed subjects =
-        [GRIDFACTORY] runtime catalog URLs = ~/GridPilot/rtes.rdf http://www.gridpilot.dk/rtes.rdf
-
-        ** TODO: We postpone the configuration of this... It should include GUIs for
-          selecting VOMS groups and for editing KnowARC rdf catalogs
-                      
   --->  configure SSH_POOL
         
         *> [SSH_POOL] hosts
@@ -968,6 +960,19 @@ public class BeginningWizard{
         
         *> set [SSH] host = ([SSH_POOL] hosts)[0], ...
 
+  --->  configure EC2
+        
+        *> [EC2] aws access key id
+        *> [EC2] aws secret access key
+
+  --->  configure GRIDFACTORY
+
+        [GRIDFACTORY] allowed subjects =
+        [GRIDFACTORY] runtime catalog URLs = ~/GridPilot/rtes.rdf http://www.gridpilot.dk/rtes.rdf
+
+        ** TODO: We postpone the configuration of this... It should include GUIs for
+          selecting VOMS groups and for editing KnowARC rdf catalogs
+                      
 */
   private int configureComputingSystems(boolean firstRun) throws Exception{
     String confirmString =
@@ -980,16 +985,16 @@ public class BeginningWizard{
       "If you're not a member of an EGEE virtual organization, you will probably not be able to run jobs on this backend.\n\n" +
       "SSH_POOL is a backend that runs jobs on a pool of Linux machines accessed via ssh. The scheduling is done by\n" +
       "a very simplistic FIFO algorithm.\n\n" +
-      "GridFactory is the native batch system of GridPilot. It is still experimental, but it\n" +
-      "should be possible to try it out. The submission is done by writing job definitions in another database\n" +
-      "from where they will then be picked up and run by GridWorkers.\n\n";
+      "GridFactory is the native batch system of GridPilot. It is still experimental, but it should be possible to try\n" +
+      "it out. The submission is done by writing job definitions in another database from where they will then be\n" +
+      "picked up and run by GridWorkers.\n\n";
     JPanel jPanel = new JPanel(new GridBagLayout());
     jPanel.add(new JLabel("<html>"+confirmString.replaceAll("\n", "<br>")+"</html>"),
         new GridBagConstraints(0, (firstRun?1:0), 2, 2, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     JPanel row = null;
-    String [] names = new String [] {"NG", "GLite", "SSH_POOL", "GridFactory"};
+    String [] names = new String [] {"NG", "GLite", "SSH_POOL", "EC2", "GridFactory"};
     JPanel [] csRows = new JPanel [names.length];
     final JPanel [] csPanels = new JPanel [names.length];
     jcbs = new JCheckBox[names.length];
@@ -1087,6 +1092,34 @@ public class BeginningWizard{
         new GridBagConstraints(0, 3, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));    
+    
+    // EC2
+    csPanels[2] = new JPanel(new GridBagLayout());
+    String ec2String =
+      "The AWS access key ID and AWS secret access key must be filled in with the\n" +
+      "values you have been supplied with by Amazon.\n\n";
+    csPanels[2].add(new JLabel("<html>"+ec2String.replaceAll("\n", "<br>")+"</html>"),
+        new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
+    row = new JPanel(new BorderLayout(8, 0));
+    row.add(new JLabel("AWS access key ID: "), BorderLayout.WEST);
+    JTextField tfAwsId = new JTextField(TEXTFIELDWIDTH);
+    tfAwsId.setText("");
+    row.add(tfAwsId, BorderLayout.CENTER);
+    csPanels[2].add(row,
+        new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
+    row = new JPanel(new BorderLayout(8, 0));
+    row.add(new JLabel("AWS secret access key: "), BorderLayout.WEST);
+    JTextField tfAwsKey = new JTextField(TEXTFIELDWIDTH);
+    tfAwsKey.setText("");
+    row.add(tfAwsKey, BorderLayout.CENTER);
+    csPanels[2].add(row,
+        new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));   
     
     // GRIDFACTORY
     csPanels[3] = new JPanel(new GridBagLayout());
@@ -1238,6 +1271,22 @@ public class BeginningWizard{
     if(jcbs[3].isSelected() && MyUtil.getJTextOrEmptyString(tfGpUrl)!=null &&
         !MyUtil.getJTextOrEmptyString(tfGpUrl).equals("")){
       configFile.setAttributes(
+          new String [] {"EC2", "EC2"},
+          new String [] {"AWS access key ID", "AWS secret access key"},
+          new String [] { MyUtil.getJTextOrEmptyString(tfAwsId).trim(),
+              MyUtil.getJTextOrEmptyString(tfAwsKey).trim()}
+          );
+    }
+    else{
+      configFile.setAttributes(
+          new String [] {"GRIDFACTORY"},
+          new String [] {"Enabled"},
+          new String [] {"no"}
+          );
+    }
+    if(jcbs[4].isSelected() && MyUtil.getJTextOrEmptyString(tfGpUrl)!=null &&
+        !MyUtil.getJTextOrEmptyString(tfGpUrl).equals("")){
+      configFile.setAttributes(
           new String [] {"GRIDFACTORY", "GRIDFACTORY"},
           new String [] {"Enabled", "Submission URL"},
           new String [] {"yes", MyUtil.getJTextOrEmptyString(tfGpUrl).trim()}
@@ -1373,38 +1422,39 @@ public class BeginningWizard{
   
     if(sel==0){
       // Local DB, enable My_DB_Local, disable My_DB_Remote and GP_DB.
-      // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite]:runtime databases = My_DB_Local
+      // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite|EC2]:runtime databases = My_DB_Local
        configFile.setAttributes(
           new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
-              "Fork", "GRIDFACTORY", "SSH", "SSH_POOL", "NG", "GLite"},
+              "Fork", "GRIDFACTORY", "SSH", "SSH_POOL", "NG", "GLite", "EC2"},
           new String [] {"Enabled", "Enabled", "Enabled",
               "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases",
-              "Runtime databases","Runtime databases"},
+              "Runtime databases","Runtime databases","Runtime databases"},
           new String [] {"yes", "no", "no",
-              "My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Local"}
+              "My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Local",
+              "My_DB_Local", "My_DB_Local"}
       );  
       changes = true;
     }
     else if(sel==1){
       // gridpilot.dk, enable GP_DB, My_DB_Local, disable My_DB_Remote.
       // Set GP_DB:database = local_production
-      // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite]:runtime databases = GP_DB My_DB_Local
+      // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite|EC2]:runtime databases = GP_DB My_DB_Local
       configFile.setAttributes(
           new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
-              "GP_DB", "Fork", "GRIDFACTORY", "SSH", "SSH_POOL", "NG", "GLite"},
+              "GP_DB", "Fork", "GRIDFACTORY", "SSH", "SSH_POOL", "NG", "GLite", "EC2"},
           new String [] {"Enabled", "Enabled", "Enabled",
               "Database", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases",
-              "Runtime databases", "Runtime databases"},
+              "Runtime databases", "Runtime databases", "Runtime databases"},
           new String [] {"yes", "no", "yes",
               "jdbc:mysql://db.gridpilot.dk:3306/local_production", "My_DB_Local", "GP_DB My_DB_Local",
-              "My_DB_Local", "My_DB_Local", "GP_DB My_DB_Local", "GP_DB My_DB_Local"}
+              "My_DB_Local", "My_DB_Local", "GP_DB My_DB_Local", "GP_DB My_DB_Local", "GP_DB My_DB_Local"}
       );  
       changes = true;
     }
     else if(sel==2){
       // remote DB, enable My_DB_Remote, My_DB_Local, disable GP_DB.
       // Ask for My_DB_Remote:description
-      // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite]:runtime databases = My_DB_Remote My_DB_Local
+      // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite|EC2]:runtime databases = My_DB_Remote My_DB_Local
       String origDbDesc = configFile.getValue("My_DB_Remote", "Description");
       String dbDesc = MyUtil.getName(
           "Please enter a short (~ 5 words) description of the remote database", "");
@@ -1414,13 +1464,15 @@ public class BeginningWizard{
       configFile.setAttributes(
           new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
               "My_DB_Remote", "My_DB_Remote",
-              "Fork", "GRIDFACTORY", "SSH", "SSH_POOL", "NG", "GLite"},
+              "Fork", "GRIDFACTORY", "SSH", "SSH_POOL", "NG", "GLite", "EC2"},
           new String [] {"Enabled", "Enabled", "Enabled",
              "Database", "Description",
-              "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases"},
+              "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases",
+              "Runtime databases", "Runtime databases", "Runtime databases"},
           new String [] {"yes", "yes", "no",
               "jdbc:mysql://"+newDirs[sel].trim()+":3306/", dbDesc,
-              "My_DB_Local", "My_DB_Remote My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Remote My_DB_Local", "My_DB_Remote My_DB_Local"}
+              "My_DB_Local", "My_DB_Remote My_DB_Local", "My_DB_Local", "My_DB_Local",
+              "My_DB_Remote My_DB_Local", "My_DB_Remote My_DB_Local", "My_DB_Remote My_DB_Local"}
       );  
       changes = true;
     }
