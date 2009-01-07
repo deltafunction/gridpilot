@@ -52,6 +52,7 @@ public class BeginningWizard{
   private JRadioButton [] jrbs = null;
   private JCheckBox [] jcbs = null;
   private boolean dirsOk = true;
+  private boolean certAndKeyOk = true;
   private Dimension catalogPanelSize = null;
   private Dimension gridsPanelSize = null;
 
@@ -63,6 +64,7 @@ public class BeginningWizard{
   public BeginningWizard(boolean firstRun){
     
     dirsOk = true;
+    certAndKeyOk = true;
     URL imgURL = null;
     changes = false;
     
@@ -128,8 +130,12 @@ public class BeginningWizard{
         }
       }
       catch(FileNotFoundException ee){
-        MyUtil.showError(ee.getMessage());
-        ret = checkCertificate(firstRun);
+        certAndKeyOk = false;
+        MyUtil.showError(
+            "<html>WARNING: there was a problem with your key and/or certificate file:<br><br>" +
+            ee.getMessage()+
+            "<br><br>You will not be able to authenticate with grid resources until you fix this.</html>");
+        /*ret = checkCertificate(firstRun);
         if(ret==2 || ret==-1){
           ret = partialSetupMessage(firstRun);
           if(firstRun && ret==1){
@@ -138,8 +144,10 @@ public class BeginningWizard{
           else{
             return;
           }
-        }
+        }*/
       }
+      
+      // TODO: disallow remote stuff if !certAndKeyOk
       
       ret = setGridHomeDir(firstRun);
       if(ret==2 || ret==-1){
