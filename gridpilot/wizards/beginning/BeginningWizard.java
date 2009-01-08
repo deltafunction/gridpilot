@@ -26,8 +26,10 @@ import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
+
 import gridpilot.BrowserPanel;
 import gridpilot.GridPilot;
+import gridpilot.MySSL;
 import gridpilot.MyUtil;
 
 import javax.swing.ImageIcon;
@@ -52,7 +54,6 @@ public class BeginningWizard{
   private JRadioButton [] jrbs = null;
   private JCheckBox [] jcbs = null;
   private boolean dirsOk = true;
-  private boolean certAndKeyOk = true;
   private Dimension catalogPanelSize = null;
   private Dimension gridsPanelSize = null;
 
@@ -60,11 +61,16 @@ public class BeginningWizard{
   private static String HOME_URL = "https://www.gridpilot.dk/";
   private static String MYSQL_HOWTO_URL = HOME_URL+"info/gridpilot+mysql_howto.txt";
   private static String HTTPS_HOWTO_URL = HOME_URL+"info/gridpilot+https_howto.txt";
+  
+  /** Name of file containing test certificate. */
+  public static final String  TEST_CERTIFICATE = "testcert.pem";  
+  /** Name of file containing test key. */
+  public static final String  TEST_KEY = "testkey.pem";  
+
 
   public BeginningWizard(boolean firstRun){
     
     dirsOk = true;
-    certAndKeyOk = true;
     URL imgURL = null;
     changes = false;
     
@@ -130,24 +136,11 @@ public class BeginningWizard{
         }
       }
       catch(FileNotFoundException ee){
-        certAndKeyOk = false;
         MyUtil.showError(
-            "<html>WARNING: there was a problem with your key and/or certificate file:<br><br>" +
+            "<html>WARNING: there was a problem with key and/or certificate file:<br><br>" +
             ee.getMessage()+
             "<br><br>You will not be able to authenticate with grid resources until you fix this.</html>");
-        /*ret = checkCertificate(firstRun);
-        if(ret==2 || ret==-1){
-          ret = partialSetupMessage(firstRun);
-          if(firstRun && ret==1){
-            System.exit(-1);
-          }
-          else{
-            return;
-          }
-        }*/
       }
-      
-      // TODO: disallow remote stuff if !certAndKeyOk
       
       ret = setGridHomeDir(firstRun);
       if(ret==2 || ret==-1){
@@ -215,6 +208,17 @@ public class BeginningWizard{
         e1.printStackTrace();
       }
     }    
+  }
+  
+  private void setupCertAndKey() throws IOException{
+    String certPath = configFile.getValue(GridPilot.topConfigSection, "Certificate file");
+    String keyPath = configFile.getValue(GridPilot.topConfigSection, "Key file");
+    String certDir = (new File(certPath)).getParent();
+    if(!LocalStaticShell.existsFile(certPath) && !LocalStaticShell.existsFile(keyPath)){
+      // Set up key and cert
+      MySSL.setupTestCredentials(
+          certDir, TEST_CERTIFICATE, TEST_KEY, false, LocalStaticShell.class);
+    }
   }
   
   private int welcome(boolean firstRun) throws Exception{
@@ -555,16 +559,6 @@ public class BeginningWizard{
       newDirs[i] = MyUtil.replaceWithTildeLocally(MyUtil.clearFile(newDirs[i]));
     }
     
-    // Check if certificate and key exist
-    File certFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[0])));
-    if(!certFile.exists()){
-      throw new FileNotFoundException(certFile.getAbsolutePath());
-    }
-    File keyFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[1])));
-    if(!keyFile.exists()){
-      throw new FileNotFoundException(keyFile.getAbsolutePath());
-    }
-  
     // Set config entries
     if(!defDirs[0].equals(newDirs[0]) ||
         !defDirs[1].equals(newDirs[1]) ||
@@ -578,6 +572,18 @@ public class BeginningWizard{
               newDirs[0], newDirs[1], newDirs[2], newDirs[3], newDirs[0]}
       );
       changes = true;
+    }
+    
+    setupCertAndKey();
+    
+    // Check if certificate and key exist
+    File certFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[0])));
+    if(!certFile.exists()){
+      throw new FileNotFoundException(certFile.getAbsolutePath());
+    }
+    File keyFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[1])));
+    if(!keyFile.exists()){
+      throw new FileNotFoundException(keyFile.getAbsolutePath());
     }
   
     return choice;
