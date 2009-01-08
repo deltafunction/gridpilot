@@ -19,6 +19,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.security.Security;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.ConfirmBox;
@@ -54,6 +55,7 @@ public class BeginningWizard{
   private JRadioButton [] jrbs = null;
   private JCheckBox [] jcbs = null;
   private boolean dirsOk = true;
+  private boolean certAndKeyOk = true;
   private Dimension catalogPanelSize = null;
   private Dimension gridsPanelSize = null;
 
@@ -134,56 +136,96 @@ public class BeginningWizard{
             return;
           }
         }
+        else if(ret==1){
+          // No grid credentials
+          certAndKeyOk = false;
+          MyUtil.showError(
+              "<html>WARNING: without a key and a certificate you will<br>" +
+                    "not be able to authenticate with grid resources.</html>");
+        }
+        else{
+          // No idea why we suddenly have to add this. It worked before, now and exception is thrown
+          // java.security.NoSuchProviderException: No such provider: BC
+          Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+          if(GridPilot.keyPassword==MySSL.TEST_KEY_PASSWORD){
+            // With test credentials, most likely only standard https will be used.
+            GridPilot.getClassMgr().getSSL().activateSSL();
+          }
+          else{
+            // If a the user has a certificate, chances are he will use grid stuff.
+            // Better make him a proxy.
+            GridPilot.getClassMgr().getSSL().activateProxySSL();
+          }
+        }
       }
       catch(FileNotFoundException ee){
-        MyUtil.showError(
-            "<html>WARNING: there was a problem with key and/or certificate file:<br><br>" +
-            ee.getMessage()+
-            "<br><br>You will not be able to authenticate with grid resources until you fix this.</html>");
+       ee.printStackTrace();
       }
       
-      ret = setGridHomeDir(firstRun);
-      if(ret==2 || ret==-1){
-        ret = partialSetupMessage(firstRun);
-        if(firstRun && ret==1){
-          System.exit(-1);
+      try{
+        ret = setGridHomeDir(firstRun);
+        if(ret==2 || ret==-1){
+          ret = partialSetupMessage(firstRun);
+          if(firstRun && ret==1){
+            System.exit(-1);
+          }
+          else{
+            return;
+          }
         }
-        else{
-          return;
+      }
+      catch(IOException e){
+        e.printStackTrace();
+      }
+      
+      if(certAndKeyOk){
+        try{
+          ret = setGridJobDB(firstRun);
+          if(ret==2 || ret==-1){
+            ret = partialSetupMessage(firstRun);
+            if(firstRun && ret==1){
+              System.exit(-1);
+            }
+            else{
+              return;
+            }
+          }
+        }
+        catch(IOException e){
+          e.printStackTrace();
+        }
+        
+        try{
+          ret = setGridFileCatalog(firstRun);
+          if(ret==2 || ret==-1){
+            ret = partialSetupMessage(firstRun);
+            if(firstRun && ret==1){
+              System.exit(-1);
+            }
+            else{
+              return;
+            }
+          }
+        }
+        catch(IOException e){
+          e.printStackTrace();
         }
       }
       
-      ret = setGridJobDB(firstRun);
-      if(ret==2 || ret==-1){
-        ret = partialSetupMessage(firstRun);
-        if(firstRun && ret==1){
-          System.exit(-1);
-        }
-        else{
-          return;
-        }
-      }
-      
-      ret = setGridFileCatalog(firstRun);
-      if(ret==2 || ret==-1){
-        ret = partialSetupMessage(firstRun);
-        if(firstRun && ret==1){
-          System.exit(-1);
-        }
-        else{
-          return;
+      try{
+        ret = configureComputingSystems(firstRun);
+        if(ret==2 || ret==-1){
+          ret = partialSetupMessage(firstRun);
+          if(firstRun && ret==1){
+            System.exit(-1);
+          }
+          else{
+            return;
+          }
         }
       }
-      
-      ret = configureComputingSystems(firstRun);
-      if(ret==2 || ret==-1){
-        ret = partialSetupMessage(firstRun);
-        if(firstRun && ret==1){
-          System.exit(-1);
-        }
-        else{
-          return;
-        }
+      catch(IOException e){
+        e.printStackTrace();
       }
       
       endGreeting(firstRun);
@@ -215,9 +257,11 @@ public class BeginningWizard{
     String keyPath = configFile.getValue(GridPilot.topConfigSection, "Key file");
     String certDir = (new File(certPath)).getParent();
     if(!LocalStaticShell.existsFile(certPath) && !LocalStaticShell.existsFile(keyPath)){
-      // Set up key and cert
-      MySSL.setupTestCredentials(
-          certDir, TEST_CERTIFICATE, TEST_KEY, false, LocalStaticShell.class);
+      // Set up key and cert.
+      // If setupTestCredentials returns false, test credentials are used.
+      if(!MySSL.setupTestCredentials(certDir, false)){
+        GridPilot.keyPassword = MySSL.TEST_KEY_PASSWORD;
+      }
     }
   }
   
@@ -243,11 +287,13 @@ public class BeginningWizard{
   private int endGreeting(boolean firstRun) throws Exception{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String confirmString = "Configuring GridPilot is now done.\n" +
-        "Your settings have been saved in " +configFile.getFile().getAbsolutePath()+
+        "Your settings have been saved in\n"+
+        configFile.getFile().getAbsolutePath()+
         ".\n\n"+
         "Please notice that only the most basic parameters,\n" +
-            "necessary to get you up and running have been set.\n" +
-            "You can modify these and set many others in \"Edit\" -> \"Preferences\"." +
+            "necessary to get you up and running, have been set.\n" +
+            "You can modify these and many others in\n" +
+            "\"Edit\" -> \"Preferences\"." +
             (firstRun?"\n\nThanks for using GridPilot and have fun!":"");
     int choice = -1;
     confirmBox.getConfirm("Setup completed!",
@@ -360,7 +406,7 @@ public class BeginningWizard{
       jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout(8, 0));
       row.add(MyUtil.createCheckPanel(JOptionPane.getRootFrame(),
-          names[i], jtFields[i], true, false, true), BorderLayout.WEST);
+          names[i], jtFields[i], true, false, true, true), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
       subRow.add(new JLabel("   "), BorderLayout.EAST);
@@ -511,7 +557,7 @@ public class BeginningWizard{
       jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout(8, 0));
       row.add(MyUtil.createCheckPanel(JOptionPane.getRootFrame(),
-          names[i], jtFields[i], true, false, false), BorderLayout.WEST);
+          names[i], jtFields[i], true, false, false, true), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
       subRow.add(new JLabel("   "), BorderLayout.EAST);
@@ -574,7 +620,14 @@ public class BeginningWizard{
       changes = true;
     }
     
-    setupCertAndKey();
+    try{
+      // setupTestCredentials throws an exception if the user clicks cancel.
+      // We treat as if skipping this step.
+      setupCertAndKey();
+    }
+    catch(Exception e){
+      return 1;
+    }
     
     // Check if certificate and key exist
     File certFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[0])));
@@ -622,7 +675,7 @@ public class BeginningWizard{
     // TODO: now we assume that mysql always runs on port 3306 - generalize.
     host = host.replaceFirst("(.*):\\d+", "$1");
     String lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=(\\w+)\\s+(\\w+)\\W.*", "$1$2");
-    String lfcPath = "/users/"+lfcUser+"/";
+    String lfcPath = "/users"+lfcUser+"/";
     String [] defDirs = new String [] {"",
                                        "db.gridpilot.dk",
                                        host};
@@ -1018,10 +1071,10 @@ public class BeginningWizard{
     // NorduGrid
     csPanels[0] = new JPanel(new GridBagLayout());
     String ngString =
-      "If you fill in the field 'clusters', you choose to submit only to a selected set of clusters. This\n" +
-      "will typically save you a significant amount of time. The field must be filled with a space-\n" +
-      "separated list of host names. If you leave it empty all available resources will be queried on each\n" +
-      "job submission. You can find a list of participating clusters at " +
+      "If you fill in the field 'clusters', you choose to submit only to a selected set of clusters. This will\n" +
+      "typically save you a significant amount of time when submitting jobs. The field must be filled with\n" +
+      "a space-separated list of host names. If you leave it empty all available resources will be queried\n" +
+      "on each job submission. You can find a list of participating clusters at " +
       "<a href=\"http://www.nordugrid.org/monitor/\">www.nordugrid.org</a>.\n\n";
     JEditorPane pane = new JEditorPane("text/html", "<html>"+ngString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
@@ -1075,7 +1128,10 @@ public class BeginningWizard{
       "The field 'passwords' must be filled in with a password for each host.\n\n" +
       "If 'user names' or 'passwords' is not filled in, you will be prompted for it when submitting jobs.\n\n" +
       "It is not recommended to fill in 'passwords' because the passwords will be store in clear text.\n\n";
-    csPanels[2].add(new JLabel("<html>"+sshPoolString.replaceAll("\n", "<br>")+"</html>"),
+    pane = new JEditorPane("text/html", "<html>"+sshPoolString.replaceAll("\n", "<br>")+"</html>");
+    pane.setEditable(false);
+    pane.setOpaque(false);
+    csPanels[2].add(pane,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
@@ -1108,11 +1164,14 @@ public class BeginningWizard{
             new Insets(5, 5, 5, 5), 0, 0));    
     
     // EC2
-    csPanels[2] = new JPanel(new GridBagLayout());
+    csPanels[3] = new JPanel(new GridBagLayout());
     String ec2String =
       "The AWS access key ID and AWS secret access key must be filled in with the\n" +
       "values you have been supplied with by Amazon.\n\n";
-    csPanels[2].add(new JLabel("<html>"+ec2String.replaceAll("\n", "<br>")+"</html>"),
+    pane = new JEditorPane("text/html", "<html>"+ec2String.replaceAll("\n", "<br>")+"</html>");
+    pane.setEditable(false);
+    pane.setOpaque(false);
+    csPanels[3].add(pane,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
@@ -1121,7 +1180,7 @@ public class BeginningWizard{
     JTextField tfAwsId = new JTextField(TEXTFIELDWIDTH);
     tfAwsId.setText("");
     row.add(tfAwsId, BorderLayout.CENTER);
-    csPanels[2].add(row,
+    csPanels[3].add(row,
         new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
@@ -1130,17 +1189,20 @@ public class BeginningWizard{
     JTextField tfAwsKey = new JTextField(TEXTFIELDWIDTH);
     tfAwsKey.setText("");
     row.add(tfAwsKey, BorderLayout.CENTER);
-    csPanels[2].add(row,
+    csPanels[3].add(row,
         new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));   
     
     // GRIDFACTORY
-    csPanels[3] = new JPanel(new GridBagLayout());
+    csPanels[4] = new JPanel(new GridBagLayout());
     String gfString =
       "For GridFactory to work, you need to have write access to a GridFactory server.\n" +
       "If you don't have access to any GridFactory server, you should not enable this computing system.\n\n";
-    csPanels[3].add(new JLabel("<html>"+gfString.replaceAll("\n", "<br>")+"</html>"),
+    pane = new JEditorPane("text/html", "<html>"+gfString.replaceAll("\n", "<br>")+"</html>");
+    pane.setEditable(false);
+    pane.setOpaque(false);
+    csPanels[4].add(pane,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
@@ -1154,7 +1216,7 @@ public class BeginningWizard{
       tfGpUrl.setText(submitURL);
     }
     row.add(jpGfDB, BorderLayout.CENTER);
-    csPanels[3].add(row,
+    csPanels[4].add(row,
         new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
@@ -1499,30 +1561,48 @@ public class BeginningWizard{
     GridPilot.caCertsDir = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.topConfigSection,
        "ca certificates");
     GridPilot.resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.topConfigSection, "resources");
-    String confirmString =
-      "When running jobs on a grid it is useful to have the jobs upload output files to a directory on a server\n" +
-      "that's always on-line.\n\n" +
-      "For this to be possible GridPilot needs to know a URL on a " +
-      "<a href=\""+HTTPS_HOWTO_URL+"\">grid-enabled ftp or http server</a> where you have\n" +
-      "read/write permission with the grid certificate you specified previously.\n\n" +
-      "If you don't know any such URL or you don't understand the above, you may use the default grid home URL\n" +
-      "given below. But please notice that this is but a temporary solution and that the files on this location may\n" +
-      "be read, overwritten or deleted at any time.\n\n"+
-      "You may also choose a local directory, but in this case, output files will stay on the resource where a job\n" +
-      "has run until GridPilot downloads them.\n\n"+
-      "A specified, local, but non-existing directory will be created.\n\n";
+    String confirmString;
+    if(certAndKeyOk){
+      confirmString =
+        "When running jobs on a grid it is useful to have the jobs upload output files to a directory on a server\n" +
+        "that's always on-line.\n\n" +
+        "For this to be possible GridPilot needs to know a URL on a " +
+        "<a href=\""+HTTPS_HOWTO_URL+"\">grid-enabled ftp or http server</a> where you have\n" +
+        "read/write permission with the grid certificate you specified previously.\n\n" +
+        "If you don't know any such URL or you don't understand the above, you may use the default grid home URL\n" +
+        "given below. But please notice that this is but a temporary solution and that the files on this location may\n" +
+        "be read, overwritten or deleted at any time.\n\n"+
+        "You may also choose a local directory, but in this case, output files will stay on the resource where a job\n" +
+        "has run until GridPilot downloads them.\n\n"+
+        "A specified, local, but non-existing directory will be created.\n\n";
+    }
+    else{
+      confirmString =
+        "Please choose a directory where to download the output files of your jobs.\n" +
+        "Notice that output files will stay on the resource where a job as run until\n" +
+        "GridPilot downloads them.\n\n"+
+        "A specified, but non-existing directory will be created.\n\n";
+    }
     JPanel jPanel = new JPanel(new GridBagLayout());
     JEditorPane pane = new JEditorPane("text/html", "<html>"+confirmString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
     addHyperLinkListener(pane, jPanel);
     String homeUrl = configFile.getValue(GridPilot.topConfigSection, "Grid home url");
-    String [] defDirs = new String [] {homeUrl,
-                                       HOME_URL+"users/"+GridPilot.getClassMgr().getSSL().getGridDatabaseUser()+"/",
-                                       homeUrl};
-    String [] names = new String [] {"Use your own grid or local home URL",
-                                     "Use default grid home URL",
-                                     "Use default local home URL"};
+    String [] defDirs;
+    String [] names;
+    if(certAndKeyOk){
+      defDirs = new String [] {homeUrl,
+          HOME_URL+"users/"+GridPilot.getClassMgr().getSSL().getGridDatabaseUser()+"/",
+          homeUrl};
+      names = new String [] {"Use your own grid or local home URL",
+        "Use default grid home URL",
+        "Use default local home URL"};
+    }
+    else{
+      defDirs = new String [] {homeUrl};
+      names = new String [] {"Choose home directory"};
+    }
     JTextField [] jtFields = new JTextField [defDirs.length];
     jPanel.add(pane,
         new GridBagConstraints(0, (firstRun?1:0), 2, 2, 0.0, 0.0,
@@ -1538,10 +1618,12 @@ public class BeginningWizard{
       jrbs[i] = new JRadioButton();
       jrbs[i].addActionListener(myListener);
       row = new JPanel(new BorderLayout(8, 0));
-      row.add(jrbs[i], BorderLayout.WEST);
+      if(certAndKeyOk){
+        row.add(jrbs[i], BorderLayout.WEST);
+      }
       if(i==0){
         row.add(MyUtil.createCheckPanel(JOptionPane.getRootFrame(),
-            names[i], jtFields[i], true, true, true), BorderLayout.CENTER);
+            names[i], jtFields[i], true, true, true, !certAndKeyOk), BorderLayout.CENTER);
       }
       else{
         row.add(new JLabel(names[i]), BorderLayout.CENTER);

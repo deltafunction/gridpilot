@@ -375,7 +375,8 @@ public class MyUtil extends gridfactory.common.Util{
       final Frame frame, 
       final String name, final JTextComponent jt, final boolean oneUrl,
       final boolean withNavigation,
-      final boolean onlyDirs){
+      final boolean onlyDirs,
+      final boolean localFS){
     //final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
     String markup = "<font size=-1 face=sans-serif><b>"+name+" : </b></font><br>"+
       "<a href=\""+MyUtil.CHECK_URL+"\">browse</a>";
@@ -386,14 +387,14 @@ public class MyUtil extends gridfactory.common.Util{
       new HyperlinkListener(){
       public void hyperlinkUpdate(HyperlinkEvent e){
         if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
-          launchCheckBrowser(frame, e.getURL().toExternalForm(), jt, false, oneUrl,
+          launchCheckBrowser(frame, e.getURL().toExternalForm(), jt, localFS, oneUrl,
               withNavigation, onlyDirs, false);
         }
       }
     });
     return checkPanel;
   }
-  
+ 
  /**
   * Like createCheckPanel, but with an button with an icon instead of a hyperlink.
   */
