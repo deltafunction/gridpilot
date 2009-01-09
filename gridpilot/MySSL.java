@@ -74,6 +74,10 @@ public class MySSL extends SSL{
   private String vomsDirStr;
   private String caCertsDirStr;
   
+  private final static String PROXY_TYPE_OLD = "OLD";
+  private final static String PROXY_TYPE_GLOBUS = "GLOBUS";
+  private final static String PROXY_TYPE_RFC = "RFC";
+  
   public MySSL() throws IOException, GeneralSecurityException {
     
     certFile = GridPilot.certFile;
@@ -303,6 +307,37 @@ public class MySSL extends SSL{
     throw new IOException("ERROR: could not decrypt private key");
   }
 
+  private int getProxyType(){
+    // This works with ARC and gLite (well, would if it had VOMS extensions)
+    //int proxyType = GSIConstants.DELEGATION_FULL;
+    if(GridPilot.proxyType.equalsIgnoreCase(PROXY_TYPE_OLD)){
+      return GSIConstants.GSI_2_PROXY;
+    }
+    else if(GridPilot.proxyType.equalsIgnoreCase(PROXY_TYPE_GLOBUS)){
+      return GSIConstants.GSI_3_IMPERSONATION_PROXY;
+    }
+    else if(GridPilot.proxyType.equalsIgnoreCase(PROXY_TYPE_RFC)){
+      return GSIConstants.GSI_4_IMPERSONATION_PROXY;
+    }
+    // default
+    return GSIConstants.GSI_4_IMPERSONATION_PROXY;
+  }
+  
+  private int getVomsProxyType(){
+    if(GridPilot.proxyType.equalsIgnoreCase(PROXY_TYPE_OLD)){
+      // This works with gLite and ARC
+      return VomsProxyFactory.OID_OLD;
+    }
+    else if(GridPilot.proxyType.equalsIgnoreCase(PROXY_TYPE_GLOBUS)){
+      return VomsProxyFactory.OID_GLOBUS;
+    }
+    else if(GridPilot.proxyType.equalsIgnoreCase(PROXY_TYPE_RFC)){
+      return VomsProxyFactory.OID_RFC820;
+    }
+    // default
+    return GSIConstants.GSI_4_IMPERSONATION_PROXY;
+  }
+  
   private void initGridProxy() throws IOException, GSSException{
     
     ExtendedGSSManager manager = (ExtendedGSSManager) ExtendedGSSManager.getInstance();
@@ -364,15 +399,17 @@ public class MySSL extends SSL{
           if(GridPilot.vomsServerURL==null || GridPilot.vomsServerURL.equals("") ||
               i>1){
             /* Old implementation - no VOMS attributes. */
-            cred = createProxy(credentials[1], credentials[2],
-            credentials[0], GridPilot.proxyTimeValid, GridPilot.PROXY_STRENGTH);
+            cred = createProxy(credentials[1], credentials[2], credentials[0],
+                GridPilot.proxyTimeValid, GridPilot.PROXY_STRENGTH, getProxyType());
             credential = new GlobusGSSCredentialImpl(cred, GSSCredential.INITIATE_AND_ACCEPT);
           }
           else{
+            // This works with gLite and ARC
             VomsProxyFactory vpf = new VomsProxyFactory(VomsProxyFactory.CERTIFICATE_PEM,
                 GridPilot.vomsServerURL, GridPilot.vo, credentials[0], proxy.getAbsolutePath(),
                 certFileStr, keyFileStr, caCertsDirStr, vomsDirStr,
-                GridPilot.proxyTimeValid, VomsProxyFactory.DELEGATION_FULL, VomsProxyFactory.OID_OLD,
+                GridPilot.proxyTimeValid, VomsProxyFactory.DELEGATION_FULL,
+                getVomsProxyType(),
                 GridPilot.fqan);
             credential = vpf.createProxy();
             if(credential instanceof GlobusGSSCredentialImpl) {
@@ -558,7 +595,8 @@ public class MySSL extends SSL{
       String userCertFilename,
       String password,
       int lifetime,
-      int strength)throws IOException, GeneralSecurityException{
+      int strength,
+      int type)throws IOException, GeneralSecurityException{
     OpenSSLKey key;
 
     key = new BouncyCastleOpenSSLKey(userKeyFilename);
@@ -568,12 +606,13 @@ public class MySSL extends SSL{
     GridPilot.certFile = userCertFilename;
     GridPilot.keyFile = userKeyFilename;
     X509Certificate userCert = getX509UserCert();
-    return createProxy(key, userCert, password, lifetime, strength);
+    return createProxy(key, userCert, password, lifetime, strength, type);
 
   }
 
   private static GlobusCredential createProxy(OpenSSLKey key,
-     X509Certificate userCert, String password, int lifetime, int strength)
+     X509Certificate userCert, String password, int lifetime, int strength,
+     int type)
      throws InvalidKeyException, GeneralSecurityException{
 
     // decrypt key with password
@@ -582,9 +621,6 @@ public class MySSL extends SSL{
         key.decrypt(password);
       }
 
-    // type of proxy. Hardcoded, as it's the only thing we'll use.
-    int proxyType = GSIConstants.DELEGATION_FULL;
-
     // factory for proxy generation
     Debug.debug("Creating factory for proxy generation...", 3);
     BouncyCastleCertProcessingFactory factory = BouncyCastleCertProcessingFactory.getDefault();
@@ -592,7 +628,7 @@ public class MySSL extends SSL{
     Debug.debug("Creating credentials...", 3);
     GlobusCredential myCredentials = factory.createCredential(
         new X509Certificate[] {userCert}, key.getPrivateKey(), strength, lifetime,
-            proxyType, (X509ExtensionSet) null);
+            type, (X509ExtensionSet) null);
     return myCredentials;
   }
 

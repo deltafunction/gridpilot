@@ -65,6 +65,7 @@ public class GridPilot extends JApplet{
   // Allow plugins to add monitoring panels. Any Component in
   // to extraMonitorTabs will be added by MonitoringPanel (called by initGUI).
   public static Vector extraMonitorTabs = new Vector();
+  public static String proxyType = "RFC";
   public static int proxyTimeLeftLimit = 43200;
   public static int proxyTimeValid = 129600;
   public static String keyFile = "~/.globus/userkey.pem";
@@ -263,6 +264,8 @@ public class GridPilot extends JApplet{
         }
       }
       tabs = getClassMgr().getConfigFile().getValues(topConfigSection, "initial panels");
+      proxyType = getClassMgr().getConfigFile().getValue(topConfigSection,
+         "grid proxy type", "RFC");
       proxyTimeLeftLimit = Integer.parseInt(
         getClassMgr().getConfigFile().getValue(topConfigSection, "proxy time left limit"));
       proxyTimeValid = Integer.parseInt(
@@ -272,7 +275,7 @@ public class GridPilot extends JApplet{
       certFile = getClassMgr().getConfigFile().getValue(topConfigSection,
           "certificate file");
       proxyDir = getClassMgr().getConfigFile().getValue(topConfigSection,
-      "grid proxy directory");
+         "proxy directory", "~/.globus");
       keyPassword = getClassMgr().getConfigFile().getValue(topConfigSection,
           "key password");
       caCertsDir = getClassMgr().getConfigFile().getValue(topConfigSection,
