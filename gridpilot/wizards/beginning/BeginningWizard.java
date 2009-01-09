@@ -739,8 +739,9 @@ public class BeginningWizard{
     "<a href=\"http://atlas.web.cern.ch/Atlas/GROUPS/DATABASE/project/ddm/releases/TiersOfATLASCache.py\">TiersOfATLAS</a>" +
     " - e.g. NDGFT1DISK, CSCS, FZKDISK, LYONDISK, CERNCAF\n" +
     "or CERNPROD.\n\n" +
-    "In order to be able to write ATLAS file catalog entries, the \"home catalog site\" must be specified\n" +
-    "<i>and</i> a \"home catalog site MySQL database\" must be given. This must be a full MySQL URL and\n" +
+    "In order to be able to write ATLAS file catalog entries, a \"home site\" must be specified.\n" +
+    "If you have write access there with your grid certificates, all is fine. Otherwise you need to\n" +
+    "specify a \"home catalog site MySQL database\". This must be a full MySQL URL and\n" +
     "you must have write permission there, either via a user name and password given in the URL, like e.g.\n" +
     "mysql://dq2user:dqpwd@my.regional.server:3306/localreplicas,\n" +
     "or via your certificate, in which case you should give no user name or password in the URL, e.g.\n" +
