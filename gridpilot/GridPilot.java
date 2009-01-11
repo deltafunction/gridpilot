@@ -265,7 +265,7 @@ public class GridPilot extends JApplet{
       }
       tabs = getClassMgr().getConfigFile().getValues(topConfigSection, "initial panels");
       proxyType = getClassMgr().getConfigFile().getValue(topConfigSection,
-         "grid proxy type", "RFC");
+         "proxy type", "RFC");
       proxyTimeLeftLimit = Integer.parseInt(
         getClassMgr().getConfigFile().getValue(topConfigSection, "proxy time left limit"));
       proxyTimeValid = Integer.parseInt(

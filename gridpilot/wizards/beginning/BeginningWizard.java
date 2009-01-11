@@ -531,7 +531,7 @@ public class BeginningWizard{
     JPanel jPanel = new JPanel(new GridBagLayout());
     String certPath = configFile.getValue(GridPilot.topConfigSection, "Certificate file");
     String keyPath = configFile.getValue(GridPilot.topConfigSection, "Key file");
-    String proxyDir = configFile.getValue(GridPilot.topConfigSection, "Grid proxy directory");
+    String proxyDir = configFile.getValue(GridPilot.topConfigSection, "Proxy directory");
     String caCertsDir = configFile.getValue(GridPilot.topConfigSection, "CA certificates");
     String [] defDirs = new String [] {
         certPath,
@@ -612,7 +612,7 @@ public class BeginningWizard{
         newDirs[3]!=null && (defDirs[3]==null || !defDirs[3].equals(newDirs[3]))){
       configFile.setAttributes(
           new String [] {GridPilot.topConfigSection, GridPilot.topConfigSection, GridPilot.topConfigSection, GridPilot.topConfigSection, "Fork"},
-          new String [] {"Certificate file", "Key file", "Grid proxy directory",
+          new String [] {"Certificate file", "Key file", "Proxy directory",
               "CA certificates", "Public certificate"},
           new String [] {
               newDirs[0], newDirs[1], newDirs[2], newDirs[3], newDirs[0]}
@@ -1558,7 +1558,7 @@ public class BeginningWizard{
   }
 
   private int setGridHomeDir(boolean firstRun) throws Exception{
-    GridPilot.proxyDir = configFile.getValue(GridPilot.topConfigSection, "Grid proxy directory");
+    GridPilot.proxyDir = configFile.getValue(GridPilot.topConfigSection, "Proxy directory");
     GridPilot.caCertsDir = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.topConfigSection,
        "ca certificates");
     GridPilot.resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.topConfigSection, "resources");
