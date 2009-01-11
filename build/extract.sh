@@ -10,6 +10,8 @@ sed -i -e "s/<\!--date-->/\<\!--date--\>`date`/" resources/about.htm
 sed -e "s/<\!--date-->/`date`/" ../README.in > README.txt
 unix2dos README.txt
 
+cp resources/aviateur* ./
+
 # cd ..
 # sh compile.sh
 # cd build
