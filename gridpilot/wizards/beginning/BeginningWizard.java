@@ -259,7 +259,7 @@ public class BeginningWizard{
     if(!LocalStaticShell.existsFile(certPath) && !LocalStaticShell.existsFile(keyPath)){
       // Set up key and cert.
       // If setupTestCredentials returns false, test credentials are used.
-      if(!MySSL.setupTestCredentials(certDir, false)){
+      if(!MySSL.setupTestCredentials(certDir, false, GridPilot.class)){
         GridPilot.keyPassword = MySSL.TEST_KEY_PASSWORD;
       }
     }
@@ -342,7 +342,8 @@ public class BeginningWizard{
       tmpConfigFile.getFile().delete();
       // Construct ConfigFile object from the new file
       try{
-        configFile = new ConfigFile(GridPilot.userConfFile, GridPilot.topConfigSection, GridPilot.configSections);
+        configFile = new ConfigFile(GridPilot.userConfFile, GridPilot.topConfigSection,
+            GridPilot.configSections);
         configFile.excludeItems = GridPilot.myExcludeItems;
       }
       catch(Exception e){
