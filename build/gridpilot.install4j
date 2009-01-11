@@ -127,7 +127,7 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
                 <object class="com.install4j.runtime.beans.screens.LicenseScreen">
                   <void property="displayedTextFile">
                     <object class="com.install4j.api.beans.ExternalFile">
-                      <string>${installer:sys.contentDir}/gpl-3.txt</string>
+                      <string>gpl-3.txt</string>
                     </object>
                   </void>
                 </object>
@@ -423,6 +423,11 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
       </postUninstallScript>
     </linuxRPM>
   </mediaSets>
-  <buildIds buildAll="true" />
+  <buildIds buildAll="false">
+    <mediaSet refId="176" />
+    <mediaSet refId="178" />
+    <mediaSet refId="179" />
+    <mediaSet refId="219" />
+  </buildIds>
 </install4j>
 
