@@ -1,7 +1,7 @@
 #!/bin/bash
 
 find . -type f | grep -v .jar | grep -v bcprov | grep -v jarfiles | grep -v tmp | grep -v CVS | \
-grep -v META-INF | grep -v '\.java' | grep -v '\.zip' | grep -v '\.conf'  | grep -v '\.bat' | \
+grep -v META-INF | grep -v '\.java' | grep -v '\.zip' | grep -v '\.bat' | grep -v '\./aviateur' | \
 grep -v suresh | grep -v 'gridpilot\.jar' | grep -r -v '/\.' | grep -r -v '^./[^/]*\.sh' > jarfiles
 
 echo Creating an unsigned applet
