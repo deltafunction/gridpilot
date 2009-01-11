@@ -758,7 +758,7 @@ public class GridPilot extends JApplet{
    * Reads in configuration file the debug level.
    */
   private static void initDebug(){
-        if(debugLevel==null){
+    if(debugLevel==null){
       getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage(topConfigSection, "debug"));
       getClassMgr().setDebugLevel(0);
     }
