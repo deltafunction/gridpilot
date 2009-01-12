@@ -16,10 +16,10 @@ VO_URL="https://www.gridfactory.org/vos/db_users.txt"
 ROOT_PASSWORD=""
 # Set if you have local catalog(s)
 LOCAL_REPLICAS=""
-LOCAL_CATALOG=""
+LOCAL_CATALOG="gridpilot"
 
 #vo=`curl $VO_URL | grep Orellana`
-vo=`curl $VO_URL 2>/dev/null`
+vo=`curl --insecure $VO_URL`
 
 # first some necessary entries
 # INSERT INTO db VALUES ('%', '', '', 'Y', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N', 'N');
@@ -30,7 +30,7 @@ echo
 echo "----------------- new sync ---------------"
 echo
 
-echo $vo | sed 's/\" \"/\n/g' | sed 's/\"//g' | sed 's| \/|\n/|g' | while read subject
+echo $vo | sed 's/\" \"/\n/g' | sed 's| \/|\n/|g' | sed 's/\"//g' | grep -r -v '^#' | while read subject
 do
   dbName=`printf "$subject" | tr " " "_" | tr "/" "|" | tr "@" "_" | tr "." "_" | sed 's/\"//g' | sed 's/^|//g'`
   dbName=`echo ${dbName:0:64}`
@@ -48,17 +48,17 @@ do
     # comment this out if you don't want world readable databases
     mysql -uroot -p$ROOT_PASSWORD -e"INSERT INTO mysql.db (host,db,select_priv) VALUES('%','$dbName','y');"
     if [ "$LOCAL_REPLICAS" != "" ]; then
-      # now the virtual file catalog 'localreplicas' (synchronized with fzk)
-      mysql -uroot -p$ROOT_PASSWORD $LOCAL_REPLICAS -e"SHOW TABLES;" >&/dev/null
-      if [ $? -eq 0 ]; then
+      # now the virtual file catalog 'localreplicas' (synchronized with LFC)
+      mysql -uroot -p$ROOT_PASSWORD -e"SHOW GRANTS FOR '$userHash'@'%';" | grep \"$LOCAL_REPLICAS\" > /dev/null
+      if [ $? -ne 0 ]; then
         echo "granting privileges to user $userHash on $LOCAL_REPLICAS"
         mysql -uroot -p$ROOT_PASSWORD -e"GRANT ALL ON \"$LOCAL_REPLICAS\".* TO '$userHash'@'%' REQUIRE SUBJECT '$subject';"
       fi
     fi
     if [ "$LOCAL_CATALOG" != "" ]; then
-      # now the  shared file catalog 'atlas_ch'
-      mysql -uroot -p$ROOT_PASSWORD $LOCAL_CATALOG -e"SHOW TABLES;" >&/dev/null
-      if [ $? -eq 0 ]; then
+      # now the  shared file catalog
+      mysql -uroot -p$ROOT_PASSWORD -e"SHOW GRANTS FOR '$userHash'@'%';" | grep \"$LOCAL_CATALOG\" > /dev/null
+      if [ $? -ne 0 ]; then
         echo "granting privileges to user $userHash on $LOCAL_CATALOG"
         mysql -uroot -p$ROOT_PASSWORD -e"GRANT ALL ON \"$LOCAL_CATALOG\".* TO '$userHash'@'%' REQUIRE SUBJECT '$subject';"
       fi
