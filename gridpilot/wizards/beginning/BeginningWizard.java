@@ -886,16 +886,16 @@ public class BeginningWizard{
       changes = true;
     }
     else if(sel==1){
-      // gridpilot.dk, enable GP_DB, My_DB_Local, disable Regional_DB.
+      // gridpilot.dk, enable Regional_DB.
       configFile.setAttributes(
-          new String [] {"My_DB_Local", "Regional_DB", "GP_DB"},
-          new String [] {"Enabled", "Enabled", "Enabled"},
-          new String [] {"yes", "no", "yes"}
+          new String [] {"Regional_DB"},
+          new String [] {"Enabled"},
+          new String [] {"yes"}
       );  
       changes = true;
     }
     else if(sel==2){
-      // remote DB, enable Regional_DB, My_DB_Local, disable GP_DB.
+      // Alternative DB, enable Regional_DB.
       // Ask for Regional_DB:description
       String origDbDesc = configFile.getValue("Regional_DB", "Description");
       String dbDesc = MyUtil.getName(
@@ -904,11 +904,9 @@ public class BeginningWizard{
         dbDesc = origDbDesc;
       }
       configFile.setAttributes(
-          new String [] {"My_DB_Local", "Regional_DB", "GP_DB",
-              "Regional_DB", "Regional_DB"},
-          new String [] {"Enabled", "Enabled", "Enabled",
-              "Database", "Description"},
-          new String [] {"yes", "yes", "no",
+          new String [] {"Regional_DB", "Regional_DB", "Regional_DB"},
+          new String [] {"Enabled", "Database", "Description"},
+          new String [] {"yes",
               "jdbc:mysql://"+newDirs[sel].trim()+":3306/gridpilot", dbDesc}
       );  
       changes = true;

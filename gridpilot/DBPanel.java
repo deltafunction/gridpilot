@@ -3101,10 +3101,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             //name = GridPilot.getClassMgr().getDBPluginMgr(records[0]).getDatasetName(
             //    records[i]);
             int index = records[i].indexOf("'::'");
-            datasetName = records[i].substring(1, index);
-            String rest = records[i].substring(index+4);
-            index = rest.indexOf("'::'");
-            id = rest.substring(0, index);
+            if(index>-1){
+              datasetName = records[i].substring(1, index);
+              String rest = records[i].substring(index+4);
+              index = rest.indexOf("'::'");
+              id = rest.substring(0, index);
+            }
             if(!GridPilot.getClassMgr().getDBPluginMgr(dbName).getDatasetID(name).equals("-1")){            
               name = MyUtil.getName("Cannot overwrite, please give new name", "new-"+name);
               if(name==null || name.equals("")){

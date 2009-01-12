@@ -517,7 +517,7 @@ public class GlobalFrame extends GPFrame{
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
-                addPanel(new DBPanel(mDB.getText(), "transformation"), "transformations");          
+                addPanel(new DBPanel(mDB.getName(), "transformation"), "transformations");          
               }
               catch(Exception ex){
                 Debug.debug("Could not add panel ", 1);
@@ -566,7 +566,7 @@ public class GlobalFrame extends GPFrame{
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
-                addPanel(new DBPanel(mDB.getText(), "jobDefinition"), "jobDefinitions");          
+                addPanel(new DBPanel(mDB.getName(), "jobDefinition"), "jobDefinitions");          
               }
               catch(Exception ex){
                 Debug.debug("Could not add panel ", 1);
