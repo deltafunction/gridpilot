@@ -638,11 +638,11 @@ public class BeginningWizard{
   }
   
   /**
-   * If a remote server is specified, assume that a database 'local_production'
+   * If a remote server is specified, assume that a database 'C=DK|ST=Aarhus|L=Aarhus|O=CABO|CN=test_user'
    * exists on the specified server and is writeable;
    * enable Regional_DB with database 'replicas'; disable GP_DB.
    * If the default remote database is chosen, disable Regional_DB;
-   * enable GP_DB with database 'local_production'; this will then be the default file catalog
+   * enable GP_DB with database 'gridpilot'; this will then be the default file catalog
    * (while perhaps also the default job database).
    */
   private int setGridFileCatalog(boolean firstRun) throws Exception{
@@ -889,7 +889,7 @@ public class BeginningWizard{
       // gridpilot.dk, enable GP_DB, My_DB_Local, disable Regional_DB.
       configFile.setAttributes(
           new String [] {"My_DB_Local", "Regional_DB", "GP_DB"},
-          new String [] {"Enabled", "Enabled", "Enabled",},
+          new String [] {"Enabled", "Enabled", "Enabled"},
           new String [] {"yes", "no", "yes"}
       );  
       changes = true;
@@ -909,7 +909,7 @@ public class BeginningWizard{
           new String [] {"Enabled", "Enabled", "Enabled",
               "Database", "Description"},
           new String [] {"yes", "yes", "no",
-              "jdbc:mysql://"+newDirs[sel].trim()+":3306/local_production", dbDesc}
+              "jdbc:mysql://"+newDirs[sel].trim()+":3306/gridpilot", dbDesc}
       );  
       changes = true;
     }
@@ -1395,7 +1395,7 @@ public class BeginningWizard{
    * to the DN exists on the specified server and is writeable;
    * enable My_DB_Remote disable GP_DB.
    * If the default remote database is chosen, disable My_DB_Remote;
-   * enable GP_DB with database 'local_production'; this will then be the job DB for remote CSs.
+   * enable GP_DB with database 'gridpilot'; this will then be the job DB for remote CSs.
    */
   private int setGridJobDB(boolean firstRun) throws Exception{
     String confirmString =
@@ -1524,7 +1524,7 @@ public class BeginningWizard{
     }
     else if(sel==1){
       // gridpilot.dk, enable GP_DB, My_DB_Local, disable My_DB_Remote.
-      // Set GP_DB:database = local_production
+      // Set GP_DB:database = gridpilot
       // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite|EC2]:runtime databases = GP_DB My_DB_Local
       configFile.setAttributes(
           new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
@@ -1533,7 +1533,7 @@ public class BeginningWizard{
               "Database", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases",
               "Runtime databases", "Runtime databases", "Runtime databases"},
           new String [] {"yes", "no", "yes",
-              "jdbc:mysql://www.gridpilot.dk:3306/local_production", "My_DB_Local", "GP_DB My_DB_Local",
+              "jdbc:mysql://www.gridpilot.dk:3306/gridpilot", "My_DB_Local", "GP_DB My_DB_Local",
               "My_DB_Local", "My_DB_Local", "GP_DB My_DB_Local", "GP_DB My_DB_Local", "GP_DB My_DB_Local"}
       );  
       changes = true;
