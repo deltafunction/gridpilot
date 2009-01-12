@@ -60,7 +60,7 @@ public class BeginningWizard{
   private Dimension gridsPanelSize = null;
 
   private static int TEXTFIELDWIDTH = 32;
-  private static String HOME_URL = "https://www.gridpilot.dk/";
+  private static String HOME_URL = "https://www.gridfactory.org/";
   private static String MYSQL_HOWTO_URL = HOME_URL+"info/gridpilot+mysql_howto.txt";
   private static String HTTPS_HOWTO_URL = HOME_URL+"info/gridpilot+https_howto.txt";
   
@@ -678,7 +678,7 @@ public class BeginningWizard{
     String lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=(\\w+)\\s+(\\w+)\\W.*", "$1$2");
     String lfcPath = "/users"+lfcUser+"/";
     String [] defDirs = new String [] {"",
-                                       "db.gridpilot.dk",
+                                       "www.gridpilot.dk",
                                        host};
     String [] names = new String [] {"Use local database",
                                      "Use default remote database host",
@@ -1409,7 +1409,7 @@ public class BeginningWizard{
     // TODO: now we assume that mysql always runs on port 3306 - generalize.
     host = host.replaceFirst("(.*):\\d+", "$1");
     String [] defDirs = new String [] {"",
-                                       "db.gridpilot.dk",
+                                       "www.gridpilot.dk",
                                        host};
     String [] names = new String [] {"Use local database",
                                      "Use default remote database host",
@@ -1524,7 +1524,7 @@ public class BeginningWizard{
               "Database", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases",
               "Runtime databases", "Runtime databases", "Runtime databases"},
           new String [] {"yes", "no", "yes",
-              "jdbc:mysql://db.gridpilot.dk:3306/local_production", "My_DB_Local", "GP_DB My_DB_Local",
+              "jdbc:mysql://www.gridpilot.dk:3306/local_production", "My_DB_Local", "GP_DB My_DB_Local",
               "My_DB_Local", "My_DB_Local", "GP_DB My_DB_Local", "GP_DB My_DB_Local", "GP_DB My_DB_Local"}
       );  
       changes = true;
