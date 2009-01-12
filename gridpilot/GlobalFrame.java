@@ -636,7 +636,7 @@ public class GlobalFrame extends GPFrame{
     });
     menuHelp.add(menuHelpShowDN);
     menuHelp.addSeparator();
-    JMenuItem menuHelpBeginning = new JMenuItem("Wizard: Starting with GridPilot");
+    JMenuItem menuHelpBeginning = new JMenuItem("Wizard: Configure GridPilot");
     menuHelpBeginning.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         (new ResThread(){

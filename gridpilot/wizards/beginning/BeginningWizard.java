@@ -63,12 +63,6 @@ public class BeginningWizard{
   private static String HOME_URL = "https://www.gridfactory.org/";
   private static String MYSQL_HOWTO_URL = HOME_URL+"info/gridpilot+mysql_howto.txt";
   private static String HTTPS_HOWTO_URL = HOME_URL+"info/gridpilot+https_howto.txt";
-  
-  /** Name of file containing test certificate. */
-  public static final String  TEST_CERTIFICATE = "testcert.pem";  
-  /** Name of file containing test key. */
-  public static final String  TEST_KEY = "testkey.pem";  
-
 
   public BeginningWizard(boolean firstRun){
     
@@ -279,7 +273,7 @@ public class BeginningWizard{
     confirmLabel.setOpaque(true);
     confirmLabel.setText(confirmString);
     int choice = -1;
-    choice = confirmBox.getConfirm("Starting with GridPilot",
+    choice = confirmBox.getConfirm("Configure GridPilot",
         confirmString, new Object[] {"Continue", "Cancel"}, icon, Color.WHITE, false);
     return choice;
   }
@@ -1073,11 +1067,15 @@ public class BeginningWizard{
     // NorduGrid
     csPanels[0] = new JPanel(new GridBagLayout());
     String ngString =
+      "To use NorduGrid you must have a certificate/key that is recognized by NorduGrid and you (i.e. your certificate)\n" +
+      "must be member of one of the virtual organizations of NorduGrid.\n\n" +
       "If you fill in the field 'clusters', you choose to submit only to a selected set of clusters. This will\n" +
       "typically save you a significant amount of time when submitting jobs. The field must be filled with\n" +
       "a space-separated list of host names. If you leave it empty all available resources will be queried\n" +
       "on each job submission. You can find a list of participating clusters at " +
-      "<a href=\"http://www.nordugrid.org/monitor/\">www.nordugrid.org</a>.\n\n";
+      "<a href=\"http://www.nordugrid.org/monitor/\">www.nordugrid.org</a>.\n"+
+    "You can find a list of virtual organizations at " +
+    "<a href=\"http://www.nordugrid.org/NorduGridVO/\">www.nordugrid.org/NorduGridVO/</a>.\n\n";
     JEditorPane pane = new JEditorPane("text/html", "<html>"+ngString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
@@ -1099,6 +1097,8 @@ public class BeginningWizard{
     // gLite
     csPanels[1] = new JPanel(new GridBagLayout());
     String gLiteString =
+      "To use GLite you must have a certificate/key that is recognized by EGEE and you (i.e. your certificate)\n" +
+      "must be member of one of the virtual organizations of EGEE.\n\n" +
       "Filling in the field 'virtual organization' is mandatory. It must be filled in with the name of the\n" +
       "EGEE virtual organization whose resources you wish to use, e.g. ATLAS. If it is not filled in, you\n" +
       "will be able to load the computing system backend, but your jobs will be rejected on the resources.\n" +
@@ -1125,6 +1125,7 @@ public class BeginningWizard{
     // ssh pool
     csPanels[2] = new JPanel(new GridBagLayout());
     String sshPoolString =
+      "To use SSH_POOL you must have SSH login accounts on one or several machines.\n\n" +
       "The field 'hosts' must be filled in with a space-separated list of host names.\n" +
       "The field 'users names' must be filled in with a user name for each host.\n" +
       "The field 'passwords' must be filled in with a password for each host.\n\n" +
@@ -1168,8 +1169,10 @@ public class BeginningWizard{
     // EC2
     csPanels[3] = new JPanel(new GridBagLayout());
     String ec2String =
+      "To use EC2 you must have registered with Amazon at <a href=\"http://aws.amazon.com/\">aws.amazon.com</a>\n" +
+      "and obtained an access key.\n\n" +
       "The AWS access key ID and AWS secret access key must be filled in with the\n" +
-      "values you have been supplied with by Amazon.\n\n";
+      "values you have been provided with by Amazon (\"Access Identifiers\").\n\n";
     pane = new JEditorPane("text/html", "<html>"+ec2String.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
@@ -1199,8 +1202,14 @@ public class BeginningWizard{
     // GRIDFACTORY
     csPanels[4] = new JPanel(new GridBagLayout());
     String gfString =
-      "For GridFactory to work, you need to have write access to a GridFactory server.\n" +
-      "If you don't have access to any GridFactory server, you should not enable this computing system.\n\n";
+      "To use GridFactory, you (i.e. your certificate/key) must have write access to a\n" +
+      "GridFactory server.\n\n" +
+      "Users who are just testing (i.e. using the supplied test key/certificate) may run\n" +
+      "a small number of test jobs on our test servers:\n\n" +
+      "https://www.gridfactory.org/gridfactory/jobs/\n" +
+      "https://gridfactory.nbi.dk/gridfactory/jobs/\n\n" +
+      "Notice that the latter pulls jobs from the former." +
+      "\n\n";
     pane = new JEditorPane("text/html", "<html>"+gfString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);

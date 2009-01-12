@@ -1872,7 +1872,7 @@ public class MySQLDatabase extends DBCache implements Database {
             sql += "=";
             sql += values[i];
             ++addedFields;
-            if(addedFields>0 && addedFields<fields.length){
+            if(addedFields>0 && addedFields<fields.length-1){
               sql += ",";
             }
             break;
@@ -1940,7 +1940,7 @@ public class MySQLDatabase extends DBCache implements Database {
             sql += "=";
             sql += values[j];
             ++addedFields;
-            if(addedFields>0 && addedFields<fields.length){
+            if(addedFields>0 && addedFields<fields.length-1){
               sql += ", ";
             }
             break;
@@ -2008,7 +2008,7 @@ public class MySQLDatabase extends DBCache implements Database {
             sql += "=";
             sql += values[j];
             ++addedFields;
-            if(addedFields>0 && addedFields<fields.length){
+            if(addedFields>0 && addedFields<fields.length-1){
               sql += ", ";
             }
             break;

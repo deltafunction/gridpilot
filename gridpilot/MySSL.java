@@ -7,7 +7,6 @@ import static gridfactory.common.Util.split;
 import gridfactory.common.Debug;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.SSL;
-import gridfactory.common.Util;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -37,7 +36,6 @@ import javax.swing.JTextPane;
 import jonelo.jacksum.JacksumAPI;
 import jonelo.jacksum.algorithm.AbstractChecksum;
 
-
 import org.globus.common.CoGProperties;
 import org.globus.gsi.CertUtil;
 import org.globus.gsi.GSIConstants;
@@ -52,7 +50,6 @@ import org.gridforum.jgss.ExtendedGSSCredential;
 import org.gridforum.jgss.ExtendedGSSManager;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
-
 
 /**
  * This class allows access to all global objects in gridpilot.
@@ -84,8 +81,8 @@ public class MySSL extends SSL{
     keyFile = GridPilot.keyFile;
     keyPassword = GridPilot.keyPassword;
     
-    caCertsDir = GridPilot.caCertsDir==null?null:Util.clearTildeLocally(Util.clearFile(GridPilot.caCertsDir));
-    vomsDirStr = GridPilot.vomsDir==null?null:Util.clearTildeLocally(Util.clearFile(GridPilot.vomsDir));
+    caCertsDir = GridPilot.caCertsDir==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.caCertsDir));
+    vomsDirStr = GridPilot.vomsDir==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.vomsDir));
     
     certFileStr = (new File(clearTildeLocally(MyUtil.clearFile(certFile)))).getAbsolutePath();
     keyFileStr = (new File(clearTildeLocally(MyUtil.clearFile(keyFile)))).getAbsolutePath();
@@ -269,21 +266,59 @@ public class MySSL extends SSL{
     }
   }
   
+  private String [] getFirstCheckCredentials(){
+    String [] credentials;
+    String password;
+    if(GridPilot.keyPassword!=null){
+      password = GridPilot.keyPassword;
+    }
+    else{
+      password = "";
+    }
+    // Check if we are using test credentials
+    String dn = null;
+    try{
+      dn = MyUtil.getDN(GridPilot.certFile);
+    }
+    catch(Exception ee){
+      //ee.printStackTrace();
+    };
+    if(dn!=null && dn.equals(TEST_CERTIFICATE_DN)){
+      // Override anything that might have been set
+      password = TEST_KEY_PASSWORD;
+    }
+    credentials = new String [] {
+        password,
+        clearTildeLocally(clearFile(GridPilot.keyFile)),
+        clearTildeLocally(clearFile(GridPilot.certFile))};
+    Debug.debug("Trying with credentials "+MyUtil.arrayToString(credentials), 2);
+    return credentials;
+  }
+  
   private void decryptPrivateKey() throws IOException {
     if(sslInitialized){
       Debug.debug("SSL already initialized. "+credential, 2);
       return;
     }
     String [] credentials = null;
-    for(int i=0; i<=3; ++i){
-      try{
-        credentials = askForPassword(GridPilot.keyFile, GridPilot.certFile,
-            GridPilot.keyPassword);
+    for(int i=0; i<=4; ++i){
+      // First see if we can decrypt using any supplied password or "".
+      if(GridPilot.keyFile!=null && !GridPilot.keyFile.equals("") &&
+          GridPilot.certFile!=null && !GridPilot.certFile.equals("") &&
+          i==0){
+        credentials = getFirstCheckCredentials();
       }
-      catch(IllegalArgumentException e){
-        // cancelling
-        e.printStackTrace();
-        break;
+      // Otherwise, ask for password
+      else{
+        try{
+          credentials = askForPassword(GridPilot.keyFile, GridPilot.certFile,
+              GridPilot.keyPassword);
+        }
+        catch(IllegalArgumentException e){
+          // cancelling
+          e.printStackTrace();
+          break;
+        }
       }
       try{
         BouncyCastleOpenSSLKey key = new BouncyCastleOpenSSLKey(credentials[1]);
@@ -384,15 +419,24 @@ public class MySSL extends SSL{
        * config file, try max 2 times to create VOMS proxy, then max 2 times to
        * create normal proxy.
        */
-      for(int i=0; i<=3; ++i){
-        try{
-          credentials = askForPassword(GridPilot.keyFile, GridPilot.certFile,
-              GridPilot.keyPassword);
+      for(int i=0; i<=4; ++i){
+        // First see if we can decrypt using any supplied password or "".
+        if(GridPilot.keyFile!=null && !GridPilot.keyFile.equals("") &&
+            GridPilot.certFile!=null && !GridPilot.certFile.equals("") &&
+            i==0){
+          credentials = getFirstCheckCredentials();
         }
-        catch(IllegalArgumentException e){
-          // cancelling
-          e.printStackTrace();
-          break;
+        // Otherwise, ask for password
+        else{
+          try{
+            credentials = askForPassword(GridPilot.keyFile, GridPilot.certFile,
+                GridPilot.keyPassword);
+          }
+          catch(IllegalArgumentException e){
+            // cancelling
+            e.printStackTrace();
+            break;
+          }
         }
         try{
           Debug.debug("Creating proxy, "+arrayToString(credentials), 3);
