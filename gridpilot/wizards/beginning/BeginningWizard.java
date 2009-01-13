@@ -61,9 +61,9 @@ public class BeginningWizard{
 
   private static int TEXTFIELDWIDTH = 32;
   private static String HOME_URL = "https://www.gridfactory.org/";
-  private static String MYSQL_HOWTO_URL = HOME_URL+"info/gridpilot+mysql_howto.txt";
-  private static String HTTPS_HOWTO_URL = HOME_URL+"info/gridpilot+https_howto.txt";
-
+  private static String MYSQL_HOWTO_URL = HOME_URL+"documentation/";
+  private static String HTTPS_HOWTO_URL = HOME_URL+"documentation/";
+ 
   public BeginningWizard(boolean firstRun){
     
     Debug.DEBUG_LEVEL = 3;
