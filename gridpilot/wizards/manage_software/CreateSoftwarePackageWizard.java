@@ -932,7 +932,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
               "You have successfully created a software package and made\n" +
               "it available to other grid users.\n\n" +
               "To start using the software, restart GridPilot or choose\n" +
-              "\"File\" -> \"Databases\" -> \"Refresh runtime environments\".");
+              "\"File\" - \"Databases\" - \"Refresh runtime environments\".");
           exit();
         }
         catch(Exception e1){

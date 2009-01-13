@@ -66,6 +66,8 @@ public class BeginningWizard{
 
   public BeginningWizard(boolean firstRun){
     
+    Debug.DEBUG_LEVEL = 3;
+    
     dirsOk = true;
     URL imgURL = null;
     changes = false;
@@ -136,20 +138,6 @@ public class BeginningWizard{
           MyUtil.showError(
               "<html>WARNING: without a key and a certificate you will<br>" +
                     "not be able to authenticate with grid resources.</html>");
-        }
-        else{
-          // No idea why we suddenly have to add this. It worked before, now and exception is thrown
-          // java.security.NoSuchProviderException: No such provider: BC
-          Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-          if(GridPilot.keyPassword==MySSL.TEST_KEY_PASSWORD){
-            // With test credentials, most likely only standard https will be used.
-            GridPilot.getClassMgr().getSSL().activateSSL();
-          }
-          else{
-            // If a the user has a certificate, chances are he will use grid stuff.
-            // Better make him a proxy.
-            GridPilot.getClassMgr().getSSL().activateProxySSL();
-          }
         }
       }
       catch(FileNotFoundException ee){
@@ -287,7 +275,7 @@ public class BeginningWizard{
         "Please notice that only the most basic parameters,\n" +
             "necessary to get you up and running, have been set.\n" +
             "You can modify these and many others in\n" +
-            "\"Edit\" -> \"Preferences\"." +
+            "\"Edit\" - \"Preferences\"." +
             (firstRun?"\n\nThanks for using GridPilot and have fun!":"");
     int choice = -1;
     confirmBox.getConfirm("Setup completed!",
@@ -303,7 +291,7 @@ public class BeginningWizard{
         configFile.getFile().getAbsolutePath()+
         ".\n\n"+
         "Notice that you can set the remaining configuration\n" +
-        "parameters in \"Edit\" -> \"Preferences\"." +
+        "parameters in \"Edit\" - \"Preferences\"." +
         (firstRun?"\n\n" +
         "Click \"OK\" to try to start GridPilot anyway or \"Cancel\"\n" +
          "to exit.\n\n" +
@@ -600,38 +588,55 @@ public class BeginningWizard{
       newDirs[i] = MyUtil.replaceWithTildeLocally(MyUtil.clearFile(newDirs[i]));
     }
     
-    // Set config entries
-    if(!defDirs[0].equals(newDirs[0]) ||
-        !defDirs[1].equals(newDirs[1]) ||
-        !defDirs[2].equals(newDirs[2]) ||
-        newDirs[3]!=null && (defDirs[3]==null || !defDirs[3].equals(newDirs[3]))){
-      configFile.setAttributes(
-          new String [] {GridPilot.topConfigSection, GridPilot.topConfigSection, GridPilot.topConfigSection, GridPilot.topConfigSection, "Fork"},
-          new String [] {"Certificate file", "Key file", "Proxy directory",
-              "CA certificates", "Public certificate"},
-          new String [] {
-              newDirs[0], newDirs[1], newDirs[2], newDirs[3], newDirs[0]}
-      );
-      changes = true;
-    }
-    
     try{
       // setupTestCredentials throws an exception if the user clicks cancel.
       // We treat as if skipping this step.
       setupCertAndKey();
     }
     catch(Exception e){
+      e.printStackTrace();
       return 1;
     }
     
-    // Check if certificate and key exist
-    File certFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[0])));
-    if(!certFile.exists()){
-      throw new FileNotFoundException(certFile.getAbsolutePath());
+    // No idea why we suddenly have to add this. It worked before, now and exception is thrown
+    // java.security.NoSuchProviderException: No such provider: BC
+    Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+    if(GridPilot.keyPassword==MySSL.TEST_KEY_PASSWORD){
+      // With test credentials, most likely only standard https will be used.
+      GridPilot.getClassMgr().getSSL().activateSSL();
     }
-    File keyFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[1])));
+    else{
+      // If a the user has a certificate, chances are he will use grid stuff.
+      // Better make him a fresh proxy.
+      try{
+        MySSL.getProxyFile().delete();
+      }
+      catch(Exception e){
+      }
+      GridPilot.getClassMgr().getSSL().activateProxySSL();
+    }
+    
+    // Set config entries
+    if(!defDirs[0].equals(newDirs[0]) ||
+        !defDirs[1].equals(newDirs[1]) ||
+        !defDirs[2].equals(newDirs[2]) ||
+        newDirs[3]!=null && (defDirs[3]==null || !defDirs[3].equals(newDirs[3]))){
+      configFile.setAttributes(
+          new String [] {GridPilot.topConfigSection, GridPilot.topConfigSection, "Fork"},
+          new String [] {"Proxy directory", "CA certificates", "Public certificate"},
+          new String [] {newDirs[2], newDirs[3], newDirs[0]}
+      );
+      changes = true;
+    }
+    
+    // Check if certificate and key exist
+    File certFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.certFile)));
+    if(!certFile.exists()){
+      return 1;
+    }
+    File keyFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.keyFile)));
     if(!keyFile.exists()){
-      throw new FileNotFoundException(keyFile.getAbsolutePath());
+      return 1;
     }
   
     return choice;
@@ -650,8 +655,8 @@ public class BeginningWizard{
       "The files you produce will be registered in the job database you chose in the previous step. You\n" +
       "may want to register them also in a 'real' file catalog, which is readable by other clients than\n" +
       "GridPilot.\n\n" +
-      "Your local database is already such a file catalog. If you have write access to a remote file catalog,\n" +
-      "you can use this instead.\n\n" +
+      "Your local database is already such a file catalog. The same goes for the default remote job\n" +
+      "database. If you have write access to a remote file catalog, you can use this instead.\n\n" +
       "If you choose to use a remote file catalog, you must specify the name of the server hosting it.\n" +
       "Please notice that the database must be a " +
       "<a href=\""+MYSQL_HOWTO_URL+"\">GridPilot-enabled MySQL database</a>.\n\n" +
@@ -674,7 +679,7 @@ public class BeginningWizard{
     String [] defDirs = new String [] {"",
                                        "www.gridpilot.dk",
                                        host};
-    String [] names = new String [] {"Use local database",
+    String [] names = new String [] {"Use job database",
                                      "Use default remote database host",
                                      "Use custom remote database host:"};
     JTextField [] jtFields = new JTextField [defDirs.length];
@@ -875,13 +880,11 @@ public class BeginningWizard{
     }
   
     if(sel==0 && !firstRun){
-      // If this is the first run, this should already be the set
-  
-      // Local DB, enable My_DB_Local, disable Regional_DB and GP_DB.
+      // Disable Regional_DB.
        configFile.setAttributes(
-          new String [] {"My_DB_Local", "Regional_DB"},
-          new String [] {"Enabled", "Enabled"},
-          new String [] {"yes", "no"}
+          new String [] {"Regional_DB"},
+          new String [] {"Enabled"},
+          new String [] {"no"}
       );  
       changes = true;
     }
@@ -1065,8 +1068,8 @@ public class BeginningWizard{
     // NorduGrid
     csPanels[0] = new JPanel(new GridBagLayout());
     String ngString =
-      "To use NorduGrid you must have a certificate/key that is recognized by NorduGrid and you (i.e. your certificate)\n" +
-      "must be member of one of the virtual organizations of NorduGrid.\n\n" +
+      "To use NorduGrid you must have a certificate/key that is recognized by NorduGrid and you (i.e.\n" +
+      "your certificate) must be member of one of the virtual organizations of NorduGrid.\n\n" +
       "If you fill in the field 'clusters', you choose to submit only to a selected set of clusters. This will\n" +
       "typically save you a significant amount of time when submitting jobs. The field must be filled with\n" +
       "a space-separated list of host names. If you leave it empty all available resources will be queried\n" +
@@ -1200,10 +1203,9 @@ public class BeginningWizard{
     // GRIDFACTORY
     csPanels[4] = new JPanel(new GridBagLayout());
     String gfString =
-      "To use GridFactory, you (i.e. your certificate/key) must have write access to a\n" +
-      "GridFactory server.\n\n" +
-      "Users who are just testing (i.e. using the supplied test key/certificate) may run\n" +
-      "a small number of test jobs on our test servers:\n\n" +
+      "To use GridFactory, you (i.e. your certificate/key) must have write access to a GridFactory server.\n\n" +
+      "Users who are just testing (i.e. using the supplied test key/certificate) may run a small number\n" +
+      "of test jobs on our test servers:\n\n" +
       "https://www.gridfactory.org/gridfactory/jobs/\n" +
       "https://gridfactory.nbi.dk/gridfactory/jobs/\n\n" +
       "Notice that the latter pulls jobs from the former." +

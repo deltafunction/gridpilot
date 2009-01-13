@@ -66,11 +66,7 @@ public class MySSL extends SSL{
   private boolean proxyOk = false;
   private CoGProperties prop = null;
   // the *Str fields are to be fully qualified path names to be fed to the VOMS stuff
-  private String certFileStr;
-  private String keyFileStr;
-  private String vomsDirStr;
-  private String caCertsDirStr;
-  
+
   private final static String PROXY_TYPE_OLD = "OLD";
   private final static String PROXY_TYPE_GLOBUS = "GLOBUS";
   private final static String PROXY_TYPE_RFC = "RFC";
@@ -80,12 +76,6 @@ public class MySSL extends SSL{
     certFile = GridPilot.certFile;
     keyFile = GridPilot.keyFile;
     keyPassword = GridPilot.keyPassword;
-    
-    caCertsDir = GridPilot.caCertsDir==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.caCertsDir));
-    vomsDirStr = GridPilot.vomsDir==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.vomsDir));
-    
-    certFileStr = (new File(clearTildeLocally(MyUtil.clearFile(certFile)))).getAbsolutePath();
-    keyFileStr = (new File(clearTildeLocally(MyUtil.clearFile(keyFile)))).getAbsolutePath();
     
     if(CoGProperties.getDefault()==null){
       prop = new CoGProperties();
@@ -151,11 +141,11 @@ public class MySSL extends SSL{
       caCertsDir = caCertsTmpdir;
     }
     else{
-      prop.setCaCertLocations(GridPilot.caCertsDir);
-      caCertsTmpdir = GridPilot.caCertsDir;
+      prop.setCaCertLocations(caCertsDir);
+      caCertsTmpdir = caCertsDir;
     }
+    
     GridPilot.caCertsDir = caCertsDir;
-    caCertsDirStr = (new File(clearTildeLocally(clearFile(caCertsDir)))).getAbsolutePath();
     CoGProperties.setDefault(prop);
     Debug.debug("COG defaults now:\n"+CoGProperties.getDefault(), 3);
     Debug.debug("COG defaults file:\n"+CoGProperties.configFile, 3);
@@ -164,7 +154,6 @@ public class MySSL extends SSL{
   private void initalizeVomsDir() {
     if(GridPilot.vomsDir==null || GridPilot.vomsDir.equals("")){
       GridPilot.vomsDir = setupDefaultVomsDir();
-      vomsDirStr = GridPilot.vomsDir;
     }
   }
   
@@ -184,7 +173,7 @@ public class MySSL extends SSL{
           Debug.debug("Initialized credential", 3);
           gridProxyInitialized = Boolean.TRUE;
           if(credential!=null){
-            Debug.debug("Initialized credential"+credential.getRemainingLifetime()+
+            Debug.debug("Initialized credential "+credential.getRemainingLifetime()+
                 ":"+GridPilot.proxyTimeLeftLimit, 3);
           }
         }
@@ -440,6 +429,9 @@ public class MySSL extends SSL{
         }
         try{
           Debug.debug("Creating proxy, "+arrayToString(credentials), 3);
+          certFile = (new File(clearTildeLocally(MyUtil.clearFile(credentials[2])))).getAbsolutePath();
+          keyFile = (new File(clearTildeLocally(MyUtil.clearFile(credentials[1])))).getAbsolutePath();
+          keyPassword = credentials[0];
           if(GridPilot.vomsServerURL==null || GridPilot.vomsServerURL.equals("") ||
               i>1){
             /* Old implementation - no VOMS attributes. */
@@ -448,10 +440,13 @@ public class MySSL extends SSL{
             credential = new GlobusGSSCredentialImpl(cred, GSSCredential.INITIATE_AND_ACCEPT);
           }
           else{
+            String vomsDir = GridPilot.vomsDir==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.vomsDir));
+            String caCertsDirStr = caCertsDir==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(caCertsDir));
+            
             // This works with gLite and ARC
             VomsProxyFactory vpf = new VomsProxyFactory(VomsProxyFactory.CERTIFICATE_PEM,
-                GridPilot.vomsServerURL, GridPilot.vo, credentials[0], proxy.getAbsolutePath(),
-                certFileStr, keyFileStr, caCertsDirStr, vomsDirStr,
+                GridPilot.vomsServerURL, GridPilot.vo, keyPassword, proxy.getAbsolutePath(),
+                certFile, keyFile, caCertsDirStr, vomsDir,
                 GridPilot.proxyTimeValid, VomsProxyFactory.DELEGATION_FULL,
                 getVomsProxyType(),
                 GridPilot.fqan);
@@ -463,6 +458,19 @@ public class MySSL extends SSL{
           // Keep password in memory - needed by mysql plugin
           Debug.debug("Setting grid password to "+credentials[0], 3);
           GridPilot.keyPassword = credentials[0];
+          // Store key and cert locations in config file.
+          String newKeyFile = MyUtil.replaceWithTildeLocally(keyFile);
+          String newCertFile = MyUtil.replaceWithTildeLocally(certFile);
+          if(!newKeyFile.equals(GridPilot.keyFile) || !newCertFile.equals(GridPilot.certFile)){
+            GridPilot.keyFile = MyUtil.replaceWithTildeLocally(keyFile);
+            GridPilot.certFile = MyUtil.replaceWithTildeLocally(certFile);
+            GridPilot.getClassMgr().getConfigFile().setAttributes(
+                new String [] {GridPilot.topConfigSection, GridPilot.topConfigSection},
+                new String [] {"Certificate file", "Key file"},
+                new String [] {GridPilot.certFile, GridPilot.keyFile}
+            );
+          }
+
         }
         catch(Exception e){
           e.printStackTrace();
@@ -543,8 +551,15 @@ public class MySSL extends SSL{
       browseIcon = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "folder_blue_open.png", 3);
-      browseIcon = new ImageIcon();
+      try{
+        imgURL = GridPilot.class.getResource("/resources/folder_blue_open.png");
+        browseIcon = new ImageIcon(imgURL);
+      }
+      catch(Exception ee){
+        e.printStackTrace();
+        Debug.debug("Could not find image "+ GridPilot.resourcesPath + "folder_blue_open.png", 0);
+        browseIcon = new ImageIcon();
+      }
     }
     
     JButton bBrowse1 = new JButton(browseIcon);
@@ -615,7 +630,7 @@ public class MySSL extends SSL{
     );
     passwordField.requestFocusInWindow();*/
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
-        "Enter grid password", JOptionPane.OK_CANCEL_OPTION);
+        "Authenticate", JOptionPane.OK_CANCEL_OPTION);
     Debug.debug("showing dialog done", 3);
     
     if(GridPilot.splash!=null){
