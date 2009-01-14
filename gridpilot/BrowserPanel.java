@@ -1683,7 +1683,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     String filter = jtFilter.getText();
     String htmlText = "";
     String href = null;
-    String sssBucketMatchPattern = "^\\w+:/+([^/]+/)$";
+    String sssBucketMatchPattern = "(?i)^sss:/+([^/]+/)$";
 
     try{
       bSave.setEnabled(false);
