@@ -1120,7 +1120,15 @@ public class MyUtil extends gridfactory.common.Util{
     }
   }
   
-  public static String [] splitUrls(String urls) throws Exception{
+  /**
+   * Splits list of URLs of the form
+   * https://some.server/some/file https://some.server1/some1/file1 ...
+   * @param _urls
+   * @return
+   * @throws Exception
+   */
+  public static String [] splitUrls(String _urls) throws Exception{
+    String urls = _urls.replaceAll("\'", "");
     if(!urls.matches("^\\w\\w+:.*")){
       return split(urls);
     }

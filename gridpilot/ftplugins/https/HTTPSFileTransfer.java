@@ -9,6 +9,7 @@ import java.security.GeneralSecurityException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Vector;
 
 import org.globus.ftp.exception.FTPException;
@@ -422,12 +423,12 @@ public class HTTPSFileTransfer implements FileTransfer {
   private Date makeDate(String dateInput){
     Date date = null;
     try{
-      SimpleDateFormat df = new SimpleDateFormat(GMT_DATE_FORMAT);
+      SimpleDateFormat df = new SimpleDateFormat(GMT_DATE_FORMAT, Locale.US);
       date = df.parse(dateInput);
     }
     catch(Throwable e){
       try{
-        SimpleDateFormat df = new SimpleDateFormat(HTTP_DATE_FORMAT);
+        SimpleDateFormat df = new SimpleDateFormat(HTTP_DATE_FORMAT, Locale.US);
         date = df.parse(dateInput);
       }
       catch(Throwable ee){
@@ -441,7 +442,7 @@ public class HTTPSFileTransfer implements FileTransfer {
   private String makeDateString(Date date){
     String dateString =  null;
     try{
-      SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
+      SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString, Locale.US);
       dateString = df.format(date);
     }
     catch(Throwable e){

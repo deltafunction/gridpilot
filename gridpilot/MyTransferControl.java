@@ -969,15 +969,14 @@ public class MyTransferControl extends TransferControl {
      throws Exception{
     String ftPluginName = null;
     String [] checkArr = MyUtil.split(transferID, "::");
-
-    String [] arr = MyUtil.split(transferID);
+    String [] arr = MyUtil.splitUrls(checkArr[checkArr.length-1]);
+    Debug.debug("Finding status of transfer "+MyUtil.arrayToString(arr, "-->"), 3);
     GlobusURL srmUrl = new GlobusURL(arr[arr.length-1]);
     Debug.debug("Finding plugin for transfer "+transferID, 2);
     Debug.debug("Checking host "+srmUrl.getHost(), 2);
     if(serverPluginMap.containsKey(srmUrl.getHost())){
       return GridPilot.getClassMgr().getFTPlugin(serverPluginMap.get(srmUrl.getHost()));
     }
-
     ftPluginName = Util.split(checkArr[0], "-")[0];
     return GridPilot.getClassMgr().getFTPlugin(ftPluginName);
   }
