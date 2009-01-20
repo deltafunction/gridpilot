@@ -16,7 +16,7 @@ import java.util.Vector;
 import javax.swing.event.*;
 
 /**
- * Shows a table with informations about runnings jobs
+ * Shows a table with informations about running jobs
  *
  * <p><a href="JobMonitoringPanel.java.html">see sources</a>
  */
