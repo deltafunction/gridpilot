@@ -62,6 +62,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   
   private Timer timerRefresh = new Timer(0, new ActionListener (){
     public void actionPerformed(ActionEvent e){
+      Debug.debug("Refreshing download status", 3);
       statusUpdateControl.updateStatus(null);
     }
   });
@@ -274,7 +275,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    */
   void cbAutoRefresh_clicked(){
     if(cbAutoRefresh.isSelected()){
-      Debug.debug("starting auto refresh timer", 3);
+      Debug.debug("restarting auto refresh timer", 3);
       delayChanged();
       timerRefresh.restart();
     }
@@ -288,6 +289,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    */
   void delayChanged(){
     int delay = ((Integer) (sAutoRefresh.getValue())).intValue();
+      Debug.debug("Changing refresh interval to "+delay, 3);
     if(cbRefreshUnits.getSelectedIndex()==MIN){
       timerRefresh.setDelay(delay * 1000 * 60);
     }
