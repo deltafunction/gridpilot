@@ -3080,13 +3080,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       return;
     }
     boolean ok = true;
+    String id = null;
+    String db = records[0];
+    String table = records[1];
     try{
       // this can stay null for other than files
       String datasetName = null;
       // this can stay null for other than datasets and files
       String name = null;
-      // this is always needed
-      String id = null;
       for(int i=2; i<records.length; ++i){
         name = null;
         id = records[i];
@@ -3098,7 +3099,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             // Now, DQ2 cannot even lookup dataset names from ID...
             // Another ugly hack: we pass both id and name
             // e.g. ATLAS dataset b2a80235-0be0-4b9d-9785-b12565c21fcd user.FrederikOrellana5894-ATLAS.csc11.002.Gee_500_pythia_photos_reson
-            //name = GridPilot.getClassMgr().getDBPluginMgr(records[0]).getDatasetName(
+            //name = GridPilot.getClassMgr().getDBPluginMgr(db).getDatasetName(
             //    records[i]);
             int index = records[i].indexOf("'::'");
             if(index>-1){
@@ -3106,9 +3107,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               String rest = records[i].substring(index+4);
               index = rest.indexOf("'::'");
               id = rest.substring(0, index);
+              name = datasetName;
             }
-            if(!GridPilot.getClassMgr().getDBPluginMgr(dbName).getDatasetID(name).equals("-1")){            
-              name = MyUtil.getName("Cannot overwrite, please give new name", "new-"+name);
+            // Get the name of the dataset from the source db
+            String dsName = GridPilot.getClassMgr().getDBPluginMgr(db).getDatasetName(id);
+            // See if the name exists in the destination db
+            String testDsName = GridPilot.getClassMgr().getDBPluginMgr(dbName).getDatasetName(id);
+            Debug.debug("Dataset name: "+dsName+"-->"+testDsName, 2);
+            if(!testDsName.equals("-1")){            
+              name = MyUtil.getName("Cannot overwrite, please give new name", "new-"+testDsName);
               if(name==null || name.equals("")){
                 return;
               }
@@ -3125,12 +3132,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             name = rest.substring(0, index);
             id = rest.substring(index+4, rest.length()-2);
           }
-          insertRecord(records[0], records[1], id, name, datasetName);
+          insertRecord(db, table, id, name, datasetName);
         }
         catch(Exception e){
           ok = false;
           String error = "ERROR: could not insert record: "+
-          records[0]+", "+records[1]+", "+dbName+", "+tableName+", "+
+          db+", "+table+", "+dbName+", "+tableName+", "+
           records[i]+", "+name;
           GridPilot.getClassMgr().getLogFile().addMessage(error, e);
           e.printStackTrace();
@@ -3151,12 +3158,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       statusBar.setProgressBar(pb);
       for(int i=2; i<records.length; ++i){
         try{
-          deleteRecord(records[0], records[1],
-              records[i]);
+          deleteRecord(db, table, records[i]);
         }
         catch(Exception e){
           String msg = "Deleting record "+(i-2)+" failed. "+
-             GridPilot.getClassMgr().getDBPluginMgr(records[0]).getError();
+             GridPilot.getClassMgr().getDBPluginMgr(db).getError();
           Debug.debug(msg, 1);
           statusBar.setLabel(msg);
           GridPilot.getClassMgr().getLogFile().addMessage(msg);
