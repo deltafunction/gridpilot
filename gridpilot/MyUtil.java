@@ -1608,6 +1608,8 @@ public class MyUtil extends gridfactory.common.Util{
   public static String [] removeBaseSystemAndVM(String [] rtes){
     Vector<String> newRTEs = new Vector<String>();
     for(int i=0; i<rtes.length; ++i){
+      // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
+      //       VM RTE names with VM/
       if(!checkOS(rtes[i]) && !rtes[i].startsWith("VM/")){
         newRTEs.add(rtes[i]);
       }

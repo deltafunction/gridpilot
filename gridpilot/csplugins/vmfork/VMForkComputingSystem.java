@@ -195,9 +195,12 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
   
   private void setBaseSystemName(String [] rtes, JobInfo job){
     for(int i=0; i<rtes.length; ++i){
-      if(!rtes[i].startsWith(RteRdfParser.VM_PREFIX)){
+      // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
+      //       VM RTE names with VM/
+      if(rtes[i].startsWith(RteRdfParser.VM_PREFIX)){
         job.setOpSys(rtes[i]);
         job.setOpSysRTE(rtes[i]);
+        break;
       }
     }
   }

@@ -501,9 +501,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     DBRecord rte;
     ArrayList<DBRecord> ret = new ArrayList();
     String nameField = MyUtil.getNameField(dbMgr.getDBName(), "runtimeEnvironment");
+    String rteName;
     for(int i=0; i<rtes.values.length; ++i){
       rte = rtes.getRow(i);
-      if(((String) rte.getValue(nameField)).startsWith(RteRdfParser.VM_PREFIX) &&
+      rteName = (String) rte.getValue(nameField);
+      // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
+      //       VM RTE names with VM/
+      if(rteName.startsWith(RteRdfParser.VM_PREFIX) &&
           ((String) rte.getValue("computingSystem")).equalsIgnoreCase(csName)){
         ret.add(rte);
       }
