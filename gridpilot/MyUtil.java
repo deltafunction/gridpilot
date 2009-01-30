@@ -97,7 +97,7 @@ public class MyUtil extends gridfactory.common.Util{
   public static String getJTextOrEmptyString(JComponent comp){
     String text = "";
     if(comp.getClass().isInstance(new JTextArea()) ||
-        comp.getClass().isInstance(createTextArea()) ||
+        JTextComponent.class.isAssignableFrom(comp.getClass()) ||
         comp.getClass().isInstance(createTextArea())){
       text = ((JTextComponent) comp).getText();
     }
