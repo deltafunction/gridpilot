@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Set;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
@@ -14,6 +15,7 @@ import gridfactory.common.Util;
 import gridfactory.common.jobrun.ForkComputingSystem;
 import gridfactory.common.jobrun.VMMgr;
 import gridfactory.common.jobrun.VirtualMachine;
+import gridfactory.common.jobrun.RTECatalog.MetaPackage;
 import gridpilot.DBPluginMgr;
 import gridpilot.GridPilot;
 import gridpilot.MyComputingSystem;
@@ -195,28 +197,37 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
   }
   
   private void setBaseSystemName(String [] rtes, JobInfo job){
+    Set mps = rteMgr.getRTECatalog().getMetaPackages();
+    MetaPackage mp;
+    String rte;
     int providesHits = 0;
-    int maxProvidesHits = -1;
+    int maxProvidesHits = 0;
     String [] provides;
-    for(int i=0; i<rtes.length; ++i){
+    int i = 0;
+    for(Iterator it=mps.iterator(); it.hasNext();){
+      mp = (MetaPackage) it.next();
+      rte = mp.name;
+      ++i;
       // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
       //       VM RTE names with VM/
       // Prefer VM that provides as many as the requested rtes as possible,
       // - first try just with no basesystem
-      if(rtes[i].startsWith(RteRdfParser.VM_PREFIX)){
+      if(rte.startsWith(RteRdfParser.VM_PREFIX)){
         providesHits = 0;
         try{
-          provides = rteMgr.getProvides(rtes[i]);
+          provides = rteMgr.getProvides(rte);
+          Debug.debug("Checking RTE provides: "+MyUtil.arrayToString(provides), 2);
+          Debug.debug("Against: "+MyUtil.arrayToString(rtes), 2);
           for(int j=0; j<provides.length; ++j){
             if(Util.arrayContains(rtes, provides[j])){
               ++providesHits;
             }
           }
           if(providesHits>maxProvidesHits){
-            Debug.debug("Setting OS of job "+job.getIdentifier()+" to "+rtes[i]+" : "+providesHits, 2);
+            Debug.debug("Setting OS of job "+job.getIdentifier()+" to "+rte+" : "+providesHits, 2);
             maxProvidesHits = providesHits;
-            job.setOpSys(rtes[i]);
-            job.setOpSysRTE(rtes[i]);
+            job.setOpSys(rte);
+            job.setOpSysRTE(rte);
           }
         }
         catch(Exception e){
