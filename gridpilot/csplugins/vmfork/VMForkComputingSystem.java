@@ -201,7 +201,7 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     for(int i=0; i<rtes.length; ++i){
       // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
       //       VM RTE names with VM/
-      // TODO: prefer VM that provides as many as the requested rtes as possible,
+      // Prefer VM that provides as many as the requested rtes as possible,
       // - first try just with no basesystem
       if(rtes[i].startsWith(RteRdfParser.VM_PREFIX)){
         providesHits = 0;
@@ -213,6 +213,7 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
             }
           }
           if(providesHits>maxProvidesHits){
+            Debug.debug("Setting OS of job "+job.getIdentifier()+" to "+rtes[i]+" : "+providesHits, 2);
             maxProvidesHits = providesHits;
             job.setOpSys(rtes[i]);
             job.setOpSysRTE(rtes[i]);
