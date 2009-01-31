@@ -10,6 +10,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.PullMgr;
 import gridfactory.common.Shell;
+import gridfactory.common.Util;
 import gridfactory.common.jobrun.ForkComputingSystem;
 import gridfactory.common.jobrun.VMMgr;
 import gridfactory.common.jobrun.VirtualMachine;
@@ -194,16 +195,33 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
   }
   
   private void setBaseSystemName(String [] rtes, JobInfo job){
+    int providesHits = 0;
+    int maxProvidesHits = -1;
+    String [] provides;
     for(int i=0; i<rtes.length; ++i){
       // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
       //       VM RTE names with VM/
       // TODO: prefer VM that provides as many as the requested rtes as possible,
       // - first try just with no basesystem
-      /*if(rtes[i].startsWith(RteRdfParser.VM_PREFIX)){
-        job.setOpSys(rtes[i]);
-        job.setOpSysRTE(rtes[i]);
-        break;
-      }*/
+      if(rtes[i].startsWith(RteRdfParser.VM_PREFIX)){
+        providesHits = 0;
+        try{
+          provides = rteMgr.getProvides(rtes[i]);
+          for(int j=0; j<provides.length; ++j){
+            if(Util.arrayContains(rtes, provides[j])){
+              ++providesHits;
+            }
+          }
+          if(providesHits>maxProvidesHits){
+            maxProvidesHits = providesHits;
+            job.setOpSys(rtes[i]);
+            job.setOpSysRTE(rtes[i]);
+          }
+        }
+        catch(Exception e){
+          logFile.addMessage("getProvides failed for "+rtes[i], e);
+        }
+      }
     }
   }
 
