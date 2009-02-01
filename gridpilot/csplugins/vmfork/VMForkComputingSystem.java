@@ -165,7 +165,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     job.setOutputFileDestinations(outputDestinations);
     job.setOutputFileNames(outputFileNames);
     setBaseSystemName(rtes, job);
-    job.setRTEs(MyUtil.removeBaseSystemAndVM(job.getOpSysRTE(), rtes, rteMgr));
+    job.setRTEs(MyUtil.removeBaseSystemAndVM(rtes, rteMgr.getProvides(job.getOpSysRTE())));
     job.setMemory(defaultJobMB);
     
     if(!pullMgr.checkRequirements(job, virtEnforce)){

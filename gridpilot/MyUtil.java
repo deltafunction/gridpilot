@@ -1613,12 +1613,16 @@ public class MyUtil extends gridfactory.common.Util{
    * @param osProvides RTEs provided by OS
    * @return
    */
-  public static String [] removeBaseSystemAndVM(String [] rtes, String [] osProvides){
+  public static String [] removeBaseSystemAndVM(String [] rtes, String [] _osProvides){
     Debug.debug("Removing VMs from " + arrayToString(rtes), 2);
     Vector<String> newRTEs = new Vector<String>();
     Set<String> providedRTEs = new HashSet<String>();
-    if(osProvides==null){
+    String[] osProvides;
+    if(_osProvides==null){
       osProvides = new String [0];
+    }
+    else{
+      osProvides = _osProvides;
     }
     for(int i=0; i<rtes.length; ++i){
       // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
