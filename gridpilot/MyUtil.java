@@ -221,7 +221,7 @@ public class MyUtil extends gridfactory.common.Util{
  public static void launchCheckBrowser(final Frame frame, String url,
      final JTextComponent text, final boolean localFS, final boolean oneUrl,
      final boolean withNavigation, final boolean onlyDirs, boolean waitForThread){
-   if(url.equals(MyUtil.CHECK_URL)){
+   if(url.equals(CHECK_URL)){
      String httpScript = "";
      httpScript = text.getText();
      if(frame!=null){
@@ -381,7 +381,7 @@ public class MyUtil extends gridfactory.common.Util{
       final boolean localFS){
     //final Frame frame = (Frame) SwingUtilities.getWindowAncestor(getRootPane());
     String markup = "<font size=-1 face=sans-serif><b>"+name+" : </b></font><br>"+
-      "<a href=\""+MyUtil.CHECK_URL+"\">browse</a>";
+      "<a href=\""+CHECK_URL+"\">browse</a>";
     JEditorPane checkPanel = new JEditorPane("text/html", markup);
     checkPanel.setEditable(false);
     checkPanel.setOpaque(false);
@@ -419,7 +419,7 @@ public class MyUtil extends gridfactory.common.Util{
     bBrowse1.setSize(new java.awt.Dimension(22, 22));
     bBrowse1.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        launchCheckBrowser(frame, MyUtil.CHECK_URL, jt, false, oneUrl, withNavigation, onlyDirs, false);
+        launchCheckBrowser(frame, CHECK_URL, jt, false, oneUrl, withNavigation, onlyDirs, false);
       }
     });
 
@@ -1610,26 +1610,22 @@ public class MyUtil extends gridfactory.common.Util{
   /**
    * Remove RTEs that need not be cared about once the VM has been booted.
    * @param rtes list of RTEs
-   * @param rteMgr used for finding RTEs provided by VM RTEs - these will also be removed
-   *               - can be null - in which case this check is not done
+   * @param osProvides RTEs provided by OS
    * @return
    */
-  public static String [] removeBaseSystemAndVM(String [] rtes, RTEMgr rteMgr){
+  public static String [] removeBaseSystemAndVM(String [] rtes, String [] osProvides){
+    Debug.debug("Removing VMs from " + arrayToString(rtes), 2);
     Vector<String> newRTEs = new Vector<String>();
     Set<String> providedRTEs = new HashSet<String>();
+    if(osProvides==null){
+      osProvides = new String [0];
+    }
     for(int i=0; i<rtes.length; ++i){
       // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
       //       VM RTE names with VM/
-      if(!checkOS(rtes[i]) && !rtes[i].startsWith(RteRdfParser.VM_PREFIX)){
+      if(!checkOS(rtes[i]) && !rtes[i].startsWith(RteRdfParser.VM_PREFIX) &&
+          !MyUtil.arrayContains(osProvides, rtes[i])){
         newRTEs.add(rtes[i]);
-      }
-      else if(rteMgr!=null && rtes[i].startsWith(RteRdfParser.VM_PREFIX)){
-        try{
-          Collections.addAll(providedRTEs, rteMgr.getProvides(rtes[i]));
-        }
-        catch(Exception e){
-          e.printStackTrace();
-        }
       }
     }
     String rte;
@@ -1643,6 +1639,7 @@ public class MyUtil extends gridfactory.common.Util{
   public static void setupJobRTEs(JobInfo job, Shell shell, RTEMgr rteMgr, TransferStatusUpdateControl transferStatusUpdateControl,
       String remoteRteDir, String localRteDir) throws Exception{
     String [] rteNames = job.getRTEs();
+    Debug.debug("Setting up job RTES "+Util.arrayToString(rteNames), 2);
     Vector<String> rtes = new Vector<String>();
     Collections.addAll(rtes, rteNames);
     Vector<String> deps = rteMgr.getRteDepends(rtes, job.getOpSys());

@@ -78,7 +78,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     writeBlock(buf, "Runtime setup", ScriptGenerator.TYPE_SUBSECTION, commentStart);
     // For each runtime environment used, get its init text (if present) and write it out,
     // source the setup script
-    String[] rtes = MyUtil.removeBaseSystemAndVM(dbPluginMgr.getRuntimeEnvironments(jobDefID), null);
+    String[] rtes = MyUtil.removeBaseSystemAndVM(null, dbPluginMgr.getRuntimeEnvironments(jobDefID), null);
     // We skip the first one which is the OS
     for(int i=1; i<rtes.length; ++i){
       writeBlock(buf, "runtime environment: " + rtes[i], ScriptGenerator.TYPE_COMMENT, commentStart);
