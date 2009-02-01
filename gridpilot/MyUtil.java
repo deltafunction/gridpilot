@@ -45,8 +45,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
+import java.util.Set;
 import java.util.Vector;
 
 
@@ -1605,14 +1607,35 @@ public class MyUtil extends gridfactory.common.Util{
     }
   }
   
-  public static String [] removeBaseSystemAndVM(String [] rtes){
+  /**
+   * Remove RTEs that need not be cared about once the VM has been booted.
+   * @param rtes list of RTEs
+   * @param rteMgr used for finding RTEs provided by VM RTEs - these will also be removed
+   *               - can be null - in which case this check is not done
+   * @return
+   */
+  public static String [] removeBaseSystemAndVM(String [] rtes, RTEMgr rteMgr){
     Vector<String> newRTEs = new Vector<String>();
+    Set<String> providedRTEs = new HashSet<String>();
     for(int i=0; i<rtes.length; ++i){
       // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
       //       VM RTE names with VM/
       if(!checkOS(rtes[i]) && !rtes[i].startsWith(RteRdfParser.VM_PREFIX)){
         newRTEs.add(rtes[i]);
       }
+      else if(rteMgr!=null && rtes[i].startsWith(RteRdfParser.VM_PREFIX)){
+        try{
+          Collections.addAll(providedRTEs, rteMgr.getProvides(rtes[i]));
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+      }
+    }
+    String rte;
+    for(Iterator<String> it=providedRTEs.iterator(); it.hasNext();){
+      rte = it.next();
+      newRTEs.remove(rte);
     }
     return newRTEs.toArray(new String [newRTEs.size()]);
   }

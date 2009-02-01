@@ -12,10 +12,10 @@ import gridfactory.common.JobInfo;
 import gridfactory.common.PullMgr;
 import gridfactory.common.Shell;
 import gridfactory.common.Util;
-import gridfactory.common.jobrun.ForkComputingSystem;
 import gridfactory.common.jobrun.VMMgr;
 import gridfactory.common.jobrun.VirtualMachine;
 import gridfactory.common.jobrun.RTECatalog.MetaPackage;
+
 import gridpilot.DBPluginMgr;
 import gridpilot.GridPilot;
 import gridpilot.MyComputingSystem;
@@ -32,7 +32,7 @@ import gridpilot.csplugins.fork.ForkScriptGenerator;
  * Some methods are copied from ForkComputingSystem and ForkPoolComputingSystem from GridPilot
  * in order to match what GridPilot expects a MyComputingSystem implementation to do.
  */
-public class VMForkComputingSystem extends ForkComputingSystem implements MyComputingSystem {
+public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputingSystem implements MyComputingSystem {
 
   private String csName;
   private String [] rteCatalogUrls;
@@ -164,7 +164,7 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     job.setInputFileUrls(inputFiles);
     job.setOutputFileDestinations(outputDestinations);
     job.setOutputFileNames(outputFileNames);
-    job.setRTEs(MyUtil.removeBaseSystemAndVM(rtes));
+    job.setRTEs(MyUtil.removeBaseSystemAndVM(rtes, rteMgr));
     setBaseSystemName(rtes, job);
     job.setMemory(defaultJobMB);
     
@@ -176,7 +176,8 @@ public class VMForkComputingSystem extends ForkComputingSystem implements MyComp
     includeManuallyBootedVMs();
     
     boolean ok = gridpilot.csplugins.fork.ForkComputingSystem.setRemoteOutputFiles((MyJobInfo) job);
-    ok = ok && super.preProcess(job);
+    ok = ok && super.preProcess(job) /* This is what boots up a VM. Notice that super refers to
+                                         gridfactory.common.jobrun.ForkComputingSystem. */;
     String commandSuffix = ".sh";
     Shell shell = getShell(job);
     if(shell.isLocal() && MyUtil.onWindows()){
