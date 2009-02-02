@@ -504,7 +504,8 @@ public class GridPilot extends JApplet{
         frameSize.width = screenSize.width;
       }
       requestFocusInWindow();
-      frame.setLocation((screenSize.width - frameSize.width) / 2, (screenSize.height - frameSize.height) / 2);
+      //frame.setLocation((screenSize.width - frameSize.width) / 2, (screenSize.height - frameSize.height) / 2);
+      Splash.centerWindow(frame);
       frame.setVisible(true);
     }
   }
