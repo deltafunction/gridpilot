@@ -541,7 +541,7 @@ public class ClassMgr{
     String key = localRteDir+MyUtil.arrayToString(sortedUrls);
     if(!rteMgrs.containsKey(key)){
       Debug.debug("Creating new RTEMgr from "+key, 1);
-      RTEMgr rteMgr = new RTEMgr(localRteDir, rteCatalogUrls, getLogFile(), getTransferControl());
+      RTEMgr rteMgr = new RTEMgr(localRteDir, rteCatalogUrls, getLogFile(), getTransferStatusUpdateControl());
       rteMgrs.put(key, rteMgr);
     }
     return rteMgrs.get(key);

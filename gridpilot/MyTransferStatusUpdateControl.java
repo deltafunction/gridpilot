@@ -119,7 +119,7 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
   public final static int FIELD_TRANSFERRED = 6;
 
   public MyTransferStatusUpdateControl() throws Exception{
-    super(GridPilot.getClassMgr().getTransferStatusTable(), GridPilot.getClassMgr().getTransferControl());
+    super(GridPilot.getClassMgr().getTransferControl());
     configFile = GridPilot.getClassMgr().getConfigFile();
     logFile = GridPilot.getClassMgr().getLogFile();
 

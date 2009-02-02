@@ -1499,66 +1499,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
   }
   
-  // TODO: this method can be deleted
-  private void setGsiftpConfirmDisplay(String url, FileTransfer ft) throws IOException{
-    String localPath = null;
-    String host = null;
-    String hostAndPath = null;
-    String port = "2811";
-    String hostAndPort = null;
-    String localDir = null;
-    Debug.debug("Host+path: "+hostAndPath, 3);
-    hostAndPort = hostAndPath.substring(0, hostAndPath.indexOf("/"));
-    hostAndPath = url.substring(9);
-    int colonIndex=hostAndPort.indexOf(":");
-    if(colonIndex>0){
-      host = hostAndPort.substring(0, hostAndPort.indexOf(":"));
-      port = hostAndPort.substring(hostAndPort.indexOf(":")+1);
-    }
-    else{
-      host = hostAndPort;
-      port = "2811";
-    }
-    localPath = hostAndPath.substring(hostAndPort.length(), hostAndPath.length());
-    localPath = localPath.replaceFirst("/[^\\/]*/\\.\\.", "");
-    int lastSlash = localPath.lastIndexOf("/");
-    if(lastSlash>0){
-      localDir = localPath.substring(0, lastSlash);
-    }
-    else{
-      localDir = "/";
-    }
-    Debug.debug("Host: "+host, 3);
-    Debug.debug("Port: "+port, 3);
-    Debug.debug("Path: "+localPath, 3);
-    Debug.debug("Directory: "+localDir, 3);
-    try{
-      try{
-        if(ft.getFileBytes(new GlobusURL(url))==0){
-          throw new IOException("File is empty");
-        }
-        ep.setText("File found");
-        Debug.debug("Setting thisUrl, "+url, 3);
-        thisUrl = url;
-        setUrl(thisUrl);
-      }
-      catch(Exception e){
-        e.printStackTrace();
-        Debug.debug("Could not read "+localPath, 1);
-        ep.setText("ERROR!\n\nThe file "+localPath+" could not be read. "+
-            e.getMessage());
-      }
-      pButton.updateUI();
-      lastUrlList = new String [] {thisUrl};
-    }
-    catch(Exception e){
-      Debug.debug("Could not set confirm display of "+localPath+". "+
-         e.getMessage(), 1);
-      e.printStackTrace();
-      throw new IOException(e.getMessage());
-    }
-  }
-
   /**
    * Set the EditorPane to display a directory listing
    * of the shell path fsPath.

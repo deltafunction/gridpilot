@@ -11,7 +11,6 @@ import gridfactory.common.Shell;
 import gridfactory.common.TransferInfo;
 import gridfactory.common.TransferStatusUpdateControl;
 import gridfactory.common.Util;
-import gridfactory.common.jobrun.RTEInstaller;
 import gridfactory.common.jobrun.RTEMgr;
 import gridfactory.common.jobrun.RTECatalog.TarPackage;
 
@@ -1640,14 +1639,14 @@ public class MyUtil extends gridfactory.common.Util{
     return newRTEs.toArray(new String [newRTEs.size()]);
   }
 
-  public static void setupJobRTEs(JobInfo job, Shell shell, RTEMgr rteMgr, TransferStatusUpdateControl transferStatusUpdateControl,
+  public static void setupJobRTEs(JobInfo job, Shell shell, RTEMgr rteMgr,
+      TransferStatusUpdateControl transferStatusUpdateControl,
       String remoteRteDir, String localRteDir) throws Exception{
     String [] rteNames = job.getRTEs();
     Debug.debug("Setting up job RTES "+Util.arrayToString(rteNames), 2);
     Vector<String> rtes = new Vector<String>();
     Collections.addAll(rtes, rteNames);
     Vector<String> deps = rteMgr.getRteDepends(rtes, job.getOpSys());
-    RTEInstaller rteInstaller = null;
     TarPackage tp = null;
     String name = null;
     String os = null;
@@ -1667,14 +1666,13 @@ public class MyUtil extends gridfactory.common.Util{
       // Check if installation was already done.
       // This we need, because GridPilot's HTTPSFileTransfer does not cache.
       // GridFactory's does.
-      if(shell.existsFile(remoteRteDir+"/"+name+"/"+RTEInstaller.INSTALL_OK_FILE)){
+      //if(shell.existsFile(remoteRteDir+"/"+name+"/"+RTEInstaller.INSTALL_OK_FILE)){
+      if(rteMgr.getRTEInstaller().isInstalled(name, shell)){
         GridPilot.getClassMgr().getLogFile().addInfo("Reusing existing installation of "+name);
         return;
       }
       tp = rteMgr.getRteTarPackage(name, os);
-      rteInstaller = new RTEInstaller(tp, remoteRteDir, localRteDir, name, shell,
-          transferStatusUpdateControl, GridPilot.getClassMgr().getLogFile());
-      rteInstaller.install();
+      rteMgr.getRTEInstaller().install(name, tp, shell);
     }
   }
 
