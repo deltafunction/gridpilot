@@ -10,6 +10,7 @@ import org.globus.util.GlobusURL;
 import gridfactory.common.Debug;
 import gridfactory.common.jobrun.ScriptGenerator;
 import gridfactory.common.Shell;
+
 import gridpilot.DBPluginMgr;
 import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
@@ -49,24 +50,29 @@ public class ForkScriptGenerator extends ScriptGenerator{
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String line; //used as temp working string
     StringBuffer buf = new StringBuffer();
-    String commentStart = "REM";
-    boolean amOnWindows = !(!shell.isLocal() && !onWindows || shell.isLocal() &&
-                            (!onWindows || !MyUtil.onWindows()));
+    String commentStart;
+    boolean notOnWindows = !shell.isLocal() && !onWindows || shell.isLocal() &&
+                            (!onWindows || !MyUtil.onWindows());
 
     // Header
-    if(amOnWindows){
+    if(!notOnWindows){
+      commentStart = "REM ";
+      writeLine(buf, "@echo off");
+    }
+    else{
       commentStart = "#";
       writeLine(buf, "#!/bin/bash");
       // write out the process name, for MySecureShell.submit to pick up
       writeLine(buf, "echo $$");
     }
+
     
     // sleep 5 seconds, to give GridPilot a chance to pick up the process id
     // for very short jobs
     writeBlock(buf, "Sleep 5 seconds before start", ScriptGenerator.TYPE_SUBSECTION, commentStart);
     // this is to be sure to have some stdout (jobs without are considered failed)
     writeLine(buf, "echo starting...");
-    if(amOnWindows){
+    if(!notOnWindows){
       writeLine(buf, "ping -n 10 127.0.0.1 >/nul");
     }
     else{
@@ -92,7 +98,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
       writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
           "/"+rtes[i]).replaceAll("//", "/"));
       writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
-          "/"+rtes[i]+"/"+"control/runtime").replaceAll("//", "/")+(amOnWindows?".bat":""));
+          "/"+rtes[i]+"/"+"control/runtime").replaceAll("//", "/")+(!notOnWindows?".bat":""));
       writeLine(buf, "");
     }
 
@@ -211,8 +217,12 @@ public class ForkScriptGenerator extends ScriptGenerator{
     // TODO: reconsider
     writeBlock(buf, "Output files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
     for(int i=0; i<outputFiles.length; ++i){
-      writeLine(buf, "echo GRIDPILOT METADATA: bytes = `du -b "+outputFiles[i][0]+" | awk '{print $1}'`");
-      writeLine(buf, "echo GRIDPILOT METADATA: checksum = md5:`md5sum "+outputFiles[i][0]+" | awk '{print $1}'`");
+      writeLine(buf, "echo "+
+          gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG+
+          ": bytes = `du -b "+outputFiles[i][0]+" | awk '{print $1}'`");
+      writeLine(buf, "echo "+
+          gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG+
+          ": checksum = md5:`md5sum "+outputFiles[i][0]+" | awk '{print $1}'`");
       break;
     }
 

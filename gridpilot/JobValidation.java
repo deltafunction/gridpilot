@@ -301,7 +301,7 @@ public class JobValidation{
    * Extracts some information from stdout of this job and tries to fill
    * in db fields. <br>
    * Recognized lines are lines of the form
-   * GRIDPILOT METADATA: <attribute> = <value>
+   * METADATA: <attribute> = <value>
    * 
    * @return <code>true</code> if the extraction went ok, <code>false</code> otherwise.
    * 
@@ -312,14 +312,17 @@ public class JobValidation{
     Vector attributes = new Vector();
     Vector values = new Vector();
     int lineNr = 0;
+    int tagLen = gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG.length();
     while(st.hasMoreTokens()){
       ++ lineNr;
       String line = st.nextToken();
       int indexIs = line.indexOf("=");
-      if(!line.startsWith("GRIDPILOT METADATA:") || indexIs==-1){
+      if(!line.startsWith(
+          gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG+":") ||
+          indexIs==-1){
         continue;
       }
-      String attr = line.substring(19, indexIs).trim();
+      String attr = line.substring(tagLen+1, indexIs).trim();
       String val = line.substring(indexIs+1);
       if(attr.length()==0 || val.length()==0){
         logFile.addMessage("ERROR: results of extraction inconsistent for job "
