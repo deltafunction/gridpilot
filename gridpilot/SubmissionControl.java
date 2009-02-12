@@ -12,6 +12,7 @@ import gridfactory.common.ConfigFile;
 import gridfactory.common.DBRecord;
 import gridfactory.common.Debug;
 import gridfactory.common.Shell;
+import gridfactory.common.StatusBar;
 
 /**
  * Controls the job submission. <p>

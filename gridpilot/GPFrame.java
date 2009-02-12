@@ -5,7 +5,7 @@ import java.net.URL;
 import javax.swing.*;
 
 import gridfactory.common.Debug;
-import gridpilot.StatusBar;
+import gridfactory.common.StatusBar;
 import gridpilot.GridPilot;
 
 /**

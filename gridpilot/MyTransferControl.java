@@ -7,6 +7,7 @@ import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
 import gridfactory.common.Shell;
+import gridfactory.common.StatusBar;
 import gridfactory.common.TransferControl;
 import gridfactory.common.TransferInfo;
 import gridfactory.common.Util;
@@ -80,7 +81,11 @@ public class MyTransferControl extends TransferControl {
   final private static String SRM2_PLUGIN_NAME = "srm2";
   
   public MyTransferControl() throws Exception{
-    super(GridPilot.getClassMgr().getLogFile(), GridPilot.getClassMgr().getTransferStatusTable());
+    // We set getFileTransfer() to return the HTTPS FileTransfer.
+    super(GridPilot.getClassMgr().getFTPlugin("https"),
+        GridPilot.getClassMgr().getLogFile(),
+        GridPilot.getClassMgr().getTransferStatusTable(),
+        /*GridPilot.getClassMgr().getStatusBar()*/null);
     configFile = GridPilot.getClassMgr().getConfigFile();
     serverPluginMap = new HashMap<String, String>();
     timer = new Timer(0, new ActionListener(){
@@ -1217,7 +1222,7 @@ public class MyTransferControl extends TransferControl {
     super.setFileTransfer(new HTTPSFileTransfer(ssl.getGridSubject(), ssl, logFile));
     super.download(url, destination);
   }
-
+  
   /**
    * Download file from URL. Quick method - bypassing transfer control and monitoring.
    * @param url
@@ -1388,17 +1393,17 @@ public class MyTransferControl extends TransferControl {
    * or a remote location (https://..., gsiftp://..., ...) to the run directory of the job,
    * using the ShellMgr of the job.
    */
-  public boolean copyInputFile(String src, String dest, Shell shellMgr,  boolean overWrite, String error){
+  public boolean copyInputFile(String src, String dest, Shell shell, boolean overWrite, String error){
     
     boolean doSshCopy = false;
     
     // First check if the file has already been copied
     if(!overWrite){
-      if(shellMgr!=null){
-        if(shellMgr.existsFile(Util.clearFile(dest))){
+      if(shell!=null){
+        if(shell.existsFile(Util.clearFile(dest))){
           Long destSize = null;
           try{
-            destSize = shellMgr.getSize(Util.clearFile(dest));
+            destSize = shell.getSize(Util.clearFile(dest));
           }
           catch(IOException e){
             e.printStackTrace();
@@ -1428,7 +1433,7 @@ public class MyTransferControl extends TransferControl {
     // first get the source to a local temp file and change dest temporarily.
     // TODO: consider using caching
     String tempDest = dest;
-    if(!shellMgr.isLocal() && MyUtil.urlIsRemote(src)){
+    if(!shell.isLocal() && MyUtil.urlIsRemote(src)){
       File tempFile;
       try{
         tempFile=File.createTempFile("GridPilot-", "");
@@ -1445,7 +1450,7 @@ public class MyTransferControl extends TransferControl {
     
     // Local src
     if(/*Linux local file*/(src.matches("^file:~[^:]*") || src.matches("^file:/[^:]*") || src.startsWith("/") || src.startsWith("~")) ||
-        /*Windows local file*/(src.matches("\\w:.*") || src.matches("^file:/*\\w:.*")) && shellMgr.isLocal()){
+        /*Windows local file*/(src.matches("\\w:.*") || src.matches("^file:/*\\w:.*")) && shell.isLocal()){
       try{
         if(!LocalStaticShell.existsFile(MyUtil.clearFile(src))){
           error = "File " + src + " doesn't exist";
@@ -1460,7 +1465,7 @@ public class MyTransferControl extends TransferControl {
         return false;
       }
       // by convention, if the destination does not start with file:, we copy the file to the local disk
-      if(!tempDest.startsWith("file:") && !shellMgr.isLocal()){
+      if(!tempDest.startsWith("file:") && !shell.isLocal()){
         Debug.debug("getting " + src + " -> " + tempDest, 2);
         try{
           String realDest = MyUtil.clearTildeLocally(MyUtil.clearFile(tempDest));
@@ -1498,7 +1503,7 @@ public class MyTransferControl extends TransferControl {
       else if(src.startsWith("file:")){
         Debug.debug("copying " + src + " to " + tempDest, 2);
         try{
-          if(!shellMgr.copyFile(MyUtil.clearFile(src), tempDest)){
+          if(!shell.copyFile(MyUtil.clearFile(src), MyUtil.clearFile(tempDest))){
             error = "Cannot copy \n\t" + src +
             "\n to \n\t" + tempDest;
             logFile.addMessage(error);
@@ -1514,6 +1519,7 @@ public class MyTransferControl extends TransferControl {
       }
       // relative paths or getting files (via ssh) from a Windows server is not supported
       else{
+        tempDest = src;
         doSshCopy = true;
       }
     }
@@ -1543,7 +1549,7 @@ public class MyTransferControl extends TransferControl {
     if(doSshCopy){
       try{
         Debug.debug("Uploading tmp file "+tempDest+" -> "+dest, 2);
-        shellMgr.upload(MyUtil.clearTildeLocally(MyUtil.clearFile(tempDest)), MyUtil.clearFile(dest));
+        shell.upload(MyUtil.clearTildeLocally(MyUtil.clearFile(tempDest)), MyUtil.clearFile(dest));
       }
       catch(Exception e){
         error = "ERROR copying "+tempDest+" -> "+dest+": "+e.getMessage();

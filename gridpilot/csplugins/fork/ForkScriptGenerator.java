@@ -43,14 +43,14 @@ public class ForkScriptGenerator extends ScriptGenerator{
         csName, "required runtime environment");
   }
   
-  public boolean createWrapper(Shell shellMgr, MyJobInfo job, String fileName){
+  public boolean createWrapper(Shell shell, MyJobInfo job, String fileName){
     
     String jobDefID = job.getIdentifier();
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String line; //used as temp working string
     StringBuffer buf = new StringBuffer();
     String commentStart = "REM";
-    boolean amOnWindows = !(!shellMgr.isLocal() && !onWindows || shellMgr.isLocal() &&
+    boolean amOnWindows = !(!shell.isLocal() && !onWindows || shell.isLocal() &&
                             (!onWindows || !MyUtil.onWindows()));
 
     // Header
@@ -163,10 +163,10 @@ public class ForkScriptGenerator extends ScriptGenerator{
     writeLine(buf, "");
     writeBlock(buf, "transformation script call", ScriptGenerator.TYPE_SUBSECTION, commentStart);
     String scriptSrc = dbPluginMgr.getTransformationScript(jobDefID);
-    String scriptDest = MyUtil.clearFile(scriptSrc);
-    scriptDest = scriptDest.replaceAll("\\\\", "/");
-    String scriptName = scriptDest.replaceFirst(".*/([^/]+)", "$1");
-    scriptDest = workingDir + "/" + scriptName;
+    String scriptPath = MyUtil.clearFile(scriptSrc).replaceAll("\\\\", "/");
+    String scriptName = scriptPath.replaceFirst(".*/([^/]+)", "$1");
+    String scriptDest = "file:" + MyUtil.clearFile(workingDir) + "/" + scriptName;
+    Debug.debug("Copying over transformation script "+scriptSrc+"-->"+scriptDest, 3);
     // Don't think we need this...
     /*if(MyUtil.onWindows()){
       line = line.replaceAll("/", "\\\\");
@@ -176,8 +176,9 @@ public class ForkScriptGenerator extends ScriptGenerator{
     // it's already on the worker node - and on the PATH.
     boolean copyScript = MyUtil.urlIsRemote(scriptSrc) || MyUtil.isLocalFileName(scriptSrc);
     try{
-      if( copyScript &&
-          !GridPilot.getClassMgr().getTransferControl().copyInputFile(scriptSrc, scriptDest, shellMgr, true, null)){
+      if(copyScript &&
+          !GridPilot.getClassMgr().getTransferControl().copyInputFile(
+              MyUtil.clearFile(scriptSrc), scriptDest, shell, true, null)){
         throw new IOException("Copying transformation script to working dir failed.");
       }
     }
@@ -216,21 +217,21 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
 
     try{
-      shellMgr.writeFile(workingDir+"/"+fileName, buf.toString(), false);
+      shell.writeFile(workingDir+"/"+fileName, buf.toString(), false);
       // This will not work under Windows; we silently ignore...
       try{
         StringBuffer stdout = new StringBuffer();
         StringBuffer stderr = new StringBuffer();
         String workDir = workingDir;
-        if(shellMgr.isLocal()){
+        if(shell.isLocal()){
           workDir = MyUtil.clearTildeLocally(workDir);
         }
-        shellMgr.exec("chmod +x "+workDir+"/"+fileName, stdout, stderr);
+        shell.exec("chmod +x "+workDir+"/"+fileName, stdout, stderr);
         if(stderr!=null && stderr.length()!=0){
           logFile.addMessage("Could not set job executable. "+stderr);
           throw new FileNotFoundException(stderr.toString());
         }
-        shellMgr.exec("chmod +x "+MyUtil.clearFile(scriptDest), stdout, stderr);
+        shell.exec("chmod +x "+MyUtil.clearFile(scriptDest), stdout, stderr);
         if(stderr!=null && stderr.length()!=0){
           Debug.debug("Could not set transformation executable. "+stderr, 2);
           throw new FileNotFoundException(stderr.toString());

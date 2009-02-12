@@ -61,9 +61,9 @@ import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
+import gridfactory.common.StatusBar;
 import gridfactory.common.Util;
 import gridpilot.GridPilot;
-import gridpilot.StatusBar;
 import gridpilot.MyUtil;
 
 /**

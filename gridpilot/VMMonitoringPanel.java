@@ -1,7 +1,7 @@
 package gridpilot;
 
+import gridfactory.common.StatusBar;
 import gridpilot.GridPilot;
-import gridpilot.StatusBar;
 import gridpilot.MyJTable;
 
 import java.awt.*;

@@ -950,7 +950,7 @@ public class ForkComputingSystem implements MyComputingSystem{
           else if(!ignoreRemoteInputs && MyUtil.urlIsRemote(inputFiles[i])){
             try{
               Debug.debug("Getting input file "+inputFiles[i]+" --> "+runDir(job), 3);
-              transferControl.copyInputFile(inputFiles[i], runDir(job)+"/"+fileName, thisShellMgr, true, error);
+              transferControl.copyInputFile(MyUtil.clearFile(inputFiles[i]), runDir(job)+"/"+fileName, thisShellMgr, true, error);
             }
             catch(Exception ioe){
               logFile.addMessage("WARNING: GridPilot could not get input file "+inputFiles[i]+

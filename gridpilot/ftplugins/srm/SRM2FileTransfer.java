@@ -24,7 +24,7 @@ import org.dcache.srm.v2_2.*;
 
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
-import gridpilot.StatusBar;
+import gridfactory.common.StatusBar;
 import gridpilot.MyTransferControl;
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;

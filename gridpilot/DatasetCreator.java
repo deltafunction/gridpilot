@@ -2,6 +2,7 @@ package gridpilot;
 
 import gridfactory.common.DBRecord;
 import gridfactory.common.Debug;
+import gridfactory.common.StatusBar;
 
 import javax.swing.*;
 import java.util.HashSet;

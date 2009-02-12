@@ -33,6 +33,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.Shell;
+import gridfactory.common.StatusBar;
 import gridfactory.common.jobrun.VirtualMachine;
 
 import gridpilot.MyComputingSystem;
@@ -40,7 +41,6 @@ import gridpilot.DBPluginMgr;
 import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
 import gridpilot.MyLogFile;
-import gridpilot.StatusBar;
 import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 

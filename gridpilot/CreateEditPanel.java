@@ -1,5 +1,7 @@
 package gridpilot;
 
+import gridfactory.common.StatusBar;
+
 import javax.swing.JPanel;
 
 /**

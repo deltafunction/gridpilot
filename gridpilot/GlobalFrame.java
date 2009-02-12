@@ -16,8 +16,8 @@ import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
+import gridfactory.common.StatusBar;
 
-import gridpilot.StatusBar;
 import gridpilot.GridPilot;
 import gridpilot.ListPanel;
 import gridpilot.IconProxy;

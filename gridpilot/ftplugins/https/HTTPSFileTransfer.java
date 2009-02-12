@@ -23,8 +23,9 @@ import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
+import gridfactory.common.StatusBar;
+import gridfactory.common.Util;
 import gridpilot.GridPilot;
-import gridpilot.StatusBar;
 import gridpilot.MyUtil;
 
 public class HTTPSFileTransfer implements FileTransfer {
@@ -407,11 +408,21 @@ public class HTTPSFileTransfer implements FileTransfer {
     }
   }
   
-  public long getFileBytes(GlobusURL url) throws Exception {
+  public long getFileBytes(GlobusURL globusUrl) throws Exception {
+    // First try to read standard HTTP ContentLength
     try{
-      Vector vec = list(url, null, null);
+      URL url = new URL(globusUrl.getURL());
+      int len = url.openConnection().getContentLength();
+      return (long) len;
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    // Fall back to Webdav listing
+    try{
+      Vector vec = list(globusUrl, null, null);
       String line = (String) vec.get(0);
-      String [] arr = MyUtil.split(line);
+      String [] arr = Util.split(line);
       return Long.parseLong(arr[0]);
     }
     catch(Exception e){

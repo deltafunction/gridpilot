@@ -2,6 +2,7 @@ package gridpilot;
 
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
+import gridfactory.common.StatusBar;
 
 import java.awt.Color;
 import java.util.*;

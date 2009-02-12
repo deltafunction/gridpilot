@@ -6,6 +6,7 @@ import gridfactory.common.DBResult;
 import gridfactory.common.DBVectorTableModel;
 import gridfactory.common.Debug;
 import gridfactory.common.ResThread;
+import gridfactory.common.StatusBar;
 import gridfactory.common.TransferInfo;
 import gridpilot.MyJTable;
 import gridpilot.SelectPanel.SPanel;

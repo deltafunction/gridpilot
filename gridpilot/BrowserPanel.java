@@ -34,6 +34,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
+import gridfactory.common.StatusBar;
 import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 import gridpilot.ftplugins.https.HTTPSFileTransfer;
 import gridpilot.ftplugins.https.MyUrlCopy;

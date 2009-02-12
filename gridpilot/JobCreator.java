@@ -2,6 +2,7 @@ package gridpilot;
 
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
+import gridfactory.common.StatusBar;
 
 import java.util.*;
 

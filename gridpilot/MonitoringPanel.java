@@ -2,6 +2,7 @@ package gridpilot;
 
 import gridfactory.common.Debug;
 import gridfactory.common.LogViewerPanel;
+import gridfactory.common.StatusBar;
 
 import javax.swing.*;
 
