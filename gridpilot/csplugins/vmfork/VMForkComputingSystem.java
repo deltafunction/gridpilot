@@ -199,10 +199,18 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     
   }
   
+  /**
+   * If a VM RTE provides all of the requested RTEs, set this as the
+   * opsys and opSysRTE.
+   * possible.
+   * @param rtes requested RTEs
+   * @param job the job in question
+   */
   private void setBaseSystemName(String [] rtes, JobInfo job){
     Set mps = rteMgr.getRTECatalog().getMetaPackages();
     MetaPackage mp;
     String rte;
+    String vmRte = null;
     int providesHits = 0;
     int maxProvidesHits = 0;
     String [] provides;
@@ -218,25 +226,32 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
       if(rte.startsWith(RteRdfParser.VM_PREFIX)){
         providesHits = 0;
         try{
+          if(Util.arrayContains(rtes, rte)){
+            ++providesHits;
+          }
           provides = rteMgr.getProvides(rte);
-          Debug.debug("Checking RTE provides: "+MyUtil.arrayToString(provides), 2);
+          Debug.debug("Checking RTE "+rte+" --> provides: "+MyUtil.arrayToString(provides), 2);
           Debug.debug("Against: "+MyUtil.arrayToString(rtes), 2);
           for(int j=0; j<provides.length; ++j){
             if(Util.arrayContains(rtes, provides[j])){
+              Debug.debug("OK: "+provides[j]+" provided", 2);
               ++providesHits;
             }
           }
           if(providesHits>maxProvidesHits){
-            Debug.debug("Setting OS of job "+job.getIdentifier()+" to "+rte+" : "+providesHits, 2);
             maxProvidesHits = providesHits;
-            job.setOpSys(rte);
-            job.setOpSysRTE(rte);
+            vmRte = rte;
           }
         }
         catch(Exception e){
           logFile.addMessage("getProvides failed for "+rtes[i], e);
         }
       }
+    }
+    if(vmRte!=null && maxProvidesHits==rtes.length){
+      Debug.debug("Setting OS of job "+job.getIdentifier()+" to "+vmRte+" : "+providesHits, 2);
+      job.setOpSys(vmRte);
+      job.setOpSysRTE(vmRte);
     }
   }
 
