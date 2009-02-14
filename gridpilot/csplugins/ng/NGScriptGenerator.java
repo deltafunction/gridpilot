@@ -303,12 +303,19 @@ public class NGScriptGenerator extends ScriptGenerator{
       // core script call
       writeBlock(bufScript, "core script call", 1, "# ");
       
-      // workaround for bug in NG on Condor
-      writeLine(bufScript, "chmod +x "+shortScriptName);
-      line = "./"+shortScriptName ;
-      for(int i=0; i<formalParam.length; ++i)
+      // if the executable is not in the working directory,
+      // we call it and assume it's on the path
+      line = shortScriptName;
+      for(int i=0; i<formalParam.length; ++i){
         line += " $p"+(i+1);
-      writeLine(bufScript, line);
+      }
+      writeLine(bufScript, "if [ -e "+shortScriptName+" ]; then");
+      // workaround for bug in NG on Condor
+      writeLine(bufScript, "  chmod +x "+shortScriptName);
+      writeLine(bufScript, "  ./"+line);
+      writeLine(bufScript, "else");
+      writeLine(bufScript, "  "+line);
+      writeLine(bufScript, "fi");
       writeLine(bufScript, "");
       
       // Print the size and md5sum of the output file for validation to pick up
