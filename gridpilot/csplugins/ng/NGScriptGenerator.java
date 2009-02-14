@@ -93,7 +93,10 @@ public class NGScriptGenerator extends ScriptGenerator{
       else{
         writeLine(bufXRSL,"(stderr=stderr)");
       }
-      writeLine(bufXRSL,"(executables=\""+shortExeFileName+"\" \""+shortScriptName+"\")");
+      if(!MyUtil.onWindows() && scriptFileName.startsWith("/") ||
+          MyUtil.onWindows() && scriptFileName.matches("^\\w:.*")){
+        writeLine(bufXRSL,"(executables=\""+shortExeFileName+"\" \""+shortScriptName+"\")");
+      }
       //writeLine(bufXRSL,"(executables=\""+shortScriptName+"\")");
       if(cpuTime!=null && !cpuTime.equals("")){
         writeLine(bufXRSL,"(cpuTime=\""+cpuTime+"\")(*endCpu*)");
@@ -107,7 +110,10 @@ public class NGScriptGenerator extends ScriptGenerator{
       if(scriptFileName.startsWith("file:")){
         writeLine(bufXRSL,"(\""+shortScriptName+"\" \""+/*shortScriptName+*/"\")");
       }
-      else if(!scriptFileName.startsWith("/")){
+      // A script file that's unqualified is assumed to be present on the
+      // path on the execution node and does not need to be uploaded.
+      else if(!MyUtil.onWindows() && scriptFileName.startsWith("/") ||
+          MyUtil.onWindows() && scriptFileName.matches("^\\w:.*")){
         writeLine(bufXRSL,"(\""+shortScriptName+"\" \""+scriptFileName+"\")");
       }
       

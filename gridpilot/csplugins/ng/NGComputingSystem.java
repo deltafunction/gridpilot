@@ -885,7 +885,7 @@ public class NGComputingSystem implements MyComputingSystem{
         res[0] = LocalStaticShell.readFile(stdOutFile);
        }
        catch(IOException ae){
-         error = "Exception during getCurrentOutputs (stdout) for " + job.getName() + ":" + job.getJobId() + ":\n" +
+         error = "Exception during getCurrentOutputs (stdout) for " + job.getName() + " --> " + job.getJobId() + "\n" +
          "\nException: " + ae.getMessage();
          res[0] = "*** Could not read stdout ***\n Probably the job has not started yet, " +
                 "did never start or got deleted.";
@@ -1130,7 +1130,7 @@ public class NGComputingSystem implements MyComputingSystem{
   // Copy stdout+stderr to local files
   private boolean syncCurrentOutputs(MyJobInfo job){
     try{
-      Debug.debug("Syncing " + job.getName() + ":" + job.getJobId(), 3);
+      Debug.debug("Syncing " + job.getName() + " --> " + job.getJobId(), 3);
       ARCGridFTPJob gridJob = getGridJob(job);
       
       String dirName = runDir(job);
@@ -1164,18 +1164,18 @@ public class NGComputingSystem implements MyComputingSystem{
       
       if(getFromfinalDest || job.getCSStatus().equals(NG_STATUS_FINISHED) ||
           job.getDBStatus()==DBPluginMgr.UNDECIDED){
-        if(getFromfinalDest || !finalStdOut.startsWith("file:")){
+        //if(getFromfinalDest || !finalStdOut.startsWith("file:")){
           Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
               " from final destination "+finalStdOut+" to " +
               MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp())), 3);
           transferControl.download(finalStdOut, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
-        }
-        if(getFromfinalDest || !finalStdErr.startsWith("file:")){
+        //}
+        //if(getFromfinalDest || !finalStdErr.startsWith("file:")){
           Debug.debug("Downloading stderr of: " + job.getName() + ":" + job.getJobId()+
               " from final destination "+finalStdErr+" to " +
               MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp())), 3);
           transferControl.download(finalStdErr, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp()))));
-        }
+        //}
       }
     }
     catch(Exception ae){
