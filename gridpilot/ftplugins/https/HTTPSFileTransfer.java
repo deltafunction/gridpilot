@@ -523,6 +523,14 @@ public class HTTPSFileTransfer implements FileTransfer {
             // if the file is there, but not up to date, move it out of the way
             try{
               destinationFile.renameTo(new File(destinationFile.getAbsolutePath()+".old"));
+              // If it's a gzipped image file that's been unpacked, remove the unpacked file
+              if(destinationFile.getName().endsWith(".gz")){
+                File gunzippedFile =new File(
+                    destinationFile.getAbsolutePath().substring(0, destinationFile.getAbsolutePath().length()-3));
+                if(gunzippedFile.exists()){
+                  gunzippedFile.delete();
+                }
+              }
             }
             catch(Exception e){
             }
