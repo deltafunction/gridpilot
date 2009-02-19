@@ -274,6 +274,8 @@ public class ExportImport {
     GridPilot.addTmpFile(tmpDir.getAbsolutePath(), tmpDir);
     // Download to the tmp dir
     GridPilot.getClassMgr().getTransferControl().download(importFile, tmpDir);
+    // Give the file system a few seconds...
+    Thread.sleep(10000);
     // Unpack
     String gzipFileName = importFile.replaceFirst("^.*/([^/]+)$", "$1");
     String tarFileName = gzipFileName.replaceFirst("\\.gz$", "");
