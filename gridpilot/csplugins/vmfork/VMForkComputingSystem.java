@@ -49,13 +49,18 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     minVmMB = 256;
     // Just some reasonable number
     defaultJobMB = 256;
-    // Just some reasonable number (seconds)
-    int bootTimeout = 240;
+    GridPilot.splashShow("Setting up VMFork");
+    ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
+    // Just some reasonable number (seconds). Notice that the first boot of a VM typically
+    // will take a long time, because the image will need to be downloaded and duplicated.
+    int bootTimeout = 700;
+    String bt = configFile.getValue(csName, "boot timeout");
+    if(bt!=null && !bt.equals("")){
+      bootTimeout = Integer.parseInt(bt);
+    }
     defaultVmMB = minVmMB+defaultJobMB;
     // No need to run more than one VM - this CS is just for testing a single job before running it on GridFactory.
     maxMachines = 1;
-    GridPilot.splashShow("Setting up VMFork");
-    ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     shells = new HashMap<String, Shell>();
     // Fill hosts with nulls and assign values as jobs are submitted.
     hosts = new String [maxMachines];
