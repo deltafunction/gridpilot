@@ -229,7 +229,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     for(int i=0; i<outputFileNames.length; ++i){
       fileName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
       if(fileName.startsWith("file:")){
-        shellMgr.deleteFile(fileName);
+        shell.deleteFile(fileName);
       }
       else{
         remoteFiles.add(fileName);
@@ -251,7 +251,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
       try{
         if(finalStdOut.startsWith("file:")){
-          shellMgr.deleteFile(finalStdOut);
+          shell.deleteFile(finalStdOut);
         }
         else{
           transferControl.deleteFiles(new String [] {finalStdOut});
@@ -269,7 +269,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
       try{
         if(finalStdErr.startsWith("file:")){
-          shellMgr.deleteFile(finalStdErr);
+          shell.deleteFile(finalStdErr);
         }
         else{
           transferControl.deleteFiles(new String [] {finalStdErr});

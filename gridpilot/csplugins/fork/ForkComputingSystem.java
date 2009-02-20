@@ -45,7 +45,7 @@ public class ForkComputingSystem implements MyComputingSystem{
 
   protected LogFile logFile;
   protected String csName;
-  protected Shell shellMgr;
+  protected Shell shell;
   protected String workingDir;
   protected String commandSuffix;
   protected String defaultUser;
@@ -73,7 +73,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     GridPilot.splashShow("Setting up shells...");
     
     try{
-      shellMgr = GridPilot.getClassMgr().getShellMgr(csName);
+      shell = GridPilot.getClassMgr().getShellMgr(csName);
     }
     catch(Exception e){
       Debug.debug("WARNING: could not get shell manager: "+e.getMessage(), 1);
@@ -82,13 +82,13 @@ public class ForkComputingSystem implements MyComputingSystem{
       }
     }
     
-    if(shellMgr.getOS().toLowerCase().startsWith("windows")){
+    if(shell.getOS().toLowerCase().startsWith("windows")){
       basicOSRTES = new String [] {"Windows"};
     }
     
     defaultUser = configFile.getValue(GridPilot.topConfigSection, "default user");
     try{
-      userName = shellMgr.getUserName();
+      userName = shell.getUserName();
     }
     catch(Exception e){
       e.printStackTrace();
@@ -99,20 +99,20 @@ public class ForkComputingSystem implements MyComputingSystem{
       workingDir = "~";
     }
     if(MyUtil.onWindows() &&
-        shellMgr.isLocal() && workingDir!=null && workingDir.startsWith("~")){
+        shell.isLocal() && workingDir!=null && workingDir.startsWith("~")){
       workingDir = System.getProperty("user.home")+workingDir.substring(1);
     }
     if(workingDir!=null && workingDir.endsWith("/") || workingDir.endsWith("\\")){
       workingDir = workingDir.substring(0, workingDir.length()-1);
     }
-    if(workingDir!=null && !shellMgr.existsFile(workingDir)){
+    if(workingDir!=null && !shell.existsFile(workingDir)){
       logFile.addInfo("Working directory "+workingDir+" does not exist, creating.");
-      shellMgr.mkdirs(workingDir);
+      shell.mkdirs(workingDir);
     }
     Debug.debug("Using workingDir "+workingDir, 2);
     
     commandSuffix = ".sh";
-    if(shellMgr.isLocal() && MyUtil.onWindows()){
+    if(shell.isLocal() && MyUtil.onWindows()){
       commandSuffix = ".bat";
     }
     
@@ -120,7 +120,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     if(runtimeDirectory!=null && runtimeDirectory.startsWith("~")){
       // Expand ~
       if(MyUtil.onWindows() &&
-          shellMgr.isLocal()){
+          shell.isLocal()){
         runtimeDirectory = System.getProperty("user.home")+runtimeDirectory.substring(1);
       }
       else{
@@ -140,9 +140,9 @@ public class ForkComputingSystem implements MyComputingSystem{
     GridPilot.splashShow("Setting up RTEs for "+csName);
     Debug.debug("Setting up RTEs for "+csName, 2);
     if(runtimeDirectory!=null){
-      if(!shellMgr.existsFile(runtimeDirectory)){
+      if(!shell.existsFile(runtimeDirectory)){
         logFile.addInfo("Runtime directory "+runtimeDirectory+" does not exist, creating.");
-        shellMgr.mkdirs(runtimeDirectory);
+        shell.mkdirs(runtimeDirectory);
       }
     }
     transformationDirectory = configFile.getValue(csName, "transformation directory");   
@@ -180,7 +180,7 @@ public class ForkComputingSystem implements MyComputingSystem{
         continue;
       }
       try{
-        scanRTEDir(localDBMgr, thisCs, shellMgr);
+        scanRTEDir(localDBMgr, thisCs, shell);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -201,7 +201,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     HashSet runtimes = mgr.listFilesRecursively(runtimeDirectory);
     String [] expandedRuntimeDirs = mgr.listFiles(MyUtil.clearFile(runtimeDirectory));
     String dirName = null;
-    if(shellMgr.isLocal() && MyUtil.onWindows()){
+    if(shell.isLocal() && MyUtil.onWindows()){
       dirName = runtimeDirectory.replaceFirst("^.*\\\\([^\\\\]+)$", "$1");
     }
     else{
@@ -213,7 +213,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       return;
     }
     String expandedRuntimeDir = null;
-    if(shellMgr.isLocal() && MyUtil.onWindows()){
+    if(shell.isLocal() && MyUtil.onWindows()){
       expandedRuntimeDir = expandedRuntimeDirs[0].replaceFirst("^(.*)\\\\[^\\\\]+$", "$1");
       expandedRuntimeDir = expandedRuntimeDir.replaceFirst("^(.*)\\\\[^\\\\]+\\$", "$1")+"\\";
     }
@@ -435,10 +435,10 @@ public class ForkComputingSystem implements MyComputingSystem{
     ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     try{
       ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job));
-      if(!scriptGenerator.createWrapper(shellMgr, (MyJobInfo) job, job.getName()+commandSuffix)){
+      if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, job.getName()+commandSuffix)){
         throw new IOException("Could not create wrapper script.");
       }
-      String id = shellMgr.submit(MyUtil.clearFile(cmd),
+      String id = shell.submit(MyUtil.clearFile(cmd),
                                   runDir(job),
                                   MyUtil.clearFile(stdoutFile),
                                   MyUtil.clearFile(stderrFile),
@@ -458,7 +458,7 @@ public class ForkComputingSystem implements MyComputingSystem{
 
   public void updateStatus(Vector<JobInfo> jobs){
     for(int i=0; i<jobs.size(); ++i)
-      updateStatus((MyJobInfo) jobs.get(i), shellMgr);
+      updateStatus((MyJobInfo) jobs.get(i), shell);
   }
   
   protected void updateStatus(MyJobInfo job, Shell shellMgr){
@@ -521,7 +521,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     for(Enumeration en=jobsToKill.elements(); en.hasMoreElements();){
       try{
         job = (MyJobInfo) en.nextElement();
-        shellMgr.killProcess(job.getJobId(), logFile);
+        shell.killProcess(job.getJobId(), logFile);
       }
       catch(Exception e){
         errors.add(e.getMessage());
@@ -555,7 +555,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     for(int i=0; i<outputFileNames.length; ++i){
       fileName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
       if(fileName.startsWith("file:")){
-        shellMgr.deleteFile(fileName);
+        shell.deleteFile(fileName);
       }
       else{
         remoteFiles.add(fileName);
@@ -577,7 +577,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
       try{
         if(finalStdOut.startsWith("file:")){
-          shellMgr.deleteFile(finalStdOut);
+          shell.deleteFile(finalStdOut);
         }
         else{
           transferControl.deleteFiles(new String [] {finalStdOut});
@@ -595,7 +595,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
       try{
         if(finalStdErr.startsWith("file:")){
-          shellMgr.deleteFile(finalStdErr);
+          shell.deleteFile(finalStdErr);
         }
         else{
           transferControl.deleteFiles(new String [] {finalStdErr});
@@ -612,7 +612,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     }
 
     try{
-      shellMgr.deleteDir(runDir);
+      shell.deleteDir(runDir);
     }
     catch(Exception ioe){
       error = "Exception during cleanup of job " + job.getName()+ "\n" +
@@ -675,7 +675,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
 
   public String getFullStatus(JobInfo job){
-    if(shellMgr.isRunning(job.getJobId())){
+    if(shell.isRunning(job.getJobId())){
       return "Job #"+job.getJobId()+" is running.";
     }
     else{
@@ -685,10 +685,10 @@ public class ForkComputingSystem implements MyComputingSystem{
 
   public String[] getCurrentOutput(JobInfo job) {
     try{
-      String stdOutText = shellMgr.readFile(job.getOutTmp());
+      String stdOutText = shell.readFile(job.getOutTmp());
       String stdErrText = "";
-      if(shellMgr.existsFile(job.getErrTmp())){
-        stdErrText = shellMgr.readFile(job.getErrTmp());
+      if(shell.existsFile(job.getErrTmp())){
+        stdErrText = shell.readFile(job.getErrTmp());
       }
       return new String [] {stdOutText, stdErrText};
     }
@@ -703,12 +703,12 @@ public class ForkComputingSystem implements MyComputingSystem{
   public String[] getScripts(JobInfo job) {
     String jobScriptFile = runDir(job)+"/"+job.getName()+commandSuffix;
     // In case this is not a local shell, first get the script to a local tmp file.
-    if(!shellMgr.isLocal()){
+    if(!shell.isLocal()){
       try{
         File tmpFile = File.createTempFile(/*prefix*/MyUtil.getTmpFilePrefix()+"-Fork-", /*suffix*/"");
         // have the file deleted on exit
         GridPilot.addTmpFile(tmpFile.getAbsolutePath(), tmpFile);
-        shellMgr.download(jobScriptFile, tmpFile.getAbsolutePath());
+        shell.download(jobScriptFile, tmpFile.getAbsolutePath());
         jobScriptFile = tmpFile.getAbsolutePath();
       }
       catch(Exception e){
@@ -744,10 +744,10 @@ public class ForkComputingSystem implements MyComputingSystem{
     Debug.debug("Post processing job " + job.getName(), 2);
     String runDir = runDir(job);
     boolean ok = true;
-    if(copyToFinalDest((MyJobInfo) job, shellMgr)){
+    if(copyToFinalDest((MyJobInfo) job, shell)){
       // Delete the run directory
       try{
-        ok = shellMgr.deleteDir(runDir);
+        ok = shell.deleteDir(runDir);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -767,24 +767,24 @@ public class ForkComputingSystem implements MyComputingSystem{
   public boolean preProcess(JobInfo job) throws Exception{
     // create the run directory
     try{
-      if(!shellMgr.existsFile(runDir(job))){
-        shellMgr.mkdirs(runDir(job));
+      if(!shell.existsFile(runDir(job))){
+        shell.mkdirs(runDir(job));
       }
     }
     catch(Exception e){
       logFile.addMessage("ERROR: could not create run directory for job.", e);
       return false;
     }    
-    if(!shellMgr.isLocal()){
+    if(!shell.isLocal()){
       try{
-        writeUserProxy(shellMgr);
+        writeUserProxy(shell);
       }
       catch(Exception e){
         logFile.addMessage("WARNING: could not write user proxy.", e);
       }
     }
-    return setupJobRTEs((MyJobInfo) job, shellMgr) &&
-       setRemoteOutputFiles((MyJobInfo) job) && getInputFiles((MyJobInfo) job, shellMgr);
+    return setupJobRTEs((MyJobInfo) job, shell) &&
+       setRemoteOutputFiles((MyJobInfo) job) && getInputFiles((MyJobInfo) job, shell);
   }
   
   protected void writeUserProxy(Shell shellMgr) throws IOException{
@@ -1118,7 +1118,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
   
   public Shell getShell(JobInfo job){
-    return shellMgr;
+    return shell;
   }
   
   public String getError(){
