@@ -208,19 +208,22 @@ public class ForkScriptGenerator extends ScriptGenerator{
        in principle preventing multiple output files per job, but as it is now,
        only the first of the output files will be registered. */
     // TODO: reconsider
-    writeBlock(buf, "Metadata", ScriptGenerator.TYPE_SUBSECTION, commentStart);
-    writeLine(buf, "END_TIME=`date '+%s'`");
-    writeLine(buf, "echo +" +
-        gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG +
-        "cpuSeconds: $(( END_TIME - START_TIME ))");
-    for(int i=0; i<outputFiles.length; ++i){
-      writeLine(buf, "echo "+
-          gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG+
-          ": outputFileBytes = `du -b "+outputFiles[i][0]+" | awk '{print $1}'`");
-      writeLine(buf, "echo "+
-          gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG+
-          ": outputFileChecksum = md5:`md5sum "+outputFiles[i][0]+" | awk '{print $1}'`");
-      break;
+    // TODO: implement metadata on Windows
+    if(notOnWindows){
+      writeBlock(buf, "Metadata", ScriptGenerator.TYPE_SUBSECTION, commentStart);
+      writeLine(buf, "END_TIME=`date '+%s'`");
+      writeLine(buf, "echo +" +
+          gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG +
+          "cpuSeconds: $(( END_TIME - START_TIME ))");
+      for(int i=0; i<outputFiles.length; ++i){
+        writeLine(buf, "echo "+
+            gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG+
+            ": outputFileBytes = `du -b "+outputFiles[i][0]+" | awk '{print $1}'`");
+        writeLine(buf, "echo "+
+            gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG+
+            ": outputFileChecksum = md5:`md5sum "+outputFiles[i][0]+" | awk '{print $1}'`");
+        break;
+      }
     }
 
     try{
