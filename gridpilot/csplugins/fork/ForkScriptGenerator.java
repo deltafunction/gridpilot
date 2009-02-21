@@ -212,9 +212,9 @@ public class ForkScriptGenerator extends ScriptGenerator{
     if(notOnWindows){
       writeBlock(buf, "Metadata", ScriptGenerator.TYPE_SUBSECTION, commentStart);
       writeLine(buf, "END_TIME=`date '+%s'`");
-      writeLine(buf, "echo +" +
+      writeLine(buf, "echo " +
           gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG +
-          "cpuSeconds: $(( END_TIME - START_TIME ))");
+          ": cpuSeconds = $(( END_TIME - START_TIME ))");
       for(int i=0; i<outputFiles.length; ++i){
         writeLine(buf, "echo "+
             gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG+

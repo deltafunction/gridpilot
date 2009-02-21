@@ -335,9 +335,9 @@ public class NGScriptGenerator extends ScriptGenerator{
          only the first of the output files will be registered. */
       writeBlock(bufScript, "Metadata", ScriptGenerator.TYPE_SUBSECTION);
       writeLine(bufScript, "END_TIME=`date '+%s'`");
-      writeLine(bufScript, "echo +" +
+      writeLine(bufScript, "echo " +
           gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG +
-          "cpuSeconds: $(( END_TIME - START_TIME ))");
+          ": cpuSeconds = $(( END_TIME - START_TIME ))");
       for(int i=0; i<outputFileNames.length; ++i){
         writeLine(bufScript, "echo "+gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG+
             ": outputFileBytes = `du -b "+outputFileNames[i]+" | awk '{print $1}'`");
