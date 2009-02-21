@@ -174,6 +174,10 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
       job.setRTEs(MyUtil.removeBaseSystemAndVM(rtes, rteMgr.getProvides(job.getOpSysRTE())));
     }
     job.setMemory(defaultJobMB);
+    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
+    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
+    job.setStdoutDest(finalStdOut);
+    job.setStderrDest(finalStdErr);
     
     if(!pullMgr.checkRequirements(job, virtEnforce)){
       throw new Exception("Requirement(s) could not be satisfied. "+job);

@@ -323,7 +323,7 @@ public class JobValidation{
         continue;
       }
       String attr = line.substring(tagLen+1, indexIs).trim();
-      String val = line.substring(indexIs+1);
+      String val = line.substring(indexIs+1).trim();
       if(attr.length()==0 || val.length()==0){
         logFile.addMessage("ERROR: results of extraction inconsistent for job "
                            + job.getName() + " at line " + lineNr + " : \n" +
