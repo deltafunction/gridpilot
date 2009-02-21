@@ -931,6 +931,13 @@ public class ForkComputingSystem implements MyComputingSystem{
         fileName = inputFiles[i].substring(lastSlash + 1);
         urlDir = inputFiles[i].substring(0, lastSlash + 1);
       }
+      else{
+        lastSlash = inputFiles[i].lastIndexOf("/");
+        if(lastSlash>-1){
+          fileName = inputFiles[i].substring(lastSlash + 1);
+          urlDir = inputFiles[i].substring(0, lastSlash + 1);
+        }
+      }
       if(inputFiles[i]!=null && inputFiles[i].trim().length()!=0){
         // Remote shell
         if(!thisShellMgr.isLocal()){
