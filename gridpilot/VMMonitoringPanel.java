@@ -155,6 +155,7 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
         }
         catch(Exception e1){
            e1.printStackTrace();
+           GridPilot.getClassMgr().getLogFile().addMessage("Could not lauch VM.", e1);
         }
       }
     });
