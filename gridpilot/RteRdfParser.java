@@ -8,9 +8,8 @@ import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.jobrun.RTECatalog;
 import gridfactory.common.jobrun.RTECatalog.BaseSystem;
+import gridfactory.common.jobrun.RTECatalog.InstancePackage;
 import gridfactory.common.jobrun.RTECatalog.MetaPackage;
-import gridfactory.common.jobrun.RTECatalog.TarPackage;
-
 
 /**
  * This class provides methods for parsing the KnowARC RDF/XML format
@@ -86,7 +85,7 @@ public class RteRdfParser {
     String [] fields = dbpluginMgr.getFieldnames("runtimeEnvironment");
     MetaPackage pack = null;
     int i = 0;
-    TarPackage tarPack = null;
+    InstancePackage instPack = null;
     HashSet records = new HashSet();
     String dep;
     BaseSystem bs;
@@ -98,11 +97,11 @@ public class RteRdfParser {
         for(int j=0; j<pack.instances.length; ++j){
           DBRecord rec = mkRecFromMetaPackage(fields, MyUtil.getNameField(dbpluginMgr.getDBName(), "runtimeEnvironment"),
               csName, pack);
-          tarPack = rteCatalog.getInstancePackage(pack.instances[j]);
-          if(tarPack!=null){
-            Debug.debug("Instance: "+pack.instances[j]+"-->"+tarPack.id, 3);
+          instPack = rteCatalog.getInstancePackage(pack.instances[j]);
+          if(instPack!=null){
+            Debug.debug("Instance: "+pack.instances[j]+"-->"+instPack.id, 3);
             // We always depend on the base system
-            bs = rteCatalog.getBaseSystem(tarPack.baseSystem);
+            bs = rteCatalog.getBaseSystem(instPack.baseSystem);
             if(bs==null || bs.name==null || bs.name.equals("")){
               GridPilot.getClassMgr().getLogFile().addMessage("WARNING: instance "+pack.instances[j]+" has no BaseSystem defined");
               //continue;
@@ -113,9 +112,9 @@ public class RteRdfParser {
                       )/*.replaceAll("'([^']+)'", "$1")*/.trim());
             }
             // Optional other dependencies
-            for(int k=0; k<tarPack.depends.length; ++k){
+            for(int k=0; k<instPack.depends.length; ++k){
               try{
-                dep = tarPack.depends[k];
+                dep = instPack.depends[k];
                 if(dep!=null && !dep.trim().equals("")){
                   try{
                     dep = rteCatalog.getName(dep);
@@ -124,14 +123,14 @@ public class RteRdfParser {
                     // dep was probably already a name - ignore
                   }
                   if(dep==null || dep.trim().equals("")){
-                    dep = tarPack.depends[k];
+                    dep = instPack.depends[k];
                   }
                   if(MyUtil.isNumeric(dep)){
                     GridPilot.getClassMgr().getLogFile().addInfo("WARNING: The package "+pack.name+
-                        " is not installable. "+tarPack);
+                        " is not installable. "+instPack);
                     continue;
                   }
-                  Debug.debug("found depends: "+tarPack.depends[k]+"-->"+dep, 2);
+                  Debug.debug("found depends: "+instPack.depends[k]+"-->"+dep, 2);
                   rec.setValue("depends",
                       ((rec.getValue("depends")!=null?rec.getValue("depends"):"")+" "+
                           dep)/*.replaceAll("'([^']+)'", "$1")*/.trim());
@@ -142,8 +141,8 @@ public class RteRdfParser {
               }
             }
             rec.setValue("url", ((rec.getValue("url")!=null?rec.getValue("url"):"")+" "+
-                (tarPack.url!=null && (rec.getValue("url")==null ||
-                    !tarPack.url.equals(rec.getValue("url")))?tarPack.url:"")).replaceAll("'([^']+)'", "$1").trim());
+                (instPack.url!=null && (rec.getValue("url")==null ||
+                    !instPack.url.equals(rec.getValue("url")))?instPack.url:"")).replaceAll("'([^']+)'", "$1").trim());
             
             if(rec.getValue("url")==null || rec.getValue("url").equals("")){
               GridPilot.getClassMgr().getLogFile().addInfo("WARNING: package "+pack.name+" has no URL defined.");
@@ -155,7 +154,7 @@ public class RteRdfParser {
           }
           else{
             GridPilot.getClassMgr().getLogFile().addInfo("WARNING: The package "+pack.name+
-                " is not installable. "+tarPack);
+                " is not installable. "+instPack);
           }
         }
       }

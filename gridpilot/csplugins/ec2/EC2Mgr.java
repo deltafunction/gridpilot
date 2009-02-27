@@ -468,4 +468,14 @@ public class EC2Mgr {
     return list;
   }
 
+  /**
+   * Create an EBS volume from a given snapshot and attach it to an AMI
+   * instance.
+   * @param inst the AMI instance in question
+   * @param snapshotID ID of EBS snapshot
+   */
+  public void attachVolumeFromSnapshot(Instance inst, String snapshotID) {
+    // TODO
+  }
+
 }

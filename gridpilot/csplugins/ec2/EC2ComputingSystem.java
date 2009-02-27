@@ -29,6 +29,7 @@ import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.Shell;
+import gridfactory.common.jobrun.RTECatalog.EBSSnapshotPackage;
 import gridpilot.DBPluginMgr;
 import gridpilot.MyComputingSystem;
 import gridpilot.GridPilot;
@@ -454,6 +455,17 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         ". Falling back to "+fallbackAmiId);
     return fallbackAmiId;
   }
+  
+  /**
+   * Find snapshots of software volumes to attach to a given AMI
+   * by querying the software catalog.
+   * @param amiId ID of an AMI
+   * @return a list of snapshot identifiers
+   */
+  private EBSSnapshotPackage[] findEBSSnapshots(String amiId){
+    // TODO
+    return null;
+  }
 
   private String getAmiId(String rteName) throws EC2Exception, IOException {
     List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, true);
@@ -703,7 +715,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     // then try to boot an instance
     String amiID = null;
+    EBSSnapshotPackage [] ebSnapshots = null;
     for(int i=0; i<hosts.length; ++i){
+      ebSnapshots = null;
       try{
         if(hosts[i]!=null){
           continue;
@@ -747,6 +761,14 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           }
           Thread.sleep(5000);
         }
+        // If the VM RTE has any dependencies on EBSSnapshots, create EBS volume and mount it
+        ebSnapshots = findEBSSnapshots(amiID);
+        if(ebSnapshots!=null && ebSnapshots.length>0){
+          for(int j=0; j<ebSnapshots.length; ++j){
+            ec2mgr.attachVolumeFromSnapshot(inst, ebSnapshots[j].snapshotId);
+            mountEBSVolume(inst, ebSnapshots[j]);
+          }
+        }
         hosts[i] = inst.getDnsName();
         Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
         submittingHostJobs.put(hosts[i], new HashSet());
@@ -758,6 +780,10 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       }
     }
     return null;
+  }
+
+  private void mountEBSVolume(Instance inst, EBSSnapshotPackage package1) {
+    // TODO
   }
 
 }

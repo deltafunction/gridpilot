@@ -12,7 +12,7 @@ import gridfactory.common.TransferInfo;
 import gridfactory.common.TransferStatusUpdateControl;
 import gridfactory.common.Util;
 import gridfactory.common.jobrun.RTEMgr;
-import gridfactory.common.jobrun.RTECatalog.TarPackage;
+import gridfactory.common.jobrun.RTECatalog.InstancePackage;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -1647,7 +1647,7 @@ public class MyUtil extends gridfactory.common.Util{
     Vector<String> rtes = new Vector<String>();
     Collections.addAll(rtes, rteNames);
     Vector<String> deps = rteMgr.getRteDepends(rtes, job.getOpSys());
-    TarPackage tp = null;
+    InstancePackage ip = null;
     String name = null;
     String os = null;
     boolean osEntry = true;
@@ -1671,8 +1671,8 @@ public class MyUtil extends gridfactory.common.Util{
         GridPilot.getClassMgr().getLogFile().addInfo("Reusing existing installation of "+name);
         return;
       }
-      tp = rteMgr.getRteTarPackage(name, os);
-      rteMgr.getRTEInstaller().install(name, tp, shell);
+      ip = rteMgr.getRteInstancePackage(name, os);
+      rteMgr.getRTEInstaller().install(name, ip, shell);
     }
   }
 
