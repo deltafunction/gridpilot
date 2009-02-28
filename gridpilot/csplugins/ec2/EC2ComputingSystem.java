@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.Vector;
 
 import javax.swing.JOptionPane;
 
@@ -29,7 +31,11 @@ import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.Shell;
+import gridfactory.common.jobrun.RTECatalog;
+import gridfactory.common.jobrun.RTEMgr;
 import gridfactory.common.jobrun.RTECatalog.EBSSnapshotPackage;
+import gridfactory.common.jobrun.RTECatalog.InstancePackage;
+import gridfactory.common.jobrun.RTECatalog.MetaPackage;
 import gridpilot.DBPluginMgr;
 import gridpilot.MyComputingSystem;
 import gridpilot.GridPilot;
@@ -48,9 +54,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   // the user to use for running jobs on the virtual machines
   private static String USER = "root";
   private int maxMachines = 0;
+  private HashMap<String, ArrayList<DBRecord>> allEC2RTEs;
 
   public EC2ComputingSystem(String _csName) throws Exception {
     super(_csName);
+    
+    allEC2RTEs = null;
     
     basicOSRTES = new String [] {"Linux"/*, "Windows"*/
         /* Windows instances allow only connections via VRDP - and to connect a keypair must be associated. */};
@@ -334,14 +343,14 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   }
 
   /**
-   * Finds a Shell for the host/user/password of the job.
-   * If the shellMgr is dead it is attempted to start a new one.
-   * If no shellMgr exists for this host, a new one is created.
-   * @param job
+   * Finds a Shell for a given host.
+   * If the Shell is dead it is attempted to start a new one.
+   * If no Shell exists for this host, a new one is created.
+   * @param host a string identifying a host
    * @return a Shell
    * @throws JSchException 
    */
-  protected Shell getShellMgr(String host) throws JSchException{
+  protected Shell getShell(String host) throws JSchException{
     Shell mgr = null;
     /*
      * If there is no keyFile set, this is a VM reused from a previous GridPilot session.
@@ -406,7 +415,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     int maxR = 1;
     int submitting = 0;
     maxR = 1;
-    mgr = getShellMgr(host);
+    mgr = getShell(host);
     if(maxJobs!=null && maxJobs.length>i && maxJobs[i]!=null){
       maxR = Integer.parseInt(maxJobs[i]);
     }
@@ -419,25 +428,23 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   
   private String findAmiId(JobInfo job, String fallbackAmiId) {
     DBPluginMgr dbMgr;
-    DBRecord rte;
-    ArrayList<DBRecord> recs;
-    String nameField;
-    String rteName;
-    String amiId = null;
     try{
-      dbMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
-      nameField = MyUtil.getNameField(dbMgr.getDBName(), "runtimeEnvironment");
+      dbMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());    
     }
     catch(Exception e){
       logFile.addMessage("ERROR: could not load database", e);
       return null;
     }
+    String nameField = MyUtil.getNameField(dbMgr.getDBName(), "runtimeEnvironment");
+    if(allEC2RTEs==null){
+      findAllEC2RTEs(dbMgr);
+    }
+    DBRecord rte;
+    String rteName;
+    String amiId;
     try{
-      // Get a list of all RTEs with computingSystem EC2.
-      // These will all correspond to an AMI and each provide
-      // some software RTEs.
-      recs = getAllEC2RTEs(dbMgr);
-      for(Iterator<DBRecord> it=recs.iterator(); it.hasNext();){
+      for(Iterator<DBRecord> it=allEC2RTEs.get(dbMgr.getDBName()).iterator(); it.hasNext();){
+        amiId = null;
         rte = it.next();
         rteName = (String) rte.getValue(nameField);
         if(checkProvides(job, rte, rteName)){
@@ -456,17 +463,6 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return fallbackAmiId;
   }
   
-  /**
-   * Find snapshots of software volumes to attach to a given AMI
-   * by querying the software catalog.
-   * @param amiId ID of an AMI
-   * @return a list of snapshot identifiers
-   */
-  private EBSSnapshotPackage[] findEBSSnapshots(String amiId){
-    // TODO
-    return null;
-  }
-
   private String getAmiId(String rteName) throws EC2Exception, IOException {
     List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, true);
     ImageDescription desc;
@@ -508,7 +504,14 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return true;
   }
 
-  private ArrayList<DBRecord> getAllEC2RTEs(DBPluginMgr dbMgr) {
+  /**
+   * Get a list of all RTEs with computingSystem EC2.
+   * These will all correspond to an AMI and each provide
+   * some software RTEs.
+   * @param dbMgr
+   */
+     
+  private void findAllEC2RTEs(DBPluginMgr dbMgr) {
     DBResult rtes = dbMgr.getRuntimeEnvironments();
     DBRecord rte;
     ArrayList<DBRecord> ret = new ArrayList();
@@ -524,7 +527,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         ret.add(rte);
       }
     }
-    return ret;
+    allEC2RTEs.put(dbMgr.getDBName(), ret);
   }
 
   /**
@@ -715,9 +718,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     // then try to boot an instance
     String amiID = null;
-    EBSSnapshotPackage [] ebSnapshots = null;
+    EBSSnapshotPackage [] ebsSnapshots = null;
     for(int i=0; i<hosts.length; ++i){
-      ebSnapshots = null;
+      ebsSnapshots = null;
       try{
         if(hosts[i]!=null){
           continue;
@@ -762,13 +765,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           Thread.sleep(5000);
         }
         // If the VM RTE has any dependencies on EBSSnapshots, create EBS volume and mount it
-        ebSnapshots = findEBSSnapshots(amiID);
-        if(ebSnapshots!=null && ebSnapshots.length>0){
-          for(int j=0; j<ebSnapshots.length; ++j){
-            ec2mgr.attachVolumeFromSnapshot(inst, ebSnapshots[j].snapshotId);
-            mountEBSVolume(inst, ebSnapshots[j]);
-          }
-        }
+        ebsSnapshots = getEBSSnapshots(amiID);
+        mountEBSVolumes(inst, ebsSnapshots);
         hosts[i] = inst.getDnsName();
         Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
         submittingHostJobs.put(hosts[i], new HashSet());
@@ -781,9 +779,97 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     return null;
   }
+  
+  /**
+   * Convert an integer to any base.
+   * The base can be in the range 2-26.
+   * Each cipher of the resulting number is represented by a letter A-Z -
+   * i.e. 1 is represented by A, 2 by B, etc.
+   * From http://www.devx.com/vb2themax/Tip/19082
+   * @param number the integer in question - starting with 1
+   * @param base the base of the number system in question
+   * @return the number in the base in question
+   * @throws Exception 
+   */
+  private static String dec2any(int number, int base) throws Exception{
+    String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    // check base
+    if(base<2 || base>26){
+      throw new Exception("base must be between 2 and 26");
+    }
+    //get the list of valid digits
+    String digits = alphabet.substring(0, base);
+    // convert to the other base
+    int digitValue;
+    String ret = "";
+    do{
+      digitValue = number % base;
+      number = number / base;
+      ret = digits.substring(digitValue-1, digitValue) + ret;
+    }
+    while(number>0);
+    return ret;
+  }
 
-  private void mountEBSVolume(Instance inst, EBSSnapshotPackage package1) {
-    // TODO
+  /**
+   * Find snapshots of software volumes to attach to a given AMI
+   * by querying the software catalog.<br><br>
+   * A given AMI corresponds to an RTE in the catalog. This RTE may
+   * have a dependency on one or several EBSSnapshotPackages. Such
+   * EBSSnapshotPackages are returned.
+   * @param amiId ID of an AMI
+   * @return a list of snapshot identifiers
+   * @throws Exception 
+   */
+  private EBSSnapshotPackage[] getEBSSnapshots(String amiId) throws Exception{
+    String rteName = getRteNameFromLocation(ec2mgr.getImageDescription(amiId).getImageLocation());
+    RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.runtimeDir, rteCatalogUrls);
+    RTECatalog catalog = rteMgr.getRTECatalog();
+    HashMap<String, Vector<String>> depsMap = rteMgr.getVmRteDepends(rteName, null);
+    Vector<String> deps = depsMap.get(null);
+    String dep;
+    MetaPackage mp;
+    Vector<EBSSnapshotPackage> sPacks = new Vector();
+    InstancePackage ip;
+    for(Iterator<String> it=deps.iterator(); it.hasNext();){
+      dep = it.next();
+      mp = catalog.getMetaPackage(dep);
+      if(mp.instances==null){
+        continue;
+      }
+      for(int i=0; i<mp.instances.length; ++i){
+        ip = catalog.getInstancePackage(mp.instances[i]);
+        if(ip.getClass().getCanonicalName().equals(RTECatalog.EBSSnapshotPackage.class.getCanonicalName())){
+          sPacks.add((EBSSnapshotPackage) ip);
+          // There should be only one EBSSnapshotPackage instance of a MetaPackage.
+          continue;
+        }
+      }
+    }
+    return sPacks.toArray(new EBSSnapshotPackage[sPacks.size()]);
+  }
+
+  /**
+   * Mount an attached EBS volume inside an EC2 instance.
+   * @param inst
+   * @param pack
+   * @param device
+   * @throws Exception 
+   */
+  private void mountEBSVolumes(Instance inst, EBSSnapshotPackage[] ebsSnapshots) throws Exception {
+    if(ebsSnapshots!=null && ebsSnapshots.length>0){
+      String device;
+      Shell shell = getShell(inst.getDnsName());
+      StringBuffer stdOut = new StringBuffer();
+      StringBuffer stdErr = new StringBuffer();
+      for(int j=0; j<ebsSnapshots.length; ++j){
+        // We assume there are not other devices mounted above /dev/sdd
+        device = "/dev/sd"+dec2any(j+4, 26);
+        ec2mgr.attachVolumeFromSnapshot(inst, ebsSnapshots[j].snapshotId, device);
+        shell.exec("mount "+device+" "+ebsSnapshots[j].mountpoint, stdOut, stdErr);
+        logFile.addInfo("Mounted: "+device+" on "+ebsSnapshots[j].mountpoint+"\n-->"+stdOut+":"+stdErr);
+      }
+    }
   }
 
 }

@@ -298,7 +298,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
    * @return a Shell
    * @throws JSchException 
    */
-  protected Shell getShellMgr(String host) throws JSchException{
+  protected Shell getShell(String host) throws JSchException{
     Shell mgr = null;
     /*
      * If there is no keyFile set, this is a VM reused from a previous GridPilot session.
@@ -375,7 +375,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
         }
         host = hosts[i];
         maxR = 1;
-        mgr = getShellMgr(host);
+        mgr = getShell(host);
         if(maxJobs!=null && maxJobs.length>i && maxJobs[i]!=null){
           maxR = Integer.parseInt(maxJobs[i]);
         }

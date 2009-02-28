@@ -18,6 +18,7 @@ import java.util.List;
 import org.globus.gsi.GlobusCredentialException;
 import org.ietf.jgss.GSSException;
 
+import com.xerox.amazonws.ec2.AttachmentInfo;
 import com.xerox.amazonws.ec2.EC2Exception;
 import com.xerox.amazonws.ec2.InstanceType;
 import com.xerox.amazonws.ec2.Jec2;
@@ -25,6 +26,8 @@ import com.xerox.amazonws.ec2.ImageDescription;
 import com.xerox.amazonws.ec2.KeyPairInfo;
 import com.xerox.amazonws.ec2.LaunchConfiguration;
 import com.xerox.amazonws.ec2.ReservationDescription;
+import com.xerox.amazonws.ec2.SnapshotInfo;
+import com.xerox.amazonws.ec2.VolumeInfo;
 import com.xerox.amazonws.ec2.ReservationDescription.Instance;
 
 /**
@@ -473,9 +476,19 @@ public class EC2Mgr {
    * instance.
    * @param inst the AMI instance in question
    * @param snapshotID ID of EBS snapshot
+   * @param device device name
+   * @return the device name of the attached volume
+   * @throws EC2Exception 
    */
-  public void attachVolumeFromSnapshot(Instance inst, String snapshotID) {
-    // TODO
+  public void attachVolumeFromSnapshot(Instance inst, String snapshotID, String device) throws EC2Exception {
+    List<SnapshotInfo> sis = ec2.describeSnapshots(new String[] {snapshotID});
+    SnapshotInfo si = sis.get(0);
+    List<VolumeInfo> vis = ec2.describeVolumes(new String[] {si.getVolumeId()});
+    VolumeInfo vi = vis.get(0);
+    VolumeInfo volumeInfo = ec2.createVolume(vi.getSize(), snapshotID, vi.getZone());
+    AttachmentInfo ai = ec2.attachVolume(volumeInfo.getVolumeId(), inst.getInstanceId(), device);
+    String status = ai.getStatus();
+    logFile.addInfo("Attached volume: "+volumeInfo+"\n-->Status: "+status);
   }
 
 }

@@ -1466,7 +1466,7 @@ public class MyUtil extends gridfactory.common.Util{
   }
   
   /**
-   * Copies records from them to the 'local' runtime DBs.
+   * Consolidates and cpies records from catalogs to the 'local' runtime DBs.
     */
   public static void syncRTEsFromCatalogs(String csName, String [] rteCatalogUrls, String [] localRuntimeDBs,
       HashMap toDeleteRtes, boolean mkLocalOS, boolean includeVMs, String [] basicOses,

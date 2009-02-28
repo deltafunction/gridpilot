@@ -98,7 +98,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
    * @return a Shell
    * @throws JSchException 
    */
-  protected Shell getShellMgr(String host) throws JSchException{
+  protected Shell getShell(String host) throws JSchException{
     Shell mgr = null;
     if(host!=null &&
         !host.startsWith("localhost") && !host.equals("127.0.0.1")){
@@ -127,7 +127,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       host = hosts[i];
       maxR = 1;
       try{
-        mgr = getShellMgr(host);
+        mgr = getShell(host);
         if(maxJobs!=null && maxJobs.length>i && maxJobs[i]!=null){
           maxR = Integer.parseInt(maxJobs[i]);
         }
@@ -157,7 +157,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     ForkScriptGenerator scriptGenerator =
       new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job));
     try{
-      Shell mgr = getShellMgr(job.getHost());
+      Shell mgr = getShell(job.getHost());
       scriptGenerator.createWrapper(mgr, (MyJobInfo) job, job.getName()+commandSuffix);
       String id = mgr.submit(cmd, runDir(job), stdoutFile, stderrFile, logFile);
       job.setJobId(id!=null?id:"");
@@ -179,7 +179,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   public void updateStatus(Vector jobs){
     for(int i=0; i<jobs.size(); ++i)
       try{
-        updateStatus((MyJobInfo) jobs.get(i), getShellMgr(((MyJobInfo) jobs.get(i)).getHost()));
+        updateStatus((MyJobInfo) jobs.get(i), getShell(((MyJobInfo) jobs.get(i)).getHost()));
       }
       catch(JSchException e){
         error = "Exception during job " + ((MyJobInfo) jobs.get(i)).getName() + " submission : \n" +
@@ -195,7 +195,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     for(Enumeration en=jobsToKill.elements(); en.hasMoreElements();){
       try{
         job = (MyJobInfo) en.nextElement();
-        getShellMgr(job.getHost()).killProcess(job.getJobId(), logFile);
+        getShell(job.getHost()).killProcess(job.getJobId(), logFile);
       }
       catch(Exception e){
         errors.add(e.getMessage());
@@ -286,7 +286,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     }
 
     try{
-      getShellMgr(job.getHost()).deleteDir(runDir);
+      getShell(job.getHost()).deleteDir(runDir);
     }
     catch(Exception ioe){
       error = "Exception during cleanup of job " + job.getName()+ "\n" +
@@ -300,7 +300,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   public String getFullStatus(JobInfo job){
     Debug.debug("Checking job "+job.getHost()+":"+job.getJobId(), 2);
     try {
-      if(getShellMgr(job.getHost()).isRunning(job.getJobId())){
+      if(getShell(job.getHost()).isRunning(job.getJobId())){
         return "Job #"+job.getJobId()+" is running.";
       }
       else{
@@ -317,10 +317,10 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
 
   public String[] getCurrentOutput(JobInfo job) {
     try{
-      String stdOutText = getShellMgr(job.getHost()).readFile(job.getOutTmp());
+      String stdOutText = getShell(job.getHost()).readFile(job.getOutTmp());
       String stdErrText = "";
-      if(getShellMgr(job.getHost()).existsFile(job.getErrTmp())){
-        stdErrText = getShellMgr(job.getHost()).readFile(job.getErrTmp());
+      if(getShell(job.getHost()).existsFile(job.getErrTmp())){
+        stdErrText = getShell(job.getHost()).readFile(job.getErrTmp());
       }
       return new String [] {stdOutText, stdErrText};
     }
@@ -336,11 +336,11 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     String jobScriptFile = runDir(job)+"/"+job.getName()+commandSuffix;
     // In case this is not a local shell, first get the script to a local tmp file.
     try {
-      if(!getShellMgr(job.getHost()).isLocal()){
+      if(!getShell(job.getHost()).isLocal()){
         File tmpFile = File.createTempFile(/*prefix*/"GridPilot-Fork-", /*suffix*/"");
         // have the file deleted on exit
         GridPilot.addTmpFile(tmpFile.getAbsolutePath(), tmpFile);
-        getShellMgr(job.getHost()).download(jobScriptFile, tmpFile.getAbsolutePath());
+        getShell(job.getHost()).download(jobScriptFile, tmpFile.getAbsolutePath());
         jobScriptFile = tmpFile.getAbsolutePath();
       }
     }
@@ -354,8 +354,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     Debug.debug("Post processing job " + job.getName(), 2);
     String runDir = runDir(job);
     try{
-      if(copyToFinalDest((MyJobInfo) job, getShellMgr(job.getHost()))){
-        return getShellMgr(job.getHost()).deleteDir(runDir);
+      if(copyToFinalDest((MyJobInfo) job, getShell(job.getHost()))){
+        return getShell(job.getHost()).deleteDir(runDir);
       }
       else{
         return false;
@@ -379,30 +379,30 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     ((HashSet) submittingHostJobs.get(host)).add(job);
     
     Debug.debug("Getting ShellMgr for host "+host, 2);
-    Shell mgr = getShellMgr(host);
+    Shell mgr = getShell(host);
     job.setHost(host);
     job.setUserInfo(mgr.getUserName());
     
     // create the run directory
     try{
-      if(!getShellMgr(job.getHost()).existsFile(runDir(job))){
-        getShellMgr(job.getHost()).mkdirs(runDir(job));
+      if(!getShell(job.getHost()).existsFile(runDir(job))){
+        getShell(job.getHost()).mkdirs(runDir(job));
       }
     }
     catch(Exception e){
       logFile.addMessage("ERROR: could not create run directory for job.", e);
       return false;
     }
-    if(!getShellMgr(job.getHost()).isLocal()){
+    if(!getShell(job.getHost()).isLocal()){
       try{
-        writeUserProxy(getShellMgr(job.getHost()));
+        writeUserProxy(getShell(job.getHost()));
       }
       catch(Exception e){
         logFile.addMessage("WARNING: could not write user proxy.", e);
       }
     }
-    return setupJobRTEs((MyJobInfo) job, getShellMgr(job.getHost())) &&
-       setRemoteOutputFiles((MyJobInfo) job) && getInputFiles((MyJobInfo) job, getShellMgr(job.getHost()));
+    return setupJobRTEs((MyJobInfo) job, getShell(job.getHost())) &&
+       setRemoteOutputFiles((MyJobInfo) job) && getInputFiles((MyJobInfo) job, getShell(job.getHost()));
   }
   
   /**
