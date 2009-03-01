@@ -630,11 +630,16 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     throw new IOException("No runtimeEnvironment with name "+rteName);
   }
 
-  private File [] getAllTmpCatalogFiles() throws Exception{
+  private File [] getAllTmpCatalogFiles() throws EC2Exception {
     List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, true);
     ArrayList<File> files = new ArrayList();
     for(Iterator<ImageDescription> it=gpAMIs.iterator(); it.hasNext();){
-      files.add(getTmpCatalogFile(it.next().getImageId()));
+      try{
+        files.add(getTmpCatalogFile(it.next().getImageId()));
+      }
+      catch(Exception e){
+        logFile.addMessage("Problem setting up RTE for AMI", e);
+      }
     }
     File [] ret = files.toArray(new File[files.size()]);
     Debug.debug("Saved the following RTE catalogs: "+MyUtil.arrayToString(ret), 2);
@@ -647,10 +652,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     rdfFile = rdfFile.replaceFirst("(?i)\\.xml$", "");
     rdfFile = rdfFile.replaceFirst("(?i)\\.manifest$", "");
     rdfFile = rdfFile+".rdf";
-    Debug.debug("rdfFile --> "+rdfFile, 2);
-    String rteName = getRteNameFromLocation(manifest);
+    Debug.debug("RDF file --> "+rdfFile, 2);
     File tmpCatalogFile = downloadFromSSS(rdfFile);
     GridPilot.addTmpFile(tmpCatalogFile.getAbsolutePath(), tmpCatalogFile);
+    if(tmpCatalogFile==null || tmpCatalogFile.length()==0){
+      throw new Exception("No RDF file found for "+imageId);
+    }
     return tmpCatalogFile;
   }
   

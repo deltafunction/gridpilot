@@ -373,7 +373,7 @@ public class EC2Mgr {
     ImageDescription img = null;
     for(Iterator<ImageDescription> it=images.iterator(); it.hasNext();){
       img = it.next();
-      if((!onlyGridPilotAMIs || matchGridPilotAMIName(img.getImageLocation())) &&
+      if((!onlyGridPilotAMIs || isGridPilotAMI(img.getImageLocation())) &&
           (!onlyPublicAMIs || img.isPublic()) &&
           img.getImageState().equals("available")){
         list.add(img);
@@ -382,7 +382,7 @@ public class EC2Mgr {
     return list;
   }
   
-  private boolean matchGridPilotAMIName(String imageLocation) {
+  private boolean isGridPilotAMI(String imageLocation) {
     return imageLocation.toLowerCase().startsWith(AMI_BUCKET);
   }
 
