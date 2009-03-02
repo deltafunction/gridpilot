@@ -631,21 +631,38 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   }
 
   private File [] getAllTmpCatalogFiles() throws EC2Exception {
-    List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, true);
     ArrayList<File> files = new ArrayList();
+    // First download the default RDF file
+    File tmpCatalogFile = downloadFromSSS(defaultEc2Catalog);
+    files.add(tmpCatalogFile);
+    List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, true);
+    ImageDescription desc;
     for(Iterator<ImageDescription> it=gpAMIs.iterator(); it.hasNext();){
+      desc = it.next();
       try{
-        files.add(getTmpCatalogFile(it.next().getImageId()));
+        files.add(getTmpCatalogFile(desc.getImageId()));
+        continue;
       }
       catch(Exception e){
-        logFile.addMessage("Problem setting up RTE for AMI", e);
+        logFile.addMessage("No RDF file for AMI "+desc.getImageLocation()+". Using defaults.", e);
       }
+      // If no custom RDF file was found, add standard entry to RTE table
+      // TODO
     }
     File [] ret = files.toArray(new File[files.size()]);
     Debug.debug("Saved the following RTE catalogs: "+MyUtil.arrayToString(ret), 2);
     return ret;
   }
   
+  /**
+   * Check if there is an RDF file next to a given AMI manifest and download it
+   * to a temporary file if there is.
+   * @param imageId the manifest location
+   * @return the temporary file
+   * @throws NullPointerException
+   * @throws MalformedURLException
+   * @throws Exception
+   */
   private File getTmpCatalogFile(String imageId) throws NullPointerException, MalformedURLException, Exception{
     String manifest = ec2mgr.getImageDescription(imageId).getImageLocation();
     String rdfFile = manifest;
