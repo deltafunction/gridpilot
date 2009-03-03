@@ -10,7 +10,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import java.util.Vector;
 
 import javax.swing.JOptionPane;
@@ -30,6 +29,7 @@ import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
+import gridfactory.common.LocalStaticShell;
 import gridfactory.common.Shell;
 import gridfactory.common.jobrun.RTECatalog;
 import gridfactory.common.jobrun.RTEMgr;
@@ -55,6 +55,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private static String USER = "root";
   private int maxMachines = 0;
   private HashMap<String, ArrayList<DBRecord>> allEC2RTEs;
+  private String defaultEc2Catalog;
+  
+  public static String AMI_PREFIX;
 
   public EC2ComputingSystem(String _csName) throws Exception {
     super(_csName);
@@ -66,6 +69,22 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
 
     fallbackAmiID = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "Fallback ami id");
+    defaultEc2Catalog = "sss://gridpilot/ec2_rtes.rdf";
+    String testEc2CatalogTest = GridPilot.getClassMgr().getConfigFile().getValue(csName,
+       "RTE catalog");
+    if(testEc2CatalogTest!=null){
+      defaultEc2Catalog = testEc2CatalogTest;
+    }
+    String testAmiPrefix = GridPilot.getClassMgr().getConfigFile().getValue(csName,
+       "AMI prefix");
+    if(testAmiPrefix!=null){
+      AMI_PREFIX = testAmiPrefix;
+    }
+    else{
+      AMI_PREFIX = "";
+      logFile.addInfo("WARNING: AMI prefix not set. All AMIs will be listed as RTEs." +
+          " This is very time consuming and probably not what you want.");
+    }
     boolean ec2Secure = true;
     String ec2SecureStr = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "Secure");
@@ -515,15 +534,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     DBResult rtes = dbMgr.getRuntimeEnvironments();
     DBRecord rte;
     ArrayList<DBRecord> ret = new ArrayList();
-    String nameField = MyUtil.getNameField(dbMgr.getDBName(), "runtimeEnvironment");
-    String rteName;
     for(int i=0; i<rtes.values.length; ++i){
       rte = rtes.getRow(i);
-      rteName = (String) rte.getValue(nameField);
-      // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
-      //       VM RTE names with VM/
-      if(rteName.startsWith(RteRdfParser.VM_PREFIX) &&
-          ((String) rte.getValue("computingSystem")).equalsIgnoreCase(csName)){
+      if(((String) rte.getValue("computingSystem")).equalsIgnoreCase(csName)){
         ret.add(rte);
       }
     }
@@ -573,7 +586,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private String getRteNameFromLocation(String manifest){
     String ret = manifest.replaceFirst("(?i)\\.xml$", "");
     ret = ret.replaceFirst("(?i)\\.manifest$", "");
-    ret = ret.replaceFirst("(?i)^"+EC2Mgr.AMI_BUCKET, "");
+    ret = ret.replaceFirst("(?i)^"+AMI_PREFIX, "");
     return ret;
   }
   
@@ -633,8 +646,14 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private File [] getAllTmpCatalogFiles() throws EC2Exception {
     ArrayList<File> files = new ArrayList();
     // First download the default RDF file
-    File tmpCatalogFile = downloadFromSSS(defaultEc2Catalog);
-    files.add(tmpCatalogFile);
+    File tmpCatalogFile;
+    try{
+      tmpCatalogFile = downloadFromSSS(defaultEc2Catalog);
+      files.add(tmpCatalogFile);
+    }
+    catch(Exception e){
+      logFile.addMessage("WARNING: Default EC2 catalog misconfigured", e);
+    }
     List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, true);
     ImageDescription desc;
     for(Iterator<ImageDescription> it=gpAMIs.iterator(); it.hasNext();){
@@ -644,14 +663,47 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         continue;
       }
       catch(Exception e){
-        logFile.addMessage("No RDF file for AMI "+desc.getImageLocation()+". Using defaults.", e);
+        e.printStackTrace();
+        logFile.addInfo("No RDF file for AMI "+desc.getImageLocation()+". Using defaults.");
       }
       // If no custom RDF file was found, add standard entry to RTE table
-      // TODO
+      createAmiOsRte(desc.getImageLocation(), desc.getArchitecture());
     }
     File [] ret = files.toArray(new File[files.size()]);
     Debug.debug("Saved the following RTE catalogs: "+MyUtil.arrayToString(ret), 2);
     return ret;
+  }
+  
+  private void createAmiOsRte(String manifest, String platform){
+    DBPluginMgr dbMgr;
+    String nameField;
+    for(int i=0; i<runtimeDBs.length; ++i){
+      try{
+        dbMgr = GridPilot.getClassMgr().getDBPluginMgr(runtimeDBs[i]);
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: Could not load runtime DB "+
+            runtimeDBs[i]+". "+e.getMessage(), 1);
+        continue;
+      }
+      try{
+        nameField = MyUtil.getNameField(runtimeDBs[i], "runtimeEnvironment");
+        dbMgr.createRuntimeEnv(
+            new String [] {nameField, "computingSystem", "provides"},
+            /*default to Linux*/
+            new String [] {manifest, csName, platform==null||platform.equals("")?"Linux":platform});
+        // Find the ID of the newly created RTE and tag it for deletion
+        String [] rteIds = dbMgr.getRuntimeEnvironmentIDs(manifest, csName);
+        for(int j=0; j<rteIds.length; ++j){
+          toDeleteRTEs.put(rteIds[j], dbMgr.getDBName());
+        }
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        logFile.addMessage("WARNING: could not create RTE for local OS "+LocalStaticShell.getOS()+
+            " on "+csName, e);
+      }
+    }
   }
   
   /**
@@ -678,10 +730,23 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return tmpCatalogFile;
   }
   
+  /**
+   * 'path' can be of the form sss://bucket/file or just bucket/file.
+   * @param path
+   * @return
+   * @throws NullPointerException
+   * @throws MalformedURLException
+   * @throws Exception
+   */
   private File downloadFromSSS(String path) throws NullPointerException, MalformedURLException, Exception{
     File tmpFile = File.createTempFile(MyUtil.getTmpFilePrefix(), ".rdf");
     tmpFile.delete();
-    GridPilot.getClassMgr().getFTPlugin("sss").getFile(new GlobusURL("sss://"+path), tmpFile);
+    if(path.toLowerCase().startsWith("sss://")){
+      GridPilot.getClassMgr().getFTPlugin("sss").getFile(new GlobusURL(path), tmpFile);
+    }
+    else{
+      GridPilot.getClassMgr().getFTPlugin("sss").getFile(new GlobusURL("sss://"+path), tmpFile);
+    }
     // If an AMIs has a '+' in its manifest path name, the actual path of the manifest in S3 will
     // be the path name with the + replaced with a space...
     if(!tmpFile.exists()){
@@ -707,7 +772,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     for(int i=0; i<runtimeDBs.length; ++i){
       try{
         MyUtil.syncRTEsFromCatalogs(csName, allTmpCatalogs, runtimeDBs, toDeleteRTEs,
-            mkLocalOSRTE, includeVMRTEs, basicOSRTES, true);
+            mkLocalOSRTE, includeVMRTEs, basicOSRTES, false);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -866,7 +931,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         if(ip.getClass().getCanonicalName().equals(RTECatalog.EBSSnapshotPackage.class.getCanonicalName())){
           sPacks.add((EBSSnapshotPackage) ip);
           // There should be only one EBSSnapshotPackage instance of a MetaPackage.
-          continue;
+          break;
         }
       }
     }

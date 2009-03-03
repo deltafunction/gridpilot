@@ -46,7 +46,6 @@ public class EC2Mgr {
 
   public final static String GROUP_NAME = "GridPilot";
   public final static String KEY_NAME = "GridPilot_EC2_TMP_KEY";
-  public final static String AMI_BUCKET = "gridpilot/";
   
   private File keyFile = null;
   
@@ -383,7 +382,7 @@ public class EC2Mgr {
   }
   
   private boolean isGridPilotAMI(String imageLocation) {
-    return imageLocation.toLowerCase().startsWith(AMI_BUCKET);
+    return imageLocation.toLowerCase().startsWith(EC2ComputingSystem.AMI_PREFIX);
   }
 
   public ImageDescription getImageDescription(String imageId) throws EC2Exception{

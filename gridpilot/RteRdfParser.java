@@ -71,16 +71,22 @@ public class RteRdfParser {
    * Each BaseSystem is also parsed into a "runtimeEnvironment" DBRecord.
    */
   public DBResult getDBResult(DBPluginMgr dbpluginMgr, String csName){
-    // The standard runtimeEnvironment fields are:
-    // identifier name computingSystem certificate url initLines depends provides created lastModified
-    // The MetaPackage fields are:
-    // id name homepage description lastupdate provides instances tags
-    // The Package fields are:
-    // id baseSystem depends
-    // The TarPackage fields are:
-    // id baseSystem depends url
-    // The BaseSystem fields are:
-    // id name homePage description lastUpdate immutable
+    /*
+       The standard runtimeEnvironment fields are:
+         identifier name computingSystem certificate url initLines depends provides created lastModified
+         
+       The MetaPackage fields are:
+         id name homepage description lastupdate provides instances tags
+         
+       The Package fields are:
+         id baseSystem depends
+         
+       The TarPackage fields are:
+         id baseSystem depends url
+         
+       The BaseSystem fields are:
+         id name homePage description lastUpdate immutable
+     */
 
     String [] fields = dbpluginMgr.getFieldnames("runtimeEnvironment");
     MetaPackage pack = null;
@@ -139,6 +145,13 @@ public class RteRdfParser {
               catch(Exception e){
                 e.printStackTrace();
               }
+            }
+            // For AMIPackages and EBSSnapshotPackages we use the url field to hold the manifest and shapshot ID respectively
+            if(instPack.getClass().getCanonicalName().equals(RTECatalog.AMIPackage.class.getCanonicalName())){
+              rec.setValue("url", ((RTECatalog.AMIPackage)instPack).manifest);
+            }
+            else if(instPack.getClass().getCanonicalName().equals(RTECatalog.EBSSnapshotPackage.class.getCanonicalName())){
+              rec.setValue("url", ((RTECatalog.EBSSnapshotPackage)instPack).snapshotId);
             }
             rec.setValue("url", ((rec.getValue("url")!=null?rec.getValue("url"):"")+" "+
                 (instPack.url!=null && (rec.getValue("url")==null ||

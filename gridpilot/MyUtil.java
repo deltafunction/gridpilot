@@ -1506,6 +1506,7 @@ public class MyUtil extends gridfactory.common.Util{
         createBasicOSRTEs(basicOses, csName, toDeleteRtes, dbMgr);
         
         DBResult rtes = rteRdfParser.getDBResult(dbMgr, csName);
+        Debug.debug("Creating "+rtes.size()+" RTEs in DB "+dbMgr.getDBName(), 2);
         for(int i=0; i<rtes.values.length; ++i){
           row = rtes.getRow(i);
           createRte(dbMgr, row, csName, toDeleteRtes);
