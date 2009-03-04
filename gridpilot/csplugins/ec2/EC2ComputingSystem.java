@@ -3,7 +3,6 @@ package gridpilot.csplugins.ec2;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -14,9 +13,7 @@ import java.util.Vector;
 
 import javax.swing.JOptionPane;
 
-import org.globus.gsi.GlobusCredentialException;
 import org.globus.util.GlobusURL;
-import org.ietf.jgss.GSSException;
 
 import com.jcraft.jsch.JSchException;
 import com.xerox.amazonws.ec2.EC2Exception;
@@ -42,7 +39,6 @@ import gridpilot.GridPilot;
 import gridpilot.MyJobInfo;
 import gridpilot.MySecureShell;
 import gridpilot.MyUtil;
-import gridpilot.RteRdfParser;
 import gridpilot.csplugins.forkpool.ForkPoolComputingSystem;
 
 public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyComputingSystem {
@@ -56,13 +52,15 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private int maxMachines = 0;
   private HashMap<String, ArrayList<DBRecord>> allEC2RTEs;
   private String defaultEc2Catalog;
+  private HashMap<String, String> locationNameMap = new HashMap<String, String>();
+  private String[] allTmpCatalogs;
   
   public static String AMI_PREFIX;
 
   public EC2ComputingSystem(String _csName) throws Exception {
     super(_csName);
     
-    allEC2RTEs = null;
+    allEC2RTEs = new HashMap<String, ArrayList<DBRecord>>();
     
     basicOSRTES = new String [] {"Linux"/*, "Windows"*/
         /* Windows instances allow only connections via VRDP - and to connect a keypair must be associated. */};
@@ -445,7 +443,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return false;
   }
   
-  private String findAmiId(JobInfo job, String fallbackAmiId) {
+  private String findAmiId(JobInfo job) {
     DBPluginMgr dbMgr;
     try{
       dbMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());    
@@ -455,7 +453,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       return null;
     }
     String nameField = MyUtil.getNameField(dbMgr.getDBName(), "runtimeEnvironment");
-    if(allEC2RTEs==null){
+    if(!allEC2RTEs.containsKey(dbMgr.getDBName())){
       findAllEC2RTEs(dbMgr);
     }
     DBRecord rte;
@@ -467,7 +465,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         rte = it.next();
         rteName = (String) rte.getValue(nameField);
         if(checkProvides(job, rte, rteName)){
-          amiId = getAmiId(rteName);
+          amiId = getAmiId(rteName, ((MyJobInfo)job).getDBName());
           if(amiId!=null){
             return amiId;
           }
@@ -478,22 +476,36 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       e.printStackTrace();
     }
     logFile.addInfo("No RTE found that provides "+MyUtil.arrayToString(job.getRTEs())+
-        ". Falling back to "+fallbackAmiId);
-    return fallbackAmiId;
+        ". Falling back to "+fallbackAmiID);
+    return fallbackAmiID;
   }
   
-  private String getAmiId(String rteName) throws EC2Exception, IOException {
+  private String getAmiId(String rteName, String dbName) throws Exception {
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
+    String nameField = MyUtil.getNameField(dbPluginMgr.getDBName(), "runtimeEnvironment");
+    DBResult allRtes = dbPluginMgr.getRuntimeEnvironments();
+    DBRecord rec;
+    String manifest = null;
+    for(Iterator<DBRecord> it=allRtes.iterator(); it.hasNext();){
+      rec = it.next();
+      if(rec.getValue(nameField).equals(rteName)){
+        manifest = (String) rec.getValue("url");
+        break;
+      }
+    }
+    if(manifest==null){
+      throw new Exception("No RTE matching "+rteName+" found.");
+    }
     List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, true);
     ImageDescription desc;
     for(Iterator<ImageDescription> it=gpAMIs.iterator(); it.hasNext();){
       desc = it.next();
-      Debug.debug("Checking AMI "+getRteNameFromLocation(desc.getImageLocation())+"<->"+rteName, 3);
-      if(getRteNameFromLocation(desc.getImageLocation()).equalsIgnoreCase(rteName)){
+      Debug.debug("Finding AMI "+manifest+"<->"+desc.getImageLocation(), 3);
+      if(desc.getImageLocation().equalsIgnoreCase(manifest)){
         return desc.getImageId();
       }
     }
-    Debug.debug("No AMI matching "+rteName, 2);
-    return null;
+    throw new Exception("No RTE matching "+rteName+" found.");
   }
 
   private boolean checkProvides(JobInfo job, DBRecord rte, String rteName) {
@@ -535,7 +547,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     DBRecord rte;
     ArrayList<DBRecord> ret = new ArrayList();
     for(int i=0; i<rtes.values.length; ++i){
-      rte = rtes.getRow(i);
+      rte = rtes.get(i);
       if(((String) rte.getValue("computingSystem")).equalsIgnoreCase(csName)){
         ret.add(rte);
       }
@@ -546,15 +558,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   /**
    * Check if a list of dependencies are provided by the AMI of a given host.
    * @param host
-   * @param deps
+   * @param job
    * @return
-   * @throws EC2Exception
-   * @throws GlobusCredentialException
-   * @throws IOException
-   * @throws GeneralSecurityException
-   * @throws GSSException
+   * @throws Exception 
    */
-  private boolean checkHostProvides(String host, String deps []) throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException {
+  private boolean checkHostProvides(String host, JobInfo job) throws Exception {
+    String [] deps = job.getRTEs();
     List reservationList = ec2mgr.listReservations();
     ArrayList<String> provides = new ArrayList();
     List instanceList = null;
@@ -569,7 +578,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         instance = (Instance) itt.next();
         if(instance.getDnsName().equals(host)){
           manifest = ec2mgr.getImageDescription(instance.getImageId()).getImageLocation();
-          rteName = getRteNameFromLocation(manifest);
+          rteName = getRteNameFromLocation(manifest, ((MyJobInfo) job).getDBName());
           provides = getProvides(rteName);
           break;
         }
@@ -583,11 +592,25 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return true;
   }
   
-  private String getRteNameFromLocation(String manifest){
-    String ret = manifest.replaceFirst("(?i)\\.xml$", "");
-    ret = ret.replaceFirst("(?i)\\.manifest$", "");
-    ret = ret.replaceFirst("(?i)^"+AMI_PREFIX, "");
-    return ret;
+  private String getRteNameFromLocation(String manifest, String dbName) throws Exception{
+    if(locationNameMap.containsKey(manifest)){
+      return locationNameMap.get(manifest);
+    }
+    String ret;
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
+    String nameField = MyUtil.getNameField(dbPluginMgr.getDBName(), "runtimeEnvironment");
+    DBResult allRtes = dbPluginMgr.getRuntimeEnvironments();
+    DBRecord rec;
+    for(Iterator<DBRecord> it=allRtes.iterator(); it.hasNext();){
+      rec = it.next();
+      ret = (String) rec.getValue(nameField);
+      if(rec.getValue("url")!=null && manifest.equalsIgnoreCase((String) rec.getValue("url")) &&
+          !manifest.startsWith(ret)){
+        locationNameMap.put(manifest, ret);
+        return ret;
+      }
+    }
+    throw new Exception("No RTE found with URL "+manifest);
   }
   
   /**
@@ -637,7 +660,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     String nameField = MyUtil.getNameField(dbMgr.getDBName(), "runtimeEnvironment");
     for(int i=0; i<rtes.values.length; ++i){
       if(rteName.equalsIgnoreCase((String) rtes.getValue(i, nameField))){
-        return rtes.getRow(i);
+        return rtes.get(i);
       }
     }
     throw new IOException("No runtimeEnvironment with name "+rteName);
@@ -658,23 +681,34 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     ImageDescription desc;
     for(Iterator<ImageDescription> it=gpAMIs.iterator(); it.hasNext();){
       desc = it.next();
-      try{
-        files.add(getTmpCatalogFile(desc.getImageId()));
+      if(!desc.getImageType().equalsIgnoreCase("machine")){
         continue;
       }
-      catch(Exception e){
-        e.printStackTrace();
-        logFile.addInfo("No RDF file for AMI "+desc.getImageLocation()+". Using defaults.");
+      if(AMI_PREFIX!=null && !AMI_PREFIX.equals("")){
+        try{
+          files.add(getTmpCatalogFile(desc.getImageId()));
+          continue;
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          logFile.addInfo("No RDF file for AMI "+desc.getImageLocation()+". Using defaults.");
+        }
       }
       // If no custom RDF file was found, add standard entry to RTE table
-      createAmiOsRte(desc.getImageLocation(), desc.getArchitecture());
+      createAmiOsRte(desc.getImageLocation().replaceFirst("\\.manifest\\.xml$", ""),
+          desc.getImageLocation(),
+          desc.getArchitecture()+" "+desc.getImageType()+" "+
+          /* This is a hack until Typica provides a getPlatform() method. */
+          (desc.getImageType().equalsIgnoreCase("machine")?
+          (desc.getImageLocation().matches("(?i).*windows.*")?"Windows":"Linux"):"")
+      );
     }
     File [] ret = files.toArray(new File[files.size()]);
     Debug.debug("Saved the following RTE catalogs: "+MyUtil.arrayToString(ret), 2);
     return ret;
   }
   
-  private void createAmiOsRte(String manifest, String platform){
+  private void createAmiOsRte(String name, String url, String provides){
     DBPluginMgr dbMgr;
     String nameField;
     for(int i=0; i<runtimeDBs.length; ++i){
@@ -689,11 +723,11 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       try{
         nameField = MyUtil.getNameField(runtimeDBs[i], "runtimeEnvironment");
         dbMgr.createRuntimeEnv(
-            new String [] {nameField, "computingSystem", "provides"},
+            new String [] {nameField, "url", "computingSystem", "provides"},
             /*default to Linux*/
-            new String [] {manifest, csName, platform==null||platform.equals("")?"Linux":platform});
+            new String [] {name, url, csName, provides});
         // Find the ID of the newly created RTE and tag it for deletion
-        String [] rteIds = dbMgr.getRuntimeEnvironmentIDs(manifest, csName);
+        String [] rteIds = dbMgr.getRuntimeEnvironmentIDs(name, csName);
         for(int j=0; j<rteIds.length; ++j){
           toDeleteRTEs.put(rteIds[j], dbMgr.getDBName());
         }
@@ -765,7 +799,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       e.printStackTrace();
       return;
     }
-    String [] allTmpCatalogs = new String[allTmpCatalogFiles.length];
+    allTmpCatalogs = new String[allTmpCatalogFiles.length];
     for(int i=0; i<allTmpCatalogFiles.length; ++i){
       allTmpCatalogs[i] = allTmpCatalogFiles[i].getAbsolutePath();
     }
@@ -797,7 +831,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         if(/* This means that the host has been added by discoverInstances, i.e. that we can use it */
             submittingHostJobs.containsKey(hosts[i]) &&
             /**/
-            checkHostProvides(hosts[i], job.getRTEs()) && checkHostForJobs(i)){
+            checkHostProvides(hosts[i], job) && checkHostForJobs(i)){
           return hosts[i];
         }
       }
@@ -814,7 +848,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         if(hosts[i]!=null){
           continue;
         }
-        amiID = findAmiId(job, fallbackAmiID);
+        amiID = findAmiId(job);
         Debug.debug("Booting "+amiID, 2);
         ReservationDescription desc = ec2mgr.launchInstances(amiID, 1);
         Instance inst = ((Instance) desc.getInstances().get(0));
@@ -854,7 +888,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           Thread.sleep(5000);
         }
         // If the VM RTE has any dependencies on EBSSnapshots, create EBS volume and mount it
-        ebsSnapshots = getEBSSnapshots(amiID);
+        ebsSnapshots = getEBSSnapshots(amiID, ((MyJobInfo) job).getDBName());
+        Debug.debug("The AMI "+amiID+" will have the following EBS volumes attached: "+MyUtil.arrayToString(ebsSnapshots), 2);
         mountEBSVolumes(inst, ebsSnapshots);
         hosts[i] = inst.getDnsName();
         Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
@@ -907,12 +942,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * have a dependency on one or several EBSSnapshotPackages. Such
    * EBSSnapshotPackages are returned.
    * @param amiId ID of an AMI
+   * @param dbName name of the database to use
    * @return a list of snapshot identifiers
    * @throws Exception 
    */
-  private EBSSnapshotPackage[] getEBSSnapshots(String amiId) throws Exception{
-    String rteName = getRteNameFromLocation(ec2mgr.getImageDescription(amiId).getImageLocation());
-    RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.runtimeDir, rteCatalogUrls);
+  private EBSSnapshotPackage[] getEBSSnapshots(String amiId, String dbName) throws Exception{
+    String rteName = getRteNameFromLocation(ec2mgr.getImageDescription(amiId).getImageLocation(), dbName);
+    RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.runtimeDir, allTmpCatalogs);
     RTECatalog catalog = rteMgr.getRTECatalog();
     HashMap<String, Vector<String>> depsMap = rteMgr.getVmRteDepends(rteName, null);
     Vector<String> deps = depsMap.get(null);

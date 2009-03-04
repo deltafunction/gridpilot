@@ -158,7 +158,7 @@ public class ExportImport {
     String name;
     File dlDir;
     StringBuffer failedDLs = new StringBuffer();
-    while(dbResult.next()){
+    while(dbResult.moveCursor()){
       for(int i=0; i<fileFields.length; ++i){
         if(MyUtil.arrayContainsIgnoreCase(fileFields, dbResult.fields[i]) &&
             dbResult.values[i]!=null){
@@ -297,7 +297,7 @@ public class ExportImport {
     String urlsStr;
     String [] newUrlsStrs = new String [TRANSFORMATIOM_FILE_FIELDS.length];
     int recNr = 0;
-    while(dbResult.next()){
+    while(dbResult.moveCursor()){
       id = dbResult.getString(idField);
       for(int i=0; i<TRANSFORMATIOM_FILE_FIELDS.length; ++i){
         urlsStr = dbResult.getString(TRANSFORMATIOM_FILE_FIELDS[i]);

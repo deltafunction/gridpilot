@@ -39,7 +39,7 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
     super(_csName);
     
     amiID = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-      "AMI id");
+      "Fallback AMI id");
     String ec2ServiceUrl = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "Service url");
     if(ec2ServiceUrl==null || ec2ServiceUrl.equals("")){

@@ -1792,7 +1792,7 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     String ret = "-1";
     try{
-      ret = res.getRow(0).getValue("vuid").toString();
+      ret = res.get(0).getValue("vuid").toString();
     }
     catch(Exception e){
       error = "Could not get dataset ID from "+datasetName+". "+e.getMessage();
@@ -1813,7 +1813,7 @@ public class ATLASDatabase extends DBCache implements Database{
       Debug.debug("WARNING: inconsistent dataset catalog; " +
           res.values.length + " entries with vuid "+datasetID, 1);
     }
-    return res.getRow(0);
+    return res.get(0);
   }
   
   public String[] getFieldNames(String table){

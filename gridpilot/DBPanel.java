@@ -3351,7 +3351,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         for(int i=0; i<targetTransformations.values.length; ++i){
           if(targetTransformations.getValue(i, MyUtil.getNameField(dbPluginMgr.getDBName(),
               "transformation")).toString().equalsIgnoreCase(sourceTransName)){
-            transVec.add(targetTransformations.getRow(i));
+            transVec.add(targetTransformations.get(i));
           }
         }
         for(int i=0; i<transVec.size(); ++i){

@@ -1271,7 +1271,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       allRuntimeEnvironmentRecords = new DBRecord[i];
       for(int j=0; j<i; ++j){
         allRuntimeEnvironmentRecords[j] = ((DBRecord) runtimeEnvironmentVector.get(j));
-        Debug.debug("Added value "+allRuntimeEnvironmentRecords[j].values[0], 3);
+        //Debug.debug("Added value "+allRuntimeEnvironmentRecords[j].values[0], 3);
       }
     }
     catch(SQLException e){

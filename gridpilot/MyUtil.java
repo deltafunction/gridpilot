@@ -943,7 +943,7 @@ public class MyUtil extends gridfactory.common.Util{
     try{
       Debug.debug(dbName+" >> "+req, 3);
       DBResult rset = GridPilot.getClassMgr().getDBPluginMgr(dbName).executeQuery(dbName, req);
-      while(rset.next()){
+      while(rset.moveCursor()){
         for(int i=0; i<fields.length;i++){
           values[i] = rset.getString(fields[i]);
         }
@@ -1508,7 +1508,7 @@ public class MyUtil extends gridfactory.common.Util{
         DBResult rtes = rteRdfParser.getDBResult(dbMgr, csName);
         Debug.debug("Creating "+rtes.size()+" RTEs in DB "+dbMgr.getDBName(), 2);
         for(int i=0; i<rtes.values.length; ++i){
-          row = rtes.getRow(i);
+          row = rtes.get(i);
           createRte(dbMgr, row, csName, toDeleteRtes);
           if(createRteForEachProvides){
             providesStr = row.getValue("provides");

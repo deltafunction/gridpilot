@@ -37,7 +37,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
     super(_csName);
     
     amiID = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-      "AMI id");
+      "Fallback AMI id");
     String ec2ServiceUrl = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "Service url");
     if(ec2ServiceUrl==null || ec2ServiceUrl.equals("")){

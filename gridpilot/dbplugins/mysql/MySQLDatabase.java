@@ -421,7 +421,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Vector vec = new Vector();
     try{
       DBResult rset = executeQuery(dbName, req);
-      while(rset.next()){
+      while(rset.moveCursor()){
         id = rset.getString(idField);
         if(id!=null){
           Debug.debug("Adding id "+id, 3);
@@ -459,7 +459,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Vector<String> vec = new Vector<String>();
     try{
       DBResult rset = executeQuery(dbName, req);
-      while(rset.next()){
+      while(rset.moveCursor()){
         id = rset.getString(idField);
         if(id!=null){
           //Debug.debug("Adding id "+id, 3);
@@ -624,7 +624,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(req, 2);
     try{
       DBResult rset = executeQuery(dbName, req);
-      while(rset.next()){
+      while(rset.moveCursor()){
         if(transID!=null){
           Debug.debug("WARNING: more than one transformation for name, version :" +
               transformation+", "+version, 1);
@@ -833,7 +833,7 @@ public class MySQLDatabase extends DBCache implements Database {
         Debug.debug("ERROR: inconsistent number of fields "+rset.fields.length+"!="+fields.length, 1);
         return new DBResult(0, 0); 
       }
-      while(rset.next()){
+      while(rset.moveCursor()){
         for(int j=0; j<rset.fields.length; ++j){
           Debug.debug("sorting "+withStar+" "+identifierColumn+" "+
               rset.fields.length, 3);
@@ -841,17 +841,17 @@ public class MySQLDatabase extends DBCache implements Database {
             if(j==identifierColumn){
               // identifier column is not at the end, so we swap
               // identifier column and the last column
-              String foo = (String) rset.get(rset.fields.length);
+              String foo = (String) rset.getElement(rset.fields.length);
               Debug.debug("values "+i+" "+foo, 2);
               values[i][j] = foo;
             }
             else if(j==rset.fields.length-1){
-              String foo = (String) rset.get(identifierColumn+1);
+              String foo = (String) rset.getElement(identifierColumn+1);
               Debug.debug("values "+i+" "+foo, 2);
               values[i][j] = foo;
             }
             else{
-              String foo =  (String) rset.get(j+1);
+              String foo =  (String) rset.getElement(j+1);
               Debug.debug("values "+i+" "+foo, 2);
               values[i][j] = foo;
             }
@@ -859,7 +859,7 @@ public class MySQLDatabase extends DBCache implements Database {
           else if(fileTable && urlColumn>-1 && j==urlColumn){
             // The first output file specified in outFileMapping
             // is by convention *the* output file.
-            String [] foos = MyUtil.split((String) rset.get(j+1));
+            String [] foos = MyUtil.split((String) rset.getElement(j+1));
             String foo = "";
             if(foos.length>1){
               foo = foos[1];
@@ -871,7 +871,7 @@ public class MySQLDatabase extends DBCache implements Database {
             values[i][j] = foo;
           }
           else{
-            String foo = (String) rset.get(j+1);
+            String foo = (String) rset.getElement(j+1);
             Debug.debug("values "+i+" "+foo, 2);
             values[i][j] = foo;
           }
@@ -915,7 +915,7 @@ public class MySQLDatabase extends DBCache implements Database {
       Debug.debug(">> "+req, 3);
       DBResult rset = executeQuery(dbName, req);
       Vector datasetVector = new Vector();
-      while(rset.next()){
+      while(rset.moveCursor()){
         String values[] = new String[datasetFields.length];
         for(int i=0; i<datasetFields.length;i++){
           values[i] = rset.getString(datasetFields[i]);
@@ -963,7 +963,7 @@ public class MySQLDatabase extends DBCache implements Database {
     try{
       Debug.debug(">>> sql string was: "+req, 3);
       DBResult rset = executeQuery(dbName, req);
-      while(rset.next()){
+      while(rset.moveCursor()){
         id = rset.getString(idField);
         if(id!=null){
           Debug.debug("Adding id "+id, 3);
@@ -1015,14 +1015,14 @@ public class MySQLDatabase extends DBCache implements Database {
       Vector runtimeEnvironmentVector = new Vector();
       String [] jt = new String[runtimeEnvironmentFields.length];
       int i = 0;
-      while(rset.next()){
+      while(rset.moveCursor()){
         jt = new String[runtimeEnvironmentFields.length];
         for(int j=0; j<runtimeEnvironmentFields.length; ++j){
           try{
-            jt[j] = (String) rset.get(j+1);
+            jt[j] = (String) rset.getElement(j+1);
           }
           catch(Exception e){
-            Debug.debug("Could not set value "+(String) rset.get(j+1)+" in "+
+            Debug.debug("Could not set value "+(String) rset.getElement(j+1)+" in "+
                 runtimeEnvironmentFields[j]+". "+e.getMessage(),1);
           }
         }
@@ -1066,14 +1066,14 @@ public class MySQLDatabase extends DBCache implements Database {
       Vector transformationVector = new Vector();
       String [] jt = new String[transformationFields.length];
       int i = 0;
-      while(rset.next()){
+      while(rset.moveCursor()){
         jt = new String[transformationFields.length];
         for(int j=0; j<transformationFields.length; ++j){
           try{
-            jt[j] = (String) rset.get(j+1);
+            jt[j] = (String) rset.getElement(j+1);
           }
           catch(Exception e){
-            Debug.debug("Could not set value "+(String) rset.get(j+1)+" in "+
+            Debug.debug("Could not set value "+(String) rset.getElement(j+1)+" in "+
                 transformationFields[j]+". "+e.getMessage(),1);
           }
         }
@@ -1124,14 +1124,14 @@ public class MySQLDatabase extends DBCache implements Database {
       Vector runtimeEnvironmentVector = new Vector();
       String [] jt = new String[runtimeEnvironmentFields.length];
       int i = 0;
-      while(rset.next()){
+      while(rset.moveCursor()){
         jt = new String[runtimeEnvironmentFields.length];
         for(int j=0; j<runtimeEnvironmentFields.length; ++j){
           try{
-            jt[j] = (String) rset.get(j+1);
+            jt[j] = (String) rset.getElement(j+1);
           }
           catch(Exception e){
-            Debug.debug("Could not set value "+(String) rset.get(j+1)+" in "+
+            Debug.debug("Could not set value "+(String) rset.getElement(j+1)+" in "+
                 runtimeEnvironmentFields[j]+". "+e.getMessage(),1);
           }
         }
@@ -1173,14 +1173,14 @@ public class MySQLDatabase extends DBCache implements Database {
       Vector transformationVector = new Vector();
       String [] jt = new String[transformationFields.length];
       int i = 0;
-      while(rset.next()){
+      while(rset.moveCursor()){
         jt = new String[transformationFields.length];
         for(int j=0; j<transformationFields.length; ++j){
           try{
-            jt[j] = (String) rset.get(j+1);
+            jt[j] = (String) rset.getElement(j+1);
           }
           catch(Exception e){
-            Debug.debug("Could not set value "+(String) rset.get(j+1)+" in "+
+            Debug.debug("Could not set value "+(String) rset.getElement(j+1)+" in "+
                 transformationFields[j]+". "+e.getMessage(),1);
           }
         }
@@ -1213,7 +1213,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(req, 2);
     try{
       DBResult rset = executeQuery(dbName, req);
-      while(rset.next()){
+      while(rset.moveCursor()){
         String values[] = new String[jobDefFields.length];
         for(int i=0; i<jobDefFields.length;i++){
           String fieldname = jobDefFields[i];
@@ -1298,7 +1298,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(req, 2);
     try{
       DBResult rset = executeQuery(dbName, req);
-      while(rset.next()){
+      while(rset.moveCursor()){
         String values[] = new String[jobDefFields.length];
         for(int i=0; i<jobDefFields.length;i++){
           String fieldname = jobDefFields[i];
@@ -2168,7 +2168,7 @@ public class MySQLDatabase extends DBCache implements Database {
     String version;
     try{
       DBResult rset = executeQuery(dbName, req);
-      while(rset.next()){
+      while(rset.moveCursor()){
         version = rset.getString("version");
         if(version!=null){
           Debug.debug("Adding version "+version, 3);

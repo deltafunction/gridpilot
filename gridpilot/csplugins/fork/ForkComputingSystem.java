@@ -417,7 +417,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     DBResult rtes = dbPluginMgr.getRuntimeEnvironments();
     DBRecord row;
     for(int i=0; i<rtes.values.length; ++i){
-      row = rtes.getRow(i);
+      row = rtes.get(i);
       if(csName.equalsIgnoreCase((String) row.getValue("computingSystem")) &&
           name.equalsIgnoreCase((String) row.getValue(MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "name"))) &&
           depends.equalsIgnoreCase((String) row.getValue("depends"))){
