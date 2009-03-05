@@ -474,12 +474,13 @@ public class EC2Mgr {
    * Create an EBS volume from a given snapshot and attach it to an AMI
    * instance.
    * @param inst the AMI instance in question
-   * @param snapshotID ID of EBS snapshot
+   * @param _snapshotID ID of EBS snapshot
    * @param device device name
    * @return the device name of the attached volume
    * @throws EC2Exception 
    */
-  public void attachVolumeFromSnapshot(Instance inst, String snapshotID, String device) throws EC2Exception {
+  public void attachVolumeFromSnapshot(Instance inst, String _snapshotID, String device) throws EC2Exception {
+    String snapshotID = "'"+_snapshotID.replaceFirst("^'(.*)'$", "$1")+"'";
     List<SnapshotInfo> sis = ec2.describeSnapshots(new String[] {snapshotID});
     SnapshotInfo si = sis.get(0);
     List<VolumeInfo> vis = ec2.describeVolumes(new String[] {si.getVolumeId()});

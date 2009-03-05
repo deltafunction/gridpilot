@@ -373,7 +373,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     // choose the host
     String host = selectHost(job);
     if(host==null){
-      logFile.addInfo("No free slots on any hosts.");
+      logFile.addInfo("No free slot on any host.");
       return false;
     }
     ((HashSet) submittingHostJobs.get(host)).add(job);

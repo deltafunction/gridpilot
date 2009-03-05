@@ -467,6 +467,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         if(checkProvides(job, rte, rteName)){
           amiId = getAmiId(rteName, ((MyJobInfo)job).getDBName());
           if(amiId!=null){
+            job.setOpSys(rteName);
+            job.setOpSysRTE(rteName);
             return amiId;
           }
         }
@@ -477,6 +479,10 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     logFile.addInfo("No RTE found that provides "+MyUtil.arrayToString(job.getRTEs())+
         ". Falling back to "+fallbackAmiID);
+    if(fallbackAmiID!=null && !fallbackAmiID.equals("")){
+      job.setOpSys(fallbackAmiID);
+      job.setOpSysRTE(fallbackAmiID);
+    }
     return fallbackAmiID;
   }
   
@@ -888,7 +894,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           Thread.sleep(5000);
         }
         // If the VM RTE has any dependencies on EBSSnapshots, create EBS volume and mount it
-        ebsSnapshots = getEBSSnapshots(amiID, ((MyJobInfo) job).getDBName());
+        ebsSnapshots = getEBSSnapshots(job.getOpSysRTE(), ((MyJobInfo) job).getDBName());
         Debug.debug("The AMI "+amiID+" will have the following EBS volumes attached: "+MyUtil.arrayToString(ebsSnapshots), 2);
         mountEBSVolumes(inst, ebsSnapshots);
         hosts[i] = inst.getDnsName();
@@ -941,17 +947,17 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * A given AMI corresponds to an RTE in the catalog. This RTE may
    * have a dependency on one or several EBSSnapshotPackages. Such
    * EBSSnapshotPackages are returned.
-   * @param amiId ID of an AMI
+   * @param opsysRte name of the VM RTE
    * @param dbName name of the database to use
    * @return a list of snapshot identifiers
    * @throws Exception 
    */
-  private EBSSnapshotPackage[] getEBSSnapshots(String amiId, String dbName) throws Exception{
-    String rteName = getRteNameFromLocation(ec2mgr.getImageDescription(amiId).getImageLocation(), dbName);
+  private EBSSnapshotPackage[] getEBSSnapshots(String opsysRte, String dbName) throws Exception{
     RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.runtimeDir, allTmpCatalogs);
     RTECatalog catalog = rteMgr.getRTECatalog();
-    HashMap<String, Vector<String>> depsMap = rteMgr.getVmRteDepends(rteName, null);
+    HashMap<String, Vector<String>> depsMap = rteMgr.getVmRteDepends(opsysRte, null);
     Vector<String> deps = depsMap.get(null);
+    Debug.debug("Found dependencies "+MyUtil.arrayToString(deps.toArray()), 2);
     String dep;
     MetaPackage mp;
     Vector<EBSSnapshotPackage> sPacks = new Vector();
@@ -959,11 +965,15 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     for(Iterator<String> it=deps.iterator(); it.hasNext();){
       dep = it.next();
       mp = catalog.getMetaPackage(dep);
-      if(mp.instances==null){
+      Debug.debug("Checking dependency "+dep+":"+mp, 2);
+      if(mp==null || mp.instances==null){
+        // If mp has no instances, it certainly has no EBSSnapshotPackage instance
         continue;
       }
+      Debug.debug("Instances:"+MyUtil.arrayToString(mp.instances), 2);
       for(int i=0; i<mp.instances.length; ++i){
         ip = catalog.getInstancePackage(mp.instances[i]);
+        Debug.debug("Snapshot ID --> "+ip.url, 2);
         if(ip.getClass().getCanonicalName().equals(RTECatalog.EBSSnapshotPackage.class.getCanonicalName())){
           sPacks.add((EBSSnapshotPackage) ip);
           // There should be only one EBSSnapshotPackage instance of a MetaPackage.
@@ -990,6 +1000,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       for(int j=0; j<ebsSnapshots.length; ++j){
         // We assume there are not other devices mounted above /dev/sdd
         device = "/dev/sd"+dec2any(j+4, 26);
+        Debug.debug("Attaching snapshot "+ebsSnapshots[j].snapshotId+" on device "+device, 1);
         ec2mgr.attachVolumeFromSnapshot(inst, ebsSnapshots[j].snapshotId, device);
         shell.exec("mount "+device+" "+ebsSnapshots[j].mountpoint, stdOut, stdErr);
         logFile.addInfo("Mounted: "+device+" on "+ebsSnapshots[j].mountpoint+"\n-->"+stdOut+":"+stdErr);
