@@ -14,6 +14,7 @@ import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.globus.gsi.GlobusCredentialException;
 import org.ietf.jgss.GSSException;
@@ -346,10 +347,55 @@ public class EC2Mgr {
    */
   public void terminateInstances(String [] instanceIDs) throws EC2Exception{
     Debug.debug("Terminating instance(s) "+MyUtil.arrayToString(instanceIDs), 1);
-    if(instanceIDs.length==0){
+    if(instanceIDs==null || instanceIDs.length==0){
       return;
     }
     ec2.terminateInstances(instanceIDs);
+    // Detach and delete all software volumes.
+    List<VolumeInfo> volumes = ec2.describeVolumes(new String[] {});
+    VolumeInfo volume = null;
+    List <AttachmentInfo> ais;
+    AttachmentInfo ai;
+    for(Iterator<VolumeInfo> it=volumes.iterator(); it.hasNext();){
+      try{
+        volume = it.next();
+        ais = volume.getAttachmentInfo();
+        for(Iterator<AttachmentInfo> itt=ais.iterator(); itt.hasNext();){
+          ai = itt.next();
+          if(MyUtil.arrayContains(instanceIDs, ai.getInstanceId())){
+            Debug.debug("Deleting volume "+volume.getVolumeId(), 2);
+            if(ai.getStatus().equalsIgnoreCase("attached")){
+              ec2.detachVolume(volume.getVolumeId(), ai.getInstanceId(), ai.getDevice(), true);
+              Exception ee = null;
+              int i;
+              // Try 10 times with 2 seconds in between to delete volume, then give up.
+              for(i=0; i<10; ++i){
+                try{
+                  Thread.sleep(2000);
+                  ec2.deleteVolume(volume.getVolumeId());
+                  Debug.debug("Volume "+volume.getVolumeId()+" deleted.", 2);
+                  break;
+                }
+                catch(Exception eee){
+                  ee = eee;
+                  continue;
+                }
+              }
+              if(i==9 && ee!=null){
+                throw ee;
+              }
+            }
+            else{
+              ec2.deleteVolume(volume.getVolumeId());
+            }
+          }
+        }
+      }
+      catch(Exception e){
+        MyUtil.showError("Could not delete volume "+volume+". Please do so by manually.");
+        e.printStackTrace();
+      }
+    }
   }
   
   /**
@@ -474,21 +520,22 @@ public class EC2Mgr {
    * Create an EBS volume from a given snapshot and attach it to an AMI
    * instance.
    * @param inst the AMI instance in question
-   * @param _snapshotID ID of EBS snapshot
+   * @param snapshotID ID of EBS snapshot
    * @param device device name
    * @return the device name of the attached volume
    * @throws EC2Exception 
    */
-  public void attachVolumeFromSnapshot(Instance inst, String _snapshotID, String device) throws EC2Exception {
-    String snapshotID = "'"+_snapshotID.replaceFirst("^'(.*)'$", "$1")+"'";
-    List<SnapshotInfo> sis = ec2.describeSnapshots(new String[] {snapshotID});
-    SnapshotInfo si = sis.get(0);
-    List<VolumeInfo> vis = ec2.describeVolumes(new String[] {si.getVolumeId()});
-    VolumeInfo vi = vis.get(0);
-    VolumeInfo volumeInfo = ec2.createVolume(vi.getSize(), snapshotID, vi.getZone());
+  public String attachVolumeFromSnapshot(Instance inst, String snapshotID, String device) throws EC2Exception {
+    Debug.debug("Attaching volume from snapshot "+snapshotID, 2);
+    VolumeInfo volumeInfo = ec2.createVolume(/*vi.getSize()*/null, snapshotID, /*vi.getZone()*/inst.getAvailabilityZone());
     AttachmentInfo ai = ec2.attachVolume(volumeInfo.getVolumeId(), inst.getInstanceId(), device);
     String status = ai.getStatus();
-    logFile.addInfo("Attached volume: "+volumeInfo+"\n-->Status: "+status);
+    logFile.addInfo("Attached volume "+volumeInfo.getVolumeId()+" on " +device+
+        "\n-->Status: "+status);
+    return volumeInfo.getVolumeId();
+  }
+  
+  public void deleteUnattachedVolumes(Set vids){
   }
 
 }

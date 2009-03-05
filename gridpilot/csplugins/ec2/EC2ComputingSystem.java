@@ -347,7 +347,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       }
     }
   }
-
+  
   public void exit() {
     try{
       super.exit();
@@ -903,7 +903,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         return hosts[i];
       }
       catch(Exception e){
-        e.printStackTrace();
+        logFile.addMessage("Problem finding host.", e);
         return null;
       }
     }
@@ -922,7 +922,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * @throws Exception 
    */
   private static String dec2any(int number, int base) throws Exception{
-    String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    String alphabet = "abcdefghijklmnopqrstuvwxyz";
     // check base
     if(base<2 || base>26){
       throw new Exception("base must be between 2 and 26");
@@ -999,11 +999,34 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       StringBuffer stdErr = new StringBuffer();
       for(int j=0; j<ebsSnapshots.length; ++j){
         // We assume there are not other devices mounted above /dev/sdd
-        device = "/dev/sd"+dec2any(j+4, 26);
+        device = "/dev/sd"+dec2any(j+5, 26);
         Debug.debug("Attaching snapshot "+ebsSnapshots[j].snapshotId+" on device "+device, 1);
         ec2mgr.attachVolumeFromSnapshot(inst, ebsSnapshots[j].snapshotId, device);
-        shell.exec("mount "+device+" "+ebsSnapshots[j].mountpoint, stdOut, stdErr);
-        logFile.addInfo("Mounted: "+device+" on "+ebsSnapshots[j].mountpoint+"\n-->"+stdOut+":"+stdErr);
+        shell.exec("mkdir "+ebsSnapshots[j].mountpoint, stdOut, stdErr);
+        Exception ee = null;
+        int i;
+        int ret;
+        // Try 10 times with 2 seconds in between to mount volume, then give up.
+        for(i=0; i<10; ++i){
+          try{
+            Thread.sleep(2000);
+            ret = shell.exec("mount "+device+"1 "+ebsSnapshots[j].mountpoint, stdOut, stdErr);
+            if(ret==0){
+              break;
+            }
+            else{
+              throw new Exception(stdErr.toString());
+            }
+          }
+          catch(Exception eee){
+            ee = eee;
+            continue;
+          }
+        }
+        if(i==9 && ee!=null){
+          throw ee;
+        }
+        logFile.addInfo("Mounted "+device+" on "+ebsSnapshots[j].mountpoint);
       }
     }
   }
