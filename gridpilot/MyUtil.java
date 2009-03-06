@@ -347,6 +347,9 @@ public class MyUtil extends gridfactory.common.Util{
      url = null;
      Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
    }
+   if(url!=null && !url.equals("") && isLocalFileName(url)){
+     url = replaceWithTildeLocally(url);
+   }
    return url;
  }
  
