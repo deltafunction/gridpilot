@@ -96,10 +96,18 @@ public class ForkScriptGenerator extends ScriptGenerator{
       // Notice that catalog RTEs are not installed on the fly by this computing system,
       // (so they must have been installed by hand...)
       // Classes that inherit may choose to do this.
-      writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
-          "/"+rtes[i]).replaceAll("//", "/"));
-      writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
-          "/"+rtes[i]+"/"+"control/runtime").replaceAll("//", "/")+(!notOnWindows?".bat":""));
+      if(notOnWindows){
+        writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
+            "/"+rtes[i]+" 1").replaceAll("//", "/"));
+        writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
+            "/"+rtes[i]+"/"+"control/runtime 1").replaceAll("//", "/"));
+      }
+      else{
+        writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
+            "/"+rtes[i]+" 1").replaceAll("//", "/").replaceAll("/", "\\\\"));
+        writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
+            "/"+rtes[i]+"/"+"control/runtime.bat 1").replaceAll("//", "/").replaceAll("/", "\\\\"));
+      }
       writeLine(buf, "");
     }
 
@@ -121,8 +129,14 @@ public class ForkScriptGenerator extends ScriptGenerator{
           logFile.addMessage("WARNING: could not find required runtime environment "+requiredRuntimeEnv, e);
         }
         writeLine(buf, initTxt);
-        writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
-            "/"+requiredRuntimeEnv).replaceAll("//", "/"));
+        if(notOnWindows){
+          writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
+              "/"+requiredRuntimeEnv+" 1").replaceAll("//", "/"));
+        }
+        else{
+          writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
+              "/"+requiredRuntimeEnv+" 1").replaceAll("//", "/").replaceAll("/", "\\\\"));
+        }
         writeLine(buf, "");
       }
       if(remoteCopyCommand!=null && remoteCopyCommand.length()>0){
@@ -197,7 +211,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     // Running the transformation script with ./ instead of a full path is to allow this to 
     // be used by GridFactoryComputingSystem, where we don't have a shell on the worker node
     // and the full path is not known.
-    line = /*MyUtil.clearFile(scriptDest)*/ (copyScript?"./":"") + scriptName + " " + MyUtil.arrayToString(actualParam);
+    line = /*MyUtil.clearFile(scriptDest)*/ (copyScript&&notOnWindows?"./":"") + scriptName + " " + MyUtil.arrayToString(actualParam);
     writeLine(buf, line);
     writeLine(buf, "");
     
