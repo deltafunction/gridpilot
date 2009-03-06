@@ -243,7 +243,7 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
     try{
       if(passiveInstances.isEmpty() || activeInstances.isEmpty()){
         choice = confirmBox.getConfirm("Confirm terminate instances",
-            msg, new Object[] {"Do nothing", "Terminate all"});
+            msg, new Object[] {"Do nothing", "Terminate"});
       }
       else{
         choice = confirmBox.getConfirm("Confirm terminate instances",

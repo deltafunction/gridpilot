@@ -507,7 +507,7 @@ public class SubmissionControl{
 
     jobMgr.updateJobCells(submitables);
     // if all went well we can now submit
-    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Submitting jobs...");
+    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Submitting job(s)...");
     queue(submitables);
   }
 
