@@ -117,6 +117,10 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       // Default to global access
       sshAccessSubnet = "0.0.0.0/0";
     }
+    workingDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "working directory");
+    if(workingDir==null || workingDir.equals("")){
+      workingDir = "~";
+    }
     String runDir = MyUtil.clearTildeLocally(MyUtil.clearFile(workingDir));
     Debug.debug("Using workingDir "+workingDir, 2);
     ec2mgr = new EC2Mgr(ec2Server, ec2Port, ec2Path, ec2Secure,
@@ -304,7 +308,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     try{
       if(passiveInstances.isEmpty() || activeInstances.isEmpty()){
         choice = confirmBox.getConfirm("Confirm terminate instances",
-            msg, new Object[] {"Do nothing", "Terminate all"});
+            msg, new Object[] {"Do nothing", "Terminate"});
       }
       else{
         choice = confirmBox.getConfirm("Confirm terminate instances",
@@ -436,7 +440,10 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     if(maxJobs!=null && maxJobs.length>i && maxJobs[i]!=null){
       maxR = Integer.parseInt(maxJobs[i]);
     }
+    Debug.debug("Checking host "+host+" for running jobs - max "+maxR, 2);
     submitting = submittingHostJobs.get(host)!=null?((HashSet)submittingHostJobs.get(host)).size():0;
+    Debug.debug("--> Submitting: "+submitting, 2);
+    Debug.debug("--> Running: "+mgr.getJobsNumber(), 2);
     if(mgr.getJobsNumber()+submitting<maxR){
       return true;
     }
@@ -569,33 +576,26 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * @throws Exception 
    */
   private boolean checkHostProvides(String host, JobInfo job) throws Exception {
-    String [] deps = job.getRTEs();
+    
+    String amiId = findAmiId(job);
+    
     List reservationList = ec2mgr.listReservations();
-    ArrayList<String> provides = new ArrayList();
     List instanceList = null;
     Instance instance = null;
     ReservationDescription reservation = null;
-    String manifest = null;
-    String rteName = null;
     for(Iterator it=reservationList.iterator(); it.hasNext();){
       reservation = (ReservationDescription) it.next();
       instanceList = ec2mgr.listInstances(reservation);
       for(Iterator itt=instanceList.iterator(); itt.hasNext();){
         instance = (Instance) itt.next();
         if(instance.getDnsName().equals(host)){
-          manifest = ec2mgr.getImageDescription(instance.getImageId()).getImageLocation();
-          rteName = getRteNameFromLocation(manifest, ((MyJobInfo) job).getDBName());
-          provides = getProvides(rteName);
-          break;
+          if(instance.getImageId().equals(amiId)){
+            return true;
+          }
         }
       }
     }
-    for(int i=0; i<deps.length; ++i){
-      if(!provides.contains(deps[i])){
-        return false;
-      }
-    }
-    return true;
+    return false;
   }
   
   private String getRteNameFromLocation(String manifest, String dbName) throws Exception{
@@ -834,11 +834,16 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         if(hosts[i]==null){
           continue;
         }
+        Debug.debug("Checking if we can reuse host "+hosts[i]+
+            " from "+MyUtil.arrayToString(submittingHostJobs.keySet().toArray()), 2);
         if(/* This means that the host has been added by discoverInstances, i.e. that we can use it */
-            submittingHostJobs.containsKey(hosts[i]) &&
-            /**/
-            checkHostProvides(hosts[i], job) && checkHostForJobs(i)){
-          return hosts[i];
+            submittingHostJobs.containsKey(hosts[i])){
+          if(checkHostProvides(hosts[i], job)){
+            Debug.debug("Dependencies provided by host", 2);
+            if(checkHostForJobs(i)){
+              return hosts[i];
+            }
+          }
         }
       }
       catch(Exception e){
@@ -875,7 +880,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           instanceList = null;
           instance = null;
           ReservationDescription reservation = null;
-          Debug.debug("Finding reservations... ", 1);
+          Debug.debug("Finding reservations. "+reservationList.size(), 1);
           for(Iterator it=reservationList.iterator(); it.hasNext();){
             reservation = (ReservationDescription) it.next();
             instanceList = ec2mgr.listInstances(reservation);
@@ -992,42 +997,43 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * @throws Exception 
    */
   private void mountEBSVolumes(Instance inst, EBSSnapshotPackage[] ebsSnapshots) throws Exception {
-    if(ebsSnapshots!=null && ebsSnapshots.length>0){
-      String device;
-      Shell shell = getShell(inst.getDnsName());
-      StringBuffer stdOut = new StringBuffer();
-      StringBuffer stdErr = new StringBuffer();
-      for(int j=0; j<ebsSnapshots.length; ++j){
-        // We assume there are not other devices mounted above /dev/sdd
-        device = "/dev/sd"+dec2any(j+5, 26);
-        Debug.debug("Attaching snapshot "+ebsSnapshots[j].snapshotId+" on device "+device, 1);
-        ec2mgr.attachVolumeFromSnapshot(inst, ebsSnapshots[j].snapshotId, device);
-        shell.exec("mkdir "+ebsSnapshots[j].mountpoint, stdOut, stdErr);
-        Exception ee = null;
-        int i;
-        int ret;
-        // Try 10 times with 2 seconds in between to mount volume, then give up.
-        for(i=0; i<10; ++i){
-          try{
-            Thread.sleep(2000);
-            ret = shell.exec("mount "+device+"1 "+ebsSnapshots[j].mountpoint, stdOut, stdErr);
-            if(ret==0){
-              break;
-            }
-            else{
-              throw new Exception(stdErr.toString());
-            }
+    if(ebsSnapshots==null || ebsSnapshots.length==0){
+      return;
+    }
+    String device;
+    Shell shell = getShell(inst.getDnsName());
+    StringBuffer stdOut = new StringBuffer();
+    StringBuffer stdErr = new StringBuffer();
+    for(int j=0; j<ebsSnapshots.length; ++j){
+      // We assume there are not other devices mounted above /dev/sdd
+      device = "/dev/sd"+dec2any(j+5, 26);
+      Debug.debug("Attaching snapshot "+ebsSnapshots[j].snapshotId+" on device "+device, 1);
+      ec2mgr.attachVolumeFromSnapshot(inst, ebsSnapshots[j].snapshotId, device);
+      shell.exec("mkdir "+ebsSnapshots[j].mountpoint, stdOut, stdErr);
+      Exception ee = null;
+      int i;
+      int ret;
+      // Try 10 times with 2 seconds in between to mount volume, then give up.
+      for(i=0; i<10; ++i){
+        try{
+          Thread.sleep(2000);
+          ret = shell.exec("mount "+device+"1 "+ebsSnapshots[j].mountpoint, stdOut, stdErr);
+          if(ret==0){
+            break;
           }
-          catch(Exception eee){
-            ee = eee;
-            continue;
+          else{
+            throw new Exception(stdErr.toString());
           }
         }
-        if(i==9 && ee!=null){
-          throw ee;
+        catch(Exception eee){
+          ee = eee;
+          continue;
         }
-        logFile.addInfo("Mounted "+device+" on "+ebsSnapshots[j].mountpoint);
       }
+      if(i==9 && ee!=null){
+        throw ee;
+      }
+      logFile.addInfo("Mounted "+device+" on "+ebsSnapshots[j].mountpoint);
     }
   }
 
