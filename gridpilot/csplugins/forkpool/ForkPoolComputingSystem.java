@@ -14,6 +14,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LocalShell;
 import gridfactory.common.Shell;
+
 import gridpilot.MyComputingSystem;
 import gridpilot.DBPluginMgr;
 import gridpilot.GridPilot;
@@ -392,14 +393,6 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     catch(Exception e){
       logFile.addMessage("ERROR: could not create run directory for job.", e);
       return false;
-    }
-    if(!getShell(job.getHost()).isLocal()){
-      try{
-        writeUserProxy(getShell(job.getHost()));
-      }
-      catch(Exception e){
-        logFile.addMessage("WARNING: could not write user proxy.", e);
-      }
     }
     return setupJobRTEs((MyJobInfo) job, getShell(job.getHost())) &&
        setRemoteOutputFiles((MyJobInfo) job) && getInputFiles((MyJobInfo) job, getShell(job.getHost()));

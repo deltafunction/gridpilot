@@ -775,34 +775,8 @@ public class ForkComputingSystem implements MyComputingSystem{
       logFile.addMessage("ERROR: could not create run directory for job.", e);
       return false;
     }    
-    if(!shell.isLocal()){
-      try{
-        writeUserProxy(shell);
-      }
-      catch(Exception e){
-        logFile.addMessage("WARNING: could not write user proxy.", e);
-      }
-    }
     return setupJobRTEs((MyJobInfo) job, shell) &&
        setRemoteOutputFiles((MyJobInfo) job) && getInputFiles((MyJobInfo) job, shell);
-  }
-  
-  protected void writeUserProxy(Shell shellMgr) throws IOException{
-    try{
-      StringBuffer stdout = new StringBuffer();
-      StringBuffer stderr = new StringBuffer();
-      if(shellMgr.exec("id -u", stdout, stderr)!=0 ||
-          stderr!=null && stderr.length()!=0){
-        //logFile.addMessage("Could not get user id. "+stderr);
-        throw new FileNotFoundException(stderr.toString());
-      }
-      String uid = stdout.toString().trim();
-      shellMgr.upload(MySSL.getProxyFile().getAbsolutePath(), "/tmp/x509up_u"+uid);     
-    }
-    catch(Exception e){
-      e.printStackTrace();
-      throw new IOException("WARNING: NOT writing user proxy. " +"Probably not on UNIX. "+e.getMessage());
-    }
   }
   
   /**
@@ -921,12 +895,12 @@ public class ForkComputingSystem implements MyComputingSystem{
     }
     Vector downloadVector = new Vector();
     String [] downloadFiles = null;
-    // TODO: clean up this mess!
+    // TODO: clean up this mess! Use method from MyUtil
     for(int i=0; i<inputFiles.length; ++i){
       Debug.debug("Pre-processing : Getting " + inputFiles[i], 2);
       String fileName = inputFiles[i];
       String urlDir = "/";
-      int lastSlash = inputFiles[i].lastIndexOf("/");
+      int lastSlash = inputFiles[i].lastIndexOf(File.separator);
       if(lastSlash>-1){
         fileName = inputFiles[i].substring(lastSlash + 1);
         urlDir = inputFiles[i].substring(0, lastSlash + 1);
@@ -944,6 +918,7 @@ public class ForkComputingSystem implements MyComputingSystem{
           // If source starts with file:/, scp the file from local disk.
           if(inputFiles[i].matches("^file:/*[^/]+.*")){
             inputFiles[i] = MyUtil.clearTildeLocally(MyUtil.clearFile(inputFiles[i]));
+            Debug.debug("Uploading "+fileName+" via SSH: "+inputFiles[i]+" --> "+runDir(job)+"/"+fileName, 3);
             ok = thisShellMgr.upload(inputFiles[i], runDir(job)+"/"+fileName);
             if(!ok){
               logFile.addMessage("ERROR: could not put input file "+inputFiles[i]);
