@@ -3,6 +3,7 @@ package gridpilot;
 import gridfactory.common.StatusBar;
 import gridpilot.GridPilot;
 import gridpilot.MyJTable;
+import gridpilot.csplugins.fork.JCTermSwingFrameGP;
 
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
@@ -46,6 +47,7 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
   private StatusBar statusBar = null;
   private JButton bTerminate = new JButton("Terminate");
   private JButton bLaunch = new JButton("Launch");
+  private boolean runningShell = false;
 
   protected MyJTable imageTable = null;
   protected MyJTable instanceTable = null;
@@ -355,7 +357,54 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
     return null;
   }
 
+  protected void runShellExternal() throws Exception{
+    throw new Exception("This method is not implemented");
+  }
+  
+  protected void runShellInternal() throws Exception{
+    throw new Exception("This method is not implemented");
+  }
+  
+  protected void runShellInternal(String host, int port, String user,
+      String password, String keyFile, String keyPassword){
+    final JCTermSwingFrameGP frame=new JCTermSwingFrameGP(
+        "GridPilot SSH terminal",
+        host,
+        port,
+        user,
+        password,
+        keyFile,
+        keyPassword);
+    frame.setVisible(true);
+    frame.setResizable(true);
+  }
+
   protected void runShell(){
+    if(runningShell){
+      return;
+    }
+    runningShell = true;
+    try{
+      if(sshCommand!=null && sshCommand.length>0){
+        runShellExternal();
+        return;
+      }
+      else{
+        throw new Exception("No SSH Command defined.");
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      try{
+        runShellInternal();
+      }
+      catch(Exception ee){
+        MyUtil.showError("Could not connect to host.");
+      }
+    }
+    finally{
+      runningShell = false;
+    }
   }
 
 }

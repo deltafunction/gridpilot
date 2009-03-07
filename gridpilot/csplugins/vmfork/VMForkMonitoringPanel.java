@@ -171,11 +171,16 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
     String creds = "User: "+vm.getUserName()+"\nPassword: "+vm.getPassword();
     return creds;
   }
+  
+  protected void runShellInternal() throws Exception{
+    int row = instanceTable.getSelectedRow();
+    String id = (String) instanceTable.getUnsortedValueAt(row, idField);
+    final VirtualMachine vm = vmMgr.getVM(id);
+    runShellInternal(vm.getHostName(), vm.getSshPort(), vm.getUserName(),
+        vm.getPassword(), null, null);
+  }
 
-  protected void runShell(){
-    if(runningShell){
-      return;
-    }
+  protected void runShellExternal() throws Exception{
     runningShell = true;
     StringBuffer stdout = new StringBuffer();
     StringBuffer stderr = new StringBuffer();
@@ -184,7 +189,8 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
       int row = instanceTable.getSelectedRow();
       String id = (String) instanceTable.getUnsortedValueAt(row, idField);
       final VirtualMachine vm = vmMgr.getVM(id);
-      String dns = (String) instanceTable.getUnsortedValueAt(row, dnsField);
+      //String dns = (String) instanceTable.getUnsortedValueAt(row, dnsField);
+      String dns = vm.getHostName();
       fullCommand = new String [sshCommand.length+2];
       for(int i=0; i<sshCommand.length; ++i){
         fullCommand[i] = sshCommand[i];
@@ -208,9 +214,7 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
     catch(Exception e){
       e.printStackTrace();
       MyUtil.showError("Could not connect to host with "+MyUtil.arrayToString(fullCommand)+"; "+stdout+" : "+stderr);
-    }
-    finally{
-      runningShell = false;
+      throw e;
     }
   }
 

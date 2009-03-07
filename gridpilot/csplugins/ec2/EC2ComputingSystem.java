@@ -51,7 +51,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private static String USER = "root";
   private int maxMachines = 0;
   private HashMap<String, ArrayList<DBRecord>> allEC2RTEs;
-  private String defaultEc2Catalog;
+  private String [] defaultEc2Catalogs;
   private HashMap<String, String> locationNameMap = new HashMap<String, String>();
   private String[] allTmpCatalogs;
   
@@ -67,11 +67,11 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
 
     fallbackAmiID = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "Fallback ami id");
-    defaultEc2Catalog = "sss://gridpilot/ec2_rtes.rdf";
-    String testEc2CatalogTest = GridPilot.getClassMgr().getConfigFile().getValue(csName,
+    defaultEc2Catalogs = new String [] {"sss://gridpilot/ec2_rtes.rdf"};
+    String [] testEc2CatalogsTest = GridPilot.getClassMgr().getConfigFile().getValues(csName,
        "RTE catalog");
-    if(testEc2CatalogTest!=null){
-      defaultEc2Catalog = testEc2CatalogTest;
+    if(testEc2CatalogsTest!=null && testEc2CatalogsTest.length>0){
+      defaultEc2Catalogs = testEc2CatalogsTest;
     }
     String testAmiPrefix = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "AMI prefix");
@@ -550,8 +550,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
 
   /**
    * Get a list of all RTEs with computingSystem EC2.
-   * These will all correspond to an AMI and each provide
-   * some software RTEs.
+   * These will all correspond to an AMI or an EBS snapshot and each provide
+   * some software RTE(s).
    * @param dbMgr
    */
      
@@ -674,14 +674,16 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
 
   private File [] getAllTmpCatalogFiles() throws EC2Exception {
     ArrayList<File> files = new ArrayList();
-    // First download the default RDF file
+    // First the default EC2-specific RDF files
     File tmpCatalogFile;
-    try{
-      tmpCatalogFile = downloadFromSSS(defaultEc2Catalog);
-      files.add(tmpCatalogFile);
-    }
-    catch(Exception e){
-      logFile.addMessage("WARNING: Default EC2 catalog misconfigured", e);
+    for(int i=0; i<defaultEc2Catalogs.length; ++i){
+      try{
+        tmpCatalogFile = downloadFromSSS(defaultEc2Catalogs[i]);
+        files.add(tmpCatalogFile);
+      }
+      catch(Exception e){
+        logFile.addMessage("WARNING: EC2 catalog misconfigured", e);
+      }
     }
     List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, true);
     ImageDescription desc;
@@ -898,7 +900,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           }
           Thread.sleep(5000);
         }
-        // If the VM RTE has any dependencies on EBSSnapshots, create EBS volume and mount it
+        // If the VM RTE has any dependencies on EBSSnapshots, create EBS volume, 
+        // and add initLines to the runtimeEnvironment record and mount the volume.
         ebsSnapshots = getEBSSnapshots(job.getOpSysRTE(), ((MyJobInfo) job).getDBName());
         Debug.debug("The AMI "+amiID+" will have the following EBS volumes attached: "+MyUtil.arrayToString(ebsSnapshots), 2);
         mountEBSVolumes(inst, ebsSnapshots);
@@ -948,10 +951,14 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
 
   /**
    * Find snapshots of software volumes to attach to a given AMI
-   * by querying the software catalog.<br><br>
+   * by querying the software catalog.
+   * <br><br>
    * A given AMI corresponds to an RTE in the catalog. This RTE may
    * have a dependency on one or several EBSSnapshotPackages. Such
    * EBSSnapshotPackages are returned.
+   * <br><br>
+   * initLines are added to the relevant runtimeEnvironment record, causing
+   * the ScriptGenerator to add the right "source ..." lines to the job script.
    * @param opsysRte name of the VM RTE
    * @param dbName name of the database to use
    * @return a list of snapshot identifiers
@@ -980,6 +987,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         ip = catalog.getInstancePackage(mp.instances[i]);
         Debug.debug("Snapshot ID --> "+ip.url, 2);
         if(ip.getClass().getCanonicalName().equals(RTECatalog.EBSSnapshotPackage.class.getCanonicalName())){
+          addEbsInitLines(mp.name, (EBSSnapshotPackage) ip, dbName);
           sPacks.add((EBSSnapshotPackage) ip);
           // There should be only one EBSSnapshotPackage instance of a MetaPackage.
           break;
@@ -987,6 +995,15 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       }
     }
     return sPacks.toArray(new EBSSnapshotPackage[sPacks.size()]);
+  }
+
+  private void addEbsInitLines(String rteName, EBSSnapshotPackage pack, String dbName) {
+    DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
+    // There should be only one RTE with a given name
+    String rteId = mgr.getRuntimeEnvironmentIDs(rteName, csName)[0];
+    mgr.updateRuntimeEnvironment(rteId,
+        new String[] {"initLines"},
+        new String[] {"source "+pack.mountpoint+"/control/runtime 1"});
   }
 
   /**

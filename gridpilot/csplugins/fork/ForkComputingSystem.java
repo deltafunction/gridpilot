@@ -3,7 +3,6 @@ package gridpilot.csplugins.fork;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -28,7 +27,6 @@ import gridpilot.MyComputingSystem;
 import gridpilot.DBPluginMgr;
 import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
-import gridpilot.MySSL;
 import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
@@ -642,18 +640,6 @@ public class ForkComputingSystem implements MyComputingSystem{
         dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
         if(dbPluginMgr!=null){
           ok = true;
-          // Don't delete records with a non-empty initText.
-          // These can only have been created by hand.
-          initText = null;
-          try{
-            initText = (String) dbPluginMgr.getRuntimeEnvironment(id).getValue("initText");
-          }
-          catch(Exception e){
-            e.printStackTrace();
-          }
-          if(initText!=null && !initText.equals("")){
-            continue;
-          }
           if(id!=null && !id.equals("-1")){
             ok = dbPluginMgr.deleteRuntimeEnvironment(id);
           }

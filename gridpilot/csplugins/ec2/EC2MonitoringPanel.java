@@ -3,6 +3,7 @@ package gridpilot.csplugins.ec2;
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.LocalShell;
+import gridfactory.common.jobrun.VirtualMachine;
 import gridpilot.GridPilot;
 
 import gridpilot.MyUtil;
@@ -178,12 +179,15 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
   protected String getCredentials(){
     return "SSH key: "+ec2mgr.getKeyFile().getPath();
   }
+  
+  protected void runShellInternal() throws Exception{
+    int row = instanceTable.getSelectedRow();
+    String dns = (String) instanceTable.getUnsortedValueAt(row, dnsField);
+    runShellInternal(dns, 22, "root",
+        null, ec2mgr.getKeyFile().getPath(), null);
+  }
 
-  protected void runShell(){
-    if(runningShell){
-      return;
-    }
-    runningShell = true;
+  protected void runShellExternal() throws Exception{
     StringBuffer stdout = new StringBuffer();
     StringBuffer stderr = new StringBuffer();
     String [] fullCommand = new String [0];
@@ -202,9 +206,7 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
     catch(Exception e){
       e.printStackTrace();
       MyUtil.showError("Could not connect to host with "+MyUtil.arrayToString(fullCommand)+"; "+stdout+" : "+stderr);
-    }
-    finally{
-      runningShell = false;
+      throw e;
     }
   }
 
