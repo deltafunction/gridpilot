@@ -61,6 +61,8 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected boolean includeVMRTEs = true;
   protected String [] basicOSRTES = {"Linux"};
 
+  protected boolean ignoreBaseSystemAndVMRTEs = true;
+
   public ForkComputingSystem(String _csName) throws Exception{
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     csName = _csName;
@@ -432,7 +434,8 @@ public class ForkComputingSystem implements MyComputingSystem{
     Debug.debug("Executing "+cmd, 2);
     ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     try{
-      ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job));
+      ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job),
+          ignoreBaseSystemAndVMRTEs );
       if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, job.getName()+commandSuffix)){
         throw new IOException("Could not create wrapper script.");
       }

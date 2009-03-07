@@ -16,12 +16,16 @@ import java.util.Iterator;
  */
 public class MonitoringPanel extends CreateEditPanel {
 
-  private static final long serialVersionUID = 1L;
-  public StatusBar statusBar = null;
   // Central panel
   public JTabbedPane tpStatLog = new JTabbedPane();
+  public StatusBar statusBar = null;
   public JobMonitoringPanel jobMonitor = new JobMonitoringPanel();
   public TransferMonitoringPanel transferMonitor = new TransferMonitoringPanel();
+  
+  public static final int TAB_INDEX_JOBS = 0;
+  public static final int TAB_INDEX_TRANSFERS = 1;
+  
+  private static final long serialVersionUID = 1L;
   private JScrollPane spLogView = new JScrollPane();
   private LogViewerPanel logViewerPanel = new LogViewerPanel();
 

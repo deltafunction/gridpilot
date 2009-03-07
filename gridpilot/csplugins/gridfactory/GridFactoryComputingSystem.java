@@ -145,7 +145,8 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";
       ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
       // Create a standard shell script.
-      ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job));
+      ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job),
+          ignoreBaseSystemAndVMRTEs);
       if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, job.getName()+commandSuffix)){
         throw new IOException("Could not create wrapper script.");
       }

@@ -2424,7 +2424,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                 GridPilot.getClassMgr().getDBPluginMgr(
                     cbTargetDBSelection.getSelectedItem().toString()) : null)){
           GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel();
-          GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.tpStatLog.setSelectedIndex(1);
+          GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.tpStatLog.setSelectedIndex(MonitoringPanel.TAB_INDEX_TRANSFERS);
         }
       }
     }.start();
@@ -2873,7 +2873,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   private void monitorJobs(){
     GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel();
-    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.tpStatLog.setSelectedIndex(0);
+    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.tpStatLog.setSelectedIndex(MonitoringPanel.TAB_INDEX_JOBS);
     new Thread(){
       public void run(){        
         String [] selectedJobIdentifiers = getSelectedIdentifiers();

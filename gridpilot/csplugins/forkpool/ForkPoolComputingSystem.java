@@ -156,7 +156,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     Debug.debug("Executing "+cmd, 2);
     ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     ForkScriptGenerator scriptGenerator =
-      new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job));
+      new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job), ignoreBaseSystemAndVMRTEs);
     try{
       Shell mgr = getShell(job.getHost());
       scriptGenerator.createWrapper(mgr, (MyJobInfo) job, job.getName()+commandSuffix);

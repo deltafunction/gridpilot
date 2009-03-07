@@ -169,6 +169,7 @@ public class SubmissionControl{
   public void submitJobDefinitions(/*vector of DBRecords*/Vector selectedJobs,
       String csName, DBPluginMgr dbPluginMgr){
     GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel();
+    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.tpStatLog.setSelectedIndex(MonitoringPanel.TAB_INDEX_JOBS);
     synchronized(submittedJobs){
       Vector newJobs = new Vector();
       // This label is not shown because this function is not called in a Thread.

@@ -60,6 +60,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   public EC2ComputingSystem(String _csName) throws Exception {
     super(_csName);
     
+    ignoreBaseSystemAndVMRTEs = false;
+    
     allEC2RTEs = new HashMap<String, ArrayList<DBRecord>>();
     
     basicOSRTES = new String [] {"Linux"/*, "Windows"*/
@@ -182,7 +184,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * included in the pool.
    */
   private void discoverInstances(){
-    List reservations;
+    List<ReservationDescription> reservations;
     try{
       reservations = ec2mgr.listReservations();
     }
@@ -196,12 +198,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     ReservationDescription res = null;
     Instance inst = null;
-    ArrayList instances = new ArrayList();
-    for(Iterator it=reservations.iterator(); it.hasNext();){
-      res = (ReservationDescription) it.next();
+    ArrayList<Instance> instances = new ArrayList();
+    for(Iterator<ReservationDescription> it=reservations.iterator(); it.hasNext();){
+      res = it.next();
       Debug.debug("checking reservation "+res.getReservationId(), 2);
-      for(Iterator itt=res.getInstances().iterator(); itt.hasNext();){
-        inst = (Instance) itt.next();
+      for(Iterator<Instance> itt=res.getInstances().iterator(); itt.hasNext();){
+        inst = itt.next();
         if(inst.isShuttingDown() || inst.isTerminated()){
           continue;
         }
@@ -244,8 +246,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     int i = 0;
     String hostName = null;
-    for(Iterator it=instances.iterator(); it.hasNext();){
-      hostName = ((Instance) it.next()).getDnsName();
+    for(Iterator<Instance> it=instances.iterator(); it.hasNext();){
+      inst = it.next();
+      hostName = inst.getDnsName();
       remoteShellMgrs.put(hostName, null);
       submittingHostJobs.put(hostName, new HashSet());
       if(i<maxMachines && hosts[i]==null){
@@ -477,6 +480,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           if(amiId!=null){
             job.setOpSys(rteName);
             job.setOpSysRTE(rteName);
+            // This is just to have initLines written to the RTE DB record
+            getEBSSnapshots(job.getOpSysRTE(), ((MyJobInfo) job).getDBName());
+            //
             return amiId;
           }
         }
@@ -854,6 +860,10 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       }
     }
     // then try to boot an instance
+    return bootInstance(job);
+  }
+  
+  private String bootInstance(JobInfo job){
     String amiID = null;
     EBSSnapshotPackage [] ebsSnapshots = null;
     for(int i=0; i<hosts.length; ++i){
@@ -975,6 +985,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     MetaPackage mp;
     Vector<EBSSnapshotPackage> sPacks = new Vector();
     InstancePackage ip;
+    String initLines = "";
     for(Iterator<String> it=deps.iterator(); it.hasNext();){
       dep = it.next();
       mp = catalog.getMetaPackage(dep);
@@ -988,23 +999,26 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         ip = catalog.getInstancePackage(mp.instances[i]);
         Debug.debug("Snapshot ID --> "+ip.url, 2);
         if(ip.getClass().getCanonicalName().equals(RTECatalog.EBSSnapshotPackage.class.getCanonicalName())){
-          addEbsInitLines(mp.name, (EBSSnapshotPackage) ip, dbName);
+          initLines += "source "+((EBSSnapshotPackage) ip).mountpoint+"/control/runtime 1";
           sPacks.add((EBSSnapshotPackage) ip);
           // There should be only one EBSSnapshotPackage instance of a MetaPackage.
           break;
         }
       }
     }
+    if(initLines.length()>0){
+      addEbsInitLines(opsysRte, initLines, dbName);
+    }
     return sPacks.toArray(new EBSSnapshotPackage[sPacks.size()]);
   }
 
-  private void addEbsInitLines(String rteName, EBSSnapshotPackage pack, String dbName) {
+  private void addEbsInitLines(String rteName, String initLines, String dbName) {
     DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
     // There should be only one RTE with a given name
     String rteId = mgr.getRuntimeEnvironmentIDs(rteName, csName)[0];
     mgr.updateRuntimeEnvironment(rteId,
         new String[] {"initLines"},
-        new String[] {"source "+pack.mountpoint+"/control/runtime 1"});
+        new String[] {initLines});
   }
 
   /**

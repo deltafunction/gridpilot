@@ -26,11 +26,12 @@ public class ForkScriptGenerator extends ScriptGenerator{
   private String remoteCopyCommand = null;
   private String requiredRuntimeEnv = null;
   private String csName = null;
+  private boolean ignoreBaseSystemAndVMRTEs;
   
   /**
    * Constructor
    */
-  public ForkScriptGenerator(String _csName, String _workingDir){
+  public ForkScriptGenerator(String _csName, String _workingDir, boolean _ignoreBaseSystemAndVMRTEs){
     super(GridPilot.getClassMgr().getLogFile());
     csName = _csName;
     String onWindowsStr = GridPilot.getClassMgr().getConfigFile().getValue(
@@ -42,6 +43,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
         csName, "remote copy command");
     requiredRuntimeEnv = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "required runtime environment");
+    ignoreBaseSystemAndVMRTEs = _ignoreBaseSystemAndVMRTEs;
   }
   
   public boolean createWrapper(Shell shell, MyJobInfo job, String fileName){
@@ -85,9 +87,11 @@ public class ForkScriptGenerator extends ScriptGenerator{
     writeBlock(buf, "Runtime setup", ScriptGenerator.TYPE_SUBSECTION, commentStart);
     // For each runtime environment used, get its init text (if present) and write it out,
     // source the setup script
-    String[] rtes = MyUtil.removeBaseSystemAndVM(dbPluginMgr.getRuntimeEnvironments(jobDefID), null);
-    // We skip the first one which is the OS
-    for(int i=1; i<rtes.length; ++i){
+    String[] rtes = dbPluginMgr.getRuntimeEnvironments(jobDefID);
+    if(ignoreBaseSystemAndVMRTEs){
+      rtes = MyUtil.removeBaseSystemAndVM(rtes, null);
+    }
+    for(int i=0; i<rtes.length; ++i){
       writeBlock(buf, "runtime environment: " + rtes[i], ScriptGenerator.TYPE_COMMENT, commentStart);
       String initTxt = dbPluginMgr.getRuntimeInitText(rtes[i], csName);
       writeLine(buf, initTxt==null?"":initTxt);
@@ -280,4 +284,5 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
     return true;
   }
+
 }
