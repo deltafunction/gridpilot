@@ -225,6 +225,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     try{
       choice = confirmBox.getConfirm("Confirm inclusion of hosts",
           msg, new Object[] {"Yes", "No"});
+      GridPilot.splash.show();
     }
     catch(Exception e){
       e.printStackTrace();

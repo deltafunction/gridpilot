@@ -3,7 +3,6 @@ package gridpilot;
 import gridfactory.common.StatusBar;
 import gridpilot.GridPilot;
 import gridpilot.MyJTable;
-import gridpilot.csplugins.fork.JCTermSwingFrameGP;
 
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;

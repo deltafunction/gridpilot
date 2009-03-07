@@ -1,4 +1,6 @@
-package gridpilot.csplugins.fork;
+package gridpilot;
+
+import gridfactory.common.Debug;
 
 import com.jcraft.jcterm.JSchSession;
 import com.jcraft.jsch.*;
@@ -18,10 +20,10 @@ public class JSchSessionGP extends JSchSession{
       }
       if(jschSession==null){
         Session session=null;
-        System.out.println("Creating session with "+username+":"+password+":"+port+":"+keyFile+":"+keyPassphrase);
+        Debug.debug("Creating session with "+username+":"+password+":"+port+":"+keyFile+":"+keyPassphrase, 2);
         session=createSession(username, password, hostname, port, userinfo,
             proxy, keyFile, keyPassphrase);
-        System.out.println("Session created");
+        Debug.debug("Session created", 3);
 
         if(session==null)
           throw new JSchException("The JSch service is not available");

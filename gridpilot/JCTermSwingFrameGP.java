@@ -1,4 +1,4 @@
-package gridpilot.csplugins.fork;
+package gridpilot;
 
 import com.jcraft.jcterm.Connection;
 import com.jcraft.jcterm.JCTermSwing;
@@ -6,6 +6,9 @@ import com.jcraft.jcterm.JCTermSwingFrame;
 import com.jcraft.jcterm.Sftp;
 import com.jcraft.jcterm.Term;
 import com.jcraft.jsch.*;
+
+import gridfactory.common.Debug;
+
 import java.awt.*;
 import java.awt.event.*;
 
@@ -33,7 +36,7 @@ public class JCTermSwingFrameGP extends JCTermSwingFrame {
     enableEvents(AWTEvent.KEY_EVENT_MASK);
     addWindowListener(new WindowAdapter(){
       public void windowClosing(WindowEvent e){
-        System.exit(0);
+        quit();
       }
     });
 
@@ -53,7 +56,7 @@ public class JCTermSwingFrameGP extends JCTermSwingFrame {
       }
 
       public void componentResized(ComponentEvent e){
-        System.out.println(e);
+        Debug.debug(e.toString(), 3);
         Component c=e.getComponent();
         int cw=c.getWidth();
         int ch=c.getHeight();
@@ -89,7 +92,7 @@ public class JCTermSwingFrameGP extends JCTermSwingFrame {
   }
   
   public void quit(){
-    System.out.println("Quitting");
+    Debug.debug("Quitting", 2);
     thread=null;
     if(connection!=null){
       connection.close();
@@ -111,7 +114,7 @@ public class JCTermSwingFrameGP extends JCTermSwingFrame {
       try{
         if(host==null || host.equals("") ||
             user==null || user.equals("")){
-          System.out.println("Connecting...");
+          Debug.debug("Connecting...", 2);
           try{
             String _host=JOptionPane.showInputDialog((JCTermSwing) getTerm(),
                 "Enter username@hostname", "");
