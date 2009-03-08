@@ -36,7 +36,7 @@ public class JCTermSwingFrameGP extends JCTermSwingFrame {
     enableEvents(AWTEvent.KEY_EVENT_MASK);
     addWindowListener(new WindowAdapter(){
       public void windowClosing(WindowEvent e){
-        quit();
+        dispose();
       }
     });
 
@@ -176,7 +176,7 @@ public class JCTermSwingFrameGP extends JCTermSwingFrame {
           // unicode, ?...
           channel=jschsession.getSession().openChannel("shell");
           
-          ((ChannelShell)channel).setPtyType("vt102");
+          //((ChannelShell)channel).setPtyType("vt102");
           /*java.util.Hashtable env=new java.util.Hashtable();
           env.put("LANG", "da_DK");
           ((ChannelShell)channel).setEnv(env);*/

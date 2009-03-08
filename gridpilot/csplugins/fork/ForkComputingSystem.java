@@ -45,7 +45,6 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected String csName;
   protected Shell shell;
   protected String workingDir;
-  protected String commandSuffix;
   protected String defaultUser;
   protected String userName;
   protected String error = "";
@@ -111,11 +110,6 @@ public class ForkComputingSystem implements MyComputingSystem{
     }
     Debug.debug("Using workingDir "+workingDir, 2);
     
-    commandSuffix = ".sh";
-    if(shell.isLocal() && MyUtil.onWindows()){
-      commandSuffix = ".bat";
-    }
-    
     runtimeDirectory = GridPilot.runtimeDir;
     if(runtimeDirectory!=null && runtimeDirectory.startsWith("~")){
       // Expand ~
@@ -151,6 +145,27 @@ public class ForkComputingSystem implements MyComputingSystem{
     //}
     MyUtil.checkAndActivateSSL(rteCatalogUrls);
     rteMgr = GridPilot.getClassMgr().getRTEMgr(runtimeDirectory, rteCatalogUrls);
+  }
+  
+  protected String getCommandSuffix(MyJobInfo job){
+    Shell thisShell = null;
+    try{
+      thisShell = GridPilot.getClassMgr().getShellMgr(job);
+    }
+    catch(Exception e){
+    }
+    String commandSuffix = ".sh";
+    if(thisShell!=null){
+      if(thisShell.isLocal() && MyUtil.onWindows()){
+        commandSuffix = ".bat";
+      }
+    }
+    else{
+      if(shell.isLocal() && MyUtil.onWindows()){
+        commandSuffix = ".bat";
+      }
+    }
+    return commandSuffix;
   }
   
   protected String runDir(JobInfo job){
@@ -430,13 +445,13 @@ public class ForkComputingSystem implements MyComputingSystem{
   public boolean submit(JobInfo job){
     final String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
     final String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";
-    final String cmd = runDir(job)+"/"+job.getName()+commandSuffix;
+    final String cmd = runDir(job)+"/"+job.getName()+getCommandSuffix((MyJobInfo) job);
     Debug.debug("Executing "+cmd, 2);
     ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     try{
       ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job),
           ignoreBaseSystemAndVMRTEs );
-      if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, job.getName()+commandSuffix)){
+      if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, job.getName()+getCommandSuffix((MyJobInfo) job))){
         throw new IOException("Could not create wrapper script.");
       }
       String id = shell.submit(MyUtil.clearFile(cmd),
@@ -690,7 +705,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
   
   public String[] getScripts(JobInfo job) {
-    String jobScriptFile = runDir(job)+"/"+job.getName()+commandSuffix;
+    String jobScriptFile = runDir(job)+"/"+job.getName()+getCommandSuffix((MyJobInfo) job);
     // In case this is not a local shell, first get the script to a local tmp file.
     if(!shell.isLocal()){
       try{

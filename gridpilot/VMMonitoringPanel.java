@@ -137,15 +137,7 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
     bRefresh.setToolTipText("Refresh the list of Images");
     bRefresh.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        try{
-          imageTable.setTable(getAvailableImages(), IMAGE_FIELDS);
-          bLaunch.setEnabled(false);
-          bTerminate.setEnabled(false);
-          makeMenu();
-        }
-        catch(Exception e1){
-           e1.printStackTrace();
-        }
+        refresh();
       }
     });
     bLaunch.setToolTipText("Launch an instance of the selected image");
@@ -165,6 +157,18 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
     pImagesButtons.add(bLaunch);
     panel.add(pImagesButtons, BorderLayout.SOUTH);
     return panel;
+  }
+  
+  protected void refresh(){
+    try{
+      imageTable.setTable(getAvailableImages(), IMAGE_FIELDS);
+      bLaunch.setEnabled(false);
+      bTerminate.setEnabled(false);
+      makeMenu();
+    }
+    catch(Exception e1){
+       e1.printStackTrace();
+    }
   }
 
   private JPanel createInstancesPanel() throws Exception{

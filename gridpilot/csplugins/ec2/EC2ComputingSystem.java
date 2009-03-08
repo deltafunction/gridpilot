@@ -54,11 +54,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private String [] defaultEc2Catalogs;
   private HashMap<String, String> locationNameMap = new HashMap<String, String>();
   private String[] allTmpCatalogs;
-  
+
   public static String AMI_PREFIX;
 
   public EC2ComputingSystem(String _csName) throws Exception {
     super(_csName);
+    
+    
     
     ignoreBaseSystemAndVMRTEs = false;
     
@@ -508,7 +510,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     String manifest = null;
     for(Iterator<DBRecord> it=allRtes.iterator(); it.hasNext();){
       rec = it.next();
-      if(rec.getValue(nameField).equals(rteName)){
+      if(rec.getValue(nameField).equals(rteName) && rec.getValue("computingSystem").equals(csName)){
         manifest = (String) rec.getValue("url");
         break;
       }
@@ -516,7 +518,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     if(manifest==null){
       throw new Exception("No RTE matching "+rteName+" found.");
     }
-    List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, true);
+    List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, AMI_PREFIX);
     ImageDescription desc;
     for(Iterator<ImageDescription> it=gpAMIs.iterator(); it.hasNext();){
       desc = it.next();
@@ -692,7 +694,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         logFile.addMessage("WARNING: EC2 catalog misconfigured", e);
       }
     }
-    List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, true);
+    List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, AMI_PREFIX);
     ImageDescription desc;
     for(Iterator<ImageDescription> it=gpAMIs.iterator(); it.hasNext();){
       desc = it.next();
@@ -863,6 +865,22 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return bootInstance(job);
   }
   
+  // Types: "m1.small", "m1.large", "m1.xlarge", "c1.medium", "c1.xlarge"
+  // memory is in megabytes
+  public  String getInstanceType(int memory) throws Exception{
+    String type;
+    int[] desc;
+    for(int i=0; i<EC2Mgr.INSTANCE_TYPES.length; ++i){
+      type = EC2Mgr.INSTANCE_TYPES[i];
+      desc = ec2mgr.instanceTypes.get(type);
+      // TODO: add check on disc and CPU requirements. These fields should then be added to JobInfo.
+      if(memory<=0 || memory<desc[1]){
+        return type;
+      }
+    }
+    throw new Exception("No EC2 instance type honors job requirements. "+memory);
+  }
+  
   private String bootInstance(JobInfo job){
     String amiID = null;
     EBSSnapshotPackage [] ebsSnapshots = null;
@@ -874,7 +892,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         }
         amiID = findAmiId(job);
         Debug.debug("Booting "+amiID, 2);
-        ReservationDescription desc = ec2mgr.launchInstances(amiID, 1);
+        String type = getInstanceType(job.getMemory());
+        ReservationDescription desc = ec2mgr.launchInstances(amiID, 1, type);
         Instance inst = ((Instance) desc.getInstances().get(0));
         // Wait for the machine to boot
         long startMillis = MyUtil.getDateInMilliSeconds(null);
@@ -979,8 +998,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.runtimeDir, allTmpCatalogs);
     RTECatalog catalog = rteMgr.getRTECatalog();
     HashMap<String, Vector<String>> depsMap = rteMgr.getVmRteDepends(opsysRte, null);
-    Vector<String> deps = depsMap.get(null);
-    Debug.debug("Found dependencies "+MyUtil.arrayToString(deps.toArray()), 2);
+    Vector<String> deps = depsMap.get(opsysRte);
+    Debug.debug("Found EBSSnapshot dependencies "+MyUtil.arrayToString(deps.toArray()), 2);
     String dep;
     MetaPackage mp;
     Vector<EBSSnapshotPackage> sPacks = new Vector();
@@ -1045,8 +1064,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       Exception ee = null;
       int i;
       int ret;
-      // Try 10 times with 2 seconds in between to mount volume, then give up.
-      for(i=0; i<10; ++i){
+      // Try 5 times with 2 seconds in between to mount volume, then give up.
+      for(i=0; i<5; ++i){
         try{
           Thread.sleep(2000);
           ret = shell.exec("mount "+device+"1 "+ebsSnapshots[j].mountpoint, stdOut, stdErr);

@@ -147,7 +147,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       // Create a standard shell script.
       ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job),
           ignoreBaseSystemAndVMRTEs);
-      if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, job.getName()+commandSuffix)){
+      if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, job.getName()+getCommandSuffix((MyJobInfo) job))){
         throw new IOException("Could not create wrapper script.");
       }
       String [] values = new String []{
@@ -174,7 +174,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       catch(Exception e){
       }
       
-      String cmd = runDir(job)+"/"+job.getName()+commandSuffix;
+      String cmd = runDir(job)+"/"+job.getName()+getCommandSuffix((MyJobInfo) job);
       String id = lrms.submit(cmd, values, submitURL, true, GridPilot.getClassMgr().getSSL().getCertFile());
       job.setJobId(id);
     }

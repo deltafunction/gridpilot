@@ -3,13 +3,18 @@ package gridpilot.csplugins.ec2;
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.LocalShell;
-import gridfactory.common.jobrun.VirtualMachine;
 import gridpilot.GridPilot;
 
 import gridpilot.MyUtil;
 import gridpilot.VMMonitoringPanel;
 
+import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.datatransfer.ClipboardOwner;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Iterator;
@@ -17,9 +22,13 @@ import java.util.List;
 import java.util.Vector;
 
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JSpinner;
+import javax.swing.JTextField;
+import javax.swing.SpinnerNumberModel;
 
 import org.globus.gsi.GlobusCredentialException;
 import org.ietf.jgss.GSSException;
@@ -42,9 +51,8 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
   private static final long serialVersionUID = 1L;
 
   private EC2Mgr ec2mgr = null;
-  private boolean runningShell = false;
   private JCheckBox onlyPublicImages;
-  private JCheckBox onlyGridPilotImages;
+  private JTextField amiPattern;
   
   protected String [] imageColorMapping = null;  
   protected String [] instanceColorMapping = null;  
@@ -62,19 +70,27 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
     sshCommand = GridPilot.getClassMgr().getConfigFile().getValues("EC2", "Ssh command");  
     imageTable.setTable(IMAGE_FIELDS);
     instanceTable.setTable(getRunningInstances(), INSTANCE_FIELDS);
-    pImagesButtons.add(createImageChoicePanel());
+    pImagesButtons.add(createImageChoicePanel(), 0);
   }
   
   private JPanel createImageChoicePanel(){
     JPanel imageChoicePanel = new JPanel();
     onlyPublicImages = new JCheckBox();
     onlyPublicImages.setSelected(true);
-    onlyGridPilotImages = new JCheckBox();
-    onlyGridPilotImages.setSelected(true);
-    imageChoicePanel.add(new JLabel("Show only: public AMIs "));
+    amiPattern = new JTextField(12);
+    amiPattern.setText(EC2ComputingSystem.AMI_PREFIX);
+    imageChoicePanel.add(new JLabel("Only public AMIs"));
     imageChoicePanel.add(onlyPublicImages);
-    imageChoicePanel.add(new JLabel("GridPilot AMIs "));
-    imageChoicePanel.add(onlyGridPilotImages);
+    imageChoicePanel.add(new JLabel(" Match"));
+    imageChoicePanel.add(amiPattern);
+    amiPattern.addKeyListener(new KeyAdapter(){
+      public void keyPressed(KeyEvent e){
+        if(e.getKeyCode()==KeyEvent.VK_ENTER){
+          refresh();
+        }
+      }
+    }
+  );
     return imageChoicePanel;
   }
   
@@ -83,7 +99,7 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
   }
   
   protected String [][] getAvailableImages() throws EC2Exception{
-    List amiList = ec2mgr.listAvailableAMIs(onlyPublicImages.isSelected(), onlyGridPilotImages.isSelected());
+    List amiList = ec2mgr.listAvailableAMIs(onlyPublicImages.isSelected(), amiPattern.getText());
     String [][] amiArray = new String [amiList.size()][IMAGE_FIELDS.length];
     ImageDescription ami = null;
     int i = 0;
@@ -141,11 +157,65 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
     }
     String amiID = (String) imageTable.getUnsortedValueAt(row, imIdField);
     // get the number of instances we want to start
-    int instances = MyUtil.getNumber("Number of instances to start", "Instances", 1);
-    if(instances<1){
+    String [] instancesAndTypes = getInstancesAndTypes();
+    if(instancesAndTypes==null){
       return;
     }
-    ec2mgr.launchInstances(amiID, instances);
+    int instances = Integer.parseInt(instancesAndTypes[0]);
+    String type = instancesAndTypes[1];
+    ec2mgr.launchInstances(amiID, instances, type);
+  }
+  
+  private String [] getInstancesAndTypes(){
+    
+    String [] ret = new String[2];
+
+    JPanel panel = new JPanel(new GridBagLayout());
+    JSpinner sNum = new JSpinner();
+    sNum.setPreferredSize(new Dimension(50, 21));
+    sNum.setModel(new SpinnerNumberModel(1, 1, 9999, 1));
+
+    panel.add(new JLabel("Number of instances:"),
+        new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
+            GridBagConstraints.CENTER,
+            GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        0, 0));
+    JPanel pNum = new JPanel();
+    pNum.add(sNum);
+    panel.add(pNum, new GridBagConstraints(1, 0, 1, 1, 1.0, 1.0,
+        GridBagConstraints.CENTER,
+        GridBagConstraints.NONE, new Insets(5, 5, 5, 5),
+        0, 0));
+    
+    JComboBox cTypes = new JComboBox();
+    for(int i=0; i<EC2Mgr.INSTANCE_TYPES.length; ++i){
+      cTypes.addItem(EC2Mgr.INSTANCE_TYPES[i]+" ("+
+          ec2mgr.instanceTypes.get(EC2Mgr.INSTANCE_TYPES[i])[1]+" MB)");
+    }
+    panel.add(new JLabel("Type:"),
+        new GridBagConstraints(0, 1, 1, 1, 1.0, 1.0,
+            GridBagConstraints.CENTER,
+            GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
+        0, 0));
+    JPanel pTypes = new JPanel();
+    pTypes.add(cTypes);
+    panel.add(pTypes, new GridBagConstraints(1, 1, 1, 1, 1.0, 1.0,
+        GridBagConstraints.CENTER,
+        GridBagConstraints.NONE, new Insets(5, 5, 5, 5),
+        0, 0));
+    
+
+    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
+        "Instances to start", JOptionPane.OK_CANCEL_OPTION);
+
+    if(choice!=JOptionPane.OK_OPTION){
+      return null;
+    }
+    else{
+      ret[0] = Integer.toString((Integer) sNum.getValue());
+      ret[1] = MyUtil.split((String) cTypes.getSelectedItem())[0];
+      return ret;
+    }
   }
 
   protected void terminateInstances() throws Exception {

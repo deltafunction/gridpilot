@@ -152,14 +152,14 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   public boolean submit(final JobInfo job){
     final String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
     final String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";
-    final String cmd = runDir(job)+"/"+job.getName()+commandSuffix;
+    final String cmd = runDir(job)+"/"+job.getName()+getCommandSuffix((MyJobInfo) job);
     Debug.debug("Executing "+cmd, 2);
     ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     ForkScriptGenerator scriptGenerator =
       new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job), ignoreBaseSystemAndVMRTEs);
     try{
       Shell mgr = getShell(job.getHost());
-      scriptGenerator.createWrapper(mgr, (MyJobInfo) job, job.getName()+commandSuffix);
+      scriptGenerator.createWrapper(mgr, (MyJobInfo) job, job.getName()+getCommandSuffix((MyJobInfo) job));
       String id = mgr.submit(cmd, runDir(job), stdoutFile, stderrFile, logFile);
       job.setJobId(id!=null?id:"");
       return true;
@@ -334,7 +334,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   }
 
   public String[] getScripts(JobInfo job) {
-    String jobScriptFile = runDir(job)+"/"+job.getName()+commandSuffix;
+    String jobScriptFile = runDir(job)+"/"+job.getName()+getCommandSuffix((MyJobInfo) job);
     // In case this is not a local shell, first get the script to a local tmp file.
     try {
       if(!getShell(job.getHost()).isLocal()){

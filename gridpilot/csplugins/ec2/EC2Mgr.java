@@ -12,6 +12,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -27,7 +28,6 @@ import com.xerox.amazonws.ec2.ImageDescription;
 import com.xerox.amazonws.ec2.KeyPairInfo;
 import com.xerox.amazonws.ec2.LaunchConfiguration;
 import com.xerox.amazonws.ec2.ReservationDescription;
-import com.xerox.amazonws.ec2.SnapshotInfo;
 import com.xerox.amazonws.ec2.VolumeInfo;
 import com.xerox.amazonws.ec2.ReservationDescription.Instance;
 
@@ -47,6 +47,8 @@ public class EC2Mgr {
 
   public final static String GROUP_NAME = "GridPilot";
   public final static String KEY_NAME = "GridPilot_EC2_TMP_KEY";
+  public final static String [] INSTANCE_TYPES = new String[] {"m1.small", "m1.large", "m1.xlarge", "c1.medium", "c1.xlarge"};
+  public HashMap<String, int[]> instanceTypes = new HashMap<String, int[]>();
   
   private File keyFile = null;
   
@@ -66,6 +68,13 @@ public class EC2Mgr {
   public EC2Mgr(String server, int port, String path, boolean secure,
       String accessKey, String secretKey, String _subnet, String _owner,
       String _runDir, MyTransferControl _transferControl) {
+    
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[0], new int [] {1, 1700, 150000});//1xi386, 1.7 GB, 150 GB /mnt
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[1], new int [] {2, 7500, 420000});//2xi386_64, 1.7 GB, 2x420 GB /mnt
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[2], new int [] {4, 15000, 420000});//4xi386_64, 1.7 GB, 4x420 GB /mnt
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[3], new int [] {2, 1700, 340000});//2xi386, 1.7 GB, 340 GB /mnt, medium I/O
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[4], new int [] {8, 7000, 420000});//8xi386_64, 1.7 GB, 4x420 GB /mnt, high I/O
+
     if(secure){
       try{
         GridPilot.getClassMgr().getSSL().activateSSL();
@@ -322,17 +331,18 @@ public class EC2Mgr {
    * 
    * @param amiID ID of the AMI to use
    * @param instances number of instances to launch
+   * @param type instance type - one of: "m1.small", "m1.large", "m1.xlarge", "c1.medium", "c1.xlarge"
    * @return a List of elements of type ReservationDescription
    * @throws Exception 
    */
-  public ReservationDescription launchInstances(String amiID, int instances) throws Exception{
+  public ReservationDescription launchInstances(String amiID, int instances, String type) throws Exception{
     KeyPairInfo keypair = getKey();
     createSecurityGroup();
     List groupList = new ArrayList();
     groupList.add(GROUP_NAME);
     LaunchConfiguration lc = new LaunchConfiguration(amiID, instances, instances);
     lc.setSecurityGroup(groupList);
-    lc.setInstanceType(InstanceType.DEFAULT /*i386*/);
+    lc.setInstanceType(InstanceType.getTypeFromString(type) /*default: m1.small*/);
     lc.setKeyName(keypair.getKeyName());
     lc.setUserData(owner.getBytes());
     ReservationDescription desc =  ec2.runInstances(lc);
@@ -402,12 +412,12 @@ public class EC2Mgr {
    * List available AMIs.
    * 
    * @param onlyPublicAMIs list only AMIs owned by me
-   * @param onlyGridPilotAMIs list only AMIs in the designated AMI bucket
+   * @param pattern list only AMIs matching this pattern
    * @return a List of elements of type ImageDescription
    * @see #AMI_BUCKET
    * @throws EC2Exception
    */
-  public List<ImageDescription> listAvailableAMIs(boolean onlyPublicAMIs, boolean onlyGridPilotAMIs) throws EC2Exception{
+  public List<ImageDescription> listAvailableAMIs(boolean onlyPublicAMIs, String pattern) throws EC2Exception{
     List list = new ArrayList();
     List params = new ArrayList();
     List images = ec2.describeImages(params);
@@ -418,7 +428,7 @@ public class EC2Mgr {
     ImageDescription img = null;
     for(Iterator<ImageDescription> it=images.iterator(); it.hasNext();){
       img = it.next();
-      if((!onlyGridPilotAMIs || isGridPilotAMI(img.getImageLocation())) &&
+      if((matchAMI(img, pattern)) &&
           (!onlyPublicAMIs || img.isPublic()) &&
           img.getImageState().equals("available")){
         list.add(img);
@@ -427,13 +437,17 @@ public class EC2Mgr {
     return list;
   }
   
-  private boolean isGridPilotAMI(String imageLocation) {
-    return imageLocation.toLowerCase().startsWith(EC2ComputingSystem.AMI_PREFIX);
+  private boolean matchAMI(ImageDescription desc, String pattern) {
+    return (pattern==null || pattern.equals("") ||
+       desc.getImageLocation().matches("(?i).*"+pattern+".*") ||
+       desc.getImageId().matches("(?i).*"+pattern+".*") ||
+       desc.getImageOwnerId().matches("(?i).*"+pattern+".*")) &&
+       desc.getImageType().equalsIgnoreCase("machine");
   }
 
   public ImageDescription getImageDescription(String imageId) throws EC2Exception{
     ImageDescription img = null;
-    for(Iterator<ImageDescription> it=listAvailableAMIs(false, false).iterator(); it.hasNext();){
+    for(Iterator<ImageDescription> it=listAvailableAMIs(false, null).iterator(); it.hasNext();){
       img = it.next();
       if(img.getImageId().equals(imageId)){
         return img;

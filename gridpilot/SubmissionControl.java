@@ -5,6 +5,7 @@ import javax.swing.*;
 import java.awt.event.*;
 import java.net.URL;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -332,14 +333,12 @@ public class SubmissionControl{
    * If some outputs exist, the user is asked for save them.
    * If the user chooses to not save them, outputs are deleted <p>
    */
-  public void resubmit(Vector jobs){
-
+  public void resubmit(Vector<MyJobInfo> jobs){
     boolean askSave = false;
     boolean deleteFiles = false;
     GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Cleaning up jobs...");
     for(int i=0; i<jobs.size() ; ++i){
-
-      MyJobInfo job = (MyJobInfo) jobs.get(i);
+      MyJobInfo job = jobs.get(i);
       Shell shell = null;
       try{
         shell = GridPilot.getClassMgr().getShellMgr(job);
@@ -360,7 +359,6 @@ public class SubmissionControl{
                                                   WARNING_MESSAGE);
         return;
       }
-
       boolean stdOutExists = false;
       boolean stdErrExists = false;
       try{
@@ -381,7 +379,6 @@ public class SubmissionControl{
         //logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
         //throw e;
       }
-
       if(!askSave){
         if(deleteFiles){
           if(stdOutExists){
@@ -393,98 +390,23 @@ public class SubmissionControl{
         }
       }
       else{
-        if(stdOutExists || stdErrExists){
-          Object[] options = {"Yes", "No", "No for all", "Cancel"};
-
-          int choice = JOptionPane.showOptionDialog(JOptionPane.getRootFrame(),
-              "Do you want to save job \n" +
-              "outputs before resubmit it", "Save outputs for " + job.getName() + " ?",
-              JOptionPane.YES_NO_CANCEL_OPTION,
-              JOptionPane.QUESTION_MESSAGE, null,
-              options, options[0]);
-
-          switch(choice){
-            case JOptionPane.CLOSED_OPTION:
-              
-            case 3://JOptionPane.CANCEL_OPTION:
-              return;
-
-            case 2://No for all
-              askSave = false;
-              //no break !!!
-              
-            case 1://JOptionPane.NO_OPTION:
-              if(deleteFiles){
-                if(stdOutExists)
-                  if(!shell.deleteFile(job.getOutTmp()))
-                    logFile.addMessage("Cannot delete stdout", job);
-                if(stdErrExists)
-                  if(!shell.deleteFile(job.getErrTmp()))
-                    logFile.addMessage("Cannot delete stderr", job);
-              }
-              break;
-
-            case 0://JOptionPane.YES_OPTION:
-              JFileChooser f = new JFileChooser();
-              f.setMultiSelectionEnabled(false);
-              // stdout
-              if(stdOutExists){
-                if(f.showDialog(JOptionPane.getRootFrame(), "Save stdout")==
-                    JFileChooser.APPROVE_OPTION){
-
-                  java.io.File stdOut = f.getSelectedFile();
-                  if(stdOut != null){
-                    try{
-                     shell.writeFile(stdOut.getPath(),
-                        shell.readFile(job.getOutTmp()), false);
-                    }
-                    catch(java.io.IOException ioe){
-                      logFile.addMessage("Cannot rename " + job.getOutTmp() +
-                                         " in " + stdOut.getPath(), ioe);
-                    }
-                  }
-                }
-                else
-                if(deleteFiles) //remove StdOut
-                  shell.deleteFile(job.getOutTmp());
-              }
-              // stderr
-              if(stdErrExists){
-                if(f.showDialog(JOptionPane.getRootFrame(), "Save stderr")==
-                    JFileChooser.APPROVE_OPTION){
-                  java.io.File stdErr = f.getSelectedFile();
-                  if(stdErr != null){
-                    try{
-                      shell.writeFile(stdErr.getPath(),
-                         shell.readFile(job.getErrTmp()), false);
-                    }
-                    catch(java.io.IOException ioe){
-                      logFile.addMessage("Cannot rename " + job.getErrTmp() +
-                                         " in " + stdErr.getPath(), ioe);
-                    }
-                  }
-                }
-                else
-                if(deleteFiles) //remove StdErr
-                  shell.deleteFile(job.getErrTmp());
-              }
-              break;
-
-            default:
-              return;
-          }
-        }
+        askSaveOutputs(job, stdOutExists, stdErrExists, askSave, deleteFiles, shell);
       }
     }
-    Vector submitables = new Vector();
-    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Updating job status...");
-    
+    cleanupAndQueue(jobs);
+  }
+  
+  private void cleanupAndQueue(Vector<MyJobInfo> jobs){
     MyJobInfo job = null;
     JobMgr jobMgr = null;
-    
+    HashMap<String, Vector<MyJobInfo>> submitables = new HashMap<String, Vector<MyJobInfo>>();
+    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Updating job status...");
     while(jobs.size()>0){
       job = (MyJobInfo) jobs.remove(0);
       jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
+      if(!submitables.keySet().contains(job.getDBName())){
+        submitables.put(job.getDBName(), new Vector<MyJobInfo>());
+      }
       // first clean up old job
       jobMgr.getDBPluginMgr().cleanRunInfo(job.getIdentifier());
       GridPilot.getClassMgr().getCSPluginMgr().cleanup(job);
@@ -502,39 +424,123 @@ public class SubmissionControl{
         job.setJobId(null);
         job.setHost(null);
         job.setStatusReady();
-        submitables.add(job);
+        submitables.get(job.getDBName()).add(job);
       }
     }
-
-    jobMgr.updateJobCells(submitables);
     // if all went well we can now submit
     GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Submitting job(s)...");
-    queue(submitables);
+    String dbName;
+    for(Iterator<String> it=submitables.keySet().iterator(); it.hasNext();){
+      dbName = it.next();
+      jobMgr.updateJobCells(submitables.get(dbName));
+      queue(submitables.get(dbName));
+    }
   }
 
- /**
-  * Checks if there are not too many active Threads (for submission), and there are
-  * waiting jobs. If there are any, creates new submission threads
+  private void askSaveOutputs(MyJobInfo job, boolean stdOutExists, boolean stdErrExists,
+     boolean askSave, boolean deleteFiles, Shell shell) {
+   if(stdOutExists || stdErrExists){
+     Object[] options = {"Yes", "No", "No for all", "Cancel"};
+
+     int choice = JOptionPane.showOptionDialog(JOptionPane.getRootFrame(),
+         "Do you want to save job \n" +
+         "outputs before resubmit it", "Save outputs for " + job.getName() + " ?",
+         JOptionPane.YES_NO_CANCEL_OPTION,
+         JOptionPane.QUESTION_MESSAGE, null,
+         options, options[0]);
+
+     switch(choice){
+       case JOptionPane.CLOSED_OPTION:
+         
+       case 3://JOptionPane.CANCEL_OPTION:
+         return;
+
+       case 2://No for all
+         askSave = false;
+         //no break !!!
+         
+       case 1://JOptionPane.NO_OPTION:
+         if(deleteFiles){
+           if(stdOutExists)
+             if(!shell.deleteFile(job.getOutTmp()))
+               logFile.addMessage("Cannot delete stdout", job);
+           if(stdErrExists)
+             if(!shell.deleteFile(job.getErrTmp()))
+               logFile.addMessage("Cannot delete stderr", job);
+         }
+         break;
+
+       case 0://JOptionPane.YES_OPTION:
+         JFileChooser f = new JFileChooser();
+         f.setMultiSelectionEnabled(false);
+         // stdout
+         if(stdOutExists){
+           if(f.showDialog(JOptionPane.getRootFrame(), "Save stdout")==
+               JFileChooser.APPROVE_OPTION){
+
+             java.io.File stdOut = f.getSelectedFile();
+             if(stdOut != null){
+               try{
+                shell.writeFile(stdOut.getPath(),
+                   shell.readFile(job.getOutTmp()), false);
+               }
+               catch(java.io.IOException ioe){
+                 logFile.addMessage("Cannot rename " + job.getOutTmp() +
+                                    " in " + stdOut.getPath(), ioe);
+               }
+             }
+           }
+           else
+           if(deleteFiles) //remove StdOut
+             shell.deleteFile(job.getOutTmp());
+         }
+         // stderr
+         if(stdErrExists){
+           if(f.showDialog(JOptionPane.getRootFrame(), "Save stderr")==
+               JFileChooser.APPROVE_OPTION){
+             java.io.File stdErr = f.getSelectedFile();
+             if(stdErr != null){
+               try{
+                 shell.writeFile(stdErr.getPath(),
+                    shell.readFile(job.getErrTmp()), false);
+               }
+               catch(java.io.IOException ioe){
+                 logFile.addMessage("Cannot rename " + job.getErrTmp() +
+                                    " in " + stdErr.getPath(), ioe);
+               }
+             }
+           }
+           else
+           if(deleteFiles) //remove StdErr
+             shell.deleteFile(job.getErrTmp());
+         }
+         break;
+
+       default:
+         return;
+     }
+   }
+  }
+
+/**
+  * Checks if there are not too many active submission threads and waiting jobs.
+  * If there are any left, create new submission threads.
   */
   private synchronized void trigSubmission(){
-    
     if(toSubmitJobs.isEmpty()){
       timer.stop();
       return;
     }
-    
-    MyJobInfo job = (MyJobInfo) toSubmitJobs.get(0);
-    
+    final MyJobInfo job = (MyJobInfo) toSubmitJobs.get(0);
     if(!toSubmitJobs.isEmpty()){
       if(checkRunning(job)){
         job.setDBStatus(DBPluginMgr.SUBMITTED);
         // transfer job from toSubmitJobs to submittingJobs
         toSubmitJobs.remove(job);
         submittingJobs.add(job);
-        final MyJobInfo fJob = job;
         new Thread(){
           public void run(){
-            submit(fJob);
+            submit(job);
           }
         }.start();
       }
@@ -544,8 +550,12 @@ public class SubmissionControl{
     }
   }
   
+  /**
+   * Check if this job can be submitted or we should wait.
+   * @param job
+   * @return
+   */
   private boolean checkRunning(MyJobInfo job){
-    
     int runningJobs = 0;
     JobMgr mgr = null;
     MyJobInfo tmpJob;
@@ -563,7 +573,7 @@ public class SubmissionControl{
       rjc = mgr.getRunningJobsByCS();
       for(int i=0; i<csNames.length; ++i){
         rJobsByCS[i] += rjc[i];
-        //Debug.debug("Upping job count for CS "+csNames[i]+" with "+rjc[i], 3);
+        Debug.debug("Upping job count for CS "+csNames[i]+" with "+rjc[i], 3);
         if(csNames[i].equalsIgnoreCase(job.getCSName())){
           jobCsIndex = i;
         }
@@ -574,19 +584,16 @@ public class SubmissionControl{
       tmpJob = (MyJobInfo) it.next();
       for(int i=0; i<csNames.length; ++i){
         if(csNames[i].equalsIgnoreCase(tmpJob.getCSName())){
-          //Debug.debug("Upping job count for CS "+csNames[i], 3);
+          Debug.debug("Upping job count for CS "+csNames[i], 3);
           ++rJobsByCS[i];
         }
       }
     }
-    
-    //Debug.debug("Found running jobs: "+MyUtil.arrayToString(csNames)+" --> "+MyUtil.arrayToString(rJobsByCS)+
-    //    " --> "+MyUtil.arrayToString(maxRunningPerCS), 3);
-
+    Debug.debug("Found running jobs: "+MyUtil.arrayToString(csNames)+" --> "+MyUtil.arrayToString(rJobsByCS)+
+        " --> "+MyUtil.arrayToString(maxRunningPerCS), 3);
     return submittingJobs.size()<maxSimultaneousSubmissions &&
       submittingJobs.size()+runningJobs<maxRunning &&
       rJobsByCS[jobCsIndex]<maxRunningPerCS[jobCsIndex];
-
   }
 
   /**
