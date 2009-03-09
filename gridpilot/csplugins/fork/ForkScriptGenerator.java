@@ -25,6 +25,8 @@ public class ForkScriptGenerator extends ScriptGenerator{
   private String runtimeDirectory = null;
   private String remoteCopyCommand = null;
   private String requiredRuntimeEnv = null;
+  private String [] stdoutExcludeWords = null;
+  private String [] stderrExcludeWords = null;
   private String csName = null;
   private boolean ignoreBaseSystemAndVMRTEs;
   
@@ -35,15 +37,19 @@ public class ForkScriptGenerator extends ScriptGenerator{
     super(GridPilot.getClassMgr().getLogFile());
     csName = _csName;
     String onWindowsStr = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "on windows");
+        csName, "On windows");
     onWindows = onWindowsStr!=null && (onWindowsStr.equalsIgnoreCase("yes") || onWindowsStr.equalsIgnoreCase("true"));
     workingDir = _workingDir;
     runtimeDirectory = GridPilot.runtimeDir;
     remoteCopyCommand = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "remote copy command");
+        csName, "Remote copy command");
     requiredRuntimeEnv = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "required runtime environment");
+        csName, "Required runtime environment");
     ignoreBaseSystemAndVMRTEs = _ignoreBaseSystemAndVMRTEs;
+    stdoutExcludeWords = GridPilot.getClassMgr().getConfigFile().getValues(
+        csName, "Stdout exclude words");
+    stderrExcludeWords = GridPilot.getClassMgr().getConfigFile().getValues(
+        csName, "Stderr exclude words");
   }
   
   public boolean createWrapper(Shell shell, MyJobInfo job, String fileName){
@@ -102,15 +108,15 @@ public class ForkScriptGenerator extends ScriptGenerator{
       // Classes that inherit may choose to do this.
       if(notOnWindows){
         writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
-            "/"+rtes[i]+" 1").replaceAll("//", "/"));
+            "/"+rtes[i]+" 1 >& /dev/null").replaceAll("//", "/"));
         writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
-            "/"+rtes[i]+"/"+"control/runtime 1").replaceAll("//", "/"));
+            "/"+rtes[i]+"/"+"control/runtime 1 >& /dev/null").replaceAll("//", "/"));
       }
       else{
         writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
-            "/"+rtes[i]+" 1").replaceAll("//", "/").replaceAll("/", "\\\\"));
+            "/"+rtes[i]+" 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
         writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
-            "/"+rtes[i]+"/"+"control/runtime.bat 1").replaceAll("//", "/").replaceAll("/", "\\\\"));
+            "/"+rtes[i]+"/"+"control/runtime.bat 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
       }
       writeLine(buf, "");
     }
@@ -212,10 +218,17 @@ public class ForkScriptGenerator extends ScriptGenerator{
           "Cannot proceed with "+job);
       return false;
     }
+    
+    if(notOnWindows){
+      writeLine(buf, filterStdOutErrLines());
+    }
+
     // Running the transformation script with ./ instead of a full path is to allow this to 
     // be used by GridFactoryComputingSystem, where we don't have a shell on the worker node
     // and the full path is not known.
-    line = /*MyUtil.clearFile(scriptDest)*/ (copyScript&&notOnWindows?"./":"") + scriptName + " " + MyUtil.arrayToString(actualParam);
+    line = (notOnWindows?"split \"":"")+(copyScript&&notOnWindows?"./":"") + scriptName + " " +
+       MyUtil.arrayToString(actualParam) + (notOnWindows?"\" s1 | s2":"");
+    // Filter off unwanted stuff from stdout and stderr
     writeLine(buf, line);
     writeLine(buf, "");
     
@@ -283,6 +296,35 @@ public class ForkScriptGenerator extends ScriptGenerator{
       return false;
     }
     return true;
+  }
+  
+  private String filterStdOutErrLines(){
+    String lines = "split() { { { $1 2>&3 | $2 ; } 3>&1; }; }\n";
+    String stdoutFilterLine = "s1(){ while read;do echo $REPLY FILTER >&2; done }\n";
+    String stderrFilterLine = "s2(){ while read;do echo $REPLY FILTER >&2; done }\n";
+    if(stdoutExcludeWords!=null && stdoutExcludeWords.length>0){
+      String stdoutFilter = "";
+      for(int i=0; i<stdoutExcludeWords.length;){
+        stdoutFilter += " | grep -v "+stdoutExcludeWords[i];
+      }
+      stdoutFilterLine.replaceFirst("FILTER", stdoutFilter);
+      lines += stdoutFilterLine;
+    }
+    else{
+      stdoutFilterLine.replaceFirst("FILTER", "");
+    }
+    if(stderrExcludeWords!=null && stderrExcludeWords.length>0){
+      String stderrFilter = "";
+      for(int i=0; i<stderrExcludeWords.length;){
+        stderrFilter += " | grep -v "+stderrExcludeWords[i];
+      }
+      stderrFilterLine.replaceFirst("FILTER", stderrFilter);
+      lines += stderrFilterLine;
+    }
+    else{
+      stderrFilterLine.replaceFirst("FILTER", "");
+    }
+    return lines;
   }
 
 }
