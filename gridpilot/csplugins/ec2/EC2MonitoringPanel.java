@@ -56,7 +56,6 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
   
   protected String [] imageColorMapping = null;  
   protected String [] instanceColorMapping = null;  
-  protected String [] sshCommand = null;
   
   protected static String [] IMAGE_FIELDS = new String [] {"AMI ID", "Manifest", "State", "Owner"};
   protected static String [] INSTANCE_FIELDS = new String [] {"Reservation ID", "Owner", "Instance ID", "AMI", "State",

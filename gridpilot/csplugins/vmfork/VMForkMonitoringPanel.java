@@ -35,7 +35,6 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
 
   private VMMgr vmMgr = null;
   private String [] rteCatalogUrls;
-  private boolean runningShell = false;
 
   public VMForkMonitoringPanel(VMMgr _vmMgr, String [] _rteCatalogUrls) throws Exception{
     super();
@@ -181,7 +180,6 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
   }
 
   protected void runShellExternal() throws Exception{
-    runningShell = true;
     StringBuffer stdout = new StringBuffer();
     StringBuffer stderr = new StringBuffer();
     String [] fullCommand = null;
