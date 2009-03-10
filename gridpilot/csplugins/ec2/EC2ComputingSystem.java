@@ -29,6 +29,7 @@ import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.Shell;
 import gridfactory.common.jobrun.RTECatalog;
+import gridfactory.common.jobrun.RTEInstaller;
 import gridfactory.common.jobrun.RTEMgr;
 import gridfactory.common.jobrun.RTECatalog.EBSSnapshotPackage;
 import gridfactory.common.jobrun.RTECatalog.InstancePackage;
@@ -59,9 +60,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
 
   public EC2ComputingSystem(String _csName) throws Exception {
     super(_csName);
-    
-    
-    
+
     ignoreBaseSystemAndVMRTEs = false;
     
     allEC2RTEs = new HashMap<String, ArrayList<DBRecord>>();
@@ -935,6 +934,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         ebsSnapshots = getEBSSnapshots(job.getOpSysRTE(), ((MyJobInfo) job).getDBName());
         Debug.debug("The AMI "+amiID+" will have the following EBS volumes attached: "+MyUtil.arrayToString(ebsSnapshots), 2);
         mountEBSVolumes(inst, ebsSnapshots);
+        String [] tarPackages = getTarPackageRTEs(job.getOpSysRTE(), ((MyJobInfo) job).getDBName());
+        Debug.debug("Installing "+(tarPackages==null?"":MyUtil.arrayToString(tarPackages)), 3);
+        installTarPackages(inst, job.getOpSysRTE(), tarPackages);
         hosts[i] = inst.getDnsName();
         Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
         submittingHostJobs.put(hosts[i], new HashSet());
@@ -977,6 +979,24 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     while(number>0);
     return ret;
+  }
+  
+  /**
+   * Find names of the parent MetaPackages of TarPackages that should be installed inside the AMI.<br><br>
+   * Notice that VMForkComputingSystem has a different convention and installs these on the host machine.
+   * @param opsysRte
+   * @param dbName
+   * @return a list of MetaPackage (RTE) names
+   * @throws Exception
+   */
+  private String[] getTarPackageRTEs(String opsysRte, String dbName) throws Exception{
+    RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.runtimeDir, allTmpCatalogs);
+    RTECatalog catalog = rteMgr.getRTECatalog();
+    MetaPackage opsysMp = catalog.getMetaPackage(opsysRte);
+    HashMap<String, Vector<String>> depsMap = rteMgr.getVmRteDepends(opsysRte, null);
+    Vector<String> deps = depsMap.get(null);
+    Debug.debug("Found TarPackage dependencies "+MyUtil.arrayToString(deps.toArray()), 2);
+    return MyUtil.removeBaseSystemAndVM(deps.toArray(new String[deps.size()]), opsysMp.provides);
   }
 
   /**
@@ -1085,6 +1105,35 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         throw ee;
       }
       logFile.addInfo("Mounted "+device+" on "+ebsSnapshots[j].mountpoint);
+    }
+  }
+  
+  private void installTarPackages(Instance inst, String os, String[] rtes) throws Exception {
+    RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.runtimeDir, allTmpCatalogs);
+    RTECatalog catalog = rteMgr.getRTECatalog();    
+    Shell shell = getShell(inst.getDnsName());
+    RTEInstaller rteInstaller;
+    MetaPackage mp;
+    InstancePackage ip;
+    for(int i=0; i<rtes.length; ++i){
+      try{
+        // First find the InstancePackage
+        mp = catalog.getMetaPackage(rtes[i]);
+        ip = rteMgr.getInstancePackage(mp, os);
+        // If it's a TarPackage, install it
+        if(ip.getClass().getCanonicalName().equals(RTECatalog.TarPackage.class.getCanonicalName())){
+          logFile.addInfo(rtes[i]+" has no TarPackage instance on "+os+". Skipping.");
+          continue;
+        }
+      }
+      catch(Exception e){
+        logFile.addMessage("WARNING: problem installing "+rtes[i], e);
+        continue;
+      }
+      rteInstaller = new RTEInstaller(runtimeDirectory, runtimeDirectory,
+          GridPilot.getClassMgr().getTransferStatusUpdateControl(), logFile);
+      rteInstaller.install(rtes[i], ip, shell);
+      logFile.addInfo(rtes[i]+" successfully installed.");
     }
   }
 
