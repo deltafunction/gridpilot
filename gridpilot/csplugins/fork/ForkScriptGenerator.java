@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.Collections;
+import java.util.Vector;
 
 import org.globus.util.GlobusURL;
 
@@ -46,10 +48,45 @@ public class ForkScriptGenerator extends ScriptGenerator{
     requiredRuntimeEnv = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "Required runtime environment");
     ignoreBaseSystemAndVMRTEs = _ignoreBaseSystemAndVMRTEs;
-    stdoutExcludeWords = GridPilot.getClassMgr().getConfigFile().getValues(
-        csName, "Stdout exclude words");
-    stderrExcludeWords = GridPilot.getClassMgr().getConfigFile().getValues(
-        csName, "Stderr exclude words");
+    try{
+       String stdoutExW = GridPilot.getClassMgr().getConfigFile().getValue(
+           csName, "Stdout exclude words");
+      stdoutExcludeWords = splitPhrases(stdoutExW);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    try{
+      String stderrExW = GridPilot.getClassMgr().getConfigFile().getValue(
+          csName, "Stderr exclude words");
+     stderrExcludeWords = splitPhrases(stderrExW);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+  }
+  
+  private static String [] splitPhrases(String _phrases) throws Exception{
+    Vector<String> phrasesVec = new Vector<String>();
+    String pattern = "([^']*)('[^']+')(.*)";
+    String phrases = _phrases;
+    String phrase;
+    while(true){
+      if(!phrases.matches(pattern)){
+        break;
+      }
+      phrase = phrases.replaceFirst(pattern, "$2");
+      phrases = phrases.replaceFirst(pattern, "$1$3");
+      phrasesVec.add(phrase);
+    }
+    if(phrases.indexOf("'")>=0){
+      throw new Exception("Cannot parse "+_phrases);
+    }
+    String [] words = MyUtil.split(phrases.trim());
+    if(words!=null && words.length>0){
+      Collections.addAll(phrasesVec, words);
+    }
+    return phrasesVec.toArray(new String[phrasesVec.size()]);
   }
   
   public boolean createWrapper(Shell shell, MyJobInfo job, String fileName){
@@ -220,15 +257,18 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
     
     if(notOnWindows){
+      // Shell utils to filter off unwanted stuff from stdout and stderr
       writeLine(buf, filterStdOutErrLines());
+      // Running the transformation script with ./ instead of a full path is to allow this to 
+      // be used by GridFactoryComputingSystem, where we don't have a shell on the worker node
+      // and the full path is not known.
+      line = "split \""+(copyScript?"./":"")+ scriptName + " " +
+             MyUtil.arrayToString(actualParam) + "\" | s2";
     }
-
-    // Running the transformation script with ./ instead of a full path is to allow this to 
-    // be used by GridFactoryComputingSystem, where we don't have a shell on the worker node
-    // and the full path is not known.
-    line = (notOnWindows?"split \"":"")+(copyScript&&notOnWindows?"./":"") + scriptName + " " +
-       MyUtil.arrayToString(actualParam) + (notOnWindows?"\" s1 | s2":"");
-    // Filter off unwanted stuff from stdout and stderr
+    else{
+      line = scriptName+ " " + MyUtil.arrayToString(actualParam);
+    }
+    
     writeLine(buf, line);
     writeLine(buf, "");
     
@@ -299,15 +339,16 @@ public class ForkScriptGenerator extends ScriptGenerator{
   }
   
   private String filterStdOutErrLines(){
-    String lines = "split() { { { $1 2>&3 | $2 ; } 3>&1; }; }\n";
-    String stdoutFilterLine = "s1(){ while read;do echo $REPLY FILTER >&2; done }\n";
-    String stderrFilterLine = "s2(){ while read;do echo $REPLY FILTER >&2; done }\n";
+    Debug.debug("Creating stdout/stderr filters", 3);
+    String lines = "";
+    String stdoutFilterLine = "s1(){ while read;do echo $REPLY FILTER; done }\n";
+    String stderrFilterLine = "s2(){ while read;do echo $REPLY FILTER; done }\n";
     if(stdoutExcludeWords!=null && stdoutExcludeWords.length>0){
       String stdoutFilter = "";
-      for(int i=0; i<stdoutExcludeWords.length;){
+      for(int i=0; i<stdoutExcludeWords.length; ++i){
         stdoutFilter += " | grep -v "+stdoutExcludeWords[i];
       }
-      stdoutFilterLine.replaceFirst("FILTER", stdoutFilter);
+      stdoutFilterLine = stdoutFilterLine.replaceFirst("FILTER", stdoutFilter);
       lines += stdoutFilterLine;
     }
     else{
@@ -315,15 +356,17 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
     if(stderrExcludeWords!=null && stderrExcludeWords.length>0){
       String stderrFilter = "";
-      for(int i=0; i<stderrExcludeWords.length;){
+      for(int i=0; i<stderrExcludeWords.length; ++i){
         stderrFilter += " | grep -v "+stderrExcludeWords[i];
       }
-      stderrFilterLine.replaceFirst("FILTER", stderrFilter);
+      stderrFilterLine = stderrFilterLine.replaceFirst("FILTER", stderrFilter);
       lines += stderrFilterLine;
     }
     else{
       stderrFilterLine.replaceFirst("FILTER", "");
     }
+    lines += "split(){ { $1 2>&1 1>&3 | s2 1>&2 ; } 3>&1 ;} | s1\n";
+    Debug.debug("Filtering stdout/stderr with "+lines, 2);
     return lines;
   }
 
