@@ -258,11 +258,11 @@ public class JobValidation{
     }
 
     int dbStatus;
+    extractInfo(job, outs[0]);
     switch(exitValue){
       case EXIT_VALIDATED :
         Debug.debug("Validation : exit validated", 2);
         dbStatus = DBPluginMgr.VALIDATED;
-        extractInfo(job, outs[0]);
         break;
       case EXIT_UNDECIDED :
         Debug.debug("job " + job.getName() + " Validation : exit undecided", 2);

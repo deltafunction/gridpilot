@@ -570,7 +570,7 @@ public class SubmissionControl{
       mgr = ((JobMgr) it.next());
       mgr.updateJobsByStatus();
       jobsByStatus = mgr.getJobsByStatus();
-      rjc = mgr.getRunningJobsByCS();
+      rjc = mgr.getSubmittedJobsByCS();
       for(int i=0; i<csNames.length; ++i){
         rJobsByCS[i] += rjc[i];
         Debug.debug("Upping job count for CS "+csNames[i]+" with "+rjc[i], 3);

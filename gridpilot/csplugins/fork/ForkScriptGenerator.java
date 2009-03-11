@@ -159,9 +159,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
 
     // Input files section
-    // Notice: job.getDownloadFiles() will only be non-empty if downloading failed.
     String [] inputFiles = job.getDownloadFiles();
-    String [][] outputFiles = job.getUploadFiles();
     if(inputFiles!=null && inputFiles.length>0 /*|| outputFiles!=null && outputFiles.length>0*/){
       if(requiredRuntimeEnv!=null && requiredRuntimeEnv.length()>0){
         Debug.debug("Adding sourcing of required RTEs: "+requiredRuntimeEnv, 2);
@@ -286,13 +284,16 @@ public class ForkScriptGenerator extends ScriptGenerator{
       writeLine(buf, "echo " +
           gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG +
           ": cpuSeconds = $(( END_TIME - START_TIME ))");
+      // Notice: job.getDownloadFiles() will only be non-empty if downloading failed.
+      //String [][] outputFiles = job.getUploadFiles();
+      String [] outputFiles = job.getOutputFileNames();
       for(int i=0; i<outputFiles.length; ++i){
         writeLine(buf, "echo "+
             gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG+
-            ": outputFileBytes = `du -b "+outputFiles[i][0]+" | awk '{print $1}'`");
+            ": outputFileBytes = `du -b "+outputFiles[i]+" | awk '{print $1}'`");
         writeLine(buf, "echo "+
             gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG+
-            ": outputFileChecksum = md5:`md5sum "+outputFiles[i][0]+" | awk '{print $1}'`");
+            ": outputFileChecksum = md5:`md5sum "+outputFiles[i]+" | awk '{print $1}'`");
         break;
       }
     }

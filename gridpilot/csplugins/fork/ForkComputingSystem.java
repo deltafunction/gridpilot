@@ -478,6 +478,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
   
   protected void updateStatus(MyJobInfo job, Shell shellMgr){
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     
     if(shellMgr==null){
       // If there is no ShellMgr, the job was probably started in another session...
@@ -488,6 +489,13 @@ public class ForkComputingSystem implements MyComputingSystem{
     
     // Host.
     job.setHost(shellMgr.getHostName());
+    if(!dbPluginMgr.updateJobDefinition(
+        job.getIdentifier(),
+        new String []{"host"},
+        new String []{job.getHost()})){
+      logFile.addMessage("DB update of job" + job.getIdentifier()+" failed");    
+    }
+
 
     if(shellMgr.isRunning(job.getJobId())/*stdOut.length()!=0 &&
         stdOut.indexOf(job.getName())>-1*/

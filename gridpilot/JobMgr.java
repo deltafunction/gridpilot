@@ -65,7 +65,7 @@ public class JobMgr{
   /** 
    * Counters of running jobs ordered by DB computing system.
    */
-  private int [] runningJobsByCS;
+  private int [] submittedJobsByCS;
   
   private boolean [] hasChanged;
   private boolean useChanges = true;
@@ -104,8 +104,8 @@ public class JobMgr{
      return jobsByDBStatus;
    }
 
-   public int [] getRunningJobsByCS(){
-     return runningJobsByCS;
+   public int [] getSubmittedJobsByCS(){
+     return submittedJobsByCS;
    }
 
    public DBPluginMgr getDBPluginMgr(){
@@ -162,7 +162,7 @@ public class JobMgr{
           Debug.debug(e.getCause().toString(), 2);
         }
         try{
-          String jobHost = dbPluginMgr.getRunInfo(job.getIdentifier(), "hostMachine");
+          String jobHost = dbPluginMgr.getRunInfo(job.getIdentifier(), "host");
           Debug.debug("Setting job host :"+jobHost+":", 3);
           job.setHost(jobHost);
         }
@@ -404,7 +404,7 @@ public class JobMgr{
     int doneIndex = 2;
     
     String [] css = GridPilot.getClassMgr().getCSPluginMgr().getEnabledCSNames();
-    runningJobsByCS = new int[css.length];
+    submittedJobsByCS = new int[css.length];
     MyJobInfo job;
 
     for(int i=0; i<submittedJobs.size(); ++i){
@@ -436,7 +436,7 @@ public class JobMgr{
       
       for(int j=0; j<css.length; ++j){
         if(css[j].equalsIgnoreCase(job.getCSName()) && job.getDBStatus()==DBPluginMgr.SUBMITTED){
-          ++runningJobsByCS[j];
+          ++submittedJobsByCS[j];
         }
       }
       
