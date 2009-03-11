@@ -263,7 +263,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
       // be used by GridFactoryComputingSystem, where we don't have a shell on the worker node
       // and the full path is not known.
       line = "split \""+(copyScript?"./":"")+ scriptName + " " +
-             MyUtil.arrayToString(actualParam) + "\" | s1";
+             MyUtil.arrayToString(actualParam) + "; echo\" | s1";
     }
     else{
       line = scriptName+ " " + MyUtil.arrayToString(actualParam);
