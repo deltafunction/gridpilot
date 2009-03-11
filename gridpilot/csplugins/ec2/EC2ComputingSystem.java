@@ -1121,7 +1121,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         mp = catalog.getMetaPackage(rtes[i]);
         ip = rteMgr.getInstancePackage(mp, os);
         // If it's a TarPackage, install it
-        if(ip.getClass().getCanonicalName().equals(RTECatalog.TarPackage.class.getCanonicalName())){
+        if(!ip.getClass().getCanonicalName().equals(RTECatalog.TarPackage.class.getCanonicalName())){
           logFile.addInfo(rtes[i]+" has no TarPackage instance on "+os+". Skipping.");
           continue;
         }

@@ -263,7 +263,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
       // be used by GridFactoryComputingSystem, where we don't have a shell on the worker node
       // and the full path is not known.
       line = "split \""+(copyScript?"./":"")+ scriptName + " " +
-             MyUtil.arrayToString(actualParam) + "\" | s2";
+             MyUtil.arrayToString(actualParam) + "\" | s1";
     }
     else{
       line = scriptName+ " " + MyUtil.arrayToString(actualParam);
@@ -365,7 +365,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     else{
       stderrFilterLine.replaceFirst("FILTER", "");
     }
-    lines += "split(){ { $1 2>&1 1>&3 | s2 1>&2 ; } 3>&1 ;} | s1\n";
+    lines += "split(){ { $1 2>&1 1>&3 | s2 1>&2 ; } 3>&1 ;}\n";
     Debug.debug("Filtering stdout/stderr with "+lines, 2);
     return lines;
   }
