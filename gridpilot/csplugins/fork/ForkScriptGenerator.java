@@ -222,7 +222,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     writeBlock(buf, line, ScriptGenerator.TYPE_SUBSECTION, commentStart);
     for(int i=0; i<formalParam.length; ++i){
       try{
-        actualParam[i] = MyUtil.encode(actualParam[i]);
+        actualParam[i] = encode(actualParam[i]);
       }
       catch(Exception e){
         Debug.debug("WARNING: parameter "+formalParam[i]+" is not set.", 2);
@@ -263,7 +263,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
       // be used by GridFactoryComputingSystem, where we don't have a shell on the worker node
       // and the full path is not known.
       line = "split \""+(copyScript?"./":"")+ scriptName + " " +
-             MyUtil.arrayToString(actualParam) + "; echo\" | s1";
+             MyUtil.arrayToString(actualParam) + "\" | s1";
     }
     else{
       line = scriptName+ " " + MyUtil.arrayToString(actualParam);
@@ -338,11 +338,36 @@ public class ForkScriptGenerator extends ScriptGenerator{
     return true;
   }
   
+  private static String encode(String s){
+    // If s contains spaces, enclose in single quotes.
+    // Escape all quotes/dollars.
+    // Tried to get this working using replaceAll without luck.
+    String tmp = "";
+    for(int i=0; i<s.length(); i++){
+      if(s.charAt(i)=='"'){
+        tmp = tmp + '\\';
+        tmp = tmp + '"';
+      }
+      else if(s.charAt(i)=='$'){
+        tmp = tmp + '\\';
+        tmp = tmp + '$';
+      }
+      else {
+        tmp = tmp + s.charAt(i);
+      }
+    }
+    tmp = tmp.trim();
+    if(tmp.indexOf(" ")>0){
+      tmp = "'" + tmp + "'";
+    }
+    return tmp;
+  }
+  
   private String filterStdOutErrLines(){
     Debug.debug("Creating stdout/stderr filters", 3);
     String lines = "";
-    String stdoutFilterLine = "s1(){ while read;do echo $REPLY FILTER; done }\n";
-    String stderrFilterLine = "s2(){ while read;do echo $REPLY FILTER; done }\n";
+    String stdoutFilterLine = "s1(){ while read;do echo $REPLY; done FILTER ; }\n";
+    String stderrFilterLine = "s2(){ while read;do echo $REPLY; done FILTER ; }\n";
     if(stdoutExcludeWords!=null && stdoutExcludeWords.length>0){
       String stdoutFilter = "";
       for(int i=0; i<stdoutExcludeWords.length; ++i){

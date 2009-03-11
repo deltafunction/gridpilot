@@ -169,26 +169,6 @@ public class MyUtil extends gridfactory.common.Util{
     }
   }
 
-  public static String encode(String s){
-    // Put quotes around and escape all enclosed quotes/dollars.
-    // Tried to get this working using replaceAll without luck.
-    String tmp = "";
-    for(int i=0; i<s.length(); i++){
-      if(s.charAt(i)=='"'){
-        tmp = tmp + '\\';
-        tmp = tmp + '"';
-      }
-      else if(s.charAt(i)=='$'){
-        tmp = tmp + '\\';
-        tmp = tmp + '$';
-      }
-      else {
-        tmp = tmp + s.charAt(i);
-      }
-    }
-    return "\"" + tmp + "\"";
-  }
-  
   public static String dbEncode(String str){
     if(str==null || str.length()==0){
       return str;
