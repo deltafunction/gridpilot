@@ -59,6 +59,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected boolean mkLocalOSRTE = true;
   protected boolean includeVMRTEs = true;
   protected String [] basicOSRTES = {"Linux"};
+  protected String remoteCopyCommand = null;
 
   protected boolean ignoreBaseSystemAndVMRTEs = true;
 
@@ -68,6 +69,8 @@ public class ForkComputingSystem implements MyComputingSystem{
     logFile = GridPilot.getClassMgr().getLogFile();
     transferControl = GridPilot.getClassMgr().getTransferControl();
     toDeleteRTEs = new HashMap();
+    remoteCopyCommand = GridPilot.getClassMgr().getConfigFile().getValue(
+        csName, "Remote copy command");
     
     GridPilot.splashShow("Setting up shells...");
     
@@ -943,16 +946,20 @@ public class ForkComputingSystem implements MyComputingSystem{
           // (assuming that e.g. the runtime environment ARC has been required)
           else if(!ignoreRemoteInputs && MyUtil.urlIsRemote(inputFiles[i])){
             try{
-              Debug.debug("Getting input file "+inputFiles[i]+" --> "+runDir(job), 3);
-              transferControl.copyInputFile(MyUtil.clearFile(inputFiles[i]), runDir(job)+"/"+fileName, thisShellMgr, true, error);
+              if(remoteCopyCommand!=null && !remoteCopyCommand.equals("")){
+                // If a remote copy command is defined, use it, i.e.
+                // have the job script get input files
+                downloadVector.add(inputFiles[i]);
+              }
+              else{
+                Debug.debug("Getting input file "+inputFiles[i]+" --> "+runDir(job), 3);
+                transferControl.copyInputFile(MyUtil.clearFile(inputFiles[i]), runDir(job)+"/"+fileName, thisShellMgr, true, error);
+              }
             }
-            catch(Exception ioe){
-              logFile.addMessage("WARNING: GridPilot could not get input file "+inputFiles[i]+
+            catch(Exception ioe){ 
+              logFile.addMessage("WARNING: could not get input file "+inputFiles[i]+
                   ".", ioe);
               ioe.printStackTrace();
-              // If we could not get file natively, as a last resort, try and
-              // have the job script get it (assuming that e.g. the runtime environment ARC has been required)
-              downloadVector.add(inputFiles[i]);
             }
           }
           // Relative paths are not supported

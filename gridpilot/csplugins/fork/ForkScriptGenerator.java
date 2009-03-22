@@ -185,22 +185,20 @@ public class ForkScriptGenerator extends ScriptGenerator{
         writeLine(buf, "");
       }
       if(remoteCopyCommand!=null && remoteCopyCommand.length()>0){
-        if(inputFiles!=null && inputFiles.length>0){
-          writeBlock(buf, "Input files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
-          String name = null;
-          for(int i=0; i<inputFiles.length; ++i){
-            try{
-              name = new File((new GlobusURL(inputFiles[i])).getPath()).getName();
-            }
-            catch(MalformedURLException e){
-              e.printStackTrace();
-              logFile.addMessage("ERROR: could not get input file "+inputFiles[i], e);
-              continue;
-            }
-            writeLine(buf, remoteCopyCommand+" "+inputFiles[i]+" file:///`pwd`/"+name);
+        writeBlock(buf, "Input files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
+        String name = null;
+        for(int i=0; i<inputFiles.length; ++i){
+          try{
+            name = new File((new GlobusURL(inputFiles[i])).getPath()).getName();
           }
-          writeLine(buf, "");
+          catch(MalformedURLException e){
+            e.printStackTrace();
+            logFile.addMessage("ERROR: could not get input file "+inputFiles[i], e);
+            continue;
+          }
+          writeLine(buf, remoteCopyCommand+" "+inputFiles[i]+" file:///`pwd`/"+name);
         }
+        writeLine(buf, "");
       }
       else{
         logFile.addMessage("ERROR: remote input files needed and no remote copy command defined. "+

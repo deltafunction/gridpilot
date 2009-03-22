@@ -245,10 +245,15 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       }
       File downloadDir = new File(path);
       if(!downloadDir.isDirectory()){
-        throw new IOException("Download destination not a directory.");
+        if(srcUrls[0].getPath().endsWith("/"+downloadDir.getName())){
+          downloadDir = downloadDir.getParentFile();
+        }
+        else{
+          throw new IOException("Download destination must be a directory. "+downloadDir.getAbsolutePath());
+        }
       }
       if(!downloadDir.exists()){
-        throw new IOException("Download directory does not exist.");
+        throw new IOException("Download directory does not exist. "+downloadDir.getAbsolutePath());
       }
       // The URLs are of the form sss://bucket/some/file/name
       // getHost() --> bucket, getPath() --> some/file/name
