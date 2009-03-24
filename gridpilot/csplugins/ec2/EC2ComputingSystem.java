@@ -495,8 +495,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     logFile.addInfo("No RTE found that provides "+MyUtil.arrayToString(job.getRTEs())+
         ". Falling back to "+fallbackAmiID);
     if(fallbackAmiID!=null && !fallbackAmiID.equals("")){
-      job.setOpSys(fallbackAmiID);
-      job.setOpSysRTE(fallbackAmiID);
+      job.setOpSys(null);
+      job.setOpSysRTE(null);
     }
     return fallbackAmiID;
   }
@@ -521,7 +521,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     ImageDescription desc;
     for(Iterator<ImageDescription> it=gpAMIs.iterator(); it.hasNext();){
       desc = it.next();
-      Debug.debug("Finding AMI "+manifest+"<->"+desc.getImageLocation(), 3);
+      //Debug.debug("Finding AMI "+manifest+"<->"+desc.getImageLocation(), 3);
       if(desc.getImageLocation().equalsIgnoreCase(manifest)){
         return desc.getImageId();
       }
@@ -548,7 +548,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     for(int i=0; i<requestedRtes.length; ++i){
       if(!MyUtil.arrayContains(provides, requestedRtes[i])){
-        Debug.debug("Requested RTE "+requestedRtes[i]+" not provided by "+rteName, 3);
+        //Debug.debug("Requested RTE "+requestedRtes[i]+" not provided by "+rteName, 3);
         return false;
       }
     }
