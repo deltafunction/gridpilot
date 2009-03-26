@@ -1233,7 +1233,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
         }
       }
     };
-    SwingUtilities.invokeLater(r);
+    r.run();
   }
   
   private void compareRemoteAndLocalFiles(final Map localFilesMap, final Map s3ObjectsMap,
