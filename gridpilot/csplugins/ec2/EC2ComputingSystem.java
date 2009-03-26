@@ -492,7 +492,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     catch(Exception e){
       e.printStackTrace();
     }
-    logFile.addInfo("No RTE found that provides "+MyUtil.arrayToString(job.getRTEs())+
+    logFile.addInfo("No RTE found that provides all "+MyUtil.arrayToString(job.getRTEs())+
         ". Falling back to "+fallbackAmiID);
     if(fallbackAmiID!=null && !fallbackAmiID.equals("")){
       job.setOpSys(null);
@@ -529,6 +529,14 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     throw new Exception("No RTE matching "+rteName+" found.");
   }
 
+  /**
+   * Check if a given RTE (with record 'rte' and name 'rteName') provides
+   * all RTEs requested by a given job.
+   * @param job
+   * @param rte
+   * @param rteName
+   * @return
+   */
   private boolean checkProvides(JobInfo job, DBRecord rte, String rteName) {
     String [] requestedRtes = job.getRTEs();
     if(requestedRtes==null || requestedRtes.length==0){
@@ -577,7 +585,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   }
 
   /**
-   * Check if a list of dependencies are provided by the AMI of a given host.
+   * Check if dependencies of a job are provided by the AMI of a given host.
    * @param host
    * @param job
    * @return
@@ -586,6 +594,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private boolean checkHostProvides(String host, JobInfo job) throws Exception {
     
     String amiId = findAmiId(job);
+    Debug.debug("Job "+job.getName()+" needs AMI "+amiId, 2);
     
     List reservationList = ec2mgr.listReservations();
     List instanceList = null;
@@ -597,12 +606,15 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       for(Iterator itt=instanceList.iterator(); itt.hasNext();){
         instance = (Instance) itt.next();
         if(instance.getDnsName().equals(host)){
+          Debug.debug("Host "+host+" is running AMI "+instance.getImageId(), 2);
           if(instance.getImageId().equals(amiId)){
+            Debug.debug("Host "+host+" provides RTEs requested by job. "+job.getName(), 2);
             return true;
           }
         }
       }
     }
+    Debug.debug("Host "+host+" does not provide RTEs requested by job. "+job.getName(), 2);
     return false;
   }
   
@@ -861,6 +873,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       }
     }
     // then try to boot an instance
+    Debug.debug("Nope, no host can be reused, trying to boot a fresh one.", 2);
     return bootInstance(job);
   }
   
@@ -1109,9 +1122,11 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   }
   
   private void installTarPackages(Instance inst, String os, String[] rtes) throws Exception {
+        
     RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.runtimeDir, allTmpCatalogs);
     RTECatalog catalog = rteMgr.getRTECatalog();    
     Shell shell = getShell(inst.getDnsName());
+    
     RTEInstaller rteInstaller;
     MetaPackage mp;
     InstancePackage ip;
