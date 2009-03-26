@@ -158,32 +158,33 @@ public class ForkScriptGenerator extends ScriptGenerator{
       writeLine(buf, "");
     }
 
+    if(requiredRuntimeEnv!=null && requiredRuntimeEnv.length()>0){
+      Debug.debug("Adding sourcing of required RTEs: "+requiredRuntimeEnv, 2);
+      // requiredRuntimeEnv is only needed to get input files from
+      // remote sources or copy ouput files to final destinations
+      String initTxt = null;
+      try{
+        initTxt = dbPluginMgr.getRuntimeInitText(requiredRuntimeEnv, csName).toString();
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        logFile.addMessage("WARNING: could not find required runtime environment "+requiredRuntimeEnv, e);
+      }
+      writeLine(buf, initTxt);
+      if(notOnWindows){
+        writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
+            "/"+requiredRuntimeEnv+" 1").replaceAll("//", "/"));
+      }
+      else{
+        writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
+            "/"+requiredRuntimeEnv+" 1").replaceAll("//", "/").replaceAll("/", "\\\\"));
+      }
+      writeLine(buf, "");
+    }
+
     // Input files section
     String [] inputFiles = job.getDownloadFiles();
     if(inputFiles!=null && inputFiles.length>0 /*|| outputFiles!=null && outputFiles.length>0*/){
-      if(requiredRuntimeEnv!=null && requiredRuntimeEnv.length()>0){
-        Debug.debug("Adding sourcing of required RTEs: "+requiredRuntimeEnv, 2);
-        // requiredRuntimeEnv is only needed to get input files from
-        // remote sources or copy ouput files to final destinations
-        String initTxt = null;
-        try{
-          initTxt = dbPluginMgr.getRuntimeInitText(requiredRuntimeEnv, csName).toString();
-        }
-        catch(Exception e){
-          e.printStackTrace();
-          logFile.addMessage("WARNING: could not find required runtime environment "+requiredRuntimeEnv, e);
-        }
-        writeLine(buf, initTxt);
-        if(notOnWindows){
-          writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
-              "/"+requiredRuntimeEnv+" 1").replaceAll("//", "/"));
-        }
-        else{
-          writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
-              "/"+requiredRuntimeEnv+" 1").replaceAll("//", "/").replaceAll("/", "\\\\"));
-        }
-        writeLine(buf, "");
-      }
       if(remoteCopyCommand!=null && remoteCopyCommand.length()>0){
         writeBlock(buf, "Input files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
         String name = null;
@@ -201,7 +202,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
         writeLine(buf, "");
       }
       else{
-        logFile.addMessage("ERROR: remote input files needed and no remote copy command defined. "+
+        logFile.addMessage("ERROR: remote input files requested to be downloaded by script and no remote copy command defined. "+
             "Cannot proceed with "+job);
         return false;
       }
