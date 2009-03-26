@@ -2954,38 +2954,42 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void submit(final ActionEvent e){
     workThread = new ResThread(){
       public void run(){
-        if(!waitForWorking()){
-          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, search not performed");
-          return;
-        }
-        statusBar.setLabel("Preparing jobs, please wait...");
-        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        statusBar.animateProgressBar();
-        statusBar.setIndeterminateProgressBarToolTip("click here to interrupt (not recommended)");
-        statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
-          public void mouseClicked(MouseEvent me){
-            setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-            statusBar.stopAnimation();
-            workThread.interrupt();
-          }
-        });
-        String [] selectedJobDefIdentifiers = getSelectedIdentifiers();
-        Vector selectedJobDefinitions = new Vector();
-        for(int i=0; i<selectedJobDefIdentifiers.length; ++i){
-          selectedJobDefinitions.add(dbPluginMgr.getJobDefinition(selectedJobDefIdentifiers[i]));
-        }
         String csName = ((JMenuItem)e.getSource()).getText();
-        // submit the jobs
-        statusBar.setLabel("Submitting. Please wait...");
-        submissionControl.submitJobDefinitions(selectedJobDefinitions, csName, dbPluginMgr);
-        statusBar.stopAnimation();
-        statusBar.setLabel("");
-        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-        stopWorking();
+        doSubmit(csName);
       }
     };
 
     workThread.start();
+  }
+  
+  private void doSubmit(String csName){
+    if(!waitForWorking()){
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, search not performed");
+      return;
+    }
+    statusBar.setLabel("Preparing jobs, please wait...");
+    setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    statusBar.animateProgressBar();
+    statusBar.setIndeterminateProgressBarToolTip("click here to interrupt (not recommended)");
+    statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
+      public void mouseClicked(MouseEvent me){
+        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        statusBar.stopAnimation();
+        workThread.interrupt();
+      }
+    });
+    String [] selectedJobDefIdentifiers = getSelectedIdentifiers();
+    Vector selectedJobDefinitions = new Vector();
+    for(int i=0; i<selectedJobDefIdentifiers.length; ++i){
+      selectedJobDefinitions.add(dbPluginMgr.getJobDefinition(selectedJobDefIdentifiers[i]));
+    }
+    // submit the jobs
+    statusBar.setLabel("Submitting. Please wait...");
+    submissionControl.submitJobDefinitions(selectedJobDefinitions, csName, dbPluginMgr);
+    statusBar.stopAnimation();
+    statusBar.setLabel("");
+    setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+    stopWorking();
   }
   
   public void copy(){
