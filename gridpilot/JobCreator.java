@@ -285,11 +285,11 @@ public class JobCreator{
         if(showThis){
           if(lastPartition - currentPartition + len - currentDataset > 1){       
             choice = showResult(currentPartition, resCstAttr, resJobParam, resOutMap, resStdOut,
-            showResultsOptions);
+               showResultsOptions);
           }
           else{
             choice = showResult(currentPartition, resCstAttr, resJobParam, resOutMap, resStdOut,
-            showResultsOptions1);
+               showResultsOptions1);
           }
 
           switch(choice){
@@ -357,6 +357,9 @@ public class JobCreator{
         Debug.debug("Got transformation: "+transName+":"+transVersion+" <-- "+
             datasetIdentifiers[idNum], 3);
         Debug.debug("stdout/stderr length "+resStdOut.length, 2);
+        Debug.debug("cstAttrNames --> "+MyUtil.arrayToString(cstAttrNames), 3);
+        Debug.debug("resCstAttr --> "+MyUtil.arrayToString(resCstAttr), 3);
+        Debug.debug("resJobParam --> "+MyUtil.arrayToString(resCstAttr), 3);
         
         if(!dbPluginMgr.createJobDefinition(
                               dbPluginMgr.getDatasetName(id),

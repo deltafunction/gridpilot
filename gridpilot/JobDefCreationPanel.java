@@ -391,7 +391,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
     
     String text = "";
     if(comp.getClass().isInstance(new JTextArea())||
-        comp.getClass().isInstance(new JTextField())){
+        comp.getClass().isInstance(new JTextField())||
+        comp.getClass().isInstance(MyUtil.createTextArea(TEXTFIELDWIDTH))){
       text =  ((JTextComponent) comp).getText();
     }
     else if(comp.getClass().isInstance(new JComboBox())){
@@ -403,7 +404,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
       }
     }
     else{
-      Debug.debug("WARNING: unsupported component type "+comp.getClass().toString(), 1);
+      Debug.debug("WARNING: unsupported component type "+comp.getClass().getCanonicalName(), 1);
     }
     return text;
   }

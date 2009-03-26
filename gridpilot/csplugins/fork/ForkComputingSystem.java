@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
+import java.util.AbstractList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -59,7 +60,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected boolean mkLocalOSRTE = true;
   protected boolean includeVMRTEs = true;
   protected String [] basicOSRTES = {"Linux"};
-  protected String remoteCopyCommand = null;
+  protected HashMap remoteCopyCommands = null;
 
   protected boolean ignoreBaseSystemAndVMRTEs = true;
 
@@ -69,8 +70,14 @@ public class ForkComputingSystem implements MyComputingSystem{
     logFile = GridPilot.getClassMgr().getLogFile();
     transferControl = GridPilot.getClassMgr().getTransferControl();
     toDeleteRTEs = new HashMap();
-    remoteCopyCommand = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "Remote copy command");
+    String [] rtCpCmds = GridPilot.getClassMgr().getConfigFile().getValues(
+        csName, "Remote copy commands");
+    if(rtCpCmds!=null && rtCpCmds.length>1){
+      remoteCopyCommands = new HashMap();
+      for(int i=0; i<rtCpCmds.length/2; ++i){
+        remoteCopyCommands.put(rtCpCmds[2*i], rtCpCmds[2*i+1]);
+      }
+    }
     
     GridPilot.splashShow("Setting up shells...");
     
@@ -863,22 +870,27 @@ public class ForkComputingSystem implements MyComputingSystem{
   /**
    * Copies input files to run directory.
    * Assumes job.stdout points to a file in the run directory.
+   * 
+   * Notice that we use job.getDownloadFiles() in a different way than GridFactory.
+   * 
+   * Convention: if a remote copy command is not defined, remote input files will be downloaded
+   * and copied directly into the execution host with transferControl.copyInputFile.
+   * If a remote copy command is defined, job.getDownloadFiles() will be used to remember which
+   * files should be downloaded by the job script itself.
+   * 
+   * For reference, this is the convention of GridFactory: if a job has already had remote input
+   * files downloaded, job.getDownloadFiles() will be set (to local files). These files will
+   * then be copied to the run directory along with any local input files.
+   *
    */
   protected boolean getInputFiles(MyJobInfo job, Shell thisShellMgr){
-    
     boolean ok = true;
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String transID = dbPluginMgr.getJobDefTransformationID(job.getIdentifier());
     Debug.debug("Getting input files for transformation " + transID, 2);
     String [] transInputFiles = dbPluginMgr.getTransformationInputs(transID);
-
     Debug.debug("Getting input files for job " + job.getName(), 2);
     String [] jobInputFiles = dbPluginMgr.getJobDefInputFiles(job.getIdentifier());
-
-    // CONVENTION: if job has already had remote input files downloaded,
-    // job.getDownloadFiles() will be set (to local files). These files should then be copied to the
-    // run directory along with any local input files.
-    // Moreover, the remote files from transInputFiles and jobInputFiles should be ignored.
     String [] dlInputFiles = new String [] {};
     boolean ignoreRemoteInputs = false;
     if(job.getDownloadFiles()!=null && job.getDownloadFiles().length>0){
@@ -896,7 +908,6 @@ public class ForkComputingSystem implements MyComputingSystem{
       ignoreRemoteInputs = true;
     }
     job.setDownloadFiles(new String [] {});
-    
     String [] inputFiles = new String [transInputFiles.length+jobInputFiles.length+
                                        dlInputFiles.length];
     for(int i=0; i<transInputFiles.length; ++i){
@@ -910,7 +921,6 @@ public class ForkComputingSystem implements MyComputingSystem{
     }
     Vector downloadVector = new Vector();
     String [] downloadFiles = null;
-    // TODO: clean up this mess! Use method from MyUtil
     for(int i=0; i<inputFiles.length; ++i){
       Debug.debug("Pre-processing : Getting " + inputFiles[i], 2);
       String fileName = inputFiles[i];
@@ -930,102 +940,14 @@ public class ForkComputingSystem implements MyComputingSystem{
       if(inputFiles[i]!=null && inputFiles[i].trim().length()!=0){
         // Remote shell
         if(!thisShellMgr.isLocal()){
-          // If source starts with file:/, scp the file from local disk.
-          if(inputFiles[i].matches("^file:/*[^/]+.*")){
-            inputFiles[i] = MyUtil.clearTildeLocally(MyUtil.clearFile(inputFiles[i]));
-            Debug.debug("Uploading "+fileName+" via SSH: "+inputFiles[i]+" --> "+runDir(job)+"/"+fileName, 3);
-            ok = thisShellMgr.upload(inputFiles[i], runDir(job)+"/"+fileName);
-            if(!ok){
-              logFile.addMessage("ERROR: could not put input file "+inputFiles[i]);
-            }
-          }
-          // If source starts with /, just use the remote file.
-          else if(inputFiles[i].startsWith("/")){
-          }
-          // If source is remote, have the job script get it
-          // (assuming that e.g. the runtime environment ARC has been required)
-          else if(!ignoreRemoteInputs && MyUtil.urlIsRemote(inputFiles[i])){
-            try{
-              if(remoteCopyCommand!=null && !remoteCopyCommand.equals("")){
-                // If a remote copy command is defined, use it, i.e.
-                // have the job script get input files
-                downloadVector.add(inputFiles[i]);
-              }
-              else{
-                Debug.debug("Getting input file "+inputFiles[i]+" --> "+runDir(job), 3);
-                transferControl.copyInputFile(MyUtil.clearFile(inputFiles[i]), runDir(job)+"/"+fileName, thisShellMgr, true, error);
-              }
-            }
-            catch(Exception ioe){ 
-              logFile.addMessage("WARNING: could not get input file "+inputFiles[i]+
-                  ".", ioe);
-              ioe.printStackTrace();
-            }
-          }
-          // Relative paths are not supported
-          else{
-            logFile.addMessage("ERROR: could not get input file "+inputFiles[i]+
-                ". Names must be fully qualified.");
-            ok = false;
-          }
+          ok = ok && remoteShellCopy(inputFiles[i], fileName, job, thisShellMgr, ignoreRemoteInputs, downloadVector);
         }
         // Local shell
         else{
-          // If source starts with file:/, / or c:\ /, just copy over the local file.
-          if(inputFiles[i].startsWith("/") ||
-             inputFiles[i].matches("\\w:.*") ||
-             inputFiles[i].startsWith("file:")){
-            inputFiles[i] = MyUtil.clearFile(inputFiles[i]);
-            try{
-              if(!thisShellMgr.existsFile(inputFiles[i])){
-                logFile.addMessage("File " + inputFiles[i] + " doesn't exist");
-                ok = false;
-                continue;
-              }
-            }
-            catch(Throwable e){
-              error = "ERROR getting input file: "+e.getMessage();
-              Debug.debug(error, 2);
-              logFile.addMessage(error);
-              ok = false;
-            }
-            try{
-              if(!thisShellMgr.copyFile(inputFiles[i], runDir(job)+"/"+fileName)){
-                logFile.addMessage("ERROR: Cannot get input file " + inputFiles[i]);
-                ok = false;
-              }
-            }
-            catch(Throwable e){
-              error = "ERROR getting input file: "+e.getMessage();
-              Debug.debug(error, 2);
-              logFile.addMessage(error);
-              ok = false;
-            }
-          }
-          // If source is remote, get it
-          else if(!ignoreRemoteInputs && MyUtil.urlIsRemote(inputFiles[i])){
-            try{
-              transferControl.download(urlDir + fileName, new File(runDir(job)));
-            }
-            catch(Exception ioe){
-              logFile.addMessage("WARNING: GridPilot could not get input file "+inputFiles[i]+
-                  ".", ioe);
-              ioe.printStackTrace();
-              // If we could not get file natively, as a last resort, try and
-              // have the job script get it (assuming that e.g. the runtime environment ARC has been required)
-              downloadVector.add(inputFiles[i]);
-            }
-          }
-          // Relative paths are not supported
-          else{
-            logFile.addMessage("ERROR: could not get input file "+inputFiles[i]+
-                ". Names must be fully qualified.");
-            ok = false;
-          }
+          ok = ok && localShellCopy(inputFiles[i], fileName, job, thisShellMgr, ignoreRemoteInputs, urlDir, downloadVector);
         }
       }
     }
-    
     downloadFiles = new String[downloadVector.size()];
     for(int i=0; i<downloadVector.size(); ++i){
       if(downloadVector.get(i)!=null){
@@ -1033,10 +955,112 @@ public class ForkComputingSystem implements MyComputingSystem{
       }
     }
     job.setDownloadFiles(downloadFiles);
-    
     return ok;
   }
   
+  private boolean localShellCopy(String inputFile, String fileName, JobInfo job, Shell thisShellMgr,
+      boolean ignoreRemoteInputs, String urlDir, AbstractList downloadVector) {
+    boolean ok = false;
+    // If source starts with file:/, / or c:\ /, just copy over the local file.
+    if(inputFile.startsWith("/") ||
+        inputFile.matches("\\w:.*") ||
+        inputFile.startsWith("file:")){
+      inputFile = MyUtil.clearFile(inputFile);
+      try{
+        if(!thisShellMgr.existsFile(inputFile)){
+          ok = false;
+          throw new IOException("File " + inputFile + " doesn't exist");
+        }
+      }
+      catch(Throwable e){
+        error = "ERROR getting input file: "+e.getMessage();
+        Debug.debug(error, 2);
+        logFile.addMessage(error);
+        ok = false;
+      }
+      try{
+        if(!thisShellMgr.copyFile(inputFile, runDir(job)+"/"+fileName)){
+          logFile.addMessage("ERROR: Cannot get input file " + inputFile);
+          ok = false;
+        }
+      }
+      catch(Throwable e){
+        error = "ERROR getting input file: "+e.getMessage();
+        Debug.debug(error, 2);
+        logFile.addMessage(error);
+        ok = false;
+      }
+    }
+    // If source is remote, get it
+    else if(!ignoreRemoteInputs && MyUtil.urlIsRemote(inputFile)){
+      try{
+        transferControl.download(urlDir + fileName, new File(runDir(job)));
+      }
+      catch(Exception ioe){
+        logFile.addMessage("WARNING: GridPilot could not get input file "+inputFile+
+            ".", ioe);
+        ioe.printStackTrace();
+        // If we could not get file natively, as a last resort, try and
+        // have the job script get it (assuming that e.g. the runtime environment ARC has been required)
+        downloadVector.add(inputFile);
+      }
+    }
+    // Relative paths are not supported
+    else{
+      logFile.addMessage("ERROR: could not get input file "+inputFile+
+          ". Names must be fully qualified.");
+      ok = false;
+    }
+    return ok;
+  }
+
+  private boolean remoteShellCopy(String inputFile, String fileName, JobInfo job, Shell thisShellMgr,
+      boolean ignoreRemoteInputs, AbstractList downloadVector) {
+    boolean ok = false;
+    // If source starts with file:/, scp the file from local disk.
+    if(inputFile.matches("^file:/*[^/]+.*")){
+      inputFile = MyUtil.clearTildeLocally(MyUtil.clearFile(inputFile));
+      Debug.debug("Uploading "+fileName+" via SSH: "+inputFile+" --> "+runDir(job)+"/"+fileName, 3);
+      ok = thisShellMgr.upload(inputFile, runDir(job)+"/"+fileName);
+      if(!ok){
+        logFile.addMessage("ERROR: could not put input file "+inputFile);
+      }
+    }
+    // If source starts with /, just use the remote file.
+    else if(inputFile.startsWith("/")){
+    }
+    // If source is remote, have the job script get it
+    // (assuming that e.g. the runtime environment ARC has been required)
+    else if(!ignoreRemoteInputs && MyUtil.urlIsRemote(inputFile)){
+      String protocol = inputFile.replaceFirst("^(\\w+):.*$", "$1");
+      try{
+        if(remoteCopyCommands!=null && !inputFile.equals(protocol) && 
+            remoteCopyCommands.containsKey(protocol)
+            ){
+          // If a remote copy command is defined and matches the protocol, use it, i.e.
+          // have the job script get input files.
+          downloadVector.add(inputFile);
+        }
+        else{
+          Debug.debug("Getting input file "+inputFile+" --> "+runDir(job), 3);
+          transferControl.copyInputFile(MyUtil.clearFile(inputFile), runDir(job)+"/"+fileName, thisShellMgr, true, error);
+        }
+      }
+      catch(Exception ioe){ 
+        logFile.addMessage("WARNING: could not get input file "+inputFile+
+            ".", ioe);
+        ioe.printStackTrace();
+      }
+    }
+    // Relative paths are not supported
+    else{
+      logFile.addMessage("ERROR: could not get input file "+inputFile+
+          ". Names must be fully qualified.");
+      ok = false;
+    }
+    return ok;
+  }
+
   /**
    * Moves job.StdOut and job.StdErr to final destination specified in the DB. <p>
    * job.StdOut and job.StdErr are then set to these final values. <p>

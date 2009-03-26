@@ -1540,6 +1540,15 @@ public class HSQLDBDatabase extends DBCache implements Database{
     return res;
   }
   
+  private boolean isNumField(String field){
+    return field.equalsIgnoreCase("outputFileBytes") ||
+    field.equalsIgnoreCase("cpuSeconds") || 
+    field.equalsIgnoreCase("number") ||
+    field.equalsIgnoreCase("eventMin") ||
+    field.equalsIgnoreCase("eventMax") ||
+    field.equalsIgnoreCase("nEvents");
+  }
+  
   public synchronized boolean createJobDefinition(String [] _values){
     
     Object [] values = (Object []) _values.clone();
@@ -1571,13 +1580,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
         values[i] = makeDate("");
       }
-      else if((jobDefFields[i].equalsIgnoreCase("outputFileBytes") ||
-          jobDefFields[i].equalsIgnoreCase("cpuSeconds")||
-          jobDefFields[i].equalsIgnoreCase("guid") || 
-          jobDefFields[i].equalsIgnoreCase("number")||
-          jobDefFields[i].equalsIgnoreCase("eventMin")||
-          jobDefFields[i].equalsIgnoreCase("eventMax")||
-          jobDefFields[i].equalsIgnoreCase("nEvents")) &&
+      else if(isNumField(jobDefFields[i]) &&
           (values[i]==null || values[i].equals(""))){
         values[i] = "'0'";
       }
@@ -2040,8 +2043,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
             else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
               values[j] = makeDate("");
             }
-            else if((jobDefFields[i].equalsIgnoreCase("outputFileBytes") ||
-                jobDefFields[i].equalsIgnoreCase("cpuSeconds")) &&
+            else if(isNumField(jobDefFields[i]) &&
                 (values[j]==null || values[j].equals(""))){
               values[j] = "'0'";
             }
