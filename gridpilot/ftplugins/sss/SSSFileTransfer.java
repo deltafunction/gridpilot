@@ -379,8 +379,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     Debug.debug("Mapping status "+ftStatus, 2);
     int ret = -1;
     if(ftStatus==null || ftStatus.equals("")){
-      // TODO: Should this be STATUS_ERROR?
-      ret = FileTransfer.STATUS_WAIT;
+      ret = FileTransfer.STATUS_ERROR;
     }
     else if(ftStatus==null || ftStatus.equalsIgnoreCase(STATUS_ERROR)){
       ret = FileTransfer.STATUS_ERROR;

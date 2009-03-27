@@ -343,9 +343,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
         writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
             "/"+rtes[i]+"/"+"control/runtime.bat 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
       }
-      writeLine(buf, "");
     }
-
     if(requiredRuntimeEnvs!=null && requiredRuntimeEnvs.length>0){
       Debug.debug("Adding sourcing of required RTEs: "+MyUtil.arrayToString(requiredRuntimeEnvs), 2);
       // requiredRuntimeEnv is only needed to get input files from
@@ -368,9 +366,9 @@ public class ForkScriptGenerator extends ScriptGenerator{
           writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
               "/"+requiredRuntimeEnvs[i]+" 1").replaceAll("//", "/").replaceAll("/", "\\\\"));
         }
-        writeLine(buf, "");
       }
     }
+    writeLine(buf, "");
   }
 
   private void writeHeader(boolean notOnWindows, StringBuffer buf, String commentStart) {

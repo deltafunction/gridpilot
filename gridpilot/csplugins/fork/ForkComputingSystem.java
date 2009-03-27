@@ -60,7 +60,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected boolean mkLocalOSRTE = true;
   protected boolean includeVMRTEs = true;
   protected String [] basicOSRTES = {"Linux"};
-  protected HashMap remoteCopyCommands = null;
+  protected static HashMap remoteCopyCommands = null;
 
   protected boolean ignoreBaseSystemAndVMRTEs = true;
 
@@ -121,20 +121,6 @@ public class ForkComputingSystem implements MyComputingSystem{
     Debug.debug("Using workingDir "+workingDir, 2);
     
     runtimeDirectory = GridPilot.runtimeDir;
-    if(runtimeDirectory!=null && runtimeDirectory.startsWith("~")){
-      // Expand ~
-      if(MyUtil.onWindows() &&
-          shell.isLocal()){
-        runtimeDirectory = System.getProperty("user.home")+runtimeDirectory.substring(1);
-      }
-      else{
-        // remote shells are always non-Windows, so just discard c: and replace \ -> /
-        // Hmm, and if the directory is empty...
-        /*runtimeDirectory = (new File(shellMgr.listFiles(runtimeDirectory)[0])
-            ).getParentFile().getAbsolutePath().replaceAll("\\\\", "/"
-                ).replaceFirst("^\\w:", "");*/
-      }
-    }
     
     rteCatalogUrls = configFile.getValues(GridPilot.topConfigSection, "runtime catalog URLs");
 
@@ -160,9 +146,10 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected String getCommandSuffix(MyJobInfo job){
     Shell thisShell = null;
     try{
-      thisShell = GridPilot.getClassMgr().getShellMgr(job);
+      thisShell = GridPilot.getClassMgr().getShell(job);
     }
     catch(Exception e){
+      e.printStackTrace();
     }
     String commandSuffix = ".sh";
     if(thisShell!=null){
@@ -170,11 +157,11 @@ public class ForkComputingSystem implements MyComputingSystem{
         commandSuffix = ".bat";
       }
     }
-    else{
+    /*else{
       if(shell.isLocal() && MyUtil.onWindows()){
         commandSuffix = ".bat";
       }
-    }
+    }*/
     return commandSuffix;
   }
   
@@ -802,8 +789,10 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
   
   /**
-   * Checks output files for remote URLs and adds these
-   * with job.setUploadFiles
+   * Checks which output files are remote and can be uploaded with
+   * command(s) from remoteCopyCommands and adds these
+   * with job.setUploadFiles. They will then be taken care of by the
+   * job script itself.
    * @param job description of the computing job
    * @return True if the operation completes, false otherwise
    */
@@ -818,6 +807,11 @@ public class ForkComputingSystem implements MyComputingSystem{
     try{
       for(int i=0; i<outputFiles.length; ++i){
         remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFiles[i]);
+        String protocol = remoteName.replaceFirst("^(\\w+):.*$", "$1");
+        if(remoteCopyCommands==null || remoteName.equals(protocol) || 
+           !remoteCopyCommands.containsKey(protocol)){
+          continue;
+        }
         // These are considered remote
         if(remoteName!=null && !remoteName.equals("") && !remoteName.startsWith("file:") &&
             !remoteName.startsWith("/") && !remoteName.matches("\\w:.*")){
@@ -826,15 +820,15 @@ public class ForkComputingSystem implements MyComputingSystem{
         outNames.add(outputFiles[i]);
         outDestinations.add(remoteName);
       }
-      String [][] remoteNames = new String [remoteNamesVector.size()][2];
+      String [][] uploadFiles = new String [remoteNamesVector.size()][2];
       for(int i=0; i<remoteNamesVector.size(); ++i){
-        remoteNames[i][0] = dbPluginMgr.getJobDefOutLocalName(job.getIdentifier(),
+        uploadFiles[i][0] = dbPluginMgr.getJobDefOutLocalName(job.getIdentifier(),
             (String )remoteNamesVector.get(i));
-        remoteNames[i][1] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(),
+        uploadFiles[i][1] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(),
             (String) remoteNamesVector.get(i));
       }
-      job.setUploadFiles(remoteNames);
-      // This is used only by GridFactoryComputingSystem
+      job.setUploadFiles(uploadFiles);
+      // This is used only by GridFactoryComputingSystem and copyToFinalDest
       job.setOutputFileNames(outNames.toArray(new String[outNames.size()]));
       job.setOutputFileDestinations(outDestinations.toArray(new String[outDestinations.size()]));
       //
@@ -1076,11 +1070,19 @@ public class ForkComputingSystem implements MyComputingSystem{
     String [] outputNames = dbPluginMgr.getOutputFiles(jobDefID);
     String localName = null;
     String remoteName = null;
+    // This is to identify files that have already ceen copied by the
+    // job script itself.
+    setRemoteOutputFiles((MyJobInfo) job);
+    String [] alreadyCopiedNames;
     boolean ok = true;
     // Horrible clutch because Globus gass copy fails on empty files...
     boolean emptyFile = false;
     for(int i=0; i<outputNames.length; ++i){
       try{
+        alreadyCopiedNames = ((MyJobInfo) job).getOutputFileNames();
+        if(MyUtil.arrayContains(alreadyCopiedNames, outputNames[i])){
+          continue;
+        }
         localName = runDir(job) +"/"+dbPluginMgr.getJobDefOutLocalName(jobDefID,
             outputNames[i]);
         localName = MyUtil.clearFile(localName);

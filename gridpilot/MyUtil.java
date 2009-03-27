@@ -1748,7 +1748,7 @@ public class MyUtil extends gridfactory.common.Util{
 
   public static boolean isLocalFileName(String src){
     if(/*Linux local file*/(src.matches("^file:~[^:]*") || src.matches("^file:/[^:]*") || src.startsWith("/") || src.startsWith("~")) ||
-        /*Windows local file*/(src.matches("\\w:.*") || src.matches("^file:/*\\w:.*"))){
+        /*Windows local file*/(src.matches("^\\w:.*") || src.matches("^file:/*\\w:.*"))){
       return true;
     }
     return false;

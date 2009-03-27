@@ -6,6 +6,7 @@ import java.net.MalformedURLException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -47,6 +48,7 @@ import gridpilot.csplugins.forkpool.ForkPoolComputingSystem;
 
 public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyComputingSystem {
 
+  private String [] requiredRuntimeEnvs = null;
   private EC2Mgr ec2mgr = null;
   private String fallbackAmiID = null;
   // max time to wait for booting a virtual machine when submitting a job
@@ -63,6 +65,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
 
   public EC2ComputingSystem(String _csName) throws Exception {
     super(_csName);
+    
+    requiredRuntimeEnvs = GridPilot.getClassMgr().getConfigFile().getValues(
+        csName, "Required runtime environments");
 
     ignoreBaseSystemAndVMRTEs = false;
     
@@ -1040,6 +1045,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     MetaPackage opsysMp = catalog.getMetaPackage(opsysRte);
     HashMap<String, Vector<String>> depsMap = rteMgr.getVmRteDepends(opsysRte, null);
     Vector<String> deps = depsMap.get(null);
+    Collections.addAll(deps, requiredRuntimeEnvs);
     Debug.debug("Found TarPackage dependencies "+MyUtil.arrayToString(deps.toArray()), 2);
     return MyUtil.removeBaseSystemAndVM(deps.toArray(new String[deps.size()]), opsysMp.provides);
   }

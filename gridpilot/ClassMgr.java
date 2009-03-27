@@ -220,7 +220,7 @@ public class ClassMgr{
   /**
    * Return the Shell Manager for this job
    */
-  public Shell getShellMgr(MyJobInfo job) throws Exception{
+  public Shell getShell(MyJobInfo job) throws Exception{
     String csName = job.getCSName();
     if(csName==null || csName.equals("")){
       return askWhichShell(job);
