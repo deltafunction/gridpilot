@@ -55,7 +55,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     workingDir = _workingDir;
     runtimeDirectory = GridPilot.runtimeDir;
     requiredRuntimeEnvs = GridPilot.getClassMgr().getConfigFile().getValues(
-        csName, "Required runtime environment");
+        csName, "Required runtime environments");
     ignoreBaseSystemAndVMRTEs = _ignoreBaseSystemAndVMRTEs;
     try{
        String stdoutExW = GridPilot.getClassMgr().getConfigFile().getValue(
