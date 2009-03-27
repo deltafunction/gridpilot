@@ -3,6 +3,7 @@ package gridpilot.csplugins.ec2;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -13,7 +14,9 @@ import java.util.Vector;
 
 import javax.swing.JOptionPane;
 
+import org.globus.gsi.GlobusCredentialException;
 import org.globus.util.GlobusURL;
+import org.ietf.jgss.GSSException;
 
 import com.jcraft.jsch.JSchException;
 import com.xerox.amazonws.ec2.EC2Exception;
@@ -285,7 +288,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       Debug.debug("checking reservation"+res.getReservationId(), 2);
       for(Iterator itt=res.getInstances().iterator(); itt.hasNext();){
         inst = (Instance) itt.next();
-        if(inst.isShuttingDown() || inst.isTerminated()){
+        if(!inst.isRunning()){
           continue;
         }
         Debug.debug("checking instance "+inst.getDnsName(), 2);
@@ -856,6 +859,11 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         if(hosts[i]==null){
           continue;
         }
+        if(!hostIsRunning(hosts[i])){
+          remoteShellMgrs.remove(hosts[i]);
+          hosts[i] = null;
+          continue;
+        }
         Debug.debug("Checking if we can reuse host "+hosts[i]+
             " from "+MyUtil.arrayToString(submittingHostJobs.keySet().toArray()), 2);
         if(/* This means that the host has been added by discoverInstances, i.e. that we can use it */
@@ -877,6 +885,29 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return bootInstance(job);
   }
   
+  private boolean hostIsRunning(String host) throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException {
+    List reservationList = ec2mgr.listReservations();
+    List instanceList = null;
+    Instance instance = null;
+    ReservationDescription reservation = null;
+    reservationList = ec2mgr.listReservations();
+    instanceList = null;
+    instance = null;
+    Debug.debug("Finding reservations. "+reservationList.size(), 1);
+    for(Iterator it=reservationList.iterator(); it.hasNext();){
+      reservation = (ReservationDescription) it.next();
+      instanceList = ec2mgr.listInstances(reservation);
+      // "Reservation ID", "Owner", "Instance ID", "AMI", "State", "Public DNS", "Key"
+      for(Iterator itt=instanceList.iterator(); itt.hasNext();){
+        instance = (Instance) itt.next();
+        if(instance.getDnsName().equals(host)){
+          return instance.isRunning();
+        }
+      }
+    }    
+    return false;
+  }
+
   // Types: "m1.small", "m1.large", "m1.xlarge", "c1.medium", "c1.xlarge"
   // memory is in megabytes
   public  String getInstanceType(int memory) throws Exception{
@@ -931,8 +962,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
             // "Reservation ID", "Owner", "Instance ID", "AMI", "State", "Public DNS", "Key"
             for(Iterator itt=instanceList.iterator(); itt.hasNext();){
               instance = (Instance) itt.next();
-              if(reservation.getReservationId().equalsIgnoreCase(reservation.getReservationId())){
+              if(reservation.getReservationId().equalsIgnoreCase(desc.getReservationId())){
                 inst = instance;
+                break;
               }
             }
           }

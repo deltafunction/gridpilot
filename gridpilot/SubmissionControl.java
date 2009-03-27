@@ -35,6 +35,7 @@ public class SubmissionControl{
   private CSPluginMgr csPluginMgr;
   private Timer timer;
   private ImageIcon iconSubmitting;
+  private ImageIcon iconWaiting;
   /** All jobs for which the submission is not made yet */
   private Vector toSubmitJobs = new Vector();
   /** All jobs for which the submission is in progress */
@@ -156,6 +157,14 @@ public class SubmissionControl{
     catch(Exception e){
       logFile.addMessage("Could not find image "+ resourcesPath + "submitting.png");
       iconSubmitting = new ImageIcon();
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "waiting.png");
+      iconWaiting = new ImageIcon(imgURL);
+    }
+    catch(Exception e){
+      logFile.addMessage("Could not find image "+ resourcesPath + "submitting.png");
+      iconWaiting = new ImageIcon();
     }
     isRand = configFile.getValue("Computing systems", "randomized submission");
     Debug.debug("isRand = " + isRand, 2);
@@ -290,13 +299,17 @@ public class SubmissionControl{
    * These jobs are put in toSubmitJobs. <p>
    */
   private void queue(Vector jobs){
-    
     if(jobs==null || jobs.size()==0){
       return;
     }
-    
     if(isRand!=null && isRand.equalsIgnoreCase("yes")){
       jobs = MyUtil.shuffle(jobs);
+    }
+    MyJobInfo job;
+    for(Iterator it=jobs.iterator(); it.hasNext();){
+      job = (MyJobInfo) it.next();
+      statusTable.setValueAt(iconWaiting, job.getTableRow(),
+          JobMgr.FIELD_CONTROL);
     }
     pbSubmission.setMaximum(pbSubmission.getMaximum() + jobs.size());
     pbSubmission.addMouseListener(new MouseAdapter(){
@@ -311,11 +324,8 @@ public class SubmissionControl{
       statusBar.setProgressBar(pbSubmission);
       isProgressBarSet = true;
     }
-    
-    MyJobInfo job = (MyJobInfo) jobs.get(0);
-    
+    job = (MyJobInfo) jobs.get(0);
     JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
-    
     jobMgr.updateDBCells(jobs);
     jobMgr.updateJobCells(jobs);
     toSubmitJobs.addAll(jobs);
@@ -573,7 +583,7 @@ public class SubmissionControl{
       rjc = mgr.getSubmittedJobsByCS();
       for(int i=0; i<csNames.length; ++i){
         rJobsByCS[i] += rjc[i];
-        Debug.debug("Upping job count for CS "+csNames[i]+" with "+rjc[i], 3);
+        //Debug.debug("Upping job count for CS "+csNames[i]+" with "+rjc[i], 3);
         if(csNames[i].equalsIgnoreCase(job.getCSName())){
           jobCsIndex = i;
         }
@@ -589,8 +599,8 @@ public class SubmissionControl{
         }
       }
     }
-    Debug.debug("Found running jobs: "+MyUtil.arrayToString(csNames)+" --> "+MyUtil.arrayToString(rJobsByCS)+
-        " --> "+MyUtil.arrayToString(maxRunningPerCS), 3);
+    //Debug.debug("Found running jobs: "+MyUtil.arrayToString(csNames)+" --> "+MyUtil.arrayToString(rJobsByCS)+
+    //    " --> "+MyUtil.arrayToString(maxRunningPerCS), 3);
     return submittingJobs.size()<maxSimultaneousSubmissions &&
       submittingJobs.size()+runningJobs<maxRunning &&
       rJobsByCS[jobCsIndex]<maxRunningPerCS[jobCsIndex];
@@ -696,6 +706,7 @@ public class SubmissionControl{
       job = (MyJobInfo) e.nextElement();
       statusTable.setValueAt("Not submitted (cancelled)!", job.getTableRow(), JobMgr.FIELD_JOBID);
       statusTable.setValueAt(job.getName(), job.getTableRow(), JobMgr.FIELD_JOBNAME);
+      statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
       job.setCSStatus(MyJobInfo.CS_STATUS_FAILED);
       job.setNeedsUpdate(false);
       jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());

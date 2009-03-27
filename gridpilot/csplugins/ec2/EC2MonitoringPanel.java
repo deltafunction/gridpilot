@@ -3,8 +3,8 @@ package gridpilot.csplugins.ec2;
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.LocalShell;
-import gridpilot.GridPilot;
 
+import gridpilot.GridPilot;
 import gridpilot.MyUtil;
 import gridpilot.VMMonitoringPanel;
 

@@ -389,7 +389,7 @@ public class MyTransferControl extends TransferControl {
           statusBar.setProgressBar(pbSubmission);
           isProgressBarSet = true;
         }
-        //toSubmitTransfers.addAll(transfers);
+        toSubmitTransfers.addAll(transfers);
         for(Iterator it=transfers.iterator(); it.hasNext();){
           toSubmitTransfers.add((TransferInfo) it.next());
         }
@@ -479,20 +479,6 @@ public class MyTransferControl extends TransferControl {
       sources[i] = transfers[i].getSource();
       destinations[i] = transfers[i].getDestination();
             
-      // This does not catch transfers that have not gotten an id
-      /*Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
-      for(int j=0; j<submittedTransfers.size(); ++j){
-        try{
-          String id = ((TransferInfo) submittedTransfers.get(j)).getTransferID();
-          if(transfers[i].getTransferID().equals(id)){
-            resubmit = true;
-            break;
-          }
-        }
-        catch(Exception e){
-        }
-      }*/
-      
       resubmit = (transfers[i].getInternalStatus()>-1);
       
       if(!resubmit){

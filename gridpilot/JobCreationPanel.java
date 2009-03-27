@@ -30,10 +30,10 @@ public class JobCreationPanel extends CreateEditPanel{
   private JTextComponent [][] tcOutputMap;
   private JTextComponent [] tcStdOutput;
   private boolean reuseTextFields = true;
-  private Vector tcConstant = new Vector(); // contains all text components
+  private Vector<JComponent> tcConstant = new Vector<JComponent>(); // contains all text components
   private String dbName = null;
-  private ArrayList detailFields = new ArrayList();
-  private ArrayList datasetFields = null;
+  private ArrayList<JComponent> detailFields = new ArrayList<JComponent>();
+  private ArrayList<JComponent> datasetFields = null;
   private HashMap metaData = null;
   // TODO: make this configurable?
   private String [] stdOutputNames = {"stdout", "stderr"};
@@ -195,18 +195,18 @@ public class JobCreationPanel extends CreateEditPanel{
     ++row;
     
     // take out attributes that are not in the schema and issue a warning
-    ArrayList realAttibutes = new ArrayList();
+    ArrayList realAttributes = new ArrayList();
     for(int i=0; i<cstAttributesNames.length; ++i, ++row){
       if(jobDefinitionFields.contains(cstAttributesNames[i].toLowerCase())){
-        realAttibutes.add(cstAttributesNames[i]);
+        realAttributes.add(cstAttributesNames[i]);
       }
       else{
-        Debug.debug("WARNING: Field "+" "+cstAttributesNames[i]+" NOT in schema.", 1);
+        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Field "+" "+cstAttributesNames[i]+" NOT in schema.");
       } 
     }
-    cstAttributesNames = new String[realAttibutes.size()];
-    for(int i=0; i<realAttibutes.size(); ++i){
-      cstAttributesNames[i] = realAttibutes.get(i).toString();
+    cstAttributesNames = new String[realAttributes.size()];
+    for(int i=0; i<realAttributes.size(); ++i){
+      cstAttributesNames[i] = realAttributes.get(i).toString();
     }
     
     JLabel [] constantAttributeLabels = new JLabel [cstAttributesNames.length];
@@ -235,6 +235,12 @@ public class JobCreationPanel extends CreateEditPanel{
         detailFields.add(tcCstAttributes[i]);
         detailFields.add(constantAttributeLabels[i]);
         tcCstAttributes[i].setText("${i:5}");
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase(JobCreator.EVENT_MIN) ||
+          cstAttributesNames[i].equalsIgnoreCase(JobCreator.EVENT_MAX) ||
+          cstAttributesNames[i].equalsIgnoreCase(JobCreator.N_EVENTS)){
+        detailFields.add(tcCstAttributes[i]);
+        detailFields.add(constantAttributeLabels[i]);
       }
       else if(datasetFields.contains(cstAttributesNames[i].toLowerCase())){
         detailFields.add(tcCstAttributes[i]);

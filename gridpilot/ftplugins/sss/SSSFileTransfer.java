@@ -206,9 +206,8 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     
     // TODO: write and use checkCache method - like in HTTPSFileTransfer
     
-    S3Bucket bucket = null;
-    String [] ids = new String[srcUrls.length];
-    String id = null;
+    String [] ids;
+    
     // Choose upload or download. We assume uniformity of URLs (should've been taken
     // care of by TransferControl via checkUrls).
     if(srcUrls.length==0){
@@ -216,73 +215,105 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     }
     if(srcUrls[0].getProtocol().equalsIgnoreCase("file") &&
         destUrls[0].getProtocol().equalsIgnoreCase(PLUGIN_NAME)){
-      // Check that all are destined for the same bucket
-      bucket = getBucket(destUrls[0].getHost(), true);
-      S3Bucket tmpbucket = null;
-      for(int i=0; i<destUrls.length; ++i){
-        tmpbucket = getBucket(destUrls[i].getHost(), false);
-        if(tmpbucket==null || !tmpbucket.equals(bucket)){
-          throw new IOException("All uploads must be to the same bucket. "+tmpbucket);
-        }
-      }
-      // Construct Files
-      File [] uploadFiles = new File[srcUrls.length];
-      for(int i=0; i<srcUrls.length; ++i){
-        id = PLUGIN_NAME + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
-        ids[i] = id;
-        uploadFiles[i] = new File(MyUtil.clearFile(srcUrls[i].getURL()));
-      }
-      prepareForFilesUpload(uploadFiles, GridPilot.getClassMgr().getStatusBar(), bucket, ids);
+      ids = startUpload(srcUrls, destUrls);
     }
     else if(srcUrls[0].getProtocol().equalsIgnoreCase(PLUGIN_NAME) &&
         destUrls[0].getProtocol().equalsIgnoreCase("file")){
-      // We only support downloading to the same directory
-      String path = getLocalPath(destUrls[0]);
-      for(int i=0; i<destUrls.length; ++i){
-        if(!getLocalPath(destUrls[i]).equals(path)){
-          throw new IOException("Cannot download to different directories.");
-        }
-      }
-      File downloadDir = new File(path);
-      if(!downloadDir.isDirectory()){
-        if(srcUrls[0].getPath().endsWith("/"+downloadDir.getName())){
-          downloadDir = downloadDir.getParentFile();
-        }
-        else{
-          throw new IOException("Download destination must be a directory. "+downloadDir.getAbsolutePath());
-        }
-      }
-      if(!downloadDir.exists()){
-        throw new IOException("Download directory does not exist. "+downloadDir.getAbsolutePath());
-      }
-      // The URLs are of the form sss://bucket/some/file/name
-      // getHost() --> bucket, getPath() --> some/file/name
-      Vector objectsVec = new Vector();
-      S3Object [] tmpObjects = null;
-      String error = "";
-      for(int i=0; i<srcUrls.length; ++i){
-        bucket = getBucket(srcUrls[i].getHost(), false);
-        if(bucket==null){
-          error = "WARNING: bucket not found: "+srcUrls[i].getHost();
-          logFile.addMessage(error);
-        }
-        tmpObjects = s3Service.listObjects(bucket, srcUrls[i].getPath(), null);
-        if(tmpObjects.length>1){
-          error = "WARNING: Downloading directories should not be done with this method. " +
-              bucket+" : "+srcUrls[i].getPath();
-          throw new IOException(error);
-        }
-        Collections.addAll(objectsVec, tmpObjects);
-        id = PLUGIN_NAME + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
-        ids[i] = id;
-      }
-      S3Object [] objectsOnServer = (S3Object []) objectsVec.toArray(new S3Object[srcUrls.length]);
-      prepareForObjectsDownload(objectsOnServer, GridPilot.getClassMgr().getStatusBar(), bucket,
-          ids, downloadDir);
+      ids = startDownload(srcUrls, destUrls);
     }
     else{
       throw new IOException("Only download or upload is supported by this plugin.");
     }
+    return ids;
+  }
+  
+  private String [] startUpload(GlobusURL[] srcUrls, GlobusURL[] destUrls) throws IOException, S3ServiceException {
+    final String [] ids = new String[srcUrls.length];
+    String id = null;
+    // Check that all are destined for the same bucket
+    final S3Bucket bucket = getBucket(destUrls[0].getHost(), true);
+    S3Bucket tmpbucket = null;
+    for(int i=0; i<destUrls.length; ++i){
+      tmpbucket = getBucket(destUrls[i].getHost(), false);
+      if(tmpbucket==null || !tmpbucket.equals(bucket)){
+        throw new IOException("All uploads must be to the same bucket. "+tmpbucket);
+      }
+    }
+    // Construct Files
+    final File [] uploadFiles = new File[srcUrls.length];
+    for(int i=0; i<srcUrls.length; ++i){
+      id = PLUGIN_NAME + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
+      ids[i] = id;
+      uploadFiles[i] = new File(MyUtil.clearFile(srcUrls[i].getURL()));
+    }
+    ResThread t = new ResThread(){
+      public void run(){
+        uploadObjects(uploadFiles, GridPilot.getClassMgr().getStatusBar(), bucket, ids);
+      }
+    };
+    t.start();
+    return ids;
+  }
+
+  private String [] startDownload(GlobusURL [] srcUrls, GlobusURL [] destUrls) throws IOException, S3ServiceException{
+    final String [] ids = new String[srcUrls.length];
+    String id = null;
+    // We only support downloading to the same directory
+    String path = getLocalPath(destUrls[0]);
+    for(int i=0; i<destUrls.length; ++i){
+      if(!getLocalPath(destUrls[i]).equals(path)){
+        throw new IOException("Cannot download to different directories.");
+      }
+    }
+    final S3Bucket bucket = getBucket(srcUrls[0].getHost(), false);
+    if(bucket==null){
+       throw new IOException("Bucket not found: "+srcUrls[0].getHost());
+    }
+    File downloadDir = new File(path);
+    if(!downloadDir.isDirectory()){
+      if(srcUrls[0].getPath().endsWith("/"+downloadDir.getName())){
+        downloadDir = downloadDir.getParentFile();
+      }
+      else{
+        throw new IOException("Download destination must be a directory. "+downloadDir.getAbsolutePath());
+      }
+    }
+    if(!downloadDir.exists()){
+      throw new IOException("Download directory does not exist. "+downloadDir.getAbsolutePath());
+    }
+    // The URLs are of the form sss://bucket/some/file/name
+    // getHost() --> bucket, getPath() --> some/file/name
+    Vector objectsVec = new Vector();
+    S3Object [] tmpObjects = null;
+    String error = "";
+    for(int i=0; i<srcUrls.length; ++i){
+      if(!srcUrls[i].getHost().equals(srcUrls[0].getHost())){
+        throw new IOException("Cannot download from different buckets.");
+      }
+      tmpObjects = s3Service.listObjects(bucket, srcUrls[i].getPath(), null);
+      if(tmpObjects.length>1){
+        error = "WARNING: Downloading directories should not be done with this method. " +
+            bucket+" : "+srcUrls[i].getPath();
+        throw new IOException(error);
+      }
+      Collections.addAll(objectsVec, tmpObjects);
+      id = PLUGIN_NAME + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
+      ids[i] = id;
+    }
+    final S3Object [] objectsOnServer = (S3Object []) objectsVec.toArray(new S3Object[srcUrls.length]);
+    final File dir = downloadDir;
+    ResThread t = new ResThread(){
+      public void run(){
+        try{
+          downloadObjects(objectsOnServer, GridPilot.getClassMgr().getStatusBar(), bucket,
+             ids, dir);
+        }
+        catch(IOException e){
+          logFile.addMessage("Problem downloading from S3.", e);
+        }
+      }
+    };
+    t.start();
     return ids;
   }
   
@@ -531,13 +562,14 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     Debug.debug("Get "+globusUrl.getURL(), 3);
 
     Debug.debug("Getting "+globusUrl.getURL(), 3);
-    (new ResThread(){
-      public void run(){
-        if(statusBar!=null){
+    if(statusBar!=null){
+      ResThread t = new ResThread(){
+        public void run(){
           statusBar.setLabel("Getting "+globusUrl.getURL());
         }
-      }
-    }).run();               
+      };
+      SwingUtilities.invokeLater(t);
+    }
 
     File downloadFile = null;
     String fileName = globusUrl.getPath().replaceFirst(".*/([^/]+)", "$1");
@@ -887,7 +919,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     return resVec;
   }
   
-  private void prepareForFilesUpload(File[] uploadFiles, StatusBar statusBar, final S3Bucket bucket,
+  private void uploadObjects(File[] uploadFiles, StatusBar statusBar, final S3Bucket bucket,
       String [] ids){
     
     FileComparer fc = new FileComparer(s3Service.getJetS3tProperties());
@@ -916,12 +948,12 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       }).start();
     }
     else{
-        compareRemoteAndLocalFiles(filesForUploadMap, s3ExistingObjectsMap, true,
-            statusBar, null, bucket, ids);
+      compareAndCopyRemoteAndLocalFiles(filesForUploadMap, s3ExistingObjectsMap, true,
+         statusBar, null, bucket, ids);
     }
   }
 
-  private void prepareForObjectsDownload(S3Object [] s3Objects, StatusBar statusBar,
+  private void downloadObjects(S3Object [] s3Objects, StatusBar statusBar,
       final S3Bucket bucket, final String [] ids, File downloadDirectory) throws IOException{
     
     Debug.debug("Preparing for download in "+downloadDirectory.getAbsolutePath(), 3);
@@ -970,8 +1002,8 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     }
     else{*/
       Debug.debug("Comparing remote and local files", 3);
-      compareRemoteAndLocalFiles(filesAlreadyInDownloadDirectoryMap, s3DownloadObjectsMap,
-          false, statusBar, downloadDirectory, bucket, ids);
+      compareAndCopyRemoteAndLocalFiles(filesAlreadyInDownloadDirectoryMap, s3DownloadObjectsMap,
+         false, statusBar, downloadDirectory, bucket, ids);
     //}
   }
   
@@ -1091,7 +1123,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
           s3ServiceMulti.putObjects(bucket, objects);
         }
       };
-      SwingUtilities.invokeLater(r);
+      r.run();
   }
 
   private void performObjectsDownload(FileComparerResults comparisonResults,
@@ -1236,7 +1268,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     r.run();
   }
   
-  private void compareRemoteAndLocalFiles(final Map localFilesMap, final Map s3ObjectsMap,
+  private void compareAndCopyRemoteAndLocalFiles(final Map localFilesMap, final Map s3ObjectsMap,
       final boolean upload, StatusBar statusBar, File downloadDirectory, S3Bucket bucket,
       String [] ids){
     final JProgressBar pb = new JProgressBar();
@@ -1279,13 +1311,14 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       FileComparerResults comparisonResults = 
         fc.buildDiscrepancyLists(localFilesMap, s3ObjectsMap, hashWatcher);
       
-      statusBar.removeProgressBar(pb); 
+      statusBar.removeProgressBar(pb);
+      statusBar.setLabel("");
       
       if(upload){
-          performFilesUpload(comparisonResults, localFilesMap, statusBar, bucket, ids);
+        performFilesUpload(comparisonResults, localFilesMap, statusBar, bucket, ids);
       }
       else{
-          performObjectsDownload(comparisonResults, s3ObjectsMap, downloadDirectory, bucket, ids);                
+        performObjectsDownload(comparisonResults, s3ObjectsMap, downloadDirectory, bucket, ids);                
       }
     }
     catch(RuntimeException e){

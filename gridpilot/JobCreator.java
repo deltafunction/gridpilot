@@ -33,11 +33,11 @@ public class JobCreator{
   private String [] jobParamNames;
   private String [] outMapNames;
   private String [] stdOutNames;
-  private Vector vPartition = new Vector();
-  private Vector vCstAttr = new Vector();
-  private Vector vJobParam = new Vector();
-  private Vector vOutMap = new Vector();
-  private Vector vStdOut = new Vector();
+  private Vector<Integer> vPartition = new Vector<Integer>();
+  private Vector<String []> vCstAttr = new Vector<String []>();
+  private Vector<String []> vJobParam = new Vector<String []>();
+  private Vector<String [][]> vOutMap = new Vector<String [][]>();
+  private Vector<String []> vStdOut = new Vector<String []>();
   private JProgressBar pb = new JProgressBar();
   private Object semaphoreDBCreate = new Object();
   private DBPluginMgr dbPluginMgr = null;
@@ -52,9 +52,9 @@ public class JobCreator{
   private DBResult inputRecords = null;
   private String [] inputIds = null;
   
-  private static String EVENT_MIN = "eventMin";
-  private static String EVENT_MAX = "eventMax";
-  private static String N_EVENTS = "nEvents";
+  public static String EVENT_MIN = "eventMin";
+  public static String EVENT_MAX = "eventMax";
+  public static String N_EVENTS = "nEvents";
 
   public JobCreator(StatusBar _statusBar,
                     String _dbName,
@@ -71,7 +71,7 @@ public class JobCreator{
                     String [] _stdOutNames){
     
     super();
-
+    
     statusBar = _statusBar;
 	  dbName = _dbName;
     datasetIdentifiers = _datasetIdentifiers;
@@ -81,7 +81,6 @@ public class JobCreator{
     jobParam = _jobParam;
     outMap = _outMap;
     stdOut = _stdOut;
-
     cstAttrNames =  _cstAttrNames;
     jobParamNames = _jobParamNames;
     outMapNames = _outMapNames;
@@ -95,10 +94,10 @@ public class JobCreator{
     
     pb.setMaximum(0);
 
-    createJobDefs();
+    createAllJobDefs();
   }
 
-  private void createJobDefs(){
+  private void createAllJobDefs(){
     try{
       removeConstants();
     }
@@ -108,24 +107,15 @@ public class JobCreator{
       MyUtil.showLongMessage(msg, title);
       return;
     }
-
     int firstPartition = 1;
     int lastPartition  = -1;
-
-    boolean skipAll = false;
-    boolean skip = false;
-    boolean showThis = true;
     int [][] eventSplits = null;
-
     int len = 0;
+    int [] split;
     //  When using recon_detail, version is not known
     len = datasetIdentifiers.length;
     for(int currentDataset=0; currentDataset<len; ++currentDataset){
-      
       Debug.debug("Creating job definitions for dataset "+datasetIdentifiers[currentDataset], 2);
-
-      int partitionCount = 0;
-      
       // NOTICE: here we assume that the fields totalFiles and totalEvents are
       // present in dataset. If they are not, automatic splitting will not be done,
       // that is, the fields eventMin, eventMax and nEvents will not be set in the
@@ -143,48 +133,19 @@ public class JobCreator{
         String error = "WARNING: could not get event splitting.";
         GridPilot.getClassMgr().getLogFile().addInfo(error);
         statusBar.setLabel(error);
-        //return;
-        // try to get number of files from input dataset
-        try{
-          String totalOutputFiles = (String) dbPluginMgr.getDataset(
-              datasetIdentifiers[currentDataset]).getValue("totalFiles");
-          firstPartition = 1;
-          lastPartition = Integer.parseInt(totalOutputFiles);
-        }
-        catch(Exception ee){
-          error = "WARNING: Could not get number of files from " +
-              "field totalFiles in dataset record.";
-          GridPilot.getClassMgr().getLogFile().addMessage(error);
-        }
+        split = getSplitFromOutputDataset(currentDataset);
+        firstPartition = split[0];
+        lastPartition = split[1];
       }    
       // If that didn't work, see if we can get the number of files
       // of the input dataset directly
-      String inputDataset = null;
-      DBPluginMgr inputMgr = null;
-      String inputDB = null;
       if(lastPartition<=0){
         String error = "WARNING: could not get event splitting.";
         GridPilot.getClassMgr().getLogFile().addInfo(error);
         statusBar.setLabel(error);
-      	//return;
-        // try to get number of files from input dataset
-        try{
-          inputDB = (String) dbPluginMgr.getDataset(
-              datasetIdentifiers[currentDataset]).getValue("inputDB");
-          inputMgr = GridPilot.getClassMgr().getDBPluginMgr(
-              inputDB);
-          inputDataset = (String) dbPluginMgr.getDataset(
-              datasetIdentifiers[currentDataset]).getValue("inputDataset");
-          String totalInputFiles = (String) inputMgr.getDataset(
-              inputDataset).getValue("totalFiles");
-          firstPartition = 1;
-          lastPartition = Integer.parseInt(totalInputFiles);
-        }
-        catch(Exception ee){
-          error = "ERROR: Could not get number of input files from " +
-              "field totalFiles in input dataset record.";
-          GridPilot.getClassMgr().getLogFile().addMessage(error);
-        }
+        split = getSplitFromInputDataset(currentDataset);
+        firstPartition = split[0];
+        lastPartition = split[1];
       }
       // If that didn't work, see if we can get the number of files
       // of the input dataset by querying the dataset catalog
@@ -192,146 +153,193 @@ public class JobCreator{
         String error = "WARNING: number of files not in dataset record.";
         GridPilot.getClassMgr().getLogFile().addInfo(error);
         statusBar.setLabel(error);
-        //DBResult inputFiles = inputMgr.getFiles(inputMgr.getDatasetID(inputDataset));
-        if(!datasetNameIds.containsKey(inputDataset)){
-          datasetNameIds.put(inputDataset, inputMgr.getDatasetID(inputDataset));
-        }
-        String inputDatasetID = (String) datasetNameIds.get(inputDataset);
-        if(!datasetIdFiles.containsKey(inputDatasetID)){
-          datasetIdFiles.put(inputDatasetID, inputMgr.getFiles(inputDatasetID));
-        }
-        DBResult inputFiles = (DBResult) datasetIdFiles.get(inputDatasetID);
-        firstPartition = 1;
-        lastPartition = inputFiles.values.length;
+        split = getSplitFromInputCatalog(currentDataset);
+        firstPartition = split[0];
+        lastPartition = split[1];
       }
-      // If that didn't work, see if we can get the number of files
-      // of the input dataset by querying the file catalog
+      // If that didn't work, bail out
       if(lastPartition<=0){
         String error = "ERROR: Could not get number of input files from input dataset.";
         GridPilot.getClassMgr().getLogFile().addMessage(error);
         return;
-        //firstPartition = 1;
-        //lastPartition  = 1;
       }
       Debug.debug("first partition: "+firstPartition, 1);
       Debug.debug("last partition: "+lastPartition, 1);
-      
       if(firstPartition>lastPartition){
         GridPilot.getClassMgr().getLogFile().addMessage(
             "ERROR: first value (from) cannot be greater then last value (To) : " +
             firstPartition + ">" + lastPartition);
         return;
       }
-
-      for(int currentPartition=firstPartition; currentPartition<=lastPartition && !skipAll; ++currentPartition){
-
-        statusBar.setLabel("Preparing job definition # " + currentPartition + "...");
-
-        showThis = showResults;
-        // NOTICE: here we assume that the following fields are present in dataset:
-        // beamEnergy, beamParticle, outputLocation.
-        // If they are not, the automatic generation of the names will not include
-        // this information.
-        Debug.debug("evaluating all", 3);
-        try{
-          evaluateAll(currentDataset, currentPartition,
-              dbPluginMgr.getDatasetName(datasetIdentifiers[currentDataset]),
-              dbPluginMgr.getRunNumber(datasetIdentifiers[currentDataset]),
-              // beamEnergy and beamParticle are optional, non-general attributes.
-              (String) dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("beamEnergy"),
-              (String) dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("beamParticle"),
-              (String) dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("outputLocation"),
-                 eventSplits);
+      int partitionCount = 0;
+      for(int currentPartition=firstPartition; currentPartition<=lastPartition; ++currentPartition){
+        partitionCount += prepareJobDefs(currentPartition, currentDataset, len, lastPartition, eventSplits);
+        if(partitionCount==-1){
+          return;
         }
-        catch(Exception ex){
-          String msg = "";
-          String title = "";
-          if(ex instanceof ArithmeticException){
-            msg = "Arithmetic error in partition " + currentPartition+" : \n" +
-                  ex.getMessage() +
-                  "\n\nDo you want to continue job definition creation ?";
-            title = "Arithmetic error";
-          }
-          else{
-            if(ex instanceof SyntaxException){
-              msg = "Syntax error in partition " + currentPartition+" : \n" +
-                    ex.getMessage() +
-                    "\n\nDo you want to continue job definition creation ?";
-              title = "Syntax error";
-            }
-            else{ // should not happen
-              msg = "Unexpected " + ex.getClass().getName() + " : " + ex.getMessage() +
+      }
+      pb.setMaximum(pb.getMaximum()+partitionCount);
+      statusBar.setProgressBar(pb);
+      try{
+        createDBJobDefinitions(currentDataset);
+      }
+      catch(java.lang.Exception e){Debug.debug("Failed creating partition from "+
+          currentDataset+" : "+e.getMessage(),3);}
+      statusBar.removeProgressBar(pb);
+      //statusBar.removeLabel();
+    }
+  }
+  
+  private int[] getSplitFromInputCatalog(int currentDataset) {
+    int firstPartition = 1;
+    int lastPartition = -1;
+    String inputDataset = null;
+    DBPluginMgr inputMgr = null;
+    //DBResult inputFiles = inputMgr.getFiles(inputMgr.getDatasetID(inputDataset));
+    if(!datasetNameIds.containsKey(inputDataset)){
+      datasetNameIds.put(inputDataset, inputMgr.getDatasetID(inputDataset));
+    }
+    String inputDatasetID = (String) datasetNameIds.get(inputDataset);
+    if(!datasetIdFiles.containsKey(inputDatasetID)){
+      datasetIdFiles.put(inputDatasetID, inputMgr.getFiles(inputDatasetID));
+    }
+    DBResult inputFiles = (DBResult) datasetIdFiles.get(inputDatasetID);
+    lastPartition = inputFiles.values.length;
+    return new int [] {firstPartition, lastPartition};
+  }
+
+  private int[] getSplitFromInputDataset(int currentDataset) {
+    int firstPartition = 1;
+    int lastPartition = -1;
+    // try to get number of files from input dataset
+    String inputDataset = null;
+    DBPluginMgr inputMgr = null;
+    String inputDB = null;
+    try{
+      inputDB = (String) dbPluginMgr.getDataset(
+          datasetIdentifiers[currentDataset]).getValue("inputDB");
+      inputMgr = GridPilot.getClassMgr().getDBPluginMgr(
+          inputDB);
+      inputDataset = (String) dbPluginMgr.getDataset(
+          datasetIdentifiers[currentDataset]).getValue("inputDataset");
+      String totalInputFiles = (String) inputMgr.getDataset(
+          inputDataset).getValue("totalFiles");
+      lastPartition = Integer.parseInt(totalInputFiles);
+    }
+    catch(Exception ee){
+      String error = "ERROR: Could not get number of input files from " +
+          "field totalFiles in input dataset record.";
+      GridPilot.getClassMgr().getLogFile().addMessage(error);
+    }
+    return new int [] {firstPartition, lastPartition};
+  }
+
+  private int[] getSplitFromOutputDataset(int currentDataset){
+    int firstPartition = 1;
+    int lastPartition = -1;
+    // try to get number of files from input dataset
+    try{
+      String totalOutputFiles = (String) dbPluginMgr.getDataset(
+          datasetIdentifiers[currentDataset]).getValue("totalFiles");
+      lastPartition = Integer.parseInt(totalOutputFiles);
+    }
+    catch(Exception ee){
+      String error = "WARNING: Could not get number of files from " +
+          "field totalFiles in dataset record.";
+      GridPilot.getClassMgr().getLogFile().addMessage(error);
+    }
+    return new int [] {firstPartition, lastPartition};
+  }
+
+  private int prepareJobDefs(int currentPartition, int currentDataset, int len, int lastPartition, int[][] eventSplits) {
+    statusBar.setLabel("Preparing job definition # " + currentPartition);
+    int partitionCount = 0;
+    boolean skipAll = false;
+    boolean skip = false;
+    boolean showThis = showResults;
+    Debug.debug("evaluating all", 3);
+    try{
+      evaluateAll(currentDataset, currentPartition,
+          dbPluginMgr.getDatasetName(datasetIdentifiers[currentDataset]),
+          dbPluginMgr.getRunNumber(datasetIdentifiers[currentDataset]),
+          (String) dbPluginMgr.getDataset(datasetIdentifiers[currentDataset]).getValue("outputLocation"),
+             eventSplits);
+    }
+    catch(Exception ex){
+      String msg = "";
+      String title = "";
+      if(ex instanceof ArithmeticException){
+        msg = "Arithmetic error in partition " + currentPartition+" : \n" +
+              ex.getMessage() +
               "\n\nDo you want to continue job definition creation ?";
-              title = "Unexpected exception";
-              ex.printStackTrace();
-              GridPilot.getClassMgr().getLogFile().addMessage("Job definition creation", ex);
-            }
-          }
-
-          int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), msg, title,
-              JOptionPane.YES_NO_OPTION);
-          if(choice == JOptionPane.NO_OPTION){
-            showThis = false;
-            skip = true;
-            skipAll = true;
-          }
-          else{
-            showThis = false;
-            skip = true;
-          }
+        title = "Arithmetic error";
+      }
+      else{
+        if(ex instanceof SyntaxException){
+          msg = "Syntax error in partition " + currentPartition+" : \n" +
+                ex.getMessage() +
+                "\n\nDo you want to continue job definition creation ?";
+          title = "Syntax error";
         }
-        Debug.debug("done evaluating all", 3);
-        int choice;
-        if(showThis){
-          if(lastPartition - currentPartition + len - currentDataset > 1){       
-            choice = showResult(currentPartition, resCstAttr, resJobParam, resOutMap, resStdOut,
-               showResultsOptions);
-          }
-          else{
-            choice = showResult(currentPartition, resCstAttr, resJobParam, resOutMap, resStdOut,
-               showResultsOptions1);
-          }
-
-          switch(choice){
-            case 0  : skip = false;  break; // OK
-            case 1  : skip = true;   break; // Skip
-            case 2  : skip = false;  showResults = false ; break;   //OK for all
-            case 3  : skip = true;   skipAll = true; // Skip all
-            default : skip = true;   skipAll = true; // other (closing the dialog). Same action as "Skip all"
-          }
-        }
-        if(!skip){
-          Debug.debug("creating/updating job definition # " + currentPartition+
-              " in dataset # "+datasetIdentifiers[currentDataset], 2);
-          vPartition.add(new Integer(currentPartition));
-          vCstAttr.add(resCstAttr.clone());
-          vJobParam.add(resJobParam.clone());
-
-          // clone() doesn't work on String [][]
-          String [][] tmp = new String[resOutMap.length][2];
-          for(int i=0; i<tmp.length; ++i){
-            tmp[i][0] = resOutMap[i][0];
-            tmp[i][1] = resOutMap[i][1];
-          }
-
-          vOutMap.add(tmp);
-          vStdOut.add(resStdOut.clone());
-          ++partitionCount;
-
+        else{ // should not happen
+          msg = "Unexpected " + ex.getClass().getName() + " : " + ex.getMessage() +
+          "\n\nDo you want to continue job definition creation ?";
+          title = "Unexpected exception";
+          ex.printStackTrace();
+          GridPilot.getClassMgr().getLogFile().addMessage("Job definition creation", ex);
         }
       }
-
-      if(!skipAll){
-        pb.setMaximum(pb.getMaximum()+partitionCount);
-        statusBar.setProgressBar(pb);
-        try{
-          createDBJobDefinitions(currentDataset);
-        }
-        catch(java.lang.Exception e){Debug.debug("Failed creating partition from "+
-            currentDataset+" : "+e.getMessage(),3);}
-        statusBar.removeProgressBar(pb);
-        //statusBar.removeLabel();
+      int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), msg, title,
+          JOptionPane.YES_NO_OPTION);
+      if(choice == JOptionPane.NO_OPTION){
+        showThis = false;
+        skip = true;
+        skipAll = true;
       }
+      else{
+        showThis = false;
+        skip = true;
+      }
+    }
+    Debug.debug("done evaluating all", 3);
+    int choice;
+    if(showThis){
+      if(lastPartition - currentPartition + len - currentDataset > 1){       
+        choice = showResult(currentPartition, resCstAttr, resJobParam, resOutMap, resStdOut,
+           showResultsOptions);
+      }
+      else{
+        choice = showResult(currentPartition, resCstAttr, resJobParam, resOutMap, resStdOut,
+           showResultsOptions1);
+      }
+      switch(choice){
+        case 0  : skip = false;  break; // OK
+        case 1  : skip = true;   break; // Skip
+        case 2  : skip = false;  showResults = false ; break;   //OK for all
+        case 3  : skip = true;   skipAll = true; // Skip all
+        default : skip = true;   skipAll = true; // other (closing the dialog). Same action as "Skip all"
+      }
+    }
+    if(!skip){
+      Debug.debug("creating/updating job definition # " + currentPartition+
+          " in dataset # "+datasetIdentifiers[currentDataset], 2);
+      vPartition.add(new Integer(currentPartition));
+      vCstAttr.add(resCstAttr.clone());
+      vJobParam.add(resJobParam.clone());
+      String [][] tmp = new String[resOutMap.length][2];// clone() doesn't work on String [][]
+      for(int i=0; i<tmp.length; ++i){
+        tmp[i][0] = resOutMap[i][0];
+        tmp[i][1] = resOutMap[i][1];
+      }
+      vOutMap.add(tmp);
+      vStdOut.add(resStdOut.clone());
+      ++partitionCount;
+    }
+    if(skipAll){
+      return -1;
+    }
+    else{
+      return partitionCount;
     }
   }
 
@@ -339,14 +347,13 @@ public class JobCreator{
     String transName = null;
     String transVersion = null;
     String id = "-1";
-    
     synchronized(semaphoreDBCreate){
       while(!vPartition.isEmpty()){
         int part = ((Integer) vPartition.remove(0)).intValue();
-        resCstAttr = (String [] ) vCstAttr.remove(0);
-        resJobParam = (String [] ) vJobParam.remove(0);
-        resOutMap = (String [][]) vOutMap.remove(0);
-        resStdOut  = (String []) vStdOut.remove(0);
+        resCstAttr = vCstAttr.remove(0);
+        resJobParam = vJobParam.remove(0);
+        resOutMap = vOutMap.remove(0);
+        resStdOut  = vStdOut.remove(0);
 
         statusBar.setLabel("Creating job definition # " + part + "...");
         pb.setValue(pb.getValue()+1);
@@ -359,7 +366,7 @@ public class JobCreator{
         Debug.debug("stdout/stderr length "+resStdOut.length, 2);
         Debug.debug("cstAttrNames --> "+MyUtil.arrayToString(cstAttrNames), 3);
         Debug.debug("resCstAttr --> "+MyUtil.arrayToString(resCstAttr), 3);
-        Debug.debug("resJobParam --> "+MyUtil.arrayToString(resCstAttr), 3);
+        Debug.debug("resJobParam --> "+MyUtil.arrayToString(resJobParam), 3);
         
         if(!dbPluginMgr.createJobDefinition(
                               dbPluginMgr.getDatasetName(id),
@@ -396,18 +403,15 @@ public class JobCreator{
   }
 
   private String evaluate(String ss, int var, String name, String number,
-      String energy, String particle, String outputDest) throws ArithmeticException, SyntaxException {
+      String outputDest) throws ArithmeticException, SyntaxException {
     // expression format : ${<arithmExpr>[:length]}
     // arithmExpr : operator priority : (*,/,%), (+,-), left associative
-    Debug.debug("Evaluating, "+ss+" : "+var+" : "+name+" : "+number+" : "+energy+" : "+particle+" : "+outputDest, 3);
-
+    Debug.debug("Evaluating, "+ss+" : "+var+" : "+name+" : "+number+" : "+outputDest, 3);
     int pos = -1;
     int pos1 = -1;
     int pos2 = -1;
     int pos3 = -1;
-    int pos4 = -1;
-    int pos5 = -1;
-    int totPos = -5;
+    int totPos = -3;
     StringBuffer sss = new StringBuffer(ss);
     int counter = 0;
     while(true){
@@ -421,37 +425,28 @@ public class JobCreator{
       if(pos2>=0){
         sss.replace(pos2, pos2+2, number);
       }
-      pos3 = sss.indexOf("$e");
+      pos3 = sss.indexOf("$o");
       if(pos3>=0){
-        sss.replace(pos3, pos3+2, energy);
-      }
-      pos4 = sss.indexOf("$p");
-      if(pos4>=0){
-        sss.replace(pos4, pos4+2, particle);
-      }
-      pos5 = sss.indexOf("$o");
-      if(pos5>=0){
-      	if(sss.substring(pos5+2, pos5+3).equals("/") && outputDest.length()>0){
+      	if(sss.substring(pos3+2, pos3+3).equals("/") && outputDest.length()>0){
           if(outputDest.substring(outputDest.length()-1,
               outputDest.length()).equals("/")){
-            sss.replace(pos5, pos5+2,outputDest.substring(0,
+            sss.replace(pos3, pos3+2,outputDest.substring(0,
                 outputDest.length()-1));    
           }
           else{
-            sss.replace(pos5, pos5+2, outputDest);
+            sss.replace(pos3, pos3+2, outputDest);
           }
       	}
       	else{
           if(outputDest.length()>0 && outputDest.substring(outputDest.length()-1,
               outputDest.length()).equals("/")){       
-            sss.replace(pos5, pos5+2, outputDest);
+            sss.replace(pos3, pos3+2, outputDest);
           }
           else{
-            sss.replace(pos5, pos5+2, outputDest+"/");
+            sss.replace(pos3, pos3+2, outputDest+"/");
           }
       	}
       }
-      
       // Parse the fields of the dataset
       pos = sss.indexOf("$1") + sss.indexOf("$2")+ sss.indexOf("$3") +
             sss.indexOf("$4") + sss.indexOf("$5") + sss.indexOf("$6") +
@@ -481,13 +476,16 @@ public class JobCreator{
           }          
         }
       }
-      totPos = pos1+pos2+pos3+pos4+pos5+pos;
+      totPos = pos1+pos2+pos3+pos;
       Debug.debug("evaluating, "+totPos+": "+sss, 3);
-      if(pos1+pos2+pos3+pos4+pos5+pos<-13 || counter>10){
+      if(totPos<-11 || counter>10){
         break;
       }
-    }        
-    String s = new String(sss);     
+    }
+    return doEvaluate(var, new String(sss));
+  }
+  
+  private String doEvaluate(int var, String s) throws SyntaxException{
     String result = "";
     int previousPos = 0;
     int currentPos;
@@ -589,7 +587,7 @@ public class JobCreator{
    */
 
   private void evaluateAll(int currentDataset, int currentPartition, String name,
-      String number, String energy, String particle, String outputDest,
+      String number, String outputDest,
       int [][] eventSplits)throws ArithmeticException, SyntaxException,
       IOException{
     
@@ -664,11 +662,11 @@ public class JobCreator{
     
     // jobDefinition fields
     ArrayList jobattributenames = fillInResCstAttr(eventSplits, currentPartition, name, number,
-        energy, particle, outputDest, evtMin, evtMax, inputFiles);
+        outputDest, evtMin, evtMax, inputFiles);
     
     // Job parameters
     fillInJobParams(currentDataset, currentPartition, eventSplits, evtMin, evtMax, name, number,
-        energy, particle, outputDest, jobattributenames, inputs);
+        outputDest, jobattributenames, inputs);
 
     // if the destination is left empty on the creation panel and
     // we are using input files from a file catalog, name the output file
@@ -682,28 +680,28 @@ public class JobCreator{
       if(fullNameStrings.length>0){
         String extension = "."+fullNameStrings[fullNameStrings.length-1];
         resOutMap[0][1] = evaluate("$o/"+ifn.replaceFirst(extension, ".out"+extension),
-            currentPartition, name, number, energy, particle, outputDest);
+            currentPartition, name, number, outputDest);
       }
       else{
         resOutMap[0][1] = evaluate("$o/"+ifn+".out",
-            currentPartition, name, number, energy, particle, outputDest);
+            currentPartition, name, number, outputDest);
       }
       resOutMap[0][0] = evaluate(outMap[0][0], currentPartition, name, number,
-          energy, particle, outputDest);
+          outputDest);
     }
     else{
       for(int i=0; i<resOutMap.length; ++i){
         Debug.debug("param #"+i, 3);
         resOutMap[i][0] = evaluate(outMap[i][0], currentPartition, name, number,
-            energy, particle, outputDest);
+            outputDest);
         resOutMap[i][1] = evaluate(outMap[i][1], currentPartition, name, number,
-            energy, particle, outputDest);
+            outputDest);
       }
     }
     for(int i=0; i<resStdOut.length; ++i){
       Debug.debug("param #"+i, 3);
       resStdOut[i] = evaluate(stdOut[i], currentPartition, name, number,
-          energy, particle, outputDest);
+          outputDest);
     }
   }
 
@@ -876,7 +874,7 @@ public class JobCreator{
 
   private void fillInJobParams(int currentDataset, int currentPartition,
       int [][] eventSplits, int evtMin, int evtMax, String name, String number,
-      String energy, String particle, String outputDest, ArrayList jobattributenames,
+      String outputDest, ArrayList jobattributenames,
       String inputs) throws ArithmeticException, SyntaxException {
     Debug.debug("Filling in job parameters", 3);
     // metadata information from the metadata field of the dataset
@@ -933,13 +931,13 @@ public class JobCreator{
       }
       else{
         resJobParam[i] = evaluate(jobParam[i], currentPartition, name, number,
-            energy, particle, outputDest);
+            outputDest);
       }
     }
   }
 
   private ArrayList fillInResCstAttr(int [][] eventSplits, int currentPartition, String name, String number,
-     String energy, String particle, String outputDest, int evtMin, int evtMax, String inputFiles)
+     String outputDest, int evtMin, int evtMax, String inputFiles)
      throws ArithmeticException, SyntaxException {
     // Add eventMin, eventMax and inputFileURLs if they are
     // present in the fields of jobDefinition, but not in the fixed
@@ -1016,8 +1014,7 @@ public class JobCreator{
         Debug.debug("setting input files "+inputFiles, 3);
       }
       else{
-        resCstAttr[i] = evaluate(cstAttr[i], currentPartition, name, number,
-            energy, particle, outputDest);
+        resCstAttr[i] = evaluate(cstAttr[i], currentPartition, name, number, outputDest);
       }
     }
     return jobattributenames;

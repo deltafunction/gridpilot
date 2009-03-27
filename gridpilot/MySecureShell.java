@@ -1,10 +1,12 @@
 package gridpilot;
 
 import java.io.File;
+import java.io.IOException;
 
 
 import com.jcraft.jsch.*;
 
+import javax.security.auth.login.LoginException;
 import javax.swing.*;
 
 import gridfactory.common.ConfigFile;
@@ -15,22 +17,26 @@ public class MySecureShell extends SecureShell{
 
   private ConfigFile configFile;
   
+  // Try 3 times - getChannel tries MAX_GET_CHANNEL_TRIES times, so MAX_GET_CHANNEL_TRIES x 3 times in all...
   private static final int MAX_SSH_LOGIN_ATTEMPTS = 3;
 
   public MySecureShell(String _host, String _user, File _keyFile, String _keyPassphrase) throws JSchException{
     super(_host, _user, _keyFile, _keyPassphrase, GridPilot.getClassMgr().getLogFile());
     prefix = "/tmp/GridPilot-job-";
+    MAX_GET_CHANNEL_TRIES = 1;
   }
   
   public MySecureShell(String _host, String _user, String _password) throws JSchException{
     super(_host, _user, _password, GridPilot.getClassMgr().getLogFile());
     prefix = "/tmp/GridPilot-job-";
+    MAX_GET_CHANNEL_TRIES = 1;
   }
 
   public MySecureShell(String _host, String _user, String _password,
       File _keyFile, String _keyPassphrase) throws JSchException{
     super(_host, _user, _password, _keyFile, _keyPassphrase, GridPilot.getClassMgr().getLogFile());
     prefix = "/tmp/GridPilot-job-";
+    MAX_GET_CHANNEL_TRIES = 1;
   }
   
   protected void connect(){
@@ -48,129 +54,142 @@ public class MySecureShell extends SecureShell{
     connecting = true;
     configFile = GridPilot.getClassMgr().getConfigFile();
     try{
-      UserInfo ui = new MyUserInfo();
-      boolean showDialog = true;
-      // if global frame is set, this is a reload
-      if(GridPilot.getClassMgr().getGlobalFrame()!=null){
-        showDialog = false;
-      }
-      String [] up = null;
-      for(int rep=0; rep<MAX_SSH_LOGIN_ATTEMPTS; ++rep){               
-        if(showDialog ||
-            user==null || (password==null && (keyFile==null || keyPassphrase==null)) || host==null){
-          Debug.debug("Shell login:"+showDialog+":"+
-          MyUtil.arrayToString(new String [] {"User", "password", "Host"})+" --> "+
-          MyUtil.arrayToString(new String [] {user, (password==null?"":password), host}), 2);
-          // Only try private key once
-          if(keyFile!=null && rep==0){
-            up = GridPilot.userPwd("Shell login with private key on "+host,
-                new String [] {"User", "Key passphrase", "Host"},
-                new String [] {user, (keyPassphrase==null?keyPassphrase:""), host});
-            if(up==null){
-              return;
-            }
-            else{
-              user = up[0].trim();
-              keyPassphrase = up[1];
-              host = up[2].trim();
-              try{
-                jsch.addIdentity(keyFile.getAbsolutePath(), (keyPassphrase==null?keyPassphrase:""));
-              }
-              catch(Exception e){
-                logFile.addMessage("Could not load SSH private key.", e);
-                up = null;
-              }
-            }
-          }
-          if(up==null || rep>0){
-            up = GridPilot.userPwd("Shell login with password on "+host, new String [] {"User", "Password", "Host"},
-                new String [] {user, password, host});
-            keyFile = null;
-            if(up==null){
-              return;
-            }
-            else{
-              user = up[0].trim();
-              password = up[1];
-              host = up[2].trim();
-              Debug.debug("SSH user: "+user+":", 2);
-              if(user==null || user.equals("")){
-                user = null;
-                if(rep==MAX_SSH_LOGIN_ATTEMPTS-1){
-                  if(GridPilot.splash!=null){
-                    GridPilot.splash.hide();
-                  }
-                  MyUtil.showError("SSH login failed on "+host);
-                }
-                continue;
-              }
-            }
-          }
-        }
-        try{
-          if(keyFile!=null){
-            try{
-              jsch.addIdentity(keyFile.getAbsolutePath(), (keyPassphrase==null?keyPassphrase:""));
-            }
-            catch(Exception e){
-              logFile.addMessage("Could not load SSH private key.", e);
-              up = null;
-            }
-          }
-          session = jsch.getSession(user, host, port);
-          session.setHost(host);
-          if(password!=null && !password.equals("")){
-            session.setPassword(password);
-          }
-          session.setUserInfo(ui);
-          java.util.Hashtable config = new java.util.Hashtable();
-          config.put("StrictHostKeyChecking", "no");
-          session.setConfig(config);
-          if(GridPilot.splash!=null){
-            GridPilot.splash.hide();
-          }
-          // Get rid of popups - well, doesn't seem to work...
-          session.setX11Host(null);
-          session.connect(30000);
-          break;
-        }
-        catch(Exception e){
-          e.printStackTrace();
-          if(rep==MAX_SSH_LOGIN_ATTEMPTS-1){
-            if(GridPilot.splash!=null){
-              GridPilot.splash.hide();
-            }
-            MyUtil.showError((rep+1)+" SSH login(s) failed on "+host);
-          }
-          else{
-            Thread.sleep(10000L);
-          }
-          password = null;
-          continue;
-        }
-      }
-      
-      try{
-        maxChannels = Integer.parseInt(
-            configFile.getValue("Computing systems", "maximum simultaneous submissions"))+
-        Integer.parseInt(
-            configFile.getValue(GridPilot.topConfigSection, "maximum simultaneous checking"))+
-            Integer.parseInt(
-                configFile.getValue("Computing systems", "maximum simultaneous validating"));
-      }
-      catch(Exception e){
-        Debug.debug("WARNING: could not construct number of channels. "+
-            e.getMessage(), 1);
-      }      
-      sshs = new Channel[maxChannels];
+      doConnect();
     }
-    catch (Exception e){
+    catch(Exception e){
       Debug.debug("Could not connect via ssh, "+user+", "+password+", "+host+
           ". "+e.getMessage(), 1);
       e.printStackTrace();
     }
     finally{
       connecting = false;
+    }
+  }
+
+  private void doConnect() throws InterruptedException, IOException {
+    UserInfo ui = new MyUserInfo();
+    boolean showDialog = true;
+    // if global frame is set, this is a reload
+    if(GridPilot.getClassMgr().getGlobalFrame()!=null){
+      showDialog = false;
+    }
+    for(int rep=0; rep<MAX_SSH_LOGIN_ATTEMPTS; ++rep){
+      try{
+        singleConnect(showDialog, rep, ui);
+      }
+      catch(LoginException e){
+        e.printStackTrace();
+        continue;
+      }
+    }
+    try{
+      maxChannels = Integer.parseInt(
+          configFile.getValue("Computing systems", "maximum simultaneous submissions"))+
+      Integer.parseInt(
+          configFile.getValue(GridPilot.topConfigSection, "maximum simultaneous checking"))+
+          Integer.parseInt(
+              configFile.getValue("Computing systems", "maximum simultaneous validating"));
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: could not construct number of channels. "+
+          e.getMessage(), 1);
+    }      
+    sshs = new Channel[maxChannels];
+  }
+
+  private void singleConnect(boolean showDialog, int rep, UserInfo ui) throws LoginException, InterruptedException, IOException {
+    String [] up = null;
+    if(showDialog ||
+        user==null || (password==null && (keyFile==null || keyPassphrase==null)) || host==null){
+      Debug.debug("Shell login:"+showDialog+":"+
+      MyUtil.arrayToString(new String [] {"User", "password", "Host"})+" --> "+
+      MyUtil.arrayToString(new String [] {user, (password==null?"":password), host}), 2);
+      // Only try private key once
+      if(keyFile!=null && rep==0){
+        up = GridPilot.userPwd("Shell login with private key on "+host,
+            new String [] {"User", "Key passphrase", "Host"},
+            new String [] {user, (keyPassphrase==null?keyPassphrase:""), host});
+        if(up==null){
+          return;
+        }
+        else{
+          user = up[0].trim();
+          keyPassphrase = up[1];
+          host = up[2].trim();
+          try{
+            jsch.addIdentity(keyFile.getAbsolutePath(), (keyPassphrase==null?keyPassphrase:""));
+          }
+          catch(Exception e){
+            logFile.addMessage("Could not load SSH private key.", e);
+            up = null;
+          }
+        }
+      }
+      if(up==null || rep>0){
+        up = GridPilot.userPwd("Shell login with password on "+host, new String [] {"User", "Password", "Host"},
+            new String [] {user, password, host});
+        keyFile = null;
+        if(up==null){
+          return;
+        }
+        else{
+          user = up[0].trim();
+          password = up[1];
+          host = up[2].trim();
+          Debug.debug("SSH user: "+user+":", 2);
+          if(user==null || user.equals("")){
+            user = null;
+            if(rep>=MAX_SSH_LOGIN_ATTEMPTS-1){
+              if(GridPilot.splash!=null){
+                GridPilot.splash.hide();
+              }
+              MyUtil.showError("SSH login failed on "+host);
+            }
+            throw new IOException("SSH login failed on "+host);
+          }
+        }
+      }
+    }
+    try{
+      if(keyFile!=null){
+        try{
+          jsch.addIdentity(keyFile.getAbsolutePath(), (keyPassphrase==null?keyPassphrase:""));
+        }
+        catch(Exception e){
+          logFile.addMessage("Could not load SSH private key.", e);
+          up = null;
+        }
+      }
+      session = jsch.getSession(user, host, port);
+      session.setHost(host);
+      if(password!=null && !password.equals("")){
+        session.setPassword(password);
+      }
+      session.setUserInfo(ui);
+      java.util.Hashtable config = new java.util.Hashtable();
+      config.put("StrictHostKeyChecking", "no");
+      session.setConfig(config);
+      if(GridPilot.splash!=null){
+        GridPilot.splash.hide();
+      }
+      // Get rid of popups - well, doesn't seem to work...
+      session.setX11Host(null);
+      session.connect(30000);
+      return;
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      if(rep==MAX_SSH_LOGIN_ATTEMPTS-1){
+        if(GridPilot.splash!=null){
+          GridPilot.splash.hide();
+        }
+        MyUtil.showError((rep+1)+" SSH login(s) failed on "+host);
+      }
+      else{
+        Thread.sleep(10000L);
+      }
+      password = null;
+      throw new LoginException();
     }
   }
 
