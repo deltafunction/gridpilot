@@ -355,7 +355,7 @@ public class JobCreator{
         resOutMap = vOutMap.remove(0);
         resStdOut  = vStdOut.remove(0);
 
-        statusBar.setLabel("Creating job definition # " + part + "...");
+        statusBar.setLabel("Creating job definition # " + part);
         pb.setValue(pb.getValue()+1);
 
         transName = dbPluginMgr.getDatasetTransformationName(datasetIdentifiers[idNum]);
