@@ -91,6 +91,23 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     }
   }
   
+  protected String getCommandSuffix(MyJobInfo job){
+    String commandSuffix = ".sh";
+    String host = job.getHost();
+    if(host!=null){
+      try{
+        Shell thisShell = getShell(host);
+        if(thisShell.getOS().toLowerCase().startsWith("windows")){
+          commandSuffix = ".bat";
+        }
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    return commandSuffix;
+  }
+  
   /**
    * Finds a Shell for the host/user/password of the job.
    * If the shellMgr is dead it is attempted to start a new one.
@@ -160,7 +177,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     try{
       Shell mgr = getShell(job.getHost());
       scriptGenerator.createWrapper(mgr, (MyJobInfo) job, job.getName()+getCommandSuffix((MyJobInfo) job));
-      String id = mgr.submit(cmd, runDir(job), stdoutFile, stderrFile, logFile);
+      String id = mgr.submit(cmd, submitEnvironment, runDir(job), stdoutFile, stderrFile, logFile);
       job.setJobId(id!=null?id:"");
       return true;
     }

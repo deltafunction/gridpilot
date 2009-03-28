@@ -60,6 +60,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private String [] defaultEc2Catalogs;
   private HashMap<String, String> locationNameMap = new HashMap<String, String>();
   private String[] allTmpCatalogs;
+  private String accessKey;
+  private String secretKey;
+  
+  // These variables will be set in the shells run on EC2 instances
+  private static String AWS_ACCESS_KEY_ID_VAR = "AWS_ACCESS_KEY_ID";
+  private static String AWS_SECRET_ACCESS_KEY_VAR = "AWS_SECRET_ACCESS_KEY";
 
   public static String AMI_PREFIX;
 
@@ -118,10 +124,14 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       ec2Port = Integer.parseInt(ec2PortStr);
     }
    
-    String accessKey = GridPilot.getClassMgr().getConfigFile().getValue(csName,
+    accessKey = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "AWS access key id");
-    String secretKey = GridPilot.getClassMgr().getConfigFile().getValue(csName,
+    secretKey = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "AWS secret access key");
+    // Set up submit shell variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+    // - these are for use by s3_copy - and any other tools that might need them.
+    submitEnvironment = new String [] {AWS_ACCESS_KEY_ID_VAR+"="+accessKey,
+                                       AWS_SECRET_ACCESS_KEY_VAR+"="+secretKey};
     String sshAccessSubnet = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "SSH access subnet");
     if(sshAccessSubnet==null || sshAccessSubnet.equals("")){
@@ -425,10 +435,10 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         // This means the VM was running before starting
         // GridPilot and we need to reconnect. RTEs should already be setup.
         // -- well, we do it anyway, just in case
-        Shell newShellMgr = new MySecureShell(host, USER, ec2mgr.getKeyFile(), "");
-        Debug.debug("Added ShellMgr on already running host "+newShellMgr.getHostName(), 2);
-        remoteShellMgrs.put(host, newShellMgr);
-        setupRuntimeEnvironmentsSSH(newShellMgr);
+        Shell newShell = new MySecureShell(host, USER, ec2mgr.getKeyFile(), "");
+        Debug.debug("Added ShellMgr on already running host "+newShell.getHostName(), 2);
+        remoteShellMgrs.put(host, newShell);
+        setupRuntimeEnvironmentsSSH(newShell);
       }
       MySecureShell sMgr = (MySecureShell) remoteShellMgrs.get(host);
       if(!sMgr.isConnected()){

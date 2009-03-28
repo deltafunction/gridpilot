@@ -68,7 +68,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JMenuItem miShowOutput = new JMenuItem("Outputs");
   private JMenuItem miShowFullStatus = new JMenuItem("Full status");
   private JMenuItem miShowInfo = new JMenuItem("Information");
-  private JMenuItem miShowScripts = new JMenuItem("Scripts");
+  private JMenuItem miShowScripts = new JMenuItem("Script(s)");
   private JMenuItem miRevalidate = new JMenuItem("Revalidate");
   private JMenu mDB = new JMenu("Set DB Status");
   public JobStatusUpdateControl statusUpdateControl;

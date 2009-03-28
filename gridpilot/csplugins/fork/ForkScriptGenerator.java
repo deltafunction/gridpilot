@@ -144,15 +144,6 @@ public class ForkScriptGenerator extends ScriptGenerator{
       return false;
     }
 
-    // Output files section
-    try{
-      writeOutputFilesSection(job, buf, commentStart);
-    }
-    catch(IOException e){
-      logFile.addMessage("Problem with output files. Cannot proceed with "+job, e);
-      return false;
-    }
-
     // Transformation script call section
     try{
       writeTransformationSection(jobDefID, dbPluginMgr, commentStart, buf, notOnWindows,
@@ -164,7 +155,16 @@ public class ForkScriptGenerator extends ScriptGenerator{
       return false;
     }
     
-    writeMetadataSection(buf, notOnWindows, commentStart, job);
+    writeMetadataSection(buf, notOnWindows, dbPluginMgr, commentStart, job);
+
+    // Output files section
+    try{
+      writeOutputFilesSection(job, buf, commentStart);
+    }
+    catch(IOException e){
+      logFile.addMessage("Problem with output files. Cannot proceed with "+job, e);
+      return false;
+    }
 
     try{
       shell.writeFile(workingDir+"/"+fileName, buf.toString(), false);
@@ -200,7 +200,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
   }
   
   private void writeMetadataSection(StringBuffer buf, boolean notOnWindows,
-      String commentStart, JobInfo job) {
+      DBPluginMgr dbPluginMgr, String commentStart, JobInfo job) {
     // Metadata section
     /* Print the running time, size and md5sum of the output file for validation
        to pick up and write in the job DB or file catalog.
@@ -216,7 +216,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
       writeLine(buf, "echo " +
           gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG +
           ": cpuSeconds = $(( END_TIME - START_TIME ))");
-      String [] outputFiles = job.getOutputFileNames();
+      String [] outputFiles = dbPluginMgr.getOutputFiles(job.getIdentifier());
       for(int i=0; i<outputFiles.length; ++i){
         writeLine(buf, "echo "+
             gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG+
@@ -274,13 +274,14 @@ public class ForkScriptGenerator extends ScriptGenerator{
     else{
       line = scriptName+ " " + MyUtil.arrayToString(actualParam);
     }
+    writeLine(buf, line);
   }
 
   private void writeOutputFilesSection(MyJobInfo job, StringBuffer buf,
       String commentStart) throws IOException {
     String [][] uploadFiles = job.getUploadFiles();
     if(uploadFiles!=null && uploadFiles.length>0){
-      writeBlock(buf, "Input files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
+      writeBlock(buf, "Output files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
       String protocol = null;
       for(int i=0; i<uploadFiles.length; ++i){
         protocol = uploadFiles[i][1].replaceFirst("^(\\w+):.*$", "$1");
@@ -360,11 +361,15 @@ public class ForkScriptGenerator extends ScriptGenerator{
         writeLine(buf, initTxt);
         if(notOnWindows){
           writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
-              "/"+requiredRuntimeEnvs[i]+" 1").replaceAll("//", "/"));
+              "/"+requiredRuntimeEnvs[i]+" 1 >& /dev/null").replaceAll("//", "/"));
+          writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
+              "/"+requiredRuntimeEnvs[i]+"/control/runtime 1 >& /dev/null").replaceAll("//", "/"));
         }
         else{
           writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
-              "/"+requiredRuntimeEnvs[i]+" 1").replaceAll("//", "/").replaceAll("/", "\\\\"));
+              "/"+requiredRuntimeEnvs[i]+" 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
+          writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
+              "/"+requiredRuntimeEnvs[i]+"/control/runtime.bat 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
         }
       }
     }

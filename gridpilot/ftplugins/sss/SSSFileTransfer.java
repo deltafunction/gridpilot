@@ -872,7 +872,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     Vector resVec = new Vector();
     String path = globusUrl.getPath()==null?"":globusUrl.getPath();
     Debug.debug("Listing path "+path, 2);
-    s3Objects = s3Service.listObjects(bucket, path, "/");
+    s3Objects = s3Service.listObjects(bucket, path, S3FOX_DIRECTORY_MODE?"/":"");
     Debug.debug("Number of objects: "+s3Objects.length, 3);
     //retrieveObjectsDetails(existingObjects, bucket);
     int directories = 0;

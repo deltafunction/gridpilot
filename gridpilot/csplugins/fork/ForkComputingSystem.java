@@ -60,9 +60,11 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected boolean mkLocalOSRTE = true;
   protected boolean includeVMRTEs = true;
   protected String [] basicOSRTES = {"Linux"};
+  protected boolean ignoreBaseSystemAndVMRTEs = true;
+  protected String [] submitEnvironment = null;
+  
   protected static HashMap remoteCopyCommands = null;
 
-  protected boolean ignoreBaseSystemAndVMRTEs = true;
 
   public ForkComputingSystem(String _csName) throws Exception{
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
@@ -144,24 +146,12 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
   
   protected String getCommandSuffix(MyJobInfo job){
-    Shell thisShell = null;
-    try{
-      thisShell = GridPilot.getClassMgr().getShell(job);
-    }
-    catch(Exception e){
-      e.printStackTrace();
-    }
     String commandSuffix = ".sh";
-    if(thisShell!=null){
-      if(thisShell.isLocal() && MyUtil.onWindows()){
-        commandSuffix = ".bat";
-      }
-    }
-    /*else{
+    if(shell!=null){
       if(shell.isLocal() && MyUtil.onWindows()){
         commandSuffix = ".bat";
       }
-    }*/
+    }
     return commandSuffix;
   }
   
@@ -452,6 +442,7 @@ public class ForkComputingSystem implements MyComputingSystem{
         throw new IOException("Could not create wrapper script.");
       }
       String id = shell.submit(MyUtil.clearFile(cmd),
+                                  submitEnvironment,
                                   runDir(job),
                                   MyUtil.clearFile(stdoutFile),
                                   MyUtil.clearFile(stderrFile),
