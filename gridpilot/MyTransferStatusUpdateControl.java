@@ -146,11 +146,11 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
 
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "checking.png");
+      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "checking.png");
       iconChecking = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "checking.png", 3);
+      Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "checking.png", 3);
       iconChecking = new ImageIcon();
     }
     Debug.debug("iconChecking: "+imgURL, 3);
@@ -170,7 +170,7 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
     /**
      * Load of maxSimultaneousChecking
      */
-    String tmp = configFile.getValue(GridPilot.topConfigSection, "maximum simultaneous checking");
+    String tmp = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "maximum simultaneous checking");
     if(tmp!=null){
       try{
         maxSimultaneousChecking = Integer.parseInt(tmp);
@@ -181,12 +181,12 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage(GridPilot.topConfigSection, "maximum simultaneous checking") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage(GridPilot.TOP_CONFIG_SECTION, "maximum simultaneous checking") + "\n" +
                          "Default value = " + maxSimultaneousChecking);
     /**
      * Load of timeBetweenCheking
      */
-    tmp = configFile.getValue(GridPilot.topConfigSection, "time between checks");
+    tmp = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "time between checks");
     if(tmp!=null){
       try{
         timeBetweenCheking = Integer.parseInt(tmp);
@@ -197,7 +197,7 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage(GridPilot.topConfigSection, "time between checks") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage(GridPilot.TOP_CONFIG_SECTION, "time between checks") + "\n" +
                          "Default value = " + timeBetweenCheking);
 
     timerChecking.setDelay(timeBetweenCheking);
@@ -205,22 +205,22 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
     /**
      * Load of maxTransfersByUpdate
      */
-    for(int i=0; i<GridPilot.ftNames.length; ++i){
-      tmp = configFile.getValue(GridPilot.ftNames[i], "max transfers by update");
+    for(int i=0; i<GridPilot.FT_NAMES.length; ++i){
+      tmp = configFile.getValue(GridPilot.FT_NAMES[i], "max transfers by update");
       if(tmp!=null){
         try{
-          maxTransfersByUpdate.put(GridPilot.ftNames[i], new Integer(Integer.parseInt(tmp)));
+          maxTransfersByUpdate.put(GridPilot.FT_NAMES[i], new Integer(Integer.parseInt(tmp)));
         }
         catch(NumberFormatException nfe){
-          logFile.addMessage("Value of \"max transfers by update\" in section " + GridPilot.ftNames[i] +
+          logFile.addMessage("Value of \"max transfers by update\" in section " + GridPilot.FT_NAMES[i] +
                              " is not an integer in configuration file", nfe);
-          maxTransfersByUpdate.put(GridPilot.ftNames[i], new Integer(1));
+          maxTransfersByUpdate.put(GridPilot.FT_NAMES[i], new Integer(1));
         }
       }
       else{
-        maxTransfersByUpdate.put(GridPilot.ftNames[i], new Integer(1));
-        logFile.addMessage(configFile.getMissingMessage(GridPilot.ftNames[i], "max transfers by update") + "\n" +
-                           "Default value = " + maxTransfersByUpdate.get(GridPilot.ftNames[i]));
+        maxTransfersByUpdate.put(GridPilot.FT_NAMES[i], new Integer(1));
+        logFile.addMessage(configFile.getMissingMessage(GridPilot.FT_NAMES[i], "max transfers by update") + "\n" +
+                           "Default value = " + maxTransfersByUpdate.get(GridPilot.FT_NAMES[i]));
       }
     }
   }

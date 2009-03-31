@@ -75,7 +75,7 @@ public class MyTransferControl extends TransferControl {
 
   private static int TRANSFER_SUBMIT_TIMEOUT = 60*1000;
   private static int TRANSFER_CANCEL_TIMEOUT = 60*1000;
-  private Object [][] tableValues = new Object[0][GridPilot.transferStatusFields.length];
+  private Object [][] tableValues = new Object[0][GridPilot.TRANSFER_STATUS_FIELDS.length];
   
   final private static String SRM2_PLUGIN_NAME = "srm2";
   
@@ -117,7 +117,7 @@ public class MyTransferControl extends TransferControl {
           
           Debug.debug("First transfer: "+((TransferInfo) toSubmitTransfers.get(0)), 3);
           
-          String [] fts = GridPilot.ftNames;
+          String [] fts = GridPilot.FT_NAMES;
           String pluginName = null;
           Vector transferVector = null;
           GlobusURL [] theseSources = null;
@@ -269,7 +269,7 @@ public class MyTransferControl extends TransferControl {
     Debug.debug("Setting time between transfers "+timeBetweenTransfers, 3);
     timer.setInitialDelay(0);
     timer.setDelay(timeBetweenTransfers);
-    String resourcesPath = configFile.getValue(GridPilot.topConfigSection, "resources");
+    String resourcesPath = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "resources");
     if(resourcesPath != null && !resourcesPath.endsWith("/"))
       resourcesPath += "/";
     try{
@@ -299,7 +299,7 @@ public class MyTransferControl extends TransferControl {
     }
     
     String ftPluginName = null;
-    String [] fts = GridPilot.ftNames;
+    String [] fts = GridPilot.FT_NAMES;
     String [] ids = null;
     
     // Select first plugin that supports the protocol of the these transfers
@@ -333,7 +333,7 @@ public class MyTransferControl extends TransferControl {
       // Give it a try with srm-2.
       // This is a hack to deal with the fact that the protocol srm can mean both version 1 or version 2
       // (and the fact that the two protocols are not compatible).
-      if(ftPluginName.equalsIgnoreCase("srm") && MyUtil.arrayContains(GridPilot.ftNames, SRM2_PLUGIN_NAME)){
+      if(ftPluginName.equalsIgnoreCase("srm") && MyUtil.arrayContains(GridPilot.FT_NAMES, SRM2_PLUGIN_NAME)){
         ids = GridPilot.getClassMgr().getFTPlugin(SRM2_PLUGIN_NAME).startCopyFiles(srcUrls, destUrls);
         // If successful, have findFTPlugin remember to pick the right class.
         if(ids!=null){
@@ -408,7 +408,7 @@ public class MyTransferControl extends TransferControl {
   }
   
   public void clearTableRows(int [] clearRows){
-    Object [][] newTablevalues = new Object [tableValues.length-clearRows.length][GridPilot.transferStatusFields.length];
+    Object [][] newTablevalues = new Object [tableValues.length-clearRows.length][GridPilot.TRANSFER_STATUS_FIELDS.length];
     TransferInfo transfer = null;
     TransferInfo [] toClearTransfers = new TransferInfo[clearRows.length];
     int rowNr = 0;
@@ -423,7 +423,7 @@ public class MyTransferControl extends TransferControl {
       }
       transfer = TransferMonitoringPanel.getTransferAtRow(i);
       if(!match){
-        for(int k=0; k<GridPilot.transferStatusFields.length; ++k){
+        for(int k=0; k<GridPilot.TRANSFER_STATUS_FIELDS.length; ++k){
           newTablevalues[rowNr][k] = tableValues[i][k];
         }
         transfer.setTableRow(rowNr);
@@ -442,7 +442,7 @@ public class MyTransferControl extends TransferControl {
 
     tableValues = newTablevalues;
     try {
-      ((DBVectorTableModel) ((MyJTable) statusTable).getModel()).setTable(tableValues, GridPilot.transferStatusFields);
+      ((DBVectorTableModel) ((MyJTable) statusTable).getModel()).setTable(tableValues, GridPilot.TRANSFER_STATUS_FIELDS);
     }
     catch(Exception e){
       e.printStackTrace();
@@ -468,8 +468,8 @@ public class MyTransferControl extends TransferControl {
     GlobusURL [] destinations = new GlobusURL [transfers.length];
     String [] ids = null;
     
-    Object [][] appendTablevalues = new Object [transfers.length][GridPilot.transferStatusFields.length];
-    Object [][] newTablevalues = new Object [tableValues.length+appendTablevalues.length][GridPilot.transferStatusFields.length];
+    Object [][] appendTablevalues = new Object [transfers.length][GridPilot.TRANSFER_STATUS_FIELDS.length];
+    Object [][] newTablevalues = new Object [tableValues.length+appendTablevalues.length][GridPilot.TRANSFER_STATUS_FIELDS.length];
     int startRow = statusTable.getRowCount();
     boolean resubmit = false;
 
@@ -486,7 +486,7 @@ public class MyTransferControl extends TransferControl {
         // add to status table
         statusTable.createRows(GridPilot.getClassMgr().getSubmittedTransfers().size());
         
-        for(int j=1; j<GridPilot.transferStatusFields.length; ++j){
+        for(int j=1; j<GridPilot.TRANSFER_STATUS_FIELDS.length; ++j){
           appendTablevalues[i][j] = statusTable.getValueAt(startRow+i, j);
         }
       }
@@ -508,7 +508,7 @@ public class MyTransferControl extends TransferControl {
       System.arraycopy(appendTablevalues, 0, newTablevalues, tableValues.length, appendTablevalues.length);
       tableValues = newTablevalues;
       Debug.debug("Setting table", 3);
-      ((DBVectorTableModel) ((MyJTable) statusTable).getModel()).setTable(tableValues, GridPilot.transferStatusFields);
+      ((DBVectorTableModel) ((MyJTable) statusTable).getModel()).setTable(tableValues, GridPilot.TRANSFER_STATUS_FIELDS);
     }
 
     // find shortest list of source URLs
@@ -540,7 +540,7 @@ public class MyTransferControl extends TransferControl {
             // Give it a try with srm-2.
             // This is a hack to deal with the fact that the protocol srm can mean both version 1 or version 2
             // (and the fact that the two protocols are not compatible).
-            if(ftPlugin.equalsIgnoreCase("srm") && MyUtil.arrayContains(GridPilot.ftNames, SRM2_PLUGIN_NAME)){
+            if(ftPlugin.equalsIgnoreCase("srm") && MyUtil.arrayContains(GridPilot.FT_NAMES, SRM2_PLUGIN_NAME)){
               ids = GridPilot.getClassMgr().getFTPlugin(SRM2_PLUGIN_NAME).startCopyFiles(
                   sources, destinations);
               // If successful, have findFTPlugin remember to pick the right class.
@@ -752,7 +752,7 @@ public class MyTransferControl extends TransferControl {
    */
   public void deleteFiles(GlobusURL [] urls) throws Exception {
     String ftPluginName = null;
-    String [] fts = GridPilot.ftNames;
+    String [] fts = GridPilot.FT_NAMES;
     
     // Construct dummy array of file URLs
     GlobusURL [] srcUrls = new GlobusURL[urls.length];

@@ -363,9 +363,9 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     });
 
     String enabled = "no";
-    for(int i=0; i<GridPilot.csNames.length; ++i){
+    for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
       try{
-        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.csNames[i], "Enabled");
+        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
       }
       catch(Exception e){
         continue;
@@ -374,7 +374,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           !enabled.equalsIgnoreCase("true")){
         continue;
       }
-      JMenuItem mi = new JMenuItem(GridPilot.csNames[i], i);
+      JMenuItem mi = new JMenuItem(GridPilot.CS_NAMES[i], i);
       mi.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           submissionControl = GridPilot.getClassMgr().getSubmissionControl();
@@ -693,8 +693,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     // Group the file IDs by dataset
     HashMap jobMgrsAndIds = new HashMap();
 
-    for(int ii=0; ii<GridPilot.dbNames.length; ++ii){
-      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[ii]);
+    for(int ii=0; ii<GridPilot.DB_NAMES.length; ++ii){
+      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.DB_NAMES[ii]);
       shownFields = null;
       try{
         shownFields = dbPluginMgr.getFieldnames("jobDefinition");//dbPluginMgr.getDBDefFields("jobDefinition");
@@ -709,10 +709,10 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
       allJobDefinitions = dbPluginMgr.getJobDefinitions(
             /*datasetID*/"-1", shownFields, statusStrings, null);
-      Debug.debug ("number of jobs for "+GridPilot.dbNames[ii]+
+      Debug.debug ("number of jobs for "+GridPilot.DB_NAMES[ii]+
           ": "+allJobDefinitions.values.length, 2);
 
-      JobMgr mgr = GridPilot.getClassMgr().getJobMgr(GridPilot.dbNames[ii]);
+      JobMgr mgr = GridPilot.getClassMgr().getJobMgr(GridPilot.DB_NAMES[ii]);
       for(int i=0; i<allJobDefinitions.values.length; ++i){
         user = null;
         DBRecord job = new DBRecord(allJobDefinitions.fields,

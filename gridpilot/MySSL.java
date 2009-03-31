@@ -73,9 +73,9 @@ public class MySSL extends SSL{
   
   public MySSL() throws IOException, GeneralSecurityException {
     
-    certFile = GridPilot.certFile;
-    keyFile = GridPilot.keyFile;
-    keyPassword = GridPilot.keyPassword;
+    certFile = GridPilot.CERT_FILE;
+    keyFile = GridPilot.KEY_FILE;
+    keyPassword = GridPilot.KEY_PASSWORD;
     
     if(CoGProperties.getDefault()==null){
       prop = new CoGProperties();
@@ -92,7 +92,7 @@ public class MySSL extends SSL{
       return;
     }
     initalizeCACertsDir();
-    if(GridPilot.keyPassword==null){
+    if(GridPilot.KEY_PASSWORD==null){
       sslInitialized = false;
       credential = null;
       //getProxyFile().delete();
@@ -102,8 +102,8 @@ public class MySSL extends SSL{
         sslInitialized = true;
       }
     }
-    Debug.debug("Activating SSL with password "+GridPilot.keyPassword, 2);
-    super.activateSSL(GridPilot.certFile, GridPilot.keyFile, GridPilot.keyPassword, GridPilot.caCertsDir);
+    Debug.debug("Activating SSL with password "+GridPilot.KEY_PASSWORD, 2);
+    super.activateSSL(GridPilot.CERT_FILE, GridPilot.KEY_FILE, GridPilot.KEY_PASSWORD, GridPilot.CA_CERTS_DIR);
     credential = super.getCredential();
     sslOk = true;
   }
@@ -113,7 +113,7 @@ public class MySSL extends SSL{
       Debug.debug("Proxy already ok", 3);
       return;
     }
-    Debug.debug("Activating proxy SSL with password "+GridPilot.keyPassword, 2);
+    Debug.debug("Activating proxy SSL with password "+GridPilot.KEY_PASSWORD, 2);
     initalizeCACertsDir();
     initalizeVomsDir();
     getGridCredential();
@@ -126,7 +126,7 @@ public class MySSL extends SSL{
   }
   
   public X509Certificate getX509UserCert() throws IOException, GeneralSecurityException{
-    x509UserCert = CertUtil.loadCertificate(MyUtil.clearTildeLocally(GridPilot.certFile));
+    x509UserCert = CertUtil.loadCertificate(MyUtil.clearTildeLocally(GridPilot.CERT_FILE));
     return x509UserCert;
   }
   
@@ -145,15 +145,15 @@ public class MySSL extends SSL{
       caCertsTmpdir = caCertsDir;
     }
     
-    GridPilot.caCertsDir = caCertsDir;
+    GridPilot.CA_CERTS_DIR = caCertsDir;
     CoGProperties.setDefault(prop);
     Debug.debug("COG defaults now:\n"+CoGProperties.getDefault(), 3);
     Debug.debug("COG defaults file:\n"+CoGProperties.configFile, 3);
   }
   
   private void initalizeVomsDir() {
-    if(GridPilot.vomsDir==null || GridPilot.vomsDir.equals("")){
-      GridPilot.vomsDir = setupDefaultVomsDir();
+    if(GridPilot.VOMS_DIR==null || GridPilot.VOMS_DIR.equals("")){
+      GridPilot.VOMS_DIR = setupDefaultVomsDir();
     }
   }
   
@@ -166,7 +166,7 @@ public class MySSL extends SSL{
       // avoids that dozens of popups open if
       // you submit dozen of jobs and proxy not initialized
       try{
-        if(credential==null || credential.getRemainingLifetime()<GridPilot.proxyTimeLeftLimit ||
+        if(credential==null || credential.getRemainingLifetime()<GridPilot.PROXY_TIME_LEFT_LIMIT ||
             !getProxyFile().exists()){
           Debug.debug("Initializing credential", 3);
           initGridProxy();
@@ -174,7 +174,7 @@ public class MySSL extends SSL{
           gridProxyInitialized = Boolean.TRUE;
           if(credential!=null){
             Debug.debug("Initialized credential "+credential.getRemainingLifetime()+
-                ":"+GridPilot.proxyTimeLeftLimit, 3);
+                ":"+GridPilot.PROXY_TIME_LEFT_LIMIT, 3);
           }
         }
         else{
@@ -258,8 +258,8 @@ public class MySSL extends SSL{
   private String [] getFirstCheckCredentials(){
     String [] credentials;
     String password;
-    if(GridPilot.keyPassword!=null){
-      password = GridPilot.keyPassword;
+    if(GridPilot.KEY_PASSWORD!=null){
+      password = GridPilot.KEY_PASSWORD;
     }
     else{
       password = "";
@@ -267,7 +267,7 @@ public class MySSL extends SSL{
     // Check if we are using test credentials
     String dn = null;
     try{
-      dn = MyUtil.getDN(GridPilot.certFile);
+      dn = MyUtil.getDN(GridPilot.CERT_FILE);
     }
     catch(Exception ee){
       //ee.printStackTrace();
@@ -278,8 +278,8 @@ public class MySSL extends SSL{
     }
     credentials = new String [] {
         password,
-        clearTildeLocally(clearFile(GridPilot.keyFile)),
-        clearTildeLocally(clearFile(GridPilot.certFile))};
+        clearTildeLocally(clearFile(GridPilot.KEY_FILE)),
+        clearTildeLocally(clearFile(GridPilot.CERT_FILE))};
     Debug.debug("Trying with credentials "+MyUtil.arrayToString(credentials), 2);
     return credentials;
   }
@@ -292,16 +292,16 @@ public class MySSL extends SSL{
     String [] credentials = null;
     for(int i=0; i<=4; ++i){
       // First see if we can decrypt using any supplied password or "".
-      if(GridPilot.keyFile!=null && !GridPilot.keyFile.equals("") &&
-          GridPilot.certFile!=null && !GridPilot.certFile.equals("") &&
+      if(GridPilot.KEY_FILE!=null && !GridPilot.KEY_FILE.equals("") &&
+          GridPilot.CERT_FILE!=null && !GridPilot.CERT_FILE.equals("") &&
           i==0){
         credentials = getFirstCheckCredentials();
       }
       // Otherwise, ask for password
       else{
         try{
-          credentials = askForPassword(GridPilot.keyFile, GridPilot.certFile,
-              GridPilot.keyPassword);
+          credentials = askForPassword(GridPilot.KEY_FILE, GridPilot.CERT_FILE,
+              GridPilot.KEY_PASSWORD);
         }
         catch(IllegalArgumentException e){
           // cancelling
@@ -317,10 +317,10 @@ public class MySSL extends SSL{
             key.decrypt(credentials[0]);
           }
         // Keep password in memory - needed by mysql plugin
-        GridPilot.certFile = credentials[2];
-        GridPilot.keyFile = credentials[1];
+        GridPilot.CERT_FILE = credentials[2];
+        GridPilot.KEY_FILE = credentials[1];
         Debug.debug("Setting grid password to "+credentials[0], 3);
-        GridPilot.keyPassword = credentials[0];
+        GridPilot.KEY_PASSWORD = credentials[0];
       }
       catch(Exception e){
         e.printStackTrace();
@@ -334,13 +334,13 @@ public class MySSL extends SSL{
   private int getProxyType(){
     // This works with ARC and gLite (well, would if it had VOMS extensions)
     //int proxyType = GSIConstants.DELEGATION_FULL;
-    if(GridPilot.proxyType.equalsIgnoreCase(PROXY_TYPE_OLD)){
+    if(GridPilot.PROXY_TYPE.equalsIgnoreCase(PROXY_TYPE_OLD)){
       return GSIConstants.GSI_2_PROXY;
     }
-    else if(GridPilot.proxyType.equalsIgnoreCase(PROXY_TYPE_GLOBUS)){
+    else if(GridPilot.PROXY_TYPE.equalsIgnoreCase(PROXY_TYPE_GLOBUS)){
       return GSIConstants.GSI_3_IMPERSONATION_PROXY;
     }
-    else if(GridPilot.proxyType.equalsIgnoreCase(PROXY_TYPE_RFC)){
+    else if(GridPilot.PROXY_TYPE.equalsIgnoreCase(PROXY_TYPE_RFC)){
       return GSIConstants.GSI_4_IMPERSONATION_PROXY;
     }
     // default
@@ -348,14 +348,14 @@ public class MySSL extends SSL{
   }
   
   private int getVomsProxyType(){
-    if(GridPilot.proxyType.equalsIgnoreCase(PROXY_TYPE_OLD)){
+    if(GridPilot.PROXY_TYPE.equalsIgnoreCase(PROXY_TYPE_OLD)){
       // This works with gLite and ARC
       return VomsProxyFactory.OID_OLD;
     }
-    else if(GridPilot.proxyType.equalsIgnoreCase(PROXY_TYPE_GLOBUS)){
+    else if(GridPilot.PROXY_TYPE.equalsIgnoreCase(PROXY_TYPE_GLOBUS)){
       return VomsProxyFactory.OID_GLOBUS;
     }
-    else if(GridPilot.proxyType.equalsIgnoreCase(PROXY_TYPE_RFC)){
+    else if(GridPilot.PROXY_TYPE.equalsIgnoreCase(PROXY_TYPE_RFC)){
       return VomsProxyFactory.OID_RFC820;
     }
     // default
@@ -389,7 +389,7 @@ public class MySSL extends SSL{
     }
     
     // if credential ok, return
-    if(credential!=null && credential.getRemainingLifetime()>=GridPilot.proxyTimeLeftLimit){
+    if(credential!=null && credential.getRemainingLifetime()>=GridPilot.PROXY_TIME_LEFT_LIMIT){
       Debug.debug("proxy ok", 3);
       return;
     }
@@ -397,7 +397,7 @@ public class MySSL extends SSL{
     else{
       Debug.debug("proxy not ok: "+credential+": "+
           (credential!=null ? credential.getRemainingLifetime() : 0)+"<-->"+
-          GridPilot.proxyTimeLeftLimit, 3);
+          GridPilot.PROXY_TIME_LEFT_LIMIT, 3);
       // Create new proxy
       Debug.debug("creating new proxy", 3);
       String [] credentials = null;
@@ -410,16 +410,16 @@ public class MySSL extends SSL{
        */
       for(int i=0; i<=4; ++i){
         // First see if we can decrypt using any supplied password or "".
-        if(GridPilot.keyFile!=null && !GridPilot.keyFile.equals("") &&
-            GridPilot.certFile!=null && !GridPilot.certFile.equals("") &&
+        if(GridPilot.KEY_FILE!=null && !GridPilot.KEY_FILE.equals("") &&
+            GridPilot.CERT_FILE!=null && !GridPilot.CERT_FILE.equals("") &&
             i==0){
           credentials = getFirstCheckCredentials();
         }
         // Otherwise, ask for password
         else{
           try{
-            credentials = askForPassword(GridPilot.keyFile, GridPilot.certFile,
-                GridPilot.keyPassword);
+            credentials = askForPassword(GridPilot.KEY_FILE, GridPilot.CERT_FILE,
+                GridPilot.KEY_PASSWORD);
           }
           catch(IllegalArgumentException e){
             // cancelling
@@ -432,24 +432,24 @@ public class MySSL extends SSL{
           certFile = (new File(clearTildeLocally(MyUtil.clearFile(credentials[2])))).getAbsolutePath();
           keyFile = (new File(clearTildeLocally(MyUtil.clearFile(credentials[1])))).getAbsolutePath();
           keyPassword = credentials[0];
-          if(GridPilot.vomsServerURL==null || GridPilot.vomsServerURL.equals("") ||
+          if(GridPilot.VOMS_SERVER_URL==null || GridPilot.VOMS_SERVER_URL.equals("") ||
               i>1){
             /* Old implementation - no VOMS attributes. */
             cred = createProxy(credentials[1], credentials[2], credentials[0],
-                GridPilot.proxyTimeValid, GridPilot.PROXY_STRENGTH, getProxyType());
+                GridPilot.PROXY_TIME_VALID, GridPilot.PROXY_STRENGTH, getProxyType());
             credential = new GlobusGSSCredentialImpl(cred, GSSCredential.INITIATE_AND_ACCEPT);
           }
           else{
-            String vomsDir = GridPilot.vomsDir==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.vomsDir));
+            String vomsDir = GridPilot.VOMS_DIR==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.VOMS_DIR));
             String caCertsDirStr = caCertsDir==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(caCertsDir));
             
             // This works with gLite and ARC
             VomsProxyFactory vpf = new VomsProxyFactory(VomsProxyFactory.CERTIFICATE_PEM,
-                GridPilot.vomsServerURL, GridPilot.vo, keyPassword, proxy.getAbsolutePath(),
+                GridPilot.VOMS_SERVER_URL, GridPilot.VO, keyPassword, proxy.getAbsolutePath(),
                 certFile, keyFile, caCertsDirStr, vomsDir,
-                GridPilot.proxyTimeValid, VomsProxyFactory.DELEGATION_FULL,
+                GridPilot.PROXY_TIME_VALID, VomsProxyFactory.DELEGATION_FULL,
                 getVomsProxyType(),
-                GridPilot.fqan);
+                GridPilot.FQAN);
             credential = vpf.createProxy();
             if(credential instanceof GlobusGSSCredentialImpl) {
               cred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
@@ -457,17 +457,17 @@ public class MySSL extends SSL{
           }
           // Keep password in memory - needed by mysql plugin
           Debug.debug("Setting grid password to "+credentials[0], 3);
-          GridPilot.keyPassword = credentials[0];
+          GridPilot.KEY_PASSWORD = credentials[0];
           // Store key and cert locations in config file.
           String newKeyFile = MyUtil.replaceWithTildeLocally(keyFile);
           String newCertFile = MyUtil.replaceWithTildeLocally(certFile);
-          if(!newKeyFile.equals(GridPilot.keyFile) || !newCertFile.equals(GridPilot.certFile)){
-            GridPilot.keyFile = MyUtil.replaceWithTildeLocally(keyFile);
-            GridPilot.certFile = MyUtil.replaceWithTildeLocally(certFile);
+          if(!newKeyFile.equals(GridPilot.KEY_FILE) || !newCertFile.equals(GridPilot.CERT_FILE)){
+            GridPilot.KEY_FILE = MyUtil.replaceWithTildeLocally(keyFile);
+            GridPilot.CERT_FILE = MyUtil.replaceWithTildeLocally(certFile);
             GridPilot.getClassMgr().getConfigFile().setAttributes(
-                new String [] {GridPilot.topConfigSection, GridPilot.topConfigSection},
+                new String [] {GridPilot.TOP_CONFIG_SECTION, GridPilot.TOP_CONFIG_SECTION},
                 new String [] {"Certificate file", "Key file"},
-                new String [] {GridPilot.certFile, GridPilot.keyFile}
+                new String [] {GridPilot.CERT_FILE, GridPilot.KEY_FILE}
             );
           }
 
@@ -547,7 +547,7 @@ public class MySSL extends SSL{
     ImageIcon browseIcon;
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "folder_blue_open.png");
+      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "folder_blue_open.png");
       browseIcon = new ImageIcon(imgURL);
     }
     catch(Exception e){
@@ -557,7 +557,7 @@ public class MySSL extends SSL{
       }
       catch(Exception ee){
         e.printStackTrace();
-        Debug.debug("Could not find image "+ GridPilot.resourcesPath + "folder_blue_open.png", 0);
+        Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "folder_blue_open.png", 0);
         browseIcon = new ImageIcon();
       }
     }
@@ -616,8 +616,8 @@ public class MySSL extends SSL{
     
     Debug.debug("showing dialog", 3);
     
-    if(GridPilot.splash!=null){
-      GridPilot.splash.hide();
+    if(GridPilot.SPLASH!=null){
+      GridPilot.SPLASH.hide();
     }
     
     // TODO: doens't work... Cannot set focus in password field.
@@ -633,8 +633,8 @@ public class MySSL extends SSL{
         "Authenticate", JOptionPane.OK_CANCEL_OPTION);
     Debug.debug("showing dialog done", 3);
     
-    if(GridPilot.splash!=null){
-      GridPilot.splash.show();
+    if(GridPilot.SPLASH!=null){
+      GridPilot.SPLASH.show();
     }
     
     if(choice!=JOptionPane.OK_OPTION){
@@ -662,8 +662,8 @@ public class MySSL extends SSL{
     // This was an vain attempt to get gLite/WMProxy to work...
     //System.setProperty("org.globus.gsi.version", "3");
     // get user certificate
-    GridPilot.certFile = userCertFilename;
-    GridPilot.keyFile = userKeyFilename;
+    GridPilot.CERT_FILE = userCertFilename;
+    GridPilot.KEY_FILE = userKeyFilename;
     X509Certificate userCert = getX509UserCert();
     return createProxy(key, userCert, password, lifetime, strength, type);
 
@@ -699,7 +699,7 @@ public class MySSL extends SSL{
    * @return a File object representing the proxy file
    */
   public static File getProxyFile(){
-    String proxyDirectory = clearTildeLocally(GridPilot.proxyDir);
+    String proxyDirectory = clearTildeLocally(GridPilot.PROXY_DIR);
     if(proxyDirectory!=null && (new File(proxyDirectory)).exists() &&
         (new File(proxyDirectory)).isDirectory()){
       return new File(proxyDirectory+"/x509up_"+System.getProperty("user.name"));

@@ -1,12 +1,8 @@
 package gridpilot.dbplugins.hsqldb;
 
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.TimeZone;
 import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -1570,15 +1566,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
     for(int i = 1; i<jobDefFields.length; ++i){
       
       if(jobDefFields[i].equalsIgnoreCase("created")){
-        try{
-          values[i] = makeDate(values[i].toString());
-        }
-        catch(Exception e){
-          values[i] = makeDate("");
-        }
+        values[i] = fixDate(values[i].toString());
       }
       else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
-        values[i] = makeDate("");
+        values[i] = fixDate(null);
       }
       else if(isNumField(jobDefFields[i]) &&
           (values[i]==null || values[i].equals(""))){
@@ -1636,9 +1627,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     // Update DB with "request" and return success/failure
     // Fetch current date and time
-    SimpleDateFormat dateFormat = new SimpleDateFormat(GridPilot.dateFormatString);
-    dateFormat.setTimeZone(TimeZone.getDefault());
-    String dateString = dateFormat.format(new Date());
+    String dateString = MyUtil.makeDateString(null, GridPilot.DATE_FORMAT_STRING);
     // NOTICE: there must be a field jobDefinition.status
     String arg = "INSERT INTO jobDefinition (datasetName, status, ";
     for(int i=0; i<cstAttrNames.length; ++i){
@@ -1770,15 +1759,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
         val = val+"\n"+nonMatchedStr;
       }
       else if(datasetFields[i].equalsIgnoreCase("created")){
-        try{
-          val = makeDate(val);
-        }
-        catch(Exception e){
-          val = makeDate("");
-        }
+        val = fixDate(val);
       }
       else if(datasetFields[i].equalsIgnoreCase("lastModified")){
-        val = makeDate("");
+        val = fixDate(null);
       }
       else if(isFileCatalog() && datasetFields[i].equalsIgnoreCase(idField)){
         // Generate uuid if this is a file catalogue and the
@@ -1861,15 +1845,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
     sql += ") VALUES (";
     for(int i=1; i<transformationFields.length; ++i){
       if(transformationFields[i].equalsIgnoreCase("created")){
-        try{
-          values[i] = makeDate(values[i].toString());
-        }
-        catch(Exception e){
-          values[i] = makeDate("");
-        }
+        values[i] = fixDate((String) values[i]);
       }
       else if(transformationFields[i].equalsIgnoreCase("lastModified")){
-        values[i] = makeDate("");
+        values[i] = fixDate(null);
       }
       else{
         values[i] = "'"+dbEncode(values[i].toString())+"'";
@@ -1918,15 +1897,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
     sql += ") VALUES (";
     for(int i=1; i<runtimeEnvironmentFields.length; ++i){
       if(runtimeEnvironmentFields[i].equalsIgnoreCase("created")){
-        try{
-          values[i] = makeDate(values[i].toString());
-        }
-        catch(Exception e){
-          values[i] = makeDate("");
-        }
+        values[i] = fixDate((String) values[i]);
       }
       else if(runtimeEnvironmentFields[i].equalsIgnoreCase("lastModified")){
-        values[i] = makeDate("");
+        values[i] = fixDate(null);
       }
       else if(values[i]==null){
         values[i] = "''";
@@ -2033,15 +2007,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
           // only add if present in jobDefFields
           if(jobDefFields[i].equalsIgnoreCase(fields[j])){
             if(jobDefFields[i].equalsIgnoreCase("created")){
-              try{
-                values[j] = makeDate(values[j].toString());
-              }
-              catch(Exception e){
-                values[j] = makeDate("");
-              }
+              values[j] = fixDate((String) values[j]);
             }
             else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
-              values[j] = makeDate("");
+              values[j] = fixDate(null);
             }
             else if(isNumField(jobDefFields[i]) &&
                 (values[j]==null || values[j].equals(""))){
@@ -2105,15 +2074,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
           // only add if present in datasetFields
           if(fields[i].equalsIgnoreCase(datasetFields[j])){
             if(fields[i].equalsIgnoreCase("created")){
-              try{
-                values[i] = makeDate(values[j].toString());
-              }
-              catch(Exception e){
-                values[i] = makeDate("");
-              }
+              values[i] = fixDate((String) values[j]);
             }
             else if(fields[i].equalsIgnoreCase("lastModified")){
-              values[i] = makeDate("");
+              values[i] = fixDate(null);
             }
             else{
               values[i] = "'"+dbEncode(values[i])+"'";
@@ -2177,15 +2141,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
           // only add if present in transformationFields
           if(transformationFields[i].equalsIgnoreCase(fields[j])){
             if(transformationFields[i].equalsIgnoreCase("created")){
-              try{
-                values[j] = makeDate(values[j].toString());
-              }
-              catch(Exception e){
-                values[j] = makeDate("");
-              }
+              values[j] = fixDate((String) values[j]);
             }
             else if(transformationFields[i].equalsIgnoreCase("lastModified")){
-              values[j] = makeDate("");
+              values[j] = fixDate(null);
             }
             else{
               values[j] = "'"+dbEncode(values[j])+"'";
@@ -2249,15 +2208,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
           // only add if present in runtimeEnvironmentFields
           if(runtimeEnvironmentFields[i].equalsIgnoreCase(fields[j])){
             if(runtimeEnvironmentFields[i].equalsIgnoreCase("created")){
-              try{
-                values[j] = makeDate(values[j].toString());
-              }
-              catch(Exception e){
-                values[j] = makeDate("");
-              }
+              values[j] = fixDate((String) values[j]);
             }
             else if(runtimeEnvironmentFields[i].equalsIgnoreCase("lastModified")){
-              values[j] = makeDate("");
+              values[j] = fixDate(null);
             }
             else{
               values[j] = "'"+MyUtil.dbEncode(dbEncode(values[j]))+"'";
@@ -2506,26 +2460,6 @@ public class HSQLDBDatabase extends DBCache implements Database{
 
   public void clearError() {
     error = "";
-  }
-
-  private String makeDate(String dateInput){
-    try{
-      SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
-      String dateString = "";
-      if(dateInput == null || dateInput.equals("") || dateInput.equals("''")){
-        dateString = df.format(Calendar.getInstance().getTime());
-      }
-      else{
-        java.util.Date date = df.parse(dateInput);
-        dateString = df.format(date);
-      }
-      return "'"+dateString+"'";
-    }
-    catch(Throwable e){
-      Debug.debug("Could not set date. "+e.getMessage(), 1);
-      e.printStackTrace();
-      return dateInput;
-    }
   }
   
   public DBRecord getFile(String datasetName, String fileID, int findAllPFNs){
@@ -2977,6 +2911,30 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     String value1 = value.replaceAll("\\\\quote", "\\\'");
     return value1;
+  }
+  
+  /**
+   * Tries to parse date string and return in the format 'format'.
+   * @param dateInput
+   * @param format
+   * @return
+   */
+  public static String fixDate(String dateInput){
+    String dateString = "";
+    try{
+      if(dateInput==null || dateInput.equals("") || dateInput.equals("''")){
+        dateString = MyUtil.makeDateString(null, GridPilot.DATE_FORMAT_STRING);
+      }
+      else{
+        java.util.Date date = MyUtil.makeDate(dateInput);
+        dateString = MyUtil.makeDateString(date, GridPilot.DATE_FORMAT_STRING);
+      }
+    }
+    catch(Throwable e){
+      Debug.debug("Could not fix date "+dateInput+". "+e.getMessage(), 1);
+      e.printStackTrace();
+    }
+    return "'"+dateString+"'";
   }
   
   public String getFileID(String datasetName, String name){

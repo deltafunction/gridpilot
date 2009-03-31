@@ -9,7 +9,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -21,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
 
+import javax.crypto.NoSuchPaddingException;
 import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
 import javax.swing.SwingUtilities;
@@ -58,10 +63,12 @@ import org.jets3t.service.utils.ServiceUtils;
 
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
+import gridfactory.common.FileCacheMgr;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
 import gridfactory.common.StatusBar;
+import gridfactory.common.TransferInfo;
 import gridfactory.common.Util;
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;
@@ -88,12 +95,13 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   private Map s3ExistingObjectsMap = null;
   // Map of listener objctes. One object for each batch of transfers:
   // {id1, id2, id3, ...} -> s3ServiceEventListener, i.e. the keys are arrays of ids
-  private HashMap s3ServiceEventListeners = null;
+  private HashMap<TransferInfo [], MyS3ServiceEventListener> s3ServiceEventListeners = null;
   private HashMap<String, S3Bucket> myBuckets = null;
   private S3Object[] s3Objects = new S3Object [] {};
   private String accessKey = null;
   // Use to keep track of single-threaded transfers
-  private HashSet fileTransfers = null;
+  private HashSet<TransferInfo> fileTransfers = null;
+  private FileCacheMgr fileCacheMgr;
   
   private static boolean S3FOX_DIRECTORY_MODE = false;
   private static String S3FOX_DIRECTORY_SUFFIX = "_$folder$";
@@ -110,9 +118,10 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   public SSSFileTransfer(){
     PLUGIN_NAME = "sss";
     logFile = GridPilot.getClassMgr().getLogFile();
-    fileTransfers = new HashSet();
+    fileCacheMgr = GridPilot.getClassMgr().getFileCacheMgr();
+    fileTransfers = new HashSet<TransferInfo>();
     myBuckets = new HashMap<String, S3Bucket>();
-    s3ServiceEventListeners = new HashMap();
+    s3ServiceEventListeners = new HashMap<TransferInfo [], MyS3ServiceEventListener>();
     accessKey = GridPilot.getClassMgr().getConfigFile().getValue(PLUGIN_NAME,
        "AWS access key id");
     String secretKey = GridPilot.getClassMgr().getConfigFile().getValue(PLUGIN_NAME,
@@ -203,11 +212,8 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
    */
   public String[] startCopyFiles(GlobusURL[] srcUrls, GlobusURL[] destUrls)
       throws Exception{
-    
-    // TODO: write and use checkCache method - like in HTTPSFileTransfer
-    
-    String [] ids;
-    
+    TransferInfo [] transfers;
+    // Choose upload or download. We assume uniformity of URLs (should've been taken
     // Choose upload or download. We assume uniformity of URLs (should've been taken
     // care of by TransferControl via checkUrls).
     if(srcUrls.length==0){
@@ -215,21 +221,29 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     }
     if(srcUrls[0].getProtocol().equalsIgnoreCase("file") &&
         destUrls[0].getProtocol().equalsIgnoreCase(PLUGIN_NAME)){
-      ids = startUpload(srcUrls, destUrls);
+      transfers = startUpload(srcUrls, destUrls);
     }
     else if(srcUrls[0].getProtocol().equalsIgnoreCase(PLUGIN_NAME) &&
         destUrls[0].getProtocol().equalsIgnoreCase("file")){
-      ids = startDownload(srcUrls, destUrls);
+      transfers = startDownload(srcUrls, destUrls);
     }
     else{
       throw new IOException("Only download or upload is supported by this plugin.");
     }
+    String [] ids = new String[transfers.length];
+    for(int i=0; i<transfers.length; ++i){
+      ids[i] = getTransferID(transfers[i]);
+    }
     return ids;
   }
   
-  private String [] startUpload(GlobusURL[] srcUrls, GlobusURL[] destUrls) throws IOException, S3ServiceException {
-    final String [] ids = new String[srcUrls.length];
-    String id = null;
+  private String getTransferID(TransferInfo transfer) {
+    return PLUGIN_NAME + "-copy::'" + transfer.getSource().getURL()+"' '"+transfer.getDestination().getURL()+"'";
+  }
+  
+  private TransferInfo [] startUpload(GlobusURL[] srcUrls, GlobusURL[] destUrls) throws IOException, S3ServiceException {
+    final TransferInfo [] transfers = new TransferInfo[srcUrls.length];
+    TransferInfo transfer = null;
     // Check that all are destined for the same bucket
     final S3Bucket bucket = getBucket(destUrls[0].getHost(), true);
     S3Bucket tmpbucket = null;
@@ -242,22 +256,21 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     // Construct Files
     final File [] uploadFiles = new File[srcUrls.length];
     for(int i=0; i<srcUrls.length; ++i){
-      id = PLUGIN_NAME + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
-      ids[i] = id;
+      transfer = new TransferInfo(srcUrls[i], destUrls[i]);
+      transfers[i] = transfer;
       uploadFiles[i] = new File(MyUtil.clearFile(srcUrls[i].getURL()));
     }
     ResThread t = new ResThread(){
       public void run(){
-        uploadObjects(uploadFiles, GridPilot.getClassMgr().getStatusBar(), bucket, ids);
+        uploadObjects(uploadFiles, GridPilot.getClassMgr().getStatusBar(), bucket, transfers);
       }
     };
     t.start();
-    return ids;
+    return transfers;
   }
 
-  private String [] startDownload(GlobusURL [] srcUrls, GlobusURL [] destUrls) throws IOException, S3ServiceException{
-    final String [] ids = new String[srcUrls.length];
-    String id = null;
+  private TransferInfo [] startDownload(GlobusURL [] srcUrls, GlobusURL [] destUrls) throws IOException, S3ServiceException{
+    final TransferInfo [] transfers = new TransferInfo[srcUrls.length];
     // We only support downloading to the same directory
     String path = getLocalPath(destUrls[0]);
     for(int i=0; i<destUrls.length; ++i){
@@ -283,7 +296,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     }
     // The URLs are of the form sss://bucket/some/file/name
     // getHost() --> bucket, getPath() --> some/file/name
-    Vector objectsVec = new Vector();
+    Vector<S3Object> objectsVec = new Vector<S3Object>();
     S3Object [] tmpObjects = null;
     String error = "";
     for(int i=0; i<srcUrls.length; ++i){
@@ -297,8 +310,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
         throw new IOException(error);
       }
       Collections.addAll(objectsVec, tmpObjects);
-      id = PLUGIN_NAME + "-copy::'" + srcUrls[i].getURL()+"' '"+destUrls[i].getURL()+"'";
-      ids[i] = id;
+      transfers[i] = new TransferInfo(srcUrls[i], destUrls[i]);
     }
     final S3Object [] objectsOnServer = (S3Object []) objectsVec.toArray(new S3Object[srcUrls.length]);
     final File dir = downloadDir;
@@ -306,7 +318,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       public void run(){
         try{
           downloadObjects(objectsOnServer, GridPilot.getClassMgr().getStatusBar(), bucket,
-             ids, dir);
+             transfers, dir);
         }
         catch(IOException e){
           logFile.addMessage("Problem downloading from S3.", e);
@@ -314,7 +326,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       }
     };
     t.start();
-    return ids;
+    return transfers;
   }
   
   private String getLocalPath(GlobusURL fileUrl){
@@ -331,14 +343,14 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   }
 
   public String getFullStatus(String fileTransferID) throws Exception{
-    String [] ids = null;
+    TransferInfo [] transfers = null;
     String ret = "";
     MyS3ServiceEventListener s3Listener = null;
-    for(Iterator it=s3ServiceEventListeners.keySet().iterator(); it.hasNext();){
-      ids = (String []) it.next();
-      for(int i=0; i<ids.length; ++i){
-        if(ids[i].equals(fileTransferID)){
-          s3Listener = ((MyS3ServiceEventListener) s3ServiceEventListeners.get(ids));
+    for(Iterator<TransferInfo []> it=s3ServiceEventListeners.keySet().iterator(); it.hasNext();){
+      transfers = it.next();
+      for(int i=0; i<transfers.length; ++i){
+        if(getTransferID(transfers[i]).equals(fileTransferID)){
+          s3Listener = ((MyS3ServiceEventListener) s3ServiceEventListeners.get(transfers));
           ret += "Status: "+s3Listener.getStatus();
           ret += "\nThreads: "+s3Listener.getThreadWatcher().getThreadCount();
           ret += "\nCompleted threads: "+s3Listener.getThreadWatcher().getCompletedThreads();
@@ -361,11 +373,11 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   }
 
   public String getStatus(String fileTransferID) throws Exception{
-    String [] ids = null;
+    TransferInfo [] ids = null;
     for(Iterator it=s3ServiceEventListeners.keySet().iterator(); it.hasNext();){
-      ids = (String []) it.next();
+      ids = (TransferInfo []) it.next();
       for(int i=0; i<ids.length; ++i){
-        if(ids[i].equals(fileTransferID)){
+        if(getTransferID(ids[i]).equals(fileTransferID)){
           return ((MyS3ServiceEventListener) s3ServiceEventListeners.get(ids)).getStatus();
         }
       }
@@ -419,13 +431,13 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   }
 
   public long getBytesTransferred(String fileTransferID) throws Exception{
-    String [] ids = null;
+    TransferInfo [] ids = null;
     long ret = 0;
     MyS3ServiceEventListener s3Listener = null;
     for(Iterator it=s3ServiceEventListeners.keySet().iterator(); it.hasNext();){
-      ids = (String []) it.next();
+      ids = (TransferInfo []) it.next();
       for(int i=0; i<ids.length; ++i){
-        if(ids[i].equals(fileTransferID)){
+        if(getTransferID(ids[i]).equals(fileTransferID)){
           s3Listener = ((MyS3ServiceEventListener) s3ServiceEventListeners.get(ids));
           if(s3Listener.getThreadWatcher().isBytesTransferredInfoAvailable()){
             ret = s3Listener.getThreadWatcher().getBytesTransferred();
@@ -438,14 +450,14 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   }
 
   public int getPercentComplete(String fileTransferID) throws Exception{
-    String [] ids = null;
+    TransferInfo [] ids = null;
     long transferredBytes = 0;
     long totalBytes = 0;
     MyS3ServiceEventListener s3Listener = null;
     for(Iterator it=s3ServiceEventListeners.keySet().iterator(); it.hasNext();){
-      ids = (String []) it.next();
+      ids = (TransferInfo []) it.next();
       for(int i=0; i<ids.length; ++i){
-        if(ids[i].equals(fileTransferID)){
+        if(getTransferID(ids[i]).equals(fileTransferID)){
           s3Listener = ((MyS3ServiceEventListener) s3ServiceEventListeners.get(ids));
           if(s3Listener.getThreadWatcher().isBytesTransferredInfoAvailable()){
             transferredBytes = s3Listener.getThreadWatcher().getBytesTransferred();
@@ -455,16 +467,16 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
         }
       }
     }
-    return (int) (100*transferredBytes/totalBytes);
+    return totalBytes==0 ? 0 : (int) (100*transferredBytes/totalBytes);
   }
 
   public void cancel(String fileTransferID) throws Exception{
-    String [] ids = null;
+    TransferInfo [] ids = null;
     MyS3ServiceEventListener s3Listener = null;
     for(Iterator it=s3ServiceEventListeners.keySet().iterator(); it.hasNext();){
-      ids = (String []) it.next();
+      ids = (TransferInfo []) it.next();
       for(int i=0; i<ids.length; ++i){
-        if(ids[i].equals(fileTransferID)){
+        if(getTransferID(ids[i]).equals(fileTransferID)){
           s3Listener = ((MyS3ServiceEventListener) s3ServiceEventListeners.get(ids));
           s3Listener.getThreadWatcher().cancelTask();
           return;
@@ -475,16 +487,28 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   }
 
   public void finalize(String fileTransferID) throws Exception{
-    String [] ids = null;
+    TransferInfo [] ids = null;
+    boolean ok = false;
     for(Iterator it=s3ServiceEventListeners.keySet().iterator(); it.hasNext();){
-      ids = (String []) it.next();
+      ids = (TransferInfo []) it.next();
       for(int i=0; i<ids.length; ++i){
-        if(ids[i].equals(fileTransferID)){
+        if(getTransferID(ids[i]).equals(fileTransferID)){
+          ok = true;
           break;
         }
       }
+      if(ok){
+        break;
+      }
     }
-    s3ServiceEventListeners.remove(ids);
+    if(ok){
+      File destinationFile;
+      for(int i=0; i<ids.length; ++i){
+        destinationFile = new File(ids[i].getDestination().getPath());
+        fileCacheMgr.writeCacheInfo(destinationFile);
+      }
+      s3ServiceEventListeners.remove(ids);
+    }
   }
 
   public void deleteFiles(GlobusURL [] destUrls) throws Exception{
@@ -557,9 +581,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     if(globusUrl.getURL().endsWith("/")){
       throw new IOException("ERROR: cannot download a directory. ");
     }
-    
     Debug.debug("Get "+globusUrl.getURL(), 3);
-
     Debug.debug("Getting "+globusUrl.getURL(), 3);
     if(statusBar!=null){
       ResThread t = new ResThread(){
@@ -569,7 +591,6 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       };
       SwingUtilities.invokeLater(t);
     }
-
     File downloadFile = null;
     String fileName = globusUrl.getPath().replaceFirst(".*/([^/]+)", "$1");
     if(downloadDirOrFile.isDirectory()){
@@ -598,12 +619,9 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       return;
     }
     final String objectKey = objects[0].getKey();
-
-    final String id = globusUrl.getURL()+"::"+downloadDirOrFile.getAbsolutePath();
-    fileTransfers.add(id);
-
+    final TransferInfo transfer = new TransferInfo(globusUrl, new GlobusURL("file://"+downloadDirOrFile.getAbsolutePath()));
+    fileTransfers.add(transfer);
     Debug.debug("Downloading "+globusUrl.getURL()+"->"+downloadFile.getAbsolutePath(), 3);
-    
     ResThread t = new ResThread(){
       public void run(){
         try{
@@ -612,7 +630,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
           byte[] buf = new byte[1024];
           int len;
           OutputStream out = new FileOutputStream(dlFile); 
-          while((len = in.read(buf))>0 && fileTransfers.contains(id)){
+          while((len = in.read(buf))>0 && fileTransfers.contains(transfer)){
             out.write(buf, 0, len);
           }
           in.close();
@@ -625,7 +643,6 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       }
     };
     t.start();
-    
     if(!MyUtil.myWaitForThread(t, PLUGIN_NAME, COPY_TIMEOUT, "getFile", new Boolean(true))){
       throw new IOException("Download taking too long (>"+COPY_TIMEOUT+" ms). Cancelling.");
     }
@@ -635,7 +652,6 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       }
       throw t.getException();
     }
-   
     // if we didn't get an exception, the file got downloaded
     if(statusBar!=null){
       statusBar.setLabel("Download done");
@@ -919,7 +935,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
   }
   
   private void uploadObjects(File[] uploadFiles, StatusBar statusBar, final S3Bucket bucket,
-      String [] ids){
+      TransferInfo [] ids){
     
     FileComparer fc = new FileComparer(s3Service.getJetS3tProperties());
     
@@ -947,13 +963,13 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       }).start();
     }
     else{
-      compareAndCopyRemoteAndLocalFiles(filesForUploadMap, s3ExistingObjectsMap, true,
+      compareAndCopy(filesForUploadMap, s3ExistingObjectsMap, true,
          statusBar, null, bucket, ids);
     }
   }
 
   private void downloadObjects(S3Object [] s3Objects, StatusBar statusBar,
-      final S3Bucket bucket, final String [] ids, File downloadDirectory) throws IOException{
+      final S3Bucket bucket, final TransferInfo [] ids, File downloadDirectory) throws IOException{
     
     Debug.debug("Preparing for download in "+downloadDirectory.getAbsolutePath(), 3);
     
@@ -1001,27 +1017,24 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     }
     else{*/
       Debug.debug("Comparing remote and local files", 3);
-      compareAndCopyRemoteAndLocalFiles(filesAlreadyInDownloadDirectoryMap, s3DownloadObjectsMap,
+      compareAndCopy(filesAlreadyInDownloadDirectoryMap, s3DownloadObjectsMap,
          false, statusBar, downloadDirectory, bucket, ids);
     //}
   }
   
   private void performFilesUpload(FileComparerResults comparisonResults,
-      Map uploadingFilesMap, StatusBar statusBar, final S3Bucket bucket, String [] ids) throws Exception {
+      Map uploadingFilesMap, final StatusBar statusBar, final S3Bucket bucket, TransferInfo [] ids) throws Exception {
     // Determine which files to upload, prompting user whether to over-write existing files
     List fileKeysForUpload = new ArrayList();
     fileKeysForUpload.addAll(comparisonResults.onlyOnClientKeys);
-
     int newFiles = comparisonResults.onlyOnClientKeys.size();
     int unchangedFiles = comparisonResults.alreadySynchronisedKeys.size();
     int changedFiles = comparisonResults.updatedOnClientKeys.size() 
         + comparisonResults.updatedOnServerKeys.size();
-
       if(unchangedFiles>0 || changedFiles>0){
           logFile.addMessage("Files for upload clash with existing S3 objects");
           String message = "Of the " + uploadingFilesMap.size() 
-              + " file(s) being uploaded:\n\n";
-          
+              + " file(s) being uploaded:\n\n";        
           if(newFiles>0){
               message += newFiles + " file(s) are new.\n\n";
           }
@@ -1032,16 +1045,12 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
               message += unchangedFiles + " file(s) already exist and are unchanged.\n\n";
           }
           message += "Click \"OK\" to proceed or \"Cancel\" to cancel.";
-          
           ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-          
           int response = confirmBox.getConfirm("Files already exist!", message,
               new Object[] {"OK", "Cancel"}, null, null, false);
-          
           if(response!=1){
               return;
           }
-          
           fileKeysForUpload.addAll(comparisonResults.updatedOnClientKeys);
           fileKeysForUpload.addAll(comparisonResults.updatedOnServerKeys);
           fileKeysForUpload.addAll(comparisonResults.alreadySynchronisedKeys);
@@ -1051,7 +1060,6 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       if(fileKeysForUpload.size()==0){
         return;
       }
-      
       final JProgressBar pb = new JProgressBar();
       if(statusBar!=null){
         statusBar.setLabel("Prepared 0 of " + fileKeysForUpload.size() 
@@ -1059,63 +1067,23 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
         pb.setMaximum(fileKeysForUpload.size());
         statusBar.setProgressBar(pb);
       }
-      
       // Populate S3Objects representing upload files with metadata etc.
       final S3Object[] objects = new S3Object[fileKeysForUpload.size()];
       int objectIndex = 0;
-      for(Iterator iter = fileKeysForUpload.iterator(); iter.hasNext();) {
+      pb.setMaximum(fileKeysForUpload.size());
+      for(Iterator iter = fileKeysForUpload.iterator(); iter.hasNext();){
         String fileKey = iter.next().toString();
         File file = (File) uploadingFilesMap.get(fileKey);
-        
-        S3Object newObject = new S3Object(fileKey);
-                
-        if(file.isDirectory()){   
-          newObject.setContentType(Mimetypes.MIMETYPE_JETS3T_DIRECTORY);
-          /* This is to be compatible with the S3 Organizer Firefox plugin (S3Fox).
-          The plugin does not use setContentType but instead the hack
-          of appending "_$folder$" to the name in order to tag something
-          as a directory. */
-          if(S3FOX_DIRECTORY_MODE){
-            newObject = new S3Object(fileKey+S3FOX_DIRECTORY_SUFFIX);
-          }
-        }
-        else{     
-          newObject.setContentType(Mimetypes.getInstance().getMimetype(file));
-          
-          // Do any necessary file pre-processing.
-          File fileToUpload = prepareUploadFile(file, newObject);
-          
-          newObject.addMetadata(Constants.METADATA_JETS3T_LOCAL_FILE_DATE, 
-              ServiceUtils.formatIso8601Date(new Date(file.lastModified())));
-          newObject.setContentLength(fileToUpload.length());
-          newObject.setDataInputFile(fileToUpload);
-          
-          // Compute the upload file's MD5 hash.
-          newObject.setMd5Hash(ServiceUtils.computeMD5Hash(
-              new FileInputStream(fileToUpload)));
-          
-          if(!fileToUpload.equals(file)){
-            // Compute the MD5 hash of the *original* file, if upload file has been altered
-            // through encryption or gzipping.
-            newObject.addMetadata(
-                S3Object.METADATA_HEADER_ORIGINAL_HASH_MD5,
-                ServiceUtils.toBase64(ServiceUtils.computeMD5Hash(new FileInputStream(file))));
-          }
-          statusBar.setLabel("Prepared " + (objectIndex + 1) 
-              + " of " + fileKeysForUpload.size() + " file(s) for upload");
-          pb.setMaximum((objectIndex + 1));
-        }
-        if(!filesWorldReadable){
-          newObject.setAcl(AccessControlList.REST_CANNED_PUBLIC_READ);
-        }
-        objects[objectIndex++] = newObject;
+        objects[objectIndex++] = createS3Object(file, fileKey);
+        pb.setValue(objectIndex+1);
+        statusBar.setLabel("Prepared " + (objectIndex + 1) 
+            + " of " + fileKeysForUpload.size() + " file(s) for upload");
       }
       statusBar.removeProgressBar(pb);
-      
+      statusBar.setLabel("");      
       S3ServiceEventListener s3Listener = new MyS3ServiceEventListener();
       final S3ServiceMulti s3ServiceMulti = new S3ServiceMulti(s3Service, s3Listener);
-      s3ServiceEventListeners.put(ids, s3Listener);
-      
+      s3ServiceEventListeners.put(ids, (MyS3ServiceEventListener) s3Listener);
       // Upload the files.
       Runnable r = new Runnable(){
         public void run(){
@@ -1125,132 +1093,101 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       r.run();
   }
 
+  private S3Object createS3Object(File file, String fileKey) throws Exception {
+    S3Object newObject = new S3Object(fileKey);
+    if(file.isDirectory()){   
+      newObject.setContentType(Mimetypes.MIMETYPE_JETS3T_DIRECTORY);
+      /* This is to be compatible with the S3 Organizer Firefox plugin (S3Fox).
+      The plugin does not use setContentType but instead the hack
+      of appending "_$folder$" to the name in order to tag something
+      as a directory. */
+      if(S3FOX_DIRECTORY_MODE){
+        newObject = new S3Object(fileKey+S3FOX_DIRECTORY_SUFFIX);
+      }
+    }
+    else{     
+      newObject.setContentType(Mimetypes.getInstance().getMimetype(file));
+      // Do any necessary file pre-processing.
+      File fileToUpload = prepareUploadFile(file, newObject);
+      newObject.addMetadata(Constants.METADATA_JETS3T_LOCAL_FILE_DATE, 
+          ServiceUtils.formatIso8601Date(new Date(file.lastModified())));
+      newObject.setContentLength(fileToUpload.length());
+      newObject.setDataInputFile(fileToUpload);
+      // Compute the upload file's MD5 hash.
+      newObject.setMd5Hash(ServiceUtils.computeMD5Hash(
+          new FileInputStream(fileToUpload)));
+      if(!fileToUpload.equals(file)){
+        // Compute the MD5 hash of the *original* file, if upload file has been altered
+        // through encryption or gzipping.
+        newObject.addMetadata(
+            S3Object.METADATA_HEADER_ORIGINAL_HASH_MD5,
+            ServiceUtils.toBase64(ServiceUtils.computeMD5Hash(new FileInputStream(file))));
+      }
+    }
+    if(!filesWorldReadable){
+      newObject.setAcl(AccessControlList.REST_CANNED_PUBLIC_READ);
+    }
+    return newObject;
+  }
+
   private void performObjectsDownload(FileComparerResults comparisonResults,
-      Map s3DownloadObjectsMap, File downloadDirectory, final S3Bucket bucket, String [] ids) throws Exception {        
+      Map s3DownloadObjectsMap, File downloadDirectory, final S3Bucket bucket, TransferInfo [] ids) throws Exception {        
     // Determine which files to download, prompting user whether to over-write existing files
     List objectKeysForDownload = new ArrayList();
     objectKeysForDownload.addAll(comparisonResults.onlyOnServerKeys);
-
     int newFiles = comparisonResults.onlyOnServerKeys.size();
     int unchangedFiles = comparisonResults.alreadySynchronisedKeys.size();
     int changedFiles = comparisonResults.updatedOnClientKeys.size() 
-        + comparisonResults.updatedOnServerKeys.size();
-
+       + comparisonResults.updatedOnServerKeys.size();
     if(unchangedFiles>0 || changedFiles>0){
       logFile.addMessage("Files for download clash with existing local files");
       String message = "Of the " + (newFiles + unchangedFiles + changedFiles) 
-          + " file(s) being downloaded:\n\n";
-      
+         + " file(s) being downloaded:\n\n";
       if(newFiles>0){
-          message += newFiles + " file(s) are new.\n\n";
+        message += newFiles + " file(s) are new.\n\n";
       }
       if(changedFiles>0){
-          message += changedFiles + " file(s) have changed.\n\n";
+        message += changedFiles + " file(s) have changed.\n\n";
       }
       if(unchangedFiles>0){
-          message += unchangedFiles + " file(s) already exist and are unchanged.\n\n";
+        message += unchangedFiles + " file(s) already exist and are unchanged.\n\n";
       }
       message += "Click \"OK\" to proceed or \"Cancel\" to cancel.";
-      
       ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-      
       int response = confirmBox.getConfirm("Files already exist!", message,
-          new Object[] {"OK", "Cancel"}, null, null, false);
-      
+         new Object[] {"OK", "Cancel"}, null, null, false);
       if(response!=1){
-          return;
+        return;
       }
-      
       objectKeysForDownload.addAll(comparisonResults.updatedOnClientKeys);
       objectKeysForDownload.addAll(comparisonResults.updatedOnServerKeys);
-      objectKeysForDownload.addAll(comparisonResults.alreadySynchronisedKeys);
-    
+      objectKeysForDownload.addAll(comparisonResults.alreadySynchronisedKeys);    
     }
-
     Debug.debug("Downloading " + objectKeysForDownload.size() + " object(s)", 2);
     if(objectKeysForDownload.size()==0){
       return;
     }
-                
     // Create array of objects for download.        
     S3Object[] objects = new S3Object[objectKeysForDownload.size()];
     int objectIndex = 0;
     for(Iterator iter = objectKeysForDownload.iterator(); iter.hasNext();){
       objects[objectIndex++] = (S3Object) s3DownloadObjectsMap.get(iter.next()); 
     }
-                
-    HashMap downloadObjectsToFileMap = new HashMap();
-    ArrayList downloadPackageList = new ArrayList();
-
+    HashMap<String, File> downloadObjectsToFileMap = new HashMap<String, File>();
+    ArrayList<DownloadPackage> downloadPackageList = new ArrayList<DownloadPackage>();
+    DownloadPackage downloadPackage;
     // Setup files to write to, creating parent directories when necessary.
     for(int i=0; i<objects.length; i++){
-      File file = new File(downloadDirectory,
-          /*use this to download misc/file.txt to dldir/misc/file.txt*/
-          //objects[i].getKey()
-          /*use this to download misc/file.txt to dldir/file.txt*/
-          objects[i].getKey().replaceFirst("^.*/([^/]+)$", "$1")
-          );
-      
-      // Create directory corresponding to object, or parent directories of object.
-      if(Mimetypes.MIMETYPE_JETS3T_DIRECTORY.equals(objects[i].getContentType())) {
-        file.mkdirs();
-        // No further data to download for directories...
-        continue;
+      downloadPackage = createDownloadPackage(downloadDirectory, objects[i], downloadObjectsToFileMap);
+      if(downloadPackage!=null){
+        downloadPackageList.add(downloadPackage);            
       }
-      else{
-        if(file.getParentFile()!=null){
-          file.getParentFile().mkdirs();
-        }
-      }
-      
-      downloadObjectsToFileMap.put(objects[i].getKey(), file);
-
-      boolean isZipped = false;
-      EncryptionUtil encryptionUtil = null;
-      
-      if("gzip".equalsIgnoreCase(objects[i].getContentEncoding())
-          || objects[i].containsMetadata(Constants.METADATA_JETS3T_COMPRESSED)){
-        // Automatically inflate gzipped data.
-        isZipped = true;
-      }
-      if(objects[i].containsMetadata(Constants.METADATA_JETS3T_CRYPTO_ALGORITHM) ||
-          objects[i].containsMetadata(Constants.METADATA_JETS3T_ENCRYPTED_OBSOLETE)){
-        Debug.debug("Decrypting encrypted data for object: " + objects[i].getKey(), 2);
-        
-        // Prompt user for the password, if necessary.
-        if(encryptionPassword==null || encryptionPassword.equalsIgnoreCase("")){
-          throw new S3ServiceException(
-              "One or more objects are encrypted. GridPilot cannot download encrypted "
-              + "objects unless the encyption password is set in Preferences");
-        }
-
-        if(objects[i].containsMetadata(Constants.METADATA_JETS3T_ENCRYPTED_OBSOLETE)) {
-          // Item is encrypted with obsolete crypto.
-          logFile.addMessage("WARNING: Object is encrypted with out-dated crypto version, please update it when possible: " 
-              + objects[i].getKey());
-          encryptionUtil = EncryptionUtil.getObsoleteEncryptionUtil(encryptionPassword);                                            
-        }
-        else{
-          String algorithm = (String) objects[i].getMetadata(
-              Constants.METADATA_JETS3T_CRYPTO_ALGORITHM);
-          String version = (String) objects[i].getMetadata(
-              Constants.METADATA_JETS3T_CRYPTO_VERSION);
-          if (version == null) {
-              version = EncryptionUtil.DEFAULT_VERSION;
-          }
-          encryptionUtil = new EncryptionUtil(encryptionPassword, algorithm, version);                                            
-        }                    
-      }
-      
-      downloadPackageList.add(new DownloadPackage(
-          objects[i], file, isZipped, encryptionUtil));            
     }
-    
     // Download the files.
-    final DownloadPackage[] downloadPackagesArray = (DownloadPackage[])
+    final DownloadPackage[] downloadPackagesArray = 
         downloadPackageList.toArray(new DownloadPackage[downloadPackageList.size()]);            
     S3ServiceEventListener s3Listener = new MyS3ServiceEventListener();
-    s3ServiceEventListeners.put(ids, s3Listener);
+    s3ServiceEventListeners.put(ids, (MyS3ServiceEventListener) s3Listener);
     final S3ServiceMulti s3ServiceMulti = new S3ServiceMulti(s3Service, s3Listener);
     Runnable r = new Runnable(){
       public void run(){
@@ -1267,9 +1204,74 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     r.run();
   }
   
-  private void compareAndCopyRemoteAndLocalFiles(final Map localFilesMap, final Map s3ObjectsMap,
+  private DownloadPackage createDownloadPackage(File downloadDirectory, S3Object object, Map downloadObjectsToFileMap) throws S3ServiceException, InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeySpecException, UnsupportedEncodingException {
+    File destFile = new File(downloadDirectory,
+        /*use this to download misc/file.txt to dldir/misc/file.txt*/
+        //object.getKey()
+        /*use this to download misc/file.txt to dldir/file.txt*/
+        object.getKey().replaceFirst("^.*/([^/]+)$", "$1")
+        );
+    try{
+      long srcSize = object.getContentLength();
+      Date srcLastModified = object.getLastModifiedDate();
+      if(fileCacheMgr.checkCache(destFile, srcSize, srcLastModified)){
+        return null;
+      }
+    }
+    catch(Exception e){
+      logFile.addMessage("WARNING: problem checking cache. ", e);
+    }
+    // Create directory corresponding to object, or parent directories of object.
+    if(Mimetypes.MIMETYPE_JETS3T_DIRECTORY.equals(object.getContentType())) {
+      destFile.mkdirs();
+      // No further data to download for directories...
+      return null;
+    }
+    else{
+      if(destFile.getParentFile()!=null){
+        destFile.getParentFile().mkdirs();
+      }
+    }
+    downloadObjectsToFileMap.put(object.getKey(), destFile);
+    boolean isZipped = false;
+    EncryptionUtil encryptionUtil = null;
+    if("gzip".equalsIgnoreCase(object.getContentEncoding())
+        || object.containsMetadata(Constants.METADATA_JETS3T_COMPRESSED)){
+      // Automatically inflate gzipped data.
+      isZipped = true;
+    }
+    if(object.containsMetadata(Constants.METADATA_JETS3T_CRYPTO_ALGORITHM) ||
+        object.containsMetadata(Constants.METADATA_JETS3T_ENCRYPTED_OBSOLETE)){
+      Debug.debug("Decrypting encrypted data for object: " + object.getKey(), 2);
+      // Prompt user for the password, if necessary.
+      if(encryptionPassword==null || encryptionPassword.equalsIgnoreCase("")){
+        throw new S3ServiceException(
+            "One or more objects are encrypted. GridPilot cannot download encrypted "
+            + "objects unless the encyption password is set in Preferences");
+      }
+      if(object.containsMetadata(Constants.METADATA_JETS3T_ENCRYPTED_OBSOLETE)) {
+        // Item is encrypted with obsolete crypto.
+        logFile.addMessage("WARNING: Object is encrypted with out-dated crypto version, please update it when possible: " 
+            + object.getKey());
+        encryptionUtil = EncryptionUtil.getObsoleteEncryptionUtil(encryptionPassword);                                            
+      }
+      else{
+        String algorithm = (String) object.getMetadata(
+            Constants.METADATA_JETS3T_CRYPTO_ALGORITHM);
+        String version = (String) object.getMetadata(
+            Constants.METADATA_JETS3T_CRYPTO_VERSION);
+        if (version == null) {
+            version = EncryptionUtil.DEFAULT_VERSION;
+        }
+        encryptionUtil = new EncryptionUtil(encryptionPassword, algorithm, version);                                            
+      }                    
+    }
+    return new DownloadPackage(object, destFile, isZipped, encryptionUtil);
+  }
+
+  private void compareAndCopy(final Map localFilesMap, final Map s3ObjectsMap,
       final boolean upload, StatusBar statusBar, File downloadDirectory, S3Bucket bucket,
-      String [] ids){
+      TransferInfo [] ids){
     final JProgressBar pb = new JProgressBar();
     try{
       // Compare objects being downloaded and existing local files.
@@ -1285,24 +1287,23 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       // Calculate total files size.
       File[] files = (File[]) localFilesMap.values().toArray(new File[localFilesMap.size()]);
       final long filesSizeTotal[] = new long[1];
-      for (int i = 0; i < files.length; i++) {
-          filesSizeTotal[0] += files[i].length();
+      for(int i = 0; i < files.length; i++){
+        filesSizeTotal[0] += files[i].length();
       }
       
       // Monitor generation of MD5 hash, and provide feedback via the progress bar. 
       final long hashedBytesTotal[] = new long[1];
       hashedBytesTotal[0] = 0;
       final BytesProgressWatcher hashWatcher = new BytesProgressWatcher(filesSizeTotal[0]) {
-          public void updateBytesTransferred(long transferredBytes) {
-              hashedBytesTotal[0] += transferredBytes;
-              final int percentage = 
-                  (int) (100 * hashedBytesTotal[0] / filesSizeTotal[0]);
-              SwingUtilities.invokeLater(new Runnable(){
-                  public void run(){
-                    pb.setValue(percentage);
-                  }
-              });
-          }
+        public void updateBytesTransferred(long transferredBytes) {
+          hashedBytesTotal[0] += transferredBytes;
+          final int percentage =  (int) (100 * hashedBytesTotal[0] / filesSizeTotal[0]);
+          SwingUtilities.invokeLater(new Runnable(){
+            public void run(){
+              pb.setValue(percentage);
+            }
+          });
+        }
       };
       
       FileComparer fc = new FileComparer(s3Service.getJetS3tProperties());

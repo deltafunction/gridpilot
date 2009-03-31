@@ -53,7 +53,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
       }
     }
     workingDir = _workingDir;
-    runtimeDirectory = GridPilot.runtimeDir;
+    runtimeDirectory = GridPilot.RUNTIME_DIR;
     requiredRuntimeEnvs = GridPilot.getClassMgr().getConfigFile().getValues(
         csName, "Required runtime environments");
     ignoreBaseSystemAndVMRTEs = _ignoreBaseSystemAndVMRTEs;

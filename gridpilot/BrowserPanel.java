@@ -35,9 +35,9 @@ import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
 import gridfactory.common.StatusBar;
+import gridfactory.common.https.MyUrlCopy;
 import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 import gridpilot.ftplugins.https.HTTPSFileTransfer;
-import gridpilot.ftplugins.https.MyUrlCopy;
 import gridpilot.ftplugins.sss.SSSFileTransfer;
 
 
@@ -162,27 +162,27 @@ public class BrowserPanel extends JDialog implements ActionListener{
   
   private void readBrowserHistory(){
     String urlHistory = null;
-    Debug.debug("browser history file: "+GridPilot.browserHistoryFile, 2);
-    if(GridPilot.browserHistoryFile!=null && !GridPilot.browserHistoryFile.equals("")){
-      if(GridPilot.browserHistoryFile.startsWith("~")){
+    Debug.debug("browser history file: "+GridPilot.BROWSER_HISTORY_FILE, 2);
+    if(GridPilot.BROWSER_HISTORY_FILE!=null && !GridPilot.BROWSER_HISTORY_FILE.equals("")){
+      if(GridPilot.BROWSER_HISTORY_FILE.startsWith("~")){
         String homeDir = System.getProperty("user.home");
         if(!homeDir.endsWith(File.separator)){
           homeDir += File.separator;
         }
-        GridPilot.browserHistoryFile = homeDir+GridPilot.browserHistoryFile.substring(1);
+        GridPilot.BROWSER_HISTORY_FILE = homeDir+GridPilot.BROWSER_HISTORY_FILE.substring(1);
       }
       try{
-        if(!LocalStaticShell.existsFile(GridPilot.browserHistoryFile)){
+        if(!LocalStaticShell.existsFile(GridPilot.BROWSER_HISTORY_FILE)){
           Debug.debug("trying to create file", 2);
-          LocalStaticShell.writeFile(GridPilot.browserHistoryFile, "", false);
+          LocalStaticShell.writeFile(GridPilot.BROWSER_HISTORY_FILE, "", false);
         }
-        urlHistory = LocalStaticShell.readFile(GridPilot.browserHistoryFile);
+        urlHistory = LocalStaticShell.readFile(GridPilot.BROWSER_HISTORY_FILE);
         saveUrlHistory = true;
       }
       catch(Exception e){
-        Debug.debug("WARNING: could not use "+GridPilot.browserHistoryFile+
+        Debug.debug("WARNING: could not use "+GridPilot.BROWSER_HISTORY_FILE+
             " as history file.", 1);
-        GridPilot.browserHistoryFile = null;
+        GridPilot.BROWSER_HISTORY_FILE = null;
         urlHistory = null;
       }
     }
@@ -191,14 +191,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
         urlHistory!=null && !urlHistory.equals("")){
       BufferedReader in = null;
       try{
-        Debug.debug("Reading file "+GridPilot.browserHistoryFile, 3);
+        Debug.debug("Reading file "+GridPilot.BROWSER_HISTORY_FILE, 3);
         in = new BufferedReader(
-          new InputStreamReader((new URL("file:"+GridPilot.browserHistoryFile)).openStream()));
+          new InputStreamReader((new URL("file:"+GridPilot.BROWSER_HISTORY_FILE)).openStream()));
       }
       catch(IOException ioe){
-        Debug.debug("WARNING: could not use "+GridPilot.browserHistoryFile+
+        Debug.debug("WARNING: could not use "+GridPilot.BROWSER_HISTORY_FILE+
             " as history file.", 1);
-        GridPilot.browserHistoryFile = null;
+        GridPilot.BROWSER_HISTORY_FILE = null;
         urlHistory = null;
       }
       try{
@@ -215,9 +215,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
         in.close();
       }
       catch(IOException ioe){
-        Debug.debug("WARNING: could not use "+GridPilot.browserHistoryFile+
+        Debug.debug("WARNING: could not use "+GridPilot.BROWSER_HISTORY_FILE+
             " as history file.", 1);
-        GridPilot.browserHistoryFile = null;
+        GridPilot.BROWSER_HISTORY_FILE = null;
         urlHistory = null;
       }
     }
@@ -367,12 +367,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
     bRegister.setEnabled(false);
     bSave.setEnabled(false);
     
-    if(GridPilot.dbNames!=null){
+    if(GridPilot.DB_NAMES!=null){
       DBPluginMgr dbPluginMgr = null;
-      for(int i=0; i<GridPilot.dbNames.length; ++i){
+      for(int i=0; i<GridPilot.DB_NAMES.length; ++i){
         dbPluginMgr = null;
         try{
-          dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[i]);
+          dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.DB_NAMES[i]);
           if(dbPluginMgr==null || !dbPluginMgr.isFileCatalog()){
             throw new Exception();
           }
@@ -381,14 +381,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
           excludeDBs.add(Integer.toString(i));
           continue;
         }
-        miRegister.add(new JMenuItem(GridPilot.dbNames[i]));
+        miRegister.add(new JMenuItem(GridPilot.DB_NAMES[i]));
       }
-      JMenuItem [] jmiRegisterAll = new JMenuItem[GridPilot.dbNames.length];
-      for(int i=0; i<GridPilot.dbNames.length; ++i){
+      JMenuItem [] jmiRegisterAll = new JMenuItem[GridPilot.DB_NAMES.length];
+      for(int i=0; i<GridPilot.DB_NAMES.length; ++i){
         if(excludeDBs.contains(Integer.toString(i))){
           continue;
         }
-        jmiRegisterAll[i] = new JMenuItem(GridPilot.dbNames[i]);
+        jmiRegisterAll[i] = new JMenuItem(GridPilot.DB_NAMES[i]);
         jmiRegisterAll[i].addActionListener(new ActionListener(){
           public void actionPerformed(ActionEvent ev){
             registerAll(((JMenuItem) ev.getSource()).getText());
@@ -417,21 +417,21 @@ public class BrowserPanel extends JDialog implements ActionListener{
       ImageIcon homeIcon = null;
       URL imgURL = null;
       try{
-        imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "folder_home2.png");
+        imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "folder_home2.png");
         homeIcon = new ImageIcon(imgURL);
       }
       catch(Exception e){
-        Debug.debug("Could not find image "+ GridPilot.resourcesPath + "folder_home2.png", 3);
+        Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "folder_home2.png", 3);
         //homeIcon = new ImageIcon();
       }
       ImageIcon enterIcon = null;
       imgURL=null;
       try{
-        imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "key_enter.png");
+        imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "key_enter.png");
         enterIcon = new ImageIcon(imgURL);
       }
       catch(Exception e){
-        Debug.debug("Could not find image "+ GridPilot.resourcesPath + "key_enter.png", 3);
+        Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "key_enter.png", 3);
         //enterIcon = new ImageIcon();
       }
       JButton bHome = null;
@@ -450,12 +450,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
             public void run(){
               try{
                 statusBar.setLabel("Opening URL...");
-                setDisplay(GridPilot.gridHomeURL);
+                setDisplay(GridPilot.GRID_HOME_URL);
               }
               catch(Exception ee){
-                statusBar.setLabel("ERROR: could not open "+GridPilot.gridHomeURL+
+                statusBar.setLabel("ERROR: could not open "+GridPilot.GRID_HOME_URL+
                     ". "+ee.getMessage());
-                Debug.debug("ERROR: could not open "+GridPilot.gridHomeURL+
+                Debug.debug("ERROR: could not open "+GridPilot.GRID_HOME_URL+
                     ". "+ee.getMessage(), 1);
                 ee.printStackTrace();
               }
@@ -499,7 +499,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       });
 
       JPanel jpNavigation = new JPanel(new GridBagLayout());
-      if(!GridPilot.firstRun){
+      if(!GridPilot.IS_FIRST_RUN){
         jpNavigation.add(bHome);
       }
       jpNavigation.add(new JLabel(" "));
@@ -588,7 +588,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           statusBar.setLabel(url);
           if(bRegister.isEnabled() && !url.endsWith("/")){
             int ii = 0;
-            for(int i=0; i<GridPilot.dbNames.length; ++i){
+            for(int i=0; i<GridPilot.DB_NAMES.length; ++i){
               if(excludeDBs.contains(Integer.toString(i))){
                 continue;
               }
@@ -629,9 +629,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
         else if(e.getEventType()==HyperlinkEvent.EventType.EXITED){
           statusBar.setLabel(" ");
           try{
-            if(GridPilot.dbNames!=null){
+            if(GridPilot.DB_NAMES!=null){
               int ii = 0;
-              for(int i=0; i<GridPilot.dbNames.length; ++i){
+              for(int i=0; i<GridPilot.DB_NAMES.length; ++i){
                 if(excludeDBs.contains(Integer.toString(i))){
                   continue;
                 }
@@ -1863,7 +1863,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     Debug.debug("Saving history", 3);
     if(saveUrlHistory){
       try{
-        LocalStaticShell.writeFile(GridPilot.browserHistoryFile,
+        LocalStaticShell.writeFile(GridPilot.BROWSER_HISTORY_FILE,
            MyUtil.arrayToString(urlList.toArray(),"\n"), false);
       }
       catch(Exception e){

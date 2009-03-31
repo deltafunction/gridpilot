@@ -73,7 +73,7 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
     EC2SoapMonitoringPanel panel = new EC2SoapMonitoringPanel(ec2mgr);
     // This causes the panel to be added to the monitoring window as a tab,
     // right after the transfer monitoring tab and before the log tab.
-    GridPilot.extraMonitorTabs.add(panel);
+    GridPilot.EXTRA_MONITOR_TABS.add(panel);
         
     try{
       String mms = GridPilot.getClassMgr().getConfigFile().getValue(csName,
@@ -152,8 +152,8 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
     String msg = "You have "+instances.size()+" running EC2 AMI instance(s).\n" +
        "Do you want to include it/them in the pool of compute hosts?";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-    if(GridPilot.splash!=null){
-      GridPilot.splash.hide();
+    if(GridPilot.SPLASH!=null){
+      GridPilot.SPLASH.hide();
     }
     int choice = -1;
     try{

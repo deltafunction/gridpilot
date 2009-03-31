@@ -146,12 +146,12 @@ public class SubmissionControl{
     Debug.debug("Setting time between submissions "+timeBetweenSubmissions, 3);
     timer.setInitialDelay(0);
     timer.setDelay(timeBetweenSubmissions);
-    String resourcesPath = configFile.getValue(GridPilot.topConfigSection, "resources");
+    String resourcesPath = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "resources");
     if(resourcesPath!=null && !resourcesPath.endsWith("/"))
       resourcesPath += "/";
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "submitting.png");
+      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "submitting.png");
       iconSubmitting = new ImageIcon(imgURL);
     }
     catch(Exception e){
@@ -159,7 +159,7 @@ public class SubmissionControl{
       iconSubmitting = new ImageIcon();
     }
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "waiting.png");
+      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "waiting.png");
       iconWaiting = new ImageIcon(imgURL);
     }
     catch(Exception e){

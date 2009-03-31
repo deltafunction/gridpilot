@@ -26,76 +26,78 @@ import javax.swing.*;
 public class GridPilot extends JApplet{
   
   private static final long serialVersionUID = 1L;
+  
   private boolean packFrame = false;
+  
   private GlobalFrame frame;
-  private static ClassMgr classMgr = new ClassMgr();
-  private static boolean applet = true;  
-  private static String debugLevel = "0";
-  private static String proxyHost = null;
-  private static String proxyPort = null;
-  private static JLabel exitPanel = new JLabel();
-  private static JPanel topExitPanel = new JPanel();
+  private static ClassMgr CLASS_MGR = new ClassMgr();
+  private static boolean IS_APPLET = true;  
+  private static String DEBUG_LEVEL = "0";
+  private static String PROXY_HOST = null;
+  private static String PROXY_PORT = null;
+  private static JLabel EXIT_PANEL = new JLabel();
+  private static JPanel TOP_EXIT_PANEL = new JPanel();
   /** List of files that will be deleted on exit. */
-  private static HashMap<String, File> tmpFiles = new HashMap<String, File>();
+  private static HashMap<String, File> TMP_FILES = new HashMap<String, File>();
   
   protected static String userConfFileName;
   /**
    * List of main section headers in config file
    */
-  public static String [] configSections =
+  public static String [] CONFIG_SECTIONS =
     {"File transfer systems", "Databases", "Computing systems"};
   /**
    * List of items that will not be included in the GUI preferences editor.
    */
-  public static String [] myExcludeItems = {"Systems", "*field*", "class", "driver",
+  public static String [] MY_EXCLUDE_ITEMS = {"Systems", "*field*", "class", "driver",
       "parameters", "randomized", "* name", "* identifier", "* reference", "default user"};
-  public static String topConfigSection = "GridPilot";
-  public static String defaultConfFileNameUnix = ".gridpilot";
-  public static String defaultConfFileNameWindows = "gridpilot.conf";
-  public static String [] preferredFileServers = null;
-  public static int fileRows = 300;
-  public static String logFileName = "gridpilot.log";
-  public static String [] jobColorMapping;
-  public static String [] transferColorMapping;
-  public static String[] jobStatusFields;
-  public static String[] transferStatusFields;
-  public static String resourcesPath = "";
-  public static String [] tabs = null;
-  public static Splash splash;
+  public static String TOP_CONFIG_SECTION = "GridPilot";
+  public static String DEFAULT_CONF_FILE_NAME_UNIX = ".gridpilot";
+  public static String DEFAULT_FILE_NAME_WINDOWS = "gridpilot.conf";
+  public static String [] PREFERRED_FILE_SERVERS = null;
+  public static int FILE_ROWS = 300;
+  public static String LOG_FILE_NAME = "gridpilot.log";
+  public static String [] JOB_COLOR_MAPPING;
+  public static String [] TRANSFER_COLOR_MAPPING;
+  public static String[] JOB_STATUS_FIELDS;
+  public static String[] TRANSFER_STATUS_FIELDS;
+  public static String RESOURCES_PATH = "";
+  public static String [] TABS = null;
+  public static Splash SPLASH;
   // Allow plugins to add monitoring panels. Any Component in
   // to extraMonitorTabs will be added by MonitoringPanel (called by initGUI).
-  public static Vector extraMonitorTabs = new Vector();
-  public static String proxyType = "RFC";
-  public static int proxyTimeLeftLimit = 43200;
-  public static int proxyTimeValid = 129600;
-  public static String keyFile = "~/.globus/userkey.pem";
-  public static String certFile = "~/.globus/usercert.pem";
-  public static String proxyDir = "~/.globus/usercert.pem";
-  public static String keyPassword = null;
-  public static String caCertsDir = null;
-  public static String dateFormatString = "yyyy-MM-dd HH:mm:ss";
-  public static String [] fixedJobAttributes = {"number", "name"};
-  public static String browserHistoryFile = null;
-  public static String globusTcpPortRange = null;
-  public static String [] dbNames;
-  public static String [] ftNames;
-  public static String [] csNames = null;
-  public static String gridHomeURL = null;
-  public static boolean isExiting = false;
+  public static Vector EXTRA_MONITOR_TABS = new Vector();
+  public static String PROXY_TYPE = "RFC";
+  public static int PROXY_TIME_LEFT_LIMIT = 43200;
+  public static int PROXY_TIME_VALID = 129600;
+  public static String KEY_FILE = "~/.globus/userkey.pem";
+  public static String CERT_FILE = "~/.globus/usercert.pem";
+  public static String PROXY_DIR = "~/.globus/usercert.pem";
+  public static String KEY_PASSWORD = null;
+  public static String CA_CERTS_DIR = null;
+  public static String DATE_FORMAT_STRING = "yyyy-MM-dd HH:mm:ss";
+  public static String [] FIXED_JOB_ATTRIBUTES = {"number", "name"};
+  public static String BROWSER_HISTORY_FILE = null;
+  public static String GLOBUS_TCP_PORT_RANGE = null;
+  public static String [] DB_NAMES;
+  public static String [] FT_NAMES;
+  public static String [] CS_NAMES = null;
+  public static String GRID_HOME_URL = null;
+  public static boolean IS_EXITING = false;
   // Default when interrupting threads. Can be overridden by argument to waitForThread.
-  public static boolean askBeforeInterrupt = true;
+  public static boolean ASK_BEFORE_INTERRUPT = true;
   // This is set to true only if "remember this answer" is checked in a thread interruption
   // dialog. It overrides the various thread timeouts and can be cleared only by
   // "reload values from config file"
-  public static boolean waitForever = false;
-  public static boolean firstRun = false;
-  public static File userConfFile = null;
-  public static String runtimeDir = null;
+  public static boolean WAIT_FOREVER = false;
+  public static boolean IS_FIRST_RUN = false;
+  public static File USER_CONF_FILE = null;
+  public static String RUNTIME_DIR = null;
   public static int PROXY_STRENGTH = 512;
-  public static String vo;
-  public static String vomsServerURL;
-  public static String fqan;
-  public static String vomsDir;
+  public static String VO;
+  public static String VOMS_SERVER_URL;
+  public static String FQAN;
+  public static String VOMS_DIR;
 
   /**
    * Constructor
@@ -103,25 +105,25 @@ public class GridPilot extends JApplet{
   public GridPilot(){
     
     try{
-      getClassMgr().setLogFile(new MyLogFile(logFileName));
+      getClassMgr().setLogFile(new MyLogFile(LOG_FILE_NAME));
       // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
       if(MyUtil.onWindows()){
-        userConfFileName = defaultConfFileNameWindows;
+        userConfFileName = DEFAULT_FILE_NAME_WINDOWS;
       }
       else{
-        userConfFileName = defaultConfFileNameUnix;
+        userConfFileName = DEFAULT_CONF_FILE_NAME_UNIX;
       }
       ConfigFile confFile = null;
-      userConfFile = new File(System.getProperty("user.home") + File.separator +
+      USER_CONF_FILE = new File(System.getProperty("user.home") + File.separator +
           userConfFileName);
       try{
-        confFile = new ConfigFile(userConfFile, topConfigSection, configSections);
-        confFile.excludeItems = myExcludeItems;
-        if(!userConfFile.exists()){
+        confFile = new ConfigFile(USER_CONF_FILE, TOP_CONFIG_SECTION, CONFIG_SECTIONS);
+        confFile.excludeItems = MY_EXCLUDE_ITEMS;
+        if(!USER_CONF_FILE.exists()){
           throw new FileNotFoundException("WARNING: Configuration file "+
-              userConfFile.getAbsolutePath()+" not found.");
+              USER_CONF_FILE.getAbsolutePath()+" not found.");
         }
-        System.out.println("Trying to load configuration file "+userConfFile);
+        System.out.println("Trying to load configuration file "+USER_CONF_FILE);
         getClassMgr().setConfigFile(confFile);
       }
       catch(Exception ee){
@@ -129,13 +131,13 @@ public class GridPilot extends JApplet{
                 "using defaults.");
         //ee.printStackTrace();
         //confFile = new ConfigFile(defaultConfFileNameWindows);
-        firstRun = true;
-        new BeginningWizard(firstRun);
-        firstRun = false;
+        IS_FIRST_RUN = true;
+        new BeginningWizard(IS_FIRST_RUN);
+        IS_FIRST_RUN = false;
       }      
       loadConfigValues();
       initDebug();
-      Debug.debug("Grid home URL: "+GridPilot.gridHomeURL, 2);
+      Debug.debug("Grid home URL: "+GridPilot.GRID_HOME_URL, 2);
       mkGridHomeDirIfNotThere();
       loadDBs();
       loadFTs();
@@ -146,8 +148,8 @@ public class GridPilot extends JApplet{
       catch(Exception e){
         e.printStackTrace();
       }
-      splash.stopSplash();
-      splash = null;
+      SPLASH.stopSplash();
+      SPLASH = null;
       getClassMgr().getLogFile().addInfo("GridPilot loaded");
     }
     catch(Throwable e){
@@ -162,80 +164,80 @@ public class GridPilot extends JApplet{
   }
   
   private void mkGridHomeDirIfNotThere(){
-    if(!MyUtil.urlIsRemote(GridPilot.gridHomeURL) &&
-        !LocalStaticShell.existsFile(GridPilot.gridHomeURL)){
-      LocalStaticShell.mkdirs(GridPilot.gridHomeURL);
+    if(!MyUtil.urlIsRemote(GridPilot.GRID_HOME_URL) &&
+        !LocalStaticShell.existsFile(GridPilot.GRID_HOME_URL)){
+      LocalStaticShell.mkdirs(GridPilot.GRID_HOME_URL);
     }
   }
 
   public static File getTmpFile(String key){
-    return tmpFiles.get(key);
+    return TMP_FILES.get(key);
   }
 
   public static void addTmpFile(String key, File file){
-    tmpFiles.put(key, file);
+    TMP_FILES.put(key, file);
   }
   
   public static void forgetTmpFile(String key){
-    tmpFiles.remove(key);
+    TMP_FILES.remove(key);
   }
   
 
   // TODO: enclose each in try/catch and set sensible default if it fails
   public static void loadConfigValues(){
     try{
-      fileRows = Integer.parseInt(
-          getClassMgr().getConfigFile().getValue(topConfigSection, "file rows"));
-      preferredFileServers = getClassMgr().getConfigFile().getValues(topConfigSection, "preferred file servers");
-      proxyHost = getClassMgr().getConfigFile().getValue(topConfigSection, "proxy host");
-      proxyPort = getClassMgr().getConfigFile().getValue(topConfigSection, "proxy port");
-      if(proxyHost!=null && proxyHost.length()>0){
-        if(proxyPort==null || proxyPort.length()==0){
-          proxyPort = "80";
+      FILE_ROWS = Integer.parseInt(
+          getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "file rows"));
+      PREFERRED_FILE_SERVERS = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "preferred file servers");
+      PROXY_HOST = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "proxy host");
+      PROXY_PORT = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "proxy port");
+      if(PROXY_HOST!=null && PROXY_HOST.length()>0){
+        if(PROXY_PORT==null || PROXY_PORT.length()==0){
+          PROXY_PORT = "80";
         }
         Properties systemProperties = System.getProperties();
         systemProperties.put("http.proxySet", "true");
-        systemProperties.put("http.proxyHost", proxyHost);
-        systemProperties.put("http.proxyPort", proxyPort);
-        systemProperties.put("https.proxyHost",proxyHost);
-        systemProperties.put("https.proxyPort",proxyPort); 
+        systemProperties.put("http.proxyHost", PROXY_HOST);
+        systemProperties.put("http.proxyPort", PROXY_PORT);
+        systemProperties.put("https.proxyHost",PROXY_HOST);
+        systemProperties.put("https.proxyPort",PROXY_PORT); 
         //systemProperties.put("http.proxyUser", "");
         //systemProperties.put("http.proxyPassword", "");
         System.setProperties(systemProperties);
       }
       
-      debugLevel = getClassMgr().getConfigFile().getValue(topConfigSection, "debug");
-      resourcesPath =  getClassMgr().getConfigFile().getValue(topConfigSection, "resources");
-      if(resourcesPath==null){
-        getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage(topConfigSection, "resources"));
-        resourcesPath = "./";
+      DEBUG_LEVEL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "debug");
+      RESOURCES_PATH =  getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "resources");
+      if(RESOURCES_PATH==null){
+        getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage(TOP_CONFIG_SECTION, "resources"));
+        RESOURCES_PATH = "./";
       }
       else{
-        if(!resourcesPath.endsWith("/"))
-          resourcesPath = resourcesPath + "/";
+        if(!RESOURCES_PATH.endsWith("/"))
+          RESOURCES_PATH = RESOURCES_PATH + "/";
       }
-      runtimeDir = getClassMgr().getConfigFile().getValue(topConfigSection, "runtime directory");
-      splash = new Splash(resourcesPath+"splash.png", GridPilot.class);
-      jobColorMapping = getClassMgr().getConfigFile().getValues(topConfigSection, "job color mapping");  
+      RUNTIME_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "runtime directory");
+      SPLASH = new Splash(RESOURCES_PATH+"splash.png", GridPilot.class);
+      JOB_COLOR_MAPPING = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "job color mapping");  
       /** Job status table header*/
-      jobStatusFields = new String [] {
+      JOB_STATUS_FIELDS = new String [] {
           " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "user"};
-      transferColorMapping = getClassMgr().getConfigFile().getValues(topConfigSection, "transfer color mapping");  
+      TRANSFER_COLOR_MAPPING = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "transfer color mapping");  
       /** Job status table header*/
       /** Transfer status table header*/
-      transferStatusFields = new String [] {
+      TRANSFER_STATUS_FIELDS = new String [] {
           " ", "Transfer ID", "Source", "Destination", "User", "Status", "Transferred"};
 
-      csNames = getClassMgr().getConfigFile().getValues("Computing systems", "systems");
-      if(csNames==null || csNames.length==0){
+      CS_NAMES = getClassMgr().getConfigFile().getValues("Computing systems", "systems");
+      if(CS_NAMES==null || CS_NAMES.length==0){
         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("Computing systems", "systems"));
       }
       else{
         String enabled = "no";
-        for(int i=0; i<csNames.length; ++i){
+        for(int i=0; i<CS_NAMES.length; ++i){
           enabled = "no";
           try{
-            enabled = GridPilot.getClassMgr().getConfigFile().getValue(csNames[i], "Enabled");
+            enabled = GridPilot.getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Enabled");
           }
           catch(Exception e){
             continue;
@@ -244,90 +246,90 @@ public class GridPilot extends JApplet{
               !enabled.equalsIgnoreCase("true")){
             continue;
           }
-          String host = getClassMgr().getConfigFile().getValue(csNames[i], "host");
+          String host = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "host");
           if(host!=null && !host.startsWith("localhost") && !host.equals("127.0.0.1")){
-            String user = getClassMgr().getConfigFile().getValue(csNames[i], "user");
-            String password = getClassMgr().getConfigFile().getValue(csNames[i], "password");
-            String sshKeyFile = GridPilot.getClassMgr().getConfigFile().getValue(csNames[i], "Ssh key file");
-            String sshKeyPassword = GridPilot.getClassMgr().getConfigFile().getValue(csNames[i], "Ssh key passphrase");
-            getClassMgr().setShellMgr(csNames[i],
+            String user = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "user");
+            String password = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "password");
+            String sshKeyFile = GridPilot.getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Ssh key file");
+            String sshKeyPassword = GridPilot.getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Ssh key passphrase");
+            getClassMgr().setShellMgr(CS_NAMES[i],
                 new MySecureShell(host, user, password,
                     sshKeyFile==null?null:new File(MyUtil.clearTildeLocally(MyUtil.clearFile(sshKeyFile))),
                     sshKeyPassword));
            }
           else if(host!=null && (host.startsWith("localhost") || host.equals("127.0.0.1"))){
-            getClassMgr().setShellMgr(csNames[i], new LocalShell());
+            getClassMgr().setShellMgr(CS_NAMES[i], new LocalShell());
           }
           else{
             // no shell used by this plugin
           }
         }
       }
-      tabs = getClassMgr().getConfigFile().getValues(topConfigSection, "initial panels");
-      proxyType = getClassMgr().getConfigFile().getValue(topConfigSection,
+      TABS = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "initial panels");
+      PROXY_TYPE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
          "proxy type", "RFC");
-      proxyTimeLeftLimit = Integer.parseInt(
-        getClassMgr().getConfigFile().getValue(topConfigSection, "proxy time left limit"));
-      proxyTimeValid = Integer.parseInt(
-          getClassMgr().getConfigFile().getValue(topConfigSection, "proxy time valid"));
-      keyFile = getClassMgr().getConfigFile().getValue(topConfigSection,
+      PROXY_TIME_LEFT_LIMIT = Integer.parseInt(
+        getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "proxy time left limit"));
+      PROXY_TIME_VALID = Integer.parseInt(
+          getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "proxy time valid"));
+      KEY_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
           "key file");
-      certFile = getClassMgr().getConfigFile().getValue(topConfigSection,
+      CERT_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
           "certificate file");
-      proxyDir = getClassMgr().getConfigFile().getValue(topConfigSection,
+      PROXY_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
          "proxy directory", "~/.globus");
-      keyPassword = getClassMgr().getConfigFile().getValue(topConfigSection,
+      KEY_PASSWORD = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
           "key password");
-      caCertsDir = getClassMgr().getConfigFile().getValue(topConfigSection,
+      CA_CERTS_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
           "ca certificates");
-      if(caCertsDir==null){
+      if(CA_CERTS_DIR==null){
         getClassMgr().getConfigFile().missingMessage(
-            topConfigSection, "ca certificates");
+            TOP_CONFIG_SECTION, "ca certificates");
         getClassMgr().getLogFile().addMessage(
             "WARNING: you have not specified any CA certificates. " +
             "A default set will be used.");
       }
-      vomsDir = getClassMgr().getConfigFile().getValue(topConfigSection,
+      VOMS_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
          "voms directory");
-      if(vomsDir==null){
+      if(VOMS_DIR==null){
         getClassMgr().getConfigFile().missingMessage(
-            topConfigSection, "voms directory");
+            TOP_CONFIG_SECTION, "voms directory");
         getClassMgr().getLogFile().addMessage(
             "WARNING: you have not specified any VOMS directory. " +
             "A default set of VOMS definitions will be used.");
       }
-      vo = getClassMgr().getConfigFile().getValue(topConfigSection, "Virtual organization");
-      vomsServerURL = getClassMgr().getConfigFile().getValue(topConfigSection, "Voms server");
-      fqan = getClassMgr().getConfigFile().getValue(topConfigSection, "Voms fqan");
-      String [] _fixedJobAttributes = getClassMgr().getConfigFile().getValues(topConfigSection,
+      VO = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Virtual organization");
+      VOMS_SERVER_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Voms server");
+      FQAN = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Voms fqan");
+      String [] _fixedJobAttributes = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION,
          "job attributes");
       if(_fixedJobAttributes==null || _fixedJobAttributes.length==0){
         getClassMgr().getConfigFile().missingMessage(
-            topConfigSection, "job attributes");
+            TOP_CONFIG_SECTION, "job attributes");
       }
       else{
-        fixedJobAttributes = _fixedJobAttributes;
-        Debug.debug("Job attributes: "+MyUtil.arrayToString(fixedJobAttributes)+" "+
-            fixedJobAttributes.length, 2);
+        FIXED_JOB_ATTRIBUTES = _fixedJobAttributes;
+        Debug.debug("Job attributes: "+MyUtil.arrayToString(FIXED_JOB_ATTRIBUTES)+" "+
+            FIXED_JOB_ATTRIBUTES.length, 2);
       }
-      Debug.debug("Job attributes: "+MyUtil.arrayToString(fixedJobAttributes)+" "+
-          fixedJobAttributes.length, 2);
-      browserHistoryFile = getClassMgr().getConfigFile().getValue(topConfigSection,
+      Debug.debug("Job attributes: "+MyUtil.arrayToString(FIXED_JOB_ATTRIBUTES)+" "+
+          FIXED_JOB_ATTRIBUTES.length, 2);
+      BROWSER_HISTORY_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
          "browser history file");
-      globusTcpPortRange = getClassMgr().getConfigFile().getValue("File transfer systems",
+      GLOBUS_TCP_PORT_RANGE = getClassMgr().getConfigFile().getValue("File transfer systems",
          "globus tcp port range");
-      gridHomeURL = getClassMgr().getConfigFile().getValue(topConfigSection,
+      GRID_HOME_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
          "Grid home url");
       String ask = null;
       try{
-        ask = getClassMgr().getConfigFile().getValue(topConfigSection,
+        ask = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
         "Ask before thread interrupt");
-        askBeforeInterrupt = !(ask!=null && (
+        ASK_BEFORE_INTERRUPT = !(ask!=null && (
             ask.equalsIgnoreCase("no") ||
             ask.equalsIgnoreCase("false")));
       }
       catch(Exception e){
-        askBeforeInterrupt = true;
+        ASK_BEFORE_INTERRUPT = true;
       }
       //getClassMgr().getConfigFile().printConfig();
     }
@@ -341,18 +343,18 @@ public class GridPilot extends JApplet{
         System.exit(-1);
       }
     }
-    waitForever = false;
+    WAIT_FOREVER = false;
   }
   
   public static void loadDBs() throws Throwable{
     String tmpDb = null;
-    dbNames = getClassMgr().getConfigFile().getValues("Databases", "Systems");
+    DB_NAMES = getClassMgr().getConfigFile().getValues("Databases", "Systems");
     Vector dbVector = new Vector();
     String enabled = "no";
-    for(int i=0; i<dbNames.length; ++i){
+    for(int i=0; i<DB_NAMES.length; ++i){
       enabled = "no";
       try{
-        enabled = getClassMgr().getConfigFile().getValue(dbNames[i], "Enabled");
+        enabled = getClassMgr().getConfigFile().getValue(DB_NAMES[i], "Enabled");
       }
       catch(Exception e){
         e.printStackTrace();
@@ -362,51 +364,51 @@ public class GridPilot extends JApplet{
           !enabled.equalsIgnoreCase("true")){
         continue;
       }
-      dbVector.add(dbNames[i]);
+      dbVector.add(DB_NAMES[i]);
     }
     int j = 0;
-    dbNames = new String [dbVector.size()];
+    DB_NAMES = new String [dbVector.size()];
     for(Iterator it=dbVector.iterator(); it.hasNext();){
-      dbNames[j] = (String) it.next();
+      DB_NAMES[j] = (String) it.next();
       ++j;
     }
-    for(int i=0; i<dbNames.length; ++i){
+    for(int i=0; i<DB_NAMES.length; ++i){
       try{
-        splashShow("Connecting to "+dbNames[i]+"...");
+        splashShow("Connecting to "+DB_NAMES[i]+"...");
       }
       catch(Exception e){
         // if we cannot show text on splash, just silently ignore
       }
       try{
-        tmpDb = getClassMgr().getDBPluginMgr(dbNames[i]).getDBName();
+        tmpDb = getClassMgr().getDBPluginMgr(DB_NAMES[i]).getDBName();
       }
       catch(NullPointerException e){
       }
       if(tmpDb==null){
-        Debug.debug("Initializing db "+i+": "+dbNames[i],3);
-        getClassMgr().setDBPluginMgr(dbNames[i], new DBPluginMgr(dbNames[i]));
+        Debug.debug("Initializing db "+i+": "+DB_NAMES[i],3);
+        getClassMgr().setDBPluginMgr(DB_NAMES[i], new DBPluginMgr(DB_NAMES[i]));
       }
     }          
   }
     
   public static void loadFTs() throws Throwable{
     // in case we are reloading, destroy any existing FT objects
-    if(ftNames!=null){
-      for(int i=0; i<ftNames.length; ++i){
+    if(FT_NAMES!=null){
+      for(int i=0; i<FT_NAMES.length; ++i){
         try{
-          getClassMgr().setFTPlugin(ftNames[i], null);
+          getClassMgr().setFTPlugin(FT_NAMES[i], null);
         }
         catch(Exception e){
           // if we cannot show text on splash, just silently ignore
         }
       }
     }
-    ftNames = getClassMgr().getConfigFile().getValues("File transfer systems", "Systems");
+    FT_NAMES = getClassMgr().getConfigFile().getValues("File transfer systems", "Systems");
     String enabled = null;
-    for(int i=0; i<ftNames.length; ++i){
+    for(int i=0; i<FT_NAMES.length; ++i){
       enabled = null;
       try{
-        enabled = getClassMgr().getConfigFile().getValue(ftNames[i], "Enabled");
+        enabled = getClassMgr().getConfigFile().getValue(FT_NAMES[i], "Enabled");
       }
       catch(Exception e){
         e.printStackTrace();
@@ -415,23 +417,23 @@ public class GridPilot extends JApplet{
         continue;
       }
       try{
-        if(!GridPilot.firstRun){
-          splashShow("Loading file transfer system: "+ftNames[i]);
+        if(!GridPilot.IS_FIRST_RUN){
+          splashShow("Loading file transfer system: "+FT_NAMES[i]);
         }
       }
       catch(Exception e){
         // if we cannot show text on splash, just silently ignore
       }
       try{
-        String ftClass = getClassMgr().getConfigFile().getValue(ftNames[i], "Class");
-        getClassMgr().setFTPlugin(ftNames[i],
+        String ftClass = getClassMgr().getConfigFile().getValue(FT_NAMES[i], "Class");
+        getClassMgr().setFTPlugin(FT_NAMES[i],
             (FileTransfer) MyUtil.loadClass(ftClass, new Class []{}, new Object []{}));
       }
       catch(Exception e){
         // load as many FTS as possible
-        if(!GridPilot.firstRun){
+        if(!GridPilot.IS_FIRST_RUN){
           GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not load file transfer system "+
-              ftNames[i], e);
+              FT_NAMES[i], e);
         }
       }
     }          
@@ -441,20 +443,20 @@ public class GridPilot extends JApplet{
    * "Class distributor"
    */
   public static ClassMgr getClassMgr(){
-    if(classMgr==null){
+    if(CLASS_MGR==null){
       Debug.debug("classMgr == null", 3);
     }
-    return classMgr;
+    return CLASS_MGR;
   }
 
   /**
    * Return file transfer systems specified in the configuration file
    */
    public static String [] getFTs(){
-     if(ftNames == null || ftNames[0] == null){
+     if(FT_NAMES == null || FT_NAMES[0] == null){
        Debug.debug("ftNames null", 3);
      }
-     return ftNames;
+     return FT_NAMES;
    }
   
 
@@ -462,7 +464,7 @@ public class GridPilot extends JApplet{
  + Are we running as an applet?
  */
   public static boolean isApplet(){
-    return applet;
+    return IS_APPLET;
   } 
 
   /**
@@ -470,7 +472,7 @@ public class GridPilot extends JApplet{
    */
   private void initGUI() throws Exception{
 
-    if(applet){
+    if(IS_APPLET){
       getClassMgr().setGlobalFrame(frame = new GlobalFrame());
       getClassMgr().getGlobalFrame().initGUI(this.getContentPane());
       setJMenuBar(
@@ -511,26 +513,26 @@ public class GridPilot extends JApplet{
   }
   
   public static void exit(final int exitCode){
-    if(isExiting){
+    if(IS_EXITING){
       return;
     }
     Thread t1 = new Thread(){
       public void run(){
-        isExiting = true;
-        exitPanel.setPreferredSize(new Dimension(400, 40));
-        exitPanel.setIgnoreRepaint(true);
-        exitPanel.setText("Exiting... Please wait or click OK to force quit.");
+        IS_EXITING = true;
+        EXIT_PANEL.setPreferredSize(new Dimension(400, 40));
+        EXIT_PANEL.setIgnoreRepaint(true);
+        EXIT_PANEL.setText("Exiting... Please wait or click OK to force quit.");
         JProgressBar jp = new JProgressBar();
         jp.setIndeterminate(true);
-        topExitPanel.setLayout(new GridBagLayout());
-        topExitPanel.add(exitPanel, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+        TOP_EXIT_PANEL.setLayout(new GridBagLayout());
+        TOP_EXIT_PANEL.add(EXIT_PANEL, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
             new Insets(5, 5, 5, 5), 0, 0));
-        topExitPanel.add(jp, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+        TOP_EXIT_PANEL.add(jp, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
             new Insets(5, 5, 5, 5), 0, 0));
         int ret = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
-            topExitPanel,
+            TOP_EXIT_PANEL,
             "Exiting", JOptionPane.PLAIN_MESSAGE);
         Debug.debug("return value: ", ret);
         if(ret==JOptionPane.OK_OPTION){
@@ -543,14 +545,14 @@ public class GridPilot extends JApplet{
         //  Cancel all transfers
         String message = "Cancelling all running transfers...";
         Debug.debug(message, 2);
-        exitPanel.setText(message+" Click OK to force quit.");
+        EXIT_PANEL.setText(message+" Click OK to force quit.");
         GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.exit();
         GridPilot.getClassMgr().getTransferControl().exit();
         //Delete temporary files
         File delFile = null;
         try{
-          for(Iterator<String> it=tmpFiles.keySet().iterator(); it.hasNext();){
-            delFile = tmpFiles.get(it.next());
+          for(Iterator<String> it=TMP_FILES.keySet().iterator(); it.hasNext();){
+            delFile = TMP_FILES.get(it.next());
             Debug.debug("Cleaning up: deleting "+delFile.getAbsolutePath(), 2);
             if(delFile.isDirectory()){
               LocalStaticShell.deleteDir(delFile.getAbsolutePath());
@@ -566,22 +568,22 @@ public class GridPilot extends JApplet{
         // Disconnect DBs and CSs
         message = "Disconnecting computing systems...";
         Debug.debug(message, 2);
-        exitPanel.setText(message+" Click OK to force quit.");
+        EXIT_PANEL.setText(message+" Click OK to force quit.");
         if(getClassMgr().csPluginMgr!=null){
           getClassMgr().getCSPluginMgr().disconnect();
           getClassMgr().getCSPluginMgr().exit();
         }
         message = "Disconnecting databases...";
         Debug.debug(message, 2);
-        exitPanel.setText(message+" Click OK to force quit.");
-        for(int i=0; i<dbNames.length; ++i){
-          getClassMgr().getDBPluginMgr(dbNames[i]).disconnect();
-          Debug.debug("Disconnecting "+dbNames[i], 2);
+        EXIT_PANEL.setText(message+" Click OK to force quit.");
+        for(int i=0; i<DB_NAMES.length; ++i){
+          getClassMgr().getDBPluginMgr(DB_NAMES[i]).disconnect();
+          Debug.debug("Disconnecting "+DB_NAMES[i], 2);
         }
         message = "All systems disconnected.";
         Debug.debug(message, 2);
-        exitPanel.setText(message);
-        if(!applet){
+        EXIT_PANEL.setText(message);
+        if(!IS_APPLET){
           System.exit(exitCode);
         }
         else{
@@ -600,8 +602,8 @@ public class GridPilot extends JApplet{
   }
   
   public static String [] userPwd(String message, String [] fields, String [] initialValues){    
-    if(splash!=null){
-      splash.hide();
+    if(SPLASH!=null){
+      SPLASH.hide();
     }   
     JPanel pUserPwd = new JPanel(new GridBagLayout());
     pUserPwd.add(new JLabel(message), new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
@@ -636,8 +638,8 @@ public class GridPilot extends JApplet{
     else{
       results = null;
     }
-    if(splash!=null){
-      splash.show();
+    if(SPLASH!=null){
+      SPLASH.show();
     }
     return results;
   }
@@ -651,7 +653,7 @@ public class GridPilot extends JApplet{
    * Main method
    */
   public static void main(String[] args) {
-    applet = false;
+    IS_APPLET = false;
     if(args!=null){
       for(int i=0; i<args.length; ++i){
         if(args[i]!=null && (args[i].equals("-c") || args[i].equals("-conf"))){
@@ -671,7 +673,7 @@ public class GridPilot extends JApplet{
               break;
             }
             else{
-              logFileName = args[i+1];
+              LOG_FILE_NAME = args[i+1];
               ++i;
             }
           }
@@ -700,10 +702,10 @@ public class GridPilot extends JApplet{
     
     // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
     if(MyUtil.onWindows()){
-      userConfFileName = defaultConfFileNameWindows;
+      userConfFileName = DEFAULT_FILE_NAME_WINDOWS;
     }
     else{
-      userConfFileName = defaultConfFileNameUnix;
+      userConfFileName = DEFAULT_CONF_FILE_NAME_UNIX;
     }
     ConfigFile confFile = null;
     try{
@@ -714,21 +716,21 @@ public class GridPilot extends JApplet{
             exConfFile.getAbsolutePath()+" not found.");
       }
       System.out.println("Trying to load configuration file "+exConfFile);
-      confFile = new ConfigFile(exConfFile, topConfigSection, configSections);
-      confFile.excludeItems = myExcludeItems;
+      confFile = new ConfigFile(exConfFile, TOP_CONFIG_SECTION, CONFIG_SECTIONS);
+      confFile.excludeItems = MY_EXCLUDE_ITEMS;
     }
     catch(Exception ee){
       String error = "WARNING: could not load external configuration file, " +
       "using default config file.";
       System.out.println(error);
-      classMgr.getLogFile().addMessage(error, ee);
+      CLASS_MGR.getLogFile().addMessage(error, ee);
       ee.printStackTrace();
     }
     getClassMgr().setConfigFile(confFile);
     
     try{
-      for(Iterator it=tmpFiles.keySet().iterator(); it.hasNext();){
-        ((File) tmpFiles.get(it.next())).delete();
+      for(Iterator it=TMP_FILES.keySet().iterator(); it.hasNext();){
+        ((File) TMP_FILES.get(it.next())).delete();
       }
     }
     catch(Exception e){
@@ -740,32 +742,32 @@ public class GridPilot extends JApplet{
     getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.statusUpdateControl.loadValues();
     getClassMgr().getTransferStatusUpdateControl().loadValues();
     getClassMgr().getCSPluginMgr().loadValues();
-    for(int i=0; i<dbNames.length; ++i){
-      getClassMgr().getDBPluginMgr(dbNames[i]).loadValues();
+    for(int i=0; i<DB_NAMES.length; ++i){
+      getClassMgr().getDBPluginMgr(DB_NAMES[i]).loadValues();
     }
     try{
       loadFTs();
-      splash.stopSplash();
-      splash = null;
+      SPLASH.stopSplash();
+      SPLASH = null;
     }
     catch(Throwable e){
        e.printStackTrace();
     }
     initDebug();
-    splash = null;
+    SPLASH = null;
   }
 
   /**
    * Reads in configuration file the debug level.
    */
   private static void initDebug(){
-    if(debugLevel==null){
-      getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage(topConfigSection, "debug"));
+    if(DEBUG_LEVEL==null){
+      getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage(TOP_CONFIG_SECTION, "debug"));
       getClassMgr().setDebugLevel(0);
     }
     else{
       try{
-        getClassMgr().setDebugLevel(new Integer(debugLevel).intValue());
+        getClassMgr().setDebugLevel(new Integer(DEBUG_LEVEL).intValue());
       }
       catch(NumberFormatException nfe){
         getClassMgr().getLogFile().addMessage("Debug is not an integer in configFile, section [gridpilot]");
@@ -775,8 +777,8 @@ public class GridPilot extends JApplet{
   }
 
   public static void splashShow(String message){
-    if(splash!=null){
-      splash.show(message);
+    if(SPLASH!=null){
+      SPLASH.show(message);
     }
     else{
       GridPilot.getClassMgr().getStatusBar().setLabel(message);
@@ -786,23 +788,23 @@ public class GridPilot extends JApplet{
 
   public static void dbReconnect(){
     GridPilot.getClassMgr().getStatusBar().setLabel(
-        "Reconnecting "+dbNames.length+" databases. Please wait...");
+        "Reconnecting "+DB_NAMES.length+" databases. Please wait...");
     GridPilot.getClassMgr().getStatusBar().animateProgressBar();
     /*
      Reconnect DBs
      */
-    for(int i=0; i<dbNames.length; ++i){
+    for(int i=0; i<DB_NAMES.length; ++i){
       try{
-        Debug.debug("Disconnecting "+dbNames[i], 2);
+        Debug.debug("Disconnecting "+DB_NAMES[i], 2);
         GridPilot.getClassMgr().getStatusBar().setLabel(
-            "Disconnecting "+dbNames[i]);
+            "Disconnecting "+DB_NAMES[i]);
         GridPilot.getClassMgr().getStatusBar().animateProgressBar();
-        getClassMgr().getDBPluginMgr(dbNames[i]).disconnect();
-        Debug.debug("Connecting to "+dbNames[i], 2);
+        getClassMgr().getDBPluginMgr(DB_NAMES[i]).disconnect();
+        Debug.debug("Connecting to "+DB_NAMES[i], 2);
         GridPilot.getClassMgr().getStatusBar().setLabel(
-            "Connecting to "+dbNames[i]);
+            "Connecting to "+DB_NAMES[i]);
         GridPilot.getClassMgr().getStatusBar().animateProgressBar();
-        getClassMgr().getDBPluginMgr(dbNames[i]).init();
+        getClassMgr().getDBPluginMgr(DB_NAMES[i]).init();
         Debug.debug("Connection ok.", 2);
         GridPilot.getClassMgr().getStatusBar().setLabel(
             "Connection ok.");
@@ -810,9 +812,9 @@ public class GridPilot extends JApplet{
         // TODO: reload panels?
       }
       catch (Throwable e){
-        Debug.debug("ERROR: Could not load DB " + dbNames[i] + ". " + 
+        Debug.debug("ERROR: Could not load DB " + DB_NAMES[i] + ". " + 
             e.getMessage(), 3);
-        GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: Could not load DB " + dbNames[i] + ". " + 
+        GridPilot.getClassMgr().getStatusBar().setLabel("ERROR: Could not load DB " + DB_NAMES[i] + ". " + 
             e.getMessage());
         //exit(-1);
       }

@@ -336,7 +336,7 @@ public class MyUtil extends gridfactory.common.Util{
  private static void handleCheckPanelException(Exception eee, String finBaseUrl){
    eee.printStackTrace();
    Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
-   if(!GridPilot.firstRun){
+   if(!GridPilot.IS_FIRST_RUN){
      GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
    }
    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
@@ -388,11 +388,11 @@ public class MyUtil extends gridfactory.common.Util{
     ImageIcon browseIcon;
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "folder_blue_open.png");
+      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "folder_blue_open.png");
       browseIcon = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "folder_blue_open.png", 3);
+      Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "folder_blue_open.png", 3);
       browseIcon = new ImageIcon();
     }
     JButton bBrowse1 = new JButton(browseIcon);
@@ -610,8 +610,8 @@ public class MyUtil extends gridfactory.common.Util{
    */
   private static boolean askForInterrupt(String name, String fct){
     
-    if(!GridPilot.askBeforeInterrupt){
-      return !GridPilot.waitForever;
+    if(!GridPilot.ASK_BEFORE_INTERRUPT){
+      return !GridPilot.WAIT_FOREVER;
     }
     
     String msg = "No response from " + name + " for " + fct + "\n"+
@@ -632,14 +632,14 @@ public class MyUtil extends gridfactory.common.Util{
     
     if(choice==JOptionPane.YES_OPTION){
       if(cbRemember.isSelected()){
-        GridPilot.askBeforeInterrupt = false;
+        GridPilot.ASK_BEFORE_INTERRUPT = false;
       }
       return true;
     }
     else{
       if(cbRemember.isSelected()){
-        GridPilot.askBeforeInterrupt = false;
-        GridPilot.waitForever = true;
+        GridPilot.ASK_BEFORE_INTERRUPT = false;
+        GridPilot.WAIT_FOREVER = true;
       }
       GridPilot.getClassMgr().getGlobalFrame().setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       return false;
@@ -659,8 +659,8 @@ public class MyUtil extends gridfactory.common.Util{
 
   public static boolean myWaitForThread(ResThread t, String name, int _timeOut,
       String function, Boolean _askForInterrupt){
-    int timeOut = GridPilot.waitForever ? 0 : _timeOut;
-    boolean ask = GridPilot.askBeforeInterrupt;
+    int timeOut = GridPilot.WAIT_FOREVER ? 0 : _timeOut;
+    boolean ask = GridPilot.ASK_BEFORE_INTERRUPT;
     if(_askForInterrupt!=null){
       ask = _askForInterrupt.booleanValue();
     }
@@ -1077,16 +1077,16 @@ public class MyUtil extends gridfactory.common.Util{
   public static void setClosestSource(TransferInfo transfer){
     boolean ok = false;
     GlobusURL [] sources = transfer.getSources();
-    if(GridPilot.preferredFileServers!=null && GridPilot.preferredFileServers.length>0){
-      Debug.debug("Preferred file servers: "+arrayToString(GridPilot.preferredFileServers), 2);
+    if(GridPilot.PREFERRED_FILE_SERVERS!=null && GridPilot.PREFERRED_FILE_SERVERS.length>0){
+      Debug.debug("Preferred file servers: "+arrayToString(GridPilot.PREFERRED_FILE_SERVERS), 2);
       int closeness = -1;
       for(int i=0; i<sources.length; ++i){
         Debug.debug("Checking source: "+sources[i].getURL()+" : "+sources[i].getHost(), 2);
-        for(int j=0; j<GridPilot.preferredFileServers.length; ++j){
-          Debug.debug("Checking file server: "+GridPilot.preferredFileServers[j], 2);
-          if((sources[i].getURL().startsWith(GridPilot.preferredFileServers[j]) ||
+        for(int j=0; j<GridPilot.PREFERRED_FILE_SERVERS.length; ++j){
+          Debug.debug("Checking file server: "+GridPilot.PREFERRED_FILE_SERVERS[j], 2);
+          if((sources[i].getURL().startsWith(GridPilot.PREFERRED_FILE_SERVERS[j]) ||
               sources[i].getHost().matches(".*"+
-              GridPilot.preferredFileServers[j].replaceAll("\\.", "\\\\.").replaceAll("\\*", "\\.\\*")+".*")) &&
+              GridPilot.PREFERRED_FILE_SERVERS[j].replaceAll("\\.", "\\\\.").replaceAll("\\*", "\\.\\*")+".*")) &&
               (j<closeness || closeness==-1)){
             closeness = j;
             transfer.setSource(sources[i]);
@@ -1097,7 +1097,7 @@ public class MyUtil extends gridfactory.common.Util{
       }
     }
     else{
-      Debug.debug("WARNING: no preferred file servers defined. "+GridPilot.preferredFileServers, 2);
+      Debug.debug("WARNING: no preferred file servers defined. "+GridPilot.PREFERRED_FILE_SERVERS, 2);
     }
     if(!ok){
       transfer.setSource(sources[0]);
@@ -1322,11 +1322,11 @@ public class MyUtil extends gridfactory.common.Util{
     ImageIcon cancelIcon;
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "stop.png");
+      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "stop.png");
       cancelIcon = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "stop.png", 3);
+      Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "stop.png", 3);
       cancelIcon = new ImageIcon();
     }
     GridPilot.getClassMgr().getStatusBar().setProgressBar(pb);
@@ -1385,7 +1385,7 @@ public class MyUtil extends gridfactory.common.Util{
   }
 
   public static long getDateInMilliSeconds(String dateInput){
-    return getDateInMilliSeconds(dateInput, GridPilot.dateFormatString);
+    return getDateInMilliSeconds(dateInput, GridPilot.DATE_FORMAT_STRING);
   }
   
 /**

@@ -27,7 +27,7 @@ public class RteRdfParser {
     catalogURLs = _urls;
     MyUtil.checkAndActivateSSL(catalogURLs);
     //rteCatalog = new RTECatalog(catalogURLs, null);
-    rteCatalog = GridPilot.getClassMgr().getRTEMgr(GridPilot.runtimeDir, catalogURLs).getRTECatalog();
+    rteCatalog = GridPilot.getClassMgr().getRTEMgr(GridPilot.RUNTIME_DIR, catalogURLs).getRTECatalog();
   }
   
   /**

@@ -101,11 +101,11 @@ public class JobStatusUpdateControl{
 
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "checking.png");
+      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "checking.png");
       iconChecking = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      logFile.addMessage("Could not find image "+ GridPilot.resourcesPath + "checking.png");
+      logFile.addMessage("Could not find image "+ GridPilot.RESOURCES_PATH + "checking.png");
       iconChecking = new ImageIcon();
     }
     Debug.debug("iconChecking: "+imgURL, 3);
@@ -125,7 +125,7 @@ public class JobStatusUpdateControl{
     /**
      * Load maxSimultaneousChecking
      */
-    String tmp = configFile.getValue(GridPilot.topConfigSection, "maximum simultaneous checking");
+    String tmp = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "maximum simultaneous checking");
     if(tmp!=null){
       try{
         maxSimultaneousChecking = Integer.parseInt(tmp);
@@ -136,12 +136,12 @@ public class JobStatusUpdateControl{
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage(GridPilot.topConfigSection, "maximum simultaneous checking") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage(GridPilot.TOP_CONFIG_SECTION, "maximum simultaneous checking") + "\n" +
                          "Default value = " + maxSimultaneousChecking);
     /**
      * Load timeBetweenCheking
      */
-    tmp = configFile.getValue(GridPilot.topConfigSection, "time between checks");
+    tmp = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "time between checks");
     if(tmp!=null){
       try{
         timeBetweenCheking = Integer.parseInt(tmp);
@@ -152,7 +152,7 @@ public class JobStatusUpdateControl{
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage(GridPilot.topConfigSection, "time between checks") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage(GridPilot.TOP_CONFIG_SECTION, "time between checks") + "\n" +
                          "Default value = " + timeBetweenCheking);
 
     timerChecking.setDelay(timeBetweenCheking);
@@ -161,9 +161,9 @@ public class JobStatusUpdateControl{
      * Load of maxJobsByUpdate
      */
     String enabled = "no";
-    for(int i=0; i<GridPilot.csNames.length; ++i){
+    for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
       try{
-        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.csNames[i], "Enabled");
+        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
       }
       catch(Exception e){
         continue;
@@ -172,21 +172,21 @@ public class JobStatusUpdateControl{
           !enabled.equalsIgnoreCase("true")){
         continue;
       }
-      tmp = configFile.getValue(GridPilot.csNames[i], "max jobs by update");
+      tmp = configFile.getValue(GridPilot.CS_NAMES[i], "max jobs by update");
       if(tmp!=null){
         try{
-          maxJobsByUpdate.put(GridPilot.csNames[i], new Integer(Integer.parseInt(tmp)));
+          maxJobsByUpdate.put(GridPilot.CS_NAMES[i], new Integer(Integer.parseInt(tmp)));
         }
         catch(NumberFormatException nfe){
-          logFile.addMessage("Value of \"max jobs by update\" in section " + GridPilot.csNames[i] +
+          logFile.addMessage("Value of \"max jobs by update\" in section " + GridPilot.CS_NAMES[i] +
                              " is not an integer in configuration file", nfe);
-          maxJobsByUpdate.put(GridPilot.csNames[i], new Integer(1));
+          maxJobsByUpdate.put(GridPilot.CS_NAMES[i], new Integer(1));
         }
       }
       else{
-        maxJobsByUpdate.put(GridPilot.csNames[i], new Integer(1));
-        logFile.addMessage(configFile.getMissingMessage(GridPilot.csNames[i], "max jobs by update") + "\n" +
-                           "Default value = " + maxJobsByUpdate.get(GridPilot.csNames[i]));
+        maxJobsByUpdate.put(GridPilot.CS_NAMES[i], new Integer(1));
+        logFile.addMessage(configFile.getMissingMessage(GridPilot.CS_NAMES[i], "max jobs by update") + "\n" +
+                           "Default value = " + maxJobsByUpdate.get(GridPilot.CS_NAMES[i]));
       }
     }
   }

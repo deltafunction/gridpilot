@@ -43,8 +43,8 @@ public class ExportImport {
     String exportFileName;
     String [] choices;
     if(dbName==null){
-      choices = new String[GridPilot.dbNames.length+1];
-      System.arraycopy(GridPilot.dbNames, 0, choices, 0, GridPilot.dbNames.length);
+      choices = new String[GridPilot.DB_NAMES.length+1];
+      System.arraycopy(GridPilot.DB_NAMES, 0, choices, 0, GridPilot.DB_NAMES.length);
     }
     else{
       choices = new String[] {"Continue", "Cancel"};
@@ -73,7 +73,7 @@ public class ExportImport {
       return;
     }
     if(dbName==null){
-      dbName = GridPilot.dbNames[choice];
+      dbName = GridPilot.DB_NAMES[choice];
     }
     // Work in a tmp dir
     File tmpDir = File.createTempFile(MyUtil.getTmpFilePrefix(), "");
@@ -224,8 +224,8 @@ public class ExportImport {
         "Fork", "transformation directory");
     File transformationDirectory = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(
         transformationDir)));
-    String [] choices = new String[GridPilot.dbNames.length+1];
-    System.arraycopy(GridPilot.dbNames, 0, choices, 0, GridPilot.dbNames.length);
+    String [] choices = new String[GridPilot.DB_NAMES.length+1];
+    System.arraycopy(GridPilot.DB_NAMES, 0, choices, 0, GridPilot.DB_NAMES.length);
     choices[choices.length-1] = "none (cancel)";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = confirmBox.getConfirm("Import in database",
@@ -236,7 +236,7 @@ public class ExportImport {
     if(choice<0 || choice>=choices.length-1){
       return;
     }
-    String dbName = GridPilot.dbNames[choice];
+    String dbName = GridPilot.DB_NAMES[choice];
     DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
     // Download the import file, unpack it in a tmp dir
     File tmpDir = downloadAndUnpack(importFile);

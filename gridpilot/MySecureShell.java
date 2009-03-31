@@ -86,7 +86,7 @@ public class MySecureShell extends SecureShell{
       maxChannels = Integer.parseInt(
           configFile.getValue("Computing systems", "maximum simultaneous submissions"))+
       Integer.parseInt(
-          configFile.getValue(GridPilot.topConfigSection, "maximum simultaneous checking"))+
+          configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "maximum simultaneous checking"))+
           Integer.parseInt(
               configFile.getValue("Computing systems", "maximum simultaneous validating"));
     }
@@ -140,8 +140,8 @@ public class MySecureShell extends SecureShell{
           if(user==null || user.equals("")){
             user = null;
             if(rep>=MAX_SSH_LOGIN_ATTEMPTS-1){
-              if(GridPilot.splash!=null){
-                GridPilot.splash.hide();
+              if(GridPilot.SPLASH!=null){
+                GridPilot.SPLASH.hide();
               }
               MyUtil.showError("SSH login failed on "+host);
             }
@@ -169,8 +169,8 @@ public class MySecureShell extends SecureShell{
       java.util.Hashtable config = new java.util.Hashtable();
       config.put("StrictHostKeyChecking", "no");
       session.setConfig(config);
-      if(GridPilot.splash!=null){
-        GridPilot.splash.hide();
+      if(GridPilot.SPLASH!=null){
+        GridPilot.SPLASH.hide();
       }
       // Get rid of popups - well, doesn't seem to work...
       session.setX11Host(null);
@@ -180,8 +180,8 @@ public class MySecureShell extends SecureShell{
     catch(Exception e){
       e.printStackTrace();
       if(rep==MAX_SSH_LOGIN_ATTEMPTS-1){
-        if(GridPilot.splash!=null){
-          GridPilot.splash.hide();
+        if(GridPilot.SPLASH!=null){
+          GridPilot.SPLASH.hide();
         }
         MyUtil.showError((rep+1)+" SSH login(s) failed on "+host);
       }

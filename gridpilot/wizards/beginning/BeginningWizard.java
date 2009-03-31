@@ -74,7 +74,7 @@ public class BeginningWizard{
     
     // Make things look nice
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "aviateur-32x32.png");
+      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "aviateur-32x32.png");
       icon = new ImageIcon(imgURL);
     }
     catch(Exception e){
@@ -84,7 +84,7 @@ public class BeginningWizard{
       }
       catch(Exception ee){
         ee.printStackTrace();
-        Debug.debug("Could not find image "+ GridPilot.resourcesPath + "aviateur-32x32.png", 3);
+        Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "aviateur-32x32.png", 3);
         icon = null;
       }
     }
@@ -99,7 +99,7 @@ public class BeginningWizard{
       ret = checkDirs(firstRun);
       if(ret==2 || ret==-1){
         if(firstRun){
-          GridPilot.userConfFile.delete();
+          GridPilot.USER_CONF_FILE.delete();
           System.out.println("Deleting new configuration file.");
           System.exit(-1);
         }
@@ -111,7 +111,7 @@ public class BeginningWizard{
         if(!dirsOk){
           MyUtil.showError("Without these directories setup cannot continue. Exiting wizard.");
           if(firstRun){
-            GridPilot.userConfFile.delete();
+            GridPilot.USER_CONF_FILE.delete();
             System.out.println("Deleting new configuration file.");
             System.exit(-1);
           }
@@ -235,14 +235,14 @@ public class BeginningWizard{
   }
   
   private void setupCertAndKey() throws IOException{
-    String certPath = configFile.getValue(GridPilot.topConfigSection, "Certificate file");
-    String keyPath = configFile.getValue(GridPilot.topConfigSection, "Key file");
+    String certPath = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Certificate file");
+    String keyPath = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Key file");
     String certDir = (new File(certPath)).getParent();
     if(!LocalStaticShell.existsFile(certPath) && !LocalStaticShell.existsFile(keyPath)){
       // Set up key and cert.
       // If setupTestCredentials returns false, test credentials are used.
       if(!MySSL.setupTestCredentials(certDir, false, GridPilot.class)){
-        GridPilot.keyPassword = MySSL.TEST_KEY_PASSWORD;
+        GridPilot.KEY_PASSWORD = MySSL.TEST_KEY_PASSWORD;
       }
     }
   }
@@ -314,19 +314,19 @@ public class BeginningWizard{
     if(firstRun){
       System.out.println("Creating new configuration file.");
       // Make temporary config file
-      ConfigFile tmpConfigFile = new ConfigFile(GridPilot.defaultConfFileNameWindows,
-          GridPilot.topConfigSection, GridPilot.configSections, GridPilot.class);
-      tmpConfigFile.excludeItems = GridPilot.myExcludeItems;
+      ConfigFile tmpConfigFile = new ConfigFile(GridPilot.DEFAULT_FILE_NAME_WINDOWS,
+          GridPilot.TOP_CONFIG_SECTION, GridPilot.CONFIG_SECTIONS, GridPilot.class);
+      tmpConfigFile.excludeItems = GridPilot.MY_EXCLUDE_ITEMS;
       // Copy over temporary to real config file
       LocalStaticShell.copyFile(tmpConfigFile.getFile().getAbsolutePath(),
-           GridPilot.userConfFile.getAbsolutePath());
+           GridPilot.USER_CONF_FILE.getAbsolutePath());
       // Clean up
       tmpConfigFile.getFile().delete();
       // Construct ConfigFile object from the new file
       try{
-        configFile = new ConfigFile(GridPilot.userConfFile, GridPilot.topConfigSection,
-            GridPilot.configSections);
-        configFile.excludeItems = GridPilot.myExcludeItems;
+        configFile = new ConfigFile(GridPilot.USER_CONF_FILE, GridPilot.TOP_CONFIG_SECTION,
+            GridPilot.CONFIG_SECTIONS);
+        configFile.excludeItems = GridPilot.MY_EXCLUDE_ITEMS;
       }
       catch(Exception e){
         System.out.println("WARNING: could not create or load new configuration file!");
@@ -359,7 +359,7 @@ public class BeginningWizard{
 
     }
     String workingDir = configFile.getValue("Fork", "Working directory");
-    String runtimeDir = GridPilot.runtimeDir;
+    String runtimeDir = GridPilot.RUNTIME_DIR;
     String transDir = configFile.getValue("Fork", "Transformation directory");
     String [] defDirs = new String [] {
         dbDir==null?dbDir:"~/GridPilot",
@@ -369,7 +369,7 @@ public class BeginningWizard{
         };
     JTextField [] jtFields = new JTextField [defDirs.length];
     if(firstRun){
-      jPanel.add(new JLabel("A configuration file "+GridPilot.userConfFile.getAbsolutePath()+
+      jPanel.add(new JLabel("A configuration file "+GridPilot.USER_CONF_FILE.getAbsolutePath()+
           " has been created."),
           new GridBagConstraints(0, 0, 2, 1, 0.0, 0.0,
               GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -452,7 +452,7 @@ public class BeginningWizard{
     URL fileURL = null;
     BufferedReader in = null;
     try{
-      fileURL = GridPilot.class.getResource(GridPilot.resourcesPath+"rtes.rdf");
+      fileURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH+"rtes.rdf");
       in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
     }
     catch(Exception e){
@@ -512,10 +512,10 @@ public class BeginningWizard{
       "that you trust. This can safely be left unspecified, in which case a default set of CAs will be trusted.\n\n" +
       "Specified, but non-existing directories will be created.\n\n";
     JPanel jPanel = new JPanel(new GridBagLayout());
-    String certPath = configFile.getValue(GridPilot.topConfigSection, "Certificate file");
-    String keyPath = configFile.getValue(GridPilot.topConfigSection, "Key file");
-    String proxyDir = configFile.getValue(GridPilot.topConfigSection, "Proxy directory");
-    String caCertsDir = configFile.getValue(GridPilot.topConfigSection, "CA certificates");
+    String certPath = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Certificate file");
+    String keyPath = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Key file");
+    String proxyDir = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Proxy directory");
+    String caCertsDir = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "CA certificates");
     String [] defDirs = new String [] {
         certPath,
         keyPath,
@@ -601,7 +601,7 @@ public class BeginningWizard{
     // No idea why we suddenly have to add this. It worked before, now and exception is thrown
     // java.security.NoSuchProviderException: No such provider: BC
     Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-    if(GridPilot.keyPassword==MySSL.TEST_KEY_PASSWORD){
+    if(GridPilot.KEY_PASSWORD==MySSL.TEST_KEY_PASSWORD){
       // With test credentials, most likely only standard https will be used.
       GridPilot.getClassMgr().getSSL().activateSSL();
     }
@@ -622,7 +622,7 @@ public class BeginningWizard{
         !defDirs[2].equals(newDirs[2]) ||
         newDirs[3]!=null && (defDirs[3]==null || !defDirs[3].equals(newDirs[3]))){
       configFile.setAttributes(
-          new String [] {GridPilot.topConfigSection, GridPilot.topConfigSection, "Fork"},
+          new String [] {GridPilot.TOP_CONFIG_SECTION, GridPilot.TOP_CONFIG_SECTION, "Fork"},
           new String [] {"Proxy directory", "CA certificates", "Public certificate"},
           new String [] {newDirs[2], newDirs[3], newDirs[0]}
       );
@@ -630,11 +630,11 @@ public class BeginningWizard{
     }
     
     // Check if certificate and key exist
-    File certFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.certFile)));
+    File certFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.CERT_FILE)));
     if(!certFile.exists()){
       return 1;
     }
-    File keyFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.keyFile)));
+    File keyFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.KEY_FILE)));
     if(!keyFile.exists()){
       return 1;
     }
@@ -1312,7 +1312,7 @@ public class BeginningWizard{
     }
     if(jcbs[1].isSelected() && tfVO.getText()!=null && !tfVO.getText().equals("")){
       configFile.setAttributes(
-          new String [] {"GLite", GridPilot.topConfigSection, "GLite"},
+          new String [] {"GLite", GridPilot.TOP_CONFIG_SECTION, "GLite"},
           new String [] {"Enabled", "Virtual organization", "Runtime vos"},
           new String [] {"yes", tfVO.getText().trim(), tfVO.getText().trim()}
           );
@@ -1568,10 +1568,10 @@ public class BeginningWizard{
   }
 
   private int setGridHomeDir(boolean firstRun) throws Exception{
-    GridPilot.proxyDir = configFile.getValue(GridPilot.topConfigSection, "Proxy directory");
-    GridPilot.caCertsDir = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.topConfigSection,
+    GridPilot.PROXY_DIR = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Proxy directory");
+    GridPilot.CA_CERTS_DIR = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.TOP_CONFIG_SECTION,
        "ca certificates");
-    GridPilot.resourcesPath =  GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.topConfigSection, "resources");
+    GridPilot.RESOURCES_PATH =  GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.TOP_CONFIG_SECTION, "resources");
     String confirmString;
     if(certAndKeyOk){
       confirmString =
@@ -1599,7 +1599,7 @@ public class BeginningWizard{
     pane.setEditable(false);
     pane.setOpaque(false);
     addHyperLinkListener(pane, jPanel);
-    String homeUrl = configFile.getValue(GridPilot.topConfigSection, "Grid home url");
+    String homeUrl = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Grid home url");
     String [] defDirs;
     String [] names;
     if(certAndKeyOk){
@@ -1709,7 +1709,7 @@ public class BeginningWizard{
       }
       Debug.debug("Setting "+sel+":"+newDirs[sel], 2);
       configFile.setAttributes(
-          new String [] {GridPilot.topConfigSection},
+          new String [] {GridPilot.TOP_CONFIG_SECTION},
           new String [] {"Grid home url"},
           new String [] {newDirs[sel]}
       );

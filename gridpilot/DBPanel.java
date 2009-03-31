@@ -137,8 +137,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      // Get download dir or URL.
      // Default to either home dir on "home gridftp server"
      // as defined in config file, or user.home
-     if((defaultURL==null || defaultURL.equals("")) && GridPilot.gridHomeURL!=null){
-       defaultURL = GridPilot.gridHomeURL;
+     if((defaultURL==null || defaultURL.equals("")) && GridPilot.GRID_HOME_URL!=null){
+       defaultURL = GridPilot.GRID_HOME_URL;
      }
      else if(defaultURL==null || defaultURL.equals("")){
        defaultURL = "~";
@@ -200,7 +200,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      }
      
      tableResults = new MyJTable(hiddenFields, fieldNames,
-         GridPilot.jobColorMapping);
+         GridPilot.JOB_COLOR_MAPPING);
      
      setFieldArrays();
      
@@ -440,7 +440,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bSearch.setToolTipText("Search results for this request");
     bNext.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
-        cursor = cursor+GridPilot.fileRows;
+        cursor = cursor+GridPilot.FILE_ROWS;
         ResThread t = (new ResThread(){
           public void run(){
             try{
@@ -459,7 +459,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bNext.setToolTipText("Next search results for this request");
     bPrevious.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
-        cursor = cursor-GridPilot.fileRows;
+        cursor = cursor-GridPilot.FILE_ROWS;
         ResThread t = (new ResThread(){
           public void run(){
             try{
@@ -664,9 +664,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       });
       
       String enabled = "no";
-      for(int i=0; i<GridPilot.csNames.length; ++i){
+      for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
         try{
-          enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.csNames[i], "Enabled");
+          enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
         }
         catch(Exception e){
           continue;
@@ -675,7 +675,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             !enabled.equalsIgnoreCase("true")){
           continue;
         }
-        JMenuItem mi = new JMenuItem(GridPilot.csNames[i]);
+        JMenuItem mi = new JMenuItem(GridPilot.CS_NAMES[i]);
         //mi.setMnemonic(i);
         mi.addActionListener(new ActionListener(){
           public void actionPerformed(final ActionEvent e){
@@ -964,9 +964,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           Debug.debug("Searching from cursor "+cursor, 2);
           if(cursor==-1){
             res = dbPluginMgr.select(selectRequest, identifier, findAll());
-            if(GridPilot.fileRows>0 && res.values.length>GridPilot.fileRows){
-              vals = new String [GridPilot.fileRows][];
-              System.arraycopy(res.values, 0, vals, 0, GridPilot.fileRows);
+            if(GridPilot.FILE_ROWS>0 && res.values.length>GridPilot.FILE_ROWS){
+              vals = new String [GridPilot.FILE_ROWS][];
+              System.arraycopy(res.values, 0, vals, 0, GridPilot.FILE_ROWS);
               bNext.setEnabled(true);
               bPrevious.setEnabled(false);
               cursor = 0;
@@ -980,16 +980,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           else{
             // we've reached the end
-            if(cursor+GridPilot.fileRows>res.values.length){
+            if(cursor+GridPilot.FILE_ROWS>res.values.length){
               vals = new String [res.values.length-cursor][];
               System.arraycopy(res.values, cursor, vals, 0, res.values.length-cursor);
               bNext.setEnabled(false);
               bPrevious.setEnabled(true);
             }
             else{
-              vals = new String [GridPilot.fileRows][];
-              System.arraycopy(res.values, cursor, vals, 0, GridPilot.fileRows);
-              if(res.values.length-cursor>GridPilot.fileRows){
+              vals = new String [GridPilot.FILE_ROWS][];
+              System.arraycopy(res.values, cursor, vals, 0, GridPilot.FILE_ROWS);
+              if(res.values.length-cursor>GridPilot.FILE_ROWS){
                 bNext.setEnabled(true);
               }
               else{
@@ -1252,14 +1252,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     JMenuItem miReplicateDataset = new JMenuItem("Replicate file(s)");
     miReplicateDataset.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        final int origFileRows = GridPilot.fileRows;
+        final int origFileRows = GridPilot.FILE_ROWS;
         new Thread(){
           public void run(){
             try{
               replicate(origFileRows);
             }
             catch(IOException e){
-              GridPilot.fileRows = origFileRows;
+              GridPilot.FILE_ROWS = origFileRows;
               e.printStackTrace();
             }
           }
@@ -1444,9 +1444,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     }
     String enabled = "no";
-    for(int i=0; i<GridPilot.csNames.length; ++i){
+    for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
       try{
-        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.csNames[i], "Enabled");
+        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
       }
       catch(Exception e){
         continue;
@@ -1455,7 +1455,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           !enabled.equalsIgnoreCase("true")){
         continue;
       }
-      JMenuItem mi = new JMenuItem(GridPilot.csNames[i]);
+      JMenuItem mi = new JMenuItem(GridPilot.CS_NAMES[i]);
       mi.addActionListener(new ActionListener(){
         public void actionPerformed(final ActionEvent e){
               submit(e);
@@ -2275,7 +2275,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(dlUrl.startsWith("file:")){
       defaultURL = dlUrl;
     }
-    GridPilot.fileRows = 0;
+    GridPilot.FILE_ROWS = 0;
     Debug.debug("Creating new files panel", 2);
     dbPluginMgr.requestStopLookup();
     DBPanel filesPanel = viewFiles(true);
@@ -2288,7 +2288,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     Debug.debug("Starting download of "+filesPanel.tableResults.getSelectedRowCount()+
         " files.", 2);
     filesPanel.download(dlUrl, targetDBsPanel);
-    GridPilot.fileRows = origFileRows;
+    GridPilot.FILE_ROWS = origFileRows;
   }
   
   /**
@@ -2354,17 +2354,17 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       pTargetDBs = new JPanel();
       cbTargetDBSelection = new JComboBox();           
       cbTargetDBSelection.addItem("");
-      for(int i=0; i<GridPilot.dbNames.length; ++i){
+      for(int i=0; i<GridPilot.DB_NAMES.length; ++i){
         // If this DB has a job definition table, registration should not be done.
         // Files are defined by the jobDefinition table.
         try{
-          if(!GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[i]).isFileCatalog()){
+          if(!GridPilot.getClassMgr().getDBPluginMgr(GridPilot.DB_NAMES[i]).isFileCatalog()){
             continue;
           }
         }
         catch(Exception e){
         }
-        cbTargetDBSelection.addItem(GridPilot.dbNames[i]);
+        cbTargetDBSelection.addItem(GridPilot.DB_NAMES[i]);
       }
       JLabel jlTargetDBSelection = new JLabel("Register new locations in DB:");
       pTargetDBs.add(jlTargetDBSelection, null);

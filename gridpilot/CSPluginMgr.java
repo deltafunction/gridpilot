@@ -84,7 +84,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     logFile = GridPilot.getClassMgr().getLogFile();
     configFile = GridPilot.getClassMgr().getConfigFile();
-    csNames = GridPilot.csNames;
+    csNames = GridPilot.CS_NAMES;
     cs = new HashMap(csNames.length);
 
     try{
@@ -181,7 +181,7 @@ public class CSPluginMgr implements MyComputingSystem{
     String tmp;
 
     // default timeout
-    tmp = configFile.getValue(GridPilot.topConfigSection, "default timeout");
+    tmp = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "default timeout");
     if(tmp!=null){
       try{
         defaultTimeOut = new Integer(tmp).intValue();
@@ -201,7 +201,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     for(int i=0; i<timeOutNames.length; ++i){
 
-      tmp = configFile.getValue(GridPilot.topConfigSection, timeOutNames[i] + " timeout");
+      tmp = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, timeOutNames[i] + " timeout");
       if(tmp!=null){
         try{
           values[i] = new Integer(tmp).intValue();
@@ -213,7 +213,7 @@ public class CSPluginMgr implements MyComputingSystem{
       }
       else{
         values[i] = defaultTimeOut;
-        Debug.debug(configFile.getMissingMessage(GridPilot.topConfigSection, timeOutNames[i] + " timeout"), 3);
+        Debug.debug(configFile.getMissingMessage(GridPilot.TOP_CONFIG_SECTION, timeOutNames[i] + " timeout"), 3);
       }
     }
 

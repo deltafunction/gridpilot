@@ -4,10 +4,8 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.TimeZone;
 import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -115,7 +113,7 @@ public class MySQLDatabase extends DBCache implements Database {
     if(user==null || user.equals("") ||
         database!=null && database.endsWith("/")){
       gridAuth = true;
-      String subject = MyUtil.getGridSubject(GridPilot.certFile);
+      String subject = MyUtil.getGridSubject(GridPilot.CERT_FILE);
       
       if(user==null || user.equals("")){
         user = GridPilot.getClassMgr().getSSL().getGridDatabaseUser();
@@ -1463,9 +1461,7 @@ public class MySQLDatabase extends DBCache implements Database {
     }
     // Update DB with "request" and return success/failure
     // Fetch current date and time
-    SimpleDateFormat dateFormat = new SimpleDateFormat(GridPilot.dateFormatString);
-    dateFormat.setTimeZone(TimeZone.getDefault());
-    String dateString = dateFormat.format(new Date());
+    String dateString = MyUtil.makeDateString(null, GridPilot.DATE_FORMAT_STRING);
     // NOTICE: there must be a field jobDefinition.status
     String arg = "INSERT INTO jobDefinition (datasetName, status, ";
     for(int i=0; i<cstAttrNames.length; ++i){
@@ -2224,7 +2220,7 @@ public class MySQLDatabase extends DBCache implements Database {
 
   private String makeDate(String dateInput){
     try{
-      SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
+      SimpleDateFormat df = new SimpleDateFormat(GridPilot.DATE_FORMAT_STRING);
       String dateString = "";
       if(dateInput == null || dateInput.equals("") || dateInput.equals("''")){
         dateString = df.format(Calendar.getInstance().getTime());

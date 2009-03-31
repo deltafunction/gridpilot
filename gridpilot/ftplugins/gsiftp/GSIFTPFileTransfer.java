@@ -3,10 +3,7 @@ package gridpilot.ftplugins.gsiftp;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.security.GeneralSecurityException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Vector;
 
@@ -26,6 +23,7 @@ import org.ietf.jgss.GSSCredential;
 import org.apache.log4j.*;
 
 import gridfactory.common.Debug;
+import gridfactory.common.FileCacheMgr;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
@@ -41,6 +39,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
   private HashMap jobs = null;
   private HashMap<String, MyUrlCopyTransferListener> urlCopyTransferListeners = null;
   private HashMap fileTransfers = null;
+  private FileCacheMgr fileCacheMgr;
   
   private static String PLUGIN_NAME;
 
@@ -52,10 +51,10 @@ public class GSIFTPFileTransfer implements FileTransfer {
 
   public GSIFTPFileTransfer() throws IOException, GeneralSecurityException{
     PLUGIN_NAME = "gsiftp";
-    if(!GridPilot.firstRun){
+    if(!GridPilot.IS_FIRST_RUN){
       user = GridPilot.getClassMgr().getSSL().getGridSubject();
     }
-    
+    fileCacheMgr = GridPilot.getClassMgr().getFileCacheMgr();
     jobs = new HashMap();
     urlCopyTransferListeners = new HashMap<String, MyUrlCopyTransferListener>();
     fileTransfers = new HashMap();
@@ -90,7 +89,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
     rootLogger.addAppender(myAppender);
     // log errors to file
     FileAppender ap = new MyFileAppender();
-    ap.setFile(GridPilot.logFileName);  
+    ap.setFile(GridPilot.LOG_FILE_NAME);  
     ap.setName("GridPilot Log");
     ap.activateOptions();
     rootLogger.addAppender(ap);
@@ -819,107 +818,6 @@ public class GSIFTPFileTransfer implements FileTransfer {
     return gridFtpClient.getSize(url.getPath());
   }
   
-  private Date makeDate(String dateInput){
-    Date date = null;
-    try{
-      SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
-      date = df.parse(dateInput);
-    }
-    catch(Throwable e){
-      Debug.debug("Could not set date. "+e.getMessage(), 1);
-      e.printStackTrace();
-    }
-    return date;
-  }
-
-  private String makeDateString(Date date){
-    String dateString =  null;
-    try{
-      SimpleDateFormat df = new SimpleDateFormat(GridPilot.dateFormatString);
-      dateString = df.format(date);
-    }
-    catch(Throwable e){
-      Debug.debug("Could not parse date. "+e.getMessage(), 1);
-      e.printStackTrace();
-    }
-    return dateString;
-  }
-
-  /**
-   * Checks if a given source has already been downloaded and is still there
-   * and if so, if the source has changed since the download (date and size).
-   */
-  private boolean checkCache(GridFTPClient client, UrlCopy urlCopy){
-    File destinationFile = new File(urlCopy.getDestinationUrl().getPath());
-    File cacheInfoDir = new File(destinationFile.getParentFile().getAbsolutePath(), ".gridpilot_info");
-    File cacheInfoFile = new File(cacheInfoDir, destinationFile.getName());
-    long cachedSize = -1;
-    Date cachedDate = null;
-    boolean cacheOk = false;
-    try{
-      if(!cacheInfoDir.exists()){
-        cacheInfoDir.mkdir();
-      }
-      if(cacheInfoFile.exists()){
-        // Parse the file. It has the format:
-        // date: <date>
-        // size: <size>
-        RandomAccessFile cacheRAF = new RandomAccessFile(cacheInfoFile.getAbsolutePath(), "rw");
-        String line = "";
-        while(line!=null){
-           line = cacheRAF.readLine();
-           if(line.startsWith("date: ")){
-             cachedDate = makeDate(line.replaceFirst("date: (.*)", "$1"));
-           }
-           if(line.startsWith("size: ")){
-             cachedSize = Long.parseLong(line.replaceFirst("size: (.*)", "$1"));
-           }
-        }
-        cacheRAF.close();
-      }
-      long fileSize = -1;
-      try{
-        fileSize = urlCopy.getSourceLength();
-      }
-      catch(Exception e){
-      }
-      Date modificationDate = null;
-      try{
-        modificationDate = client.getLastModified(urlCopy.getDestinationUrl().getPath());
-      }
-      catch(Exception ee){
-      }
-      if(destinationFile.exists() && cachedDate!=null && cachedSize>-1){
-        if(modificationDate!=null && fileSize>-1){
-          if(cachedDate.equals(modificationDate) && cachedSize==fileSize){
-            cacheOk = true;
-          }
-          else{
-            // if the file is there, but not up to date, move it out of the way
-            try{
-              destinationFile.renameTo(new File(destinationFile.getAbsolutePath()+".bk"));
-            }
-            catch(Exception e){
-            }
-          }
-        }
-      }
-      if(!cacheOk && modificationDate!=null && fileSize>-1){
-        // write the file size and modification date to .gridpilot_cache/.<file name>
-        LocalStaticShell.writeFile(cacheInfoFile.getAbsolutePath(),
-            "date: "+makeDateString(modificationDate), false);
-        LocalStaticShell.writeFile(cacheInfoFile.getAbsolutePath(),
-            "size: "+Long.toString(fileSize), true);
-      }
-    }
-    catch(Exception e){
-      cacheOk = false;
-      e.printStackTrace();
-      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: problem checking cache. File will be downloaded.", e);
-    }
-    return cacheOk;
-  }
-
   public String[] startCopyFiles(GlobusURL[] srcUrls, GlobusURL[] destUrls)
      throws UrlCopyException {
     Debug.debug("", 2);
@@ -961,7 +859,16 @@ public class GSIFTPFileTransfer implements FileTransfer {
               if(urlCopy.getSourceUrl().getProtocol().equalsIgnoreCase("gsiftp") &&
                   urlCopy.getDestinationUrl().getProtocol().equalsIgnoreCase("file")){
                 Debug.debug("Checking cache...", 2);
-                if(checkCache(checkClient, urlCopy)){
+                boolean cacheOk = false;
+                try{
+                  cacheOk = fileCacheMgr.checkCache(new File(urlCopy.getDestinationUrl().getPath()),
+                                       urlCopy.getSourceLength(),
+                                       checkClient.getLastModified(urlCopy.getDestinationUrl().getPath()));
+                }
+                catch(Exception e){
+                  GridPilot.getClassMgr().getLogFile().addMessage("WARNING: problem checking cache. ", e);
+                }
+                if(!cacheOk){
                   Debug.debug("Cache ok, not starting the actual transfer...", 2);
                   //urlCopy.cancel();
                   ((MyUrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferCompleted();
@@ -1059,6 +966,10 @@ public class GSIFTPFileTransfer implements FileTransfer {
   }
 
   public void finalize(String fileTransferID) throws Exception {
+    // write the file size and modification date to .cache_info/.<file name>.info
+    UrlCopy urlCopy = (UrlCopy) jobs.get(fileTransferID);
+    File destinationFile = new File(urlCopy.getDestinationUrl().getPath());
+    fileCacheMgr.writeCacheInfo(destinationFile);
     jobs.remove(fileTransferID);
   }
 

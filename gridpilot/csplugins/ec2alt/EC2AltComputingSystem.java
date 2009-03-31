@@ -63,7 +63,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
     EC2AltMonitoringPanel panel = new EC2AltMonitoringPanel(ec2mgr);
     // This causes the panel to be added to the monitoring window as a tab,
     // right after the transfer monitoring tab and before the log tab.
-    GridPilot.extraMonitorTabs.add(panel);
+    GridPilot.EXTRA_MONITOR_TABS.add(panel);
         
     try{
       String mms = GridPilot.getClassMgr().getConfigFile().getValue(csName,
@@ -144,8 +144,8 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
     String msg = "You have "+instances.size()+" running EC2 AMI instance(s).\n" +
        "Do you want to include it/them in the pool of compute hosts?";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-    if(GridPilot.splash!=null){
-      GridPilot.splash.hide();
+    if(GridPilot.SPLASH!=null){
+      GridPilot.SPLASH.hide();
     }
     int choice = -1;
     try{

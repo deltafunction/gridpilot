@@ -123,7 +123,7 @@ public class NGComputingSystem implements MyComputingSystem{
 
     logFile = GridPilot.getClassMgr().getLogFile();  
     
-    defaultUser = configFile.getValue(GridPilot.topConfigSection, "Default user");
+    defaultUser = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Default user");
     String useInfoSys = configFile.getValue(csName, "Use information system");
     useInfoSystem = useInfoSys.equalsIgnoreCase("true") || useInfoSys.equalsIgnoreCase("yes");
     clusters = configFile.getValues(csName, "clusters");
@@ -589,9 +589,7 @@ public class NGComputingSystem implements MyComputingSystem{
     // Move away before downloading.
     try{
       // current date and time
-      SimpleDateFormat dateFormat = new SimpleDateFormat(GridPilot.dateFormatString);
-      dateFormat.setTimeZone(TimeZone.getDefault());
-      String dateString = dateFormat.format(new Date());
+      String dateString = MyUtil.makeDateString(null, GridPilot.DATE_FORMAT_STRING);
       LocalStaticShell.moveFile(dirName, dirName+"."+dateString);
     }
     catch(Exception ioe){

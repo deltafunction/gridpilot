@@ -2,6 +2,7 @@ package gridpilot;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
+import gridfactory.common.FileCacheMgr;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.Shell;
@@ -57,6 +58,7 @@ public class ClassMgr{
   private HashMap<String, RteRdfParser> rdfParsers = new HashMap<String, RteRdfParser>();
   private HashMap<String, RTEMgr> rteMgrs = new HashMap<String, RTEMgr>();
   private Vector urlList = new Vector();
+  private FileCacheMgr fileCacheMgr;
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
   
@@ -256,13 +258,13 @@ public class ClassMgr{
     JComboBox cb = new JComboBox();
     for(int i=0; i<shellMgrs.size() ; ++i){
       String type = "";
-      if(shellMgrs.get(GridPilot.csNames[i]) instanceof MySecureShell){
+      if(shellMgrs.get(GridPilot.CS_NAMES[i]) instanceof MySecureShell){
         type = " (remote)";
       }
-      if(shellMgrs.get(GridPilot.csNames[i]) instanceof LocalStaticShell){
+      if(shellMgrs.get(GridPilot.CS_NAMES[i]) instanceof LocalStaticShell){
         type = " (local)";
       }
-      cb.addItem(GridPilot.csNames[i] + type);
+      cb.addItem(GridPilot.CS_NAMES[i] + type);
     }
     cb.setSelectedIndex(0);
 
@@ -278,7 +280,7 @@ public class ClassMgr{
 
     int ind = cb.getSelectedIndex();
     if(ind>=0 && ind<shellMgrs.size()){
-      return (Shell) shellMgrs.get(GridPilot.csNames[ind]);
+      return (Shell) shellMgrs.get(GridPilot.CS_NAMES[ind]);
     }
     else{
       return null;
@@ -327,10 +329,10 @@ public class ClassMgr{
   public MyJTable getJobStatusTable() throws Exception{
     if(jobStatusTable==null){
       Debug.debug("jobStatusTable null", 3);
-      String[] fieldNames = GridPilot.jobStatusFields;
+      String[] fieldNames = GridPilot.JOB_STATUS_FIELDS;
       Debug.debug("Creating new Table with fields "+MyUtil.arrayToString(fieldNames), 3);
       jobStatusTable = new MyJTable(new String [] {}, fieldNames,
-          GridPilot.jobColorMapping);
+          GridPilot.JOB_COLOR_MAPPING);
       setJobStatusTable(jobStatusTable);
     }
     return jobStatusTable;
@@ -362,10 +364,10 @@ public class ClassMgr{
   public MyJTable getTransferStatusTable() throws Exception{
     if(transferStatusTable==null){
       Debug.debug("transferStatusTable null", 3);
-      String[] fieldNames = GridPilot.transferStatusFields;
+      String[] fieldNames = GridPilot.TRANSFER_STATUS_FIELDS;
       Debug.debug("Creating new Table with fields "+MyUtil.arrayToString(fieldNames), 3);
       transferStatusTable = new MyJTable(new String [] {}, fieldNames,
-          GridPilot.transferColorMapping);
+          GridPilot.TRANSFER_COLOR_MAPPING);
        GridPilot.getClassMgr().setTransferStatusTable(transferStatusTable);
       //new Exception().printStackTrace();
     }
@@ -421,8 +423,8 @@ public class ClassMgr{
   
   public MySSL getSSL() throws IOException, GeneralSecurityException{
     if(ssl==null){
-      Debug.debug("Constructing SSL with "+GridPilot.certFile+":"+GridPilot.keyFile+":"+
-          GridPilot.keyPassword+":"+GridPilot.caCertsDir, 1);
+      Debug.debug("Constructing SSL with "+GridPilot.CERT_FILE+":"+GridPilot.KEY_FILE+":"+
+          GridPilot.KEY_PASSWORD+":"+GridPilot.CA_CERTS_DIR, 1);
       ssl = new MySSL();
     }
     return ssl;
@@ -546,6 +548,13 @@ public class ClassMgr{
       rteMgrs.put(key, rteMgr);
     }
     return rteMgrs.get(key);
+  }
+
+  public FileCacheMgr getFileCacheMgr() {
+    if(fileCacheMgr==null){
+      fileCacheMgr = new FileCacheMgr(GridPilot.DATE_FORMAT_STRING);
+    }
+    return fileCacheMgr;
   }
   
 }

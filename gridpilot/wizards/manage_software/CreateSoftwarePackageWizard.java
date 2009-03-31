@@ -353,7 +353,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
   }
   
   private void mkTmpDir() throws IOException {
-    String cacheDir = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.topConfigSection, "Pull cache directory");
+    String cacheDir = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.TOP_CONFIG_SECTION, "Pull cache directory");
     if(cacheDir==null || cacheDir.equals("")){
       throw new IOException("No cache directory defined.");
     }
@@ -758,7 +758,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
         "You must specify which base system the software is to run on. Optionally, you\n" +
         "can also specify if the runtime environment depends on other runtime environments\n\n";
     JLabel jlInstructions = new JLabel("<html>"+msg.replaceAll("\n", "<br>")+"</html>");
-    String homeURL = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.topConfigSection, "Grid home url");
+    String homeURL = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.TOP_CONFIG_SECTION, "Grid home url");
     final JTextField jtfUrl =  new JTextField(TEXTFIELDWIDTH);
     if(MyUtil.urlIsRemote(homeURL)){
       jtfUrl.setText(homeURL);
@@ -766,7 +766,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     JPanel tUrl = new JPanel();
     tUrl.add(jtfUrl);
     final JTextField jtfCatalog =  new JTextField(TEXTFIELDWIDTH);
-    String catalogUrlsString = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.topConfigSection, "Runtime catalog URLs");
+    String catalogUrlsString = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.TOP_CONFIG_SECTION, "Runtime catalog URLs");
     if(catalogUrlsString!=null && !catalogUrlsString.equals("")){
       String[] catalogUrls;
       catalogUrls = null;
@@ -955,7 +955,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
   private void parseCatalogs(){
     int i = 0;
     String [] rteCatalogUrls =
-      GridPilot.getClassMgr().getConfigFile().getValues(GridPilot.topConfigSection, "runtime catalog URLs");
+      GridPilot.getClassMgr().getConfigFile().getValues(GridPilot.TOP_CONFIG_SECTION, "runtime catalog URLs");
     HashSet catalogUrlsSet = new HashSet();
     if(rteCatalogUrls!=null){
       Collections.addAll(catalogUrlsSet, rteCatalogUrls);

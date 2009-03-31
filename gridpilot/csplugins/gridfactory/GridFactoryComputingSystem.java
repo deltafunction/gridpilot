@@ -66,7 +66,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     logFile = GridPilot.getClassMgr().getLogFile();
     submitURL = configFile.getValue(csName, "submission url");
     submitHost = (new GlobusURL(submitURL)).getHost();
-    rteCatalogUrls = configFile.getValues(GridPilot.topConfigSection, "runtime catalog URLs");
+    rteCatalogUrls = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "runtime catalog URLs");
     timerSyncRTEs.setDelay(RTE_SYNC_DELAY);
     String virtualizeStr = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "virtualize");

@@ -77,14 +77,14 @@ public class GlobalFrame extends GPFrame{
     
     container.validate();
 
-    if(GridPilot.dbNames.length>0){
-      for(int i=0; i<GridPilot.tabs.length; ++i){
+    if(GridPilot.DB_NAMES.length>0){
+      for(int i=0; i<GridPilot.TABS.length; ++i){
         try{
-          addPanel(new DBPanel(GridPilot.dbNames[0], GridPilot.tabs[i]));
+          addPanel(new DBPanel(GridPilot.DB_NAMES[0], GridPilot.TABS[i]));
         }
         catch(Exception e){
           Debug.debug("ERROR: could not load database panel for "+
-              GridPilot.dbNames[0] + " : " + GridPilot.tabs[i], 1);
+              GridPilot.DB_NAMES[0] + " : " + GridPilot.TABS[i], 1);
           e.printStackTrace();
         }
       }
@@ -191,11 +191,11 @@ public class GlobalFrame extends GPFrame{
     Dimension size = this.getSize();
     ImageIcon closeIcon = null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "close.png");
+      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "close.png");
       closeIcon = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "close.png", 3);
+      Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "close.png", 3);
       closeIcon = new ImageIcon();
     }
   
@@ -280,10 +280,10 @@ public class GlobalFrame extends GPFrame{
   private void menuHelpAbout_actionPerformed(){
     URL aboutURL = null;
     try{
-      aboutURL = GridPilot.class.getResource(GridPilot.resourcesPath + "about.htm");
+      aboutURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "about.htm");
     }
     catch(Exception e){
-      Debug.debug("Could not find file "+ GridPilot.resourcesPath + "about.htm", 3);
+      Debug.debug("Could not find file "+ GridPilot.RESOURCES_PATH + "about.htm", 3);
       return;
     } 
     try{
@@ -407,11 +407,11 @@ public class GlobalFrame extends GPFrame{
         ResThread t = new ResThread(){
           public void run(){
             try{
-              for(int i=0; i<GridPilot.csNames.length; ++i){
+              for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
                 GridPilot.getClassMgr().getCSPluginMgr().cleanupRuntimeEnvironments(
-                    GridPilot.csNames[i]);
+                    GridPilot.CS_NAMES[i]);
                 GridPilot.getClassMgr().getCSPluginMgr().setupRuntimeEnvironments(
-                    GridPilot.csNames[i]);
+                    GridPilot.CS_NAMES[i]);
               }
             }
             catch(Exception ex){
@@ -481,15 +481,15 @@ public class GlobalFrame extends GPFrame{
     
     menuView.addSeparator();
     
-    for(i=0; i<GridPilot.dbNames.length; ++i){
+    for(i=0; i<GridPilot.DB_NAMES.length; ++i){
       
-      final JMenu mDB = new JMenu("New tab with "+GridPilot.dbNames[i]);
-      mDB.setName(GridPilot.dbNames[i]);
+      final JMenu mDB = new JMenu("New tab with "+GridPilot.DB_NAMES[i]);
+      mDB.setName(GridPilot.DB_NAMES[i]);
       
       // Check if there is a runtimeEnvironment table in this database
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.dbNames[i]).getFieldNames("runtimeEnvironment")!=null)){
+            GridPilot.DB_NAMES[i]).getFieldNames("runtimeEnvironment")!=null)){
           JMenuItem miNewTab = new JMenuItem("runtimeEnvironments");
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
@@ -512,7 +512,7 @@ public class GlobalFrame extends GPFrame{
       // Check if there is a transformation table in this database
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.dbNames[i]).getFieldNames("transformation")!=null)){
+            GridPilot.DB_NAMES[i]).getFieldNames("transformation")!=null)){
           JMenuItem miNewTab = new JMenuItem("transformations");
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
@@ -534,9 +534,9 @@ public class GlobalFrame extends GPFrame{
       
       // Check if there is a dataset table in this database
       try{
-        Debug.debug("Checking for dataset in "+GridPilot.dbNames[i], 2);
+        Debug.debug("Checking for dataset in "+GridPilot.DB_NAMES[i], 2);
         if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.dbNames[i]).getFieldNames("dataset")!=null)){
+            GridPilot.DB_NAMES[i]).getFieldNames("dataset")!=null)){
           Debug.debug("---> ok, adding", 2);
           JMenuItem miNewTab = new JMenuItem("datasets");
           miNewTab.addActionListener(new ActionListener(){
@@ -561,7 +561,7 @@ public class GlobalFrame extends GPFrame{
       // Check if there is a jobDefinition table in this database
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.dbNames[i]).getFieldNames("jobDefinition")!=null)){
+            GridPilot.DB_NAMES[i]).getFieldNames("jobDefinition")!=null)){
           JMenuItem miNewTab = new JMenuItem("jobDefinitions");
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){

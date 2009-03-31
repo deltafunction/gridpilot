@@ -158,7 +158,7 @@ public class JobCreationPanel extends CreateEditPanel{
 
   private void initAttributePanel(){
     
-    cstAttributesNames = GridPilot.fixedJobAttributes;
+    cstAttributesNames = GridPilot.FIXED_JOB_ATTRIBUTES;
     ArrayList jobDefinitionFields = new ArrayList(Arrays.asList(dbPluginMgr.getFieldnames("jobDefinition")));    
     
     String transformationID = dbPluginMgr.getTransformationID(

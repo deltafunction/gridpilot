@@ -119,8 +119,8 @@ public class RunCommandWizard extends GPFrame{
       e.printStackTrace();
     }
     if(txt==null || txt.equals("")){
-      if(GridPilot.gridHomeURL!=null && !GridPilot.gridHomeURL.equals("")){
-        txt = GridPilot.gridHomeURL;
+      if(GridPilot.GRID_HOME_URL!=null && !GridPilot.GRID_HOME_URL.equals("")){
+        txt = GridPilot.GRID_HOME_URL;
       }
     }
     return txt;
@@ -216,9 +216,9 @@ public class RunCommandWizard extends GPFrame{
     ct.gridx = 0;
     JPanel buttonsPanel = new JPanel();
     String enabled = "no";
-    for(int i=0; i<GridPilot.csNames.length; ++i){
+    for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
       try{
-        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.csNames[i], "Enabled");
+        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
       }
       catch(Exception e){
         continue;
@@ -227,7 +227,7 @@ public class RunCommandWizard extends GPFrame{
           !enabled.equalsIgnoreCase("true")){
         continue;
       }
-      JMenuItem mi = new JMenuItem(GridPilot.csNames[i]);
+      JMenuItem mi = new JMenuItem(GridPilot.CS_NAMES[i]);
       mi.addActionListener(new ActionListener(){
         public void actionPerformed(final ActionEvent e){
           runJob(e);

@@ -91,7 +91,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
     logFile = GridPilot.getClassMgr().getLogFile();
     configFile = GridPilot.getClassMgr().getConfigFile();
     transferControl = GridPilot.getClassMgr().getTransferControl();
-    defaultUser = configFile.getValue(GridPilot.topConfigSection, "Default user");
+    defaultUser = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Default user");
     unparsedWorkingDir= configFile.getValue(csName, "Working directory");
     if(unparsedWorkingDir==null || unparsedWorkingDir.equals("")){
       unparsedWorkingDir = "~";

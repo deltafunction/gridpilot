@@ -97,7 +97,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       basicOSRTES = new String [] {"Windows"};
     }
     
-    defaultUser = configFile.getValue(GridPilot.topConfigSection, "default user");
+    defaultUser = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "default user");
     try{
       userName = shell.getUserName();
     }
@@ -122,9 +122,9 @@ public class ForkComputingSystem implements MyComputingSystem{
     }
     Debug.debug("Using workingDir "+workingDir, 2);
     
-    runtimeDirectory = GridPilot.runtimeDir;
+    runtimeDirectory = GridPilot.RUNTIME_DIR;
     
-    rteCatalogUrls = configFile.getValues(GridPilot.topConfigSection, "runtime catalog URLs");
+    rteCatalogUrls = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "runtime catalog URLs");
 
     publicCertificate = configFile.getValue(csName, "public certificate");
     runtimeDBs = configFile.getValues(csName, "runtime databases");

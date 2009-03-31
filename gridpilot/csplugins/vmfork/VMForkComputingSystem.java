@@ -67,11 +67,11 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     // Fill maxJobs with a constant number
     maxJobs = new int[maxMachines];
     Arrays.fill(maxJobs, jobsPerMachine);
-    localRteDir = GridPilot.runtimeDir;
+    localRteDir = GridPilot.RUNTIME_DIR;
     remoteRteDir = localRteDir;
     workingDir = configFile.getValue(csName, "working directory");
     logFile = GridPilot.getClassMgr().getLogFile();
-    rteCatalogUrls = configFile.getValues(GridPilot.topConfigSection, "runtime catalog URLs");
+    rteCatalogUrls = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "runtime catalog URLs");
     transferControl = GridPilot.getClassMgr().getTransferControl();
     rteMgr = GridPilot.getClassMgr().getRTEMgr(localRteDir, rteCatalogUrls);
     rteMgr.fixLocalCatalog(GridPilot.class);
@@ -123,7 +123,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     VMForkMonitoringPanel panel = new VMForkMonitoringPanel(vmMgr, rteCatalogUrls);
     // This causes the panel to be added to the monitoring window as a tab,
     // right after the transfer monitoring tab and before the log tab.
-    GridPilot.extraMonitorTabs.add(panel);
+    GridPilot.EXTRA_MONITOR_TABS.add(panel);
     
     pullMgr = new MyPullMgr();
 

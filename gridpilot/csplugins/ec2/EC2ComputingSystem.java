@@ -152,7 +152,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     EC2MonitoringPanel panel = new EC2MonitoringPanel(ec2mgr);
     // This causes the panel to be added to the monitoring window as a tab,
     // right after the transfer monitoring tab and before the log tab.
-    GridPilot.extraMonitorTabs.add(panel);
+    GridPilot.EXTRA_MONITOR_TABS.add(panel);
         
     try{
       String mms = GridPilot.getClassMgr().getConfigFile().getValue(csName,
@@ -239,14 +239,14 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     String msg = "You have "+instances.size()+" running EC2 AMI instance(s).\n" +
        "Do you want to include it/them in the pool of compute hosts?";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-    if(GridPilot.splash!=null){
-      GridPilot.splash.hide();
+    if(GridPilot.SPLASH!=null){
+      GridPilot.SPLASH.hide();
     }
     int choice = -1;
     try{
       choice = confirmBox.getConfirm("Confirm inclusion of hosts",
           msg, new Object[] {"Yes", "No"});
-      GridPilot.splash.show();
+      GridPilot.SPLASH.show();
     }
     catch(Exception e){
       e.printStackTrace();
@@ -1050,7 +1050,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * @throws Exception
    */
   private String[] getTarPackageRTEs(String opsysRte, String dbName) throws Exception{
-    RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.runtimeDir, allTmpCatalogs);
+    RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.RUNTIME_DIR, allTmpCatalogs);
     RTECatalog catalog = rteMgr.getRTECatalog();
     MetaPackage opsysMp = catalog.getMetaPackage(opsysRte);
     HashMap<String, Vector<String>> depsMap = rteMgr.getVmRteDepends(opsysRte, null);
@@ -1076,7 +1076,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * @throws Exception 
    */
   private EBSSnapshotPackage[] getEBSSnapshots(String opsysRte, String dbName) throws Exception{
-    RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.runtimeDir, allTmpCatalogs);
+    RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.RUNTIME_DIR, allTmpCatalogs);
     RTECatalog catalog = rteMgr.getRTECatalog();
     HashMap<String, Vector<String>> depsMap = rteMgr.getVmRteDepends(opsysRte, null);
     Vector<String> deps = depsMap.get(opsysRte);
@@ -1171,7 +1171,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   
   private void installTarPackages(Instance inst, String os, String[] rtes) throws Exception {
         
-    RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.runtimeDir, allTmpCatalogs);
+    RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.RUNTIME_DIR, allTmpCatalogs);
     RTECatalog catalog = rteMgr.getRTECatalog();    
     Shell shell = getShell(inst.getDnsName());
     

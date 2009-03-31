@@ -30,11 +30,11 @@ public class GPFrame extends JFrame{
     URL imgURL = null;
     
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.resourcesPath + "aviateur.png");
+      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "aviateur.png");
       icon = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.resourcesPath + "aviateur.png", 3);
+      Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "aviateur.png", 3);
       icon = new ImageIcon();
     }
 

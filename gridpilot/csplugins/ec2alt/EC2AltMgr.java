@@ -146,8 +146,8 @@ public class EC2AltMgr {
     keyFile.setReadable(true, true);
     keyFile.setWritable(false, false);
     keyFile.setWritable(true, true);
-    if(GridPilot.gridHomeURL!=null && !GridPilot.gridHomeURL.equals("") && MyUtil.urlIsRemote(GridPilot.gridHomeURL)){
-      String uploadUrl = GridPilot.gridHomeURL + (GridPilot.gridHomeURL.endsWith("/")?"":"/");
+    if(GridPilot.GRID_HOME_URL!=null && !GridPilot.GRID_HOME_URL.equals("") && MyUtil.urlIsRemote(GridPilot.GRID_HOME_URL)){
+      String uploadUrl = GridPilot.GRID_HOME_URL + (GridPilot.GRID_HOME_URL.endsWith("/")?"":"/");
       Debug.debug("Uploading private key to "+uploadUrl, 1);
       try{
         transferControl.upload(keyFile, uploadUrl);
@@ -186,7 +186,7 @@ public class EC2AltMgr {
       return;
     }
     keyFile = new File(runDir, KEY_NAME+"-"+keyInfo.getKeyFingerprint().replaceAll(":", ""));
-    String downloadUrl = GridPilot.gridHomeURL + (GridPilot.gridHomeURL.endsWith("/")?"":"/")+
+    String downloadUrl = GridPilot.GRID_HOME_URL + (GridPilot.GRID_HOME_URL.endsWith("/")?"":"/")+
       keyFile.getName();
     List<Reservation> reservations;
     try{
@@ -281,7 +281,7 @@ public class EC2AltMgr {
             LocalStaticShell.readFile(keyFile.getAbsolutePath()));
       }
       // See if we can download the private key
-      String downloadUrl = GridPilot.gridHomeURL + (GridPilot.gridHomeURL.endsWith("/")?"":"/")+
+      String downloadUrl = GridPilot.GRID_HOME_URL + (GridPilot.GRID_HOME_URL.endsWith("/")?"":"/")+
         keyFile.getName();
       Debug.debug("Downloading private key from "+downloadUrl, 1);
       try{

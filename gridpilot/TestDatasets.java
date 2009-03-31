@@ -41,7 +41,7 @@ public class TestDatasets {
    */
   protected void createAll(){
     try{
-      if(!GridPilot.firstRun){
+      if(!GridPilot.IS_FIRST_RUN){
         GridPilot.splashShow("Checking test transformations");
       }
     }
@@ -51,13 +51,13 @@ public class TestDatasets {
     String isEnabled = "no";
     Shell shellMgr = null;
     DBPluginMgr dbPluginMgr = null;
-    for(int i=0; i<GridPilot.csNames.length; ++i){
-      isEnabled = configFile.getValue(GridPilot.csNames[i], "Enabled");
+    for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
+      isEnabled = configFile.getValue(GridPilot.CS_NAMES[i], "Enabled");
       if(isEnabled==null || !isEnabled.equalsIgnoreCase("yes") && !isEnabled.equalsIgnoreCase("true")){
         continue;
       }
       try{
-        shellMgr = GridPilot.getClassMgr().getShellMgr(GridPilot.csNames[i]);
+        shellMgr = GridPilot.getClassMgr().getShellMgr(GridPilot.CS_NAMES[i]);
       }
       catch(Exception e){
         shellMgr = null;
@@ -140,7 +140,7 @@ public class TestDatasets {
     if(!shellMgr.existsFile(transformationDirectory+testScriptName)){
       BufferedReader in = null;
       try{
-        URL fileURL = GridPilot.class.getResource(GridPilot.resourcesPath+testScriptName);
+        URL fileURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH+testScriptName);
         in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
         String line = null;
         while((line=in.readLine())!=null){
@@ -239,7 +239,7 @@ public class TestDatasets {
    * If the dataset does not exist, create it.
    */
   public static void createMyDataset(DBPluginMgr dbPluginMgr){
-    Debug.debug("Creating my_dataset with output location "+GridPilot.gridHomeURL, 1);
+    Debug.debug("Creating my_dataset with output location "+GridPilot.GRID_HOME_URL, 1);
     String id = dbPluginMgr.getDatasetID(myDatasetName);
     if(id==null || id.equals("") || id.equals("-1")){
       String [] fields = new String [] {
@@ -255,7 +255,7 @@ public class TestDatasets {
           myTransformationName,
           myTransformationVersion,
           "1",
-          GridPilot.gridHomeURL};
+          GridPilot.GRID_HOME_URL};
       dbPluginMgr.createDataset(null, fields, values);
     }
   }

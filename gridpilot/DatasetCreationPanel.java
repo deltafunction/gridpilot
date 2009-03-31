@@ -132,7 +132,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
         // nothing
       }
     }
-    else if(GridPilot.dbNames!=null && GridPilot.dbNames.length!=0 &&
+    else if(GridPilot.DB_NAMES!=null && GridPilot.DB_NAMES.length!=0 &&
         datasetIDs!=null && datasetIDs.length!=0 &&
         (datasetIDs.length!=1 || !datasetIDs[0].equals("-1"))){
       if(datasetIDs.length==1){
@@ -173,7 +173,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     setValues();
     checkValues();
     
-    if(GridPilot.dbNames==null || GridPilot.dbNames.length==0 ||
+    if(GridPilot.DB_NAMES==null || GridPilot.DB_NAMES.length==0 ||
         datasetIDs==null || datasetIDs.length==0 ||
         (datasetIDs.length==1 && datasetIDs[0].equals("-1"))){
       initTransformationPanel();
@@ -738,18 +738,18 @@ public class DatasetCreationPanel extends CreateEditPanel{
     cbTargetDBSelection = new JComboBox();
     
     cbTargetDBSelection.addItem("");
-    for(int i=0; i<GridPilot.dbNames.length; ++i){
+    for(int i=0; i<GridPilot.DB_NAMES.length; ++i){
       // If this DB has no job definition table, there's no point in
       // allowing the creation of datasets with an input dataset in it.
       try{
-        if(!GridPilot.getClassMgr().getDBPluginMgr(GridPilot.dbNames[i]).isJobRepository()){
+        if(!GridPilot.getClassMgr().getDBPluginMgr(GridPilot.DB_NAMES[i]).isJobRepository()){
           continue;
         }
       }
       catch(Exception e){
         continue;
       }
-      cbTargetDBSelection.addItem(GridPilot.dbNames[i]);
+      cbTargetDBSelection.addItem(GridPilot.DB_NAMES[i]);
     }
 
     jlTargetDBSelection = new JLabel("DB:");

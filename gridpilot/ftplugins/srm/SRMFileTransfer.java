@@ -62,7 +62,7 @@ public class SRMFileTransfer implements FileTransfer {
 
   public SRMFileTransfer() throws IOException, GeneralSecurityException{
     pluginName = "srm";
-    if(!GridPilot.firstRun){
+    if(!GridPilot.IS_FIRST_RUN){
       user = GridPilot.getClassMgr().getSSL().getGridSubject();
     }
     
@@ -70,13 +70,13 @@ public class SRMFileTransfer implements FileTransfer {
 
     //System.setProperty("X509_CERT_DIR",
     //    Util.getProxyFile().getParentFile().getAbsolutePath());
-    if(GridPilot.globusTcpPortRange==null || GridPilot.globusTcpPortRange.equals("")){
+    if(GridPilot.GLOBUS_TCP_PORT_RANGE==null || GridPilot.GLOBUS_TCP_PORT_RANGE.equals("")){
       error = "WARNING: globus tcp port range is not set. SRM may not work.";
       Debug.debug(error, 1);
-      GridPilot.globusTcpPortRange = "";
+      GridPilot.GLOBUS_TCP_PORT_RANGE = "";
     }
     else{
-      System.setProperty("org.globus.tcp.port.range", GridPilot.globusTcpPortRange);
+      System.setProperty("org.globus.tcp.port.range", GridPilot.GLOBUS_TCP_PORT_RANGE);
     }
     copyRetries = GridPilot.getClassMgr().getConfigFile().getValue("File transfer systems",
        "copy retries");
