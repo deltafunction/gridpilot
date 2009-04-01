@@ -127,7 +127,7 @@ public class JobValidation{
    * update database, warns, and checks for a new validation. <p>
    */
   private void endOfValidation(MyJobInfo job, int dbStatus){
-    if(!GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).updateJobStdoutErr(
+    if(!GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).updateJobValidationResult(
         job.getIdentifier(), job.getValidationResult())){
       logFile.addMessage("DB updateJobStdoutErr(" + job.getIdentifier() + ", " +
                          job.getValidationResult() +

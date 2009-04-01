@@ -107,7 +107,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public boolean updateJobStdoutErr(String jobDefID, String result){
+  public boolean updateJobValidationResult(String jobDefID, String result){
     return updateJobDefinition(jobDefID, new String [] {"validationResult"}, new String [] {result});
   }
 
