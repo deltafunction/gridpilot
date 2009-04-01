@@ -1068,7 +1068,7 @@ public class MyTransferControl extends TransferControl {
     }
   }
 
-    /**
+  /**
    * Take some action on successful transfer completion,
    * like registering the new location.
    */
