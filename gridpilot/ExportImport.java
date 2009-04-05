@@ -49,7 +49,7 @@ public class ExportImport {
     else{
       choices = new String[] {"Continue", "Cancel"};
     }
-    choices[choices.length-1] = "none (cancel)";
+    choices[choices.length-1] = datasetId==null?"none (cancel)":"cancel";
     if(datasetName!=null){
       exportFileName = datasetName+".tar.gz";
     }
@@ -62,12 +62,13 @@ public class ExportImport {
               "plus any files associated with the transformations. Non-local files will<br>" +
               "be downloded first.<br><br>" +
               "Choose a database to export from or choose none to cancel.<br></html>" :
-         "<html>This will export the dataset \"" + datasetName + "\"<br>" +
+         "<html>This will export the dataset <br><br>" +
+               "\"" + datasetName + "\"<br><br>" +
                "and its associated transformation plus any files associated<br>" +
                "with this transformation. Non-local files will be downloded<br>" +
                "first.<br><br>" +
-               "Notice: if the file " +exportFileName + " already exists in the<br>" +
-               "chosen directory, it will be overwritten.<br></html>";
+               "Notice: if the file <br><br>" +exportFileName + "<br><br>" +
+               "already exists in the chosen directory, it will be overwritten.<br></html>";
     int choice = confirmBox.getConfirm("Export from database", message, choices);
     if(choice<0 || choice>=choices.length-1){
       return;
@@ -88,7 +89,7 @@ public class ExportImport {
     // Save everything to the tmp dir
     saveTableAndFiles(tmpDir, dbName, "dataset", new String [] {},
         datasetId);
-    saveTableAndFiles(tmpDir, dbName, "transformation" ,TRANSFORMATIOM_FILE_FIELDS,
+    saveTableAndFiles(tmpDir, dbName, "transformation", TRANSFORMATIOM_FILE_FIELDS,
         transformationId);
     // Tar up the tmp dir
     MyUtil.tar(tarFile, tmpDir);
@@ -160,20 +161,23 @@ public class ExportImport {
     StringBuffer failedDLs = new StringBuffer();
     while(dbResult.moveCursor()){
       for(int i=0; i<fileFields.length; ++i){
-        if(MyUtil.arrayContainsIgnoreCase(fileFields, dbResult.fields[i]) &&
-            dbResult.values[i]!=null){
+        if(MyUtil.arrayContainsIgnoreCase(dbResult.fields, fileFields[i])){
           name = dbResult.getString(nameField);
           urlsStr = dbResult.getString(fileFields[i]);
+          if(urlsStr==null){
+            continue;
+          }
           urls = MyUtil.split(urlsStr);
           for(int j=0; j<urls.length; ++j){
             // Download url to 'dir'/[record name]
             dlDir = new File(dir, name);
             dlDir.mkdir();
             try{
-              GridPilot.getClassMgr().getTransferControl().download(urls[i], dlDir);
+              Debug.debug("Downloading file "+urls[j]+" to "+dlDir, 2);
+              GridPilot.getClassMgr().getTransferControl().download(urls[j], dlDir);
             }
             catch(Exception e){
-              failedDLs.append(" "+urls[i]);
+              failedDLs.append(" "+urls[j]);
             }
           }
         }
