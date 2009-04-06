@@ -85,10 +85,10 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     fallbackAmiID = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "Fallback ami id");
     defaultEc2Catalogs = new String [] {"sss://gridpilot/ec2_rtes.rdf"};
-    String [] testEc2CatalogsTest = GridPilot.getClassMgr().getConfigFile().getValues(csName,
-       "RTE catalog");
-    if(testEc2CatalogsTest!=null && testEc2CatalogsTest.length>0){
-      defaultEc2Catalogs = testEc2CatalogsTest;
+    String [] testEc2Catalogs = GridPilot.getClassMgr().getConfigFile().getValues(csName,
+       "Runtime catalog URLs");
+    if(testEc2Catalogs!=null && testEc2Catalogs.length>0){
+      defaultEc2Catalogs = testEc2Catalogs;
     }
     String testAmiPrefix = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "AMI prefix");

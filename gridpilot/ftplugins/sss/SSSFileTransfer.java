@@ -619,7 +619,8 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       return;
     }
     final String objectKey = objects[0].getKey();
-    final TransferInfo transfer = new TransferInfo(globusUrl, new GlobusURL("file://"+downloadDirOrFile.getAbsolutePath()));
+    final TransferInfo transfer = new TransferInfo(globusUrl,
+        new GlobusURL("file:///"+downloadDirOrFile.getAbsolutePath()));
     fileTransfers.add(transfer);
     Debug.debug("Downloading "+globusUrl.getURL()+"->"+downloadFile.getAbsolutePath(), 3);
     ResThread t = new ResThread(){

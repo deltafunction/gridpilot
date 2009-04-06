@@ -3,10 +3,12 @@ package gridpilot.ftplugins.https;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 
+import org.globus.io.urlcopy.UrlCopyException;
 import org.globus.util.GlobusURL;
 
 import gridfactory.common.LogFile;
 import gridfactory.common.SSL;
+import gridfactory.common.https.MyUrlCopy;
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;
 
@@ -45,6 +47,18 @@ public class HTTPSFileTransfer extends
     }
     write(new GlobusURL(urlDir+fileName), "");
     return fileName;
+  }
+  
+  protected synchronized MyUrlCopy myConnect(GlobusURL srcUrl) throws IOException{
+    MyUtil.checkAndActivateSSL(new String[] {srcUrl.getURL()});
+    return super.myConnect(srcUrl);
+  }
+
+  protected synchronized MyUrlCopy myConnect(GlobusURL srcUrl, GlobusURL destUrl)
+     throws IOException, UrlCopyException{
+    MyUtil.checkAndActivateSSL(new String[] {srcUrl.getURL()});
+    MyUtil.checkAndActivateSSL(new String[] {destUrl.getURL()});
+    return super.myConnect(srcUrl, destUrl);
   }
 
 }

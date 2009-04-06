@@ -1221,10 +1221,10 @@ public class BeginningWizard{
     row.add(new JLabel("Submit URL: "), BorderLayout.WEST);
     String submitURL = configFile.getValue("GRIDFACTORY", "Submission URL");
     JPanel jpGfDB = new JPanel();
-    JTextField tfGpUrl = new JTextField(TEXTFIELDWIDTH);
-    jpGfDB.add(tfGpUrl);
+    JTextField tfGfUrl = new JTextField(TEXTFIELDWIDTH);
+    jpGfDB.add(tfGfUrl);
     if(submitURL!=null){
-      tfGpUrl.setText(submitURL);
+      tfGfUrl.setText(submitURL);
     }
     row.add(jpGfDB, BorderLayout.CENTER);
     csPanels[4].add(row,
@@ -1355,28 +1355,29 @@ public class BeginningWizard{
           new String [] {"no"}
           );
     }
-    if(jcbs[3].isSelected() && MyUtil.getJTextOrEmptyString(tfGpUrl)!=null &&
-        !MyUtil.getJTextOrEmptyString(tfGpUrl).equals("")){
+    if(jcbs[3].isSelected() && MyUtil.getJTextOrEmptyString(tfAwsId)!=null &&
+        !MyUtil.getJTextOrEmptyString(tfAwsId).equals("")){
       configFile.setAttributes(
-          new String [] {"EC2", "EC2"},
-          new String [] {"AWS access key ID", "AWS secret access key"},
-          new String [] { MyUtil.getJTextOrEmptyString(tfAwsId).trim(),
+          new String [] {"EC2", "EC2", "EC2", "SSS", "SSS"},
+          new String [] {"Enabled", "AWS access key ID", "AWS secret access key",
+                         "AWS access key ID", "AWS secret access key"},
+          new String [] {"yes", MyUtil.getJTextOrEmptyString(tfAwsId).trim(),
               MyUtil.getJTextOrEmptyString(tfAwsKey).trim()}
           );
     }
     else{
       configFile.setAttributes(
-          new String [] {"GRIDFACTORY"},
+          new String [] {"EC2"},
           new String [] {"Enabled"},
           new String [] {"no"}
           );
     }
-    if(jcbs[4].isSelected() && MyUtil.getJTextOrEmptyString(tfGpUrl)!=null &&
-        !MyUtil.getJTextOrEmptyString(tfGpUrl).equals("")){
+    if(jcbs[4].isSelected() && MyUtil.getJTextOrEmptyString(tfGfUrl)!=null &&
+        !MyUtil.getJTextOrEmptyString(tfGfUrl).equals("")){
       configFile.setAttributes(
           new String [] {"GRIDFACTORY", "GRIDFACTORY"},
           new String [] {"Enabled", "Submission URL"},
-          new String [] {"yes", MyUtil.getJTextOrEmptyString(tfGpUrl).trim()}
+          new String [] {"yes", MyUtil.getJTextOrEmptyString(tfGfUrl).trim()}
           );
     }
     else{

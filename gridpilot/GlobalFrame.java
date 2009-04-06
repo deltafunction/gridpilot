@@ -715,7 +715,11 @@ public class GlobalFrame extends GPFrame{
           throw new IOException("Only gzipped tar archives (with extension tar.gz) can be imported.");
         }
         Debug.debug("Importing from "+url, 2);
-        ExportImport.importToDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)));
+        String importUrl = url;
+        if(MyUtil.isLocalFileName(importUrl)){
+          importUrl = MyUtil.clearTildeLocally(MyUtil.clearFile(importUrl));
+        }
+        ExportImport.importToDB(importUrl);
       }
       else{
         Debug.debug("Not importing. "+url, 2);
