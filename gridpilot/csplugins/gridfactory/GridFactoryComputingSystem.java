@@ -20,13 +20,12 @@ import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
-import gridfactory.common.Util;
 import gridfactory.lrms.LRMS;
+
 import gridpilot.MyComputingSystem;
 import gridpilot.DBPluginMgr;
 import gridpilot.GridPilot;
 import gridpilot.MyJobInfo;
-
 import gridpilot.MyUtil;
 import gridpilot.csplugins.fork.ForkComputingSystem;
 import gridpilot.csplugins.fork.ForkScriptGenerator;
@@ -96,19 +95,37 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     if(transformationInputs==null || transformationInputs.length==0){
       return;
     }
+    // Input files -
+    // Skip local files that are not present
+    // - they are expected to be present on the worker node
     int initialLen = job.getInputFileUrls()!=null&&job.getInputFileUrls().length>0?job.getInputFileUrls().length:0;
-    String [] newInputs = new String [initialLen+transformationInputs.length+1];
+    Vector<String> newInputs = new Vector<String>();
     for(int i=0; i<initialLen; ++i){
-      newInputs[i] = job.getInputFileUrls()[i];
+      if(fileIsPresent(job.getInputFileUrls()[i])){
+        newInputs.add(job.getInputFileUrls()[i]);
+      }
     }
     for(int i=initialLen; i<initialLen+transformationInputs.length; ++i){
-      newInputs[i] = transformationInputs[i];
+      if(fileIsPresent(transformationInputs[i])){
+        newInputs.add(transformationInputs[i]);
+      }
     }
     String transScript = dbPluginMgr.getTransformationScript(job.getIdentifier());
-    newInputs[newInputs.length-1] = transScript;
+    if(fileIsPresent(transScript)){
+      newInputs.add(transScript);
+    }
+    job.setInputFileUrls(newInputs.toArray(new String[newInputs.size()]));
+    // Executable
     String transScriptName = (new File(transScript)).getName();
     job.setExecutables(new String [] {transScriptName});
-    job.setInputFileUrls(newInputs);
+  }
+
+  private boolean fileIsPresent(String file) {
+    if(!MyUtil.urlIsRemote(file)){
+      String localFile = MyUtil.clearTildeLocally(MyUtil.clearFile(file));
+      return LocalStaticShell.existsFile(localFile);
+    }
+    return true;
   }
 
   /**
@@ -152,16 +169,16 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       }
       String [] values = new String []{
           job.getName(),
-          Util.arrayToString(job.getInputFileUrls()),
-          Util.arrayToString(job.getExecutables()),
+          MyUtil.arrayToString(job.getInputFileUrls()),
+          MyUtil.arrayToString(job.getExecutables()),
           Integer.toString(job.getGridTime()),
           Integer.toString(job.getMemory()),
           virtualize?"1":"0",
-          Util.arrayToString(job.getOutputFileNames()),
-          Util.arrayToString(job.getRTEs()),
+          MyUtil.arrayToString(job.getOutputFileNames()),
+          MyUtil.arrayToString(job.getRTEs()),
           null,
           job.getUserInfo(),
-          Util.arrayToString(job.getAllowedVOs(), job.getJobId()),
+          MyUtil.arrayToString(job.getAllowedVOs(), job.getJobId()),
           null
       };
 
@@ -240,7 +257,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       if(job.getOutputFileDestinations()!=null){
         String rDir = null;
         for(int i=0; i<job.getOutputFileDestinations().length; ++i){
-          if(Util.urlIsRemote(job.getOutputFileDestinations()[i])){
+          if(MyUtil.urlIsRemote(job.getOutputFileDestinations()[i])){
             rDir = job.getOutputFileDestinations()[i].replaceFirst("(^(.*/)[^/]+$", "$1");
             mkRemoteDir(rDir);
           }

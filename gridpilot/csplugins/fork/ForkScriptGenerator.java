@@ -176,12 +176,11 @@ public class ForkScriptGenerator extends ScriptGenerator{
         if(shell.isLocal()){
           workDir = MyUtil.clearTildeLocally(workDir);
         }
-        shell.exec("chmod +x "+workDir+"/"+fileName, stdout, stderr);
+        shell.exec("chmod +x \""+workDir+"/"+fileName+"\"", stdout, stderr);
         if(stderr!=null && stderr.length()!=0){
-          logFile.addMessage("Could not set job executable. "+stderr);
           throw new FileNotFoundException(stderr.toString());
         }
-        shell.exec("chmod +x "+MyUtil.clearFile(scriptDest), stdout, stderr);
+        shell.exec("chmod +x \""+MyUtil.clearFile(scriptDest)+"\"", stdout, stderr);
         if(stderr!=null && stderr.length()!=0){
           Debug.debug("Could not set transformation executable. "+stderr, 2);
           throw new FileNotFoundException(stderr.toString());
