@@ -252,13 +252,13 @@ public class GridPilot extends JApplet{
             String password = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "password");
             String sshKeyFile = GridPilot.getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Ssh key file");
             String sshKeyPassword = GridPilot.getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Ssh key passphrase");
-            getClassMgr().setShellMgr(CS_NAMES[i],
+            getClassMgr().setShell(CS_NAMES[i],
                 new MySecureShell(host, user, password,
                     sshKeyFile==null?null:new File(MyUtil.clearTildeLocally(MyUtil.clearFile(sshKeyFile))),
                     sshKeyPassword));
            }
           else if(host!=null && (host.startsWith("localhost") || host.equals("127.0.0.1"))){
-            getClassMgr().setShellMgr(CS_NAMES[i], new LocalShell());
+            getClassMgr().setShell(CS_NAMES[i], new LocalShell());
           }
           else{
             // no shell used by this plugin

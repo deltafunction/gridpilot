@@ -162,7 +162,7 @@ public class CSPluginMgr implements MyComputingSystem{
     for(int i=0; i<csNames.length ; ++i){
       Shell shellMgr = null;
       try{
-        shellMgr = GridPilot.getClassMgr().getShellMgr(csNames[i]);
+        shellMgr = GridPilot.getClassMgr().getShell(csNames[i]);
       }
       catch(Exception e){
         continue;
@@ -887,7 +887,7 @@ public class CSPluginMgr implements MyComputingSystem{
     for(int i=0; i<csNames.length ; ++i){
       Shell shellMgr = null;
       try{
-        shellMgr = GridPilot.getClassMgr().getShellMgr(csNames[i]);
+        shellMgr = GridPilot.getClassMgr().getShell(csNames[i]);
       }
       catch(Exception e){
         //e.printStackTrace();

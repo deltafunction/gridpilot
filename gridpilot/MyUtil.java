@@ -1552,7 +1552,7 @@ public class MyUtil extends gridfactory.common.Util{
    * Clean up runtime environment records copied from runtime catalog URLs.
    */
   public static void cleanupRuntimeEnvironments(String csName, String [] localRuntimeDBs,
-      HashMap toDeleteRtes){
+      HashMap<String, String> toDeleteRtes){
     String id = "-1";
     boolean ok = true;
     DBPluginMgr localDBMgr = null;
@@ -1569,9 +1569,9 @@ public class MyUtil extends gridfactory.common.Util{
       // Delete RTEs from catalog(s)
       Debug.debug("Cleaning up catalog RTEs "+arrayToString(toDeleteRtes.keySet().toArray()), 3);
       if(toDeleteRtes!=null && toDeleteRtes.keySet()!=null){
-        for(Iterator it=toDeleteRtes.keySet().iterator(); it.hasNext();){
+        for(Iterator<String> it=toDeleteRtes.keySet().iterator(); it.hasNext();){
           try{
-            id = (String) it.next();
+            id = it.next();
             if(toDeleteRtes.get(id).equals(localRuntimeDBs[i])){
               Debug.debug("Deleting "+id, 3);
               ok = localDBMgr.deleteRuntimeEnvironment(id);

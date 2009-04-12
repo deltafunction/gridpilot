@@ -228,15 +228,15 @@ public class ClassMgr{
       return askWhichShell(job);
     }
     else{
-      return getShellMgr(csName);
+      return getShell(csName);
     }
   }
   
-  public void setShellMgr(String csName, Shell shellMgr){
+  public void setShell(String csName, Shell shellMgr){
     shellMgrs.put(csName, shellMgr);
   }
 
-  public Shell getShellMgr(String csName) throws Exception{
+  public Shell getShell(String csName) throws Exception{
     Shell smgr = (Shell) shellMgrs.get(csName);
     if(smgr==null){
       Debug.debug("No computing system "+csName, 3);

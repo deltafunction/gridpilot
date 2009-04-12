@@ -53,7 +53,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected String transformationDirectory = null;
   protected String publicCertificate = null;
   protected String [] runtimeDBs = null;
-  protected HashMap toDeleteRTEs = null;
+  protected HashMap<String, String> toDeleteRTEs = null;
   // List of (Janitor) catalogs from where to get RTEs
   protected String [] rteCatalogUrls = null;
   protected MyTransferControl transferControl;
@@ -63,7 +63,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected boolean ignoreBaseSystemAndVMRTEs = true;
   protected String [] submitEnvironment = null;
   
-  protected static HashMap remoteCopyCommands = null;
+  protected static HashMap<String, String> remoteCopyCommands = null;
 
 
   public ForkComputingSystem(String _csName) throws Exception{
@@ -71,11 +71,11 @@ public class ForkComputingSystem implements MyComputingSystem{
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
     transferControl = GridPilot.getClassMgr().getTransferControl();
-    toDeleteRTEs = new HashMap();
+    toDeleteRTEs = new HashMap<String, String>();
     String [] rtCpCmds = GridPilot.getClassMgr().getConfigFile().getValues(
         csName, "Remote copy commands");
     if(rtCpCmds!=null && rtCpCmds.length>1){
-      remoteCopyCommands = new HashMap();
+      remoteCopyCommands = new HashMap<String, String>();
       for(int i=0; i<rtCpCmds.length/2; ++i){
         remoteCopyCommands.put(rtCpCmds[2*i], rtCpCmds[2*i+1]);
       }
@@ -84,7 +84,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     GridPilot.splashShow("Setting up shells...");
     
     try{
-      shell = GridPilot.getClassMgr().getShellMgr(csName);
+      shell = GridPilot.getClassMgr().getShell(csName);
     }
     catch(Exception e){
       Debug.debug("WARNING: could not get shell manager: "+e.getMessage(), 1);
@@ -200,7 +200,7 @@ public class ForkComputingSystem implements MyComputingSystem{
    */
   protected void scanRTEDir(DBPluginMgr dbMgr, String cs, Shell mgr){
     String name = null;   
-    HashSet runtimes = mgr.listFilesRecursively(runtimeDirectory);
+    HashSet<String> runtimes = mgr.listFilesRecursively(runtimeDirectory);
     String [] expandedRuntimeDirs = mgr.listFiles(MyUtil.clearFile(runtimeDirectory));
     String dirName = null;
     if(shell.isLocal() && MyUtil.onWindows()){
@@ -226,10 +226,10 @@ public class ForkComputingSystem implements MyComputingSystem{
 
     if(runtimes!=null && runtimes.size()>0){
       String fil = null;      
-      for(Iterator it=runtimes.iterator(); it.hasNext();){
+      for(Iterator<String> it=runtimes.iterator(); it.hasNext();){
         
         name = null;
-        fil = (String) it.next();
+        fil = it.next();
         
         // Get the name
         Debug.debug("File found: "+expandedRuntimeDirs[0]+":"+expandedRuntimeDir+":"+fil, 3);
@@ -437,7 +437,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     try{
       ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job),
-          ignoreBaseSystemAndVMRTEs );
+          ignoreBaseSystemAndVMRTEs, shell.getOS().toLowerCase().startsWith("windows"));
       if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, job.getName()+getCommandSuffix((MyJobInfo) job))){
         throw new IOException("Could not create wrapper script.");
       }
@@ -528,9 +528,9 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
 
   public boolean killJobs(Vector<JobInfo> jobsToKill){
-    Vector errors = new Vector();
+    Vector<String> errors = new Vector<String>();
     MyJobInfo job = null;
-    for(Enumeration en=jobsToKill.elements(); en.hasMoreElements();){
+    for(Enumeration<JobInfo> en=jobsToKill.elements(); en.hasMoreElements();){
       try{
         job = (MyJobInfo) en.nextElement();
         shell.killProcess(job.getJobId(), logFile);
@@ -563,7 +563,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     // with shellMgr
     String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getIdentifier());
     String fileName;
-    Vector remoteFiles = new Vector();
+    Vector<String> remoteFiles = new Vector<String>();
     for(int i=0; i<outputFileNames.length; ++i){
       fileName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
       if(fileName.startsWith("file:")){
@@ -642,15 +642,14 @@ public class ForkComputingSystem implements MyComputingSystem{
     if(toDeleteRTEs==null){
       return;
     }
-    String initText = null;
     String id = "-1";
     String dbName = null;
     boolean ok = true;
     DBPluginMgr dbPluginMgr = null;
-    for(Iterator itt = toDeleteRTEs.keySet().iterator(); itt.hasNext();){
-      id = (String) itt.next();
+    for(Iterator<String> itt = toDeleteRTEs.keySet().iterator(); itt.hasNext();){
+      id = itt.next();
       try{
-        dbName = (String) toDeleteRTEs.get(id);
+        dbName = toDeleteRTEs.get(id);
         dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
         if(dbPluginMgr!=null){
           ok = true;
@@ -790,7 +789,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   public static boolean setRemoteOutputFiles(MyJobInfo job){
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String [] outputFiles = dbPluginMgr.getOutputFiles(job.getIdentifier());
-    Vector remoteNamesVector = new Vector();
+    Vector<String> remoteNamesVector = new Vector<String>();
     String remoteName = null;
     Vector<String> outNames = new Vector<String>();
     Vector<String> outDestinations = new Vector<String>();
@@ -814,9 +813,9 @@ public class ForkComputingSystem implements MyComputingSystem{
       String [][] uploadFiles = new String [remoteNamesVector.size()][2];
       for(int i=0; i<remoteNamesVector.size(); ++i){
         uploadFiles[i][0] = dbPluginMgr.getJobDefOutLocalName(job.getIdentifier(),
-            (String )remoteNamesVector.get(i));
+            remoteNamesVector.get(i));
         uploadFiles[i][1] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(),
-            (String) remoteNamesVector.get(i));
+            remoteNamesVector.get(i));
       }
       job.setUploadFiles(uploadFiles);
       // This is used only by GridFactoryComputingSystem and copyToFinalDest
@@ -880,7 +879,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     boolean ignoreRemoteInputs = false;
     if(job.getDownloadFiles()!=null && job.getDownloadFiles().length>0){
       dlInputFiles = job.getDownloadFiles();
-      Vector jobInputFilesVector = new Vector();
+      Vector<String> jobInputFilesVector = new Vector<String>();
       for(int i=0; i<jobInputFiles.length; ++i){
         if(!MyUtil.urlIsRemote(jobInputFiles[i])){
           jobInputFilesVector.add(jobInputFiles[i]);
@@ -888,7 +887,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       }
       jobInputFiles = new String [jobInputFilesVector.size()];
       for(int i=0; i<jobInputFiles.length; ++i){
-        jobInputFiles[i] = (String) jobInputFilesVector.get(i);
+        jobInputFiles[i] = jobInputFilesVector.get(i);
       }
       ignoreRemoteInputs = true;
     }
@@ -904,7 +903,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     for(int i=0; i<dlInputFiles.length; ++i){
       inputFiles[i+transInputFiles.length+jobInputFiles.length] = dlInputFiles[i];
     }
-    Vector downloadVector = new Vector();
+    Vector<String> downloadVector = new Vector<String>();
     String [] downloadFiles = null;
     for(int i=0; i<inputFiles.length; ++i){
       Debug.debug("Pre-processing : Getting " + inputFiles[i], 2);
@@ -944,7 +943,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
   
   private boolean localShellCopy(String inputFile, String fileName, JobInfo job, Shell thisShellMgr,
-      boolean ignoreRemoteInputs, String urlDir, AbstractList downloadVector) {
+      boolean ignoreRemoteInputs, String urlDir, AbstractList<String> downloadVector) {
     boolean ok = false;
     // If source starts with file:/, / or c:\ /, just copy over the local file.
     if(inputFile.startsWith("/") ||
@@ -1000,7 +999,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
 
   private boolean remoteShellCopy(String inputFile, String fileName, JobInfo job, Shell thisShellMgr,
-      boolean ignoreRemoteInputs, AbstractList downloadVector) {
+      boolean ignoreRemoteInputs, AbstractList<String> downloadVector) {
     boolean ok = false;
     // If source starts with file:/, scp the file from local disk.
     if(inputFile.matches("^file:/*[^/]+.*")){

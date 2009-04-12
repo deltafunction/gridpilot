@@ -27,7 +27,7 @@ import gridpilot.MyUtil;
 public class ForkScriptGenerator extends ScriptGenerator{
   private String workingDir = null;
   private String runtimeDirectory = null;
-  private HashMap remoteCopyCommands = null;
+  private HashMap<String, String> remoteCopyCommands = null;
   private String [] requiredRuntimeEnvs = null;
   private String [] stdoutExcludeWords = null;
   private String [] stderrExcludeWords = null;
@@ -37,17 +37,14 @@ public class ForkScriptGenerator extends ScriptGenerator{
   /**
    * Constructor
    */
-  public ForkScriptGenerator(String _csName, String _workingDir,boolean _ignoreBaseSystemAndVMRTEs){
-    super(GridPilot.getClassMgr().getLogFile());
+  public ForkScriptGenerator(String _csName, String _workingDir, boolean _ignoreBaseSystemAndVMRTEs,
+      boolean _onWindows){
+    super(GridPilot.getClassMgr().getLogFile(), _onWindows);
     csName = _csName;
-    String onWindowsStr = GridPilot.getClassMgr().getConfigFile().getValue(
-        csName, "On windows");
-    onWindows = onWindowsStr!=null && (onWindowsStr.equalsIgnoreCase("yes") ||
-        onWindowsStr.equalsIgnoreCase("true"));
     String [] rtCpCmds = GridPilot.getClassMgr().getConfigFile().getValues(
         csName, "Remote copy commands");
     if(rtCpCmds!=null && rtCpCmds.length>1){
-      remoteCopyCommands = new HashMap();
+      remoteCopyCommands = new HashMap<String, String>();
       for(int i=0; i<rtCpCmds.length/2; ++i){
         remoteCopyCommands.put(rtCpCmds[2*i], rtCpCmds[2*i+1]);
       }
@@ -111,9 +108,8 @@ public class ForkScriptGenerator extends ScriptGenerator{
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     StringBuffer buf = new StringBuffer();
     String commentStart;
-    boolean notOnWindows = !shell.isLocal() && !onWindows || shell.isLocal() &&
-                            (!onWindows || !MyUtil.onWindows());
-    if(!notOnWindows){
+
+    if(onWindows){
       commentStart = "REM ";
       writeLine(buf, "@echo off");
     }
@@ -130,10 +126,10 @@ public class ForkScriptGenerator extends ScriptGenerator{
     String scriptDest = "file:" + MyUtil.clearFile(workingDir) + "/" + scriptName;
 
     // Header
-    writeHeader(notOnWindows, buf, commentStart);
+    writeHeader(onWindows, buf, commentStart);
 
     // Runtime section
-    writeRuntimeSection(commentStart, buf, dbPluginMgr, jobDefID, notOnWindows);
+    writeRuntimeSection(commentStart, buf, dbPluginMgr, jobDefID, onWindows);
     
     // Input files section
     try{
@@ -146,7 +142,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
 
     // Transformation script call section
     try{
-      writeTransformationSection(jobDefID, dbPluginMgr, commentStart, buf, notOnWindows,
+      writeTransformationSection(jobDefID, dbPluginMgr, commentStart, buf, onWindows,
           shell, scriptDest, scriptSrc, scriptName);
     }
     catch(Exception e){
@@ -155,7 +151,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
       return false;
     }
     
-    writeMetadataSection(buf, notOnWindows, dbPluginMgr, commentStart, job);
+    writeMetadataSection(buf, onWindows, dbPluginMgr, commentStart, job);
 
     // Output files section
     try{
@@ -198,7 +194,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     return true;
   }
   
-  private void writeMetadataSection(StringBuffer buf, boolean notOnWindows,
+  private void writeMetadataSection(StringBuffer buf, boolean onWindows,
       DBPluginMgr dbPluginMgr, String commentStart, JobInfo job) {
     // Metadata section
     /* Print the running time, size and md5sum of the output file for validation
@@ -209,7 +205,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     // TODO: reconsider
     // TODO: implement metadata on Windows
     writeLine(buf, "");
-    if(notOnWindows){
+    if(!onWindows){
       writeBlock(buf, "Metadata", ScriptGenerator.TYPE_SUBSECTION, commentStart);
       writeLine(buf, "END_TIME=`date '+%s'`");
       writeLine(buf, "echo " +
@@ -229,7 +225,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
   }
 
   private void writeTransformationSection(String jobDefID, DBPluginMgr dbPluginMgr, String commentStart,
-      StringBuffer buf, boolean notOnWindows, Shell shell,
+      StringBuffer buf, boolean onWindows, Shell shell,
       String scriptDest, String scriptSrc, String scriptName) throws IOException {
     String [] formalParam = dbPluginMgr.getTransformationArguments(jobDefID);
     String [] actualParam = dbPluginMgr.getJobDefTransPars(jobDefID);
@@ -261,7 +257,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
       throw new IOException("Copying transformation script to working dir failed.");
     }
     
-    if(notOnWindows){
+    if(!onWindows){
       // Shell utils to filter off unwanted stuff from stdout and stderr
       writeLine(buf, filterStdOutErrLines());
       // Running the transformation script with ./ instead of a full path is to allow this to 
@@ -314,7 +310,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
   }
 
   private void writeRuntimeSection(String commentStart, StringBuffer buf, DBPluginMgr dbPluginMgr,
-      String jobDefID, boolean notOnWindows) {
+      String jobDefID, boolean onWindows) {
     writeBlock(buf, "Runtime setup", ScriptGenerator.TYPE_SUBSECTION, commentStart);
     // For each runtime environment used, get its init text (if present) and write it out,
     // source the setup script
@@ -331,7 +327,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
       // Notice that catalog RTEs are not installed on the fly by this computing system,
       // (so they must have been installed by hand...)
       // Classes that inherit may choose to do this.
-      if(notOnWindows){
+      if(!onWindows){
         writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
             "/"+rtes[i]+" 1 >& /dev/null").replaceAll("//", "/"));
         writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
@@ -358,7 +354,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
           logFile.addMessage("WARNING: could not find required runtime environment "+requiredRuntimeEnvs[i], e);
         }
         writeLine(buf, initTxt);
-        if(notOnWindows){
+        if(!onWindows){
           writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
               "/"+requiredRuntimeEnvs[i]+" 1 >& /dev/null").replaceAll("//", "/"));
           writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
@@ -375,13 +371,13 @@ public class ForkScriptGenerator extends ScriptGenerator{
     writeLine(buf, "");
   }
 
-  private void writeHeader(boolean notOnWindows, StringBuffer buf, String commentStart) {
+  private void writeHeader(boolean onWindows, StringBuffer buf, String commentStart) {
     // sleep 5 seconds, to give GridPilot a chance to pick up the process id
     // for very short jobs
     writeBlock(buf, "Sleep 5 seconds before start", ScriptGenerator.TYPE_SUBSECTION, commentStart);
     // this is to be sure to have some stdout (jobs without are considered failed)
     writeLine(buf, "echo starting...");
-    if(!notOnWindows){
+    if(!!onWindows){
       writeLine(buf, "ping -n 10 127.0.0.1 >/nul");
     }
     else{

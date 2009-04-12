@@ -57,7 +57,7 @@ public class TestDatasets {
         continue;
       }
       try{
-        shellMgr = GridPilot.getClassMgr().getShellMgr(GridPilot.CS_NAMES[i]);
+        shellMgr = GridPilot.getClassMgr().getShell(GridPilot.CS_NAMES[i]);
       }
       catch(Exception e){
         shellMgr = null;

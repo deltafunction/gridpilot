@@ -39,7 +39,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   private LRMS lrms = null;
   // Map of id -> DBPluginMgr.
   // This is to be able to clean up RTEs from catalogs on exit.
-  private HashMap toDeleteRtes = new HashMap();
+  private HashMap<String, String> toDeleteRtes = new HashMap<String, String>();
   // Whether or not to request virtualization of jobs.
   private boolean virtualize = false;
   // VOs allowed to run my jobs.
@@ -57,6 +57,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
           false, true,  new String [] {"Linux", "Windows"}, true);
     }
   });
+  private boolean onWindows;
 
   public GridFactoryComputingSystem(String _csName) throws Exception{
     super(_csName);
@@ -71,6 +72,10 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
         csName, "virtualize");
     virtualize = virtualizeStr!=null && (virtualizeStr.equalsIgnoreCase("yes") || virtualizeStr.equalsIgnoreCase("true"));
     allowedVOs = GridPilot.getClassMgr().getConfigFile().getValues(csName, "allowed subjects");
+    String onWindowsStr = GridPilot.getClassMgr().getConfigFile().getValue(
+        csName, "On windows");
+    onWindows = onWindowsStr!=null && (onWindowsStr.equalsIgnoreCase("yes") ||
+        onWindowsStr.equalsIgnoreCase("true"));
     try{
       // Set user
       user = GridPilot.getClassMgr().getSSL().getGridSubject();            
@@ -127,6 +132,14 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     }
     return true;
   }
+  
+  protected String getCommandSuffix(MyJobInfo job){
+    String commandSuffix = ".sh";
+    if(onWindows){
+      commandSuffix = ".bat";
+    }
+    return commandSuffix;
+  }
 
   /**
    * Copies jobDefinition plus the associated dataset to the (remote) database,
@@ -163,7 +176,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
       // Create a standard shell script.
       ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job),
-          ignoreBaseSystemAndVMRTEs);
+          ignoreBaseSystemAndVMRTEs, onWindows);
       if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, job.getName()+getCommandSuffix((MyJobInfo) job))){
         throw new IOException("Could not create wrapper script.");
       }
@@ -226,9 +239,9 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
    * @throws GeneralSecurityException 
    * @throws IOException 
    */
-  public boolean killJobs(Vector jobs) {
+  public boolean killJobs(Vector<JobInfo> jobs) {
     boolean ok = true;
-    Enumeration en = jobs.elements();
+    Enumeration<JobInfo> en = jobs.elements();
     MyJobInfo job = null;
     while(en.hasMoreElements()){
       job = (MyJobInfo) en.nextElement();
@@ -368,7 +381,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
    * Finds requested jobs, checks if provider is allowed to run them;
    * if so, sets permissions on input files accordingly.
    */
-  public void updateStatus(Vector jobs){
+  public void updateStatus(Vector<JobInfo> jobs){
     for(int i=0; i<jobs.size(); ++i)
       try{
         updateStatus((MyJobInfo) jobs.get(i));

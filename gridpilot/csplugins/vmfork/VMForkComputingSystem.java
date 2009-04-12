@@ -38,7 +38,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
   private String [] rteCatalogUrls;
   private String user;
   private String[] localRuntimeDBs;
-  private HashMap toDeleteRtes = new HashMap();
+  private HashMap<String, String> toDeleteRtes = new HashMap<String, String>();
   // Only here to use checkRequirements
   private PullMgr pullMgr;
 
@@ -189,16 +189,14 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     boolean ok = gridpilot.csplugins.fork.ForkComputingSystem.setRemoteOutputFiles((MyJobInfo) job);
     ok = ok && super.preProcess(job) /* This is what boots up a VM. Notice that super refers to
                                          gridfactory.common.jobrun.ForkComputingSystem. */;
+
     String commandSuffix = ".sh";
-    Shell shell = getShell(job);
-    if(shell.isLocal() && MyUtil.onWindows()){
-      commandSuffix = ".bat";
-    }
     String scriptFile = job.getName()+".gp"+commandSuffix;
     String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
     String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";
     ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job),
-        true);
+        true, false);
+    Shell shell = getShell(job);
     if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, scriptFile)){
       throw new IOException("Could not create wrapper script.");
     }
@@ -217,7 +215,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
    * @param job the job in question
    */
   private void setBaseSystemName(String [] rtes, JobInfo job){
-    Set mps = rteMgr.getRTECatalog().getMetaPackages();
+    Set<MetaPackage> mps = rteMgr.getRTECatalog().getMetaPackages();
     MetaPackage mp;
     String rte;
     String vmRte = null;
@@ -225,8 +223,8 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     int maxProvidesHits = 0;
     String [] provides;
     int i = 0;
-    for(Iterator it=mps.iterator(); it.hasNext();){
-      mp = (MetaPackage) it.next();
+    for(Iterator<MetaPackage> it=mps.iterator(); it.hasNext();){
+      mp = it.next();
       rte = mp.name;
       ++i;
       // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
@@ -271,7 +269,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     String vmHost;
     for(int i=0; i<hosts.length; ++i){
       if(hosts[i]==null || hosts[i].equals("")){
-        for(Iterator it=vms.keySet().iterator(); it.hasNext();){
+        for(Iterator<String> it=vms.keySet().iterator(); it.hasNext();){
           try{
             vm = vms.get(it.next());
             vmHost = vm.getHostName()+":"+vm.getSshPort();
