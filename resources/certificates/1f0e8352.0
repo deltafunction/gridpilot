@@ -1,23 +1,81 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 0 (0x0)
+        Signature Algorithm: sha1WithRSAEncryption
+        Issuer: O=Grid, O=NorduGrid, CN=NorduGrid Certification Authority
+        Validity
+            Not Before: Feb 25 16:05:21 2009 GMT
+            Not After : May 15 12:00:00 2011 GMT
+        Subject: O=Grid, O=NorduGrid, CN=NorduGrid Certification Authority
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+            RSA Public Key: (1024 bit)
+                Modulus (1024 bit):
+                    00:c2:eb:b5:a2:26:aa:cf:ae:b4:81:ee:b4:fd:ab:
+                    e6:12:de:f4:03:de:c8:74:c3:49:0b:50:de:2e:6e:
+                    42:47:57:ed:32:a8:61:e3:22:5e:4d:9e:d7:fa:31:
+                    7d:d3:50:b8:4a:d1:f3:16:ee:04:5b:c5:89:94:ea:
+                    6f:53:86:24:2b:5e:24:30:9c:d5:2d:13:ed:06:be:
+                    22:8e:bb:fc:90:33:87:6a:c2:2a:68:e9:b9:b0:00:
+                    aa:88:10:00:ca:5f:a5:fa:13:a8:22:2c:39:a2:71:
+                    1c:a9:bd:23:d6:10:89:dd:5f:b9:13:aa:66:c8:f4:
+                    1d:91:6a:3a:cc:f0:6a:d9:27
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Subject Key Identifier: 
+            18:05:C0:FC:0B:D1:B7:3A:F4:65:92:09:FB:59:A1:5F:C7:88:C4:F0
+            X509v3 Authority Key Identifier: 
+            keyid:18:05:C0:FC:0B:D1:B7:3A:F4:65:92:09:FB:59:A1:5F:C7:88:C4:F0
+            DirName:/O=Grid/O=NorduGrid/CN=NorduGrid Certification Authority
+            serial:00
+
+            X509v3 Basic Constraints: critical
+            CA:TRUE
+            X509v3 Key Usage: critical
+            Certificate Sign, CRL Sign
+            X509v3 Issuer Alternative Name: 
+            email:ca@nordugrid.org
+            X509v3 Subject Alternative Name: 
+            email:ca@nordugrid.org
+            X509v3 CRL Distribution Points: 
+            URI:http://ca.nordugrid.org/cacrl.crl
+
+            Netscape Cert Type: 
+            SSL CA, S/MIME CA, Object Signing CA
+            Netscape Comment: 
+            NorduGrid Certification Authority CA certificate
+            Netscape CA Revocation Url: 
+            http://ca.nordugrid.org/cacrl.crl
+    Signature Algorithm: sha1WithRSAEncryption
+        2d:f3:db:71:ef:86:14:cd:a2:1d:a8:43:92:52:0b:65:0f:fa:
+        e0:cf:5d:d0:17:e5:01:0a:ef:db:8f:23:bd:9c:60:f5:da:3e:
+        b3:6f:4e:65:b2:7f:29:30:05:b5:35:b2:9c:ee:be:2d:bc:3f:
+        dc:eb:cb:3f:41:c1:dc:ab:df:f6:6a:cb:99:74:8a:28:a7:3d:
+        30:fa:2c:8f:8e:4a:dc:bc:51:b2:13:2f:53:a7:57:41:b7:ec:
+        d3:06:2c:9f:15:36:3a:17:80:22:c7:7a:99:2d:1e:5d:a7:62:
+        ff:05:14:7c:77:6e:ff:58:54:dd:c5:cd:46:94:cb:f7:d1:4e:
+        61:9a
 -----BEGIN CERTIFICATE-----
-MIIDxDCCAy2gAwIBAgIBADANBgkqhkiG9w0BAQUFADBPMQ0wCwYDVQQKEwRHcmlk
+MIIDxzCCAzCgAwIBAgIBADANBgkqhkiG9w0BAQUFADBPMQ0wCwYDVQQKEwRHcmlk
 MRIwEAYDVQQKEwlOb3JkdUdyaWQxKjAoBgNVBAMTIU5vcmR1R3JpZCBDZXJ0aWZp
-Y2F0aW9uIEF1dGhvcml0eTAeFw0wNzAzMDkxMzA3NDNaFw0wOTA1MTUxMjAwMDBa
+Y2F0aW9uIEF1dGhvcml0eTAeFw0wOTAyMjUxNjA1MjFaFw0xMTA1MTUxMjAwMDBa
 ME8xDTALBgNVBAoTBEdyaWQxEjAQBgNVBAoTCU5vcmR1R3JpZDEqMCgGA1UEAxMh
 Tm9yZHVHcmlkIENlcnRpZmljYXRpb24gQXV0aG9yaXR5MIGfMA0GCSqGSIb3DQEB
 AQUAA4GNADCBiQKBgQDC67WiJqrPrrSB7rT9q+YS3vQD3sh0w0kLUN4ubkJHV+0y
 qGHjIl5Nntf6MX3TULhK0fMW7gRbxYmU6m9ThiQrXiQwnNUtE+0GviKOu/yQM4dq
 wipo6bmwAKqIEADKX6X6E6giLDmicRypvSPWEIndX7kTqmbI9B2RajrM8GrZJwID
-AQABo4IBrjCCAaowHQYDVR0OBBYEFBgFwPwL0bc69GWSCftZoV/HiMTwMHcGA1Ud
+AQABo4IBsTCCAa0wHQYDVR0OBBYEFBgFwPwL0bc69GWSCftZoV/HiMTwMHcGA1Ud
 IwRwMG6AFBgFwPwL0bc69GWSCftZoV/HiMTwoVOkUTBPMQ0wCwYDVQQKEwRHcmlk
 MRIwEAYDVQQKEwlOb3JkdUdyaWQxKjAoBgNVBAMTIU5vcmR1R3JpZCBDZXJ0aWZp
-Y2F0aW9uIEF1dGhvcml0eYIBADAPBgNVHRMBAf8EBTADAQH/MAsGA1UdDwQEAwIB
-BjAbBgNVHRIEFDASgRBjYUBub3JkdWdyaWQub3JnMBsGA1UdEQQUMBKBEGNhQG5v
-cmR1Z3JpZC5vcmcwMgYDVR0fBCswKTAnoCWgI4YhaHR0cDovL2NhLm5vcmR1Z3Jp
-ZC5vcmcvY2FjcmwuY3JsMBEGCWCGSAGG+EIBAQQEAwIABzA/BglghkgBhvhCAQ0E
-MhYwTm9yZHVHcmlkIENlcnRpZmljYXRpb24gQXV0aG9yaXR5IENBIGNlcnRpZmlj
-YXRlMDAGCWCGSAGG+EIBBAQjFiFodHRwOi8vY2Eubm9yZHVncmlkLm9yZy9jYWNy
-bC5jcmwwDQYJKoZIhvcNAQEFBQADgYEAc7ej9Ta8PbJU5TT1pzlYQa367LUN/ROk
-eatoFOM5phPU55degntbpye1JC17uewsaJ8raT07c0obJszrKHl6nWwynatvxNE1
-EIGRi8QY5s4MFWvT9VIxrwJsxliyRbfzP8iCCQ4F+2HWmFIFPxqpglj8wi1NlIiq
-BNRKaF7Wbyo=
+Y2F0aW9uIEF1dGhvcml0eYIBADAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQE
+AwIBBjAbBgNVHRIEFDASgRBjYUBub3JkdWdyaWQub3JnMBsGA1UdEQQUMBKBEGNh
+QG5vcmR1Z3JpZC5vcmcwMgYDVR0fBCswKTAnoCWgI4YhaHR0cDovL2NhLm5vcmR1
+Z3JpZC5vcmcvY2FjcmwuY3JsMBEGCWCGSAGG+EIBAQQEAwIABzA/BglghkgBhvhC
+AQ0EMhYwTm9yZHVHcmlkIENlcnRpZmljYXRpb24gQXV0aG9yaXR5IENBIGNlcnRp
+ZmljYXRlMDAGCWCGSAGG+EIBBAQjFiFodHRwOi8vY2Eubm9yZHVncmlkLm9yZy9j
+YWNybC5jcmwwDQYJKoZIhvcNAQEFBQADgYEALfPbce+GFM2iHahDklILZQ/64M9d
+0BflAQrv248jvZxg9do+s29OZbJ/KTAFtTWynO6+Lbw/3OvLP0HB3Kvf9mrLmXSK
+KKc9MPosj45K3LxRshMvU6dXQbfs0wYsnxU2OheAIsd6mS0eXadi/wUUfHdu/1hU
+3cXNRpTL99FOYZo=
 -----END CERTIFICATE-----
