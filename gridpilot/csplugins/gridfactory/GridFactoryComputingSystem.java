@@ -27,6 +27,7 @@ import gridpilot.DBPluginMgr;
 import gridpilot.GridPilot;
 import gridpilot.MyJobInfo;
 import gridpilot.MyUtil;
+import gridpilot.RteRdfParser;
 import gridpilot.csplugins.fork.ForkComputingSystem;
 import gridpilot.csplugins.fork.ForkScriptGenerator;
 
@@ -44,7 +45,6 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   private boolean virtualize = false;
   // VOs allowed to run my jobs.
   private String [] allowedVOs = null;
-  
   // RTEs are refreshed from entries written by pull nodes in remote database
   // every RTE_SYNC_DELAY milliseconds.
   private static int RTE_SYNC_DELAY = 60000;
@@ -124,6 +124,41 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     String transScriptName = (new File(transScript)).getName();
     job.setExecutables(new String [] {transScriptName});
   }
+  
+  /**
+   * Add the requested RTEs to job.getRTEs() of job.getOpsys().
+   * @param job the job in question
+   */
+  private void setRTEs(JobInfo job) {
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+    String [] rtes0 = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
+    Debug.debug("The job "+job.getIdentifier()+" requires RTEs: "+MyUtil.arrayToString(rtes0), 2);
+    if(rtes0==null || rtes0.length==0){
+      return;
+    }
+    Vector<String> rtesVec = new Vector<String>();
+    for(int i=0; i<rtes0.length; ++i){
+      // Check if any of the RTEs is a BaseSystem - if so, set job.getOpsys() instead of job.getRTEs().
+      // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
+      //       VM RTE names with VM/
+      if(MyUtil.checkOS(rtes0[i])){
+        if(job.getOpSys()==null || job.getOpSys().equals("")){
+          job.setOpSys(rtes0[i]);
+        }
+      }
+      else if(MyUtil.checkOS(rtes0[i]) || rtes0[i].startsWith(RteRdfParser.VM_PREFIX)){
+        if(job.getOpSys()==null || job.getOpSys().equals("")){
+          job.setOpSys(rtes0[i]);
+        }
+      }
+      else{
+        rtesVec.add(rtes0[i]);
+      }
+    }
+    if(rtesVec.size()>0){
+      job.setRTEs(rtesVec.toArray(new String[rtesVec.size()]));
+    }
+  }
 
   private boolean fileIsPresent(String file) {
     if(!MyUtil.urlIsRemote(file)){
@@ -169,6 +204,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       if(job.getJobId()!=null){
         // Do this only if not a resubmit
         setExtraInputFiles(job);
+        setRTEs(job);
       }
       job.setAllowedVOs(allowedVOs);
       String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
@@ -189,7 +225,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
           virtualize?"1":"0",
           MyUtil.arrayToString(job.getOutputFileNames()),
           MyUtil.arrayToString(job.getRTEs()),
-          null,
+          job.getOpSys(),
           job.getUserInfo(),
           MyUtil.arrayToString(job.getAllowedVOs(), job.getJobId()),
           null
