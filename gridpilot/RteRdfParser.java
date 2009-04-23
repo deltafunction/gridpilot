@@ -18,8 +18,8 @@ import gridfactory.common.jobrun.RTECatalog.MetaPackage;
 
 public class RteRdfParser {
   
+  /** VM RTEs have names that start with this prefix. */
   public static final String VM_PREFIX = "VM/";
-  
   public String [] catalogURLs;
   private RTECatalog rteCatalog;
   
