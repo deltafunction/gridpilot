@@ -93,8 +93,10 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
    * Add the transformation executable and the input files of the transformation to job.getInputFiles().
    * @param job the job in question
    */
-  private void setExtraInputFiles(JobInfo job){
+  private void setInputFiles(JobInfo job){
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+    String [] jobInputFiles = dbPluginMgr.getJobDefInputFiles(job.getIdentifier());
+    job.setInputFileUrls(jobInputFiles);
     String transformationID = dbPluginMgr.getJobDefTransformationID(job.getIdentifier());
     String [] transformationInputs = dbPluginMgr.getTransformationInputs(transformationID);
     if(transformationInputs==null || transformationInputs.length==0){
@@ -123,6 +125,17 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     // Executable
     String transScriptName = (new File(transScript)).getName();
     job.setExecutables(new String [] {transScriptName});
+  }
+  
+  private void setOutputFiles(JobInfo job){
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getIdentifier());
+    String [] outputDestinations = new String [outputFileNames.length];
+    for(int i=0; i<outputDestinations.length; ++i){
+      outputDestinations[i] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
+    }
+    job.setOutputFileDestinations(outputDestinations);
+    job.setOutputFileNames(outputFileNames);
   }
   
   /**
@@ -201,11 +214,6 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
      */
     try{
       Debug.debug("Submitting", 3);
-      if(job.getJobId()!=null){
-        // Do this only if not a resubmit
-        setExtraInputFiles(job);
-        setRTEs(job);
-      }
       job.setAllowedVOs(allowedVOs);
       String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
       String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";
@@ -295,8 +303,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
 
   /**
    * If any input or output files or finalStdout, finalStderr are local:
-   * - Creates temporary directory on the configured gridftp server.
-   * - Uploads any local input files and sets inputFiles accordingly.
+   * - Creates temporary directory on the remote server.
    */
   public boolean preProcess(JobInfo job){
     // Iff the job has remote output files, check if the remote directory exists,
@@ -317,6 +324,18 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       error = "ERROR: could not upload requested files. "+e.getMessage();
       logFile.addMessage(error, e);
       return false;
+    }
+    if(job.getJobId()!=null){
+      try{
+        // Do this only if not a resubmit
+        setInputFiles(job);
+        setOutputFiles(job);
+        setRTEs(job);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        return false;
+      }
     }
     return setRemoteOutputFiles((MyJobInfo) job);
   }
