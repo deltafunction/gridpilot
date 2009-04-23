@@ -136,6 +136,8 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     }
     job.setOutputFileDestinations(outputDestinations);
     job.setOutputFileNames(outputFileNames);
+    Debug.debug("Output files: "+MyUtil.arrayToString(job.getOutputFileNames())+"-->"+
+        MyUtil.arrayToString(job.getOutputFileDestinations()), 2);
   }
   
   /**

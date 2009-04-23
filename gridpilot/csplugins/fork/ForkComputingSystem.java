@@ -821,6 +821,8 @@ public class ForkComputingSystem implements MyComputingSystem{
       // This is used only by GridFactoryComputingSystem and copyToFinalDest
       job.setOutputFileNames(outNames.toArray(new String[outNames.size()]));
       job.setOutputFileDestinations(outDestinations.toArray(new String[outDestinations.size()]));
+      Debug.debug("Output files: "+MyUtil.arrayToString(job.getOutputFileNames())+"-->"+
+          MyUtil.arrayToString(job.getOutputFileDestinations()), 2);
       //
     }
     catch(Exception e){
