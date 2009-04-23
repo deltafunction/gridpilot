@@ -1630,7 +1630,7 @@ public class MyUtil extends gridfactory.common.Util{
     Debug.debug("Setting up job RTES "+Util.arrayToString(rteNames), 2);
     Vector<String> rtes = new Vector<String>();
     Collections.addAll(rtes, rteNames);
-    Vector<String> deps = rteMgr.getRteDepends(rtes, job.getOpSys());
+    Vector<String> deps = rteMgr.getRteDepends(rtes, job.getOpSys(), false);
     InstancePackage ip = null;
     String name = null;
     String os = null;

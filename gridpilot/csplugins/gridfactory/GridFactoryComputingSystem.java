@@ -126,7 +126,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   }
   
   /**
-   * Add the requested RTEs to job.getRTEs() of job.getOpsys().
+   * Add the requested RTEs to job.getRTEs() or job.getOpsys().
    * @param job the job in question
    */
   private void setRTEs(JobInfo job) {
