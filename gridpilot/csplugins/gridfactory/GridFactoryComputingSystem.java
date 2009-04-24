@@ -233,7 +233,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
           Integer.toString(job.getGridTime()),
           Integer.toString(job.getMemory()),
           virtualize?"1":"0",
-          MyUtil.arrayToString(job.getOutputFileNames()),
+          constructOutputFiles(job),
           MyUtil.arrayToString(job.getRTEs()),
           job.getOpSys(),
           job.getUserInfo(),
@@ -263,6 +263,24 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     return true;
   }
   
+  // We're using an undocumented feature of GridFactory (Util.parseJobScript, QueueMgr):
+  // output files specified as
+  // file1 https://some.server/some/dir/file1 file2 https://some.server/some/dir/file2 ...
+  // are delivered.
+  private String constructOutputFiles(JobInfo job) {
+    StringBuffer ret = new StringBuffer();
+    for(int i=0; i<job.getOutputFileNames().length; ++i){
+      ret.append(" " + job.getOutputFileNames()[i]);
+      if(MyUtil.urlIsRemote(job.getOutputFileDestinations()[i])){
+        ret.append(" " + job.getOutputFileDestinations()[i]);
+      }
+      else{
+        ret.append(" " + job.getOutputFileNames()[i]);
+      }
+    }
+    return ret.toString().trim();
+  }
+
   private void mkRemoteDir(String url) throws Exception{
     if(!url.endsWith("/")){
       throw new IOException("Directory URL: "+url+" does not end with a slash.");
@@ -339,7 +357,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
         return false;
       }
     }
-    return setRemoteOutputFiles((MyJobInfo) job);
+    return true;
   }
 
   public boolean postProcess(JobInfo job){
@@ -349,8 +367,8 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     // by getCurrentOutput called from updateStatus before validation.
     // TODO: Once GridFactory supports upload of output files for https, this should
     // be done only for output destinations with other protocols than https.
-    try {
-      getOutputs(job);
+    try{
+      getOutputs((MyJobInfo) job);
     }
     catch(Exception e){
       e.printStackTrace();
@@ -363,14 +381,33 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     return ok;
   }
   
-  private void getOutputs(JobInfo job) throws MalformedURLException, Exception{
+  private void getOutputs(MyJobInfo job) throws MalformedURLException, Exception{
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String [] outputFiles = dbPluginMgr.getOutputFiles(job.getIdentifier());
+    String [] outputDestinations = dbPluginMgr.getOutputFiles(job.getIdentifier());
+    Vector<String> outNamesVec = new Vector();
+    Vector<String> outDestsVec = new Vector();
     if(outputFiles!=null && outputFiles.length>0){
       for(int i=0; i<outputFiles.length; ++i){
-        fileTransfer.getFile(
-            new GlobusURL(job.getJobId()+"/"+outputFiles[i]),
-            new File(MyUtil.clearTildeLocally(MyUtil.clearFile(runDir(job)))));
+        // Files that have remote destinations will have been uploaded by GridFactory.
+        if(!MyUtil.urlIsRemote(outputDestinations[i])){
+          fileTransfer.getFile(
+              new GlobusURL(job.getJobId()+"/"+outputFiles[i]),
+              new File(MyUtil.clearTildeLocally(MyUtil.clearFile(runDir(job)))));
+        }
+        else{
+          outNamesVec.add(outputFiles[i]);
+          outDestsVec.add(outputDestinations[i]);
+        }
+      }
+      if(!outDestsVec.isEmpty()){
+        String [][] uploadFiles = new String [2][outDestsVec.size()];
+        for(int i=0; i<outDestsVec.size(); ++i){
+          uploadFiles[0][i] = outNamesVec.get(i);
+          uploadFiles[1][i] = outDestsVec.get(i);
+        }
+        // This will prevent super.postProcess to look for these files.
+        job.setUploadFiles(uploadFiles);
       }
     }
   }

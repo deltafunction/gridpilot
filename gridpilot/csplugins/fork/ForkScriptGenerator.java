@@ -279,8 +279,8 @@ public class ForkScriptGenerator extends ScriptGenerator{
       writeBlock(buf, "Output files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
       String protocol = null;
       for(int i=0; i<uploadFiles.length; ++i){
-        protocol = uploadFiles[i][1].replaceFirst("^(\\w+):.*$", "$1");
-        writeLine(buf, remoteCopyCommands.get(protocol)+" file:///`pwd`/"+uploadFiles[i][0]+" "+uploadFiles[i][1]);
+        protocol = uploadFiles[1][i].replaceFirst("^(\\w+):.*$", "$1");
+        writeLine(buf, remoteCopyCommands.get(protocol)+" file:///`pwd`/"+uploadFiles[0][i]+" "+uploadFiles[1][i]);
       }
       writeLine(buf, "");
     }

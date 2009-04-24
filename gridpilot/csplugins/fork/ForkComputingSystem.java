@@ -810,15 +810,17 @@ public class ForkComputingSystem implements MyComputingSystem{
         outNames.add(outputFiles[i]);
         outDestinations.add(remoteName);
       }
-      String [][] uploadFiles = new String [remoteNamesVector.size()][2];
-      for(int i=0; i<remoteNamesVector.size(); ++i){
-        uploadFiles[i][0] = dbPluginMgr.getJobDefOutLocalName(job.getIdentifier(),
-            remoteNamesVector.get(i));
-        uploadFiles[i][1] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(),
-            remoteNamesVector.get(i));
+      if(job.getUploadFiles()==null){
+        String [][] uploadFiles = new String [2][remoteNamesVector.size()];
+        for(int i=0; i<remoteNamesVector.size(); ++i){
+          uploadFiles[0][i] = dbPluginMgr.getJobDefOutLocalName(job.getIdentifier(),
+              remoteNamesVector.get(i));
+          uploadFiles[1][i] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(),
+              remoteNamesVector.get(i));
+        }
+        job.setUploadFiles(uploadFiles);
       }
-      job.setUploadFiles(uploadFiles);
-      // This is used only by GridFactoryComputingSystem and copyToFinalDest
+      // job.getOutputFile* are used only by GridFactoryComputingSystem and copyToFinalDest
       job.setOutputFileNames(outNames.toArray(new String[outNames.size()]));
       job.setOutputFileDestinations(outDestinations.toArray(new String[outDestinations.size()]));
       Debug.debug("Output files: "+MyUtil.arrayToString(job.getOutputFileNames())+"-->"+
@@ -1071,7 +1073,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     boolean emptyFile = false;
     for(int i=0; i<outputNames.length; ++i){
       try{
-        alreadyCopiedNames = ((MyJobInfo) job).getOutputFileNames();
+        alreadyCopiedNames = ((MyJobInfo) job).getUploadFiles()[0];
         if(MyUtil.arrayContains(alreadyCopiedNames, outputNames[i])){
           continue;
         }
