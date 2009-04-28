@@ -93,7 +93,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       }
     }
     
-    if(shell.getOS().toLowerCase().startsWith("windows")){
+    if(shell==null || shell.getOS().toLowerCase().startsWith("windows")){
       basicOSRTES = new String [] {"Windows"};
     }
     
@@ -110,13 +110,13 @@ public class ForkComputingSystem implements MyComputingSystem{
       workingDir = "~";
     }
     if(MyUtil.onWindows() &&
-        shell.isLocal() && workingDir!=null && workingDir.startsWith("~")){
+        (shell==null || shell.isLocal()) && workingDir!=null && workingDir.startsWith("~")){
       workingDir = System.getProperty("user.home")+workingDir.substring(1);
     }
     if(workingDir!=null && workingDir.endsWith("/") || workingDir.endsWith("\\")){
       workingDir = workingDir.substring(0, workingDir.length()-1);
     }
-    if(workingDir!=null && !shell.existsFile(workingDir)){
+    if(workingDir!=null && shell!=null && !shell.existsFile(workingDir)){
       logFile.addInfo("Working directory "+workingDir+" does not exist, creating.");
       shell.mkdirs(workingDir);
     }
@@ -132,7 +132,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     GridPilot.splashShow("Setting up RTEs for "+csName);
     Debug.debug("Setting up RTEs for "+csName, 2);
     if(runtimeDirectory!=null){
-      if(!shell.existsFile(runtimeDirectory)){
+      if(shell!=null && !shell.existsFile(runtimeDirectory)){
         logFile.addInfo("Runtime directory "+runtimeDirectory+" does not exist, creating.");
         shell.mkdirs(runtimeDirectory);
       }
@@ -203,7 +203,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     HashSet<String> runtimes = mgr.listFilesRecursively(runtimeDirectory);
     String [] expandedRuntimeDirs = mgr.listFiles(MyUtil.clearFile(runtimeDirectory));
     String dirName = null;
-    if(shell.isLocal() && MyUtil.onWindows()){
+    if(shell!=null && shell.isLocal() && MyUtil.onWindows()){
       dirName = runtimeDirectory.replaceFirst("^.*\\\\([^\\\\]+)$", "$1");
     }
     else{
@@ -215,7 +215,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       return;
     }
     String expandedRuntimeDir = null;
-    if(shell.isLocal() && MyUtil.onWindows()){
+    if(shell!=null && shell.isLocal() && MyUtil.onWindows()){
       expandedRuntimeDir = expandedRuntimeDirs[0].replaceFirst("^(.*)\\\\[^\\\\]+$", "$1");
       expandedRuntimeDir = expandedRuntimeDir.replaceFirst("^(.*)\\\\[^\\\\]+\\$", "$1")+"\\";
     }
@@ -567,7 +567,13 @@ public class ForkComputingSystem implements MyComputingSystem{
     for(int i=0; i<outputFileNames.length; ++i){
       fileName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
       if(fileName.startsWith("file:")){
-        shell.deleteFile(fileName);
+        try{
+          shell.deleteFile(fileName);
+        }
+        catch(Exception e){
+          error = "WARNING: could not delete output file. "+e.getMessage();
+          Debug.debug(error, 3);
+        }
       }
       else{
         remoteFiles.add(fileName);
@@ -581,7 +587,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       transferControl.deleteFiles(remoteFilesArr);
     }
     catch(Exception e){
-      error = "WARNING: could not delete output files. "+e.getMessage();
+      error = "WARNING: could not delete output file(s). "+e.getMessage();
       Debug.debug(error, 3);
     }
     
