@@ -233,7 +233,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
           Integer.toString(job.getGridTime()),
           Integer.toString(job.getMemory()),
           virtualize?"1":"0",
-          constructOutputFiles(job),
+          constructOutputFilesString(job),
           MyUtil.arrayToString(job.getRTEs()),
           job.getOpSys(),
           job.getUserInfo(),
@@ -267,7 +267,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   // output files specified as
   // file1 https://some.server/some/dir/file1 file2 https://some.server/some/dir/file2 ...
   // are delivered.
-  private String constructOutputFiles(JobInfo job) {
+  private String constructOutputFilesString(JobInfo job) {
     StringBuffer ret = new StringBuffer();
     for(int i=0; i<job.getOutputFileNames().length; ++i){
       ret.append(" " + job.getOutputFileNames()[i]);
