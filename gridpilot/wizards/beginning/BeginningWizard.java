@@ -598,7 +598,7 @@ public class BeginningWizard{
       return 1;
     }
     
-    // No idea why we suddenly have to add this. It worked before, now and exception is thrown
+    // No idea why we suddenly have to add this. It worked before - now an exception is thrown
     // java.security.NoSuchProviderException: No such provider: BC
     Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
     if(GridPilot.KEY_PASSWORD==MySSL.TEST_KEY_PASSWORD){
