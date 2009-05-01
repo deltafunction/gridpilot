@@ -676,7 +676,7 @@ public class BeginningWizard{
     host = host.replaceFirst("(.*):\\d+", "$1");
     String lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=(\\w+)\\s+(\\w+)\\W.*", "$1$2");
     lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=([\\w ]+).*", "$1");
-    String lfcPath = "/users"+lfcUser+"/";
+    String lfcPath = "/users/"+lfcUser+"/";
     String [] defDirs = new String [] {"",
                                        "www.gridpilot.dk",
                                        host};
