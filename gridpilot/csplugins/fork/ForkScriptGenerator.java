@@ -275,10 +275,10 @@ public class ForkScriptGenerator extends ScriptGenerator{
   private void writeOutputFilesSection(MyJobInfo job, StringBuffer buf,
       String commentStart) throws IOException {
     String [][] uploadFiles = job.getUploadFiles();
-    if(uploadFiles!=null && uploadFiles.length>0){
+    if(uploadFiles!=null && uploadFiles.length>0 && uploadFiles[0].length>0){
       writeBlock(buf, "Output files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
       String protocol = null;
-      for(int i=0; i<uploadFiles.length; ++i){
+      for(int i=0; i<uploadFiles[0].length; ++i){
         protocol = uploadFiles[1][i].replaceFirst("^(\\w+):.*$", "$1");
         writeLine(buf, remoteCopyCommands.get(protocol)+" file:///`pwd`/"+uploadFiles[0][i]+" "+uploadFiles[1][i]);
       }
