@@ -47,7 +47,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   private String [] t_lfnFields = null;
   private String [] t_pfnFields = null;
   private String [] t_metaFields = null;
-  private HashMap datasetFieldTypes = new HashMap();
+  private HashMap<String, String> datasetFieldTypes = new HashMap<String, String>();
   private String databaseName = null;
   private String dbName = null;
   private ConfigFile configFile = null;
@@ -510,7 +510,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     String req = "SELECT "+idField+" from transformation where "+nameField+" = '"+transName + "'"+
     " AND "+versionField+" = '"+transVersion+"'";
     String id = null;
-    Vector vec = new Vector();
+    Vector<String> vec = new Vector<String>();
     try{
       Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
@@ -723,7 +723,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     String nameField = MyUtil.getNameField(dbName, "transformation");
     String req = "SELECT "+idField+" FROM "+
        "transformation WHERE "+nameField+" = '"+transformation+"' AND version = '"+version+"'";
-    Vector vec = new Vector();
+    Vector<String> vec = new Vector<String>();
     Debug.debug(req, 2);
     try{
       Connection conn = getDBConnection(dbName);
@@ -1014,7 +1014,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       Connection conn = getDBConnection(dbName);
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
-      Vector datasetVector = new Vector();
+      Vector<DBRecord> datasetVector = new Vector<DBRecord>();
       String str;
       while(rset.next()){
         String values[] = new String[datasetFields.length];
@@ -1070,7 +1070,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     String nameField = MyUtil.getNameField(dbName, "dataset");
     String req = "SELECT "+idField+" from dataset where "+nameField+" = '"+datasetName + "'";
     String id = null;
-    Vector vec = new Vector();
+    Vector<String> vec = new Vector<String>();
     try{
       Connection conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
@@ -1127,7 +1127,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       Connection conn = getDBConnection(dbName);
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
-      Vector runtimeEnvironmentVector = new Vector();
+      Vector<DBRecord> runtimeEnvironmentVector = new Vector<DBRecord>();
       String [] jt = new String[runtimeEnvironmentFields.length];
       int i = 0;
       while(rset.next()){
@@ -1181,7 +1181,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       Connection conn = getDBConnection(dbName);
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
-      Vector transformationVector = new Vector();
+      Vector<DBRecord> transformationVector = new Vector<DBRecord>();
       String [] jt = new String[transformationFields.length];
       int i = 0;
       while(rset.next()){
@@ -1243,7 +1243,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       Debug.debug(req, 3);
       Connection conn = getDBConnection(dbName);
       rset = conn.createStatement().executeQuery(req);
-      Vector runtimeEnvironmentVector = new Vector();
+      Vector<DBRecord> runtimeEnvironmentVector = new Vector<DBRecord>();
       String [] jt = new String[runtimeEnvironmentFields.length];
       int i = 0;
       while(rset.next()){
@@ -1295,7 +1295,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       Debug.debug(req, 3);
       Connection conn = getDBConnection(dbName);
       rset = conn.createStatement().executeQuery(req);
-      Vector transformationVector = new Vector();
+      Vector<DBRecord> transformationVector = new Vector<DBRecord>();
       String [] jt = new String[transformationFields.length];
       int i = 0;
       while(rset.next()){
@@ -1335,7 +1335,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     String req = "SELECT *";
     req += " FROM jobDefinition where "+idField+" = '"+
     jobDefinitionID + "'";
-    Vector jobdefv = new Vector();
+    Vector<DBRecord> jobdefv = new Vector<DBRecord>();
     Debug.debug(req, 2);
     try{
       Connection conn = getDBConnection(dbName);
@@ -1432,7 +1432,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
       req += ")";
     }
-    Vector jobdefv = new Vector();
+    Vector<DBRecord> jobdefv = new Vector<DBRecord>();
     Debug.debug(req, 2);
     try{
       Connection conn = getDBConnection(dbName);
@@ -1566,7 +1566,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     for(int i = 1; i<jobDefFields.length; ++i){
       
       if(jobDefFields[i].equalsIgnoreCase("created")){
-        values[i] = fixDate(values[i].toString());
+        values[i] = fixDate((String) values[i]);
       }
       else if(jobDefFields[i].equalsIgnoreCase("lastModified")){
         values[i] = fixDate(null);
@@ -1576,7 +1576,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         values[i] = "'0'";
       }
       else{
-        values[i] = "'"+dbEncode(values[i].toString())+"'";
+        values[i] = "'"+dbEncode((String) values[i])+"'";
       }
       
       sql += values[i];
@@ -1636,8 +1636,22 @@ public class HSQLDBDatabase extends DBCache implements Database{
     arg += "transPars, outFileMapping, stdoutDest," +
             "stderrDest, created, lastModified";
     arg += ") values ('"+dbEncode(datasetName)+"', 'Defined', ";
+    String val;
     for(int i=0; i<resCstAttr.length; ++i){
-      arg += "'"+dbEncode(resCstAttr[i])+"', ";
+      if(cstAttrNames[i].equalsIgnoreCase("created")){
+        val = fixDate(resCstAttr[i]);
+      }
+      else if(cstAttrNames[i].equalsIgnoreCase("lastModified")){
+        val = fixDate(null);
+      }
+      else if(isNumField(cstAttrNames[i]) &&
+          (resCstAttr[i]==null || resCstAttr[i].equals(""))){
+        val = "'0'";
+      }
+      else{
+        val = "'"+dbEncode(resCstAttr[i])+"'";
+      }
+      arg += val+", ";
     }
 
     arg += "'"
@@ -1686,7 +1700,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
    * @param values
    * @return
    */
-  private String getFieldValue(HashMap fieldTypes, String field, String [] fields, Object [] values){
+  private String getFieldValue(HashMap<String, String> fieldTypes, String field, String [] fields, Object [] values){
     String ret = null;
     for(int i=0; i<fields.length; ++i){
       if(field.trim().equalsIgnoreCase(fields[i])){
@@ -1710,7 +1724,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     String idField = MyUtil.getIdentifierField(dbName, "dataset");
     
     String nonMatchedStr = "";
-    Vector nonMatchedFields = new Vector();
+    Vector<String> nonMatchedFields = new Vector<String>();
     boolean match = false;
     for(int i=0; i<fields.length; ++i){
       match = false;
@@ -1819,7 +1833,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     return execok;
   }
   
-  private boolean isNumericField(HashMap fieldTypes, String field){
+  private boolean isNumericField(HashMap<String, String> fieldTypes, String field){
     if(fieldTypes.get(field).toString().toLowerCase().startsWith("int") ||
         fieldTypes.get(field).toString().toLowerCase().startsWith("bigint") ||
         fieldTypes.get(field).toString().toLowerCase().startsWith("tinyint") ||
@@ -2399,7 +2413,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     String versionField = MyUtil.getVersionField(dbName, "transformation");
     String req = "SELECT "+idField+", "+versionField+" FROM "+
     "transformation WHERE "+nameField+" = '"+transformation+"'";
-    Vector vec = new Vector();
+    Vector<String> vec = new Vector<String>();
     Debug.debug(req, 2);
     String version;
     try{
@@ -2423,7 +2437,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
     }
-    Vector vec1 = new Vector();
+    Vector<String> vec1 = new Vector<String>();
     if(vec.size()>0){
       Collections.sort(vec);
       vec1.add(vec.get(0));
@@ -2477,7 +2491,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     // If the file catalog tables (t_pfn, t_lfn, t_meta) are present,
     // we use them.
     if(isFileCatalog()){
-      Vector fieldsVector = new Vector();
+      Vector<String> fieldsVector = new Vector<String>();
       // first some special fields; we lump all pfname's into the same pfname field
       for(int i=0; i<fields.length; ++i){
         try{
