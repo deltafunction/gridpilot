@@ -1864,13 +1864,13 @@ public class MySQLDatabase extends DBCache implements Database {
             else{
               values[i] = "'"+values[i]+"'";
             }
+            if(addedFields>0){
+              sql += ",";
+            }
             sql += fields[i];
             sql += "=";
             sql += values[i];
             ++addedFields;
-            if(addedFields>0 && addedFields<fields.length){
-              sql += ",";
-            }
             break;
           }
         }
@@ -1931,14 +1931,13 @@ public class MySQLDatabase extends DBCache implements Database {
             else{
               values[j] = "'"+values[j]+"'";
             }
-            
+            if(addedFields>0){
+              sql += ",";
+            }
             sql += fields[j];
             sql += "=";
             sql += values[j];
             ++addedFields;
-            if(addedFields>0 && addedFields<fields.length){
-              sql += ", ";
-            }
             break;
           }
         }
@@ -1999,14 +1998,13 @@ public class MySQLDatabase extends DBCache implements Database {
             else{
               values[j] = "'"+values[j]+"'";
             }
-            
+            if(addedFields>0){
+              sql += ",";
+            }
             sql += fields[j];
             sql += "=";
             sql += values[j];
             ++addedFields;
-            if(addedFields>0 && addedFields<fields.length){
-              sql += ", ";
-            }
             break;
           }
         }
