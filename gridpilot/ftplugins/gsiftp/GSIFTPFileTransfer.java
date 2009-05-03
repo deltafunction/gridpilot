@@ -749,12 +749,14 @@ public class GSIFTPFileTransfer implements FileTransfer {
         }
         // If server is nice enough to provide file information, use it
         if(fileName.matches(filter)){
-          if(line.matches("d[rwxsS-]* .*")){
+          if(line.matches("d[rwxsS-]* .*") ||
+             /*BNL style*/line.matches("d\\? +.*")){
             textVector.add(fileName+"/");
             ++directories;
             continue;
           }
-          else if(!onlyDirs && line.matches("-[rwxsS-]* .*")){
+          else if(!onlyDirs && line.matches("-[rwxsS-]* .*") ||
+             /*BNL style*/line.matches("-\\? +.*")){
             textVector.add(fileName+" "+bytes);
             ++files;
             continue;
