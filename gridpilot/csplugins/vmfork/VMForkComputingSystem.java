@@ -200,6 +200,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, scriptFile)){
       throw new IOException("Could not create wrapper script.");
     }
+    setupExecutable(runDir(job) +"/"+scriptFile, shell);
     ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     job.setExecutable(scriptFile);
 
