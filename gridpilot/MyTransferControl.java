@@ -32,6 +32,7 @@ import java.util.Vector;
 
 import javax.swing.ImageIcon;
 import javax.swing.JProgressBar;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import jonelo.jacksum.JacksumAPI;
@@ -53,7 +54,6 @@ import org.safehaus.uuid.UUIDGenerator;
  */
 public class MyTransferControl extends TransferControl {
   
-  private StatusBar statusBar;
   private JProgressBar pbSubmission;
   private boolean isProgressBarSet = false;
   private ConfigFile configFile;
@@ -109,121 +109,46 @@ public class MyTransferControl extends TransferControl {
     synchronized(runningTransfers){
       synchronized(toSubmitTransfers){
         synchronized(submittingTransfers){
-          // use status bar on monitoring frame
-          statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
 
           GlobusURL firstSrc = ((TransferInfo) toSubmitTransfers.get(0)).getSource();
           GlobusURL firstDest = ((TransferInfo) toSubmitTransfers.get(0)).getDestination();
           
           Debug.debug("First transfer: "+((TransferInfo) toSubmitTransfers.get(0)), 3);
           
-          String [] fts = GridPilot.FT_NAMES;
           String pluginName = null;
-          Vector transferVector = null;
-          GlobusURL [] theseSources = null;
-          GlobusURL [] theseDestinations = null;
           TransferInfo [] theseTransfers = null;
-          GlobusURL [] checkSources = null;
-          GlobusURL [] checkDestinations = null;
           
-          boolean brokenOut = false;
           try{
+            pluginName = findPlugin(firstSrc, firstDest);
             // Select first plugin that supports the protocol of the next transfer
-            for(int i=0; i<fts.length; ++i){
-              Debug.debug("Checking plugin "+fts[i], 3);
-              checkSources = new GlobusURL [] {firstSrc};
-              checkDestinations = new GlobusURL [] {firstDest};
-              try{
-                if(GridPilot.getClassMgr().getFTPlugin(
-                    fts[i]).checkURLs(checkSources, checkDestinations)){
-                  pluginName = fts[i];
-                  break;
-                };      
-              }
-              catch(Exception e){
-                e.printStackTrace();
-              }
-            }
             if(pluginName==null){
               throw new IOException("ERROR: protocol not supported or plugin initialization " +
                   "failed.\n"+firstSrc+"\n->\n\n"+firstDest);
             }
             Debug.debug("plugin selected: "+pluginName, 3);
             
-            // Transfer jobs from toSubmitTransfers to submittingTransfers.
-            // First construct uniform batch.
-            transferVector = new Vector();
-            while(runningTransfers.size()+submittingTransfers.size()<maxSimultaneousTransfers &&
-                !toSubmitTransfers.isEmpty()){
-              
-              // break if next transfer is not uniform with the previous ones (in this batch)
-              transferVector.add(((TransferInfo) toSubmitTransfers.get(0)));
-              theseSources = new GlobusURL[transferVector.size()];
-              theseDestinations = new GlobusURL[transferVector.size()];
-              theseTransfers = new TransferInfo[transferVector.size()];
-              TransferInfo tmpTransfer = null;
-              for(int i=0; i<theseDestinations.length; ++i){
-                tmpTransfer = (TransferInfo) transferVector.get(i);
-                theseSources[i] = tmpTransfer.getSource();
-                theseDestinations[i] = tmpTransfer.getDestination();
-                theseTransfers[i] = tmpTransfer;
-              }
-              try{
-                if(!GridPilot.getClassMgr().getFTPlugin(pluginName).checkURLs(
-                    theseSources, theseDestinations)){
-                  brokenOut = true;
-                  Debug.debug("Breaking because of non-uniform URLs", 2);
-                  break;
-                }
-              }
-              catch(Exception e){
-                brokenOut = true;
-                Debug.debug("Problem checking URLs", 2);
-                logFile.addMessage("WARNING: there was a problem queueing all " +
-                      "transfers.", e);
-                e.printStackTrace();
-                toSubmitTransfers.removeAllElements();
-                break;
-              }
-              
-              TransferInfo transfer = (TransferInfo) toSubmitTransfers.remove(0);
-              //statusBar.setLabel("Queueing "+transfer.getSourceURL()+"->"+
-              //    transfer.getDestination().getURL());
-              submittingTransfers.add(transfer);
-              Debug.debug("Removed "+transfer.getSourceURL(), 3);
-              Debug.debug("with id "+transfer.getTransferID(), 3);
-              Debug.debug("Now toSubmitTransfers has "+toSubmitTransfers.size()+" elements", 3);
-              Debug.debug("Now submittingTransfers has "+submittingTransfers.size()+" elements", 3);
-            }
+            theseTransfers = prepareTransfers(pluginName);
+            
           }
           catch(Exception e){
             toSubmitTransfers.removeAllElements();
-            statusBar.setLabel("ERROR: queueing transfer(s) failed.");
+            setMonitorStatus("ERROR: queueing transfer(s) failed.");
             logFile.addMessage("ERROR: queueing transfer(s) failed:\n"+
-                ((transferVector==null||transferVector.toArray()==null)?"":MyUtil.arrayToString(transferVector.toArray())), e);
+                ((toSubmitTransfers==null||toSubmitTransfers.toArray()==null)?"":
+                  MyUtil.arrayToString(toSubmitTransfers.toArray())), e);
             return;
           }
           
-          // Remove the wrongly added last transfer from theseTransfers before submitting
-          if(brokenOut && theseTransfers.length>1){
-            TransferInfo [] tmpTransfers = new TransferInfo[theseTransfers.length-1];
-            for(int i=0; i<theseTransfers.length-1; ++i){
-              tmpTransfers[i] = theseTransfers[i];
-            }
-            theseTransfers = tmpTransfers;
-          }
           final TransferInfo [] finalTransfers = theseTransfers;
           final String finalPluginName = pluginName;
           
           new Thread(){
             public void run(){
-              // use status bar on monitoring frame
-              statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
               try{
                 submit(finalPluginName, finalTransfers);
               }
               catch(Exception e){
-                statusBar.setLabel("ERROR: starting transfer(s) failed. "+
+                setMonitorStatus("ERROR: starting transfer(s) failed. "+
                     e.getMessage());
                 logFile.addMessage("ERROR: starting transfer(s) failed.", e);
                 e.printStackTrace();
@@ -235,6 +160,202 @@ public class MyTransferControl extends TransferControl {
     }    
   }
   
+  private String findPlugin(GlobusURL firstSrc, GlobusURL firstDest) {
+    String [] fts = GridPilot.FT_NAMES;
+    String pluginName = null;
+    GlobusURL [] checkSources = null;
+    GlobusURL [] checkDestinations = null;
+
+    for(int i=0; i<fts.length; ++i){
+      Debug.debug("Checking plugin "+fts[i], 3);
+      checkSources = new GlobusURL [] {firstSrc};
+      checkDestinations = new GlobusURL [] {firstDest};
+      try{
+        if(GridPilot.getClassMgr().getFTPlugin(
+            fts[i]).checkURLs(checkSources, checkDestinations)){
+          pluginName = fts[i];
+          break;
+        };      
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    return pluginName;
+  }
+  
+  private TransferInfo[] prepareTransfers(String pluginName){
+
+    Vector transferVector = null;
+    GlobusURL [] theseSources = null;
+    GlobusURL [] theseDestinations = null;
+    TransferInfo [] theseTransfers = null;
+    
+    boolean brokenOut = false;
+    // Transfer jobs from toSubmitTransfers to submittingTransfers.
+    // First construct uniform batch.
+    transferVector = new Vector();
+    while(runningTransfers.size()+submittingTransfers.size()<maxSimultaneousTransfers &&
+        !toSubmitTransfers.isEmpty()){
+      
+      // break if next transfer is not uniform with the previous ones (in this batch)
+      transferVector.add(((TransferInfo) toSubmitTransfers.get(0)));
+      theseSources = new GlobusURL[transferVector.size()];
+      theseDestinations = new GlobusURL[transferVector.size()];
+      theseTransfers = new TransferInfo[transferVector.size()];
+      TransferInfo tmpTransfer = null;
+      for(int i=0; i<theseDestinations.length; ++i){
+        tmpTransfer = (TransferInfo) transferVector.get(i);
+        theseSources[i] = tmpTransfer.getSource();
+        theseDestinations[i] = tmpTransfer.getDestination();
+        theseTransfers[i] = tmpTransfer;
+      }
+      try{
+        if(!GridPilot.getClassMgr().getFTPlugin(pluginName).checkURLs(
+            theseSources, theseDestinations)){
+          brokenOut = true;
+          Debug.debug("Breaking because of non-uniform URLs", 2);
+          break;
+        }
+      }
+      catch(Exception e){
+        brokenOut = true;
+        Debug.debug("Problem checking URLs", 2);
+        logFile.addMessage("WARNING: there was a problem queueing all " +
+              "transfers.", e);
+        e.printStackTrace();
+        toSubmitTransfers.removeAllElements();
+        break;
+      }
+      
+      TransferInfo transfer = (TransferInfo) toSubmitTransfers.remove(0);
+      submittingTransfers.add(transfer);
+      Debug.debug("Removed "+transfer.getSourceURL(), 3);
+      Debug.debug("with id "+transfer.getTransferID(), 3);
+      Debug.debug("Now toSubmitTransfers has "+toSubmitTransfers.size()+" elements", 3);
+      Debug.debug("Now submittingTransfers has "+submittingTransfers.size()+" elements", 3);
+    }
+    
+    // Remove the wrongly added last transfer from theseTransfers before submitting
+    if(brokenOut && theseTransfers.length>1){
+      TransferInfo [] tmpTransfers = new TransferInfo[theseTransfers.length-1];
+      for(int i=0; i<theseTransfers.length-1; ++i){
+        tmpTransfers[i] = theseTransfers[i];
+      }
+      theseTransfers = tmpTransfers;
+    }
+    
+    return theseTransfers;
+    
+  }
+
+  private void setMonitorStatus(final String text){
+    ResThread t = (new ResThread(){
+      public void run(){
+        // use status bar on monitoring frame
+        StatusBar myStatusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+        try{
+          myStatusBar.setLabel(text);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+       }
+    });     
+    SwingUtilities.invokeLater(t);    
+  }
+  
+  private void setStatus(final String text){
+    ResThread t = (new ResThread(){
+      public void run(){
+        try{
+          GridPilot.getClassMgr().getStatusBar().setLabel(text);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+       }
+    });     
+    SwingUtilities.invokeLater(t);    
+  }
+  
+  private void animateMonitorStatus() {
+    ResThread t = (new ResThread(){
+      public void run(){
+        // use status bar on monitoring frame
+        StatusBar myStatusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+        try{
+          myStatusBar.animateProgressBar();
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+       }
+    });     
+    SwingUtilities.invokeLater(t);    
+  }
+  
+  private void stopMonitorAnimation() {
+    ResThread t = (new ResThread(){
+      public void run(){
+        // use status bar on monitoring frame
+        StatusBar myStatusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+        try{
+          myStatusBar.stopAnimation();
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+       }
+    });     
+    SwingUtilities.invokeLater(t);    
+  }
+  
+  private void removeMonitorProgressBar() {
+    setMonitorProgressBar(0, 0);
+    try{
+      GridPilot.getClassMgr().getStatusBar().removeProgressBar(pbSubmission);
+    }
+    catch(Exception e){
+    }
+    ResThread t = (new ResThread(){
+      public void run(){
+        // use status bar on monitoring frame
+        StatusBar myStatusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+        try{
+          myStatusBar.stopAnimation();
+          isProgressBarSet = false;
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+       }
+    });     
+    SwingUtilities.invokeLater(t);    
+  }
+
+  private void setMonitorProgressBar(final int i, final int j) {
+    ResThread t = (new ResThread(){
+      public void run(){
+        // use status bar on monitoring frame
+        try{
+          if(!isProgressBarSet){
+            GridPilot.getClassMgr().getStatusBar().setProgressBar(pbSubmission);
+            isProgressBarSet = true;
+          }
+          pbSubmission.setMaximum(i);
+          pbSubmission.setValue(j);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+       }
+    });     
+    SwingUtilities.invokeLater(t);    
+  }
+
+
+
   /**
    * Reloads some values from configuration file. <p>
    */
@@ -366,8 +487,6 @@ public class MyTransferControl extends TransferControl {
     ResThread t = new ResThread(){
       Vector transfers;
       public void run(){
-        // use status bar on monitoring frame
-        statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
         if(isRand!=null && isRand.equalsIgnoreCase("yes")){
           transfers = MyUtil.shuffle(_transfers);
         }
@@ -381,13 +500,10 @@ public class MyTransferControl extends TransferControl {
           }
         });
         Debug.debug("queueing "+transfers.size()+" transfers", 2);
-        statusBar.setLabel("Adding to submission queue. Please wait...");
-        statusBar.animateProgressBar();
+        setMonitorStatus("Adding to submission queue. Please wait...");
+        animateMonitorStatus();
         pbSubmission.setToolTipText("Click here to cancel queueing");
-        if(!isProgressBarSet){
-          statusBar.setProgressBar(pbSubmission);
-          isProgressBarSet = true;
-        }
+        setMonitorProgressBar(0, 0);
         toSubmitTransfers.addAll(transfers);
         for(Iterator it=transfers.iterator(); it.hasNext();){
           toSubmitTransfers.add((TransferInfo) it.next());
@@ -395,15 +511,15 @@ public class MyTransferControl extends TransferControl {
         if(!timer.isRunning()){
           timer.restart();
         }
-        statusBar.setLabel("Queueing done.");
-        statusBar.stopAnimation();
+        setMonitorStatus("Queueing done.");
+        stopMonitorAnimation();
       }
     };
     t.start();
 
     if(!MyUtil.myWaitForThread(t, "", TRANSFER_SUBMIT_TIMEOUT, "transfer")){
-      statusBar.setLabel("WARNING: queueing transfers timed out.");
-      statusBar.stopAnimation();
+      setMonitorStatus("WARNING: queueing transfers timed out.");
+      stopMonitorAnimation();
     }
   }
   
@@ -462,8 +578,6 @@ public class MyTransferControl extends TransferControl {
       transfers = (TransferInfo []) MyUtil.shuffle(transfers);
     }
 
-    // use status bar on monitoring frame
-    statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
     GlobusURL [] sources = new GlobusURL [transfers.length];
     GlobusURL [] destinations = new GlobusURL [transfers.length];
     String [] ids = null;
@@ -649,12 +763,8 @@ public class MyTransferControl extends TransferControl {
         timer.restart();
       }
       if(pbSubmission.getPercentComplete()==1.0){
-        statusBar.removeProgressBar(pbSubmission);
-        isProgressBarSet = false;
-        pbSubmission.setMaximum(0);
-        pbSubmission.setValue(0);
-        //statusBar.setLabel("Queueing all transfers done.");
-        GridPilot.getClassMgr().getStatusBar().setLabel("");
+        removeMonitorProgressBar();
+        setStatus("");
       }
     }
   };
@@ -783,8 +893,6 @@ public class MyTransferControl extends TransferControl {
    * Empties toSubmitJobs, and set these jobs to Failed.
    */
   private void cancelQueueing(){
-    // use status bar on monitoring frame
-    statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
     timer.stop();
     Enumeration e = toSubmitTransfers.elements();
     while(e.hasMoreElements()){
@@ -798,9 +906,7 @@ public class MyTransferControl extends TransferControl {
       transfer.setNeedsUpdate(false);
     }
     toSubmitTransfers.removeAllElements();
-    statusBar.removeProgressBar(pbSubmission);
-    pbSubmission.setMaximum(0);
-    pbSubmission.setValue(0);
+    removeMonitorProgressBar();
   }
 
   /**
@@ -818,10 +924,8 @@ public class MyTransferControl extends TransferControl {
     ResThread t = new ResThread(){
       TransferInfo transfer = null;
       public void run(){
-        // use status bar on monitoring frame
-        StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
-        statusBar.animateProgressBar();
-        statusBar.setLabel("Cancelling...");
+        animateMonitorStatus();
+        setMonitorStatus("Cancelling...");
         Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
         try{
           for(int i=0; i<transfers.size(); ++i){
@@ -865,17 +969,16 @@ public class MyTransferControl extends TransferControl {
                              " from plugin " +
                              " for download", t);
         }
-        statusBar.stopAnimation();
-        statusBar.setLabel("Cancelling done.");
+        stopMonitorAnimation();
+        setMonitorStatus("Cancelling done.");
       }
     };
 
     t.start();
 
     if(!MyUtil.myWaitForThread(t, "", TRANSFER_CANCEL_TIMEOUT, "transfer")){
-      StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
-      statusBar.stopAnimation();
-      statusBar.setLabel("WARNING: cancel transfers timed out.");
+      stopMonitorAnimation();
+      setMonitorStatus("WARNING: cancel transfers timed out.");
     }
   }
   
@@ -883,10 +986,8 @@ public class MyTransferControl extends TransferControl {
     ResThread t = new ResThread(){
       TransferInfo transfer = null;
       public void run(){
-        // use status bar on monitoring frame
-        StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
-        statusBar.animateProgressBar();
-        statusBar.setLabel("Cancelling...");
+        animateMonitorStatus();
+        setMonitorStatus("Cancelling...");
         Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
         try{
           GlobusURL [] srcUrls = new GlobusURL [transfers.size()];
@@ -934,17 +1035,16 @@ public class MyTransferControl extends TransferControl {
                              " from plugin " +
                              " for download", t);
         }
-        statusBar.stopAnimation();
-        statusBar.setLabel("Resubmitting done.");
+        stopMonitorAnimation();
+        setMonitorStatus("Resubmitting done.");
       }
     };
 
     t.start();
 
     if(!MyUtil.myWaitForThread(t, "", TRANSFER_CANCEL_TIMEOUT, "transfer")){
-      StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
-      statusBar.stopAnimation();
-      statusBar.setLabel("WARNING: cancel transfers timed out.");
+      stopMonitorAnimation();
+      setMonitorStatus("WARNING: cancel transfers timed out.");
     }
   }
   
@@ -1045,8 +1145,7 @@ public class MyTransferControl extends TransferControl {
    */
   public void transferFailure(TransferInfo transfer){
     // TODO: retry on transfer failure
-    GridPilot.getClassMgr().getGlobalFrame(
-        ).monitoringPanel.statusBar.setLabel("Transfer "+transfer.getTransferID()+" failed");
+    setMonitorStatus("Transfer "+transfer.getTransferID()+" failed");
   }
 
   /**
@@ -1115,7 +1214,7 @@ public class MyTransferControl extends TransferControl {
         String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
         String message = "Registering UUID "+uuid.toString()+" and LFN "+lfn+
            " for new location "+transfer.getDestination();
-        GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
+        setMonitorStatus(message);
         Debug.debug(message, 2);
         guid = uuid;
       }
@@ -1179,15 +1278,12 @@ public class MyTransferControl extends TransferControl {
         logFile.addMessage(
             "ERROR: could not register "+destination+" for file "+
             lfn+" in dataset "+datasetName, e);
-        GridPilot.getClassMgr().getGlobalFrame(
-        ).monitoringPanel.statusBar.setLabel("ERROR: could not register "+destination);
+        setMonitorStatus("ERROR: could not register "+destination);
       }
-      GridPilot.getClassMgr().getGlobalFrame(
-         ).monitoringPanel.statusBar.setLabel("Registration done");
+      setMonitorStatus("Registration done");
     }
     else{
-      GridPilot.getClassMgr().getGlobalFrame(
-      ).monitoringPanel.statusBar.setLabel("Copying done");
+      setMonitorStatus("Copying done");
     }
   }
   
@@ -1239,8 +1335,7 @@ public class MyTransferControl extends TransferControl {
       destFileName = destination.getName();
     }
     
-    GridPilot.getClassMgr().getStatusBar().setLabel("Downloading "+srcFileName+" from "+srcUrlDir+
-        " to "+downloadDir);
+    setStatus("Downloading "+srcFileName+" from "+srcUrlDir+" to "+downloadDir);
 
     Debug.debug("Downloading "+srcFileName+" from "+srcUrlDir, 3);
     // local directory
@@ -1253,18 +1348,18 @@ public class MyTransferControl extends TransferControl {
       }        
       localCopy(new File(fsPath),
           (new File(downloadDir, destFileName)).getAbsolutePath());
-      GridPilot.getClassMgr().getStatusBar().setLabel(fsPath+destFileName+" copied");
+      //setStatus(fsPath+destFileName+" copied");
     }
     // remote gsiftp or https/webdav directory
     else if(srcUrlDir.startsWith("gsiftp://") || srcUrlDir.startsWith("https://") ||
         srcUrlDir.startsWith("sss://")){
-      Debug.debug("Downloading to "+downloadDir.getAbsolutePath(), 3);        
-      Debug.debug("Downloading "+destFileName+" from "+srcUrlDir, 3);
+      Debug.debug("Downloading "+destFileName+" from "+srcUrlDir+" to "+downloadDir.getAbsolutePath(), 3);
       GlobusURL globusUrl = new GlobusURL(url);
       FileTransfer fileTransfer =
         GridPilot.getClassMgr().getFTPlugin(url.replaceFirst("^(\\w+):/.*", "$1"));
      fileTransfer.getFile(globusUrl, destination/*dName*/);
-     GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
+     Debug.debug("Download done - "+destFileName, 3);        
+     //setStatus(url+" downloaded");
     }
     else if(srcUrlDir.startsWith("http://")){
       Debug.debug("Downloading file to "+downloadDir.getAbsolutePath(), 3);        
@@ -1291,7 +1386,7 @@ public class MyTransferControl extends TransferControl {
       dis.close();
       is.close();
       os.close();
-      GridPilot.getClassMgr().getStatusBar().setLabel(url+" downloaded");
+      //setStatus(url+" downloaded");
     }
     else{
       throw(new IOException("Unknown protocol for "+url));

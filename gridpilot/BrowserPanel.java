@@ -305,6 +305,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     });
   }
   
+  // TODO: cleanup this monster
   /**
    * Component initialization.
    * If parent is not null, it gets its cursor set to the default after loading url.
@@ -775,20 +776,23 @@ public class BrowserPanel extends JDialog implements ActionListener{
         try{
           statusBar.setLabel("Downloading "+url);
           GridPilot.getClassMgr().getTransferControl().download(url, dir);
-          statusBar.setLabel("Download done");
+          Debug.debug("Download done, "+url, 2);
+          //statusBar.setLabel("Download done");
         }
-        catch(Exception ioe){
-          statusBar.setLabel("Download failed");
-          ioe.printStackTrace();
-          showError("Could not download "+url+" : "+ioe.getMessage());
+        catch(Exception e){
+          //statusBar.setLabel("Download failed");
+          //Debug.debug("Could not download "+url+" : "+e.getMessage(), 1);
+          String error = "Could not download "+url;
+          GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+          showError(error+" : "+e.getMessage());
         }
         try{
           ep.getDocument().putProperty(
               Document.StreamDescriptionProperty, null);
           setDisplay(thisUrl);
         }
-        catch(Exception ioe){
-          ioe.printStackTrace();
+        catch(Exception e){
+          e.printStackTrace();
         }
       //}
     //});     
@@ -798,11 +802,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private void showError(String str){
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String title = "Browser error";
-    try {
-      confirmBox.getConfirm(title,
-          str, new Object[] {"OK"});
+    try{
+      confirmBox.getConfirm(title, str, new Object[] {"OK"});
     }
-    catch (Exception e) {
+    catch(Exception e){
       e.printStackTrace();
     }
   }

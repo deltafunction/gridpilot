@@ -200,13 +200,12 @@ public class GSIFTPFileTransfer implements FileTransfer {
   }
 
   public void getFile(final GlobusURL globusUrl, File downloadDirOrFile)
-     throws ClientException, ServerException, FTPException, IOException {
+     throws Exception {
     getFile(globusUrl, downloadDirOrFile, null);
   }
 
   public void getFile(final GlobusURL globusUrl, File downloadDirOrFile,
-      final StatusBar statusBar)
-     throws ClientException, ServerException, FTPException, IOException {
+      final StatusBar statusBar) throws Exception {
     
     // TODO: implement wildcard *
     
@@ -246,26 +245,11 @@ public class GSIFTPFileTransfer implements FileTransfer {
     final String id = globusUrl.getURL()+"::"+downloadDirOrFile.getAbsolutePath();
 
     Debug.debug("Getting "+fileName, 3);
-    (new ResThread(){
-      public void run(){
-        if(statusBar!=null){
-          statusBar.setLabel("Getting "+globusUrl.getURL());
-        }
-      }
-    }).run();               
 
     GridFTPClient gridFtpClient = null;
     
-    try{
-      gridFtpClient = connect(host, port);
-      fileTransfers.put(id, gridFtpClient);
-    }
-    catch(FTPException e){
-      Debug.debug("Could not connect to "+globusUrl.getURL()+". "+
-         e.getMessage(), 1);
-      //e.printStackTrace();
-      throw e;
-    }
+    gridFtpClient = connect(host, port);
+    fileTransfers.put(id, gridFtpClient);
 
     try{
       /*
@@ -295,26 +279,12 @@ public class GSIFTPFileTransfer implements FileTransfer {
       gridFtpClient.close();
      
       // if we didn't get an exception, the file got downloaded
-      if(statusBar!=null){
-        statusBar.setLabel("Download of "+fileName+" done");
-      }
       Debug.debug(fileName+" downloaded.", 2);
     }
     catch(FTPException e){
-      if(statusBar!=null){
-        statusBar.setLabel("Download of "+fileName+" failed");
-      }
-      Debug.debug(fileName+" downloaded.", 2);
       //e.printStackTrace();
       Debug.debug("Could not read "+localPath, 1);
       throw e;
-    }
-    finally{
-      try{
-        gridFtpClient.close();
-      }
-      catch(Exception e){
-      }
     }
   }
   
