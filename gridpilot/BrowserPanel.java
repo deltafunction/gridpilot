@@ -696,7 +696,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
         
     ep.addPropertyChangeListener(new PropertyChangeListener(){
       public void propertyChange(PropertyChangeEvent event) {
-        Debug.debug("Property changed: "+event.getPropertyName(), 3);
+        //Debug.debug("Property changed: "+event.getPropertyName(), 3);
+        //Debug.debug("Content type: "+ep.getContentType(), 3);
+        //Debug.debug("Text: "+ep.getText(), 3);
         if(event.getPropertyName().equalsIgnoreCase("document") ||
             event.getPropertyName().equalsIgnoreCase("page")){
           statusBar.setLabel("Page loaded");
@@ -777,7 +779,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           statusBar.setLabel("Downloading "+url);
           GridPilot.getClassMgr().getTransferControl().download(url, dir);
           Debug.debug("Download done, "+url, 2);
-          //statusBar.setLabel("Download done");
+          statusBar.setLabel("");
         }
         catch(Exception e){
           //statusBar.setLabel("Download failed");
@@ -1056,12 +1058,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
       // remote directory
       else if(url.startsWith("gsiftp://") &&
           url.endsWith("/")){
-        setRemoteDirDisplay(url, gsiftpFileTransfer, "gsiftp");
+        setRemoteDirDisplay1(url, gsiftpFileTransfer, "gsiftp");
       }
       else if(url.startsWith("https://") &&
           url.endsWith("/")){
         try{
-          setRemoteDirDisplay(url, httpsFileTransfer, "https");
+          setRemoteDirDisplay1(url, httpsFileTransfer, "https");
         }
         catch(Exception ee){
           ee.printStackTrace();
@@ -1071,7 +1073,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       else if(url.startsWith("sss://") &&
           url.endsWith("/")){
-        setRemoteDirDisplay(url, sssFileTransfer, "sss");
+        setRemoteDirDisplay1(url, sssFileTransfer, "sss");
       }
       // remote gsiftp text file
       else if(url.startsWith("gsiftp://") &&
@@ -1091,7 +1093,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           setRemoteFileConfirmDisplay(url, httpsFileTransfer);
         }
       }
-      // remote 3s text file
+      // remote s3 text file
       else if(url.startsWith("sss://") &&
           !url.endsWith("/") && /*!url.endsWith("htm") &&
           !url.endsWith("html") &&*/ !url.endsWith("gz") &&
@@ -1122,7 +1124,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           (url.startsWith("https:/"))){
         setRemoteFileConfirmDisplay(url, httpsFileTransfer);
       }
-      // tarball on 3s server
+      // tarball on s3 server
       else if(url.endsWith("gz") &&
           (url.startsWith("sss:/"))){
         setRemoteFileConfirmDisplay(url, sssFileTransfer);
@@ -1190,6 +1192,29 @@ public class BrowserPanel extends JDialog implements ActionListener{
       String msg = "Could not initialize panel with URL "+url+". "+e.getMessage();
       //showError(msg);
       Debug.debug(msg, 1);
+      throw e;
+    }
+  }
+
+  private void setRemoteDirDisplay1(String url, FileTransfer fileTransfer, String string) throws Exception {
+    try{
+      bSave.setEnabled(false);
+      bNew.setEnabled(true);
+      bUpload.setEnabled(true);
+      setRemoteDirDisplay(url, fileTransfer, string);
+    }
+    catch(Exception e){
+      if(url.startsWith("https://") &&
+          url.endsWith("/")){
+        Debug.debug("Could not list directory contents with propfind, trying with get", 2);
+        setHtmlDisplay(url);
+        return;
+      }
+      e.printStackTrace();
+      bSave.setEnabled(false);
+      bOk.setEnabled(false);
+      ep.setText("ERROR!\n\nThe directory could not be read.");
+      pButton.updateUI();
       throw e;
     }
   }
@@ -1384,7 +1409,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   /**
    * Set the EditorPane to display the HTML page url.
    */
-  private void setHtmlDisplay(String url) throws IOException{
+  private void setHtmlDisplay(String url) throws Exception{
     Debug.debug("setHtmlDisplay "+url, 3);
     jtFilter.setEnabled(false);
     try{
@@ -1393,15 +1418,21 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bUpload.setEnabled(false);
       bDownload.setEnabled(false);
       bRegister.setEnabled(false);
+
+      // This is necessary. If not done, ep thinks
+      // this is a reload and does nothing...
+      ep.setPage("file:///");
+      //
       ep.setPage(url);
+      
       ep.setEditable(false);
       pButton.updateUI();
-      Debug.debug("Setting thisUrl, "+thisUrl, 3);
       thisUrl = url;
+      Debug.debug("Setting thisUrl, "+thisUrl, 3);
       setUrl(thisUrl);
       lastUrlList = new String [] {thisUrl};
     }
-    catch(IOException e){
+    catch(Exception e){
       Debug.debug("Could not set html display of url "+url+". "+
          e.getMessage(), 1);
       throw e;
@@ -1422,15 +1453,16 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bDownload.setEnabled(false);
       bRegister.setEnabled(false);
       ep.setEditable(false);
-      try {
+      try{
         URLConnection connection = (new URL(url)).openConnection();
-        DataInputStream dis;
-        dis = new DataInputStream(connection.getInputStream());
+        //DataInputStream dis;
+        //dis = new DataInputStream(connection.getInputStream());
               //while ((inputLine = dis.readLine()) != null){
               //    Debug.debug(inputLine, 3);
               //}
-        dis.close();
-        ep.setText("File found");
+        //dis.close();
+        long size = connection.getContentLength();
+        ep.setText("File found --> "+size+" bytes.");
         Debug.debug("Setting thisUrl, "+thisUrl, 3);
         thisUrl = url;
       }
@@ -1481,7 +1513,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         if(bytes==0){
           throw new IOException("File is empty");
         }
-        ep.setText("File found");
+        ep.setText("File found --> "+bytes+" bytes.");
         Debug.debug("Setting thisUrl, "+url, 3);
         thisUrl = url;
         setUrl(thisUrl);
@@ -1629,123 +1661,110 @@ public class BrowserPanel extends JDialog implements ActionListener{
     String href = null;
     String sssBucketMatchPattern = "(?i)^sss:/+([^/]+/)$";
 
-    try{
-      bSave.setEnabled(false);
-      bNew.setEnabled(true);
-      bUpload.setEnabled(true);
-
-      url = url.replaceFirst("/[^\\/]*/\\.\\.", "");
-      GlobusURL globusUrl = new GlobusURL(url);
-      String host = globusUrl.getHost();
-      int port = globusUrl.getPort();
-      Debug.debug("Opening directory on remote server\n"+globusUrl.toString(), 3);
-      String localPath = "/";
-      if(globusUrl.getPath()!=null){
-        localPath = globusUrl.getPath();
-        if(!localPath.startsWith("/")){
-          localPath = "/" + localPath;
-        }
+    url = url.replaceFirst("/[^\\/]*/\\.\\.", "");
+    GlobusURL globusUrl = new GlobusURL(url);
+    String host = globusUrl.getHost();
+    int port = globusUrl.getPort();
+    Debug.debug("Opening directory on remote server\n"+globusUrl.toString(), 3);
+    String localPath = "/";
+    if(globusUrl.getPath()!=null){
+      localPath = globusUrl.getPath();
+      if(!localPath.startsWith("/")){
+        localPath = "/" + localPath;
       }
-      // URLs of the form sss://atlas_images/ will have getPath() null. Take care of these too...
-      else if(globusUrl.getURL().matches(sssBucketMatchPattern)){
-        localPath = globusUrl.getURL().replaceFirst(sssBucketMatchPattern, "$1");
-        if(!localPath.startsWith("/")){
-          localPath = "/" + localPath;
-        }
-        host = "";
+    }
+    // URLs of the form sss://atlas_images/ will have getPath() null. Take care of these too...
+    else if(globusUrl.getURL().matches(sssBucketMatchPattern)){
+      localPath = globusUrl.getURL().replaceFirst(sssBucketMatchPattern, "$1");
+      if(!localPath.startsWith("/")){
+        localPath = "/" + localPath;
       }
-      Vector textVector = ft.list(globusUrl, filter);
+      host = "";
+    }
+    Vector textVector = ft.list(globusUrl, filter);
 
-      String text = "";
-      // TODO: reconsider max entries and why listing more is so slow...
-      // display max 500 entries
-      // TODO: make this configurable
-      int maxEntries = 500;
-      int length = textVector.size()<maxEntries ? textVector.size() : maxEntries;
-      String name = null;
-      String bytes = null;
-      String longName = null;
-      String [] nameAndBytes = null;
-      lastUrlList = new String [length];
-      lastSizesList = new String [length];
-      int directories = 0;
-      int files = 0;
-      String [] nameParts;
-      for(int i=0; i<length; ++i){
-        nameAndBytes = null;
-        longName = textVector.get(i).toString();
-        try{
-          nameAndBytes = MyUtil.split(longName);
-        }
-        catch(Exception e){
-        }
-        if(nameAndBytes!=null && nameAndBytes.length>0){
-          if(nameAndBytes.length>1){
-            nameParts = nameAndBytes.clone();
-            nameParts[nameParts.length-1] = "";
-            name = MyUtil.arrayToString(nameParts).trim();
-            bytes = nameAndBytes[nameAndBytes.length-1];
-          }
-          else{
-            name = nameAndBytes[0];
-            bytes = "";
-          }
+    String text = "";
+    // TODO: reconsider max entries and why listing more is so slow...
+    // display max 500 entries
+    // TODO: make this configurable
+    int maxEntries = 500;
+    int length = textVector.size()<maxEntries ? textVector.size() : maxEntries;
+    String name = null;
+    String bytes = null;
+    String longName = null;
+    String [] nameAndBytes = null;
+    lastUrlList = new String [length];
+    lastSizesList = new String [length];
+    int directories = 0;
+    int files = 0;
+    String [] nameParts;
+    for(int i=0; i<length; ++i){
+      nameAndBytes = null;
+      longName = textVector.get(i).toString();
+      try{
+        nameAndBytes = MyUtil.split(longName);
+      }
+      catch(Exception e){
+      }
+      if(nameAndBytes!=null && nameAndBytes.length>0){
+        if(nameAndBytes.length>1){
+          nameParts = nameAndBytes.clone();
+          nameParts[nameParts.length-1] = "";
+          name = MyUtil.arrayToString(nameParts).trim();
+          bytes = nameAndBytes[nameAndBytes.length-1];
         }
         else{
-          name = longName;
+          name = nameAndBytes[0];
           bytes = "";
         }
-        if(!jcbFilter.isSelected() && name.matches("^\\.[^\\.].+")){
-          continue;
-        }
-        href = protocol+"://"+host+(port>-1?":"+port:"")+localPath+name;
-        if(name.endsWith("/")){
-          ++directories;
-        }
-        else{
-          ++files;
-          listedUrls.add(href);
-          listedSizes.add(bytes);
-        }
-        text += "<a href=\""+href+"\">"+name+"</a> "+bytes;
-        if(i<length-1){
-          text += "<br>\n";
-        }
-        lastUrlList[i] = protocol+"://"+host+":"+port+localPath+name;
-        lastSizesList[i] = bytes;
-        Debug.debug(textVector.get(i).toString(), 3);
       }
-      ep.setContentType("text/html");
-      htmlText = "<html>\n";
-      
-      if(!localPath.matches("/+")){
-        htmlText += "<a href=\""+protocol+"://"+host+
-        (port>0?(":"+port):"")+localPath+"../\">../</a><br>\n";
+      else{
+        name = longName;
+        bytes = "";
       }
-      htmlText += text;
-      if(textVector.size()>maxEntries){
-        htmlText += "<br>\n...<br>\n...<br>\n...<br>\n";
+      if(!jcbFilter.isSelected() && name.matches("^\\.[^\\.].+")){
+        continue;
       }
-      htmlText += "\n</html>";
-      Debug.debug("done parsing, setting text", 3);
-      ep.setText(htmlText);
-      ep.setEditable(false);
-      // if we don't get an exception, the directory got read...
-      //thisUrl = (new File(localPath)).toURL().toExternalForm();
-      thisUrl = url;
-      statusBar.setLabel(directories+" director"+(directories==1?"y":"ies")+", " +
-          files+" file"+(files==1?"":"s"));
-      bDownload.setEnabled(listedUrls!=null && listedUrls.size()>0);
-      bRegister.setEnabled(allowRegister && listedUrls!=null && listedUrls.size()>0);
-      setUrl(thisUrl);
+      href = protocol+"://"+host+(port>-1?":"+port:"")+localPath+name;
+      if(name.endsWith("/")){
+        ++directories;
+      }
+      else{
+        ++files;
+        listedUrls.add(href);
+        listedSizes.add(bytes);
+      }
+      text += "<a href=\""+href+"\">"+name+"</a> "+bytes;
+      if(i<length-1){
+        text += "<br>\n";
+      }
+      lastUrlList[i] = protocol+"://"+host+":"+port+localPath+name;
+      lastSizesList[i] = bytes;
+      Debug.debug(textVector.get(i).toString(), 3);
     }
-    catch(Exception e){
-      bSave.setEnabled(false);
-      bOk.setEnabled(false);
-      ep.setText("ERROR!\n\nThe directory could not be read.");
-      pButton.updateUI();
-      throw e;
+    ep.setContentType("text/html");
+    htmlText = "<html>\n";
+    
+    if(!localPath.matches("/+")){
+      htmlText += "<a href=\""+protocol+"://"+host+
+      (port>0?(":"+port):"")+localPath+"../\">../</a><br>\n";
     }
+    htmlText += text;
+    if(textVector.size()>maxEntries){
+      htmlText += "<br>\n...<br>\n...<br>\n...<br>\n";
+    }
+    htmlText += "\n</html>";
+    Debug.debug("done parsing, setting text", 3);
+    ep.setText(htmlText);
+    ep.setEditable(false);
+    // if we don't get an exception, the directory got read...
+    //thisUrl = (new File(localPath)).toURL().toExternalForm();
+    thisUrl = url;
+    statusBar.setLabel(directories+" director"+(directories==1?"y":"ies")+", " +
+        files+" file"+(files==1?"":"s"));
+    bDownload.setEnabled(listedUrls!=null && listedUrls.size()>0);
+    bRegister.setEnabled(allowRegister && listedUrls!=null && listedUrls.size()>0);
+    setUrl(thisUrl);
   }
 
   /**
