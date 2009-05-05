@@ -44,6 +44,8 @@ import gridpilot.MyUtil;
 
 public class ATLASDatabase extends DBCache implements Database{
   
+  public final static String DQ2_API_VERSION = "3_0";
+  
   private String dq2Server;
   private String dq2Port;
   private String dq2SecurePort;
@@ -361,7 +363,7 @@ public class ATLASDatabase extends DBCache implements Database{
       // dsns can be looked up with simple GET
       if(complete.equals("") && incomplete.equals("")){
         if(vuid.equals("")){
-          get = dq2Url+"ws_repository/rpc?operation=queryDatasetByName&version=0&API=0_3_0&"+get;
+          get = dq2Url+"ws_repository/rpc?operation=queryDatasetByName&version=0&API="+DQ2_API_VERSION+"&"+get;
           Debug.debug(">>> get string was : "+get, 3);        
           URL url = null;
           try{
@@ -378,7 +380,7 @@ public class ATLASDatabase extends DBCache implements Database{
         else if(dsn.equals("")){
           try{
             //Debug.debug(">>> get string was : "+dq2Url+"ws_location/rpc?"+
-            //    "operation=queryDatasetLocations&API=0_3_0&dsns=[]&vuids="+"["+vuidsString+"]", 3);
+            //    "operation=queryDatasetLocations&API="+DQ2_API_VERSION+"&dsns=[]&vuids="+"["+vuidsString+"]", 3);
             //ret = readGetUrl(new URL(url));
             //ret = URLDecoder.decode(ret, "utf-8");
             str = dq2Access.getDatasets("['"+vuid+"']").trim();
@@ -851,11 +853,17 @@ public class ATLASDatabase extends DBCache implements Database{
     http://atlddmpro.cern.ch:8000/dq2/ws_location/dataset
     dsns=[]&vuids=['cdced2bd-5217-423a-9690-8b2bb5b48fa8']*/
     //String url = dq2Url+"ws_location/rpc?"+
-    //   "operation=queryDatasetLocations&API=0_3_0&dsns=[]&vuids="+URLEncoder.encode("["+vuidsString+"]", "utf-8");
+    //   "operation=queryDatasetLocations&API="+DQ2_API_VERSION+"&dsns=[]&vuids="+URLEncoder.encode("["+vuidsString+"]", "utf-8");
+    
+    /* curl -i --insecure -H "User-Agent: dqcurl" -H "TUID: fjob-20090505-12382701" 
+      --url "https://atlddmcat.cern.ch:443/dq2/ws_location/rpc?operation=queryDatasetLocations&version=0&API=30" 
+      --data "vuids=%5B%27fb7f2a3a-07eb-467e-bb22-66944df82d44%27%5D" --cert /tmp/x509up_u9649 
+      --key /tmp/x509up_u9649 */
+    
     String ret = null;
     try{
       //Debug.debug(">>> get string was : "+dq2Url+"ws_location/rpc?"+
-      //    "operation=queryDatasetLocations&API=0_3_0&dsns=[]&vuids="+"["+vuidsString+"]", 3);
+      //    "operation=queryDatasetLocations&API="+DQ2_API_VERSION+"&dsns=[]&vuids="+"["+vuidsString+"]", 3);
       //ret = readGetUrl(new URL(url));
       //ret = URLDecoder.decode(ret, "utf-8");
       ret = dq2Access.getDatasetLocations("["+vuidsString+"]");

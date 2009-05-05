@@ -97,7 +97,9 @@ public class WebServiceConnection {
 	 */	
 	private HttpURLConnection getConnectiontoUrl(URL url) throws IOException
 	{
-		return (HttpURLConnection)url.openConnection();
+    HttpURLConnection conn = (HttpURLConnection)url.openConnection();
+    conn.setRequestProperty("User-Agent", "dqcurl");
+		return conn;
 	}
 	
 	

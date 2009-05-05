@@ -21,20 +21,20 @@ public class DQ2Access {
   private SecureWebServiceConnection wsSecure;
   private String baseUrl="dq2/";
 
-  private final String addFilesToDatasetURL = "ws_content/rpc?operation=addFilesToDataset&API=0_3_0";
-  private final String createDatasetURL = "ws_repository/rpc?operation=addDataset&API=0_3_0";
+  private final String addFilesToDatasetURL = "ws_content/rpc?operation=addFilesToDataset&API="+ATLASDatabase.DQ2_API_VERSION;
+  private final String createDatasetURL = "ws_repository/rpc?operation=addDataset&API="+ATLASDatabase.DQ2_API_VERSION;
   // delete all files of this dataset in DQ2
-  private final String deleteDatasetURL = "ws_content/rpc?operation=deleteDataset&API=0_3_0";
+  private final String deleteDatasetURL = "ws_content/rpc?operation=deleteDataset&API="+ATLASDatabase.DQ2_API_VERSION;
   // delete all locations of this dataset in DQ2
   private final String deleteDatasetURL1 = "ws_location/rpc";
   // Clears all dataset, dataset versions and dataset metadata for the given dataset
   private final String deleteDatasetURL2 = "ws_repository/rpc";
-  private final String getLocationsURL = "ws_location/rpc?operation=queryDatasetLocations&API=0_3_0";
-  private final String getDatasetsURL = "ws_repository/rpc?operation=queryDatasetByVUIDs&API=0_3_0";
-  private final String getFilesURL = "ws_content/rpc?operation=queryFilesInDataset&API=0_3_0";
-  private final String addLocationsURL = "ws_location/rpc?operation=addDatasetReplica&API=0_3_0";
-  private final String deleteLocationsURL = "ws_location/rpc?operation=deleteDatasetReplica&API=0_3_0";
-  private final String deleteFilesURL = "ws_content/rpc?operation=deleteFilesFromDataset&API=0_3_0";
+  private final String getLocationsURL = "ws_location/rpc?operation=queryDatasetLocations&API="+ATLASDatabase.DQ2_API_VERSION;
+  private final String getDatasetsURL = "ws_repository/rpc?operation=queryDatasetByVUIDs&API="+ATLASDatabase.DQ2_API_VERSION;
+  private final String getFilesURL = "ws_content/rpc?operation=queryFilesInDataset&API="+ATLASDatabase.DQ2_API_VERSION;
+  private final String addLocationsURL = "ws_location/rpc?operation=addDatasetReplica&API="+ATLASDatabase.DQ2_API_VERSION;
+  private final String deleteLocationsURL = "ws_location/rpc?operation=deleteDatasetReplica&API="+ATLASDatabase.DQ2_API_VERSION;
+  private final String deleteFilesURL = "ws_content/rpc?operation=deleteFilesFromDataset&API="+ATLASDatabase.DQ2_API_VERSION;
   private boolean checkingProxy = false;
   private boolean proxyOk = false;
   /**
@@ -166,7 +166,7 @@ public class DQ2Access {
     data="duid=e6304c8a-8cb6-4af1-885c-343f141903b7"
     data="update=yes"
     data="dsn=user.FrederikOrellana5894-ATLAS.csc11.002.Gee_500_pythia_photos_reson"
-    data="API=0_3_0"
+    data="API=3_0"
     data="tuid=ac25f251-2afd-493e-a642-102e7c908135"
     data="operation=addDataset"
     */
@@ -258,10 +258,10 @@ public class DQ2Access {
     Debug.debug(" on "+deleteDatasetURL+" : "+wsSecure.protocolname, 2);
     wsSecure.post(deleteDatasetURL, keys, values);
     keys = new String [] {"operation", "API", "vuids"};
-    values = new String [] {"deleteDataset", "0_3_0", "['"+vuid+"']"};
+    values = new String [] {"deleteDataset", ATLASDatabase.DQ2_API_VERSION, "['"+vuid+"']"};
     wsSecure.get(deleteDatasetURL1, keys, values);
     keys = new String [] {"operation", "API", "dsn"};
-    values = new String [] {"trashDataset", "0_3_0", dsn};
+    values = new String [] {"trashDataset", ATLASDatabase.DQ2_API_VERSION, dsn};
     wsSecure.get(deleteDatasetURL2, keys, values);
     return true;
   }
@@ -314,7 +314,7 @@ public class DQ2Access {
     String [] values = null;
     if(site.equals("ALL_SITES")){
       keys = new String [] {"operation", "API", "vuids"};
-      values = new String [] {"deleteDataset", "0_3_0", "['"+vuid+"']"};
+      values = new String [] {"deleteDataset", ATLASDatabase.DQ2_API_VERSION, "['"+vuid+"']"};
       wsSecure.get(deleteDatasetURL1, keys, values);
 
     }
