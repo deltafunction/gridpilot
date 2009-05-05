@@ -176,7 +176,11 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job), ignoreBaseSystemAndVMRTEs, false);
     try{
       Shell mgr = getShell(job.getHost());
-      scriptGenerator.createWrapper(mgr, (MyJobInfo) job, job.getName()+getCommandSuffix((MyJobInfo) job));
+      String scriptFile = job.getName()+getCommandSuffix((MyJobInfo) job);
+      scriptGenerator.createWrapper(mgr, (MyJobInfo) job, scriptFile);
+      StringBuffer stdout = new StringBuffer();
+      StringBuffer stderr = new StringBuffer();
+      shell.exec("chmod +x "+runDir(job) +"/"+scriptFile, stdout, stderr);
       String id = mgr.submit(cmd, submitEnvironment, runDir(job), stdoutFile, stderrFile, logFile);
       job.setJobId(id!=null?id:"");
       return true;
