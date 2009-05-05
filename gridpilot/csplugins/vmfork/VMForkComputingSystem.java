@@ -169,6 +169,9 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     job.setInputFileUrls(inputFiles);
     job.setOutputFileDestinations(outputDestinations);
     job.setOutputFileNames(outputFileNames);
+    Debug.debug("job "+job.getIdentifier()+" has output files "+
+        MyUtil.arrayToString(job.getOutputFileNames())+" --> "+
+        MyUtil.arrayToString(job.getOutputFileDestinations()), 2);
     setBaseSystemName(rtes, job);
     if(job.getOpSysRTE()!=null){
       job.setRTEs(MyUtil.removeBaseSystemAndVM(rtes, rteMgr.getProvides(job.getOpSysRTE())));
@@ -207,6 +210,23 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     return ok;
     
   }
+  
+  public boolean postProcess(JobInfo job) {
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getIdentifier());
+    String [] outputDestinations = new String [outputFileNames.length];
+    for(int i=0; i<outputDestinations.length; ++i){
+      outputDestinations[i] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
+    }
+    job.setOutputFileDestinations(outputDestinations);
+    job.setOutputFileNames(outputFileNames);
+    Debug.debug("job "+job.getIdentifier()+" has output files "+
+        MyUtil.arrayToString(job.getOutputFileNames())+" --> "+
+        MyUtil.arrayToString(job.getOutputFileDestinations()), 2);
+    return transferControl.copyToFinalDest(job, getShell(job), runDir(job));
+  }
+
+
   
   /**
    * If a VM RTE provides all of the requested RTEs, set this as the
