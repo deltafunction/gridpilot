@@ -157,7 +157,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   
   protected String runDir(JobInfo job){
     if(getShell(job).isLocal()){
-      return MyUtil.clearTildeLocally(MyUtil.clearFile(workingDir +"/"+job.getName()));
+      return MyUtil.clearTildeLocally(MyUtil.clearFile(workingDir+"/"+job.getName()));
     }
     else{
       return MyUtil.clearFile(workingDir +"/"+job.getName());
@@ -779,9 +779,23 @@ public class ForkComputingSystem implements MyComputingSystem{
     catch(Exception e){
       logFile.addMessage("ERROR: could not create run directory for job.", e);
       return false;
-    }    
-    return setupJobRTEs((MyJobInfo) job, shell) &&
-       setRemoteOutputFiles((MyJobInfo) job) && getInputFiles((MyJobInfo) job, shell);
+    }
+    if(!setupJobRTEs((MyJobInfo) job, shell)){
+      logFile.addMessage("Preparation of job " + job.getIdentifier() +
+          " failed. Could not set up runtime environment(s).");
+      return false;
+    }
+    if(!setRemoteOutputFiles((MyJobInfo) job)){
+      logFile.addMessage("Preparation of job " + job.getIdentifier() +
+          " failed. Could not set up remote output file(s).");
+      return false;
+    }
+    if(!getInputFiles((MyJobInfo) job, shell)){
+      logFile.addMessage("Preparation of job " + job.getIdentifier() +
+          " failed. Could not copy over input file(s).");
+      return false;
+    }
+    return true;
   }
   
   /**

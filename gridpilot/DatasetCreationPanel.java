@@ -10,6 +10,7 @@ import javax.swing.text.JTextComponent;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 /**
@@ -53,6 +54,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private JButton jbEditTrans = new JButton("view");
   private String datasetName = "";
   private String title = "";
+  private DBPanel targetPanel;
   
   public boolean editable = true;
 
@@ -186,7 +188,12 @@ public class DatasetCreationPanel extends CreateEditPanel{
     
     jbEditTrans.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
-        viewTransformation();
+        try {
+          viewTransformation();
+        }
+        catch(Exception e1){
+          e1.printStackTrace();
+        }
       }
     }
     );
@@ -407,7 +414,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           datasetName
           );
       // TODO: refresh results on panel showing datasets from the db - if such a panel is shown
-      if(dsu.anyCreated && panel.dbName.equalsIgnoreCase(dbPluginMgr.getDBName())){
+      if(dsu.anyCreated && panel.getDBName().equalsIgnoreCase(dbPluginMgr.getDBName())){
         panel.refresh();
       }
     }
@@ -635,29 +642,50 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
 
   /**
-   * Open new pane with corresponding runtime environments.
+   * Open new pane with corresponding transformations.
+   * @throws InvocationTargetException 
+   * @throws InterruptedException 
    */
-  private void viewTransformation(){
+  private void viewTransformation() throws InterruptedException, InvocationTargetException{
     if(transformationName==null || transformationName.equals("") ||
         transformationVersion==null || transformationVersion.equals("")){
       return;
     }
-    GridPilot.getClassMgr().getGlobalFrame().requestFocusInWindow();
-    //GridPilot.getClassMgr().getGlobalFrame().setVisible(true);
-    Thread t = new Thread(){
+    
+    MyResThread t1 = new MyResThread(){
       public void run(){
         try{
+          GridPilot.getClassMgr().getGlobalFrame().requestFocusInWindow();
+          //GridPilot.getClassMgr().getGlobalFrame().setVisible(true);
           // Create new panel with jobDefinitions.         
-          DBPanel dbPanel = new DBPanel(targetDBPluginMgr.getDBName(),
+          targetPanel = new DBPanel();
+          targetPanel.initDB(targetDBPluginMgr.getDBName(), "transformation");
+          targetPanel.initGUI();
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+      }
+    };
+    if(SwingUtilities.isEventDispatchThread()){
+      t1.run();
+    }
+    else{
+      SwingUtilities.invokeAndWait(t1);
+    }
+
+    MyResThread t2 = new MyResThread(){
+      public void run(){
+        try{
+          targetPanel.initDB(targetDBPluginMgr.getDBName(),
               "transformation");
           String idField =
             MyUtil.getIdentifierField(targetDBPluginMgr.getDBName(), "transformation");
           String id = targetDBPluginMgr.getTransformationID(transformationName,
               transformationVersion);
-          dbPanel.selectPanel.setConstraint(idField,
-              id, 0);
-          dbPanel.searchRequest(true, false);           
-          GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);
+          targetPanel.getSelectPanel().setConstraint(idField, id, 0);
+          targetPanel.searchRequest(true, false);           
+          GridPilot.getClassMgr().getGlobalFrame().addPanel(targetPanel);
         }
         catch(Exception e){
           Debug.debug("Couldn't create panel for dataset " + "\n" +
@@ -666,8 +694,12 @@ public class DatasetCreationPanel extends CreateEditPanel{
         }
       }
     };
-    //SwingUtilities.invokeLater(t);
-    t.run();
+    if(SwingUtilities.isEventDispatchThread()){
+      t2.run();
+    }
+    else{
+      SwingUtilities.invokeLater(t2);
+    }
   }
 
   private void cbTransformationSelection_actionPerformed(){

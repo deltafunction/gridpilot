@@ -341,7 +341,7 @@ public class CSPluginMgr implements MyComputingSystem{
    */
   public boolean killJobs(final Vector<JobInfo> jobs){
     
-    StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+    StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     statusBar.setLabel("Killing job(s)...");
     statusBar.animateProgressBar();
     
@@ -571,7 +571,7 @@ public class CSPluginMgr implements MyComputingSystem{
   }
 
   /**
-   * Gets the current outputs of the specified job on its ComputingSystem.
+   * Gets the scripts of the specified job on its ComputingSystem.
    * @see MyComputingSystem#getScripts(JobInfo)
    */
   public String[] getScripts(final JobInfo job) {
@@ -626,7 +626,7 @@ public class CSPluginMgr implements MyComputingSystem{
                              " during job " + job.getName() + " getScripts", (MyJobInfo) job, t);
         }
       }
-      public Shell getShellMgr(){
+      public Shell getShellRes(){
         return res;
       }
     };
@@ -634,7 +634,7 @@ public class CSPluginMgr implements MyComputingSystem{
     t.start();
 
     if(MyUtil.myWaitForThread(t, csName, currentOutputTimeOut, "getScripts")){
-      return t.getShellMgr();
+      return t.getShellRes();
     }
     else{
       return null;
@@ -756,12 +756,12 @@ public class CSPluginMgr implements MyComputingSystem{
             String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
             String message = "Registering UUID "+uuid.toString()+" and LFN "+lfn+
                " for new location "+remoteName;
-            GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
+            GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel(message);
             Debug.debug(message, 2);
             dbPluginMgr.registerFileLocation(datasetID, datasetName,
                 uuid, lfn, remoteName, size, checksum, false);
             message = "Registration done";
-            GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
+            GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel(message);
           }
         }
         catch(Exception e){

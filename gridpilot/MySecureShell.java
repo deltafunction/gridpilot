@@ -3,7 +3,6 @@ package gridpilot;
 import java.io.File;
 import java.io.IOException;
 
-
 import com.jcraft.jsch.*;
 
 import javax.security.auth.login.LoginException;
@@ -67,7 +66,6 @@ public class MySecureShell extends SecureShell{
   }
 
   private void doConnect() throws InterruptedException, IOException {
-    UserInfo ui = new MyUserInfo();
     boolean showDialog = true;
     // if global frame is set, this is a reload
     if(GridPilot.getClassMgr().getGlobalFrame()!=null){
@@ -75,7 +73,7 @@ public class MySecureShell extends SecureShell{
     }
     for(int rep=0; rep<MAX_SSH_LOGIN_ATTEMPTS; ++rep){
       try{
-        singleConnect(showDialog, rep, ui);
+        singleConnect(showDialog, rep);
       }
       catch(LoginException e){
         e.printStackTrace();
@@ -97,8 +95,9 @@ public class MySecureShell extends SecureShell{
     sshs = new Channel[maxChannels];
   }
 
-  private void singleConnect(boolean showDialog, int rep, UserInfo ui) throws LoginException, InterruptedException, IOException {
+  private void singleConnect(boolean showDialog, int rep) throws LoginException, InterruptedException, IOException {
     String [] up = null;
+
     if(showDialog ||
         user==null || (password==null && (keyFile==null || keyPassphrase==null)) || host==null){
       Debug.debug("Shell login:"+showDialog+":"+
@@ -165,7 +164,7 @@ public class MySecureShell extends SecureShell{
       if(password!=null && !password.equals("")){
         session.setPassword(password);
       }
-      session.setUserInfo(ui);
+      setSessionUI();
       java.util.Hashtable config = new java.util.Hashtable();
       config.put("StrictHostKeyChecking", "no");
       session.setConfig(config);
@@ -193,6 +192,28 @@ public class MySecureShell extends SecureShell{
     }
   }
 
+  private void setSessionUI() {
+    if(SwingUtilities.isEventDispatchThread()){
+      UserInfo ui = new MyUserInfo();
+      session.setUserInfo(ui);
+    }
+    else{
+      try{
+        SwingUtilities.invokeAndWait(
+          new Runnable(){
+            public void run(){
+              UserInfo ui = new MyUserInfo();
+              session.setUserInfo(ui);
+            }
+          }
+        );
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+  }
+
   public static class MyUserInfo implements UserInfo{
     public String getPassword(){
       return passwd;
@@ -209,7 +230,7 @@ public class MySecureShell extends SecureShell{
     }
 
     String passwd;
-    JTextField passwordField=(JTextField)new JPasswordField(20);
+    JTextField passwordField = (JTextField) new JPasswordField(20);
 
     public String getPassphrase(){
       return null;

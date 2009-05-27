@@ -16,33 +16,64 @@ import java.util.Iterator;
  */
 public class MonitoringPanel extends CreateEditPanel {
 
-  // Central panel
-  public JTabbedPane tpStatLog = new JTabbedPane();
-  public StatusBar statusBar = null;
-  public JobMonitoringPanel jobMonitor = new JobMonitoringPanel();
-  public TransferMonitoringPanel transferMonitor = new TransferMonitoringPanel();
-  
   public static final int TAB_INDEX_JOBS = 0;
   public static final int TAB_INDEX_TRANSFERS = 1;
-  
   private static final long serialVersionUID = 1L;
-  private JScrollPane spLogView = new JScrollPane();
-  private LogViewerPanel logViewerPanel = new LogViewerPanel();
+  
+  // Central panel
+  private JTabbedPane tpStatLog;
+  private StatusBar statusBar = null;
+  private JobMonitoringPanel jobMonitor;
+  private TransferMonitoringPanel transferMonitor;
+  private JScrollPane spLogView;
+  private LogViewerPanel logViewerPanel;
 
-  /**
-   * Constructor
-   */
   public MonitoringPanel() throws Exception{   
-    // use status bar on main window until a monitoring panel is actually created
-    statusBar = GridPilot.getClassMgr().getStatusBar();
-    GridPilot.getClassMgr().getLogFile().addActionOnMessage(logViewerPanel.new MyActionOnMessage());
   }
   
   public String getTitle(){
     return "Monitor";
   }
+  
+  public JobMonitoringPanel getJobMonitoringPanel() {
+    return jobMonitor;
+  }
 
-  public void initGUI(){
+  public StatusBar getStatusBar() {
+    if(statusBar==null){
+      // use status bar on main window until a monitoring panel is actually created
+      return GridPilot.getClassMgr().getStatusBar();
+
+    }
+    return statusBar;
+  }
+  
+  public void activate() throws Exception {
+    jobMonitor.activate();
+    transferMonitor.activate();
+    SwingUtilities.invokeLater(
+      new Runnable(){
+        public void run(){
+          // add any panels added by plugins
+          for(Iterator it=GridPilot.EXTRA_MONITOR_TABS.iterator(); it.hasNext();){
+            JPanel panel = (JPanel) it.next();
+            tpStatLog.addTab(panel.getName(), panel);
+          }
+          tpStatLog.addTab("Logs", spLogView);
+        }
+      }
+    );
+  }
+
+  public void initGUI() throws Exception {
+    
+    tpStatLog = new JTabbedPane();
+    jobMonitor = new JobMonitoringPanel();
+    transferMonitor = new TransferMonitoringPanel();    
+    spLogView = new JScrollPane();
+    logViewerPanel = new LogViewerPanel();
+    
+    GridPilot.getClassMgr().getLogFile().addActionOnMessage(logViewerPanel.new MyActionOnMessage());
     
     this.setLayout(new BorderLayout());
     statusBar = new StatusBar();
@@ -56,23 +87,16 @@ public class MonitoringPanel extends CreateEditPanel {
     spLogView.setPreferredSize(new Dimension(700, 500));
     tpStatLog.addTab("Jobs", jobMonitor);
     tpStatLog.addTab("Transfers", transferMonitor);
-    // add any panels added by plugins
-    for(Iterator it=GridPilot.EXTRA_MONITOR_TABS.iterator(); it.hasNext();){
-      JPanel panel = (JPanel) it.next();
-      tpStatLog.addTab(panel.getName(), panel);
-    }
-    tpStatLog.addTab("Logs", spLogView);
-
+    
     this.getTopLevelAncestor().add(tpStatLog, BorderLayout.CENTER);
     this.setPreferredSize(new Dimension(700, 500));
     this.getTopLevelAncestor().add(statusBar, BorderLayout.SOUTH);
-    
     this.validate();
 
   }
 
   public void windowClosing(){
-    GridPilot.getClassMgr().getGlobalFrame().cbMonitor.setSelected(false);
+    GridPilot.getClassMgr().getGlobalFrame().getCBMonitor().setSelected(false);
   }
 
   /**
@@ -89,6 +113,10 @@ public class MonitoringPanel extends CreateEditPanel {
   public void panelHidden(){
     Debug.debug("panelHidden", 1);
     statusBar.removeLabel();
+  }
+
+  public JTabbedPane getTPStatLog() {
+    return tpStatLog;
   }
 
 }

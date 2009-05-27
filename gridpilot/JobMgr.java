@@ -5,11 +5,15 @@ import gridfactory.common.Debug;
 import gridfactory.common.StatusBar;
 
 import java.awt.Color;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.*;
 
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
 /**
  * This class manages the jobs from a single database.
@@ -18,6 +22,17 @@ public class JobMgr{
 
   private DBPluginMgr dbPluginMgr;
   private MyLogFile logFile;
+  
+  private Timer timer;
+  /** All jobs for which the post-processing is not done yet. */
+  private Vector<MyJobInfo> toPostProcessJobs = new Vector<MyJobInfo>();
+  /** All jobs for which the post-processing is in progress. */
+  private Vector<MyJobInfo> postProcessingJobs = new Vector<MyJobInfo>();
+ /** Maximum number of simulaneous threads for post-processing. */
+  private int maxSimultaneousPostProcessing = 5;
+  /** Delay between the begin of two submission threads. */
+  private int timeBetweenPostProcessing = 5000;
+
   
   // These are shared between all jobMgrs
   private MyJTable statusTable;
@@ -86,7 +101,7 @@ public class JobMgr{
     dbName = _dbName;
     dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
     logFile = GridPilot.getClassMgr().getLogFile();
-    statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+    statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     statusTable = GridPilot.getClassMgr().getJobStatusTable();
     Debug.debug("Status table fields: "+statusTable.getModel().getColumnCount(), 3);
     statisticsPanel = GridPilot.getClassMgr().getJobStatisticsPanel();
@@ -94,6 +109,22 @@ public class JobMgr{
     if(useChanges){
       hasChanged = new boolean[0];
     }
+    String tmp = GridPilot.getClassMgr().getConfigFile().getValue("Computing systems", "maximum simultaneous post-processing");
+    if(tmp!=null){
+      try{
+        maxSimultaneousPostProcessing = Integer.parseInt(tmp);
+      }
+      catch(NumberFormatException nfe){
+        logFile.addMessage("Value of \"maximum simultaneous post-processing\" "+
+                                    "is not an integer in configuration file", nfe);
+      }
+    }
+    timer = new Timer(0, new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        trigPostProcess();
+      }
+    });
+    timer.setDelay(timeBetweenPostProcessing);
   }
 
    public int [] getJobsByStatus(){
@@ -126,7 +157,7 @@ public class JobMgr{
    */
   public synchronized void addJobs(String [] selectedJobDefs){
     statusBar.setLabel("Adding job definitions...");
-    JProgressBar pb = new JProgressBar(0, selectedJobDefs.length);
+    JProgressBar pb = statusBar.createJProgressBar(0, selectedJobDefs.length);
     statusBar.setProgressBar(pb);
 
     //monitored are not added
@@ -285,9 +316,29 @@ public class JobMgr{
    * @see #updateDBCells(DBVector)
    * (from AtCom)
    */
-  public void updateDBCell(MyJobInfo job){
-    // Label with status Name
+  public void updateDBCell(final MyJobInfo job){
+    if(SwingUtilities.isEventDispatchThread()){
+      doUpdateDBCell(job);
+    }
+    else{
+      SwingUtilities.invokeLater(
+        new Runnable(){
+          public void run(){
+            try{
+              doUpdateDBCell(job);
+            }
+            catch(Exception ex){
+              Debug.debug("Could not create panel ", 1);
+              ex.printStackTrace();
+            }
+          }
+        }
+      );
+    }
+  }
 
+  private void doUpdateDBCell(MyJobInfo job) {
+    // Label with status Name
     JLabel status = new JLabel(DBPluginMgr.getStatusName(job.getDBStatus()));
     /*if(hasChanged[job.getTableRow()])
         status.setFont(new Font("Dialog", Font.BOLD, 12));
@@ -576,7 +627,8 @@ public class JobMgr{
     }
     else{
       // Resubmit job if value of resubmit spinner is larger than job.getResubmitCount().
-      Integer resubmit = (Integer) GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.sAutoResubmit.getValue();
+      Integer resubmit = (Integer) GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel(
+          ).getJobMonitoringPanel().getSAutoResubmit().getValue();
       int resubmitNr = resubmit.intValue();
       Debug.debug("Checking if job should be resubmitted, "+job.getResubmitCount()+":"+resubmitNr, 2);
       if(job.getResubmitCount()>-1 && job.getResubmitCount()<resubmitNr){
@@ -862,7 +914,6 @@ public class JobMgr{
     return allowedTransition[fromStatus -1][toStatus -1];
   }
 
-
   /**
    * Called each time the DB status of the specified job changes (except at submission). <br>
    * In all case the DB is updated.<br>
@@ -1054,36 +1105,8 @@ public class JobMgr{
 
       case DBPluginMgr.VALIDATED:
         /** post process */
-        if(!GridPilot.getClassMgr().getCSPluginMgr().postProcess(job)){
-          logFile.addMessage("Post processing of job " + job.getName() +
-                             " failed ; \n" +
-                             GridPilot.getClassMgr().getCSPluginMgr().getError(job.getCSName()) +
-                             "\n\tThis job is put back in Undecided status ; \n"
-                             +"\tde-reservation won't be done",
-                             job);
-          if(job.getDBStatus()!=DBPluginMgr.UNDECIDED){
-            updateDBStatus(job, DBPluginMgr.UNDECIDED);
-          }
-        }
-        else{
-          // Stdout/stderr has now been copied to
-          // final destinations and the local run dir deleted by postProcessing.
-          if(dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "status",
-              dbStatus)){
-            job.setDBStatus(dbStatusNr);
-          }
-          else{
-            succes = false;
-            logFile.addMessage("DB updateDBStatus(" + job.getIdentifier() + ", " +
-                dbStatus + ") failed.\n"+dbPluginMgr.getError(),
-                               job);
-          }
-          /*if(!dbPluginMgr.cleanRunInfo(job.getIdentifier())){
-            logFile.addMessage("de-reservation of job " + job.getName() +
-                               " failed", job);
-          }*/
-        }
-
+        job.setDBStatus(dbStatusNr);
+        queue(job);
         break;
 
       default:
@@ -1097,6 +1120,79 @@ public class JobMgr{
     updateJobsByStatus();
     //statusTable.updateUI();
     
+    return succes;
+  }
+  
+  private void queue(MyJobInfo job) {
+    Debug.debug("Adding job to post-processing queue "+job, 2);
+    toPostProcessJobs.add(job);
+    if(!timer.isRunning()){
+      timer.restart();
+    }
+  }
+
+  private void trigPostProcess(){
+    if(toPostProcessJobs.isEmpty()){
+      timer.stop();
+      return;
+    }
+    Debug.debug("Looking for job to post-process", 3);
+    final MyJobInfo job = (MyJobInfo) toPostProcessJobs.get(0);
+    if(checkProcessing(job)){
+      toPostProcessJobs.remove(job);
+      postProcessingJobs.add(job);
+      new Thread(){
+        public void run(){
+          postProcess(job);
+        }
+      }.start();
+    }
+    if(toPostProcessJobs.isEmpty()){
+      timer.stop();
+    }
+  }
+
+  /**
+   * Check if this job can be post-processed or we should wait.
+   * @param job
+   * @return
+   */
+  private boolean checkProcessing(MyJobInfo job) {
+    return postProcessingJobs.size()<=maxSimultaneousPostProcessing;
+  }
+
+  private boolean postProcess(MyJobInfo job) {
+    Debug.debug("Post-processing job "+job, 2);
+    boolean succes = true;
+    if(!GridPilot.getClassMgr().getCSPluginMgr().postProcess(job)){
+      logFile.addMessage("Post processing of job " + job.getName() +
+                         " failed ; \n" +
+                         GridPilot.getClassMgr().getCSPluginMgr().getError(job.getCSName()) +
+                         "\n\tThis job is put back in Undecided status ; \n"
+                         +"\tde-reservation won't be done",
+                         job);
+      //job.setDBStatus(DBPluginMgr.UNDECIDED);
+      if(job.getDBStatus()!=DBPluginMgr.UNDECIDED){
+        updateDBStatus(job, DBPluginMgr.UNDECIDED);
+      }
+    }
+    else{
+      int dbStatusNr = job.getDBStatus();
+      String dbStatus = DBPluginMgr.getStatusName(dbStatusNr);
+      // Stdout/stderr has now been copied to
+      // final destinations and the local run dir deleted by postProcessing.
+      if(!dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "status",
+          dbStatus)){
+        succes = false;
+        logFile.addMessage("DB updateDBStatus(" + job.getIdentifier() + ", " +
+            dbStatus + ") failed.\n"+dbPluginMgr.getError(),
+                           job);
+      }
+      /*if(!dbPluginMgr.cleanRunInfo(job.getIdentifier())){
+        logFile.addMessage("de-reservation of job " + job.getName() +
+                           " failed", job);
+      }*/
+    }
     return succes;
   }
 

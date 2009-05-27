@@ -1,5 +1,6 @@
 package gridpilot;
 
+import gridfactory.common.CheckThreadViolationRepaintManager;
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
@@ -11,6 +12,7 @@ import gridpilot.wizards.beginning.BeginningWizard;
 import java.awt.*;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Properties;
@@ -104,6 +106,9 @@ public class GridPilot extends JApplet{
    */
   public GridPilot(){
     
+    /** This will test for GUI events launched outside of the event dispatching thread. */
+    CheckThreadViolationRepaintManager.initMonitoring();
+    
     try{
       getClassMgr().setLogFile(new MyLogFile(LOG_FILE_NAME));
       // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
@@ -151,6 +156,8 @@ public class GridPilot extends JApplet{
       SPLASH.stopSplash();
       SPLASH = null;
       getClassMgr().getLogFile().addInfo("GridPilot loaded");
+      /** This will test for GUI hanging threads and report on stderr. */
+      //EventDispatchThreadHangMonitor.initMonitoring();
     }
     catch(Throwable e){
       if(e instanceof Error){
@@ -181,7 +188,6 @@ public class GridPilot extends JApplet{
   public static void forgetTmpFile(String key){
     TMP_FILES.remove(key);
   }
-  
 
   // TODO: enclose each in try/catch and set sensible default if it fails
   public static void loadConfigValues(){
@@ -465,51 +471,90 @@ public class GridPilot extends JApplet{
  */
   public static boolean isApplet(){
     return IS_APPLET;
-  } 
+  }
 
-  /**
+  /*
    * GUI
    */
+
   private void initGUI() throws Exception{
+    splashShow("Initializing GUI");
+    SwingUtilities.invokeAndWait(
+      new Runnable(){
+        public void run(){
+          try{
+            getClassMgr().setGlobalFrame(frame = new GlobalFrame());
+            if(IS_APPLET){
+              getClassMgr().getGlobalFrame().initGUI(getContentPane());
+              splashShow("Initializing menus");
+              setJMenuBar(
+                  getClassMgr().getGlobalFrame().makeMenuBar());
+            }
+            else{
+              getClassMgr().getGlobalFrame().initGUI(((JFrame)  
+                  getClassMgr().getGlobalFrame()).getContentPane());
+              splashShow("Initializing menus");
+              frame.setJMenuBar(
+                  getClassMgr().getGlobalFrame().makeMenuBar());
+            }
 
-    if(IS_APPLET){
-      getClassMgr().setGlobalFrame(frame = new GlobalFrame());
-      getClassMgr().getGlobalFrame().initGUI(this.getContentPane());
-      setJMenuBar(
-          getClassMgr().getGlobalFrame().makeMenu());
-    }
-    else{
-      getClassMgr().setGlobalFrame(frame = new GlobalFrame());
-      getClassMgr().getGlobalFrame().initGUI(((JFrame)  
-          getClassMgr().getGlobalFrame()).getContentPane());
-      frame.setJMenuBar(
-          getClassMgr().getGlobalFrame().makeMenu());
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+        }
+      }
+    );
+    GridPilot.splashShow("Initializing monitoring panel...");
+    getClassMgr().getGlobalFrame().initMonitoringPanel();
+    GridPilot.splashShow("Setting up DB panels...");
+    SwingUtilities.invokeAndWait(
+      new Runnable(){
+        public void run(){
+          getClassMgr().getGlobalFrame().addDBPanels();
+        }
+      }
+    );
+    splashShow("Validating GUI");
+    validateGUI();
+  }
+  
+  private void validateGUI() throws InterruptedException, InvocationTargetException{
+    SwingUtilities.invokeAndWait(
+      new Runnable(){
+        public void run(){
+          try{
+            //Validate frames that have preset sizes.
+            //Pack frames that have useful preferred size info, e.g. from their layout.
+            if(packFrame){
+              frame.pack();
+            }
+            else{
+              frame.validate();
+            }
 
-      //Validate frames that have preset sizes.
-      //Pack frames that have useful preferred size info, e.g. from their layout.
-      if(packFrame){
-        frame.pack();
-      }
-      else{
-        frame.validate();
-      }
+            frame.setSize(new Dimension(950, 700));
 
-      frame.setSize(new Dimension(950, 700));
-
-      //Center the window
-      Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-      Dimension frameSize = frame.getSize();
-      if(frameSize.height>screenSize.height){
-        frameSize.height = screenSize.height;
+            //Center the window
+            Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+            Dimension frameSize = frame.getSize();
+            if(frameSize.height>screenSize.height){
+              frameSize.height = screenSize.height;
+            }
+            if(frameSize.width>screenSize.width){
+              frameSize.width = screenSize.width;
+            }
+            requestFocusInWindow();
+            //frame.setLocation((screenSize.width - frameSize.width) / 2, (screenSize.height - frameSize.height) / 2);
+            Splash.centerWindow(frame);
+            frame.setVisible(true);
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+        }
       }
-      if(frameSize.width>screenSize.width){
-        frameSize.width = screenSize.width;
-      }
-      requestFocusInWindow();
-      //frame.setLocation((screenSize.width - frameSize.width) / 2, (screenSize.height - frameSize.height) / 2);
-      Splash.centerWindow(frame);
-      frame.setVisible(true);
-    }
+    );
   }
   
   public static void exit(final int exitCode){
@@ -543,10 +588,10 @@ public class GridPilot extends JApplet{
     Thread t2 = new Thread(){
       public void run(){
         //  Cancel all transfers
-        String message = "Cancelling all running transfers...";
+        String message = "Cancelling running transfer(s)...";
         Debug.debug(message, 2);
-        EXIT_PANEL.setText(message+" Click OK to force quit.");
-        GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.exit();
+        setExitPanelText(message+" Click OK to force quit.");
+        jobManagerPanelExit();
         GridPilot.getClassMgr().getTransferControl().exit();
         //Delete temporary files
         File delFile = null;
@@ -568,21 +613,21 @@ public class GridPilot extends JApplet{
         // Disconnect DBs and CSs
         message = "Disconnecting computing systems...";
         Debug.debug(message, 2);
-        EXIT_PANEL.setText(message+" Click OK to force quit.");
+        setExitPanelText(message+" Click OK to force quit.");
         if(getClassMgr().csPluginMgr!=null){
           getClassMgr().getCSPluginMgr().disconnect();
           getClassMgr().getCSPluginMgr().exit();
         }
         message = "Disconnecting databases...";
         Debug.debug(message, 2);
-        EXIT_PANEL.setText(message+" Click OK to force quit.");
+        setExitPanelText(message+" Click OK to force quit.");
         for(int i=0; i<DB_NAMES.length; ++i){
           getClassMgr().getDBPluginMgr(DB_NAMES[i]).disconnect();
           Debug.debug("Disconnecting "+DB_NAMES[i], 2);
         }
         message = "All systems disconnected.";
         Debug.debug(message, 2);
-        EXIT_PANEL.setText(message);
+        setExitPanelText(message);
         if(!IS_APPLET){
           System.exit(exitCode);
         }
@@ -596,11 +641,39 @@ public class GridPilot extends JApplet{
           }
         }
       }
+
     };
-    t1.start();
+    
+    SwingUtilities.invokeLater(t1);
     t2.start();
   }
   
+  private static void setExitPanelText(final String text){
+    try{
+      SwingUtilities.invokeAndWait(
+        new Runnable(){
+          public void run(){
+            EXIT_PANEL.setText(text);
+          }
+        }
+      );
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+
+  }
+  
+  private static void jobManagerPanelExit() {
+    MonitoringPanel mPanel = getClassMgr().getGlobalFrame().getMonitoringPanel();
+    if(mPanel!=null){
+      JobMonitoringPanel jmPanel = mPanel.getJobMonitoringPanel();
+      if(jmPanel!=null){
+        jmPanel.exit();
+      }
+    }
+  }
+
   public static String [] userPwd(String message, String [] fields, String [] initialValues){    
     if(SPLASH!=null){
       SPLASH.hide();
@@ -739,7 +812,7 @@ public class GridPilot extends JApplet{
     loadConfigValues();
     getClassMgr().getJobValidation().loadValues();
     getClassMgr().getSubmissionControl().loadValues();
-    getClassMgr().getGlobalFrame().monitoringPanel.jobMonitor.statusUpdateControl.loadValues();
+    getClassMgr().getGlobalFrame().getMonitoringPanel().getJobMonitoringPanel().getJobStatusUpdateControl().loadValues();
     getClassMgr().getTransferStatusUpdateControl().loadValues();
     getClassMgr().getCSPluginMgr().loadValues();
     for(int i=0; i<DB_NAMES.length; ++i){
@@ -783,7 +856,6 @@ public class GridPilot extends JApplet{
     else{
       GridPilot.getClassMgr().getStatusBar().setLabel(message);
     }
-
   }
 
   public static void dbReconnect(){

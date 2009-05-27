@@ -1,6 +1,7 @@
 package gridpilot.csplugins.vmfork;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -118,17 +119,31 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
         bootTimeout, localRteDir, logFile);
     
     localRuntimeDBs = configFile.getValues(csName, "runtime databases");
-
-    Debug.debug("Adding Local VM monitor", 2);
-    VMForkMonitoringPanel panel = new VMForkMonitoringPanel(vmMgr, rteCatalogUrls);
-    // This causes the panel to be added to the monitoring window as a tab,
-    // right after the transfer monitoring tab and before the log tab.
-    GridPilot.EXTRA_MONITOR_TABS.add(panel);
+    
+    createMonitor();
     
     pullMgr = new MyPullMgr();
 
   }
   
+  private void createMonitor() throws InterruptedException, InvocationTargetException {
+    javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
+      public void run(){
+        try{
+          Debug.debug("Adding Local VM monitor", 2);
+          VMForkMonitoringPanel panel = new VMForkMonitoringPanel(vmMgr, rteCatalogUrls);
+          // This causes the panel to be added to the monitoring window as a tab,
+          // right after the transfer monitoring tab and before the log tab.
+          GridPilot.EXTRA_MONITOR_TABS.add(panel);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          logFile.addMessage("WARNING: could not create VM monitoring panel.", e);
+        }
+      }
+    });
+  }
+
   protected void setupJobRTEs(JobInfo job, Shell shell) throws Exception{
     MyUtil.setupJobRTEs(job, shell, rteMgr, transferStatusUpdateControl, remoteRteDir, localRteDir);
   }

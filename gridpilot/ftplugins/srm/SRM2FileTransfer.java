@@ -242,7 +242,13 @@ public class SRM2FileTransfer implements FileTransfer {
         statusCode==TStatusCode.SRM_FILE_IN_CACHE) && turl!=null){
       statusStr = turl;
     }
-    return new SRMStatus(statusStr, statusCode, turl, estimatedWaitTime, fileSize);
+    return new SRMStatus(
+        statusStr,
+        statusCode,
+        turl,
+        estimatedWaitTime==null?-1:estimatedWaitTime,
+        fileSize
+    );
   }
 
   private SRMStatus getPutStatus(String requestId, int statusIndex, ISRM srm) throws RemoteException {
@@ -712,7 +718,7 @@ public class SRM2FileTransfer implements FileTransfer {
     }
     Debug.debug("Transfer request submitted for get. Waiting for ok.", 2);
     // show message on status bar on monitoring frame
-    StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+    StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     statusBar.setLabel("Waiting for file(s) to be ready...");
     assignedTurls = waitForOK(thesePendingIDs);
     Debug.debug("Assigned TURLs: "+MyUtil.arrayToString(assignedTurls), 2);
@@ -820,7 +826,7 @@ public class SRM2FileTransfer implements FileTransfer {
     }
     Debug.debug("Transfer request submitted for put. Waiting for ok.", 2);
     // show message on status bar on monitoring frame
-    StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+    StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     statusBar.setLabel("Waiting for file(s) to be ready...");
     assignedTurls = waitForOK(thesePendingIDs);
     // Now, assign the real ids (with TURL not null)
@@ -1173,6 +1179,11 @@ public class SRM2FileTransfer implements FileTransfer {
   }
 
   public Vector list(GlobusURL globusUrl, String filter) throws Exception {
+    // No point in implementing this. SRM is anyway not browsable.
+    throw new IOException("list not supported by SRM plugin.");
+  }
+  
+  public Vector find(GlobusURL globusUrl, String filter) throws Exception {
     // No point in implementing this. SRM is anyway not browsable.
     throw new IOException("list not supported by SRM plugin.");
   }

@@ -18,7 +18,10 @@ public abstract class CreateEditPanel extends JPanel{
   public void create(final boolean showResults, boolean editing) {
   }
 
-  public void initGUI(){
+  public void initGUI() throws Exception{
+  }
+
+  public void activate() throws Exception{
   }
 
   public void showDetails(boolean show){

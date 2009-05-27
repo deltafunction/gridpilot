@@ -16,7 +16,6 @@ import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
-import gridfactory.common.StatusBar;
 
 import gridpilot.GridPilot;
 import gridpilot.ListPanel;
@@ -38,17 +37,17 @@ public class GlobalFrame extends GPFrame{
   private MyPreferencesPanel prefsPanel = null;
   private static int i;
 
-  public JTabbedPane tabbedPane = new DnDTabbedPane();
-  public MonitoringPanel monitoringPanel;
-  public JMenu menuEdit = new JMenu("Edit");
-  public JMenuItem menuEditCopy = new JMenuItem("Copy (ctrl c)");
-  public JMenuItem menuEditCut = new JMenuItem("Cut (ctrl x)");
-  public JMenuItem menuEditPaste = new JMenuItem("Paste (ctrl v)");
-  public JMenuItem menuEditPrefs = new JMenuItem("Preferences");
+  private JTabbedPane tabbedPane = new DnDTabbedPane();
+  private MonitoringPanel monitoringPanel;
+  private JMenu menuEdit = new JMenu("Edit");
+  private JMenuItem menuEditCopy = new JMenuItem("Copy (ctrl c)");
+  private JMenuItem menuEditCut = new JMenuItem("Cut (ctrl x)");
+  private JMenuItem menuEditPaste = new JMenuItem("Paste (ctrl v)");
+  private JMenuItem menuEditPrefs = new JMenuItem("Preferences");
+  private ListPanel cutPanel = null;
+  private JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show monitor (ctrl m)");
   // keep track of whether or not we are cutting on the sub-panels
   public boolean cutting = false;
-  public ListPanel cutPanel = null;
-  public JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show monitor (ctrl m)");
   
   /**
    * Constructor
@@ -57,38 +56,42 @@ public class GlobalFrame extends GPFrame{
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     allPanels = new Vector();
   }
+  
+  protected void initMonitoringPanel() throws Exception{
+    SwingUtilities.invokeAndWait(
+      new Runnable(){
+        public void run(){
+          try{
+            monitoringPanel = new MonitoringPanel();
+            Debug.debug("Creating new monitoring dialog", 2);
+            pDialog = new CreateEditDialog(monitoringPanel,
+                false, false, false, false, false);
+            pDialog.setVisible(false);
+            pDialog.setTitle("Monitor");
+            pDialog.pack();
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+        }
+      }
+    );
+    pDialog.activate();
+  }
 
   /**
    * GUI initialisation
    */
   public void initGUI(Container container) throws Exception{
-    
+
     container.setLayout(new BorderLayout());
     //container.setPreferredSize(new Dimension(800, 600));
-        
-    GridPilot.getClassMgr().setStatusBar(new StatusBar());
+    GridPilot.getClassMgr().setNewStatusBar();
     statusBar = GridPilot.getClassMgr().getStatusBar();
     container.add(statusBar, BorderLayout.SOUTH);
     statusBar.setLabel("GridPilot welcomes you!");
-    
-    monitoringPanel = new MonitoringPanel();
-    
     container.add(tabbedPane, BorderLayout.CENTER);
-    
     container.validate();
-
-    if(GridPilot.DB_NAMES.length>0){
-      for(int i=0; i<GridPilot.TABS.length; ++i){
-        try{
-          addPanel(new DBPanel(GridPilot.DB_NAMES[0], GridPilot.TABS[i]));
-        }
-        catch(Exception e){
-          Debug.debug("ERROR: could not load database panel for "+
-              GridPilot.DB_NAMES[0] + " : " + GridPilot.TABS[i], 1);
-          e.printStackTrace();
-        }
-      }
-    }
     selectedPanel = tabbedPane.getSelectedIndex();
 
    /**
@@ -99,10 +102,8 @@ public class GlobalFrame extends GPFrame{
        if (tabbedPane.getTabCount()==0 || tabbedPane.getSelectedIndex()<0){
          return;
        }
-
        if (!evt.isPopupTrigger()){
          IconProxy iconProxy = (IconProxy) tabbedPane.getIconAt(tabbedPane.getSelectedIndex());
-
          if (iconProxy.contains(evt.getX(), evt.getY())){
            removePanel();
          }
@@ -170,10 +171,25 @@ public class GlobalFrame extends GPFrame{
     
   }
 
-  /**
-   * ActionEvents
-   */
-
+  protected void addDBPanels() {
+    if(GridPilot.DB_NAMES.length<=0){
+      return;
+    }
+    for(int i=0; i<GridPilot.TABS.length; ++i){
+      try{
+        DBPanel panel = new DBPanel();
+        panel.initDB(GridPilot.DB_NAMES[0], GridPilot.TABS[i]);
+        panel.initGUI();
+        addPanel(panel);
+      }
+      catch(Exception e){
+        Debug.debug("ERROR: could not load database panel for "+
+            GridPilot.DB_NAMES[0] + " : " + GridPilot.TABS[i], 1);
+        e.printStackTrace();
+      }
+    }
+  }
+  
   /**
    * Add a new panel.
    */
@@ -183,6 +199,14 @@ public class GlobalFrame extends GPFrame{
     this.setTitle("GridPilot - "+title);
     //this.pack();
     //this.setVisible(true);
+  }
+
+  /**
+   * Add a new panel.
+   */
+  public void initPanel(DBPanel panel, String title){
+    Debug.debug("Initializing panel "+panel.getTitle(), 3);
+    panel.initDB(panel.getDBName(), panel.getTableName());
   }
 
   public void addPanel(ListPanel newPanel){
@@ -289,7 +313,7 @@ public class GlobalFrame extends GPFrame{
     try{
       BrowserPanel wb = new BrowserPanel(this, "About",
           aboutURL.toExternalForm(), "", false, false, false, null, null, true);
-      wb.bCancel.setEnabled(false);
+      wb.setCancelButtonEnabled(false);
     }
     catch(Exception e){
       Debug.debug("WARNING: could not create BrowserPanel", 1);
@@ -343,11 +367,11 @@ public class GlobalFrame extends GPFrame{
       setTitle("GridPilot - "+title);
     }
   }
-
+  
   /**
-   * Creates the menu in the main menu bar.
+   * Creates the main menu bar.
    */
-  public JMenuBar makeMenu(){
+  public JMenuBar makeMenuBar(){
 
     JMenuBar menuBar = new JMenuBar();
 
@@ -494,7 +518,10 @@ public class GlobalFrame extends GPFrame{
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
-                addPanel(new DBPanel(mDB.getName(), "runtimeEnvironment"), "runtime environments");          
+                DBPanel panel = new DBPanel();
+                panel.initDB(mDB.getName(), "runtimeEnvironment");
+                panel.initGUI();
+                addPanel(panel, "runtime environments");          
               }
               catch(Exception ex){
                 Debug.debug("Could not add panel ", 1);
@@ -517,7 +544,10 @@ public class GlobalFrame extends GPFrame{
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
-                addPanel(new DBPanel(mDB.getName(), "transformation"), "transformations");          
+                DBPanel panel = new DBPanel();
+                panel.initDB(mDB.getName(), "transformation");
+                panel.initGUI();
+                addPanel(panel, "transformations");          
               }
               catch(Exception ex){
                 Debug.debug("Could not add panel ", 1);
@@ -542,7 +572,10 @@ public class GlobalFrame extends GPFrame{
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
-                addPanel(new DBPanel(mDB.getName(), "dataset"), "datasets");          
+                DBPanel panel = new DBPanel();
+                panel.initDB(mDB.getName(), "dataset");
+                panel.initGUI();
+                addPanel(panel, "datasets");          
               }
               catch(Exception ex){
                 Debug.debug("Could not add panel ", 1);
@@ -566,7 +599,10 @@ public class GlobalFrame extends GPFrame{
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
-                addPanel(new DBPanel(mDB.getName(), "jobDefinition"), "jobDefinitions");          
+                DBPanel panel = new DBPanel();
+                panel.initDB(mDB.getName(), "jobDefinition");
+                panel.initGUI();
+                addPanel(panel, "jobDefinitions");          
               }
               catch(Exception ex){
                 Debug.debug("Could not add panel ", 1);
@@ -732,17 +768,9 @@ public class GlobalFrame extends GPFrame{
       ex.printStackTrace();
     }
   }
-
+  
   public void toggleMonitoringPanel(){
     try{
-      if(pDialog==null){
-        Debug.debug("Creating new monitoring dialog", 2);
-        pDialog = new CreateEditDialog(monitoringPanel, false, false, false, false);
-        pDialog.setTitle("Monitor");
-        pDialog.pack();
-        pDialog.setVisible(true);
-        return;
-      }
       if(pDialog.isShowing()){
         pDialog.setVisible(false);
       }
@@ -751,25 +779,33 @@ public class GlobalFrame extends GPFrame{
       }
     }
     catch(Exception ex){
-      Debug.debug("Could not create panel ", 1);
+      Debug.debug("Could not toggle monitoring panel.", 1);
       ex.printStackTrace();
     }
   }
 
-  public void showMonitoringPanel(){
-    try{
-      if(pDialog==null){
-        Debug.debug("Creating new monitoring dialog", 2);
-        pDialog = new CreateEditDialog(monitoringPanel, false, false, false, false);
-        pDialog.setTitle("Monitor");
-        pDialog.pack();
-      }
+  public void showMonitoringPanel(final int index){
+    if(SwingUtilities.isEventDispatchThread()){
       pDialog.setVisible(true);
       cbMonitor.setSelected(true);
+      getMonitoringPanel().getTPStatLog().setSelectedIndex(index);
     }
-    catch(Exception ex){
-      Debug.debug("Could not create panel ", 1);
-      ex.printStackTrace();
+    else{
+      SwingUtilities.invokeLater(
+        new Runnable(){
+          public void run(){
+            try{
+              pDialog.setVisible(true);
+              cbMonitor.setSelected(true);
+              getMonitoringPanel().getTPStatLog().setSelectedIndex(index);
+            }
+            catch(Exception ex){
+              Debug.debug("Could not create panel ", 1);
+              ex.printStackTrace();
+            }
+          }
+        }
+      );
     }
   }
   
@@ -805,6 +841,46 @@ public class GlobalFrame extends GPFrame{
       }
     });*/
   
+  }
+
+  public MonitoringPanel getMonitoringPanel() {
+    return monitoringPanel;
+  }
+
+  public JCheckBoxMenuItem getCBMonitor() {
+    return cbMonitor;
+  }
+
+  public JMenuItem getMenuEditCopy() {
+    return menuEditCopy;
+  }
+
+  public JMenuItem getMenuEditCut() {
+    return menuEditCut;
+  }
+
+  public JMenuItem getMenuEditPaste() {
+    return menuEditPaste;
+  }
+
+  public JMenu getMenuEdit() {
+    return menuEdit;
+  }
+
+  public void setCutPanel(DBPanel panel) {
+    cutPanel = panel;
+  }
+
+  public void refreshCutPanel() {
+    try{
+      if(cutPanel!=null){
+        ((DBPanel) cutPanel).refresh();
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+
   }
 
 }

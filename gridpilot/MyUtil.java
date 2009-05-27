@@ -8,6 +8,7 @@ import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
 import gridfactory.common.Shell;
+import gridfactory.common.StatusBar;
 import gridfactory.common.TransferInfo;
 import gridfactory.common.TransferStatusUpdateControl;
 import gridfactory.common.Util;
@@ -190,70 +191,176 @@ public class MyUtil extends gridfactory.common.Util{
     return retStrArray;
   }
 
- public static void setBackgroundColor(JComponent c){
+  public static void setBackgroundColor(JComponent c){
     Color background = c.getBackground();
     if (background instanceof UIResource){
       c.setBackground(UIManager.getColor("TextField.inactiveBackground"));
     }
   }
  
- public static void launchCheckBrowser(final Frame frame, String url,
+  public static void launchCheckBrowser(final Frame frame, String url,
      final JTextComponent text, final boolean localFS, final boolean oneUrl,
      final boolean withNavigation, final boolean onlyDirs, boolean waitForThread){
-   if(url.equals(CHECK_URL)){
-     String httpScript = "";
-     httpScript = text.getText();
-     if(frame!=null){
-       frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-     }
-     final String finUrl = httpScript;
-     ResThread rt = (new ResThread(){
-       public void run(){
-         String[] urls = null;
-         if(oneUrl){
-           urls = new String [] {finUrl};
+    if(url.equals(CHECK_URL)){
+      String httpScript = "";
+      httpScript = text.getText();
+      if(frame!=null){
+        frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+      }
+      final String finUrl = httpScript;
+      ResThread rt = (new ResThread(){
+        public void run(){
+          String[] urls = null;
+          if(oneUrl){
+            urls = new String [] {finUrl};
+          }
+          else{
+            try{
+              urls = splitUrls(finUrl);
+            }
+            catch(Exception e){
+              Debug.debug("Could not open URL(s) "+finUrl+". "+e.getMessage(), 1);
+              e.printStackTrace();
+              GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL(s) "+finUrl);
+              return;
+            }
+          }
+          if(urls.length==0){
+            urls = new String [] {""};
+          }
+          boolean ok = true;
+          for(int i=0; i<urls.length; ++i){
+            urls[i] = handleUrl(urls, i, frame, onlyDirs, withNavigation, localFS);
+            ok = ok && urls[i]!=null;
+          }
+          if(ok){
+            setText(text, arrayToString(urls));
+          }
+          frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          //GridPilot.getClassMgr().getStatusBar().setLabel("");
+        }
+      });
+      rt.start();
+      if(waitForThread){
+        myWaitForThread(rt, "File browser", 0, "launchCheckBrowser");
+      }
+    }
+  }
+ 
+ private static void setText(final JTextComponent comp, final String text){
+   try{
+     SwingUtilities.invokeAndWait(
+       new Runnable(){
+         public void run(){
+           comp.setText(text);
          }
-         else{
-           try{
-             urls = splitUrls(finUrl);
-           }
-           catch(Exception e){
-             Debug.debug("Could not open URL(s) "+finUrl+". "+e.getMessage(), 1);
-             e.printStackTrace();
-             GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL(s) "+finUrl);
-             return;
-           }
-         }
-         if(urls.length==0){
-           urls = new String [] {""};
-         }
-         boolean ok = true;
-         for(int i=0; i<urls.length; ++i){
-           urls[i] = handleUrl(urls, i, frame, onlyDirs, withNavigation, localFS);
-           ok = ok && urls[i]!=null;
-         }
-         
-         if(ok){
-           text.setText(arrayToString(urls));
-         }
-         if(frame!=null){
-           frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-         }
-         //GridPilot.getClassMgr().getStatusBar().setLabel("");
        }
-     });
-     rt.start();
-     if(waitForThread){
-       myWaitForThread(rt, "File browser", 0, "launchCheckBrowser");
-     }
+     );
+   }
+   catch(Exception e){
+     e.printStackTrace();
    }
  }
+
+  private static String handleUrl(final String [] urls, int i, final Frame frame,
+     final boolean onlyDirs, final boolean withNavigation, final boolean localFS){
+    BrowserPanel wb = null;
+    final String finBaseUrl = "";//url;
+    String url = fixUrl(urls[i]);
+    Debug.debug("URL: "+url, 3);
+    try{
+      if(SwingUtilities.isEventDispatchThread()){
+        wb = launchBrowserPanel(frame, onlyDirs, url, finBaseUrl,
+            withNavigation, localFS, urls);
+      }
+      else{
+        final String tmpUrl = url;
+        MyResThread rt = new MyResThread(){
+          BrowserPanel wb = null;
+          public void run(){
+            try{
+              wb = launchBrowserPanel(frame, onlyDirs, tmpUrl, finBaseUrl,
+                  withNavigation, localFS, urls);
+            }
+            catch(Exception e){
+             setException(e);
+            }
+          }
+          public BrowserPanel getBrowserPanelRes(){
+            return wb;
+          }
+        };
+        SwingUtilities.invokeAndWait(rt);
+        wb = rt.getBrowserPanelRes();
+        if(rt.getException()!=null){
+          throw rt.getException();
+        }
+      }
+    }
+    catch(Exception eee){
+      url = null;
+      handleCheckPanelException(eee, finBaseUrl);
+    }
+                    
+    if(wb!=null && wb.getLastURL()!=null && wb.getLastURL().startsWith(finBaseUrl)){
+      // Set the text: the URL browsed to with base URL removed
+      //jt.setText(wb.lastURL.substring(finBaseUrl.length()));
+      url = wb.getLastURL().substring(finBaseUrl.length());
+      //GridPilot.getClassMgr().getStatusBar().setLabel("");
+    }
+    else{
+      // Don't do anything if we cannot get a URL
+      url = null;
+      Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
+    }
+    if(url!=null && !url.equals("") && isLocalFileName(url)){
+      url = replaceWithTildeLocally(url);
+    }
+    return url;
+  }
  
- private static String handleUrl(String [] urls, int i, final Frame frame,
-     boolean onlyDirs, boolean withNavigation, boolean localFS){
+ private static BrowserPanel launchBrowserPanel(Frame frame, boolean onlyDirs,
+     String url, String finBaseUrl, boolean withNavigation, boolean localFS,
+     String [] urls) throws Exception {
    BrowserPanel wb = null;
-   final String finBaseUrl = "";//url;
-   String url = urls[i];
+   try{
+     wb = new BrowserPanel(
+         frame,
+         onlyDirs?"Choose directory":"Choose file",
+         //finUrl,
+         url,
+         finBaseUrl,
+         true/*modal*/,
+         !onlyDirs && withNavigation/*filter*/,
+         withNavigation/*navigation*/,
+         null,
+         onlyDirs?"*/":null,
+         localFS);
+   }
+   catch(Exception e){
+     if(urls!=null && urls.length>1){
+       throw e;
+     }
+   }
+   if(wb==null){
+     wb = new BrowserPanel(
+         frame,
+         onlyDirs?"Choose directory":"Choose file",
+         //finUrl,
+         "file:~/",
+         finBaseUrl,
+         true/*modal*/,
+         !onlyDirs && withNavigation/*filter*/,
+         withNavigation/*navigation*/,
+         null,
+         onlyDirs?"*/":null,
+         localFS);
+   }
+   return wb;
+}
+
+private static String fixUrl(String _url){
+   String url = _url;
    try{
      if(url.startsWith("/")){
        url = (new File(url)).toURI().toURL().toExternalForm();
@@ -273,62 +380,6 @@ public class MyUtil extends gridfactory.common.Util{
      ee.printStackTrace();
      GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+url);
      url = null;
-   }
-   Debug.debug("URL: "+url, 3);
-   try{
-     wb = null;
-     try{
-       wb = new BrowserPanel(
-           frame,
-           onlyDirs?"Choose directory":"Choose file",
-           //finUrl,
-           url,
-           finBaseUrl,
-           true/*modal*/,
-           !onlyDirs && withNavigation/*filter*/,
-           withNavigation/*navigation*/,
-           null,
-           onlyDirs?"*/":null,
-           localFS);
-     }
-     catch(Exception e){
-       if(urls!=null && urls.length>1){
-         throw e;
-       }
-     }
-     if(wb==null){
-       wb = new BrowserPanel(
-           frame,
-           onlyDirs?"Choose directory":"Choose file",
-           //finUrl,
-           "file:~/",
-           finBaseUrl,
-           true/*modal*/,
-           !onlyDirs && withNavigation/*filter*/,
-           withNavigation/*navigation*/,
-           null,
-           onlyDirs?"*/":null,
-           localFS);
-     }
-   }
-   catch(Exception eee){
-     url = null;
-     handleCheckPanelException(eee, finBaseUrl);
-   }
-                    
-   if(wb!=null && wb.lastURL!=null && wb.lastURL.startsWith(finBaseUrl)){
-     // Set the text: the URL browsed to with base URL removed
-     //jt.setText(wb.lastURL.substring(finBaseUrl.length()));
-     url = wb.lastURL.substring(finBaseUrl.length());
-     //GridPilot.getClassMgr().getStatusBar().setLabel("");
-   }
-   else{
-     // Don't do anything if we cannot get a URL
-     url = null;
-     Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
-   }
-   if(url!=null && !url.equals("") && isLocalFileName(url)){
-     url = replaceWithTildeLocally(url);
    }
    return url;
  }
@@ -1317,8 +1368,8 @@ public class MyUtil extends gridfactory.common.Util{
    * when doing PFN lookups.
    */
   public static JProgressBar setProgressBar(int maxVal, final String dbName){
+    StatusBar statusBar = GridPilot.getClassMgr().getStatusBar();
     JProgressBar pb = new JProgressBar();
-    pb.setMaximum(maxVal);
     ImageIcon cancelIcon;
     URL imgURL=null;
     try{
@@ -1329,7 +1380,8 @@ public class MyUtil extends gridfactory.common.Util{
       Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "stop.png", 3);
       cancelIcon = new ImageIcon();
     }
-    GridPilot.getClassMgr().getStatusBar().setProgressBar(pb);
+    statusBar.setProgressBar(pb);
+    statusBar.setProgressBarMax(pb, maxVal);
     JButton bCancel = new JButton(cancelIcon);
     bCancel.setToolTipText("click here to stop PFN lookup");
     bCancel.addMouseListener(new MouseAdapter(){
@@ -1341,7 +1393,7 @@ public class MyUtil extends gridfactory.common.Util{
     jpCancel.add(bCancel);
     jpCancel.setPreferredSize(new java.awt.Dimension(6, 4));
     jpCancel.setSize(new java.awt.Dimension(6, 4));
-    GridPilot.getClassMgr().getStatusBar().setCenterComponent(jpCancel);
+    statusBar.setCenterComponent(jpCancel);
     pb.validate();
     return pb;
   }
@@ -1350,11 +1402,31 @@ public class MyUtil extends gridfactory.common.Util{
     showMessage("ERROR", text);
   }
 
-  public static void showMessage(String title, String text){
+  private static void showMessage0(String title, String text){
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String confirmString = text;
     try{
       confirmBox.getConfirm(title, confirmString, new Object[] {"OK"});
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+  }
+
+  public static void showMessage(final String title, final String text){
+    if(SwingUtilities.isEventDispatchThread()){
+      showMessage0(title, text);
+      return;
+    }
+    // else
+    try{
+      SwingUtilities.invokeAndWait(
+        new Runnable(){
+          public void run(){
+            showMessage0(title, text);
+          }
+        }
+      );
     }
     catch(Exception e){
       e.printStackTrace();
@@ -1791,16 +1863,17 @@ public class MyUtil extends gridfactory.common.Util{
       }
     }
     frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-    if(wb==null || wb.lastURL==null || !wb.lastURL.startsWith(finBaseUrl)){
-      Debug.debug("ERROR: Could not open URL "+finBaseUrl+":"+wb.lastURL, 1);
-      throw new IOException("No download directory; "+wb.lastURL);
+    if(wb==null || wb.getLastURL()==null || !wb.getLastURL().startsWith(finBaseUrl)){
+      Debug.debug("ERROR: Could not open URL "+finBaseUrl+":"+wb.getLastURL(), 1);
+      throw new IOException("No download directory; "+wb.getLastURL());
     }
     //GridPilot.getClassMgr().getStatusBar().setLabel("");
-    String ret = wb.lastURL.substring(finBaseUrl.length());
+    String ret = wb.getLastURL().substring(finBaseUrl.length());
     Debug.debug("Returning last URL "+ret, 2);
     if(onlyDirs && !ret.endsWith("/")){
       throw new IOException("ERROR: not a directory: "+ret);
     }
     return ret;
   }
+  
 }

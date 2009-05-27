@@ -12,9 +12,7 @@ import org.globus.ftp.DataChannelAuthentication;
 import org.globus.ftp.DataSink;
 import org.globus.ftp.GridFTPClient;
 import org.globus.ftp.GridFTPSession;
-import org.globus.ftp.exception.ClientException;
 import org.globus.ftp.exception.FTPException;
-import org.globus.ftp.exception.ServerException;
 import org.globus.gsi.gssapi.auth.Authorization;
 import org.globus.io.urlcopy.UrlCopy;
 import org.globus.io.urlcopy.UrlCopyException;
@@ -28,6 +26,7 @@ import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
 import gridfactory.common.StatusBar;
+import gridfactory.common.TransferControl;
 
 import gridpilot.GridPilot;
 import gridpilot.MyFileAppender;
@@ -613,6 +612,11 @@ public class GSIFTPFileTransfer implements FileTransfer {
     }
   }
   
+  public Vector<String> find(GlobusURL globusUrl, String filter) throws Exception {
+    return TransferControl.find(this, globusUrl, new Long(getFileBytes(globusUrl)), filter, new Vector<GlobusURL>(),
+        new Vector<Long>(), 1);
+  }
+  
   public Vector list(GlobusURL globusUrl, String filter) throws IOException, FTPException{
     return list(globusUrl, filter, null);
   }
@@ -685,8 +689,6 @@ public class GSIFTPFileTransfer implements FileTransfer {
         statusBar.setLabel("Filtering...");
       }
       Debug.debug("Filter is "+filter, 3);
-      filter = filter.replaceAll("\\.", "\\\\.");
-      filter = filter.replaceAll("\\*", ".*");
       Debug.debug("Filtering with "+filter, 3);
       for(int i=0; i<textArr.length; ++i){
         line = textArr[i].toString();
@@ -718,7 +720,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
           }
         }
         // If server is nice enough to provide file information, use it
-        if(fileName.matches(filter)){
+        if(MyUtil.filterMatches(fileName, filter)){
           if(line.matches("d[rwxsS-]* .*") ||
              /*BNL style*/line.matches("d\\? +.*")){
             textVector.add(fileName+"/");

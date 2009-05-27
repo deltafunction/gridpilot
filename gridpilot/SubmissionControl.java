@@ -3,6 +3,7 @@ package gridpilot;
 import javax.swing.*;
 
 import java.awt.event.*;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -27,6 +28,7 @@ import gridfactory.common.StatusBar;
 public class SubmissionControl{
   private Vector submittedJobs;
   private StatusBar statusBar;
+  private StatusBar monitorStatusBar;
   private JProgressBar pbSubmission;
   private boolean isProgressBarSet = false;
   private ConfigFile configFile;
@@ -36,9 +38,9 @@ public class SubmissionControl{
   private Timer timer;
   private ImageIcon iconSubmitting;
   private ImageIcon iconWaiting;
-  /** All jobs for which the submission is not made yet */
+  /** All jobs for which the submission is not done yet. */
   private Vector toSubmitJobs = new Vector();
-  /** All jobs for which the submission is in progress */
+  /** All jobs for which the submission is in progress. */
   private Vector submittingJobs = new Vector();
  /** Maximum number of simulaneous threads for submission. */
   private int maxSimultaneousSubmissions = 5;
@@ -46,7 +48,7 @@ public class SubmissionControl{
   private int maxRunning = 10;
   /** Maximum total number of simultaneously running jobs per CS. */
   private int [] maxRunningPerCS;
-  /** Delay between the begin of two submission threads */
+  /** Delay between the begin of two submission threads. */
   private int timeBetweenSubmissions = 5000;
   private String isRand = null;
   private String [] csNames;
@@ -57,6 +59,7 @@ public class SubmissionControl{
     csPluginMgr = GridPilot.getClassMgr().getCSPluginMgr();
     
     statusBar = GridPilot.getClassMgr().getStatusBar();
+    monitorStatusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     configFile = GridPilot.getClassMgr().getConfigFile();
     logFile = GridPilot.getClassMgr().getLogFile();
 
@@ -65,8 +68,22 @@ public class SubmissionControl{
         trigSubmission();
       }
     });
+    
     loadValues();
-    pbSubmission = new JProgressBar(0,0);
+    createProgressBar();
+  }
+  
+  private void createProgressBar() throws InterruptedException, InvocationTargetException{
+    SwingUtilities.invokeAndWait(new Runnable() {
+      public void run(){
+        try{
+          pbSubmission = new JProgressBar(0,0);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+      }
+    });
   }
   
   /**
@@ -178,8 +195,7 @@ public class SubmissionControl{
    */
   public void submitJobDefinitions(/*vector of DBRecords*/Vector selectedJobs,
       String csName, DBPluginMgr dbPluginMgr){
-    GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel();
-    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.tpStatLog.setSelectedIndex(MonitoringPanel.TAB_INDEX_JOBS);
+    GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel(MonitoringPanel.TAB_INDEX_JOBS);
     synchronized(submittedJobs){
       Vector newJobs = new Vector();
       // This label is not shown because this function is not called in a Thread.
@@ -346,7 +362,7 @@ public class SubmissionControl{
   public void resubmit(Vector<MyJobInfo> jobs){
     boolean askSave = false;
     boolean deleteFiles = false;
-    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Cleaning up jobs...");
+    monitorStatusBar.setLabel("Cleaning up jobs...");
     for(int i=0; i<jobs.size() ; ++i){
       MyJobInfo job = jobs.get(i);
       Shell shell = null;
@@ -410,7 +426,7 @@ public class SubmissionControl{
     MyJobInfo job = null;
     JobMgr jobMgr = null;
     HashMap<String, Vector<MyJobInfo>> submitables = new HashMap<String, Vector<MyJobInfo>>();
-    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Updating job status...");
+    monitorStatusBar.setLabel("Updating job status...");
     while(jobs.size()>0){
       job = (MyJobInfo) jobs.remove(0);
       jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
@@ -422,8 +438,8 @@ public class SubmissionControl{
       GridPilot.getClassMgr().getCSPluginMgr().cleanup(job);
       // then set the status to Submitted
       // (this will not cause a cleanup, as setting the status to Defined would)
-      jobMgr.updateDBStatus(job, DBPluginMgr.SUBMITTED);
-      if(job.getDBStatus()!=DBPluginMgr.SUBMITTED){
+      jobMgr.updateDBStatus(job, DBPluginMgr.ABORTED);
+      if(job.getDBStatus()!=DBPluginMgr.ABORTED){
         // updateDBStatus didn't work
         logFile.addMessage(
             "This job cannot be set Submitted -> this job cannot be resubmited",
@@ -438,12 +454,16 @@ public class SubmissionControl{
       }
     }
     // if all went well we can now submit
-    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Submitting job(s)...");
+    //monitorStatusBar.setLabel("Submitting job(s)...");
     String dbName;
     for(Iterator<String> it=submitables.keySet().iterator(); it.hasNext();){
       dbName = it.next();
       jobMgr.updateJobCells(submitables.get(dbName));
+      Debug.debug("Queueing "+submitables.get(dbName), 2);
       queue(submitables.get(dbName));
+    }
+    if(!timer.isRunning()){
+      timer.restart();
     }
   }
 
@@ -542,20 +562,18 @@ public class SubmissionControl{
       return;
     }
     final MyJobInfo job = (MyJobInfo) toSubmitJobs.get(0);
-    if(!toSubmitJobs.isEmpty()){
-      if(checkRunning(job)){
-        job.setDBStatus(DBPluginMgr.SUBMITTED);
-        // transfer job from toSubmitJobs to submittingJobs
-        toSubmitJobs.remove(job);
-        submittingJobs.add(job);
-        new Thread(){
-          public void run(){
-            submit(job);
-          }
-        }.start();
-      }
+    if(checkRunning(job)){
+      job.setDBStatus(DBPluginMgr.SUBMITTED);
+      // transfer job from toSubmitJobs to submittingJobs
+      toSubmitJobs.remove(job);
+      submittingJobs.add(job);
+      new Thread(){
+        public void run(){
+          submit(job);
+        }
+      }.start();
     }
-    else{
+    if(toSubmitJobs.isEmpty()){
       timer.stop();
     }
   }
@@ -599,11 +617,14 @@ public class SubmissionControl{
         }
       }
     }
-    //Debug.debug("Found running jobs: "+MyUtil.arrayToString(csNames)+" --> "+MyUtil.arrayToString(rJobsByCS)+
-    //    " --> "+MyUtil.arrayToString(maxRunningPerCS), 3);
-    return submittingJobs.size()<maxSimultaneousSubmissions &&
+    boolean ret = submittingJobs.size()<maxSimultaneousSubmissions &&
       submittingJobs.size()+runningJobs<maxRunning &&
       rJobsByCS[jobCsIndex]<maxRunningPerCS[jobCsIndex];
+    if(!ret){
+      Debug.debug("Found running jobs: "+MyUtil.arrayToString(csNames)+" --> "+MyUtil.arrayToString(rJobsByCS)+
+          " --> "+MyUtil.arrayToString(maxRunningPerCS), 3);
+    }
+    return ret;
   }
 
   /**
@@ -675,14 +696,11 @@ public class SubmissionControl{
     if(!timer.isRunning()){
       timer.restart();
     }
-    pbSubmission.setValue(pbSubmission.getValue() + 1);
-    if(pbSubmission.getPercentComplete()==1.0){
-      statusBar.removeProgressBar(pbSubmission);
+    statusBar.incrementProgressBarValue(pbSubmission, 1);
+    statusBar.cleanupProgressBar(pbSubmission);
+    if(statusBar.cleanupProgressBar(pbSubmission)==1){
       isProgressBarSet = false;
-      pbSubmission.setMaximum(0);
-      pbSubmission.setValue(0);
-      //statusBar.setLabel("Submission done.");
-      GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Submission done.");
+      monitorStatusBar.setLabel("Submission done.");
     }
     // remove iconSubmitting
     statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);

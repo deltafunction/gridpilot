@@ -625,7 +625,7 @@ public class SRMFileTransfer implements FileTransfer {
         try{
           Debug.debug("Transfer request submitted for get. Waiting for ok.", 2);
           // show message on status bar on monitoring frame
-          StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+          StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
           statusBar.setLabel("Waiting for file(s) to be ready...");
           assignedTurls = waitForOK(thesePendingIDs);
           Debug.debug("Assigned TURLs: "+MyUtil.arrayToString(assignedTurls), 2);
@@ -671,7 +671,7 @@ public class SRMFileTransfer implements FileTransfer {
           }
         }
         // show message on status bar on monitoring frame
-        StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+        StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
         statusBar.setLabel("File(s) ready, starting download.");
         try{
           // Now use some other plugin - depending on the TURL returned
@@ -745,7 +745,7 @@ public class SRMFileTransfer implements FileTransfer {
         try{
           Debug.debug("Transfer request submitted for put. Waiting for ok.", 2);
           // show message on status bar on monitoring frame
-          StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+          StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
           statusBar.setLabel("Waiting for file(s) to be ready...");
           assignedTurls = waitForOK(thesePendingIDs);
         }
@@ -784,7 +784,7 @@ public class SRMFileTransfer implements FileTransfer {
           }
         }
         // show message on status bar on monitoring frame
-        StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+        StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
         statusBar.setLabel("File(s) ready, starting download.");
         try{
           // Now use some other plugin - depending on the TURL returned
@@ -1104,6 +1104,11 @@ public class SRMFileTransfer implements FileTransfer {
   public void putFile(File file, GlobusURL globusFileUrl) throws Exception {
       // No point in implementing this. SRM is anyway not browsable.
      throw new IOException("getFile not supported by SRM plugin.");
+  }
+  
+  public Vector find(GlobusURL globusUrl, String filter) throws Exception {
+    // No point in implementing this. SRM is anyway not browsable.
+    throw new IOException("list not supported by SRM plugin.");
   }
 
   public Vector list(GlobusURL globusUrl, String filter) throws Exception {

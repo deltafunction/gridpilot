@@ -39,7 +39,7 @@ public class JobCreationPanel extends CreateEditPanel{
   private String [] stdOutputNames = {"stdout", "stderr"};
   
   private static String LOCAL_NAME_LABEL = " : Local name : ";
-  private static String REMOTE_NAME_LABEL = " -> Remote name : ";
+  private static String REMOTE_NAME_LABEL = " -> Destination : ";
   private static String LABEL_END = " : ";
 
   // TODO: use JobMgr, move some functionality from here to there.
@@ -135,6 +135,11 @@ public class JobCreationPanel extends CreateEditPanel{
     }
     if(datasetFields.contains("outputlocation")){
       instructionLabelString += ", output destination: $o";
+    }
+    if(datasetFields.contains("inputdataset")){
+      instructionLabelString += ", input base-name(s): $f";
+      //instructionLabelString += ", input file URL(s): $u";
+      instructionLabelString += ", input path: $p";
     }
     instructionLabelString += ", iterator: $i";
     detailFields.add(new JLabel(instructionLabelString));
@@ -309,7 +314,8 @@ public class JobCreationPanel extends CreateEditPanel{
       if(jobParamNames[i].equalsIgnoreCase("nEvents") ||
           jobParamNames[i].equalsIgnoreCase("eventMin") ||
           jobParamNames[i].equalsIgnoreCase("eventMax") ||
-          jobParamNames[i].equalsIgnoreCase("inputFileURLs")){
+          jobParamNames[i].equalsIgnoreCase("inputFileURLs") ||
+          jobParamNames[i].equalsIgnoreCase("inputFileNames")){
         detailFields.add(jobAttributeLabels[i]);
         detailFields.add(tcJobParam[i]);
         tcJobParam[i].setText("");
@@ -438,7 +444,7 @@ public class JobCreationPanel extends CreateEditPanel{
       }
       
       if(isInMetadata){
-        tcOutputMap[i][1].setText(outputMapValues[i]);
+        tcOutputMap[i][1].setText(outputMapValues[i].replaceFirst("\"\"", ""));
       }
       else{
         tcOutputMap[i][1].setText("$o/$n.${i:5}"+extension);
@@ -597,7 +603,12 @@ public class JobCreationPanel extends CreateEditPanel{
         }
         else if(((JLabel) pAttributes.getComponent(i)).getText().equals(REMOTE_NAME_LABEL)){
           field = null;
-          outMapping.add(value);
+          if(value!=null && value.equals("")){
+            outMapping.add("\"\"");
+          }
+          else{
+            outMapping.add(value);
+          }
         }
         // Normal, field\::value
         if(field!=null && !field.equals("") && value!=null/* && !value.equals("")*/){

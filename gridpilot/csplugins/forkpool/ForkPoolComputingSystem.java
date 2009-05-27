@@ -377,7 +377,10 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     String runDir = runDir(job);
     try{
       if(copyToFinalDest((MyJobInfo) job, getShell(job.getHost()))){
-        return getShell(job.getHost()).deleteDir(runDir);
+        if(!getShell(job.getHost()).deleteDir(runDir)){
+          logFile.addMessage("WARNING: could not delete run directory "+runDir+" for job "+job.getIdentifier());
+        }
+        return true;
       }
       else{
         return false;
@@ -392,31 +395,33 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   }
 
   public boolean preProcess(JobInfo job) throws Exception{
-    // choose the host
-    String host = selectHost(job);
-    if(host==null){
-      logFile.addInfo("No free slot on any host.");
-      return false;
-    }
-    ((HashSet) submittingHostJobs.get(host)).add(job);
-    
-    Debug.debug("Getting ShellMgr for host "+host, 2);
-    Shell mgr = getShell(host);
-    job.setHost(host);
-    job.setUserInfo(mgr.getUserName());
-    
-    // create the run directory
+    boolean ret = true;
     try{
+      // choose the host
+      String host = selectHost(job);
+      if(host==null){
+        ret = false;
+        throw new Exception("No free slot on any host.");
+      }
+      Debug.debug("Getting ShellMgr for host "+host, 2);
+      Shell mgr = getShell(host);
+      job.setHost(host);
+      job.setUserInfo(mgr.getUserName());
+      // create the run directory
       if(!getShell(job.getHost()).existsFile(runDir(job))){
         getShell(job.getHost()).mkdirs(runDir(job));
       }
+      ((HashSet) submittingHostJobs.get(host)).add(job);
+      ret = setupJobRTEs((MyJobInfo) job, getShell(job.getHost())) &&
+         setRemoteOutputFiles((MyJobInfo) job) && getInputFiles((MyJobInfo) job, getShell(job.getHost()));
     }
     catch(Exception e){
-      logFile.addMessage("ERROR: could not create run directory for job.", e);
-      return false;
+      logFile.addMessage("ERROR: could prepare job.", e);
     }
-    return setupJobRTEs((MyJobInfo) job, getShell(job.getHost())) &&
-       setRemoteOutputFiles((MyJobInfo) job) && getInputFiles((MyJobInfo) job, getShell(job.getHost()));
+    finally{
+      ((HashSet) submittingHostJobs.get(job.getHost())).remove(job);
+    }
+    return ret;
   }
   
   /**
@@ -491,7 +496,10 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   }
 
   public Shell getShell(JobInfo job){
-    return (Shell) remoteShellMgrs.get(job.getHost());
+    Debug.debug("Getting shell for job "+job.getIdentifier()+" on host "+job.getHost(), 2);
+    Shell shell = remoteShellMgrs.get(job.getHost());
+    Debug.debug("Returning "+shell, 2);
+    return shell;
   }
 
 }

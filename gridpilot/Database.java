@@ -124,14 +124,14 @@ public interface Database{
   public String getRunInfo(String jobDefID, String key) throws InterruptedException;
   public boolean cleanRunInfo(String jobDefID) throws InterruptedException;
   public boolean reserveJobDefinition(String jobDefID, String UserName, String cs) throws InterruptedException;
-  public String [] getOutputFiles(String jobDefID) throws InterruptedException;
-  public String [] getJobDefInputFiles(String jobDefID) throws InterruptedException;
-  public String getJobDefOutRemoteName(String jobDefID, String par) throws InterruptedException;
-  public String getJobDefOutLocalName(String jobDefID, String par) throws InterruptedException;
+  public String [] getOutputFiles(String jobDefID) throws Exception;
+  public String [] getJobDefInputFiles(String jobDefID) throws Exception;
+  public String getJobDefOutRemoteName(String jobDefID, String par) throws Exception;
+  public String getJobDefOutLocalName(String jobDefID, String par) throws Exception;
   public String getStdOutFinalDest(String jobDefID) throws InterruptedException;
   public String getStdErrFinalDest(String jobDefID) throws InterruptedException;
   public String [] getTransformationArguments(String jobDefID) throws InterruptedException;
-  public String [] getJobDefTransPars(String jobDefID) throws InterruptedException;
+  public String [] getJobDefTransPars(String jobDefID) throws Exception;
   
   // ####### Misc
   public boolean setJobDefsField(String [] identifiers, String field, String value) throws InterruptedException;

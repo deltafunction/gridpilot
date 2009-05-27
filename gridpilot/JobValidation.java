@@ -109,7 +109,7 @@ public class JobValidation{
         public void run(){
           Debug.debug("Validating job "+job.getName(), 2);
           int dbStatus = doValidate(job);
-          GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Validation of " + job.getName() + " done : "
+          GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel("Validation of " + job.getName() + " done : "
               + DBPluginMgr.getStatusName(dbStatus) +
               " (" + (toValidateJobs.size() + waitingJobs.size())+ " jobs in the queue )");
           endOfValidation(job, dbStatus);

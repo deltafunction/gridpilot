@@ -3,15 +3,12 @@ package gridpilot.csplugins.ng;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.security.GeneralSecurityException;
-import java.text.SimpleDateFormat;
 import java.util.Collection;
-import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.StringTokenizer;
-import java.util.TimeZone;
 import java.util.Vector;
 
 import javax.swing.JOptionPane;
@@ -887,7 +884,7 @@ public class NGComputingSystem implements MyComputingSystem{
          "\nException: " + ae.getMessage();
          res[0] = "*** Could not read stdout ***\n Probably the job has not started yet, " +
                 "did never start or got deleted.";
-         GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("ERROR: "+ae.getMessage());
+         GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel("ERROR: "+ae.getMessage());
          logFile.addMessage(error, ae);
          //throw ae;
        }
@@ -948,7 +945,7 @@ public class NGComputingSystem implements MyComputingSystem{
   }
   
   public ARCJob [] findCurrentJobsFromIS(){
-    StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+    StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
 
     long start = System.currentTimeMillis();
     long limit = 30000;//10000;

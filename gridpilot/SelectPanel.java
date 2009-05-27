@@ -28,8 +28,8 @@ public class SelectPanel extends JPanel{
   private String tableName;
   private String [] relationNames = {"=", "CONTAINS", "<", ">", "!="};
   private GridBagConstraints gbcVC;
-  public SPanel.ConstraintPanel spcp;
-  protected SPanel sPanel;
+  private SPanel.ConstraintPanel spcp;
+  private SPanel sPanel;
 
   /**
   * Constructors
@@ -129,9 +129,9 @@ public class SelectPanel extends JPanel{
     private JButton bAddDisplayRow;
     private JButton bRemoveDisplayRow;
     private JPanel spDisplays;
-    protected JPanel spDisplayList;
-    protected String [] fieldList;
-    public String name = "";
+    private JPanel spDisplayList;
+    private String [] fieldList;
+    private String name = "";
        
     public SPanel(String _name, String [] _fieldList){
       name = _name;
@@ -213,7 +213,7 @@ public class SelectPanel extends JPanel{
       private static final long serialVersionUID = 1L;
       private JComboBox cbConstraintAttribute;
       private JComboBox cbConstraintRelation;
-      public JTextField tfConstraintValue;
+      private JTextField tfConstraintValue;
       ConstraintPanel(){
         // Combobox attribute
         if(fieldList==null){
@@ -245,7 +245,7 @@ public class SelectPanel extends JPanel{
      
     protected class DisplayPanel extends JPanel{
       private static final long serialVersionUID = 1L;
-      protected JComboBox cbDisplayAttribute;
+      private JComboBox cbDisplayAttribute;
       DisplayPanel(boolean withStar){
         // Combobox attribute
         cbDisplayAttribute = new JComboBox();
@@ -267,6 +267,10 @@ public class SelectPanel extends JPanel{
         cbDisplayAttribute.setSelectedIndex(0);
         this.add(cbDisplayAttribute);
       }
+      public String getSelected() {
+        return (String) cbDisplayAttribute.getSelectedItem();
+      }
+      
     }
 
      /**
@@ -364,7 +368,7 @@ public class SelectPanel extends JPanel{
     spcp.tfConstraintValue.setText(value);
   }
 
-  public void setDisplayFieldValue(String [][] values){
+  public void setDisplayFieldValues(String [][] values){
     SPanel spanel;
     SPanel thisSPanel = null;
     boolean fieldOk = false;
@@ -425,5 +429,17 @@ public class SelectPanel extends JPanel{
         }
       }
     }
+  }
+  
+  public int getDisplayFieldsCount() {
+    return sPanel.spDisplayList.getComponentCount();
+  }
+
+  public Component getDisplayPanel(int i) {
+    return sPanel.spDisplayList.getComponent(i);
+  }
+
+  public void addListenerForEnter(KeyAdapter adapter) {
+    spcp.tfConstraintValue.addKeyListener(adapter);
   }
 }

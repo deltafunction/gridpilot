@@ -51,6 +51,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private JCheckBox cbAutoRefresh = new JCheckBox("each");
   private JSpinner sAutoRefresh = new JSpinner();
   private JComboBox cbRefreshUnits = new JComboBox(new Object []{"sec", "min"});
+  private int SEC = 0;
   private int MIN = 1;
   private JMenuItem miShowInfo = new JMenuItem("Show Information");
   private JMenuItem miRefresh = new JMenuItem("Refresh");
@@ -69,14 +70,18 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
 
   /**
    * Constructor
+   * @throws Exception 
    */
-  public TransferMonitoringPanel() throws Exception{
+  public TransferMonitoringPanel() throws Exception {
     statusTable = GridPilot.getClassMgr().getTransferStatusTable();
     statusTable.addListSelectionListener(new ListSelectionListener(){
       public void valueChanged(ListSelectionEvent e){
         selectionEvent(e);
       }
     });
+  }
+  
+  public void activate() {
     transferControl = GridPilot.getClassMgr().getTransferControl();
     statusUpdateControl = GridPilot.getClassMgr().getTransferStatusUpdateControl();
   }
@@ -87,7 +92,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
 
   public void initGUI(){
 
-    statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+    statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     this.setLayout(new BorderLayout());
     mainPanel.setLayout(new BorderLayout());
     
@@ -171,14 +176,14 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     });
 
     sAutoRefresh.setPreferredSize(new Dimension(50, 21));
-    sAutoRefresh.setModel(new SpinnerNumberModel(5, 1, 9999, 1));
+    sAutoRefresh.setModel(new SpinnerNumberModel(20, 1, 9999, 1));
     sAutoRefresh.addChangeListener(new ChangeListener(){
       public void stateChanged(ChangeEvent e){
         delayChanged();
       }
     });
 
-    cbRefreshUnits.setSelectedIndex(MIN);
+    cbRefreshUnits.setSelectedIndex(SEC);
     cbRefreshUnits.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         delayChanged();
@@ -273,8 +278,16 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   /**
    * Called when check box for auto refresh is selected
    */
-  void cbAutoRefresh_clicked(){
-    if(cbAutoRefresh.isSelected()){
+  private void cbAutoRefresh_clicked(){
+    setAutoRefresh(cbAutoRefresh.isSelected());
+  }
+  
+  /**
+   * Start or stop auto refreshing.
+   * @param refresh
+   */
+  public void setAutoRefresh(boolean refresh){
+    if(refresh){
       Debug.debug("restarting auto refresh timer", 3);
       delayChanged();
       timerRefresh.restart();
@@ -287,7 +300,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   /**
    * Called when either the spinner valuer is changed or combo box "sec/min" is changed
    */
-  void delayChanged(){
+  private void delayChanged(){
     int delay = ((Integer) (sAutoRefresh.getValue())).intValue();
       Debug.debug("Changing refresh interval to "+delay, 3);
     if(cbRefreshUnits.getSelectedIndex()==MIN){
@@ -301,7 +314,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   /**
    * Called when button or menu item "Kill" is selected
    */
-  void kill(){
+  private void kill(){
     (new Thread(){
       public void run(){
         transferControl = GridPilot.getClassMgr().getTransferControl();
@@ -323,25 +336,25 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private void showInfo(){
     final Thread t = new Thread(){
       public void run(){
-        String info = "";
+        String info = "<html>";
         TransferInfo transfer = getTransferAtRow(statusTable.getSelectedRow());
         try{
-          info += "File transfer system : "+transfer.getFTName()+"\n";
+          info += "File transfer system : "+transfer.getFTName()+"<br>\n";
           try{
             info += "User information : "+GridPilot.getClassMgr().getFTPlugin(
-                transfer.getFTName()).getUserInfo()+"\n";
+                transfer.getFTName()).getUserInfo()+"<br>\n";
           }
           catch(Exception e){
           }
           info += "File catalog : "+(transfer.getDBName()==null?
-              "none":transfer.getDBName())+"\n";
-          info += transfer+"\n";
+              "none":transfer.getDBName())+"<br>\n";
+          info += transfer.toString().replaceAll("\\n", "<br>\n")+"<br>\n";
           try{
-            info += "Status : "+transfer.getStatus()+"\n";
+            info += "Status : "+transfer.getStatus()+"<br>\n";
           }
           catch(Exception e){
           }
-          info += "Internal status : "+transfer.getInternalStatus()+"\n";
+          info += "Internal status : "+transfer.getInternalStatus()+"<br>\n";
           try{
             info += "Plugin "+transferControl.getFullStatus(transfer.getTransferID());
           }
@@ -353,6 +366,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
           info += "ERROR: could not get status from plugin. " +
                 "The transfer may not have started yet. "+e.getMessage();
         }
+        info += "</html>";
         statusBar.removeLabel();
         statusBar.stopAnimation();
         //MyUtil.showLongMessage(info, "Transfer info");
@@ -459,7 +473,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   /**
    * Removes selected transfers from this status table.
    */
-  public void clear(int [] selectedRows){
+  private void clear(int [] selectedRows){
     transferControl = GridPilot.getClassMgr().getTransferControl();
     if(transferControl.isSubmitting()){
       Debug.debug("cannot clear table during submission", 3);
@@ -510,7 +524,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   /**
    * Removes all transfers from this status table.
    */
-  public void clearTable(){
+  private void clearTable(){
     transferControl = GridPilot.getClassMgr().getTransferControl();
     if(transferControl.isSubmitting()){
       String error = "Cannot clear table during submission";

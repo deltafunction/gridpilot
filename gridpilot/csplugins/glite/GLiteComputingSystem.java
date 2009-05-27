@@ -1129,7 +1129,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
          "\nException: " + ae.getMessage();
          res[0] = "*** Could not read stdout ***\n Probably the job has not started yet, " +
                 "did never start or got deleted.";
-         GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("ERROR: "+ae.getMessage());
+         GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel("ERROR: "+ae.getMessage());
          logFile.addMessage(error, ae);
          //throw ae;
        }

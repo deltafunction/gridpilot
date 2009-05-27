@@ -35,6 +35,7 @@ import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
 import gridfactory.common.StatusBar;
+import gridfactory.common.TransferInfo;
 import gridfactory.common.https.MyUrlCopy;
 import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 import gridpilot.ftplugins.https.HTTPSFileTransfer;
@@ -54,7 +55,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private JButton bDownload = new JButton();
   private JButton bRegister = new JButton();
   private JButton bSave = new JButton();
-  protected JButton bCancel = new JButton();
+  private JButton bCancel = new JButton();
   private JLabel currentUrlLabel = new JLabel("");
   private JTextField jtFilter = new JTextField("", 24);
   private JCheckBox jcbFilter = new JCheckBox();
@@ -66,9 +67,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
   //private String origUrl;
   private boolean withFilter = false;
   private boolean withNavigation = false;
-  protected String lastURL = null;
-  protected String [] lastUrlList = null;
-  protected String [] lastSizesList = null;
+  private String lastURL = null;
+  private String [] lastUrlsList = null;
+  private String [] lastSizesList = null;
   private String currentUrlString = "";
   private JComboBox currentUrlBox = null;
   private GSIFTPFileTransfer gsiftpFileTransfer = null;
@@ -95,10 +96,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private HashSet excludeDBs = new HashSet();
   private Vector urlList;
   
-  public static int HISTORY_SIZE = 15;
   private static int MAX_FILE_EDIT_BYTES = 100000;
   private static int TEXTFIELDWIDTH = 32;
   private static int HTTP_TIMEOUT = 10000;
+
+  public static int HISTORY_SIZE = 15;
 
   public BrowserPanel(Frame parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
@@ -158,6 +160,26 @@ public class BrowserPanel extends JDialog implements ActionListener{
       //e.printStackTrace();
       throw e;
     }
+  }
+  
+  public String getLastURL(){
+    return lastURL;
+  }
+  
+  public String[] getLastURLs(){
+    return lastUrlsList;
+  }
+  
+  public String[] getLastSizes(){
+    return lastSizesList;
+  }
+  
+  public String getFilter(){
+    return jtFilter.getText();
+  }
+  
+  public void setCancelButtonEnabled(boolean enabled){
+    bCancel.setEnabled(enabled);
   }
   
   private void readBrowserHistory(){
@@ -610,20 +632,19 @@ public class BrowserPanel extends JDialog implements ActionListener{
           if(!url.startsWith("http://") && url.indexOf("/..")<0){
             if(url.endsWith("/")){
               miDelete.setText("Delete directory");
+              miDownload.setText("Download directory");
             }
-            else{
-              miDownload.addActionListener(new ActionListener(){
-                public void actionPerformed(ActionEvent ev){
-                  downloadFile(url);
-                }
-              });
-              popupMenu.add(miDownload);
-            }
-            miDelete.addActionListener(new ActionListener(){
+            miDownload.addActionListener(new ActionListener(){
               public void actionPerformed(ActionEvent ev){
-                deleteFile(url);
+                download(url, null);
               }
             });
+            miDelete.addActionListener(new ActionListener(){
+              public void actionPerformed(ActionEvent ev){
+                deleteFileOrDir(url);
+              }
+            });
+            popupMenu.add(miDownload);
             popupMenu.add(miDelete);
           }
         }
@@ -652,6 +673,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
                 miDelete.removeActionListener(acls[j]);
               }
               miDelete.setText("Delete file");
+              miDownload.setText("Download file");
               popupMenu.remove(miRegister);
               popupMenu.remove(miDownload);
               popupMenu.remove(miDelete);
@@ -765,40 +787,149 @@ public class BrowserPanel extends JDialog implements ActionListener{
   }
   
   /**
-   * Download a single file.
+   * Download a file or directory.
    */
-  private void downloadFile(final String url){
-    final File dir = MyUtil.getDownloadDir(this);      
+  private void download(final String url, File _dir){
+    final File dir = _dir!=null?_dir:MyUtil.getDownloadDir(this);      
     if(dir==null){
       return;
     }
-    //ResThread t = (new ResThread(){
-      //public void run(){
-        Debug.debug("Getting file : "+url+" -> "+dir.getAbsolutePath(), 3);
-        try{
-          statusBar.setLabel("Downloading "+url);
-          GridPilot.getClassMgr().getTransferControl().download(url, dir);
-          Debug.debug("Download done, "+url, 2);
-          statusBar.setLabel("");
+    MyResThread rt = new MyResThread(){
+      public void run(){
+        if(url.endsWith("/")){
+          downloadDir(url, dir);
         }
-        catch(Exception e){
-          //statusBar.setLabel("Download failed");
-          //Debug.debug("Could not download "+url+" : "+e.getMessage(), 1);
-          String error = "Could not download "+url;
-          GridPilot.getClassMgr().getLogFile().addMessage(error, e);
-          showError(error+" : "+e.getMessage());
+        else{
+          downloadFile(url, dir);
         }
-        try{
-          ep.getDocument().putProperty(
-              Document.StreamDescriptionProperty, null);
-          setDisplay(thisUrl);
+      }
+    };
+    rt.start();
+  }
+
+  /**
+   * Download directory including all files and subdirs.
+   */
+  private void downloadDir(final String url, File dir){
+    Debug.debug("Downloading to "+dir.getAbsolutePath(), 3);
+    Debug.debug("Listing files in directory "+url, 2);
+    String [] allFileAndDirUrls = null;
+    try{
+      statusBar.setLabel("Listing in directory "+url);
+      String filter = jtFilter.getText();
+      allFileAndDirUrls = MyTransferControl.findAllFilesAndDirs(url, filter)[0];
+    }
+    catch(Exception e){
+      String error = "Could not download "+url;
+      GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+      showError(error+" : "+e.getMessage());
+    }
+    // Unqualified destination path
+    String destFile;
+    // Name of directory
+    String dirName = url.replaceFirst(".*/([^/]+)/$", "$1");
+    Debug.debug("Downloading whole directory "+dirName, 2);
+    // Destination dir
+    File destDir = new File(dir, dirName);
+    // List of directories to be created
+    HashSet<String> newDirs = new HashSet<String>();
+    try{
+      statusBar.setLabel("Queuing downloads... "+url);
+      GlobusURL srcUrl;
+      GlobusURL destUrl;
+      Vector<TransferInfo> transfers = new Vector<TransferInfo>();
+      for(int i=0; i<allFileAndDirUrls.length; ++i){
+        srcUrl = new GlobusURL(allFileAndDirUrls[i]);
+        destFile = allFileAndDirUrls[i].replaceFirst(url, "");
+        destUrl = new GlobusURL("file:///"+(new File(destDir, destFile)).getAbsolutePath());
+        Debug.debug("Will download "+destFile+": "+srcUrl.getURL()+"-->"+destUrl.getURL(), 2);
+        if(srcUrl.getURL().endsWith("/")){
+          newDirs.add(destUrl.getPath());
         }
-        catch(Exception e){
-          e.printStackTrace();
+        else{
+          transfers.add(new TransferInfo(srcUrl, destUrl));
         }
-      //}
-    //});     
-    //SwingUtilities.invokeLater(t);
+      }
+      GridPilot.getClassMgr().getTransferControl().queue(transfers);
+      statusBar.setLabel("Creating directories...");
+      createLocalDirs(newDirs);
+      Debug.debug("Queuing done, "+url, 2);
+      statusBar.setLabel("Queuing done");
+      ep.getDocument().putProperty(Document.StreamDescriptionProperty, null);
+      setDisplay(thisUrl);
+    }
+    catch(Exception e){
+      GridPilot.getClassMgr().getLogFile().addMessage("Could not download directory.", e);
+      return;
+    }
+    GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel(MonitoringPanel.TAB_INDEX_TRANSFERS);
+  }
+  
+  private void createLocalDirs(HashSet<String> newDirs) throws IOException {
+    String newDir;
+    for(Iterator<String> it=newDirs.iterator(); it.hasNext();){
+      newDir = it.next();
+      if(!LocalStaticShell.mkdirs(newDir)){
+        throw new IOException("Could not create directory "+newDir);
+      }
+    }
+  }
+
+  /**
+   * Find all files and their sizes in a given directory.
+   * @param url
+   * @return a 2xn array of the form {{url1, url2, ...}, {size1, size2, ...}}
+   * @throws NullPointerException
+   * @throws Exception
+   */
+  private String[][] listAllFiles(String url) throws NullPointerException, Exception {
+    GlobusURL globusUrl = new GlobusURL(url);
+    String filter = jtFilter.getText();
+    Vector<String> allFilesAndDirs = GridPilot.getClassMgr().getFTPlugin(globusUrl.getProtocol()).find(globusUrl, filter);
+    String line;
+    String file;
+    String size;
+    String[] lineArr;
+    Vector<String> allFiles = new Vector<String>();
+    Vector<String> allFileSizes = new Vector<String>();
+    for(Iterator<String> it=allFilesAndDirs.iterator(); it.hasNext();){
+      line = it.next();
+      lineArr = MyUtil.split(line);
+      file = lineArr[0];
+      size = lineArr[1];
+      if(!file.endsWith("/")){
+        allFiles.add(file);
+        allFileSizes.add(size);
+      }
+    }
+    return new String[][] {allFiles.toArray(new String[allFiles.size()]),
+        allFileSizes.toArray(new String[allFileSizes.size()])};
+  }
+
+  /**
+   * Download a single file.
+   */
+  private void downloadFile(final String url, File dir){
+    Debug.debug("Getting file : "+url+" -> "+dir.getAbsolutePath(), 3);
+    try{
+      statusBar.setLabel("Downloading "+url);
+      GridPilot.getClassMgr().getTransferControl().download(url, dir);
+      Debug.debug("Download done, "+url, 2);
+      statusBar.setLabel("");
+    }
+    catch(Exception e){
+      String error = "Could not download "+url;
+      GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+      showError(error+" : "+e.getMessage());
+    }
+    try{
+      ep.getDocument().putProperty(
+          Document.StreamDescriptionProperty, null);
+      setDisplay(thisUrl);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
   }
   
   private void showError(String str){
@@ -939,7 +1070,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           String size = null;
           if(lastSizesList!=null){
             for(int i=0; i<lastSizesList.length; ++i){
-              if(lastUrlList[i].equals(url)){
+              if(lastUrlsList[i].equals(url)){
                 size = lastSizesList[i];
                 break;
               }
@@ -1027,9 +1158,30 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Displays the URL, using the method corresponding to
    * the protocol of the URL.
    */
-  private void setDisplay(String url) throws Exception{
+  private void setDisplay(final String url) throws Exception{
+    if(SwingUtilities.isEventDispatchThread()){
+      setDisplay0(url);
+    }
+    else{
+      SwingUtilities.invokeLater(
+        new Runnable(){
+          public void run(){
+            try{
+              setDisplay0(url);
+            }
+            catch(Exception ex){
+              Debug.debug("Could not create panel ", 1);
+              ex.printStackTrace();
+            }
+          }
+        }
+      );
+    }
+  }
+
+  private void setDisplay0(String url) throws Exception{
     try{
-      lastUrlList = null;
+      lastUrlsList = null;
       lastSizesList = null;
       if( url.startsWith("~")){
         url = "file:"+System.getProperty("user.home")+url.substring(1);
@@ -1232,8 +1384,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
     File tmpFile = null;
     tmpFile = File.createTempFile("GridPilot-", ".txt");
     Debug.debug("Created temp file "+tmpFile, 3);
+    long bytes = -1;
     try{
-      long bytes = -1;
       try{
         bytes = ft.getFileBytes(new GlobusURL(url));
       }
@@ -1292,9 +1444,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bDownload.setEnabled(false);
       bRegister.setEnabled(false);
 
-      Debug.debug("Setting thisUrl, "+url, 3);
+      Debug.debug("Setting thisUrl, "+url+":"+bytes, 3);
       thisUrl = url;
-      lastUrlList = new String [] {thisUrl};
+      lastUrlsList = new String [] {thisUrl};
+      lastSizesList = new String [] {Long.toString(bytes)};
       setUrl(thisUrl);
       statusBar.setLabel(" ");
     }
@@ -1352,8 +1505,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       Debug.debug("Setting thisUrl, "+url, 3);
       thisUrl = url;
       setUrl(thisUrl);
-      lastUrlList = new String [] {thisUrl};
-      statusBar.setLabel(" ");
+      lastUrlsList = new String [] {thisUrl};
+      lastSizesList = new String [] {Long.toString(LocalStaticShell.getSize(url))};
+      statusBar.setLabel("");
     }
     catch(IOException e){
       Debug.debug("Could not set text editor for url "+url+". "+
@@ -1377,7 +1531,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bDownload.setEnabled(false);
       bRegister.setEnabled(false);
       BufferedReader in = new BufferedReader(
-        new InputStreamReader((new URL(url)).openStream()));
+          new InputStreamReader((new URL(url)).openStream()));
       String text = "";
       String line;
       int lineNumber = 0;
@@ -1396,7 +1550,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       Debug.debug("Setting thisUrl, "+url, 3);
       thisUrl = url;
       setUrl(thisUrl);
-      lastUrlList = new String [] {thisUrl};
+      lastUrlsList = new String [] {thisUrl};
+      lastSizesList = new String [] {Integer.toString(text.getBytes().length)};
       ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     }
     catch(IOException e){
@@ -1430,7 +1585,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       thisUrl = url;
       Debug.debug("Setting thisUrl, "+thisUrl, 3);
       setUrl(thisUrl);
-      lastUrlList = new String [] {thisUrl};
+      lastUrlsList = new String [] {thisUrl};
     }
     catch(Exception e){
       Debug.debug("Could not set html display of url "+url+". "+
@@ -1461,10 +1616,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
               //    Debug.debug(inputLine, 3);
               //}
         //dis.close();
-        long size = connection.getContentLength();
+        long size = getFileSize(connection);
         ep.setText("File found --> "+size+" bytes.");
         Debug.debug("Setting thisUrl, "+thisUrl, 3);
         thisUrl = url;
+        lastUrlsList = new String [] {thisUrl};
+        lastSizesList = new String [] {Long.toString(size)};
       }
       catch(MalformedURLException me){
         me.printStackTrace();
@@ -1483,6 +1640,15 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
   }
 
+  private long getFileSize(URLConnection connection) {
+    long size = connection.getContentLength();
+    String contentLength = connection.getHeaderField("Content-Length");
+    if(size<0 && contentLength!=null){
+      size = Long.parseLong(contentLength);
+    }
+    return size;
+  }
+
   /**
    * Set the EditorPane to display a confirmation or disconfirmation
    * of the existence of the URL url.
@@ -1498,9 +1664,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
     bRegister.setEnabled(false);
     ep.setEditable(false);
 
+    long bytes = -1;
     try{
       try{
-        long bytes = -1;
         try{
           bytes = ft.getFileBytes(new GlobusURL(url));
         }
@@ -1525,7 +1691,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
             e.getMessage());
       }
       pButton.updateUI();
-      lastUrlList = new String [] {thisUrl};
+      lastUrlsList = new String [] {thisUrl};
+      lastSizesList = new String [] {Long.toString(bytes)};
     }
     catch(Exception e){
       Debug.debug("Could not set confirm display of "+url+". "+
@@ -1581,33 +1748,38 @@ public class BrowserPanel extends JDialog implements ActionListener{
           filter = "*";
         }
         statusBar.setLabel("Filtering...");
-        filter = filter.replaceAll("\\.", "\\\\.");
-        filter = filter.replaceAll("\\*", ".*");
         Debug.debug("Filtering with "+filter, 3);
         Vector lastUrlVector = new Vector();
+        Vector lastSizesVector = new Vector();
+        String bytes;
         for(int j=0; j<text.length; ++j){
           if((jcbFilter.isSelected() ||
               !text[j].substring(localPath.length()).matches("^\\.[^\\.].+")) &&
-              text[j].substring(localPath.length()).matches(filter)){
+              MyUtil.filterMatches(text[j].substring(localPath.length()), filter)){
             if(LocalStaticShell.isDirectory(text[j])){
               ++directories;
             }
             else{
               ++files;
             }
+            bytes = Long.toString(LocalStaticShell.getSize(text[j]));
             textVector.add("<a href=\"file:"+text[j]+"\">" + 
                 (((text[j].matches("(\\w:\\\\).*") ||
                     text[j].matches("\\w:/.*")) &&
                     !localPath.matches("(\\w:\\\\).*") &&
                     !localPath.matches("\\w:/.*")) ? 
                     text[j].substring(localPath.length()+2) :
-                      text[j].substring(localPath.length())) +  "</a>");
+                      text[j].substring(localPath.length())) +  "</a> "+
+                      bytes);
             lastUrlVector.add("file:"+text[j]);
+            lastSizesVector.add(bytes);
           }
         }
-        lastUrlList = new String [lastUrlVector.size()];
-        for(int j=0; j<lastUrlList.length; ++j){
-          lastUrlList[j] = lastUrlVector.get(j).toString();
+        lastUrlsList = new String [lastUrlVector.size()];
+        lastSizesList = new String [lastUrlVector.size()];
+        for(int j=0; j<lastUrlsList.length; ++j){
+          lastUrlsList[j] = (String) lastUrlVector.get(j);
+          lastSizesList[j] = (String) lastSizesVector.get(j);
         }
         ep.setContentType("text/html");
         htmlText = "<html>\n";
@@ -1693,7 +1865,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     String bytes = null;
     String longName = null;
     String [] nameAndBytes = null;
-    lastUrlList = new String [length];
+    lastUrlsList = new String [length];
     lastSizesList = new String [length];
     int directories = 0;
     int files = 0;
@@ -1738,7 +1910,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       if(i<length-1){
         text += "<br>\n";
       }
-      lastUrlList[i] = protocol+"://"+host+":"+port+localPath+name;
+      lastUrlsList[i] = protocol+"://"+host+(port>0?":"+port:"")+localPath+name;
       lastSizesList[i] = bytes;
       Debug.debug(textVector.get(i).toString(), 3);
     }
@@ -1851,7 +2023,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(thisUrl==null || thisUrl.endsWith("/")){
       //lastURL = Util.urlDecode(origUrl);
       lastURL = null;
-      lastUrlList = null;
+      lastUrlsList = null;
       saveHistory();
       dispose();
     }
@@ -1864,7 +2036,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       catch(Exception ioe){
         ioe.printStackTrace();
-        lastUrlList = null;
+        lastUrlsList = null;
         //lastURL = Util.urlDecode(origUrl);
         lastURL = null;
         dispose();
@@ -1946,7 +2118,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Delete file or directory.
    * Ask for the name.
    */
-  private void deleteFile(String url){
+  private void deleteFileOrDir(String url){
     if(url==null){
       return;
     }
@@ -2112,11 +2284,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
         statusBar.setLabel(/*thisUrl+*/newFileOrDir+" created");
       }
       else if(e.getSource()==bUpload){
-        File file = getInputFile();
-        if(file==null){
+        File fileOrDir = getInputFileOrDir();
+        if(fileOrDir==null){
           return;
         }
-        GridPilot.getClassMgr().getTransferControl().upload(file, thisUrl);
+        upload(fileOrDir, thisUrl);
         try{
           statusBar.setLabel("uploading "+thisUrl);
           ep.getDocument().putProperty(
@@ -2133,26 +2305,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         if(dir==null){
           return;
         }
-        ResThread t = (new ResThread(){
-          public void run(){
-            String href = null;
-            for(Iterator it=listedUrls.iterator(); it.hasNext();){
-              href = (String) it.next();
-              Debug.debug("Getting file : "+href+" -> "+dir.getAbsolutePath(), 3);
-              try{
-                //TransferControl.download(href, dir, ep);
-                // Use the physical file name (strip off the first ...://.../.../
-                GridPilot.getClassMgr().getTransferControl().startCopyFiles(new GlobusURL [] {new GlobusURL(href)},
-                    new GlobusURL [] {new GlobusURL("file:///"+
-                        (new File(dir, href.replaceFirst(".*/([^/]+)$", "$1"))))});
-              }
-              catch(Exception e){
-                e.printStackTrace();
-              }
-            }
-          }
-        });
-        SwingUtilities.invokeLater(t);
+        downloadAll(dir);
       }
       else if(e.getSource()==bRegister){
         bmiRegister.show(this, 0, 0);
@@ -2167,14 +2320,159 @@ public class BrowserPanel extends JDialog implements ActionListener{
       ex.printStackTrace();
     }
   }
+  
+  private void downloadAll(final File dir){
+    ResThread t = (new ResThread(){
+      public void run(){
+        String href = null;
+        for(Iterator it=listedUrls.iterator(); it.hasNext();){
+          href = (String) it.next();
+          Debug.debug("Getting: "+href+" -> "+dir.getAbsolutePath(), 2);
+          try{
+            //TransferControl.download(href, dir, ep);
+            // Use the physical file name (strip off the first ...://.../.../
+            //GridPilot.getClassMgr().getTransferControl().startCopyFiles(new GlobusURL [] {new GlobusURL(href)},
+            //    new GlobusURL [] {new GlobusURL("file:///"+
+            //        (new File(dir, href.replaceFirst(".*/([^/]+)$", "$1"))))});
+            download(href, dir);
+          }
+          catch(Exception e){
+            GridPilot.getClassMgr().getLogFile().addMessage("Could not download file.", e);
+          }
+        }
+      }
+    });
+    SwingUtilities.invokeLater(t);
+  }
 
-  private File getInputFile(){
+  /**
+   * Upload a file or directory.
+   */
+  private void upload(final File fileOrDir, final String url){
+    if(fileOrDir==null){
+      return;
+    }
+    MyResThread rt = new MyResThread(){
+      public void run(){
+        if(fileOrDir.isDirectory()){
+          uploadDir(fileOrDir, url);
+        }
+        else{
+          uploadFile(fileOrDir, url);
+        }
+      }
+    };
+    rt.start();
+  }
+  
+  /**
+   * Download a single file.
+   */
+  private void uploadFile(File file, final String url){
+    Debug.debug("Putting file : "+file.getAbsolutePath()+" -> "+url, 3);
+    try{
+      statusBar.setLabel("Uploading "+url);
+      GridPilot.getClassMgr().getTransferControl().upload(file, url);
+      Debug.debug("Upload done, "+url, 2);
+      statusBar.setLabel("");
+    }
+    catch(Exception e){
+      String error = "Could not upload "+url;
+      GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+      showError(error+" : "+e.getMessage());
+    }
+  }
+
+  /**
+   * Upload directory including all files and subdirs.
+   */
+  private void uploadDir(File dir, final String url){
+    Debug.debug("Uploading to "+url, 3);
+    Debug.debug("Listing files in directory "+dir.getAbsolutePath(), 2);
+    String[] allFilesAndDirs;
+    try{
+      statusBar.setLabel("Listing files in directory "+dir.getAbsolutePath());
+      String filter = jtFilter.getText();
+      //allFileAndDirs = LocalStaticShell.listFilesAndDirsRecursively(dir.getAbsolutePath());
+      allFilesAndDirs = MyTransferControl.findAllFilesAndDirs(dir.getAbsolutePath()+File.separator, filter)[0];
+      Debug.debug("Found: "+allFilesAndDirs.length+" files and/or dirs", 2);
+    }
+    catch(Exception e){
+      String error = "Could not upload "+dir.getAbsolutePath();
+      GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+      showError(error+" : "+e.getMessage());
+      return;
+    }
+    // Src file
+    String srcFile;
+    // Unqualified src path
+    String srcFileStr;
+    // Name of directory
+    String dirName = dir.getName();
+    Debug.debug("Uploading whole directory "+dirName, 2);
+    statusBar.setLabel("Queuing uploads to "+url);
+    GlobusURL srcUrl;
+    GlobusURL destUrl;
+    Vector<TransferInfo> transfers = new Vector<TransferInfo>();
+    // List of directories to be created
+    HashSet<GlobusURL> newDirUrls = new HashSet<GlobusURL>();
+    try{
+      for(int i=0; i<allFilesAndDirs.length; ++i){
+        Debug.debug("Queuing "+allFilesAndDirs[i], 3);
+        srcFile = MyUtil.clearFile(allFilesAndDirs[i]);
+        srcUrl = new GlobusURL("file:///"+srcFile);
+        srcFileStr = srcFile.replaceFirst(dir.getAbsolutePath(), "");
+        destUrl = new GlobusURL((url+dirName+srcFileStr).replaceAll("\\\\", "/"));
+        Debug.debug("Will upload "+srcFileStr+": "+srcUrl.getURL()+"-->"+destUrl.getURL(), 2);
+        if(srcUrl.getURL().endsWith(File.separator) || LocalStaticShell.existsFile(srcFile) &&
+            LocalStaticShell.isDirectory(srcFile)){
+          newDirUrls.add(destUrl);
+        }
+        else{
+          transfers.add(new TransferInfo(srcUrl, destUrl));
+        }
+      }
+      GridPilot.getClassMgr().getTransferControl().queue(transfers);
+      createRemoteDirs(newDirUrls);
+    }
+    catch(Exception e){
+      GridPilot.getClassMgr().getLogFile().addMessage("Could not upload directory "+dir.getAbsolutePath(), e);
+      statusBar.setLabel("Queuing failed");
+      return;
+    }
+    Debug.debug("Queuing done, "+url, 2);
+    statusBar.setLabel("Queuing done");
+    GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel(MonitoringPanel.TAB_INDEX_TRANSFERS);
+  }
+
+  private void createRemoteDirs(HashSet<GlobusURL> newDirs) throws Exception {
+    GlobusURL newDir;
+    long dirSize = -1;
+    for(Iterator<GlobusURL> it=newDirs.iterator(); it.hasNext();){
+      newDir = it.next();
+      dirSize = -1;
+      try{
+        dirSize = GridPilot.getClassMgr().getTransferControl().getFileBytes(newDir);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+      Debug.debug("Checking dir: "+newDir.getURL()+"-->"+dirSize, 3);
+      if(dirSize<0){
+        Debug.debug("Creating dir: "+newDir.getURL(), 3);
+        GridPilot.getClassMgr().getTransferControl().mkDir(newDir);
+      }
+    }
+  }
+
+  private File getInputFileOrDir(){
     File file = null;
     JFileChooser fc = new JFileChooser();
-    fc.setDialogTitle("Choose file to upload");
-    fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
+    fc.setDialogTitle("Choose file or directory to upload");
+    //fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
+    fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
     int returnVal = fc.showOpenDialog(this);
-    if (returnVal==JFileChooser.APPROVE_OPTION){
+    if(returnVal==JFileChooser.APPROVE_OPTION){
       file = fc.getSelectedFile();
       Debug.debug("Opening: " + file.getName(), 2);
     }

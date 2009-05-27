@@ -10,6 +10,7 @@ import gridfactory.common.StatusBar;
 import gridfactory.common.jobrun.RTEMgr;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.security.GeneralSecurityException;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -23,6 +24,7 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
 import org.logicalcobwebs.proxool.ProxoolFacade;
 
@@ -91,8 +93,8 @@ public class ClassMgr{
     logFile = _logFile;
   }
 
-  public void setStatusBar(StatusBar _statusBar){
-    statusBar = _statusBar;
+  public void setNewStatusBar() throws InterruptedException, InvocationTargetException{
+    statusBar = new StatusBar();
   }
 
   public void setJobStatusTable(MyJTable _statusTable){
@@ -223,13 +225,16 @@ public class ClassMgr{
    * Return the Shell Manager for this job
    */
   public Shell getShell(MyJobInfo job) throws Exception{
+    Shell shell = null;
     String csName = job.getCSName();
     if(csName==null || csName.equals("")){
       return askWhichShell(job);
     }
-    else{
-      return getShell(csName);
+    shell = getCSPluginMgr().getShell(job);
+    if(shell!=null){
+      return shell;
     }
+    return getShell(csName);
   }
   
   public void setShell(String csName, Shell shellMgr){
@@ -364,14 +369,34 @@ public class ClassMgr{
   public MyJTable getTransferStatusTable() throws Exception{
     if(transferStatusTable==null){
       Debug.debug("transferStatusTable null", 3);
-      String[] fieldNames = GridPilot.TRANSFER_STATUS_FIELDS;
-      Debug.debug("Creating new Table with fields "+MyUtil.arrayToString(fieldNames), 3);
-      transferStatusTable = new MyJTable(new String [] {}, fieldNames,
-          GridPilot.TRANSFER_COLOR_MAPPING);
-       GridPilot.getClassMgr().setTransferStatusTable(transferStatusTable);
-      //new Exception().printStackTrace();
+      Debug.debug("Creating new Table with fields "+
+          MyUtil.arrayToString(GridPilot.TRANSFER_STATUS_FIELDS), 3);
+      if(SwingUtilities.isEventDispatchThread()){
+        setTransferStatusTable();
+      }
+      else{
+        SwingUtilities.invokeAndWait(
+          new Runnable(){
+            public void run(){
+              try{
+                setTransferStatusTable();
+              }
+              catch(Exception e){
+                e.printStackTrace();
+              }
+            }
+          }
+        );
+      }
     }
     return transferStatusTable;
+  }
+  
+  private void setTransferStatusTable() throws Exception{
+    transferStatusTable = new MyJTable(new String [] {},
+        GridPilot.TRANSFER_STATUS_FIELDS,
+        GridPilot.TRANSFER_COLOR_MAPPING);
+    setTransferStatusTable(transferStatusTable);
   }
 
   public Vector getSubmittedTransfers(){

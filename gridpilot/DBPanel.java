@@ -34,6 +34,7 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.Toolkit;
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
 
 /**
  * This panel contains one SelectPanel.
@@ -50,7 +51,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bCreateRecords = new JButton("Define new record(s)");
   private JButton bEditRecord = new JButton("Edit record");
   private JCheckBox cbFindAllFiles = new JCheckBox();
-  private JButton bDownload = new JButton("Copy file(s)");
+  private JButton bDownload = new JButton("Replicate file(s)");
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
   private JPopupMenu pmCreateDSMenu = new JPopupMenu();
   private JMenuItem miWithInput = new JMenuItem("with selected input dataset(s)");
@@ -90,7 +91,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   // WORKING THREAD SEMAPHORE
   // The idea is to ignore new requests when working on a request
   private boolean working = false;
-  private SubmissionControl submissionControl = null;
   // Import thread semaphore
   private boolean importingFiles = false;
   private boolean exportingDataset = false;
@@ -99,10 +99,24 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
   private static String defaultURL;
   
-  public JPanel panelSelectPanel = new JPanel(new GridBagLayout());
-  public SelectPanel selectPanel;
-  public String dbName = null;
+  private JPanel panelSelectPanel = new JPanel(new GridBagLayout());
+  private SelectPanel selectPanel;
+  private String dbName = null;
+  private boolean menuSet = false;
 
+  /**
+   * Create a new DBPanel from scratch.
+   */
+   public DBPanel() throws Exception{
+   }
+   
+   /**
+    * Create a new DBPanel from a parent panel.
+    */
+  private DBPanel(String _parentId) throws Exception{
+    parentId = _parentId;
+  }
+    
   // try grabbing the semaphore
   private /*synchronized*/ boolean getWorking(){
     if(!working){
@@ -121,14 +135,20 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return cbFindAllFiles.isSelected();
   }
   
-  /**
-   * Create a new DBPanel from scratch.
-   */
-   public DBPanel(/*name of database*/
-                  String _dbName,
-                  /*name of tables for the select*/
-                  String _tableName) throws Exception{
+  protected SelectPanel getSelectPanel(){
+    return selectPanel;
+  }
   
+  protected String getDBName(){
+    return dbName;
+  }
+  
+  protected String getTableName(){
+    return tableName;
+  }
+  
+   protected void initDB(String _dbName, String _tableName){
+
      dbName = _dbName;     
      tableName = _tableName;
      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
@@ -174,8 +194,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      hiddenFields = dbPluginMgr.getDBHiddenFields(tableName);
      Debug.debug("Hidden fields "+MyUtil.arrayToString(hiddenFields), 3);
      
-     submissionControl = GridPilot.getClassMgr().getSubmissionControl();
-     
      // Pass on only non-hidden fields to
      // Table. Perhaps rethink: - Table hides fields...
      Vector fieldSet = new Vector();
@@ -198,16 +216,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      for(int i=0; i<fieldSet.size(); ++i){
        fieldNames[i] = fieldSet.get(i).toString();
      }
-     
-     tableResults = new MyJTable(hiddenFields, fieldNames,
-         GridPilot.JOB_COLOR_MAPPING);
-     
-     setFieldArrays();
-     
-     menuEditCopy = GridPilot.getClassMgr().getGlobalFrame().menuEditCopy;
-     menuEditCut = GridPilot.getClassMgr().getGlobalFrame().menuEditCut;
-     menuEditPaste = GridPilot.getClassMgr().getGlobalFrame().menuEditPaste;
-     initGUI();
    }
    
    public MyJTable getTable(){
@@ -245,35 +253,25 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      }
           
      if(selectPanel!=null){
-       Debug.debug("Checking "+selectPanel.sPanel.spDisplayList.getComponentCount()+":"+shownFields.length, 3);
-       boolean fieldOk = true;
-       for(int i=0; i<selectPanel.sPanel.spDisplayList.getComponentCount(); ++i){
-         fieldOk = true;
+       Debug.debug("selectPanel fields: "+selectPanel.getDisplayFieldsCount(), 3);
+       for(int i=0; i<selectPanel.getDisplayFieldsCount(); ++i){
          SPanel.DisplayPanel cb =
-           ((SPanel.DisplayPanel) selectPanel.sPanel.spDisplayList.getComponent(i));
-         for(int j=0; j<shownFields.length; ++j){
-           Debug.debug("Checking fields "+
-               cb.cbDisplayAttribute.getSelectedItem().toString()+"<->"+shownFields[j], 3);
-           if((cb.cbDisplayAttribute.getSelectedItem().toString()
-                   ).equalsIgnoreCase(shownFields[j])){
-             fieldOk = false;
-             break;
-           }
-         }
-         if(fieldOk){
-           shownSet.add(cb.cbDisplayAttribute.getSelectedItem().toString());
+           ((SPanel.DisplayPanel) selectPanel.getDisplayPanel(i));
+         if(!shownSet.contains(cb.getSelected())){
+           shownSet.add(cb.getSelected());
          }
        }    
      }
 
      shownFields = new String[shownSet.size()];
      for(int i=0; i<shownSet.size(); ++i){
-       shownFields[i] = shownSet.get(i).toString();
+       shownFields[i] = (String) shownSet.get(i);
      }
      
      for(int k=0; k<shownFields.length; ++k){
        shownFields[k] = tableName+"."+shownFields[k];
      }
+     Debug.debug("shownFields: "+shownFields.length, 3);
      
      // Set the default values of the selection drop downs.
      // selectFields only used by clear().
@@ -302,33 +300,28 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      }
    }
    
-   /**
-    * Create a new DBPanel from a parent panel.
-    */
-  public DBPanel(/*name of tables for the select*/
-                 String _tableName,
-                 /*pointer to the db in use for this panel*/
-                 DBPluginMgr _dbPluginMgr,
-                 /*identifier of the parent record (dataset <- jobDefinition)*/
-                 String _parentId) throws Exception{
-      this(_dbPluginMgr.getDBName(), _tableName);
-      dbPluginMgr = _dbPluginMgr;
-      parentId = _parentId;
-  }
-    
   /**
   * GUI initialisation
   */
-
-  private void initGUI() throws Exception{
+  protected void initGUI() throws Exception{
     
+    tableResults = new MyJTable(hiddenFields, fieldNames,
+        GridPilot.JOB_COLOR_MAPPING);
+    
+    //setFieldArrays();
+    
+    menuEditCopy = GridPilot.getClassMgr().getGlobalFrame().getMenuEditCopy();
+    menuEditCut = GridPilot.getClassMgr().getGlobalFrame().getMenuEditCut();
+    menuEditPaste = GridPilot.getClassMgr().getGlobalFrame().getMenuEditPaste();
+
     this.setLayout(new BorderLayout());
 
     // SelectPanel
     selectPanel = new SelectPanel(tableName, fieldNames);
     selectPanel.initGUI();
+    setFieldArrays();
     clear();
-
+    
     spSelectPanel.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
     spSelectPanel.getViewport().add(selectPanel);
 
@@ -349,7 +342,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     selectPanel.setConstraint(MyUtil.getNameField(dbPluginMgr.getDBName(), tableName), "", 1);
     
     // Listen for enter key in text field
-    this.selectPanel.spcp.tfConstraintValue.addKeyListener(new KeyAdapter(){
+    selectPanel.addListenerForEnter(new KeyAdapter(){
       public void keyPressed(KeyEvent e){
         switch(e.getKeyCode()){
           case KeyEvent.VK_ENTER:
@@ -366,7 +359,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                 }
               }
             });     
-            SwingUtilities.invokeLater(t);
+            t.start();
         }
         if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c") ||
             KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("x")){
@@ -434,7 +427,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             }
           }
         });     
-        SwingUtilities.invokeLater(t);
+        t.start();
       }
     });
     bSearch.setToolTipText("Search results for this request");
@@ -453,7 +446,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             }
           }
         });     
-        SwingUtilities.invokeLater(t);
+        t.start();
       }
     });
     bNext.setToolTipText("Next search results for this request");
@@ -472,7 +465,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             }
           }
         });     
-        SwingUtilities.invokeLater(t);
+        t.start();
       }
     });
     bPrevious.setToolTipText("Previous search results for this request");
@@ -489,7 +482,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     pButtonTableResults.add(new JLabel(), ct);
     
     if(tableName.equalsIgnoreCase("dataset")){
-      
       
       miWithInput.addActionListener(new ActionListener(){
         public void actionPerformed(final ActionEvent e){
@@ -582,14 +574,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
       bEditRecord.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          //editJobDef();
           editFile();
         }
       });
 
       bDeleteRecord.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          //deleteJobDefs();
           deleteFiles();
         }
       });
@@ -679,7 +669,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         //mi.setMnemonic(i);
         mi.addActionListener(new ActionListener(){
           public void actionPerformed(final ActionEvent e){
-                submit(e);
+            submit(e);
           }});
         pmSubmitMenu.add(mi);
       }
@@ -890,7 +880,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         values[i][1] = split[1];
       }
     }
-    selectPanel.setDisplayFieldValue(values);
+    selectPanel.setDisplayFieldValues(values);
     selectPanel.resetConstraintList(tableName);
     selectPanel.setConstraint(MyUtil.getNameField(dbPluginMgr.getDBName(), tableName), "", 1);
     selectPanel.updateUI();
@@ -928,13 +918,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   public void searchRequest(final int sortColumn, final boolean isAscending,
       final int [] columnWidths){
-    searchRequest(sortColumn, isAscending, columnWidths, true, false);
+    searchRequest(sortColumn, isAscending, columnWidths,
+        /*true*/false/* hmm, did I have any good reason for putting this in the event thread?...*/,
+        false);
   }
-  
-  
-  // TODO: split up this monster method
+
   public void searchRequest(final int sortColumn, final boolean isAscending,
-      final int [] columnWidths, boolean invokeLater, boolean waitForThread){
+      final int [] columnWidths, boolean runInEventThread, boolean waitForThread){
         
     workThread = new ResThread(){
       public void run(){
@@ -953,273 +943,384 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             workThread.interrupt();
           }
         });
-        setFieldArrays();
-        String selectRequest;
-        selectRequest = selectPanel.getRequest(shownFields);
-        if(selectRequest==null){
-            return;
+        try{
+          doSearchRequest();
+          fixSort(sortColumn, isAscending, columnWidths);
         }
-        Object[][] vals = null;
-        if(tableName.equalsIgnoreCase("file")){
-          Debug.debug("Searching from cursor "+cursor, 2);
-          if(cursor==-1){
-            res = dbPluginMgr.select(selectRequest, identifier, findAll());
-            if(GridPilot.FILE_ROWS>0 && res.values.length>GridPilot.FILE_ROWS){
-              vals = new String [GridPilot.FILE_ROWS][];
-              System.arraycopy(res.values, 0, vals, 0, GridPilot.FILE_ROWS);
-              bNext.setEnabled(true);
-              bPrevious.setEnabled(false);
-              cursor = 0;
-            }
-            else{
-              vals = res.values;
-              bNext.setEnabled(false);
-              bPrevious.setEnabled(false);
-              cursor = -1;
-            }
-          }
-          else{
-            // we've reached the end
-            if(cursor+GridPilot.FILE_ROWS>res.values.length){
-              vals = new String [res.values.length-cursor][];
-              System.arraycopy(res.values, cursor, vals, 0, res.values.length-cursor);
-              bNext.setEnabled(false);
-              bPrevious.setEnabled(true);
-            }
-            else{
-              vals = new String [GridPilot.FILE_ROWS][];
-              System.arraycopy(res.values, cursor, vals, 0, GridPilot.FILE_ROWS);
-              if(res.values.length-cursor>GridPilot.FILE_ROWS){
-                bNext.setEnabled(true);
-              }
-              else{
-                bNext.setEnabled(false);
-              }
-              bPrevious.setEnabled(cursor>0);
-            }
-          }
+        catch(Exception e){
+          e.printStackTrace();
+          setException(e);
         }
-        else{
-          res = dbPluginMgr.select(selectRequest, identifier, findAll());
-          vals = res.values;
-        }
-        Debug.debug("Setting table", 3);
-        try {
-          tableResults.setTable(vals, res.fields);
-        }
-        catch(Exception e1){
-          e1.printStackTrace();
-          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not set values in table.", e1);
-        }
-        Debug.debug("Done setting table", 3);
-
-        bViewFiles.setEnabled(false);
-        bViewJobDefinitions.setEnabled(false);
-        bDefineJobDefinitions.setEnabled(false);
-        bEditRecord.setEnabled(false);
-        bDeleteRecord.setEnabled(false);
-        bSubmit.setEnabled(false);
-        bMonitor.setEnabled(false);
-        menuEditCopy.setEnabled(false);
-        menuEditCut.setEnabled(false);
-        menuEditPaste.setEnabled(clipboardOwned);
-                
-        identifiers = new String[tableResults.getRowCount()];
-        // 'col' is the column with the jobDefinition identifier
-        int col = tableResults.getColumnCount()-1;
-        for(int i=0; i<tableResults.getColumnCount(); ++i){
-          Debug.debug("Column: "+tableResults.getColumnName(i)+"<->"+identifier, 3);
-          if(tableResults.getColumnName(i).equalsIgnoreCase(identifier)){
-            col = i;
-            Debug.debug("OK: "+i, 3);
-            break;
-          }
-        }
-        for(int i=0; i<identifiers.length; ++i){
-          if(tableResults.getUnsortedValueAt(i, col)!=null){
-            identifiers[i] = tableResults.getUnsortedValueAt(i, col).toString();
-          }
-          else{
-            identifiers[i] = "-1";
-          }
-        }
-
-        if(tableName.equalsIgnoreCase("dataset")){
-          tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-          tableResults.addListSelectionListener(new ListSelectionListener(){
-            public void valueChanged(ListSelectionEvent e){
-              if (e.getValueIsAdjusting()) return;
-              ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-              //Debug.debug("lsm indices: "+
-              //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
-              bViewFiles.setEnabled(!lsm.isSelectionEmpty() &&
-                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              // We assume that there are only two kinds of databases:
-              // runtime/transformation/dataset/job catalogs and dataset/file catalogs.
-              bViewJobDefinitions.setEnabled(dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty() &&
-                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              bDefineJobDefinitions.setEnabled(dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty());
-              bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
-              bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
-                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              miEdit.setEnabled(!lsm.isSelectionEmpty() &&
-                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              miImportFiles.setEnabled(dbPluginMgr.isFileCatalog() && !lsm.isSelectionEmpty() &&
-                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              miExportDataset.setEnabled(dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty() &&
-                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
-              menuEditCut.setEnabled(!lsm.isSelectionEmpty());
-              menuEditPaste.setEnabled(clipboardOwned);
-            }
-          });
-          Debug.debug("Making dataset menu", 3);
-          makeDatasetMenu();
-          Debug.debug("Done making dataset menu", 3);
-        }
-        else if(tableName.equalsIgnoreCase("file")){
-          tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-          tableResults.addListSelectionListener(new ListSelectionListener(){
-            public void valueChanged(ListSelectionEvent e){
-              if (e.getValueIsAdjusting()) return;
-              ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-              //Debug.debug("lsm indices: "+
-              //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
-              bDownload.setEnabled(!lsm.isSelectionEmpty());
-              bDeleteRecord.setEnabled(dbPluginMgr.isFileCatalog() && !lsm.isSelectionEmpty());
-              bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
-                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              miEdit.setEnabled(!lsm.isSelectionEmpty() &&
-                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
-              menuEditCut.setEnabled(!lsm.isSelectionEmpty());
-              menuEditPaste.setEnabled(clipboardOwned);
-            }
-          });
-
-          makeFileMenu();
-        }
-        else if(tableName.equalsIgnoreCase("jobDefinition")){
-          tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-          tableResults.addListSelectionListener(new ListSelectionListener(){
-            public void valueChanged(ListSelectionEvent e){
-              if (e.getValueIsAdjusting()) return;
-              ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-              //Debug.debug("lsm indices: "+
-              //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
-              bSubmit.setEnabled(!lsm.isSelectionEmpty());
-              bMonitor.setEnabled(!lsm.isSelectionEmpty());
-              bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
-              bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
-                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              miEdit.setEnabled(!lsm.isSelectionEmpty() &&
-                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
-              menuEditCut.setEnabled(!lsm.isSelectionEmpty());
-              menuEditPaste.setEnabled(clipboardOwned);
-            }
-          });
-
-          makeJobDefMenu();
-        }
-        else if(tableName.equalsIgnoreCase("transformation")){
-          tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-          tableResults.addListSelectionListener(new ListSelectionListener(){
-            public void valueChanged(ListSelectionEvent e){
-              if (e.getValueIsAdjusting()) return;
-              ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-              //Debug.debug("lsm indices: "+
-              //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
-              bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
-              bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
-                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              miEdit.setEnabled(!lsm.isSelectionEmpty() &&
-                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
-              menuEditCut.setEnabled(!lsm.isSelectionEmpty());
-              menuEditPaste.setEnabled(clipboardOwned);
-            }
-          });
-
-          makeTransformationMenu();
-        }
-        else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
-          tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-          tableResults.addListSelectionListener(new ListSelectionListener(){
-            public void valueChanged(ListSelectionEvent e){
-              if (e.getValueIsAdjusting()) return;
-              ListSelectionModel lsm = (ListSelectionModel)e.getSource();
-              //Debug.debug("lsm indices: "+
-              //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
-              bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
-              bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
-                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              miEdit.setEnabled(!lsm.isSelectionEmpty() &&
-                  lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-              menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
-              menuEditCut.setEnabled(!lsm.isSelectionEmpty());
-              menuEditPaste.setEnabled(clipboardOwned);
-            }
-          });
-          makeRuntimeEnvironmentMenu();
-        }
-        
-        statusBar.stopAnimation();
-        if(tableName.equalsIgnoreCase("file")){
-          if(res.values.length>0){
-            statusBar.setLabel("Records found: "+res.values.length+
-                ". Displaying "+(cursor==-1?"1":""+(cursor+1))+" to "+
-                ((cursor==-1?0:cursor)+tableResults.getRowCount()));
-          }
-          else{
-            statusBar.setLabel("No records found");
-          }
-        }
-        else{
-          statusBar.setLabel("Records found: "+tableResults.getRowCount());
-        }
-        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-        
-        Debug.debug("Sorting", 3);
-        if(sortColumn>-1){
-          Debug.debug("Sorting: "+sortColumn+":"+isAscending, 3);
-          ((DBVectorTableModel) tableResults.getModel()).sort(sortColumn, isAscending);
-        }
-        Debug.debug("Setting column widths", 3);
-        if(columnWidths!=null){
-          String [] columnNames = ((DBVectorTableModel) tableResults.getModel()).getColumnNames();
-          // If we have changed the displayed columns, there's no point...
-          if(columnWidths.length==columnNames.length){
-            for(int i=0; i<columnNames.length; ++i){
-              tableResults.getColumn(columnNames[i]).setPreferredWidth(
-                  columnWidths[i]);
-            }
-          }
-        }
-        Debug.debug("Updating edit menu", 3);
-        GridPilot.getClassMgr().getGlobalFrame().menuEdit.updateUI();
-        Debug.debug("Done Updating edit menu", 3);
         stopWorking();
+        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       }
     };
     
     if(waitForThread){
-      workThread.start();
-      MyUtil.myWaitForThread(workThread, dbName, 0, "searchRequest");
-      return;
-    }
-    if(invokeLater){
-      SwingUtilities.invokeLater(workThread);
+      if(runInEventThread){
+        try{
+          SwingUtilities.invokeAndWait(workThread);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+      }
+      else{
+        workThread.start();
+        MyUtil.myWaitForThread(workThread, dbName, 0, "searchRequest");
+      }
     }
     else{
-      workThread.start();
+      if(runInEventThread){
+        SwingUtilities.invokeLater(workThread);
+      }
+      else{
+        workThread.start();
+      }
     }
   }
   
-  public void searchRequest(boolean invokeLater, boolean waitForThread){
+  private void doSearchRequest() throws InterruptedException, InvocationTargetException {
+    
+    String selectRequest;
+    
+    if(SwingUtilities.isEventDispatchThread()){
+      selectRequest = selectPanel.getRequest(shownFields);
+    }
+    else{
+      MyResThread rt = new MyResThread(){
+        String selectRequest;
+         public void run(){
+           setFieldArrays();
+           selectRequest = selectPanel.getRequest(shownFields);
+         }
+         public String getStringRes(){
+           return selectRequest;
+         }
+       };
+      SwingUtilities.invokeAndWait(rt);
+      selectRequest = rt.getStringRes();
+    }
+
+    if(selectRequest==null){
+      return;
+    }
+    Debug.debug("Select request "+selectRequest, 2);
+    res = dbPluginMgr.select(selectRequest, identifier, findAll());
+    
+    if(SwingUtilities.isEventDispatchThread()){
+      setSearchTableResults();
+      setSearchTable();
+    }
+    else{
+      SwingUtilities.invokeAndWait(
+        new Runnable(){
+          public void run(){
+            setSearchTableResults();
+            setSearchTable();
+          }
+        }
+      );
+    }
+  }
+  
+  private void setSearchTable() {
+    bViewFiles.setEnabled(false);
+    bViewJobDefinitions.setEnabled(false);
+    bDefineJobDefinitions.setEnabled(false);
+    bEditRecord.setEnabled(false);
+    bDeleteRecord.setEnabled(false);
+    bSubmit.setEnabled(false);
+    bMonitor.setEnabled(false);
+    menuEditCopy.setEnabled(false);
+    menuEditCut.setEnabled(false);
+    menuEditPaste.setEnabled(clipboardOwned);
+            
+    identifiers = new String[tableResults.getRowCount()];
+    // 'col' is the column with the jobDefinition identifier
+    int col = tableResults.getColumnCount()-1;
+    for(int i=0; i<tableResults.getColumnCount(); ++i){
+      Debug.debug("Column: "+tableResults.getColumnName(i)+"<->"+identifier, 3);
+      if(tableResults.getColumnName(i).equalsIgnoreCase(identifier)){
+        col = i;
+        Debug.debug("OK: "+i, 3);
+        break;
+      }
+    }
+    for(int i=0; i<identifiers.length; ++i){
+      if(tableResults.getUnsortedValueAt(i, col)!=null){
+        identifiers[i] = tableResults.getUnsortedValueAt(i, col).toString();
+      }
+      else{
+        identifiers[i] = "-1";
+      }
+    }
+
+    if(tableName.equalsIgnoreCase("dataset")){
+      setDatasetTable();
+    }
+    else if(tableName.equalsIgnoreCase("file")){
+      setFileTable();
+    }
+    else if(tableName.equalsIgnoreCase("jobDefinition")){
+      setJobDefTable();
+    }
+    else if(tableName.equalsIgnoreCase("transformation")){
+      setTransformationTable();
+    }
+    else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
+      setRuntimeEnvironmentTable();
+    }
+    
+    statusBar.stopAnimation();
+    if(tableName.equalsIgnoreCase("file")){
+      if(res.values.length>0){
+        statusBar.setLabel("Records found: "+res.values.length+
+            ". Displaying "+(cursor==-1?"1":""+(cursor+1))+" to "+
+            ((cursor==-1?0:cursor)+tableResults.getRowCount()));
+      }
+      else{
+        statusBar.setLabel("No records found");
+      }
+    }
+    else{
+      statusBar.setLabel("Records found: "+tableResults.getRowCount());
+    }
+  }
+
+  private void setDatasetTable() {
+    tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+    tableResults.addListSelectionListener(new ListSelectionListener(){
+      public void valueChanged(ListSelectionEvent e){
+        if (e.getValueIsAdjusting()) return;
+        ListSelectionModel lsm = (ListSelectionModel)e.getSource();
+        //Debug.debug("lsm indices: "+
+        //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
+        bViewFiles.setEnabled(!lsm.isSelectionEmpty() &&
+            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        // We assume that there are only two kinds of databases:
+        // runtime/transformation/dataset/job catalogs and dataset/file catalogs.
+        bViewJobDefinitions.setEnabled(dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty() &&
+            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        bDefineJobDefinitions.setEnabled(dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty());
+        bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
+        bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
+            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        miEdit.setEnabled(!lsm.isSelectionEmpty() &&
+            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        miImportFiles.setEnabled(dbPluginMgr.isFileCatalog() && !lsm.isSelectionEmpty() &&
+            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        miExportDataset.setEnabled(dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty() &&
+            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
+        menuEditCut.setEnabled(!lsm.isSelectionEmpty());
+        menuEditPaste.setEnabled(clipboardOwned);
+      }
+    });
+    if(!menuSet){
+      Debug.debug("Making dataset menu", 3);
+      makeDatasetMenu();
+      Debug.debug("Done making dataset menu", 3);
+      menuSet = true;
+    }
+  }
+  
+  private void setFileTable() {
+    tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+    tableResults.addListSelectionListener(new ListSelectionListener(){
+      public void valueChanged(ListSelectionEvent e){
+        if (e.getValueIsAdjusting()) return;
+        ListSelectionModel lsm = (ListSelectionModel)e.getSource();
+        //Debug.debug("lsm indices: "+
+        //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
+        bDownload.setEnabled(!lsm.isSelectionEmpty());
+        bDeleteRecord.setEnabled(dbPluginMgr.isFileCatalog() && !lsm.isSelectionEmpty());
+        bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
+            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        miEdit.setEnabled(!lsm.isSelectionEmpty() &&
+            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
+        menuEditCut.setEnabled(!lsm.isSelectionEmpty());
+        menuEditPaste.setEnabled(clipboardOwned);
+      }
+    });
+    if(!menuSet){
+      makeFileMenu();
+      menuSet = true;
+    }
+  }
+
+  private void setJobDefTable() {
+    tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+    tableResults.addListSelectionListener(new ListSelectionListener(){
+      public void valueChanged(ListSelectionEvent e){
+        if (e.getValueIsAdjusting()) return;
+        ListSelectionModel lsm = (ListSelectionModel)e.getSource();
+        //Debug.debug("lsm indices: "+
+        //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
+        bSubmit.setEnabled(!lsm.isSelectionEmpty());
+        bMonitor.setEnabled(!lsm.isSelectionEmpty());
+        bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
+        bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
+            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        miEdit.setEnabled(!lsm.isSelectionEmpty() &&
+            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
+        menuEditCut.setEnabled(!lsm.isSelectionEmpty());
+        menuEditPaste.setEnabled(clipboardOwned);
+      }
+    });
+    if(!menuSet){
+      makeJobDefMenu();
+      menuSet = true;
+    }
+  }
+
+  private void setTransformationTable() {
+    tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+    tableResults.addListSelectionListener(new ListSelectionListener(){
+      public void valueChanged(ListSelectionEvent e){
+        if (e.getValueIsAdjusting()) return;
+        ListSelectionModel lsm = (ListSelectionModel)e.getSource();
+        //Debug.debug("lsm indices: "+
+        //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
+        bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
+        bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
+            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        miEdit.setEnabled(!lsm.isSelectionEmpty() &&
+            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
+        menuEditCut.setEnabled(!lsm.isSelectionEmpty());
+        menuEditPaste.setEnabled(clipboardOwned);
+      }
+    });
+    if(!menuSet){
+      makeTransformationMenu();
+      menuSet = true;
+    }
+  }
+
+  private void setRuntimeEnvironmentTable() {
+    tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+    tableResults.addListSelectionListener(new ListSelectionListener(){
+      public void valueChanged(ListSelectionEvent e){
+        if (e.getValueIsAdjusting()) return;
+        ListSelectionModel lsm = (ListSelectionModel)e.getSource();
+        //Debug.debug("lsm indices: "+
+        //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
+        bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
+        bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
+            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        miEdit.setEnabled(!lsm.isSelectionEmpty() &&
+            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
+        menuEditCut.setEnabled(!lsm.isSelectionEmpty());
+        menuEditPaste.setEnabled(clipboardOwned);
+      }
+    });
+    if(!menuSet){
+      makeRuntimeEnvironmentMenu();
+      menuSet = true;
+    }
+  }
+
+  private void setSearchTableResults() {
+    Object[][] vals = null;
+    if(tableName.equalsIgnoreCase("file")){
+      Debug.debug("Searching from cursor "+cursor, 2);
+      if(cursor==-1){
+        if(GridPilot.FILE_ROWS>0 && res.values.length>GridPilot.FILE_ROWS){
+          vals = new String [GridPilot.FILE_ROWS][];
+          System.arraycopy(res.values, 0, vals, 0, GridPilot.FILE_ROWS);
+          bNext.setEnabled(true);
+          bPrevious.setEnabled(false);
+          cursor = 0;
+        }
+        else{
+          vals = res.values;
+          bNext.setEnabled(false);
+          bPrevious.setEnabled(false);
+          cursor = -1;
+        }
+      }
+      else{
+        // we've reached the end
+        if(cursor+GridPilot.FILE_ROWS>res.values.length){
+          vals = new String [res.values.length-cursor][];
+          System.arraycopy(res.values, cursor, vals, 0, res.values.length-cursor);
+          bNext.setEnabled(false);
+          bPrevious.setEnabled(true);
+        }
+        else{
+          vals = new String [GridPilot.FILE_ROWS][];
+          System.arraycopy(res.values, cursor, vals, 0, GridPilot.FILE_ROWS);
+          if(res.values.length-cursor>GridPilot.FILE_ROWS){
+            bNext.setEnabled(true);
+          }
+          else{
+            bNext.setEnabled(false);
+          }
+          bPrevious.setEnabled(cursor>0);
+        }
+      }
+    }
+    else{
+      vals = res.values;
+    }
+    
+    Debug.debug("Setting table", 3);
+    try{
+      tableResults.setTable(vals, res.fields);
+    }
+    catch(Exception e1){
+      e1.printStackTrace();
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not set values in table.", e1);
+    }
+    Debug.debug("Done setting table", 3);
+
+  }
+  
+  public void fixSort(final int sortColumn, final boolean isAscending, final int [] columnWidths) throws InterruptedException, InvocationTargetException{
+    if(SwingUtilities.isEventDispatchThread()){
+      doFixSort(sortColumn, isAscending, columnWidths);
+    }
+    else{
+      SwingUtilities.invokeAndWait(
+        new Runnable(){
+          public void run(){
+            doFixSort(sortColumn, isAscending, columnWidths);
+          }
+        }
+      );
+    }
+  }
+  
+  public void doFixSort(int sortColumn, boolean isAscending, int [] columnWidths){
+    Debug.debug("Sorting", 3);
+    if(sortColumn>-1){
+      Debug.debug("Sorting: "+sortColumn+":"+isAscending, 3);
+      ((DBVectorTableModel) tableResults.getModel()).sort(sortColumn, isAscending);
+    }
+    Debug.debug("Setting column widths", 3);
+    if(columnWidths!=null){
+      String [] columnNames = ((DBVectorTableModel) tableResults.getModel()).getColumnNames();
+      // If we have changed the displayed columns, there's no point...
+      if(columnWidths.length==columnNames.length){
+        for(int i=0; i<columnNames.length; ++i){
+          tableResults.getColumn(columnNames[i]).setPreferredWidth(
+              columnWidths[i]);
+        }
+      }
+    }
+    Debug.debug("Updating edit menu", 3);
+    GridPilot.getClassMgr().getGlobalFrame().getMenuEdit().updateUI();
+    Debug.debug("Done Updating edit menu", 3);
+  }
+  
+  public void searchRequest(boolean runInEventThread, boolean waitForThread){
     DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
     tableModel.ascending = true;
-    searchRequest(-1, tableModel.ascending, null, invokeLater, waitForThread);
+    searchRequest(-1, tableModel.ascending, null, runInEventThread, waitForThread);
   }
   
   /**
@@ -1499,16 +1600,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */ 
   private void createJobDefs(){
     Debug.debug("Creating job definition(s), "+getSelectedIdentifiers().length, 3);
-    //JobDefCreationPanel panel = new JobDefCreationPanel(dbName, jobMgr, this, false);
     JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, this);
-    CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true, true);
+    CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true, true, true);
     pDialog.setTitle("Create job definition(s)");
   }
 
   private void createJobDefinitions(){
     Debug.debug("Creating job definition(s), "+getSelectedIdentifiers().length, 3);
     JobDefCreationPanel panel = new JobDefCreationPanel(dbName, null, this, new Boolean(false));
-    CreateEditDialog pDialog = new CreateEditDialog(panel, false, false, true, false);
+    CreateEditDialog pDialog = new CreateEditDialog(panel, false, false, true, false, true);
     pDialog.setTitle("jobDefinition");
   }
 
@@ -1525,7 +1625,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     JobDefCreationPanel panel = null;
     panel = new JobDefCreationPanel(dbName, selectedDatasetID, this,
         new Boolean(true));
-    CreateEditDialog pDialog = new CreateEditDialog(panel, true, false, true, true);
+    CreateEditDialog pDialog = new CreateEditDialog(panel, true, false, true, false, true);
     pDialog.setTitle(displayName!=null?displayName:tableName);
     //pDialog.setVisible(true);
   }
@@ -1560,14 +1660,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   private void deleteFiles(){
-    
     if(!dbPluginMgr.isFileCatalog()){
       MyUtil.showLongMessage("This is a virtual file table. " +
             "Entries cannot be modified directly.", "Cannot delete");
     }
     // Should be safe, only mysql and hsqldb contain jobDefinitions
     else{
-      String msg = "Are you sure you want to delete file";
+      String msg = "<html>Are you sure you want to delete file";
       if(getSelectedIdentifiers().length>1){
         msg += "s";
       }
@@ -1582,7 +1681,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         msg += " " + ids[i];
       }
-      msg += "?";
+      msg += "?</html>";
       
       final JCheckBox cbCleanup = new JCheckBox("Delete physical file(s)", true);
       ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
@@ -1602,81 +1701,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           if(!getWorking()){
             return;
           }
-          boolean anyDeleted = false;
-          String [] allIds = getSelectedIdentifiers();
-          
-          HashMap datasetNameAndIds = new HashMap();
-          String [] fileDatasetReference = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
-          int [] rows = tableResults.getSelectedRows();
-          int fileDatasetNameColumn = -1;
-          // Find the dataset name column on the files tab
-          for(int i=0; i<tableResults.getColumnCount(); ++i){
-            if(tableResults.getColumnName(i).equalsIgnoreCase(fileDatasetReference[1])){
-              fileDatasetNameColumn = i;
-              break;
-            }
-          }
-          String dsn = null;
-          // Group the file IDs by dataset name
-          for(int i=0; i<allIds.length; ++i){
-            dsn = (String) tableResults.getUnsortedValueAt(rows[i], fileDatasetNameColumn);
-            if(!datasetNameAndIds.containsKey(dsn)){
-              datasetNameAndIds.put(dsn, new Vector());
-            }
-            ((Vector) datasetNameAndIds.get(dsn)).add(allIds[i]);
-          }          
-          
-          Debug.debug("Deleting "+allIds.length+" rows. "+MyUtil.arrayToString(allIds), 2);
-          if(allIds.length!=0){
-            GridPilot.getClassMgr().getStatusBar().setLabel(
-               "Deleting file(s). Please wait...");
-            JProgressBar pb = new JProgressBar();
-            pb.setMaximum(allIds.length);
-            statusBar.setProgressBar(pb);
-            statusBar.setProgressBar(pb);
-            
-            String [] ids = null;
-            Vector idVec = null;
-            String datasetId = null;
-            Debug.debug("Deleting from "+datasetNameAndIds.keySet().size()+" datasets. "+
-                MyUtil.arrayToString(datasetNameAndIds.keySet().toArray()), 2);
-            for(Iterator it=datasetNameAndIds.keySet().iterator(); it.hasNext();){
-              dsn = (String) it.next();
-              datasetId = dbPluginMgr.getDatasetID(dsn);
-              idVec = (Vector) datasetNameAndIds.get(dsn);
-              ids = new String [idVec.size()];
-              for(int i=0; i<idVec.size(); ++i){
-                ids[i] = idVec.get(i).toString();
-              }
-              Debug.debug("Now deleting "+ids.length+" files: "+MyUtil.arrayToString(ids), 3);
-              boolean success = true;
-              try{
-                success = dbPluginMgr.deleteFiles(datasetId, ids, cbCleanup.isSelected());
-              }
-              catch(Exception e){
-                e.printStackTrace();
-                success = false;
-              }
-              if(!success){
-                String msg = "Deleting files "+MyUtil.arrayToString(ids)+" failed.";
-                Debug.debug(msg, 1);
-                GridPilot.getClassMgr().getStatusBar().setLabel("Deleting file(s) failed");
-                GridPilot.getClassMgr().getLogFile().addMessage(msg);
-              }
-              else{
-                anyDeleted = true;
-              }
-            }
-                        
-            for(int i=allIds.length-1; i>=0; i--){
-              pb.setValue(pb.getValue()+1);
-              // Not necessary, we refresh below
-              //tableResults.removeRow(rows[i]);
-            }
-            tableResults.tableModel.fireTableDataChanged();
-            //GridPilot.getClassMgr().getStatusBar().setLabel("Deleting file(s) done.");
-            statusBar.removeProgressBar(pb);
-          }
+          boolean anyDeleted = doDeleteFiles(cbCleanup);
           stopWorking();
           if(anyDeleted){
             refresh();
@@ -1687,6 +1712,83 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
   }
   
+  private boolean doDeleteFiles(JCheckBox cbCleanup) {
+    boolean anyDeleted = false;
+    String [] allIds = getSelectedIdentifiers();
+    
+    HashMap datasetNameAndIds = new HashMap();
+    String [] fileDatasetReference = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
+    int [] rows = tableResults.getSelectedRows();
+    int fileDatasetNameColumn = -1;
+    // Find the dataset name column on the files tab
+    for(int i=0; i<tableResults.getColumnCount(); ++i){
+      if(tableResults.getColumnName(i).equalsIgnoreCase(fileDatasetReference[1])){
+        fileDatasetNameColumn = i;
+        break;
+      }
+    }
+    String dsn = null;
+    // Group the file IDs by dataset name
+    for(int i=0; i<allIds.length; ++i){
+      dsn = (String) tableResults.getUnsortedValueAt(rows[i], fileDatasetNameColumn);
+      if(!datasetNameAndIds.containsKey(dsn)){
+        datasetNameAndIds.put(dsn, new Vector());
+      }
+      ((Vector) datasetNameAndIds.get(dsn)).add(allIds[i]);
+    }          
+    
+    Debug.debug("Deleting "+allIds.length+" rows. "+MyUtil.arrayToString(allIds), 2);
+    if(allIds.length!=0){
+      GridPilot.getClassMgr().getStatusBar().setLabel(
+         "Deleting file(s). Please wait...");
+      JProgressBar pb = statusBar.setProgressBar();
+      statusBar.setProgressBarMax(pb, allIds.length);
+      
+      String [] ids = null;
+      Vector idVec = null;
+      String datasetId = null;
+      Debug.debug("Deleting from "+datasetNameAndIds.keySet().size()+" datasets. "+
+          MyUtil.arrayToString(datasetNameAndIds.keySet().toArray()), 2);
+      for(Iterator it=datasetNameAndIds.keySet().iterator(); it.hasNext();){
+        dsn = (String) it.next();
+        datasetId = dbPluginMgr.getDatasetID(dsn);
+        idVec = (Vector) datasetNameAndIds.get(dsn);
+        ids = new String [idVec.size()];
+        for(int i=0; i<idVec.size(); ++i){
+          ids[i] = idVec.get(i).toString();
+        }
+        Debug.debug("Now deleting "+ids.length+" files: "+MyUtil.arrayToString(ids), 3);
+        boolean success = true;
+        try{
+          success = dbPluginMgr.deleteFiles(datasetId, ids, cbCleanup.isSelected());
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          success = false;
+        }
+        if(!success){
+          String msg = "Deleting files "+MyUtil.arrayToString(ids)+" failed.";
+          Debug.debug(msg, 1);
+          GridPilot.getClassMgr().getStatusBar().setLabel("Deleting file(s) failed");
+          GridPilot.getClassMgr().getLogFile().addMessage(msg);
+        }
+        else{
+          anyDeleted = true;
+        }
+      }
+                  
+      for(int i=allIds.length-1; i>=0; i--){
+        statusBar.incrementProgressBarValue(pb, 1);
+        // Not necessary, we refresh below
+        //tableResults.removeRow(rows[i]);
+      }
+      //tableResults.tableModel.fireTableDataChanged();
+      //GridPilot.getClassMgr().getStatusBar().setLabel("Deleting file(s) done.");
+      statusBar.removeProgressBar(pb);
+    }
+    return anyDeleted;
+  }
+
   private void deleteJobDefs(){
     String msg = "Are you sure you want to delete jobDefinition";
     if(getSelectedIdentifiers().length>1){
@@ -1724,50 +1826,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         if(!getWorking()){
           return;
         }
-        boolean anyDeleted = false;
-        String [] ids = getSelectedIdentifiers();
-
-        // Update job monitoring display
-        for(int i=ids.length-1; i>=0; --i){
-          Debug.debug("Got dbPluginMgr:"+dbPluginMgr+":"+parentId, 1);
-          JobMgr jobMgr = null;
-          try{
-            jobMgr = GridPilot.getClassMgr().getJobMgr(dbName);
-          }
-          catch(Throwable e){
-            Debug.debug("ERROR: could not get JobMgr. "+e.getMessage(), 1);
-            e.printStackTrace();
-            return;
-          }
-          jobMgr.removeRow(ids[i]);
-        }
-        
-        Debug.debug("Deleting "+ids.length+" rows", 2);
-        if(ids.length != 0){
-          GridPilot.getClassMgr().getStatusBar().setLabel(
-             "Deleting job definition(s). Please wait...");
-          JProgressBar pb = new JProgressBar();
-          pb.setMaximum(ids.length);
-          statusBar.setProgressBar(pb);
-          statusBar.setProgressBar(pb);
-          for(int i=ids.length-1; i>=0; i--){
-            boolean success = dbPluginMgr.deleteJobDefinition(ids[i], cbCleanup.isSelected());
-            if(!success){
-              String msg = "Deleting job definition "+ids[i]+" failed";
-              Debug.debug(msg, 1);
-              GridPilot.getClassMgr().getStatusBar().setLabel(msg);
-              GridPilot.getClassMgr().getLogFile().addMessage(msg);
-              continue;
-            }
-            else{
-              anyDeleted = true;
-            }
-            pb.setValue(pb.getValue()+1);
-          }
-          GridPilot.getClassMgr().getStatusBar().setLabel(
-             "Deleting job definition(s) done.");
-          statusBar.removeProgressBar(pb);
-        }
+        boolean anyDeleted = doDeleteJobDefs(cbCleanup);
         stopWorking();
         if(anyDeleted){
           refresh();
@@ -1775,6 +1834,53 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     };
     workThread.start();
+  }
+
+  private boolean doDeleteJobDefs(JCheckBox cbCleanup) {
+    boolean anyDeleted = false;
+    String [] ids = getSelectedIdentifiers();
+
+    // Update job monitoring display
+    for(int i=ids.length-1; i>=0; --i){
+      Debug.debug("Got dbPluginMgr:"+dbPluginMgr+":"+parentId, 1);
+      JobMgr jobMgr = null;
+      try{
+        jobMgr = GridPilot.getClassMgr().getJobMgr(dbName);
+      }
+      catch(Throwable e){
+        Debug.debug("ERROR: could not get JobMgr. "+e.getMessage(), 1);
+        e.printStackTrace();
+        return false;
+      }
+      jobMgr.removeRow(ids[i]);
+    }
+    
+    Debug.debug("Deleting "+ids.length+" rows", 2);
+    if(ids.length != 0){
+      GridPilot.getClassMgr().getStatusBar().setLabel(
+         "Deleting job definition(s). Please wait...");
+      JProgressBar pb = new JProgressBar();
+      statusBar.setProgressBar(pb);
+      statusBar.setProgressBarMax(pb, ids.length);
+      for(int i=ids.length-1; i>=0; i--){
+        boolean success = dbPluginMgr.deleteJobDefinition(ids[i], cbCleanup.isSelected());
+        if(!success){
+          String msg = "Deleting job definition "+ids[i]+" failed";
+          Debug.debug(msg, 1);
+          GridPilot.getClassMgr().getStatusBar().setLabel(msg);
+          GridPilot.getClassMgr().getLogFile().addMessage(msg);
+          continue;
+        }
+        else{
+          anyDeleted = true;
+        }
+        pb.setValue(pb.getValue()+1);
+      }
+      GridPilot.getClassMgr().getStatusBar().setLabel(
+         "Deleting job definition(s) done.");
+      statusBar.removeProgressBar(pb);
+    }
+    return anyDeleted;
   }
 
   /**
@@ -1785,7 +1891,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       tableResults.clearSelection();
     }
     CreateEditDialog pDialog = new CreateEditDialog(
-        new DatasetCreationPanel(dbPluginMgr, this, false), false, false, true, false);
+        new DatasetCreationPanel(dbPluginMgr, this, false), false, false, true, false, true);
     pDialog.setTitle(tableName);
  }
   
@@ -1794,7 +1900,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */ 
  private void editDataset(){
    DatasetCreationPanel dscp = new DatasetCreationPanel(dbPluginMgr, this, true);
-   CreateEditDialog pDialog = new CreateEditDialog(dscp, true, false, true, false);
+   CreateEditDialog pDialog = new CreateEditDialog(dscp, true, false, true, false, true);
    if(!dscp.editable){
      pDialog.setBCreateUpdateEnabled(false);
    }
@@ -1807,75 +1913,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   public void deleteDatasets(){
     statusBar.setLabel("Deleting dataset(s).");
-    final HashSet deleted = new HashSet();
     workThread = new ResThread(){
       public void run(){
         if(!getWorking()){
           return;
         }
-        boolean skip = false;
-        boolean okAll = false;
-        int choice = 3;
-        JCheckBox cbCleanup = null;
         String [] datasetIdentifiers = getSelectedIdentifiers();
-        for(int i=datasetIdentifiers.length-1; i>=0; --i){
-          if(!datasetIdentifiers[i].equals("-1")){
-            if(!okAll){
-              ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
-              cbCleanup = new JCheckBox("Delete job definitions", true);    
-              if(i<1){
-                try{
-                  choice = confirmBox.getConfirm("Confirm delete",
-                                       "Really delete dataset # "+datasetIdentifiers[i]+"?",
-                                       dbPluginMgr.isJobRepository() ?
-                                       new Object[] {"OK", "Skip", cbCleanup} :
-                                         new Object[] {"OK", "Skip"});
-                }
-                catch(java.lang.Exception e){
-                  Debug.debug("Could not get confirmation, "+e.getMessage(),1);
-                }
-              }
-              else{
-                try{
-                  choice = confirmBox.getConfirm("Confirm delete",
-                                       "Really delete dataset # "+datasetIdentifiers[i]+"?",
-                                       dbPluginMgr.isJobRepository() ?
-                                       new Object[] {"OK", "Skip", "OK for all", "Skip all", cbCleanup} :
-                                         new Object[] {"OK", "Skip", "OK for all", "Skip all"});
-                  }
-                catch(java.lang.Exception e){
-                  Debug.debug("Could not get confirmation, "+e.getMessage(),1);
-                }
-              }
-        
-              switch(choice){
-              case 0  : skip = false;break;  // OK
-              case 1  : skip = true ; break;  // Skip
-              case 2  : skip = false; okAll = true ;break;  // OK for all
-              case 3  : skip = true ; return; // Skip all
-              default : skip = true;    // other (closing the dialog). Same action as "Skip"
-              }
-            }
-            if(!skip || okAll){
-              Debug.debug("deleting dataset # " + datasetIdentifiers[i], 2);
-              if(dbPluginMgr.deleteDataset(datasetIdentifiers[i],
-                  dbPluginMgr.isJobRepository() && cbCleanup.isSelected())){
-                deleted.add(datasetIdentifiers[i]);
-                statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " deleted.");
-              }
-              else{
-                Debug.debug("WARNING: dataset "+datasetIdentifiers[i]+" could not be deleted",1);
-                statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " NOT deleted.");
-              }
-            }
-          }
-          else{
-            Debug.debug("WARNING: dataset undefined and could not be deleted",1);
-          }
-        }
-        //statusBar.setLabel("Deleting dataset(s) done.");
+        HashSet<String> deleted = doDeleteDatasets(datasetIdentifiers);
         stopWorking();
-        if(deleted.size()>0){
+        if(deleted!=null && deleted.size()>0){
           refresh();
           statusBar.setLabel(deleted.size()+" of "+
               datasetIdentifiers.length+" datasets deleted.");
@@ -1883,9 +1929,71 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     };
     workThread.start();
-    //return deleted;
   }
   
+  private HashSet<String> doDeleteDatasets(String [] datasetIdentifiers) {
+     HashSet<String> deleted = new HashSet<String>();
+    boolean skip = false;
+    boolean okAll = false;
+    int choice = 3;
+    JCheckBox cbCleanup = null;
+    for(int i=datasetIdentifiers.length-1; i>=0; --i){
+      if(!datasetIdentifiers[i].equals("-1")){
+        if(!okAll){
+          ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+          cbCleanup = new JCheckBox("Delete job definitions", true);    
+          if(i<1){
+            try{
+              choice = confirmBox.getConfirm("Confirm delete",
+                                   "Really delete dataset # "+datasetIdentifiers[i]+"?",
+                                   dbPluginMgr.isJobRepository() ?
+                                   new Object[] {"OK", "Skip", cbCleanup} :
+                                     new Object[] {"OK", "Skip"});
+            }
+            catch(java.lang.Exception e){
+              Debug.debug("Could not get confirmation, "+e.getMessage(),1);
+            }
+          }
+          else{
+            try{
+              choice = confirmBox.getConfirm("Confirm delete",
+                                   "Really delete dataset # "+datasetIdentifiers[i]+"?",
+                                   dbPluginMgr.isJobRepository() ?
+                                   new Object[] {"OK", "Skip", "OK for all", "Skip all", cbCleanup} :
+                                     new Object[] {"OK", "Skip", "OK for all", "Skip all"});
+              }
+            catch(java.lang.Exception e){
+              Debug.debug("Could not get confirmation, "+e.getMessage(),1);
+            }
+          }
+    
+          switch(choice){
+          case 0  : skip = false;break;  // OK
+          case 1  : skip = true ; break;  // Skip
+          case 2  : skip = false; okAll = true ;break;  // OK for all
+          case 3  : skip = true ; return null; // Skip all
+          default : skip = true;    // other (closing the dialog). Same action as "Skip"
+          }
+        }
+        if(!skip || okAll){
+          Debug.debug("deleting dataset # " + datasetIdentifiers[i], 2);
+          if(dbPluginMgr.deleteDataset(datasetIdentifiers[i],
+              dbPluginMgr.isJobRepository() && cbCleanup.isSelected())){
+            deleted.add(datasetIdentifiers[i]);
+            statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " deleted.");
+          }
+          else{
+            Debug.debug("WARNING: dataset "+datasetIdentifiers[i]+" could not be deleted",1);
+            statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " NOT deleted.");
+          }
+        }
+      }
+      else{
+        Debug.debug("WARNING: dataset undefined and could not be deleted",1);
+      }
+    }
+    return deleted;
+  }
   /**
    * Refresh search results.
    */ 
@@ -1918,7 +2026,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void createTransformation(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new TransformationCreationPanel(dbPluginMgr, this, false),
-       false, false, true, false);
+       false, false, true, false, true);
     pDialog.setTitle(tableName);
   }
   /**
@@ -1927,21 +2035,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void createRuntimeEnvironment(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new RuntimeCreationPanel(dbPluginMgr, this, false),
-       false, false, true, false);
+       false, false, true, false, true);
     pDialog.setTitle(tableName);
   }
 
   private void editTransformation(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new TransformationCreationPanel(dbPluginMgr, this, true),
-       true, false, true, false);
+       true, false, true, false, true);
     pDialog.setTitle(tableName);
   }
   
   private void editRuntimeEnvironment(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new RuntimeCreationPanel(dbPluginMgr, this, true),
-       true, false, true, false);
+       true, false, true, false, true);
     pDialog.setTitle(tableName);
   }
 
@@ -1973,36 +2081,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         if(!getWorking()){
           return;
         }
-        boolean anyDeleted = false;
-        String [] ids = getSelectedIdentifiers();
-        //int [] rows = tableResults.getSelectedRows();
-        Debug.debug("Deleting "+ids.length+" rows", 2);
-        if(ids.length!=0){
-          GridPilot.getClassMgr().getStatusBar().setLabel(
-             "Deleting transformation(s). Please wait...");
-          JProgressBar pb = new JProgressBar();
-          statusBar.setProgressBar(pb);
-          pb.setMaximum(ids.length);
-          for(int i = ids.length-1; i>=0; i--){
-            boolean success = dbPluginMgr.deleteTransformation(ids[i]);
-            if(!success){
-              String msg = "Deleting transformation "+ids[i]+" failed";
-              Debug.debug(msg, 1);
-              GridPilot.getClassMgr().getStatusBar().setLabel(msg);
-              GridPilot.getClassMgr().getLogFile().addMessage(msg);
-              continue;
-            }
-            anyDeleted = true;
-            pb.setValue(pb.getValue()+1);
-            // We anyway refresh below, so this is not necessary.
-            //tableResults.removeRow(rows[i]);
-            //tableResults.tableModel.fireTableDataChanged();
-          }
-          GridPilot.getClassMgr().getStatusBar().setLabel(
-             "Deleting transformation(s) done.");
-          statusBar.removeProgressBar(pb);
-        }
         stopWorking();
+        boolean anyDeleted = doDeleteTransformations();
         if(anyDeleted){
           refresh();
         }
@@ -2010,6 +2090,40 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     };
     workThread.start();
   }
+
+  private boolean doDeleteTransformations() {
+    boolean anyDeleted = false;
+    String [] ids = getSelectedIdentifiers();
+    //int [] rows = tableResults.getSelectedRows();
+    Debug.debug("Deleting "+ids.length+" rows", 2);
+    if(ids.length!=0){
+      GridPilot.getClassMgr().getStatusBar().setLabel(
+         "Deleting transformation(s). Please wait...");
+      JProgressBar pb = new JProgressBar();
+      statusBar.setProgressBar(pb);
+      statusBar.setProgressBarMax(pb, ids.length);
+      for(int i = ids.length-1; i>=0; i--){
+        boolean success = dbPluginMgr.deleteTransformation(ids[i]);
+        if(!success){
+          String msg = "Deleting transformation "+ids[i]+" failed";
+          Debug.debug(msg, 1);
+          GridPilot.getClassMgr().getStatusBar().setLabel(msg);
+          GridPilot.getClassMgr().getLogFile().addMessage(msg);
+          continue;
+        }
+        anyDeleted = true;
+        pb.setValue(pb.getValue()+1);
+        // We anyway refresh below, so this is not necessary.
+        //tableResults.removeRow(rows[i]);
+        //tableResults.tableModel.fireTableDataChanged();
+      }
+      GridPilot.getClassMgr().getStatusBar().setLabel(
+         "Deleting transformation(s) done.");
+      statusBar.removeProgressBar(pb);
+    }
+    return anyDeleted;
+  }
+  
   private void deleteRuntimeEnvironments(){
     String msg = "Are you sure you want to delete runtime environment record";
     if(getSelectedIdentifiers().length>1){
@@ -2038,36 +2152,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         if(!getWorking()){
           return;
         }
-        boolean anyDeleted = false;
-        String [] ids = getSelectedIdentifiers();
-        //int [] rows = tableResults.getSelectedRows();
-        Debug.debug("Deleting "+ids.length+" rows", 2);
-        if(ids.length != 0){
-          GridPilot.getClassMgr().getStatusBar().setLabel(
-             "Deleting runtime environment(s). Please wait...");
-          JProgressBar pb = new JProgressBar();
-          pb.setMaximum(ids.length);
-          statusBar.setProgressBar(pb);
-          for(int i = ids.length-1; i>=0; i--){
-            boolean success = dbPluginMgr.deleteRuntimeEnvironment(ids[i]);
-            if(!success){
-              String msg = "Deleting runtime environment "+ids[i]+" failed";
-              Debug.debug(msg, 1);
-              GridPilot.getClassMgr().getStatusBar().setLabel(msg);
-              GridPilot.getClassMgr().getLogFile().addMessage(msg);
-              continue;
-            }
-            else{
-              anyDeleted = true;
-            }
-            pb.setValue(pb.getValue()+1);
-            //tableResults.removeRow(rows[i]);
-            //tableResults.tableModel.fireTableDataChanged();
-          }
-          GridPilot.getClassMgr().getStatusBar().setLabel(
-             "Deleting runtime environment(s) done.");
-          statusBar.removeProgressBar(pb);
-        }
+        boolean anyDeleted = doDeleteRuntimeEnvironments();
         stopWorking();
         if(anyDeleted){
           refresh();
@@ -2077,59 +2162,117 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     workThread.start();
   }
 
+  private boolean doDeleteRuntimeEnvironments() {
+    boolean anyDeleted = false;
+    String [] ids = getSelectedIdentifiers();
+    Debug.debug("Deleting "+ids.length+" rows", 2);
+    if(ids.length != 0){
+      GridPilot.getClassMgr().getStatusBar().setLabel(
+         "Deleting runtime environment(s). Please wait...");
+      JProgressBar pb = new JProgressBar();
+      statusBar.setProgressBar(pb);
+      statusBar.setProgressBarMax(pb, ids.length);
+      for(int i = ids.length-1; i>=0; i--){
+        boolean success = dbPluginMgr.deleteRuntimeEnvironment(ids[i]);
+        if(!success){
+          String msg = "Deleting runtime environment "+ids[i]+" failed";
+          Debug.debug(msg, 1);
+          GridPilot.getClassMgr().getStatusBar().setLabel(msg);
+          GridPilot.getClassMgr().getLogFile().addMessage(msg);
+          continue;
+        }
+        else{
+          anyDeleted = true;
+        }
+        pb.setValue(pb.getValue()+1);
+        //tableResults.removeRow(rows[i]);
+        //tableResults.tableModel.fireTableDataChanged();
+      }
+      statusBar.removeProgressBar(pb);
+      GridPilot.getClassMgr().getStatusBar().setLabel(
+         "Deleting runtime environment(s) done.");
+    }
+    return anyDeleted;
+  }
+
   /**
    * Open new pane with list of files.
    */
   private DBPanel viewFiles(boolean waitForThread){
     if(!getSelectedIdentifier().equals("-1")){
-      //new Thread(){
-        //public void run(){
-          try{
-            // Create new panel with jobDefinitions.         
-            String id = getSelectedIdentifier();
-            DBPanel dbPanel = new DBPanel("file", dbPluginMgr, id);
-            // We assume that the dataset name is used as reference...
-            // TODO: improve this
-            String datasetColumn = "dsn";
-            String [] fileDatasetReference = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
-            if(fileDatasetReference!=null){
-              datasetColumn = fileDatasetReference[1];
+      try{
+        String id = getSelectedIdentifier();
+       // We assume that the dataset name is used as reference...
+        // TODO: improve this
+        String datasetColumn = "dsn";
+        String [] fileDatasetReference = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
+        if(fileDatasetReference!=null){
+          datasetColumn = fileDatasetReference[1];
+        }
+        // Try to save a database lookup (which DQ2 cannot handle anyway):
+        // use the dataset name if it is displayed. Otherwise look it up from the id.
+        String datasetName = null;
+        int datasetNameIndex = -1;
+        try{
+          for(int i=0; i<tableResults.getColumnNames().length; ++i){
+            if(tableResults.getColumnNames()[i].equalsIgnoreCase(datasetColumn)){
+              datasetNameIndex = i;
+              break;
             }
-            // Try to save a database lookup (which DQ2 cannot handle anyway):
-            // use the dataset name if it is displayed. Otherwise look it up from the id.
-            String datasetName = null;
-            int datasetNameIndex = -1;
-            try{
-              for(int i=0; i<tableResults.getColumnNames().length; ++i){
-                if(tableResults.getColumnNames()[i].equalsIgnoreCase(datasetColumn)){
-                  datasetNameIndex = i;
-                  break;
-                }
-              }
-              datasetName = (String) tableResults.getUnsortedValueAt(tableResults.getSelectedRow(), datasetNameIndex);
-            }
-            catch(Exception e){
-            }
-            if(datasetName==null || datasetName.equals("")){
-              datasetName = dbPluginMgr.getDataset(id).getValue(
-                  fileDatasetReference[0]).toString();
-            }
-            dbPanel.selectPanel.setConstraint(datasetColumn, datasetName, 0);
-            dbPanel.searchRequest(false, waitForThread);
-            dbPanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-            GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);
-            return dbPanel;
           }
-          catch(Exception e){
-            Debug.debug("Couldn't create panel for dataset " + "\n" +
-                               "\tException\t : " + e.getMessage(), 2);
-            e.printStackTrace();
-            return null;
-          }
-        //}
-      //}.start();
+          datasetName = (String) tableResults.getUnsortedValueAt(tableResults.getSelectedRow(), datasetNameIndex);
+        }
+        catch(Exception e){
+        }
+        if(datasetName==null || datasetName.equals("")){
+          datasetName = dbPluginMgr.getDataset(id).getValue(
+              fileDatasetReference[0]).toString();
+        }
+        // Create and return new panel with files.
+        return createViewFilesPanel(id, datasetColumn, datasetName, waitForThread);
+      }
+      catch(Exception e){
+        Debug.debug("Couldn't create panel for dataset " + "\n" +
+                           "\tException\t : " + e.getMessage(), 2);
+        e.printStackTrace();
+        return null;
+      }
     }
     else{
+      return null;
+    }
+  }
+  
+  private DBPanel createViewFilesPanel(final String id, final String datasetColumn,
+      final String datasetName, final boolean waitForThread) throws InterruptedException, InvocationTargetException{
+    MyResThread rt = new MyResThread(){
+      private DBPanel dbPanel;
+      public void run(){
+        DBPanel dbPanel;
+        try{
+          dbPanel = new DBPanel(id);
+          dbPanel.initDB(dbName, "file");
+          dbPanel.initGUI();
+          dbPanel.selectPanel.setConstraint(datasetColumn, datasetName, 0);
+          dbPanel.searchRequest(false, waitForThread);
+          dbPanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                
+        }
+        catch(Exception e){
+          setException(e);
+          e.printStackTrace();
+        }
+      }
+      public DBPanel getDBPanelRes(){
+        return dbPanel;
+      }
+    };
+    if(waitForThread){
+      SwingUtilities.invokeAndWait(rt);
+      return rt.getDBPanelRes();
+    }
+    else{
+      SwingUtilities.invokeLater(rt);
       return null;
     }
   }
@@ -2141,19 +2284,30 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(!getSelectedIdentifier().equals("-1")){
       new Thread(){
         public void run(){
+          doViewJobDefinitions();
+        }
+      }.start();
+    }
+  }
+  
+  private void doViewJobDefinitions(){
+    SwingUtilities.invokeLater(
+      new Runnable(){
+        public void run(){
           try{
             // Create new panel with jobDefinitions.         
             String id = getSelectedIdentifier();
-            DBPanel dbPanel = new DBPanel("jobDefinition",
-                dbPluginMgr, id);
+            DBPanel dbPanel = new DBPanel(id);
+            dbPanel.initDB(dbName, "jobDefinition");
+            dbPanel.initGUI();
             String [] jobDefDatasetReference =
               MyUtil.getJobDefDatasetReference(dbPluginMgr.getDBName());
             dbPanel.selectPanel.setConstraint(jobDefDatasetReference[1],
                 dbPluginMgr.getDataset(id).getValue(
                     jobDefDatasetReference[0]).toString(),
                 0);
-            dbPanel.searchRequest(true, false);           
-            GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                   
+            dbPanel.searchRequest(true, false);
+            GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);    
           }
           catch(Exception e){
             Debug.debug("Couldn't create panel for dataset " + "\n" +
@@ -2161,8 +2315,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             e.printStackTrace();
           }
         }
-      }.start();
-    }
+      }
+    );
   }
  
   /**
@@ -2191,7 +2345,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   private void importFiles(){
     if(!getSelectedIdentifier().equals("-1") && !importingFiles){
-      new Thread(){
+      MyResThread rt = new MyResThread(){
         public void run(){
           importingFiles = true;
           // Get the dataset name and id
@@ -2199,22 +2353,28 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           // Well, again: DQ2 cannot lookup dataset name from id...
           //String datasetName = dbPluginMgr.getDatasetName(datasetID);
           String [] datasetNameFields = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
-          String datasetNameField = datasetNameFields[1];
+          String datasetNameField = datasetNameFields[0];
           int datasetNameIndex = -1;
+          String [] columnNames = tableResults.getColumnNames();
           for(int i=0; i<tableResults.getColumnNames().length; ++i){
-            if(tableResults.getColumnNames()[i].equalsIgnoreCase(datasetNameField)){
+            if(columnNames[i].equalsIgnoreCase(datasetNameField)){
               datasetNameIndex = i;
               break;
             }
           }
-          String datasetName = tableResults.getUnsortedValueAt(tableResults.getSelectedRow(), datasetNameIndex).toString();
+          Debug.debug("dataset fields "+datasetNameField+"-->"+datasetNameIndex+":"+
+              MyUtil.arrayToString(columnNames), 3);
+          String datasetName = (String) tableResults.getUnsortedValueAt(
+              tableResults.getSelectedRow(), datasetNameIndex);
           // Find the list of files
           String [] regUrls = null;
           String [] regSizes = null;
+          String regBaseURL = null;
           try{
             String [][] importFiles = getImportFiles();
             regUrls = importFiles[0];
             regSizes = importFiles[1];
+            regBaseURL = importFiles[2][0];
           }
           catch(Exception e){
             String error = "ERROR: could not get URLs to register";
@@ -2242,10 +2402,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                 }
                 uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
                 String message = "Generated new UUID "+uuid.toString()+" for "+lfn;
-                GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
+                GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel(message);
                 GridPilot.getClassMgr().getLogFile().addInfo(message);
                 dbPluginMgr.registerFileLocation(
                     datasetID, datasetName, uuid, lfn, pfn, size, null, false);
+                // Set outputLocation of the dataset. When processing this dataset, this will be used by
+                // JobCreator to find the relative path of the input files and thus allow reconstructing
+                // the directory structure for the processed dataset.
+                String outputLocation = (String) dbPluginMgr.getDataset(datasetID).getValue("outputLocation");
+                if(outputLocation==null || outputLocation.trim().equals("")){
+                  dbPluginMgr.updateDataset(datasetID, datasetName,
+                      new String[] {"outputLocation"}, new String[] {regBaseURL});
+                }
               }
               catch(Exception e){
                 ok = false;
@@ -2261,7 +2429,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           importingFiles = false;
         }
-      }.start();
+      };
+      SwingUtilities.invokeLater(rt);
     }
   }
   
@@ -2423,8 +2592,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             !cbTargetDBSelection.getSelectedItem().toString().equals(""))?
                 GridPilot.getClassMgr().getDBPluginMgr(
                     cbTargetDBSelection.getSelectedItem().toString()) : null)){
-          GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel();
-          GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.tpStatLog.setSelectedIndex(MonitoringPanel.TAB_INDEX_TRANSFERS);
+          GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel(MonitoringPanel.TAB_INDEX_TRANSFERS);
         }
       }
     }.start();
@@ -2536,12 +2704,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     GridPilot.getClassMgr().getGlobalFrame().cutting = false;
   }
 
-  // Returns a 2xn array of URLs and sizes
-  private String [][] getImportFiles() throws IOException{
+  // Returns a 3xn array of URLs, sizes and URL dirs
+  private String [][] getImportFiles() throws Exception{
     JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
     frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     final String finUrl = "";
     final String finBaseUrl = "";
+    JCheckBox cbRecursive = new JCheckBox();
+    cbRecursive.setSelected(false);
+    JPanel panel = new JPanel();
+    panel.add(new JLabel("Recursively"));
+    panel.setToolTipText("<html>Find files in subdirectories recursively.</html>");
+    panel.add(cbRecursive);
     BrowserPanel wb = null;
     try{
       wb = new BrowserPanel(
@@ -2552,17 +2726,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
            true,
            /*filter*/true,
            /*navigation*/true,
-           null,
+           panel,
            null,
            false,
            true,
-           false);
-
-      
-      Debug.debug("Disabling registering", 2);
+           false);   
+      Debug.debug("NOT registering", 2);
     }
     catch(Exception eee){
-      Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
+      Debug.debug("Could not open URL "+finUrl+". "+eee.getMessage(), 1);
       eee.printStackTrace();
       GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
       ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
@@ -2575,31 +2747,68 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
       }
     }
-    if(wb!=null && wb.lastURL!=null &&
-        wb.lastURL.startsWith(finBaseUrl)){
+    if(wb!=null && wb.getLastURL()!=null &&
+        wb.getLastURL().startsWith(finBaseUrl)){
         //GridPilot.getClassMgr().getStatusBar().setLabel("");
     }
     else{
       // Don't do anything if we cannot get a URL
       Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
+      return null;
+    }
+    Debug.debug("Checking files/dirs "+MyUtil.arrayToString(wb.getLastURLs())+
+        ":"+MyUtil.arrayToString(wb.getLastSizes()), 2);
+    String [][] ret0 = new String [2][];
+    String [][] ret = new String [3][];
+    if(cbRecursive.isSelected() /*&& MyUtil.isLocalFileName(wb.getLastURLs()[0])*/){
+      ret0 = MyTransferControl.findAllFiles(wb.getLastURLs(), wb.getLastSizes(), wb.getFilter());
+    }
+    else{
+      ret0 = findFiles(wb.getLastURLs(), wb.getLastSizes());
+    }
+    ret[0] = new String[ret0[0].length];
+    ret[1] = ret0[1];
+    ret[2] = new String[ret0[0].length];
+    for(int i=0; i<ret0[0].length; ++i){
+      ret[0][i] = fixLocalFile(ret0[0][i]);
+      ret[2][i] = wb.getLastURL();
     }
     frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     //GridPilot.getClassMgr().getStatusBar().setLabel("");
-    String [][] ret = new String [2][];
-    ret[0] = wb.lastUrlList;
-    ret[1] = wb.lastSizesList;
-    Debug.debug("Returning last URL list "+MyUtil.arrayToString(ret[0])+
+    Debug.debug("Returning last URL list "+MyUtil.arrayToString(ret[0])+" --> "+
         MyUtil.arrayToString(ret[1]), 2);
     return ret;
   }
   
+  private String fixLocalFile(String fil) {
+    if(MyUtil.isLocalFileName(fil) && !fil.startsWith("file:")){
+      return "file://"+fil;
+    }
+    return fil;
+  }
+
+  private String[][] findFiles(String[] lastUrlsList, String[] lastSizesList) {
+    Vector<String> files = new Vector<String>();
+    Vector<String> sizes = new Vector<String>();
+    for(int i=0; i<lastUrlsList.length; ++i){
+      if(!lastUrlsList[i].endsWith("/")){
+        files.add(lastUrlsList[i]);
+        sizes.add(lastSizesList[i]);
+      }
+    };
+    String[][] ret = new String[2][];
+    ret[0] = files.toArray(new String[files.size()]);
+    ret[1] = sizes.toArray(new String[sizes.size()]);
+    return ret;
+  }
+
   /**
    * Lookup the values of a row in the displayed table.
    * @param row
    * @return
    */
-  private HashMap getValues(int row){
-    HashMap values = new HashMap();
+  private HashMap<String, Object> getValues(int row){
+    HashMap<String, Object> values = new HashMap<String, Object>();
     for(int j=0; j<fieldNames.length; ++j){
       // Not displayed colums
       for(int k=0; k<tableResults.getColumnCount(); ++k){
@@ -2634,7 +2843,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       pb.setValue(i+1);
       String [] urls = null;
       // First try and get the values from the table.            
-      HashMap values = getValues(selectedRows[i]);
+      HashMap<String, Object> values = getValues(selectedRows[i]);
       String bytes = null;
       String checksum = null;
       try{
@@ -2654,7 +2863,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         Debug.debug("urlsString: "+urlsString, 2);
         if(urlsString==null || urlsString.equals("")){
           lookupPFNs(new int [] {selectedRows[i]}, new String [] {selectedFileIdentifiers[i]});
-          values = getValues(selectedRows[i]);
           urlsString = values.get(pfnsColumn).toString();
           Debug.debug("new urlsString: "+urlsString, 2);
           // This may also cause some missing bytes and checksums to be filled in
@@ -2681,9 +2889,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       }
       try{
-        transfer = mkTransfer(srcUrl, destUrl, _dlUrl, urls,
+        transfer = MyTransferControl.mkTransfer(srcUrl, destUrl, _dlUrl, urls,
            bytes, checksum, regDBPluginMgr,
-           selectedFileIdentifiers[i], selectedRows[i]);
+           selectedFileIdentifiers[i], values, dbPluginMgr, findAll());
         MyUtil.setClosestSource(transfer);
         Debug.debug("adding transfer "+transfer.getSource().getURL()+" ---> "+transfer.getDestination().getURL(), 2);
         transfers.add(transfer);
@@ -2714,166 +2922,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return ret;
   }
   
-  private TransferInfo mkTransfer(
-      GlobusURL srcUrl, GlobusURL destUrl, String _dlUrl,
-      String [] urls, String bytes, String checksum,
-      DBPluginMgr regDBPluginMgr, String id, int row) throws Exception{
-    HashMap values = getValues(row);
-    String guid = null;
-    String name = null;
-    // We assume that the dataset name is used as reference...
-    // TODO: improve this
-    String datasetColumn = "dsn";
-    String [] fileDatasetReference =
-      MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
-    if(fileDatasetReference!=null){
-      datasetColumn = fileDatasetReference[1];
-    }
-    String datasetName = null;
-    try{
-      datasetName = values.get(datasetColumn).toString();
-    }
-    catch(Exception e){
-    }
-    String nameField = MyUtil.getNameField(dbPluginMgr.getDBName(), "file");
-    String idField = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "file");
-    try{
-      guid = values.get(idField).toString();
-    }
-    catch(Exception e){
-    }
-    try{
-      name = values.get(nameField).toString();
-    }
-    catch(Exception e){
-    }
-    DBRecord file = null;
-    String datasetID = null;
-    String dlUrl = null;
-    // Correct file url not understood by Globus: file:/... -> file://...
-    String dlUrlDir = _dlUrl.replaceFirst("^file:/([^/])", "file://$1");
-    // GlobusURL does not accept file://C:/... or file://C:\..., but
-    // file:////C:/... or file:////C:\...
-    dlUrlDir = dlUrlDir.replaceFirst("\\\\", "/");
-    dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w)://", "file:////$1://");
-    dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w):/", "file:////$1:/");
-    dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w)", "file:////$1");
-    if(guid==null || name==null || urls==null || datasetName==null || bytes==null || checksum==null){
-      file = dbPluginMgr.getFile(datasetName, id, 0);
-      // In the case of DQ2 these are too slow or will fail and return null.
-      // All information must be in the table...
-      if(guid==null){
-        guid = file.getValue(idField).toString();
-      }
-      if(name==null){
-        name = file.getValue(nameField).toString();
-      }
-      if(urls==null){
-        urls = dbPluginMgr.getFileURLs(datasetName, id, findAll())[1];
-      }
-      if(datasetName==null){
-        datasetName = file.getValue(datasetColumn).toString();
-      }
-      if(bytes==null){
-        bytes = (String) file.getValue(MyUtil.getFileSizeField(dbName));
-      }
-      if(checksum==null){
-        checksum = (String) file.getValue(MyUtil.getChecksumField(dbName));
-      }
-    }
-    try{
-      datasetID = dbPluginMgr.getDatasetID(datasetName);
-    }
-    catch(Exception e){
-    }
-    if(urls==null){
-      String error = "ERROR: URLs not found. Cannot queue this transfer. "+id;
-      GridPilot.getClassMgr().getLogFile().addMessage(error);
-      throw new Exception(error);
-    }
-    if(regDBPluginMgr!=null && name==null){
-      String error = "ERROR: LFN not found. Cannot queue this transfer. "+id;
-      GridPilot.getClassMgr().getLogFile().addMessage(error);
-      throw new Exception(error);
-    }
-    if(regDBPluginMgr!=null && guid==null){
-      String error = "WARNING: guid not found for "+name;
-      GridPilot.getClassMgr().getLogFile().addMessage(error);
-    }
-    if(regDBPluginMgr!=null && datasetName==null){
-      String error = "WARNING: dataset name not found for "+name;
-      GridPilot.getClassMgr().getLogFile().addMessage(error);
-    }
-    if(regDBPluginMgr!=null && datasetID==null){
-      String error = "WARNING: dataset ID not found for "+name;
-      GridPilot.getClassMgr().getLogFile().addMessage(error);
-    }
-    String realUrl = null;
-    TransferInfo transfer = null;
-    for(int j=0; j<urls.length; ++j){
-      if(bytes==null){
-        // lookup size the hard way
-        try{
-          // TODO generalize beyond gsiftp and https
-          if(urls[j].startsWith("https:") || urls[j].startsWith("gsiftp:")){
-            GlobusURL globusUrl = new GlobusURL(urls[j]);
-            bytes = Long.toString(GridPilot.getClassMgr().getFTPlugin(
-                globusUrl.getProtocol()).getFileBytes(globusUrl));
-          }
-        }
-        catch(Exception e){
-        }
-      }
-      if(urls[j].startsWith("file:")){
-        realUrl = urls[j].replaceFirst("^file:/+", "file:////");
-        realUrl = realUrl.replaceFirst("^file:([^/]+)", "file:///$1").replaceFirst(
-            "~", System.getProperty("user.home"));
-        realUrl = realUrl.replaceFirst("^file:(\\w):", "file:////$1:");
-        Debug.debug("Corrected: "+urls[j]+"->"+realUrl, 3);
-      }
-      else{
-        realUrl = urls[j];
-      }
-      Debug.debug("Getting URL "+realUrl, 3);
-      srcUrl = new GlobusURL(realUrl);
-      // Add :8443 to srm urls without port number
-      if(srcUrl.getPort()<1 && srcUrl.getProtocol().toLowerCase().equals("srm")){
-        srcUrl = new GlobusURL(urls[j].replaceFirst("(srm://[^/]+)/", "$1:8443/"));
-      }
-      dlUrl = dlUrlDir+(new File (srcUrl.getPath())).getName();
-      destUrl = new GlobusURL(dlUrl);
-      Debug.debug("Preparing download of file "+name, 2);
-      if(transfer==null){
-        // Create the TransferInfo
-        transfer = new TransferInfo(srcUrl, destUrl);
-      }
-      Debug.debug(transfer.getSource().getURL()+" ---> "+transfer.getDestination().getURL(), 2);
-      if(regDBPluginMgr!=null){
-        transfer.setDBName(regDBPluginMgr.getDBName());
-      }
-      // If the file is in a file catalog, we should reuse the lfn, guid
-      // and the dataset name and id if possible.
-      if(dbPluginMgr.isFileCatalog()){
-        transfer.setGUID(guid);
-      }
-      // The LFN, size and checksum we always (try to) reuse.
-      transfer.setLFN(name);
-      transfer.setBytes(bytes);
-      transfer.setChecksum(checksum);
-      transfer.setDatasetName(datasetName);
-      transfer.setDatasetID(datasetID);
-      transfer.addSource(srcUrl);
-    }
-    return transfer;
-  }
-  
   /**
    * Called when mouse is pressed on the Monitor button
    * on the jobDefinition panel
    */
   private void monitorJobs(){
-    GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel();
-    GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.tpStatLog.setSelectedIndex(MonitoringPanel.TAB_INDEX_JOBS);
+    GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel(MonitoringPanel.TAB_INDEX_JOBS);
     new Thread(){
       public void run(){        
         String [] selectedJobIdentifiers = getSelectedIdentifiers();
@@ -2985,7 +3039,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     // submit the jobs
     statusBar.setLabel("Submitting. Please wait...");
-    submissionControl.submitJobDefinitions(selectedJobDefinitions, csName, dbPluginMgr);
+    GridPilot.getClassMgr().getSubmissionControl().submitJobDefinitions(selectedJobDefinitions, csName, dbPluginMgr);
     statusBar.stopAnimation();
     statusBar.setLabel("");
     setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
@@ -3048,7 +3102,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     Debug.debug("Cutting!", 3);
     copy();
     GridPilot.getClassMgr().getGlobalFrame().cutting = true;
-    GridPilot.getClassMgr().getGlobalFrame().cutPanel = this;
+    GridPilot.getClassMgr().getGlobalFrame().setCutPanel(this);
   }
   
   public void paste(){
@@ -3085,70 +3139,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       return;
     }
     boolean ok = true;
-    String id = null;
     String db = records[0];
     String table = records[1];
     try{
-      // this can stay null for other than files
-      String datasetName = null;
       // this can stay null for other than datasets and files
-      String name = null;
       for(int i=2; i<records.length; ++i){
-        name = null;
-        id = records[i];
         // Check if record is a dataset and already there
         // ask for prefix if this is the case.
         // Only datasets have unique names.
         try{
-          if(tableName.equalsIgnoreCase("dataset")){
-            // Now, DQ2 cannot even lookup dataset names from ID...
-            // Another ugly hack: we pass both id and name
-            // e.g. ATLAS dataset b2a80235-0be0-4b9d-9785-b12565c21fcd user.FrederikOrellana5894-ATLAS.csc11.002.Gee_500_pythia_photos_reson
-            //name = GridPilot.getClassMgr().getDBPluginMgr(db).getDatasetName(
-            //    records[i]);
-            int index = records[i].indexOf("'::'");
-            if(index>-1){
-              datasetName = records[i].substring(1, index);
-              String rest = records[i].substring(index+4);
-              index = rest.indexOf("'::'");
-              id = rest.substring(0, index);
-              name = datasetName;
-            }
-            // Get the name of the dataset from the source db
-            String dsName = GridPilot.getClassMgr().getDBPluginMgr(db).getDatasetName(id);
-            // See if the name exists in the destination db
-            String testDsName = null;
-            try{
-              testDsName = GridPilot.getClassMgr().getDBPluginMgr(dbName).getDatasetName(id);
-            }
-            catch(Exception e){
-            }
-            Debug.debug("Dataset name: "+dbName+"-->"+dsName+"-->"+testDsName, 2);
-            if(testDsName!=null && !testDsName.equals("-1")){            
-              name = MyUtil.getName("Cannot overwrite, please give new name", "new-"+testDsName);
-              if(name==null || name.equals("")){
-                return;
-              }
-            }
-          }
-          else if(tableName.equalsIgnoreCase("file")){
-            // Well, once more, because DQ2 cannot lookup files we have
-            // to introduce an ugly hack: we pass both dataset name, file name and id
-            // ('dsname'::'name'::'id') when copy-pasting
-            int index = records[i].indexOf("'::'");
-            datasetName = records[i].substring(1, index);
-            String rest = records[i].substring(index+4);
-            index = rest.indexOf("'::'");
-            name = rest.substring(0, index);
-            id = rest.substring(index+4, rest.length()-2);
-          }
-          insertRecord(db, table, id, name, datasetName);
+          pasteRecord(records[i], db, table);
         }
         catch(Exception e){
           ok = false;
           String error = "ERROR: could not insert record: "+
-          db+", "+table+", "+dbName+", "+tableName+", "+
-          records[i]+", "+name;
+          db+", "+table+", "+dbName+", "+tableName+", "+records[i];
           GridPilot.getClassMgr().getLogFile().addMessage(error, e);
           e.printStackTrace();
         }
@@ -3164,8 +3169,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       statusBar.setLabel(
       "Deleting job definition(s). Please wait...");
       JProgressBar pb = new JProgressBar();
-      pb.setMaximum((records.length-2));
       statusBar.setProgressBar(pb);
+      statusBar.setProgressBarMax(pb, records.length-2);
       for(int i=2; i<records.length; ++i){
         try{
           deleteRecord(db, table, records[i]);
@@ -3188,16 +3193,59 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(ok){
       refresh();
     }
-    try{
-      if(GridPilot.getClassMgr().getGlobalFrame().cutPanel!=null){
-        ((DBPanel) GridPilot.getClassMgr().getGlobalFrame().cutPanel).refresh();
-      }
-    }
-    catch(Exception e){
-      e.printStackTrace();
-    }
+    GridPilot.getClassMgr().getGlobalFrame().refreshCutPanel();
   }
   
+  private void pasteRecord(String record, String db, String table) throws Exception {
+    String id = record;
+    // this can stay null for other than files
+    String datasetName = null;
+    String name = null;
+    if(tableName.equalsIgnoreCase("dataset")){
+      // Now, DQ2 cannot even lookup dataset names from ID...
+      // Another ugly hack: we pass both id and name
+      // e.g. ATLAS dataset b2a80235-0be0-4b9d-9785-b12565c21fcd user.FrederikOrellana5894-ATLAS.csc11.002.Gee_500_pythia_photos_reson
+      //name = GridPilot.getClassMgr().getDBPluginMgr(db).getDatasetName(
+      //    record);
+      int index = record.indexOf("'::'");
+      if(index>-1){
+        datasetName = record.substring(1, index);
+        String rest = record.substring(index+4);
+        index = rest.indexOf("'::'");
+        id = rest.substring(0, index);
+        name = datasetName;
+      }
+      // Get the name of the dataset from the source db
+      String dsName = GridPilot.getClassMgr().getDBPluginMgr(db).getDatasetName(id);
+      // See if the name exists in the destination db
+      String testDsName = null;
+      try{
+        testDsName = GridPilot.getClassMgr().getDBPluginMgr(dbName).getDatasetName(id);
+      }
+      catch(Exception e){
+      }
+      Debug.debug("Dataset name: "+dbName+"-->"+dsName+"-->"+testDsName, 2);
+      if(testDsName!=null && !testDsName.equals("-1")){            
+        name = MyUtil.getName("Cannot overwrite, please give new name", "new-"+testDsName);
+        if(name==null || name.equals("")){
+          return;
+        }
+      }
+    }
+    else if(tableName.equalsIgnoreCase("file")){
+      // Well, once more, because DQ2 cannot lookup files we have
+      // to introduce an ugly hack: we pass both dataset name, file name and id
+      // ('dsname'::'name'::'id') when copy-pasting
+      int index = record.indexOf("'::'");
+      datasetName = record.substring(1, index);
+      String rest = record.substring(index+4);
+      index = rest.indexOf("'::'");
+      name = rest.substring(0, index);
+      id = rest.substring(index+4, rest.length()-2);
+    }
+    insertRecord(db, table, id, name, datasetName);
+  }
+
   /**
    * 
    * The method called when copy-pasting. Inserts a DB record.
@@ -3599,6 +3647,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     }
     return result;
+  }
+
+  public void setConstraint(String nameField, String runtimeEnvironmentName, int i) {
+    selectPanel.setConstraint(nameField, runtimeEnvironmentName, i);
   }
 
 }

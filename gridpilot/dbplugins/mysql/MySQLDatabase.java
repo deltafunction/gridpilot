@@ -491,29 +491,30 @@ public class MySQLDatabase extends DBCache implements Database {
     return (res!=null?MyUtil.split(res):new String [] {});
   }
 
-  public String [] getOutputFiles(String jobDefID) throws InterruptedException{
+  public String [] getOutputFiles(String jobDefID) throws Exception{
     String transformationID = getJobDefTransformationID(jobDefID);
     String outputs = (String) getTransformation(transformationID).getValue("outputFiles");
-    return (outputs!=null?MyUtil.split(outputs):new String [] {});
+    return (outputs!=null?MyUtil.splitUrls(outputs):new String [] {});
   }
 
-  public String [] getJobDefInputFiles(String jobDefID) throws InterruptedException{
+  public String [] getJobDefInputFiles(String jobDefID) throws Exception{
     String inputs = (String) getJobDefinition(jobDefID).getValue("inputFileURLs");
-    return (inputs!=null?MyUtil.split(inputs):new String [] {});
+    return (inputs!=null?MyUtil.splitUrls(inputs):new String [] {});
   }
 
-  public String [] getJobDefTransPars(String jobDefID) throws InterruptedException{
+  public String [] getJobDefTransPars(String jobDefID) throws Exception{
     String args = (String) getJobDefinition(jobDefID).getValue("transPars");
-    return (args!=null?MyUtil.split(args):new String [] {});
+    return (args!=null?MyUtil.splitUrls(args):new String [] {});
   }
 
-  public String getJobDefOutLocalName(String jobDefID, String par) throws InterruptedException{
+  public String getJobDefOutLocalName(String jobDefID, String par) throws Exception{
     String transID = getJobDefTransformationID(jobDefID);
-    String [] fouts = MyUtil.split((String) getTransformation(transID).getValue("outputFiles"));
+    String [] fouts = MyUtil.splitUrls((String) getTransformation(transID).getValue("outputFiles"));
     String maps = (String) getJobDefinition(jobDefID).getValue("outFileMapping");
+    String maps1 = maps.replaceAll("(\\S+) +(\\w+:\\S+)", "file:$1 $2");
     String[] map = null;
     try{
-      map = MyUtil.splitUrls(maps);
+      map = MyUtil.splitUrls(maps1);
     }
     catch(Exception e){
       Debug.debug("WARNING: could not split URLs "+maps, 1);
@@ -525,14 +526,18 @@ public class MySQLDatabase extends DBCache implements Database {
         name = map[i*2];
       }
     }
-    return name;
+    return MyUtil.clearFile(name);
   }
 
-  public String getJobDefOutRemoteName(String jobDefID, String par) throws InterruptedException{
+  public String getJobDefOutRemoteName(String jobDefID, String par) throws Exception{
     String transID = getJobDefTransformationID(jobDefID);
+    // NOTICE: output file names must NOT have spaces.
     String [] fouts = MyUtil.split((String) getTransformation(transID).getValue("outputFiles"));
     String maps = (String) getJobDefinition(jobDefID).getValue("outFileMapping");
-    String[] map = MyUtil.split(maps);
+    // maps is of the form out1.txt file:/some/dir/my file1.txt out2.txt file:/dome/dir/my file2.txt ...
+    // Prepend file: to out1.txt
+    String maps1 = maps.replaceAll("(\\S+) +(\\w+:\\S+)", "file:$1 $2");
+    String[] map = MyUtil.splitUrls(maps1);
     String name = "";
     for(int i=0; i<fouts.length; i++){
       if(par.equals(fouts[i])){
@@ -1574,7 +1579,7 @@ public class MySQLDatabase extends DBCache implements Database {
               values[i].equals("''")){
             values[i] = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
             String message = "Generated new UUID "+values[i]+" for dataset";
-            GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel(message);
+            GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel(message);
             GridPilot.getClassMgr().getLogFile().addInfo(message);
           }
            values[i] = "'"+values[i]+"'";
@@ -2383,8 +2388,10 @@ public class MySQLDatabase extends DBCache implements Database {
    * Returns the files registered for a given dataset id.
    */
   public DBResult getFiles(String datasetID){
-    String idField = MyUtil.getIdentifierField(dbName, "dataset");
-    DBResult res = select("SELECT * FROM file WHERE "+idField+" = "+datasetID, idField, false);
+    String datasetName = getDatasetName(datasetID);
+    String idField = MyUtil.getIdentifierField(dbName, "file");
+    String[] dsRefFields = MyUtil.getFileDatasetReference(dbName);
+    DBResult res = select("SELECT * FROM file WHERE "+dsRefFields[1]+" = "+datasetName, idField, false);
     return res;
   }
 

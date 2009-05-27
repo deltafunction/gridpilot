@@ -2,6 +2,7 @@ package gridpilot.csplugins.ec2;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
@@ -42,6 +43,7 @@ import gridpilot.DBPluginMgr;
 import gridpilot.MyComputingSystem;
 import gridpilot.GridPilot;
 import gridpilot.MyJobInfo;
+import gridpilot.MyResThread;
 import gridpilot.MySecureShell;
 import gridpilot.MyUtil;
 import gridpilot.csplugins.forkpool.ForkPoolComputingSystem;
@@ -147,12 +149,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     ec2mgr = new EC2Mgr(ec2Server, ec2Port, ec2Path, ec2Secure,
         accessKey, secretKey, sshAccessSubnet, getUserInfo(csName),
         runDir, transferControl);
- 
-    Debug.debug("Adding EC2 monitor", 2);
-    EC2MonitoringPanel panel = new EC2MonitoringPanel(ec2mgr);
-    // This causes the panel to be added to the monitoring window as a tab,
-    // right after the transfer monitoring tab and before the log tab.
-    GridPilot.EXTRA_MONITOR_TABS.add(panel);
+    
+    createMonitor();
         
     try{
       String mms = GridPilot.getClassMgr().getConfigFile().getValue(csName,
@@ -182,6 +180,26 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     discoverInstances();
 
   }
+  
+  private void createMonitor() throws InterruptedException, InvocationTargetException {
+    javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
+      public void run(){
+        try{
+          Debug.debug("Adding EC2 monitor", 2);
+          EC2MonitoringPanel panel = new EC2MonitoringPanel(ec2mgr);
+          // This causes the panel to be added to the monitoring window as a tab,
+          // right after the transfer monitoring tab and before the log tab.
+          GridPilot.EXTRA_MONITOR_TABS.add(panel);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          logFile.addMessage("WARNING: could not create VM monitoring panel.", e);
+        }
+      }
+    });
+  }
+
+
   
   public boolean preProcess(JobInfo job) throws Exception {
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
@@ -236,23 +254,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     if(instances.isEmpty()){
       return;
     }
-    String msg = "You have "+instances.size()+" running EC2 AMI instance(s).\n" +
-       "Do you want to include it/them in the pool of compute hosts?";
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-    if(GridPilot.SPLASH!=null){
-      GridPilot.SPLASH.hide();
-    }
-    int choice = -1;
+    
     try{
-      choice = confirmBox.getConfirm("Confirm inclusion of hosts",
-          msg, new Object[] {"Yes", "No"});
-      GridPilot.SPLASH.show();
+      checkForRunninginstances(instances);
     }
     catch(Exception e){
       e.printStackTrace();
-      return;
-    }
-    if(choice!=0){
       return;
     }
     try{
@@ -277,6 +284,35 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
   }
   
+  private void checkForRunninginstances(final ArrayList<Instance> instances) throws Exception {
+    MyResThread rt = new MyResThread() {
+      public void run(){
+        try{
+          String msg = "<html>You have "+instances.size()+" running EC2 AMI instance(s).\n<br>" +
+          "Do you want to include it/them in the pool of compute hosts?</html>";
+          ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+          if(GridPilot.SPLASH!=null){
+            GridPilot.SPLASH.hide();
+          }
+          int choice = -1;
+          choice = confirmBox.getConfirm("Confirm inclusion of hosts",
+             msg, new Object[] {"Yes", "No"});
+          GridPilot.SPLASH.show();
+          if(choice!=0){
+            throw new IOException("NOT including EC2 instances.");
+          }
+        }
+        catch(Exception e){
+          setException(e);
+        }
+      }
+    };
+    javax.swing.SwingUtilities.invokeAndWait(rt);
+    if(rt.getException()!=null){
+      throw rt.getException();
+    }
+  }
+
   /**
    * Halt virtual machines with no running jobs -
    * ask for confirmation.
@@ -386,6 +422,19 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     ec2mgr.exit();
   }
 
+  public Shell getShell(JobInfo job){
+    Debug.debug("Getting shell for job "+job.getIdentifier()+" on host "+job.getHost(), 2);
+    Shell shell = null;
+    try{
+      shell = getShell(job.getHost());
+    }
+    catch(JSchException e){
+      e.printStackTrace();
+    }
+    Debug.debug("Returning "+shell, 2);
+    return shell;
+  }
+  
   /**
    * Finds a Shell for a given host.
    * If the Shell is dead it is attempted to start a new one.
@@ -984,10 +1033,10 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
             }
           }
           Debug.debug("Waiting for EC2 machine to boot... "+inst.getState()+":"+inst.getStateCode(), 1);
+          Thread.sleep(10000);
           if(inst.isRunning() || inst.getState().equalsIgnoreCase("running")){
             break;
           }
-          Thread.sleep(5000);
         }
         // If the VM RTE has any dependencies on EBSSnapshots, create EBS volume, 
         // and add initLines to the runtimeEnvironment record and mount the volume.

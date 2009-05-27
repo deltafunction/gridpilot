@@ -46,7 +46,6 @@ public class JobDefCreator{
     showThis = showResults;
 
     if(showThis){
-      //int choice = showResult(cstAttr);
       int choice = MyUtil.showResult(cstAttrNames, cstAttr, "Job definition", 1);
       switch(choice){
         case 0  : skip = false;  break;  // OK

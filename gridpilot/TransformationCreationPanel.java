@@ -9,6 +9,7 @@ import javax.swing.border.*;
 import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 /**
@@ -246,7 +247,12 @@ public class TransformationCreationPanel extends CreateEditPanel{
     
     jbEditTrans.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
-        viewRuntimeEnvironments();
+        try{
+          viewRuntimeEnvironments();
+        } 
+        catch(Exception e1){
+          e1.printStackTrace();
+        }
       }
     }
     );
@@ -261,8 +267,10 @@ public class TransformationCreationPanel extends CreateEditPanel{
 
   /**
    * Open new pane with corresponding runtime environments.
+   * @throws InvocationTargetException 
+   * @throws InterruptedException 
    */
-  private void viewRuntimeEnvironments(){
+  private void viewRuntimeEnvironments() throws InterruptedException, InvocationTargetException{
     if(runtimeEnvironmentName==null || runtimeEnvironmentName.equals("")){
       return;
     }
@@ -272,12 +280,12 @@ public class TransformationCreationPanel extends CreateEditPanel{
       public void run(){
         try{
           // Create new panel with jobDefinitions.         
-          DBPanel dbPanel = new DBPanel(dbPluginMgr.getDBName(),
-              "runtimeEnvironment");
+          DBPanel dbPanel = new DBPanel();
+          dbPanel.initDB(dbPluginMgr.getDBName(), "runtimeEnvironment");
+          dbPanel.initGUI();
           String nameField =
             MyUtil.getNameField(dbPluginMgr.getDBName(), "runtimeEnvironment");
-          dbPanel.selectPanel.setConstraint(nameField,
-              runtimeEnvironmentName, 0);
+          dbPanel.setConstraint(nameField, runtimeEnvironmentName, 0);
           dbPanel.searchRequest(true, false);           
           GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);
         }
@@ -288,8 +296,12 @@ public class TransformationCreationPanel extends CreateEditPanel{
         }
       }
     };
-    //SwingUtilities.invokeLater(t);
-    t.run();
+    if(SwingUtilities.isEventDispatchThread()){
+      t.run();
+    }
+    else{
+      SwingUtilities.invokeAndWait(t);
+    }
   }
   
   private void cbRuntimeSelection_actionPerformed(){

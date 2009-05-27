@@ -51,7 +51,7 @@ public class DatasetUpdater{
       int choice = showResult();
       switch(choice){
         case 0  : skip = false;  break;  // OK
-        case 1  : skip = true; // Skip
+        case 1  : skip = true; break; // Skip
         default : skip = true;
       }
     }
@@ -81,17 +81,17 @@ public class DatasetUpdater{
     int row = 0;
 
     for(int i =0; i<cstAttr.length; ++i, ++row){
-      if(cstAttrNames[i].equals("init")){
+      pResult.add(new JLabel(cstAttrNames[i] + " : "),
+          new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
+          GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+          new Insets(5, 25, 5, 5), 0, 0));
+      if(cstAttrNames[i].equalsIgnoreCase("metaData")){
         JTextArea ta = MyUtil.createGrayTextArea(cstAttr[i]);
         pResult.add(ta, new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
             GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
-        }
+      }
       else{
-        pResult.add(new JLabel(cstAttrNames[i] + " : "),
-            new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
-            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-            new Insets(5, 25, 5, 5), 0, 0));
         pResult.add(new JLabel(cstAttr[i]),
             new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
             GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
@@ -104,13 +104,13 @@ public class DatasetUpdater{
     int height = (int)pResult.getPreferredSize().getHeight() +
     (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5;
     int width = (int)pResult.getPreferredSize().getWidth() +
-    (int)sp.getVerticalScrollBar().getPreferredSize().getWidth() + 5;
+       (int)sp.getVerticalScrollBar().getPreferredSize().getWidth() + 5;
     Dimension screenSize = new Dimension(Toolkit.getDefaultToolkit().getScreenSize());
-    if (height>screenSize.height){
+    if(height>screenSize.height){
       height = 700;
       Debug.debug("Screen height exceeded, setting "+height, 2);
     }
-    if (width>screenSize.width){
+    if(width>screenSize.width){
       width = 550;
       Debug.debug("Screen width exceeded, setting "+width, 2);
     }

@@ -9,6 +9,7 @@ import javax.swing.event.*;
 import java.awt.event.*;
 import java.awt.Component;
 import javax.swing.*;
+
 import java.awt.*;
 import java.util.Vector;
 
@@ -214,11 +215,31 @@ public class MyJTable extends JTable implements Table {
    * nothing is changed
    * @throws Exception 
    */
-  /*synchronized*/ public void setTable(Object [][] values, String [] columnNames) throws Exception{
+  public synchronized void setTable(final Object [][] values, final String [] columnNames) throws Exception{
+    if(SwingUtilities.isEventDispatchThread()){
+      doSetTable(values, columnNames);
+    }
+    else{
+      SwingUtilities.invokeLater(
+        new Runnable(){
+          public void run(){
+            try{
+              doSetTable(values, columnNames);
+            }
+            catch(Exception ex){
+              Debug.debug("Could not create panel ", 1);
+              ex.printStackTrace();
+            }
+          }
+        }
+      );
+    }
+  }
+  
+  private void doSetTable(Object [][] values, String [] columnNames) throws Exception{
     Debug.debug("DBVectorTableModel.setTable", 2);
     tableModel.setTable(values, columnNames);
-    Debug.debug("creating menu", 2);
-    createMenu();
+    //createMenu();
     
     // createMenu() sometimes freezes the whole UI. Don't know why.
     // And all seems to work fine without...
@@ -253,6 +274,7 @@ public class MyJTable extends JTable implements Table {
 
   synchronized public void setTable(String [] columnNames) throws Exception{
     tableModel.setTable(columnNames);
+    Debug.debug("creating menu", 2);
     createMenu();
   }
 
@@ -311,7 +333,28 @@ public class MyJTable extends JTable implements Table {
    * Sets value at row, col.
    *
    */
-  public synchronized void setValueAt(Object value, int row, int col){
+  public synchronized void setValueAt(final Object value, final int row, final int col){
+    if(SwingUtilities.isEventDispatchThread()){
+      doSetValueAt(value, row, col);
+    }
+    else{
+      SwingUtilities.invokeLater(
+        new Runnable(){
+          public void run(){
+            try{
+              doSetValueAt(value, row, col);
+            }
+            catch(Exception ex){
+              Debug.debug("Could not create panel ", 1);
+              ex.printStackTrace();
+            }
+          }
+        }
+      );
+    }
+  }
+
+  private void doSetValueAt(Object value, int row, int col) {
     tableModel.setValueAt(value, row, col);
     repaint();//getCellRect(row, col, true));
     //getUI().installUI(this);
@@ -356,7 +399,28 @@ public class MyJTable extends JTable implements Table {
    * All possible current values are kept ; if r is greater than the current number of rows,
    * some rows are appened, otherwise, last rows are deleted.
    */
-  public synchronized void createRows(int r){
+  public synchronized void createRows(final int r){
+    if(SwingUtilities.isEventDispatchThread()){
+      doCreateRows(r);
+    }
+    else{
+      SwingUtilities.invokeLater(
+        new Runnable(){
+          public void run(){
+            try{
+              doCreateRows(r);
+            }
+            catch(Exception ex){
+              Debug.debug("Could not create panel ", 1);
+              ex.printStackTrace();
+            }
+          }
+        }
+      );
+    }
+  }
+  
+  public synchronized void doCreateRows(final int r){
     clearSelection();
     tableModel.createRows(r);
     revalidate();

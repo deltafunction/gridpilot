@@ -32,6 +32,7 @@ import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
+import javax.swing.SwingUtilities;
 
 import jonelo.jacksum.JacksumAPI;
 import jonelo.jacksum.algorithm.AbstractChecksum;
@@ -285,6 +286,7 @@ public class MySSL extends SSL{
   }
   
   private void decryptPrivateKey() throws IOException {
+    Exception ee = null;
     if(sslInitialized){
       Debug.debug("SSL already initialized. "+credential, 2);
       return;
@@ -323,10 +325,13 @@ public class MySSL extends SSL{
         GridPilot.KEY_PASSWORD = credentials[0];
       }
       catch(Exception e){
-        e.printStackTrace();
+        ee = e;
         continue;
       }
       return;
+    }
+    if(ee!=null){
+      ee.printStackTrace();
     }
     throw new IOException("ERROR: could not decrypt private key");
   }
@@ -500,15 +505,47 @@ public class MySSL extends SSL{
    * @param certFile
    * @param password
    * @return password, key location, certificate location.
+   * @throws Exception 
    */
-  private static String [] askForPassword(String keyFile, String certFile, String password){
+  private static String [] askForPassword(
+      final String keyFile, final String certFile, final String password) throws IOException{
+    MyResThread t = new MyResThread(){
+      String [] res = null;
+      public void run(){
+        try{
+          res = doAskForPassword(keyFile, certFile, password);
+        }
+        catch(Exception e){
+          setException(e);
+        }
+      }
+      public String [] getString2Res(){
+        return res;
+      }
+    };
     
-    final JPanel panel = new JPanel(new GridBagLayout());
-    JTextPane tp = new JTextPane();
-    tp.setText("");
-    tp.setEditable(false);
-    tp.setOpaque(false);
-    tp.setBorder(null);
+    try{
+      SwingUtilities.invokeAndWait(t);
+    }
+    catch(Exception e){
+      throw new IOException(e.getCause());
+    }
+    
+    if(t.getException()!=null){
+      if(t.getException().getClass().getCanonicalName().equals(
+          IllegalArgumentException.class.getCanonicalName())){
+        throw new IllegalArgumentException(t.getException());
+      }
+      else{
+        throw new IOException(t.getException());
+      }
+    }
+
+    return t.getString2Res();
+  }
+  
+  private static String [] doAskForPassword(String keyFile, String certFile, String password)
+     throws IllegalArgumentException{
     
     if(keyFile.startsWith("~")){
       try{
@@ -529,6 +566,13 @@ public class MySSL extends SSL{
       }
     }
 
+    JPanel panel = new JPanel(new GridBagLayout());
+    JTextPane tp = new JTextPane();
+    tp.setText("");
+    tp.setEditable(false);
+    tp.setOpaque(false);
+    tp.setBorder(null);
+    
     final JPasswordField passwordField = new JPasswordField(password, 24);
     final JTextField keyField = new JTextField(keyFile, 24);
     final JTextField certField = new JTextField(certFile, 24);
@@ -621,14 +665,7 @@ public class MySSL extends SSL{
     }
     
     // TODO: doens't work... Cannot set focus in password field.
-    /*SwingUtilities.invokeLater(
-        new Runnable(){
-          public void run(){
-            passwordField.requestFocusInWindow();
-          }
-        }
-    );
-    passwordField.requestFocusInWindow();*/
+    passwordField.requestFocusInWindow();
     int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
         "Authenticate", JOptionPane.OK_CANCEL_OPTION);
     Debug.debug("showing dialog done", 3);

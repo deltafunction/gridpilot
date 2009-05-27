@@ -4,6 +4,7 @@ import gridfactory.common.Debug;
 
 import java.awt.*;
 import javax.swing.*;
+
 import java.awt.event.*;
 
 public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
@@ -28,7 +29,8 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
   private JPanel buttonPanel = new JPanel();
 
   public CreateEditDialog(CreateEditPanel _panel, boolean _editing,
-      boolean _showDetailsCheckBox, boolean _showButtons, boolean _showSaveSettings){
+      boolean _showDetailsCheckBox, boolean _showButtons, boolean _showSaveSettings,
+      boolean visible){
     
     super();
     
@@ -57,44 +59,21 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
     }
 
     try{
-      //setContentPane(pCreateEdit);
       this.getContentPane().add(pCreateEdit, BorderLayout.CENTER);
       initGUI();
       pack();
       requestFocusInWindow();
       // Doesn't seem to make any difference...
       //setAlwaysOnTop(false);
-      this.setVisible(true);
+      this.setVisible(visible);
     }
     catch(Exception e){
       e.printStackTrace();
     }
   }
   
-  /*public void componentResized(ComponentEvent e){
-    pCreateEdit.remove(createEditPanel);
-    pCreateEdit.add(createEditPanel, BorderLayout.CENTER);
-    pCreateEdit.validate();
-    pCreateEdit.setVisible(true);
-    Debug.debug("componentResized event from "
-         + e.getComponent().getClass().getName(), 3);
-  }
-
-  public void componentHidden(ComponentEvent e) {
-  }
-   
-  public void componentMoved(ComponentEvent e) {    
-  }
-      
-  public void componentShown(ComponentEvent e){ 
-  }*/
-  
-  public void initGUI(){
-    //buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
+  public void initGUI() throws Exception{
     
-    /*this.addComponentListener(this);
-    createEditPanel.addComponentListener(this);*/
-
     // buttons initialisation
     bClose.setMnemonic(BCLOSE);
     bClose.addActionListener(new java.awt.event.ActionListener(){
@@ -167,6 +146,10 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
     pack();
   }
   
+  public void activate() throws Exception{
+    createEditPanel.activate();
+  }
+  
   public void setBCreateUpdateEnabled(boolean ok){
     bCreateUpdate.setEnabled(ok);
   }
@@ -175,6 +158,7 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
    * Called when a button is clicked
    */
   void button_actionPerformed(ActionEvent e){
+    MyResThread rt;
     switch(((JButton)e.getSource()).getMnemonic()){
       case BCLOSE :
         createEditPanel.windowClosing();
@@ -182,23 +166,30 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
         break;
 
       case BCREATEUPDATE :
-        new Thread(){
+        rt = new MyResThread(){
           public void run(){
             createEditPanel.create(cbShowResults.isSelected(), editing);
           }
-        }.start();
+        };
+        SwingUtilities.invokeLater(rt);
         break;
 
       case BSAVE_SETTINGS :
-        new Thread(){
+        rt = new MyResThread(){
           public void run(){
             createEditPanel.saveSettings();
           }
-        }.start();
+        };
+        SwingUtilities.invokeLater(rt);
         break;
 
       case BCLEAR :
-        createEditPanel.clearPanel();
+        rt = new MyResThread(){
+          public void run(){
+            createEditPanel.clearPanel();
+          }
+        };
+        SwingUtilities.invokeLater(rt);
         break;
     }
   }

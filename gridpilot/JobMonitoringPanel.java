@@ -54,7 +54,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   // auto refresh
   private JCheckBox cbAutoRefresh = new JCheckBox("each");
   private JSpinner sAutoRefresh = new JSpinner();
-  public JSpinner sAutoResubmit = new JSpinner();
+  private JSpinner sAutoResubmit = new JSpinner();
   private JComboBox cbRefreshUnits = new JComboBox(new Object []{"sec", "min"});
   private int MIN = 1;
   private JMenuItem miStopUpdate = new JMenuItem("Stop updating");
@@ -71,7 +71,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JMenuItem miShowScripts = new JMenuItem("Script(s)");
   private JMenuItem miRevalidate = new JMenuItem("Revalidate");
   private JMenu mDB = new JMenu("Set DB Status");
-  public JobStatusUpdateControl statusUpdateControl;
+  private JobStatusUpdateControl statusUpdateControl;
   private SubmissionControl submissionControl;
 
   
@@ -83,11 +83,19 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   /**
    * Constructor
+   * @throws Exception 
    */
   public JobMonitoringPanel() throws Exception{
     statusTable = GridPilot.getClassMgr().getJobStatusTable();
+  }
+  
+  public void activate() throws Exception {
     statusUpdateControl = new JobStatusUpdateControl();
     submissionControl = GridPilot.getClassMgr().getSubmissionControl();
+  }
+  
+  public JobStatusUpdateControl getJobStatusUpdateControl() {
+    return statusUpdateControl;
   }
   
   public String getTitle(){
@@ -96,7 +104,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   public void initGUI(){
 
-    statusBar = GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar;
+    statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     this.setLayout(new BorderLayout());
     mainPanel.setLayout(new BorderLayout());
     
@@ -509,7 +517,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         DBPluginMgr.getStatusName(options[3])
     };
 
-    int choices [] = ShowOutputsJobsDialog.show(JOptionPane.getRootFrame(), jobs, sOptions);
+    int choices[] = null;
+    try{
+      choices = ShowOutputsJobsDialog.show(JOptionPane.getRootFrame(), jobs, sOptions);
+    }
+    catch(Exception e){
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not show scripts.", e);
+    }
     if(choices!=null){
       int dbChoices [] = new int[choices.length];
 
@@ -569,7 +583,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           outNames = new String [] {"stdout"};
           outs = new String[] {outs[0]};
         }
-        //statusBar.removeLabel();
         ((JFrame) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
             Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         statusBar.stopAnimation();
@@ -582,10 +595,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         else{
           message = "Final outputs of job";
         }
-        ShowOutputsJobsDialog.showTabs(JOptionPane.getRootFrame(),
-            message + " " + job.getName(),
-            outNames,
-            outs);
+        doShowOutput(job, message, outNames, outs);     
       }
     };
     statusBar.setIndeterminateProgressBarToolTip("click here to stop");
@@ -597,6 +607,14 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     t.start();
   }
 
+  private void doShowOutput(final MyJobInfo job, final String message,
+      final String [] outNames, final String [] outs){
+    ShowOutputsJobsDialog.showTabs(JOptionPane.getRootFrame(),
+        message + " " + job.getName(),
+        outNames,
+        outs);
+  }
+
   /**
    * Shows full status of the job at the selected row. <p>
    */
@@ -604,10 +622,22 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     final Thread t = new Thread(){
       public void run(){
         MyJobInfo job = JobMgr.getJobAtRow(statusTable.getSelectedRow());
-        String status = GridPilot.getClassMgr().getCSPluginMgr().getFullStatus(job);
+        final String status = GridPilot.getClassMgr().getCSPluginMgr().getFullStatus(job);
         statusBar.removeLabel();
         statusBar.stopAnimation();
-        MyUtil.showLongMessage(status, "Job status");
+        SwingUtilities.invokeLater(
+            new Runnable(){
+              public void run(){
+                try{
+                  MyUtil.showLongMessage(status, "Job status");
+                }
+                catch(Exception ex){
+                  Debug.debug("Could not create panel ", 1);
+                  ex.printStackTrace();
+                }
+              }
+            }
+          );
       }
     };
     statusBar.setLabel("Getting full status...");
@@ -630,12 +660,44 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   }
 
   private void showScripts(){
-    MyJobInfo job = JobMgr.getJobAtRow(statusTable.getSelectedRow());
-    ShowOutputsJobsDialog.showTabs(JOptionPane.getRootFrame(),
-        "Scripts for job " + job.getName(),
-        job,
-        GridPilot.getClassMgr().getCSPluginMgr().getScripts(job)            
-        );
+
+    final int selectedRow = statusTable.getSelectedRow();
+    if(selectedRow==-1){
+      return;
+    }
+    statusBar.setLabel("Waiting for scripts...");
+    statusBar.animateProgressBar();
+    ((JFrame) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
+        Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
+    final Thread t = new Thread(){
+      public void run(){
+        MyJobInfo job = JobMgr.getJobAtRow(statusTable.getSelectedRow());
+        try{
+          String [] scripts = GridPilot.getClassMgr().getCSPluginMgr().getScripts(job);
+          ((JFrame) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
+              Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          statusBar.stopAnimation();
+          statusBar.setLabel("");
+          ShowOutputsJobsDialog.showTabs(JOptionPane.getRootFrame(),
+              "Scripts for job " + job.getName(),
+              job,
+              scripts            
+              );
+        }
+        catch(Exception e){
+          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not show scripts.", e);
+        }
+      }
+    };
+    statusBar.setIndeterminateProgressBarToolTip("click here to stop");
+    statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
+      public void mouseClicked(MouseEvent me){
+        t.interrupt();
+      }
+    });
+    t.start();
+
   }
 
   /**
@@ -960,5 +1022,10 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   }
   public void paste(){
   }
+
+  public JSpinner getSAutoResubmit() {
+    return sAutoResubmit;
+  }
+
 }
 
