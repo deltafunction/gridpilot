@@ -1136,9 +1136,10 @@ public class JobMgr{
       timer.stop();
       return;
     }
-    Debug.debug("Looking for job to post-process", 3);
+    Debug.debug("Looking for job to post-process from "+toPostProcessJobs, 3);
     final MyJobInfo job = (MyJobInfo) toPostProcessJobs.get(0);
     if(checkProcessing(job)){
+      Debug.debug("Removing job to post-processing queue "+job, 2);
       toPostProcessJobs.remove(job);
       postProcessingJobs.add(job);
       new Thread(){
@@ -1146,9 +1147,6 @@ public class JobMgr{
           postProcess(job);
         }
       }.start();
-    }
-    if(toPostProcessJobs.isEmpty()){
-      timer.stop();
     }
   }
 
