@@ -26,11 +26,11 @@ public class JobValidation{
 
   private MyLogFile logFile;
   private ConfigFile configFile;
-  private int maxSimultaneaousValidation = 3;
-  private int currentSimultaneousValidation = 0;
+  private int maxSimultaneaousValidating = 3;
+  private int currentSimultaneousValidating = 0;
   private Vector toValidateJobs = new Vector();
   private Vector waitingJobs = new Vector();
-  /** Delay (minimum) between the moment when AtCom finds out job is done, and the validation*/
+  /** Delay (minimum) between the moment when GridPilot finds out job is done, and the validation. */
   private int delayBeforeValidation = 5000;
   private java.util.Timer timer = new java.util.Timer();
   private String [] errorPatterns = null;
@@ -43,7 +43,7 @@ public class JobValidation{
   }
 
   public void loadValues(){
-    String delay = configFile.getValue("Computing systems", "delay before validation");
+    String delay = configFile.getValue("Computing systems", "Delay before validation");
     if(delay!=null){
       try{
         delayBeforeValidation = Integer.parseInt(delay);
@@ -56,6 +56,20 @@ public class JobValidation{
     else{
       logFile.addMessage(configFile.getMissingMessage("Computing systems", "delay before validation") + "\n" +
                          "Default value = " + delayBeforeValidation);
+    }
+    String maxVal = configFile.getValue("Computing systems", "Max simultaneous validating");
+    if(maxVal!=null){
+      try{
+        maxSimultaneaousValidating = Integer.parseInt(maxVal);
+      }
+      catch(NumberFormatException nfe){
+        logFile.addMessage("Value of \"max simultaneous validating\" "+
+                           "is not an integer in configuration file", nfe);
+      }
+    }
+    else{
+      logFile.addMessage(configFile.getMissingMessage("Computing systems", "max simultaneous validating") + "\n" +
+                         "Default value = " + maxSimultaneaousValidating);
     }
     errorPatterns = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "validation error patterns");
     errorAntiPatterns = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "validation error anti patterns");
@@ -102,9 +116,9 @@ public class JobValidation{
     if(toValidateJobs.isEmpty()){
       return;
     }
-    if(currentSimultaneousValidation<maxSimultaneaousValidation){
+    if(currentSimultaneousValidating<maxSimultaneaousValidating){
       final MyJobInfo job = (MyJobInfo) toValidateJobs.remove(0);
-      ++currentSimultaneousValidation;
+      ++currentSimultaneousValidating;
       new Thread(){
         public void run(){
           Debug.debug("Validating job "+job.getName(), 2);
@@ -118,7 +132,7 @@ public class JobValidation{
     }
     else{
       Debug.debug("WARNING: currentSimultaneousValidation >= maxSimultaneaousValidation : "+
-          currentSimultaneousValidation+">="+maxSimultaneaousValidation, 3);
+          currentSimultaneousValidating+">="+maxSimultaneaousValidating, 3);
     }
   }
 
@@ -145,7 +159,7 @@ public class JobValidation{
       job.setNeedsUpdate(true);
     }
 
-    --currentSimultaneousValidation;
+    --currentSimultaneousValidating;
     newValidation();
   }
 
@@ -204,7 +218,7 @@ public class JobValidation{
     int exitValue;
     String [] outs = null;
     long beginTime = new Date().getTime();
-    Debug.debug("is going to validate ("+currentSimultaneousValidation + ") " + job.getName() + "..." , 2);
+    Debug.debug("is going to validate ("+currentSimultaneousValidating + ") " + job.getName() + "..." , 2);
     try{
       if((job.getOutTmp()==null || job.getOutTmp().length()==0) &&
          (job.getErrTmp()==null || job.getErrTmp().length()==0)){

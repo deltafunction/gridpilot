@@ -2232,7 +2232,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
               values[j] = fixDate(null);
             }
             else{
-              values[j] = "'"+MyUtil.dbEncode(dbEncode(values[j]))+"'";
+              //values[j] = "'"+dbEncode1(dbEncode(values[j]))+"'";
+              values[j] = "'"+dbEncode(values[j])+"'";
             }
             if(addedFields>0){
               sql += ", ";
@@ -2774,7 +2775,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     Connection conn = null;
     String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
-    url + "', '" + fileID + "'); ";
+       dbEncode(url) + "', '" + fileID + "'); ";
     Debug.debug(sql, 2);
     boolean execok1 = true;
     try{
@@ -2789,7 +2790,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       error = e.getMessage();
     }
     sql = "INSERT INTO t_lfn (lfname, guid) VALUES ('"+
-    lfn + "', '" + fileID +
+       dbEncode(lfn) + "', '" + fileID +
     "'); ";
     Debug.debug(sql, 2);
     boolean execok2 = true;
@@ -2804,7 +2805,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       error = e.getMessage();
     }
     sql = "INSERT INTO t_meta (guid, dsname, fsize, md5sum) VALUES ('" +
-    fileID + "', '" + datasetName+ "', '" + size+ "', '" + chksum +
+       fileID + "', '" + dbEncode(datasetName)+ "', '" + size+ "', '" + chksum +
     "')";
     Debug.debug(sql, 2);
     boolean execok3 = true;
@@ -2920,10 +2921,24 @@ public class HSQLDBDatabase extends DBCache implements Database{
   
   private String dbEncode(String value){
     String value1 = value.replaceAll("\\\\\'", "\\\\quote");
+    value1 = value1.replaceAll("\'", "\\\\quote");
     value1 = value1.replaceAll("\n","\\\\n");
     return value1;
   }
   
+  /*private static String dbEncode1(String str){
+    if(str==null || str.length()==0){
+      return str;
+    }
+    String retStr = str;
+    retStr = retStr.replaceAll("\\$", "\\\\\\$");
+    retStr = str.replace('\n',' ');
+    retStr = str.replace('\r',' ');
+    retStr = retStr.replaceAll("\n","\\\\n");
+    Debug.debug("Encoded: "+str+"->"+retStr, 3);
+    return str;
+  }*/
+
   private String dbDecode(String value){
     if(value==null){
       return "";

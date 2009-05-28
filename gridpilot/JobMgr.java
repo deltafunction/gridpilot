@@ -109,13 +109,13 @@ public class JobMgr{
     if(useChanges){
       hasChanged = new boolean[0];
     }
-    String tmp = GridPilot.getClassMgr().getConfigFile().getValue("Computing systems", "maximum simultaneous post-processing");
+    String tmp = GridPilot.getClassMgr().getConfigFile().getValue("Computing systems", "max simultaneous post-processing");
     if(tmp!=null){
       try{
         maxSimultaneousPostProcessing = Integer.parseInt(tmp);
       }
       catch(NumberFormatException nfe){
-        logFile.addMessage("Value of \"maximum simultaneous post-processing\" "+
+        logFile.addMessage("Value of \"max simultaneous post-processing\" "+
                                     "is not an integer in configuration file", nfe);
       }
     }

@@ -80,17 +80,8 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     termVmOnJobEnd = false;
     jobsPerMachine = 1;
     // We just set the max number of jobs to run inside the VM to the max number of jobs run by this CS.
-    String tmp = configFile.getValue(csName, "maximum simultaneous running");
-    if(tmp!=null){
-      try{
-        jobsPerMachine = Integer.parseInt(tmp);
-      }
-      catch(NumberFormatException nfe){
-        logFile.addMessage("Value of \"maximum simultaneous running\" is not"+
-                                    " an integer in configuration file", nfe);
-      }
-    }
-    tmp = configFile.getValue(csName, "enforce virtualization");
+    jobsPerMachine = MyUtil.getMaxSimultaneousRunningJobs(csName);
+    String tmp = configFile.getValue(csName, "enforce virtualization");
     if(tmp!=null){
       try{
         virtEnforce = tmp.equalsIgnoreCase("yes") || tmp.equalsIgnoreCase("true");

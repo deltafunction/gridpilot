@@ -366,7 +366,11 @@ public class TransformationCreationPanel extends CreateEditPanel{
            cbRuntimeEnvironmentSelection.setSelectedItem(runtimeEnvironmentName);
           cbRuntimeEnvironmentSelection.updateUI();
         }
-        MyUtil.setJEditable(tcCstAttributes[i], false);
+        // Since we now allow multiple runtimeEnvironment dependencies,
+        // allow manual editing.
+        // TODO: improve the GUI for selecting runtimeEnvironments - the list is too long
+        // and multiple selections should be allowed.
+        //MyUtil.setJEditable(tcCstAttributes[i], false);
       }
       pAttributes.add(tcCstAttributes[i],
           new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,

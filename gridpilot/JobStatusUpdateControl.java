@@ -125,18 +125,18 @@ public class JobStatusUpdateControl{
     /**
      * Load maxSimultaneousChecking
      */
-    String tmp = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "maximum simultaneous checking");
+    String tmp = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "max simultaneous checking");
     if(tmp!=null){
       try{
         maxSimultaneousChecking = Integer.parseInt(tmp);
       }
       catch(NumberFormatException nfe){
-        logFile.addMessage("Value of \"maximum simultaneous checking\" "+
+        logFile.addMessage("Value of \"max simultaneous checking\" "+
                            "is not an integer in configuration file", nfe);
       }
     }
     else
-      logFile.addMessage(configFile.getMissingMessage(GridPilot.TOP_CONFIG_SECTION, "maximum simultaneous checking") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage(GridPilot.TOP_CONFIG_SECTION, "max simultaneous checking") + "\n" +
                          "Default value = " + maxSimultaneousChecking);
     /**
      * Load timeBetweenCheking

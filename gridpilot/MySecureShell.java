@@ -82,11 +82,11 @@ public class MySecureShell extends SecureShell{
     }
     try{
       maxChannels = Integer.parseInt(
-          configFile.getValue("Computing systems", "maximum simultaneous submissions"))+
+          configFile.getValue("Computing systems", "max simultaneous submissions"))+
       Integer.parseInt(
-          configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "maximum simultaneous checking"))+
+          configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "max simultaneous checking"))+
           Integer.parseInt(
-              configFile.getValue("Computing systems", "maximum simultaneous validating"));
+              configFile.getValue("Computing systems", "max simultaneous validating"));
     }
     catch(Exception e){
       Debug.debug("WARNING: could not construct number of channels. "+

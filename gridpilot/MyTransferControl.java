@@ -402,20 +402,21 @@ public class MyTransferControl extends TransferControl {
    * Reloads some values from configuration file. <p>
    */
   public void loadValues(){
-    String tmp = configFile.getValue("File transfer systems", "maximum simultaneous running");
+    String tmp = configFile.getValue("File transfer systems", "Max simultaneous running");
     if(tmp != null){
       try{
         maxSimultaneousTransfers = Integer.parseInt(tmp);
       }
       catch(NumberFormatException nfe){
-        logFile.addMessage("Value of \"maximum simultaneoud transfers\" "+
+        logFile.addMessage("Value of \"max simultaneous running\" "+
                                     "is not an integer in configuration file", nfe);
       }
     }
-    else
-      logFile.addMessage(configFile.getMissingMessage("File transfer systems", "maximum simultaneous running") + "\n" +
+    else{
+      logFile.addMessage(configFile.getMissingMessage("File transfer systems", "Max simultaneous running") + "\n" +
                               "Default value = " + maxSimultaneousTransfers);
-    tmp = configFile.getValue("File transfer systems", "time between transfers");
+    }
+    tmp = configFile.getValue("File transfer systems", "Time between transfers");
     if(tmp != null){
       try{
         timeBetweenTransfers = Integer.parseInt(tmp);

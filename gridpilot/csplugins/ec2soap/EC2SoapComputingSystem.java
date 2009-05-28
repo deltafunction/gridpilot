@@ -77,7 +77,7 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
         
     try{
       String mms = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-         "Maximum machines");
+         "Max machines");
       maxMachines = Integer.parseInt(mms);
     }
     catch(Exception e){

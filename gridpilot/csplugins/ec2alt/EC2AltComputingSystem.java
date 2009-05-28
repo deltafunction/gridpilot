@@ -67,7 +67,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
         
     try{
       String mms = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-         "Maximum machines");
+         "Max machines");
       maxMachines = Integer.parseInt(mms);
     }
     catch(Exception e){

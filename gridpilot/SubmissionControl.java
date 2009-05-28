@@ -44,8 +44,8 @@ public class SubmissionControl{
   private Vector submittingJobs = new Vector();
  /** Maximum number of simulaneous threads for submission. */
   private int maxSimultaneousSubmissions = 5;
-  /** Maximum total number of simultaneously running jobs. */
-  private int maxRunning = 10;
+  /** Total maximum total number of simultaneously running jobs. */
+  private int totalMaxRunning = 10;
   /** Maximum total number of simultaneously running jobs per CS. */
   private int [] maxRunningPerCS;
   /** Delay between the begin of two submission threads. */
@@ -96,57 +96,29 @@ public class SubmissionControl{
    *
    */
   public void loadValues(){
-    String tmp = configFile.getValue("Computing systems", "maximum simultaneous submissions");
+    String tmp = configFile.getValue("Computing systems", "Max simultaneous submissions");
     if(tmp!=null){
       try{
         maxSimultaneousSubmissions = Integer.parseInt(tmp);
       }
       catch(NumberFormatException nfe){
-        logFile.addMessage("Value of \"maximum simultaneoud submission\" "+
+        logFile.addMessage("Value of \"max simultaneous submission\" "+
                                     "is not an integer in configuration file", nfe);
       }
     }
     else{
-      logFile.addMessage(configFile.getMissingMessage("Computing systems", "maximum simultaneous submissions") + "\n" +
+      logFile.addMessage(configFile.getMissingMessage("Computing systems", "max simultaneous submissions") + "\n" +
                               "Default value = " + maxSimultaneousSubmissions);
     }
-    tmp = configFile.getValue("Computing systems", "maximum simultaneous running");
-    if(tmp!=null){
-      try{
-        maxRunning = Integer.parseInt(tmp);
-      }
-      catch(NumberFormatException nfe){
-        logFile.addMessage("Value of \"maximum simultaneous running\" is not"+
-                                    " an integer in configuration file", nfe);
-      }
-    }
-    else{
-      logFile.addMessage(configFile.getMissingMessage("Computing systems", "maximum simultaneous running") + "\n" +
-                              "Default value = " + maxRunning);
-    }
-    
+    totalMaxRunning = 0;
     csNames = GridPilot.getClassMgr().getCSPluginMgr().getEnabledCSNames();
     maxRunningPerCS = new int[csNames.length];
     for(int i=0; i<csNames.length; ++i){
-      tmp = configFile.getValue(csNames[i], "maximum simultaneous running");
-      if(tmp!=null){
-        try{
-          maxRunningPerCS[i] = Integer.parseInt(tmp);
-        }
-        catch(NumberFormatException nfe){
-          logFile.addMessage("Value of \"maximum simultaneous running\" is not"+
-                                      " an integer in configuration file for CS "+csNames[i], nfe);
-        }
-      }
-      else{
-        maxRunningPerCS[i] = maxRunning;
-        logFile.addMessage(configFile.getMissingMessage("Computing systems", "maximum simultaneous running") + "\n" +
-                                "Default value = " + maxRunningPerCS[i]);
-      }
+      maxRunningPerCS[i] = MyUtil.getMaxSimultaneousRunningJobs(csNames[i]);
+      totalMaxRunning += maxRunningPerCS[i];
     }
     
-    
-    tmp = configFile.getValue("Computing systems", "time between submissions");
+    tmp = configFile.getValue("Computing systems", "Time between submissions");
     if(tmp!=null){
       try{
         timeBetweenSubmissions = Integer.parseInt(tmp);
@@ -618,7 +590,7 @@ public class SubmissionControl{
       }
     }
     boolean ret = submittingJobs.size()<maxSimultaneousSubmissions &&
-      submittingJobs.size()+runningJobs<maxRunning &&
+      submittingJobs.size()+runningJobs<totalMaxRunning &&
       rJobsByCS[jobCsIndex]<maxRunningPerCS[jobCsIndex];
     if(!ret){
       Debug.debug("Found running jobs: "+MyUtil.arrayToString(csNames)+" --> "+MyUtil.arrayToString(rJobsByCS)+

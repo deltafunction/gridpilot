@@ -1,5 +1,6 @@
 package gridpilot;
 
+import gridfactory.common.ConfigFile;
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
@@ -168,27 +169,6 @@ public class MyUtil extends gridfactory.common.Util{
     else{
       comp.setBackground(Color.white);
     }
-  }
-
-  public static String dbEncode(String str){
-    if(str==null || str.length()==0){
-      return str;
-    }
-    String retStr = str;
-    retStr = retStr.replaceAll("\\$", "\\\\\\$");
-    retStr = str.replace('\n',' ');
-    retStr = str.replace('\r',' ');
-    retStr = retStr.replaceAll("\n","\\\\n");
-    Debug.debug("Encoded: "+str+"->"+retStr, 3);
-    return str;
-  }
-  
-  public static String [] dbEncode(String [] strArray){
-    String [] retStrArray = new String [strArray.length];
-    for(int i=0; i<strArray.length; ++i){
-      retStrArray[i] = dbEncode(strArray[i]);
-    }
-    return retStrArray;
   }
 
   public static void setBackgroundColor(JComponent c){
@@ -1875,5 +1855,34 @@ private static String fixUrl(String _url){
     }
     return ret;
   }
-  
+
+  public static int getMaxSimultaneousRunningJobs(String csName) {
+    MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
+    ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
+    int ret = -1;
+    String tmp = configFile.getValue(csName, "max simultaneous running");
+    try{
+      ret = Integer.parseInt(tmp);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      logFile.addInfo("WARNING: Value of \"max simultaneous running\" is not"+
+                                  " defined properly for "+csName);
+    }
+    tmp = configFile.getValue("Computing systems", "max simultaneous running");
+    if(ret==-1){
+      try{
+        ret = Integer.parseInt(tmp);
+      }
+      catch(Exception e){
+        logFile.addMessage("WARNING: Value of \"max simultaneous running\" is not"+
+                                    " defined properly.", e);
+      }
+    }
+    if(ret==-1){
+      return 1;
+    }
+    return ret;
+  }
+
 }

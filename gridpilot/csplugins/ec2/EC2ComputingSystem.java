@@ -154,7 +154,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         
     try{
       String mms = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-         "Maximum machines");
+         "Max machines");
       maxMachines = Integer.parseInt(mms);
     }
     catch(Exception e){

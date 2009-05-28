@@ -2547,7 +2547,7 @@ public class MySQLDatabase extends DBCache implements Database {
       chksum = chksum.replaceFirst("^md5:", "");
     }
     String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
-    url + "', '" + fileID + "'); ";
+       dbEncode(url) + "', '" + fileID + "'); ";
     Debug.debug(sql, 2);
     boolean execok1 = true;
     try{
@@ -2559,7 +2559,7 @@ public class MySQLDatabase extends DBCache implements Database {
       error = e.getMessage();
     }
     sql = "INSERT INTO t_lfn (lfname, guid) VALUES ('"+
-    lfn + "', '" + fileID +
+       dbEncode(lfn) + "', '" + fileID +
     "'); ";
     Debug.debug(sql, 2);
     boolean execok2 = true;
@@ -2572,7 +2572,7 @@ public class MySQLDatabase extends DBCache implements Database {
       error = e.getMessage();
     }
     sql = "INSERT INTO t_meta (guid, dsname, fsize, md5sum) VALUES ('" +
-    fileID + "', '" + datasetName + "', '" + size+ "', '" + chksum +
+       fileID + "', '" + dbEncode(datasetName) + "', '" + size+ "', '" + chksum +
     "')";
     Debug.debug(sql, 2);
     boolean execok3 = true;
@@ -2683,6 +2683,20 @@ public class MySQLDatabase extends DBCache implements Database {
     else{
       return null;
     }
+  }
+  
+  private static String dbEncode(String str){
+    if(str==null || str.length()==0){
+      return str;
+    }
+    String retStr = str;
+    retStr = retStr.replaceAll("\\$", "\\\\\\$");
+    retStr = str.replace('\n',' ');
+    retStr = str.replace('\r',' ');
+    retStr = retStr.replaceAll("\n","\\\\n");
+    retStr = retStr.replaceAll("\'","\\\\'");
+    Debug.debug("Encoded: "+str+"->"+retStr, 3);
+    return str;
   }
   
   public String getFileID(String datasetName, String name){
