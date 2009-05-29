@@ -1134,39 +1134,6 @@ private static String fixUrl(String _url){
       transfer.setSource(sources[0]);
     }
   }
-  
-  /**
-   * Splits list of URLs of the form
-   * https://some.server/some/file https://some.server1/some1/file1 ...
-   * @param _urls
-   * @return
-   * @throws Exception
-   */
-  public static String [] splitUrls(String _urls) throws Exception{
-    String urls = _urls.replaceAll("\'", "");
-    if(!urls.matches("^\\w\\w+:.*")){
-      return split(urls);
-    }
-    Debug.debug("Splitting URLs "+urls, 3);
-    urls = urls.replaceAll("(\\w\\w+://)", "'::'$1");
-    urls = urls.replaceAll("\\s(file:)", "'::'$1");
-    urls = "'"+urls.replaceAll("^'::'", "")+"'";
-    Debug.debug("Split URLs "+urls, 3);
-    String [] urlArray = null;
-    if(urls!=null && !urls.equals("no such field")){
-      urlArray = split(urls, "'::'");
-      if(urlArray.length>0){
-        urlArray[urlArray.length-1] = urlArray[urlArray.length-1].
-           substring(0, urlArray[urlArray.length-1].length()-1);
-        urlArray[0] = urlArray[0].substring(1);
-        Debug.debug("Returning URLs "+arrayToString(urlArray, "---"), 2);
-        if(arrayToString(urlArray).indexOf("'")>-1){
-          throw new Exception("Something went wrong. Backing out.");
-        }
-      }
-    }
-    return urlArray;
-  }
 
   public static HashMap parseMetaData(String str){
     HashMap hm = new HashMap();
