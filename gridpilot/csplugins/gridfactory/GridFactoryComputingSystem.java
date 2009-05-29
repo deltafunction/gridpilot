@@ -110,6 +110,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     for(int i=0; i<initialLen; ++i){
       if(fileIsPresent(job.getInputFileUrls()[i])){
         newInputs.add(job.getInputFileUrls()[i]);
+        Debug.debug("Setting input file "+job.getInputFileUrls()[i], 3);
       }
     }
     for(int i=initialLen; i<initialLen+transformationInputs.length; ++i){

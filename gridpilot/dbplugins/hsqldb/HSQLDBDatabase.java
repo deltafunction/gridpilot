@@ -1366,7 +1366,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
             val = "";
           }
           values[i] = val;
-          //Debug.debug(fieldname+"-->"+val, 3);
+          Debug.debug(fieldname+"-->"+val, 3);
         }
         DBRecord jobd = new DBRecord(jobDefFields, values);
         jobdefv.add(jobd);
