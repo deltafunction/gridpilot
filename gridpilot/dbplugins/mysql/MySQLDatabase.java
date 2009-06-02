@@ -115,6 +115,17 @@ public class MySQLDatabase extends DBCache implements Database {
       gridAuth = true;
       String subject = MyUtil.getGridSubject(GridPilot.CERT_FILE);
       
+      if(gridAuth){
+        try{
+          GridPilot.getClassMgr().getSSL().activateSSL();
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          Debug.debug("ERROR: "+e.getMessage(), 1);
+          return;
+        }
+      }
+      
       if(user==null || user.equals("")){
         user = GridPilot.getClassMgr().getSSL().getGridDatabaseUser();
         Debug.debug("Using user name from cksum of grid subject: "+user, 2);
@@ -134,17 +145,6 @@ public class MySQLDatabase extends DBCache implements Database {
       else{
         useCaching = ((useCachingStr.equalsIgnoreCase("yes")||
             useCachingStr.equalsIgnoreCase("true"))?true:false);
-      }
-    }
-    
-    if(gridAuth){
-      try{
-        GridPilot.getClassMgr().getSSL().activateSSL();
-      }
-      catch(Exception e){
-        e.printStackTrace();
-        Debug.debug("ERROR: "+e.getMessage(), 1);
-        return;
       }
     }
     
@@ -174,6 +174,7 @@ public class MySQLDatabase extends DBCache implements Database {
       }
     }
     setUpTables();
+    
   }
   
   public void requestStop(){

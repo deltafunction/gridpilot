@@ -142,10 +142,10 @@ public class GridPilot extends JApplet{
       }      
       loadConfigValues();
       initDebug();
-      Debug.debug("Grid home URL: "+GridPilot.GRID_HOME_URL, 2);
-      mkGridHomeDirIfNotThere();
       loadDBs();
       loadFTs();
+      Debug.debug("Grid home URL: "+GridPilot.GRID_HOME_URL, 2);
+      mkGridHomeDirIfNotThere();
       initGUI();
       try{
         (new TestDatasets()).createAll();

@@ -13,7 +13,9 @@ import java.util.Vector;
 import javax.swing.Timer;
 
 
+import org.globus.gsi.GlobusCredentialException;
 import org.globus.util.GlobusURL;
+import org.ietf.jgss.GSSException;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
@@ -26,6 +28,7 @@ import gridpilot.MyComputingSystem;
 import gridpilot.DBPluginMgr;
 import gridpilot.GridPilot;
 import gridpilot.MyJobInfo;
+import gridpilot.MySSL;
 import gridpilot.MyUtil;
 import gridpilot.RteRdfParser;
 import gridpilot.csplugins.fork.ForkComputingSystem;
@@ -37,7 +40,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   private String submitHost = null;
   private String user = null;
   private FileTransfer fileTransfer = null;
-  private LRMS lrms = null;
+  private LRMS myLrms = null;
   // Map of id -> DBPluginMgr.
   // This is to be able to clean up RTEs from catalogs on exit.
   private HashMap<String, String> toDeleteRtes = new HashMap<String, String>();
@@ -86,7 +89,6 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       logFile.addMessage(error, ioe);
     }
     fileTransfer = GridPilot.getClassMgr().getFTPlugin("https");
-    lrms = LRMS.constructLrms(true, GridPilot.getClassMgr().getSSL(), null, null);
   }
   
   /**
@@ -245,14 +247,14 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       // If this is a resubmit, first delete the old remote jobDefinition
       try{
         if(job.getJobId()!=null && job.getJobId().length()>0){
-          lrms.clean(new String [] {job.getJobId()}, null);
+          getLRMS().clean(new String [] {job.getJobId()}, null);
         }
       }
       catch(Exception e){
       }
       
       String cmd = runDir(job)+"/"+job.getName()+getCommandSuffix((MyJobInfo) job);
-      String id = lrms.submit(cmd, values, submitURL, true, GridPilot.getClassMgr().getSSL().getCertFile());
+      String id = getLRMS().submit(cmd, values, submitURL, true, GridPilot.getClassMgr().getSSL().getCertFile());
       job.setJobId(id);
     }
     catch(Exception e){
@@ -311,7 +313,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     while(en.hasMoreElements()){
       job = (MyJobInfo) en.nextElement();
       try{
-        lrms.kill(submitHost, new String [] {job.getJobId()});
+        getLRMS().kill(submitHost, new String [] {job.getJobId()});
       }
       catch(Exception e){
         e.printStackTrace();
@@ -422,7 +424,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     //ret += "DB location: "+job.getDBLocation()+"\n";
     //ret += "Job DB URL: "+job.getDBURL()+"\n";
     try{
-      ret += "Job status: "+JobInfo.getStatusName(lrms.getJobStatus(submitHost, job.getJobId()));
+      ret += "Job status: "+JobInfo.getStatusName(getLRMS().getJobStatus(submitHost, job.getJobId()));
     }
     catch(Exception e){
       e.printStackTrace();
@@ -440,7 +442,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     File tmpStderr = new File(job.getErrTmp());   
     String [] res = new String[2];
     try{
-      int st = lrms.getJobStatus(submitHost, job.getJobId());
+      int st = getLRMS().getJobStatus(submitHost, job.getJobId());
       if(st==JobInfo.STATUS_DONE || st==JobInfo.STATUS_FAILED || st==JobInfo.STATUS_UPLOADED){
         // stdout
         fileTransfer.getFile(new GlobusURL(job.getJobId()+"/stdout"), tmpStdout);
@@ -459,7 +461,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
         }
       }
       else if(st==JobInfo.STATUS_RUNNING){
-        res = lrms.getOutput(submitHost, job.getJobId(), GridPilot.getClassMgr().getCSPluginMgr().currentOutputTimeOut);
+        res = getLRMS().getOutput(submitHost, job.getJobId(), GridPilot.getClassMgr().getCSPluginMgr().currentOutputTimeOut);
       }
       else{
         throw new IOException("Job is not in a state that allows getting output - "+JobInfo.getStatusName(st));
@@ -488,8 +490,9 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       }
   }
 
-  private void updateStatus(MyJobInfo job) throws IOException, GeneralSecurityException{
-    int st = lrms.getJobStatus(submitHost, job.getJobId());
+  private void updateStatus(MyJobInfo job) throws IOException, GeneralSecurityException,
+     GlobusCredentialException, GSSException{
+    int st = getLRMS().getJobStatus(submitHost, job.getJobId());
     String csStatus = JobInfo.getStatusName(st);
     job.setCSStatus(csStatus);
     job.setStatus(st);
@@ -506,6 +509,18 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       logFile.addMessage("ERROR: no csStatus for job "+job.getIdentifier()+" : "+job.getJobId());
       return;
     }
+  }
+  
+  private LRMS getLRMS() throws IOException, GeneralSecurityException, GlobusCredentialException,
+     GSSException{
+    if(myLrms==null){
+      MySSL ssl = GridPilot.getClassMgr().getSSL();
+      if(ssl.getKeyPassword()==null){
+        ssl.activateSSL();
+      }
+      myLrms = LRMS.constructLrms(true, GridPilot.getClassMgr().getSSL(), null, null);
+    }
+    return myLrms;
   }
   
   public String getUserInfo(String csName){
