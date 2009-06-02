@@ -7,7 +7,7 @@ import java.io.*;
 public class MyLogFile extends LogFile {
 
   public MyLogFile(String _fileName) {
-    super(_fileName);
+    super(_fileName, true);
   }
 
   /**
