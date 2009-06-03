@@ -3,6 +3,7 @@ package gridpilot;
 import gridfactory.common.Debug;
 
 import java.awt.*;
+
 import javax.swing.*;
 
 import java.awt.event.*;
@@ -168,10 +169,12 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
       case BCREATEUPDATE :
         rt = new MyResThread(){
           public void run(){
+            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             createEditPanel.create(cbShowResults.isSelected(), editing);
+            setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           }
         };
-        SwingUtilities.invokeLater(rt);
+        rt.start();
         break;
 
       case BSAVE_SETTINGS :
@@ -180,7 +183,7 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
             createEditPanel.saveSettings();
           }
         };
-        SwingUtilities.invokeLater(rt);
+        rt.start();
         break;
 
       case BCLEAR :
@@ -189,7 +192,7 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
             createEditPanel.clearPanel();
           }
         };
-        SwingUtilities.invokeLater(rt);
+        rt.start();
         break;
     }
   }

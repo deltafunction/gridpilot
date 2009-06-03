@@ -5,6 +5,7 @@ import gridfactory.common.Debug;
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
+
 import javax.swing.text.*;
 
 import java.util.*;
@@ -503,6 +504,8 @@ public class JobCreationPanel extends CreateEditPanel{
 
 
   public void create(final boolean showResults, boolean editing) {
+    
+    setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 
     if(editing){
       Debug.debug("edit job definition", 1);

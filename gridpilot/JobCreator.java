@@ -11,6 +11,7 @@ import javax.swing.*;
 
 import java.awt.*;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 
 /**
  * Creates the job definitions
@@ -39,7 +40,7 @@ public class JobCreator{
   private Vector<String []> vJobParam = new Vector<String []>();
   private Vector<String [][]> vOutMap = new Vector<String [][]>();
   private Vector<String []> vStdOut = new Vector<String []>();
-  private JProgressBar pb = new JProgressBar();
+  private JProgressBar pb;
   private Object semaphoreDBCreate = new Object();
   private DBPluginMgr dbPluginMgr = null;
   private Object[] showResultsOptions = {"OK", "Skip", "OK for all", "Skip all"};
@@ -92,8 +93,6 @@ public class JobCreator{
     resOutMap = new String [outMap.length][2];
     resStdOut  = new String[stdOut.length];
     dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
-    
-    pb.setMaximum(0);
 
     createAllJobDefs();
   }
@@ -181,14 +180,14 @@ public class JobCreator{
         }
         partitionCount += currentPartitionCount;
       }
-      pb.setMaximum(pb.getMaximum()+partitionCount);
+      pb = statusBar.createJProgressBar(0, partitionCount);
       statusBar.setProgressBar(pb);
       try{
         createDBJobDefinitions(currentDataset);
       }
       catch(java.lang.Exception e){Debug.debug("Failed creating partition from "+
           currentDataset+" : "+e.getMessage(),3);}
-      statusBar.removeProgressBar(pb);
+      //statusBar.removeProgressBar(pb);
       //statusBar.removeLabel();
     }
   }
@@ -382,7 +381,7 @@ public class JobCreator{
         resStdOut  = vStdOut.remove(0);
 
         statusBar.setLabel("Creating job definition # " + part);
-        pb.setValue(pb.getValue()+1);
+        statusBar.incrementProgressBarValue(pb, 1);
 
         transName = dbPluginMgr.getDatasetTransformationName(datasetIdentifiers[idNum]);
         transVersion = dbPluginMgr.getDatasetTransformationVersion(datasetIdentifiers[idNum]);
@@ -1178,8 +1177,29 @@ public class JobCreator{
     }
     return res;
   }
+  
+  private int showResult(final int currentPartition, final String [] resCstAttr, final String [] resJobParam,
+      final String [][] resOutMap, final String [] resStdOut, final Object[] showResultsOptions){
+    MyResThread rt = new MyResThread(){
+      int ret;
+      public void run(){
+        ret = showResult0(currentPartition, resCstAttr, resJobParam, resOutMap, resStdOut, showResultsOptions);
+      }
+      public int getIntRes(){
+        return ret;
+      }
+    };
+    try{
+      SwingUtilities.invokeAndWait(rt);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return -1;
+    }
+    return rt.getIntRes();
+  }
     
-  private int showResult(int currentPartition, String [] resCstAttr, String [] resJobParam,
+  private int showResult0(int currentPartition, String [] resCstAttr, String [] resJobParam,
                          String [][] resOutMap, String [] resStdOut, Object[] showResultsOptions){
 
     Debug.debug("showing results for confirmation", 3);

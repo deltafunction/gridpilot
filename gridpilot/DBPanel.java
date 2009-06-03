@@ -1599,10 +1599,17 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Open dialog with jobDefinition creation panel (from datasets)
    */ 
   private void createJobDefs(){
-    Debug.debug("Creating job definition(s), "+getSelectedIdentifiers().length, 3);
-    JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, this);
-    CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true, true, true);
-    pDialog.setTitle("Create job definition(s)");
+    final DBPanel dbPanel = this;
+    SwingUtilities.invokeLater(
+      new Runnable(){
+        public void run(){
+          Debug.debug("Creating job definition(s), "+getSelectedIdentifiers().length, 3);
+          JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, dbPanel);
+          CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true, true, true);
+          pDialog.setTitle("Create job definition(s)");
+        }
+      }
+    );
   }
 
   private void createJobDefinitions(){
