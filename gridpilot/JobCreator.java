@@ -11,7 +11,6 @@ import javax.swing.*;
 
 import java.awt.*;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 
 /**
  * Creates the job definitions

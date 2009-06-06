@@ -101,29 +101,30 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     job.setInputFileUrls(jobInputFiles);
     String transformationID = dbPluginMgr.getJobDefTransformationID(job.getIdentifier());
     String [] transformationInputs = dbPluginMgr.getTransformationInputs(transformationID);
-    if(transformationInputs==null || transformationInputs.length==0){
-      return;
-    }
     // Input files -
     // Skip local files that are not present
     // - they are expected to be present on the worker node
     int initialLen = job.getInputFileUrls()!=null&&job.getInputFileUrls().length>0?job.getInputFileUrls().length:0;
     Vector<String> newInputs = new Vector<String>();
     for(int i=0; i<initialLen; ++i){
-      if(fileIsPresent(job.getInputFileUrls()[i])){
+      if(fileIsRemoteOrPresent(job.getInputFileUrls()[i])){
         newInputs.add(job.getInputFileUrls()[i]);
         Debug.debug("Setting input file "+job.getInputFileUrls()[i], 3);
       }
+      else{
+        Debug.debug("Input file "+job.getInputFileUrls()[i]+" not found - continuing anyway...", 3);
+      }
     }
     for(int i=initialLen; i<initialLen+transformationInputs.length; ++i){
-      if(fileIsPresent(transformationInputs[i])){
+      if(fileIsRemoteOrPresent(transformationInputs[i])){
         newInputs.add(transformationInputs[i]);
       }
     }
     String transScript = dbPluginMgr.getTransformationScript(job.getIdentifier());
-    if(fileIsPresent(transScript)){
+    if(fileIsRemoteOrPresent(transScript)){
       newInputs.add(transScript);
     }
+    Debug.debug("Job has input files: "+newInputs, 3);
     job.setInputFileUrls(newInputs.toArray(new String[newInputs.size()]));
     // Executable
     String transScriptName = (new File(transScript)).getName();
@@ -178,7 +179,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     }
   }
 
-  private boolean fileIsPresent(String file) {
+  private boolean fileIsRemoteOrPresent(String file) {
     if(!MyUtil.urlIsRemote(file)){
       String localFile = MyUtil.clearTildeLocally(MyUtil.clearFile(file));
       return LocalStaticShell.existsFile(localFile);
