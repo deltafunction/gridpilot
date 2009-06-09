@@ -1139,12 +1139,18 @@ public class JobMgr{
     Debug.debug("Looking for job to post-process from "+toPostProcessJobs, 3);
     final MyJobInfo job = (MyJobInfo) toPostProcessJobs.get(0);
     if(checkProcessing(job)){
-      Debug.debug("Removing job to post-processing queue "+job, 2);
+      Debug.debug("Removing job from post-processing queue "+job, 2);
       toPostProcessJobs.remove(job);
       postProcessingJobs.add(job);
       new Thread(){
         public void run(){
-          postProcess(job);
+          try{
+            postProcess(job);
+          }
+          catch(Exception e){
+            logFile.addMessage("There was a problem post-processing job "+job, e);
+            postProcessingJobs.remove(job);
+          }
         }
       }.start();
     }
@@ -1156,7 +1162,9 @@ public class JobMgr{
    * @return
    */
   private boolean checkProcessing(MyJobInfo job) {
-    return postProcessingJobs.size()<=maxSimultaneousPostProcessing;
+    boolean ok = postProcessingJobs.size()<=maxSimultaneousPostProcessing;
+    Debug.debug("Post-process proceed "+ok+" --> "+postProcessingJobs.size()+":"+maxSimultaneousPostProcessing, 2);
+    return ok;
   }
 
   private boolean postProcess(MyJobInfo job) {
