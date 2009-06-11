@@ -1146,6 +1146,7 @@ public class JobMgr{
         public void run(){
           try{
             postProcess(job);
+            postProcessingJobs.remove(job);
           }
           catch(Exception e){
             logFile.addMessage("There was a problem post-processing job "+job, e);
