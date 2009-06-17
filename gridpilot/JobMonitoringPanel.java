@@ -986,13 +986,18 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       Debug.debug("cannot clear table during validation", 3);
       return false;
     }
-
+    JobMgr mgr = null;
+    for(Iterator it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
+      mgr = ((JobMgr) it.next());
+      if(mgr.isPostProcessing()){
+        Debug.debug("cannot clear table during post-processing", 3);
+        return false;
+      }
+    }
     statusUpdateControl.reset();
-
     boolean ret = true;
     GridPilot.getClassMgr().getSubmittedJobs().removeAllElements();
     statusTable.createRows(0);
-    JobMgr mgr = null;
     try{
       for(Iterator it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
         mgr = ((JobMgr) it.next());

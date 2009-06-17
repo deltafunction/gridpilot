@@ -70,6 +70,8 @@ public class ForkScriptGenerator extends ScriptGenerator{
     catch(Exception e){
       e.printStackTrace();
     }
+    Debug.debug("stdoutExcludeWords: "+MyUtil.arrayToString(stdoutExcludeWords), 2);
+    Debug.debug("stderrExcludeWords: "+MyUtil.arrayToString(stderrExcludeWords), 2);
   }
   
   private static String [] splitPhrases(String _phrases) throws Exception{
@@ -418,28 +420,30 @@ public class ForkScriptGenerator extends ScriptGenerator{
     String lines = "";
     String stdoutFilterLine = "s1(){ while read;do echo $REPLY; done FILTER ; }\n";
     String stderrFilterLine = "s2(){ while read;do echo $REPLY; done FILTER ; }\n";
+    Debug.debug("stdoutExcludeWords: "+MyUtil.arrayToString(stdoutExcludeWords), 3);
+    Debug.debug("stderrExcludeWords: "+MyUtil.arrayToString(stderrExcludeWords), 3);
     if(stdoutExcludeWords!=null && stdoutExcludeWords.length>0){
       String stdoutFilter = "";
       for(int i=0; i<stdoutExcludeWords.length; ++i){
         stdoutFilter += " | grep -v "+stdoutExcludeWords[i];
       }
       stdoutFilterLine = stdoutFilterLine.replaceFirst("FILTER", stdoutFilter);
-      lines += stdoutFilterLine;
     }
     else{
       stdoutFilterLine.replaceFirst("FILTER", "");
     }
+    lines += stdoutFilterLine;
     if(stderrExcludeWords!=null && stderrExcludeWords.length>0){
       String stderrFilter = "";
       for(int i=0; i<stderrExcludeWords.length; ++i){
         stderrFilter += " | grep -v "+stderrExcludeWords[i];
       }
       stderrFilterLine = stderrFilterLine.replaceFirst("FILTER", stderrFilter);
-      lines += stderrFilterLine;
     }
     else{
       stderrFilterLine.replaceFirst("FILTER", "");
     }
+    lines += stderrFilterLine;
     lines += "split(){ { $1 2>&1 1>&3 | s2 1>&2 ; } 3>&1 ;}\n";
     Debug.debug("Filtering stdout/stderr with "+lines, 2);
     return lines;

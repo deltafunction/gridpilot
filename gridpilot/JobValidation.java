@@ -123,9 +123,14 @@ public class JobValidation{
         public void run(){
           Debug.debug("Validating job "+job.getName(), 2);
           int dbStatus = doValidate(job);
-          GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel("Validation of " + job.getName() + " done : "
-              + DBPluginMgr.getStatusName(dbStatus) +
-              " (" + (toValidateJobs.size() + waitingJobs.size())+ " jobs in the queue )");
+          try{
+            GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel("Validation of " + job.getName() + " done : "
+                + DBPluginMgr.getStatusName(dbStatus) +
+                " (" + (toValidateJobs.size() + waitingJobs.size())+ " jobs in the queue )");
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
           endOfValidation(job, dbStatus);
         }
       }.start();
@@ -141,12 +146,7 @@ public class JobValidation{
    * update database, warns, and checks for a new validation. <p>
    */
   private void endOfValidation(MyJobInfo job, int dbStatus){
-    if(!GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).updateJobValidationResult(
-        job.getIdentifier(), job.getValidationResult())){
-      logFile.addMessage("DB updateJobStdoutErr(" + job.getIdentifier() + ", " +
-                         job.getValidationResult() +
-                         ") failed", job);
-    }
+    
     if(dbStatus!=job.getDBStatus()){
       JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
       jobMgr.updateDBStatus(job, dbStatus);
@@ -159,6 +159,12 @@ public class JobValidation{
       job.setNeedsUpdate(true);
     }
 
+    if(!GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).updateJobValidationResult(
+        job.getIdentifier(), job.getValidationResult())){
+      logFile.addMessage("DB updateJobStdoutErr(" + job.getIdentifier() + ", " +
+                         job.getValidationResult() +
+                         ") failed", job);
+    }
     --currentSimultaneousValidating;
     newValidation();
   }

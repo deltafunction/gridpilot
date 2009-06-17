@@ -37,6 +37,7 @@ public class SubmissionControl{
   private CSPluginMgr csPluginMgr;
   private Timer timer;
   private ImageIcon iconSubmitting;
+  private ImageIcon iconProcessing;
   private ImageIcon iconWaiting;
   /** All jobs for which the submission is not done yet. */
   private Vector toSubmitJobs = new Vector();
@@ -135,16 +136,13 @@ public class SubmissionControl{
     Debug.debug("Setting time between submissions "+timeBetweenSubmissions, 3);
     timer.setInitialDelay(0);
     timer.setDelay(timeBetweenSubmissions);
-    String resourcesPath = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "resources");
-    if(resourcesPath!=null && !resourcesPath.endsWith("/"))
-      resourcesPath += "/";
     URL imgURL=null;
     try{
       imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "submitting.png");
       iconSubmitting = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      logFile.addMessage("Could not find image "+ resourcesPath + "submitting.png");
+      logFile.addMessage("Could not find image "+ GridPilot.RESOURCES_PATH + "submitting.png");
       iconSubmitting = new ImageIcon();
     }
     try{
@@ -152,8 +150,16 @@ public class SubmissionControl{
       iconWaiting = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      logFile.addMessage("Could not find image "+ resourcesPath + "submitting.png");
+      logFile.addMessage("Could not find image "+ GridPilot.RESOURCES_PATH + "waiting.png");
       iconWaiting = new ImageIcon();
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "processing.png");
+      iconProcessing = new ImageIcon(imgURL);
+    }
+    catch(Exception e){
+      logFile.addMessage("Could not find image "+ GridPilot.RESOURCES_PATH + "processing.png");
+      iconProcessing = new ImageIcon();
     }
     isRand = configFile.getValue("Computing systems", "randomized submission");
     Debug.debug("isRand = " + isRand, 2);
@@ -296,8 +302,7 @@ public class SubmissionControl{
     MyJobInfo job;
     for(Iterator it=jobs.iterator(); it.hasNext();){
       job = (MyJobInfo) it.next();
-      statusTable.setValueAt(iconWaiting, job.getTableRow(),
-          JobMgr.FIELD_CONTROL);
+      statusTable.setValueAt(iconWaiting, job.getTableRow(), JobMgr.FIELD_CONTROL);
     }
     pbSubmission.setMaximum(pbSubmission.getMaximum() + jobs.size());
     pbSubmission.addMouseListener(new MouseAdapter(){
@@ -613,13 +618,14 @@ public class SubmissionControl{
     //                       JobMgr);
     Debug.debug("Submitting : " + job.getName()+" : "+statusTable.getRowCount()+
         " : "+job.getTableRow()+" : "+iconSubmitting, 3);
-    statusTable.setValueAt(iconSubmitting, job.getTableRow(),
-        JobMgr.FIELD_CONTROL);
     JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
     Vector updV = new Vector();
     updV.add(job);
     jobMgr.updateDBCells(updV);
-    if(csPluginMgr.preProcess(job) && csPluginMgr.submit(job)){
+    statusTable.setValueAt(iconProcessing, job.getTableRow(), JobMgr.FIELD_CONTROL);
+    boolean bOk = csPluginMgr.preProcess(job);
+    statusTable.setValueAt(iconSubmitting, job.getTableRow(), JobMgr.FIELD_CONTROL);
+    if(bOk && csPluginMgr.submit(job)){
       Debug.debug("Job " + job.getName() + " submitted : \n" +
                   "\tCSJobId = " + job.getJobId() + "\n" +
                   "\tStdOut = " + job.getOutTmp() + "\n" +

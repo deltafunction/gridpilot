@@ -7,8 +7,10 @@ import gridfactory.common.StatusBar;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.net.URL;
 import java.util.*;
 
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
@@ -85,6 +87,9 @@ public class JobMgr{
   private boolean [] hasChanged;
   private boolean useChanges = true;
   
+  private ImageIcon iconWaiting;
+  private ImageIcon iconProcessing;
+  
   /*
   Constants to specify which jobs to display
   */
@@ -106,6 +111,22 @@ public class JobMgr{
     Debug.debug("Status table fields: "+statusTable.getModel().getColumnCount(), 3);
     statisticsPanel = GridPilot.getClassMgr().getJobStatisticsPanel();
     submittedJobs = GridPilot.getClassMgr().getSubmittedJobs();
+    try{
+      URL imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "waiting.png");
+      iconWaiting = new ImageIcon(imgURL);
+    }
+    catch(Exception e){
+      logFile.addMessage("Could not find image "+ GridPilot.RESOURCES_PATH + "waiting.png");
+      iconWaiting = new ImageIcon();
+    }
+    try{
+      URL imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "processing.png");
+      iconProcessing = new ImageIcon(imgURL);
+    }
+    catch(Exception e){
+      logFile.addMessage("Could not find image "+ GridPilot.RESOURCES_PATH + "processing.png");
+      iconProcessing = new ImageIcon();
+    }
     if(useChanges){
       hasChanged = new boolean[0];
     }
@@ -1125,6 +1146,7 @@ public class JobMgr{
   
   private void queue(MyJobInfo job) {
     Debug.debug("Adding job to post-processing queue "+job, 2);
+    statusTable.setValueAt(iconWaiting, job.getTableRow(), JobMgr.FIELD_CONTROL);
     toPostProcessJobs.add(job);
     if(!timer.isRunning()){
       timer.restart();
@@ -1167,9 +1189,14 @@ public class JobMgr{
     Debug.debug("Post-process proceed "+ok+" --> "+postProcessingJobs.size()+":"+maxSimultaneousPostProcessing, 2);
     return ok;
   }
+  
+  public boolean isPostProcessing(){
+    return !postProcessingJobs.isEmpty();
+  }
 
   private boolean postProcess(MyJobInfo job) {
     Debug.debug("Post-processing job "+job, 2);
+    statusTable.setValueAt(iconProcessing, job.getTableRow(), JobMgr.FIELD_CONTROL);
     boolean succes = true;
     if(!GridPilot.getClassMgr().getCSPluginMgr().postProcess(job)){
       logFile.addMessage("Post processing of job " + job.getName() +
@@ -1200,6 +1227,7 @@ public class JobMgr{
                            " failed", job);
       }*/
     }
+    statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
     return succes;
   }
 

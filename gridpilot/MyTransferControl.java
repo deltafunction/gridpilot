@@ -433,14 +433,11 @@ public class MyTransferControl extends TransferControl {
     Debug.debug("Setting time between transfers "+timeBetweenTransfers, 3);
     timer.setInitialDelay(0);
     timer.setDelay(timeBetweenTransfers);
-    String resourcesPath = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "resources");
-    if(resourcesPath != null && !resourcesPath.endsWith("/"))
-      resourcesPath += "/";
     try{
-      iconSubmitting = new ImageIcon(resourcesPath + "submitting.png");
+      iconSubmitting = new ImageIcon(GridPilot.RESOURCES_PATH + "submitting.png");
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ resourcesPath + "submitting.png", 3);
+      Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "submitting.png", 3);
       iconSubmitting = new ImageIcon();
     }
     isRand = configFile.getValue("File transfer systems", "randomized transfers");
