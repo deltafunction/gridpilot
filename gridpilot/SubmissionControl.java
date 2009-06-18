@@ -431,7 +431,7 @@ public class SubmissionControl{
       }
     }
     // if all went well we can now submit
-    //monitorStatusBar.setLabel("Submitting job(s)...");
+    monitorStatusBar.setLabel("Queueing job(s)...");
     String dbName;
     for(Iterator<String> it=submitables.keySet().iterator(); it.hasNext();){
       dbName = it.next();
@@ -439,6 +439,7 @@ public class SubmissionControl{
       Debug.debug("Queueing "+submitables.get(dbName), 2);
       queue(submitables.get(dbName));
     }
+    monitorStatusBar.setLabel("");
     if(!timer.isRunning()){
       timer.restart();
     }
@@ -545,8 +546,8 @@ public class SubmissionControl{
       submittingJobs.add(job);
       new Thread(){
         public void run(){
-          submit(job);
-          job.setDBStatus(DBPluginMgr.SUBMITTED);
+          int dbStatus = submit(job);
+          job.setDBStatus(dbStatus);
           Vector updV = new Vector();
           updV.add(job);
           JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
@@ -616,7 +617,8 @@ public class SubmissionControl{
    * Calls the plugin submission method (via PluginMgr). <br>
    * This method is started in a thread. <p>
    */
-  private void submit(final MyJobInfo job){
+  private int submit(final MyJobInfo job){
+    int ret = -1;
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     job.setName(dbPluginMgr.getJobDefName(job.getIdentifier()));
     statusTable.setValueAt(job.getCSName(), job.getTableRow(),
@@ -652,8 +654,10 @@ public class SubmissionControl{
       statusTable.updateSelection();
       job.setNeedsUpdate(true);
       job.setCSStatus(MyJobInfo.CS_STATUS_WAIT);
+      ret = DBPluginMgr.SUBMITTED;
     }
     else{
+      ret = DBPluginMgr.FAILED;
       statusTable.setValueAt("Not submitted!", job.getTableRow(),
           JobMgr.FIELD_JOBID);
       job.setCSStatus(MyJobInfo.CS_STATUS_FAILED);
@@ -683,6 +687,7 @@ public class SubmissionControl{
     }
     // remove iconSubmitting
     statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
+    return ret;
   }
 
   public boolean isSubmitting(){
