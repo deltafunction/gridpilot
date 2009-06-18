@@ -540,13 +540,20 @@ public class SubmissionControl{
     }
     final MyJobInfo job = (MyJobInfo) toSubmitJobs.get(0);
     if(checkRunning(job)){
-      job.setDBStatus(DBPluginMgr.SUBMITTED);
       // transfer job from toSubmitJobs to submittingJobs
       toSubmitJobs.remove(job);
       submittingJobs.add(job);
       new Thread(){
         public void run(){
           submit(job);
+          job.setDBStatus(DBPluginMgr.SUBMITTED);
+          Vector updV = new Vector();
+          updV.add(job);
+          JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
+          jobMgr.updateDBCells(updV);
+          for(Iterator it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
+            ((JobMgr) it.next()).updateJobsByStatus();
+          }
         }
       }.start();
     }
@@ -618,10 +625,6 @@ public class SubmissionControl{
     //                       JobMgr);
     Debug.debug("Submitting : " + job.getName()+" : "+statusTable.getRowCount()+
         " : "+job.getTableRow()+" : "+iconSubmitting, 3);
-    JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
-    Vector updV = new Vector();
-    updV.add(job);
-    jobMgr.updateDBCells(updV);
     statusTable.setValueAt(iconProcessing, job.getTableRow(), JobMgr.FIELD_CONTROL);
     boolean bOk = csPluginMgr.preProcess(job);
     statusTable.setValueAt(iconSubmitting, job.getTableRow(), JobMgr.FIELD_CONTROL);
@@ -655,6 +658,7 @@ public class SubmissionControl{
           JobMgr.FIELD_JOBID);
       job.setCSStatus(MyJobInfo.CS_STATUS_FAILED);
       job.setNeedsUpdate(false);
+      JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
       if(jobMgr.updateDBStatus(job, DBPluginMgr.FAILED)){
         job.setDBStatus(DBPluginMgr.FAILED);
       }
@@ -667,9 +671,6 @@ public class SubmissionControl{
       //jobControl.updateJobsByStatus();
     }
     //jobControl.updateJobsByStatus();
-    for(Iterator it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
-      ((JobMgr) it.next()).updateJobsByStatus();
-    }
     submittingJobs.remove(job);
     if(!timer.isRunning()){
       timer.restart();
