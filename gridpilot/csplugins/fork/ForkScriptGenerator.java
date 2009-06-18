@@ -430,7 +430,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
       stdoutFilterLine = stdoutFilterLine.replaceFirst("FILTER", stdoutFilter);
     }
     else{
-      stdoutFilterLine.replaceFirst("FILTER", "");
+      stdoutFilterLine = stdoutFilterLine.replaceFirst("FILTER", "");
     }
     lines += stdoutFilterLine;
     if(stderrExcludeWords!=null && stderrExcludeWords.length>0){
@@ -441,7 +441,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
       stderrFilterLine = stderrFilterLine.replaceFirst("FILTER", stderrFilter);
     }
     else{
-      stderrFilterLine.replaceFirst("FILTER", "");
+      stderrFilterLine = stderrFilterLine.replaceFirst("FILTER", "");
     }
     lines += stderrFilterLine;
     lines += "split(){ { $1 2>&1 1>&3 | s2 1>&2 ; } 3>&1 ;}\n";
