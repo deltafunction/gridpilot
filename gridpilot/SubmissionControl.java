@@ -536,11 +536,18 @@ public class SubmissionControl{
   */
   private synchronized void trigSubmission(){
     if(toSubmitJobs.isEmpty()){
-      timer.stop();
+      //timer.stop();
       return;
     }
     final MyJobInfo job = (MyJobInfo) toSubmitJobs.get(0);
-    if(checkRunning(job)){
+    boolean runOk = false;
+    boolean stillToSubmitJobs = false;
+    try{
+      runOk = checkRunning(job);
+    }
+    catch(Exception e){
+    }
+    if(runOk){
       // transfer job from toSubmitJobs to submittingJobs
       toSubmitJobs.remove(job);
       submittingJobs.add(job);
@@ -558,7 +565,12 @@ public class SubmissionControl{
         }
       }.start();
     }
-    if(toSubmitJobs.isEmpty()){
+    try{
+      stillToSubmitJobs = toSubmitJobs.isEmpty();
+    }
+    catch(Exception e){
+    }
+    if(stillToSubmitJobs){
       timer.stop();
     }
   }
@@ -641,7 +653,11 @@ public class SubmissionControl{
       if(!dbPluginMgr.updateJobDefinition(
               job.getIdentifier(),
               new String []{jobUser, job.getJobId(), job.getName(),
-              job.getOutTmp(), job.getErrTmp()})){
+              job.getOutTmp(), job.getErrTmp()}) ||
+         !dbPluginMgr.updateJobDefinition(
+              job.getIdentifier(),
+              new String []{"status"},
+              new String []{DBPluginMgr.getStatusName(DBPluginMgr.SUBMITTED)})){
         logFile.addMessage("DB update(" + job.getIdentifier() + ", " +
                            job.getJobId() + ", " + job.getName() + ", " +
                            job.getOutTmp() + ", " + job.getErrTmp() +
@@ -692,7 +708,7 @@ public class SubmissionControl{
 
   public boolean isSubmitting(){
     //return timer.isRunning();
-    return !(submittingJobs.isEmpty() && toSubmitJobs.isEmpty());
+    return !submittingJobs.isEmpty() || !toSubmitJobs.isEmpty();
   }
 
   /**

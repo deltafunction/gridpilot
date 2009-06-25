@@ -761,8 +761,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
   public boolean reserveJobDefinition(String jobDefID, String userInfo, String cs){
     boolean ret = updateJobDefinition(
         jobDefID,
-        new String [] {"status", "userInfo", "computingSystem"},
-        new String [] {DBPluginMgr.getStatusName(DBPluginMgr.SUBMITTED), userInfo, cs}
+        new String [] {/*"status", */"userInfo", "computingSystem"},
+        new String [] {/*DBPluginMgr.getStatusName(DBPluginMgr.SUBMITTED), */userInfo, cs}
         );
     return ret;
   }

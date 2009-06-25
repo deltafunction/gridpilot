@@ -484,7 +484,6 @@ public class ForkComputingSystem implements MyComputingSystem{
       logFile.addMessage("DB update of job" + job.getIdentifier()+" failed");    
     }
 
-
     if(shellMgr.isRunning(job.getJobId())/*stdOut.length()!=0 &&
         stdOut.indexOf(job.getName())>-1*/
         ){
