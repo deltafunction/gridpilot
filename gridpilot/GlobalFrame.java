@@ -46,8 +46,13 @@ public class GlobalFrame extends GPFrame{
   private JMenuItem menuEditPrefs = new JMenuItem("Preferences");
   private ListPanel cutPanel = null;
   private JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show monitor (ctrl m)");
+  private JMenuItem miDbEditRecord = new JMenuItem("Edit record");
+  private JMenuItem miDbDeleteRecords = new JMenuItem("Delete record(s)");
+  private JMenuItem miWithInput = new JMenuItem("with selected input dataset(s)");
+  private JMenuItem miWithoutInput = new JMenuItem("from scratch");
   // keep track of whether or not we are cutting on the sub-panels
   public boolean cutting = false;
+
   
   /**
    * Constructor
@@ -55,6 +60,22 @@ public class GlobalFrame extends GPFrame{
   public GlobalFrame() throws Exception{
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     allPanels = new Vector();
+  }
+  
+  protected JMenuItem getDeleteMenuItem(){
+    return miDbDeleteRecords;
+  }
+  
+  protected JMenuItem getEditMenuItem(){
+    return miDbEditRecord;
+  }
+  
+  protected JMenuItem getDefineWithInput(){
+    return miWithInput;
+  }
+  
+  protected JMenuItem getDefineWithoutInput(){
+    return miWithoutInput;
   }
   
   protected void initMonitoringPanel() throws Exception{
@@ -245,6 +266,20 @@ public class GlobalFrame extends GPFrame{
     setTitle("GridPilot - "+title);
     setSize(size);
   }
+  
+  /**
+   * Get active panel
+   */
+  public DBPanel getActiveDBPanel(){
+    int selectedIndex = tabbedPane.getTabCount()-1;
+    if(selectedPanel>=0){
+      selectedIndex = selectedPanel;
+      Debug.debug("Selected index: "+selectedIndex, 3);
+    }
+    DBPanel dbPanel = (DBPanel)allPanels.elementAt(selectedIndex);
+    Debug.debug("Selected panel : "+dbPanel.getTableName(), 3);
+    return dbPanel;
+  }
 
  /**
   * Remove panel.
@@ -392,7 +427,6 @@ public class GlobalFrame extends GPFrame{
     JMenuItem miExport = new JMenuItem("Export");
     menuFile.add(miImport);
     menuFile.add(miExport);
-    menuFile.addSeparator();
     miImport.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         importToDB();
@@ -405,8 +439,56 @@ public class GlobalFrame extends GPFrame{
     });
    
     // DB
-    JMenu menuDB = new JMenu("Databases");
-    JMenuItem miDbClearCaches = new JMenuItem("Clear DB caches");
+    JMenu menuDB = new JMenu("DB");
+    menuDB.addMenuListener(new MenuListener(){
+      public void menuCanceled(MenuEvent e) {
+      }
+
+      public void menuDeselected(MenuEvent e) {
+      }
+
+      public void menuSelected(MenuEvent e) {
+        // Refresh active elements of the menu
+        ((DBPanel) tabbedPane.getComponentAt(selectedPanel)).dbMenuSelected();
+      }
+    });
+
+    miWithInput.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        // Define new record(s) in the DB of the active pane
+        createRecords(true);
+      }
+    });
+    
+    miWithoutInput.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        // Define new record(s) in the DB of the active pane
+        createRecords(false);
+      }
+    });
+    
+    JMenu mDbDefineRecords = new JMenu("Define new record(s)");
+    mDbDefineRecords.add(miWithInput);
+    mDbDefineRecords.add(miWithoutInput);
+    menuDB.add(mDbDefineRecords);
+
+    miDbEditRecord.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        // Edit record in the DB of the active pane
+        editRecord();
+      }
+    });
+    menuDB.add(miDbEditRecord);
+
+    miDbDeleteRecords.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        // Delete record(s) in the DB of the active pane
+        deleteRecords();
+      }
+    });
+    menuDB.add(miDbDeleteRecords);
+
+    JMenuItem miDbClearCaches = new JMenuItem("Clear database cache");
     miDbClearCaches.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         // Clear caches of all DB connections
@@ -414,7 +496,7 @@ public class GlobalFrame extends GPFrame{
       }
     });
 
-    JMenuItem miDbReconnect = new JMenuItem("Reconnect");
+    JMenuItem miDbReconnect = new JMenuItem("Reconnect databases");
     miDbReconnect.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         Debug.debug("Reconnecting DBs", 2);
@@ -422,7 +504,17 @@ public class GlobalFrame extends GPFrame{
       }
     });
 
-    JMenuItem miDbRefreshRTEs = new JMenuItem("Refresh runtimeEnvironments");
+    // CS
+    JMenuItem miCsReconnect = new JMenuItem("Reconnect computing systems");
+    miCsReconnect.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        Debug.debug("Reconnecting CSs", 2);
+        GridPilot.csReconnect();
+        Debug.debug("Reconnecting CSs done", 2);
+      }
+    });
+
+    JMenuItem miDbRefreshRTEs = new JMenuItem("Refresh runtime environments");
     miDbRefreshRTEs.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         /*
@@ -448,25 +540,13 @@ public class GlobalFrame extends GPFrame{
       }
     });
 
-    menuDB.add(miDbClearCaches);
-    menuDB.add(miDbReconnect);
-    menuDB.add(miDbRefreshRTEs);
-    menuFile.add(menuDB);
-
-    // CS
-    JMenu menuCS = new JMenu("Computing systems");
-    JMenuItem miCsReconnect = new JMenuItem("Reconnect");
-    miCsReconnect.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        Debug.debug("Reconnecting CSs", 2);
-        GridPilot.csReconnect();
-        Debug.debug("Reconnecting CSs done", 2);
-      }
-    });
-
-    menuCS.add(miCsReconnect);
-    menuFile.add(menuCS);
-    
+    menuFile.addSeparator();
+    menuFile.add(miCsReconnect);
+    menuFile.add(miDbRefreshRTEs);
+    menuFile.addSeparator();
+    menuFile.add(miDbClearCaches);
+    menuFile.add(miDbReconnect);
+   
     if(!GridPilot.isApplet()){
       menuFile.addSeparator();
       JMenuItem miExit = new JMenuItem("Quit (ctrl q)");
@@ -694,7 +774,7 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuHelp.add(menuHelpCreateSoftwarePackage);
-    JMenuItem menuHelpRunOneJob = new JMenuItem("Wizard: Run a Linux command");
+    JMenuItem menuHelpRunOneJob = new JMenuItem("Wizard: Run a command");
     menuHelpRunOneJob.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         new RunCommandWizard();
@@ -706,10 +786,59 @@ public class GlobalFrame extends GPFrame{
     menuBar.add(menuFile);
     menuBar.add(menuEdit);
     menuBar.add(menuView);
+    menuBar.add(menuDB);
     menuBar.add(menuHelp);
     
     return menuBar;
 
+  }
+  
+  private void createRecords(boolean withInputDataset) {
+    DBPanel panel = getActiveDBPanel();
+    if(panel.getTableName().equalsIgnoreCase("runtimeEnvironment")){
+      panel.createRuntimeEnvironment();
+    }
+    else if(panel.getTableName().equalsIgnoreCase("transformation")){
+      panel.createTransformation();
+    }
+    else if(panel.getTableName().equalsIgnoreCase("dataset")){
+      panel.createDatasets(withInputDataset);
+    }
+    else if(panel.getTableName().equalsIgnoreCase("jobDefinition")){
+      panel.createJobDefinitions();
+    }
+  }
+
+  private void editRecord() {
+    DBPanel panel = getActiveDBPanel();
+    if(panel.getTableName().equalsIgnoreCase("runtimeEnvironment")){
+      panel.editRuntimeEnvironment();
+    }
+    else if(panel.getTableName().equalsIgnoreCase("transformation")){
+      panel.editTransformation();
+    }
+    else if(panel.getTableName().equalsIgnoreCase("dataset")){
+      panel.editDataset();
+    }
+    else if(panel.getTableName().equalsIgnoreCase("jobDefinition")){
+      panel.editJobDef();
+    }
+  }
+
+  private void deleteRecords() {
+    DBPanel panel = getActiveDBPanel();
+    if(panel.getTableName().equalsIgnoreCase("runtimeEnvironment")){
+      panel.deleteRuntimeEnvironments();
+    }
+    else if(panel.getTableName().equalsIgnoreCase("transformation")){
+      panel.deleteTransformations();
+    }
+    else if(panel.getTableName().equalsIgnoreCase("dataset")){
+      panel.deleteDatasets();
+    }
+    else if(panel.getTableName().equalsIgnoreCase("jobDefinition")){
+      panel.deleteJobDefs();
+    }
   }
 
   protected void exportDB() {
