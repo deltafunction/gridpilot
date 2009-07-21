@@ -826,7 +826,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       return;
     }
     
-    miStopUpdate.setEnabled(statusUpdateControl.checkingThread.size()>0);
+    miStopUpdate.setEnabled(statusUpdateControl.checkingThreads.size()>0);
     
     ListSelectionModel lsm = (ListSelectionModel)e.getSource();
     if(lsm.isSelectionEmpty()){

@@ -38,7 +38,7 @@ import java.lang.reflect.InvocationTargetException;
 
 /**
  * This panel contains one SelectPanel.
- *
+ * TODO: split off 4 subclasses: RuntimeEnvironmentDBPanel, ...
  */
 public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
@@ -87,6 +87,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JMenuItem menuEditCopy = null;
   private JMenuItem menuEditCut = null;
   private JMenuItem menuEditPaste = null;
+  private JMenuItem menuDefineRecordsWithInput;
+  private JMenuItem menuDefineRecordsWithoutInput;
+  private JMenuItem menuDeleteRecords;
+  private JMenuItem menuEditRecord;
   private ResThread workThread;
   // WORKING THREAD SEMAPHORE
   // The idea is to ignore new requests when working on a request
@@ -313,6 +317,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     menuEditCopy = GridPilot.getClassMgr().getGlobalFrame().getMenuEditCopy();
     menuEditCut = GridPilot.getClassMgr().getGlobalFrame().getMenuEditCut();
     menuEditPaste = GridPilot.getClassMgr().getGlobalFrame().getMenuEditPaste();
+    menuDefineRecordsWithInput = GridPilot.getClassMgr().getGlobalFrame().getDefineWithInput();
+    menuDefineRecordsWithoutInput = GridPilot.getClassMgr().getGlobalFrame().getDefineWithoutInput();
+    menuDeleteRecords = GridPilot.getClassMgr().getGlobalFrame().getDeleteMenuItem();
+    menuEditRecord = GridPilot.getClassMgr().getGlobalFrame().getEditMenuItem();
 
     this.setLayout(new BorderLayout());
 
@@ -529,7 +537,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       
       bCreateRecords.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          bCreateDatasets_mousePressed();
+          bCreateDatasets_mousePressed(bCreateRecords);
         }
       });
 
@@ -776,8 +784,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   public void panelShown(){
-    Debug.debug("panelShown", 1);
     boolean rowsAreSelected = tableResults.getSelectedRows().length>0;
+    Debug.debug("panelShown - selected "+rowsAreSelected, 1);
     menuEditCopy.setEnabled(rowsAreSelected);
     menuEditCut.setEnabled(rowsAreSelected);
     // Check if clipboard is of the form "db table id1 id2 id3 ..."
@@ -793,6 +801,17 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       clipboardOwned = false;
     }
     menuEditPaste.setEnabled(clipboardOwned);
+  }
+
+  protected void dbMenuSelected(){
+    int selectedRows = tableResults.getSelectedRows().length;
+    boolean notFilePanel = !getTableName().equalsIgnoreCase("file");
+    boolean datasetPanel = getTableName().equalsIgnoreCase("dataset");
+    Debug.debug(getTableName()+" is "+(notFilePanel?"not":"")+" a file panel", 3);
+    menuDefineRecordsWithInput.setEnabled(datasetPanel && selectedRows>0);
+    menuDefineRecordsWithoutInput.setEnabled(notFilePanel);
+    menuEditRecord.setEnabled(notFilePanel && selectedRows==1);
+    menuDeleteRecords.setEnabled(selectedRows>0);
   }
 
   public void panelHidden(){
@@ -1382,12 +1401,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     });
     JMenuItem miDelete = new JMenuItem("Delete");
-    miEdit = new JMenuItem("Edit");
     miDelete.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         deleteDatasets();
       }
     });
+    miEdit = new JMenuItem("Edit");
     miEdit.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         editDataset();
@@ -1612,14 +1631,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     );
   }
 
-  private void createJobDefinitions(){
+  protected void createJobDefinitions(){
     Debug.debug("Creating job definition(s), "+getSelectedIdentifiers().length, 3);
     JobDefCreationPanel panel = new JobDefCreationPanel(dbName, null, this, new Boolean(false));
     CreateEditDialog pDialog = new CreateEditDialog(panel, false, false, true, false, true);
     pDialog.setTitle("jobDefinition");
   }
 
-  private void editJobDef(){
+  protected void editJobDef(){
     editJobDef(null);
   }
   
@@ -1796,7 +1815,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return anyDeleted;
   }
 
-  private void deleteJobDefs(){
+  protected void deleteJobDefs(){
     String msg = "Are you sure you want to delete jobDefinition";
     if(getSelectedIdentifiers().length>1){
       msg += "s";
@@ -1893,7 +1912,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   /**
    * Open dialog with dataset creation panel in creation mode
    */ 
-  private void createDatasets(boolean withInput){
+  protected void createDatasets(boolean withInput){
     if(!withInput && tableResults.getSelectedRowCount()>0){
       tableResults.clearSelection();
     }
@@ -1905,7 +1924,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   /**
    * Open dialog with dataset creation panel in editing mode
    */ 
- private void editDataset(){
+ protected void editDataset(){
    DatasetCreationPanel dscp = new DatasetCreationPanel(dbPluginMgr, this, true);
    CreateEditDialog pDialog = new CreateEditDialog(dscp, true, false, true, false, true);
    if(!dscp.editable){
@@ -1918,7 +1937,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    *  Delete datasets. Returns HashSet of identifier strings.
    *  From AtCom1.
    */
-  public void deleteDatasets(){
+  protected void deleteDatasets(){
     statusBar.setLabel("Deleting dataset(s).");
     workThread = new ResThread(){
       public void run(){
@@ -2030,7 +2049,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   /**
    * Open dialog with transformation creation panel.
    */ 
-  private void createTransformation(){
+  protected void createTransformation(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new TransformationCreationPanel(dbPluginMgr, this, false),
        false, false, true, false, true);
@@ -2039,28 +2058,28 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   /**
    * Open dialog with runtime environment creation panel
    */ 
-  private void createRuntimeEnvironment(){
+  protected void createRuntimeEnvironment(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new RuntimeCreationPanel(dbPluginMgr, this, false),
        false, false, true, false, true);
     pDialog.setTitle(tableName);
   }
 
-  private void editTransformation(){
+  protected void editTransformation(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new TransformationCreationPanel(dbPluginMgr, this, true),
        true, false, true, false, true);
     pDialog.setTitle(tableName);
   }
   
-  private void editRuntimeEnvironment(){
+  protected void editRuntimeEnvironment(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new RuntimeCreationPanel(dbPluginMgr, this, true),
        true, false, true, false, true);
     pDialog.setTitle(tableName);
   }
 
-  private void deleteTransformations(){
+  protected void deleteTransformations(){
     String msg = "Are you sure you want to delete transformation record";
     if(getSelectedIdentifiers().length>1){
       msg += "s";
@@ -2131,7 +2150,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return anyDeleted;
   }
   
-  private void deleteRuntimeEnvironments(){
+  protected void deleteRuntimeEnvironments(){
     String msg = "Are you sure you want to delete runtime environment record";
     if(getSelectedIdentifiers().length>1){
       msg += "s";
@@ -2972,21 +2991,20 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   /**
    * Called when mouse is pressed on Define button on a dataset tab
    */
-  private void bCreateDatasets_mousePressed(){
+  private void bCreateDatasets_mousePressed(JButton invoker){
     // check if anything is selected
     String [] selectedDatasetIdentifiers = getSelectedIdentifiers();
     // if a dataset is selected, show the menu
     if(selectedDatasetIdentifiers.length!=0){
-      pmCreateDSMenu.show(this, 0, 0); // without this, pmSubmitMenu.getWidth == 0
-      pmCreateDSMenu.show(bCreateRecords, -pmCreateDSMenu.getWidth(),
-                        -pmCreateDSMenu.getHeight() + bCreateRecords.getHeight());
+      pmCreateDSMenu.show(invoker, 0, 0); // without this, pmSubmitMenu.getWidth == 0
+      pmCreateDSMenu.show(invoker, -pmCreateDSMenu.getWidth(),
+                        -pmCreateDSMenu.getHeight() + invoker.getHeight());
     }
     else{
       createDatasets(false);
     }
   }
   
-
   /**
    * Called when mouse is pressed on Submit button
    */

@@ -56,7 +56,7 @@ public class JobStatusUpdateControl{
   /**
    * Contains all jobs for which update is processing. <p>
    * Each job in this job vector : <ul>
-   * <li> corresponds to one and only one thread in {@link #checkingThread}
+   * <li> corresponds to one and only one thread in {@link #checkingThreads}
    *      (but a thread in checkingThread could correspond to several jobs in checkingJobs),
    * <li> should be "needed to be refreshed" (see {@link #toCheckJobs})and has
    *      belonged to {@link #toCheckJobs}, but doesn't belong to it anymore,
@@ -67,7 +67,7 @@ public class JobStatusUpdateControl{
    * Thread vector. <p>
    * @see #checkingJobs
    */
-  public Vector checkingThread = new Vector();
+  public Vector checkingThreads = new Vector();
 
   private ImageIcon iconChecking;
 
@@ -80,17 +80,19 @@ public class JobStatusUpdateControl{
 
     timerChecking = new Timer(0, new ActionListener(){
       public void actionPerformed(ActionEvent ae){
-        //Debug.debug(checkingThread.size()+":"+maxSimultaneousChecking +":"+
-            //!toCheckJobs.isEmpty(), 3);
-        if(checkingThread.size()<maxSimultaneousChecking && !toCheckJobs.isEmpty()){
-          Thread t = new Thread(){
-            public void run(){
-              Debug.debug("Checking...", 3);
-              trigCheck();
-              checkingThread.remove(this);
-          }};
-          checkingThread.add(t);
-          t.start();
+        synchronized(checkingThreads){
+          Debug.debug(checkingThreads.size()+":"+maxSimultaneousChecking +":"+
+             !toCheckJobs.isEmpty(), 3);
+          if(checkingThreads.size()<maxSimultaneousChecking && !toCheckJobs.isEmpty()){
+            Thread t = new Thread(){
+              public void run(){
+                Debug.debug("Checking...", 3);
+                trigCheck();
+                checkingThreads.remove(this);
+            }};
+            checkingThreads.add(t);
+            t.start();
+          }
         }
       }
     });
@@ -370,8 +372,8 @@ public class JobStatusUpdateControl{
   public void reset(){
     toCheckJobs.removeAllElements();
 
-    for(int i=0; i<checkingThread.size(); ++i){
-      Thread t = (Thread) checkingThread.get(i);
+    for(int i=0; i<checkingThreads.size(); ++i){
+      Thread t = (Thread) checkingThreads.get(i);
       Debug.debug("wait for thread " + i + "...", 2);
       try{
         t.join();
@@ -383,6 +385,6 @@ public class JobStatusUpdateControl{
     }
     // When selecting "Stop checking",
     // if a large number of threads were running, one could not refresh anymore.
-    checkingThread.removeAllElements();
+    checkingThreads.removeAllElements();
   }
 }

@@ -48,8 +48,8 @@ public class GlobalFrame extends GPFrame{
   private JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show monitor (ctrl m)");
   private JMenuItem miDbEditRecord = new JMenuItem("Edit record");
   private JMenuItem miDbDeleteRecords = new JMenuItem("Delete record(s)");
-  private JMenuItem miWithInput = new JMenuItem("with selected input dataset(s)");
   private JMenuItem miWithoutInput = new JMenuItem("from scratch");
+  private JMenuItem miWithInput = new JMenuItem("with selected input dataset(s)");
   // keep track of whether or not we are cutting on the sub-panels
   public boolean cutting = false;
 
@@ -70,12 +70,12 @@ public class GlobalFrame extends GPFrame{
     return miDbEditRecord;
   }
   
-  protected JMenuItem getDefineWithInput(){
-    return miWithInput;
-  }
-  
   protected JMenuItem getDefineWithoutInput(){
     return miWithoutInput;
+  }
+  
+  protected JMenuItem getDefineWithInput(){
+    return miWithInput;
   }
   
   protected void initMonitoringPanel() throws Exception{
@@ -453,13 +453,6 @@ public class GlobalFrame extends GPFrame{
       }
     });
 
-    miWithInput.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        // Define new record(s) in the DB of the active pane
-        createRecords(true);
-      }
-    });
-    
     miWithoutInput.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         // Define new record(s) in the DB of the active pane
@@ -467,9 +460,16 @@ public class GlobalFrame extends GPFrame{
       }
     });
     
+    miWithInput.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        // Define new record(s) in the DB of the active pane
+        createRecords(true);
+      }
+    });
+    
     JMenu mDbDefineRecords = new JMenu("Define new record(s)");
-    mDbDefineRecords.add(miWithInput);
     mDbDefineRecords.add(miWithoutInput);
+    mDbDefineRecords.add(miWithInput);
     menuDB.add(mDbDefineRecords);
 
     miDbEditRecord.addActionListener(new ActionListener(){
