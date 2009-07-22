@@ -43,6 +43,10 @@ import java.lang.reflect.InvocationTargetException;
 public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
   private static final long serialVersionUID = 1L;
+  
+  /** Show define, edit and delete buttons on all DB panes. */
+  private boolean SHOW_DB_BUTTONS = false;
+  
   private JScrollPane spSelectPanel = new JScrollPane();
   private JPanel pButtonSelectPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
   private JScrollPane spTableResults = new JScrollPane();
@@ -87,10 +91,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JMenuItem menuEditCopy = null;
   private JMenuItem menuEditCut = null;
   private JMenuItem menuEditPaste = null;
-  private JMenuItem menuDefineRecordsWithInput;
-  private JMenuItem menuDefineRecordsWithoutInput;
-  private JMenuItem menuDeleteRecords;
-  private JMenuItem menuEditRecord;
   private ResThread workThread;
   // WORKING THREAD SEMAPHORE
   // The idea is to ignore new requests when working on a request
@@ -317,10 +317,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     menuEditCopy = GridPilot.getClassMgr().getGlobalFrame().getMenuEditCopy();
     menuEditCut = GridPilot.getClassMgr().getGlobalFrame().getMenuEditCut();
     menuEditPaste = GridPilot.getClassMgr().getGlobalFrame().getMenuEditPaste();
-    menuDefineRecordsWithInput = GridPilot.getClassMgr().getGlobalFrame().getDefineWithInput();
-    menuDefineRecordsWithoutInput = GridPilot.getClassMgr().getGlobalFrame().getDefineWithoutInput();
-    menuDeleteRecords = GridPilot.getClassMgr().getGlobalFrame().getDeleteMenuItem();
-    menuEditRecord = GridPilot.getClassMgr().getGlobalFrame().getEditMenuItem();
 
     this.setLayout(new BorderLayout());
 
@@ -556,10 +552,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       addButtonResultsPanel(bViewFiles);
       addButtonResultsPanel(bViewJobDefinitions);
       addButtonResultsPanel(bDefineJobDefinitions);
-      addButtonResultsPanel(new JLabel("|"));
-      addButtonResultsPanel(bCreateRecords);
-      addButtonResultsPanel(bEditRecord);
-      addButtonResultsPanel(bDeleteRecord);
+      if(SHOW_DB_BUTTONS){
+        addButtonResultsPanel(new JLabel("|"));
+        addButtonResultsPanel(bCreateRecords);
+        addButtonResultsPanel(bEditRecord);
+        addButtonResultsPanel(bDeleteRecord);
+      }
       addButtonSelectPanel(bSearch);
       addButtonSelectPanel(bClear);
       bViewFiles.setEnabled(false);
@@ -599,10 +597,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       });
             
       addButtonResultsPanel(bDownload);
-      addButtonResultsPanel(new JLabel("|"));
-      addButtonResultsPanel(bEditRecord);
-      //addButtonResultsPanel(bCreateRecords);
-      addButtonResultsPanel(bDeleteRecord);
+      if(SHOW_DB_BUTTONS){
+        addButtonResultsPanel(new JLabel("|"));
+        addButtonResultsPanel(bEditRecord);
+        //addButtonResultsPanel(bCreateRecords);
+        addButtonResultsPanel(bDeleteRecord);
+      }
       // For files, add nex/previous buttons
       bPrevious.setEnabled(false);
       bNext.setEnabled(false);
@@ -684,10 +684,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
       addButtonResultsPanel(bSubmit);
       addButtonResultsPanel(bMonitor);
-      addButtonResultsPanel(new JLabel("|"));
-      addButtonResultsPanel(bCreateRecords);
-      addButtonResultsPanel(bEditRecord);
-      addButtonResultsPanel(bDeleteRecord);
+      if(SHOW_DB_BUTTONS){
+        addButtonResultsPanel(new JLabel("|"));
+        addButtonResultsPanel(bCreateRecords);
+        addButtonResultsPanel(bEditRecord);
+        addButtonResultsPanel(bDeleteRecord);
+      }
       addButtonSelectPanel(bSearch);
       addButtonSelectPanel(bClear);
       bSubmit.setEnabled(false);
@@ -723,9 +725,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       });
       
-      addButtonResultsPanel(bCreateRecords);
-      addButtonResultsPanel(bEditRecord);
-      addButtonResultsPanel(bDeleteRecord);
+      if(SHOW_DB_BUTTONS){
+        addButtonResultsPanel(bCreateRecords);
+        addButtonResultsPanel(bEditRecord);
+        addButtonResultsPanel(bDeleteRecord);
+      }
       addButtonSelectPanel(bSearch);
       addButtonSelectPanel(bClear);
       //bViewFiles.setEnabled(false);
@@ -762,9 +766,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       });
       
-      addButtonResultsPanel(bCreateRecords);
-      addButtonResultsPanel(bEditRecord);
-      addButtonResultsPanel(bDeleteRecord);
+      if(SHOW_DB_BUTTONS){
+        addButtonResultsPanel(bCreateRecords);
+        addButtonResultsPanel(bEditRecord);
+        addButtonResultsPanel(bDeleteRecord);
+      }
       addButtonSelectPanel(bSearch);
       addButtonSelectPanel(bClear);
       //bViewFiles.setEnabled(false);
@@ -808,10 +814,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     boolean notFilePanel = !getTableName().equalsIgnoreCase("file");
     boolean datasetPanel = getTableName().equalsIgnoreCase("dataset");
     Debug.debug(getTableName()+" is "+(notFilePanel?"not":"")+" a file panel", 3);
-    menuDefineRecordsWithInput.setEnabled(datasetPanel && selectedRows>0);
-    menuDefineRecordsWithoutInput.setEnabled(notFilePanel);
-    menuEditRecord.setEnabled(notFilePanel && selectedRows==1);
-    menuDeleteRecords.setEnabled(selectedRows>0);
+    GridPilot.getClassMgr().getGlobalFrame().setDefineMenu(datasetPanel, selectedRows, notFilePanel);
   }
 
   public void panelHidden(){

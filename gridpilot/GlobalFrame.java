@@ -31,6 +31,7 @@ import gridpilot.wizards.run_jobs.RunCommandWizard;
 public class GlobalFrame extends GPFrame{
 
   private static final long serialVersionUID = 1L;
+  
   private Vector allPanels;
   private int selectedPanel;
   private CreateEditDialog pDialog;
@@ -48,8 +49,10 @@ public class GlobalFrame extends GPFrame{
   private JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show monitor (ctrl m)");
   private JMenuItem miDbEditRecord = new JMenuItem("Edit record");
   private JMenuItem miDbDeleteRecords = new JMenuItem("Delete record(s)");
+  private JMenu mDbDefineRecords = new JMenu("Define new record(s)");
+  private JMenuItem miDbDefineRecords = new JMenuItem("Define new record(s)");
   private JMenuItem miWithoutInput = new JMenuItem("from scratch");
-  private JMenuItem miWithInput = new JMenuItem("with selected input dataset(s)");
+  private JMenuItem miWithInputDataset = new JMenuItem("with selected input dataset(s)");
   // keep track of whether or not we are cutting on the sub-panels
   public boolean cutting = false;
 
@@ -60,22 +63,6 @@ public class GlobalFrame extends GPFrame{
   public GlobalFrame() throws Exception{
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     allPanels = new Vector();
-  }
-  
-  protected JMenuItem getDeleteMenuItem(){
-    return miDbDeleteRecords;
-  }
-  
-  protected JMenuItem getEditMenuItem(){
-    return miDbEditRecord;
-  }
-  
-  protected JMenuItem getDefineWithoutInput(){
-    return miWithoutInput;
-  }
-  
-  protected JMenuItem getDefineWithInput(){
-    return miWithInput;
   }
   
   protected void initMonitoringPanel() throws Exception{
@@ -453,6 +440,13 @@ public class GlobalFrame extends GPFrame{
       }
     });
 
+    miDbDefineRecords.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        // Define new record(s) in the DB of the active pane
+        createRecords(false);
+      }
+    });
+    
     miWithoutInput.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         // Define new record(s) in the DB of the active pane
@@ -460,16 +454,16 @@ public class GlobalFrame extends GPFrame{
       }
     });
     
-    miWithInput.addActionListener(new ActionListener(){
+    miWithInputDataset.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         // Define new record(s) in the DB of the active pane
         createRecords(true);
       }
     });
     
-    JMenu mDbDefineRecords = new JMenu("Define new record(s)");
     mDbDefineRecords.add(miWithoutInput);
-    mDbDefineRecords.add(miWithInput);
+    mDbDefineRecords.add(miWithInputDataset);
+    menuDB.add(miDbDefineRecords);
     menuDB.add(mDbDefineRecords);
 
     miDbEditRecord.addActionListener(new ActionListener(){
@@ -793,6 +787,18 @@ public class GlobalFrame extends GPFrame{
 
   }
   
+  protected void setDefineMenu(boolean ds, int selectedRows, boolean notFilePanel){
+    mDbDefineRecords.setVisible(ds);
+    miWithoutInput.setVisible(ds);
+    miWithInputDataset.setVisible(ds);  
+    miDbDefineRecords.setVisible(!ds && notFilePanel);
+    miWithInputDataset.setEnabled(ds && selectedRows>0);
+    miWithoutInput.setEnabled(notFilePanel);
+    miDbEditRecord.setEnabled(notFilePanel && selectedRows==1);
+    miDbDeleteRecords.setEnabled(selectedRows>0);
+
+  }
+
   private void createRecords(boolean withInputDataset) {
     DBPanel panel = getActiveDBPanel();
     if(panel.getTableName().equalsIgnoreCase("runtimeEnvironment")){
