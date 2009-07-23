@@ -440,21 +440,21 @@ public class BrowserPanel extends JDialog implements ActionListener{
       ImageIcon homeIcon = null;
       URL imgURL = null;
       try{
-        imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "folder_home2.png");
+        imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "home.png");
         homeIcon = new ImageIcon(imgURL);
       }
       catch(Exception e){
-        Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "folder_home2.png", 3);
+        Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "home.png", 3);
         //homeIcon = new ImageIcon();
       }
       ImageIcon enterIcon = null;
       imgURL=null;
       try{
-        imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "key_enter.png");
+        imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "key_enter.png");
         enterIcon = new ImageIcon(imgURL);
       }
       catch(Exception e){
-        Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "key_enter.png", 3);
+        Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "key_enter.png", 3);
         //enterIcon = new ImageIcon();
       }
       JButton bHome = null;

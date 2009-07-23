@@ -35,6 +35,7 @@ import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.Toolkit;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
 
 /**
  * This panel contains one SelectPanel.
@@ -63,10 +64,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bSubmit = new JButton("Submit job(s)");
   private JButton bMonitor = new JButton("Monitor job(s)");
   private JButton bDeleteRecord = new JButton("Delete record(s)");
-  private JButton bSearch = new JButton("Search");
-  private JButton bNext = new JButton("Next results >>");
-  private JButton bPrevious = new JButton("<< Previous results");
-  private JButton bClear = new JButton("Clear");
+  private JButton bSearch;
+  private JButton bNext;
+  private JButton bPrevious;
+  private JButton bClear;
   private JButton bViewJobDefinitions = new JButton("Show jobDefinition(s)");
   private JButton bViewFiles = new JButton("Show file(s)");
   private JButton bDefineJobDefinitions = new JButton("Create jobDefinition(s)");
@@ -200,7 +201,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      
      // Pass on only non-hidden fields to
      // Table. Perhaps rethink: - Table hides fields...
-     Vector fieldSet = new Vector();
+     Vector<String> fieldSet = new Vector<String>();
      boolean ok;
      for(int i=0; i<fieldNames.length; ++i){
        ok = true;
@@ -226,88 +227,131 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      return tableResults;
    }
 
-   private void setFieldArrays(){
-     Vector shownSet = new Vector();  
-     boolean ok = true;
-     boolean hiddenOk = true;
-     Debug.debug("Finding fields to show from: "+MyUtil.arrayToString(defaultFields), 3);
-     for(int i=0; i<defaultFields.length; ++i){
-       ok = false;
-       for(int j=0; j<fieldNames.length; ++j){
-         Debug.debug("Checking fields for showing: "+defaultFields[i]+"<->"+fieldNames[j], 3);
-         if(defaultFields[i].equalsIgnoreCase(fieldNames[j]) ||
-             defaultFields[i].equalsIgnoreCase("*")){
-           ok = true;
-           break;
-         }
-       }
-       hiddenOk = true;
-       for(int j=0; j<hiddenFields.length; ++j){
-         //Debug.debug("Checking fields for hiding "+defaultFields[i]+"<->"+hiddenFields[j], 3);
-         if(defaultFields[i].equalsIgnoreCase(hiddenFields[j]) &&
-             !hiddenFields[j].equalsIgnoreCase("*")){
-           hiddenOk = false;
-           break;
-         }
-       }
-       if(ok && hiddenOk){
-         Debug.debug("Showing "+defaultFields[i], 3);
-         shownSet.add(defaultFields[i]);
-       }
-     }
+  private void setFieldArrays(){
+    Vector<String> shownSet = new Vector<String>();  
+    boolean ok = true;
+    boolean hiddenOk = true;
+    Debug.debug("Finding fields to show from: "+MyUtil.arrayToString(defaultFields), 3);
+    for(int i=0; i<defaultFields.length; ++i){
+      ok = false;
+      for(int j=0; j<fieldNames.length; ++j){
+        Debug.debug("Checking fields for showing: "+defaultFields[i]+"<->"+fieldNames[j], 3);
+        if(defaultFields[i].equalsIgnoreCase(fieldNames[j]) ||
+            defaultFields[i].equalsIgnoreCase("*")){
+          ok = true;
+          break;
+        }
+      }
+      hiddenOk = true;
+      for(int j=0; j<hiddenFields.length; ++j){
+        //Debug.debug("Checking fields for hiding "+defaultFields[i]+"<->"+hiddenFields[j], 3);
+        if(defaultFields[i].equalsIgnoreCase(hiddenFields[j]) &&
+            !hiddenFields[j].equalsIgnoreCase("*")){
+          hiddenOk = false;
+          break;
+        }
+      }
+      if(ok && hiddenOk){
+        Debug.debug("Showing "+defaultFields[i], 3);
+        shownSet.add(defaultFields[i]);
+      }
+    }
           
-     if(selectPanel!=null){
-       Debug.debug("selectPanel fields: "+selectPanel.getDisplayFieldsCount(), 3);
-       for(int i=0; i<selectPanel.getDisplayFieldsCount(); ++i){
-         SPanel.DisplayPanel cb =
-           ((SPanel.DisplayPanel) selectPanel.getDisplayPanel(i));
-         if(!shownSet.contains(cb.getSelected())){
-           shownSet.add(cb.getSelected());
-         }
-       }    
-     }
+    if(selectPanel!=null){
+      Debug.debug("selectPanel fields: "+selectPanel.getDisplayFieldsCount(), 3);
+      for(int i=0; i<selectPanel.getDisplayFieldsCount(); ++i){
+        SPanel.DisplayPanel cb =
+          ((SPanel.DisplayPanel) selectPanel.getDisplayPanel(i));
+        if(!shownSet.contains(cb.getSelected())){
+          shownSet.add(cb.getSelected());
+        }
+      }    
+    }
 
-     shownFields = new String[shownSet.size()];
-     for(int i=0; i<shownSet.size(); ++i){
-       shownFields[i] = (String) shownSet.get(i);
-     }
+    shownFields = new String[shownSet.size()];
+    for(int i=0; i<shownSet.size(); ++i){
+      shownFields[i] = shownSet.get(i);
+    }
      
-     for(int k=0; k<shownFields.length; ++k){
-       shownFields[k] = tableName+"."+shownFields[k];
-     }
-     Debug.debug("shownFields: "+shownFields.length, 3);
+    for(int k=0; k<shownFields.length; ++k){
+      shownFields[k] = tableName+"."+shownFields[k];
+    }
+    Debug.debug("shownFields: "+shownFields.length, 3);
      
-     // Set the default values of the selection drop downs.
-     // selectFields only used by clear().
-     Vector selectSet = new Vector();  
-     for(int i=0; i<defaultFields.length; ++i){
-       boolean fieldOk = false;
-       for(int j=0; j<fieldNames.length; ++j){
-         if(fieldNames[j].equalsIgnoreCase(defaultFields[i])){
-           fieldOk = true;
-           break;
-         }
-       }
-       if(fieldOk){
-         Debug.debug("Selecting "+defaultFields[i], 3);
-         selectSet.add(defaultFields[i]);
-       }
-     }
+    // Set the default values of the selection drop downs.
+    // selectFields only used by clear().
+    Vector<String> selectSet = new Vector<String>();  
+    for(int i=0; i<defaultFields.length; ++i){
+      boolean fieldOk = false;
+      for(int j=0; j<fieldNames.length; ++j){
+        if(fieldNames[j].equalsIgnoreCase(defaultFields[i])){
+          fieldOk = true;
+          break;
+        }
+      }
+      if(fieldOk){
+        Debug.debug("Selecting "+defaultFields[i], 3);
+        selectSet.add(defaultFields[i]);
+      }
+    }
      
-     selectFields = new String[selectSet.size()];
-     for(int i=0; i<selectSet.size(); ++i){
-       selectFields[i] = selectSet.get(i).toString();
-     }
+    selectFields = new String[selectSet.size()];
+    for(int i=0; i<selectSet.size(); ++i){
+      selectFields[i] = selectSet.get(i).toString();
+    }
      
-     for(int k=0; k<selectFields.length; ++k){
-       selectFields[k] = tableName+"."+selectFields[k];
-     }
-   }
+    for(int k=0; k<selectFields.length; ++k){
+      selectFields[k] = tableName+"."+selectFields[k];
+    }
+  }
+   
+  private void initButtons(){
+    URL imgURL;
+    ImageIcon imgIcon;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "find.png");
+      imgIcon = new ImageIcon(imgURL);
+      bSearch = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "find.png", 3);
+      bSearch = new JButton("Search");
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "clear.png");
+      imgIcon = new ImageIcon(imgURL);
+      bClear = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "clear.png", 3);
+      bClear = new JButton("Clear");
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "next.png");
+      imgIcon = new ImageIcon(imgURL);
+      bNext = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "next.png", 3);
+      bNext = new JButton(">>");
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "previous.png");
+      imgIcon = new ImageIcon(imgURL);
+      bPrevious = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "previous.png", 3);
+      bPrevious = new JButton("<<");
+    }  
+  }
    
   /**
   * GUI initialisation
   */
   protected void initGUI() throws Exception{
+    
+    initButtons();
     
     tableResults = new MyJTable(hiddenFields, fieldNames,
         GridPilot.JOB_COLOR_MAPPING);
@@ -415,7 +459,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     });
         
     //// buttons
-    // Costumized for each type of table
     bSearch.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         cursor = -1;
@@ -434,7 +477,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         t.start();
       }
     });
-    bSearch.setToolTipText("Search results for this request");
+    bSearch.setToolTipText("Search with this filter");
     bNext.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         cursor = cursor+GridPilot.FILE_ROWS;
@@ -453,7 +496,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         t.start();
       }
     });
-    bNext.setToolTipText("Next search results for this request");
+    bNext.setToolTipText("Next search results");
     bPrevious.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         cursor = cursor-GridPilot.FILE_ROWS;
@@ -472,7 +515,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         t.start();
       }
     });
-    bPrevious.setToolTipText("Previous search results for this request");
+    bPrevious.setToolTipText("Previous search results");
     bClear.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         clear();
@@ -1745,7 +1788,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     boolean anyDeleted = false;
     String [] allIds = getSelectedIdentifiers();
     
-    HashMap datasetNameAndIds = new HashMap();
+    HashMap<String, Vector<String>> datasetNameAndIds = new HashMap<String, Vector<String>>();
     String [] fileDatasetReference = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
     int [] rows = tableResults.getSelectedRows();
     int fileDatasetNameColumn = -1;
@@ -1761,9 +1804,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     for(int i=0; i<allIds.length; ++i){
       dsn = (String) tableResults.getUnsortedValueAt(rows[i], fileDatasetNameColumn);
       if(!datasetNameAndIds.containsKey(dsn)){
-        datasetNameAndIds.put(dsn, new Vector());
+        datasetNameAndIds.put(dsn, new Vector<String>());
       }
-      ((Vector) datasetNameAndIds.get(dsn)).add(allIds[i]);
+      (datasetNameAndIds.get(dsn)).add(allIds[i]);
     }          
     
     Debug.debug("Deleting "+allIds.length+" rows. "+MyUtil.arrayToString(allIds), 2);
@@ -1774,14 +1817,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       statusBar.setProgressBarMax(pb, allIds.length);
       
       String [] ids = null;
-      Vector idVec = null;
+      Vector<String> idVec = null;
       String datasetId = null;
       Debug.debug("Deleting from "+datasetNameAndIds.keySet().size()+" datasets. "+
           MyUtil.arrayToString(datasetNameAndIds.keySet().toArray()), 2);
-      for(Iterator it=datasetNameAndIds.keySet().iterator(); it.hasNext();){
-        dsn = (String) it.next();
+      for(Iterator<String> it=datasetNameAndIds.keySet().iterator(); it.hasNext();){
+        dsn = it.next();
         datasetId = dbPluginMgr.getDatasetID(dsn);
-        idVec = (Vector) datasetNameAndIds.get(dsn);
+        idVec = datasetNameAndIds.get(dsn);
         ids = new String [idVec.size()];
         for(int i=0; i<idVec.size(); ++i){
           ids[i] = idVec.get(i).toString();
@@ -2657,7 +2700,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         for(int i=0; i<selectedFileIdentifiers.length; ++i){
           pb.setValue(i+1);
           // Get the datasetName from the table.            
-          HashMap values = new HashMap();
+          HashMap<String, String> values = new HashMap<String, String>();
           int pfnsColumnIndex = -1;
           int catalogsColumnIndex = -1;
           for(int j=0; j<fieldNames.length; ++j){
@@ -2704,7 +2747,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     int [] selectedRows = tableResults.getSelectedRows();
     Object [] pfns = new String [selectedFileIdentifiers.length];
     for(int i=0; i<selectedFileIdentifiers.length; ++i){
-      HashMap values = new HashMap();
+      HashMap<String, String> values = new HashMap<String, String>();
       String pfnsColumn = MyUtil.getPFNsField(dbName);
       Debug.debug("PFNs column name: "+pfnsColumn, 2);
       int pfnsColumnIndex = -1;
@@ -2864,7 +2907,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     Debug.debug("Starting download of "+selectedFileIdentifiers.length+" files", 2);
     GlobusURL srcUrl = null;
     GlobusURL destUrl = null;
-    Vector transfers = new Vector();
+    Vector<TransferInfo> transfers = new Vector<TransferInfo>();
     MyTransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
     JProgressBar pb = MyUtil.setProgressBar(selectedFileIdentifiers.length, dbName);
     TransferInfo transfer;
@@ -2964,21 +3007,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         
         statusBar.setLabel("Retrieving jobs...");
         // Group the file IDs by dataset
-        HashMap jobMgrsAndIds = new HashMap();
+        HashMap<JobMgr, Vector<String>> jobMgrsAndIds = new HashMap<JobMgr, Vector<String>>();
         for(int i=0; i<selectedJobIdentifiers.length; ++i){
           jobMgr = GridPilot.getClassMgr().getJobMgr(dbName);
           if(!jobMgrsAndIds.containsKey(jobMgr)){
-            jobMgrsAndIds.put(jobMgr, new Vector());
+            jobMgrsAndIds.put(jobMgr, new Vector<String>());
           }
-          ((Vector) jobMgrsAndIds.get(jobMgr)).add(selectedJobIdentifiers[i]);
+          jobMgrsAndIds.get(jobMgr).add(selectedJobIdentifiers[i]);
         }
         statusBar.setLabel("Retrieving jobs done.");
         // Add them
         String [] ids = null;
-        Vector idVec = null;
-        for(Iterator it=jobMgrsAndIds.keySet().iterator(); it.hasNext();){
-          jobMgr = (JobMgr) it.next();
-          idVec = (Vector) jobMgrsAndIds.get(jobMgr);
+        Vector<String> idVec = null;
+        for(Iterator<JobMgr> it=jobMgrsAndIds.keySet().iterator(); it.hasNext();){
+          jobMgr = it.next();
+          idVec = jobMgrsAndIds.get(jobMgr);
           ids = new String [idVec.size()];
           for(int i=0; i<idVec.size(); ++i){
             ids[i] = idVec.get(i).toString();
@@ -3061,7 +3104,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     });
     String [] selectedJobDefIdentifiers = getSelectedIdentifiers();
-    Vector selectedJobDefinitions = new Vector();
+    Vector<DBRecord> selectedJobDefinitions = new Vector<DBRecord>();
     for(int i=0; i<selectedJobDefIdentifiers.length; ++i){
       selectedJobDefinitions.add(dbPluginMgr.getJobDefinition(selectedJobDefIdentifiers[i]));
     }
@@ -3427,7 +3470,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         String sourceTransVersion = sourceMgr.getDatasetTransformationVersion(
             dataset.getValue(MyUtil.getIdentifierField(sourceMgr.getDBName(), "dataset")).toString());          
         DBResult targetTransformations = dbPluginMgr.getTransformations();
-        Vector transVec = new Vector();
+        Vector<DBRecord> transVec = new Vector<DBRecord>();
         for(int i=0; i<targetTransformations.values.length; ++i){
           if(targetTransformations.getValue(i, MyUtil.getNameField(dbPluginMgr.getDBName(),
               "transformation")).toString().equalsIgnoreCase(sourceTransName)){
@@ -3548,7 +3591,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           transformation.getValue(
               sourceTransformationIdentifier).toString());
       DBResult targetRuntimes = dbPluginMgr.getRuntimeEnvironments();
-      Vector runtimeNames = new Vector();
+      Vector<String> runtimeNames = new Vector<String>();
       for(int i=0; i<targetRuntimes.values.length; ++i){
         runtimeNames.add(targetRuntimes.getValue(i, targetRuntimeEnvironmentName).toString());
       }
@@ -3662,7 +3705,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       contents.isDataFlavorSupported(DataFlavor.stringFlavor);
     if(hasTransferableText){
       try{
-        result = (String)contents.getTransferData(DataFlavor.stringFlavor);
+        result = (String) contents.getTransferData(DataFlavor.stringFlavor);
       }
       catch(UnsupportedFlavorException ex){
         // highly unlikely since we are using a standard DataFlavor

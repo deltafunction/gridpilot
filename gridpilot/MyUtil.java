@@ -419,11 +419,11 @@ private static String fixUrl(String _url){
     ImageIcon browseIcon;
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "folder_blue_open.png");
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "open_folder.png");
       browseIcon = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "folder_blue_open.png", 3);
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "open_folder.png", 3);
       browseIcon = new ImageIcon();
     }
     JButton bBrowse1 = new JButton(browseIcon);

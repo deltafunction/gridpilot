@@ -8,6 +8,7 @@ import java.awt.*;
 
 import javax.swing.border.*;
 import java.awt.event.*;
+import java.net.URL;
 
 
 /**
@@ -132,16 +133,45 @@ public class SelectPanel extends JPanel{
     private JPanel spDisplayList;
     private String [] fieldList;
     private String name = "";
+    
+    private void initButtons(){
+      URL imgURL;
+      ImageIcon imgIcon;
+      try{
+        imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "more.png");
+        imgIcon = new ImageIcon(imgURL);
+        bAddConstraintRow = new JButton(imgIcon);
+        bAddDisplayRow = new JButton(imgIcon);
+      }
+      catch(Exception e){
+        Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "more.png", 3);
+        bAddConstraintRow = new JButton("+");
+        bAddDisplayRow = new JButton("+");
+      }
+      bAddConstraintRow.setToolTipText("Add another constraint");
+      bAddDisplayRow.setToolTipText("Add another column to display");
+      try{
+        imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "less.png");
+        imgIcon = new ImageIcon(imgURL);
+        bRemoveConstraintRow = new JButton(imgIcon);
+        bRemoveDisplayRow = new JButton(imgIcon);
+      }
+      catch(Exception e){
+        Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "less.png", 3);
+        bRemoveConstraintRow = new JButton("-");
+        bRemoveDisplayRow = new JButton("-");
+      }
+      bRemoveConstraintRow.setToolTipText("Remove a constraint");
+      bRemoveDisplayRow.setToolTipText("Remove a column from display");
+    }
+
        
     public SPanel(String _name, String [] _fieldList){
       name = _name;
       fieldList = _fieldList;
-      bAddConstraintRow = new JButton();
-      bRemoveConstraintRow = new JButton();
+      initButtons();
       spConstraints = new JPanel();
       spConstraintList = new JPanel();
-      bAddDisplayRow = new JButton();
-      bRemoveDisplayRow = new JButton();
       spDisplayList = new JPanel();
       spDisplays = new JPanel();
       
@@ -154,14 +184,12 @@ public class SelectPanel extends JPanel{
       spConstraints.add(new JLabel("Constraints :"));
 
       // Button More
-      bAddConstraintRow.setText("More");
       bAddConstraintRow.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(ActionEvent e) { bAddConstraintRow_actionPerformed();}});
   
       spConstraints.add(bAddConstraintRow);
   
       // Button Less
-      bRemoveConstraintRow.setText("Less");
       bRemoveConstraintRow.addActionListener(new java.awt.event.ActionListener(){
         public void actionPerformed(ActionEvent e){bRemoveConstraintRow_actionPerformed(); }});
       bRemoveConstraintRow.setEnabled(false);
@@ -184,7 +212,6 @@ public class SelectPanel extends JPanel{
       spDisplays.add(new JLabel("Show :         "));
   
       // Button More
-      bAddDisplayRow.setText("More");
       bAddDisplayRow.addActionListener(new java.awt.event.ActionListener(){
         public void actionPerformed(ActionEvent e){bAddDisplayRow_actionPerformed();
       }});
@@ -192,7 +219,6 @@ public class SelectPanel extends JPanel{
       spDisplays.add(bAddDisplayRow);
  
       // Button Less
-      bRemoveDisplayRow.setText("Less");
       bRemoveDisplayRow.addActionListener(new java.awt.event.ActionListener(){
         public void actionPerformed(ActionEvent e){bRemoveDisplayRow_actionPerformed();
       }});

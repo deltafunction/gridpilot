@@ -103,11 +103,11 @@ public class JobStatusUpdateControl{
 
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "checking.png");
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "checking.png");
       iconChecking = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      logFile.addMessage("Could not find image "+ GridPilot.RESOURCES_PATH + "checking.png");
+      logFile.addMessage("Could not find image "+ GridPilot.ICONS_PATH + "checking.png");
       iconChecking = new ImageIcon();
     }
     Debug.debug("iconChecking: "+imgURL, 3);

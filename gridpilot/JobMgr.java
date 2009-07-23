@@ -112,19 +112,19 @@ public class JobMgr{
     statisticsPanel = GridPilot.getClassMgr().getJobStatisticsPanel();
     submittedJobs = GridPilot.getClassMgr().getSubmittedJobs();
     try{
-      URL imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "waiting.png");
+      URL imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "waiting.png");
       iconWaiting = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      logFile.addMessage("Could not find image "+ GridPilot.RESOURCES_PATH + "waiting.png");
+      logFile.addMessage("Could not find image "+ GridPilot.ICONS_PATH + "waiting.png");
       iconWaiting = new ImageIcon();
     }
     try{
-      URL imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "processing.png");
+      URL imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "processing.png");
       iconProcessing = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      logFile.addMessage("Could not find image "+ GridPilot.RESOURCES_PATH + "processing.png");
+      logFile.addMessage("Could not find image "+ GridPilot.ICONS_PATH + "processing.png");
       iconProcessing = new ImageIcon();
     }
     if(useChanges){

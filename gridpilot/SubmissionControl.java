@@ -138,27 +138,27 @@ public class SubmissionControl{
     timer.setDelay(timeBetweenSubmissions);
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "submitting.png");
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "submitting.png");
       iconSubmitting = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      logFile.addMessage("Could not find image "+ GridPilot.RESOURCES_PATH + "submitting.png");
+      logFile.addMessage("Could not find image "+ GridPilot.ICONS_PATH + "submitting.png");
       iconSubmitting = new ImageIcon();
     }
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "waiting.png");
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "waiting.png");
       iconWaiting = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      logFile.addMessage("Could not find image "+ GridPilot.RESOURCES_PATH + "waiting.png");
+      logFile.addMessage("Could not find image "+ GridPilot.ICONS_PATH + "waiting.png");
       iconWaiting = new ImageIcon();
     }
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "processing.png");
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "processing.png");
       iconProcessing = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      logFile.addMessage("Could not find image "+ GridPilot.RESOURCES_PATH + "processing.png");
+      logFile.addMessage("Could not find image "+ GridPilot.ICONS_PATH + "processing.png");
       iconProcessing = new ImageIcon();
     }
     isRand = configFile.getValue("Computing systems", "randomized submission");

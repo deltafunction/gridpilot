@@ -64,6 +64,8 @@ public class GridPilot extends JApplet{
   public static String[] JOB_STATUS_FIELDS;
   public static String[] TRANSFER_STATUS_FIELDS;
   public static String RESOURCES_PATH = "";
+  private static String SKIN_NAME;
+  public static String ICONS_PATH;
   public static String [] TABS = null;
   public static Splash SPLASH;
   // Allow plugins to add monitoring panels. Any Component in
@@ -213,7 +215,7 @@ public class GridPilot extends JApplet{
       }
       
       DEBUG_LEVEL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "debug");
-      RESOURCES_PATH =  getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "resources");
+      RESOURCES_PATH = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "resources");
       if(RESOURCES_PATH==null){
         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage(TOP_CONFIG_SECTION, "resources"));
         RESOURCES_PATH = "./";
@@ -222,6 +224,11 @@ public class GridPilot extends JApplet{
         if(!RESOURCES_PATH.endsWith("/"))
           RESOURCES_PATH = RESOURCES_PATH + "/";
       }
+      SKIN_NAME = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "skin");
+      if(SKIN_NAME==null){
+        SKIN_NAME = "blue";
+      }
+      ICONS_PATH = RESOURCES_PATH + "skins" + SKIN_NAME + "/";
       RUNTIME_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "runtime directory");
       SPLASH = new Splash(RESOURCES_PATH+"splash.png", GridPilot.class);
       JOB_COLOR_MAPPING = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "job color mapping");  

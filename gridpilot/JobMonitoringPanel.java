@@ -8,6 +8,7 @@ import javax.swing.*;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.net.URL;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -50,7 +51,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JPanel pButtons = new JPanel();
   // TODO: discard bKill
   private JButton bKill = new JButton("Kill");
-  private JButton bRefresh = new JButton("Refresh");
+  private JButton bRefresh;
   // auto refresh
   private JCheckBox cbAutoRefresh = new JCheckBox("each");
   private JSpinner sAutoRefresh = new JSpinner();
@@ -101,9 +102,26 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   public String getTitle(){
     return "Job Monitor";
   }
+  
+  private void initButtons(){
+    URL imgURL;
+    ImageIcon imgIcon;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "refresh.png");
+      imgIcon = new ImageIcon(imgURL);
+      bRefresh = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "refresh.png", 3);
+      bRefresh = new JButton("Refresh");
+    }
+    bRefresh.setToolTipText("Refresh status of job(s)");
+  }
 
   public void initGUI(){
 
+    initButtons();
+    
     statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     this.setLayout(new BorderLayout());
     mainPanel.setLayout(new BorderLayout());
@@ -211,8 +229,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         statusUpdateControl.updateStatus(null);
       }
     });
-    bRefresh.setToolTipText("Refresh all job(s)");
-    cbAutoRefresh.addActionListener(new ActionListener(){
+     cbAutoRefresh.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         cbAutoRefresh_clicked();
       }

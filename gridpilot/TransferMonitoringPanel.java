@@ -8,6 +8,7 @@ import javax.swing.*;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.net.URL;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Vector;
@@ -46,7 +47,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   // Buttons panel
   private JPanel pButtons = new JPanel();
   private JButton bKill = new JButton("Stop transfer(s)");
-  private JButton bRefresh = new JButton("Refresh all");
+  private JButton bRefresh;
   // auto refresh
   private JCheckBox cbAutoRefresh = new JCheckBox("each");
   private JSpinner sAutoRefresh = new JSpinner();
@@ -89,8 +90,25 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   public String getTitle(){
     return "Transfer Monitor";
   }
+  
+  private void initButtons(){
+    URL imgURL;
+    ImageIcon imgIcon;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "refresh.png");
+      imgIcon = new ImageIcon(imgURL);
+      bRefresh = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "refresh.png", 3);
+      bRefresh = new JButton("Refresh");
+    }
+    bRefresh.setToolTipText("Refresh status of transfer(s)");
+  }
 
   public void initGUI(){
+    
+    initButtons();
 
     statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     this.setLayout(new BorderLayout());
@@ -198,7 +216,6 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     pButtons.add(cbRefreshUnits);
 
     bKill.setToolTipText("Cancel the selected transfers");
-    bRefresh.setToolTipText("Refresh all transfers");
 
     mainPanel.add(pOptions, BorderLayout.EAST);
     mainPanel.add(pButtons, BorderLayout.SOUTH);

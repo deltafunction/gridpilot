@@ -591,19 +591,13 @@ public class MySSL extends SSL{
     ImageIcon browseIcon;
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "folder_blue_open.png");
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "open_folder.png");
       browseIcon = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      try{
-        imgURL = GridPilot.class.getResource("/resources/folder_blue_open.png");
-        browseIcon = new ImageIcon(imgURL);
-      }
-      catch(Exception ee){
-        e.printStackTrace();
-        Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "folder_blue_open.png", 0);
-        browseIcon = new ImageIcon();
-      }
+      e.printStackTrace();
+      Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "open_folder.png", 0);
+      browseIcon = new ImageIcon();
     }
     
     JButton bBrowse1 = new JButton(browseIcon);

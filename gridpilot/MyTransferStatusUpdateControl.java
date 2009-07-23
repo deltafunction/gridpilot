@@ -146,11 +146,11 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
 
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "checking.png");
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "checking.png");
       iconChecking = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "checking.png", 3);
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "checking.png", 3);
       iconChecking = new ImageIcon();
     }
     Debug.debug("iconChecking: "+imgURL, 3);
