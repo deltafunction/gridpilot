@@ -13,6 +13,7 @@ import java.awt.*;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Properties;
@@ -32,7 +33,9 @@ public class GridPilot extends JApplet{
   private boolean packFrame = false;
   
   private GlobalFrame frame;
+
   private static ClassMgr CLASS_MGR = new ClassMgr();
+  private static String LOOK_AND_FEEL;
   private static boolean IS_APPLET = true;  
   private static String DEBUG_LEVEL = "0";
   private static String PROXY_HOST = null;
@@ -148,6 +151,7 @@ public class GridPilot extends JApplet{
       loadFTs();
       Debug.debug("Grid home URL: "+GridPilot.GRID_HOME_URL, 2);
       mkGridHomeDirIfNotThere();
+      setLookAndFeel();
       initGUI();
       try{
         (new TestDatasets()).createAll();
@@ -228,7 +232,7 @@ public class GridPilot extends JApplet{
       if(SKIN_NAME==null){
         SKIN_NAME = "blue";
       }
-      ICONS_PATH = RESOURCES_PATH + "skins" + SKIN_NAME + "/";
+      ICONS_PATH = RESOURCES_PATH + "skins/" + SKIN_NAME + "/";
       RUNTIME_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "runtime directory");
       SPLASH = new Splash(RESOURCES_PATH+"splash.png", GridPilot.class);
       JOB_COLOR_MAPPING = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "job color mapping");  
@@ -359,6 +363,26 @@ public class GridPilot extends JApplet{
     WAIT_FOREVER = false;
   }
   
+  private static void setLookAndFeel() {
+    try{
+      URL lfUrl = GridPilot.class.getResource(ICONS_PATH+"look_and_feel.txt");
+      LOOK_AND_FEEL = MyUtil.readURL(lfUrl, null, null, null)[0];
+    }
+    catch(Exception e){
+      LOOK_AND_FEEL = UIManager.getCrossPlatformLookAndFeelClassName();
+      GridPilot.getClassMgr().getLogFile().addInfo("No look and feel set, using default: "+LOOK_AND_FEEL);
+      e.printStackTrace();
+      return;
+    }
+    try{
+      Debug.debug("Setting Swing look and feel "+LOOK_AND_FEEL, 2);
+      UIManager.setLookAndFeel(LOOK_AND_FEEL);
+    }
+    catch(Exception e){
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not set look and feel "+LOOK_AND_FEEL, e);
+    }
+  }
+
   public static void loadDBs() throws Throwable{
     String tmpDb = null;
     DB_NAMES = getClassMgr().getConfigFile().getValues("Databases", "Systems");

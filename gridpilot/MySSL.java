@@ -596,7 +596,7 @@ public class MySSL extends SSL{
     }
     catch(Exception e){
       e.printStackTrace();
-      Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "open_folder.png", 0);
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "open_folder.png", 0);
       browseIcon = new ImageIcon();
     }
     

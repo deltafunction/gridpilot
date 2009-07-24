@@ -1261,6 +1261,46 @@ private static String fixUrl(String _url){
   
   /**
    * Reads the lines of a text file on a web server (or locally).
+   * @param url the URL to read
+   * @param transferControl MyTransferControl object to use for downloading
+   * @param tmpFile local download location. If left empty, nothing is written to disk
+   * @param commentTag a string like "#". If specified, lines starting with this string will be ignored
+   * as will empty lines. If null, all lines will be kept.
+   * @return an array of the lines of text
+   */
+  public static String [] readURL(URL url, MyTransferControl transferControl, File tmpFile, String commentTag) throws Exception{
+    String [] ret = null;
+    BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
+    BufferedWriter out = null;
+    if(tmpFile!=null){
+      out = new BufferedWriter(new FileWriter(tmpFile));
+    }
+    String line = null;
+    Vector vec = new Vector();
+    while((line=in.readLine())!=null){
+      if(line!=null && (commentTag==null || !line.startsWith(commentTag) && !line.equals(""))){
+        vec.add(line);
+        if(tmpFile!=null){
+          out.write(line+"\n");
+        }
+      }
+    }
+    in.close();
+    if(tmpFile!=null){
+      out.close();
+    }
+    ret = new String[vec.size()];
+    Enumeration en = vec.elements();
+    int i = 0;
+    while(en.hasMoreElements()){
+      ret[i] = (String) en.nextElement();
+      ++i;
+    }
+    return ret;
+  }
+  
+  /**
+   * Reads the lines of a text file on a file server (or locally).
    * @param urlString the URL to read
    * @param transferControl MyTransferControl object to use for downloading
    * @param tmpFile local download location. If left empty, nothing is written to disk
@@ -1273,35 +1313,10 @@ private static String fixUrl(String _url){
     if(urlString.startsWith("http:") || urlString.startsWith("http:") ||
         urlString.startsWith("ftp:") || urlString.startsWith("file:")){
       if(urlString.startsWith("file:")){
-        urlString = clearTildeLocally(clearFile(urlString));
+        urlString = clearTildeLocally(/*clearFile(*/urlString/*)*/);
       }
       URL url = new URL(urlString);
-      BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
-      BufferedWriter out = null;
-      if(tmpFile!=null){
-        out = new BufferedWriter(new FileWriter(tmpFile));
-      }
-      String line = null;
-      Vector vec = new Vector();
-      while((line=in.readLine())!=null){
-        if(line!=null && (commentTag==null || !line.startsWith(commentTag) && !line.equals(""))){
-          vec.add(line);
-          if(tmpFile!=null){
-            out.write(line+"\n");
-          }
-        }
-      }
-      in.close();
-      if(tmpFile!=null){
-        out.close();
-      }
-      ret = new String[vec.size()];
-      Enumeration en = vec.elements();
-      int i = 0;
-      while(en.hasMoreElements()){
-        ret[i] = (String) en.nextElement();
-        ++i;
-      }
+      ret = readURL(url, transferControl, tmpFile, commentTag);
     }
     else if(urlString.startsWith("gsiftp:") || urlString.startsWith("srm:")){
       transferControl.download(urlString, tmpFile);
@@ -1320,11 +1335,11 @@ private static String fixUrl(String _url){
     ImageIcon cancelIcon;
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "stop.png");
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "stop.png");
       cancelIcon = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "stop.png", 3);
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "stop.png", 3);
       cancelIcon = new ImageIcon();
     }
     statusBar.setProgressBar(pb);

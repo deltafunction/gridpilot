@@ -478,6 +478,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     });
     bSearch.setToolTipText("Search with this filter");
+    bClear.setToolTipText("Clear text field and reset filter");
     bNext.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         cursor = cursor+GridPilot.FILE_ROWS;

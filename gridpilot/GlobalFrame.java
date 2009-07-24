@@ -223,11 +223,11 @@ public class GlobalFrame extends GPFrame{
     Dimension size = this.getSize();
     ImageIcon closeIcon = null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "close.png");
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "close.png");
       closeIcon = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "close.png", 3);
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "close.png", 3);
       closeIcon = new ImageIcon();
     }
   
