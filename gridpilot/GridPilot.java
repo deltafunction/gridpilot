@@ -20,6 +20,9 @@ import java.util.Properties;
 import java.util.Vector;
 
 import javax.swing.*;
+import javax.swing.plaf.metal.DefaultMetalTheme;
+import javax.swing.plaf.metal.MetalLookAndFeel;
+import javax.swing.plaf.metal.OceanTheme;
 
 /**
  * Main class.
@@ -35,7 +38,6 @@ public class GridPilot extends JApplet{
   private GlobalFrame frame;
 
   private static ClassMgr CLASS_MGR = new ClassMgr();
-  private static String LOOK_AND_FEEL;
   private static boolean IS_APPLET = true;  
   private static String DEBUG_LEVEL = "0";
   private static String PROXY_HOST = null;
@@ -364,22 +366,55 @@ public class GridPilot extends JApplet{
   }
   
   private static void setLookAndFeel() {
+    String lookAndFeel;
+    String theme = null;
+    String[] lines;
     try{
       URL lfUrl = GridPilot.class.getResource(ICONS_PATH+"look_and_feel.txt");
-      LOOK_AND_FEEL = MyUtil.readURL(lfUrl, null, null, null)[0];
+      lines = MyUtil.readURL(lfUrl, null, null, "#");
+      lookAndFeel = lines[0];
     }
     catch(Exception e){
-      LOOK_AND_FEEL = UIManager.getCrossPlatformLookAndFeelClassName();
-      GridPilot.getClassMgr().getLogFile().addInfo("No look and feel set, using default: "+LOOK_AND_FEEL);
+      lookAndFeel = UIManager.getCrossPlatformLookAndFeelClassName();
+      GridPilot.getClassMgr().getLogFile().addInfo("No look and feel set, using default: "+lookAndFeel);
       e.printStackTrace();
       return;
     }
     try{
-      Debug.debug("Setting Swing look and feel "+LOOK_AND_FEEL, 2);
-      UIManager.setLookAndFeel(LOOK_AND_FEEL);
+      theme = lines[1];
     }
     catch(Exception e){
-      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not set look and feel "+LOOK_AND_FEEL, e);
+    }
+    if(theme!=null){
+      Debug.debug("Setting Metal theme "+theme, 2);
+      try{
+        if(theme.equals("DefaultMetal")){
+          MetalLookAndFeel.setCurrentTheme(new DefaultMetalTheme());
+        }
+        else if(theme.equals("Ocean")){
+          MetalLookAndFeel.setCurrentTheme(new OceanTheme());
+        }
+        else{
+          throw new Exception("Theme "+theme+" not known.");
+        }
+      }
+      catch(Exception e){
+        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not set theme "+theme, e);
+      }
+    }
+    try{
+      if(lookAndFeel.equalsIgnoreCase("CrossPlatform") || 
+          lookAndFeel.equalsIgnoreCase("Metal") || lookAndFeel.equalsIgnoreCase("MetalLookAndFeel") ){
+        lookAndFeel = UIManager.getCrossPlatformLookAndFeelClassName();
+      }
+      else if(lookAndFeel.equalsIgnoreCase("System") || lookAndFeel.equalsIgnoreCase("SystemLookAndFeel") ){
+        lookAndFeel = UIManager.getSystemLookAndFeelClassName();
+      }
+      Debug.debug("Setting Swing look and feel "+lookAndFeel, 2);
+      UIManager.setLookAndFeel(lookAndFeel);
+    }
+    catch(Exception e){
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not set look and feel "+lookAndFeel, e);
     }
   }
 

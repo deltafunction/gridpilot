@@ -46,7 +46,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private JButton bClearTable = new JButton("Clear done/failed");
   // Buttons panel
   private JPanel pButtons = new JPanel();
-  private JButton bKill = new JButton("Stop transfer(s)");
+  private JButton bKill;
   private JButton bRefresh;
   // auto refresh
   private JCheckBox cbAutoRefresh = new JCheckBox("each");
@@ -104,6 +104,16 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
       bRefresh = new JButton("Refresh");
     }
     bRefresh.setToolTipText("Refresh status of transfer(s)");
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "stop.png");
+      imgIcon = new ImageIcon(imgURL);
+      bKill = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "stop.png", 3);
+      bKill = new JButton("Stop transfer(s)");
+    }
+    bKill.setToolTipText("Cancel transfer(s)");
   }
 
   public void initGUI(){
@@ -168,6 +178,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
         clearTable();
       }
     });
+    bClearTable.setToolTipText("Remove done/failed transfers from monitor");
 
     pOptions.add(statisticsPanel, new GridBagConstraints(0, 6, 1, 1, 0.1, 0.1,
         GridBagConstraints.WEST,
@@ -214,8 +225,6 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     pButtons.add(cbAutoRefresh);
     pButtons.add(sAutoRefresh);
     pButtons.add(cbRefreshUnits);
-
-    bKill.setToolTipText("Cancel the selected transfers");
 
     mainPanel.add(pOptions, BorderLayout.EAST);
     mainPanel.add(pButtons, BorderLayout.SOUTH);

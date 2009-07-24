@@ -1335,11 +1335,11 @@ private static String fixUrl(String _url){
     ImageIcon cancelIcon;
     URL imgURL=null;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "stop.png");
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "stop_small.png");
       cancelIcon = new ImageIcon(imgURL);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "stop.png", 3);
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "stop_small.png", 3);
       cancelIcon = new ImageIcon();
     }
     statusBar.setProgressBar(pb);

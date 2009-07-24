@@ -56,13 +56,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bCreateRecords = new JButton("Define new record(s)");
   private JButton bEditRecord = new JButton("Edit record");
   private JCheckBox cbFindAllFiles = new JCheckBox();
-  private JButton bDownload = new JButton("Replicate file(s)");
+  private JButton bDownload;
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
   private JPopupMenu pmCreateDSMenu = new JPopupMenu();
   private JMenuItem miWithInput = new JMenuItem("with selected input dataset(s)");
   private JMenuItem miWithoutInput = new JMenuItem("from scratch");
-  private JButton bSubmit = new JButton("Submit job(s)");
-  private JButton bMonitor = new JButton("Monitor job(s)");
+  private JButton bSubmit;
+  private JButton bMonitor;
   private JButton bDeleteRecord = new JButton("Delete record(s)");
   private JButton bSearch;
   private JButton bNext;
@@ -343,7 +343,34 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     catch(Exception e){
       Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "previous.png", 3);
       bPrevious = new JButton("<<");
-    }  
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "replicate.png");
+      imgIcon = new ImageIcon(imgURL);
+      bDownload = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "replicate.png", 3);
+      bDownload = new JButton("Replicate file(s)");
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "run.png");
+      imgIcon = new ImageIcon(imgURL);
+      bSubmit = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "run.png", 3);
+      bSubmit = new JButton("Submit job(s)");
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "monitor.png");
+      imgIcon = new ImageIcon(imgURL);
+      bMonitor = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "monitor.png", 3);
+      bMonitor = new JButton("Monitor job(s)");
+    }
   }
    
   /**
@@ -593,10 +620,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       });
       
-      addButtonResultsPanel(bViewFiles);
-      addButtonResultsPanel(bViewJobDefinitions);
-      addButtonResultsPanel(bDefineJobDefinitions);
       if(SHOW_DB_BUTTONS){
+        addButtonResultsPanel(new JLabel("|"));
+        addButtonResultsPanel(bViewFiles);
+        addButtonResultsPanel(bViewJobDefinitions);
+        addButtonResultsPanel(bDefineJobDefinitions);
         addButtonResultsPanel(new JLabel("|"));
         addButtonResultsPanel(bCreateRecords);
         addButtonResultsPanel(bEditRecord);
@@ -639,6 +667,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           download(null, null);
         }
       });
+      bDownload.setToolTipText("Replicate files from or to a remote server");
             
       addButtonResultsPanel(bDownload);
       if(SHOW_DB_BUTTONS){
@@ -680,12 +709,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           bSubmit_mousePressed();
         }
       });
+      bSubmit.setToolTipText("Submit job(s) to a computing backend");
       
       bMonitor.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           monitorJobs();
         }
       });
+      bMonitor.setToolTipText("Monitor job(s)");
 
       bEditRecord.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
@@ -1395,6 +1426,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   public void makeDatasetMenu(){
     Debug.debug("Making dataset menu", 3);
+    JMenuItem miCreateJobDefinitions = new JMenuItem("Create job definition(s)");
+    miCreateJobDefinitions.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        defineJobDefinitions();
+      }
+    });
     JMenuItem miViewJobDefinitions = new JMenuItem("Show job definition(s)");
     miViewJobDefinitions.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -1464,6 +1501,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     miReplicateDataset.setEnabled(true);
     miExportDataset.setEnabled(true);
     miViewJobDefinitions.setEnabled(dbPluginMgr.isJobRepository());
+    miCreateJobDefinitions.setEnabled(dbPluginMgr.isJobRepository());
     miDelete.setEnabled(true);
     miEdit.setEnabled(true);
     tableResults.addMenuSeparator();
@@ -1474,6 +1512,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     tableResults.addMenuItem(miViewFiles);
     tableResults.addMenuItem(miReplicateDataset);
     tableResults.addMenuItem(miViewJobDefinitions);
+    tableResults.addMenuItem(miCreateJobDefinitions);
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miEdit);
     tableResults.addMenuItem(miDelete);

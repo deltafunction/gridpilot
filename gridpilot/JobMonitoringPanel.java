@@ -191,12 +191,14 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         loadDBJobs(true);
       }
     });
+    bLoadJobs.setToolTipText("Load all jobs from DB");
 
     bLoadMyJobs.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         loadDBJobs(false);
       }
     });
+    bLoadMyJobs.setToolTipText("Load my jobs from DB");
 
     pOptions.add(bClearTable, new GridBagConstraints(0, 5, 1, 1, 0.0, 0.0,
         GridBagConstraints.CENTER,
@@ -208,6 +210,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         clearTable();
       }
     });
+    bClearTable.setToolTipText("Clear monitor");
 
     pOptions.add(statisticsPanel, new GridBagConstraints(0, 6, 1, 1, 0.1, 0.1,
         GridBagConstraints.WEST,
@@ -257,7 +260,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     });
     sAutoResubmit.setToolTipText("Number of times to resubmit failed jobs");
 
-    pButtons.add(new JLabel("  |  "));
     pButtons.add(bRefresh);
     pButtons.add(cbAutoRefresh);
     pButtons.add(sAutoRefresh);

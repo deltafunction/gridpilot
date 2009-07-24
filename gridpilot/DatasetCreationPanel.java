@@ -11,6 +11,7 @@ import javax.swing.text.JTextComponent;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
 import java.util.*;
 
 /**
@@ -51,7 +52,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private DBResult transformations = null;
   private String [] datasetTransformationReference;
   private String [] datasetTransformationVersionReference;
-  private JButton jbEditTrans = new JButton("view");
+  private JButton jbEditTrans;
   private String datasetName = "";
   private String title = "";
   private DBPanel targetPanel;
@@ -118,10 +119,26 @@ public class DatasetCreationPanel extends CreateEditPanel{
     } 
   }
 
+  private void initButtons(){
+    URL imgURL;
+    ImageIcon imgIcon;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "find.png");
+      imgIcon = new ImageIcon(imgURL);
+      jbEditTrans = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "find.png", 3);
+      jbEditTrans = new JButton("View");
+    }
+    jbEditTrans.setToolTipText("View transformation record");
+  }
+
   /**
    * GUI initialisation
    */
   public void initGUI(){
+    initButtons();
     setLayout(new BorderLayout());
     pTop.setLayout(new FlowLayout());
      removeAll();

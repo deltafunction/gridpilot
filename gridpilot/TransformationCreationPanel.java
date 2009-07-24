@@ -10,6 +10,7 @@ import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
 import java.util.*;
 
 /**
@@ -37,7 +38,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
   private DBRecord transformation = null;
   private DBResult runtimeEnvironments = null;
   private String [] transformationFields = null;
-  private JButton jbEditTrans = new JButton("view");
+  private JButton jbEditTrans;
 
   private static final long serialVersionUID = 1L;
   private static int TEXTFIELDWIDTH = 32;
@@ -98,13 +99,29 @@ public class TransformationCreationPanel extends CreateEditPanel{
     }
   }
 
+  private void initButtons(){
+    URL imgURL;
+    ImageIcon imgIcon;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "find.png");
+      imgIcon = new ImageIcon(imgURL);
+      jbEditTrans = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "find.png", 3);
+      jbEditTrans = new JButton("View");
+    }
+    jbEditTrans.setToolTipText("View runtime environment record");
+  }
+
   /**
    * GUI initialisation
    */
-
   public void initGUI(){
     
     Debug.debug("Initializing GUI", 3);
+    
+    initButtons();
 
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
         Color.white,new Color(165, 163, 151)), 

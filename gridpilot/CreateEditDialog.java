@@ -7,6 +7,7 @@ import java.awt.*;
 import javax.swing.*;
 
 import java.awt.event.*;
+import java.net.URL;
 
 public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
 
@@ -18,10 +19,10 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
   private JPanel pCreateEdit = new JPanel(new BorderLayout());
   private CreateEditPanel createEditPanel;
   private boolean editing;
-  private JButton bClose = new JButton("Close");
+  private JButton bClose;
   private JButton bCreateUpdate = null;
-  private JButton bSaveSettings = new JButton("Save values");
-  private JButton bClear = new JButton("Clear");
+  private JButton bSaveSettings;
+  private JButton bClear;
   private JCheckBox cbShowResults = new JCheckBox("Confirm before writing", true);
   private boolean showDetailsCheckBox = false;
   private boolean showButtons = false;
@@ -51,14 +52,9 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
         Debug.debug("Thwarted user attempt to close window.", 3);
       }
     });
-    
-    if(editing){
-      bCreateUpdate = new JButton("Update");
-    }
-    else{
-      bCreateUpdate = new JButton("Create");
-    }
 
+    initButtons();
+    
     try{
       this.getContentPane().add(pCreateEdit, BorderLayout.CENTER);
       initGUI();
@@ -71,6 +67,51 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
     catch(Exception e){
       e.printStackTrace();
     }
+  }
+  
+  private void initButtons(){
+    URL imgURL;
+    ImageIcon imgIcon;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "stop.png");
+      imgIcon = new ImageIcon(imgURL);
+      bClose = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "stop.png", 3);
+      bClose = new JButton("Cancel");
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "clear.png");
+      imgIcon = new ImageIcon(imgURL);
+      bClear = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "clear.png", 3);
+      bClear = new JButton("Clear");
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "ok.png");
+      imgIcon = new ImageIcon(imgURL);
+      bCreateUpdate = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "ok.png", 3);
+      bCreateUpdate = new JButton(editing?"Update":"Create");
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "save.png");
+      imgIcon = new ImageIcon(imgURL);
+      bSaveSettings = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "save.png", 3);
+      bSaveSettings = new JButton("Save values");
+    }
+    bClose.setToolTipText("Cancel");
+    bClear.setToolTipText("Clear fields");
+    bCreateUpdate.setToolTipText((editing?"Update":"Create")+" record(s)");
+    bSaveSettings.setToolTipText("Save the values of all fields");
   }
   
   public void initGUI() throws Exception{
