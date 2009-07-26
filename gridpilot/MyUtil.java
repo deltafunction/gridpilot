@@ -835,14 +835,73 @@ private static String fixUrl(String _url){
     setBackgroundColor(jval);
     return jval;
   }
+  
+  private static Vector<Object []> createDisplayObjects(){
+    Object okObject;
+    Object skipObject;
+    Object okAllObject;
+    Object skipAllObject;
+    Vector<Object []> displayOptions = new Vector<Object []>();
+    URL imgURL;
+    ImageIcon imgIcon;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "enter.png");
+      imgIcon = new ImageIcon(imgURL);
+      okObject = new JButton(imgIcon);
+      ((JButton)okObject).setToolTipText("OK");
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "enter.png", 3);
+      okObject = "OK";
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "cancel.png");
+      imgIcon = new ImageIcon(imgURL);
+      skipObject = new JButton(imgIcon);
+      ((JButton)skipObject).setToolTipText("Skip");
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "cancel.png", 3);
+      skipObject = "Skip";
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "enter_all.png");
+      imgIcon = new ImageIcon(imgURL);
+      okAllObject = new JButton(imgIcon);
+      ((JButton)okAllObject).setToolTipText("OK for all");
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "enter_all.png", 3);
+      okAllObject = "OK for all";
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "stop.png");
+      imgIcon = new ImageIcon(imgURL);
+      skipAllObject = new JButton(imgIcon);
+      ((JButton)skipAllObject).setToolTipText("Skip all");
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "stop.png", 3);
+      skipAllObject = "Skip all";
+    }
+    Object[] showResultsOptions2 = {okObject, skipObject, okAllObject, skipAllObject};
+    Object[] showResultsOptions1 = {okObject, skipObject};
+    Object[] showResultsOptions0 = {okObject};
+    displayOptions.add(showResultsOptions0);
+    displayOptions.add(showResultsOptions1);
+    displayOptions.add(showResultsOptions2);
+    return displayOptions;
+  }
+
 
   public static int showResult(String [] cstAttrNames, String [] cstAttr, String title,
       int moreThanOne){
     
     Object[] showResultsOptions = null;
-    Object[] showResultsOptions2 = {"OK", "Skip", "OK for all", "Skip all"};
-    Object[] showResultsOptions1 = {"OK", "Skip"};
-    Object[] showResultsOptions0 = {"OK"};
+    Vector<Object []> displayOptions = createDisplayObjects();
+    Object[] showResultsOptions2 = displayOptions.get(2);
+    Object[] showResultsOptions1 = displayOptions.get(1);
+    Object[] showResultsOptions0 = displayOptions.get(0);
 
     JPanel pResult = new JPanel(new GridBagLayout());
     int row = 0;
@@ -1269,6 +1328,7 @@ private static String fixUrl(String _url){
    * @return an array of the lines of text
    */
   public static String [] readURL(URL url, MyTransferControl transferControl, File tmpFile, String commentTag) throws Exception{
+    Debug.debug("Reading URL "+url, 3);
     String [] ret = null;
     BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
     BufferedWriter out = null;

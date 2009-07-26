@@ -232,7 +232,7 @@ public class GridPilot extends JApplet{
       }
       SKIN_NAME = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "skin");
       if(SKIN_NAME==null){
-        SKIN_NAME = "blue";
+        SKIN_NAME = "clear";
       }
       ICONS_PATH = RESOURCES_PATH + "skins/" + SKIN_NAME + "/";
       RUNTIME_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "runtime directory");
@@ -370,7 +370,9 @@ public class GridPilot extends JApplet{
     String theme = null;
     String[] lines;
     try{
-      URL lfUrl = GridPilot.class.getResource(ICONS_PATH+"look_and_feel.txt");
+      String url = ICONS_PATH+"look_and_feel.txt";
+      Debug.debug("Reading URL "+url, 3);
+      URL lfUrl = GridPilot.class.getResource(url);
       lines = MyUtil.readURL(lfUrl, null, null, "#");
       lookAndFeel = lines[0];
     }

@@ -56,13 +56,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bCreateRecords = new JButton("Define new record(s)");
   private JButton bEditRecord = new JButton("Edit record");
   private JCheckBox cbFindAllFiles = new JCheckBox();
-  private JButton bDownload;
+  private JButton bReplicate;
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
   private JPopupMenu pmCreateDSMenu = new JPopupMenu();
   private JMenuItem miWithInput = new JMenuItem("with selected input dataset(s)");
   private JMenuItem miWithoutInput = new JMenuItem("from scratch");
   private JButton bSubmit;
   private JButton bMonitor;
+  private JButton bProcessDataset;
+  private JButton bMonitorDataset;
+  private JButton bCleanupDataset;
   private JButton bDeleteRecord = new JButton("Delete record(s)");
   private JButton bSearch;
   private JButton bNext;
@@ -71,6 +74,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bViewJobDefinitions = new JButton("Show jobDefinition(s)");
   private JButton bViewFiles = new JButton("Show file(s)");
   private JButton bDefineJobDefinitions = new JButton("Create jobDefinition(s)");
+  private JButton bShowFilter;
+  private JButton bHideFilter;
   private JMenuItem miEdit = null;
   private JMenuItem miImportFiles = new JMenuItem("Import file(s)");
   private JMenuItem miExportDataset = new JMenuItem("Export dataset");
@@ -106,6 +111,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   
   private JPanel panelSelectPanel = new JPanel(new GridBagLayout());
   private SelectPanel selectPanel;
+  private JPanel showHidePanel = new JPanel();
   private String dbName = null;
   private boolean menuSet = false;
 
@@ -347,11 +353,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     try{
       imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "replicate.png");
       imgIcon = new ImageIcon(imgURL);
-      bDownload = new JButton(imgIcon);
+      bReplicate = new JButton(imgIcon);
     }
     catch(Exception e){
       Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "replicate.png", 3);
-      bDownload = new JButton("Replicate file(s)");
+      bReplicate = new JButton("Replicate file(s)");
     }
     try{
       imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "run.png");
@@ -371,19 +377,49 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "monitor.png", 3);
       bMonitor = new JButton("Monitor job(s)");
     }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "run.png");
+      imgIcon = new ImageIcon(imgURL);
+      bProcessDataset = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "run.png", 3);
+      bProcessDataset = new JButton("Process");
+    }
+    bProcessDataset.setToolTipText("Generate files of dataset(s)");
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "monitor.png");
+      imgIcon = new ImageIcon(imgURL);
+      bMonitorDataset = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "monitor.png", 3);
+      bMonitorDataset = new JButton("Monitor");
+    }
+    bMonitorDataset.setToolTipText("Monitor jobs of dataset(s)");
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "clean.png");
+      imgIcon = new ImageIcon(imgURL);
+      bCleanupDataset = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "clean.png", 3);
+      bCleanupDataset = new JButton("Cleanup");
+    }
+    bCleanupDataset.setToolTipText("Cleanup jobs and files of dataset(s)");
   }
    
   /**
-  * GUI initialisation
+  * GUI initialization
   */
   protected void initGUI() throws Exception{
+    
+    initShowHideFilter();
     
     initButtons();
     
     tableResults = new MyJTable(hiddenFields, fieldNames,
         GridPilot.JOB_COLOR_MAPPING);
-    
-    //setFieldArrays();
     
     menuEditCopy = GridPilot.getClassMgr().getGlobalFrame().getMenuEditCopy();
     menuEditCut = GridPilot.getClassMgr().getGlobalFrame().getMenuEditCut();
@@ -399,12 +435,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     
     spSelectPanel.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
     spSelectPanel.getViewport().add(selectPanel);
+    
+    showHidePanel.add(new JLabel(" "+dbName+"  :  "+dbPluginMgr.getDBDescription()));
 
     panelSelectPanel.add(spSelectPanel,
         new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
             GridBagConstraints.CENTER,
             GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
-    panelSelectPanel.add(new JLabel(dbName+"  :  "+dbPluginMgr.getDBDescription()),
+    panelSelectPanel.add(showHidePanel,
         new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0,
             GridBagConstraints.WEST,
             GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
@@ -416,36 +454,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
     selectPanel.setConstraint(MyUtil.getNameField(dbPluginMgr.getDBName(), tableName), "", 1);
     
-    // Listen for enter key in text field
-    selectPanel.addListenerForEnter(new KeyAdapter(){
-      public void keyPressed(KeyEvent e){
-        switch(e.getKeyCode()){
-          case KeyEvent.VK_ENTER:
-            cursor = -1;
-            ResThread t = (new ResThread(){
-              public void run(){
-                try{
-                  search();
-                }
-                catch(Exception ee){
-                  statusBar.setLabel("ERROR: could not search "+ee.getMessage());
-                  Debug.debug("ERROR: could not search. "+ee.getMessage(), 1);
-                  ee.printStackTrace();
-                }
-              }
-            });     
-            t.start();
-        }
-        if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c") ||
-            KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("x")){
-          if(e.isControlDown()){
-            clipboardOwned = false;
-            menuEditPaste.setEnabled(clipboardOwned);
-          }
-        }
-
-      }
-    });
+    setEnterKeyListener();
     
     //tableResults.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
     tableResults.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
@@ -461,30 +470,391 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     TransferHandler th = new TransferHandler(null);
     tableResults.setTransferHandler(th);
     
-    tableResults.addKeyListener(new KeyAdapter(){
-      public void keyPressed(KeyEvent e){
-        //Debug.debug("key code: "+KeyEvent.getKeyText(e.getKeyCode()), 3);
-        if(e.getKeyCode()==KeyEvent.VK_F1){
-          //menuHelpAbout_actionPerformed();
-        }
-        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("x")){
-          if(e.isControlDown()){
-            cut();
+    setCopyPasteKeyListeners();
+    
+    initSearchButtons();
+    
+    // This is to pad with empty space and keep the table results
+    // full width
+    GridBagConstraints ct = new GridBagConstraints();
+    ct.fill = GridBagConstraints.HORIZONTAL;
+    pButtonTableResults.add(new JLabel(), ct);
+    
+    if(tableName.equalsIgnoreCase("dataset")){
+      
+      miWithInput.addActionListener(new ActionListener(){
+        public void actionPerformed(final ActionEvent e){
+          createDatasets(true);
+        }});
+      miWithoutInput.addActionListener(new ActionListener(){
+        public void actionPerformed(final ActionEvent e){
+          createDatasets(false);
+        }});
+      pmCreateDSMenu.add(miWithInput);
+      pmCreateDSMenu.add(miWithoutInput);
+      
+      tableResults.addMouseListener(new MouseAdapter(){
+        public void mouseClicked(MouseEvent e){
+          if(e.getClickCount()==2){
+            editDataset();
           }
         }
-        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c")){
-          if(e.isControlDown()){
-            copy();
+      });
+            
+      pButtonTableResults.add(bProcessDataset);
+      pButtonTableResults.add(bMonitorDataset);
+      pButtonTableResults.add(bCleanupDataset);
+      
+      if(SHOW_DB_BUTTONS){
+        initDSEditButtons();
+        pButtonTableResults.add(new JLabel("|"));
+        pButtonTableResults.add(bViewFiles);
+        pButtonTableResults.add(bViewJobDefinitions);
+        pButtonTableResults.add(bDefineJobDefinitions);
+        pButtonTableResults.add(new JLabel("|"));
+        pButtonTableResults.add(bCreateRecords);
+        pButtonTableResults.add(bEditRecord);
+        pButtonTableResults.add(bDeleteRecord);
+      }
+      
+      pButtonSelectPanel.add(bSearch);
+      pButtonSelectPanel.add(bClear);
+      
+      bProcessDataset.setEnabled(false);
+      bMonitorDataset.setEnabled(false);
+      bCleanupDataset.setEnabled(false);
+      bViewFiles.setEnabled(false);
+      bViewJobDefinitions.setEnabled(false);
+      bDefineJobDefinitions.setEnabled(false);
+      bEditRecord.setEnabled(false);
+      bDeleteRecord.setEnabled(false);
+    }
+    else if(tableName.equalsIgnoreCase("file")){
+      
+      tableResults.addMouseListener(new MouseAdapter(){
+        public void mouseClicked(MouseEvent e){
+          if(e.getClickCount()==2){
+            editFile();
           }
         }
-        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("v")){
-          if(e.isControlDown()){
-            paste();
+      });  
+      
+      bReplicate.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          download(null, null);
+        }
+      });
+      bReplicate.setToolTipText("Replicate files from or to a remote server");
+            
+      pButtonTableResults.add(bReplicate);
+      if(SHOW_DB_BUTTONS){
+        initFileEditButtons();
+        pButtonTableResults.add(new JLabel("|"));
+        pButtonTableResults.add(bEditRecord);
+        //pButtonTableResults.add(bCreateRecords);
+        pButtonTableResults.add(bDeleteRecord);
+      }
+      // For files, add next/previous buttons
+      bPrevious.setEnabled(false);
+      bNext.setEnabled(false);
+      pButtonSelectPanel.add(bPrevious);
+      pButtonSelectPanel.add(bNext);
+      pButtonSelectPanel.add(new JLabel("  "));
+      // Add tickbox to search panel
+      JPanel pFindAll = new JPanel();
+      pFindAll.add(new JLabel("Find all PFNs"));
+      pFindAll.add(cbFindAllFiles);
+      pButtonSelectPanel.add(pFindAll);
+      pButtonSelectPanel.add(new JLabel(" "));
+      pButtonSelectPanel.add(bSearch);
+      pButtonSelectPanel.add(bClear);
+      bEditRecord.setEnabled(false);
+      bDeleteRecord.setEnabled(false);
+      bReplicate.setEnabled(false);
+    }
+    else if(tableName.equalsIgnoreCase("jobDefinition")){
+      
+      tableResults.addMouseListener(new MouseAdapter(){
+        public void mouseClicked(MouseEvent e){
+          if(e.getClickCount()==2){
+            editJobDef();
           }
         }
+      });
+
+      bSubmit.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          bSubmit_mousePressed();
+        }
+      });
+      bSubmit.setToolTipText("Submit job(s) to a computing backend");
+      
+      bMonitor.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          monitorJobs();
+        }
+      });
+      bMonitor.setToolTipText("Monitor job(s)");
+      
+      String enabled = "no";
+      for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
+        try{
+          enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
+        }
+        catch(Exception e){
+          continue;
+        }
+        if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
+            !enabled.equalsIgnoreCase("true")){
+          continue;
+        }
+        JMenuItem mi = new JMenuItem(GridPilot.CS_NAMES[i]);
+        //mi.setMnemonic(i);
+        mi.addActionListener(new ActionListener(){
+          public void actionPerformed(final ActionEvent e){
+            submit(e);
+          }});
+        pmSubmitMenu.add(mi);
+      }
+
+      pButtonTableResults.add(bSubmit);
+      pButtonTableResults.add(bMonitor);
+      if(SHOW_DB_BUTTONS){
+        initJobDefEditButtons();
+        pButtonTableResults.add(new JLabel("|"));
+        pButtonTableResults.add(bCreateRecords);
+        pButtonTableResults.add(bEditRecord);
+        pButtonTableResults.add(bDeleteRecord);
+      }
+      pButtonSelectPanel.add(bSearch);
+      pButtonSelectPanel.add(bClear);
+      bSubmit.setEnabled(false);
+      bMonitor.setEnabled(false);
+      bEditRecord.setEnabled(false);
+      bDeleteRecord.setEnabled(false);
+    }
+    else if(tableName.equalsIgnoreCase("transformation")){
+      
+      tableResults.addMouseListener(new MouseAdapter(){
+        public void mouseClicked(MouseEvent e){
+          if(e.getClickCount()==2){
+            editTransformation();
+          }
+        }
+      });
+      
+      if(SHOW_DB_BUTTONS){
+        initTransformationEditbuttons();
+        pButtonTableResults.add(bCreateRecords);
+        pButtonTableResults.add(bEditRecord);
+        pButtonTableResults.add(bDeleteRecord);
+      }
+      pButtonSelectPanel.add(bSearch);
+      pButtonSelectPanel.add(bClear);
+      bEditRecord.setEnabled(false);
+      bDeleteRecord.setEnabled(false);
+    }    
+    else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
+      
+      tableResults.addMouseListener(new MouseAdapter(){
+        public void mouseClicked(MouseEvent e){
+          if(e.getClickCount()==2){
+            editRuntimeEnvironment();
+          }
+        }
+      });
+      
+      if(SHOW_DB_BUTTONS){
+        initRuntimeEditButtons();
+        pButtonTableResults.add(bCreateRecords);
+        pButtonTableResults.add(bEditRecord);
+        pButtonTableResults.add(bDeleteRecord);
+      }
+      pButtonSelectPanel.add(bSearch);
+      pButtonSelectPanel.add(bClear);
+      bEditRecord.setEnabled(false);
+      bDeleteRecord.setEnabled(false);
+      menuEditCopy.setEnabled(false);
+      menuEditCut.setEnabled(false);
+      menuEditPaste.setEnabled(false);
+    }
+    showFilter(false);
+    updateUI();
+  }
+
+  private void initShowHideFilter() {
+    URL imgURL;
+    ImageIcon imgIcon;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "down.png");
+      imgIcon = new ImageIcon(imgURL);
+      bShowFilter = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "down.png", 3);
+      bShowFilter = new JButton("+");
+    }
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "up.png");
+      imgIcon = new ImageIcon(imgURL);
+      bHideFilter = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "up.png", 3);
+      bHideFilter = new JButton("^");
+    }
+    bShowFilter.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        showFilter(true);
       }
     });
-        
+    bHideFilter.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        showFilter(false);
+      }
+    });
+    bHideFilter.setToolTipText("Hide search filter");
+    bShowFilter.setToolTipText("Show search filter");
+    showHidePanel.add(bShowFilter);
+    showHidePanel.add(bHideFilter);
+  }
+  
+  private void showFilter(final boolean ok){
+    SwingUtilities.invokeLater(
+      new Runnable(){
+        public void run(){
+          Debug.debug("Showing filter: "+ok, 2);
+          spSelectPanel.setVisible(ok);
+          bHideFilter.setVisible(ok);
+          bShowFilter.setVisible(!ok);
+          panelSelectPanel.setPreferredSize(new Dimension(0, ok?180:40));
+        }
+      }
+    );
+  }
+
+  private void initRuntimeEditButtons() {
+    bCreateRecords.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        createRuntimeEnvironment();
+      }
+    });
+
+    bEditRecord.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        editRuntimeEnvironment();
+      }
+    });
+
+    bDeleteRecord.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        deleteRuntimeEnvironments();
+      }
+    });
+  }
+
+  private void initTransformationEditbuttons() {
+    bCreateRecords.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        createTransformation();
+      }
+    });
+
+    bEditRecord.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        editTransformation();
+      }
+    });
+
+    bDeleteRecord.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        deleteTransformations();
+      }
+    });
+  }
+
+  private void initJobDefEditButtons() {
+    bEditRecord.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        editJobDef();
+      }
+    });
+
+    bDeleteRecord.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        deleteJobDefs();
+      }
+    });
+
+    bCreateRecords.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        createJobDefinitions();
+      }
+    });
+  }
+
+  private void initFileEditButtons() {
+    bEditRecord.setText("View record");
+    bEditRecord.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        editFile();
+      }
+    });
+
+    bDeleteRecord.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        deleteFiles();
+      }
+    });
+  }
+
+  private void initDSEditButtons() {
+    
+    bViewJobDefinitions.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(ActionEvent e){
+          viewJobDefinitions();
+        }
+      }
+    );
+    
+    bViewFiles.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        new Thread(){
+          public void run(){
+            viewFiles(false);
+          }
+        }.start();
+      }
+    }
+    );
+
+    bDefineJobDefinitions.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        defineJobDefinitions();
+      }
+    }
+    );
+    
+    bCreateRecords.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        bCreateDatasets_mousePressed(bCreateRecords);
+      }
+    });
+
+    bEditRecord.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        editDataset();
+      }
+    });
+
+    bDeleteRecord.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        deleteDatasets();
+      }
+    });
+  }
+
+  private void initSearchButtons() {
     //// buttons
     bSearch.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -549,315 +919,67 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         clear();
       }
     });
-    
-    // This is to pad with empty space and keep the table results
-    // full width
-    GridBagConstraints ct = new GridBagConstraints();
-    ct.fill = GridBagConstraints.HORIZONTAL;
-    pButtonTableResults.add(new JLabel(), ct);
-    
-    if(tableName.equalsIgnoreCase("dataset")){
-      
-      miWithInput.addActionListener(new ActionListener(){
-        public void actionPerformed(final ActionEvent e){
-          createDatasets(true);
-        }});
-      miWithoutInput.addActionListener(new ActionListener(){
-        public void actionPerformed(final ActionEvent e){
-          createDatasets(false);
-        }});
-      pmCreateDSMenu.add(miWithInput);
-      pmCreateDSMenu.add(miWithoutInput);
-      
-      tableResults.addMouseListener(new MouseAdapter(){
-        public void mouseClicked(MouseEvent e){
-          if(e.getClickCount()==2){
-            editDataset();
+  }
+
+  private void setCopyPasteKeyListeners() {
+    tableResults.addKeyListener(new KeyAdapter(){
+      public void keyPressed(KeyEvent e){
+        //Debug.debug("key code: "+KeyEvent.getKeyText(e.getKeyCode()), 3);
+        if(e.getKeyCode()==KeyEvent.VK_F1){
+          //menuHelpAbout_actionPerformed();
+        }
+        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("x")){
+          if(e.isControlDown()){
+            cut();
           }
         }
-      });
-
-      bViewJobDefinitions.addActionListener(new java.awt.event.ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          viewJobDefinitions();
-        }
-      }
-      );
-      
-      bViewFiles.addActionListener(new java.awt.event.ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          new Thread(){
-            public void run(){
-              viewFiles(false);
-            }
-          }.start();
-        }
-      }
-      );
-
-      bDefineJobDefinitions.addActionListener(new java.awt.event.ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          defineJobDefinitions();
-        }
-      }
-      );
-      
-      bCreateRecords.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          bCreateDatasets_mousePressed(bCreateRecords);
-        }
-      });
-
-      bEditRecord.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          editDataset();
-        }
-      });
-
-      bDeleteRecord.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          deleteDatasets();
-        }
-      });
-      
-      if(SHOW_DB_BUTTONS){
-        addButtonResultsPanel(new JLabel("|"));
-        addButtonResultsPanel(bViewFiles);
-        addButtonResultsPanel(bViewJobDefinitions);
-        addButtonResultsPanel(bDefineJobDefinitions);
-        addButtonResultsPanel(new JLabel("|"));
-        addButtonResultsPanel(bCreateRecords);
-        addButtonResultsPanel(bEditRecord);
-        addButtonResultsPanel(bDeleteRecord);
-      }
-      addButtonSelectPanel(bSearch);
-      addButtonSelectPanel(bClear);
-      bViewFiles.setEnabled(false);
-      bViewJobDefinitions.setEnabled(false);
-      bDefineJobDefinitions.setEnabled(false);
-      bEditRecord.setEnabled(false);
-      bDeleteRecord.setEnabled(false);
-    }
-    else if(tableName.equalsIgnoreCase("file")){
-      
-      bEditRecord.setText("View record");
-      
-      tableResults.addMouseListener(new MouseAdapter(){
-        public void mouseClicked(MouseEvent e){
-          if(e.getClickCount()==2){
-            editFile();
+        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c")){
+          if(e.isControlDown()){
+            copy();
           }
         }
-      });
-
-      bEditRecord.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          editFile();
-        }
-      });
-
-      bDeleteRecord.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          deleteFiles();
-        }
-      });
-
-      bDownload.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          download(null, null);
-        }
-      });
-      bDownload.setToolTipText("Replicate files from or to a remote server");
-            
-      addButtonResultsPanel(bDownload);
-      if(SHOW_DB_BUTTONS){
-        addButtonResultsPanel(new JLabel("|"));
-        addButtonResultsPanel(bEditRecord);
-        //addButtonResultsPanel(bCreateRecords);
-        addButtonResultsPanel(bDeleteRecord);
-      }
-      // For files, add nex/previous buttons
-      bPrevious.setEnabled(false);
-      bNext.setEnabled(false);
-      addButtonSelectPanel(bPrevious);
-      addButtonSelectPanel(bNext);
-      addButtonSelectPanel(new JLabel("  "));
-      // Add tickbox to search panel
-      JPanel pFindAll = new JPanel();
-      pFindAll.add(new JLabel("Find all PFNs"));
-      pFindAll.add(cbFindAllFiles);
-      addButtonSelectPanel(pFindAll);
-      addButtonSelectPanel(new JLabel(" "));
-      addButtonSelectPanel(bSearch);
-      addButtonSelectPanel(bClear);
-      bEditRecord.setEnabled(false);
-      bDeleteRecord.setEnabled(false);
-      bDownload.setEnabled(false);
-    }
-    else if(tableName.equalsIgnoreCase("jobDefinition")){
-      
-      tableResults.addMouseListener(new MouseAdapter(){
-        public void mouseClicked(MouseEvent e){
-          if(e.getClickCount()==2){
-            editJobDef();
+        else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("v")){
+          if(e.isControlDown()){
+            paste();
           }
         }
-      });
-
-      bSubmit.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          bSubmit_mousePressed();
-        }
-      });
-      bSubmit.setToolTipText("Submit job(s) to a computing backend");
-      
-      bMonitor.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          monitorJobs();
-        }
-      });
-      bMonitor.setToolTipText("Monitor job(s)");
-
-      bEditRecord.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          editJobDef();
-        }
-      });
-
-      bDeleteRecord.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          deleteJobDefs();
-        }
-      });
-
-      bCreateRecords.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          createJobDefinitions();
-        }
-      });
-      
-      String enabled = "no";
-      for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
-        try{
-          enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
-        }
-        catch(Exception e){
-          continue;
-        }
-        if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
-            !enabled.equalsIgnoreCase("true")){
-          continue;
-        }
-        JMenuItem mi = new JMenuItem(GridPilot.CS_NAMES[i]);
-        //mi.setMnemonic(i);
-        mi.addActionListener(new ActionListener(){
-          public void actionPerformed(final ActionEvent e){
-            submit(e);
-          }});
-        pmSubmitMenu.add(mi);
       }
+    });
+  }
 
-      addButtonResultsPanel(bSubmit);
-      addButtonResultsPanel(bMonitor);
-      if(SHOW_DB_BUTTONS){
-        addButtonResultsPanel(new JLabel("|"));
-        addButtonResultsPanel(bCreateRecords);
-        addButtonResultsPanel(bEditRecord);
-        addButtonResultsPanel(bDeleteRecord);
-      }
-      addButtonSelectPanel(bSearch);
-      addButtonSelectPanel(bClear);
-      bSubmit.setEnabled(false);
-      bMonitor.setEnabled(false);
-      bEditRecord.setEnabled(false);
-      bDeleteRecord.setEnabled(false);
-    }
-    else if(tableName.equalsIgnoreCase("transformation")){
-      
-      tableResults.addMouseListener(new MouseAdapter(){
-        public void mouseClicked(MouseEvent e){
-          if(e.getClickCount()==2){
-            editTransformation();
+  /**
+   * Listen for enter key in text field
+   */
+  private void setEnterKeyListener() {
+    selectPanel.addListenerForEnter(new KeyAdapter(){
+      public void keyPressed(KeyEvent e){
+        switch(e.getKeyCode()){
+          case KeyEvent.VK_ENTER:
+            cursor = -1;
+            ResThread t = (new ResThread(){
+              public void run(){
+                try{
+                  search();
+                }
+                catch(Exception ee){
+                  statusBar.setLabel("ERROR: could not search "+ee.getMessage());
+                  Debug.debug("ERROR: could not search. "+ee.getMessage(), 1);
+                  ee.printStackTrace();
+                }
+              }
+            });     
+            t.start();
+        }
+        if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c") ||
+            KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("x")){
+          if(e.isControlDown()){
+            clipboardOwned = false;
+            menuEditPaste.setEnabled(clipboardOwned);
           }
         }
-      });
 
-      bCreateRecords.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          createTransformation();
-        }
-      });
-
-      bEditRecord.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          editTransformation();
-        }
-      });
-
-      bDeleteRecord.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          deleteTransformations();
-        }
-      });
-      
-      if(SHOW_DB_BUTTONS){
-        addButtonResultsPanel(bCreateRecords);
-        addButtonResultsPanel(bEditRecord);
-        addButtonResultsPanel(bDeleteRecord);
       }
-      addButtonSelectPanel(bSearch);
-      addButtonSelectPanel(bClear);
-      //bViewFiles.setEnabled(false);
-      //bViewJobDefinitions.setEnabled(false);
-      //bDefineJobDefinitions.setEnabled(false);
-      bEditRecord.setEnabled(false);
-      bDeleteRecord.setEnabled(false);
-    }    
-    else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
-      
-      tableResults.addMouseListener(new MouseAdapter(){
-        public void mouseClicked(MouseEvent e){
-          if(e.getClickCount()==2){
-            editRuntimeEnvironment();
-          }
-        }
-      });
-      
-      bCreateRecords.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          createRuntimeEnvironment();
-        }
-      });
-
-      bEditRecord.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          editRuntimeEnvironment();
-        }
-      });
-
-      bDeleteRecord.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          deleteRuntimeEnvironments();
-        }
-      });
-      
-      if(SHOW_DB_BUTTONS){
-        addButtonResultsPanel(bCreateRecords);
-        addButtonResultsPanel(bEditRecord);
-        addButtonResultsPanel(bDeleteRecord);
-      }
-      addButtonSelectPanel(bSearch);
-      addButtonSelectPanel(bClear);
-      //bViewFiles.setEnabled(false);
-      //bViewJobDefinitions.setEnabled(false);
-      //bDefineJobDefinitions.setEnabled(false);
-      bEditRecord.setEnabled(false);
-      bDeleteRecord.setEnabled(false);
-      menuEditCopy.setEnabled(false);
-      menuEditCut.setEnabled(false);
-      menuEditPaste.setEnabled(false);
-    } 
-    updateUI();
+    });
   }
 
   public String getTitle(){
@@ -922,23 +1044,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   /**
-   * Adds a button on the left of the buttons shown when the panel with results is shown.
-   */
-  public void addButtonResultsPanel(JComponent b){
-    pButtonTableResults.add(b);
-  }
-
-  /**
-   * Adds a button on the select panel.
-   */
-  public void addButtonSelectPanel(JComponent b){
-    pButtonSelectPanel.add(b);
-  }
-
-  /**
    * Carries out search according to selection
    */
-  public void search(){
+  private void search(){
     if(tableResults==null){
       searchRequest(true, false);
     }
@@ -1013,14 +1121,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * all the GUI during this action.
    * Called when button "Search" is clicked
    */
-  public void searchRequest(final int sortColumn, final boolean isAscending,
+  private void searchRequest(final int sortColumn, final boolean isAscending,
       final int [] columnWidths){
     searchRequest(sortColumn, isAscending, columnWidths,
         /*true*/false/* hmm, did I have any good reason for putting this in the event thread?...*/,
         false);
   }
 
-  public void searchRequest(final int sortColumn, final boolean isAscending,
+  private void searchRequest(final int sortColumn, final boolean isAscending,
       final int [] columnWidths, boolean runInEventThread, boolean waitForThread){
         
     workThread = new ResThread(){
@@ -1125,6 +1233,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bViewFiles.setEnabled(false);
     bViewJobDefinitions.setEnabled(false);
     bDefineJobDefinitions.setEnabled(false);
+    bProcessDataset.setEnabled(false);
+    bMonitorDataset.setEnabled(false);
+    bCleanupDataset.setEnabled(false);
     bEditRecord.setEnabled(false);
     bDeleteRecord.setEnabled(false);
     bSubmit.setEnabled(false);
@@ -1199,7 +1310,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         // runtime/transformation/dataset/job catalogs and dataset/file catalogs.
         bViewJobDefinitions.setEnabled(dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty() &&
             lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-        bDefineJobDefinitions.setEnabled(dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty());
+        boolean ok = dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty();
+        bDefineJobDefinitions.setEnabled(ok);
+        bProcessDataset.setEnabled(ok);
+        bMonitorDataset.setEnabled(ok);
+        bCleanupDataset.setEnabled(ok);
         bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
         bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
             lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
@@ -1230,7 +1345,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         ListSelectionModel lsm = (ListSelectionModel)e.getSource();
         //Debug.debug("lsm indices: "+
         //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
-        bDownload.setEnabled(!lsm.isSelectionEmpty());
+        bReplicate.setEnabled(!lsm.isSelectionEmpty());
         bDeleteRecord.setEnabled(dbPluginMgr.isFileCatalog() && !lsm.isSelectionEmpty());
         bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
             lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
@@ -1377,7 +1492,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
   }
   
-  public void fixSort(final int sortColumn, final boolean isAscending, final int [] columnWidths) throws InterruptedException, InvocationTargetException{
+  private void fixSort(final int sortColumn, final boolean isAscending, final int [] columnWidths) throws InterruptedException, InvocationTargetException{
     if(SwingUtilities.isEventDispatchThread()){
       doFixSort(sortColumn, isAscending, columnWidths);
     }
@@ -1392,7 +1507,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
   }
   
-  public void doFixSort(int sortColumn, boolean isAscending, int [] columnWidths){
+  private void doFixSort(int sortColumn, boolean isAscending, int [] columnWidths){
     Debug.debug("Sorting", 3);
     if(sortColumn>-1){
       Debug.debug("Sorting: "+sortColumn+":"+isAscending, 3);
@@ -1414,7 +1529,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     Debug.debug("Done Updating edit menu", 3);
   }
   
-  public void searchRequest(boolean runInEventThread, boolean waitForThread){
+  protected void searchRequest(boolean runInEventThread, boolean waitForThread){
     DBVectorTableModel tableModel = (DBVectorTableModel) tableResults.getModel();
     tableModel.ascending = true;
     searchRequest(-1, tableModel.ascending, null, runInEventThread, waitForThread);
@@ -1424,7 +1539,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Add menu items to the table with search results. This function is called from within DBPanel
    * after the results table is filled
    */
-  public void makeDatasetMenu(){
+  private void makeDatasetMenu(){
     Debug.debug("Making dataset menu", 3);
     JMenuItem miCreateJobDefinitions = new JMenuItem("Create job definition(s)");
     miCreateJobDefinitions.addActionListener(new ActionListener(){
@@ -1518,7 +1633,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     tableResults.addMenuItem(miDelete);
   }
 
-  public void makeTransformationMenu(){
+  private void makeTransformationMenu(){
     Debug.debug("Making transformation menu", 3);
     JMenuItem miDelete = new JMenuItem("Delete");
     miEdit = new JMenuItem("Edit");
@@ -1538,7 +1653,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     tableResults.addMenuItem(miEdit);
     tableResults.addMenuItem(miDelete);
   }
-  public void makeRuntimeEnvironmentMenu(){
+  
+  private void makeRuntimeEnvironmentMenu(){
     Debug.debug("Making runtime environment menu", 3);
     JMenuItem miDelete = new JMenuItem("Delete");
     miEdit = new JMenuItem("Edit");
@@ -1559,7 +1675,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     tableResults.addMenuItem(miDelete);
   }
 
-  public void makeFileMenu(){
+  private void makeFileMenu(){
     Debug.debug("Making file menu", 3);
     JMenuItem miDelete = new JMenuItem("Delete");
     miEdit = new JMenuItem("View");
@@ -1619,7 +1735,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     tableResults.addMenuItem(miDelete);
   }
 
-  public void makeJobDefMenu(){
+  private void makeJobDefMenu(){
     JMenuItem miDelete = new JMenuItem("Delete");
     miEdit = new JMenuItem("Edit");
     jmSetFieldValue = new JMenu("Set field value");
@@ -2109,7 +2225,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   /**
    * Refresh search results.
    */ 
-  public void refresh(){
+  protected void refresh(){
     if(!waitForWorking()){
       GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, search not performed");
       return;
@@ -3469,7 +3585,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return true;
   }
   
-  public boolean insertFile(DBPluginMgr sourceMgr, String name, String datasetName,
+  private boolean insertFile(DBPluginMgr sourceMgr, String name, String datasetName,
       String fileID) throws Exception{
     if(!dbPluginMgr.isFileCatalog()){
       ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
@@ -3724,7 +3840,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   * Place a String on the clipboard, and make this class the
   * owner of the Clipboard's contents.
   */
-  public void setClipboardContents(String aString){
+  protected void setClipboardContents(String aString){
     StringSelection stringSelection = new StringSelection(aString);
     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
     clipboard.setContents(stringSelection, this);
@@ -3736,7 +3852,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   * @return any text found on the Clipboard; if none found, return an
   * empty String.
   */
-  public String getClipboardContents(){
+  protected String getClipboardContents(){
     String result = "";
     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
     //odd: the Object param of getContents is not currently used
@@ -3760,7 +3876,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return result;
   }
 
-  public void setConstraint(String nameField, String runtimeEnvironmentName, int i) {
+  protected void setConstraint(String nameField, String runtimeEnvironmentName, int i) {
     selectPanel.setConstraint(nameField, runtimeEnvironmentName, i);
   }
 

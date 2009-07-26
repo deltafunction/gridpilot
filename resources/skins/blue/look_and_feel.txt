@@ -1,7 +1,7 @@
 #com.sun.java.swing.plaf.gtk.GTKLookAndFeel
 #com.sun.java.swing.plaf.motif.MotifLookAndFeel
 #com.sun.java.swing.plaf.windows.WindowsLookAndFeel
-#System
-Metal
+System
+#Metal
 ##DefaultMetal
-Ocean
+##Ocean

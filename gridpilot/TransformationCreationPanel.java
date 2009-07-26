@@ -103,12 +103,12 @@ public class TransformationCreationPanel extends CreateEditPanel{
     URL imgURL;
     ImageIcon imgIcon;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "find.png");
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "search.png");
       imgIcon = new ImageIcon(imgURL);
       jbEditTrans = new JButton(imgIcon);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "find.png", 3);
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "finsearchd.png", 3);
       jbEditTrans = new JButton("View");
     }
     jbEditTrans.setToolTipText("View runtime environment record");
