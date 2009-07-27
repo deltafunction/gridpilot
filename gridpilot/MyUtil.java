@@ -27,6 +27,8 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.BufferedReader;
@@ -88,6 +90,10 @@ import org.globus.util.GlobusURL;
  */
 
 public class MyUtil extends gridfactory.common.Util{
+
+  public static final int OK_OPTION = 0;
+  public static final int OK_SKIP_OPTION = 1;
+  public static final int OK_ALL_SKIP_ALL_OPTION = 2;
 
   public static final String TMP_FILE_PREFIX = "gridpilot-";
   
@@ -836,39 +842,49 @@ private static String fixUrl(String _url){
     return jval;
   }
   
-  private static Vector<Object []> createDisplayObjects(){
+  private static JButton mkButton(final JOptionPane optionPane, final String text, ImageIcon icon) {
+    final JButton button = new JButton(icon);
+    ActionListener actionListener = new ActionListener() {
+      public void actionPerformed(ActionEvent actionEvent) {
+        optionPane.setValue(button);
+      }
+    };
+    button.addActionListener(actionListener);
+    button.setToolTipText(text);
+    return button;
+  }
+
+  private static Object[] createDisplayObjects(JOptionPane pane, int i, String cancelText){
     Object okObject;
     Object skipObject;
     Object okAllObject;
     Object skipAllObject;
-    Vector<Object []> displayOptions = new Vector<Object []>();
+    Object[] showResultsOptions = null;
     URL imgURL;
     ImageIcon imgIcon;
     try{
       imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "enter.png");
       imgIcon = new ImageIcon(imgURL);
-      okObject = new JButton(imgIcon);
-      ((JButton)okObject).setToolTipText("OK");
+      okObject = mkButton(pane, "OK", imgIcon);
     }
     catch(Exception e){
+      e.printStackTrace();
       Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "enter.png", 3);
       okObject = "OK";
     }
     try{
       imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "cancel.png");
       imgIcon = new ImageIcon(imgURL);
-      skipObject = new JButton(imgIcon);
-      ((JButton)skipObject).setToolTipText("Skip");
+      skipObject = mkButton(pane, cancelText, imgIcon);
     }
     catch(Exception e){
       Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "cancel.png", 3);
-      skipObject = "Skip";
+      skipObject = cancelText;
     }
     try{
       imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "enter_all.png");
       imgIcon = new ImageIcon(imgURL);
-      okAllObject = new JButton(imgIcon);
-      ((JButton)okAllObject).setToolTipText("OK for all");
+      okAllObject = mkButton(pane, "OK for all", imgIcon);
     }
     catch(Exception e){
       Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "enter_all.png", 3);
@@ -877,32 +893,26 @@ private static String fixUrl(String _url){
     try{
       imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "stop.png");
       imgIcon = new ImageIcon(imgURL);
-      skipAllObject = new JButton(imgIcon);
-      ((JButton)skipAllObject).setToolTipText("Skip all");
+      skipAllObject = mkButton(pane, "Skip all", imgIcon);
     }
     catch(Exception e){
       Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "stop.png", 3);
       skipAllObject = "Skip all";
     }
-    Object[] showResultsOptions2 = {okObject, skipObject, okAllObject, skipAllObject};
-    Object[] showResultsOptions1 = {okObject, skipObject};
-    Object[] showResultsOptions0 = {okObject};
-    displayOptions.add(showResultsOptions0);
-    displayOptions.add(showResultsOptions1);
-    displayOptions.add(showResultsOptions2);
-    return displayOptions;
+    
+    switch(i){
+      case OK_OPTION: showResultsOptions = new Object[] {okObject};
+              break;
+      case OK_SKIP_OPTION: showResultsOptions = new Object[] {okObject, skipObject};
+              break;
+      case OK_ALL_SKIP_ALL_OPTION: showResultsOptions = new Object[] {okObject, skipObject, okAllObject, skipAllObject};
+    }
+    
+    return showResultsOptions;
   }
 
-
-  public static int showResult(String [] cstAttrNames, String [] cstAttr, String title,
-      int moreThanOne){
-    
-    Object[] showResultsOptions = null;
-    Vector<Object []> displayOptions = createDisplayObjects();
-    Object[] showResultsOptions2 = displayOptions.get(2);
-    Object[] showResultsOptions1 = displayOptions.get(1);
-    Object[] showResultsOptions0 = displayOptions.get(0);
-
+  public static int showResult(String [] cstAttrNames, String [] cstAttr, String title, int optionType,
+      String cancelText){
     JPanel pResult = new JPanel(new GridBagLayout());
     int row = 0;
     JComponent jval;
@@ -951,53 +961,60 @@ private static String fixUrl(String _url){
     }
     Debug.debug("Setting size "+width+":"+height, 3);
     sp.setPreferredSize(new Dimension(width, height));
+    
+    return showResult(null, sp, title, optionType, cancelText);
+    
+  }
+  
+  public static int showResult(JComponent parent, JComponent comp, String title, int optionType,
+      String cancelText){
 
-    JOptionPane op = null;
-    if(moreThanOne==0){
-      showResultsOptions = showResultsOptions0;
-      op = new JOptionPane(sp,
-          JOptionPane.QUESTION_MESSAGE,
-          JOptionPane.OK_OPTION,
-          null,
-          showResultsOptions0,
-          showResultsOptions2[0]);
+    JOptionPane op = new JOptionPane(comp);
+    Object[] showResultsOptions = null;
+    if(optionType==OK_OPTION){
+      showResultsOptions = createDisplayObjects(op, 0, cancelText);
+      op.setMessageType(JOptionPane.QUESTION_MESSAGE);
+      op.setOptionType(JOptionPane.OK_OPTION);
+      op.setOptions(showResultsOptions);
+      op.setInitialValue(showResultsOptions[0]);
      }
-    else if(moreThanOne==1){
-      showResultsOptions = showResultsOptions1;
-      op = new JOptionPane(sp,
-         JOptionPane.QUESTION_MESSAGE,
-         JOptionPane.YES_NO_CANCEL_OPTION,
-         null,
-         showResultsOptions1,
-         showResultsOptions2[0]);
+    else if(optionType==OK_SKIP_OPTION){
+      showResultsOptions = createDisplayObjects(op, 1, cancelText);
+      op.setMessageType(JOptionPane.QUESTION_MESSAGE);
+      op.setOptionType(JOptionPane.YES_NO_CANCEL_OPTION);
+      op.setOptions(showResultsOptions);
+      op.setInitialValue(showResultsOptions[0]);
    }
-   else if(moreThanOne==2){
-     showResultsOptions = showResultsOptions2;
-     op = new JOptionPane(sp,
-         JOptionPane.QUESTION_MESSAGE,
-         JOptionPane.YES_NO_CANCEL_OPTION,
-         null,
-         showResultsOptions2,
-         showResultsOptions2[0]);
+   else if(optionType==OK_ALL_SKIP_ALL_OPTION){
+     showResultsOptions = createDisplayObjects(op, 2, "Skip");
+     op.setMessageType(JOptionPane.QUESTION_MESSAGE);
+     op.setOptionType(JOptionPane.YES_NO_CANCEL_OPTION);
+     op.setOptions(showResultsOptions);
+     op.setInitialValue(showResultsOptions[0]);
     }
 
-    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), title);    
+    JDialog dialog = op.createDialog(parent!=null?parent:JOptionPane.getRootFrame(), title);    
     dialog.requestFocusInWindow();    
     dialog.setResizable(true);
     dialog.setVisible(true);
     dialog.dispose();
 
     Object selectedValue = op.getValue();
+    
+    Debug.debug("selectedValue "+selectedValue, 2);
 
     if(selectedValue==null){
       return JOptionPane.CLOSED_OPTION;
     }
+    
     for(int i=0; i<showResultsOptions.length; ++i){
       if(showResultsOptions[i]==selectedValue){
         return i;
       }
     }
+    
     return JOptionPane.CLOSED_OPTION;
+    
   }
 
   public static String [][] getValues(String dbName, String table, String id,

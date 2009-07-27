@@ -42,8 +42,6 @@ public class JobCreator{
   private JProgressBar pb;
   private Object semaphoreDBCreate = new Object();
   private DBPluginMgr dbPluginMgr = null;
-  private Object[] showResultsOptions = {"OK", "Skip", "OK for all", "Skip all"};
-  private Object[] showResultsOptions1 = {"OK", "Skip"};
   private String dbName;
   private StatusBar statusBar;
   // Caches
@@ -288,11 +286,11 @@ public class JobCreator{
     if(showThis){
       if(lastPartition - currentPartition + len - currentDataset > 1){       
         choice = showResult(currentPartition, resCstAttr, resJobParam, resOutMap, resStdOut,
-           showResultsOptions);
+           MyUtil.OK_ALL_SKIP_ALL_OPTION);
       }
       else{
         choice = showResult(currentPartition, resCstAttr, resJobParam, resOutMap, resStdOut,
-           showResultsOptions1);
+           MyUtil.OK_SKIP_OPTION);
       }
       Debug.debug("Choice: "+choice, 2);
       switch(choice){
@@ -696,31 +694,33 @@ public class JobCreator{
       eventsPresent = false;
       Debug.debug("No event information in dataset "+datasetIdentifiers[currentDataset], 2);
     }
-    String [] inputFileURLs = null;
+    String [] inputFileURLs = new String[]{};
     if(inputIds!=null && inputIds.length>0){
       inputFileURLs = findInputFiles(evtMin, evtMax, currentDataset, currentPartition,
           inputMgr, inputDataset, fileCatalogInput, eventsPresent);
     }
     // construct the (short) file names for the job script arguments
     Vector<String> inputFileNamesVec = new Vector<String>();
-    String [] fils = null;
-    String addFils = "";
-    for(int j=0; j<inputFileURLs.length; ++j){
-      fils = MyUtil.split(inputFileURLs[j], "/");
-      if(fils.length>0){
-        addFils = fils[fils.length-1];
+    if(inputFileURLs!=null){
+      String [] fils = null;
+      String addFils = "";
+      for(int j=0; j<inputFileURLs.length; ++j){
+        fils = MyUtil.split(inputFileURLs[j], "/");
+        if(fils.length>0){
+          addFils = fils[fils.length-1];
+        }
+        else{
+          addFils = inputFileURLs[j];
+        }
+        fils = MyUtil.split(addFils, "\\\\");
+        if(fils.length>0){
+          inputFileNamesVec.add(fils[fils.length-1]);
+        }
+        else{
+          inputFileNamesVec.add(addFils);
+        }
+        Debug.debug("Inputs: "+inputFileNamesVec, 2);
       }
-      else{
-        addFils = inputFileURLs[j];
-      }
-      fils = MyUtil.split(addFils, "\\\\");
-      if(fils.length>0){
-        inputFileNamesVec.add(fils[fils.length-1]);
-      }
-      else{
-        inputFileNamesVec.add(addFils);
-      }
-      Debug.debug("Inputs: "+inputFileNamesVec, 2);
     }
     String[] inputFileNames = inputFileNamesVec.toArray(new String[inputFileNamesVec.size()]);
     
@@ -1178,11 +1178,11 @@ public class JobCreator{
   }
   
   private int showResult(final int currentPartition, final String [] resCstAttr, final String [] resJobParam,
-      final String [][] resOutMap, final String [] resStdOut, final Object[] showResultsOptions){
+      final String [][] resOutMap, final String [] resStdOut, final int showOption){
     MyResThread rt = new MyResThread(){
       int ret;
       public void run(){
-        ret = showResult0(currentPartition, resCstAttr, resJobParam, resOutMap, resStdOut, showResultsOptions);
+        ret = showResult0(currentPartition, resCstAttr, resJobParam, resOutMap, resStdOut, showOption);
       }
       public int getIntRes(){
         return ret;
@@ -1199,7 +1199,7 @@ public class JobCreator{
   }
     
   private int showResult0(int currentPartition, String [] resCstAttr, String [] resJobParam,
-                         String [][] resOutMap, String [] resStdOut, Object[] showResultsOptions){
+                         String [][] resOutMap, String [] resStdOut, int showOption){
 
     Debug.debug("showing results for confirmation", 3);
     JPanel pResult = new JPanel(new GridBagLayout());
@@ -1298,14 +1298,16 @@ public class JobCreator{
                                       (int)pResult.getPreferredSize().getHeight() +
                                       (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5));
 
-    JOptionPane op = new JOptionPane(sp,
+    Debug.debug("creating dialog", 3);
+    return MyUtil.showResult(null, sp, "Job definition # "+currentPartition, showOption,
+        showOption==MyUtil.OK_SKIP_OPTION?"Cancel":"Skip");
+    
+    /*JOptionPane op = new JOptionPane(sp,
                                      JOptionPane.QUESTION_MESSAGE,
                                      JOptionPane.YES_NO_CANCEL_OPTION,
                                      null,
                                      showResultsOptions,
                                      showResultsOptions[0]);
-
-    Debug.debug("creating dialog", 3);
     JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "Job definition # "+currentPartition);
     dialog.setResizable(true);
     dialog.setVisible(true);
@@ -1321,6 +1323,6 @@ public class JobCreator{
         return i;
       }
     }
-    return JOptionPane.CLOSED_OPTION;
+    return JOptionPane.CLOSED_OPTION;*/
   }
 }

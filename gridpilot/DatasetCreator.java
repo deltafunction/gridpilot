@@ -74,7 +74,7 @@ public class DatasetCreator{
       Debug.debug("creating #"+datasetIDs[i], 2);
       if(showResults && !okAll){
       int choice = MyUtil.showResult(cstAttrNames, resCstAttr, "dataset",
-          (i+1<datasetIDs.length ? 2 : 1));  
+          (i+1<datasetIDs.length ? 2 : 1), "Skip");  
       switch(choice){
         case 0  : skip = false; break;  // OK
         case 1  : skip = true ; break;  // Skip
@@ -180,7 +180,7 @@ public class DatasetCreator{
     }
     if(showResults && !okAll){
     int choice = MyUtil.showResult(cstAttrNames, resCstAttr, "dataset",
-        (i+1<datasetIDs.length ? 2 : 1));  
+        (i+1<datasetIDs.length ? 2 : 1), "Skip");  
     switch(choice){
       case 0  : skip = false; break;  // OK
       case 1  : skip = true ; break;  // Skip

@@ -73,12 +73,12 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
     URL imgURL;
     ImageIcon imgIcon;
     try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "stop.png");
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "cancel.png");
       imgIcon = new ImageIcon(imgURL);
       bClose = new JButton(imgIcon);
     }
     catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "stop.png", 3);
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "cancel.png", 3);
       bClose = new JButton("Cancel");
     }
     try{

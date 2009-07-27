@@ -38,8 +38,7 @@ public class RuntimeCreator{
   private void createRuntimeEnvironmentRecord(){
     int choice = 0;
     if(showResults){
-      //choice = showResult();
-      choice = MyUtil.showResult(cstAttrNames, cstAttr, "Runtime environment", 1);
+      choice = MyUtil.showResult(cstAttrNames, cstAttr, "Runtime environment", MyUtil.OK_SKIP_OPTION, "Skip");
     }
     switch(choice){
       case 0  : break;  // OK

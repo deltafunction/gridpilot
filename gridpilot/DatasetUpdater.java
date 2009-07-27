@@ -18,7 +18,6 @@ public class DatasetUpdater{
   private StatusBar statusBar;
   private String [] cstAttrNames;
   private DBPluginMgr dbPluginMgr;
-  private Object[] showResultsOptions = {"OK",  "Cancel"};
   public boolean anyCreated = false;
 
   public DatasetUpdater(  DBPluginMgr _dbPluginMgr,
@@ -116,7 +115,10 @@ public class DatasetUpdater{
     }
     Debug.debug("Setting size "+width+":"+height, 3);
     sp.setPreferredSize(new Dimension(width, height));
+    
+    return MyUtil.showResult(null, sp, "Dataset", MyUtil.OK_SKIP_OPTION, "Cancel");
 
+    /*Object[] showResultsOptions = {"OK",  "Cancel"};
     JOptionPane op = new JOptionPane(sp,
                                      JOptionPane.QUESTION_MESSAGE,
                                      JOptionPane.YES_NO_CANCEL_OPTION,
@@ -142,6 +144,6 @@ public class DatasetUpdater{
         return i;
       }
     }
-    return JOptionPane.CLOSED_OPTION;
+    return JOptionPane.CLOSED_OPTION;*/
   }
 }

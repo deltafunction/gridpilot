@@ -386,7 +386,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "run.png", 3);
       bProcessDataset = new JButton("Process");
     }
-    bProcessDataset.setToolTipText("Generate files of dataset(s)");
+    bProcessDataset.setToolTipText("Execute job(s) of dataset(s)");
     try{
       imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "monitor.png");
       imgIcon = new ImageIcon(imgURL);
@@ -396,7 +396,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "monitor.png", 3);
       bMonitorDataset = new JButton("Monitor");
     }
-    bMonitorDataset.setToolTipText("Monitor jobs of dataset(s)");
+    bMonitorDataset.setToolTipText("Monitor job(s) of dataset(s)");
     try{
       imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "clean.png");
       imgIcon = new ImageIcon(imgURL);
@@ -406,7 +406,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "clean.png", 3);
       bCleanupDataset = new JButton("Cleanup");
     }
-    bCleanupDataset.setToolTipText("Cleanup jobs and files of dataset(s)");
+    bCleanupDataset.setToolTipText("Cleanup job(s) and file(s) of dataset(s)");
   }
    
   /**
@@ -727,6 +727,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           spSelectPanel.setVisible(ok);
           bHideFilter.setVisible(ok);
           bShowFilter.setVisible(!ok);
+          bClear.setVisible(ok);
           panelSelectPanel.setPreferredSize(new Dimension(0, ok?180:40));
         }
       }
@@ -1883,7 +1884,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             // the identifier is the last column
             tableResults.getColumnCount()-1).toString()).getValue(fieldNames[j]).toString();*/
       }
-      MyUtil.showResult(fieldNames, values, "file", 0);
+      MyUtil.showResult(fieldNames, values, "file", MyUtil.OK_OPTION, "Skip");
     }
   }
   

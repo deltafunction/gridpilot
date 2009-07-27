@@ -38,8 +38,7 @@ public class TransformationCreator{
   private void createTransformationRecord(){
     int choice = 0;
     if(showResults){
-      //choice = showResult();
-      choice = MyUtil.showResult(cstAttrNames, cstAttr, "Transformation", 1);
+      choice = MyUtil.showResult(cstAttrNames, cstAttr, "Transformation", MyUtil.OK_SKIP_OPTION, "Skip");
     }
 
     switch(choice){
