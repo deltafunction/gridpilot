@@ -380,7 +380,7 @@ private static String fixUrl(String _url){
    try{
      confirmBox.getConfirm("URL could not be opened",
                           "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
-                       new Object[] {"OK"});
+                       new Object[] {mkOkObject()});
    }
    catch(Exception eeee){
      Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
@@ -1440,12 +1440,97 @@ private static String fixUrl(String _url){
   public static void showError(String text){
     showMessage("ERROR", text);
   }
+  
+  public static Object mkOkObject(){
+    Object okObject;
+    URL imgURL;
+    ImageIcon imgIcon;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "enter.png");
+      imgIcon = new ImageIcon(imgURL);
+      okObject = mkButton(null, "OK", imgIcon);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "enter.png", 3);
+      okObject = "OK";
+    }
+    return okObject;
+  }
+
+  public static Object mkOkAllObject(){
+    Object okObject;
+    URL imgURL;
+    ImageIcon imgIcon;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "enter_all.png");
+      imgIcon = new ImageIcon(imgURL);
+      okObject = mkButton(null, "OK for all", imgIcon);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "enter_all.png", 3);
+      okObject = "OK for all";
+    }
+    return okObject;
+  }
+
+  public static Object mkCancelObject(){
+    Object okObject;
+    URL imgURL;
+    ImageIcon imgIcon;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "cancel.png");
+      imgIcon = new ImageIcon(imgURL);
+      okObject = mkButton(null, "Cancel", imgIcon);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "cancel.png", 3);
+      okObject = "Cancel";
+    }
+    return okObject;
+  }
+
+  public static Object mkSkipObject(){
+    Object okObject;
+    URL imgURL;
+    ImageIcon imgIcon;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "next.png");
+      imgIcon = new ImageIcon(imgURL);
+      okObject = mkButton(null, "Skip", imgIcon);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "next.png", 3);
+      okObject = "Skip";
+    }
+    return okObject;
+  }
+
+  public static Object mkSkipAllObject(){
+    Object okObject;
+    URL imgURL;
+    ImageIcon imgIcon;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "cancel.png");
+      imgIcon = new ImageIcon(imgURL);
+      okObject = mkButton(null, "Skip all", imgIcon);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "cancel.png", 3);
+      okObject = "Skip all";
+    }
+    return okObject;
+  }
 
   private static void showMessage0(String title, String text){
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String confirmString = text;
     try{
-      confirmBox.getConfirm(title, confirmString, new Object[] {"OK"});
+      confirmBox.getConfirm(title, confirmString, new Object[] {mkOkObject()});
     }
     catch(Exception e){
       e.printStackTrace();
@@ -1895,7 +1980,7 @@ private static String fixUrl(String _url){
       try{
         confirmBox.getConfirm("URL could not be opened",
                              "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
-                          new Object[] {"OK"});
+                          new Object[] {mkOkObject()});
       }
       catch(Exception eeee){
         Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);

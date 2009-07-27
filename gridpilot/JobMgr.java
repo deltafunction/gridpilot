@@ -848,21 +848,18 @@ public class JobMgr{
       
       if(authorization!=null){
         if(showThis){
-          ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()); 
           try{
             String confirmString = "WARNING: The transition from " +
             DBPluginMgr.getStatusName(job.getDBStatus()) + " to " +
             DBPluginMgr.getStatusName(dbStatus) + " is not allowed.\n"+
             authorization+".\nContinue on your own risk.";
             if(rows.length-i>1){
-              choice = confirmBox.getConfirm("Confirm change status",
-                  confirmString,
-                 new Object[] {"OK", "Skip", "OK for all", "Skip all"});
+              choice = MyUtil.showResult(null, new JLabel(confirmString),
+                  "Confirm change status", MyUtil.OK_ALL_SKIP_ALL_OPTION, "Skip");
             }
             else{
-              choice = confirmBox.getConfirm("Confirm change status",
-                  confirmString,
-               new Object[] {"OK",  "Skip"});        
+              choice = MyUtil.showResult(null, new JLabel(confirmString),
+                  "Confirm change status", MyUtil.OK_SKIP_OPTION, "Cancel");
             }
           }
           catch(java.lang.Exception e){
@@ -1250,7 +1247,7 @@ public class JobMgr{
       int choice = confirmBox.getConfirm("Confirm clean",
           "This will clean all traces of the job(s)\n" +
           "both remotely and locally.\n" +
-          "Are you sure you want to do this?", new Object[] {"OK",  "Cancel"});
+          "Are you sure you want to do this?", new Object[] {MyUtil.mkOkObject(), MyUtil.mkCancelObject()});
       if(choice!=0){
         return;
       }

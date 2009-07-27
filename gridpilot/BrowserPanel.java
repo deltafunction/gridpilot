@@ -936,7 +936,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String title = "Browser error";
     try{
-      confirmBox.getConfirm(title, str, new Object[] {"OK"});
+      confirmBox.getConfirm(title, str, new Object[] {MyUtil.mkOkObject()});
     }
     catch(Exception e){
       e.printStackTrace();
@@ -1023,7 +1023,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     int choice = -1;
     try{
       choice = confirmBox.getConfirm("Register file in dataset",
-          jPanel, new Object[] {"OK", "Cancel"});
+          jPanel, new Object[] {MyUtil.mkOkObject(), MyUtil.mkCancelObject()});
     }
     catch(Exception e){
       e.printStackTrace();
@@ -2126,7 +2126,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     try{
       int choice = confirmBox.getConfirm("Confirm delete",
-          msg, new Object[] {"OK", "Cancel"});
+          msg, new Object[] {MyUtil.mkOkObject(), MyUtil.mkCancelObject()});
       if(choice!=0){
         return;
       }

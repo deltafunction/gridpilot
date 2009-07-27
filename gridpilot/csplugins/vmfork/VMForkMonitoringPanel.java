@@ -148,7 +148,7 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     try{
       int choice = confirmBox.getConfirm("Confirm terminate",
-          msg, new Object[] {"OK", "Cancel"});
+          msg, new Object[] {MyUtil.mkOkObject(), MyUtil.mkCancelObject()});
       if(choice!=0){
         return;
       }

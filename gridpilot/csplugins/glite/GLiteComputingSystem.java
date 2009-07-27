@@ -1043,7 +1043,8 @@ public class GLiteComputingSystem implements MyComputingSystem{
               "The working directory, "+dirName+",  of this job was not found. \n" +
               "The job was probably submitted from another machine or has already been validated. \n" +
               "Click OK to create the directory " +
-              "(stdout/stder will be synchronized, scripts will not).", new Object[] {"OK",  "Skip"});
+              "(stdout/stder will be synchronized, scripts will not).",
+              new Object[] {MyUtil.mkOkObject(), MyUtil.mkSkipObject()});
         }
         else{
           choice = 0;

@@ -118,32 +118,5 @@ public class DatasetUpdater{
     
     return MyUtil.showResult(null, sp, "Dataset", MyUtil.OK_SKIP_OPTION, "Cancel");
 
-    /*Object[] showResultsOptions = {"OK",  "Cancel"};
-    JOptionPane op = new JOptionPane(sp,
-                                     JOptionPane.QUESTION_MESSAGE,
-                                     JOptionPane.YES_NO_CANCEL_OPTION,
-                                     null,
-                                     showResultsOptions,
-                                     showResultsOptions[0]);
-
-    op.setPreferredSize(new Dimension(550, 500));
-    op.setMinimumSize(new Dimension(550, 500));
-    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(),
-        "Dataset");
-    dialog.setResizable(true);
-    dialog.setVisible(true);
-    dialog.dispose();
-
-    Object selectedValue = op.getValue();
-
-    if(selectedValue==null){
-      return JOptionPane.CLOSED_OPTION;
-    }
-    for(int i=0; i<showResultsOptions.length; ++i){
-      if (showResultsOptions[i]==selectedValue){
-        return i;
-      }
-    }
-    return JOptionPane.CLOSED_OPTION;*/
   }
 }

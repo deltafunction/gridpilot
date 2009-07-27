@@ -63,9 +63,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JMenuItem miWithoutInput = new JMenuItem("from scratch");
   private JButton bSubmit;
   private JButton bMonitor;
-  private JButton bProcessDataset;
-  private JButton bMonitorDataset;
-  private JButton bCleanupDataset;
+  private JButton bProcessDatasets;
+  private JButton bMonitorDatasets;
+  private JButton bCleanupDatasets;
   private JButton bDeleteRecord = new JButton("Delete record(s)");
   private JButton bSearch;
   private JButton bNext;
@@ -380,33 +380,33 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     try{
       imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "run.png");
       imgIcon = new ImageIcon(imgURL);
-      bProcessDataset = new JButton(imgIcon);
+      bProcessDatasets = new JButton(imgIcon);
     }
     catch(Exception e){
       Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "run.png", 3);
-      bProcessDataset = new JButton("Process");
+      bProcessDatasets = new JButton("Process");
     }
-    bProcessDataset.setToolTipText("Execute job(s) of dataset(s)");
+    bProcessDatasets.setToolTipText("Execute dataset(s)");
     try{
       imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "monitor.png");
       imgIcon = new ImageIcon(imgURL);
-      bMonitorDataset = new JButton(imgIcon);
+      bMonitorDatasets = new JButton(imgIcon);
     }
     catch(Exception e){
       Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "monitor.png", 3);
-      bMonitorDataset = new JButton("Monitor");
+      bMonitorDatasets = new JButton("Monitor");
     }
-    bMonitorDataset.setToolTipText("Monitor job(s) of dataset(s)");
+    bMonitorDatasets.setToolTipText("Monitor job(s) of dataset(s)");
     try{
       imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "clean.png");
       imgIcon = new ImageIcon(imgURL);
-      bCleanupDataset = new JButton(imgIcon);
+      bCleanupDatasets = new JButton(imgIcon);
     }
     catch(Exception e){
       Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "clean.png", 3);
-      bCleanupDataset = new JButton("Cleanup");
+      bCleanupDatasets = new JButton("Cleanup");
     }
-    bCleanupDataset.setToolTipText("Cleanup job(s) and file(s) of dataset(s)");
+    bCleanupDatasets.setToolTipText("Cleanup job(s) and file(s) of dataset(s)");
   }
    
   /**
@@ -500,10 +500,28 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
         }
       });
+      
+      bProcessDatasets.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          processDatasets();
+        }
+      });
             
-      pButtonTableResults.add(bProcessDataset);
-      pButtonTableResults.add(bMonitorDataset);
-      pButtonTableResults.add(bCleanupDataset);
+      bMonitorDatasets.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          monitorDatasets();
+        }
+      });
+            
+      bCleanupDatasets.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          cleanupDatasets();
+        }
+      });
+            
+      pButtonTableResults.add(bProcessDatasets);
+      pButtonTableResults.add(bMonitorDatasets);
+      pButtonTableResults.add(bCleanupDatasets);
       
       if(SHOW_DB_BUTTONS){
         initDSEditButtons();
@@ -520,9 +538,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       pButtonSelectPanel.add(bSearch);
       pButtonSelectPanel.add(bClear);
       
-      bProcessDataset.setEnabled(false);
-      bMonitorDataset.setEnabled(false);
-      bCleanupDataset.setEnabled(false);
+      bProcessDatasets.setEnabled(false);
+      bMonitorDatasets.setEnabled(false);
+      bCleanupDatasets.setEnabled(false);
       bViewFiles.setEnabled(false);
       bViewJobDefinitions.setEnabled(false);
       bDefineJobDefinitions.setEnabled(false);
@@ -818,22 +836,24 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     );
     
-    bViewFiles.addActionListener(new java.awt.event.ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        new Thread(){
-          public void run(){
-            viewFiles(false);
-          }
-        }.start();
+    bViewFiles.addActionListener(
+      new java.awt.event.ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          new Thread(){
+            public void run(){
+              viewFiles(false);
+            }
+          }.start();
+        }
       }
-    }
     );
 
-    bDefineJobDefinitions.addActionListener(new java.awt.event.ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        defineJobDefinitions();
+    bDefineJobDefinitions.addActionListener(
+      new java.awt.event.ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          defineJobDefinitions();
+        }
       }
-    }
     );
     
     bCreateRecords.addActionListener(new ActionListener(){
@@ -1234,9 +1254,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bViewFiles.setEnabled(false);
     bViewJobDefinitions.setEnabled(false);
     bDefineJobDefinitions.setEnabled(false);
-    bProcessDataset.setEnabled(false);
-    bMonitorDataset.setEnabled(false);
-    bCleanupDataset.setEnabled(false);
+    bProcessDatasets.setEnabled(false);
+    bMonitorDatasets.setEnabled(false);
+    bCleanupDatasets.setEnabled(false);
     bEditRecord.setEnabled(false);
     bDeleteRecord.setEnabled(false);
     bSubmit.setEnabled(false);
@@ -1313,9 +1333,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
         boolean ok = dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty();
         bDefineJobDefinitions.setEnabled(ok);
-        bProcessDataset.setEnabled(ok);
-        bMonitorDataset.setEnabled(ok);
-        bCleanupDataset.setEnabled(ok);
+        bProcessDatasets.setEnabled(ok);
+        bMonitorDatasets.setEnabled(ok);
+        bCleanupDatasets.setEnabled(ok);
         bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
         bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
             lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
@@ -1916,7 +1936,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
       try{
         int choice = confirmBox.getConfirm("Confirm delete",
-            msg, new Object[] {"OK", "Cancel", cbCleanup});
+            msg, new Object[] {MyUtil.mkOkObject(), MyUtil.mkCancelObject(), cbCleanup});
         if(choice==1){
           return;
         }
@@ -2040,7 +2060,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     try{
       int choice = confirmBox.getConfirm("Confirm delete",
-          msg, new Object[] {"OK", "Cancel", cbCleanup});
+          msg, new Object[] {MyUtil.mkOkObject(), MyUtil.mkCancelObject(), cbCleanup});
       if(choice==1){
         return;
       }
@@ -2176,8 +2196,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               choice = confirmBox.getConfirm("Confirm delete",
                                    "Really delete dataset # "+datasetIdentifiers[i]+"?",
                                    dbPluginMgr.isJobRepository() ?
-                                   new Object[] {"OK", "Skip", cbCleanup} :
-                                     new Object[] {"OK", "Skip"});
+                                   new Object[] {MyUtil.mkOkObject(), MyUtil.mkSkipObject(), cbCleanup} :
+                                     new Object[] {MyUtil.mkOkObject(), MyUtil.mkSkipObject()});
             }
             catch(java.lang.Exception e){
               Debug.debug("Could not get confirmation, "+e.getMessage(),1);
@@ -2188,8 +2208,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               choice = confirmBox.getConfirm("Confirm delete",
                                    "Really delete dataset # "+datasetIdentifiers[i]+"?",
                                    dbPluginMgr.isJobRepository() ?
-                                   new Object[] {"OK", "Skip", "OK for all", "Skip all", cbCleanup} :
-                                     new Object[] {"OK", "Skip", "OK for all", "Skip all"});
+                                   new Object[] {MyUtil.mkOkObject(), MyUtil.mkSkipObject(),
+                                                 MyUtil.mkOkAllObject(), MyUtil.mkSkipAllObject(), cbCleanup} :
+                                     new Object[] {MyUtil.mkOkObject(), MyUtil.mkSkipObject(),
+                                                 MyUtil.mkOkAllObject(), MyUtil.mkSkipAllObject()});
               }
             catch(java.lang.Exception e){
               Debug.debug("Could not get confirmation, "+e.getMessage(),1);
@@ -2548,6 +2570,122 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     );
   }
  
+  /**
+   * Process dataset(s).
+   */
+  private void processDatasets(){
+    if(getSelectedIdentifiers()==null || getSelectedIdentifiers().length==0){
+      return;
+    }
+    Debug.debug("processing dataset(s): "+MyUtil.arrayToString(getSelectedIdentifiers()), 3);
+    new Thread(){
+      public void run(){
+        try{
+          doProcessDatasets();
+        }
+        catch(Exception e){
+          Debug.debug("Couldn't process dataset(s) " + "\n" +
+                             "\tException\t : " + e.getMessage(), 2);
+          e.printStackTrace();
+        }
+      }
+    }.start();
+  }
+  
+  /**
+   * Check if dataset has jobDefinitions.
+   * If not:
+   *   - create jobDefinitions
+   *   - close create window
+   * If not or so:
+   *   - ask for computing backend(s)
+   *   - submit one job and wait till it's submitted
+   *   - if it does not submit, return an error
+   *   - if it does submit, submit the rest
+   *
+   */
+  private void doProcessDatasets() {
+     // TODO
+    
+  }
+ 
+  /**
+   * Monitor dataset(s).
+   */
+  private void monitorDatasets(){
+    if(getSelectedIdentifiers()==null || getSelectedIdentifiers().length==0){
+      return;
+    }
+    Debug.debug("monitoring dataset(s): "+MyUtil.arrayToString(getSelectedIdentifiers()), 3);
+    new Thread(){
+      public void run(){
+        try{
+          doMonitorDatasets();
+        }
+        catch(Exception e){
+          Debug.debug("Couldn't process dataset(s) " + "\n" +
+                             "\tException\t : " + e.getMessage(), 2);
+          e.printStackTrace();
+        }
+      }
+    }.start();
+  }
+ 
+  /**
+   * Add all jobDefinitions of selected dataset(s) to monitor.
+   */
+  private void doMonitorDatasets() {
+    // TODO
+    
+  }
+
+  /**
+   * Cleanup dataset(s).
+   */
+  private void cleanupDatasets(){
+    new Thread(){
+      public void run(){
+        try{
+          doCleanupDatasets();
+        }
+        catch(Exception e){
+          Debug.debug("Couldn't process dataset(s) " + "\n" +
+                             "\tException\t : " + e.getMessage(), 2);
+          e.printStackTrace();
+        }
+      }
+    }.start();
+  }
+ 
+  /**
+   * If jobDefinitins exist:
+   * - check if all jobDefinitions have been run; if not, get confirmation
+   * - ask if stdout/err or output files should be deleted
+   * - delete files if so chosen - purge empty directories
+   * - delete jobDefinitions
+   *
+   */
+  private void doCleanupDatasets() {
+    String[] ids = getSelectedIdentifiers();
+    if(ids==null || ids.length==0){
+      return;
+    }
+    boolean ok = true;
+    Debug.debug("cleaning up dataset(s): "+MyUtil.arrayToString(ids), 3);
+    for(int i=0; i<ids.length; ++i){
+      ok = ok && doCleanupDataset(i);
+    }
+  }
+
+  private boolean doCleanupDataset(int id) {
+    boolean ok = true;
+    // TODO
+    if(dbPluginMgr.isJobRepository()){
+      //dbPluginMgr.deleteJobDefsFromDataset(id);
+    }
+    return ok;
+  }
+
   /**
    * Open job definition window.
    */
@@ -2970,7 +3108,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       try{
         confirmBox.getConfirm("URL could not be opened",
                              "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
-                          new Object[] {"OK"});
+                          new Object[] {MyUtil.mkOkObject()});
       }
       catch(Exception eeee){
         Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
@@ -3591,7 +3729,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(!dbPluginMgr.isFileCatalog()){
       ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
       String msg = "Cannot create file(s) in virtual table.";
-      confirmBox.getConfirm("Confirm delete", msg, new Object[] {"OK"});
+      confirmBox.getConfirm("Confirm delete", msg, new Object[] {MyUtil.mkOkObject()});
       throw new SQLException(msg);
     }
     try{

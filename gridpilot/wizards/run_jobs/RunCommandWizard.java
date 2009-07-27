@@ -62,20 +62,6 @@ public class RunCommandWizard extends GPFrame{
   private static String myTransformationVersion = "0.1";
   
   public RunCommandWizard() {
-    /*ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-    String confirmString =
-    "NOTICE: This wizard allows you to modify the transformation "+myTransformationName+"-"+myTransformationVersion+"\n"+
-    "and the dataset "+myDatasetName+".\n\n" +
-    "If you have made changes to any of these that you would like to keep,\n" +
-    "you should click \"Cancel\". Otherwise, click \"OK\" to proceed.\n\n";
-    try{
-      if(confirmBox.getConfirm("Warning", confirmString, new Object[] {"OK", "Cancel"})!=0){
-        return;
-      }
-    }
-    catch(Exception e){
-      e.printStackTrace();
-    }*/
     tfCommand = MyUtil.createTextArea(TEXTFIELDWIDTH);
     tfOutputDir = new JTextField(TEXTFIELDWIDTH);
     
