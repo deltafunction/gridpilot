@@ -335,6 +335,13 @@ public class BrowserPanel extends JDialog implements ActionListener{
     bRegister = MyUtil.mkButton("register.png", "Register all", "Register all file(s) in this directory");
     bSave = MyUtil.mkButton("save.png", "Save", "Save this document");
     bCancel = MyUtil.mkButton("cancel.png", "Cancel", "Cancel");
+    bOk.addActionListener(this);
+    bNew.addActionListener(this);
+    bUpload.addActionListener(this);
+    bDownload.addActionListener(this);
+    bRegister.addActionListener(this);
+    bSave.addActionListener(this);
+    bCancel.addActionListener(this);
   }
   
   // TODO: cleanup this monster
@@ -415,13 +422,13 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
     this.getContentPane().add(panel, BorderLayout.CENTER);
 
-    panel.setPreferredSize(new Dimension(520, 400));
+    panel.setPreferredSize(new Dimension(520+MyUtil.BUTTON_DISPLAY*40, 400));
     setResizable(true);
     
     JPanel topPanel = new JPanel(new GridBagLayout()); 
     
     if(withNavigation){
-      JButton bHome = MyUtil.mkButton("home.png", "Home", "Go to home URL");
+      JButton bHome = MyUtil.mkButton1("home.png", "Go to home URL", "Home");
       bHome.setPreferredSize(new java.awt.Dimension(22, 22));
       bHome.setSize(new java.awt.Dimension(22, 22));
       bHome.addMouseListener(new MouseAdapter(){

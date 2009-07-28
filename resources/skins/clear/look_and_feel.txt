@@ -1,1 +1,2 @@
-com.sun.java.swing.plaf.gtk.GTKLookAndFeel
+System
+#com.sun.java.swing.plaf.gtk.GTKLookAndFeel
