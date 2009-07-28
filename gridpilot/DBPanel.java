@@ -35,7 +35,6 @@ import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.Toolkit;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
-import java.net.URL;
 
 /**
  * This panel contains one SelectPanel.
@@ -53,8 +52,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JScrollPane spTableResults = new JScrollPane();
   private MyJTable tableResults = null;
   private JPanel pButtonTableResults = new JPanel(new FlowLayout(FlowLayout.CENTER));
-  private JButton bCreateRecords = new JButton("Define new record(s)");
-  private JButton bEditRecord = new JButton("Edit record");
   private JCheckBox cbFindAllFiles = new JCheckBox();
   private JButton bReplicate;
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
@@ -66,14 +63,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bProcessDatasets;
   private JButton bMonitorDatasets;
   private JButton bCleanupDatasets;
-  private JButton bDeleteRecord = new JButton("Delete record(s)");
   private JButton bSearch;
   private JButton bNext;
   private JButton bPrevious;
   private JButton bClear;
-  private JButton bViewJobDefinitions = new JButton("Show jobDefinition(s)");
-  private JButton bViewFiles = new JButton("Show file(s)");
-  private JButton bDefineJobDefinitions = new JButton("Create jobDefinition(s)");
+  private JButton bDeleteRecords;
+  private JButton bCreateRecords;
+  private JButton bEditRecord;
+  private JButton bViewJobDefinitions;
+  private JButton bViewFiles ;
+  private JButton bDefineJobDefinitions;
   private JButton bShowFilter;
   private JButton bHideFilter;
   private JMenuItem miEdit = null;
@@ -312,101 +311,25 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
    
   private void initButtons(){
-    URL imgURL;
-    ImageIcon imgIcon;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "find.png");
-      imgIcon = new ImageIcon(imgURL);
-      bSearch = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "find.png", 3);
-      bSearch = new JButton("Search");
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "clear.png");
-      imgIcon = new ImageIcon(imgURL);
-      bClear = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "clear.png", 3);
-      bClear = new JButton("Clear");
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "next.png");
-      imgIcon = new ImageIcon(imgURL);
-      bNext = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "next.png", 3);
-      bNext = new JButton(">>");
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "previous.png");
-      imgIcon = new ImageIcon(imgURL);
-      bPrevious = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "previous.png", 3);
-      bPrevious = new JButton("<<");
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "replicate.png");
-      imgIcon = new ImageIcon(imgURL);
-      bReplicate = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "replicate.png", 3);
-      bReplicate = new JButton("Replicate file(s)");
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "run.png");
-      imgIcon = new ImageIcon(imgURL);
-      bSubmit = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "run.png", 3);
-      bSubmit = new JButton("Submit job(s)");
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "monitor.png");
-      imgIcon = new ImageIcon(imgURL);
-      bMonitor = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "monitor.png", 3);
-      bMonitor = new JButton("Monitor job(s)");
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "run.png");
-      imgIcon = new ImageIcon(imgURL);
-      bProcessDatasets = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "run.png", 3);
-      bProcessDatasets = new JButton("Process");
-    }
-    bProcessDatasets.setToolTipText("Execute dataset(s)");
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "monitor.png");
-      imgIcon = new ImageIcon(imgURL);
-      bMonitorDatasets = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "monitor.png", 3);
-      bMonitorDatasets = new JButton("Monitor");
-    }
-    bMonitorDatasets.setToolTipText("Monitor job(s) of dataset(s)");
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "clean.png");
-      imgIcon = new ImageIcon(imgURL);
-      bCleanupDatasets = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "clean.png", 3);
-      bCleanupDatasets = new JButton("Cleanup");
-    }
-    bCleanupDatasets.setToolTipText("Cleanup job(s) and file(s) of dataset(s)");
+    
+    bDeleteRecords = MyUtil.mkButton("clear.png", "Delete", "Delete record(s)");
+    bCreateRecords = MyUtil.mkButton("create_document.png", "New", "Define new record(s)");
+    bEditRecord = MyUtil.mkButton("edit.png", "Edit", "Edit record");
+    bViewJobDefinitions = MyUtil.mkButton("find.png", "Show jobDefinition(s)", "Show jobDefinition(s)");
+    bViewFiles = MyUtil.mkButton("find.png", "Show file(s)", "Show file(s)");
+    bDefineJobDefinitions = MyUtil.mkButton("file_new.png", "Create jobDefinition(s)", "Create jobDefinition(s)");
+
+    bSearch =  MyUtil.mkButton("find.png", "Search", "Search");
+    bClear =  MyUtil.mkButton("clear.png", "Clear", "Clear");
+    bNext =  MyUtil.mkButton1("next.png", "Next search results", ">>");
+    bPrevious =  MyUtil.mkButton1("previous.png", "Previous search results", "<<");
+    bReplicate =  MyUtil.mkButton("replicate.png", "Replicate file(s)", "Replicate files from or to a remote server");
+    bSubmit =  MyUtil.mkButton("run.png", "Submit job(s)", "Submit job(s) to a computing backend");
+    bMonitor =  MyUtil.mkButton("monitor.png", "Monitor", "Monitor job(s)");
+    bProcessDatasets =  MyUtil.mkButton("run.png", "Process", "Execute application(s)/dataset(s)");
+    bMonitorDatasets =  MyUtil.mkButton("monitor.png", "Monitor", "Monitor job(s) of application(s)/dataset(s)");
+    bCleanupDatasets =  MyUtil.mkButton("clean.png", "Cleanup", "Cleanup job(s) and file(s) of application(s)/dataset(s)");
+
   }
    
   /**
@@ -532,7 +455,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         pButtonTableResults.add(new JLabel("|"));
         pButtonTableResults.add(bCreateRecords);
         pButtonTableResults.add(bEditRecord);
-        pButtonTableResults.add(bDeleteRecord);
+        pButtonTableResults.add(bDeleteRecords);
       }
       
       pButtonSelectPanel.add(bSearch);
@@ -545,7 +468,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       bViewJobDefinitions.setEnabled(false);
       bDefineJobDefinitions.setEnabled(false);
       bEditRecord.setEnabled(false);
-      bDeleteRecord.setEnabled(false);
+      bDeleteRecords.setEnabled(false);
     }
     else if(tableName.equalsIgnoreCase("file")){
       
@@ -562,7 +485,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           download(null, null);
         }
       });
-      bReplicate.setToolTipText("Replicate files from or to a remote server");
             
       pButtonTableResults.add(bReplicate);
       if(SHOW_DB_BUTTONS){
@@ -570,7 +492,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         pButtonTableResults.add(new JLabel("|"));
         pButtonTableResults.add(bEditRecord);
         //pButtonTableResults.add(bCreateRecords);
-        pButtonTableResults.add(bDeleteRecord);
+        pButtonTableResults.add(bDeleteRecords);
       }
       // For files, add next/previous buttons
       bPrevious.setEnabled(false);
@@ -587,7 +509,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       pButtonSelectPanel.add(bSearch);
       pButtonSelectPanel.add(bClear);
       bEditRecord.setEnabled(false);
-      bDeleteRecord.setEnabled(false);
+      bDeleteRecords.setEnabled(false);
       bReplicate.setEnabled(false);
     }
     else if(tableName.equalsIgnoreCase("jobDefinition")){
@@ -605,14 +527,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           bSubmit_mousePressed();
         }
       });
-      bSubmit.setToolTipText("Submit job(s) to a computing backend");
       
       bMonitor.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           monitorJobs();
         }
       });
-      bMonitor.setToolTipText("Monitor job(s)");
       
       String enabled = "no";
       for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
@@ -642,14 +562,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         pButtonTableResults.add(new JLabel("|"));
         pButtonTableResults.add(bCreateRecords);
         pButtonTableResults.add(bEditRecord);
-        pButtonTableResults.add(bDeleteRecord);
+        pButtonTableResults.add(bDeleteRecords);
       }
       pButtonSelectPanel.add(bSearch);
       pButtonSelectPanel.add(bClear);
       bSubmit.setEnabled(false);
       bMonitor.setEnabled(false);
       bEditRecord.setEnabled(false);
-      bDeleteRecord.setEnabled(false);
+      bDeleteRecords.setEnabled(false);
     }
     else if(tableName.equalsIgnoreCase("transformation")){
       
@@ -665,12 +585,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         initTransformationEditbuttons();
         pButtonTableResults.add(bCreateRecords);
         pButtonTableResults.add(bEditRecord);
-        pButtonTableResults.add(bDeleteRecord);
+        pButtonTableResults.add(bDeleteRecords);
       }
       pButtonSelectPanel.add(bSearch);
       pButtonSelectPanel.add(bClear);
       bEditRecord.setEnabled(false);
-      bDeleteRecord.setEnabled(false);
+      bDeleteRecords.setEnabled(false);
     }    
     else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
       
@@ -686,12 +606,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         initRuntimeEditButtons();
         pButtonTableResults.add(bCreateRecords);
         pButtonTableResults.add(bEditRecord);
-        pButtonTableResults.add(bDeleteRecord);
+        pButtonTableResults.add(bDeleteRecords);
       }
       pButtonSelectPanel.add(bSearch);
       pButtonSelectPanel.add(bClear);
       bEditRecord.setEnabled(false);
-      bDeleteRecord.setEnabled(false);
+      bDeleteRecords.setEnabled(false);
       menuEditCopy.setEnabled(false);
       menuEditCut.setEnabled(false);
       menuEditPaste.setEnabled(false);
@@ -701,26 +621,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   private void initShowHideFilter() {
-    URL imgURL;
-    ImageIcon imgIcon;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "down.png");
-      imgIcon = new ImageIcon(imgURL);
-      bShowFilter = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "down.png", 3);
-      bShowFilter = new JButton("+");
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "up.png");
-      imgIcon = new ImageIcon(imgURL);
-      bHideFilter = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "up.png", 3);
-      bHideFilter = new JButton("^");
-    }
+    bShowFilter = MyUtil.mkButton1("down.png", "Show search filter", "+");
+    bHideFilter = MyUtil.mkButton1("up.png", "Hide search filter", "-");
     bShowFilter.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         showFilter(true);
@@ -731,8 +633,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         showFilter(false);
       }
     });
-    bHideFilter.setToolTipText("Hide search filter");
-    bShowFilter.setToolTipText("Show search filter");
     showHidePanel.add(bShowFilter);
     showHidePanel.add(bHideFilter);
   }
@@ -765,7 +665,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     });
 
-    bDeleteRecord.addActionListener(new ActionListener(){
+    bDeleteRecords.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         deleteRuntimeEnvironments();
       }
@@ -785,7 +685,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     });
 
-    bDeleteRecord.addActionListener(new ActionListener(){
+    bDeleteRecords.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         deleteTransformations();
       }
@@ -799,7 +699,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     });
 
-    bDeleteRecord.addActionListener(new ActionListener(){
+    bDeleteRecords.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         deleteJobDefs();
       }
@@ -820,7 +720,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     });
 
-    bDeleteRecord.addActionListener(new ActionListener(){
+    bDeleteRecords.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         deleteFiles();
       }
@@ -868,7 +768,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     });
 
-    bDeleteRecord.addActionListener(new ActionListener(){
+    bDeleteRecords.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         deleteDatasets();
       }
@@ -915,7 +815,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         t.start();
       }
     });
-    bNext.setToolTipText("Next search results");
     bPrevious.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         cursor = cursor-GridPilot.FILE_ROWS;
@@ -934,7 +833,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         t.start();
       }
     });
-    bPrevious.setToolTipText("Previous search results");
     bClear.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         clear();
@@ -1258,7 +1156,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bMonitorDatasets.setEnabled(false);
     bCleanupDatasets.setEnabled(false);
     bEditRecord.setEnabled(false);
-    bDeleteRecord.setEnabled(false);
+    bDeleteRecords.setEnabled(false);
     bSubmit.setEnabled(false);
     bMonitor.setEnabled(false);
     menuEditCopy.setEnabled(false);
@@ -1336,7 +1234,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         bProcessDatasets.setEnabled(ok);
         bMonitorDatasets.setEnabled(ok);
         bCleanupDatasets.setEnabled(ok);
-        bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
+        bDeleteRecords.setEnabled(!lsm.isSelectionEmpty());
         bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
             lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
         miEdit.setEnabled(!lsm.isSelectionEmpty() &&
@@ -1367,7 +1265,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         //Debug.debug("lsm indices: "+
         //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
         bReplicate.setEnabled(!lsm.isSelectionEmpty());
-        bDeleteRecord.setEnabled(dbPluginMgr.isFileCatalog() && !lsm.isSelectionEmpty());
+        bDeleteRecords.setEnabled(dbPluginMgr.isFileCatalog() && !lsm.isSelectionEmpty());
         bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
             lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
         miEdit.setEnabled(!lsm.isSelectionEmpty() &&
@@ -1393,7 +1291,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
         bSubmit.setEnabled(!lsm.isSelectionEmpty());
         bMonitor.setEnabled(!lsm.isSelectionEmpty());
-        bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
+        bDeleteRecords.setEnabled(!lsm.isSelectionEmpty());
         bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
             lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
         miEdit.setEnabled(!lsm.isSelectionEmpty() &&
@@ -1417,7 +1315,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         ListSelectionModel lsm = (ListSelectionModel)e.getSource();
         //Debug.debug("lsm indices: "+
         //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
-        bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
+        bDeleteRecords.setEnabled(!lsm.isSelectionEmpty());
         bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
             lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
         miEdit.setEnabled(!lsm.isSelectionEmpty() &&
@@ -1441,7 +1339,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         ListSelectionModel lsm = (ListSelectionModel)e.getSource();
         //Debug.debug("lsm indices: "+
         //    lsm.getMaxSelectionIndex()+" : "+lsm.getMinSelectionIndex(), 3);
-        bDeleteRecord.setEnabled(!lsm.isSelectionEmpty());
+        bDeleteRecords.setEnabled(!lsm.isSelectionEmpty());
         bEditRecord.setEnabled(!lsm.isSelectionEmpty() &&
             lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
         miEdit.setEnabled(!lsm.isSelectionEmpty() &&
@@ -1936,7 +1834,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
       try{
         int choice = confirmBox.getConfirm("Confirm delete",
-            msg, new Object[] {MyUtil.mkOkObject(), MyUtil.mkCancelObject(), cbCleanup});
+            msg, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
+                               MyUtil.mkCancelObject(confirmBox.getOptionPane()),
+                               cbCleanup});
         if(choice==1){
           return;
         }
@@ -2060,7 +1960,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     try{
       int choice = confirmBox.getConfirm("Confirm delete",
-          msg, new Object[] {MyUtil.mkOkObject(), MyUtil.mkCancelObject(), cbCleanup});
+          msg, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
+                             MyUtil.mkCancelObject(confirmBox.getOptionPane()),
+                             cbCleanup});
       if(choice==1){
         return;
       }
@@ -2196,8 +2098,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               choice = confirmBox.getConfirm("Confirm delete",
                                    "Really delete dataset # "+datasetIdentifiers[i]+"?",
                                    dbPluginMgr.isJobRepository() ?
-                                   new Object[] {MyUtil.mkOkObject(), MyUtil.mkSkipObject(), cbCleanup} :
-                                     new Object[] {MyUtil.mkOkObject(), MyUtil.mkSkipObject()});
+                                   new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
+                                                 MyUtil.mkSkipObject(confirmBox.getOptionPane()),
+                                                 cbCleanup} :
+                                     new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
+                                                   MyUtil.mkSkipObject(confirmBox.getOptionPane())});
             }
             catch(java.lang.Exception e){
               Debug.debug("Could not get confirmation, "+e.getMessage(),1);
@@ -2208,10 +2113,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               choice = confirmBox.getConfirm("Confirm delete",
                                    "Really delete dataset # "+datasetIdentifiers[i]+"?",
                                    dbPluginMgr.isJobRepository() ?
-                                   new Object[] {MyUtil.mkOkObject(), MyUtil.mkSkipObject(),
-                                                 MyUtil.mkOkAllObject(), MyUtil.mkSkipAllObject(), cbCleanup} :
-                                     new Object[] {MyUtil.mkOkObject(), MyUtil.mkSkipObject(),
-                                                 MyUtil.mkOkAllObject(), MyUtil.mkSkipAllObject()});
+                                   new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
+                                                 MyUtil.mkSkipObject(confirmBox.getOptionPane()),
+                                                 MyUtil.mkOkAllObject(confirmBox.getOptionPane()),
+                                                 MyUtil.mkSkipAllObject(confirmBox.getOptionPane()),
+                                                 cbCleanup} :
+                                     new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
+                                                   MyUtil.mkSkipObject(confirmBox.getOptionPane()),
+                                                   MyUtil.mkOkAllObject(confirmBox.getOptionPane()),
+                                                   MyUtil.mkSkipAllObject(confirmBox.getOptionPane())});
               }
             catch(java.lang.Exception e){
               Debug.debug("Could not get confirmation, "+e.getMessage(),1);
@@ -2646,7 +2556,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     new Thread(){
       public void run(){
         try{
-          doCleanupDatasets();
+          String[] ids = getSelectedIdentifiers();
+          if(ids==null || ids.length==0){
+            return;
+          }
+          boolean ok = true;
+          Debug.debug("cleaning up dataset(s): "+MyUtil.arrayToString(ids), 3);
+          for(int i=0; i<ids.length; ++i){
+            ok = ok && doCleanupDataset(i);
+          }
         }
         catch(Exception e){
           Debug.debug("Couldn't process dataset(s) " + "\n" +
@@ -2658,25 +2576,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
  
   /**
-   * If jobDefinitins exist:
+   * If jobDefinitions exist:
    * - check if all jobDefinitions have been run; if not, get confirmation
    * - ask if stdout/err or output files should be deleted
    * - delete files if so chosen - purge empty directories
    * - delete jobDefinitions
    *
    */
-  private void doCleanupDatasets() {
-    String[] ids = getSelectedIdentifiers();
-    if(ids==null || ids.length==0){
-      return;
-    }
-    boolean ok = true;
-    Debug.debug("cleaning up dataset(s): "+MyUtil.arrayToString(ids), 3);
-    for(int i=0; i<ids.length; ++i){
-      ok = ok && doCleanupDataset(i);
-    }
-  }
-
   private boolean doCleanupDataset(int id) {
     boolean ok = true;
     // TODO
@@ -3108,7 +3014,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       try{
         confirmBox.getConfirm("URL could not be opened",
                              "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
-                          new Object[] {MyUtil.mkOkObject()});
+                          new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())});
       }
       catch(Exception eeee){
         Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
@@ -3729,7 +3635,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(!dbPluginMgr.isFileCatalog()){
       ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
       String msg = "Cannot create file(s) in virtual table.";
-      confirmBox.getConfirm("Confirm delete", msg, new Object[] {MyUtil.mkOkObject()});
+      confirmBox.getConfirm("Confirm delete", msg, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())});
       throw new SQLException(msg);
     }
     try{

@@ -8,7 +8,6 @@ import javax.swing.*;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.net.URL;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Vector;
@@ -43,7 +42,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private JRadioButton rbRunningJobs = new JRadioButton("View only running transfers");
   private JRadioButton rbDoneJobs = new JRadioButton("View only done transfers");
   // clear
-  private JButton bClearTable = new JButton("Clear done/failed");
+  private JButton bClearTable;
   // Buttons panel
   private JPanel pButtons = new JPanel();
   private JButton bKill;
@@ -92,28 +91,9 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   }
   
   private void initButtons(){
-    URL imgURL;
-    ImageIcon imgIcon;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "refresh.png");
-      imgIcon = new ImageIcon(imgURL);
-      bRefresh = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "refresh.png", 3);
-      bRefresh = new JButton("Refresh");
-    }
-    bRefresh.setToolTipText("Refresh status of transfer(s)");
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "stop.png");
-      imgIcon = new ImageIcon(imgURL);
-      bKill = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "stop.png", 3);
-      bKill = new JButton("Stop transfer(s)");
-    }
-    bKill.setToolTipText("Cancel transfer(s)");
+    bClearTable = MyUtil.mkButton("clear_table.png", "Clear done/failed", "Remove done/failed transfers from monitor");
+    bRefresh = MyUtil.mkButton("refresh.png", "Refresh", "Refresh status of transfer(s)");
+    bKill = MyUtil.mkButton("stop.png", "Stop", "Cancel transfer(s)");
   }
 
   public void initGUI(){
@@ -178,7 +158,6 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
         clearTable();
       }
     });
-    bClearTable.setToolTipText("Remove done/failed transfers from monitor");
 
     pOptions.add(statisticsPanel, new GridBagConstraints(0, 6, 1, 1, 0.1, 0.1,
         GridBagConstraints.WEST,

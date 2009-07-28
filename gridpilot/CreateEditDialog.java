@@ -7,7 +7,6 @@ import java.awt.*;
 import javax.swing.*;
 
 import java.awt.event.*;
-import java.net.URL;
 
 public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
 
@@ -70,48 +69,10 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
   }
   
   private void initButtons(){
-    URL imgURL;
-    ImageIcon imgIcon;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "cancel.png");
-      imgIcon = new ImageIcon(imgURL);
-      bClose = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "cancel.png", 3);
-      bClose = new JButton("Cancel");
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "clear.png");
-      imgIcon = new ImageIcon(imgURL);
-      bClear = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "clear.png", 3);
-      bClear = new JButton("Clear");
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "ok.png");
-      imgIcon = new ImageIcon(imgURL);
-      bCreateUpdate = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "ok.png", 3);
-      bCreateUpdate = new JButton(editing?"Update":"Create");
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "save.png");
-      imgIcon = new ImageIcon(imgURL);
-      bSaveSettings = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "save.png", 3);
-      bSaveSettings = new JButton("Save values");
-    }
-    bClose.setToolTipText("Cancel");
-    bClear.setToolTipText("Clear fields");
-    bCreateUpdate.setToolTipText((editing?"Update":"Create")+" record(s)");
-    bSaveSettings.setToolTipText("Save the values of all fields");
+    bClose = MyUtil.mkButton("cancel.png", "Cancel", "Cancel");
+    bClear = MyUtil.mkButton("clear.png", "Clear", "Clear fields");
+    bCreateUpdate = MyUtil.mkButton("ok.png", editing?"Update":"Create", (editing?"Update":"Create")+" record(s)");
+    bSaveSettings = MyUtil.mkButton("save.png", "Save values", "Save the values of all fields");
   }
   
   public void initGUI() throws Exception{

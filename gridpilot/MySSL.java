@@ -601,12 +601,12 @@ public class MySSL extends SSL{
     }
     
     JButton bBrowse1 = new JButton(browseIcon);
-    bBrowse1.setToolTipText("browse file system");
+    bBrowse1.setToolTipText("Browse file system");
     bBrowse1.setPreferredSize(new java.awt.Dimension(22, 22));
     bBrowse1.setSize(new java.awt.Dimension(22, 22));
     
     JButton bBrowse2 = new JButton(browseIcon);
-    bBrowse2.setToolTipText("browse file system");
+    bBrowse2.setToolTipText("Browse file system");
     bBrowse2.setPreferredSize(new java.awt.Dimension(22, 22));
     bBrowse2.setSize(new java.awt.Dimension(22, 22));
     

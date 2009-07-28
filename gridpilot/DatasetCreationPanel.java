@@ -11,7 +11,6 @@ import javax.swing.text.JTextComponent;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.lang.reflect.InvocationTargetException;
-import java.net.URL;
 import java.util.*;
 
 /**
@@ -120,18 +119,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
 
   private void initButtons(){
-    URL imgURL;
-    ImageIcon imgIcon;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "search.png");
-      imgIcon = new ImageIcon(imgURL);
-      jbEditTrans = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "search.png", 3);
-      jbEditTrans = new JButton("View");
-    }
-    jbEditTrans.setToolTipText("View transformation record");
+    jbEditTrans = MyUtil.mkButton("search.png", "View", "View transformation record");
   }
 
   /**

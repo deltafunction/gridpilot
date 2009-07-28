@@ -8,7 +8,6 @@ import java.awt.*;
 
 import javax.swing.border.*;
 import java.awt.event.*;
-import java.net.URL;
 
 
 /**
@@ -135,34 +134,10 @@ public class SelectPanel extends JPanel{
     private String name = "";
     
     private void initButtons(){
-      URL imgURL;
-      ImageIcon imgIcon;
-      try{
-        imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "more.png");
-        imgIcon = new ImageIcon(imgURL);
-        bAddConstraintRow = new JButton(imgIcon);
-        bAddDisplayRow = new JButton(imgIcon);
-      }
-      catch(Exception e){
-        Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "more.png", 3);
-        bAddConstraintRow = new JButton("+");
-        bAddDisplayRow = new JButton("+");
-      }
-      bAddConstraintRow.setToolTipText("Add another constraint");
-      bAddDisplayRow.setToolTipText("Add another column to display");
-      try{
-        imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "less.png");
-        imgIcon = new ImageIcon(imgURL);
-        bRemoveConstraintRow = new JButton(imgIcon);
-        bRemoveDisplayRow = new JButton(imgIcon);
-      }
-      catch(Exception e){
-        Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "less.png", 3);
-        bRemoveConstraintRow = new JButton("-");
-        bRemoveDisplayRow = new JButton("-");
-      }
-      bRemoveConstraintRow.setToolTipText("Remove a constraint");
-      bRemoveDisplayRow.setToolTipText("Remove a column from display");
+      bAddConstraintRow = MyUtil.mkButton1("more.png", "Add another constraint", "+");
+      bAddDisplayRow = MyUtil.mkButton1("more.png", "Add another column to display", "+");
+      bRemoveConstraintRow = MyUtil.mkButton1("less.png", "Remove a constraint", "-");
+      bRemoveDisplayRow = MyUtil.mkButton1("less.png", "Remove a column from display", "-");
     }
 
        

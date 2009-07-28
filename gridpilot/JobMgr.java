@@ -1247,7 +1247,8 @@ public class JobMgr{
       int choice = confirmBox.getConfirm("Confirm clean",
           "This will clean all traces of the job(s)\n" +
           "both remotely and locally.\n" +
-          "Are you sure you want to do this?", new Object[] {MyUtil.mkOkObject(), MyUtil.mkCancelObject()});
+          "Are you sure you want to do this?", new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
+                                                             MyUtil.mkCancelObject(confirmBox.getOptionPane())});
       if(choice!=0){
         return;
       }

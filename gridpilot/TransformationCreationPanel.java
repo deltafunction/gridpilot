@@ -10,7 +10,6 @@ import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.lang.reflect.InvocationTargetException;
-import java.net.URL;
 import java.util.*;
 
 /**
@@ -38,7 +37,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
   private DBRecord transformation = null;
   private DBResult runtimeEnvironments = null;
   private String [] transformationFields = null;
-  private JButton jbEditTrans;
+  private JButton bEditTrans;
 
   private static final long serialVersionUID = 1L;
   private static int TEXTFIELDWIDTH = 32;
@@ -100,18 +99,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
   }
 
   private void initButtons(){
-    URL imgURL;
-    ImageIcon imgIcon;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "search.png");
-      imgIcon = new ImageIcon(imgURL);
-      jbEditTrans = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "finsearchd.png", 3);
-      jbEditTrans = new JButton("View");
-    }
-    jbEditTrans.setToolTipText("View runtime environment record");
+    bEditTrans = MyUtil.mkButton("search.png", "View", "View runtime environment record");
   }
 
   /**
@@ -234,7 +222,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
 
     if(runtimeEnvironmentNames.length==0){
       pRuntimeEnvironment.add(new JLabel("No runtime environments found."));
-      jbEditTrans.setEnabled(false);
+      bEditTrans.setEnabled(false);
     }
     else if(runtimeEnvironmentNames.length==1){
       runtimeEnvironmentName = runtimeEnvironmentNames[0];
@@ -262,7 +250,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     ct.gridheight=1;
     add(pRuntimeEnvironment, ct);
     
-    jbEditTrans.addActionListener(new java.awt.event.ActionListener(){
+    bEditTrans.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         try{
           viewRuntimeEnvironments();
@@ -277,7 +265,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     ct.gridy = 0;
     ct.gridwidth=1;
     ct.gridheight=1;
-    add(jbEditTrans, ct);
+    add(bEditTrans, ct);
 
     updateUI();
   }

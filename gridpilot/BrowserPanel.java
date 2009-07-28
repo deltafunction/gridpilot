@@ -49,13 +49,13 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
   private static final long serialVersionUID = 1L;
   private JPanel panel = new JPanel(new BorderLayout());
-  private JButton bOk = new JButton();
-  private JButton bNew = new JButton();
-  private JButton bUpload = new JButton();
-  private JButton bDownload = new JButton();
-  private JButton bRegister = new JButton();
-  private JButton bSave = new JButton();
-  private JButton bCancel = new JButton();
+  private JButton bOk;
+  private JButton bNew;
+  private JButton bUpload;
+  private JButton bDownload;
+  private JButton bRegister;
+  private JButton bSave;
+  private JButton bCancel;
   private JLabel currentUrlLabel = new JLabel("");
   private JTextField jtFilter = new JTextField("", 24);
   private JCheckBox jcbFilter = new JCheckBox();
@@ -327,6 +327,16 @@ public class BrowserPanel extends JDialog implements ActionListener{
     });
   }
   
+  private void initButtons(){
+    bOk = MyUtil.mkButton("ok.png", "OK", "OK");
+    bNew = MyUtil.mkButton("file_new.png", "New", "Create new file or folder");
+    bUpload =  MyUtil.mkButton("up.png", "Put", "Upload file");
+    bDownload = MyUtil.mkButton("down.png", "Get all", "Download all file(s) in this directory");
+    bRegister = MyUtil.mkButton("register.png", "Register all", "Register all file(s) in this directory");
+    bSave = MyUtil.mkButton("save.png", "Save", "Save this document");
+    bCancel = MyUtil.mkButton("cancel.png", "Cancel", "Cancel");
+  }
+  
   // TODO: cleanup this monster
   /**
    * Component initialization.
@@ -344,33 +354,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     requestFocusInWindow();
     this.setTitle(title);
     
-    bOk.setText("OK");
-    bOk.setToolTipText("Continue");
-    bOk.addActionListener(this);
-    
-    bNew.setText("New");
-    bNew.setToolTipText("Create new file");
-    bNew.addActionListener(this);
-    
-    bUpload.setText("Put");
-    bUpload.setToolTipText("Upload file");
-    bUpload.addActionListener(this);
-    
-    bDownload.setText("Get all");
-    bDownload.setToolTipText("Download all files in this directory");
-    bDownload.addActionListener(this);
-    
-    bRegister.setText("Register all");
-    bRegister.setToolTipText("Register all files in this directory");
-    bRegister.addActionListener(this);
-    
-    bSave.setText("Save");
-    bSave.setToolTipText("Save this document");
-    bSave.addActionListener(this);
-    
-    bCancel.setText("Cancel");
-    bCancel.setToolTipText("Go back to directory / close window");
-    bCancel.addActionListener(this);
+    initButtons();
 
     if(jBox!=null){
       pButton.add(jBox);
@@ -437,34 +421,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     JPanel topPanel = new JPanel(new GridBagLayout()); 
     
     if(withNavigation){
-      ImageIcon homeIcon = null;
-      URL imgURL = null;
-      try{
-        imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "home.png");
-        homeIcon = new ImageIcon(imgURL);
-      }
-      catch(Exception e){
-        Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "home.png", 3);
-        //homeIcon = new ImageIcon();
-      }
-      ImageIcon enterIcon = null;
-      imgURL=null;
-      try{
-        imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "key_enter.png");
-        enterIcon = new ImageIcon(imgURL);
-      }
-      catch(Exception e){
-        Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "key_enter.png", 3);
-        //enterIcon = new ImageIcon();
-      }
-      JButton bHome = null;
-      if(homeIcon!=null){
-        bHome = new JButton(homeIcon);
-      }
-      else{
-        bHome = new JButton("home");
-      }
-      bHome.setToolTipText("go to grid home-URL");
+      JButton bHome = MyUtil.mkButton("home.png", "Home", "Go to home URL");
       bHome.setPreferredSize(new java.awt.Dimension(22, 22));
       bHome.setSize(new java.awt.Dimension(22, 22));
       bHome.addMouseListener(new MouseAdapter(){
@@ -488,14 +445,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           SwingUtilities.invokeLater(t);
         }
       });
-      JButton bEnter = null;
-      if(enterIcon!=null){
-        bEnter = new JButton(enterIcon);
-      }
-      else{
-        bEnter = new JButton();
-      }
-      bEnter.setToolTipText("go!");
+      JButton bEnter = MyUtil.mkButton1("key_enter.png", "Go to URL", "Go");
       bEnter.setPreferredSize(new java.awt.Dimension(22, 22));
       bEnter.setSize(new java.awt.Dimension(22, 22));
       bEnter.addMouseListener(new MouseAdapter(){
@@ -936,7 +886,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String title = "Browser error";
     try{
-      confirmBox.getConfirm(title, str, new Object[] {MyUtil.mkOkObject()});
+      confirmBox.getConfirm(title, str, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())});
     }
     catch(Exception e){
       e.printStackTrace();
@@ -961,7 +911,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     final JPanel dsRow = new JPanel(new BorderLayout());
-    final JButton jbLookup = new JButton("Look up");
+    final JButton jbLookup = MyUtil.mkButton("search.png", "Look up", "Search results for this request");
     dsRow.add(new JLabel("Dataset: "), BorderLayout.WEST);
     dsRow.add(dsField, BorderLayout.CENTER);
     dsRow.add(jbLookup, BorderLayout.EAST);
@@ -1002,7 +952,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
         jPanel.validate();
       }
     });
-    jbLookup.setToolTipText("Search results for this request");
     
     JTextField lfnField = new JTextField(TEXTFIELDWIDTH);
     lfnField.setText(lfn);
@@ -1023,7 +972,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
     int choice = -1;
     try{
       choice = confirmBox.getConfirm("Register file in dataset",
-          jPanel, new Object[] {MyUtil.mkOkObject(), MyUtil.mkCancelObject()});
+          jPanel, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
+                                MyUtil.mkCancelObject(confirmBox.getOptionPane())});
     }
     catch(Exception e){
       e.printStackTrace();
@@ -2126,7 +2076,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     try{
       int choice = confirmBox.getConfirm("Confirm delete",
-          msg, new Object[] {MyUtil.mkOkObject(), MyUtil.mkCancelObject()});
+          msg, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
+                             MyUtil.mkCancelObject(confirmBox.getOptionPane())});
       if(choice!=0){
         return;
       }

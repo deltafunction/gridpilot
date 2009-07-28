@@ -1,6 +1,5 @@
 package gridpilot;
 
-import gridfactory.common.Debug;
 import gridfactory.common.StatusBar;
 import gridpilot.GridPilot;
 import gridpilot.MyJTable;
@@ -12,9 +11,7 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.net.URL;
 
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
@@ -79,44 +76,10 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
   }
   
   private void initButtons(){
-    URL imgURL;
-    ImageIcon imgIcon;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "powerup.png");
-      imgIcon = new ImageIcon(imgURL);
-      bLaunch = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "powerup.png", 3);
-      bLaunch = new JButton("Launch");
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "powerdown.png");
-      imgIcon = new ImageIcon(imgURL);
-      bTerminate = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "powerdown.png", 3);
-      bTerminate = new JButton("Terminate");
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "refresh.png");
-      imgIcon = new ImageIcon(imgURL);
-      bRefreshInstances = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "refresh.png", 3);
-      bRefreshInstances = new JButton("Refresh");
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "refresh.png");
-      imgIcon = new ImageIcon(imgURL);
-      bRefreshImages = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "refresh.png", 3);
-      bRefreshImages = new JButton("Refresh");
-    }
+    bLaunch = MyUtil.mkButton("powerup.png", "Launch", "Launch an instance of the selected image");
+    bTerminate = MyUtil.mkButton("powerdown.png", "Terminate", "Terminate the selected instance(s)");
+    bRefreshImages = MyUtil.mkButton("refresh.png", "Refresh", "Refresh the list of Images");
+    bRefreshInstances = MyUtil.mkButton("refresh.png", "Refresh", "Refresh the list of instances");
   }
   private void initGUI() throws Exception{
     
@@ -179,13 +142,11 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
         Color.white, new Color(165, 163, 151)), "Available Images"));
     panel.add(sp);
     // buttons
-    bRefreshImages.setToolTipText("Refresh the list of Images");
     bRefreshImages.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         refresh();
       }
     });
-    bLaunch.setToolTipText("Launch an instance of the selected image");
     bLaunch.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         try{
@@ -233,7 +194,6 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
         Color.white, new Color(165, 163, 151)), "Your instances"));
     panel.add(sp);
     JPanel pButtons = new JPanel();
-    bRefreshInstances.setToolTipText("Refresh the list of instances");
     bRefreshInstances.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         try{
@@ -247,7 +207,6 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
         }
       }
     });
-    bTerminate.setToolTipText("Terminate the selected instance(s)");
     bTerminate.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         try{

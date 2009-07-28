@@ -1081,13 +1081,15 @@ public class NGComputingSystem implements MyComputingSystem{
       if(!LocalStaticShell.existsFile(dirName)){
         int choice = -1;
         if(CONFIRM_RUN_DIR_CREATION){
-          choice = (new ConfirmBox(JOptionPane.getRootFrame())).getConfirm(
+          ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+          choice = confirmBox.getConfirm(
               "Confirm create directory",
               "The working directory, "+dirName+",  of this job was not found. \n" +
               "The job was probably submitted from another machine or has already been validated. \n" +
               "Click OK to create the directory " +
               "(stdout/stder will be synchronized, scripts will not).",
-              new Object[] {MyUtil.mkOkObject(), MyUtil.mkSkipObject()});
+              new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
+                            MyUtil.mkSkipObject(confirmBox.getOptionPane())});
         }
         else{
           choice = 0;

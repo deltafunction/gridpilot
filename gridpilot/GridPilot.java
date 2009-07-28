@@ -201,10 +201,10 @@ public class GridPilot extends JApplet{
   public static void loadConfigValues(){
     try{
       FILE_ROWS = Integer.parseInt(
-          getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "file rows"));
-      PREFERRED_FILE_SERVERS = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "preferred file servers");
-      PROXY_HOST = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "proxy host");
-      PROXY_PORT = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "proxy port");
+          getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "File rows"));
+      PREFERRED_FILE_SERVERS = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Preferred file servers");
+      PROXY_HOST = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Proxy host");
+      PROXY_PORT = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Proxy port");
       if(PROXY_HOST!=null && PROXY_HOST.length()>0){
         if(PROXY_PORT==null || PROXY_PORT.length()==0){
           PROXY_PORT = "80";
@@ -220,8 +220,8 @@ public class GridPilot extends JApplet{
         System.setProperties(systemProperties);
       }
       
-      DEBUG_LEVEL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "debug");
-      RESOURCES_PATH = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "resources");
+      DEBUG_LEVEL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Debug");
+      RESOURCES_PATH = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Resources");
       if(RESOURCES_PATH==null){
         getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage(TOP_CONFIG_SECTION, "resources"));
         RESOURCES_PATH = "./";
@@ -230,18 +230,19 @@ public class GridPilot extends JApplet{
         if(!RESOURCES_PATH.endsWith("/"))
           RESOURCES_PATH = RESOURCES_PATH + "/";
       }
-      SKIN_NAME = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "skin");
+      SKIN_NAME = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Skin");
       if(SKIN_NAME==null){
         SKIN_NAME = "clear";
       }
       ICONS_PATH = RESOURCES_PATH + "skins/" + SKIN_NAME + "/";
-      RUNTIME_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "runtime directory");
+      setButtonDefaults();
+      RUNTIME_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Runtime directory");
       SPLASH = new Splash(RESOURCES_PATH+"splash.png", GridPilot.class);
-      JOB_COLOR_MAPPING = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "job color mapping");  
+      JOB_COLOR_MAPPING = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Job color mapping");  
       /** Job status table header*/
       JOB_STATUS_FIELDS = new String [] {
-          " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "user"};
-      TRANSFER_COLOR_MAPPING = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "transfer color mapping");  
+          " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "User"};
+      TRANSFER_COLOR_MAPPING = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Transfer color mapping");  
       /** Job status table header*/
       /** Transfer status table header*/
       TRANSFER_STATUS_FIELDS = new String [] {
@@ -265,10 +266,10 @@ public class GridPilot extends JApplet{
               !enabled.equalsIgnoreCase("true")){
             continue;
           }
-          String host = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "host");
+          String host = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Host");
           if(host!=null && !host.startsWith("localhost") && !host.equals("127.0.0.1")){
-            String user = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "user");
-            String password = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "password");
+            String user = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "User");
+            String password = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Password");
             String sshKeyFile = GridPilot.getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Ssh key file");
             String sshKeyPassword = GridPilot.getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Ssh key passphrase");
             getClassMgr().setShell(CS_NAMES[i],
@@ -284,32 +285,32 @@ public class GridPilot extends JApplet{
           }
         }
       }
-      TABS = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "initial panels");
+      TABS = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Initial panels");
       PROXY_TYPE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-         "proxy type", "RFC");
+         "Proxy type", "RFC");
       PROXY_TIME_LEFT_LIMIT = Integer.parseInt(
-        getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "proxy time left limit"));
+        getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Proxy time left limit"));
       PROXY_TIME_VALID = Integer.parseInt(
-          getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "proxy time valid"));
+          getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Proxy time valid"));
       KEY_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-          "key file");
+          "Key file");
       CERT_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-          "certificate file");
+          "Certificate file");
       PROXY_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-         "proxy directory", "~/.globus");
+         "Proxy directory", "~/.globus");
       KEY_PASSWORD = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-          "key password");
+          "Key password");
       CA_CERTS_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-          "ca certificates");
+          "CA certificates");
       if(CA_CERTS_DIR==null){
         getClassMgr().getConfigFile().missingMessage(
-            TOP_CONFIG_SECTION, "ca certificates");
+            TOP_CONFIG_SECTION, "CA certificates");
         getClassMgr().getLogFile().addMessage(
             "WARNING: you have not specified any CA certificates. " +
             "A default set will be used.");
       }
       VOMS_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-         "voms directory");
+         "Voms directory");
       if(VOMS_DIR==null){
         getClassMgr().getConfigFile().missingMessage(
             TOP_CONFIG_SECTION, "voms directory");
@@ -321,10 +322,10 @@ public class GridPilot extends JApplet{
       VOMS_SERVER_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Voms server");
       FQAN = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Voms fqan");
       String [] _fixedJobAttributes = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION,
-         "job attributes");
+         "Job attributes");
       if(_fixedJobAttributes==null || _fixedJobAttributes.length==0){
         getClassMgr().getConfigFile().missingMessage(
-            TOP_CONFIG_SECTION, "job attributes");
+            TOP_CONFIG_SECTION, "Job attributes");
       }
       else{
         FIXED_JOB_ATTRIBUTES = _fixedJobAttributes;
@@ -334,9 +335,9 @@ public class GridPilot extends JApplet{
       Debug.debug("Job attributes: "+MyUtil.arrayToString(FIXED_JOB_ATTRIBUTES)+" "+
           FIXED_JOB_ATTRIBUTES.length, 2);
       BROWSER_HISTORY_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-         "browser history file");
+         "Browser history file");
       GLOBUS_TCP_PORT_RANGE = getClassMgr().getConfigFile().getValue("File transfer systems",
-         "globus tcp port range");
+         "Globus tcp port range");
       GRID_HOME_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
          "Grid home url");
       String ask = null;
@@ -896,6 +897,18 @@ public class GridPilot extends JApplet{
     }
     initDebug();
     SPLASH = null;
+  }
+  
+  private static void setButtonDefaults(){
+    MyUtil.BUTTON_IMAGE_DIR = GridPilot.ICONS_PATH;
+    MyUtil.BUTTON_IMAGE_LOAD_CLASS = GridPilot.class;
+    String buttonsDisplay = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Buttons display");
+    if(buttonsDisplay!=null && !buttonsDisplay.trim().equals("")){
+      MyUtil.BUTTON_DISPLAY = Integer.parseInt(buttonsDisplay);
+    }
+    else{
+      MyUtil.BUTTON_DISPLAY = MyUtil.ICON_AND_TEXT;
+    }
   }
 
   /**

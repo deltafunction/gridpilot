@@ -361,7 +361,7 @@ public class GlobalFrame extends GPFrame{
         jp.add(jt);
       }
       ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-      confirmBox.getConfirm("My DN", jp, new Object[] {MyUtil.mkOkObject()});
+      confirmBox.getConfirm("My DN", jp, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())});
     }
     catch(Exception e){
       e.printStackTrace();

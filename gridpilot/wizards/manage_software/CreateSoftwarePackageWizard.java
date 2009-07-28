@@ -76,7 +76,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
   private JPanel dirPanel = null;
   private JPanel scriptsPanel = null;
   private JPanel uploadPanel = null;
-  private JButton cancelButton = new JButton("Cancel");
+  private JButton cancelButton = null;
   private JScrollPane sp = new JScrollPane();
   private JPanel jp = new JPanel(new GridBagLayout());
   private CreateSoftwarePackageWizard thisFrame = this;
@@ -110,6 +110,9 @@ public class CreateSoftwarePackageWizard extends GPFrame{
    *                                                - ask for upload URL + publish catalog
    */
   public CreateSoftwarePackageWizard(){
+    
+    cancelButton = MyUtil.mkButton("cancel.png", "Cancel", "Cancel");
+    
     jp.add(welcomePanel(), new GridBagConstraints(0, 0, 2, 1, 0.0, 0.0,
         GridBagConstraints.WEST, GridBagConstraints.BOTH,
         new Insets(5, 5, 5, 5), 0, 0));
@@ -239,7 +242,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     panel.add(textPanel, ct);
     ct.ipady = -5;
     
-    JButton continueButton = new JButton("Continue");
+    JButton continueButton = MyUtil.mkButton("enter.png", "Continue", "Continue");
     continueButton.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         if(jtf.getText()==null || jtf.getText().equals("")){
@@ -302,7 +305,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     panel.add(checkPanel, ct);    
     ct.gridx = 1;
     ct.gridheight = 1;    panel.add(textPanel, ct);    
-    JButton continueButton = new JButton("Continue");
+    JButton continueButton = MyUtil.mkButton("enter.png", "Continue", "Continue");
     continueButton.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         if(jtf.getText()==null || jtf.getText().equals("")){
@@ -711,7 +714,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     ct.gridheight = 1;
     panel.add(tRemove, ct);
         
-    JButton continueButton = new JButton("Continue");
+    JButton continueButton = MyUtil.mkButton("enter.png", "Continue", "Continue");
     continueButton.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         
@@ -790,9 +793,8 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     tCatalog.add(jtfCatalog);
     JPanel jpUrl = MyUtil.createCheckPanel1(this, "URL to upload tarball", jtfUrl, true, true, false);
     JPanel jpCatalog = MyUtil.createCheckPanel1(this, "Catalog URL", jtfCatalog, true, true, false);
-    JButton bRefreshRTEs = new JButton("Refresh list");
-    JButton bRefreshBSs = new JButton("Refresh list");
-    bRefreshBSs.setToolTipText("Refresh the list of base systems");
+    JButton bRefreshBSs = MyUtil.mkButton("refresh.png", "Refresh", "Refresh the list of base systems");
+    JButton bRefreshRTEs = MyUtil.mkButton("refresh.png", "Refresh", "Refresh the list of runtime environments");
     bRefreshBSs.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         Debug.debug("Checking for catalog URL change: "+catalogUrl+"<-->"+jtfCatalog.getText(), 3);
@@ -808,7 +810,6 @@ public class CreateSoftwarePackageWizard extends GPFrame{
       }
     }
     );
-    bRefreshRTEs.setToolTipText("Refresh the list of runtime environments");
     bRefreshRTEs.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         if(catalogUrl!=null && jtfCatalog.getText()!=null && !catalogUrl.equals(jtfCatalog.getText())){
@@ -892,7 +893,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     pRefreshRTEs.add(spRtes);    
     panel.add(pRefreshRTEs, ct);
     ct.gridx = 2;        
-    JButton continueButton = new JButton("Continue");
+    JButton continueButton = MyUtil.mkButton("enter.png", "Continue", "Continue");
     continueButton.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         try{

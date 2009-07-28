@@ -27,8 +27,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.BufferedReader;
@@ -380,7 +378,7 @@ private static String fixUrl(String _url){
    try{
      confirmBox.getConfirm("URL could not be opened",
                           "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
-                       new Object[] {mkOkObject()});
+                       new Object[] {mkOkObject(confirmBox.getOptionPane())});
    }
    catch(Exception eeee){
      Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
@@ -842,64 +840,12 @@ private static String fixUrl(String _url){
     return jval;
   }
   
-  private static JButton mkButton(final JOptionPane optionPane, final String text, ImageIcon icon) {
-    final JButton button = new JButton(icon);
-    ActionListener actionListener = new ActionListener() {
-      public void actionPerformed(ActionEvent actionEvent) {
-        optionPane.setValue(button);
-      }
-    };
-    button.addActionListener(actionListener);
-    button.setToolTipText(text);
-    return button;
-  }
-
   private static Object[] createDisplayObjects(JOptionPane pane, int i, String cancelText){
-    Object okObject;
-    Object skipObject;
-    Object okAllObject;
-    Object skipAllObject;
+    Object okObject = mkButton(pane, GridPilot.ICONS_PATH + "enter.png", "OK", "OK");
+    Object skipObject = mkButton(pane, GridPilot.ICONS_PATH + "cancel.png", cancelText, cancelText);
+    Object okAllObject = mkButton(pane, "GridPilot.ICONS_PATH + enter_all.png", "OK for all", "OK for all");
+    Object skipAllObject = mkButton(pane, GridPilot.ICONS_PATH + "stop.png", cancelText+" all", cancelText+" all");
     Object[] showResultsOptions = null;
-    URL imgURL;
-    ImageIcon imgIcon;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "enter.png");
-      imgIcon = new ImageIcon(imgURL);
-      okObject = mkButton(pane, "OK", imgIcon);
-    }
-    catch(Exception e){
-      e.printStackTrace();
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "enter.png", 3);
-      okObject = "OK";
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "cancel.png");
-      imgIcon = new ImageIcon(imgURL);
-      skipObject = mkButton(pane, cancelText, imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "cancel.png", 3);
-      skipObject = cancelText;
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "enter_all.png");
-      imgIcon = new ImageIcon(imgURL);
-      okAllObject = mkButton(pane, "OK for all", imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "enter_all.png", 3);
-      okAllObject = "OK for all";
-    }
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "stop.png");
-      imgIcon = new ImageIcon(imgURL);
-      skipAllObject = mkButton(pane, "Skip all", imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "stop.png", 3);
-      skipAllObject = "Skip all";
-    }
-    
     switch(i){
       case OK_OPTION: showResultsOptions = new Object[] {okObject};
               break;
@@ -907,7 +853,6 @@ private static String fixUrl(String _url){
               break;
       case OK_ALL_SKIP_ALL_OPTION: showResultsOptions = new Object[] {okObject, skipObject, okAllObject, skipAllObject};
     }
-    
     return showResultsOptions;
   }
 
@@ -1015,6 +960,75 @@ private static String fixUrl(String _url){
     
     return JOptionPane.CLOSED_OPTION;
     
+  }
+  
+  /**
+   * Create a JButton from the specified image.
+   * If the image is null or not found, 'buttonText' is displayed.<br>
+   * This method honors BUTTON_DISPLAY.
+   * @param imageFile unqualified name of the image file
+   * @param buttonText
+   * @param mouseOverText
+   * @return
+   */
+  public static JButton mkButton(String imageFile,  String buttonText, String mouseOverText) {
+    JButton button = null;
+    switch(BUTTON_DISPLAY){
+    case ICON_ONLY:
+      try{
+        URL imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + imageFile);
+        ImageIcon imgIcon = new ImageIcon(imgURL);
+        button = new JButton(imgIcon);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + imageFile, 3);
+        button = new JButton(buttonText);
+      }
+      break;
+    case TEXT_ONLY:
+      button = new JButton(buttonText);
+      break;
+    case ICON_AND_TEXT:
+      try{
+        URL imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + imageFile);
+        ImageIcon imgIcon = new ImageIcon(imgURL);
+        button = new JButton(buttonText, imgIcon);
+      }
+      catch(Exception ee){
+        ee.printStackTrace();
+        Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + imageFile, 3);
+        button = new JButton(buttonText);
+      }
+      break;
+    }
+    button.setToolTipText(mouseOverText);
+    return button;
+  }
+
+  /**
+   * Create a JButton from the specified image.
+   * If the image is null or not found, 'fallbackText' is displayed.<br>
+   * NOTICE that this method ignores BUTTON_DISPLAY and always displays only an image.
+   * @param imageFile unqualified name of the image file
+   * @param mouseOverText
+   * @param fallbackText
+   * @return
+   */
+  public static JButton mkButton1(String imageFile, String mouseOverText, String fallbackText) {
+    JButton button = null;
+    try{
+      URL imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + imageFile);
+      ImageIcon imgIcon = new ImageIcon(imgURL);
+      button = new JButton(imgIcon);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + imageFile, 3);
+      button = new JButton(fallbackText);
+    }
+    button.setToolTipText(mouseOverText);
+    return button;
   }
 
   public static String [][] getValues(String dbName, String table, String id,
@@ -1441,96 +1455,31 @@ private static String fixUrl(String _url){
     showMessage("ERROR", text);
   }
   
-  public static Object mkOkObject(){
-    Object okObject;
-    URL imgURL;
-    ImageIcon imgIcon;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "enter.png");
-      imgIcon = new ImageIcon(imgURL);
-      okObject = mkButton(null, "OK", imgIcon);
-    }
-    catch(Exception e){
-      e.printStackTrace();
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "enter.png", 3);
-      okObject = "OK";
-    }
-    return okObject;
+  public static Object mkOkObject(JOptionPane pane){
+    return mkButton(pane, "enter.png", "OK", "OK");
   }
 
-  public static Object mkOkAllObject(){
-    Object okObject;
-    URL imgURL;
-    ImageIcon imgIcon;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "enter_all.png");
-      imgIcon = new ImageIcon(imgURL);
-      okObject = mkButton(null, "OK for all", imgIcon);
-    }
-    catch(Exception e){
-      e.printStackTrace();
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "enter_all.png", 3);
-      okObject = "OK for all";
-    }
-    return okObject;
+  public static Object mkOkAllObject(JOptionPane pane){
+    return mkButton(pane, "enter_all.png", "OK for all", "OK for all");
   }
 
-  public static Object mkCancelObject(){
-    Object okObject;
-    URL imgURL;
-    ImageIcon imgIcon;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "cancel.png");
-      imgIcon = new ImageIcon(imgURL);
-      okObject = mkButton(null, "Cancel", imgIcon);
-    }
-    catch(Exception e){
-      e.printStackTrace();
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "cancel.png", 3);
-      okObject = "Cancel";
-    }
-    return okObject;
+  public static Object mkCancelObject(JOptionPane pane){
+    return mkButton(pane, "cancel.png", "Cancel", "Cancel");
   }
 
-  public static Object mkSkipObject(){
-    Object okObject;
-    URL imgURL;
-    ImageIcon imgIcon;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "next.png");
-      imgIcon = new ImageIcon(imgURL);
-      okObject = mkButton(null, "Skip", imgIcon);
-    }
-    catch(Exception e){
-      e.printStackTrace();
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "next.png", 3);
-      okObject = "Skip";
-    }
-    return okObject;
+  public static Object mkSkipObject(JOptionPane pane){
+    return mkButton(pane, "next.png", "Skip", "Skip");
   }
 
-  public static Object mkSkipAllObject(){
-    Object okObject;
-    URL imgURL;
-    ImageIcon imgIcon;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "cancel.png");
-      imgIcon = new ImageIcon(imgURL);
-      okObject = mkButton(null, "Skip all", imgIcon);
-    }
-    catch(Exception e){
-      e.printStackTrace();
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "cancel.png", 3);
-      okObject = "Skip all";
-    }
-    return okObject;
+  public static Object mkSkipAllObject(JOptionPane pane){
+    return mkButton(pane, "cancel.png", "Skip all", "Skip all");
   }
 
   private static void showMessage0(String title, String text){
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String confirmString = text;
     try{
-      confirmBox.getConfirm(title, confirmString, new Object[] {mkOkObject()});
+      confirmBox.getConfirm(title, confirmString, new Object[] {mkOkObject(confirmBox.getOptionPane())});
     }
     catch(Exception e){
       e.printStackTrace();
@@ -1980,7 +1929,7 @@ private static String fixUrl(String _url){
       try{
         confirmBox.getConfirm("URL could not be opened",
                              "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
-                          new Object[] {mkOkObject()});
+                          new Object[] {mkOkObject(confirmBox.getOptionPane())});
       }
       catch(Exception eeee){
         Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);

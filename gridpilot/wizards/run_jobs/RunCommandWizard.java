@@ -46,7 +46,7 @@ import org.safehaus.uuid.UUIDGenerator;
 public class RunCommandWizard extends GPFrame{
   
   private static final long serialVersionUID=-722418889258036597L;
-  private JButton bSubmit = new JButton("Submit job");
+  private JButton bSubmit = null;
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
   private RunCommandWizard thisFrame = this;
   private JTextArea tfCommand = null;
@@ -62,6 +62,9 @@ public class RunCommandWizard extends GPFrame{
   private static String myTransformationVersion = "0.1";
   
   public RunCommandWizard() {
+    
+    bSubmit = MyUtil.mkButton("run.png", "Submit", "Submit job");
+    
     tfCommand = MyUtil.createTextArea(TEXTFIELDWIDTH);
     tfOutputDir = new JTextField(TEXTFIELDWIDTH);
     
@@ -229,7 +232,7 @@ public class RunCommandWizard extends GPFrame{
     pCont.add(bSubmit);
     buttonsPanel.add(pCont);
     
-    JButton bCancel = new JButton("Cancel");
+    JButton bCancel = MyUtil.mkButton("cancel.png", "Cancel", "Cancel");
     bCancel.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         thisFrame.dispose();
@@ -277,8 +280,8 @@ public class RunCommandWizard extends GPFrame{
      */
     protected HashMap fieldMap;
     private GridBagConstraints ct = new GridBagConstraints();
-    private JButton plusButton = new JButton("+");
-    private JButton minusButton = new JButton("-");
+    private JButton plusButton = MyUtil.mkButton1("more.png", "Unfold this panel", "+");
+    private JButton minusButton = MyUtil.mkButton1("less.png", "Collapse this panel", "-");
     private JPanel pmPanel = new JPanel();
     private boolean withFileChooser = true;
     InOutPanel(boolean _withFileChooser){

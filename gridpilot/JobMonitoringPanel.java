@@ -8,7 +8,6 @@ import javax.swing.*;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.net.URL;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -44,13 +43,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JRadioButton rbRunningJobs = new JRadioButton("View only running jobs");
   private JRadioButton rbDoneJobs = new JRadioButton("View only done jobs");
   // jobs loading
-  private JButton bLoadJobs = new JButton("Load all jobs");
-  private JButton bLoadMyJobs = new JButton("Load my jobs");
-  private JButton bClearTable = new JButton("Clear");
+  private JButton bLoadJobs;
+  private JButton bLoadMyJobs;
+  private JButton bClearTable;
   // Buttons panel
   private JPanel pButtons = new JPanel();
   // TODO: discard bKill
-  private JButton bKill = new JButton("Kill");
+  private JButton bKill;
   private JButton bRefresh;
   // auto refresh
   private JCheckBox cbAutoRefresh = new JCheckBox("each");
@@ -104,18 +103,11 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   }
   
   private void initButtons(){
-    URL imgURL;
-    ImageIcon imgIcon;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "refresh.png");
-      imgIcon = new ImageIcon(imgURL);
-      bRefresh = new JButton(imgIcon);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "refresh.png", 3);
-      bRefresh = new JButton("Refresh");
-    }
-    bRefresh.setToolTipText("Refresh status of job(s)");
+    bKill = MyUtil.mkButton("stop.png", "Kill", "Kill selected job(s)");
+    bLoadJobs = MyUtil.mkButton("load_all_jobs.png", "Load active job(s)", "Load active job(s) submitted by anyone");
+    bLoadMyJobs = MyUtil.mkButton("load_my_jobs.png", "Load my active job(s)", "Load only my active job(s)");
+    bClearTable = MyUtil.mkButton("clear_table.png", "Clear", "Clear monitor");
+    bRefresh = MyUtil.mkButton("refresh.png", "Refresh", "Refresh status of job(s)");
   }
 
   public void initGUI(){
@@ -210,7 +202,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         clearTable();
       }
     });
-    bClearTable.setToolTipText("Clear monitor");
 
     pOptions.add(statisticsPanel, new GridBagConstraints(0, 6, 1, 1, 0.1, 0.1,
         GridBagConstraints.WEST,
@@ -223,7 +214,6 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         kill();
       }
     });
-    bKill.setToolTipText("Kill the selected jobs");
     bKill.setEnabled(false);
 
     bRefresh.addActionListener(new ActionListener(){

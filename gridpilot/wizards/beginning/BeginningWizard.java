@@ -279,7 +279,7 @@ public class BeginningWizard{
             (firstRun?"\n\nThanks for using GridPilot and have fun!":"");
     int choice = -1;
     confirmBox.getConfirm("Setup completed!",
-        confirmString, new Object[] {MyUtil.mkOkObject()}, icon, Color.WHITE, false);   
+        confirmString, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())}, icon, Color.WHITE, false);   
     return choice;
   }
   
@@ -298,8 +298,8 @@ public class BeginningWizard{
          "Thanks for using GridPilot!\n\n":"");
     int choice = -1;
     choice = confirmBox.getConfirm("Setup completed!", confirmString,
-        firstRun?(new Object[] {MyUtil.mkOkObject(), MyUtil.mkCancelObject()}):
-          (new Object[] {MyUtil.mkOkObject()}),
+        firstRun?(new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()), MyUtil.mkCancelObject(confirmBox.getOptionPane())}):
+          (new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())}),
         icon, Color.WHITE, false);   
     return choice;
   }  
@@ -863,7 +863,7 @@ public class BeginningWizard{
           }
           else{
             confirmBox.getConfirm(title, "Please fill in the host name of the remote file catalog server",
-                new Object[] {MyUtil.mkOkObject()}, icon, Color.WHITE, false);
+                new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())}, icon, Color.WHITE, false);
           }
         }
         else{
@@ -1492,7 +1492,7 @@ public class BeginningWizard{
           }
           else{
             confirmBox.getConfirm(title, "Please fill in the host name of the remote database server",
-                new Object[] {MyUtil.mkOkObject()}, icon, Color.WHITE, false);
+                new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())}, icon, Color.WHITE, false);
           }
         }
         else{
