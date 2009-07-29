@@ -99,7 +99,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
   }
 
   private void initButtons(){
-    bEditTrans = MyUtil.mkButton("search.png", "View", "View runtime environment record");
+    bEditTrans = MyUtil.mkButton("search.png", "Look up", "Look up runtime environment record");
   }
 
   /**
@@ -343,7 +343,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
          cstAttributesNames[i].equalsIgnoreCase("script") ||
          cstAttributesNames[i].equalsIgnoreCase("validationScript") ||
          cstAttributesNames[i].equalsIgnoreCase("extractionScript")){
-        pAttributes.add(MyUtil.createCheckPanel(
+        pAttributes.add(MyUtil.createCheckPanel1(
             (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
             cstAttributesNames[i], tcCstAttributes[i], true, true, false, false),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
@@ -351,7 +351,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
                 new Insets(5, 22, 5, 5), 0, 0));
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("inputFiles")){
-        pAttributes.add(MyUtil.createCheckPanel(
+        pAttributes.add(MyUtil.createCheckPanel1(
             (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
             cstAttributesNames[i], tcCstAttributes[i], false, true, false, false),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
@@ -359,7 +359,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
                 new Insets(5, 22, 5, 5), 0, 0));
       }
       else{
-        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "),
+        pAttributes.add(new JLabel(cstAttributesNames[i]),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
             new Insets(5, 25, 5, 5), 0, 0));

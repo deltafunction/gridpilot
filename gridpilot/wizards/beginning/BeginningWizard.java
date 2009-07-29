@@ -388,7 +388,7 @@ public class BeginningWizard{
       jtFields[i] = new JTextField(TEXTFIELDWIDTH);
       jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout(8, 0));
-      row.add(MyUtil.createCheckPanel(JOptionPane.getRootFrame(),
+      row.add(MyUtil.createCheckPanel1(JOptionPane.getRootFrame(),
           names[i], jtFields[i], true, false, true, true), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
@@ -539,7 +539,7 @@ public class BeginningWizard{
       jtFields[i] = new JTextField(TEXTFIELDWIDTH);
       jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout(8, 0));
-      row.add(MyUtil.createCheckPanel(JOptionPane.getRootFrame(),
+      row.add(MyUtil.createCheckPanel1(JOptionPane.getRootFrame(),
           names[i], jtFields[i], true, false, false, true), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
@@ -1635,7 +1635,7 @@ public class BeginningWizard{
         row.add(jrbs[i], BorderLayout.WEST);
       }
       if(i==0){
-        row.add(MyUtil.createCheckPanel(JOptionPane.getRootFrame(),
+        row.add(MyUtil.createCheckPanel1(JOptionPane.getRootFrame(),
             names[i], jtFields[i], true, true, true, !certAndKeyOk), BorderLayout.CENTER);
       }
       else{

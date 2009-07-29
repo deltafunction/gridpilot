@@ -112,7 +112,11 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   public void initGUI(){
 
-    initButtons();
+    try{
+      initButtons();
+    }
+    catch(Exception e){
+    }
     
     statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     this.setLayout(new BorderLayout());

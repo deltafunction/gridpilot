@@ -301,7 +301,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     ct.gridy = ct.gridy+1;;
     ct.gridwidth = 1;
     ct.gridheight = 2;
-    JPanel checkPanel = MyUtil.createCheckPanel1(this, "Directory containing software", jtf, true, true, true);
+    JPanel checkPanel = MyUtil.createCheckPanel1(this, "Directory containing software", jtf, true, true, true, false);
     panel.add(checkPanel, ct);    
     ct.gridx = 1;
     ct.gridheight = 1;    panel.add(textPanel, ct);    
@@ -668,9 +668,9 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     tRuntime.add(jtfRuntime);
     JPanel tRemove = new JPanel();
     tRemove.add(jtfRemove);
-    JPanel jpInstall = MyUtil.createCheckPanel1(this, "Install script", jtfInstall, true, false, false);
-    JPanel jpRuntime = MyUtil.createCheckPanel1(this, "Runtime script", jtfRuntime, true, false, false);
-    JPanel jpRemove = MyUtil.createCheckPanel1(this, "Remove script", jtfRemove, true, false, false);
+    JPanel jpInstall = MyUtil.createCheckPanel1(this, "Install script", jtfInstall, true, false, false, false);
+    JPanel jpRuntime = MyUtil.createCheckPanel1(this, "Runtime script", jtfRuntime, true, false, false, false);
+    JPanel jpRemove = MyUtil.createCheckPanel1(this, "Remove script", jtfRemove, true, false, false, false);
 
     GridBagConstraints ct = new GridBagConstraints();
     ct.fill = GridBagConstraints.BOTH;
@@ -791,8 +791,8 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     }
     JPanel tCatalog = new JPanel();
     tCatalog.add(jtfCatalog);
-    JPanel jpUrl = MyUtil.createCheckPanel1(this, "URL to upload tarball", jtfUrl, true, true, false);
-    JPanel jpCatalog = MyUtil.createCheckPanel1(this, "Catalog URL", jtfCatalog, true, true, false);
+    JPanel jpUrl = MyUtil.createCheckPanel1(this, "URL to upload tarball", jtfUrl, true, true, false, false);
+    JPanel jpCatalog = MyUtil.createCheckPanel1(this, "Catalog URL", jtfCatalog, true, true, false, false);
     JButton bRefreshBSs = MyUtil.mkButton("refresh.png", "Refresh", "Refresh the list of base systems");
     JButton bRefreshRTEs = MyUtil.mkButton("refresh.png", "Refresh", "Refresh the list of runtime environments");
     bRefreshBSs.addActionListener(new java.awt.event.ActionListener(){

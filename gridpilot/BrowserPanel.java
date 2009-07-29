@@ -330,8 +330,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private void initButtons(){
     bOk = MyUtil.mkButton("ok.png", "OK", "OK");
     bNew = MyUtil.mkButton("file_new.png", "New", "Create new file or folder");
-    bUpload =  MyUtil.mkButton("up.png", "Put", "Upload file");
-    bDownload = MyUtil.mkButton("down.png", "Get all", "Download all file(s) in this directory");
+    bUpload =  MyUtil.mkButton("put.png", "Put", "Upload file");
+    bDownload = MyUtil.mkButton("get_all.png", "Get all", "Download all file(s) in this directory");
     bRegister = MyUtil.mkButton("register.png", "Register all", "Register all file(s) in this directory");
     bSave = MyUtil.mkButton("save.png", "Save", "Save this document");
     bCancel = MyUtil.mkButton("cancel.png", "Cancel", "Cancel");
@@ -422,7 +422,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
     this.getContentPane().add(panel, BorderLayout.CENTER);
 
-    panel.setPreferredSize(new Dimension(520+MyUtil.BUTTON_DISPLAY*40, 400));
+    panel.setPreferredSize(new Dimension(520+MyUtil.BUTTON_DISPLAY*60, 400));
     setResizable(true);
     
     JPanel topPanel = new JPanel(new GridBagLayout()); 

@@ -418,25 +418,19 @@ private static String fixUrl(String _url){
   * Like createCheckPanel, but with an button with an icon instead of a hyperlink.
   */
   public static JPanel createCheckPanel1(
-     final Frame frame, final String name, final JTextComponent jt, final boolean oneUrl,
-     final boolean withNavigation, final boolean onlyDirs){
-    ImageIcon browseIcon;
-    URL imgURL=null;
-    try{
-      imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "open_folder.png");
-      browseIcon = new ImageIcon(imgURL);
-    }
-    catch(Exception e){
-      Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "open_folder.png", 3);
-      browseIcon = new ImageIcon();
-    }
-    JButton bBrowse1 = new JButton(browseIcon);
-    bBrowse1.setToolTipText("browse file system");
+     final Frame frame,
+     final String name,
+     final JTextComponent jt,
+     final boolean oneUrl,
+     final boolean withNavigation,
+     final boolean onlyDirs,
+     final boolean localFS){
+    JButton bBrowse1 = MyUtil.mkButton1("open_folder.png", "Browse", "Open");
     bBrowse1.setPreferredSize(new java.awt.Dimension(22, 22));
     bBrowse1.setSize(new java.awt.Dimension(22, 22));
     bBrowse1.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        launchCheckBrowser(frame, CHECK_URL, jt, false, oneUrl, withNavigation, onlyDirs, false);
+        launchCheckBrowser(frame, CHECK_URL, jt, localFS, oneUrl, withNavigation, onlyDirs, false);
       }
     });
 
@@ -996,8 +990,8 @@ private static String fixUrl(String _url){
         button = new JButton(buttonText, imgIcon);
       }
       catch(Exception ee){
-        ee.printStackTrace();
-        Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + imageFile, 3);
+        //ee.printStackTrace();
+        Debug.debug("WARNING: Could not find image "+ GridPilot.ICONS_PATH + imageFile, 3);
         button = new JButton(buttonText);
       }
       break;

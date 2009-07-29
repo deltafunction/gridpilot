@@ -313,7 +313,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void initButtons(){
     
     bDeleteRecords = MyUtil.mkButton("clear.png", "Delete", "Delete record(s)");
-    bCreateRecords = MyUtil.mkButton("create_document.png", "New", "Define new record(s)");
+    bCreateRecords = MyUtil.mkButton("file_new.png", "New", "Define new record(s)");
     bEditRecord = MyUtil.mkButton("edit.png", "Edit", "Edit record");
     bViewJobDefinitions = MyUtil.mkButton("find.png", "Show jobDefinition(s)", "Show jobDefinition(s)");
     bViewFiles = MyUtil.mkButton("find.png", "Show file(s)", "Show file(s)");
@@ -339,7 +339,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     
     initShowHideFilter();
     
-    initButtons();
+    try{
+      initButtons();
+    }
+    catch(Exception e){
+    }
     
     tableResults = new MyJTable(hiddenFields, fieldNames,
         GridPilot.JOB_COLOR_MAPPING);

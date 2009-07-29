@@ -154,7 +154,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
     int row = 0;
     for(int i = 0; i<cstAttributesNames.length; ++i, ++row){
       if(cstAttributesNames[i].equalsIgnoreCase("scriptRepository")){
-           pAttributes.add(MyUtil.createCheckPanel(
+           pAttributes.add(MyUtil.createCheckPanel1(
                (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
                cstAttributesNames[i], tcCstAttributes[i], true, true, true, false),
                new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
@@ -163,7 +163,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
                    new Insets(5, 25, 5, 5), 0, 0));
       }
       else{
-        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "),
+        pAttributes.add(new JLabel(cstAttributesNames[i]),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0, GridBagConstraints.CENTER,
                 GridBagConstraints.BOTH, new Insets(5, 25, 5, 5), 0, 0));        
         if(!editing && !reuseTextFields ||

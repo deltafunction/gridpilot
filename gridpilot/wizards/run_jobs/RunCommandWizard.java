@@ -170,7 +170,7 @@ public class RunCommandWizard extends GPFrame{
     ct.gridy = ct.gridy+1;
     tfOutputDir.setText(getInitialOutputDir());
     row.add(MyUtil.createCheckPanel1(thisFrame, "Output directory", tfOutputDir,
-        true, true, true), BorderLayout.WEST);
+        true, true, true, false), BorderLayout.WEST);
     JPanel fieldPanel = new JPanel();
     fieldPanel.add(tfOutputDir);
     row.add(fieldPanel, BorderLayout.CENTER);
@@ -326,7 +326,7 @@ public class RunCommandWizard extends GPFrame{
       JTextField field = new JTextField(TEXTFIELDWIDTH);
       if(withFileChooser){
         row.add(MyUtil.createCheckPanel1(thisFrame, label, field,
-            true, true, false), BorderLayout.WEST);
+            true, true, false, false), BorderLayout.WEST);
       }
       else{
         JPanel lPanel = new JPanel();

@@ -119,7 +119,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
 
   private void initButtons(){
-    jbEditTrans = MyUtil.mkButton("search.png", "View", "View transformation record");
+    jbEditTrans = MyUtil.mkButton("search.png", "Look up", "Look up transformation record");
   }
 
   /**
@@ -277,7 +277,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       Debug.debug("Adding cstAttributesNames["+i+"], "+cstAttributesNames[i]+
           " "+tcCstAttributes[i].getClass().toString(), 3);
       if(cstAttributesNames[i].equalsIgnoreCase("outputLocation")){
-        pAttributes.add(MyUtil.createCheckPanel(
+        pAttributes.add(MyUtil.createCheckPanel1(
             (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
             cstAttributesNames[i], tcCstAttributes[i], true, true, true, false),
             new GridBagConstraints(0, i, 1, 1, 0.0, 0.0,
@@ -289,7 +289,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
             new Insets(5, 5, 5, 5), 0, 0));
       }
       else{
-        pAttributes.add(new JLabel(cstAttributesNames[i] + " : "),
+        pAttributes.add(new JLabel(cstAttributesNames[i]),
             new GridBagConstraints(0, i, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                 new Insets(5, 25, 5, 5), 0, 0));

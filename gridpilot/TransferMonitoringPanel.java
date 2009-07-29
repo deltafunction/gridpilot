@@ -98,7 +98,11 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
 
   public void initGUI(){
     
-    initButtons();
+    try{
+      initButtons();
+    }
+    catch(Exception e){
+    }
 
     statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     this.setLayout(new BorderLayout());
