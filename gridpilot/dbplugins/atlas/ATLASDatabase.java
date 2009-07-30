@@ -2873,6 +2873,10 @@ public class ATLASDatabase extends DBCache implements Database{
     return false;
   }
 
+  public boolean deleteJobDefsFromDataset(String datasetID) throws InterruptedException {
+    return false;
+  }
+
   public String getError(){
     return error;
   }

@@ -42,28 +42,33 @@ public class JobCreationPanel extends CreateEditPanel{
   private static String LOCAL_NAME_LABEL = " : Local name : ";
   private static String REMOTE_NAME_LABEL = " -> Destination : ";
   private static String LABEL_END = " : ";
+  private boolean closeWhenDone;
 
   // TODO: use JobMgr, move some functionality from here to there.
   
   /**
    * Constructor
    */
-  public JobCreationPanel(DBPluginMgr _dbPluginMgr, DBPanel panel){
+  public JobCreationPanel(DBPluginMgr _dbPluginMgr, String [] columnNames, String [] datasetIds,
+      boolean _closeWhenDone){
+    
     dbPluginMgr = _dbPluginMgr;
     dbName = dbPluginMgr.getDBName();
-    MyJTable table = panel.getTable();
+    closeWhenDone = _closeWhenDone;
+    
     String jobDefinitionIdentifier = MyUtil.getIdentifierField(
         dbPluginMgr.getDBName(), "jobDefinition");
     String [] datasetFieldArray = dbPluginMgr.getFieldnames("dataset");
+    
     for(int i=0; i<datasetFieldArray.length; ++i){
       datasetFieldArray[i] = datasetFieldArray[i].toLowerCase();
     }
     datasetFields = new ArrayList(Arrays.asList(datasetFieldArray));        
     // Find identifier index
     int identifierIndex = -1;
-    for(int i=0; i<table.getColumnNames().length; ++i){
-      Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
-      if(table.getColumnName(i).equalsIgnoreCase(jobDefinitionIdentifier)){
+    for(int i=0; i<columnNames.length; ++i){
+      Debug.debug("Column name: "+columnNames.length+":"+i+" "+columnNames[i], 3);
+      if(columnNames[i].equalsIgnoreCase(jobDefinitionIdentifier)){
         identifierIndex = i;
         break;
       }
@@ -73,8 +78,7 @@ public class JobCreationPanel extends CreateEditPanel{
     }
 
     // Dataset(s) selected and not editing - creating from dataset(s)
-    if(table.getSelectedRows().length>0){
-      datasetIDs = panel.getSelectedIdentifiers();
+    if(datasetIds.length>0){
       Debug.debug("Creating jobs for datasets "+MyUtil.arrayToString(datasetIDs), 3);
     } 
 
@@ -549,7 +553,9 @@ public class JobCreationPanel extends CreateEditPanel{
                    cstAttributesNames,
                    jobParamNames,
                    outputMapNames,
-                   stdOutputNames);
+                   stdOutputNames,
+                   closeWhenDone,
+                   SwingUtilities.getWindowAncestor(this));
   }
 
   private Vector getTextFields(){

@@ -51,6 +51,9 @@ public class JobCreator{
   private DBResult inputRecords = null;
   private String [] inputIds = null;
   
+  private boolean closeWhenDone;
+  private Window parent;
+
   public static String EVENT_MIN = "eventMin";
   public static String EVENT_MAX = "eventMax";
   public static String N_EVENTS = "nEvents";
@@ -67,9 +70,9 @@ public class JobCreator{
                     String [] _cstAttrNames,
                     String [] _jobParamNames,
                     String [] _outMapNames,
-                    String [] _stdOutNames){
-    
-    super();
+                    String [] _stdOutNames,
+                    boolean _closeWhenDone,
+                    Window _parent){
     
     statusBar = _statusBar;
 	  dbName = _dbName;
@@ -84,6 +87,8 @@ public class JobCreator{
     jobParamNames = _jobParamNames;
     outMapNames = _outMapNames;
     stdOutNames = _stdOutNames;
+    closeWhenDone = _closeWhenDone;
+    parent = _parent;
 
     resCstAttr = new String[cstAttr.length];
     resJobParam = new String[jobParam.length];
@@ -92,6 +97,11 @@ public class JobCreator{
     dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
 
     createAllJobDefs();
+    
+    if(closeWhenDone){
+      parent.dispose();
+    }
+    
   }
 
   private void createAllJobDefs(){
@@ -1299,30 +1309,8 @@ public class JobCreator{
                                       (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5));
 
     Debug.debug("creating dialog", 3);
-    return MyUtil.showResult(null, sp, "Job definition # "+currentPartition, showOption,
+    return MyUtil.showResult(parent, sp, "Job definition # "+currentPartition, showOption,
         showOption==MyUtil.OK_SKIP_OPTION?"Cancel":"Skip");
     
-    /*JOptionPane op = new JOptionPane(sp,
-                                     JOptionPane.QUESTION_MESSAGE,
-                                     JOptionPane.YES_NO_CANCEL_OPTION,
-                                     null,
-                                     showResultsOptions,
-                                     showResultsOptions[0]);
-    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), "Job definition # "+currentPartition);
-    dialog.setResizable(true);
-    dialog.setVisible(true);
-    dialog.dispose();
-
-    Object selectedValue = op.getValue();
-
-    if(selectedValue==null){
-      return JOptionPane.CLOSED_OPTION;
-    }
-    for (int i=0; i<showResultsOptions.length; ++i){
-      if(showResultsOptions[i]==selectedValue){
-        return i;
-      }
-    }
-    return JOptionPane.CLOSED_OPTION;*/
   }
 }

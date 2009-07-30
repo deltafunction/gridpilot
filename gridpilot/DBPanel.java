@@ -55,6 +55,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JCheckBox cbFindAllFiles = new JCheckBox();
   private JButton bReplicate;
   private JPopupMenu pmSubmitMenu = new JPopupMenu();
+  private JPopupMenu pmProcessMenu = new JPopupMenu();
   private JPopupMenu pmCreateDSMenu = new JPopupMenu();
   private JMenuItem miWithInput = new JMenuItem("with selected input dataset(s)");
   private JMenuItem miWithoutInput = new JMenuItem("from scratch");
@@ -113,6 +114,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JPanel showHidePanel = new JPanel();
   private String dbName = null;
   private boolean menuSet = false;
+  private Boolean deleteJobDefs = null;
+  private Boolean cleanupJobDefs = null;
+  private Boolean deleteFiles = null;
+  private Boolean cleanupFiles = null;
 
   /**
    * Create a new DBPanel from scratch.
@@ -430,7 +435,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       
       bProcessDatasets.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
-          processDatasets();
+          bProcess_mousePressed();
         }
       });
             
@@ -551,12 +556,17 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           continue;
         }
         JMenuItem mi = new JMenuItem(GridPilot.CS_NAMES[i]);
-        //mi.setMnemonic(i);
         mi.addActionListener(new ActionListener(){
           public void actionPerformed(final ActionEvent e){
             submit(e);
           }});
+        JMenuItem miP = new JMenuItem(GridPilot.CS_NAMES[i]);
+        miP.addActionListener(new ActionListener(){
+          public void actionPerformed(final ActionEvent e){
+            processDatasets(e);
+          }});
         pmSubmitMenu.add(mi);
+        pmProcessMenu.add(miP);
       }
 
       pButtonTableResults.add(bSubmit);
@@ -1743,12 +1753,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Open dialog with jobDefinition creation panel (from datasets)
    */ 
   private void createJobDefs(){
-    final DBPanel dbPanel = this;
     SwingUtilities.invokeLater(
       new Runnable(){
         public void run(){
           Debug.debug("Creating job definition(s), "+getSelectedIdentifiers().length, 3);
-          JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, dbPanel);
+          JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, getTable().getColumnNames(),
+              getSelectedIdentifiers(), false);
           CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true, true, true);
           pDialog.setTitle("Create job definition(s)");
         }
@@ -1833,7 +1843,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         msg += " " + ids[i];
       }
       msg += "?</html>";
-      
       final JCheckBox cbCleanup = new JCheckBox("Delete physical file(s)", true);
       ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
       try{
@@ -1849,25 +1858,29 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         e.printStackTrace();
         return;
       }
-      workThread = new ResThread(){
-        public void run(){
-          if(!getWorking()){
-            return;
-          }
-          boolean anyDeleted = doDeleteFiles(cbCleanup);
-          stopWorking();
-          if(anyDeleted){
-            refresh();
-          }
-        }
-      };
-      workThread.start();
+      deleteFiles(ids, cbCleanup.isSelected());
     }
   }
   
-  private boolean doDeleteFiles(JCheckBox cbCleanup) {
+  private void deleteFiles(final String[] ids, final boolean cleanup) {
+    
+    workThread = new ResThread(){
+      public void run(){
+        if(!getWorking()){
+          return;
+        }
+        boolean anyDeleted = doDeleteFiles(ids, cleanup);
+        stopWorking();
+        if(anyDeleted){
+          refresh();
+        }
+      }
+    };
+    workThread.start();
+  }
+
+  private boolean doDeleteFiles(String[] allIds, boolean cleanup) {
     boolean anyDeleted = false;
-    String [] allIds = getSelectedIdentifiers();
     
     HashMap<String, Vector<String>> datasetNameAndIds = new HashMap<String, Vector<String>>();
     String [] fileDatasetReference = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
@@ -1913,7 +1926,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         Debug.debug("Now deleting "+ids.length+" files: "+MyUtil.arrayToString(ids), 3);
         boolean success = true;
         try{
-          success = dbPluginMgr.deleteFiles(datasetId, ids, cbCleanup.isSelected());
+          success = dbPluginMgr.deleteFiles(datasetId, ids, cleanup);
         }
         catch(Exception e){
           e.printStackTrace();
@@ -1960,7 +1973,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     msg += "?";
 
-    final JCheckBox cbCleanup = new JCheckBox("Delete physical file(s)", true);
+    final JCheckBox cbCleanup = new JCheckBox("Delete output file(s)", true);
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     try{
       int choice = confirmBox.getConfirm("Confirm delete",
@@ -1981,7 +1994,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         if(!getWorking()){
           return;
         }
-        boolean anyDeleted = doDeleteJobDefs(cbCleanup);
+        String [] ids = getSelectedIdentifiers();
+        boolean anyDeleted = doDeleteJobDefs(ids, cbCleanup.isSelected());
         stopWorking();
         if(anyDeleted){
           refresh();
@@ -1991,9 +2005,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     workThread.start();
   }
 
-  private boolean doDeleteJobDefs(JCheckBox cbCleanup) {
+  private boolean doDeleteJobDefs(String [] ids, boolean cleanup) {
     boolean anyDeleted = false;
-    String [] ids = getSelectedIdentifiers();
 
     // Update job monitoring display
     for(int i=ids.length-1; i>=0; --i){
@@ -2018,7 +2031,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       statusBar.setProgressBar(pb);
       statusBar.setProgressBarMax(pb, ids.length);
       for(int i=ids.length-1; i>=0; i--){
-        boolean success = dbPluginMgr.deleteJobDefinition(ids[i], cbCleanup.isSelected());
+        boolean success = dbPluginMgr.deleteJobDefinition(ids[i], cleanup);
         if(!success){
           String msg = "Deleting job definition "+ids[i]+" failed";
           Debug.debug(msg, 1);
@@ -2148,7 +2161,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " deleted.");
           }
           else{
-            Debug.debug("WARNING: dataset "+datasetIdentifiers[i]+" could not be deleted",1);
+            Debug.debug("WARNING: dataset "+datasetIdentifiers[i]+" could not be deleted", 1);
             statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " NOT deleted.");
           }
         }
@@ -2484,23 +2497,36 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     );
   }
  
-  /**
-   * Process dataset(s).
-   */
-  private void processDatasets(){
-    if(getSelectedIdentifiers()==null || getSelectedIdentifiers().length==0){
+  private void processDatasets(final ActionEvent e){
+    final String [] datasetIds = getSelectedIdentifiers();
+    if(datasetIds==null || datasetIds.length==0){
       return;
     }
-    Debug.debug("processing dataset(s): "+MyUtil.arrayToString(getSelectedIdentifiers()), 3);
+    Debug.debug("processing dataset(s): "+MyUtil.arrayToString(datasetIds), 3);
     new Thread(){
       public void run(){
+        String csName = ((JMenuItem)e.getSource()).getText();
+        boolean ok = true;
+        String error = "";
         try{
-          doProcessDatasets();
+          // Grab semaphore
+          if(!waitForWorking()){
+            GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, monitoring not done");
+            return;
+          }
+          doProcessDatasets(csName, datasetIds);
+          stopWorking();
         }
         catch(Exception e){
           Debug.debug("Couldn't process dataset(s) " + "\n" +
                              "\tException\t : " + e.getMessage(), 2);
           e.printStackTrace();
+          error = e.getMessage();
+          ok = false;
+        }
+        if(!ok){
+          MyUtil.showError("Problem processing dataset(s). "+
+              (error!=null||error.equals("")?"See the log for details.":error));
         }
       }
     }.start();
@@ -2511,18 +2537,83 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * If not:
    *   - create jobDefinitions
    *   - close create window
-   * If not or so:
-   *   - ask for computing backend(s)
+   * Then:
    *   - submit one job and wait till it's submitted
    *   - if it does not submit, return an error
    *   - if it does submit, submit the rest
    *
    */
-  private void doProcessDatasets() {
-     // TODO
-    
+  private boolean doProcessDatasets(String csName, String [] ids) {
+    boolean ok = true;
+    int jobCount = 0;
+    Debug.debug("Monitoring jobs from dataset(s): "+MyUtil.arrayToString(ids), 3);
+    String [] jobDefIds;
+    DBResult jobDefs;
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+    // Create jobs if none present
+    for(int i=ids.length-1; i>=0; --i){
+      jobDefs = dbPluginMgr.getJobDefinitions(ids[i],
+          new String [] {idField}, null, null);
+      if(jobDefs.values.length==0){
+        createJobDefsForDataset(ids[i]);
+      }
+    }
+    // Submit submitable jobs
+    Vector<String> toSubmitJobDefIds = new Vector<String>();
+    for(int i=ids.length-1; i>=0; --i){
+      jobDefs = dbPluginMgr.getJobDefinitions(ids[i],
+          new String [] {idField}, new String [] {DBPluginMgr.getStatusName(DBPluginMgr.DEFINED)}, null);
+      if(jobDefs.values.length==0){
+        continue;
+      }
+      jobDefIds = new String [jobDefs.values.length];
+      for(int ii=0; i<jobDefs.values.length; ++i){
+        jobDefIds[ii] = (String) jobDefs.get(ii).getValue(idField);
+        ++jobCount;
+      }
+    }
+    if(jobCount==0){
+      MyUtil.showMessage("No jobs", "No submitable jobs in datasets "+MyUtil.arrayToString(ids));
+      return ok;
+    }
+    // First try a test job
+    String firstJobDefId = toSubmitJobDefIds.remove(0);
+    String [] remainingJobDefIds = toSubmitJobDefIds.toArray(new String [toSubmitJobDefIds.size()]);
+    try{
+      doSubmit(csName, new String [] {firstJobDefId});
+    }
+    catch(Exception e){
+      ok = false;
+      String error = e.getMessage();
+      MyUtil.showError("Problem submitting job(s) "+
+          (error!=null||error.equals("")?"See the log for details.":error));
+      return ok;
+    }
+    // Then submit the rest
+    if(toSubmitJobDefIds.size()==0){
+      return ok;
+    }
+    try{
+      doSubmit(csName, remainingJobDefIds);
+    }
+    catch(Exception e){
+      ok = false;
+      String error = e.getMessage();
+      MyUtil.showError("Problem submitting job(s) "+
+          (error!=null||error.equals("")?"See the log for details.":error));
+      return ok;
+    }
+    return ok;
   }
- 
+  
+  private boolean createJobDefsForDataset(String datasetId){
+    JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, getTable().getColumnNames(),
+        new String [] {datasetId}, true);
+    CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true, true, true);
+    pDialog.setTitle("Create job definition(s)");
+    return true;
+  }
+  
   /**
    * Monitor dataset(s).
    */
@@ -2530,16 +2621,31 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(getSelectedIdentifiers()==null || getSelectedIdentifiers().length==0){
       return;
     }
-    Debug.debug("monitoring dataset(s): "+MyUtil.arrayToString(getSelectedIdentifiers()), 3);
+    Debug.debug("Monitoring dataset(s): "+MyUtil.arrayToString(getSelectedIdentifiers()), 3);
     new Thread(){
       public void run(){
+        boolean ok = true;
+        String error = "";
         try{
-          doMonitorDatasets();
+          // Grab semaphore
+          if(!waitForWorking()){
+            GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, monitoring not done");
+            return;
+          }
+          ok = doMonitorDatasets();
+          stopWorking();
         }
         catch(Exception e){
-          Debug.debug("Couldn't process dataset(s) " + "\n" +
+          stopWorking();
+          Debug.debug("Couldn't monitor dataset(s) " + "\n" +
                              "\tException\t : " + e.getMessage(), 2);
           e.printStackTrace();
+          error = e.getMessage();
+          ok = false;
+        }
+        if(!ok){
+          MyUtil.showError("Problem monitoring dataset(s). "+
+              (error!=null||error.equals("")?"See the log for details.":error));
         }
       }
     }.start();
@@ -2548,52 +2654,321 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   /**
    * Add all jobDefinitions of selected dataset(s) to monitor.
    */
-  private void doMonitorDatasets() {
-    // TODO
-    
+  private boolean doMonitorDatasets() {
+    String[] ids = getSelectedIdentifiers();
+    boolean ok = true;
+    if(ids==null || ids.length==0){
+      return ok;
+    }
+    int jobCount = 0;
+    Debug.debug("Monitoring jobs from dataset(s): "+MyUtil.arrayToString(ids), 3);
+    String [] jobDefIds;
+    DBResult jobDefs;
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+    for(int i=ids.length-1; i>=0; --i){
+      try{
+        jobDefs = dbPluginMgr.getJobDefinitions(ids[i],
+            new String [] {idField}, null, null);
+        if(jobDefs.values.length==0){
+          continue;
+        }
+        jobDefIds = new String [jobDefs.values.length];
+        for(int ii=0; i<jobDefs.values.length; ++i){
+          jobDefIds[ii] = (String) jobDefs.get(ii).getValue(idField);
+          ++jobCount;
+        }
+        monitorJobs(jobDefIds);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        ok = false;
+      }
+    }
+    if(jobCount==0){
+      MyUtil.showMessage("No jobs", "There are no jobs defined for the selected dataset(s)");
+    }
+    return ok;
   }
 
   /**
-   * Cleanup dataset(s).
+   * Cleanup dataset(s).<br>
+   * If jobDefinitions exist:<br>
+   * - ask if stdout/err or output files should be deleted
+   * - delete files if so chosen - purge empty directories
+   * - delete jobDefinitions if so chosen
+   *
    */
   private void cleanupDatasets(){
     new Thread(){
       public void run(){
+        // Grab semaphore
+        if(!waitForWorking()){
+          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, cleanup not done");
+          return;
+        }
+        boolean ok = true;
+        String error = "";
+        int jobCount = 0;
+        int fileCount = 0;
         try{
           String[] ids = getSelectedIdentifiers();
           if(ids==null || ids.length==0){
             return;
           }
-          boolean ok = true;
-          Debug.debug("cleaning up dataset(s): "+MyUtil.arrayToString(ids), 3);
-          for(int i=0; i<ids.length; ++i){
-            ok = ok && doCleanupDataset(i);
+          Debug.debug("cleaning jobs from dataset(s): "+MyUtil.arrayToString(ids), 3);
+          String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+          for(int i=ids.length-1; i>=0; --i){
+            ok = ok && deleteTempfilesOfJobsFromDataset(i, ids[i]);
+            ok = ok && cleanupJobsFromDataset(i, ids[i]);
+            ok = ok && deleteJobDefsFromDataset(i, ids[i]);
+            ok = ok && deletefilesOfDataset(i, ids[i]);
+            DBResult jobDefs = dbPluginMgr.getJobDefinitions(ids[i],
+                new String [] {idField}, null, null);
+            jobCount = jobCount + jobDefs.size();
+            DBResult files = dbPluginMgr.getFiles(ids[i]);
+            fileCount = fileCount + files.size();
           }
+          MyUtil.showMessage("Cleanup done", "<html>Cleaned up dataset(s) "+MyUtil.arrayToString(ids)+
+              ".<br><br>&nbsp;&nbsp;job(s) cleaned: "+jobCount+"<br><br>"+
+              "&nbsp;&nbsp;file(s) cleaned: "+fileCount+"</html>");
         }
         catch(Exception e){
-          Debug.debug("Couldn't process dataset(s) " + "\n" +
+          ok = false;
+          stopWorking();
+          Debug.debug("Couldn't clean up dataset(s) " + "\n" +
                              "\tException\t : " + e.getMessage(), 2);
           e.printStackTrace();
+          error = e.getMessage();
+        }
+        deleteJobDefs = null;
+        cleanupJobDefs = null;
+        deleteFiles = null;
+        cleanupFiles = null;        
+        stopWorking();
+        if(!ok){
+          MyUtil.showError("Problem cleaning up dataset(s). "+
+              (error!=null||error.equals("")?"See the log for details.":error));
         }
       }
     }.start();
   }
  
-  /**
-   * If jobDefinitions exist:
-   * - check if all jobDefinitions have been run; if not, get confirmation
-   * - ask if stdout/err or output files should be deleted
-   * - delete files if so chosen - purge empty directories
-   * - delete jobDefinitions
-   *
-   */
-  private boolean doCleanupDataset(int id) {
+  private boolean cleanupJobsFromDataset(int dsNum, String id) {
     boolean ok = true;
-    // TODO
-    if(dbPluginMgr.isJobRepository()){
-      //dbPluginMgr.deleteJobDefsFromDataset(id);
+    if(!dbPluginMgr.isJobRepository()){
+      return ok;
+    }
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+    String nameField = MyUtil.getNameField(dbName, "jobDefinition");
+    DBResult jobDefs = dbPluginMgr.getJobDefinitions(id,
+        new String [] {idField, nameField, "computingSystem", "jobId"}, null, null);
+    if(jobDefs.values.length>0){
+      MyJobInfo job;
+      DBRecord jobRecord;
+      for(int i=0; i<jobDefs.values.length; ++i){
+        jobRecord = jobDefs.get(i);
+        // identifier, name, computingSystem, dbname
+        job = new MyJobInfo((String) jobRecord.getValue(idField),
+                            (String) jobRecord.getValue(nameField),
+                            (String) jobRecord.getValue("computingSystem"),
+                            dbName);
+        // jobid
+        job.setJobId((String) jobRecord.getValue("jobId"));
+        GridPilot.getClassMgr().getCSPluginMgr().cleanup(job);
+        job.setDBStatus(DBPluginMgr.DEFINED);
+        GridPilot.getClassMgr().getJobMgr(job.getDBName()).updateDBCell(job);
+      }
     }
     return ok;
+  }
+
+  private boolean deleteTempfilesOfJobsFromDataset(int dsNum, String id) {
+    boolean ok = true;
+    if(!dbPluginMgr.isFileCatalog()){
+      return ok;
+    }
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+    String nameField = MyUtil.getNameField(dbName, "jobDefinition");
+    DBResult jobDefs = dbPluginMgr.getJobDefinitions(id,
+        new String [] {idField, nameField, "computingSystem", "jobId"}, null, null);
+    if(jobDefs.values.length>0){
+      MyJobInfo job;
+      DBRecord jobRecord;
+      for(int i=0; i<jobDefs.values.length; ++i){
+        try{
+          jobRecord = jobDefs.get(i);
+          // identifier, name, computingSystem, dbname
+          job = new MyJobInfo((String) jobRecord.getValue(idField),
+                              (String) jobRecord.getValue(nameField),
+                              (String) jobRecord.getValue("computingSystem"),
+                              dbName);
+          // jobid
+          job.setJobId((String) jobRecord.getValue("jobId"));
+          GridPilot.getClassMgr().getCSPluginMgr().cleanup(job);
+          job.setDBStatus(DBPluginMgr.DEFINED);
+          GridPilot.getClassMgr().getJobMgr(job.getDBName()).updateDBCell(job);
+        }
+        catch(Exception e){
+          ok = false;
+        }
+      }
+    }
+    return ok;
+  }
+
+  private boolean deleteJobDefsFromDataset(int dsNum, String id) {
+    boolean ok = true;
+    if(!dbPluginMgr.isJobRepository()){
+      return ok;
+    }
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+    String nameField = MyUtil.getNameField(dbName, "jobDefinition");
+    DBResult jobDefs = dbPluginMgr.getJobDefinitions(id,
+        new String [] {idField, nameField, "computingSystem", "jobId"}, null, null);
+    if(jobDefs.values.length==0){
+      return ok;
+    }
+    int choice = -1;
+    try{
+      choice = getDeleteJobDefsConfirm(dsNum, dbPluginMgr.getDatasetName(id));
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return true;
+    }
+    if(choice!=0 && choice!=2){
+      return true;
+    }
+    String [] jobDefIds = new String [jobDefs.values.length];
+    for(int i=0; i<jobDefs.values.length; ++i){
+      jobDefIds[i] = (String) jobDefs.get(i).getValue(idField);
+    }
+    doDeleteJobDefs(jobDefIds, cleanupJobDefs);
+    return ok;
+  }
+
+  private int getDeleteJobDefsConfirm(int dsNum, String name) throws Exception {
+    if(deleteJobDefs!=null){
+      return deleteJobDefs?2:3;
+    }
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()); 
+    JCheckBox cbCleanup = new JCheckBox("Delete "+
+          (dbPluginMgr.isFileCatalog()?"stdout/stderr of jobs":
+            "output files and stdout/stderr of jobs"), true);
+    int choice = -1;
+    String title = "Confirm delete job definition(s)";
+    String msg =  "Do you want to delete the job definition(s) of dataset "+name+"?";
+    Debug.debug("Buttons with icons? "+MyUtil.BUTTON_DISPLAY, 3);
+    if(dsNum<1){
+      choice = confirmBox.getConfirm(title, msg,
+          new Object[] {
+             MyUtil.mkOkObject(confirmBox.getOptionPane()),
+             MyUtil.mkCancelObject(confirmBox.getOptionPane()),
+             cbCleanup
+          });
+    }
+    else{
+      choice = confirmBox.getConfirm(title, msg,
+          new Object[] {
+             MyUtil.mkOkObject(confirmBox.getOptionPane()),
+             MyUtil.mkSkipObject(confirmBox.getOptionPane()),
+             MyUtil.mkOkAllObject(confirmBox.getOptionPane()),
+             MyUtil.mkSkipAllObject(confirmBox.getOptionPane()),
+             cbCleanup
+          });
+    }
+    switch(choice){
+    case 0:
+       cleanupJobDefs = cbCleanup.isSelected();
+       break; //OK
+    case 1:
+      break;  // Skip
+    case 2:
+       deleteJobDefs = true;
+       cleanupJobDefs = cbCleanup.isSelected();
+       break;  // OK for all
+    case 3:
+      deleteJobDefs = false;
+      cleanupJobDefs = false;
+      break; // Skip all
+    }
+    return choice;
+  }
+
+  private boolean deletefilesOfDataset(int dsNum, String id) {
+    boolean ok = true;
+    if(!dbPluginMgr.isFileCatalog()){
+      return ok;
+    }
+    String idField = MyUtil.getIdentifierField(dbName, "file");
+    DBResult files = dbPluginMgr.getFiles(id);
+    if(files.values.length==0){
+      return ok;
+    }
+    int choice = -1;
+    try{
+      choice = getDeleteFilesConfirm(dsNum, dbPluginMgr.getDatasetName(id));
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return true;
+    }
+    if(choice!=0 && choice!=2){
+      return true;
+    }
+    if(files.values.length>0){
+      String [] fileIds = new String [files.values.length];
+      for(int i=0; i<files.values.length; ++i){
+        fileIds[i] = (String) files.get(i).getValue(idField);
+      }
+      doDeleteFiles(fileIds, cleanupFiles);
+    }
+    return ok;
+  }
+
+  private int getDeleteFilesConfirm(int dsNum, String name) throws Exception {
+    if(deleteFiles!=null){
+      return deleteFiles?2:3;
+    }
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()); 
+    JCheckBox cbCleanup = new JCheckBox("Delete physical file(s)", true);
+    String title = "Confirm delete file(s)";
+    String msg = "Do you want to delete the file(s) of dataset "+name+"?";
+    int choice = -1;
+    if(dsNum<1){
+      choice = confirmBox.getConfirm(title, msg,
+          new Object[] {
+             MyUtil.mkOkObject(confirmBox.getOptionPane()),
+             MyUtil.mkCancelObject(confirmBox.getOptionPane()),
+             cbCleanup
+          });
+    }
+    else{
+      choice = confirmBox.getConfirm(title, msg,
+          new Object[] {
+             MyUtil.mkOkObject(confirmBox.getOptionPane()),
+             MyUtil.mkSkipObject(confirmBox.getOptionPane()),
+             MyUtil.mkOkAllObject(confirmBox.getOptionPane()),
+             MyUtil.mkSkipAllObject(confirmBox.getOptionPane()),
+             cbCleanup
+          });
+    }
+    switch(choice){
+    case 0:
+       cleanupFiles = cbCleanup.isSelected();
+       break; //OK
+    case 1:
+      break;  // Skip
+    case 2:
+       deleteFiles = true;
+       cleanupFiles = cbCleanup.isSelected();
+       break;  // OK for all
+    case 3:
+      deleteFiles = false;
+      cleanupFiles = false;
+      break; // Skip all
+    }
+    return choice;
   }
 
   /**
@@ -3204,21 +3579,25 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * on the jobDefinition panel
    */
   private void monitorJobs(){
+    String [] jobIds = getSelectedIdentifiers();
+    monitorJobs(jobIds);
+  }
+  
+  private void monitorJobs(final String [] jobDefIds){
     GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel(MonitoringPanel.TAB_INDEX_JOBS);
     new Thread(){
       public void run(){        
-        String [] selectedJobIdentifiers = getSelectedIdentifiers();
         JobMgr jobMgr = null;
         
         statusBar.setLabel("Retrieving jobs...");
         // Group the file IDs by dataset
         HashMap<JobMgr, Vector<String>> jobMgrsAndIds = new HashMap<JobMgr, Vector<String>>();
-        for(int i=0; i<selectedJobIdentifiers.length; ++i){
+        for(int i=0; i<jobDefIds.length; ++i){
           jobMgr = GridPilot.getClassMgr().getJobMgr(dbName);
           if(!jobMgrsAndIds.containsKey(jobMgr)){
             jobMgrsAndIds.put(jobMgr, new Vector<String>());
           }
-          jobMgrsAndIds.get(jobMgr).add(selectedJobIdentifiers[i]);
+          jobMgrsAndIds.get(jobMgr).add(jobDefIds[i]);
         }
         statusBar.setLabel("Retrieving jobs done.");
         // Add them
@@ -3278,6 +3657,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   /**
+   * Called when mouse is pressed on Process button
+   */
+  private void bProcess_mousePressed(){
+    // if dataset is selected, show the menu with computing systems
+    if(getSelectedIdentifiers().length!=0){
+      pmProcessMenu.show(this, 0, 0); // without this, pmSubmitMenu.getWidth == 0
+      pmProcessMenu.show(bProcessDatasets, -pmProcessMenu.getWidth(),
+                        -pmProcessMenu.getHeight() + bProcessDatasets.getHeight());
+    }
+  }
+
+  /**
    * Called when a computing system in pmSubmitMenu is selected
    * Submits all selected logicalFiles (partitions) in computing system chosen in the popupMenu
    */
@@ -3285,16 +3676,17 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     workThread = new ResThread(){
       public void run(){
         String csName = ((JMenuItem)e.getSource()).getText();
-        doSubmit(csName);
+        String [] jobDefIds = getSelectedIdentifiers();
+        doSubmit(csName, jobDefIds);
       }
     };
 
     workThread.start();
   }
   
-  private void doSubmit(String csName){
+  private void doSubmit(String csName, String [] jobDefIds){
     if(!waitForWorking()){
-      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, search not performed");
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, nothing submitted");
       return;
     }
     statusBar.setLabel("Preparing jobs, please wait...");
@@ -3308,10 +3700,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         workThread.interrupt();
       }
     });
-    String [] selectedJobDefIdentifiers = getSelectedIdentifiers();
     Vector<DBRecord> selectedJobDefinitions = new Vector<DBRecord>();
-    for(int i=0; i<selectedJobDefIdentifiers.length; ++i){
-      selectedJobDefinitions.add(dbPluginMgr.getJobDefinition(selectedJobDefIdentifiers[i]));
+    for(int i=0; i<jobDefIds.length; ++i){
+      selectedJobDefinitions.add(dbPluginMgr.getJobDefinition(jobDefIds[i]));
     }
     // submit the jobs
     statusBar.setLabel("Submitting. Please wait...");

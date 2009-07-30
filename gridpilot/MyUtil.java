@@ -837,7 +837,7 @@ private static String fixUrl(String _url){
   private static Object[] createDisplayObjects(JOptionPane pane, int i, String cancelText){
     Object okObject = mkButton(pane, GridPilot.ICONS_PATH + "enter.png", "OK", "OK");
     Object skipObject = mkButton(pane, GridPilot.ICONS_PATH + "cancel.png", cancelText, cancelText);
-    Object okAllObject = mkButton(pane, "GridPilot.ICONS_PATH + enter_all.png", "OK for all", "OK for all");
+    Object okAllObject = mkButton(pane, GridPilot.ICONS_PATH + "enter_all.png", "OK for all", "OK for all");
     Object skipAllObject = mkButton(pane, GridPilot.ICONS_PATH + "stop.png", cancelText+" all", cancelText+" all");
     Object[] showResultsOptions = null;
     switch(i){
@@ -905,7 +905,7 @@ private static String fixUrl(String _url){
     
   }
   
-  public static int showResult(JComponent parent, JComponent comp, String title, int optionType,
+  public static int showResult(Component parent, JComponent comp, String title, int optionType,
       String cancelText){
 
     JOptionPane op = new JOptionPane(comp);
@@ -1450,23 +1450,23 @@ private static String fixUrl(String _url){
   }
   
   public static Object mkOkObject(JOptionPane pane){
-    return mkButton(pane, "enter.png", "OK", "OK");
+    return mkButton(pane, GridPilot.ICONS_PATH + "enter.png", "OK", "OK");
   }
 
   public static Object mkOkAllObject(JOptionPane pane){
-    return mkButton(pane, "enter_all.png", "OK for all", "OK for all");
+    return mkButton(pane, GridPilot.ICONS_PATH + "enter_all.png", "OK for all", "OK for all");
   }
 
   public static Object mkCancelObject(JOptionPane pane){
-    return mkButton(pane, "cancel.png", "Cancel", "Cancel");
+    return mkButton(pane, GridPilot.ICONS_PATH + "cancel.png", "Cancel", "Cancel");
   }
 
   public static Object mkSkipObject(JOptionPane pane){
-    return mkButton(pane, "next.png", "Skip", "Skip");
+    return mkButton(pane, GridPilot.ICONS_PATH + "next.png", "Skip", "Skip");
   }
 
   public static Object mkSkipAllObject(JOptionPane pane){
-    return mkButton(pane, "cancel.png", "Skip all", "Skip all");
+    return mkButton(pane, GridPilot.ICONS_PATH + "cancel.png", "Skip all", "Skip all");
   }
 
   private static void showMessage0(String title, String text){

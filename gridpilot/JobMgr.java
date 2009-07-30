@@ -349,7 +349,7 @@ public class JobMgr{
               doUpdateDBCell(job);
             }
             catch(Exception ex){
-              Debug.debug("Could not create panel ", 1);
+              Debug.debug("Could not update DB cell", 1);
               ex.printStackTrace();
             }
           }
@@ -1245,7 +1245,7 @@ public class JobMgr{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()); 
     try{
       int choice = confirmBox.getConfirm("Confirm clean",
-          "This will clean all traces of the job(s)\n" +
+          "This will clean all files produced by the job(s)\n" +
           "both remotely and locally.\n" +
           "Are you sure you want to do this?", new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
                                                              MyUtil.mkCancelObject(confirmBox.getOptionPane())});

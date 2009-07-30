@@ -2299,6 +2299,43 @@ public class DBPluginMgr extends DBCache implements Database{
       }
     }
 
+  public synchronized boolean deleteJobDefsFromDataset(final String datasetID){
+    
+    ResThread t = new ResThread(){
+      boolean res = false;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
+      public void run(){
+        try{
+          db.clearError();
+          res = db.deleteJobDefsFromDataset(datasetID);
+        }
+        catch(Throwable t){
+          db.appendError(t.getMessage());
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             datasetID, t);
+        }
+      }
+      public boolean getBoolRes(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "deleteJobDefsFromDataset")){
+      return t.getBoolRes();
+    }
+    else{
+      return false;
+    }
+  }
+
   public synchronized boolean deleteTransformation(final String transformationID){
     
       ResThread t = new ResThread(){

@@ -486,7 +486,7 @@ public class RunCommandWizard extends GPFrame{
             myDatasetName,
             myDatasetName+".1",
             uuid,
-            "Defined",
+            DBPluginMgr.getStatusName(DBPluginMgr.DEFINED),
             MyUtil.arrayToString(inputURLs).trim(),
             outputFiles==null?"":createOutputMappingStr(outputFiles, outputDir).trim(),
             //"transPars",
@@ -507,7 +507,7 @@ public class RunCommandWizard extends GPFrame{
           DBResult jobDefs = dbPluginMgr.getJobDefinitions(
               datasetID,
               new String [] {"guid", idField},
-              new String [] {"Defined"},
+              new String [] {DBPluginMgr.getStatusName(DBPluginMgr.DEFINED)},
               null);
           Object checkGuid = null;
           for(int i=0; i<jobDefs.values.length; ++i){
