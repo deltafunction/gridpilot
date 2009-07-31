@@ -657,6 +657,7 @@ public class GridPilot extends JApplet{
         TOP_EXIT_PANEL.add(jp, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
             new Insets(5, 5, 5, 5), 0, 0));
+        TOP_EXIT_PANEL.setBackground(SystemColor.getColor("window"));
         int ret = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
             TOP_EXIT_PANEL,
             "Exiting", JOptionPane.PLAIN_MESSAGE);
