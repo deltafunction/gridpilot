@@ -35,6 +35,7 @@ import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.Toolkit;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
 
 /**
  * This panel contains one SelectPanel.
@@ -350,8 +351,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     catch(Exception e){
     }
     
-    tableResults = new MyJTable(hiddenFields, fieldNames,
-        GridPilot.JOB_COLOR_MAPPING);
+    tableResults = new MyJTable(hiddenFields, fieldNames, GridPilot.JOB_COLOR_MAPPING);
     
     menuEditCopy = GridPilot.getClassMgr().getGlobalFrame().getMenuEditCopy();
     menuEditCut = GridPilot.getClassMgr().getGlobalFrame().getMenuEditCut();
@@ -367,8 +367,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     
     spSelectPanel.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
     spSelectPanel.getViewport().add(selectPanel);
-    
-    showHidePanel.add(new JLabel(" "+dbName+"  :  "+dbPluginMgr.getDBDescription()));
 
     panelSelectPanel.add(spSelectPanel,
         new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
@@ -405,6 +403,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     setCopyPasteKeyListeners();
     
     initSearchButtons();
+    
+    addDBDescription();
     
     // This is to pad with empty space and keep the table results
     // full width
@@ -632,6 +632,44 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     showFilter(false);
     updateUI();
+  }
+
+  private void addDBDescription() {
+    //pButtonSelectPanel.add(dbLabel);
+    //pButtonSelectPanel.add(new JLabel("   "));
+    JLabel dbLabel = new JLabel();
+    showHidePanel.add(new JLabel("  "));
+    showHidePanel.add(dbLabel);
+    switch(MyUtil.BUTTON_DISPLAY){
+      case MyUtil.ICON_AND_TEXT:
+        try{
+          URL imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH +
+             (dbPluginMgr.getDBDescription().matches("(?i).*local.*")?"db_local.png":"db_remote.png"));
+          ImageIcon imgIcon = new ImageIcon(imgURL);
+          dbLabel.setText(dbPluginMgr.getDBDescription());
+          dbLabel.setToolTipText(dbName);
+          dbLabel.setIcon(imgIcon);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        break;
+      case MyUtil.ICON_ONLY:
+        try{
+          URL imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH +
+             (dbPluginMgr.getDBDescription().matches("(?i).*local.*")?"db_local.png":"db_remote.png"));
+          ImageIcon imgIcon = new ImageIcon(imgURL);
+          dbLabel.setIcon(imgIcon);
+          dbLabel.setToolTipText(dbName+": "+dbPluginMgr.getDBDescription());
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        break;
+      case MyUtil.TEXT_ONLY:
+        dbLabel = new JLabel(dbName+" : "+dbPluginMgr.getDBDescription());
+        break;
+    }
   }
 
   private void initShowHideFilter() {
@@ -945,6 +983,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     boolean datasetPanel = getTableName().equalsIgnoreCase("dataset");
     Debug.debug(getTableName()+" is "+(notFilePanel?"not":"")+" a file panel", 3);
     GridPilot.getClassMgr().getGlobalFrame().setDefineMenu(datasetPanel, selectedRows, notFilePanel);
+  }
+  
+  protected void fileMenuSelected(){
+    int selectedRows = tableResults.getSelectedRows().length;
+    boolean datasetPanel = getTableName().equalsIgnoreCase("dataset");
+    GridPilot.getClassMgr().getGlobalFrame().setImportExportMenu(datasetPanel, selectedRows);
   }
 
   public void panelHidden(){

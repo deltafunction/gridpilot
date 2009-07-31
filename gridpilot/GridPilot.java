@@ -47,6 +47,8 @@ public class GridPilot extends JApplet{
   /** List of files that will be deleted on exit. */
   private static HashMap<String, File> TMP_FILES = new HashMap<String, File>();
   
+  private final static String DEFAULT_APP_STORE_URL = "https://www.gridpilot.dk/apps/";
+  public static String APP_STORE_URL;
   protected static String userConfFileName;
   /**
    * List of main section headers in config file
@@ -340,6 +342,16 @@ public class GridPilot extends JApplet{
          "Globus tcp port range");
       GRID_HOME_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
          "Grid home url");
+      APP_STORE_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+         "Application store URL");
+      if(APP_STORE_URL==null || APP_STORE_URL.equals("")){
+        getClassMgr().getConfigFile().missingMessage(
+            TOP_CONFIG_SECTION, "application store URL");
+        getClassMgr().getLogFile().addMessage(
+            "WARNING: you have not specified any application store URL. " +
+            "The default will be used:"+DEFAULT_APP_STORE_URL);
+        APP_STORE_URL = DEFAULT_APP_STORE_URL;
+      }
       String ask = null;
       try{
         ask = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,

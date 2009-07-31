@@ -51,10 +51,10 @@ public class ExportImport {
     }
     choices[choices.length-1] = datasetId==null?"none (cancel)":"cancel";
     if(datasetName!=null){
-      exportFileName = datasetName+".tar.gz";
+      exportFileName = datasetName+".gpa";
     }
     else{
-      exportFileName = "GridPilot_EXPORT_"+MyUtil.getDateInMilliSeconds()+".tar.gz";
+      exportFileName = "GridPilot_EXPORT_"+MyUtil.getDateInMilliSeconds()+".gpa";
     }
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String message = datasetId==null?

@@ -53,6 +53,8 @@ public class GlobalFrame extends GPFrame{
   private JMenuItem miDbDefineRecords = new JMenuItem("Define new record(s)");
   private JMenuItem miWithoutInput = new JMenuItem("from scratch");
   private JMenuItem miWithInputDataset = new JMenuItem("with selected input dataset(s)");
+  private JMenuItem miExport = new JMenuItem();
+
   // keep track of whether or not we are cutting on the sub-panels
   public boolean cutting = false;
 
@@ -410,8 +412,7 @@ public class GlobalFrame extends GPFrame{
     //menuFile.add(miReloadValues);
     
     // Import/export
-    JMenuItem miImport = new JMenuItem("Import");
-    JMenuItem miExport = new JMenuItem("Export");
+    JMenuItem miImport = new JMenuItem("Import application(s)");
     menuFile.add(miImport);
     menuFile.add(miExport);
     miImport.addActionListener(new ActionListener(){
@@ -422,6 +423,18 @@ public class GlobalFrame extends GPFrame{
     miExport.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         exportDB();
+      }
+    });
+    menuFile.addMenuListener(new MenuListener(){
+      public void menuCanceled(MenuEvent e) {
+      }
+
+      public void menuDeselected(MenuEvent e) {
+      }
+
+      public void menuSelected(MenuEvent e) {
+        // Refresh active elements of the menu
+        ((DBPanel) tabbedPane.getComponentAt(selectedPanel)).fileMenuSelected();
       }
     });
    
@@ -799,6 +812,16 @@ public class GlobalFrame extends GPFrame{
 
   }
 
+  protected void setImportExportMenu(boolean ds, int selectedRows){
+    miExport.setVisible(ds);
+    if(ds && selectedRows>0){
+      miExport.setText("Export selected application(s)");
+    }
+    else{
+      miExport.setText("Export all application(s)");
+    }
+  }
+
   private void createRecords(boolean withInputDataset) {
     DBPanel panel = getActiveDBPanel();
     if(panel.getTableName().equalsIgnoreCase("runtimeEnvironment")){
@@ -875,15 +898,16 @@ public class GlobalFrame extends GPFrame{
   protected void importToDB() {
     String url = null;
     try{
-      url = MyUtil.getURL("file:~/", null, false, "Choose tar.gz file to import from.");
+      //url = MyUtil.getURL("file:~/", null, false, "Choose *.gpa file to import from.");
+      url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, false, "Choose *.gpa file to import from.");
     }
     catch(IOException e){
       e.printStackTrace();
     }
     try{
       if(url!=null && !url.equals("")){
-        if(!url.endsWith(".tar.gz")){
-          throw new IOException("Only gzipped tar archives (with extension tar.gz) can be imported.");
+        if(!url.endsWith(".gpa")){
+          throw new IOException("Only gzipped tar archives (with extension gpa) can be imported.");
         }
         Debug.debug("Importing from "+url, 2);
         String importUrl = url;
