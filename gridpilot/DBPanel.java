@@ -2611,7 +2611,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         continue;
       }
       jobDefIds = new String [jobDefs.values.length];
-      for(int ii=0; i<jobDefs.values.length; ++i){
+      for(int ii=0; ii<jobDefs.values.length; ++ii){
         jobDefIds[ii] = (String) jobDefs.get(ii).getValue(idField);
         ++jobCount;
       }
@@ -2705,7 +2705,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       return ok;
     }
     int jobCount = 0;
-    Debug.debug("Monitoring jobs from dataset(s): "+MyUtil.arrayToString(ids), 3);
+    Debug.debug("Monitoring jobs from "+(ids.length)+
+        "dataset(s): "+MyUtil.arrayToString(ids), 3);
     String [] jobDefIds;
     DBResult jobDefs;
     String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
@@ -2717,7 +2718,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           continue;
         }
         jobDefIds = new String [jobDefs.values.length];
-        for(int ii=0; i<jobDefs.values.length; ++i){
+        for(int ii=0; ii<jobDefs.values.length; ++ii){
           jobDefIds[ii] = (String) jobDefs.get(ii).getValue(idField);
           ++jobCount;
         }
