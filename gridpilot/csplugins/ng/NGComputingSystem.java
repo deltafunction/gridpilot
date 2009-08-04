@@ -472,49 +472,6 @@ public class NGComputingSystem implements MyComputingSystem{
       e.printStackTrace();
     }
     
-    // Delete files that may have been copied to storage elements
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
-    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getIdentifier());
-    try{
-      for(int i=0; i<outputFileNames.length; ++i){
-        outputFileNames[i] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
-      }
-      transferControl.deleteFiles(outputFileNames);
-    }
-    catch(Exception e){
-      error = "WARNING: could not delete output file. "+e.getMessage();
-      Debug.debug(error, 3);
-    }
-    // Delete stdout/stderr that may have been copied to final destination
-    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
-    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
-    if(finalStdOut!=null && finalStdOut.trim().length()>0){
-      try{
-        transferControl.deleteFiles(new String [] {finalStdOut});
-      }
-      catch(Exception e){
-        error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
-        Debug.debug(error, 2);
-      }
-      catch(Throwable e){
-        error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
-        Debug.debug(error, 2);
-      }
-    }
-    if(finalStdErr!=null && finalStdErr.trim().length()>0){
-      try{
-        transferControl.deleteFiles(new String [] {finalStdErr});
-      }
-      catch(Exception e){
-        error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
-        Debug.debug(error, 2);
-      }
-      catch(Throwable e){
-        error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
-        Debug.debug(error, 2);
-      }
-    }
-    
     // Delete the local run directory
     String runDir = runDir(job);
     try{

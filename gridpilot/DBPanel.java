@@ -675,6 +675,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void initShowHideFilter() {
     bShowFilter = MyUtil.mkButton1("down.png", "Show search filter", "+");
     bHideFilter = MyUtil.mkButton1("up.png", "Hide search filter", "-");
+    bShowFilter.setPreferredSize(new Dimension(22, 26));
+    bHideFilter.setPreferredSize(new Dimension(22, 26));
     bShowFilter.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         showFilter(true);
@@ -2069,8 +2071,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     
     Debug.debug("Deleting "+ids.length+" rows", 2);
     if(ids.length != 0){
-      GridPilot.getClassMgr().getStatusBar().setLabel(
-         "Deleting job definition(s). Please wait...");
+      GridPilot.getClassMgr().getStatusBar().setLabel("Deleting job definition(s). Please wait...");
       JProgressBar pb = new JProgressBar();
       statusBar.setProgressBar(pb);
       statusBar.setProgressBarMax(pb, ids.length);
@@ -2088,8 +2089,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         pb.setValue(pb.getValue()+1);
       }
-      GridPilot.getClassMgr().getStatusBar().setLabel(
-         "Deleting job definition(s) done.");
+      GridPilot.getClassMgr().getStatusBar().setLabel("Deleting job definition(s) done.");
       statusBar.removeProgressBar(pb);
     }
     return anyDeleted;
@@ -2763,7 +2763,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           Debug.debug("cleaning jobs from dataset(s): "+MyUtil.arrayToString(ids), 3);
           String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
           for(int i=ids.length-1; i>=0; --i){
-            ok = ok && deleteTempfilesOfJobsFromDataset(i, ids[i]);
             ok = ok && cleanupJobsFromDataset(i, ids[i]);
             ok = ok && deleteJobDefsFromDataset(i, ids[i]);
             ok = ok && deletefilesOfDataset(i, ids[i]);
@@ -2822,40 +2821,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         GridPilot.getClassMgr().getCSPluginMgr().cleanup(job);
         job.setDBStatus(DBPluginMgr.DEFINED);
         GridPilot.getClassMgr().getJobMgr(job.getDBName()).updateDBCell(job);
-      }
-    }
-    return ok;
-  }
-
-  private boolean deleteTempfilesOfJobsFromDataset(int dsNum, String id) {
-    boolean ok = true;
-    if(!dbPluginMgr.isFileCatalog()){
-      return ok;
-    }
-    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
-    String nameField = MyUtil.getNameField(dbName, "jobDefinition");
-    DBResult jobDefs = dbPluginMgr.getJobDefinitions(id,
-        new String [] {idField, nameField, "computingSystem", "jobId"}, null, null);
-    if(jobDefs.values.length>0){
-      MyJobInfo job;
-      DBRecord jobRecord;
-      for(int i=0; i<jobDefs.values.length; ++i){
-        try{
-          jobRecord = jobDefs.get(i);
-          // identifier, name, computingSystem, dbname
-          job = new MyJobInfo((String) jobRecord.getValue(idField),
-                              (String) jobRecord.getValue(nameField),
-                              (String) jobRecord.getValue("computingSystem"),
-                              dbName);
-          // jobid
-          job.setJobId((String) jobRecord.getValue("jobId"));
-          GridPilot.getClassMgr().getCSPluginMgr().cleanup(job);
-          job.setDBStatus(DBPluginMgr.DEFINED);
-          GridPilot.getClassMgr().getJobMgr(job.getDBName()).updateDBCell(job);
-        }
-        catch(Exception e){
-          ok = false;
-        }
       }
     }
     return ok;

@@ -427,7 +427,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
     
-    if(MyUtil.myWaitForThread(t, csName, clearTimeOut, "clean")){
+    if(MyUtil.myWaitForThread(t, csName, clearTimeOut, "cleanup")){
       return t.getBoolRes();
     }
     else{
@@ -435,7 +435,6 @@ public class CSPluginMgr implements MyComputingSystem{
     }
 
   }
-
 
   /**
    * Calls exit of all plug-ins

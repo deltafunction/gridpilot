@@ -370,8 +370,6 @@ public class SubmissionControl{
       }
       catch(Exception e){
         Debug.debug("ERROR checking for stdout: "+e.getMessage(), 2);
-        //logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
-        //throw e;
       }
       try{
         stdErrExists = job.getErrTmp() != null &&
@@ -379,8 +377,6 @@ public class SubmissionControl{
       }
       catch(Exception e){
         Debug.debug("ERROR checking for stderr: "+e.getMessage(), 2);
-        //logFile.addMessage("ERROR checking for stdout: "+e.getMessage());
-        //throw e;
       }
       if(!askSave){
         if(deleteFiles){

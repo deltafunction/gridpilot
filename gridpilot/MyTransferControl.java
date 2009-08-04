@@ -1564,7 +1564,7 @@ public class MyTransferControl extends TransferControl {
     dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w):/", "file:////$1:/");
     dlUrlDir = dlUrlDir.replaceFirst("^file://(\\w)", "file:////$1");
     if(guid==null || name==null || urls==null || datasetName==null || bytes==null || checksum==null){
-      file = dbPluginMgr.getFile(datasetName, id, 0);
+      file = dbPluginMgr.getFile(datasetName, id, DBPluginMgr.LOOKUP_PFNS_NONE);
       // In the case of DQ2 these are too slow or will fail and return null.
       // All information must be in the table...
       if(guid==null){

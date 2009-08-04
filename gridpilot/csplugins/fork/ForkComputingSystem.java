@@ -550,86 +550,44 @@ public class ForkComputingSystem implements MyComputingSystem{
     }
   }
 
+  private boolean deleteFile(String url, JobInfo job){
+    boolean ret = true;
+    if(url!=null || url.trim().equals("")){
+      return ret;
+    }
+    try{
+      if(!MyUtil.urlIsRemote(url)){
+        ret = getShell(job).deleteFile(url);
+      }
+      else{
+        transferControl.deleteFiles(new String [] {url});
+      }
+    }
+    catch(Throwable e){
+      error = "WARNING: could not delete "+url+". "+e.getMessage();
+      Debug.debug(error, 2);
+      ret = false;
+    }
+    return ret;
+  }
+  
+  private boolean purgeTmpStdoutErr(JobInfo job, Shell thisShell){
+    boolean ret = true;
+    deleteFile(job.getOutTmp(), job);
+    deleteFile(job.getErrTmp(), job);
+    //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+    //deleteFile(dbPluginMgr.getStdOutFinalDest(job.getIdentifier()), job);
+    //deleteFile(dbPluginMgr.getStdErrFinalDest(job.getIdentifier()), job);
+    return ret;
+  }
+
+
   public boolean cleanup(JobInfo job){
     boolean ret = true;
     String runDir = runDir(job);
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
-    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
-    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
-
-    // Delete files that may have been copied to final destination.
-    // Files starting with file: are considered to locally available, accessed
-    // with shellMgr
-    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getIdentifier());
-    String fileName;
-    Vector<String> remoteFiles = new Vector<String>();
-    for(int i=0; i<outputFileNames.length; ++i){
-      fileName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
-      if(fileName.startsWith("file:")){
-        try{
-          shell.deleteFile(fileName);
-        }
-        catch(Exception e){
-          error = "WARNING: could not delete output file. "+e.getMessage();
-          Debug.debug(error, 3);
-        }
-      }
-      else{
-        remoteFiles.add(fileName);
-      }
-    }
-    String [] remoteFilesArr = new String [remoteFiles.size()];
-    for(int i=0; i<remoteFilesArr.length; ++i){
-      remoteFilesArr[i] = (String) remoteFiles.get(i);
-    }
     try{
-      transferControl.deleteFiles(remoteFilesArr);
-    }
-    catch(Exception e){
-      error = "WARNING: could not delete output file(s). "+e.getMessage();
-      Debug.debug(error, 3);
-    }
-    
-    // Delete stdout/stderr that may have been copied to final destination
-    if(finalStdOut!=null && finalStdOut.trim().length()>0){
-      try{
-        if(finalStdOut.startsWith("file:")){
-          shell.deleteFile(finalStdOut);
-        }
-        else{
-          transferControl.deleteFiles(new String [] {finalStdOut});
-        }
-      }
-      catch(Exception e){
-        error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
-        Debug.debug(error, 2);
-      }
-      catch(Throwable e){
-        error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
-        Debug.debug(error, 2);
-      }
-    }
-    if(finalStdErr!=null && finalStdErr.trim().length()>0){
-      try{
-        if(finalStdErr.startsWith("file:")){
-          shell.deleteFile(finalStdErr);
-        }
-        else{
-          transferControl.deleteFiles(new String [] {finalStdErr});
-        }
-      }
-      catch(Exception e){
-        error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
-        Debug.debug(error, 2);
-      }
-      catch(Throwable e){
-        error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
-        Debug.debug(error, 2);
-      }
-    }
-
-    try{
-      shell.deleteDir(runDir);
+      getShell(job).deleteDir(runDir);
+      purgeTmpStdoutErr(job, getShell(job));
     }
     catch(Exception ioe){
       error = "Exception during cleanup of job " + job.getName()+ "\n" +
@@ -746,12 +704,11 @@ public class ForkComputingSystem implements MyComputingSystem{
   
   public boolean postProcess(JobInfo job) {
     Debug.debug("Post processing job " + job.getName(), 2);
-    String runDir = runDir(job);
     boolean ok = true;
     if(copyToFinalDest((MyJobInfo) job, shell)){
       // Delete the run directory
       try{
-        ok = shell.deleteDir(runDir);
+        ok = cleanup(job);
       }
       catch(Exception e){
         e.printStackTrace();

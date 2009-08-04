@@ -949,7 +949,7 @@ public class JobCreator{
         // slowing down job creation enormeously, and still only the first will be used.
         // So, it should NOT be checked.
         
-        DBRecord inputFile = inputMgr.getFile(inputDatasetName, inputIds[currentPartition-1], 1);
+        DBRecord inputFile = inputMgr.getFile(inputDatasetName, inputIds[currentPartition-1], DBPluginMgr.LOOKUP_PFNS_ONE);
         String inputFils = (String) inputFile.getValue(pfnsField);
         inputFiles.add(inputFils);
         /*String [] inputFilArr = null;

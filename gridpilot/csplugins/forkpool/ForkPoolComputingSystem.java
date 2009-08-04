@@ -238,77 +238,17 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   public boolean cleanup(JobInfo job){
     boolean ret = true;
     String runDir = runDir(job);
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
-    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
-    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
-
-    // Delete files that may have been copied to final destination.
-    // Files starting with file: are considered to locally available, accessed
-    // with shellMgr
-    String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getIdentifier());
-    String fileName;
-    Vector remoteFiles = new Vector();
-    for(int i=0; i<outputFileNames.length; ++i){
-      fileName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
-      if(fileName.startsWith("file:")){
-        shell.deleteFile(fileName);
-      }
-      else{
-        remoteFiles.add(fileName);
-      }
-    }
-    String [] remoteFilesArr = new String [remoteFiles.size()];
-    for(int i=0; i<remoteFilesArr.length; ++i){
-      remoteFilesArr[i] = (String) remoteFiles.get(i);
-    }
-    try{
-      transferControl.deleteFiles(remoteFilesArr);
-    }
-    catch(Exception e){
-      error = "WARNING: could not delete output files. "+e.getMessage();
-      Debug.debug(error, 3);
-    }
-    
-    // Delete stdout/stderr that may have been copied to final destination
-    if(finalStdOut!=null && finalStdOut.trim().length()>0){
-      try{
-        if(finalStdOut.startsWith("file:")){
-          shell.deleteFile(finalStdOut);
-        }
-        else{
-          transferControl.deleteFiles(new String [] {finalStdOut});
-        }
-      }
-      catch(Exception e){
-        error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
-        Debug.debug(error, 2);
-      }
-      catch(Throwable e){
-        error = "WARNING: could not delete "+finalStdOut+". "+e.getMessage();
-        Debug.debug(error, 2);
-      }
-    }
-    if(finalStdErr!=null && finalStdErr.trim().length()>0){
-      try{
-        if(finalStdErr.startsWith("file:")){
-          shell.deleteFile(finalStdErr);
-        }
-        else{
-          transferControl.deleteFiles(new String [] {finalStdErr});
-        }
-      }
-      catch(Exception e){
-        error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
-        Debug.debug(error, 2);
-      }
-      catch(Throwable e){
-        error = "WARNING: could not delete "+finalStdErr+". "+e.getMessage();
-        Debug.debug(error, 2);
-      }
-    }
-
     try{
       getShell(job.getHost()).deleteDir(runDir);
+    }
+    catch(Exception ioe){
+      error = "Exception during cleanup of job " + job.getName()+ "\n" +
+      "\tException\t: " + ioe.getMessage();
+      logFile.addMessage(error, ioe);
+      ret = false;
+    }
+    try{
+      super.cleanup(job);
     }
     catch(Exception ioe){
       error = "Exception during cleanup of job " + job.getName()+ "\n" +

@@ -5,6 +5,8 @@ import gridfactory.common.DBResult;
 
 import java.sql.SQLException;
 
+import com.mysql.jdbc.NotImplemented;
+
 public interface Database{
     
   public static final int DEFINED = 1;
@@ -14,6 +16,11 @@ public interface Database{
   public static final int FAILED = 5;
   public static final int ABORTED = 6;
   public static final int UNEXPECTED = 7;
+  
+  // int argument lookupPFNs to getFile() must be 0, 1 or 2: 0=no lookup, 1=lookup one pfn, 2=lookup all pfns
+  public static final int LOOKUP_PFNS_NONE = 0;
+  public static final int LOOKUP_PFNS_ONE = 1;
+  public static final int LOOKUP_PFNS_ALL = 2;
   
   public void disconnect();
   // TODO: implement in plugins and make menu point active.
@@ -78,7 +85,9 @@ public interface Database{
   public boolean createDataset(String targetTable, String[] fields, Object [] values) throws InterruptedException;
   // the parameter datasetName is redundant and is only used by AtlasDatabase - because DQ2 cannot lookup dsn name by vuid...
   public boolean updateDataset(String datasetID, String datasetName, String [] fields, String [] values) throws InterruptedException;
-  public boolean deleteDataset(String datasetID, boolean cleanup) throws InterruptedException;
+  public boolean deleteDataset(String datasetID) throws InterruptedException;
+  // Optional: if not implemented (i.e. thows an exception), DBPluginMgr cleans up in a standard way
+  public boolean deleteDataset(String datasetID, boolean cleanup) throws InterruptedException,NotImplemented;
   public boolean deleteJobDefsFromDataset(String datasetID) throws InterruptedException;
   public DBRecord getDataset(String datasetID) throws InterruptedException;
   public String getDatasetTransformationName(String datasetID) throws InterruptedException;
@@ -94,7 +103,7 @@ public interface Database{
   public boolean createJobDefinition(String datasetName, String [] cstAttrNames,
       String [] resCstAttr, String [] trpars, String [] [] ofmap, String odest,
       String edest) throws InterruptedException;
-  public boolean deleteJobDefinition(String jobDefID, boolean cleanup) throws InterruptedException;
+  public boolean deleteJobDefinition(String jobDefID) throws InterruptedException;
   public boolean updateJobDefinition(String jobDefID, String [] fields, String [] values) throws InterruptedException;
   // Here the following fields are assumed:
   // "user", "jobDefID", "jobName", "stdOut", "stdErr"
@@ -119,7 +128,11 @@ public interface Database{
   public DBResult getFiles(String datasetID) throws InterruptedException;
   public void registerFileLocation(String datasetID, String datasetName,
       String fileID, String lfn, String url, String size, String checksum, boolean datasetComplete) throws Exception;
-  public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) throws InterruptedException;
+  /** Delete file record(s). */
+  public boolean deleteFiles(String datasetID, String [] fileIDs) throws InterruptedException;
+  /** Remove file record(s) and optionally physical file(s) as well.<br><br>
+      Optional: if not implemented (i.e. thows an exception), DBPluginMgr cleans up in a standard way */
+  public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) throws InterruptedException,NotImplemented;
   
   // ####### Job execution
   public String getRunInfo(String jobDefID, String key) throws InterruptedException;

@@ -38,6 +38,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
 
+import gridpilot.DBPluginMgr;
 import gridpilot.Database;
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;
@@ -1842,7 +1843,7 @@ public class ATLASDatabase extends DBCache implements Database{
   }
   
   public String getFileID(String datasetName, String fileName){
-    DBRecord file = getFile(datasetName, fileName, 0);
+    DBRecord file = getFile(datasetName, fileName, Database.LOOKUP_PFNS_NONE);
     return file.getValue("guid").toString();
   };
   
@@ -1882,8 +1883,8 @@ public class ATLASDatabase extends DBCache implements Database{
     String catalogs = "";
     String bytes = "";
     String checksum = "";
-    if(findAllPFNs!=0){
-      catalogs = MyUtil.arrayToString(findPFNs(vuid, lfn, findAllPFNs==2).toArray());
+    if(findAllPFNs!=Database.LOOKUP_PFNS_NONE){
+      catalogs = MyUtil.arrayToString(findPFNs(vuid, lfn, findAllPFNs==Database.LOOKUP_PFNS_ALL).toArray());
       for(int j=2; j<pfnVector.size(); ++j){
         resultVector.add((String) pfnVector.get(j));
       }
@@ -1899,7 +1900,7 @@ public class ATLASDatabase extends DBCache implements Database{
   public String [][] getFileURLs(String datasetName, String fileID, boolean findAll){
     String [][] ret = new String [2][];
     try{
-      DBRecord file = getFile(datasetName, fileID, findAll?2:1);
+      DBRecord file = getFile(datasetName, fileID, findAll?Database.LOOKUP_PFNS_ALL:Database.LOOKUP_PFNS_ONE);
       Debug.debug("catalogs: "+file.getValue("catalogs"), 2);
       ret[0] = MyUtil.split((String) file.getValue("catalogs"));
       ret[1] = MyUtil.splitUrls((String) file.getValue("pfns"));
@@ -1911,6 +1912,9 @@ public class ATLASDatabase extends DBCache implements Database{
     return ret;
   }
 
+  public boolean deleteFiles(String datasetID, String [] fileIDs){
+    return deleteFiles(datasetID, fileIDs, false);
+  }
   /**
    * Delete file entries in DQ file catalog, delete the corresponding physical files
    * and the entries on MySQL home server.
@@ -1922,24 +1926,27 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     
     // Find the LFNs to delete.
-    String [] toDeleteLfns = null;
     // NOTICE: we are assuming that there is a one-to-one mapping between
     //         lfns and guids. This is not necessarily the case...
     // TODO: improve
     DBResult allFiles = null;
-    int count = 0;
+    Vector<String> toDeleteLFNsVec = new Vector<String>();
+    String [] toDeleteLfns = null;
     try{
       allFiles = getFiles(datasetID);
-      toDeleteLfns = new String[fileIDs.length];
       for(int i=0; i<allFiles.values.length; ++i){
+        if(fileIDs==null){
+          toDeleteLFNsVec.add((String) allFiles.getValue(i, "lfn"));
+          continue;
+        }
         for(int j=0; j<fileIDs.length; ++j){
           if(fileIDs[j].equalsIgnoreCase((String) allFiles.getValue(i, "guid"))){
-            toDeleteLfns[count] = allFiles.getValue(i, "lfn").toString();
-            ++count;
+            toDeleteLFNsVec.add((String) allFiles.getValue(i, "lfn"));
             break;
           }
         }
       }
+      toDeleteLfns = toDeleteLFNsVec.toArray(new String[toDeleteLFNsVec.size()]);
     }
     catch(Exception e){
       error = "ERROR: could not delete files "+MyUtil.arrayToString(fileIDs)+" from " +
@@ -2571,6 +2578,10 @@ public class ATLASDatabase extends DBCache implements Database{
     return true;
   }
 
+  public boolean deleteDataset(String datasetID){
+    return deleteDataset(datasetID, false);
+  }
+  
   public boolean deleteDataset(String datasetID, boolean cleanup){
     
     if(getStop()){
@@ -2788,7 +2799,7 @@ public class ATLASDatabase extends DBCache implements Database{
     return false;
   }
 
-  public boolean deleteJobDefinition(String jobDefID, boolean cleanup){
+  public boolean deleteJobDefinition(String jobDefID){
     return false;
   }
 

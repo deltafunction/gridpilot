@@ -20,6 +20,8 @@ import org.hsqldb.Server;
 import org.logicalcobwebs.proxool.ProxoolFacade;
 import org.safehaus.uuid.UUIDGenerator;
 
+import com.mysql.jdbc.NotImplemented;
+
 import gridfactory.common.ConfigFile;
 import gridfactory.common.DBCache;
 import gridfactory.common.DBRecord;
@@ -27,7 +29,6 @@ import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
-import gridpilot.DBPluginMgr;
 import gridpilot.Database;
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;
@@ -2266,43 +2267,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     return execok;
   }
   
-  public synchronized boolean deleteJobDefinition(String jobDefId, boolean cleanup){
-    if(cleanup){
-      DBRecord jobDef = getJobDefinition(jobDefId);
-      String [] toDeleteFiles = null;
-      if(!((String) jobDef.getValue("status")).equalsIgnoreCase(DBPluginMgr.getStatusName(DBPluginMgr.DEFINED))){
-        try{
-          if(isFileCatalog()){
-            // In this case: don't delete the first of the output files, since
-            // this is the file registered in the file catalog and will be
-            // deleted when deleting the file catalog entry.
-            String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
-            toDeleteFiles = new String [outFiles.length+2-(outFiles.length>0?1:0)];
-            toDeleteFiles[0] = (String) jobDef.getValue("stdoutDest");
-            toDeleteFiles[1] = (String) jobDef.getValue("stderrDest");
-            for(int i=2; i<toDeleteFiles.length; ++i){
-              toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-1]);
-            }
-          }
-          else{
-            String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
-            toDeleteFiles = new String [outFiles.length+2];
-            toDeleteFiles[0] = (String) jobDef.getValue("stdoutDest");
-            toDeleteFiles[1] = (String) jobDef.getValue("stderrDest");
-            for(int i=2; i<toDeleteFiles.length; ++i){
-              toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-2]);
-            }
-          }
-          Debug.debug("Deleting files "+MyUtil.arrayToString(toDeleteFiles), 2);        
-          if(toDeleteFiles!=null){
-            GridPilot.getClassMgr().getTransferControl().deleteFiles(toDeleteFiles);
-          }
-        }
-        catch(Exception e){
-          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete files "+toDeleteFiles);
-        }
-      }
-    }
+  public synchronized boolean deleteJobDefinition(String jobDefId){
     String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     boolean ok = true;
     try{
@@ -2323,18 +2288,13 @@ public class HSQLDBDatabase extends DBCache implements Database{
     return ok;
   }
   
-  public synchronized boolean deleteDataset(String datasetID, boolean cleanup){
+  public boolean deleteDataset(String datasetID, boolean cleanup) throws NotImplemented {
+    throw new NotImplemented();
+  }
+  
+  public synchronized boolean deleteDataset(String datasetID){
     String idField = MyUtil.getIdentifierField(dbName, "dataset");
     boolean ok = true;
-    if(isJobRepository() && cleanup){
-      ok = deleteJobDefsFromDataset(datasetID);
-      if(!ok){
-        Debug.debug("ERROR: Deleting job definitions of dataset #"+
-            datasetID+" failed."+" Please clean up by hand.", 1);
-        error = "ERROR: Deleting job definitions of dataset #"+
-           datasetID+" failed."+" Please clean up by hand.";
-      }
-    }
     try{
       String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
          datasetID+"'";
@@ -2511,16 +2471,16 @@ public class HSQLDBDatabase extends DBCache implements Database{
           }
           else if(fields[i].equalsIgnoreCase("pfname")){
             String [] pfns = new String [0];
-            if(findAllPFNs!=0){
+            if(findAllPFNs!=Database.LOOKUP_PFNS_NONE){
               String [][] res = MyUtil.getValues(dbName, "t_pfn", "guid", fileID, new String [] {"pfname"});
               pfns = new String [res.length];
               for(int j=0; j<res.length; ++j){
                 pfns[j] = res[j][0];
-                if(findAllPFNs==1){
+                if(findAllPFNs==Database.LOOKUP_PFNS_ONE){
                   break;
                 }
               }
-              if(findAllPFNs==1 && pfns.length>0){
+              if(findAllPFNs==Database.LOOKUP_PFNS_ONE && pfns.length>0){
                 pfns = new String [] {pfns[0]};
               }
             }
@@ -2586,7 +2546,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     if(isFileCatalog()){
       String ret = null;
       try{
-        DBRecord file = getFile(datasetName, fileID, findAll?2:1);
+        DBRecord file = getFile(datasetName, fileID, findAll?Database.LOOKUP_PFNS_ALL:Database.LOOKUP_PFNS_ONE);
         ret = (String) file.getValue("pfname");
       }
       catch(Exception e){
@@ -2606,7 +2566,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     else{
       String ret = null;
       try{
-        DBRecord file = getFile(datasetName, fileID, findAll?2:1);
+        DBRecord file = getFile(datasetName, fileID, findAll?Database.LOOKUP_PFNS_ALL:Database.LOOKUP_PFNS_ONE);
         ret = (String) file.getValue("url");
       }
       catch(Exception e){
@@ -2823,81 +2783,70 @@ public class HSQLDBDatabase extends DBCache implements Database{
     return execok1 && execok2 && execok3;
   }
 
-  public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) {
-    if(isFileCatalog()){
-      Connection conn = null;
-      try{
-        conn = getDBConnection(dbName);
-      }
-      catch(SQLException e1){
-        e1.printStackTrace();
-      }
-      LogFile logFile = GridPilot.getClassMgr().getLogFile();
-      boolean ok = true;
-      Debug.debug("Deleting files "+MyUtil.arrayToString(fileIDs), 2);
-      for(int i=0; i<fileIDs.length; ++i){
-        try{
-          if(cleanup){
-            String fileNames = null;
-            try{
-              if(isFileCatalog()){
-                fileNames = (String) getFile(datasetID, fileIDs[i], 2).getValue("pfname");
-              }
-              else{
-                fileNames = (String) getFile(datasetID, fileIDs[i], 2).getValue("url");
-              }
-              Debug.debug("Deleting files "+fileNames, 2);
-              if(fileNames!=null && !fileNames.equals("no such field")){
-                String [] fileNameArray = MyUtil.splitUrls(fileNames);
-                if(fileNameArray!=null && fileNameArray.length>0){
-                  GridPilot.getClassMgr().getTransferControl().deleteFiles(fileNameArray);
-                }
-              }
-            }
-            catch(Exception e){
-              e.printStackTrace();
-              logFile.addMessage("WARNING: Could not delete file(s) "+fileNames);
-            }
-          }
-          String req = "DELETE FROM t_lfn WHERE guid = '"+fileIDs[i]+"'";
-          Debug.debug(">> "+req, 3);
-          int rowsAffected = conn.createStatement().executeUpdate(req);
-          if(rowsAffected==0){
-            error = "WARNING: could not delete guid "+fileIDs[i]+" from t_lfn";
-            logFile.addMessage(error);
-          }
-          req = "DELETE FROM t_pfn WHERE guid = '"+fileIDs[i]+"'";
-          Debug.debug(">> "+req, 3);
-          rowsAffected = conn.createStatement().executeUpdate(req);
-          if(rowsAffected==0){
-            error = "WARNING: could not delete guid "+fileIDs[i]+" from t_pfn";
-            logFile.addMessage(error);
-          }
-          req = "DELETE FROM t_meta WHERE guid = '"+fileIDs[i]+"'";
-          Debug.debug(">> "+req, 3);
-          rowsAffected = conn.createStatement().executeUpdate(req);
-          if(rowsAffected==0){
-            error = "WARNING: could not delete guid "+fileIDs[i]+" from t_meta";
-            logFile.addMessage(error);
-          }
-          conn.commit();
-        }
-        catch(Exception e){
-          ok = false;
-        }
-      }
-      try{
-        conn.close();
-      }
-      catch(SQLException e){
-        e.printStackTrace();
-      }
-      return ok;
-    }
-    else{
+  public boolean deleteFiles(String datasetID, String [] fileIDs, boolean cleanup) throws NotImplemented {
+    throw new NotImplemented();
+  }
+  
+  public boolean deleteFiles(String datasetID, String [] fileIDs) {
+    if(!isFileCatalog()){
       // do nothing
-      return false;
+      return true;
     }
+    Connection conn = null;
+    try{
+      conn = getDBConnection(dbName);
+    }
+    catch(SQLException e1){
+      e1.printStackTrace();
+    }
+    LogFile logFile = GridPilot.getClassMgr().getLogFile();
+    // If no file IDs are given, delete all from this dataset
+    if(fileIDs==null){
+      String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+      DBResult filesRes = getFiles(datasetID);
+      fileIDs = new String[filesRes.size()];
+      for(int i=0; i<fileIDs.length; ++i){
+        fileIDs[i] = (String) filesRes.getValue(i, idField);
+      }
+    }
+    boolean ok = true;
+    Debug.debug("Deleting files "+MyUtil.arrayToString(fileIDs), 2);
+    for(int i=0; i<fileIDs.length; ++i){
+      try{
+        String req = "DELETE FROM t_lfn WHERE guid = '"+fileIDs[i]+"'";
+        Debug.debug(">> "+req, 3);
+        int rowsAffected = conn.createStatement().executeUpdate(req);
+        if(rowsAffected==0){
+          error = "WARNING: could not delete guid "+fileIDs[i]+" from t_lfn";
+          logFile.addMessage(error);
+        }
+        req = "DELETE FROM t_pfn WHERE guid = '"+fileIDs[i]+"'";
+        Debug.debug(">> "+req, 3);
+        rowsAffected = conn.createStatement().executeUpdate(req);
+        if(rowsAffected==0){
+          error = "WARNING: could not delete guid "+fileIDs[i]+" from t_pfn";
+          logFile.addMessage(error);
+        }
+        req = "DELETE FROM t_meta WHERE guid = '"+fileIDs[i]+"'";
+        Debug.debug(">> "+req, 3);
+        rowsAffected = conn.createStatement().executeUpdate(req);
+        if(rowsAffected==0){
+          error = "WARNING: could not delete guid "+fileIDs[i]+" from t_meta";
+          logFile.addMessage(error);
+        }
+        conn.commit();
+      }
+      catch(Exception e){
+        ok = false;
+      }
+    }
+    try{
+      conn.close();
+    }
+    catch(SQLException e){
+      e.printStackTrace();
+    }
+    return ok;
   }
 
   private synchronized String getFileID(String lfn){

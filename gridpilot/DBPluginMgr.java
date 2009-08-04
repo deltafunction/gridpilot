@@ -9,6 +9,8 @@ import java.util.zip.DataFormatException;
 
 import org.safehaus.uuid.UUIDGenerator;
 
+import com.mysql.jdbc.NotImplemented;
+
 import gridfactory.common.ConfigFile;
 import gridfactory.common.DBCache;
 import gridfactory.common.DBRecord;
@@ -1699,7 +1701,7 @@ public class DBPluginMgr extends DBCache implements Database{
     // For a file catalog, just get the size
     if(db.isFileCatalog()){
       try{
-        size = (String) db.getFile(datasetName, fileId, 0).getValue(MyUtil.getFileSizeField(dbName));
+        size = (String) db.getFile(datasetName, fileId, LOOKUP_PFNS_NONE).getValue(MyUtil.getFileSizeField(dbName));
       }
       catch(Exception e){
         //e.printStackTrace();
@@ -1742,7 +1744,7 @@ public class DBPluginMgr extends DBCache implements Database{
     // For a file catalog, just get the size
     if(db.isFileCatalog()){
       try{
-        checksum = (String) db.getFile(datasetName, fileId, 0).getValue(MyUtil.getChecksumField(dbName));
+        checksum = (String) db.getFile(datasetName, fileId, LOOKUP_PFNS_NONE).getValue(MyUtil.getChecksumField(dbName));
       }
       catch(Exception e){
         //e.printStackTrace();
@@ -2187,46 +2189,60 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public synchronized boolean deleteJobDefinition(final String jobDefID, final boolean cleanup){
-    
-      ResThread t = new ResThread(){
-        boolean res = false;
-        public void requestStop(){
-          db.requestStop();
+  /**
+   * Delete physical file(s) produced by job
+   * - including stdout and stderr and, if the DB is not a file catalog,
+   * all output file(s). If the DB is a file catalog, the first output file
+   * is not deleted.
+   * @param datasetID
+   */
+  protected boolean purgeJobFiles(String jobDefId){
+    boolean ret = true;
+    DBRecord jobDef = getJobDefinition(jobDefId);
+    String [] toDeleteFiles = null;
+    if(((String) jobDef.getValue("status")).equalsIgnoreCase(DBPluginMgr.getStatusName(DBPluginMgr.DEFINED))){
+      return ret;
+    }
+    try{
+      if(isFileCatalog()){
+        // In this case: don't delete the first of the output files, since
+        // this is the file registered in the file catalog and will be
+        // deleted when deleting the file catalog entry.
+        String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
+        toDeleteFiles = new String [outFiles.length+2-(outFiles.length>0?1:0)];
+        toDeleteFiles[0] = (String) jobDef.getValue("stdoutDest");
+        toDeleteFiles[1] = (String) jobDef.getValue("stderrDest");
+        for(int i=2; i<toDeleteFiles.length; ++i){
+          toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-1]);
         }
-        public void clearRequestStop(){
-          db.clearRequestStop();
-        }
-        public void run(){
-          try{
-            db.clearError();
-            res = db.deleteJobDefinition(jobDefID, cleanup);
-          }
-          catch(Throwable t){
-            db.appendError(t.getMessage());
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName + " " +
-                               jobDefID, t);
-          }
-        }
-        public boolean getBoolRes(){
-          return res;
-        }
-      };
-    
-      t.start();
-    
-      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "deleteJobDefinition")){
-        return t.getBoolRes();
       }
       else{
-        return false;
+        String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
+        toDeleteFiles = new String [outFiles.length+2];
+        toDeleteFiles[0] = (String) jobDef.getValue("stdoutDest");
+        toDeleteFiles[1] = (String) jobDef.getValue("stderrDest");
+        for(int i=2; i<toDeleteFiles.length; ++i){
+          toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-2]);
+        }
+      }
+      Debug.debug("Deleting files "+MyUtil.arrayToString(toDeleteFiles), 2);        
+      if(toDeleteFiles!=null){
+        GridPilot.getClassMgr().getTransferControl().deleteFiles(toDeleteFiles);
       }
     }
-
-  public synchronized boolean deleteFiles(final String datasetID,
-      final String [] fileIDs, final boolean cleanup){
-    
+    catch(Exception e){
+      ret = false;
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete file(s) "+toDeleteFiles);
+    }
+    return ret;
+  }
+  
+  // Notice: not in its own thread
+  public boolean deleteJobDefinition(String jobDefID) throws InterruptedException{
+    return db.deleteJobDefinition(jobDefID);
+  }
+  
+  public synchronized boolean deleteJobDefinition(final String jobDefID, final boolean cleanup){
     ResThread t = new ResThread(){
       boolean res = false;
       public void requestStop(){
@@ -2237,8 +2253,102 @@ public class DBPluginMgr extends DBCache implements Database{
       }
       public void run(){
         try{
+          if(cleanup){
+            res = purgeJobFiles(jobDefID);
+          }
+          res = res && deleteJobDefinition(jobDefID);
+        }
+        catch(Throwable t){
+          db.appendError(t.getMessage());
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             jobDefID, t);
+        }
+      }
+      public boolean getBoolRes(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "deleteJobDefinition")){
+      return t.getBoolRes();
+    }
+    else{
+      return false;
+    }
+  }
+
+  /**
+   * Delete physical file(s) registered in a file catalog.
+   * @param datasetID
+   * @param fileIDs
+   * @return
+   */
+  protected boolean purgeFiles(String datasetID, String[] fileIDs) {
+    boolean ok = true;
+    for(int i=0; i<fileIDs.length; ++i){
+      String fileNames = null;
+      try{
+        if(isFileCatalog()){
+          fileNames = (String) getFile(datasetID, fileIDs[i], LOOKUP_PFNS_ALL).getValue("pfname");
+        }
+        else{
+          fileNames = (String) getFile(datasetID, fileIDs[i], LOOKUP_PFNS_ALL).getValue("url");
+        }
+        Debug.debug("Deleting files "+fileNames, 2);
+        if(fileNames!=null && !fileNames.equals("no such field")){
+          String [] fileNameArray = MyUtil.splitUrls(fileNames);
+          if(fileNameArray!=null && fileNameArray.length>0){
+            GridPilot.getClassMgr().getTransferControl().deleteFiles(fileNameArray);
+          }
+        }
+      }
+      catch(Exception e){
+        ok = false;
+        e.printStackTrace();
+        logFile.addMessage("WARNING: Could not delete file(s) "+fileNames);
+      }
+    }
+    return ok;
+  }
+  
+  // Notice: not in its own thread
+  public boolean deleteFiles(final String datasetID,
+      final String [] fileIDs) throws InterruptedException{
+    return db.deleteFiles(datasetID, fileIDs);
+  }
+  
+  public synchronized boolean deleteFiles(final String datasetID,
+      final String [] fileIDs, final boolean cleanup){
+    
+    ResThread t = new ResThread(){
+      boolean res = true;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
+      public void run(){
+        try{
           db.clearError();
-          res = db.deleteFiles(datasetID, fileIDs, cleanup);
+          try{
+            if(cleanup){
+              // If this is implemented use it
+              res = db.deleteFiles(datasetID, fileIDs, cleanup);
+              return;
+            }
+          }
+          catch(NotImplemented t){
+          }
+          // Otherwise, clean up with purgeFiles
+          db.clearError();
+          if(cleanup){
+            res = res && purgeFiles(datasetID, fileIDs);
+          }
+          res = res && deleteFiles(datasetID, fileIDs);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
@@ -2262,6 +2372,11 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
+  // Notice: not in its own thread
+  public boolean deleteDataset(final String datasetID) throws InterruptedException{
+    return db.deleteDataset(datasetID);
+  }
+    
   public synchronized boolean deleteDataset(final String datasetID, final boolean cleanup){
     
       ResThread t = new ResThread(){
@@ -2275,7 +2390,31 @@ public class DBPluginMgr extends DBCache implements Database{
         public void run(){
           try{
             db.clearError();
-            res = db.deleteDataset(datasetID, cleanup);
+            try{
+              if(cleanup){
+                // If this is implemented use it
+                res = db.deleteDataset(datasetID, cleanup);
+                return;
+              }
+            }
+            catch(NotImplemented t){
+            }
+            // Otherwise, clean up with deleteJobDefsFromDataset and purgeFilesFromDataset
+            boolean ok = true;
+            if(isJobRepository() && cleanup){
+              purgeJobFilesFromDataset(datasetID);
+              purgeFilesFromDataset(datasetID);
+              ok = deleteJobDefsFromDataset(datasetID);
+              ok = ok && deleteFiles(datasetID, null);
+              if(!ok){
+                Debug.debug("ERROR: Deleting job definitions of dataset #"+
+                    datasetID+" failed."+" Please clean up by hand.", 1);
+                String error = "ERROR: Deleting job definitions of dataset #"+
+                   datasetID+" failed."+" Please clean up by hand.";
+                throw new IOException(error);
+              }
+            }
+            res = deleteDataset(datasetID);
           }
           catch(Throwable t){
             db.appendError(t.getMessage());
@@ -2298,6 +2437,40 @@ public class DBPluginMgr extends DBCache implements Database{
         return false;
       }
     }
+  
+  /**
+   * Delete physical file(s) produced by job(s) of dataset 
+   * - including stdout and stderr and, if the DB is not a file catalog,
+   * all output file(s). If the DB is a file catalog, the first output file
+   * of each job is not deleted.
+   * @param datasetID
+   */
+  protected void purgeJobFilesFromDataset(String datasetID) {
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+    String nameField = MyUtil.getNameField(dbName, "jobDefinition");
+    DBResult jobDefsRes = getJobDefinitions(datasetID,
+        new String [] {idField, nameField, "computingSystem", "jobId"}, null, null);
+    String jobDefID;
+    for(int i=0; i<jobDefsRes.size(); ++i){
+      jobDefID = (String) jobDefsRes.getValue(i, idField);
+      purgeJobFiles(jobDefID);
+    }
+  }
+
+  /**
+   * Delete physical file(s) registered as belonging to a dataset.
+   * If the DB is not a file catalog, nothing is done.
+   * @param datasetID
+   */
+  protected void purgeFilesFromDataset(String datasetID) {
+    String idField = MyUtil.getIdentifierField(dbName, "file");
+    DBResult filesRes = getFiles(datasetID);
+    String [] fileIDs = new String[filesRes.size()];
+    for(int i=0; i<fileIDs.length; ++i){
+      fileIDs[i] = (String) filesRes.getValue(i, idField);
+    }
+    purgeFiles(datasetID, fileIDs);
+  }
 
   public synchronized boolean deleteJobDefsFromDataset(final String datasetID){
     
