@@ -16,6 +16,7 @@ public interface Database{
   public static final int FAILED = 5;
   public static final int ABORTED = 6;
   public static final int UNEXPECTED = 7;
+  public static final int PREPARED = 8;
   
   // int argument lookupPFNs to getFile() must be 0, 1 or 2: 0=no lookup, 1=lookup one pfn, 2=lookup all pfns
   public static final int LOOKUP_PFNS_NONE = 0;

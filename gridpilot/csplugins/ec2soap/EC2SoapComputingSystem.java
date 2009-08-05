@@ -94,8 +94,8 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
     // Fill hosts with nulls and assign values as jobs are submitted.
     hosts = new String[maxMachines];
     // Fill maxJobs with a constant number
-    maxJobs = new String[maxMachines];
-    Arrays.fill(maxJobs, jobsPerMachine);
+    maxRunningJobs = new String[maxMachines];
+    Arrays.fill(maxRunningJobs, jobsPerMachine);
     
     submittingHostJobs = new HashMap<String, HashSet<String>>();
     
@@ -389,8 +389,8 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
         host = hosts[i];
         maxR = 1;
         mgr = getShell(host);
-        if(maxJobs!=null && maxJobs.length>i && maxJobs[i]!=null){
-          maxR = Integer.parseInt(maxJobs[i]);
+        if(maxRunningJobs!=null && maxRunningJobs.length>i && maxRunningJobs[i]!=null){
+          maxR = Integer.parseInt(maxRunningJobs[i]);
         }
         submitting = (host!=null&&submittingHostJobs.get(host)!=null?((HashSet)submittingHostJobs.get(host)).size():0);
         if(mgr.getJobsNumber()+submitting<maxR){

@@ -104,7 +104,7 @@ public class MonitoringPanel extends CreateEditPanel {
    */
   public void panelShown(){
     Debug.debug("panelShown",1);
-    statusBar.setLabel(GridPilot.getClassMgr().getSubmittedJobs().size() + " job(s) monitored");
+    statusBar.setLabel(GridPilot.getClassMgr().getMonitoredJobs().size() + " job(s) monitored");
   }
 
   /**

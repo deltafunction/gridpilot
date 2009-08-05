@@ -48,7 +48,7 @@ public class JobMgr{
    *     (they are in {@link SubmissionControl#toSubmitJobs})
    * <li>the logicalFile which have been monitored (not submitted) </ul>
    */
-  private Vector submittedJobs;
+  private Vector monitoredjobs;
 
   /** Index of column of icon in statusTable .*/
   public final static int FIELD_CONTROL = 0;
@@ -80,9 +80,14 @@ public class JobMgr{
   private static int[] jobsByDBStatus = new int[DBPluginMgr.getDBStatusNames().length];
   
   /** 
-   * Counters of running jobs ordered by DB computing system.
+   * Counters of running jobs ordered by computing system.
    */
   private int [] submittedJobsByCS;
+  
+  /** 
+   * Counters of preprocessing jobs ordered by computing system.
+   */
+  private int [] preprocessingJobsByCS;
   
   private boolean [] hasChanged;
   private boolean useChanges = true;
@@ -110,7 +115,7 @@ public class JobMgr{
     statusTable = GridPilot.getClassMgr().getJobStatusTable();
     Debug.debug("Status table fields: "+statusTable.getModel().getColumnCount(), 3);
     statisticsPanel = GridPilot.getClassMgr().getJobStatisticsPanel();
-    submittedJobs = GridPilot.getClassMgr().getSubmittedJobs();
+    monitoredjobs = GridPilot.getClassMgr().getMonitoredJobs();
     try{
       URL imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "waiting.png");
       iconWaiting = new ImageIcon(imgURL);
@@ -158,6 +163,10 @@ public class JobMgr{
 
    public int [] getSubmittedJobsByCS(){
      return submittedJobsByCS;
+   }
+
+   public int [] getPreprocessingJobsByCS(){
+     return preprocessingJobsByCS;
    }
 
    public DBPluginMgr getDBPluginMgr(){
@@ -221,7 +230,7 @@ public class JobMgr{
         catch(Exception e){
           Debug.debug(e.getCause().toString(), 2);
         }
-        job.setTableRow(submittedJobs.size());
+        job.setTableRow(monitoredjobs.size());
         job.setNeedsUpdate(true);
         String stdOut = null;
         String stdErr = null;
@@ -284,7 +293,7 @@ public class JobMgr{
             job.setNeedsUpdate(false);
             break;
         }
-        submittedJobs.add(job);
+        monitoredjobs.add(job);
         
         Debug.debug(job.getName()+" getNeedsUpdate: "+job.getNeedsUpdate(),3);
 
@@ -296,7 +305,7 @@ public class JobMgr{
             job.setNeedsUpdate(false);
             initChanges();
             // TODO: is this necessary?
-            statusTable.createRows(submittedJobs.size());
+            statusTable.createRows(monitoredjobs.size());
             updateDBStatus(job, DBPluginMgr.UNDECIDED);
           }
         }
@@ -313,18 +322,18 @@ public class JobMgr{
     statusBar.removeProgressBar(pb);
     statusBar.setLabel("Adding job definitions done.");
 
-    statusTable.createRows(submittedJobs.size());
+    statusTable.createRows(monitoredjobs.size());
     initChanges();
 
-    updateDBCells(submittedJobs);
-    updateJobCells(submittedJobs);
+    updateDBCells(monitoredjobs);
+    updateJobCells(monitoredjobs);
     
     //updateJobsByStatus();
   }
 
   public void initChanges(){
     boolean [] oldChanges = hasChanged;
-    hasChanged = new boolean[submittedJobs.size()];
+    hasChanged = new boolean[monitoredjobs.size()];
     if(oldChanges!=null){
       for(int i=0; i<hasChanged.length && i<oldChanges.length; ++i){
         hasChanged[i] = oldChanges[i];
@@ -471,16 +480,14 @@ public class JobMgr{
     for(int i=0; i<jobsByStatus.length;++i){
       jobsByStatus[i] = 0;
     }
-    int waitIndex = 0;
-    int runIndex = 1;
-    int doneIndex = 2;
     
     String [] css = GridPilot.getClassMgr().getCSPluginMgr().getEnabledCSNames();
     submittedJobsByCS = new int[css.length];
+    preprocessingJobsByCS = new int[css.length];
     MyJobInfo job;
 
-    for(int i=0; i<submittedJobs.size(); ++i){
-      job = (MyJobInfo) submittedJobs.get(i);
+    for(int i=0; i<monitoredjobs.size(); ++i){
+      job = (MyJobInfo) monitoredjobs.get(i);
       //Debug.debug("adding job "+job.getName()+
       //    " : "+job.getDBStatus()+
       //    " : "+(job.getDBStatus()<1?"":jobsByDBStatus[job.getDBStatus()-1]), 3);
@@ -490,25 +497,34 @@ public class JobMgr{
 
       switch(job.getStatus()){
         case MyJobInfo.STATUS_READY:
-          ++jobsByStatus[waitIndex];
+          ++jobsByStatus[DBPluginMgr.STAT_STATUS_WAIT];
+          break;
+
+        case MyJobInfo.STATUS_PREPARED:
+          ++jobsByStatus[DBPluginMgr.STAT_STATUS_WAIT];
           break;
 
         case MyJobInfo.STATUS_RUNNING:
-          ++jobsByStatus[runIndex];
+          ++jobsByStatus[DBPluginMgr.STAT_STATUS_RUN];
           break;
 
         case MyJobInfo.STATUS_DONE:
-          ++jobsByStatus[doneIndex];
+          ++jobsByStatus[DBPluginMgr.STAT_STATUS_DONE];
           break;
 
         case MyJobInfo.STATUS_FAILED:
-          ++jobsByStatus[doneIndex];
+          ++jobsByStatus[DBPluginMgr.STAT_STATUS_DONE];
           break;
       }
       
       for(int j=0; j<css.length; ++j){
-        if(css[j].equalsIgnoreCase(job.getCSName()) && job.getDBStatus()==DBPluginMgr.SUBMITTED){
-          ++submittedJobsByCS[j];
+        if(css[j].equalsIgnoreCase(job.getCSName())){
+          if(job.getDBStatus()==DBPluginMgr.SUBMITTED){
+            ++submittedJobsByCS[j];
+          }
+          if(job.getDBStatus()==DBPluginMgr.DEFINED || job.getDBStatus()==DBPluginMgr.PREPARED){
+            ++preprocessingJobsByCS[j];
+          }
         }
       }
       
@@ -523,7 +539,7 @@ public class JobMgr{
     for(int i=0; i<hasChanged.length ; ++i){
       hasChanged[i] = false;
     }
-    updateDBCells(submittedJobs);
+    updateDBCells(monitoredjobs);
   }
 
   /**
@@ -532,8 +548,8 @@ public class JobMgr{
    */
   public boolean exists(String jobDefId){
     MyJobInfo job;
-    Debug.debug("Checking jobs: "+submittedJobs.size(), 3);
-    Iterator i = submittedJobs.iterator();
+    Debug.debug("Checking jobs: "+monitoredjobs.size(), 3);
+    Iterator i = monitoredjobs.iterator();
     while(i.hasNext()){
       job = ((MyJobInfo) i.next());
       if(job.getIdentifier()==jobDefId){
@@ -550,10 +566,10 @@ public class JobMgr{
   public void removeRow(String jobDefID){
     String lfn = dbPluginMgr.getJobDefinition(jobDefID).getValue("name").toString();
     // Remove jobs from status vectors
-    for(int i=0; i<submittedJobs.size(); ++i){
-      if(((MyJobInfo) submittedJobs.get(i)).getName().equals(lfn)){
-        --jobsByDBStatus[((MyJobInfo) submittedJobs.get(i)).getDBStatus()-1];
-        submittedJobs.remove(i);
+    for(int i=0; i<monitoredjobs.size(); ++i){
+      if(((MyJobInfo) monitoredjobs.get(i)).getName().equals(lfn)){
+        --jobsByDBStatus[((MyJobInfo) monitoredjobs.get(i)).getDBStatus()-1];
+        monitoredjobs.remove(i);
       }
     }
     for(int i=0; i<statusTable.getRowCount(); ++i){
@@ -672,7 +688,7 @@ public class JobMgr{
    * Returns the submitted job with the specified jobDefinition.identifier.
    */
   public static MyJobInfo getJob(String jobDefID){
-    Vector submJobs = GridPilot.getClassMgr().getSubmittedJobs();
+    Vector submJobs = GridPilot.getClassMgr().getMonitoredJobs();
     Enumeration e = submJobs.elements();
     MyJobInfo job = null;
     while(e.hasMoreElements()){
@@ -690,7 +706,7 @@ public class JobMgr{
    * @see #getJobsAtRows(int[])
    */
   public static MyJobInfo getJobAtRow(int row){
-    Vector submJobs = GridPilot.getClassMgr().getSubmittedJobs();
+    Vector submJobs = GridPilot.getClassMgr().getMonitoredJobs();
     //Debug.debug("Got jobs at row "+row+". "+submJobs.size(), 3);
     return (MyJobInfo) submJobs.get(row);
   }

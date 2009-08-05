@@ -211,7 +211,7 @@ public class JobStatusUpdateControl{
     Vector jobs = null;
     if(rows==null || rows.length==0){
       // if nothing is selected, we refresh all jobs
-      jobs = GridPilot.getClassMgr().getSubmittedJobs();
+      jobs = GridPilot.getClassMgr().getMonitoredJobs();
     }
     else{
       //rows = statusTable.getSelectedRows();

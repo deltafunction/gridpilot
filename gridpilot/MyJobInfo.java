@@ -17,6 +17,7 @@ public class MyJobInfo extends JobInfo{
  
   private String csStatus;
   private int tableRow = -1;
+  private String [] depJobs = null;
 
   /**
    * These are the fields of the runtime DB table
@@ -122,6 +123,20 @@ public class MyJobInfo extends JobInfo{
   public void setTableRow(int _tableRow){
     tableRow = _tableRow;
   }
+  
+  /**
+   * Return jobs on which this one depends.
+   * @return a list of identifiers of jobs that this one depends on -
+   *         i.e. that must have finished before this one can start
+   */
+  public String [] getDepJobs(){
+    return depJobs;
+  }
+
+  public void setDepJobs(String [] _depJobs){
+    depJobs = _depJobs;
+  }
+
 }
 
 

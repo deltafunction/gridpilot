@@ -359,7 +359,7 @@ public class ClassMgr{
     return transferStatisticsPanel;
   }
 
-  public Vector getSubmittedJobs(){
+  public Vector getMonitoredJobs(){
     if(submittedJobs==null){
       Debug.debug("submittedJobs null", 3);
     }

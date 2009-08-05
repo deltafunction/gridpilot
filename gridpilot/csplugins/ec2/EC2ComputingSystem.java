@@ -171,8 +171,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     // Fill hosts with nulls and assign values as jobs are submitted.
     hosts = new String[maxMachines];
     // Fill maxJobs with a constant number
-    maxJobs = new String[maxMachines];
-    Arrays.fill(maxJobs, jobsPerMachine);
+    maxRunningJobs = new String[maxMachines];
+    Arrays.fill(maxRunningJobs, jobsPerMachine);
     
     submittingHostJobs = new HashMap<String, HashSet<String>>();
     
@@ -509,8 +509,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     int submitting = 0;
     maxR = 1;
     mgr = getShell(host);
-    if(maxJobs!=null && maxJobs.length>i && maxJobs[i]!=null){
-      maxR = Integer.parseInt(maxJobs[i]);
+    if(maxRunningJobs!=null && maxRunningJobs.length>i && maxRunningJobs[i]!=null){
+      maxR = Integer.parseInt(maxRunningJobs[i]);
     }
     Debug.debug("Checking host "+host+" for running jobs - max "+maxR, 2);
     submitting = submittingHostJobs.get(host)!=null?((HashSet)submittingHostJobs.get(host)).size():0;
@@ -946,7 +946,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     // then try to boot an instance
     Debug.debug("Nope, no host can be reused, trying to boot a fresh one.", 2);
-    return bootInstance(job);
+    String bootedHost = bootInstance(job);
+    if(bootedHost!=null){
+      return bootedHost;
+    }
+    // then see if we can queue the job on a host
+    return super.selectHost(job);
   }
   
   private boolean hostIsRunning(String host) throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException {

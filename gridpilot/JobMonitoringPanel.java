@@ -448,7 +448,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    */
   public void panelShown(){
     Debug.debug("panelShown",1);
-    statusBar.setLabel(GridPilot.getClassMgr().getSubmittedJobs().size() + " job(s) monitored");
+    statusBar.setLabel(GridPilot.getClassMgr().getMonitoredJobs().size() + " job(s) monitored");
   }
 
   /**
@@ -962,7 +962,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    * Shows/Hides rows according to the user's choice.
    */
   private void showOnlyRows(){
-    Vector submittedJobs = GridPilot.getClassMgr().getSubmittedJobs();
+    Vector submittedJobs = GridPilot.getClassMgr().getMonitoredJobs();
     Enumeration e =  submittedJobs.elements();
     while(e.hasMoreElements()){
       MyJobInfo job = (MyJobInfo) e.nextElement();
@@ -1009,7 +1009,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     }
     statusUpdateControl.reset();
     boolean ret = true;
-    GridPilot.getClassMgr().getSubmittedJobs().removeAllElements();
+    GridPilot.getClassMgr().getMonitoredJobs().removeAllElements();
     statusTable.createRows(0);
     try{
       for(Iterator it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){

@@ -317,6 +317,20 @@ public class NGComputingSystem implements MyComputingSystem{
     }
   }
 
+  public int run(final MyJobInfo job){
+    try{
+      if(submit(job)){
+        return MyComputingSystem.RUN_OK;
+      }
+      else{
+        return MyComputingSystem.RUN_FAILED;
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return MyComputingSystem.RUN_FAILED;
+    }
+  }
 
   public void updateStatus(Vector jobs){
     for(int i=0; i<jobs.size(); ++i){

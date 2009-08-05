@@ -230,10 +230,10 @@ public class CSPluginMgr implements MyComputingSystem{
   }
 
   /**
-   * Submits this job on the computing system specified by job.ComputingSystem
+   * Runs this job on the computing system specified by job.ComputingSystem
    * @see MyComputingSystem#submit(MyJobInfo)
    */
-  public boolean submit(final JobInfo job){
+  public int run(final MyJobInfo job){
     
     // first check if the runtime environments are present
 
@@ -243,32 +243,34 @@ public class CSPluginMgr implements MyComputingSystem{
     catch(Exception e){
       //MessagePane.showMessage("Could not submit job. "+e.getMessage(), "Error");
       logFile.addMessage("Could not submit job. "+e.getMessage(), e);
-      return false;
+      return MyComputingSystem.RUN_FAILED;
     }
 
     ResThread t = new ResThread(){
-      boolean res = false;
+      int res = MyComputingSystem.RUN_FAILED;
       public void run(){
         try{
-          res = ((MyComputingSystem) cs.get(((MyJobInfo) job).getCSName())).submit(job);
+          res = ((MyComputingSystem) cs.get(job.getCSName())).run(job);
         }
         catch(Throwable t){
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + ((MyJobInfo) job).getCSName() +
-                             " during job " + job.getName() + " submission", (MyJobInfo) job, t);
-          res = false;
+                             " from plugin " + job.getCSName() +
+                             " during job " + job.getName() + " submission", job, t);
+          res = MyComputingSystem.RUN_FAILED;
         }
       }
-      public boolean getBoolRes(){return res;}
+      public int getIntRes(){
+        return res;
+      }
     };
 
     t.start();
 
-    if(MyUtil.myWaitForThread(t, ((MyJobInfo) job).getCSName(), submissionTimeOut, "submit")){
-      return t.getBoolRes();
+    if(MyUtil.myWaitForThread(t, job.getCSName(), submissionTimeOut, "run")){
+      return t.getIntRes();
     }
     else{
-      return false;
+      return MyComputingSystem.RUN_FAILED;
     }
   }
 
@@ -917,6 +919,9 @@ public class CSPluginMgr implements MyComputingSystem{
     return false;
   }
   public boolean resumeJobs(Vector<JobInfo> arg0) {
+    return false;
+  }
+  public boolean submit(JobInfo job) {
     return false;
   }
 

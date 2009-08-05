@@ -319,5 +319,20 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes, !virtEnforce,
         true, new String [] {"Linux", "Windows"}, true);
   }
+  
+  public int run(final MyJobInfo job){
+    try{
+      if(submit(job)){
+        return MyComputingSystem.RUN_OK;
+      }
+      else{
+        return MyComputingSystem.RUN_FAILED;
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return MyComputingSystem.RUN_FAILED;
+    }
+  }
 
 }

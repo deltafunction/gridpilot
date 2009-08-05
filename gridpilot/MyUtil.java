@@ -1972,4 +1972,33 @@ private static String fixUrl(String _url){
     return ret;
   }
 
+  public static int getMaxSimultaneousPreprocessingJobs(String csName) {
+    MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
+    ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
+    int ret = -1;
+    String tmp = configFile.getValue(csName, "max simultaneous preprocessing");
+    try{
+      ret = Integer.parseInt(tmp);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      logFile.addInfo("WARNING: Value of \"max simultaneous running\" is not"+
+                                  " defined properly for "+csName);
+    }
+    tmp = configFile.getValue("Computing systems", "max simultaneous preprocessing");
+    if(ret==-1){
+      try{
+        ret = Integer.parseInt(tmp);
+      }
+      catch(Exception e){
+        logFile.addMessage("WARNING: Value of \"max simultaneous preprocessing\" is not"+
+                                    " defined properly.", e);
+      }
+    }
+    if(ret==-1){
+      return 1;
+    }
+    return ret;
+  }
+
 }

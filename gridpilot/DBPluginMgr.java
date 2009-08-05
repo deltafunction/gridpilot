@@ -3132,9 +3132,13 @@ public class DBPluginMgr extends DBCache implements Database{
    * Returns status names for statistics panel.
    * (From AtCom1)
    */
-  public static String [] getStatusNames(){
+  public final static String [] getStatusNames(){
     return new String [] {"Wait", "Run", "Done"};
   }
+  
+  public final static int STAT_STATUS_WAIT = 0;
+  public final static int STAT_STATUS_RUN = 1;
+  public final static int STAT_STATUS_DONE = 2;
   
   /**
    * Returns colors corresponding to getStatusNames for statistics panel.

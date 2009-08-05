@@ -29,7 +29,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   // One ShellMgr per host
   protected HashMap<String, Shell> remoteShellMgrs = null;
   protected String [] hosts = null;
-  protected String [] maxJobs = null;
+  protected String [] maxRunningJobs = null;
+  protected String [] maxPreprocessingJobs = null;
   // Map of host -> Set of jobs that are being submmited
   protected HashMap<String, HashSet<String>> submittingHostJobs = null;
   protected String [] users = null;
@@ -57,7 +58,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     hosts = GridPilot.getClassMgr().getConfigFile().getValues(csName, "Hosts");
     users = GridPilot.getClassMgr().getConfigFile().getValues(csName, "Users");
     passwords = GridPilot.getClassMgr().getConfigFile().getValues(csName, "Passwords");
-    maxJobs = GridPilot.getClassMgr().getConfigFile().getValues(csName, "Max running jobs");
+    maxRunningJobs = GridPilot.getClassMgr().getConfigFile().getValues(csName, "Max running jobs per host");
+    maxPreprocessingJobs = GridPilot.getClassMgr().getConfigFile().getValues(csName, "Max preprocessing jobs per host");
     String sshKeyFile = GridPilot.getClassMgr().getConfigFile().getValue(csName, "Ssh key file");
     String sshKeyPassword = GridPilot.getClassMgr().getConfigFile().getValue(csName, "Ssh key passphrase");
     for(int i=0; i<hosts.length; ++i){
@@ -133,25 +135,29 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     return mgr;
   }
   
+  protected String runDir(MyJobInfo job){
+    return MyUtil.clearFile(workingDir +"/"+job.getName());
+  }
+
   /**
-   * The brokering algorithm. As simple as possible: FIFO.
+   * Select a host for a given job. If none is found, null is returned.
+   * A host that is already running a job may be selected - if the setting
+   * of "max preprocessing jobs" permits it.
+   * The brokering algorithm is as simple as possible: FIFO.
    */
   protected synchronized String selectHost(JobInfo job){
-    Shell mgr = null;
     String host = null;
-    int maxR = 1;
+    int maxP = 1;
     int submitting = 0;
     for(int i=0; i<hosts.length; ++i){
       host = hosts[i];
-      maxR = 1;
       try{
-        mgr = getShell(host);
-        if(maxJobs!=null && maxJobs.length>i && maxJobs[i]!=null){
-          maxR = Integer.parseInt(maxJobs[i]);
+        if(maxPreprocessingJobs!=null && maxPreprocessingJobs.length>i && maxPreprocessingJobs[i]!=null){
+          maxP = Integer.parseInt(maxPreprocessingJobs[i]);
         }
         submitting = (host!=null &&
             submittingHostJobs.get(host)!=null?((HashSet)submittingHostJobs.get(host)).size():0);
-        if(mgr.getJobsNumber()+submitting<maxR){
+        if(submitting<maxP){
           return host;
         }
       }
@@ -162,10 +168,51 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     return null;
   }
   
-  protected String runDir(MyJobInfo job){
-    return MyUtil.clearFile(workingDir +"/"+job.getName());
+  /**
+   * Check if we can run a job on a given host - by consulting "max running jobs".
+   * The job is assumed to have had its host set to the one returned by selectHost.
+   * @throws Exception 
+   */
+  protected boolean checkHost(JobInfo job) throws Exception{
+    Shell mgr = null;
+    String host = null;
+    int maxR = 1;
+    for(int i=0; i<hosts.length; ++i){
+      host = hosts[i];
+      if(!job.getHost().equals(host)){
+        continue;
+      }
+      mgr = getShell(host);
+      if(maxRunningJobs!=null && maxRunningJobs.length>i && maxRunningJobs[i]!=null){
+        maxR = Integer.parseInt(maxRunningJobs[i]);
+      }
+      if(mgr.getJobsNumber()<maxR){
+        return true;
+      }
+    }
+    return false;
   }
-
+  
+  public int run(final JobInfo job){
+    try{
+      if(checkHost(job)){
+        if(submit(job)){
+          return MyComputingSystem.RUN_OK;
+        }
+        else{
+          return MyComputingSystem.RUN_FAILED;
+        }
+      }
+      else{
+        return MyComputingSystem.RUN_WAIT;
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return MyComputingSystem.RUN_FAILED;
+    }
+  }
+  
   public boolean submit(final JobInfo job){
     final String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
     final String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";

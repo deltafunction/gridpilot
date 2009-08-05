@@ -40,6 +40,10 @@ import gridfactory.common.jobrun.ComputingSystem;
  */
 
 public interface MyComputingSystem extends ComputingSystem {
+  
+  public static final int RUN_OK = 0;
+  public static final int RUN_WAIT = 1;
+  public static final int RUN_FAILED = 2;
 
   /**
    * Returns user information from the credentials used by this plugin
@@ -65,5 +69,12 @@ public interface MyComputingSystem extends ComputingSystem {
    * @param csName the name of the computing system
    */
   public void cleanupRuntimeEnvironments(String csName);
+  
+  /**
+   * Run a job.
+   * @param job
+   * @return one of the status codes RUN_OK, RUN_WAIT or RUN_FAILED
+   */
+  public int run(MyJobInfo job);
 
 }

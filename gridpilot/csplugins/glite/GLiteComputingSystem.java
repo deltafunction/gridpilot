@@ -349,6 +349,21 @@ public class GLiteComputingSystem implements MyComputingSystem{
     return ret;
   }
   
+  public int run(final MyJobInfo job){
+    try{
+      if(submit(job)){
+        return MyComputingSystem.RUN_OK;
+      }
+      else{
+        return MyComputingSystem.RUN_FAILED;
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return MyComputingSystem.RUN_FAILED;
+    }
+  }
+
   public boolean submit(JobInfo job){
     try{
       if(delegationId==null){
