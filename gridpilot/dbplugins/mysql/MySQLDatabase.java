@@ -559,9 +559,9 @@ public class MySQLDatabase extends DBCache implements Database {
     return (String) getJobDefinition(jobDefID).getValue("stderrDest");
   }
 
-  public String getTransformationScript(String jobDefID) throws InterruptedException{
+  public String getTransformationExeFile(String jobDefID) throws InterruptedException{
     String transformationID = getJobDefTransformationID(jobDefID);
-    String script = (String) getTransformation(transformationID).getValue("script");
+    String script = (String) getTransformation(transformationID).getValue("executableFile");
     return script;
   }
 

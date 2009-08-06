@@ -175,7 +175,7 @@ public class TestDatasets {
           /*name*/MyUtil.getNameField("My_DB_Local", "transformation"),
           /*version*/MyUtil.getDatasetTransformationVersionReference("My_DB_Local")[0],
           /*runtimeenvironmentname*/MyUtil.getTransformationRuntimeReference("My_DB_Local")[1],
-          "script"};
+          "executableFile"};
       String [] values = new String [] {
           "",
           myTransformationName,

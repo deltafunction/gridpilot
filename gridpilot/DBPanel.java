@@ -956,7 +956,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   public String getTitle(){
-    return tableName+"s"/*jobTranss looks bad...*/;
+    return GridPilot.getTabDisplayName(tableName);
   }
 
   public void panelShown(){
@@ -1806,7 +1806,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, getTable().getColumnNames(),
               getSelectedIdentifiers(), false);
           CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true, true, true);
-          pDialog.setTitle("Create job definition(s)");
+          pDialog.setTitle("Create "+GridPilot.getRecordDisplayName("jobDefintion")+"(s)");
         }
       }
     );
@@ -1816,7 +1816,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     Debug.debug("Creating job definition(s), "+getSelectedIdentifiers().length, 3);
     JobDefCreationPanel panel = new JobDefCreationPanel(dbName, null, this, new Boolean(false));
     CreateEditDialog pDialog = new CreateEditDialog(panel, false, false, true, false, true);
-    pDialog.setTitle("jobDefinition");
+    pDialog.setTitle(GridPilot.getRecordDisplayName("jobDefinition"));
   }
 
   protected void editJobDef(){
@@ -1833,7 +1833,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     panel = new JobDefCreationPanel(dbName, selectedDatasetID, this,
         new Boolean(true));
     CreateEditDialog pDialog = new CreateEditDialog(panel, true, false, true, false, true);
-    pDialog.setTitle(displayName!=null?displayName:tableName);
+    pDialog.setTitle(displayName!=null?displayName:GridPilot.getRecordDisplayName(tableName));
     //pDialog.setVisible(true);
   }
 
@@ -2104,7 +2104,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     CreateEditDialog pDialog = new CreateEditDialog(
         new DatasetCreationPanel(dbPluginMgr, this, false), false, false, true, false, true);
-    pDialog.setTitle(tableName);
+    pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
  }
   
   /**
@@ -2116,7 +2116,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    if(!dscp.editable){
      pDialog.setBCreateUpdateEnabled(false);
    }
-   pDialog.setTitle(tableName);
+   pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
  }
 
   /**
@@ -2249,7 +2249,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     CreateEditDialog pDialog = new CreateEditDialog(
        new TransformationCreationPanel(dbPluginMgr, this, false),
        false, false, true, false, true);
-    pDialog.setTitle(tableName);
+    pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
   }
   /**
    * Open dialog with runtime environment creation panel
@@ -2258,21 +2258,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     CreateEditDialog pDialog = new CreateEditDialog(
        new RuntimeCreationPanel(dbPluginMgr, this, false),
        false, false, true, false, true);
-    pDialog.setTitle(tableName);
+    pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
   }
 
   protected void editTransformation(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new TransformationCreationPanel(dbPluginMgr, this, true),
        true, false, true, false, true);
-    pDialog.setTitle(tableName);
+    pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
   }
   
   protected void editRuntimeEnvironment(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new RuntimeCreationPanel(dbPluginMgr, this, true),
        true, false, true, false, true);
-    pDialog.setTitle(tableName);
+    pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
   }
 
   protected void deleteTransformations(){
@@ -2654,7 +2654,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, getTable().getColumnNames(),
         new String [] {datasetId}, true);
     CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true, true, true);
-    pDialog.setTitle("Create job definition(s)");
+    pDialog.setTitle("Create "+GridPilot.getRecordDisplayName("jobDefintion")+"(s)");
     return true;
   }
   

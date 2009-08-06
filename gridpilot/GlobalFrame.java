@@ -31,6 +31,8 @@ import gridpilot.wizards.run_jobs.RunCommandWizard;
 public class GlobalFrame extends GPFrame{
 
   private static final long serialVersionUID = 1L;
+
+  private static final int MAX_TAB_TITLE_LENGTH = 24;
   
   private Vector allPanels;
   private int selectedPanel;
@@ -236,8 +238,8 @@ public class GlobalFrame extends GPFrame{
     // Trim title name before adding new tab
     String title = newPanel.getTitle();
     String smallTitle = null;
-    if(title.length()>20){
-      smallTitle = title.substring(0, 20) + "...";
+    if(title.length()>MAX_TAB_TITLE_LENGTH){
+      smallTitle = title.substring(0, MAX_TAB_TITLE_LENGTH) + "...";
     }
     else{
       smallTitle = title;
@@ -601,14 +603,14 @@ public class GlobalFrame extends GPFrame{
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
             GridPilot.DB_NAMES[i]).getFieldNames("runtimeEnvironment")!=null)){
-          JMenuItem miNewTab = new JMenuItem("runtimeEnvironments");
+          JMenuItem miNewTab = new JMenuItem(GridPilot.getTabDisplayName("runtimeEnvironment"));
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
                 DBPanel panel = new DBPanel();
                 panel.initDB(mDB.getName(), "runtimeEnvironment");
                 panel.initGUI();
-                addPanel(panel, "runtime environments");          
+                addPanel(panel, GridPilot.getTabDisplayName("runtimeEnvironment"));          
               }
               catch(Exception ex){
                 Debug.debug("Could not add panel ", 1);
@@ -627,14 +629,14 @@ public class GlobalFrame extends GPFrame{
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
             GridPilot.DB_NAMES[i]).getFieldNames("transformation")!=null)){
-          JMenuItem miNewTab = new JMenuItem("transformations");
+          JMenuItem miNewTab = new JMenuItem(GridPilot.getTabDisplayName("transformation"));
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
                 DBPanel panel = new DBPanel();
                 panel.initDB(mDB.getName(), "transformation");
                 panel.initGUI();
-                addPanel(panel, "transformations");          
+                addPanel(panel, GridPilot.getTabDisplayName("transformation"));          
               }
               catch(Exception ex){
                 Debug.debug("Could not add panel ", 1);
@@ -655,14 +657,14 @@ public class GlobalFrame extends GPFrame{
         if((GridPilot.getClassMgr().getDBPluginMgr(
             GridPilot.DB_NAMES[i]).getFieldNames("dataset")!=null)){
           Debug.debug("---> ok, adding", 2);
-          JMenuItem miNewTab = new JMenuItem("datasets");
+          JMenuItem miNewTab = new JMenuItem(GridPilot.getTabDisplayName("dataset"));
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
                 DBPanel panel = new DBPanel();
                 panel.initDB(mDB.getName(), "dataset");
                 panel.initGUI();
-                addPanel(panel, "datasets");          
+                addPanel(panel, GridPilot.getTabDisplayName("dataset"));          
               }
               catch(Exception ex){
                 Debug.debug("Could not add panel ", 1);
@@ -682,14 +684,14 @@ public class GlobalFrame extends GPFrame{
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
             GridPilot.DB_NAMES[i]).getFieldNames("jobDefinition")!=null)){
-          JMenuItem miNewTab = new JMenuItem("jobDefinitions");
+          JMenuItem miNewTab = new JMenuItem(GridPilot.getTabDisplayName("jobDefinition"));
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
                 DBPanel panel = new DBPanel();
                 panel.initDB(mDB.getName(), "jobDefinition");
                 panel.initGUI();
-                addPanel(panel, "jobDefinitions");          
+                addPanel(panel, GridPilot.getTabDisplayName("jobDefinition"));          
               }
               catch(Exception ex){
                 Debug.debug("Could not add panel ", 1);

@@ -340,7 +340,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
         }
       }
       if(cstAttributesNames[i].equalsIgnoreCase("definition") ||
-         cstAttributesNames[i].equalsIgnoreCase("script") ||
+         cstAttributesNames[i].equalsIgnoreCase("executableFile") ||
          cstAttributesNames[i].equalsIgnoreCase("validationScript") ||
          cstAttributesNames[i].equalsIgnoreCase("extractionScript")){
         pAttributes.add(MyUtil.createCheckPanel1(

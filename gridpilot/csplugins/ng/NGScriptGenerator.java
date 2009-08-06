@@ -50,7 +50,7 @@ public class NGScriptGenerator extends ScriptGenerator{
     String [] actualParam = dbPluginMgr.getJobDefTransPars(jobDefID);
 
     // The transformation script
-    String scriptFileName = dbPluginMgr.getTransformationScript(jobDefID);
+    String scriptFileName = dbPluginMgr.getTransformationExeFile(jobDefID);
     String shortScriptName = scriptFileName;
     int lastSlash = shortScriptName.replaceAll("\\\\", "/").lastIndexOf("/");
     if(lastSlash>-1){

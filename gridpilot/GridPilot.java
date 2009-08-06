@@ -1009,4 +1009,36 @@ public class GridPilot extends JApplet{
     GridPilot.getClassMgr().getStatusBar().setLabel("Connection ok.");
   }
 
+  public static String getTabDisplayName(String tableName) {
+    if(tableName.equalsIgnoreCase("transformation")){
+      return "executables";
+    }
+    else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
+      return "runtime environments";
+    }
+    else if(tableName.equalsIgnoreCase("dataset")){
+      return "applications/datasets";
+    }
+    else if(tableName.equalsIgnoreCase("jobDefinition")){
+      return "job definitions";
+    }
+  return tableName;
+  }
+
+  public static String getRecordDisplayName(String tableName) {
+    if(tableName.equalsIgnoreCase("transformation")){
+      return "executable";
+    }
+    else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
+      return "runtime environment";
+    }
+    else if(tableName.equalsIgnoreCase("dataset")){
+      return "application/dataset";
+    }
+    else if(tableName.equalsIgnoreCase("jobDefinition")){
+      return "job definition";
+    }
+    return "Unknown:"+tableName;
+  }
+
 }

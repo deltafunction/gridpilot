@@ -401,7 +401,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String getTransformationScript(final String jobDefinitionID){
+  public String getTransformationExeFile(final String jobDefinitionID){
     ResThread t = new ResThread(){
       String res = null;
       public void requestStop(){
@@ -413,7 +413,7 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getTransformationScript(jobDefinitionID);
+          res = db.getTransformationExeFile(jobDefinitionID);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());

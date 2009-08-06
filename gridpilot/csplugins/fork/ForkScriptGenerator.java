@@ -122,7 +122,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
       writeLine(buf, "echo $$");
     }
 
-    String scriptSrc = dbPluginMgr.getTransformationScript(jobDefID);
+    String scriptSrc = dbPluginMgr.getTransformationExeFile(jobDefID);
     String scriptPath = MyUtil.clearFile(scriptSrc).replaceAll("\\\\", "/");
     String scriptName = scriptPath.replaceFirst(".*/([^/]+)", "$1");
     String scriptDest = "file:" + MyUtil.clearFile(workingDir) + "/" + scriptName;

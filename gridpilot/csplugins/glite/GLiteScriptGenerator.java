@@ -54,7 +54,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     jobDefID = job.getIdentifier();
     uses = dbPluginMgr.getRuntimeEnvironments(jobDefID);
     outputFileNames = dbPluginMgr.getOutputFiles(jobDefID);
-    shortScriptName = dbPluginMgr.getTransformationScript(jobDefID);
+    shortScriptName = dbPluginMgr.getTransformationExeFile(jobDefID);
     int lastSlash = shortScriptName.replaceAll("\\\\", "/").lastIndexOf("/");
     if(lastSlash>-1){
       shortScriptName = shortScriptName.substring(lastSlash + 1);
@@ -239,7 +239,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     String jdlLine;
   
     // The transformation script
-    String scriptFileName = dbPluginMgr.getTransformationScript(jobDefID);
+    String scriptFileName = dbPluginMgr.getTransformationExeFile(jobDefID);
     // names starting with file: will be uploaded, names starting with
     // / or c:\ are considered to be locally available on the server
     localInputFilesList.add(MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFileName)));

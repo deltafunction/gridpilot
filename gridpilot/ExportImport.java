@@ -17,7 +17,7 @@ public class ExportImport {
    * {@link #exportDB()}.
    */
   private static final String IMPORT_DIR = "GRIDPILOT_IMPORT_DIR";
-  private static final String [] TRANSFORMATIOM_FILE_FIELDS = new String [] {"script", "inputFiles"};
+  private static final String [] TRANSFORMATIOM_FILE_FIELDS = new String [] {"executableFile", "inputFiles"};
 
   /**
    * Exports dataset and corresponding transformation information from the chosen

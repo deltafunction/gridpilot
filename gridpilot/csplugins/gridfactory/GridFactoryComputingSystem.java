@@ -120,7 +120,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
         newInputs.add(transformationInputs[i]);
       }
     }
-    String transScript = dbPluginMgr.getTransformationScript(job.getIdentifier());
+    String transScript = dbPluginMgr.getTransformationExeFile(job.getIdentifier());
     if(fileIsRemoteOrPresent(transScript)){
       newInputs.add(transScript);
     }

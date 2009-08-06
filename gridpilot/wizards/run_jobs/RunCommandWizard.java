@@ -83,7 +83,7 @@ public class RunCommandWizard extends GPFrame{
   private String getInitialCmdTxt(){
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(DB_NAME);
     String transformationID = dbPluginMgr.getTransformationID(myTransformationName, myTransformationVersion);
-    String scriptFile = (String) dbPluginMgr.getTransformation(transformationID).getValue("script");
+    String scriptFile = (String) dbPluginMgr.getTransformation(transformationID).getValue("executableFile");
     String txt = null;
     try{
       txt = LocalStaticShell.readFile(MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFile)));

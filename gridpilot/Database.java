@@ -114,7 +114,7 @@ public interface Database{
   public String getJobDefName(String jobDefID) throws InterruptedException;
   public String getJobDefDatasetID(String jobDefID) throws InterruptedException;
   public String getJobDefTransformationID(String jobDefID) throws InterruptedException;
-  public String getTransformationScript(String jobDefID) throws InterruptedException;
+  public String getTransformationExeFile(String jobDefID) throws InterruptedException;
   
   // ####### File table
   public boolean isFileCatalog() throws InterruptedException;

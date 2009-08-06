@@ -2832,7 +2832,7 @@ public class ATLASDatabase extends DBCache implements Database{
     return "-1";
   }
 
-  public String getTransformationScript(String jobDefID){
+  public String getTransformationExeFile(String jobDefID){
     return null;
   }
 
