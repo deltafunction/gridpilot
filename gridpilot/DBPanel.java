@@ -79,7 +79,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bHideFilter;
   private JMenuItem miEdit = null;
   private JMenuItem miImportFiles = new JMenuItem("Import file(s)");
-  private JMenuItem miExportDataset = new JMenuItem("Export dataset");
+  private JMenuItem miExportDataset = new JMenuItem("Export application");
   private String [] identifiers;
   // lists of field names with table name as key
   private String [] fieldNames = null;
