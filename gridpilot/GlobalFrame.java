@@ -816,11 +816,17 @@ public class GlobalFrame extends GPFrame{
 
   protected void setImportExportMenu(boolean ds, int selectedRows){
     miExport.setVisible(ds);
-    if(ds && selectedRows>0){
-      miExport.setText("Export selected application(s)");
+    if(!ds){
+      return;
+    }
+    if(selectedRows==1){
+      miExport.setText("Export selected application");
+    }
+    else if(selectedRows==0){
+      miExport.setText("Export all application(s)");
     }
     else{
-      miExport.setText("Export all application(s)");
+      miExport.setEnabled(false);
     }
   }
 
