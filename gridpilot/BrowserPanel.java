@@ -1116,7 +1116,22 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * the protocol of the URL.
    */
   private void setDisplay(final String url) throws Exception{
-    if(SwingUtilities.isEventDispatchThread()){
+    ResThread t = new ResThread(){
+      public void run(){
+        try{
+          setDisplay0(url);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          this.setException(e);
+          return;
+        }
+      }
+    };
+    t.start();
+    // Neither of the two invocations below seem to work, when
+    // MySSL has to ask for a password...
+    /*if(SwingUtilities.isEventDispatchThread()){
       setDisplay0(url);
     }
     else{
@@ -1133,7 +1148,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           }
         }
       );
-    }
+    }*/
   }
 
   private void setDisplay0(String url) throws Exception{

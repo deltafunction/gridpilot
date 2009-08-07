@@ -1,6 +1,5 @@
 package gridpilot;
 
-import gridfactory.common.CheckThreadViolationRepaintManager;
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
@@ -116,7 +115,7 @@ public class GridPilot extends JApplet{
   public GridPilot(){
     
     /** This will test for GUI events launched outside of the event dispatching thread. */
-    CheckThreadViolationRepaintManager.initMonitoring();
+    //CheckThreadViolationRepaintManager.initMonitoring();
     
     try{
       getClassMgr().setLogFile(new MyLogFile(LOG_FILE_NAME));
