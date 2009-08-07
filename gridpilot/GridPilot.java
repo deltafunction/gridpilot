@@ -69,9 +69,9 @@ public class GridPilot extends JApplet{
   public static String [] TRANSFER_COLOR_MAPPING;
   public static String[] JOB_STATUS_FIELDS;
   public static String[] TRANSFER_STATUS_FIELDS;
-  public static String RESOURCES_PATH = "";
-  private static String SKIN_NAME;
-  public static String ICONS_PATH;
+  public static String RESOURCES_PATH = null;
+  private static String SKIN_NAME = null;
+  public static String ICONS_PATH = null;
   public static String [] TABS = null;
   public static Splash SPLASH;
   // Allow plugins to add monitoring panels. Any Component in
@@ -144,6 +144,11 @@ public class GridPilot extends JApplet{
                 "using defaults.");
         //ee.printStackTrace();
         //confFile = new ConfigFile(defaultConfFileNameWindows);
+        try{
+          loadConfigValues();
+        }
+        catch(Exception eee){
+        }
         IS_FIRST_RUN = true;
         new BeginningWizard(IS_FIRST_RUN);
         IS_FIRST_RUN = false;
@@ -201,180 +206,192 @@ public class GridPilot extends JApplet{
   // TODO: enclose each in try/catch and set sensible default if it fails
   public static void loadConfigValues(){
     try{
-      FILE_ROWS = Integer.parseInt(
-          getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "File rows"));
-      PREFERRED_FILE_SERVERS = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Preferred file servers");
-      PROXY_HOST = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Proxy host");
-      PROXY_PORT = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Proxy port");
-      if(PROXY_HOST!=null && PROXY_HOST.length()>0){
-        if(PROXY_PORT==null || PROXY_PORT.length()==0){
-          PROXY_PORT = "80";
-        }
-        Properties systemProperties = System.getProperties();
-        systemProperties.put("http.proxySet", "true");
-        systemProperties.put("http.proxyHost", PROXY_HOST);
-        systemProperties.put("http.proxyPort", PROXY_PORT);
-        systemProperties.put("https.proxyHost",PROXY_HOST);
-        systemProperties.put("https.proxyPort",PROXY_PORT); 
-        //systemProperties.put("http.proxyUser", "");
-        //systemProperties.put("http.proxyPassword", "");
-        System.setProperties(systemProperties);
-      }
-      
-      DEBUG_LEVEL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Debug");
-      RESOURCES_PATH = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Resources");
-      if(RESOURCES_PATH==null){
-        getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage(TOP_CONFIG_SECTION, "resources"));
-        RESOURCES_PATH = "./";
-      }
-      else{
-        if(!RESOURCES_PATH.endsWith("/"))
-          RESOURCES_PATH = RESOURCES_PATH + "/";
-      }
-      SKIN_NAME = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Skin");
-      if(SKIN_NAME==null){
-        SKIN_NAME = "clear";
-      }
-      ICONS_PATH = RESOURCES_PATH + "skins/" + SKIN_NAME + "/";
-      setButtonDefaults();
-      RUNTIME_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Runtime directory");
-      SPLASH = new Splash(RESOURCES_PATH+"splash.png", GridPilot.class);
-      JOB_COLOR_MAPPING = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Job color mapping");  
-      /** Job status table header*/
-      JOB_STATUS_FIELDS = new String [] {
-          " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "User"};
-      TRANSFER_COLOR_MAPPING = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Transfer color mapping");  
-      /** Job status table header*/
-      /** Transfer status table header*/
-      TRANSFER_STATUS_FIELDS = new String [] {
-          " ", "Transfer ID", "Source", "Destination", "User", "Status", "Transferred"};
-
-      CS_NAMES = getClassMgr().getConfigFile().getValues("Computing systems", "systems");
-      if(CS_NAMES==null || CS_NAMES.length==0){
-        getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("Computing systems", "systems"));
-      }
-      else{
-        String enabled = "no";
-        for(int i=0; i<CS_NAMES.length; ++i){
-          enabled = "no";
-          try{
-            enabled = GridPilot.getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Enabled");
-          }
-          catch(Exception e){
-            continue;
-          }
-          if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
-              !enabled.equalsIgnoreCase("true")){
-            continue;
-          }
-          String host = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Host");
-          if(host!=null && !host.startsWith("localhost") && !host.equals("127.0.0.1")){
-            String user = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "User");
-            String password = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Password");
-            String sshKeyFile = GridPilot.getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Ssh key file");
-            String sshKeyPassword = GridPilot.getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Ssh key passphrase");
-            getClassMgr().setShell(CS_NAMES[i],
-                new MySecureShell(host, user, password,
-                    sshKeyFile==null?null:new File(MyUtil.clearTildeLocally(MyUtil.clearFile(sshKeyFile))),
-                    sshKeyPassword));
-           }
-          else if(host!=null && (host.startsWith("localhost") || host.equals("127.0.0.1"))){
-            getClassMgr().setShell(CS_NAMES[i], new LocalShell());
-          }
-          else{
-            // no shell used by this plugin
-          }
-        }
-      }
-      TABS = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Initial panels");
-      PROXY_TYPE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-         "Proxy type", "RFC");
-      PROXY_TIME_LEFT_LIMIT = Integer.parseInt(
-        getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Proxy time left limit"));
-      PROXY_TIME_VALID = Integer.parseInt(
-          getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Proxy time valid"));
-      KEY_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-          "Key file");
-      CERT_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-          "Certificate file");
-      PROXY_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-         "Proxy directory", "~/.globus");
-      KEY_PASSWORD = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-          "Key password");
-      CA_CERTS_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-          "CA certificates");
-      if(CA_CERTS_DIR==null){
-        getClassMgr().getConfigFile().missingMessage(
-            TOP_CONFIG_SECTION, "CA certificates");
-        getClassMgr().getLogFile().addMessage(
-            "WARNING: you have not specified any CA certificates. " +
-            "A default set will be used.");
-      }
-      VOMS_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-         "Voms directory");
-      if(VOMS_DIR==null){
-        getClassMgr().getConfigFile().missingMessage(
-            TOP_CONFIG_SECTION, "voms directory");
-        getClassMgr().getLogFile().addMessage(
-            "WARNING: you have not specified any VOMS directory. " +
-            "A default set of VOMS definitions will be used.");
-      }
-      VO = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Virtual organization");
-      VOMS_SERVER_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Voms server");
-      FQAN = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Voms fqan");
-      String [] _fixedJobAttributes = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION,
-         "Job attributes");
-      if(_fixedJobAttributes==null || _fixedJobAttributes.length==0){
-        getClassMgr().getConfigFile().missingMessage(
-            TOP_CONFIG_SECTION, "Job attributes");
-      }
-      else{
-        FIXED_JOB_ATTRIBUTES = _fixedJobAttributes;
-        Debug.debug("Job attributes: "+MyUtil.arrayToString(FIXED_JOB_ATTRIBUTES)+" "+
-            FIXED_JOB_ATTRIBUTES.length, 2);
-      }
-      Debug.debug("Job attributes: "+MyUtil.arrayToString(FIXED_JOB_ATTRIBUTES)+" "+
-          FIXED_JOB_ATTRIBUTES.length, 2);
-      BROWSER_HISTORY_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-         "Browser history file");
-      GLOBUS_TCP_PORT_RANGE = getClassMgr().getConfigFile().getValue("File transfer systems",
-         "Globus tcp port range");
-      GRID_HOME_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-         "Grid home url");
-      APP_STORE_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-         "Application store URL");
-      if(APP_STORE_URL==null || APP_STORE_URL.equals("")){
-        getClassMgr().getConfigFile().missingMessage(
-            TOP_CONFIG_SECTION, "application store URL");
-        getClassMgr().getLogFile().addMessage(
-            "WARNING: you have not specified any application store URL. " +
-            "The default will be used:"+DEFAULT_APP_STORE_URL);
-        APP_STORE_URL = DEFAULT_APP_STORE_URL;
-      }
-      String ask = null;
-      try{
-        ask = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-        "Ask before thread interrupt");
-        ASK_BEFORE_INTERRUPT = !(ask!=null && (
-            ask.equalsIgnoreCase("no") ||
-            ask.equalsIgnoreCase("false")));
-      }
-      catch(Exception e){
-        ASK_BEFORE_INTERRUPT = true;
-      }
-      //getClassMgr().getConfigFile().printConfig();
+      doLoadConfigValues();
     }
     catch(Throwable e){
       e.printStackTrace();
       if(e instanceof Error){
         getClassMgr().getLogFile().addMessage("Error during loading of config values", e);
+        System.exit(-1);
       }
       else{
         getClassMgr().getLogFile().addMessage("Exception during loading of config values", e);
-        System.exit(-1);
       }
     }
     WAIT_FOREVER = false;
+  }
+
+  public static void doLoadConfigValues() throws Exception{   
+    try{
+      RESOURCES_PATH = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Resources");
+    }
+    catch(Throwable e){
+    }
+    if(RESOURCES_PATH==null){
+      RESOURCES_PATH = "/resources/";
+    }
+    else{
+      if(!RESOURCES_PATH.endsWith("/"))
+        RESOURCES_PATH = RESOURCES_PATH + "/";
+    }
+    try{
+      SKIN_NAME = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Skin");
+    }
+    catch(Throwable e){
+    }
+    if(SKIN_NAME==null){
+      SKIN_NAME = "clear";
+    }
+    ICONS_PATH = RESOURCES_PATH + "skins/" + SKIN_NAME + "/";
+
+    FILE_ROWS = Integer.parseInt(
+        getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "File rows"));
+    PREFERRED_FILE_SERVERS = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Preferred file servers");
+    PROXY_HOST = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Proxy host");
+    PROXY_PORT = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Proxy port");
+    if(PROXY_HOST!=null && PROXY_HOST.length()>0){
+      if(PROXY_PORT==null || PROXY_PORT.length()==0){
+        PROXY_PORT = "80";
+      }
+      Properties systemProperties = System.getProperties();
+      systemProperties.put("http.proxySet", "true");
+      systemProperties.put("http.proxyHost", PROXY_HOST);
+      systemProperties.put("http.proxyPort", PROXY_PORT);
+      systemProperties.put("https.proxyHost",PROXY_HOST);
+      systemProperties.put("https.proxyPort",PROXY_PORT); 
+      //systemProperties.put("http.proxyUser", "");
+      //systemProperties.put("http.proxyPassword", "");
+      System.setProperties(systemProperties);
+    }
+    
+    DEBUG_LEVEL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Debug");
+    setButtonDefaults();
+    RUNTIME_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Runtime directory");
+    SPLASH = new Splash(RESOURCES_PATH+"splash.png", GridPilot.class);
+    JOB_COLOR_MAPPING = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Job color mapping");  
+    /** Job status table header*/
+    JOB_STATUS_FIELDS = new String [] {
+        " ", "Job Name", "Job ID", "Job status", "CS", "Host", "DB", "DB status", "User"};
+    TRANSFER_COLOR_MAPPING = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Transfer color mapping");  
+    /** Job status table header*/
+    /** Transfer status table header*/
+    TRANSFER_STATUS_FIELDS = new String [] {
+        " ", "Transfer ID", "Source", "Destination", "User", "Status", "Transferred"};
+
+    CS_NAMES = getClassMgr().getConfigFile().getValues("Computing systems", "systems");
+    if(CS_NAMES==null || CS_NAMES.length==0){
+      getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("Computing systems", "systems"));
+    }
+    else{
+      String enabled = "no";
+      for(int i=0; i<CS_NAMES.length; ++i){
+        enabled = "no";
+        try{
+          enabled = GridPilot.getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Enabled");
+        }
+        catch(Exception e){
+          continue;
+        }
+        if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
+            !enabled.equalsIgnoreCase("true")){
+          continue;
+        }
+        String host = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Host");
+        if(host!=null && !host.startsWith("localhost") && !host.equals("127.0.0.1")){
+          String user = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "User");
+          String password = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Password");
+          String sshKeyFile = GridPilot.getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Ssh key file");
+          String sshKeyPassword = GridPilot.getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Ssh key passphrase");
+          getClassMgr().setShell(CS_NAMES[i],
+              new MySecureShell(host, user, password,
+                  sshKeyFile==null?null:new File(MyUtil.clearTildeLocally(MyUtil.clearFile(sshKeyFile))),
+                  sshKeyPassword));
+         }
+        else if(host!=null && (host.startsWith("localhost") || host.equals("127.0.0.1"))){
+          getClassMgr().setShell(CS_NAMES[i], new LocalShell());
+        }
+        else{
+          // no shell used by this plugin
+        }
+      }
+    }
+    TABS = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Initial panels");
+    PROXY_TYPE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+       "Proxy type", "RFC");
+    PROXY_TIME_LEFT_LIMIT = Integer.parseInt(
+      getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Proxy time left limit"));
+    PROXY_TIME_VALID = Integer.parseInt(
+        getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Proxy time valid"));
+    KEY_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+        "Key file");
+    CERT_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+        "Certificate file");
+    PROXY_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+       "Proxy directory", "~/.globus");
+    KEY_PASSWORD = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+        "Key password");
+    CA_CERTS_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+        "CA certificates");
+    if(CA_CERTS_DIR==null){
+      getClassMgr().getConfigFile().missingMessage(
+          TOP_CONFIG_SECTION, "CA certificates");
+      getClassMgr().getLogFile().addMessage(
+          "WARNING: you have not specified any CA certificates. " +
+          "A default set will be used.");
+    }
+    VOMS_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+       "Voms directory");
+    if(VOMS_DIR==null){
+      getClassMgr().getConfigFile().missingMessage(
+          TOP_CONFIG_SECTION, "voms directory");
+      getClassMgr().getLogFile().addMessage(
+          "WARNING: you have not specified any VOMS directory. " +
+          "A default set of VOMS definitions will be used.");
+    }
+    VO = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Virtual organization");
+    VOMS_SERVER_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Voms server");
+    FQAN = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Voms fqan");
+    String [] _fixedJobAttributes = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION,
+       "Job attributes");
+    if(_fixedJobAttributes==null || _fixedJobAttributes.length==0){
+      getClassMgr().getConfigFile().missingMessage(
+          TOP_CONFIG_SECTION, "Job attributes");
+    }
+    else{
+      FIXED_JOB_ATTRIBUTES = _fixedJobAttributes;
+      Debug.debug("Job attributes: "+MyUtil.arrayToString(FIXED_JOB_ATTRIBUTES)+" "+
+          FIXED_JOB_ATTRIBUTES.length, 2);
+    }
+    Debug.debug("Job attributes: "+MyUtil.arrayToString(FIXED_JOB_ATTRIBUTES)+" "+
+        FIXED_JOB_ATTRIBUTES.length, 2);
+    BROWSER_HISTORY_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+       "Browser history file");
+    GLOBUS_TCP_PORT_RANGE = getClassMgr().getConfigFile().getValue("File transfer systems",
+       "Globus tcp port range");
+    GRID_HOME_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+       "Grid home url");
+    APP_STORE_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+       "Application store URL");
+    if(APP_STORE_URL==null || APP_STORE_URL.equals("")){
+      getClassMgr().getConfigFile().missingMessage(
+          TOP_CONFIG_SECTION, "application store URL");
+      getClassMgr().getLogFile().addMessage(
+          "WARNING: you have not specified any application store URL. " +
+          "The default will be used:"+DEFAULT_APP_STORE_URL);
+      APP_STORE_URL = DEFAULT_APP_STORE_URL;
+    }
+    String ask = null;
+    try{
+      ask = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+      "Ask before thread interrupt");
+      ASK_BEFORE_INTERRUPT = !(ask!=null && (
+          ask.equalsIgnoreCase("no") ||
+          ask.equalsIgnoreCase("false")));
+    }
+    catch(Exception e){
+      ASK_BEFORE_INTERRUPT = true;
+    }
+    //getClassMgr().getConfigFile().printConfig();
   }
   
   private static void setLookAndFeel() {

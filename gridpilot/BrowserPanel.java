@@ -1129,6 +1129,13 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
     };
     t.start();
+    if(!MyUtil.myWaitForThread(t, "https", HTTP_TIMEOUT, "list", true) ||
+        t.getException()!=null){
+      if(statusBar!=null){
+        statusBar.setLabel("setDisplay cancelled");
+      }
+      throw new IOException("setDisplay cancelled "+t.getException());
+    }
     // Neither of the two invocations below seem to work, when
     // MySSL has to ask for a password...
     /*if(SwingUtilities.isEventDispatchThread()){

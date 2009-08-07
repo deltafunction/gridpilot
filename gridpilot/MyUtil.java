@@ -435,13 +435,11 @@ private static String fixUrl(String _url){
     });
 
    JPanel fPanel = new JPanel(new BorderLayout());
-   JPanel checkPanel = new JPanel(new FlowLayout());
-   JLabel jlName = new JLabel(name);
+   JPanel checkPanel = new JPanel(new GridBagLayout());
+   JLabel jlName = new JLabel(name+"   ");
    fPanel.add(jlName, BorderLayout.WEST);
-   fPanel.add(new JLabel("   "));
    checkPanel.add(bBrowse1);
    fPanel.add(checkPanel, BorderLayout.EAST);
-   fPanel.add(new JLabel(""));
    return fPanel;
  }
  

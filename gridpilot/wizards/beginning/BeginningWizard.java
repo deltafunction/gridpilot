@@ -251,7 +251,7 @@ public class BeginningWizard{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String confirmString = "Welcome!\n\n" +
             (firstRun?"This appears to be the first time you run GridPilot.\n":"") +
-            "On the next windows you will be guided through 6  steps to set up GridPilot.\n" +
+            "On the next windows you will be guided through 6 steps to set up GridPilot.\n" +
             "Your configuration will be stored to a file in your home directory.\n\n" +
             "Click \"Continue\" to move on or \"Cancel\" to exit this wizard.\n\n" +
             "Notice that you can always run this wizard again by choosing it from " +
@@ -261,8 +261,8 @@ public class BeginningWizard{
     confirmLabel.setOpaque(true);
     confirmLabel.setText(confirmString);
     int choice = -1;
-    choice = confirmBox.getConfirm("Configure GridPilot",
-        confirmString, new Object[] {"Continue", "Cancel"}, icon, Color.WHITE, false);
+    choice = confirmBox.getConfirmPlainText("Configure GridPilot",
+        confirmString, new Object[] {"Continue", "Cancel"}, icon, Color.WHITE, true);
     return choice;
   }
   
@@ -278,7 +278,7 @@ public class BeginningWizard{
             "\"Edit\" - \"Preferences\"." +
             (firstRun?"\n\nThanks for using GridPilot and have fun!":"");
     int choice = -1;
-    confirmBox.getConfirm("Setup completed!",
+    confirmBox.getConfirmPlainText("Setup completed!",
         confirmString, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())}, icon, Color.WHITE, false);   
     return choice;
   }
@@ -297,7 +297,7 @@ public class BeginningWizard{
          "to exit.\n\n" +
          "Thanks for using GridPilot!\n\n":"");
     int choice = -1;
-    choice = confirmBox.getConfirm("Setup completed!", confirmString,
+    choice = confirmBox.getConfirmPlainText("Setup completed!", confirmString,
         firstRun?(new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()), MyUtil.mkCancelObject(confirmBox.getOptionPane())}):
           (new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())}),
         icon, Color.WHITE, false);   
@@ -405,7 +405,7 @@ public class BeginningWizard{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = -1;
     try{
-      choice = confirmBox.getConfirm("Step 1/6: Setting up GridPilot directories",
+      choice = confirmBox.getConfirmPlainText("Step 1/6: Setting up GridPilot directories",
           jPanel, new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, false);
     }
     catch(Exception e){
@@ -556,7 +556,7 @@ public class BeginningWizard{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = -1;
     try{
-      choice = confirmBox.getConfirm("Step 2/6: Setting up grid credentials",
+      choice = confirmBox.getConfirmPlainText("Step 2/6: Setting up grid credentials",
           jPanel, new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, false);
     }
     catch(Exception e){
@@ -843,7 +843,7 @@ public class BeginningWizard{
         break;
       }
       try{
-        choice = confirmBox.getConfirm(title, jPanel,
+        choice = confirmBox.getConfirmPlainText(title, jPanel,
             new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, false);
   
         if(choice==0){
@@ -862,7 +862,7 @@ public class BeginningWizard{
             goOn = true;
           }
           else{
-            confirmBox.getConfirm(title, "Please fill in the host name of the remote file catalog server",
+            confirmBox.getConfirmPlainText(title, "Please fill in the host name of the remote file catalog server",
                 new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())}, icon, Color.WHITE, false);
           }
         }
@@ -1289,7 +1289,7 @@ public class BeginningWizard{
     // Get confirmation
     int choice = -1;
     String title = "Step 6/6: Setting up computing systems";
-    choice = confirmBox.getConfirm(title, jPanel,
+    choice = confirmBox.getConfirmPlainText(title, jPanel,
         new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, false);
 
     if(choice!=0){
@@ -1472,7 +1472,7 @@ public class BeginningWizard{
         break;
       }
       try{
-        choice = confirmBox.getConfirm(title, jPanel,
+        choice = confirmBox.getConfirmPlainText(title, jPanel,
             new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, false);
 
         if(choice==0){
@@ -1491,7 +1491,7 @@ public class BeginningWizard{
             goOn = true;
           }
           else{
-            confirmBox.getConfirm(title, "Please fill in the host name of the remote database server",
+            confirmBox.getConfirmPlainText(title, "Please fill in the host name of the remote database server",
                 new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())}, icon, Color.WHITE, false);
           }
         }
@@ -1658,7 +1658,7 @@ public class BeginningWizard{
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = -1;
     try{
-      choice = confirmBox.getConfirm("Step 3/6: Setting up grid home directory",
+      choice = confirmBox.getConfirmPlainText("Step 3/6: Setting up grid home directory",
           jPanel, new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, false);
     }
     catch(Exception e){
