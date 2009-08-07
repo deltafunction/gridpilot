@@ -1129,7 +1129,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
     };
     t.start();
-    if(!MyUtil.myWaitForThread(t, "https", HTTP_TIMEOUT, "list", true) ||
+    if(!MyUtil.myWaitForThread(t, "setDisplay", HTTP_TIMEOUT, "list", true) ||
         t.getException()!=null){
       if(statusBar!=null){
         statusBar.setLabel("setDisplay cancelled");

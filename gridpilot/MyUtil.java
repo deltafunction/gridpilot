@@ -668,7 +668,11 @@ private static String fixUrl(String _url){
         GridPilot.ASK_BEFORE_INTERRUPT = false;
         GridPilot.WAIT_FOREVER = true;
       }
-      GridPilot.getClassMgr().getGlobalFrame().setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+      try{
+        GridPilot.getClassMgr().getGlobalFrame().setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+      }
+      catch(Exception e){ 
+      }
       return false;
     }
   }
