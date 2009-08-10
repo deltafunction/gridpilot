@@ -285,7 +285,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
                 doingSearch = false;
               }
             });     
-            SwingUtilities.invokeLater(t);
+            //SwingUtilities.invokeLater(t);
+            t.start();
           }
         }
       }
@@ -320,7 +321,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
                 doingSearch = false;
               }
             });
-            SwingUtilities.invokeLater(t);
+            //SwingUtilities.invokeLater(t);
+            t.start();
           }
         }
       }
@@ -449,7 +451,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
               doingSearch = false;
             }
           });     
-          SwingUtilities.invokeLater(t);
+          //SwingUtilities.invokeLater(t);
+          t.start();
         }
       });
       JButton bEnter = MyUtil.mkButton1("key_enter.png", "Go to URL", "Go");
@@ -474,7 +477,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
               doingSearch = false;
             }
           });     
-          SwingUtilities.invokeLater(t);
+          //SwingUtilities.invokeLater(t);
+          t.start();
         }
       });
 
@@ -532,7 +536,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
             //setUrl(e.getDescription());
             ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             statusBar.setLabel("Opening URL...");
-            (new ResThread(){
+            ResThread t = new ResThread(){
               public void run(){
                 try{
                   if(e.getURL()!=null){
@@ -546,7 +550,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
                   ioe.printStackTrace();
                 }
               }
-            }).run();               
+            }; 
+            t.start();
           }
         }
         else if(e.getEventType()==HyperlinkEvent.EventType.ENTERED){
@@ -1053,7 +1058,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
         }
       }
     });     
-    SwingUtilities.invokeLater(t);
+    //SwingUtilities.invokeLater(t);
+    t.start();
   }
   
   /**
@@ -1132,8 +1138,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(!MyUtil.myWaitForThread(t, "setDisplay", HTTP_TIMEOUT, "list", true) ||
         t.getException()!=null){
       if(statusBar!=null){
-        statusBar.setLabel("setDisplay cancelled");
+        statusBar.setLabel("setDisplay cancelled.");
       }
+      //ep.setUI(new BasicEditorPaneUI());
+      ep.setContentType("text/plain");
+      ep.setText("Could not open URL "+url);
       throw new IOException("setDisplay cancelled "+t.getException());
     }
     // Neither of the two invocations below seem to work, when
@@ -2322,7 +2331,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
         }
       }
     });
-    SwingUtilities.invokeLater(t);
+    //SwingUtilities.invokeLater(t);
+    t.start();
   }
 
   /**
@@ -2498,7 +2508,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
         }
       }
     });
-    SwingUtilities.invokeLater(t);
+    //SwingUtilities.invokeLater(t);
+    t.start();
   }
 
   private void addUrl(String url){

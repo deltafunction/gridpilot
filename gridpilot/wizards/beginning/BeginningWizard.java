@@ -1368,7 +1368,9 @@ public class BeginningWizard{
           new String [] {"Enabled", "AWS access key ID", "AWS secret access key",
                          "AWS access key ID", "AWS secret access key"},
           new String [] {"yes", MyUtil.getJTextOrEmptyString(tfAwsId).trim(),
-              MyUtil.getJTextOrEmptyString(tfAwsKey).trim()}
+                                MyUtil.getJTextOrEmptyString(tfAwsKey).trim(),
+                                MyUtil.getJTextOrEmptyString(tfAwsId).trim(),
+                                MyUtil.getJTextOrEmptyString(tfAwsKey).trim()}
           );
     }
     else{
