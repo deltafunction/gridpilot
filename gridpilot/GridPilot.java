@@ -126,18 +126,10 @@ public class GridPilot extends JApplet{
       else{
         userConfFileName = DEFAULT_CONF_FILE_NAME_UNIX;
       }
-      ConfigFile confFile = null;
       USER_CONF_FILE = new File(System.getProperty("user.home") + File.separator +
           userConfFileName);
       try{
-        confFile = new ConfigFile(USER_CONF_FILE, TOP_CONFIG_SECTION, CONFIG_SECTIONS);
-        confFile.excludeItems = MY_EXCLUDE_ITEMS;
-        if(!USER_CONF_FILE.exists()){
-          throw new FileNotFoundException("WARNING: Configuration file "+
-              USER_CONF_FILE.getAbsolutePath()+" not found.");
-        }
-        System.out.println("Trying to load configuration file "+USER_CONF_FILE);
-        getClassMgr().setConfigFile(confFile);
+        setConfigFile();
       }
       catch(Exception ee){
         System.out.println("WARNING: could not load user configuration file, " +
@@ -152,6 +144,7 @@ public class GridPilot extends JApplet{
         IS_FIRST_RUN = true;
         new BeginningWizard(IS_FIRST_RUN);
         IS_FIRST_RUN = false;
+        setConfigFile();
       }      
       loadConfigValues();
       initDebug();
@@ -182,6 +175,18 @@ public class GridPilot extends JApplet{
         exit(-1);
       }
     }
+  }
+  
+  private void setConfigFile() throws FileNotFoundException{
+    ConfigFile confFile = null;
+    confFile = new ConfigFile(USER_CONF_FILE, TOP_CONFIG_SECTION, CONFIG_SECTIONS);
+    confFile.excludeItems = MY_EXCLUDE_ITEMS;
+    if(!USER_CONF_FILE.exists()){
+      throw new FileNotFoundException("WARNING: Configuration file "+
+          USER_CONF_FILE.getAbsolutePath()+" not found.");
+    }
+    System.out.println("Trying to load configuration file "+USER_CONF_FILE);
+    getClassMgr().setConfigFile(confFile);
   }
   
   private void mkGridHomeDirIfNotThere(){
