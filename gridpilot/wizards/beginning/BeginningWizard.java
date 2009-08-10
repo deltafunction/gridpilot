@@ -1364,8 +1364,9 @@ public class BeginningWizard{
     if(jcbs[3].isSelected() && MyUtil.getJTextOrEmptyString(tfAwsId)!=null &&
         !MyUtil.getJTextOrEmptyString(tfAwsId).equals("")){
       configFile.setAttributes(
-          new String [] {"EC2", "EC2", "EC2", "SSS", "SSS"},
-          new String [] {"Enabled", "AWS access key ID", "AWS secret access key",
+          new String [] {"EC2", "EC2", "EC2", "sss", "sss"},
+          new String [] {"Enabled",
+                         "AWS access key ID", "AWS secret access key",
                          "AWS access key ID", "AWS secret access key"},
           new String [] {"yes", MyUtil.getJTextOrEmptyString(tfAwsId).trim(),
                                 MyUtil.getJTextOrEmptyString(tfAwsKey).trim(),
