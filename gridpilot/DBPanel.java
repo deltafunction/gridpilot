@@ -433,6 +433,28 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       });
       
+      String enabled = "no";
+      for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
+        Debug.debug("Checking CS "+GridPilot.CS_NAMES[i], 2);
+        try{
+          enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
+        }
+        catch(Exception e){
+          continue;
+        }
+        if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
+            !enabled.equalsIgnoreCase("true")){
+          continue;
+        }
+        JMenuItem miP = new JMenuItem(GridPilot.CS_NAMES[i]);
+        miP.addActionListener(new ActionListener(){
+          public void actionPerformed(final ActionEvent e){
+            processDatasets(e);
+          }});
+        Debug.debug("Adding CS "+GridPilot.CS_NAMES[i], 2);
+        pmProcessMenu.add(miP);
+      }
+
       bProcessDatasets.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           bProcess_mousePressed();
@@ -545,6 +567,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       
       String enabled = "no";
       for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
+        Debug.debug("Checking CS "+GridPilot.CS_NAMES[i], 2);
         try{
           enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
         }
@@ -560,13 +583,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           public void actionPerformed(final ActionEvent e){
             submit(e);
           }});
-        JMenuItem miP = new JMenuItem(GridPilot.CS_NAMES[i]);
-        miP.addActionListener(new ActionListener(){
-          public void actionPerformed(final ActionEvent e){
-            processDatasets(e);
-          }});
+        Debug.debug("Adding CS "+GridPilot.CS_NAMES[i], 2);
         pmSubmitMenu.add(mi);
-        pmProcessMenu.add(miP);
       }
 
       pButtonTableResults.add(bSubmit);
@@ -3673,6 +3691,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void bProcess_mousePressed(){
     // if dataset is selected, show the menu with computing systems
     if(getSelectedIdentifiers().length!=0){
+      Debug.debug("Processing "+getSelectedIdentifiers().length+" dataset(s) on one of "+
+          GridPilot.CS_NAMES.length+" CS backends", 2);
       pmProcessMenu.show(this, 0, 0); // without this, pmSubmitMenu.getWidth == 0
       pmProcessMenu.show(bProcessDatasets, -pmProcessMenu.getWidth(),
                         -pmProcessMenu.getHeight() + bProcessDatasets.getHeight());

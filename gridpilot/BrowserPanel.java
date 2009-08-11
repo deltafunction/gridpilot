@@ -1127,47 +1127,44 @@ public class BrowserPanel extends JDialog implements ActionListener{
         try{
           setDisplay0(url);
         }
-        catch(Exception e){
+        catch(Throwable e){
           e.printStackTrace();
-          this.setException(e);
-          return;
+          setException(new IOException(e.getMessage()));
         }
       }
     };
     t.start();
-    if(!MyUtil.myWaitForThread(t, "setDisplay", HTTP_TIMEOUT, "list", true) ||
+    if(!MyUtil.myWaitForThread(t, "setDisplay0", HTTP_TIMEOUT, "list", true) ||
         t.getException()!=null){
       if(statusBar!=null){
         statusBar.setLabel("setDisplay cancelled.");
       }
-      //ep.setUI(new BasicEditorPaneUI());
       ep.setContentType("text/plain");
       ep.setText("Could not open URL "+url);
-      throw new IOException("setDisplay cancelled "+t.getException());
+      throw new IOException("setDisplay failed "+t.getException());
     }
-    // Neither of the two invocations below seem to work, when
-    // MySSL has to ask for a password...
-    /*if(SwingUtilities.isEventDispatchThread()){
-      setDisplay0(url);
-    }
-    else{
-      SwingUtilities.invokeLater(
-        new Runnable(){
-          public void run(){
-            try{
-              setDisplay0(url);
-            }
-            catch(Exception ex){
-              Debug.debug("Could not create panel ", 1);
-              ex.printStackTrace();
-            }
-          }
-        }
-      );
-    }*/
   }
 
-  private void setDisplay0(String url) throws Exception{
+  private void setDisplay0(final String url) throws Exception{
+    ResThread t = new ResThread(){
+      public void run(){
+        try{
+          setDisplay00(url);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          setException(e);
+        }
+      }
+    };
+    t.start();
+    if(!MyUtil.myWaitForThread(t, "setDisplay00", HTTP_TIMEOUT, "list", true) ||
+       t.getException()!=null){
+      throw new IOException("setDisplay failed "+t.getException());
+    }
+  }
+
+  private void setDisplay00(String url) throws Exception{
     try{
       lastUrlsList = null;
       lastSizesList = null;
@@ -1218,8 +1215,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       // remote gsiftp text file
       else if(url.startsWith("gsiftp://") &&
           !url.endsWith("/") && /*!url.endsWith("htm") &&
-          !url.endsWith("html") &&*/ !url.endsWith("gz") &&
-          url.indexOf(".root")<0){
+          !url.endsWith("html") &&*/ !url.endsWith(".gz") &&
+          !url.endsWith(".tgz") && url.indexOf(".root")<0){
         if(!setRemoteTextEdit(url, gsiftpFileTransfer)){
           setRemoteFileConfirmDisplay(url, gsiftpFileTransfer);
         }
@@ -1227,7 +1224,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       // remote https text file
       else if(url.startsWith("https://") &&
           !url.endsWith("/") && !url.endsWith("htm") &&
-          !url.endsWith("html") && !url.endsWith("gz") &&
+          !url.endsWith("html") && !url.endsWith(".gz") &&
+          !url.endsWith(".tgz") && !url.endsWith(".gpa") &&
           url.indexOf(".root")<0){
         if(!setRemoteTextEdit(url, httpsFileTransfer)){
           setRemoteFileConfirmDisplay(url, httpsFileTransfer);
@@ -1250,7 +1248,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         setHtmlDisplay(url);
       }
       // tarball on disk or web server
-      else if(url.endsWith("gz") &&
+      else if((url.endsWith(".gz") || url.endsWith(".tgz") || url.endsWith(".gpa")) &&
           (url.startsWith("http://") || url.startsWith("file:"))){
         setFileConfirmDisplay(url);
       }
@@ -1260,12 +1258,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
         setRemoteFileConfirmDisplay(url, gsiftpFileTransfer);
       }
       // tarball on https server
-      else if(url.endsWith("gz") &&
+      else if((url.endsWith(".gz") || url.endsWith(".tgz") || url.endsWith(".gpa")) &&
           (url.startsWith("https:/"))){
         setRemoteFileConfirmDisplay(url, httpsFileTransfer);
       }
       // tarball on s3 server
-      else if(url.endsWith("gz") &&
+      else if((url.endsWith(".gz") || url.endsWith(".tgz") || url.endsWith(".gpa")) &&
           (url.startsWith("sss:/"))){
         setRemoteFileConfirmDisplay(url, sssFileTransfer);
       }
@@ -1470,6 +1468,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       String text = "";
       String line;
       int lineNumber = 0;
+      Debug.debug("Reading file "+url, 3);
       while((line=in.readLine())!=null){
         ++lineNumber;
         if(lineNumber>3000){
@@ -2020,7 +2019,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         String newUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/")+1);
         //thisUrl = newUrl;
         //setUrl(thisUrl);
-        setDisplay(newUrl);
+        setDisplay00(newUrl);
       }
       catch(Exception ioe){
         ioe.printStackTrace();

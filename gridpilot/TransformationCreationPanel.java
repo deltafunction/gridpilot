@@ -113,7 +113,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
 
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
         Color.white,new Color(165, 163, 151)), 
-        (transformationID.equals("-1")?"new transformation":"transformation "+transformationID)));
+        (transformationID.equals("-1")?"new executable":"executable "+transformationID)));
     
     //spAttributes.setPreferredSize(new Dimension(650, 500));
     //spAttributes.setMinimumSize(new Dimension(650, 500));
@@ -344,7 +344,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
          cstAttributesNames[i].equalsIgnoreCase("validationScript") ||
          cstAttributesNames[i].equalsIgnoreCase("extractionScript")){
         pAttributes.add(MyUtil.createCheckPanel1(
-            (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
+            (JFrame) SwingUtilities.getWindowAncestor(this),
             cstAttributesNames[i], tcCstAttributes[i], true, true, false, false),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,
@@ -352,7 +352,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("inputFiles")){
         pAttributes.add(MyUtil.createCheckPanel1(
-            (JFrame) SwingUtilities.getWindowAncestor(getRootPane()),
+            (JFrame) SwingUtilities.getWindowAncestor(this),
             cstAttributesNames[i], tcCstAttributes[i], false, true, false, false),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,

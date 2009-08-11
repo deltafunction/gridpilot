@@ -220,7 +220,9 @@ public class MyUtil extends gridfactory.common.Util{
           if(ok){
             setText(text, arrayToString(urls));
           }
-          frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          if(frame!=null){
+            frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          }
           //GridPilot.getClassMgr().getStatusBar().setLabel("");
         }
       });

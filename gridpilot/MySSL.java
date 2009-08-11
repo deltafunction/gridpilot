@@ -735,7 +735,12 @@ public class MySSL extends SSL{
         (new File(proxyDirectory)).isDirectory()){
       return new File(proxyDirectory+"/x509up_"+System.getProperty("user.name"));
     }
-    return new File("/tmp/x509up_"+System.getProperty("user.name"));
+    if(MyUtil.onWindows()){
+      return new File(MyUtil.clearTildeLocally("~/x509up_"+System.getProperty("user.name")));
+    }
+    else{
+      return new File("/tmp/x509up_"+System.getProperty("user.name"));
+    }
   }
 
   /**

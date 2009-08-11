@@ -904,12 +904,15 @@ public class GlobalFrame extends GPFrame{
   }
     
   protected void importToDB() {
+    DBPanel activePanel = getActiveDBPanel();
+    activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     String url = null;
     try{
       //url = MyUtil.getURL("file:~/", null, false, "Choose *.gpa file to import from.");
       url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, false, "Choose *.gpa file to import from.");
     }
     catch(IOException e){
+      activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       e.printStackTrace();
     }
     try{
@@ -922,9 +925,8 @@ public class GlobalFrame extends GPFrame{
         if(MyUtil.isLocalFileName(importUrl)){
           importUrl = MyUtil.clearTildeLocally(MyUtil.clearFile(importUrl));
         }
-        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         String message = ExportImport.importToDB(importUrl);
-        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         MyUtil.showMessage("Import successful", message);
       }
       else{
@@ -932,7 +934,7 @@ public class GlobalFrame extends GPFrame{
       }
     }
     catch(Exception ex){
-      setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+      activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       String error = "ERROR: could not import. "+ex.getMessage();
       MyUtil.showError(error);
       GridPilot.getClassMgr().getLogFile().addMessage(error, ex);

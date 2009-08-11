@@ -272,11 +272,12 @@ public class BeginningWizard{
         "Your settings have been saved in\n"+
         configFile.getFile().getAbsolutePath()+
         ".\n\n"+
-        "Please notice that only the most basic parameters,\n" +
+        "Notice that only the most basic parameters,\n" +
             "necessary to get you up and running, have been set.\n" +
             "You can modify these and many others in\n" +
             "\"Edit\" - \"Preferences\"." +
-            (firstRun?"\n\nThanks for using GridPilot and have fun!":"");
+            (firstRun?"\n\nGridPilot will now initialize - this may take a while.\n\n" +
+            		"Thanks for using GridPilot and have fun!":"");
     int choice = -1;
     confirmBox.getConfirmPlainText("Setup completed!",
         confirmString, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())},
@@ -347,7 +348,7 @@ public class BeginningWizard{
         "Database directory",
         "Working directory",
         "Software directory",
-        "Transformations directory"
+        "Executables directory"
         };
     String dbDir;
     String db = configFile.getValue("My_DB_local", "Database");
@@ -490,9 +491,9 @@ public class BeginningWizard{
                  MyUtil.clearFile(newDirs[0])+
                  (MyUtil.clearFile(newDirs[0]).endsWith("/")?"":"/")+
                  "My_DB",
+              newDirs[1],
               newDirs[2],
-              newDirs[3],
-              newDirs[4]}
+              newDirs[3]}
       );
       changes = true;
     }
@@ -1180,6 +1181,7 @@ public class BeginningWizard{
     pane = new JEditorPane("text/html", "<html>"+ec2String.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
+    addHyperLinkListener(pane, jPanel);
     csPanels[3].add(pane,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -1381,14 +1383,14 @@ public class BeginningWizard{
     if(jcbs[4].isSelected() && MyUtil.getJTextOrEmptyString(tfGfUrl)!=null &&
         !MyUtil.getJTextOrEmptyString(tfGfUrl).equals("")){
       configFile.setAttributes(
-          new String [] {"GRIDFACTORY", "GRIDFACTORY"},
+          new String [] {"GridFactory", "GridFactory"},
           new String [] {"Enabled", "Submission URL"},
           new String [] {"yes", MyUtil.getJTextOrEmptyString(tfGfUrl).trim()}
           );
     }
     else{
       configFile.setAttributes(
-          new String [] {"GRIDFACTORY"},
+          new String [] {"GridFactory"},
           new String [] {"Enabled"},
           new String [] {"no"}
           );

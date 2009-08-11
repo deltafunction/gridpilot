@@ -61,7 +61,7 @@ public class ExportImport {
          "<html>This will export all datasets and transformations of the chosen database<br>" +
               "plus any files associated with the transformations. Non-local files will<br>" +
               "be downloded first.<br><br>" +
-              "Choose a database to export from or choose none to cancel.<br></html>" :
+              "Choose database to export from or choose none to cancel.<br></html>" :
          "<html>This will export the dataset <br><br>" +
                "\"" + datasetName + "\"<br><br>" +
                "and its associated transformation plus any files associated<br>" +
@@ -239,7 +239,7 @@ public class ExportImport {
   "<html>This will import datasets and transformations in the chosen database.<br>" +
         "Any files associated with the transformations will be copied to<br>" +
         transformationDirectory + "/.<br><br>" +
-        "Choose a database to use.<br></html>", choices);
+        "Choose database to use.<br></html>", choices);
     if(choice<0 || choice>=choices.length-1){
       return null;
     }
@@ -259,7 +259,7 @@ public class ExportImport {
       throw new SQLException(mgr.getError());
     }
     ret += (sql!=null&&!sql.equals("")?
-        " - "+(sql.length()-sql.toLowerCase().replaceAll("(?i)(?s)insert ", "").length())+
+        " - "+((sql.length()-sql.toLowerCase().replaceAll("(?i)(?s)insert ", "").length())/7)+
            " executable record(s)\n":
         "");
     sqlFile = (new File(tmpDir, "dataset.sql")).getAbsolutePath();
@@ -269,7 +269,7 @@ public class ExportImport {
       throw new SQLException(mgr.getError());
     }
     ret += (sql!=null&&!sql.equals("")?
-        " - "+(sql.length()-sql.toLowerCase().replaceAll("insert ", "").length())+
+        " - "+((sql.length()-sql.toLowerCase().replaceAll("(?i)(?s)insert ", "").length())/7)+
            " application record(s)\n":
         "");
     // Move transformation input files to transformation dir
@@ -278,10 +278,9 @@ public class ExportImport {
     fixImportedFileLocations(dbName, transformationDirectory);
     // Clean up
     tmpDir.delete();
-    ret += "\ninto database "+dbName+".\n\n";
-    ret +=(numFiles>0? "and "+numFiles+ " application file(s) into directory "+transformationDirectory:
-        "");
-    ret += ".";
+    ret += "\ninto database "+dbName+"";
+    ret +=(numFiles>0? "\n\nand\n\n - "+numFiles+ " application file(s)\n\ninto directory "+transformationDirectory+".":
+        ".");
     return ret;
    }
   
