@@ -1365,7 +1365,7 @@ public class MyTransferControl extends TransferControl {
     String srcUrlDir = null;
     String srcFileName = null;
     
-    int lastSlash = url.lastIndexOf("/");
+    int lastSlash = url.replaceAll("\\\\", "/").lastIndexOf("/");
     srcUrlDir = url.substring(0, lastSlash + 1);
     srcFileName = url.substring(lastSlash + 1);
    

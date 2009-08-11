@@ -223,7 +223,10 @@ public class ExportImport {
     return res.toString();
   }
 
-  public static void importToDB(String importFile) throws Exception{
+  /**
+   * Returns import report text.
+   */
+  public static String importToDB(String importFile) throws Exception{
     String transformationDir = GridPilot.getClassMgr().getConfigFile().getValue(
         "Fork", "transformation directory");
     File transformationDirectory = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(
@@ -238,8 +241,9 @@ public class ExportImport {
         transformationDirectory + "/.<br><br>" +
         "Choose a database to use.<br></html>", choices);
     if(choice<0 || choice>=choices.length-1){
-      return;
+      return null;
     }
+    String ret = "Successfully imported:\n\n";
     String dbName = GridPilot.DB_NAMES[choice];
     DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
     // Download the import file, unpack it in a tmp dir
@@ -254,18 +258,31 @@ public class ExportImport {
     if(mgr.getError()!=null && !mgr.getError().equals("")){
       throw new SQLException(mgr.getError());
     }
+    ret += (sql!=null&&!sql.equals("")?
+        " - "+(sql.length()-sql.toLowerCase().replaceAll("(?i)(?s)insert ", "").length())+
+           " executable record(s)\n":
+        "");
     sqlFile = (new File(tmpDir, "dataset.sql")).getAbsolutePath();
     sql = LocalStaticShell.readFile(sqlFile);
     mgr.executeUpdate(sql);
     if(mgr.getError()!=null && !mgr.getError().equals("")){
       throw new SQLException(mgr.getError());
     }
+    ret += (sql!=null&&!sql.equals("")?
+        " - "+(sql.length()-sql.toLowerCase().replaceAll("insert ", "").length())+
+           " application record(s)\n":
+        "");
     // Move transformation input files to transformation dir
-    moveTransInputs((new File(tmpDir, "transformationFiles")).getAbsolutePath(), transformationDirectory);
+    int numFiles = moveTransInputs((new File(tmpDir, "transformationFiles")).getAbsolutePath(), transformationDirectory);
     // Read back any rows containing IMPORT_DIR and modify IMPORT_DIR to the GridPilot directory
     fixImportedFileLocations(dbName, transformationDirectory);
     // Clean up
     tmpDir.delete();
+    ret += "\ninto database "+dbName+".\n\n";
+    ret +=(numFiles>0? "and "+numFiles+ " application file(s) into directory "+transformationDirectory:
+        "");
+    ret += ".";
+    return ret;
    }
   
   private static File downloadAndUnpack(String importFile) throws Exception{
@@ -281,8 +298,8 @@ public class ExportImport {
     // Give the file system a few seconds...
     Thread.sleep(10000);
     // Unpack
-    String gzipFileName = importFile.replaceFirst("^.*/([^/]+)$", "$1");
-    String tarFileName = gzipFileName.replaceFirst("\\.gz$", "");
+    String gzipFileName = importFile.replaceAll("\\\\", "/").replaceFirst("^.*/([^/]+)$", "$1");
+    String tarFileName = gzipFileName.replaceAll("\\\\", "/").replaceFirst("\\.gpa$", "")+".tar";
     MyUtil.gunzip(new File(tmpDir, gzipFileName), new File(tmpDir, tarFileName));
     MyUtil.unTar(new File(tmpDir, tarFileName), tmpDir);
     return tmpDir;
@@ -324,16 +341,18 @@ public class ExportImport {
     }
   }
 
-  private static void moveTransInputs(String tmpDir, File transformationDirectory) {
+  private static int moveTransInputs(String tmpDir, File transformationDirectory) {
     String [] files = LocalStaticShell.listFiles(tmpDir);
     String fileName;
-    for(int i=0; i<files.length; ++i){
+    int ret = files.length;
+    for(int i=0; i<ret; ++i){
       if(!files[i].endsWith(".sql")){
         fileName = (new File(files[i])).getName();
         LocalStaticShell.moveFile(files[i],
             (new File(transformationDirectory, fileName)).getAbsolutePath());
       }
     }
+    return ret;
   }
 
 }

@@ -922,13 +922,17 @@ public class GlobalFrame extends GPFrame{
         if(MyUtil.isLocalFileName(importUrl)){
           importUrl = MyUtil.clearTildeLocally(MyUtil.clearFile(importUrl));
         }
-        ExportImport.importToDB(importUrl);
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        String message = ExportImport.importToDB(importUrl);
+        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        MyUtil.showMessage("Import successful", message);
       }
       else{
         Debug.debug("Not importing. "+url, 2);
       }
     }
     catch(Exception ex){
+      setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       String error = "ERROR: could not import. "+ex.getMessage();
       MyUtil.showError(error);
       GridPilot.getClassMgr().getLogFile().addMessage(error, ex);

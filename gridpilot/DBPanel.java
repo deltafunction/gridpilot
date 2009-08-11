@@ -2157,7 +2157,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           if(i<1){
             try{
               choice = confirmBox.getConfirm("Confirm delete",
-                                   "Really delete dataset # "+datasetIdentifiers[i]+"?",
+                                   "Really delete application/dataset "+datasetIdentifiers[i]+"?",
                                    dbPluginMgr.isJobRepository() ?
                                    new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
                                                  MyUtil.mkSkipObject(confirmBox.getOptionPane()),
@@ -2172,7 +2172,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           else{
             try{
               choice = confirmBox.getConfirm("Confirm delete",
-                                   "Really delete dataset # "+datasetIdentifiers[i]+"?",
+                                   "Really delete dataset/dataset "+datasetIdentifiers[i]+"?",
                                    dbPluginMgr.isJobRepository() ?
                                    new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
                                                  MyUtil.mkSkipObject(confirmBox.getOptionPane()),
@@ -2199,8 +2199,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         if(!skip || okAll){
           Debug.debug("deleting dataset # " + datasetIdentifiers[i], 2);
+          boolean isJobRep = dbPluginMgr.isJobRepository();
           if(dbPluginMgr.deleteDataset(datasetIdentifiers[i],
-              dbPluginMgr.isJobRepository() && cbCleanup.isSelected())){
+              isJobRep && cbCleanup.isSelected())){
             deleted.add(datasetIdentifiers[i]);
             statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " deleted.");
           }
@@ -2276,7 +2277,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   protected void deleteTransformations(){
-    String msg = "Are you sure you want to delete transformation record";
+    String msg = "Are you sure you want to delete executable record";
     if(getSelectedIdentifiers().length>1){
       msg += "s";
     }

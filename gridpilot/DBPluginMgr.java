@@ -1422,7 +1422,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public synchronized boolean isFileCatalog(){
+  public boolean isFileCatalog(){
     
     ResThread t = new ResThread(){
       boolean res = false;
@@ -1458,7 +1458,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public synchronized boolean isJobRepository(){
+  public boolean isJobRepository(){
     
     ResThread t = new ResThread(){
       boolean res = false;
@@ -2472,7 +2472,7 @@ public class DBPluginMgr extends DBCache implements Database{
     purgeFiles(datasetID, fileIDs);
   }
 
-  public synchronized boolean deleteJobDefsFromDataset(final String datasetID){
+  public boolean deleteJobDefsFromDataset(final String datasetID){
     
     ResThread t = new ResThread(){
       boolean res = false;
