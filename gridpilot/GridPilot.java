@@ -1047,7 +1047,10 @@ public class GridPilot extends JApplet{
     else if(tableName.equalsIgnoreCase("jobDefinition")){
       return "job definitions";
     }
-  return tableName;
+    else if(tableName.equalsIgnoreCase("file")){
+      return "files";
+    }
+    return tableName;
   }
 
   public static String getRecordDisplayName(String tableName) {
