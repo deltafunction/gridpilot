@@ -50,7 +50,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected String userName;
   protected String error = "";
   protected String runtimeDirectory = null;
-  protected String transformationDirectory = null;
+  protected String executableDirectory = null;
   protected String publicCertificate = null;
   protected String [] runtimeDBs = null;
   protected HashMap<String, String> toDeleteRTEs = null;
@@ -137,9 +137,9 @@ public class ForkComputingSystem implements MyComputingSystem{
         shell.mkdirs(runtimeDirectory);
       }
     }
-    transformationDirectory = configFile.getValue(csName, "transformation directory");   
-    //if(shellMgr.isLocal() && transformationDirectory!=null && transformationDirectory.startsWith("~")){
-    //  transformationDirectory = System.getProperty("user.home")+transformationDirectory.substring(1);
+    executableDirectory = configFile.getValue(csName, "Executable directory");   
+    //if(shellMgr.isLocal() && executableDirectory!=null && executableDirectory.startsWith("~")){
+    //  executableDirectory = System.getProperty("user.home")+executableDirectory.substring(1);
     //}
     MyUtil.checkAndActivateSSL(rteCatalogUrls);
     rteMgr = GridPilot.getClassMgr().getRTEMgr(runtimeDirectory, rteCatalogUrls);
@@ -865,9 +865,9 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected boolean getInputFiles(MyJobInfo job, Shell thisShellMgr){
     boolean ok = true;
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    String transID = dbPluginMgr.getJobDefTransformationID(job.getIdentifier());
-    Debug.debug("Getting input files for transformation " + transID, 2);
-    String [] transInputFiles = dbPluginMgr.getTransformationInputs(transID);
+    String transID = dbPluginMgr.getJobDefExecutableID(job.getIdentifier());
+    Debug.debug("Getting input files for executable " + transID, 2);
+    String [] transInputFiles = dbPluginMgr.getExecutableInputs(transID);
     Debug.debug("Getting input files for job " + job.getName(), 2);
     String [] jobInputFiles = dbPluginMgr.getJobDefInputFiles(job.getIdentifier());
     String [] dlInputFiles = new String [] {};

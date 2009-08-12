@@ -376,8 +376,8 @@ public class JobCreator{
   }
 
   private void createDBJobDefinitions(int idNum) throws Exception{
-    String transName = null;
-    String transVersion = null;
+    String exeName = null;
+    String exeVersion = null;
     String id = "-1";
     synchronized(semaphoreDBCreate){
       while(!vPartition.isEmpty()){
@@ -390,10 +390,10 @@ public class JobCreator{
         statusBar.setLabel("Creating job definition # " + part);
         statusBar.incrementProgressBarValue(pb, 1);
 
-        transName = dbPluginMgr.getDatasetTransformationName(datasetIdentifiers[idNum]);
-        transVersion = dbPluginMgr.getDatasetTransformationVersion(datasetIdentifiers[idNum]);
+        exeName = dbPluginMgr.getDatasetExecutableName(datasetIdentifiers[idNum]);
+        exeVersion = dbPluginMgr.getDatasetExecutableVersion(datasetIdentifiers[idNum]);
         id = datasetIdentifiers[idNum];
-        Debug.debug("Got transformation: "+transName+":"+transVersion+" <-- "+
+        Debug.debug("Got executable: "+exeName+":"+exeVersion+" <-- "+
             datasetIdentifiers[idNum], 3);
         Debug.debug("stdout/stderr length "+resStdOut.length, 2);
         Debug.debug("cstAttrNames --> "+MyUtil.arrayToString(cstAttrNames), 3);
@@ -655,11 +655,11 @@ public class JobCreator{
   }
   
   /**
-   * The first of the output file names of the transformation
+   * The first of the output file names of the executable
    * used to produce a dataset.
    * This is used as input file for the jobs of other datasets.
    * So, NOTICE: the (root) output file should always be the FIRST in the
-   * field 'outputs' in the transformation definition.
+   * field 'outputs' in the executable definition.
    */
   private void evaluateAll(int currentDataset, int currentPartition, String name,
       String number, String outputDest, int [][] eventSplits) throws ArithmeticException, SyntaxException,
@@ -747,25 +747,27 @@ public class JobCreator{
     // by simply using the extension from the output file or
     // (if it's the same as that of the input file)
     // appending ".out" to the input file name.
-    Debug.debug("Filling in outputs, "+fileCatalogInput+", "+!eventsPresent+", "+
-        outMap.length+", "+outMap[0][1]+", "+inputFileNames, 3);
-    if(fileCatalogInput && !eventsPresent && outMap.length==1 &&
-        (outMap[0][1]==null || outMap[0][1].equals("")) && inputFileNames!=null &&
-        inputFileURLs.length==1){
-      String [] bn = getBaseAndExtension(inputFileNames[0].trim());
-      String dest = "$o/$p"+bn[0]+bn[1];
-      resOutMap[0][1] = evaluate(dest,
-          currentPartition, name, number, inputFileURLs, inputFileNames, outputDest, inputSource);
-      resOutMap[0][0] = evaluate(outMap[0][0], currentPartition, name, number,
-          inputFileURLs, inputFileNames, outputDest, inputSource);
-    }
-    else{
-      for(int i=0; i<resOutMap.length; ++i){
-        resOutMap[i][0] = evaluate(outMap[i][0], currentPartition, name, number,
+    if(outMap!=null && outMap.length>0){
+      Debug.debug("Filling in outputs, "+fileCatalogInput+", "+!eventsPresent+", "+
+          outMap.length+", "+outMap[0][1]+", "+inputFileNames, 3);
+      if(fileCatalogInput && !eventsPresent && outMap.length==1 &&
+          (outMap[0][1]==null || outMap[0][1].equals("")) && inputFileNames!=null &&
+          inputFileURLs.length==1){
+        String [] bn = getBaseAndExtension(inputFileNames[0].trim());
+        String dest = "$o/$p"+bn[0]+bn[1];
+        resOutMap[0][1] = evaluate(dest,
+            currentPartition, name, number, inputFileURLs, inputFileNames, outputDest, inputSource);
+        resOutMap[0][0] = evaluate(outMap[0][0], currentPartition, name, number,
             inputFileURLs, inputFileNames, outputDest, inputSource);
-        resOutMap[i][1] = evaluate(outMap[i][1], currentPartition, name, number,
-            inputFileURLs, inputFileNames, outputDest, inputSource);
-        Debug.debug("output mapping #"+i+":"+resOutMap[i][0]+"-->"+resOutMap[i][1], 3);
+      }
+      else{
+        for(int i=0; i<resOutMap.length; ++i){
+          resOutMap[i][0] = evaluate(outMap[i][0], currentPartition, name, number,
+              inputFileURLs, inputFileNames, outputDest, inputSource);
+          resOutMap[i][1] = evaluate(outMap[i][1], currentPartition, name, number,
+              inputFileURLs, inputFileNames, outputDest, inputSource);
+          Debug.debug("output mapping #"+i+":"+resOutMap[i][0]+"-->"+resOutMap[i][1], 3);
+        }
       }
     }
     for(int i=0; i<resStdOut.length; ++i){
@@ -1236,7 +1238,7 @@ public class JobCreator{
     }
 
     // Job parameters
-    pResult.add(new JLabel("Transformation arguments"),
+    pResult.add(new JLabel("Executable arguments"),
         new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
             GridBagConstraints.CENTER,
             GridBagConstraints.BOTH, new Insets(5, 5, 5, 5), 0, 0));

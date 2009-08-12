@@ -15,34 +15,34 @@ public class TestDatasets {
   
   private LogFile logFile = null;
   private ConfigFile configFile = null;
-  private String transformationDirectory = null;
+  private String executableDirectory = null;
   
   private static String myDatasetName = "my_dataset";
-  private static String myTransformationName = "my_transformation";
-  private static String myTransformationVersion = "0.1";
-  private static String testTransformationName = "test";
-  private static String testTransformationVersion = "0.1";
+  private static String myExecutableName = "my_executable";
+  private static String myExecutableVersion = "0.1";
+  private static String testExecutableName = "test";
+  private static String testExecutableVersion = "0.1";
 
   public TestDatasets() {
     logFile = GridPilot.getClassMgr().getLogFile();
     configFile = GridPilot.getClassMgr().getConfigFile();
-    transformationDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
-        "Fork", "transformation directory");
-    if(transformationDirectory==null){
-      transformationDirectory = "file:~/GridPilot/transformations/";
+    executableDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
+        "Fork", "Executable directory");
+    if(executableDirectory==null){
+      executableDirectory = "file:~/GridPilot/executables/";
     }
-    if(!transformationDirectory.endsWith("/")){
-      transformationDirectory = transformationDirectory+"/";
+    if(!executableDirectory.endsWith("/")){
+      executableDirectory = executableDirectory+"/";
     }
   }
 
   /**
-   * Create test transformations and datasets if they don't exist.
+   * Create test executables and datasets if they don't exist.
    */
   protected void createAll(){
     try{
       if(!GridPilot.IS_FIRST_RUN){
-        GridPilot.splashShow("Checking test transformations");
+        GridPilot.splashShow("Checking test executables");
       }
     }
     catch(Exception e){
@@ -65,30 +65,30 @@ public class TestDatasets {
       if(shellMgr==null){
         shellMgr = new LocalShell();
       }
-      Debug.debug("createAll --> "+shellMgr+" : "+transformationDirectory, 3);
-      // Make sure transformation directory exists
-      if(!shellMgr.existsFile(transformationDirectory)){
+      Debug.debug("createAll --> "+shellMgr+" : "+executableDirectory, 3);
+      // Make sure executable directory exists
+      if(!shellMgr.existsFile(executableDirectory)){
         try{
-          shellMgr.mkdirs(transformationDirectory);
+          shellMgr.mkdirs(executableDirectory);
         }
         catch(Exception e){
           e.printStackTrace();
         }
       }
       // Make sure scripts exist
-      createMyTransformationScript(shellMgr);
-      createTestTransformationScript(shellMgr);
+      createMyExecutableScript(shellMgr);
+      createTestExecutableScript(shellMgr);
     }
     try{
       if(dbPluginMgr==null){
         dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr("My_DB_Local");
       }
       if(dbPluginMgr==null){
-        logFile.addMessage("WARNING: could not get local DBPluginMgr My_DB_Local. Test transformations and dataset not created.");
+        logFile.addMessage("WARNING: could not get local DBPluginMgr My_DB_Local. Test executables and dataset not created.");
       }
-      // Make sure transformations exist in local database
-      createMyTransformation(dbPluginMgr);
-      createTestTransformation(dbPluginMgr);
+      // Make sure executables exist in local database
+      createMyExecutable(dbPluginMgr);
+      createTestExecutable(dbPluginMgr);
       // Make sure dataset exists
       createMyDataset(dbPluginMgr);
     }
@@ -98,46 +98,46 @@ public class TestDatasets {
   }
 
   /**
-   * If the transformation script does not exist, create it.
+   * If the executable script does not exist, create it.
    */
-  protected void createMyTransformationScript(Shell shellMgr){
-    String transformationScriptName = myTransformationName+".sh";
+  protected void createMyExecutableScript(Shell shell){
+    String executableScriptName = myExecutableName+".sh";
     try{
-      if(!shellMgr.existsFile(transformationDirectory+transformationScriptName)){
-        shellMgr.writeFile(transformationDirectory+transformationScriptName,
-            "#!/bin/bash\n#\n# Sample transformation.\n# Write any commands below.\n#", false);
+      if(!shell.existsFile(executableDirectory+executableScriptName)){
+        shell.writeFile(executableDirectory+executableScriptName,
+            "#!/bin/bash\n#\n# Sample executable.\n# Write any commands below.\n#", false);
       }
     }
     catch(Exception e){
-      logFile.addMessage("WARNING: could not create transformation script "+
-          transformationDirectory+transformationScriptName);
+      logFile.addMessage("WARNING: could not create executable script "+
+          executableDirectory+executableScriptName);
     }
   }
 
   /**
-   * If the transformation script does not exist, create it.
+   * If the executable script does not exist, create it.
    */
-  protected void createTestTransformationScript(Shell shellMgr){
-    String testScriptName = testTransformationName+".sh";
+  protected void createTestExecutableScript(Shell shellMgr){
+    String testScriptName = testExecutableName+".sh";
     // Create two dummy input files
-    if(!shellMgr.existsFile(transformationDirectory+"data1.txt")){
+    if(!shellMgr.existsFile(executableDirectory+"data1.txt")){
       try{
-        shellMgr.writeFile(transformationDirectory+"data1.txt", "test data", false);
+        shellMgr.writeFile(executableDirectory+"data1.txt", "test data", false);
       }
       catch(Exception e){
         e.printStackTrace();
       }
     }
-    if(!shellMgr.existsFile(transformationDirectory+"data2.txt")){
+    if(!shellMgr.existsFile(executableDirectory+"data2.txt")){
       try{
-        shellMgr.writeFile(transformationDirectory+"data2.txt", "test data", false);
+        shellMgr.writeFile(executableDirectory+"data2.txt", "test data", false);
       }
       catch(Exception e){
         e.printStackTrace();
       }
     }
     StringBuffer fileStr = new StringBuffer("");
-    if(!shellMgr.existsFile(transformationDirectory+testScriptName)){
+    if(!shellMgr.existsFile(executableDirectory+testScriptName)){
       BufferedReader in = null;
       try{
         URL fileURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH+testScriptName);
@@ -147,10 +147,10 @@ public class TestDatasets {
           fileStr.append(line+"\n");
         }
         in.close();
-        shellMgr.writeFile(transformationDirectory+testScriptName, fileStr.toString(), false);
+        shellMgr.writeFile(executableDirectory+testScriptName, fileStr.toString(), false);
       }
       catch(IOException e){
-        logFile.addMessage("WARNING: Could not write test transformation", e);
+        logFile.addMessage("WARNING: Could not write test executable", e);
         return;
       }
       finally{
@@ -164,37 +164,37 @@ public class TestDatasets {
   }
   
   /**
-   * If the transformation does not exist, create it.
+   * If the executable does not exist, create it.
    */
-  protected void createMyTransformation(DBPluginMgr dbPluginMgr) throws Exception{
-    String transformationScriptName = myTransformationName+".sh";
-    String id = dbPluginMgr.getTransformationID(myTransformationName, myTransformationVersion);
+  protected void createMyExecutable(DBPluginMgr dbPluginMgr) throws Exception{
+    String executableScriptName = myExecutableName+".sh";
+    String id = dbPluginMgr.getExecutableID(myExecutableName, myExecutableVersion);
     if(id==null || id.equals("") || id.equals("-1")){
       String [] fields = new String [] {
-          /*identifier cannot be null*/MyUtil.getIdentifierField("My_DB_Local", "transformation"),
-          /*name*/MyUtil.getNameField("My_DB_Local", "transformation"),
-          /*version*/MyUtil.getDatasetTransformationVersionReference("My_DB_Local")[0],
-          /*runtimeenvironmentname*/MyUtil.getTransformationRuntimeReference("My_DB_Local")[1],
+          /*identifier cannot be null*/MyUtil.getIdentifierField("My_DB_Local", "executable"),
+          /*name*/MyUtil.getNameField("My_DB_Local", "executable"),
+          /*version*/MyUtil.getDatasetExecutableVersionReference("My_DB_Local")[0],
+          /*runtimeenvironmentname*/MyUtil.getExecutableRuntimeReference("My_DB_Local")[1],
           "executableFile"};
       String [] values = new String [] {
           "",
-          myTransformationName,
-          myTransformationVersion,
+          myExecutableName,
+          myExecutableVersion,
           "Linux",
-          "file:"+transformationDirectory+transformationScriptName};
-      dbPluginMgr.createTrans(fields, values);
+          "file:"+executableDirectory+executableScriptName};
+      dbPluginMgr.createExecutable(fields, values);
     }
   }
 
   /**
-   * If the transformation does not exist, create it.
+   * If the executable does not exist, create it.
    */
-  protected void createTestTransformation(DBPluginMgr dbPluginMgr){
-    String testScriptName = testTransformationName+".sh";
+  protected void createTestExecutable(DBPluginMgr dbPluginMgr){
+    String testScriptName = testExecutableName+".sh";
     try{
-      if(dbPluginMgr.getTransformationID(testTransformationName, testTransformationVersion)==null ||
-          dbPluginMgr.getTransformationID(testTransformationName, testTransformationVersion).equals("-1")){
-        String [] fields = dbPluginMgr.getFieldNames("transformation");
+      if(dbPluginMgr.getExecutableID(testExecutableName, testExecutableVersion)==null ||
+          dbPluginMgr.getExecutableID(testExecutableName, testExecutableVersion).equals("-1")){
+        String [] fields = dbPluginMgr.getFieldNames("executable");
         String [] values = new String [fields.length];
         for(int i=0; i<fields.length; ++i){
           if(fields[i].equalsIgnoreCase("name")){
@@ -210,27 +210,27 @@ public class TestDatasets {
             values[i] = "multiplier inputFileURLs";
           }
           else if(fields[i].equalsIgnoreCase("inputFiles")){
-            values[i] = "file:"+transformationDirectory+"data1.txt "+
-            "file:"+transformationDirectory+"data2.txt";
+            values[i] = "file:"+executableDirectory+"data1.txt "+
+            "file:"+executableDirectory+"data2.txt";
           }
           else if(fields[i].equalsIgnoreCase("outputFiles")){
             values[i] = "out.txt";
           }
           else if(fields[i].equalsIgnoreCase("script")){
-            values[i] = "file:"+transformationDirectory+testScriptName;
+            values[i] = "file:"+executableDirectory+testScriptName;
           }
           else if(fields[i].equalsIgnoreCase("comment")){
-            values[i] = "Transformation script to test running local GridPilot jobs on Linux.";
+            values[i] = "Executable script to test running local GridPilot jobs on Linux.";
           }
           else{
             values[i] = "";
           }
         }
-        dbPluginMgr.createTransformation(values);
+        dbPluginMgr.createExecutable(values);
       }
     }
     catch(Exception e){
-      logFile.addMessage("WARNING: Could not create test transformation in DB "+dbPluginMgr.getDBName(),
+      logFile.addMessage("WARNING: Could not create test executable in DB "+dbPluginMgr.getDBName(),
           e);
     }
   }
@@ -245,15 +245,15 @@ public class TestDatasets {
       String [] fields = new String [] {
           /*identifier cannot be null*/MyUtil.getIdentifierField("My_DB_Local", "dataset"),
           /*name*/MyUtil.getNameField("My_DB_Local", "dataset"),
-          /*transformationname*/MyUtil.getDatasetTransformationReference("My_DB_Local")[1],
-          /*transformationversion*/MyUtil.getDatasetTransformationVersionReference("My_DB_Local")[1],
+          /*executablename*/MyUtil.getDatasetExecutableReference("My_DB_Local")[1],
+          /*executableversion*/MyUtil.getDatasetExecutableVersionReference("My_DB_Local")[1],
           "totalFiles",
           "outputLocation"};
       String [] values = new String [] {
           "",
           myDatasetName,
-          myTransformationName,
-          myTransformationVersion,
+          myExecutableName,
+          myExecutableVersion,
           "1",
           GridPilot.GRID_HOME_URL};
       dbPluginMgr.createDataset(null, fields, values);

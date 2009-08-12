@@ -69,7 +69,7 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
   }
   
   private void initButtons(){
-    bClose = MyUtil.mkButton("cancel.png", "Cancel", "Cancel");
+    bClose = MyUtil.mkButton("cancel.png", "Close", "Close this window");
     bClear = MyUtil.mkButton("clear.png", "Clear", "Clear fields");
     bCreateUpdate = MyUtil.mkButton("ok.png", editing?"Update":"Create", (editing?"Update":"Create")+" record(s)");
     bSaveSettings = MyUtil.mkButton("save.png", "Save values", "Save the values of all fields");

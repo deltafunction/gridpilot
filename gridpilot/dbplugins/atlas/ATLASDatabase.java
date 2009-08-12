@@ -2695,11 +2695,11 @@ public class ATLASDatabase extends DBCache implements Database{
   // -------------------------------------------------------------------
 
 
-  public String getDatasetTransformationName(String datasetID){
+  public String getDatasetExecutableName(String datasetID){
     return null;
   }
 
-  public String getDatasetTransformationVersion(String datasetID){
+  public String getDatasetExecutableVersion(String datasetID){
     return null;
   }
   public String[] getRuntimeEnvironments(String jobDefID){
@@ -2735,48 +2735,48 @@ public class ATLASDatabase extends DBCache implements Database{
     return false;
   }
 
-  public DBResult getTransformations(){
+  public DBResult getExecutables(){
     return null;
   }
 
-  public DBRecord getTransformation(String transformationID){
+  public DBRecord getExecutable(String executableID){
     return null;
   }
 
-  public String getTransformationID(String transName, String transVersion){
+  public String getExecutableID(String exeName, String exeVersion){
     return "-1";
   }
 
-  public boolean createTransformation(Object[] values){
+  public boolean createExecutable(Object[] values){
     return false;
   }
 
-  public boolean updateTransformation(String transformatinID, String[] fields,
+  public boolean updateExecutable(String executableID, String[] fields,
       String[] values){
     return false;
   }
 
-  public boolean deleteTransformation(String transformationID){
+  public boolean deleteExecutable(String executableID){
     return false;
   }
 
-  public String[] getVersions(String transformationName){
+  public String[] getVersions(String executableName){
     return null;
   }
 
-  public String getTransformationRuntimeEnvironment(String transformationID){
+  public String getExecutableRuntimeEnvironment(String executableID){
     return null;
   }
 
-  public String[] getTransformationJobParameters(String transformationID){
+  public String[] getExecutableJobParameters(String executableID){
     return null;
   }
 
-  public String[] getTransformationOutputs(String transformationID){
+  public String[] getExecutableOutputs(String executableID){
     return null;
   }
 
-  public String[] getTransformationInputs(String transformationID){
+  public String[] getExecutableInputs(String executableID){
     return null;
   }
 
@@ -2828,11 +2828,11 @@ public class ATLASDatabase extends DBCache implements Database{
     return "-1";
   }
 
-  public String getJobDefTransformationID(String jobDefID){
+  public String getJobDefExecutableID(String jobDefID){
     return "-1";
   }
 
-  public String getTransformationExeFile(String jobDefID){
+  public String getExecutableFile(String jobDefID){
     return null;
   }
 
@@ -2872,11 +2872,11 @@ public class ATLASDatabase extends DBCache implements Database{
     return null;
   }
 
-  public String[] getTransformationArguments(String jobDefID){
+  public String[] getExecutableArguments(String jobDefID){
     return null;
   }
 
-  public String[] getJobDefTransPars(String jobDefID){
+  public String[] getJobDefExecutableParameters(String jobDefID){
     return null;
   }
 

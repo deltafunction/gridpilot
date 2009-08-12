@@ -118,9 +118,9 @@ public class DBPluginMgr extends DBCache implements Database{
    * from an input dataset.
    */ 
   public String getTargetDatasetName(String targetDB, String sourceDatasetName,
-      String transformationName, String transformationVersion){
+      String executableName, String executableVersion){
     Debug.debug("finding target dataset name for "+sourceDatasetName+" in "+targetDB+
-        " with tranformation "+transformationName, 3);
+        " with tranformation "+executableName, 3);
         
     String findString = "";
     String replaceString = "";
@@ -128,23 +128,23 @@ public class DBPluginMgr extends DBCache implements Database{
     Matcher m = null;
     String s = "";
     String ret = "";
-    if(transformationName!=null){
+    if(executableName!=null){
       // TODO: make these patterns configurable
       s = ".*g4sim.*";
       p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
-      m = p.matcher(transformationName);
+      m = p.matcher(executableName);
       if(m.matches()){
         replaceString = "SimProd";
       }
       s = ".*g4digit.*";
       p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
-      m = p.matcher(transformationName);
+      m = p.matcher(executableName);
       if(m.matches()){
         replaceString = "DigitProd";
       }
       s = ".*reconstruction.*";
       p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
-      m = p.matcher(transformationName);
+      m = p.matcher(executableName);
       if(m.matches()){
         replaceString = "ReconProd";
       }
@@ -175,14 +175,14 @@ public class DBPluginMgr extends DBCache implements Database{
 
     boolean matched = false;
     String ret1 = ret;
-    if(transformationVersion!=null && !transformationVersion.equals("")){
-      // Change the version to match the transformation version
+    if(executableVersion!=null && !executableVersion.equals("")){
+      // Change the version to match the executable version
       s = "\\.v\\w*\\.\\w*$";
       p = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
       m = p.matcher(ret);
       if(!matched){
         Debug.debug("replacing version", 3);
-        ret1 = m.replaceAll("."+transformationVersion);
+        ret1 = m.replaceAll("."+executableVersion);
         if(!ret.equals(ret1)){
           matched = true;
         }
@@ -192,7 +192,7 @@ public class DBPluginMgr extends DBCache implements Database{
       m = p.matcher(ret);
       if(!matched){
         Debug.debug("replacing version", 3);
-        ret1 = m.replaceAll("."+transformationVersion);
+        ret1 = m.replaceAll("."+executableVersion);
         if(!ret.equals(ret1)){
           matched = true;
         }
@@ -202,7 +202,7 @@ public class DBPluginMgr extends DBCache implements Database{
       m = p.matcher(ret);
       if(!matched){
         Debug.debug("replacing version", 3);
-        ret1 = m.replaceAll("."+transformationVersion);
+        ret1 = m.replaceAll("."+executableVersion);
         if(!ret.equals(ret1)){
           matched = true;
         }
@@ -401,7 +401,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String getTransformationExeFile(final String jobDefinitionID){
+  public String getExecutableFile(final String jobDefinitionID){
     ResThread t = new ResThread(){
       String res = null;
       public void requestStop(){
@@ -413,7 +413,7 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getTransformationExeFile(jobDefinitionID);
+          res = db.getExecutableFile(jobDefinitionID);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
@@ -429,7 +429,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformationScript")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getExecutableFile")){
       return t.getStringRes();
     }
     else{
@@ -465,7 +465,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformationRTEnvironments")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getRuntimeEnvironments")){
       return t.getString2Res();
     }
     else{
@@ -473,7 +473,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String [] getTransformationArguments(final String jobDefinitionID){
+  public String [] getExecutableArguments(final String jobDefinitionID){
     ResThread t = new ResThread(){
       String [] res = null;
       public void requestStop(){
@@ -485,7 +485,7 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getTransformationArguments(jobDefinitionID);
+          res = db.getExecutableArguments(jobDefinitionID);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
@@ -501,7 +501,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformationSignature")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getExecutableArguments")){
       return t.getString2Res();
     }
     else{
@@ -509,7 +509,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String getTransformationRuntimeEnvironment(final String transformationID){
+  public String getExecutableRuntimeEnvironment(final String executableID){
     ResThread t = new ResThread(){
       String res = null;
       public void requestStop(){
@@ -521,13 +521,13 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getTransformationRuntimeEnvironment(transformationID);
+          res = db.getExecutableRuntimeEnvironment(executableID);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             transformationID, t);
+                             executableID, t);
         }
       }
       public String getStringRes(){
@@ -537,7 +537,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformationRuntimeEnvironment")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getExecutableRuntimeEnvironment")){
       return t.getStringRes();
     }
     else{
@@ -726,7 +726,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String getTransformationID(final String transName, final String transVersion){
+  public String getExecutableID(final String exeName, final String exeVersion){
     ResThread t = new ResThread(){
       String res = "-1";
       public void requestStop(){
@@ -738,13 +738,13 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getTransformationID(transName, transVersion);
+          res = db.getExecutableID(exeName, exeVersion);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             transName+":"+transVersion, t);
+                             exeName+":"+exeVersion, t);
         }
       }
       public String getStringRes(){
@@ -754,7 +754,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformationID")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getExecutableID")){
       return t.getStringRes();
     }
     else{
@@ -983,7 +983,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String getJobDefTransformationID(final String jobDefID){
+  public String getJobDefExecutableID(final String jobDefID){
     ResThread t = new ResThread(){
       String res = "-1";
       public void requestStop(){
@@ -995,7 +995,7 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getJobDefTransformationID(jobDefID);
+          res = db.getJobDefExecutableID(jobDefID);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
@@ -1011,7 +1011,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformationID")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getJobDefExecutableID")){
       return t.getStringRes();
     }
     else{
@@ -1019,7 +1019,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String getDatasetTransformationName(final String datasetID){
+  public String getDatasetExecutableName(final String datasetID){
     ResThread t = new ResThread(){
       String res = null;
       public void requestStop(){
@@ -1031,7 +1031,7 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getDatasetTransformationName(datasetID);
+          res = db.getDatasetExecutableName(datasetID);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
@@ -1047,7 +1047,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getDatasetTransformationName")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getDatasetExecutableName")){
       return t.getStringRes();
     }
     else{
@@ -1055,7 +1055,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String getDatasetTransformationVersion(final String datasetID){
+  public String getDatasetExecutableVersion(final String datasetID){
     ResThread t = new ResThread(){
       String res = null;
       public void requestStop(){
@@ -1067,7 +1067,7 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getDatasetTransformationVersion(datasetID);
+          res = db.getDatasetExecutableVersion(datasetID);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
@@ -1083,7 +1083,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getDatasetTransformationVersion")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getDatasetExecutableVersion")){
       return t.getStringRes();
     }
     else{
@@ -1091,7 +1091,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String getTransformationValue(final String jobDefID, final String key){
+  public String getJobDefExecutableValue(final String jobDefID, final String key){
     ResThread t = new ResThread(){
       String res = null;
       public void requestStop(){
@@ -1103,8 +1103,8 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getTransformation(
-              db.getJobDefTransformationID(jobDefID)).getValue(key).toString();
+          res = db.getExecutable(
+              db.getJobDefExecutableID(jobDefID)).getValue(key).toString();
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
@@ -1120,7 +1120,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformationValue")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getJobDefExecutableValue")){
       return t.getStringRes();
     }
     else{
@@ -1202,7 +1202,7 @@ public class DBPluginMgr extends DBCache implements Database{
       }
     }
 
-  public String [] getJobDefTransPars(final String jobDefID){
+  public String [] getJobDefExecutableParameters(final String jobDefID){
     
       ResThread t = new ResThread(){
         String [] res = null;
@@ -1215,7 +1215,7 @@ public class DBPluginMgr extends DBCache implements Database{
         public void run(){
           try{
             db.clearError();
-            res = db.getJobDefTransPars(jobDefID);
+            res = db.getJobDefExecutableParameters(jobDefID);
           }
           catch(Throwable t){
             db.appendError(t.getMessage());
@@ -1231,7 +1231,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
       t.start();
     
-      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getJobDefTransPars")){
+      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getJobDefExecutableParameters")){
         return t.getString2Res();
       }
       else{
@@ -1311,7 +1311,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String [] getTransformationJobParameters(final String transformationID){
+  public String [] getExecutableJobParameters(final String executableID){
   
     ResThread t = new ResThread(){
       String [] res = null;
@@ -1324,13 +1324,13 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getTransformationJobParameters(transformationID);
+          res = db.getExecutableJobParameters(executableID);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             transformationID, t);
+                             executableID, t);
         }
       }
       public String [] getString2Res(){
@@ -1348,7 +1348,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String [] getTransformationOutputs(final String transformationID){
+  public String [] getExecutableOutputs(final String executableID){
   
     ResThread t = new ResThread(){
       String [] res = null;
@@ -1361,13 +1361,13 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getTransformationOutputs(transformationID);
+          res = db.getExecutableOutputs(executableID);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             transformationID, t);
+                             executableID, t);
         }
       }
       public String [] getString2Res(){
@@ -1385,7 +1385,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String [] getTransformationInputs(final String transformationID){
+  public String [] getExecutableInputs(final String executableID){
     
     ResThread t = new ResThread(){
       String [] res = null;
@@ -1398,13 +1398,13 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getTransformationInputs(transformationID);
+          res = db.getExecutableInputs(executableID);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             transformationID, t);
+                             executableID, t);
         }
       }
       public String [] getString2Res(){
@@ -1621,9 +1621,9 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public DBRecord createTrans(String [] fields, Object [] values) throws Exception{
+  public DBRecord createExecutable(String [] fields, Object [] values) throws Exception{
     
-    String [] transFieldNames = getFieldNames("transformation");
+    String [] transFieldNames = getFieldNames("executable");
     
     if(fields.length!=values.length){
       throw new DataFormatException("The number of fields and values do not agree, "+
@@ -1638,7 +1638,7 @@ public class DBPluginMgr extends DBCache implements Database{
       vals[i] = "";
       for(int j=0; j<fields.length; ++j){
         if(fields[j].equalsIgnoreCase(transFieldNames[i]) &&
-            !fields[j].equalsIgnoreCase(MyUtil.getIdentifierField(dbName, "transformation"))){
+            !fields[j].equalsIgnoreCase(MyUtil.getIdentifierField(dbName, "executable"))){
           if(vals[i]==null){
             vals[i] = "";
           }
@@ -1650,11 +1650,11 @@ public class DBPluginMgr extends DBCache implements Database{
       }
     }
     DBRecord jobDef = new DBRecord(transFieldNames, vals);
-    if(createTransformation(vals)){
+    if(createExecutable(vals)){
        return jobDef;
     }
     else{
-      throw new IOException("ERROR: createTransformation failed");
+      throw new IOException("ERROR: createExecutable failed");
     }
   }
 
@@ -1845,7 +1845,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public synchronized boolean createTransformation(final Object [] values){
+  public synchronized boolean createExecutable(final Object [] values){
     
     ResThread t = new ResThread(){
       boolean res = false;
@@ -1858,7 +1858,7 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.createTransformation(values);
+          res = db.createExecutable(values);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
@@ -1874,7 +1874,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "createTransformation")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "createExecutable")){
       return t.getBoolRes();
     }
     else{
@@ -2113,7 +2113,7 @@ public class DBPluginMgr extends DBCache implements Database{
       }
     }
 
-  public synchronized boolean updateTransformation(final String transformationID,
+  public synchronized boolean updateExecutable(final String executableID,
       final String [] fields, final String [] values){
     
       ResThread t = new ResThread(){
@@ -2127,13 +2127,13 @@ public class DBPluginMgr extends DBCache implements Database{
         public void run(){
           try{
             db.clearError();
-            res = db.updateTransformation(transformationID, fields, values);
+            res = db.updateExecutable(executableID, fields, values);
           }
           catch(Throwable t){
             db.appendError(t.getMessage());
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
-                               transformationID, t);
+                               executableID, t);
           }
         }
         public boolean getBoolRes(){
@@ -2143,7 +2143,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
       t.start();
     
-      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "updateTransformation")){
+      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "updateExecutable")){
         return t.getBoolRes();
       }
       else{
@@ -2208,7 +2208,7 @@ public class DBPluginMgr extends DBCache implements Database{
         // In this case: don't delete the first of the output files, since
         // this is the file registered in the file catalog and will be
         // deleted when deleting the file catalog entry.
-        String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
+        String [] outFiles = getExecutableOutputs(getJobDefExecutableID(jobDefId));
         toDeleteFiles = new String [outFiles.length+2-(outFiles.length>0?1:0)];
         toDeleteFiles[0] = (String) jobDef.getValue("stdoutDest");
         toDeleteFiles[1] = (String) jobDef.getValue("stderrDest");
@@ -2217,7 +2217,7 @@ public class DBPluginMgr extends DBCache implements Database{
         }
       }
       else{
-        String [] outFiles = getTransformationOutputs(getJobDefTransformationID(jobDefId));
+        String [] outFiles = getExecutableOutputs(getJobDefExecutableID(jobDefId));
         toDeleteFiles = new String [outFiles.length+2];
         toDeleteFiles[0] = (String) jobDef.getValue("stdoutDest");
         toDeleteFiles[1] = (String) jobDef.getValue("stderrDest");
@@ -2509,7 +2509,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public synchronized boolean deleteTransformation(final String transformationID){
+  public synchronized boolean deleteExecutable(final String executableID){
     
       ResThread t = new ResThread(){
         boolean res = false;
@@ -2522,13 +2522,13 @@ public class DBPluginMgr extends DBCache implements Database{
         public void run(){
           try{
             db.clearError();
-            res = db.deleteTransformation(transformationID);
+            res = db.deleteExecutable(executableID);
           }
           catch(Throwable t){
             db.appendError(t.getMessage());
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                                " from plugin " + dbName + " " +
-                               transformationID, t);
+                               executableID, t);
           }
         }
         public boolean getBoolRes(){
@@ -2538,7 +2538,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
       t.start();
     
-      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "deleteTransformation")){
+      if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "deleteExecutable")){
         return t.getBoolRes();
       }
       else{
@@ -2769,7 +2769,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public DBResult getTransformations(){
+  public DBResult getExecutables(){
   
     ResThread t = new ResThread(){
       DBResult res = null;
@@ -2782,7 +2782,7 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getTransformations();
+          res = db.getExecutables();
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
@@ -2797,7 +2797,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformations")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getExecutables")){
       return t.getDBResultRes();
     }
     else{
@@ -2880,7 +2880,7 @@ public class DBPluginMgr extends DBCache implements Database{
     
   }
 
-  public DBRecord getTransformation(final String transformationID){
+  public DBRecord getExecutable(final String executableID){
     
     ResThread t = new ResThread(){
       DBRecord res = null;
@@ -2893,13 +2893,13 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getTransformation(transformationID);
+          res = db.getExecutable(executableID);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
-                             transformationID, t);
+                             executableID, t);
         }
       }
       public DBRecord getDBRecordRes(){
@@ -2909,7 +2909,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
     t.start();
   
-    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getTransformation")){
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getExecutable")){
       return t.getDBRecordRes();
     }
     else{
@@ -3221,7 +3221,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String [] getVersions(final String transformationName){
+  public String [] getVersions(final String exeName){
     ResThread t = new ResThread(){
       String [] res = null;
       public void requestStop(){
@@ -3233,7 +3233,7 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getVersions(transformationName);
+          res = db.getVersions(exeName);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());

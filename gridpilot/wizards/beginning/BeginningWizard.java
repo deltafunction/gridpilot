@@ -362,12 +362,12 @@ public class BeginningWizard{
     }
     String workingDir = configFile.getValue("Fork", "Working directory");
     String runtimeDir = GridPilot.RUNTIME_DIR;
-    String transDir = configFile.getValue("Fork", "Transformation directory");
+    String transDir = configFile.getValue("Fork", "Executable directory");
     String [] defDirs = new String [] {
         dbDir==null?dbDir:"~/GridPilot",
         workingDir==null?dbDir+"/jobs":workingDir,
         runtimeDir==null?dbDir+"/runtimeEnvironments":runtimeDir,
-        transDir==null?dbDir+"/transformations":transDir
+        transDir==null?dbDir+"/executables":transDir
         };
     JTextField [] jtFields = new JTextField [defDirs.length];
     if(firstRun){
@@ -484,7 +484,7 @@ public class BeginningWizard{
       configFile.setAttributes(
           new String [] {"My_DB_local", "Fork", "Fork", "Fork"},
           new String [] {"database", "working directory",
-              "runtime directory", "transformation directory"},
+              "runtime directory", "executable directory"},
           new String [] {
               "hsql://localhost"+
                  (MyUtil.clearFile(newDirs[0]).startsWith("/")?"":"/")+

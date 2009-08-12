@@ -46,11 +46,11 @@ public class NGScriptGenerator extends ScriptGenerator{
     String line = "";
     String jobDefID = job.getIdentifier();
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    String [] formalParam = dbPluginMgr.getTransformationArguments(jobDefID);
-    String [] actualParam = dbPluginMgr.getJobDefTransPars(jobDefID);
+    String [] formalParam = dbPluginMgr.getExecutableArguments(jobDefID);
+    String [] actualParam = dbPluginMgr.getJobDefExecutableParameters(jobDefID);
 
-    // The transformation script
-    String scriptFileName = dbPluginMgr.getTransformationExeFile(jobDefID);
+    // The executable script
+    String scriptFileName = dbPluginMgr.getExecutableFile(jobDefID);
     String shortScriptName = scriptFileName;
     int lastSlash = shortScriptName.replaceAll("\\\\", "/").lastIndexOf("/");
     if(lastSlash>-1){
@@ -124,11 +124,11 @@ public class NGScriptGenerator extends ScriptGenerator{
       if(inputs!=null && inputs.length>0){
         inputFiles1 = inputs;
       }
-      // Input files from transformation definition
+      // Input files from executable definition
       // (typically a tarball with code)
       String[] inputFiles2 = new String [] {};
-      inputs = dbPluginMgr.getTransformationInputs(
-          dbPluginMgr.getJobDefTransformationID(jobDefID));
+      inputs = dbPluginMgr.getExecutableInputs(
+          dbPluginMgr.getJobDefExecutableID(jobDefID));
       Debug.debug("input files: "+inputs.length+" "+MyUtil.arrayToString(inputs), 3);
       if(inputs!=null && inputs.length>0){
         inputFiles2 = inputs;

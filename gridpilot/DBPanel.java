@@ -603,18 +603,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       bEditRecord.setEnabled(false);
       bDeleteRecords.setEnabled(false);
     }
-    else if(tableName.equalsIgnoreCase("transformation")){
+    else if(tableName.equalsIgnoreCase("executable")){
       
       tableResults.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent e){
           if(e.getClickCount()==2){
-            editTransformation();
+            editExecutable();
           }
         }
       });
       
       if(SHOW_DB_BUTTONS){
-        initTransformationEditbuttons();
+        initExecutableEditbuttons();
         pButtonTableResults.add(bCreateRecords);
         pButtonTableResults.add(bEditRecord);
         pButtonTableResults.add(bDeleteRecords);
@@ -744,22 +744,22 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     });
   }
 
-  private void initTransformationEditbuttons() {
+  private void initExecutableEditbuttons() {
     bCreateRecords.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        createTransformation();
+        createExecutable();
       }
     });
 
     bEditRecord.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        editTransformation();
+        editExecutable();
       }
     });
 
     bDeleteRecords.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        deleteTransformations();
+        deleteExecutables();
       }
     });
   }
@@ -1270,8 +1270,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     else if(tableName.equalsIgnoreCase("jobDefinition")){
       setJobDefTable();
     }
-    else if(tableName.equalsIgnoreCase("transformation")){
-      setTransformationTable();
+    else if(tableName.equalsIgnoreCase("executable")){
+      setExecutableTable();
     }
     else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
       setRuntimeEnvironmentTable();
@@ -1304,7 +1304,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         bViewFiles.setEnabled(!lsm.isSelectionEmpty() &&
             lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
         // We assume that there are only two kinds of databases:
-        // runtime/transformation/dataset/job catalogs and dataset/file catalogs.
+        // runtime/executable/dataset/job catalogs and dataset/file catalogs.
         bViewJobDefinitions.setEnabled(dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty() &&
             lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
         boolean ok = dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty();
@@ -1385,7 +1385,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
   }
 
-  private void setTransformationTable() {
+  private void setExecutableTable() {
     tableResults.getSelectionModel().setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
     tableResults.addListSelectionListener(new ListSelectionListener(){
       public void valueChanged(ListSelectionEvent e){
@@ -1404,7 +1404,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     });
     if(!menuSet){
-      makeTransformationMenu();
+      makeExecutableMenu();
       menuSet = true;
     }
   }
@@ -1630,18 +1630,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     tableResults.addMenuItem(miDelete);
   }
 
-  private void makeTransformationMenu(){
-    Debug.debug("Making transformation menu", 3);
+  private void makeExecutableMenu(){
+    Debug.debug("Making executable menu", 3);
     JMenuItem miDelete = new JMenuItem("Delete");
     miEdit = new JMenuItem("Edit");
     miDelete.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        deleteTransformations();
+        deleteExecutables();
       }
     });
     miEdit.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        editTransformation();
+        editExecutable();
       }
     });
     miDelete.setEnabled(true);
@@ -1824,7 +1824,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, getTable().getColumnNames(),
               getSelectedIdentifiers(), false);
           CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true, true, true);
-          pDialog.setTitle("Create "+GridPilot.getRecordDisplayName("jobDefintion")+"(s)");
+          pDialog.setTitle("Create "+GridPilot.getRecordDisplayName("jobDefinition")+"(s)");
         }
       }
     );
@@ -2262,11 +2262,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   /**
-   * Open dialog with transformation creation panel.
+   * Open dialog with executable creation panel.
    */ 
-  protected void createTransformation(){
+  protected void createExecutable(){
     CreateEditDialog pDialog = new CreateEditDialog(
-       new TransformationCreationPanel(dbPluginMgr, this, false),
+       new ExecutableCreationPanel(dbPluginMgr, this, false),
        false, false, true, false, true);
     pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
   }
@@ -2280,9 +2280,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
   }
 
-  protected void editTransformation(){
+  protected void editExecutable(){
     CreateEditDialog pDialog = new CreateEditDialog(
-       new TransformationCreationPanel(dbPluginMgr, this, true),
+       new ExecutableCreationPanel(dbPluginMgr, this, true),
        true, false, true, false, true);
     pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
   }
@@ -2294,7 +2294,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
   }
 
-  protected void deleteTransformations(){
+  protected void deleteExecutables(){
     String msg = "Are you sure you want to delete executable record";
     if(getSelectedIdentifiers().length>1){
       msg += "s";
@@ -2323,7 +2323,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           return;
         }
         stopWorking();
-        boolean anyDeleted = doDeleteTransformations();
+        boolean anyDeleted = doDeleteExecutables();
         if(anyDeleted){
           refresh();
         }
@@ -2332,21 +2332,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     workThread.start();
   }
 
-  private boolean doDeleteTransformations() {
+  private boolean doDeleteExecutables() {
     boolean anyDeleted = false;
     String [] ids = getSelectedIdentifiers();
     //int [] rows = tableResults.getSelectedRows();
     Debug.debug("Deleting "+ids.length+" rows", 2);
     if(ids.length!=0){
       GridPilot.getClassMgr().getStatusBar().setLabel(
-         "Deleting transformation(s). Please wait...");
+         "Deleting executable(s). Please wait...");
       JProgressBar pb = new JProgressBar();
       statusBar.setProgressBar(pb);
       statusBar.setProgressBarMax(pb, ids.length);
       for(int i = ids.length-1; i>=0; i--){
-        boolean success = dbPluginMgr.deleteTransformation(ids[i]);
+        boolean success = dbPluginMgr.deleteExecutable(ids[i]);
         if(!success){
-          String msg = "Deleting transformation "+ids[i]+" failed";
+          String msg = "Deleting executable "+ids[i]+" failed";
           Debug.debug(msg, 1);
           GridPilot.getClassMgr().getStatusBar().setLabel(msg);
           GridPilot.getClassMgr().getLogFile().addMessage(msg);
@@ -2359,7 +2359,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         //tableResults.tableModel.fireTableDataChanged();
       }
       GridPilot.getClassMgr().getStatusBar().setLabel(
-         "Deleting transformation(s) done.");
+         "Deleting executable(s) done.");
       statusBar.removeProgressBar(pb);
     }
     return anyDeleted;
@@ -2609,7 +2609,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private boolean doProcessDatasets(String csName, String [] ids) {
     boolean ok = true;
     int jobCount = 0;
-    Debug.debug("Monitoring jobs from dataset(s): "+MyUtil.arrayToString(ids), 3);
+    Debug.debug("Processing dataset(s): "+MyUtil.arrayToString(ids), 3);
     String [] jobDefIds;
     DBResult jobDefs;
     String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
@@ -2618,6 +2618,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       jobDefs = dbPluginMgr.getJobDefinitions(ids[i],
           new String [] {idField}, null, null);
       if(jobDefs.values.length==0){
+        Debug.debug("Creating job(s) for dataset: "+i+":"+ids[i], 3);
         createJobDefsForDataset(ids[i]);
       }
     }
@@ -2635,6 +2636,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         ++jobCount;
       }
     }
+    Debug.debug("Submitting "+jobCount+" job(s)", 3);
     if(jobCount==0){
       MyUtil.showMessage("No jobs", "No submitable jobs in datasets "+MyUtil.arrayToString(ids));
       return ok;
@@ -2673,7 +2675,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, getTable().getColumnNames(),
         new String [] {datasetId}, true);
     CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true, true, true);
-    pDialog.setTitle("Create "+GridPilot.getRecordDisplayName("jobDefintion")+"(s)");
+    pDialog.setTitle("Create "+GridPilot.getRecordDisplayName("jobDefinition")+"(s)");
+    while(pDialog!=null && pDialog.isVisible()){
+      try{
+        Thread.sleep(1000);
+      }
+      catch(InterruptedException e){
+        e.printStackTrace();
+        break;
+      }
+    }
     return true;
   }
   
@@ -3992,13 +4003,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         throw e;
       }
     }
-    else if(tableName.equalsIgnoreCase("transformation")){
+    else if(tableName.equalsIgnoreCase("executable")){
       try{
-        record = sourceMgr.getTransformation(id);
-        insertTransformation(record, sourceMgr);
+        record = sourceMgr.getExecutable(id);
+        insertExecutable(record, sourceMgr);
       }
       catch(Exception e){
-        String msg = "ERROR: transformation "+id+" could not be created, "+sourceDB+
+        String msg = "ERROR: executable "+id+" could not be created, "+sourceDB+
         "."+sourceTable+"->"+dbName+"."+tableName+". "+e.getMessage();
         Debug.debug(msg, 1);
         statusBar.setLabel(msg);
@@ -4085,28 +4096,28 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       String name, String id) throws Exception{
     boolean ok = false;
     try{
-      // If there are no transformations in source or target, there's no point
+      // If there are no executables in source or target, there's no point
       // in checking
       if(!sourceMgr.isJobRepository() || !dbPluginMgr.isJobRepository()){
         ok = true;
       }
       else{
-        // Check if referenced transformation exists     
-        String sourceTransName = sourceMgr.getDatasetTransformationName(
+        // Check if referenced executable exists     
+        String sourceExeName = sourceMgr.getDatasetExecutableName(
             dataset.getValue(MyUtil.getIdentifierField(sourceMgr.getDBName(), "dataset")).toString());
-        String sourceTransVersion = sourceMgr.getDatasetTransformationVersion(
+        String sourceExeVersion = sourceMgr.getDatasetExecutableVersion(
             dataset.getValue(MyUtil.getIdentifierField(sourceMgr.getDBName(), "dataset")).toString());          
-        DBResult targetTransformations = dbPluginMgr.getTransformations();
+        DBResult targetExecutable = dbPluginMgr.getExecutables();
         Vector<DBRecord> transVec = new Vector<DBRecord>();
-        for(int i=0; i<targetTransformations.values.length; ++i){
-          if(targetTransformations.getValue(i, MyUtil.getNameField(dbPluginMgr.getDBName(),
-              "transformation")).toString().equalsIgnoreCase(sourceTransName)){
-            transVec.add(targetTransformations.get(i));
+        for(int i=0; i<targetExecutable.values.length; ++i){
+          if(targetExecutable.getValue(i, MyUtil.getNameField(dbPluginMgr.getDBName(),
+              "executable")).toString().equalsIgnoreCase(sourceExeName)){
+            transVec.add(targetExecutable.get(i));
           }
         }
         for(int i=0; i<transVec.size(); ++i){
           if(((DBRecord) transVec.get(i)).getValue(MyUtil.getVersionField(dbPluginMgr.getDBName(),
-              "transformation")).toString().equalsIgnoreCase(sourceTransVersion)){
+              "executable")).toString().equalsIgnoreCase(sourceExeVersion)){
             ok = true;
             break;
           }
@@ -4119,7 +4130,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     // If this is a job-only database (no file catalog) we deny creating
     // orphaned datasets (data provenance enforcement).
     if(!ok && (!dbPluginMgr.isFileCatalog() || dbPluginMgr.isJobRepository())){
-      String error = "ERROR: transformation for dataset does not exist.";
+      String error = "ERROR: executable for dataset does not exist.";
       throw(new Exception(error));
     }
     boolean success = doInsertDataset(dataset, sourceMgr, name, id);
@@ -4204,19 +4215,19 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return dbPluginMgr.createDataset("dataset", dataset.fields, dataset.values);
   }
   
-  private boolean insertTransformation(DBRecord transformation, DBPluginMgr sourceMgr)
+  private boolean insertExecutable(DBRecord executable, DBPluginMgr sourceMgr)
      throws Exception{
     try{
       // Check if referenced runtime environment exists
-      String sourceTransformationIdentifier = MyUtil.getIdentifierField(sourceMgr.getDBName(),
-          "transformation");
-      String targetTransformationIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(),
-          "transformation");
+      String sourceExecutableIdentifier = MyUtil.getIdentifierField(sourceMgr.getDBName(),
+          "executable");
+      String targetExecutableIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(),
+          "executable");
       String targetRuntimeEnvironmentName = MyUtil.getNameField(dbPluginMgr.getDBName(),
           "runtimeEnvironment");
-      String runtimeEnvironment = sourceMgr.getTransformationRuntimeEnvironment(
-          transformation.getValue(
-              sourceTransformationIdentifier).toString());
+      String runtimeEnvironment = sourceMgr.getExecutableRuntimeEnvironment(
+          executable.getValue(
+              sourceExecutableIdentifier).toString());
       DBResult targetRuntimes = dbPluginMgr.getRuntimeEnvironments();
       Vector<String> runtimeNames = new Vector<String>();
       for(int i=0; i<targetRuntimes.values.length; ++i){
@@ -4224,10 +4235,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       if(runtimeEnvironment==null || runtimeNames==null ||
           !runtimeNames.contains(runtimeEnvironment)){
-        GridPilot.getClassMgr().getLogFile().addInfo("WARNING: runtime environment for transformation "+
-              transformation.getValue(targetTransformationIdentifier)+" does not exist.");
+        GridPilot.getClassMgr().getLogFile().addInfo("WARNING: runtime environment for executable "+
+              executable.getValue(targetExecutableIdentifier)+" does not exist.");
       }
-      dbPluginMgr.createTrans(transformation.fields, transformation.values);
+      dbPluginMgr.createExecutable(executable.fields, executable.values);
     }
     catch(Exception e){
       throw e;
@@ -4273,12 +4284,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         throw e;
       }
     }
-    else if(tableName.equalsIgnoreCase("transformation")){
+    else if(tableName.equalsIgnoreCase("executable")){
       try{
-        sourceMgr.deleteTransformation(id);
+        sourceMgr.deleteExecutable(id);
       }
       catch(Exception e){
-        String msg = "ERROR: transformation "+id+" could not be deleted from, "+sourceDB+
+        String msg = "ERROR: executable "+id+" could not be deleted from, "+sourceDB+
         "."+sourceTable;
         Debug.debug(msg, 1);
         statusBar.setLabel(msg);

@@ -55,7 +55,7 @@ public class MySQLDatabase extends DBCache implements Database {
   private String user = "";
   private String passwd = "";
   private String error = "";
-  private String [] transformationFields = null;
+  private String [] executableFields = null;
   private String [] jobDefFields = null;
   private String [] datasetFields = null;
   private String [] runtimeEnvironmentFields = null;
@@ -204,8 +204,8 @@ public class MySQLDatabase extends DBCache implements Database {
     if(jobDefFields==null || jobDefFields.length<1){
       makeTable("jobDefinition");
     }
-    if(transformationFields==null || transformationFields.length<1){
-      makeTable("transformation");
+    if(executableFields==null || executableFields.length<1){
+      makeTable("executable");
     }
     if(runtimeEnvironmentFields==null || runtimeEnvironmentFields.length<1){
       makeTable("runtimeEnvironment");
@@ -282,7 +282,7 @@ public class MySQLDatabase extends DBCache implements Database {
   private void setFieldNames() throws SQLException {
     datasetFields = getFieldNames("dataset");
     jobDefFields = getFieldNames("jobDefinition");
-    transformationFields = getFieldNames("transformation");
+    executableFields = getFieldNames("executable");
     // only used for checking
     runtimeEnvironmentFields = getFieldNames("runtimeEnvironment");
     // only needed if we need an explicit file catalog where more than one
@@ -412,12 +412,12 @@ public class MySQLDatabase extends DBCache implements Database {
     return ret;
   }
 
-  public synchronized String getTransformationID(String transName, String transVersion){
-    String idField = MyUtil.getIdentifierField(dbName, "transformation");
-    String nameField = MyUtil.getNameField(dbName, "transformation");
-    String versionField = MyUtil.getVersionField(dbName, "transformation");
-    String req = "SELECT "+idField+" from transformation where "+nameField+" = '"+transName + "'"+
-    " AND "+versionField+" = '"+transVersion+"'";
+  public synchronized String getExecutableID(String exeName, String exeVersion){
+    String idField = MyUtil.getIdentifierField(dbName, "executable");
+    String nameField = MyUtil.getNameField(dbName, "executable");
+    String versionField = MyUtil.getVersionField(dbName, "executable");
+    String req = "SELECT "+idField+" from executable where "+nameField+" = '"+exeName + "'"+
+    " AND "+versionField+" = '"+exeVersion+"'";
     String id = null;
     Vector vec = new Vector();
     try{
@@ -430,7 +430,7 @@ public class MySQLDatabase extends DBCache implements Database {
         }
         else{
           Debug.debug("WARNING: identifier null for name "+
-              transName, 1);
+              exeName, 1);
         }
       }
     }
@@ -441,7 +441,7 @@ public class MySQLDatabase extends DBCache implements Database {
     }
     if(vec.size()>1){
       Debug.debug("WARNING: More than one ("+vec.size()+
-          ") transformation found with name:version "+transName+":"+transVersion, 1);
+          ") executable found with name:version "+exeName+":"+exeVersion, 1);
     }
     if(vec.size()==0){
       return "-1";
@@ -489,14 +489,14 @@ public class MySQLDatabase extends DBCache implements Database {
     }
   }
 
-  public String [] getTransformationJobParameters(String transformationID) throws InterruptedException{
-    String res = (String) getTransformation(transformationID).getValue("arguments"); 
+  public String [] getExecutableJobParameters(String executableID) throws InterruptedException{
+    String res = (String) getExecutable(executableID).getValue("arguments"); 
     return (res!=null?MyUtil.split(res):new String [] {});
   }
 
   public String [] getOutputFiles(String jobDefID) throws Exception{
-    String transformationID = getJobDefTransformationID(jobDefID);
-    String outputs = (String) getTransformation(transformationID).getValue("outputFiles");
+    String executableID = getJobDefExecutableID(jobDefID);
+    String outputs = (String) getExecutable(executableID).getValue("outputFiles");
     return (outputs!=null?MyUtil.splitUrls(outputs):new String [] {});
   }
 
@@ -505,14 +505,14 @@ public class MySQLDatabase extends DBCache implements Database {
     return (inputs!=null?MyUtil.splitUrls(inputs):new String [] {});
   }
 
-  public String [] getJobDefTransPars(String jobDefID) throws Exception{
-    String args = (String) getJobDefinition(jobDefID).getValue("transPars");
+  public String [] getJobDefExecutableParameters(String jobDefID) throws Exception{
+    String args = (String) getJobDefinition(jobDefID).getValue("executableParameters");
     return (args!=null?MyUtil.splitUrls(args):new String [] {});
   }
 
   public String getJobDefOutLocalName(String jobDefID, String par) throws Exception{
-    String transID = getJobDefTransformationID(jobDefID);
-    String [] fouts = MyUtil.splitUrls((String) getTransformation(transID).getValue("outputFiles"));
+    String exeID = getJobDefExecutableID(jobDefID);
+    String [] fouts = MyUtil.splitUrls((String) getExecutable(exeID).getValue("outputFiles"));
     String maps = (String) getJobDefinition(jobDefID).getValue("outFileMapping");
     String maps1 = maps.replaceAll("(\\S+) +(\\w+:\\S+)", "file:$1 $2");
     String[] map = null;
@@ -533,9 +533,9 @@ public class MySQLDatabase extends DBCache implements Database {
   }
 
   public String getJobDefOutRemoteName(String jobDefID, String par) throws Exception{
-    String transID = getJobDefTransformationID(jobDefID);
+    String exeID = getJobDefExecutableID(jobDefID);
     // NOTICE: output file names must NOT have spaces.
-    String [] fouts = MyUtil.split((String) getTransformation(transID).getValue("outputFiles"));
+    String [] fouts = MyUtil.split((String) getExecutable(exeID).getValue("outputFiles"));
     String maps = (String) getJobDefinition(jobDefID).getValue("outFileMapping");
     // maps is of the form out1.txt file:/some/dir/my file1.txt out2.txt file:/dome/dir/my file2.txt ...
     // Prepend file: to out1.txt
@@ -559,26 +559,26 @@ public class MySQLDatabase extends DBCache implements Database {
     return (String) getJobDefinition(jobDefID).getValue("stderrDest");
   }
 
-  public String getTransformationExeFile(String jobDefID) throws InterruptedException{
-    String transformationID = getJobDefTransformationID(jobDefID);
-    String script = (String) getTransformation(transformationID).getValue("executableFile");
+  public String getExecutableFile(String jobDefID) throws InterruptedException{
+    String executableID = getJobDefExecutableID(jobDefID);
+    String script = (String) getExecutable(executableID).getValue("executableFile");
     return script;
   }
 
   public String [] getRuntimeEnvironments(String jobDefID) throws InterruptedException{
-    String transformationID = getJobDefTransformationID(jobDefID);
-    String rts = (String) getTransformation(transformationID).getValue("runtimeEnvironmentName");
+    String executableID = getJobDefExecutableID(jobDefID);
+    String rts = (String) getExecutable(executableID).getValue("runtimeEnvironmentName");
     return MyUtil.split(rts);
   }
 
-  public String [] getTransformationArguments(String jobDefID) throws InterruptedException{
-    String transformationID = getJobDefTransformationID(jobDefID);
-    String args = (String) getTransformation(transformationID).getValue("arguments");
+  public String [] getExecutableArguments(String jobDefID) throws InterruptedException{
+    String executableID = getJobDefExecutableID(jobDefID);
+    String args = (String) getExecutable(executableID).getValue("arguments");
     return MyUtil.split(args);
   }
 
-  public String getTransformationRuntimeEnvironment(String transformationID) throws InterruptedException{
-    return (String) getTransformation(transformationID).getValue("runtimeEnvironmentName");
+  public String getExecutableRuntimeEnvironment(String executableID) throws InterruptedException{
+    return (String) getExecutable(executableID).getValue("runtimeEnvironmentName");
   }
 
   public String getJobDefUserInfo(String jobDefinitionID) throws InterruptedException{
@@ -617,28 +617,28 @@ public class MySQLDatabase extends DBCache implements Database {
     return initTxt;
   }
 
-  public synchronized String getJobDefTransformationID(String jobDefinitionID) throws InterruptedException{
+  public synchronized String getJobDefExecutableID(String jobDefinitionID) throws InterruptedException{
     DBRecord dataset = getDataset(getJobDefDatasetID(jobDefinitionID));
-    String transformation = (String) dataset.getValue("transformationName");
-    String version = (String) dataset.getValue("transformationVersion");
-    String transID = null;
-    String idField = MyUtil.getIdentifierField(dbName, "transformation");
-    String nameField = MyUtil.getNameField(dbName, "transformation");
+    String executable = (String) dataset.getValue("executableName");
+    String version = (String) dataset.getValue("executableVersion");
+    String exeID = null;
+    String idField = MyUtil.getIdentifierField(dbName, "executable");
+    String nameField = MyUtil.getNameField(dbName, "executable");
     String req = "SELECT "+idField+" FROM "+
-       "transformation WHERE "+nameField+" = '"+transformation+"' AND version = '"+version+"'";
+       "executable WHERE "+nameField+" = '"+executable+"' AND version = '"+version+"'";
     Vector vec = new Vector();
     Debug.debug(req, 2);
     try{
       DBResult rset = executeQuery(dbName, req);
       while(rset.moveCursor()){
-        if(transID!=null){
-          Debug.debug("WARNING: more than one transformation for name, version :" +
-              transformation+", "+version, 1);
+        if(exeID!=null){
+          Debug.debug("WARNING: more than one executable for name, version :" +
+              executable+", "+version, 1);
           break;
         }
-        transID = rset.getString(idField);
-        if(transID!=null){
-          Debug.debug("Adding version "+transID, 3);
+        exeID = rset.getString(idField);
+        if(exeID!=null){
+          Debug.debug("Adding version "+exeID, 3);
           vec.add(version);
         }
         else{
@@ -649,7 +649,7 @@ public class MySQLDatabase extends DBCache implements Database {
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
     }
-    return transID;
+    return exeID;
   }
 
   public boolean reserveJobDefinition(String jobDefID, String userInfo, String cs){
@@ -947,12 +947,12 @@ public class MySQLDatabase extends DBCache implements Database {
      return dataset;
   }
   
-  public String getDatasetTransformationName(String datasetID){
-    return (String) getDataset(datasetID).getValue("transformationName");
+  public String getDatasetExecutableName(String datasetID){
+    return (String) getDataset(datasetID).getValue("executableName");
   }
   
-  public String getDatasetTransformationVersion(String datasetID){
-    return (String) getDataset(datasetID).getValue("transformationVersion");
+  public String getDatasetExecutableVersion(String datasetID){
+    return (String) getDataset(datasetID).getValue("executableVersion");
   }
   
   public String getDatasetName(String datasetID){
@@ -1053,55 +1053,55 @@ public class MySQLDatabase extends DBCache implements Database {
      return pack;
   }
   
-  public synchronized DBRecord getTransformation(String transformationID){
+  public synchronized DBRecord getExecutable(String executableID){
     
-    String idField = MyUtil.getIdentifierField(dbName, "transformation");
+    String idField = MyUtil.getIdentifierField(dbName, "executable");
 
-    DBRecord transformation = null;
-    String req = "SELECT "+transformationFields[0];
-    if(transformationFields.length>1){
-      for(int i=1; i<transformationFields.length; ++i){
-        req += ", "+transformationFields[i];
+    DBRecord executable = null;
+    String req = "SELECT "+executableFields[0];
+    if(executableFields.length>1){
+      for(int i=1; i<executableFields.length; ++i){
+        req += ", "+executableFields[i];
       }
     }
-    req += " FROM transformation";
-    req += " WHERE "+idField+" = '"+ transformationID+"'";
+    req += " FROM executable";
+    req += " WHERE "+idField+" = '"+ executableID+"'";
     try{
       Debug.debug(">> "+req, 3);
       DBResult rset = executeQuery(dbName, req);
-      Vector transformationVector = new Vector();
-      String [] jt = new String[transformationFields.length];
+      Vector executableVector = new Vector();
+      String [] jt = new String[executableFields.length];
       int i = 0;
       while(rset.moveCursor()){
-        jt = new String[transformationFields.length];
-        for(int j=0; j<transformationFields.length; ++j){
+        jt = new String[executableFields.length];
+        for(int j=0; j<executableFields.length; ++j){
           try{
             jt[j] = (String) rset.getElement(j+1);
           }
           catch(Exception e){
             Debug.debug("Could not set value "+(String) rset.getElement(j+1)+" in "+
-                transformationFields[j]+". "+e.getMessage(),1);
+                executableFields[j]+". "+e.getMessage(),1);
           }
         }
         //Debug.debug("Adding value "+jt[0], 3);
-        transformationVector.add(new DBRecord(transformationFields, jt));
-        //Debug.debug("Added value "+((DBRecord) transformationVector.get(i)).getAt(0), 3);
+        executableVector.add(new DBRecord(executableFields, jt));
+        //Debug.debug("Added value "+((DBRecord) executableVector.get(i)).getAt(0), 3);
         ++i;
       }
       if(i==0){
-        Debug.debug("ERROR: No transformation found with id "+transformationID, 1);
+        Debug.debug("ERROR: No executable found with id "+executableID, 1);
       }
       else{
-        transformation = ((DBRecord) transformationVector.get(0));
+        executable = ((DBRecord) executableVector.get(0));
       }
       if(i>1){
-        Debug.debug("WARNING: More than one ("+rset.values.length+") transformation found with id "+transformationID, 1);
+        Debug.debug("WARNING: More than one ("+rset.values.length+") executable found with id "+executableID, 1);
       }
     }
     catch(SQLException e){
-      Debug.debug("WARNING: No transformation with id "+transformationID+". "+e.getMessage(), 1);
+      Debug.debug("WARNING: No executable with id "+executableID+". "+e.getMessage(), 1);
     }
-     return transformation;
+     return executable;
   }
   
   public String getRunInfo(String jobDefID, String key){
@@ -1159,52 +1159,52 @@ public class MySQLDatabase extends DBCache implements Database {
   }
 
   /*
-   * Find transformation records
+   * Find executable records
    */
-  private synchronized DBRecord [] getTransformationRecords(){
+  private synchronized DBRecord [] getExecutableRecords(){
     
     DBResult rset = null;
     String req = "";
-    DBRecord [] allTransformationRecords = null;
+    DBRecord [] allExecutableRecords = null;
     try{      
-      req = "SELECT "+transformationFields[0];
-      if(transformationFields.length>1){
-        for(int i=1; i<transformationFields.length; ++i){
-          req += ", "+transformationFields[i];
+      req = "SELECT "+executableFields[0];
+      if(executableFields.length>1){
+        for(int i=1; i<executableFields.length; ++i){
+          req += ", "+executableFields[i];
         }
       }
-      req += " FROM transformation";
+      req += " FROM executable";
       Debug.debug(req, 3);
       rset = executeQuery(dbName, req);
-      Vector transformationVector = new Vector();
-      String [] jt = new String[transformationFields.length];
+      Vector executableVector = new Vector();
+      String [] jt = new String[executableFields.length];
       int i = 0;
       while(rset.moveCursor()){
-        jt = new String[transformationFields.length];
-        for(int j=0; j<transformationFields.length; ++j){
+        jt = new String[executableFields.length];
+        for(int j=0; j<executableFields.length; ++j){
           try{
             jt[j] = (String) rset.getElement(j+1);
           }
           catch(Exception e){
             Debug.debug("Could not set value "+(String) rset.getElement(j+1)+" in "+
-                transformationFields[j]+". "+e.getMessage(),1);
+                executableFields[j]+". "+e.getMessage(),1);
           }
         }
         //Debug.debug("Adding value "+jt[0], 3);
-        transformationVector.add(new DBRecord(transformationFields, jt));
-        //Debug.debug("Added value "+((DBRecord) transformationVector.get(i)).getAt(0), 3);
+        executableVector.add(new DBRecord(executableFields, jt));
+        //Debug.debug("Added value "+((DBRecord) executableVector.get(i)).getAt(0), 3);
         ++i;
       }
-      allTransformationRecords = new DBRecord[i];
+      allExecutableRecords = new DBRecord[i];
       for(int j=0; j<i; ++j){
-        allTransformationRecords[j] = ((DBRecord) transformationVector.get(j));
-        Debug.debug("Added value "+allTransformationRecords[j].values[0], 3);
+        allExecutableRecords[j] = ((DBRecord) executableVector.get(j));
+        Debug.debug("Added value "+allExecutableRecords[j].values[0], 3);
       }
     }
     catch(SQLException e){
-      Debug.debug("WARNING: No transformations found. "+e.getMessage(), 1);
+      Debug.debug("WARNING: No executables found. "+e.getMessage(), 1);
     }
-    return allTransformationRecords;
+    return allExecutableRecords;
   }
 
   // Selects only the fields listed in fieldNames. Other fields are set to "".
@@ -1345,12 +1345,12 @@ public class MySQLDatabase extends DBCache implements Database {
     return res;
   }
   
-  public DBResult getTransformations(){
-    DBRecord jt [] = getTransformationRecords();
-    DBResult res = new DBResult(transformationFields.length, jt.length);
-    res.fields = transformationFields;
+  public DBResult getExecutables(){
+    DBRecord jt [] = getExecutableRecords();
+    DBResult res = new DBResult(executableFields.length, jt.length);
+    res.fields = executableFields;
     for(int i=0; i<jt.length; ++i){
-      for(int j=0; j<transformationFields.length; ++j){
+      for(int j=0; j<executableFields.length; ++j){
         res.values[i][j] = jt[i].values[j];
       }
     }
@@ -1475,7 +1475,7 @@ public class MySQLDatabase extends DBCache implements Database {
     for(int i=0; i<cstAttrNames.length; ++i){
       arg += cstAttrNames[i]+", ";
     }
-    arg += "transPars, outFileMapping, stdoutDest," +
+    arg += "executableParameters, outFileMapping, stdoutDest," +
             "stderrDest, created, lastModified";
     arg += ") values ('"+datasetName+"', 'Defined', ";
     for(int i=0; i<resCstAttr.length; ++i){
@@ -1620,20 +1620,20 @@ public class MySQLDatabase extends DBCache implements Database {
     return execok;
   }
 
-  public synchronized boolean createTransformation(Object [] _values){
+  public synchronized boolean createExecutable(Object [] _values){
     
     Object [] values = (Object []) _values.clone();
 
-    String sql = "INSERT INTO transformation (";
-    for(int i=1; i<transformationFields.length; ++i){
-      sql += transformationFields[i];
-      if(transformationFields.length>2 && i<transformationFields.length - 1){
+    String sql = "INSERT INTO executable (";
+    for(int i=1; i<executableFields.length; ++i){
+      sql += executableFields[i];
+      if(executableFields.length>2 && i<executableFields.length - 1){
         sql += ",";
       }
     }
     sql += ") VALUES (";
-    for(int i=1; i<transformationFields.length; ++i){
-      if(transformationFields[i].equalsIgnoreCase("created")){
+    for(int i=1; i<executableFields.length; ++i){
+      if(executableFields[i].equalsIgnoreCase("created")){
         try{
           values[i] = makeDate((String) values[i]);
         }
@@ -1641,7 +1641,7 @@ public class MySQLDatabase extends DBCache implements Database {
           values[i] = makeDate("");
         }
       }
-      else if(transformationFields[i].equalsIgnoreCase("lastModified")){
+      else if(executableFields[i].equalsIgnoreCase("lastModified")){
         values[i] = makeDate("");
       }
       else{
@@ -1649,7 +1649,7 @@ public class MySQLDatabase extends DBCache implements Database {
       }
 
       sql += values[i];
-      if(transformationFields.length>1 && i<transformationFields.length - 1){
+      if(executableFields.length>1 && i<executableFields.length - 1){
         sql += ",";
       }
     }
@@ -1899,10 +1899,10 @@ public class MySQLDatabase extends DBCache implements Database {
     return execok;
   }
 
-  public synchronized boolean updateTransformation(String transformationID, String [] fields,
+  public synchronized boolean updateExecutable(String executableID, String [] fields,
       String [] values){
     
-    String idField = MyUtil.getIdentifierField(dbName, "transformation");
+    String idField = MyUtil.getIdentifierField(dbName, "executable");
     
     if(fields.length!=values.length){
       Debug.debug("The number of fields and values do not agree, "+
@@ -1911,21 +1911,21 @@ public class MySQLDatabase extends DBCache implements Database {
          fields.length+"!="+values.length;
       return false;
     }
-    if(fields.length>transformationFields.length){
+    if(fields.length>executableFields.length){
       Debug.debug("The number of fields is too large, "+
-          fields.length+">"+transformationFields.length, 1);
+          fields.length+">"+executableFields.length, 1);
       error = "The number of fields is too large, "+
-         fields.length+">"+transformationFields.length;
+         fields.length+">"+executableFields.length;
     }
 
-    String sql = "UPDATE transformation SET ";
+    String sql = "UPDATE executable SET ";
     int addedFields = 0;
-    for(int i=0; i<transformationFields.length; ++i){
-      if(!transformationFields[i].equalsIgnoreCase(idField)){
+    for(int i=0; i<executableFields.length; ++i){
+      if(!executableFields[i].equalsIgnoreCase(idField)){
         for(int j=0; j<fields.length; ++j){
-          // only add if present in transformationFields
-          if(transformationFields[i].equalsIgnoreCase(fields[j])){
-            if(transformationFields[i].equalsIgnoreCase("created")){
+          // only add if present in executableFields
+          if(executableFields[i].equalsIgnoreCase(fields[j])){
+            if(executableFields[i].equalsIgnoreCase("created")){
               try{
                 values[j] = makeDate((String) values[j]);
               }
@@ -1933,7 +1933,7 @@ public class MySQLDatabase extends DBCache implements Database {
                 values[j] = makeDate("");
               }
             }
-            else if(transformationFields[i].equalsIgnoreCase("lastModified")){
+            else if(executableFields[i].equalsIgnoreCase("lastModified")){
               values[j] = makeDate("");
             }
             else{
@@ -1951,7 +1951,7 @@ public class MySQLDatabase extends DBCache implements Database {
         }
       }
     }
-    sql += " WHERE "+idField+"="+transformationID;
+    sql += " WHERE "+idField+"="+executableID;
     Debug.debug(sql, 2);
     boolean execok = true;
     try{
@@ -2086,12 +2086,12 @@ public class MySQLDatabase extends DBCache implements Database {
     return ok;
   }
     
-  public synchronized boolean deleteTransformation(String transformationID){
-    String idField = MyUtil.getIdentifierField(dbName, "transformation");
+  public synchronized boolean deleteExecutable(String executableID){
+    String idField = MyUtil.getIdentifierField(dbName, "executable");
     boolean ok = true;
     try{
-      String sql = "DELETE FROM transformation WHERE "+idField+" = '"+
-      transformationID+"'";
+      String sql = "DELETE FROM executable WHERE "+idField+" = '"+
+      executableID+"'";
       executeUpdate(dbName, sql);
     }
     catch(Exception e){
@@ -2118,12 +2118,12 @@ public class MySQLDatabase extends DBCache implements Database {
     return ok;
   }
 
-  public synchronized String [] getVersions(String transformation){   
-    String idField = MyUtil.getIdentifierField(dbName, "transformation");
-    String nameField = MyUtil.getNameField(dbName, "transformation");
-    String versionField = MyUtil.getVersionField(dbName, "transformation");
+  public synchronized String [] getVersions(String executable){   
+    String idField = MyUtil.getIdentifierField(dbName, "executable");
+    String nameField = MyUtil.getNameField(dbName, "executable");
+    String versionField = MyUtil.getVersionField(dbName, "executable");
     String req = "SELECT "+idField+", "+versionField+" FROM "+
-    "transformation WHERE "+nameField+" = '"+transformation+"'";
+    "executable WHERE "+nameField+" = '"+executable+"'";
     Vector vec = new Vector();
     Debug.debug(req, 2);
     String version;
@@ -2161,13 +2161,13 @@ public class MySQLDatabase extends DBCache implements Database {
     return ret;
   }
 
-  public String [] getTransformationOutputs(String transformationID){    
-    String outputs = (String) getTransformation(transformationID).getValue("outputFiles");
+  public String [] getExecutableOutputs(String executableID){    
+    String outputs = (String) getExecutable(executableID).getValue("outputFiles");
     return MyUtil.split(outputs);
   }
 
-  public String [] getTransformationInputs(String transformationID){    
-    String inputs = (String) getTransformation(transformationID).getValue("inputFiles");
+  public String [] getExecutableInputs(String executableID){    
+    String inputs = (String) getExecutable(executableID).getValue("inputFiles");
     return MyUtil.split(inputs);
   }
   

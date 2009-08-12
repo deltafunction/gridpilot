@@ -92,15 +92,15 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   }
   
   /**
-   * Add the transformation executable and the input files of the transformation to job.getInputFiles().
+   * Add the executable and the input files of the executable to job.getInputFiles().
    * @param job the job in question
    */
   private void setInputFiles(JobInfo job){
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String [] jobInputFiles = dbPluginMgr.getJobDefInputFiles(job.getIdentifier());
     job.setInputFileUrls(jobInputFiles);
-    String transformationID = dbPluginMgr.getJobDefTransformationID(job.getIdentifier());
-    String [] transformationInputs = dbPluginMgr.getTransformationInputs(transformationID);
+    String executableID = dbPluginMgr.getJobDefExecutableID(job.getIdentifier());
+    String [] executableInputs = dbPluginMgr.getExecutableInputs(executableID);
     // Input files -
     // Skip local files that are not present
     // - they are expected to be present on the worker node
@@ -115,20 +115,20 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
         Debug.debug("Input file "+job.getInputFileUrls()[i]+" not found - continuing anyway...", 3);
       }
     }
-    for(int i=initialLen; i<initialLen+transformationInputs.length; ++i){
-      if(fileIsRemoteOrPresent(transformationInputs[i])){
-        newInputs.add(transformationInputs[i]);
+    for(int i=initialLen; i<initialLen+executableInputs.length; ++i){
+      if(fileIsRemoteOrPresent(executableInputs[i])){
+        newInputs.add(executableInputs[i]);
       }
     }
-    String transScript = dbPluginMgr.getTransformationExeFile(job.getIdentifier());
-    if(fileIsRemoteOrPresent(transScript)){
-      newInputs.add(transScript);
+    String exeScript = dbPluginMgr.getExecutableFile(job.getIdentifier());
+    if(fileIsRemoteOrPresent(exeScript)){
+      newInputs.add(exeScript);
     }
     Debug.debug("Job has input files: "+newInputs, 3);
     job.setInputFileUrls(newInputs.toArray(new String[newInputs.size()]));
     // Executable
-    String transScriptName = (new File(transScript)).getName();
-    job.setExecutables(new String [] {transScriptName});
+    String exeScriptName = (new File(exeScript)).getName();
+    job.setExecutables(new String [] {exeScriptName});
   }
   
   private void setOutputFiles(JobInfo job){

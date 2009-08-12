@@ -5,10 +5,10 @@ import gridfactory.common.Debug;
 import javax.swing.*;
 
 /**
- * Creates the transformation records with data given by TransformationCreationPanel.
+ * Creates the executable records with data given by ExecutableCreationPanel.
  * This object removes all known constants from the attributes, and evaluates them.
  */
-public class TransformationCreator{
+public class ExecutableCreator{
 
   private boolean showResults;
   private String [] cstAttr;
@@ -17,7 +17,7 @@ public class TransformationCreator{
   private DBPluginMgr dbPluginMgr = null;
   public boolean anyCreated = false;
 
-  public TransformationCreator(
+  public ExecutableCreator(
                           DBPluginMgr _dbPluginMgr,
                           boolean _showResults,
                           String [] _cstAttr,
@@ -32,13 +32,13 @@ public class TransformationCreator{
     editing = _editing;
     
     Debug.debug("Are we editing? "+editing,3);
-    createTransformationRecord();
+    createExecutableRecord();
   }
 
-  private void createTransformationRecord(){
+  private void createExecutableRecord(){
     int choice = 0;
     if(showResults){
-      choice = MyUtil.showResult(cstAttrNames, cstAttr, "Transformation", MyUtil.OK_SKIP_OPTION, "Skip");
+      choice = MyUtil.showResult(cstAttrNames, cstAttr, "Executable", MyUtil.OK_SKIP_OPTION, "Skip");
     }
 
     switch(choice){
@@ -48,21 +48,21 @@ public class TransformationCreator{
     }
 
     if(editing){
-      String transformationIdentifier =
-        MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "transformation");
+      String executableIdentifier =
+        MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "executable");
       String id = "-1";
       for(int i=0; i<cstAttrNames.length; ++i){
-        Debug.debug("Checking name "+transformationIdentifier+":"+cstAttrNames[i].toString(), 3);
+        Debug.debug("Checking name "+executableIdentifier+":"+cstAttrNames[i].toString(), 3);
         if(cstAttrNames[i].toString().equalsIgnoreCase(
-            transformationIdentifier)){
+            executableIdentifier)){
           id = cstAttr[i];
           break;
         }
       }
       Debug.debug("Updating...", 3);
-      if(!dbPluginMgr.updateTransformation(id, cstAttrNames, cstAttr)){
+      if(!dbPluginMgr.updateExecutable(id, cstAttrNames, cstAttr)){
         JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
-            "Transformation cannot be updated.\n"+
+            "Executable cannot be updated.\n"+
           dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
       }
       else{
@@ -70,9 +70,9 @@ public class TransformationCreator{
       }
     }
     else{
-      if(!dbPluginMgr.createTransformation(cstAttr)){
+      if(!dbPluginMgr.createExecutable(cstAttr)){
         JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
-            "Transformation cannot be created.\n"+
+            "Executable cannot be created.\n"+
           dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
       }
       else{

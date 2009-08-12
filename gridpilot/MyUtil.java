@@ -1157,35 +1157,35 @@ private static String fixUrl(String _url){
     return ret;
   }
 
-  public static String [] getDatasetTransformationReference(String dbName){
+  public static String [] getDatasetExecutableReference(String dbName){
     String [] ret = GridPilot.getClassMgr().getConfigFile().getValues(dbName,
-      "dataset transformation reference");
+      "dataset executable reference");
     if(ret==null || ret.length<2){
-      ret = new String [] {"name", "transformationName"};
+      ret = new String [] {"name", "executableName"};
     }
-    Debug.debug("dataset transformation reference for "+dbName
+    Debug.debug("dataset executable reference for "+dbName
         +" : "+arrayToString(ret), 2);
     return ret;
   }
 
-  public static String [] getDatasetTransformationVersionReference(String dbName){
+  public static String [] getDatasetExecutableVersionReference(String dbName){
     String [] ret = GridPilot.getClassMgr().getConfigFile().getValues(dbName,
-      "dataset transformation version reference");
+      "dataset executable version reference");
     if(ret==null || ret.length<2){
-      ret = new String [] {"version", "transformationVersion"};
+      ret = new String [] {"version", "executableVersion"};
     }
-    Debug.debug("dataset transformation version reference for "+dbName
+    Debug.debug("dataset executable version reference for "+dbName
         +" : "+arrayToString(ret), 2);
     return ret;
   }
 
-  public static String [] getTransformationRuntimeReference(String dbName){
+  public static String [] getExecutableRuntimeReference(String dbName){
     String [] ret = GridPilot.getClassMgr().getConfigFile().getValues(dbName,
-      "transformation runtime environment reference");
+      "executable runtime environment reference");
     if(ret==null || ret.length<2){
       ret = new String [] {"name", "runtimeEnvironmentName"};
     }
-    Debug.debug("transformation runtime environment reference for "+dbName
+    Debug.debug("executable runtime environment reference for "+dbName
         +" : "+arrayToString(ret), 2);
     return ret;
   }

@@ -969,7 +969,11 @@ public class GridPilot extends JApplet{
       SPLASH.show(message);
     }
     else{
-      GridPilot.getClassMgr().getStatusBar().setLabel(message);
+      try{
+        GridPilot.getClassMgr().getStatusBar().setLabel(message);
+      }
+      catch(Exception e){
+      }
     }
   }
 
@@ -1031,7 +1035,7 @@ public class GridPilot extends JApplet{
   }
 
   public static String getTabDisplayName(String tableName) {
-    if(tableName.equalsIgnoreCase("transformation")){
+    if(tableName.equalsIgnoreCase("executable")){
       return "executables";
     }
     else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
@@ -1047,7 +1051,7 @@ public class GridPilot extends JApplet{
   }
 
   public static String getRecordDisplayName(String tableName) {
-    if(tableName.equalsIgnoreCase("transformation")){
+    if(tableName.equalsIgnoreCase("executable")){
       return "executable";
     }
     else if(tableName.equalsIgnoreCase("runtimeEnvironment")){

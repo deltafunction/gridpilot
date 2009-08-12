@@ -16,17 +16,17 @@ import java.util.*;
  * This panel creates records in the DB table.
  * It's shown inside the CreateEditDialog.
  */
-public class TransformationCreationPanel extends CreateEditPanel{
+public class ExecutableCreationPanel extends CreateEditPanel{
 
   private DBPluginMgr dbPluginMgr;
   private JPanel pAttributes = new JPanel();
   private JScrollPane spAttributes = new JScrollPane();
   private boolean editing = false;
   private MyJTable table;
-  private String transformationID = "-1";
+  private String executableID = "-1";
   private String [] cstAttributesNames;
   private String [] cstAttr = null;
-  private String transformationIdentifier;
+  private String executableIdentifier;
   private boolean reuseTextFields = true;
   private Vector tcConstant = new Vector(); // contains all text components
   private DBPanel panel = null;
@@ -34,10 +34,10 @@ public class TransformationCreationPanel extends CreateEditPanel{
   private String runtimeEnvironmentName = null;
   private JComboBox cbRuntimeEnvironmentSelection;
   private GridBagConstraints ct = new GridBagConstraints();
-  private DBRecord transformation = null;
+  private DBRecord executable = null;
   private DBResult runtimeEnvironments = null;
-  private String [] transformationFields = null;
-  private JButton bEditTrans;
+  private String [] executableFields = null;
+  private JButton bEditExecutable;
 
   private static final long serialVersionUID = 1L;
   private static int TEXTFIELDWIDTH = 32;
@@ -47,44 +47,44 @@ public class TransformationCreationPanel extends CreateEditPanel{
   /**
    * Constructor
    */
-  public TransformationCreationPanel(DBPluginMgr _dbPluginMgr,
+  public ExecutableCreationPanel(DBPluginMgr _dbPluginMgr,
       DBPanel _panel, boolean _editing){
     dbPluginMgr = _dbPluginMgr;
     editing = _editing;
     panel = _panel;
     table = panel.getTable();
-    transformationIdentifier =
-      MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "transformation");
-    transformationFields = dbPluginMgr.getFieldNames("transformation");
-    cstAttributesNames = dbPluginMgr.getFieldNames("transformation");    
+    executableIdentifier =
+      MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "executable");
+    executableFields = dbPluginMgr.getFieldNames("executable");
+    cstAttributesNames = dbPluginMgr.getFieldNames("executable");    
     runtimeEnvironments = dbPluginMgr.getRuntimeEnvironments();
     Debug.debug("Got field names: "+MyUtil.arrayToString(cstAttributesNames),3);
     Debug.debug("Number of runtimeEnvironments found: "+runtimeEnvironments.values.length+
         "; "+MyUtil.arrayToString(runtimeEnvironments.fields),3);
     cstAttr = new String[cstAttributesNames.length];
-    // Find transformation ID from table
+    // Find executable ID from table
     if(table.getSelectedRow()>-1 && editing){
       Debug.debug("Editing...", 3);
-      String [] runtimeReference = MyUtil.getTransformationRuntimeReference(dbPluginMgr.getDBName());
+      String [] runtimeReference = MyUtil.getExecutableRuntimeReference(dbPluginMgr.getDBName());
       for(int i=0; i<table.getColumnNames().length; ++i){
         Object fieldVal = table.getUnsortedValueAt(table.getSelectedRow(),i);
         Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
-        if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase(transformationIdentifier)){
-          transformationID = fieldVal.toString();
+        if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase(executableIdentifier)){
+          executableID = fieldVal.toString();
           break;
         }
       }
-      if(transformationID==null || transformationID.equals("-1") ||
-          transformationID.equals("")){
-        Debug.debug("ERROR: could not find transformationID in table!", 1);
+      if(executableID==null || executableID.equals("-1") ||
+          executableID.equals("")){
+        Debug.debug("ERROR: could not find executableID in table!", 1);
       }
       // Fill cstAttr from db
-      transformation = dbPluginMgr.getTransformation(transformationID);
+      executable = dbPluginMgr.getExecutable(executableID);
       for(int i=0; i<cstAttributesNames.length; ++i){
         if(editing){
           Debug.debug("filling " + cstAttributesNames[i],  3);
-          if(transformation.getValue(cstAttributesNames[i])!=null){
-            cstAttr[i] = transformation.getValue(cstAttributesNames[i]).toString();
+          if(executable.getValue(cstAttributesNames[i])!=null){
+            cstAttr[i] = executable.getValue(cstAttributesNames[i]).toString();
             if(cstAttributesNames[i].equalsIgnoreCase(runtimeReference[1])){
               runtimeEnvironmentName = cstAttr[i];
             }
@@ -99,7 +99,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
   }
 
   private void initButtons(){
-    bEditTrans = MyUtil.mkButton("search.png", "Look up", "Look up runtime environment record");
+    bEditExecutable = MyUtil.mkButton("search.png", "Look up", "Look up runtime environment record");
   }
 
   /**
@@ -113,7 +113,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
 
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
         Color.white,new Color(165, 163, 151)), 
-        (transformationID.equals("-1")?"new executable":"executable "+transformationID)));
+        (executableID.equals("-1")?"new executable":"executable "+executableID)));
     
     //spAttributes.setPreferredSize(new Dimension(650, 500));
     //spAttributes.setMinimumSize(new Dimension(650, 500));
@@ -121,7 +121,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     setLayout(new GridBagLayout());
     removeAll();
 
-    initRuntimeEnvironmentPanel(Integer.parseInt(transformationID));
+    initRuntimeEnvironmentPanel(Integer.parseInt(executableID));
 
     //initAttributePanel();
     
@@ -139,16 +139,16 @@ public class TransformationCreationPanel extends CreateEditPanel{
     add(spAttributes,ct);
 
     Debug.debug("Initializing panel", 3);
-    initTransformationCreationPanel();
+    initExecutableCreationPanel();
     if(editing){
       Debug.debug("Editing...", 3);
-      editTransformation(Integer.parseInt(transformationID), runtimeEnvironmentName);
+      editExecutable(Integer.parseInt(executableID), runtimeEnvironmentName);
     }
     else{
       // Disable identifier field when creating
       Debug.debug("Disabling identifier field", 3);
       for(int i =0; i<cstAttributesNames.length; ++i){
-        if(cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier) ||
+        if(cstAttributesNames[i].equalsIgnoreCase(executableIdentifier) ||
             cstAttributesNames[i].equalsIgnoreCase("created") ||
             cstAttributesNames[i].equalsIgnoreCase("lastModified")){
           MyUtil.setJEditable(tcCstAttributes[i], false);
@@ -165,9 +165,9 @@ public class TransformationCreationPanel extends CreateEditPanel{
 
   /**
    * Called initially.
-   * Initialises text fields with attributes for transformation.
+   * Initialises text fields with attributes for executable.
     */
-  private void initTransformationCreationPanel(){
+  private void initExecutableCreationPanel(){
 
     // Panel Attributes
     pAttributes.setLayout(new GridBagLayout());
@@ -222,7 +222,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
 
     if(runtimeEnvironmentNames.length==0){
       pRuntimeEnvironment.add(new JLabel("No runtime environments found."));
-      bEditTrans.setEnabled(false);
+      bEditExecutable.setEnabled(false);
     }
     else if(runtimeEnvironmentNames.length==1){
       runtimeEnvironmentName = runtimeEnvironmentNames[0];
@@ -250,7 +250,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     ct.gridheight=1;
     add(pRuntimeEnvironment, ct);
     
-    bEditTrans.addActionListener(new java.awt.event.ActionListener(){
+    bEditExecutable.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         try{
           viewRuntimeEnvironments();
@@ -265,7 +265,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     ct.gridy = 0;
     ct.gridwidth=1;
     ct.gridheight=1;
-    add(bEditTrans, ct);
+    add(bEditExecutable, ct);
 
     updateUI();
   }
@@ -316,7 +316,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     else{
         runtimeEnvironmentName = cbRuntimeEnvironmentSelection.getSelectedItem().toString();
     }
-    editTransformation(Integer.parseInt(transformationID),
+    editExecutable(Integer.parseInt(executableID),
         runtimeEnvironmentName);
   }
   
@@ -385,15 +385,15 @@ public class TransformationCreationPanel extends CreateEditPanel{
   }
 
   /**
-   *  Edit a transformation
+   *  Edit a executable
    */
-  public void editTransformation(int transformationID,
+  public void editExecutable(int executableID,
       String runtimeEnvironmentName){
     for(int i =0; i<tcCstAttributes.length; ++i){
-      for(int j=0; j<transformationFields.length;++j){
-        if(transformationFields[j].toString().equalsIgnoreCase(
+      for(int j=0; j<executableFields.length;++j){
+        if(executableFields[j].toString().equalsIgnoreCase(
             cstAttributesNames[i].toString()) &&
-            !transformationFields[j].toString().equals("")){
+            !executableFields[j].toString().equals("")){
           if(tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled() &&
              tcCstAttributes[i].getText().length()==0){            
             if(cstAttributesNames[i].equalsIgnoreCase("initLines") ||
@@ -412,9 +412,9 @@ public class TransformationCreationPanel extends CreateEditPanel{
           }
           if(editing){
             try{
-              MyUtil.setJText(tcCstAttributes[i], transformation.values[j].toString());
+              MyUtil.setJText(tcCstAttributes[i], executable.values[j].toString());
                 Debug.debug(i+": "+cstAttributesNames[i].toString()+"="+
-                    transformationFields[j]+". Setting to "+tcCstAttributes[i].getText(),3);
+                    executableFields[j]+". Setting to "+tcCstAttributes[i].getText(),3);
             }
             catch(java.lang.Exception e){
               Debug.debug("Attribute not found, "+e.getMessage(),1);
@@ -423,7 +423,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
           break;
         }
       }
-      if(cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier) ||
+      if(cstAttributesNames[i].equalsIgnoreCase(executableIdentifier) ||
           cstAttributesNames[i].equalsIgnoreCase("created") ||
           cstAttributesNames[i].equalsIgnoreCase("lastModified")){
         MyUtil.setJEditable(tcCstAttributes[i], false);
@@ -450,7 +450,7 @@ public class TransformationCreationPanel extends CreateEditPanel{
     Vector textFields = getTextFields();
 
     for(int i =0; i<textFields.size(); ++i)
-    if(!(cstAttributesNames[i].equalsIgnoreCase(transformationIdentifier))){
+    if(!(cstAttributesNames[i].equalsIgnoreCase(executableIdentifier))){
       ((JTextComponent) textFields.get(i)).setText("");
     }
   }
@@ -464,9 +464,9 @@ public class TransformationCreationPanel extends CreateEditPanel{
       cstAttr[i] = tcCstAttributes[i].getText();
     }
 
-  Debug.debug("createTransformation",  1);
+  Debug.debug("create executable",  1);
 
-  TransformationCreator tc = new TransformationCreator(
+  ExecutableCreator tc = new ExecutableCreator(
         dbPluginMgr,
         showResults,
         cstAttr,

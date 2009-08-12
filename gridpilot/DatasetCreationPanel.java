@@ -35,23 +35,23 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private DBPluginMgr dbPluginMgr = null;
   private DBPluginMgr targetDBPluginMgr = null;
   private static int TEXTFIELDWIDTH = 32;
-  private String transformationName = "";
-  private String transformationVersion = "";
+  private String executableName = "";
+  private String executableVersion = "";
   private String [] datasetIDs = new String [] {"-1"};
   private JPanel pTop = new JPanel();
-  private JPanel pTransformation = new JPanel();
+  private JPanel pExecutable = new JPanel();
   private JPanel pTargetDBs = new JPanel();
   private JLabel jlTargetDBSelection = null;
   private JPanel pVersion = new JPanel();
   private JComboBox cbTargetDBSelection;
-  private JComboBox cbTransformationSelection;
-  private JComboBox cbTransVersionSelection;
+  private JComboBox cbExecutableSelection;
+  private JComboBox cbExeVersionSelection;
   private String targetDB = null;
   private DBRecord dataset = null;
-  private DBResult transformations = null;
-  private String [] datasetTransformationReference;
-  private String [] datasetTransformationVersionReference;
-  private JButton jbEditTrans;
+  private DBResult executables = null;
+  private String [] datasetExecutableReference;
+  private String [] datasetExecutableVersionReference;
+  private JButton jbEditExe;
   private String datasetName = "";
   private String title = "";
   private DBPanel targetPanel;
@@ -71,13 +71,13 @@ public class DatasetCreationPanel extends CreateEditPanel{
     cstAttributesNames = dbPluginMgr.getFieldNames("dataset");
     cstAttr = new String[cstAttributesNames.length];
     datasetIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
-    transformations = dbPluginMgr.getTransformations();
+    executables = dbPluginMgr.getExecutables();
     editable = true;
     
-    datasetTransformationReference =
-      MyUtil.getDatasetTransformationReference(dbPluginMgr.getDBName());
-    datasetTransformationVersionReference =
-      MyUtil.getDatasetTransformationVersionReference(dbPluginMgr.getDBName());
+    datasetExecutableReference =
+      MyUtil.getDatasetExecutableReference(dbPluginMgr.getDBName());
+    datasetExecutableVersionReference =
+      MyUtil.getDatasetExecutableVersionReference(dbPluginMgr.getDBName());
     
     // Find identifier index
     int identifierIndex = -1;
@@ -119,7 +119,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
 
   private void initButtons(){
-    jbEditTrans = MyUtil.mkButton("search.png", "Look up", "Look up transformation record");
+    jbEditExe = MyUtil.mkButton("search.png", "Look up", "Look up executable record");
   }
 
   /**
@@ -174,7 +174,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     spAttributes.setMaximumSize(new Dimension(600, 500));
     //spAttributes.setMinimumSize(new Dimension(300, 300));
     
-    pTop.add(pTransformation);
+    pTop.add(pExecutable);
 
     initAttributePanel();
     setValues();
@@ -183,18 +183,18 @@ public class DatasetCreationPanel extends CreateEditPanel{
     if(GridPilot.DB_NAMES==null || GridPilot.DB_NAMES.length==0 ||
         datasetIDs==null || datasetIDs.length==0 ||
         (datasetIDs.length==1 && datasetIDs[0].equals("-1"))){
-      initTransformationPanel();
-      initTransVersionPanel();
+      initExecutablePanel();
+      initExeVersionPanel();
       setComboBoxValues();
     }
 
     add(pTop, BorderLayout.NORTH);
     add(spAttributes, BorderLayout.CENTER);
     
-    jbEditTrans.addActionListener(new java.awt.event.ActionListener(){
+    jbEditExe.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         try {
-          viewTransformation();
+          viewExecutable();
         }
         catch(Exception e1){
           e1.printStackTrace();
@@ -306,8 +306,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     
     for(int i=0; i<cstAttributesNames.length; ++i){
-      if(cstAttributesNames[i].equalsIgnoreCase(datasetTransformationReference[1]) ||
-         cstAttributesNames[i].equalsIgnoreCase(datasetTransformationVersionReference[1]) ||
+      if(cstAttributesNames[i].equalsIgnoreCase(datasetExecutableReference[1]) ||
+         cstAttributesNames[i].equalsIgnoreCase(datasetExecutableVersionReference[1]) ||
          cstAttributesNames[i].equalsIgnoreCase("created") ||
          cstAttributesNames[i].equalsIgnoreCase("lastModified")){
         MyUtil.setJEditable(tcCstAttributes[i], false);
@@ -317,15 +317,15 @@ public class DatasetCreationPanel extends CreateEditPanel{
 
   private void setComboBoxValues(){
     for(int i=0; i<cstAttributesNames.length; ++i){
-      if(cstAttributesNames[i].equalsIgnoreCase(datasetTransformationReference[1])){
-        if(cbTransformationSelection!=null &&
-            transformationName!=null && transformationName!=null){
-          cbTransformationSelection.setSelectedItem(transformationName);
+      if(cstAttributesNames[i].equalsIgnoreCase(datasetExecutableReference[1])){
+        if(cbExecutableSelection!=null &&
+            executableName!=null && executableName!=null){
+          cbExecutableSelection.setSelectedItem(executableName);
         }
       }
-      else if(cstAttributesNames[i].equalsIgnoreCase(datasetTransformationVersionReference[1])){
-        if(transformationVersion!=null && cbTransVersionSelection!=null){
-          cbTransVersionSelection.setSelectedItem(transformationVersion);
+      else if(cstAttributesNames[i].equalsIgnoreCase(datasetExecutableVersionReference[1])){
+        if(executableVersion!=null && cbExeVersionSelection!=null){
+          cbExeVersionSelection.setSelectedItem(executableVersion);
         }
       }
     }
@@ -336,7 +336,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
    */
   private void setValuesInAttributePanel(){
     
-    Debug.debug("Setting values "+transformationName+":"+transformationVersion+":"+transformationName+":"+transformationVersion, 3);
+    Debug.debug("Setting values "+executableName+":"+executableVersion+":"+executableName+":"+executableVersion, 3);
 
     for(int i =0; i<cstAttributesNames.length; ++i){
       if(cstAttributesNames[i].equalsIgnoreCase("jobXML") /*&& editing*/){
@@ -350,13 +350,13 @@ public class DatasetCreationPanel extends CreateEditPanel{
           cv.gridx = 0;
           cv.gridy = 0;
       }
-      else if(transformationName!=null && !transformationName.equals("") &&
-          cstAttributesNames[i].equalsIgnoreCase(datasetTransformationReference[1])){
-        MyUtil.setJText(tcCstAttributes[i], transformationName);
+      else if(executableName!=null && !executableName.equals("") &&
+          cstAttributesNames[i].equalsIgnoreCase(datasetExecutableReference[1])){
+        MyUtil.setJText(tcCstAttributes[i], executableName);
       }
-      else if(transformationVersion!=null && !transformationVersion.equals("") &&
-          cstAttributesNames[i].equalsIgnoreCase(datasetTransformationVersionReference[1])){
-        MyUtil.setJText(tcCstAttributes[i], transformationVersion);
+      else if(executableVersion!=null && !executableVersion.equals("") &&
+          cstAttributesNames[i].equalsIgnoreCase(datasetExecutableVersionReference[1])){
+        MyUtil.setJText(tcCstAttributes[i], executableVersion);
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("targetDatabase")){
         // TODO
@@ -454,7 +454,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private void setValues(){
     
     Debug.debug("setValues: " + datasetID +
-        " " + transformationName + " " + transformationVersion, 3); 
+        " " + executableName + " " + executableVersion, 3); 
     Debug.debug("Got field names: "+
         MyUtil.arrayToString(cstAttributesNames), 3);
 
@@ -472,11 +472,11 @@ public class DatasetCreationPanel extends CreateEditPanel{
                 MyUtil.setJText(tcCstAttributes[i], dataset.values[j].toString());
                 cstAttr[i] = dataset.values[j].toString();
                 
-                if(cstAttributesNames[i].equalsIgnoreCase(datasetTransformationReference[1])){
-                  transformationName = dataset.values[j].toString();
+                if(cstAttributesNames[i].equalsIgnoreCase(datasetExecutableReference[1])){
+                  executableName = dataset.values[j].toString();
                 }
-                else if(cstAttributesNames[i].equalsIgnoreCase(datasetTransformationVersionReference[1])){
-                  transformationVersion = dataset.values[j].toString();
+                else if(cstAttributesNames[i].equalsIgnoreCase(datasetExecutableVersionReference[1])){
+                  executableVersion = dataset.values[j].toString();
                 }
               }
               catch(java.lang.Exception e){
@@ -485,10 +485,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
             break;
           }
         }
-        // make identifier and transformation foreign key inactive
+        // make identifier and executable foreign key inactive
         if(cstAttributesNames[i].equalsIgnoreCase(datasetIdentifier) ||
-              cstAttributesNames[i].equalsIgnoreCase(datasetTransformationReference[1]) ||
-              cstAttributesNames[i].equalsIgnoreCase(datasetTransformationVersionReference[1]) ||
+              cstAttributesNames[i].equalsIgnoreCase(datasetExecutableReference[1]) ||
+              cstAttributesNames[i].equalsIgnoreCase(datasetExecutableVersionReference[1]) ||
               cstAttributesNames[i].equalsIgnoreCase("created") ||
               cstAttributesNames[i].equalsIgnoreCase("lastModified")){          
           try{
@@ -510,24 +510,24 @@ public class DatasetCreationPanel extends CreateEditPanel{
     setValuesInAttributePanel();
   }
 
-  private String[] getTransNames(){
-    String [] ret = new String[transformations.values.length];
-    Debug.debug("number of transformations: "+transformations.values.length, 3);
-    Debug.debug("fields: "+MyUtil.arrayToString(transformations.fields), 3);
-    for(int i=0; i<transformations.values.length; ++i){
+  private String[] getExeNames(){
+    String [] ret = new String[executables.values.length];
+    Debug.debug("number of executables: "+executables.values.length, 3);
+    Debug.debug("fields: "+MyUtil.arrayToString(executables.fields), 3);
+    for(int i=0; i<executables.values.length; ++i){
       Debug.debug("#"+i, 3);
-      Debug.debug("name: "+transformations.getValue(i, "name"), 3);
-      Debug.debug("values: "+MyUtil.arrayToString(transformations.values[i]), 3);
-      ret[i] = transformations.getValue(i, "name").toString(); 
+      Debug.debug("name: "+executables.getValue(i, "name"), 3);
+      Debug.debug("values: "+MyUtil.arrayToString(executables.values[i]), 3);
+      ret[i] = executables.getValue(i, "name").toString(); 
     }
     // This is to ensure only unique elements
     Arrays.sort(ret);
     Vector vec = new Vector();
-    if(transformations.values.length>0){
+    if(executables.values.length>0){
       vec.add(ret[0]);
     }
-    if(transformations.values.length>1){
-      for(int i=1; i<transformations.values.length; ++i){
+    if(executables.values.length>1){
+      for(int i=1; i<executables.values.length; ++i){
         //Debug.debug("Comparing "+ret[i]+" <-> "+ret[i-1],3);
         if(!ret[i].equals(ret[i-1])){
           Debug.debug("Adding "+ret[i], 3);
@@ -542,51 +542,51 @@ public class DatasetCreationPanel extends CreateEditPanel{
     return arr;
   }
   
-  private void initTransformationPanel(){
+  private void initExecutablePanel(){
     
-    Debug.debug("Finding transformations...", 3);
+    Debug.debug("Finding executables...", 3);
 
-    pTransformation.removeAll();
-    pTransformation.setLayout(new FlowLayout());
+    pExecutable.removeAll();
+    pExecutable.setLayout(new FlowLayout());
 
-    // if there's no transforation table, just skip
-    String [] transNames = {};
+    // if there's no executable table, just skip
+    String [] exeNames = {};
     try{
-      transNames = getTransNames();
+      exeNames = getExeNames();
     }
     catch(Exception e){
-      Debug.debug("Could not get transformations, probably no transformation table.", 1);
+      Debug.debug("Could not get executables, probably no executable table.", 1);
     }
 
-    if(transNames.length==0){
-      pTransformation.add(new JLabel("No transformations found."));
-      initTransVersionPanel();
-      jbEditTrans.setEnabled(false);
+    if(exeNames.length==0){
+      pExecutable.add(new JLabel("No executables found."));
+      initExeVersionPanel();
+      jbEditExe.setEnabled(false);
     }
-    else if(transNames.length==1){
-      transformationName = transNames[0];
-      pTransformation.add(new JLabel("Transformation:   " + transformationName));
-      initTransVersionPanel();
+    else if(exeNames.length==1){
+      executableName = exeNames[0];
+      pExecutable.add(new JLabel("Executable:   " + executableName));
+      initExeVersionPanel();
     }
     else{
-      cbTransformationSelection = new JComboBox();
-      for(int i=0; i<transNames.length; ++i){
-          cbTransformationSelection.addItem(transNames[i]);
+      cbExecutableSelection = new JComboBox();
+      for(int i=0; i<exeNames.length; ++i){
+          cbExecutableSelection.addItem(exeNames[i]);
       }
-      pTransformation.add(new JLabel("Transformation:"), null);
-      pTransformation.add(cbTransformationSelection, null);
+      pExecutable.add(new JLabel("Executable:"), null);
+      pExecutable.add(cbExecutableSelection, null);
 
-      cbTransformationSelection.addActionListener(
+      cbExecutableSelection.addActionListener(
         new java.awt.event.ActionListener(){
           public void actionPerformed(java.awt.event.ActionEvent e){
-            cbTransformationSelection_actionPerformed();
+            cbExecutableSelection_actionPerformed();
           }
         }
       );
     }
   }
 
-  private void initTransVersionPanel(){
+  private void initExeVersionPanel(){
 
     pTop.add(pVersion);
 
@@ -598,7 +598,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     String [] versions = {};
     
     try{
-      versions = targetDBPluginMgr.getVersions(transformationName);
+      versions = targetDBPluginMgr.getVersions(executableName);
     }
     catch(Exception e){
     }
@@ -610,7 +610,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
 
     if(versions.length==0){
       try{
-        pTop.remove(jbEditTrans);
+        pTop.remove(jbEditExe);
       }
       catch(Exception e){
       }
@@ -619,26 +619,26 @@ public class DatasetCreationPanel extends CreateEditPanel{
       }
     }
     else if(versions.length==1){
-      transformationVersion = versions[0];
-      pVersion.add(new JLabel(transformationVersion));
+      executableVersion = versions[0];
+      pVersion.add(new JLabel(executableVersion));
       //setValues();
       setValuesInAttributePanel();
-      pTop.add(jbEditTrans);
+      pTop.add(jbEditExe);
     }
     else{
-      cbTransVersionSelection = new JComboBox();
+      cbExeVersionSelection = new JComboBox();
 
       for(int i=0; i<versions.length; ++i){
         Debug.debug("Adding version "+versions[i], 3);
-        cbTransVersionSelection.addItem(versions[i]);
+        cbExeVersionSelection.addItem(versions[i]);
       }
 
-      pVersion.add(cbTransVersionSelection, null);
+      pVersion.add(cbExeVersionSelection, null);
 
-      cbTransVersionSelection.addActionListener(
+      cbExeVersionSelection.addActionListener(
         new java.awt.event.ActionListener(){
           public void actionPerformed(java.awt.event.ActionEvent e){
-            cbTransVersionSelection_actionPerformed();
+            cbExeVersionSelection_actionPerformed();
           }
         }
       );
@@ -647,13 +647,13 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
 
   /**
-   * Open new pane with corresponding transformations.
+   * Open new pane with corresponding executables.
    * @throws InvocationTargetException 
    * @throws InterruptedException 
    */
-  private void viewTransformation() throws InterruptedException, InvocationTargetException{
-    if(transformationName==null || transformationName.equals("") ||
-        transformationVersion==null || transformationVersion.equals("")){
+  private void viewExecutable() throws InterruptedException, InvocationTargetException{
+    if(executableName==null || executableName.equals("") ||
+        executableVersion==null || executableVersion.equals("")){
       return;
     }
     
@@ -664,7 +664,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           //GridPilot.getClassMgr().getGlobalFrame().setVisible(true);
           // Create new panel with jobDefinitions.         
           targetPanel = new DBPanel();
-          targetPanel.initDB(targetDBPluginMgr.getDBName(), "transformation");
+          targetPanel.initDB(targetDBPluginMgr.getDBName(), "executable");
           targetPanel.initGUI();
         }
         catch(Exception e){
@@ -683,11 +683,11 @@ public class DatasetCreationPanel extends CreateEditPanel{
       public void run(){
         try{
           targetPanel.initDB(targetDBPluginMgr.getDBName(),
-              "transformation");
+              "executable");
           String idField =
-            MyUtil.getIdentifierField(targetDBPluginMgr.getDBName(), "transformation");
-          String id = targetDBPluginMgr.getTransformationID(transformationName,
-              transformationVersion);
+            MyUtil.getIdentifierField(targetDBPluginMgr.getDBName(), "executable");
+          String id = targetDBPluginMgr.getExecutableID(executableName,
+              executableVersion);
           targetPanel.getSelectPanel().setConstraint(idField, id, 0);
           targetPanel.searchRequest(true, false);           
           GridPilot.getClassMgr().getGlobalFrame().addPanel(targetPanel);
@@ -707,36 +707,36 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
   }
 
-  private void cbTransformationSelection_actionPerformed(){
-    if(cbTransformationSelection.getSelectedItem()==null){
+  private void cbExecutableSelection_actionPerformed(){
+    if(cbExecutableSelection.getSelectedItem()==null){
         return;
     }
     else{
-        transformationName = cbTransformationSelection.getSelectedItem().toString();
+        executableName = cbExecutableSelection.getSelectedItem().toString();
     }
     try{
-      pTop.remove(jbEditTrans);
+      pTop.remove(jbEditExe);
     }
     catch(Exception e){
     }
-    initTransVersionPanel();
+    initExeVersionPanel();
   }
 
-  private void cbTransVersionSelection_actionPerformed(){
-    if(cbTransVersionSelection.getSelectedItem()==null){
+  private void cbExeVersionSelection_actionPerformed(){
+    if(cbExeVersionSelection.getSelectedItem()==null){
       return;
     }
     else{
-      transformationVersion = cbTransVersionSelection.getSelectedItem().toString();
+      executableVersion = cbExeVersionSelection.getSelectedItem().toString();
     }
     try{
-      pTop.remove(jbEditTrans);
+      pTop.remove(jbEditExe);
     }
     catch(Exception e){
     }
     //setValues();
     setValuesInAttributePanel();
-    pTop.add(jbEditTrans);
+    pTop.add(jbEditExe);
     pTop.validate();
   }
 
@@ -839,16 +839,16 @@ public class DatasetCreationPanel extends CreateEditPanel{
         }
       }
       // Get values from source dataset in question, excluding
-      // transformationName and any other filled-in values.
+      // executableName and any other filled-in values.
       // Construct name for new target dataset.
-      if(targetFields[j].equalsIgnoreCase(datasetTransformationReference[1]) ||
-          targetFields[j].equalsIgnoreCase(datasetTransformationVersionReference[1])){
+      if(targetFields[j].equalsIgnoreCase(datasetExecutableReference[1]) ||
+          targetFields[j].equalsIgnoreCase(datasetExecutableVersionReference[1])){
       }
       else if(targetFields[j].equalsIgnoreCase(
           MyUtil.getNameField(targetDBPluginMgr.getDBName(), "dataset"))){
         targetAttr[j] = dbPluginMgr.getTargetDatasetName(
             targetDB, dbPluginMgr.getDatasetName(datasetIDs[0]),
-            transformationName, transformationVersion);
+            executableName, executableVersion);
       }
       //else if(targetFields[j].equalsIgnoreCase("runNumber")){
       //  targetAttr[j] = dbPluginMgr.getRunNumber(datasetIDs[0]);
@@ -909,8 +909,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
       if((cstAttributesNames[i].equalsIgnoreCase("runNumber") ||
           cstAttributesNames[i].equalsIgnoreCase("InputDataset") ||
           cstAttributesNames[i].equalsIgnoreCase("InputDB") ||
-          cstAttributesNames[i].equalsIgnoreCase(datasetTransformationReference[1]) ||
-          cstAttributesNames[i].equalsIgnoreCase(datasetTransformationVersionReference[1]))){         
+          cstAttributesNames[i].equalsIgnoreCase(datasetExecutableReference[1]) ||
+          cstAttributesNames[i].equalsIgnoreCase(datasetExecutableVersionReference[1]))){         
         try{
           MyUtil.setJEditable(tcCstAttributes[i], false);
         }
@@ -920,10 +920,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
       }
     }
 
-    transformations = targetDBPluginMgr.getTransformations();    
+    executables = targetDBPluginMgr.getExecutables();    
     Debug.debug("initAttributePanel done, setting values, "+
         targetAttr.length+", "+tcCstAttributes.length, 3);
-    initTransformationPanel();
+    initExecutablePanel();
     pTop.updateUI();
     
   }

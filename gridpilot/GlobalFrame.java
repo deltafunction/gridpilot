@@ -625,18 +625,18 @@ public class GlobalFrame extends GPFrame{
       catch(Exception e){
       }
 
-      // Check if there is a transformation table in this database
+      // Check if there is a executable table in this database
       try{
         if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.DB_NAMES[i]).getFieldNames("transformation")!=null)){
-          JMenuItem miNewTab = new JMenuItem(GridPilot.getTabDisplayName("transformation"));
+            GridPilot.DB_NAMES[i]).getFieldNames("executable")!=null)){
+          JMenuItem miNewTab = new JMenuItem(GridPilot.getTabDisplayName("executable"));
           miNewTab.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
               try{
                 DBPanel panel = new DBPanel();
-                panel.initDB(mDB.getName(), "transformation");
+                panel.initDB(mDB.getName(), "executable");
                 panel.initGUI();
-                addPanel(panel, GridPilot.getTabDisplayName("transformation"));          
+                addPanel(panel, GridPilot.getTabDisplayName("executable"));          
               }
               catch(Exception ex){
                 Debug.debug("Could not add panel ", 1);
@@ -835,8 +835,8 @@ public class GlobalFrame extends GPFrame{
     if(panel.getTableName().equalsIgnoreCase("runtimeEnvironment")){
       panel.createRuntimeEnvironment();
     }
-    else if(panel.getTableName().equalsIgnoreCase("transformation")){
-      panel.createTransformation();
+    else if(panel.getTableName().equalsIgnoreCase("executable")){
+      panel.createExecutable();
     }
     else if(panel.getTableName().equalsIgnoreCase("dataset")){
       panel.createDatasets(withInputDataset);
@@ -851,8 +851,8 @@ public class GlobalFrame extends GPFrame{
     if(panel.getTableName().equalsIgnoreCase("runtimeEnvironment")){
       panel.editRuntimeEnvironment();
     }
-    else if(panel.getTableName().equalsIgnoreCase("transformation")){
-      panel.editTransformation();
+    else if(panel.getTableName().equalsIgnoreCase("executable")){
+      panel.editExecutable();
     }
     else if(panel.getTableName().equalsIgnoreCase("dataset")){
       panel.editDataset();
@@ -867,8 +867,8 @@ public class GlobalFrame extends GPFrame{
     if(panel.getTableName().equalsIgnoreCase("runtimeEnvironment")){
       panel.deleteRuntimeEnvironments();
     }
-    else if(panel.getTableName().equalsIgnoreCase("transformation")){
-      panel.deleteTransformations();
+    else if(panel.getTableName().equalsIgnoreCase("executable")){
+      panel.deleteExecutables();
     }
     else if(panel.getTableName().equalsIgnoreCase("dataset")){
       panel.deleteDatasets();

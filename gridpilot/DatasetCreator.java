@@ -25,8 +25,8 @@ public class DatasetCreator{
   private static JProgressBar pb;
   private static Object semaphoreDatasetCreation = new Object();
   private DBPluginMgr dbPluginMgr;
-  private String [] datasetTransformationReference;
-  private String [] datasetTransformationVersionReference;
+  private String [] datasetExecutableReference;
+  private String [] datasetExecutableVersionReference;
   private String datasetIdentifier = "identifier";
   public boolean anyCreated = false;
 
@@ -48,10 +48,10 @@ public class DatasetCreator{
     targetDB = _targetDB;
     dbPluginMgr = _dbPluginMgr;
     datasetIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
-    datasetTransformationReference =
-      MyUtil.getDatasetTransformationReference(dbPluginMgr.getDBName());
-    datasetTransformationVersionReference =
-      MyUtil.getDatasetTransformationVersionReference(dbPluginMgr.getDBName());
+    datasetExecutableReference =
+      MyUtil.getDatasetExecutableReference(dbPluginMgr.getDBName());
+    datasetExecutableVersionReference =
+      MyUtil.getDatasetExecutableVersionReference(dbPluginMgr.getDBName());
 
     makeDataset();
   }
@@ -96,29 +96,29 @@ public class DatasetCreator{
   private void createAllInTargetDB() {
     // this set is used to keep track of which fields were set to ""
     HashSet<Integer> clearAttrs = new HashSet<Integer>();
-    String transformationName = "";
-    String transformationVersion = "";
+    String executableName = "";
+    String executableVersion = "";
     for(int j=0; j<cstAttrNames.length; ++j){
-      if(cstAttrNames[j].equalsIgnoreCase(datasetTransformationReference[1])){
-        transformationName = cstAttr[j];
-        Debug.debug("transformation name:"+cstAttr[j], 3);
+      if(cstAttrNames[j].equalsIgnoreCase(datasetExecutableReference[1])){
+        executableName = cstAttr[j];
+        Debug.debug("executable name:"+cstAttr[j], 3);
       }
-      else if(cstAttrNames[j].equalsIgnoreCase(datasetTransformationVersionReference[1])){
-        transformationVersion = cstAttr[j];
+      else if(cstAttrNames[j].equalsIgnoreCase(datasetExecutableVersionReference[1])){
+        executableVersion = cstAttr[j];
       }
     }
     String datasetNameField = MyUtil.getNameField(dbPluginMgr.getDBName(), "Dataset");
     for(int i=0; i<datasetIDs.length; ++i){
       Debug.debug("Creating #"+datasetIDs[i], 2);
-      if(!createInTargetDB(clearAttrs, i, datasetNameField, transformationName,
-          transformationVersion)){
+      if(!createInTargetDB(clearAttrs, i, datasetNameField, executableName,
+          executableVersion)){
         return;
       }
     }
   }
 
   private boolean createInTargetDB(HashSet<Integer> clearAttrs, int i,
-      String datasetNameField, String transformationName, String transformationVersion) {
+      String datasetNameField, String exeName, String exeVersion) {
     DBRecord res = dbPluginMgr.getDataset(datasetIDs[i]);
     Debug.debug("Input records "+MyUtil.arrayToString(res.fields), 2);
     Debug.debug("Input values "+MyUtil.arrayToString(res.values), 2);
@@ -126,14 +126,14 @@ public class DatasetCreator{
     for(int j=0; j<cstAttrNames.length; ++j){                   
       if(!datasetIDs[i].equals("-1")){
         // Get values from source dataset in question, excluding
-        // transformation, transVersion and any other filled-in values.
+        // executable, executableVersion and any other filled-in values.
         // Construct name for new target dataset.
         if((resCstAttr[j]==null || resCstAttr[j].equals("")) &&
             cstAttrNames[j].equalsIgnoreCase(datasetNameField)){
           resCstAttr[j] = dbPluginMgr.getTargetDatasetName(
               targetDB,
               dbPluginMgr.getDatasetName(datasetIDs[i]),
-              transformationName, transformationVersion);
+              exeName, exeVersion);
         }
         else if(cstAttrNames[j].equalsIgnoreCase("runNumber")){
           String runNum = dbPluginMgr.getRunNumber(datasetIDs[i]);

@@ -49,7 +49,7 @@ public class JobCreationPanel extends CreateEditPanel{
   /**
    * Constructor
    */
-  public JobCreationPanel(DBPluginMgr _dbPluginMgr, String [] columnNames, String [] datasetIds,
+  public JobCreationPanel(DBPluginMgr _dbPluginMgr, String [] columnNames, String [] _datasetIDs,
       boolean _closeWhenDone){
     
     dbPluginMgr = _dbPluginMgr;
@@ -78,11 +78,11 @@ public class JobCreationPanel extends CreateEditPanel{
     }
 
     // Dataset(s) selected and not editing - creating from dataset(s)
-    if(datasetIds.length>0){
-      Debug.debug("Creating jobs for datasets "+MyUtil.arrayToString(datasetIDs), 3);
+    if(_datasetIDs.length>0){
+      Debug.debug("Creating job(s) for datasets "+MyUtil.arrayToString(_datasetIDs), 3);
     } 
 
-    initGUI(datasetIDs);
+    initGUI(_datasetIDs);
   }
 
   /**
@@ -120,6 +120,8 @@ public class JobCreationPanel extends CreateEditPanel{
     }
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
         Color.white,new Color(165, 163, 151)),title));
+    
+    Debug.debug("Initializing job creation for dataset(s) "+MyUtil.arrayToString(datasetIDs), 2);
     
     initJobCreationPanel();
   }
@@ -171,11 +173,11 @@ public class JobCreationPanel extends CreateEditPanel{
     cstAttributesNames = GridPilot.FIXED_JOB_ATTRIBUTES;
     ArrayList jobDefinitionFields = new ArrayList(Arrays.asList(dbPluginMgr.getFieldnames("jobDefinition")));    
     
-    String transformationID = dbPluginMgr.getTransformationID(
-        dbPluginMgr.getDatasetTransformationName(datasetIDs[0]),
-        dbPluginMgr.getDatasetTransformationVersion(datasetIDs[0]));
-    jobParamNames = dbPluginMgr.getTransformationJobParameters(transformationID);
-    outputMapNames = dbPluginMgr.getTransformationOutputs(transformationID);
+    String executableID = dbPluginMgr.getExecutableID(
+        dbPluginMgr.getDatasetExecutableName(datasetIDs[0]),
+        dbPluginMgr.getDatasetExecutableVersion(datasetIDs[0]));
+    jobParamNames = dbPluginMgr.getExecutableJobParameters(executableID);
+    outputMapNames = dbPluginMgr.getExecutableOutputs(executableID);
 
     Debug.debug("Fixed job attributes: "+MyUtil.arrayToString(cstAttributesNames), 3);
     if(!reuseTextFields || tcCstAttributes==null ||
@@ -279,7 +281,7 @@ public class JobCreationPanel extends CreateEditPanel{
     }
     
     // Job parameters
-    detailFields.add(new JLabel("Transformation job parameters"));
+    detailFields.add(new JLabel("Executable parameters"));
     pAttributes.add((JLabel) detailFields.get(detailFields.size()-1),
         new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
             GridBagConstraints.CENTER,

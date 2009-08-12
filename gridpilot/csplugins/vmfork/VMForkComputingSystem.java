@@ -157,8 +157,8 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String [] rtes = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
-    String transID = dbPluginMgr.getJobDefTransformationID(job.getIdentifier());
-    String [] transInputFiles = dbPluginMgr.getTransformationInputs(transID);
+    String transID = dbPluginMgr.getJobDefExecutableID(job.getIdentifier());
+    String [] transInputFiles = dbPluginMgr.getExecutableInputs(transID);
     String [] jobInputFiles = dbPluginMgr.getJobDefInputFiles(job.getIdentifier());
     String [] inputFiles = new String [transInputFiles.length+jobInputFiles.length];
     for(int i=0; i<transInputFiles.length; ++i){

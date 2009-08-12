@@ -58,8 +58,8 @@ public class RunCommandWizard extends GPFrame{
   private static String DB_NAME = "My_DB_Local";
   private static int TEXTFIELDWIDTH = 40;
   private static String myDatasetName = "my_dataset";
-  private static String myTransformationName = "my_transformation";
-  private static String myTransformationVersion = "0.1";
+  private static String myExecutableName = "my_executable";
+  private static String myExecutableVersion = "0.1";
   
   public RunCommandWizard() {
     
@@ -82,8 +82,8 @@ public class RunCommandWizard extends GPFrame{
   
   private String getInitialCmdTxt(){
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(DB_NAME);
-    String transformationID = dbPluginMgr.getTransformationID(myTransformationName, myTransformationVersion);
-    String scriptFile = (String) dbPluginMgr.getTransformation(transformationID).getValue("executableFile");
+    String executableID = dbPluginMgr.getExecutableID(myExecutableName, myExecutableVersion);
+    String scriptFile = (String) dbPluginMgr.getExecutable(executableID).getValue("executableFile");
     String txt = null;
     try{
       txt = LocalStaticShell.readFile(MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFile)));
@@ -117,7 +117,7 @@ public class RunCommandWizard extends GPFrame{
   
   /**
    * - query for a command and a CS
-   * - modify my_transformation script
+   * - modify my_executable script
    * - delete jobDefinition of my_dataset
    * - create jobDefinition of my_dataset
    * - submit job
@@ -137,7 +137,7 @@ public class RunCommandWizard extends GPFrame{
       "When you're done, click \"Submit job\" and use right-click menu on the job monitoring panel\n" +
       "to follow the progress of your job.\n\n" +
       "Notice that the job you create belongs to the dataset "+myDatasetName+" which in turn uses the \n" +
-      "transformation "+myTransformationName+". You can inspect and edit these from the corresponding \n" +
+      "executable "+myExecutableName+". You can inspect and edit these from the corresponding \n" +
       "tabs on the main window.\n\n";
     JLabel jlDirInstructions = new JLabel("<html>"+msg.replaceAll("\n", "<br>")+"</html>");
 
@@ -418,33 +418,33 @@ public class RunCommandWizard extends GPFrame{
           }
         });        
         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(DB_NAME);
-        // write cmd in the transformation script
-        String transformationID = dbPluginMgr.getTransformationID(myTransformationName, myTransformationVersion);
-        String scriptFile = (String) dbPluginMgr.getTransformation(transformationID).getValue("script");
+        // write cmd in the executable script
+        String executableID = dbPluginMgr.getExecutableID(myExecutableName, myExecutableVersion);
+        String scriptFile = (String) dbPluginMgr.getExecutable(executableID).getValue("script");
         try{
           LocalStaticShell.writeFile(MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFile)),
               cmd, false);
         }
         catch(IOException e2){
           e2.printStackTrace();
-          MyUtil.showError("ERROR: could not write transformation script"+scriptFile+".\n" +
+          MyUtil.showError("ERROR: could not write executable script"+scriptFile+".\n" +
                 "Check permissions.");
           return;
         }
         // update my_dataset with the output location and
-        // my_transformation with the output files
+        // my_executable with the output files
         String datasetID = null;
         try{
           datasetID = dbPluginMgr.getDatasetID(myDatasetName);
           dbPluginMgr.updateDataset(datasetID, myDatasetName,
               new String [] {"outputLocation"}, new String [] {outputDir});
           if(outputsPanel.isVisible()){
-            dbPluginMgr.updateTransformation(transformationID,
+            dbPluginMgr.updateExecutable(executableID,
                 new String [] {"outputFiles"}, new String [] {MyUtil.arrayToString(outputFiles)});
           }
-          // If no output files are specified, zap the outputFiles of my_transformation
+          // If no output files are specified, zap the outputFiles of my_executable
           else{
-            dbPluginMgr.updateTransformation(transformationID,
+            dbPluginMgr.updateExecutable(executableID,
                 new String [] {"outputFiles"}, new String [] {""});
           }
         }
@@ -455,7 +455,7 @@ public class RunCommandWizard extends GPFrame{
         // get the input file URLs
         String [] inputURLs;
         if(inputsPanel.isVisible()){
-          inputsPanel.fieldMap.put("transformation script",
+          inputsPanel.fieldMap.put("executable script",
               new JTextField(MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFile))));
           inputURLs = new String [inputsPanel.fieldMap.values().size()];
           int i = 0;
@@ -478,7 +478,7 @@ public class RunCommandWizard extends GPFrame{
             "status",
             "inputFileURLs",
             "outFileMapping",
-            //"transPars",
+            //"executableParameters",
             "stdoutDest",
             "stderrDest",
             "outputFileBytes"};
@@ -489,7 +489,7 @@ public class RunCommandWizard extends GPFrame{
             DBPluginMgr.getStatusName(DBPluginMgr.DEFINED),
             MyUtil.arrayToString(inputURLs).trim(),
             outputFiles==null?"":createOutputMappingStr(outputFiles, outputDir).trim(),
-            //"transPars",
+            //"executableParameters",
             outputDir+myDatasetName+".1.stdout",
             outputDir+myDatasetName+".1.stderr",
             "-1"};

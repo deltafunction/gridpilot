@@ -122,7 +122,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
       writeLine(buf, "echo $$");
     }
 
-    String scriptSrc = dbPluginMgr.getTransformationExeFile(jobDefID);
+    String scriptSrc = dbPluginMgr.getExecutableFile(jobDefID);
     String scriptPath = MyUtil.clearFile(scriptSrc).replaceAll("\\\\", "/");
     String scriptName = scriptPath.replaceFirst(".*/([^/]+)", "$1");
     String scriptDest = "file:" + MyUtil.clearFile(workingDir) + "/" + scriptName;
@@ -142,13 +142,13 @@ public class ForkScriptGenerator extends ScriptGenerator{
       return false;
     }
 
-    // Transformation script call section
+    // Executable script call section
     try{
-      writeTransformationSection(jobDefID, dbPluginMgr, commentStart, buf, onWindows,
+      writeExecutableSection(jobDefID, dbPluginMgr, commentStart, buf, onWindows,
           shell, scriptDest, scriptSrc, scriptName);
     }
     catch(Exception e){
-      logFile.addMessage("ERROR: transformation script could not be copied. "+
+      logFile.addMessage("ERROR: executable script could not be copied. "+
           "Cannot proceed with "+job, e);
       return false;
     }
@@ -180,7 +180,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
         }
         shell.exec("chmod +x "+MyUtil.clearFile(scriptDest), stdout, stderr);
         if(stderr!=null && stderr.length()!=0){
-          Debug.debug("Could not set transformation executable. "+stderr, 2);
+          Debug.debug("Could not set executable permission. "+stderr, 2);
           throw new FileNotFoundException(stderr.toString());
         }
       }
@@ -226,14 +226,14 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
   }
 
-  private void writeTransformationSection(String jobDefID, DBPluginMgr dbPluginMgr, String commentStart,
+  private void writeExecutableSection(String jobDefID, DBPluginMgr dbPluginMgr, String commentStart,
       StringBuffer buf, boolean onWindows, Shell shell,
       String scriptDest, String scriptSrc, String scriptName) throws IOException {
-    String [] formalParam = dbPluginMgr.getTransformationArguments(jobDefID);
-    String [] actualParam = dbPluginMgr.getJobDefTransPars(jobDefID);
+    String [] formalParam = dbPluginMgr.getExecutableArguments(jobDefID);
+    String [] actualParam = dbPluginMgr.getJobDefExecutableParameters(jobDefID);
     String line; //used as temp working string
     // write out the signature
-    line = "Transformation script arguments: ";
+    line = "Executable script arguments: ";
     for(int i=0; i<formalParam.length; ++i){
       line += " " + formalParam[i];
     }
@@ -247,8 +247,8 @@ public class ForkScriptGenerator extends ScriptGenerator{
       }
     }
     writeLine(buf, "");
-    writeBlock(buf, "transformation script call", ScriptGenerator.TYPE_SUBSECTION, commentStart);
-    Debug.debug("Copying over transformation script "+scriptSrc+"-->"+scriptDest, 3);
+    writeBlock(buf, "executable script call", ScriptGenerator.TYPE_SUBSECTION, commentStart);
+    Debug.debug("Copying over executable script "+scriptSrc+"-->"+scriptDest, 3);
     // Copy the script to the working directory
     // If scriptSrc script is an unqualified file name, don't try to copy it over, just ignore and assume
     // it's already on the worker node - and on the PATH.
@@ -256,13 +256,13 @@ public class ForkScriptGenerator extends ScriptGenerator{
     if(copyScript &&
         !GridPilot.getClassMgr().getTransferControl().copyInputFile(
             MyUtil.clearFile(scriptSrc), scriptDest, shell, true, null)){
-      throw new IOException("Copying transformation script to working dir failed.");
+      throw new IOException("Copying executable script to working dir failed.");
     }
     
     if(!onWindows){
       // Shell utils to filter off unwanted stuff from stdout and stderr
       writeLine(buf, filterStdOutErrLines());
-      // Running the transformation script with ./ instead of a full path is to allow this to 
+      // Running the executable script with ./ instead of a full path is to allow this to 
       // be used by GridFactoryComputingSystem, where we don't have a shell on the worker node
       // and the full path is not known.
       line = "split \""+(copyScript?"./":"")+ scriptName + " " +

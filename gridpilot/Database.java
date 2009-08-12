@@ -56,28 +56,28 @@ public interface Database{
   public boolean updateRuntimeEnvironment(String runtimeEnvironmentID, String [] fields, String [] values) throws InterruptedException;
   public boolean deleteRuntimeEnvironment(String runtimeEnvironmentID) throws InterruptedException;
 
-  // ####### Transformation table
-  public DBResult getTransformations() throws InterruptedException;
-  public DBRecord getTransformation(String transformationID) throws InterruptedException;
-  public String getTransformationID(String transName, String transVersion) throws InterruptedException;
-  public boolean createTransformation(Object [] values) throws InterruptedException;
-  public boolean updateTransformation(String transformatinID, String [] fields, String [] values) throws InterruptedException;
-  public boolean deleteTransformation(String transformationID) throws InterruptedException;
-  public String [] getVersions(String transformationName) throws InterruptedException;
-  public String getTransformationRuntimeEnvironment(String transformationID) throws InterruptedException;
-  public String [] getTransformationJobParameters(String transformationID) throws InterruptedException;
+  // ####### Executable table
+  public DBResult getExecutables() throws InterruptedException;
+  public DBRecord getExecutable(String executableID) throws InterruptedException;
+  public String getExecutableID(String name, String version) throws InterruptedException;
+  public boolean createExecutable(Object [] values) throws InterruptedException;
+  public boolean updateExecutable(String executableID, String [] fields, String [] values) throws InterruptedException;
+  public boolean deleteExecutable(String executableID) throws InterruptedException;
+  public String [] getVersions(String executableName) throws InterruptedException;
+  public String getExecutableRuntimeEnvironment(String executableID) throws InterruptedException;
+  public String [] getExecutableJobParameters(String executableID) throws InterruptedException;
   /**
    * the input file of a job script are defined by the fields
-   * transformation.inputFiles (fully qualified names),
+   * executable.inputFiles (fully qualified names),
    * jobDefinition.inputFileURLs (fully qualified names)
    * - generated using dataset.inputDataset, dataset.inputDB).
    * 
    * the output files of a job script are defined by the fields
    * jobDefinition.outFileMapping,
-   * - generated using transformation.outputFiles, dataset.outputLocation
+   * - generated using executable.outputFiles, dataset.outputLocation
    */
-  public String [] getTransformationOutputs(String transformationID) throws InterruptedException;
-  public String [] getTransformationInputs(String transformationID) throws InterruptedException;
+  public String [] getExecutableOutputs(String executableID) throws InterruptedException;
+  public String [] getExecutableInputs(String executableID) throws InterruptedException;
 
   // ####### Dataset table
   public String getDatasetName(String datasetID) throws InterruptedException;
@@ -91,8 +91,8 @@ public interface Database{
   public boolean deleteDataset(String datasetID, boolean cleanup) throws InterruptedException,NotImplemented;
   public boolean deleteJobDefsFromDataset(String datasetID) throws InterruptedException;
   public DBRecord getDataset(String datasetID) throws InterruptedException;
-  public String getDatasetTransformationName(String datasetID) throws InterruptedException;
-  public String getDatasetTransformationVersion(String datasetID) throws InterruptedException;
+  public String getDatasetExecutableName(String datasetID) throws InterruptedException;
+  public String getDatasetExecutableVersion(String datasetID) throws InterruptedException;
 
   // ####### Job definition table
   public boolean isJobRepository() throws InterruptedException;
@@ -113,8 +113,8 @@ public interface Database{
   public String getJobDefUserInfo(String jobDefID) throws InterruptedException;
   public String getJobDefName(String jobDefID) throws InterruptedException;
   public String getJobDefDatasetID(String jobDefID) throws InterruptedException;
-  public String getJobDefTransformationID(String jobDefID) throws InterruptedException;
-  public String getTransformationExeFile(String jobDefID) throws InterruptedException;
+  public String getJobDefExecutableID(String jobDefID) throws InterruptedException;
+  public String getExecutableFile(String jobDefID) throws InterruptedException;
   
   // ####### File table
   public boolean isFileCatalog() throws InterruptedException;
@@ -145,8 +145,8 @@ public interface Database{
   public String getJobDefOutLocalName(String jobDefID, String par) throws Exception;
   public String getStdOutFinalDest(String jobDefID) throws InterruptedException;
   public String getStdErrFinalDest(String jobDefID) throws InterruptedException;
-  public String [] getTransformationArguments(String jobDefID) throws InterruptedException;
-  public String [] getJobDefTransPars(String jobDefID) throws Exception;
+  public String [] getExecutableArguments(String jobDefID) throws InterruptedException;
+  public String [] getJobDefExecutableParameters(String jobDefID) throws Exception;
   
   // ####### Misc
   public boolean setJobDefsField(String [] identifiers, String field, String value) throws InterruptedException;

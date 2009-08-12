@@ -54,7 +54,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     jobDefID = job.getIdentifier();
     uses = dbPluginMgr.getRuntimeEnvironments(jobDefID);
     outputFileNames = dbPluginMgr.getOutputFiles(jobDefID);
-    shortScriptName = dbPluginMgr.getTransformationExeFile(jobDefID);
+    shortScriptName = dbPluginMgr.getExecutableFile(jobDefID);
     int lastSlash = shortScriptName.replaceAll("\\\\", "/").lastIndexOf("/");
     if(lastSlash>-1){
       shortScriptName = shortScriptName.substring(lastSlash + 1);
@@ -63,8 +63,8 @@ public class GLiteScriptGenerator extends ScriptGenerator {
 
   public void createScript(){
 
-    String [] formalParam = dbPluginMgr.getTransformationArguments(jobDefID);
-    String [] actualParam = dbPluginMgr.getJobDefTransPars(jobDefID);
+    String [] formalParam = dbPluginMgr.getExecutableArguments(jobDefID);
+    String [] actualParam = dbPluginMgr.getJobDefExecutableParameters(jobDefID);
 
     try{
       // create job script
@@ -238,8 +238,8 @@ public class GLiteScriptGenerator extends ScriptGenerator {
   
     String jdlLine;
   
-    // The transformation script
-    String scriptFileName = dbPluginMgr.getTransformationExeFile(jobDefID);
+    // The executable script
+    String scriptFileName = dbPluginMgr.getExecutableFile(jobDefID);
     // names starting with file: will be uploaded, names starting with
     // / or c:\ are considered to be locally available on the server
     localInputFilesList.add(MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFileName)));
@@ -272,11 +272,11 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       if(inputs!=null && inputs.length>0){
         inputFiles1 = inputs;
       }
-      // Input files from transformation definition
+      // Input files from executable definition
       // (typically a tarball with code)
       String[] inputFiles2 = new String [] {};
-      inputs = dbPluginMgr.getTransformationInputs(
-          dbPluginMgr.getJobDefTransformationID(jobDefID));
+      inputs = dbPluginMgr.getExecutableInputs(
+          dbPluginMgr.getJobDefExecutableID(jobDefID));
       Debug.debug("input files: "+inputs.length+" "+MyUtil.arrayToString(inputs), 3);
       if(inputs!=null && inputs.length>0){
         inputFiles2 = inputs;
