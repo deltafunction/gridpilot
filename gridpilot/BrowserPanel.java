@@ -498,6 +498,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
       addUrl("");
       addUrlKeyListener();
     }
+    else{
+      topPanel.add(currentUrlBox, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
+          GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL,
+          new Insets(0, 5, 0, 5), 0, 0));
+    }
     
     if(withFilter){
       JPanel jpFilter = new JPanel(new GridBagLayout());      
@@ -521,9 +526,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       addFilterKeyListener();
     }  
     
-    if(withNavigation || withFilter){
+    //if(withNavigation || withFilter){
       panel.add(topPanel, BorderLayout.NORTH);
-    }
+    //}
         
     //HTMLDocument d = new HTMLDocument();
     ep.addHyperlinkListener(new HyperlinkListener(){

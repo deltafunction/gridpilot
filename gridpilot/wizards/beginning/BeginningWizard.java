@@ -60,9 +60,10 @@ public class BeginningWizard{
   private Dimension gridsPanelSize = null;
 
   private static int TEXTFIELDWIDTH = 32;
-  private static String HOME_URL = "http://www.gridfactory.org/";
-  private static String MYSQL_HOWTO_URL = HOME_URL+"documentation/";
-  private static String HTTPS_HOWTO_URL = HOME_URL+"documentation/";
+  private static String HOME_URL = "https://www.gridfactory.org/";
+  private static String DOC_ROOT_URL = "http://www.gridfactory.org/";
+  private static String MYSQL_HOWTO_URL = DOC_ROOT_URL+"documentation/";
+  private static String HTTPS_HOWTO_URL = DOC_ROOT_URL+"documentation/";
  
   public BeginningWizard(boolean firstRun){
     
