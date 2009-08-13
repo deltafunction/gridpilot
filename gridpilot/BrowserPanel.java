@@ -96,12 +96,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private HashSet excludeDBs = new HashSet();
   private Vector urlList;
   
-  // Semaphore to be grabbed when setting display and released when done.
-  private boolean settingDisplay = false;
-  
   private static int MAX_FILE_EDIT_BYTES = 100000;
   private static int TEXTFIELDWIDTH = 32;
   private static int HTTP_TIMEOUT = 10000;
+  private static final int OPEN_TIMEOUT = 30000;
 
   public static int HISTORY_SIZE = 15;
 
@@ -355,7 +353,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * If parent is not null, it gets its cursor set to the default after loading url.
    * If cancelEnabled is false, the cancel button is disabled.
    */
-  private void initGUI(final Window parent, String title, String url,
+  private void initGUI(final Window parent, String title, final String url,
       boolean cancelEnabled, boolean registrationEnabled) throws Exception{
     
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
@@ -658,11 +656,33 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
     });
     
-    // Load the actual page
     statusBar = new StatusBar();
     statusBar.setLabel(" ");
     this.getContentPane().add(statusBar, BorderLayout.SOUTH);
-    setDisplay(url);
+    
+    
+    //setDisplay(url);
+    MyResThread dt = new MyResThread(){
+      public void run(){
+        try{
+          setDisplay0(url);
+        }
+        catch(Exception e){
+          Debug.debug("setDisplay0 failed, trying parent", 2);
+          try{
+            if(!url.endsWith("/") && !url.endsWith("\\")){
+              setDisplay0(getParent(url));
+            }
+          }
+          catch(Exception e1){
+            e1.printStackTrace();
+          }
+        }
+      }
+    };
+         
+    dt.start();
+    
     if(withNavigation){
       statusBar.setLabel("Type in URL and hit return");
     }
@@ -744,13 +764,19 @@ public class BrowserPanel extends JDialog implements ActionListener{
         }
       }
     });
-
+    
     if(url!=null && !url.equals("")){
       setUrl(url);
     }
 
   }
   
+  private String getParent(String url) {
+    String newUrl = url.replaceAll("\\\\", "/");
+    newUrl = url.substring(0, newUrl.lastIndexOf("/")+1);
+    return newUrl;
+  }
+
   /**
    * Download a file or directory.
    */
@@ -1130,15 +1156,16 @@ public class BrowserPanel extends JDialog implements ActionListener{
         try{
           setDisplay0(url);
         }
-        catch(Throwable e){
-          e.printStackTrace();
-          setException(new IOException(e.getMessage()));
+        catch(Exception e){
+          //e.printStackTrace();
+          setException(e);
           return;
         }
       }
     };
     t.start();
-    if(!MyUtil.myWaitForThread(t, "setDisplay0", HTTP_TIMEOUT, "list", true) ||
+    //SwingUtilities.invokeLater(t);
+    if(!MyUtil.myWaitForThread(t, "setDisplay0", OPEN_TIMEOUT, "list", true) ||
         t.getException()!=null){
       if(statusBar!=null){
         statusBar.setLabel("setDisplay0 failed.");
@@ -1149,58 +1176,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
   }
 
-  private void setDisplay0(final String url) throws Exception{
-    MyResThread t = new MyResThread(){
-      public void run(){
-        try{
-          settingDisplay = true;
-          setDisplay00(url);
-          settingDisplay = false;
-        }
-        catch(Exception e){
-          //e.printStackTrace();
-          settingDisplay = false;
-          Debug.debug("settingDisplay false "+e, 3);
-          setException(e);
-          setExitValue(-1);
-          return;
-        }
-      }
-    };
-    t.start();
-    waitForDisplay();
-    Debug.debug("waitForDisplay done: "+t.getException()+":"+t.getExitvalue(), 2);
-    if(t.getException()!=null){
-      throw new IOException("setDisplay00 failed "+t.getException());
-    }
-  }
-  
-  private void waitForDisplay() throws Exception{
-    MyResThread t = new MyResThread(){
-      public void run(){
-        try{
-          int i = 0;
-          int sleepT = 100;
-          while(i*sleepT<HTTP_TIMEOUT){
-          if(!settingDisplay){
-              Debug.debug("Display set", 2);
-              return;
-            }
-            Debug.debug("Sleeping...", 3);
-            Thread.sleep(sleepT);
-          }
-        }
-        catch(Exception e){
-          e.printStackTrace();
-         return;
-        }
-      }
-    };
-    t.start();
-    MyUtil.myWaitForThread(t, "waitForDisplay", 0, "list", true);
-  }
-
-  private void setDisplay00(String url) throws Exception{
+  private void setDisplay0(String url) throws Exception{
     try{
       lastUrlsList = null;
       lastSizesList = null;
@@ -1365,6 +1341,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
       ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       String msg = "Could not initialize panel with URL "+url+". "+e.getMessage();
       //showError(msg);
+      ep.setContentType("text/plain");
+      ep.setText("Could not open URL "+url);
       Debug.debug(msg, 1);
       throw e;
     }
@@ -2042,7 +2020,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   }
   
   // Close the dialog
-  void cancel(){
+  private void cancel(){
     if(thisUrl==null || thisUrl.endsWith("/")){
       //lastURL = Util.urlDecode(origUrl);
       lastURL = null;
@@ -2055,7 +2033,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         String newUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/")+1);
         //thisUrl = newUrl;
         //setUrl(thisUrl);
-        setDisplay00(newUrl);
+        setDisplay0(newUrl);
       }
       catch(Exception ioe){
         ioe.printStackTrace();
