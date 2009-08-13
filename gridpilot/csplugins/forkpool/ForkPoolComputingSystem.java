@@ -42,7 +42,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     includeVMRTEs = false;
     basicOSRTES = new String [] {"Linux"};
     setupRemoteShellMgrs();
-    GridPilot.splashShow("Setting up environment for remote hosts...");
+    GridPilot.splashShow("Setting up runtime environments for "+csName);
     setupRuntimeEnvironmentsSSH();
     Debug.debug("Using workingDir "+workingDir, 2);
   }

@@ -96,6 +96,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private HashSet excludeDBs = new HashSet();
   private Vector urlList;
   
+  // Semaphore to be grabbed when setting display and released when done.
+  private boolean settingDisplay = false;
+  
   private static int MAX_FILE_EDIT_BYTES = 100000;
   private static int TEXTFIELDWIDTH = 32;
   private static int HTTP_TIMEOUT = 10000;
@@ -1149,7 +1152,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
     ResThread t = new ResThread(){
       public void run(){
         try{
+          settingDisplay = true;
           setDisplay00(url);
+          settingDisplay = false;
         }
         catch(Exception e){
           e.printStackTrace();
@@ -1158,10 +1163,22 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
     };
     t.start();
-    if(!MyUtil.myWaitForThread(t, "setDisplay00", HTTP_TIMEOUT, "list", true) ||
-       t.getException()!=null){
+    waitForDisplay();
+    if(t.getException()!=null){
       throw new IOException("setDisplay failed "+t.getException());
     }
+  }
+  
+  private void waitForDisplay() throws Exception{
+    int i = 0;
+    int sleepT = 100;
+    while(i*sleepT<HTTP_TIMEOUT){
+      if(!settingDisplay){
+        return;
+      }
+      Thread.sleep(sleepT);
+    }
+    throw new Exception("Timed out waiting for setDisplay00");
   }
 
   private void setDisplay00(String url) throws Exception{

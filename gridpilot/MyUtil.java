@@ -707,7 +707,7 @@ private static String fixUrl(String _url){
 
       if(t.isAlive()){
         if(!ask || askForInterrupt(name, function)){
-          GridPilot.getClassMgr().getLogFile().addMessage("No response from plugin " +
+          GridPilot.getClassMgr().getLogFile().addMessage("No response from  " +
               name + " for " + function);
           t.requestStop();
           try{
