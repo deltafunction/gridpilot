@@ -1133,6 +1133,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         catch(Throwable e){
           e.printStackTrace();
           setException(new IOException(e.getMessage()));
+          return;
         }
       }
     };
@@ -1140,7 +1141,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(!MyUtil.myWaitForThread(t, "setDisplay0", HTTP_TIMEOUT, "list", true) ||
         t.getException()!=null){
       if(statusBar!=null){
-        statusBar.setLabel("setDisplay cancelled.");
+        statusBar.setLabel("setDisplay0 failed.");
       }
       ep.setContentType("text/plain");
       ep.setText("Could not open URL "+url);
@@ -1149,7 +1150,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   }
 
   private void setDisplay0(final String url) throws Exception{
-    ResThread t = new ResThread(){
+    MyResThread t = new MyResThread(){
       public void run(){
         try{
           settingDisplay = true;
@@ -1157,28 +1158,46 @@ public class BrowserPanel extends JDialog implements ActionListener{
           settingDisplay = false;
         }
         catch(Exception e){
-          e.printStackTrace();
+          //e.printStackTrace();
+          settingDisplay = false;
+          Debug.debug("settingDisplay false "+e, 3);
           setException(e);
+          setExitValue(-1);
+          return;
         }
       }
     };
     t.start();
     waitForDisplay();
+    Debug.debug("waitForDisplay done: "+t.getException()+":"+t.getExitvalue(), 2);
     if(t.getException()!=null){
-      throw new IOException("setDisplay failed "+t.getException());
+      throw new IOException("setDisplay00 failed "+t.getException());
     }
   }
   
   private void waitForDisplay() throws Exception{
-    int i = 0;
-    int sleepT = 100;
-    while(i*sleepT<HTTP_TIMEOUT){
-      if(!settingDisplay){
-        return;
+    MyResThread t = new MyResThread(){
+      public void run(){
+        try{
+          int i = 0;
+          int sleepT = 100;
+          while(i*sleepT<HTTP_TIMEOUT){
+          if(!settingDisplay){
+              Debug.debug("Display set", 2);
+              return;
+            }
+            Debug.debug("Sleeping...", 3);
+            Thread.sleep(sleepT);
+          }
+        }
+        catch(Exception e){
+          e.printStackTrace();
+         return;
+        }
       }
-      Thread.sleep(sleepT);
-    }
-    throw new Exception("Timed out waiting for setDisplay00");
+    };
+    t.start();
+    MyUtil.myWaitForThread(t, "waitForDisplay", 0, "list", true);
   }
 
   private void setDisplay00(String url) throws Exception{
