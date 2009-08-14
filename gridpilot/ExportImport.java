@@ -343,6 +343,9 @@ public class ExportImport {
 
   private static int moveTransInputs(String tmpDir, File executableDirectory) {
     String [] files = LocalStaticShell.listFiles(tmpDir);
+    if(files==null){
+      return 0;
+    }
     String fileName;
     int ret = files.length;
     for(int i=0; i<ret; ++i){

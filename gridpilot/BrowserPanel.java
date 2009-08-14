@@ -499,19 +499,20 @@ public class BrowserPanel extends JDialog implements ActionListener{
       addUrlKeyListener();
     }
     else{
-      topPanel.add(currentUrlBox, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
-          GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL,
-          new Insets(0, 5, 0, 5), 0, 0));
+      topPanel.add(currentUrlLabel,
+          new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
+              GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL,
+              new Insets(0, 5, 0, 5), 0, 0));
     }
     
     if(withFilter){
       JPanel jpFilter = new JPanel(new GridBagLayout());      
-      if(!withNavigation){
+      /*if(!withNavigation){
         topPanel.add(currentUrlLabel,
             new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
                 GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL,
                 new Insets(0, 5, 0, 5), 0, 0));
-      }
+      }*/
       jpFilter.add(new JLabel("Filter: "));
       jpFilter.add(jtFilter);
       jpFilter.add(new JLabel(" Show hidden"));
@@ -670,13 +671,13 @@ public class BrowserPanel extends JDialog implements ActionListener{
     MyResThread dt = new MyResThread(){
       public void run(){
         try{
-          setDisplay0(url);
+          setDisplay(url);
         }
         catch(Exception e){
           Debug.debug("setDisplay0 failed, trying parent", 2);
           try{
             if(!url.endsWith("/") && !url.endsWith("\\")){
-              setDisplay0(getParent(url));
+              setDisplay(getParent(url));
             }
           }
           catch(Exception e1){
@@ -1746,6 +1747,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       String htmlText = "";
       try{
         String [] text = LocalStaticShell.listFiles(localPath);
+        Debug.debug("found files "+text.length, 3);
         int directories = 0;
         int files = 0;
         Vector textVector = new Vector();

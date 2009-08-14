@@ -311,10 +311,10 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   
   private void cbRuntimeSelection_actionPerformed(){
     if(cbRuntimeEnvironmentSelection.getSelectedItem()==null){
-        return;
+      return;
     }
     else{
-        runtimeEnvironmentName = cbRuntimeEnvironmentSelection.getSelectedItem().toString();
+      runtimeEnvironmentName = cbRuntimeEnvironmentSelection.getSelectedItem().toString();
     }
     editExecutable(Integer.parseInt(executableID),
         runtimeEnvironmentName);
